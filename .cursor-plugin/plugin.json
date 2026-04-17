@@ -4,12 +4,5 @@
   "version": "0.1.0",
   "author": {
     "name": "Soofi XYZ"
-  },
-  "license": "MIT",
-  "keywords": [
-    "agents",
-    "subagents",
-    "skills",
-    "soofi"
-  ]
+  }
 }
