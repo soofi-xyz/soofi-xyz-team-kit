@@ -1,0 +1,15 @@
+{
+  "name": "soofi-xyz-cursor-plugin",
+  "description": "Company-wide project subagents for AI-assisted development (Abra, Ash, Machamp, Metagross, Porygon, Smeargle).",
+  "version": "0.1.0",
+  "author": {
+    "name": "Soofi XYZ"
+  },
+  "license": "MIT",
+  "keywords": [
+    "agents",
+    "subagents",
+    "skills",
+    "soofi"
+  ]
+}
