@@ -11,16 +11,18 @@ Kadabra is the top-level builder. It should not be the daily runtime and it shou
 
 ## Related Skills
 
-| Skill | Load when |
-| --- | --- |
-| [`jigglypuff`](../jigglypuff/) | defining template inventory, CRUD, and template sync |
-| [`xatu`](../xatu/) | defining audience boundaries and runtime intake contracts |
-| [`chatot`](../chatot/) | defining provider execution, routing, and feedback loops |
-| [`oranguru`](../oranguru/) | defining the runtime workflow, data contracts, allocation, and validation |
-| [`building-ai-agents`](../building-ai-agents/) | capturing builder prompts, reusable agent structure, and runtime-vs-builder boundaries |
-| [`building-solver-services`](../building-solver-services/) | implementing the Glue + OR-Tools architecture inside the runtime |
-| [`building-batch-workflows`](../building-batch-workflows/) | defining input contracts, cost gates, throttling, and recoverability |
-| [`apply-engineering-guidelines`](../apply-engineering-guidelines/) | applying language, CDK, testing, and observability standards |
+
+| Skill                                                              | Load when                                                                              |
+| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| `[jigglypuff](../jigglypuff/)`                                     | defining template inventory, CRUD, and template sync                                   |
+| `[xatu](../xatu/)`                                                 | defining audience boundaries and runtime intake contracts                              |
+| `[chatot](../chatot/)`                                             | defining provider execution, routing, and feedback loops                               |
+| `[oranguru](../oranguru/)`                                         | defining the runtime workflow, data contracts, allocation, and validation              |
+| `[building-ai-agents](../building-ai-agents/)`                     | capturing builder prompts, reusable agent structure, and runtime-vs-builder boundaries |
+| `[building-solver-services](../building-solver-services/)`         | implementing the Glue + OR-Tools architecture inside the runtime                       |
+| `[building-batch-workflows](../building-batch-workflows/)`         | defining input contracts, cost gates, throttling, and recoverability                   |
+| `[apply-engineering-guidelines](../apply-engineering-guidelines/)` | applying language, CDK, testing, and observability standards                           |
+
 
 ## Builder Contract
 
@@ -40,10 +42,10 @@ Do not collapse those three roles into one prompt, one skill, or one code path.
 
 Kadabra should explicitly compose these worker skills:
 
-- [`jigglypuff`](../jigglypuff/) for template inventory, CRUD, and synchronization
-- [`xatu`](../xatu/) for audience boundaries and runtime intake contracts
-- [`chatot`](../chatot/) for provider setup, execution handoff, and feedback loops
-- [`oranguru`](../oranguru/) for runtime assembly, scheduling logic, allocation, and validation
+- `[jigglypuff](../jigglypuff/)` for template inventory, CRUD, and synchronization
+- `[xatu](../xatu/)` for audience boundaries and runtime intake contracts
+- `[chatot](../chatot/)` for provider setup, execution handoff, and feedback loops
+- `[oranguru](../oranguru/)` for runtime assembly, scheduling logic, allocation, and validation
 
 Kadabra may set requirements on the produced runtime, but the detailed runtime rulebook belongs to the worker skills, not to Kadabra.
 
@@ -73,15 +75,15 @@ Expected quality bar:
 
 Before considering Kadabra ready, confirm:
 
-- [ ] builder vs runtime separation is explicit
-- [ ] Kadabra composes worker skills instead of rebuilding everything ad hoc
-- [ ] `jigglypuff` owns template management and sync
-- [ ] `xatu` owns audience selection and intake handoff
-- [ ] `chatot` owns communication activity execution and feedback
-- [ ] `oranguru` owns runtime assembly and detailed runtime rules
-- [ ] a golden prompt exists and is auditable
-- [ ] the golden prompt is good enough to support rebuild-from-scratch validation
-- [ ] worker boundaries are clear enough that runtime details do not need to live in Kadabra
+- builder vs runtime separation is explicit
+- Kadabra composes worker skills instead of rebuilding everything ad hoc
+- `jigglypuff` owns template management and sync
+- `xatu` owns audience selection and intake handoff
+- `chatot` owns communication activity execution and feedback
+- `oranguru` owns runtime assembly and detailed runtime rules
+- a golden prompt exists and is auditable
+- the golden prompt is good enough to support rebuild-from-scratch validation
+- worker boundaries are clear enough that runtime details do not need to live in Kadabra
 
 ## Out Of Scope
 
@@ -98,6 +100,7 @@ Those belong to `xatu`, `oranguru`, and `chatot`.
 
 ## Rules Summary
 
-| Rule | File | Impact |
-| --- | --- | --- |
+
+| Rule                           | File                                      | Impact   |
+| ------------------------------ | ----------------------------------------- | -------- |
 | Kadabra Communication Ontology | `rules/kadabra-communication-ontology.md` | CRITICAL |

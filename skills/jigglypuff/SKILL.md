@@ -1,7 +1,7 @@
 ---
-name: jigglypuff
+
+## name: jigglypuff
 description: "Manage channel templates in Git-backed inventories, including template CRUD, metadata normalization, active/inactive state, family/variant structure, and one-time or recurring synchronization from operational stores into GitHub. Use when building or refactoring template-management agents, template repositories, template sync jobs, or channel template workflows for SMS or email."
----
 
 # Jigglypuff
 
@@ -98,10 +98,10 @@ Those belong to audience, runtime, or communication-activity skills.
 
 Before considering the template capability ready, confirm:
 
-- [ ] the Git template contract is documented
-- [ ] template CRUD path is defined
-- [ ] sync behavior is defined if an operational source exists
-- [ ] normalized output is deterministic
-- [ ] source-only fields are not leaked into the runtime contract
-- [ ] template review happens through PRs or an equivalent auditable flow
-- [ ] runtime consumers can read templates without reaching back into the source system
+- the Git template contract is documented
+- template CRUD path is defined
+- sync behavior is defined if an operational source exists
+- normalized output is deterministic
+- source-only fields are not leaked into the runtime contract
+- template review happens through PRs or an equivalent auditable flow
+- runtime consumers can read templates without reaching back into the source system

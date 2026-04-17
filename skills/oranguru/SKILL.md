@@ -47,21 +47,22 @@ Those belong to `jigglypuff`, `xatu`, `chatot`, or `kadabra`.
 
 Before considering the runtime-assembly capability ready, confirm:
 
-- [ ] runtime boundaries are explicit
-- [ ] internal runtime contracts are explicit
-- [ ] candidate generation and allocation phases are documented
-- [ ] output artifacts are documented
-- [ ] retries, replay, and recovery are defined
-- [ ] the runtime can be rebuilt from the stored prompt and worker contracts without hidden tribal knowledge
+- runtime boundaries are explicit
+- internal runtime contracts are explicit
+- candidate generation and allocation phases are documented
+- output artifacts are documented
+- retries, replay, and recovery are defined
+- the runtime can be rebuilt from the stored prompt and worker contracts without hidden tribal knowledge
 
 ## Rules Summary
 
-| Rule | File | Impact |
-| --- | --- | --- |
-| Current Solver Parity | `reference/current-solver-parity.md` | CRITICAL |
-| Runtime Problem Framing | `rules/runtime-problem-framing.md` | CRITICAL |
-| Runtime Data Contract | `rules/runtime-data-contract.md` | CRITICAL |
-| Runtime Candidate Generation | `rules/runtime-candidate-generation-and-eligibility.md` | CRITICAL |
-| Runtime Scoring And Time Slotting | `rules/runtime-scoring-and-time-slotting.md` | CRITICAL |
-| Runtime Allocation And Outputs | `rules/runtime-allocation-and-outputs.md` | CRITICAL |
-| Runtime Validation And Rollout | `rules/runtime-validation-and-rollout.md` | HIGH |
+
+| Rule                              | File                                                    | Impact   |
+| --------------------------------- | ------------------------------------------------------- | -------- |
+| Current Solver Parity             | `reference/current-solver-parity.md`                    | CRITICAL |
+| Runtime Problem Framing           | `rules/runtime-problem-framing.md`                      | CRITICAL |
+| Runtime Data Contract             | `rules/runtime-data-contract.md`                        | CRITICAL |
+| Runtime Candidate Generation      | `rules/runtime-candidate-generation-and-eligibility.md` | CRITICAL |
+| Runtime Scoring And Time Slotting | `rules/runtime-scoring-and-time-slotting.md`            | CRITICAL |
+| Runtime Allocation And Outputs    | `rules/runtime-allocation-and-outputs.md`               | CRITICAL |
+| Runtime Validation And Rollout    | `rules/runtime-validation-and-rollout.md`               | HIGH     |

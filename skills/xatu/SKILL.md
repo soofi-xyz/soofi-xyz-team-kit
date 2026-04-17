@@ -41,15 +41,16 @@ Those belong to `jigglypuff`, `chatot`, or `oranguru`.
 
 Before considering the audience capability ready, confirm:
 
-- [ ] the audience entrypoint is explicit
-- [ ] hard-filter ownership is explicit
-- [ ] the runtime intake contract is documented
-- [ ] required identifiers and evidence fields are present
-- [ ] the runtime does not need to re-derive the eligible population from raw source systems
-- [ ] the handoff shape is replayable and auditable
+- the audience entrypoint is explicit
+- hard-filter ownership is explicit
+- the runtime intake contract is documented
+- required identifiers and evidence fields are present
+- the runtime does not need to re-derive the eligible population from raw source systems
+- the handoff shape is replayable and auditable
 
 ## Rules Summary
 
-| Rule | File | Impact |
-| --- | --- | --- |
+
+| Rule                        | File                                       | Impact   |
+| --------------------------- | ------------------------------------------ | -------- |
 | SMS Runtime Intake Contract | `reference/sms-runtime-intake-contract.md` | CRITICAL |

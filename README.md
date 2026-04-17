@@ -39,10 +39,15 @@ A [Cursor plugin](https://cursor.com/docs/plugins) packaging company-wide projec
 | --- | --- | --- |
 | [`abra`](./agents/abra.md) | Abra | Designs and scaffolds solver services with Glue PySpark, pure Python OR-Tools solvers, and CDK-backed infrastructure. |
 | [`ash`](./agents/ash.md) | Ash | Designs and implements Asana-triggered Lambda agents using the established Bedrock and telemetry patterns. |
+| [`chatot`](./agents/chatot.md) | Chatot | Owns the communication-activity lifecycle — provider setup, routing, send handoff, delivery events, and response ingestion. |
+| [`jigglypuff`](./agents/jigglypuff.md) | Jigglypuff | Template-management specialist — Git-backed template inventory, CRUD, metadata normalization, and sync workflows. |
+| [`kadabra`](./agents/kadabra.md) | Kadabra | Top-level SMS communication service builder — composes `xatu`, `jigglypuff`, `chatot`, and `oranguru` and owns the golden prompt. |
 | [`machamp`](./agents/machamp.md) | Machamp | Designs and implements AWS batch workflows with strategy selection, cost gates, throttling, idempotency, and staged test pipelines. |
 | [`metagross`](./agents/metagross.md) | Metagross | Designs and scaffolds fullstack frontend-backend monorepos with Turborepo, Amplify, tRPC, Lambda, and CDK. |
+| [`oranguru`](./agents/oranguru.md) | Oranguru | Communication-runtime assembler — composes audience, template, and activity capabilities into deterministic end-to-end channel services. |
 | [`porygon`](./agents/porygon.md) | Porygon | Unifies and analyzes metrics across vendors and data sources with a lexicon-first, audit-friendly workflow. |
 | [`smeargle`](./agents/smeargle.md) | Smeargle | Handles Figma-driven frontend delivery: design intake, UI bug triage, commit archaeology, code updates, and responsive design verification. |
+| [`xatu`](./agents/xatu.md) | Xatu | Audience-selection specialist — eligibility boundaries, runtime intake contracts, and filter-to-runtime handoffs. |
 
 ### Agent mascots
 
@@ -50,10 +55,15 @@ A [Cursor plugin](https://cursor.com/docs/plugins) packaging company-wide projec
 | --- | --- |
 | abra | ![Abra](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/063.png) |
 | ash | <img src="https://archives.bulbagarden.net/media/upload/3/3a/Ash_OS_2.png" alt="Ash" width="112" height="112"> |
+| chatot | ![Chatot](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/441.png) |
+| jigglypuff | ![Jigglypuff](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/039.png) |
+| kadabra | ![Kadabra](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/064.png) |
 | machamp | ![Machamp](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/068.png) |
 | metagross | ![Metagross](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/376.png) |
+| oranguru | ![Oranguru](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/765.png) |
 | porygon | ![Porygon](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/137.png) |
 | smeargle | ![Smeargle](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/235.png) |
+| xatu | ![Xatu](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/178.png) |
 
 ## Repository layout
 
@@ -64,10 +74,15 @@ soofi-xyz-cursor-plugin/
 ├── agents/                          # Subagent definitions (auto-discovered)
 │   ├── abra.md
 │   ├── ash.md
+│   ├── chatot.md
+│   ├── jigglypuff.md
+│   ├── kadabra.md
 │   ├── machamp.md
 │   ├── metagross.md
+│   ├── oranguru.md
 │   ├── porygon.md
-│   └── smeargle.md
+│   ├── smeargle.md
+│   └── xatu.md
 ├── skills/                          # Agent skills (auto-discovered, one dir per skill)
 │   ├── apply-engineering-guidelines/ # Golden Path engineering standards
 │   ├── atomic-data/                 # Atomic facts + vendor rollups for operational metrics

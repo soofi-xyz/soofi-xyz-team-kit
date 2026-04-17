@@ -48,16 +48,17 @@ Those belong to `xatu`, `jigglypuff`, or `oranguru`.
 
 Before considering the communication-activity capability ready, confirm:
 
-- [ ] provider credential source is documented
-- [ ] execution artifact schema is documented
-- [ ] routing and contact-point rules are explicit
-- [ ] send idempotency and retry behavior are defined
-- [ ] provider events map back to internal communication identifiers
-- [ ] delivery and response outcomes are persisted
-- [ ] the activity lifecycle is closed, not fire-and-forget
+- provider credential source is documented
+- execution artifact schema is documented
+- routing and contact-point rules are explicit
+- send idempotency and retry behavior are defined
+- provider events map back to internal communication identifiers
+- delivery and response outcomes are persisted
+- the activity lifecycle is closed, not fire-and-forget
 
 ## Rules Summary
 
-| Rule | File | Impact |
-| --- | --- | --- |
+
+| Rule                       | File                                  | Impact   |
+| -------------------------- | ------------------------------------- | -------- |
 | Quiq Delivery And Feedback | `rules/quiq-delivery-and-feedback.md` | CRITICAL |
