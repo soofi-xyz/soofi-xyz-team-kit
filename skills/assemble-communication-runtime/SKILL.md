@@ -1,9 +1,9 @@
 ---
-name: oranguru
+name: assemble-communication-runtime
 description: "Assemble deterministic communication runtimes from reusable audience, template, and activity capabilities. Covers runtime workflow composition, internal data contracts, candidate generation, scoring, allocation, outputs, and runtime validation. Use when building or refactoring communication runtimes, workflow assembly agents, or end-to-end channel services."
 ---
 
-# Oranguru
+# Assemble Communication Runtime
 
 Use this skill when turning reusable communication capabilities into the deterministic worker system that actually runs the service.
 

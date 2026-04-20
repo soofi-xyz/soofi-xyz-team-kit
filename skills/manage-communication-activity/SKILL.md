@@ -1,9 +1,9 @@
 ---
-name: chatot
+name: manage-communication-activity
 description: "Manage reusable communication activity loops across provider setup, send-file contracts, routing, execution handoff, delivery updates, response ingestion, and activity-state closure. Use when building provider adapters, communication activity agents, send workflows, delivery feedback processing, or channel operations for SMS or email."
 ---
 
-# Chatot
+# Manage Communication Activity
 
 Use this skill for the communication-activity loop after the audience has been chosen and the runtime has produced execution artifacts.
 

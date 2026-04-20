@@ -1,9 +1,9 @@
 ---
-name: kadabra
-description: "Guides Kadabra-style construction of the SMS communication service as a top-level builder. Covers builder-vs-runtime separation, reusable worker-skill composition (`jigglypuff`, `xatu`, `chatot`, `oranguru`), golden prompt expectations, and rebuild-from-scratch governance. Use when building or refactoring Kadabra itself, its worker-skill composition, or the builder prompt for the SMS communication service."
+name: build-sms-communication-service
+description: "Guides top-level construction of the SMS communication service. Covers builder-vs-runtime separation, reusable worker-skill composition (`manage-channel-templates`, `select-communication-audience`, `manage-communication-activity`, `assemble-communication-runtime`), golden prompt expectations, and rebuild-from-scratch governance. Use when building or refactoring the SMS communication service itself, its worker-skill composition, or the builder prompt."
 ---
 
-# Kadabra
+# Build SMS Communication Service
 
 Use this skill when Kadabra is building the SMS communication service.
 

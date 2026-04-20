@@ -1,9 +1,9 @@
 ---
-
-## name: jigglypuff
+name: manage-channel-templates
 description: "Manage channel templates in Git-backed inventories, including template CRUD, metadata normalization, active/inactive state, family/variant structure, and one-time or recurring synchronization from operational stores into GitHub. Use when building or refactoring template-management agents, template repositories, template sync jobs, or channel template workflows for SMS or email."
+---
 
-# Jigglypuff
+# Manage Channel Templates
 
 Use this skill for template systems and template inventory workflows. Do not use it for audience selection, scheduling, or provider delivery.
 

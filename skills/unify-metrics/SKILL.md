@@ -1,9 +1,9 @@
 ---
-name: metrics-skill
+name: unify-metrics
 description: "Design and implement lexicon-first metrics workflows across the repositories, including candidate metric discovery, snapshot semantics, dashboard delivery, and PR follow-up. Use when defining a new metric, mapping vendor metrics to canonical names, extending CloudWatch metric registration, integrating a metric into a pipeline, adding dashboard widgets, or preparing coordinated lexicon/pipeline/dashboard delivery. Triggers on: new metric, metrics workflow, cloudwatch metric, vendor metric mapping, metric pipeline, dashboard widget, lexicon metric, livevox metric, business metric."
 ---
 
-# Metrics
+# Unify Metrics
 
 Use this skill to run the reusable `metrics` workflow across `skills`, `lexicon`, `livevox-metrics-pipeline`, and `main-dashboard`.
 

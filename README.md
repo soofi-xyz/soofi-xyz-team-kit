@@ -15,23 +15,23 @@ A [Cursor plugin](https://cursor.com/docs/plugins) packaging company-wide projec
 | Skill | Description |
 | --- | --- |
 | [`apply-engineering-guidelines`](./skills/apply-engineering-guidelines/) | Apply the Golden Path engineering standards for tech stack, infrastructure, testing, observability, and AI implementation choices. |
+| [`assemble-communication-runtime`](./skills/assemble-communication-runtime/) | Runtime-assembly skill for composing audience, template, and communication-activity capabilities into deterministic end-to-end channel services. |
 | [`atomic-data`](./skills/atomic-data/) | Atomic row-level facts plus vendor daily rollups for contact-center and operational metrics, Parquet-first storage, CloudWatch + lexicon lineage, and reconciliation patterns. |
 | [`build-ai-agents`](./skills/build-ai-agents/) | Build AI agents with the rules-agent pattern: Lambda runtime, Asana webhooks, Bedrock + Vercel AI SDK `ToolLoopAgent`, LangSmith telemetry, and AgentCore memory. |
 | [`build-batch-workflows`](./skills/build-batch-workflows/) | Design and implement AWS batch workflows with Step Functions Distributed Map, Glue PySpark, cost gates, throttling, idempotency, and staged test pipelines. |
 | [`build-frontend-backends`](./skills/build-frontend-backends/) | Build fullstack monorepos with Turborepo, AWS Amplify frontends, and tRPC + Lambda backends deployed via CDK. |
 | [`build-inbound-sftp-workflows`](./skills/build-inbound-sftp-workflows/) | Build inbound SFTP workflows on AWS with Transfer Family, a Lambda poller, and listing-first transfer validation. |
+| [`build-sms-communication-service`](./skills/build-sms-communication-service/) | Top-level builder skill for the SMS communication service — owns ontology, worker-skill composition, and golden-prompt governance while delegating to audience, template, activity, and runtime workers. |
 | [`build-solver-services`](./skills/build-solver-services/) | Build optimization services combining AWS Glue PySpark data prep with Google OR-Tools solvers using the three-layer architecture. |
-| [`chatot`](./skills/chatot/) | Reusable communication-activity skill that keeps provider setup, routing, execution handoff, delivery events, and response feedback in one lifecycle. |
 | [`discover-skills`](./skills/discover-skills/) | Discover, search, install, and update agent skills from the company registry. Load before starting any task to check if a relevant skill exists. |
 | [`figma-to-code`](./skills/figma-to-code/) | Frontend engineering workflow to update existing code from Figma designs while preserving logic and adding responsive design test coverage. |
 | [`frontend-bug-fix`](./skills/frontend-bug-fix/) | Frontend bug triage and fix workflow with design comparison, commit analysis, test updates, and verification. |
 | [`integrate-ci-cd`](./skills/integrate-ci-cd/) | Integrate the shared GitHub Actions workflows into a project using the required `justfile` recipes and caller workflows. |
-| [`jigglypuff`](./skills/jigglypuff/) | Reusable template-management skill for channel template CRUD, metadata normalization, Git-backed inventory, and source-to-Git template synchronization. |
-| [`kadabra`](./skills/kadabra/) | Top-level builder skill for the SMS communication service — owns ontology, worker-skill composition, and golden-prompt governance while delegating to `xatu`, `chatot`, and `oranguru`. |
-| [`metrics-skill`](./skills/metrics-skill/) | Lexicon-first metric unification: comparability gates, normalization, analysis, and audit-friendly outputs. |
-| [`oranguru`](./skills/oranguru/) | Runtime-assembly skill for composing audience, template, and communication-activity capabilities into deterministic end-to-end channel services. |
+| [`manage-channel-templates`](./skills/manage-channel-templates/) | Reusable template-management skill for channel template CRUD, metadata normalization, Git-backed inventory, and source-to-Git template synchronization. |
+| [`manage-communication-activity`](./skills/manage-communication-activity/) | Reusable communication-activity skill that keeps provider setup, routing, execution handoff, delivery events, and response feedback in one lifecycle. |
 | [`responsive-design-tests`](./skills/responsive-design-tests/) | Write Playwright design tests for Figma-driven responsive UI updates across mocked and real-device lanes. |
-| [`xatu`](./skills/xatu/) | Reusable audience-selection skill for defining eligibility boundaries and packaging filtered communication populations for downstream runtimes. |
+| [`select-communication-audience`](./skills/select-communication-audience/) | Reusable audience-selection skill for defining eligibility boundaries and packaging filtered communication populations for downstream runtimes. |
+| [`unify-metrics`](./skills/unify-metrics/) | Lexicon-first metric unification: comparability gates, normalization, analysis, and audit-friendly outputs. |
 
 ## Agents
 
@@ -39,6 +39,7 @@ A [Cursor plugin](https://cursor.com/docs/plugins) packaging company-wide projec
 | --- | --- | --- |
 | [`abra`](./agents/abra.md) | Abra | Designs and scaffolds solver services with Glue PySpark, pure Python OR-Tools solvers, and CDK-backed infrastructure. |
 | [`ash`](./agents/ash.md) | Ash | Designs and implements Asana-triggered Lambda agents using the established Bedrock and telemetry patterns. |
+| [`audino`](./agents/audino.md) | Audino | Frontend bug-fix specialist — design comparison, override archaeology, minimal fixes, and regression-proof tests. |
 | [`chatot`](./agents/chatot.md) | Chatot | Owns the communication-activity lifecycle — provider setup, routing, send handoff, delivery events, and response ingestion. |
 | [`jigglypuff`](./agents/jigglypuff.md) | Jigglypuff | Template-management specialist — Git-backed template inventory, CRUD, metadata normalization, and sync workflows. |
 | [`kadabra`](./agents/kadabra.md) | Kadabra | Top-level SMS communication service builder — composes `xatu`, `jigglypuff`, `chatot`, and `oranguru` and owns the golden prompt. |
@@ -46,7 +47,8 @@ A [Cursor plugin](https://cursor.com/docs/plugins) packaging company-wide projec
 | [`metagross`](./agents/metagross.md) | Metagross | Designs and scaffolds fullstack frontend-backend monorepos with Turborepo, Amplify, tRPC, Lambda, and CDK. |
 | [`oranguru`](./agents/oranguru.md) | Oranguru | Communication-runtime assembler — composes audience, template, and activity capabilities into deterministic end-to-end channel services. |
 | [`porygon`](./agents/porygon.md) | Porygon | Unifies and analyzes metrics across vendors and data sources with a lexicon-first, audit-friendly workflow. |
-| [`smeargle`](./agents/smeargle.md) | Smeargle | Handles Figma-driven frontend delivery: design intake, UI bug triage, commit archaeology, code updates, and responsive design verification. |
+| [`smeargle`](./agents/smeargle.md) | Smeargle | Responsive design-testing specialist — Playwright design specs across breakpoints, with mocked and real-device lane selection. |
+| [`sylveon`](./agents/sylveon.md) | Sylveon | Figma-to-code specialist — updates existing frontend code to match Figma while preserving business logic and locking breakpoints. |
 | [`xatu`](./agents/xatu.md) | Xatu | Audience-selection specialist — eligibility boundaries, runtime intake contracts, and filter-to-runtime handoffs. |
 
 ### Agent mascots
@@ -55,6 +57,7 @@ A [Cursor plugin](https://cursor.com/docs/plugins) packaging company-wide projec
 | --- | --- |
 | abra | ![Abra](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/063.png) |
 | ash | <img src="https://archives.bulbagarden.net/media/upload/3/3a/Ash_OS_2.png" alt="Ash" width="112" height="112"> |
+| audino | ![Audino](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/531.png) |
 | chatot | ![Chatot](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/441.png) |
 | jigglypuff | ![Jigglypuff](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/039.png) |
 | kadabra | ![Kadabra](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/064.png) |
@@ -63,6 +66,7 @@ A [Cursor plugin](https://cursor.com/docs/plugins) packaging company-wide projec
 | oranguru | ![Oranguru](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/765.png) |
 | porygon | ![Porygon](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/137.png) |
 | smeargle | ![Smeargle](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/235.png) |
+| sylveon | ![Sylveon](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/700.png) |
 | xatu | ![Xatu](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/178.png) |
 
 ## Repository layout
@@ -74,6 +78,7 @@ soofi-xyz-cursor-plugin/
 ├── agents/                          # Subagent definitions (auto-discovered)
 │   ├── abra.md
 │   ├── ash.md
+│   ├── audino.md
 │   ├── chatot.md
 │   ├── jigglypuff.md
 │   ├── kadabra.md
@@ -82,26 +87,27 @@ soofi-xyz-cursor-plugin/
 │   ├── oranguru.md
 │   ├── porygon.md
 │   ├── smeargle.md
+│   ├── sylveon.md
 │   └── xatu.md
 ├── skills/                          # Agent skills (auto-discovered, one dir per skill)
 │   ├── apply-engineering-guidelines/ # Golden Path engineering standards
+│   ├── assemble-communication-runtime/ # Runtime-assembly worker skill (used by Oranguru)
 │   ├── atomic-data/                 # Atomic facts + vendor rollups for operational metrics
 │   ├── build-ai-agents/             # Rules-agent pattern for AI agents
 │   ├── build-batch-workflows/       # Step Functions / Glue batch workflows
 │   ├── build-frontend-backends/     # Turborepo + Amplify + tRPC + CDK monorepos
 │   ├── build-inbound-sftp-workflows/ # AWS Transfer Family inbound SFTP integrations
+│   ├── build-sms-communication-service/ # Top-level SMS communication service builder (used by Kadabra)
 │   ├── build-solver-services/       # Glue + OR-Tools optimization services
-│   ├── chatot/                      # Communication-activity skill (worker of kadabra)
 │   ├── discover-skills/             # Registry discovery before task start
 │   ├── figma-to-code/               # Figma-driven frontend updates
 │   ├── frontend-bug-fix/            # UI bug triage and regression prevention
 │   ├── integrate-ci-cd/             # Shared GitHub Actions workflows
-│   ├── jigglypuff/                  # Template-management skill (worker of kadabra)
-│   ├── kadabra/                     # Top-level SMS communication service builder
-│   ├── metrics-skill/               # Lexicon-first metric unification
-│   ├── oranguru/                    # Runtime-assembly skill (worker of kadabra)
+│   ├── manage-channel-templates/    # Template-management worker skill (used by Jigglypuff)
+│   ├── manage-communication-activity/ # Communication-activity worker skill (used by Chatot)
 │   ├── responsive-design-tests/     # Playwright design tests across breakpoints
-│   └── xatu/                        # Audience-selection skill (worker of kadabra)
+│   ├── select-communication-audience/ # Audience-selection worker skill (used by Xatu)
+│   └── unify-metrics/               # Lexicon-first metric unification
 ├── AGENTS.md                        # Contributor guidance for agents/skills in this repo
 ├── CONTRIBUTING.md                  # How to contribute
 └── README.md
