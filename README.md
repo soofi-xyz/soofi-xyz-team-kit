@@ -109,52 +109,6 @@ soofi-xyz-cursor-plugin/
 
 Cursor discovers components automatically based on folder names. See the [Plugins reference](https://cursor.com/docs/reference/plugins) for the full component model.
 
-## Installation
-
-### Option 1: Local development (symlink)
-
-Load the plugin directly from this checkout for fast iteration:
-
-```bash
-mkdir -p ~/.cursor/plugins/local
-ln -s "$(pwd)" ~/.cursor/plugins/local/soofi-xyz-cursor-plugin
-```
-
-Then run **Developer: Reload Window** in Cursor (or restart Cursor). Verify the agents show up in the agent picker.
-
-### Option 2: Install from GitHub
-
-1. Push this repository to GitHub.
-2. In Cursor, open the **Marketplace** panel and install from the repo URL, or use an MCP-style deeplink if distributing.
-3. For team-wide distribution, add this repo as a [team marketplace](https://cursor.com/docs/plugins#team-marketplaces) (Teams / Enterprise plans).
-
-## Adding a new agent
-
-1. Create `agents/<name>.md` with YAML frontmatter:
-
-   ```markdown
-   ---
-   name: <name>
-   description: <what it does and when it should be used>
-   ---
-
-   You are <Name>, the <role>.
-
-   When invoked:
-   1. …
-   ```
-
-2. Add a row to the **Agents** table in this README.
-3. Reload Cursor.
-
-## Adding a new skill
-
-1. Create `skills/<skill-name>/SKILL.md` with YAML frontmatter (`name`, `description`).
-2. Keep `SKILL.md` under 500 lines; split detail into `rules/` or `reference/` subdirectories.
-3. Add a row to a **Skills** table in this README.
-
-See [`AGENTS.md`](./AGENTS.md) and [`CONTRIBUTING.md`](./CONTRIBUTING.md) for conventions.
-
 ## References
 
 - [Cursor Plugins overview](https://cursor.com/docs/plugins)
