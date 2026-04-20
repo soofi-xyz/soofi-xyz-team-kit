@@ -10,6 +10,24 @@ A [Cursor plugin](https://cursor.com/docs/plugins) packaging company-wide projec
 | Skills | [`skills/`](./skills/) | Agent skills — one directory per skill with a `SKILL.md` entry point |
 | Manifest | [`.cursor-plugin/plugin.json`](./.cursor-plugin/plugin.json) | Plugin manifest |
 
+## Agents
+
+| Mascot | Agent | Description |
+| :---: | --- | --- |
+| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/063.png" alt="Abra" width="96"> | [`abra`](./agents/abra.md) | Designs and scaffolds solver services with Glue PySpark, pure Python OR-Tools solvers, and CDK-backed infrastructure. |
+| <img src="https://archives.bulbagarden.net/media/upload/3/3a/Ash_OS_2.png" alt="Ash" width="96"> | [`ash`](./agents/ash.md) | Designs and implements Asana-triggered Lambda agents using the established Bedrock and telemetry patterns. |
+| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/531.png" alt="Audino" width="96"> | [`audino`](./agents/audino.md) | Frontend bug-fix specialist — design comparison, override archaeology, minimal fixes, and regression-proof tests. |
+| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/441.png" alt="Chatot" width="96"> | [`chatot`](./agents/chatot.md) | Owns the communication-activity lifecycle — provider setup, routing, send handoff, delivery events, and response ingestion. |
+| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/039.png" alt="Jigglypuff" width="96"> | [`jigglypuff`](./agents/jigglypuff.md) | Template-management specialist — Git-backed template inventory, CRUD, metadata normalization, and sync workflows. |
+| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/064.png" alt="Kadabra" width="96"> | [`kadabra`](./agents/kadabra.md) | Top-level SMS communication service builder — composes `xatu`, `jigglypuff`, `chatot`, and `oranguru` and owns the golden prompt. |
+| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/068.png" alt="Machamp" width="96"> | [`machamp`](./agents/machamp.md) | Designs and implements AWS batch workflows with strategy selection, cost gates, throttling, idempotency, and staged test pipelines. |
+| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/376.png" alt="Metagross" width="96"> | [`metagross`](./agents/metagross.md) | Designs and scaffolds fullstack frontend-backend monorepos with Turborepo, Amplify, tRPC, Lambda, and CDK. |
+| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/765.png" alt="Oranguru" width="96"> | [`oranguru`](./agents/oranguru.md) | Communication-runtime assembler — composes audience, template, and activity capabilities into deterministic end-to-end channel services. |
+| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/137.png" alt="Porygon" width="96"> | [`porygon`](./agents/porygon.md) | Unifies and analyzes metrics across vendors and data sources with a lexicon-first, audit-friendly workflow. |
+| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/235.png" alt="Smeargle" width="96"> | [`smeargle`](./agents/smeargle.md) | Responsive design-testing specialist — Playwright design specs across breakpoints, with mocked and real-device lane selection. |
+| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/700.png" alt="Sylveon" width="96"> | [`sylveon`](./agents/sylveon.md) | Figma-to-code specialist — updates existing frontend code to match Figma while preserving business logic and locking breakpoints. |
+| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/178.png" alt="Xatu" width="96"> | [`xatu`](./agents/xatu.md) | Audience-selection specialist — eligibility boundaries, runtime intake contracts, and filter-to-runtime handoffs. |
+
 ## Skills
 
 | Skill | Description |
@@ -32,42 +50,6 @@ A [Cursor plugin](https://cursor.com/docs/plugins) packaging company-wide projec
 | [`responsive-design-tests`](./skills/responsive-design-tests/) | Write Playwright design tests for Figma-driven responsive UI updates across mocked and real-device lanes. |
 | [`select-communication-audience`](./skills/select-communication-audience/) | Reusable audience-selection skill for defining eligibility boundaries and packaging filtered communication populations for downstream runtimes. |
 | [`unify-metrics`](./skills/unify-metrics/) | Lexicon-first metric unification: comparability gates, normalization, analysis, and audit-friendly outputs. |
-
-## Agents
-
-| Agent | Mascot | Description |
-| --- | --- | --- |
-| [`abra`](./agents/abra.md) | Abra | Designs and scaffolds solver services with Glue PySpark, pure Python OR-Tools solvers, and CDK-backed infrastructure. |
-| [`ash`](./agents/ash.md) | Ash | Designs and implements Asana-triggered Lambda agents using the established Bedrock and telemetry patterns. |
-| [`audino`](./agents/audino.md) | Audino | Frontend bug-fix specialist — design comparison, override archaeology, minimal fixes, and regression-proof tests. |
-| [`chatot`](./agents/chatot.md) | Chatot | Owns the communication-activity lifecycle — provider setup, routing, send handoff, delivery events, and response ingestion. |
-| [`jigglypuff`](./agents/jigglypuff.md) | Jigglypuff | Template-management specialist — Git-backed template inventory, CRUD, metadata normalization, and sync workflows. |
-| [`kadabra`](./agents/kadabra.md) | Kadabra | Top-level SMS communication service builder — composes `xatu`, `jigglypuff`, `chatot`, and `oranguru` and owns the golden prompt. |
-| [`machamp`](./agents/machamp.md) | Machamp | Designs and implements AWS batch workflows with strategy selection, cost gates, throttling, idempotency, and staged test pipelines. |
-| [`metagross`](./agents/metagross.md) | Metagross | Designs and scaffolds fullstack frontend-backend monorepos with Turborepo, Amplify, tRPC, Lambda, and CDK. |
-| [`oranguru`](./agents/oranguru.md) | Oranguru | Communication-runtime assembler — composes audience, template, and activity capabilities into deterministic end-to-end channel services. |
-| [`porygon`](./agents/porygon.md) | Porygon | Unifies and analyzes metrics across vendors and data sources with a lexicon-first, audit-friendly workflow. |
-| [`smeargle`](./agents/smeargle.md) | Smeargle | Responsive design-testing specialist — Playwright design specs across breakpoints, with mocked and real-device lane selection. |
-| [`sylveon`](./agents/sylveon.md) | Sylveon | Figma-to-code specialist — updates existing frontend code to match Figma while preserving business logic and locking breakpoints. |
-| [`xatu`](./agents/xatu.md) | Xatu | Audience-selection specialist — eligibility boundaries, runtime intake contracts, and filter-to-runtime handoffs. |
-
-### Agent mascots
-
-| Agent | Image |
-| --- | --- |
-| abra | ![Abra](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/063.png) |
-| ash | <img src="https://archives.bulbagarden.net/media/upload/3/3a/Ash_OS_2.png" alt="Ash" width="112" height="112"> |
-| audino | ![Audino](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/531.png) |
-| chatot | ![Chatot](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/441.png) |
-| jigglypuff | ![Jigglypuff](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/039.png) |
-| kadabra | ![Kadabra](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/064.png) |
-| machamp | ![Machamp](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/068.png) |
-| metagross | ![Metagross](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/376.png) |
-| oranguru | ![Oranguru](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/765.png) |
-| porygon | ![Porygon](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/137.png) |
-| smeargle | ![Smeargle](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/235.png) |
-| sylveon | ![Sylveon](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/700.png) |
-| xatu | ![Xatu](https://assets.pokemon.com/assets/cms2/img/pokedex/detail/178.png) |
 
 ## Repository layout
 
