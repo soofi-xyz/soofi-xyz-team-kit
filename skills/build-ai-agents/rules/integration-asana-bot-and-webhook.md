@@ -1,35 +1,50 @@
 ---
 title: Asana Bot & Webhook Integration
 impact: CRITICAL
-tags: [asana, webhook, bot, integration, handshake, signature, dedupe]
+tags: [asana, webhook, bot, integration, chat-sdk, chat-adapter-asana]
 ---
 
 # Asana Bot & Webhook Integration
 
-Every agent MUST have a dedicated Asana bot user and a webhook endpoint for receiving events.
+Every agent MUST have a dedicated Asana bot user and an HTTPS webhook endpoint for receiving events. The agent integrates with Asana through the [Chat SDK](https://chat-sdk.dev/) and the [`@soofi-xyz/chat-adapter-asana`](https://github.com/soofi-xyz/chat-adapter-asana) adapter — do NOT hand-roll the webhook handshake, signature verification, event filtering, or retry logic.
+
+## Why Chat SDK + `@soofi-xyz/chat-adapter-asana`
+
+The adapter handles everything that used to be custom webhook code:
+
+- **Handshake** (`X-Hook-Secret`) — `AsanaAdapter.handleWebhook` echoes the secret and persists it via the configured `WebhookSecretStore` (use `SecretsManagerWebhookSecretStore` in production).
+- **Signature verification** (`X-Hook-Signature`, HMAC-SHA256) — done inside the adapter with timing-safe comparison.
+- **Event routing** — Asana tasks become Chat SDK threads, comments become messages, and task completion becomes a `:white_check_mark:` reaction on the task-description message. Your code listens on `chat.onNewMention`, `chat.onSubscribedMessage`, and `chat.onReaction(...)` — not on raw Asana payloads.
+- **Thread subscription persistence + distributed locking + message dedupe** — delegated to the Chat SDK state adapter. Pair this adapter with [`@soofi-xyz/chat-state-dynamodb`](https://github.com/soofi-xyz/chat-state-dynamodb) in Lambda runtimes; see `rules/state-chat-sdk-state.md`.
+- **Automatic @-mentions** on replies, **markdown ↔ Asana rich text**, **file attachments**, and **native emoji reactions** (`addReaction` / `removeReaction`).
+
+The companion CDK construct [`@soofi-xyz/chat-adapter-asana-cdk`](https://github.com/soofi-xyz/chat-adapter-asana/tree/main/packages/chat-adapter-asana-cdk) provisions the HTTP API, the Secrets Manager secret for the signing key, and a custom resource that registers (and deregisters on stack delete) the webhook against the bot's *My Tasks* user-task-list.
+
+The complete reference is the monorepo's [`examples/lambda-http`](https://github.com/soofi-xyz/chat-adapter-asana/tree/main/examples/lambda-http) stack.
 
 ## Task I/O Contract
 
 Treat the Asana task description as the canonical **input** surface unless the workflow explicitly says otherwise.
 
-- The task description contains the user ask and stable task context.
-- Agent progress updates, answers, and corrections belong in comments.
+- The task description is delivered by Chat SDK as the first `message` on `chat.onNewMention`, with `message.raw.kind === "task_description"`.
+- Subsequent comments are delivered on `chat.onSubscribedMessage` with `message.raw.kind === "comment"`.
+- Agent progress updates, answers, and corrections belong in comments. Post them with `thread.post({ markdown })`.
 - Do NOT overwrite the original ask in the description with the final answer.
 - If the agent's result changes, add a correction comment instead of rewriting the input.
-- Do NOT use `@tagging` the requester as the completion mechanism.
-- Prefer creating a linked review task when the workflow needs a human follow-up or approval step.
+- Do NOT treat `@tagging` the requester as the completion mechanism. Prefer creating a linked review task when the workflow needs human follow-up or approval.
+- Task completion is surfaced as `chat.onReaction([emoji.check], …)` with `event.added === true`; reopen fires the same reaction with `event.added === false`.
 
 ## Step 1 — Create the Asana Bot User
 
 1. Create a new Asana user (service account) for the agent.
-2. Name it `<Agent Name> Bot` (e.g., `Seneca Bot`).
-3. Record the bot user GID — it is required for webhook event filtering.
+2. Name it `<Agent Name> Bot` (e.g., `Pikachu Bot`).
+3. Record the bot user GID — useful for logs and actor resolution.
 4. Generate a Personal Access Token (PAT) for the bot user.
-5. Store the PAT in the deploy environment (it will be placed in Secrets Manager by CDK).
+5. Store the PAT in the deploy environment. In CDK, pass either `accessToken` (string, goes into CloudFormation at deploy time) or `accessTokenSecret` (existing `ISecret`) to `AsanaChatWebhook`.
 
 ### Operator Setup From The Asana UI
 
-When the agent is Asana-integrated, instruct the human operator to create a dedicated Asana profile for the agent first, then collect the required values from that profile and its watched project.
+When the agent is Asana-integrated, instruct the human operator to create a dedicated Asana profile for the agent first, then collect the required values from that profile.
 
 #### `ASANA_PAT`
 
@@ -39,35 +54,24 @@ From the agent's Asana profile:
 2. Open Asana settings.
 3. Go to `Apps`, `Developer apps`, or `Personal access tokens`.
 4. Create a new token.
-5. Store it as `ASANA_PAT` or in Secrets Manager.
+5. Store it as `ASANA_PAT` (or an AWS Secrets Manager secret) in the deploy environment.
 
-#### `ASANA_BOT_USER_GID`
+#### `ASANA_BOT_USER_GID` (optional)
 
-Preferred source: use the PAT with `users/me`.
+`@soofi-xyz/chat-adapter-asana` resolves the bot identity lazily from `/users/me` on first use, so `ASANA_BOT_USER_GID` is no longer required as a separate env var. Pre-seed it only if you want to avoid the cold-start API call — pass `botUser: { gid, name, email? }` to `createAsanaAdapter`.
+
+To read the GID manually:
 
 ```bash
 curl -s https://app.asana.com/api/1.0/users/me \
   -H "Authorization: Bearer $ASANA_PAT" | jq -r '.data.gid'
 ```
 
-UI source:
-
-- Open the agent user's profile page in Asana.
-- The URL looks like:
+UI source: open the agent user's profile page. The URL is:
 
 ```text
 https://app.asana.com/1/<workspace_gid>/profile/<user_gid>
 ```
-
-- The number after `/profile/` is the bot user GID.
-
-Many Asana PATs also visually embed the bot user GID in the token prefix:
-
-```text
-2/<ASANA_BOT_USER_GID>/...
-```
-
-Treat `users/me` as the authoritative source if there is any doubt.
 
 #### `ASANA_WORKSPACE_GID`
 
@@ -78,206 +82,232 @@ https://app.asana.com/1/<workspace_gid>/profile/<user_gid>
 https://app.asana.com/1/<workspace_gid>/project/<project_gid>/list/<task_gid>
 ```
 
-#### `ASANA_WEBHOOK_RESOURCE_GIDS`
+Set it as `ASANA_WORKSPACE_GID`.
 
-Have the operator open the specific project the agent should watch. A common path is to go to the agent profile, open `My Tasks`, then navigate to the watched project.
+#### Watched resource (automatic)
 
-The project URL looks like:
+The `AsanaChatWebhook` CDK construct registers the webhook against the bot's *My Tasks* user-task-list by default, so the bot only receives events for tasks assigned to it. Override this with the `resourceGid` prop if the agent needs to watch a different project or task list.
 
-```text
-https://app.asana.com/1/<workspace_gid>/project/<project_gid>/list/<task_gid>
-```
+Do NOT maintain a comma-separated `ASANA_WEBHOOK_RESOURCE_GIDS` env var anymore — the construct handles registration and deregistration as a custom resource tied to the stack lifecycle.
 
-Use:
+## Step 2 — Wire the Chat SDK
 
-- `ASANA_WORKSPACE_GID=<workspace_gid>`
-- `ASANA_WEBHOOK_RESOURCE_GIDS=<project_gid>`
-
-If multiple projects or task lists must be watched, pass a comma-separated list in `ASANA_WEBHOOK_RESOURCE_GIDS`.
-
-## Step 2 — Implement the Webhook Handler
-
-The webhook handler is a **thin Lambda** behind API Gateway. It does three things:
-
-1. **Handshake** — respond to Asana's `X-Hook-Secret` registration challenge.
-2. **Signature verification** — validate `X-Hook-Signature` on every delivery.
-3. **Event routing** — filter events, then invoke the runtime Lambda.
-
-Reference implementation: [ovid-agent webhook handler](https://github.com/Spring-Oaks-Capital-LLC/ovid-agent/blob/master/apps/asana-webhook/src/handler.ts).
-
-Reference documentation: [Asana Webhooks Guide](https://developers.asana.com/docs/webhooks-guide).
-
-### Handshake
-
-When Asana registers a webhook, it sends a POST with `X-Hook-Secret` header and no body. Respond with `200` and echo the secret back in `X-Hook-Secret` response header.
+The Lambda handler builds one `Chat` instance at module scope and delegates webhook ingress to `chat.webhooks.asana(request)`.
 
 ```typescript
-const hookSecret = headerValue(event.headers, 'x-hook-secret');
-if (hookSecret) {
-  // Store the secret for future signature verification
-  await deps.saveState({
-    pendingHookSecrets: [
-      ...state.pendingHookSecrets,
-      { secret: hookSecret, observedAt: new Date().toISOString() },
-    ],
+import type {
+  APIGatewayProxyEventV2,
+  APIGatewayProxyStructuredResultV2,
+  Context,
+} from 'aws-lambda';
+import {
+  proxyEventToWebRequest,
+  webResponseToProxyResult,
+} from '@aws-lambda-powertools/event-handler/http';
+import { Chat, emoji } from 'chat';
+import {
+  createAsanaAdapter,
+  SecretsManagerWebhookSecretStore,
+} from '@soofi-xyz/chat-adapter-asana';
+import { createDynamoDbState } from '@soofi-xyz/chat-state-dynamodb';
+import { fromNodeProviderChain } from '@aws-sdk/credential-providers';
+import { SecretsManagerClient } from '@aws-sdk/client-secrets-manager';
+
+const secretsManager = new SecretsManagerClient({});
+
+const asana = createAsanaAdapter({
+  accessToken: await resolveAsanaPat(),
+  workspaceGid: requireEnv('ASANA_WORKSPACE_GID'),
+  webhookSecretStore: new SecretsManagerWebhookSecretStore({
+    secretArn: requireEnv('ASANA_WEBHOOK_SECRET_ARN'),
+    client: secretsManager,
+  }),
+});
+
+const state = createDynamoDbState({
+  tableName: requireEnv('CHAT_STATE_TABLE_NAME'),
+  region: process.env.AWS_REGION ?? 'us-east-1',
+  keyPrefix: process.env.CHAT_STATE_KEY_PREFIX,
+  credentials: fromNodeProviderChain(),
+});
+
+const chat = new Chat({
+  userName: process.env.ASANA_BOT_USER_NAME ?? 'asana-bot',
+  adapters: { asana },
+  state,
+  logger: 'info',
+  // Allow a newly arriving webhook to force-release a stuck lock so an
+  // in-flight long AI turn does not block future messages indefinitely.
+  onLockConflict: 'force',
+});
+
+chat.onNewMention(async (thread, message) => {
+  await thread.subscribe();
+  const reply = await runAgentTurn({ thread, message, kind: 'task_description' });
+  await thread.post({ markdown: reply });
+});
+
+chat.onSubscribedMessage(async (thread, message) => {
+  // Acknowledge receipt immediately so the human sees the bot is working
+  // even while a long AI turn is still in-flight.
+  await asana.addReaction(thread.id, message.id, emoji.eyes);
+  const reply = await runAgentTurn({ thread, message, kind: 'comment' });
+  await thread.post({ markdown: reply });
+});
+
+chat.onReaction([emoji.check], async (event) => {
+  if (!event.added) return;
+  await event.thread.post({
+    markdown: `Acknowledged: task completed by ${event.user.userName}.`,
   });
+});
 
-  return emptyResponse(200, { 'x-hook-secret': hookSecret });
-}
-```
-
-### Signature Verification
-
-Every delivery after handshake includes `X-Hook-Signature` — an HMAC-SHA256 of the raw body using the hook secret.
-
-```typescript
-function verifySignature(
-  rawBody: string,
-  secret: string,
-  signature: string,
-): boolean {
-  const digest = createHmac('sha256', secret)
-    .update(rawBody)
-    .digest('hex');
-  const digestBuffer = Buffer.from(digest, 'utf8');
-  const signatureBuffer = Buffer.from(signature, 'utf8');
-
-  return (
-    digestBuffer.length === signatureBuffer.length &&
-    timingSafeEqual(digestBuffer, signatureBuffer)
-  );
-}
-```
-
-Use `timingSafeEqual` — never compare signatures with `===`.
-
-### Event Filtering
-
-Filter events Lambda-side before invoking the runtime. Only forward events where:
-
-- The task is **assigned to the bot user**, OR
-- A **comment mentions the bot user**.
-
-```typescript
-const filteredEvents = payload.events.filter((item) =>
-  shouldForwardEvent(item, state.botUserGid),
-);
-
-if (filteredEvents.length === 0) {
-  return jsonResponse(202, { success: true, accepted: false });
-}
-```
-
-### Trigger Dedupe
-
-Asana can deliver multiple events for one human action, and async runtime invocation can replay failed deliveries. Agents MUST dedupe task triggers durably across deliveries.
-
-Use a fingerprint claim store such as DynamoDB:
-
-```typescript
-const claimed = await deps.dedupe.claim(candidate.fingerprint);
-if (!claimed) {
-  logRuntime({
-    level: 'info',
-    message: 'Skipped duplicate Asana trigger.',
-    fingerprint: candidate.fingerprint,
-    taskGid: candidate.taskGid,
+export const handler = async (
+  event: APIGatewayProxyEventV2,
+  _context: Context,
+): Promise<APIGatewayProxyStructuredResultV2> => {
+  const request = proxyEventToWebRequest(event);
+  const pending: Array<Promise<unknown>> = [];
+  const response = await chat.webhooks.asana(request, {
+    waitUntil: (task) => {
+      pending.push(task.catch((err) => console.error('[handler] failed', err)));
+    },
   });
-  continue;
-}
+  const result = await webResponseToProxyResult(response, 'ApiGatewayV2');
+  if (pending.length > 0) await Promise.all(pending);
+  return result;
+};
 ```
 
-The fingerprint should encode the trigger type, task identity, and a stable event bucket or story identifier.
+Key behaviours:
 
-### Retry Control
+- `thread.subscribe()` persists the subscription through the state adapter; subsequent comments on the same task flow into `onSubscribedMessage`.
+- **Always react with `emoji.eyes` at the top of `onSubscribedMessage`.** A full AI turn can take 20–60 seconds; without an immediate acknowledgement, the human has no signal that the bot received the comment. `asana.addReaction(thread.id, message.id, emoji.eyes)` writes a native Asana 👀 reaction on the story via `PUT /stories/{gid}` and is scoped to the bot user. Do the same pattern inside `onNewMention` when the greeting comment is delayed by any preflight work. Remove the reaction once the reply is posted if you want the final state to look clean: `await asana.removeReaction(thread.id, message.id, emoji.eyes);`.
+- `waitUntil` lets API Gateway get a timely HTTP response while Chat SDK finishes handler work after the response is flushed. Always await the pending promises before returning so Lambda does not freeze mid-handler.
+- `onLockConflict: 'force'` is recommended for AI agents: it releases a stale lock when a new message arrives so long-running turns do not block the thread forever. See the Chat SDK docs on [distributed locking](https://chat-sdk.dev/docs/state).
 
-If the webhook invokes a Lambda runtime asynchronously, explicitly disable or constrain Lambda async retries so one failed task does not fan out into duplicate agent runs:
+## Step 3 — Provision the webhook with CDK
+
+Use `AsanaChatWebhook` from `@soofi-xyz/chat-adapter-asana-cdk` plus `ChatStateDynamoDbTable` from `@soofi-xyz/chat-state-dynamodb-cdk`:
 
 ```typescript
-new EventInvokeConfig(this, 'AgentRuntimeAsyncInvokeConfig', {
-  function: runtimeFunction,
-  maxEventAge: Duration.hours(1),
-  retryAttempts: 0,
+import {
+  Code,
+  Function as LambdaFunction,
+  Runtime,
+} from 'aws-cdk-lib/aws-lambda';
+import { AsanaChatWebhook } from '@soofi-xyz/chat-adapter-asana-cdk';
+import { ChatStateDynamoDbTable } from '@soofi-xyz/chat-state-dynamodb-cdk';
+
+const stateTable = new ChatStateDynamoDbTable(this, 'ChatStateTable');
+
+const handler = new LambdaFunction(this, 'AgentHandler', {
+  runtime: Runtime.NODEJS_22_X,
+  handler: 'handler.handler',
+  code: Code.fromAsset(handlerAssetPath),
+  timeout: Duration.seconds(60),
+  memorySize: 1024,
+  environment: {
+    ASANA_WORKSPACE_GID: props.workspaceGid,
+    CHAT_STATE_TABLE_NAME: stateTable.table.tableName,
+    CHAT_STATE_KEY_PREFIX: '<agent-name>',
+    AGENTCORE_MEMORY_ID: memory.attrMemoryId,
+    // LangSmith, Bedrock, and tool-specific env vars go here.
+  },
+});
+
+stateTable.table.grantReadWriteData(handler);
+
+const webhook = new AsanaChatWebhook(this, 'AsanaWebhook', {
+  handler,
+  accessToken: props.accessToken,        // or accessTokenSecret: ISecret
+  workspaceGid: props.workspaceGid,
 });
 ```
 
-Keep dedupe in place even with Lambda retry controls because duplicate Asana deliveries can arrive before runtime execution.
+The construct:
 
-### Runtime Invocation
+1. Creates an HTTP API route (default `/webhooks/asana`) that forwards to `handler`.
+2. Creates a Secrets Manager secret for the webhook signing key and injects `ASANA_WEBHOOK_SECRET_ARN` into the handler environment. IAM read/write grants are added automatically.
+3. Runs a Lambda-backed custom resource at deploy time that resolves the bot's *My Tasks* user-task-list GID via `/users/me/user_task_list?workspace=…` and registers the Asana webhook against it. On stack delete, the webhook is deregistered.
 
-After filtering, invoke the runtime Lambda with the delivery payload:
+Expose the construct outputs in the stack so operators can verify delivery:
 
 ```typescript
-await lambda.send(
-  new InvokeCommand({
-    FunctionName: env.AGENT_RUNTIME_FUNCTION_NAME,
-    InvocationType: 'Event',
-    Payload: Buffer.from(JSON.stringify({
-      kind: 'asana-webhook',
-      deliveryId,
-      projectGid: matchingRegistration?.resourceGid,
-      botUserGid: state.botUserGid,
-      events: filteredEvents,
-    }), 'utf8'),
-  }),
-);
+new CfnOutput(this, 'WebhookUrl', { value: webhook.webhookUrl });
+new CfnOutput(this, 'WebhookGid', { value: webhook.webhookGid });
+new CfnOutput(this, 'WebhookSecretArn', { value: webhook.webhookSecret.secretArn });
 ```
 
-## Step 3 — Configure Webhook Registration
+### What the construct supersedes
 
-Webhook registration happens during deploy. Required environment variables:
+Do NOT add any of the following to new agents — they are handled by the adapter or its CDK construct:
 
-| Variable | Description |
+- Manual `X-Hook-Secret` handshake code.
+- Manual `X-Hook-Signature` HMAC comparison.
+- A separate `apps/asana-webhook/` thin-Lambda app.
+- `POST /webhooks` registration scripts invoked during deploy.
+- `EventInvokeConfig` with `retryAttempts: 0` on an async runtime invocation — there is no secondary Lambda hop any more.
+- Homegrown DynamoDB dedupe claim stores — the Chat SDK state adapter dedupes deliveries through distributed locks and `dedupeTtlMs`.
+
+### Required deploy-time environment variables
+
+| Variable | Where it comes from |
 | --- | --- |
-| `ASANA_PAT` | Bot user's Personal Access Token |
-| `ASANA_BOT_USER_GID` | Bot user's GID |
-| `ASANA_WORKSPACE_GID` | Workspace GID |
-| `ASANA_WEBHOOK_RESOURCE_GIDS` | Comma-separated resource GIDs to watch (projects, tasks, user task lists) |
+| `ASANA_PAT` (or an `ISecret` reference) | Operator; collected from the agent's Asana profile |
+| `ASANA_WORKSPACE_GID` | Operator; collected from the Asana profile URL |
+| AWS profile/region | Deployer's AWS CLI environment |
 
-At the end of an Asana-integrated agent setup, explicitly tell the human how to obtain each of these values from the Asana UI and/or `users/me`.
+Inside the Lambda, `ASANA_WEBHOOK_SECRET_ARN` and `CHAT_STATE_TABLE_NAME` are injected by the CDK constructs — do NOT set them manually.
 
-### Important Asana Behavior
+## Important Asana Behaviour
 
-- Do NOT replace resource-scoped webhooks with a workspace webhook. Task, subtask, and story events do not propagate to workspace/team webhooks.
-- If you need multiple entry points, configure multiple watched resources instead.
-- The desired Asana filters are: `task added`, `task changed`, `story added`, `story changed`.
-- Parse current task input from the task description/title and the latest relevant human-authored story. Ignore bot-authored example outputs when deriving the next request.
-
-## Step 4 — CDK Infrastructure
-
-The webhook stack creates:
-
-- API Gateway HTTP API (public endpoint).
-- Lambda function with the webhook handler.
-- Secrets Manager secret for webhook state (hook secrets, registration metadata).
-- Durable dedupe storage when runtime triggers must be claimed across deliveries.
-- IAM permissions: webhook Lambda → Secrets Manager + runtime Lambda invoke permissions.
+- Task, subtask, and story events are delivered for the resource the webhook is registered against. The default *My Tasks* user-task-list delivers events for tasks assigned to the bot, which matches the standard Chat SDK thread-per-task model. Override `resourceGid` only if the agent must watch a specific project.
+- When multiple entry points are required, provision additional `AsanaChatWebhook` constructs with different `resourceGid` values instead of fanning out from one webhook.
+- Parse current task input from Chat SDK message objects. The first message on `onNewMention` carries the task description (`message.raw.kind === "task_description"`), subsequent messages carry comments (`message.raw.kind === "comment"`). Ignore bot-authored messages when deriving the next request — filter by `message.author.userName` or `message.author.platformUserId`.
 
 ## ✅ Correct
 
 ```typescript
-// Thin webhook handler — validate, filter, invoke
-export const handler: APIGatewayProxyHandlerV2 = async (event) => {
-  // 1. Handshake check
-  // 2. Signature verification
-  // 3. Parse + filter events
-  // 4. Invoke runtime
-  // Nothing else
+// Single Lambda: Chat SDK handles ingress, handler runs the AI turn.
+export const handler = async (event: APIGatewayProxyEventV2) => {
+  const request = proxyEventToWebRequest(event);
+  const pending: Array<Promise<unknown>> = [];
+  const response = await chat.webhooks.asana(request, {
+    waitUntil: (task) => pending.push(task.catch(logError)),
+  });
+  const result = await webResponseToProxyResult(response, 'ApiGatewayV2');
+  if (pending.length > 0) await Promise.all(pending);
+  return result;
 };
 ```
 
 ## ❌ Incorrect
 
 ```typescript
-// ❌ AI logic in the webhook handler
-export const handler = async (event) => {
-  const result = await generateText({ model, prompt: event.body });
-  await postAsanaComment(result); // ❌ Webhook should not do AI work
-};
+// ❌ Hand-rolled handshake and signature verification
+const hookSecret = headerValue(event.headers, 'x-hook-secret');
+if (hookSecret) return emptyResponse(200, { 'x-hook-secret': hookSecret });
+const digest = createHmac('sha256', secret).update(rawBody).digest('hex');
+if (digest !== signature) return forbidden();
 
-// ❌ Skipping signature verification
-export const handler = async (event) => {
-  const body = JSON.parse(event.body); // ❌ No signature check
-  await invokeRuntime(body);
-};
+// ❌ Two-Lambda architecture with async invoke between them
+await lambda.send(new InvokeCommand({
+  FunctionName: env.AGENT_RUNTIME_FUNCTION_NAME,
+  InvocationType: 'Event',
+  Payload: Buffer.from(JSON.stringify(events)),
+}));
+
+// ❌ Homegrown DynamoDB dedupe claim
+const claimed = await deps.dedupe.claim(candidate.fingerprint);
+if (!claimed) continue;
+
+// ❌ Manual webhook registration during deploy
+await asana.post('/webhooks', { resource, target });
+
+// ❌ Forgetting to wait for Chat SDK background work
+const response = await chat.webhooks.asana(request, {
+  waitUntil: (task) => { /* dropped */ },
+});
+return webResponseToProxyResult(response, 'ApiGatewayV2');
 ```

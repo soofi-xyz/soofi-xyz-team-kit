@@ -82,6 +82,45 @@ const agent = new ToolLoopAgent({
 const result = await agent.run('Inspect the requested record and summarize the result.');
 ```
 
+### Invocation from Chat SDK handlers
+
+Invoke `ToolLoopAgent` inside the Chat SDK event handlers — not from a second Lambda. The handler receives `thread` + `message` from `@soofi-xyz/chat-adapter-asana`, loads conversation history from `ConversationEventStore` (AgentCore Memory), runs the agent, posts the reply, and appends the new turn:
+
+```typescript
+chat.onNewMention(async (thread, message) => {
+  await thread.subscribe();
+  await runChatTurn({ thread, message, kind: 'task_description' });
+});
+
+chat.onSubscribedMessage(async (thread, message) => {
+  // 👀 ack so the human sees the bot is working during the long AI turn.
+  await asana.addReaction(thread.id, message.id, emoji.eyes);
+  await runChatTurn({ thread, message, kind: 'comment' });
+});
+
+async function runChatTurn({ thread, message, kind }: ChatTurnInput) {
+  const sessionId = thread.id;
+  const actorId = message.author.platformUserId ?? 'unknown';
+
+  const history = await conversationStore.loadSessionEvents(sessionId, actorId);
+
+  const prompt = buildPrompt({ history, message, kind });
+
+  const result = await agent.run(prompt);
+
+  await thread.post({ markdown: result.text });
+
+  await conversationStore.appendEvents(
+    sessionId,
+    actorId,
+    toConversationEvents(message, result),
+    { clientTokenFor: (_event, ordinal) => `${message.id}:${ordinal}` },
+  );
+}
+```
+
+Keep the `Chat` instance, the `ToolLoopAgent`, and the `ConversationEventStore` at module scope so containers reuse them across invocations. Do NOT reconstruct them inside the handler.
+
 ### Key Rules
 
 1. **Register tools explicitly.** Pass a typed tools object — do NOT dynamically discover tools at runtime.
