@@ -24,6 +24,7 @@ A [Cursor plugin](https://cursor.com/docs/plugins) packaging company-wide projec
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/376.png" alt="Metagross" width="96"> | [`metagross`](./agents/metagross.md) | Designs and scaffolds fullstack frontend-backend monorepos with Turborepo, Amplify, tRPC, Lambda, and CDK. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/765.png" alt="Oranguru" width="96"> | [`oranguru`](./agents/oranguru.md) | Communication-runtime assembler — composes audience, template, and activity capabilities into deterministic end-to-end channel services. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/137.png" alt="Porygon" width="96"> | [`porygon`](./agents/porygon.md) | Unifies and analyzes metrics across vendors and data sources with a lexicon-first, audit-friendly workflow. |
+| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/486.png" alt="Regigigas" width="96"> | [`regigigas`](./agents/regigigas.md) | SaaS marketplace architect — centralized marketplace account governing per-customer AWS tenant accounts, CloudFormation bundle distribution (`cdk synth` artifacts), and component register/release/rollback/list/subscribe/unsubscribe operations. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/235.png" alt="Smeargle" width="96"> | [`smeargle`](./agents/smeargle.md) | Responsive design-testing specialist — Playwright design specs across breakpoints, with mocked and real-device lane selection. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/700.png" alt="Sylveon" width="96"> | [`sylveon`](./agents/sylveon.md) | Figma-to-code specialist — updates existing frontend code to match Figma while preserving business logic and locking breakpoints. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/178.png" alt="Xatu" width="96"> | [`xatu`](./agents/xatu.md) | Audience-selection specialist — eligibility boundaries, runtime intake contracts, and filter-to-runtime handoffs. |
@@ -39,6 +40,7 @@ A [Cursor plugin](https://cursor.com/docs/plugins) packaging company-wide projec
 | [`build-batch-workflows`](./skills/build-batch-workflows/) | Design and implement AWS batch workflows with Step Functions Distributed Map, Glue PySpark, cost gates, throttling, idempotency, and staged test pipelines. |
 | [`build-frontend-backends`](./skills/build-frontend-backends/) | Build fullstack monorepos with Turborepo, AWS Amplify frontends, and tRPC + Lambda backends deployed via CDK. |
 | [`build-inbound-sftp-workflows`](./skills/build-inbound-sftp-workflows/) | Build inbound SFTP workflows on AWS with Transfer Family, a Lambda poller, and listing-first transfer validation. |
+| [`build-saas-marketplace`](./skills/build-saas-marketplace/) | Build a multi-tenant SaaS distribution marketplace on AWS — Organizations-backed per-customer accounts, a central marketplace control plane, a `cdk synth`-artifact component registry, cross-account CloudFormation StackSet deploys, and the six register / release / rollback / list / subscribe / unsubscribe operations. |
 | [`build-sms-communication-service`](./skills/build-sms-communication-service/) | Top-level builder skill for the SMS communication service — owns ontology, worker-skill composition, and golden-prompt governance while delegating to audience, template, activity, and runtime workers. |
 | [`build-solver-services`](./skills/build-solver-services/) | Build optimization services combining AWS Glue PySpark data prep with Google OR-Tools solvers using the three-layer architecture. |
 | [`discover-skills`](./skills/discover-skills/) | Discover, search, install, and update agent skills from the company registry. Load before starting any task to check if a relevant skill exists. |
@@ -68,6 +70,7 @@ soofi-xyz-cursor-plugin/
 │   ├── metagross.md
 │   ├── oranguru.md
 │   ├── porygon.md
+│   ├── regigigas.md
 │   ├── smeargle.md
 │   ├── sylveon.md
 │   └── xatu.md
@@ -79,6 +82,7 @@ soofi-xyz-cursor-plugin/
 │   ├── build-batch-workflows/       # Step Functions / Glue batch workflows
 │   ├── build-frontend-backends/     # Turborepo + Amplify + tRPC + CDK monorepos
 │   ├── build-inbound-sftp-workflows/ # AWS Transfer Family inbound SFTP integrations
+│   ├── build-saas-marketplace/      # Multi-tenant SaaS marketplace control plane + cross-account CFN distribution (used by Regigigas)
 │   ├── build-sms-communication-service/ # Top-level SMS communication service builder (used by Kadabra)
 │   ├── build-solver-services/       # Glue + OR-Tools optimization services
 │   ├── discover-skills/             # Registry discovery before task start
