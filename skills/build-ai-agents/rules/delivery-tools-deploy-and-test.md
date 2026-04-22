@@ -1,7 +1,7 @@
 ---
 title: Tools, Deploy & Test
 impact: HIGH
-tags: [tools, deploy, cdk, test, asana, langsmith, e2e]
+tags: [tools, deploy, cdk, test, asana, langsmith, e2e, chat-sdk]
 ---
 
 # Tools, Deploy & Test
@@ -53,15 +53,83 @@ export const lookupPrimaryRecordTool = tool({
 
 ## Deploy
 
-### Deploy Pipeline
+### One CDK stack
 
-The deploy command orchestrates multiple CDK stacks in order:
+The agent ships as a single CDK stack that composes four pieces: the agent Lambda, the Chat SDK state table, the Asana webhook, and AgentCore Memory.
 
-1. **Webhook stack** — API Gateway + webhook Lambda + Secrets Manager.
-2. **Runtime stack** — runtime Lambda + AgentCore Memory + IAM.
-3. **Webhook registration** — reconciles Asana webhooks for configured resources.
+```typescript
+import { Stack, type StackProps, CfnOutput, Duration, RemovalPolicy } from 'aws-cdk-lib';
+import { Code, Function as LambdaFunction, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { AsanaChatWebhook } from '@soofi-xyz/chat-adapter-asana-cdk';
+import { ChatStateDynamoDbTable } from '@soofi-xyz/chat-state-dynamodb-cdk';
+import * as agentcore from 'aws-cdk-lib/aws-bedrockagentcore';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
+import * as iam from 'aws-cdk-lib/aws-iam';
 
-### Deploy Script
+export class AgentStack extends Stack {
+  constructor(scope: Construct, id: string, props: AgentStackProps) {
+    super(scope, id, props);
+
+    const stateTable = new ChatStateDynamoDbTable(this, 'ChatStateTable');
+
+    const memory = new agentcore.CfnMemory(this, 'AgentMemory', {
+      name: `${props.agentName}Memory`,
+      eventExpiryDuration: 90,
+    });
+
+    const langsmithSecret = new secretsmanager.Secret(this, 'LangSmithApiKey', {
+      secretStringValue: cdk.SecretValue.unsafePlainText(props.langsmithApiKey),
+    });
+
+    const handler = new LambdaFunction(this, 'AgentHandler', {
+      runtime: Runtime.NODEJS_22_X,
+      handler: 'handler.handler',
+      code: Code.fromAsset(handlerAssetPath),
+      timeout: Duration.seconds(60),
+      memorySize: 1024,
+      environment: {
+        ASANA_WORKSPACE_GID: props.workspaceGid,
+        CHAT_STATE_TABLE_NAME: stateTable.table.tableName,
+        CHAT_STATE_KEY_PREFIX: props.agentName,
+        AGENTCORE_MEMORY_ID: memory.attrMemoryId,
+        LANGSMITH_API_KEY_SECRET_ARN: langsmithSecret.secretArn,
+        LANGSMITH_PROJECT: props.agentName,
+        LANGSMITH_TRACING: 'true',
+        BEDROCK_MODEL_ID: props.bedrockModelId,
+        NODE_OPTIONS: '--enable-source-maps',
+      },
+    });
+
+    stateTable.table.grantReadWriteData(handler);
+    langsmithSecret.grantRead(handler);
+
+    handler.role?.addToPrincipalPolicy(new iam.PolicyStatement({
+      actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
+      resources: ['*'],
+    }));
+
+    handler.role?.addToPrincipalPolicy(new iam.PolicyStatement({
+      actions: ['bedrock:CreateEvent', 'bedrock:ListEvents', 'bedrock:GetMemory'],
+      resources: [memory.attrMemoryArn],
+    }));
+
+    const webhook = new AsanaChatWebhook(this, 'AsanaWebhook', {
+      handler,
+      accessToken: props.asanaPat,          // or accessTokenSecret: ISecret
+      workspaceGid: props.workspaceGid,
+    });
+
+    new CfnOutput(this, 'WebhookUrl', { value: webhook.webhookUrl });
+    new CfnOutput(this, 'WebhookGid', { value: webhook.webhookGid });
+    new CfnOutput(this, 'WebhookSecretArn', { value: webhook.webhookSecret.secretArn });
+    new CfnOutput(this, 'TableName', { value: stateTable.table.tableName });
+  }
+}
+```
+
+### Deploy script
+
+A single `cdk deploy` is enough — webhook registration happens inside `AsanaChatWebhook` as a CloudFormation custom resource. Do NOT write a separate post-deploy reconcile step.
 
 ```json
 {
@@ -69,8 +137,9 @@ The deploy command orchestrates multiple CDK stacks in order:
     "build": "tsc --build",
     "test": "vitest run",
     "synth": "cdk synth",
-    "deploy": "tsx scripts/deploy-agent-runtime.ts",
-    "invoke": "tsx scripts/invoke-agent-runtime.ts"
+    "deploy": "cdk deploy",
+    "destroy": "cdk destroy",
+    "invoke": "tsx scripts/invoke-agent.ts"
   }
 }
 ```
@@ -79,12 +148,12 @@ The deploy command orchestrates multiple CDK stacks in order:
 
 | Variable | Description |
 | --- | --- |
-| `ASANA_PAT` | Asana bot user PAT |
-| `ASANA_BOT_USER_GID` | Bot user GID |
+| `ASANA_PAT` | Asana bot user PAT (or pass `accessTokenSecret` to the CDK construct) |
 | `ASANA_WORKSPACE_GID` | Workspace GID |
-| `ASANA_WEBHOOK_RESOURCE_GIDS` | Comma-separated resource GIDs to watch |
 | `LANGSMITH_API_KEY` | LangSmith API key (stored in Secrets Manager by CDK) |
 | `GITHUB_TOKEN` | Optional GitHub token when the agent reads GitHub content |
+
+No longer required: `ASANA_BOT_USER_GID`, `ASANA_WEBHOOK_RESOURCE_GIDS`. The adapter resolves the bot identity lazily via `/users/me`, and the CDK construct registers the webhook against the bot's *My Tasks* user-task-list automatically.
 
 Create `.env.example` listing all required variables. Copy to `.env` for local deploys.
 
@@ -98,50 +167,52 @@ Use the shared `Spring-Oaks-Capital-LLC/github-workflows` deploy workflow. Calle
 
 - Test tool execution logic in isolation.
 - Test request/response contract schemas with Zod.
-- Test event codec (encode/decode roundtrip).
-- Test actor resolution logic.
+- Test conversation event codec (encode/decode roundtrip).
+- Test actor resolution logic against `message.author` shapes from `@soofi-xyz/chat-adapter-asana`.
 - Run with `vitest`.
 
 ### CDK Synthesis Tests
 
-- Verify all stacks synthesize without errors.
-- Verify IAM permissions are scoped correctly.
+- Verify the stack synthesises without errors.
+- Verify IAM permissions are scoped correctly (handler gets `grantReadWriteData` on the state table, `bedrock:CreateEvent`/`bedrock:ListEvents` on AgentCore Memory only, and `secretsmanager:GetSecretValue` on the LangSmith secret only).
 
 ### End-to-End Testing
 
 E2E testing is done through real Asana interactions:
 
-1. **Assign a task to the bot user** in a watched project.
-2. **Verify the webhook fires** — check Lambda logs for the accepted delivery.
-3. **Verify the agent responds** — check for a comment posted by the bot on the Asana task.
-4. **Check LangSmith traces** — open the project in LangSmith, find the session, verify:
+1. **Assign a task to the bot user** in a watched resource (the *My Tasks* user-task-list by default).
+2. **Verify the webhook fires** — check Lambda logs for the Chat SDK `handleWebhook` log line and confirm the handshake secret was persisted in the CDK-managed Secrets Manager secret.
+3. **Verify the agent responds** — check for a comment posted by the bot on the Asana task via `thread.post({ markdown })`.
+4. **Check LangSmith traces** — open the project in LangSmith, find the session keyed by `thread.id`, verify:
    - Root trace exists for the invocation.
    - Tool calls are visible in the trace tree.
    - No error spans.
-5. **Test @mention** — comment on a task mentioning the bot user. Verify the agent processes the mention and responds.
-6. **Verify duplicate protection** — one human action should produce one accepted runtime execution, not repeated duplicate runs.
+5. **Test @mention** — comment on a task mentioning the bot user. Verify `onSubscribedMessage` fires and the agent responds.
+6. **Verify duplicate protection** — replay a webhook delivery or assign/unassign rapidly; confirm only one handler invocation wins the Chat SDK thread lock.
 7. **Verify review handoff** — if the workflow requires human review on completion, confirm the agent creates the linked review task instead of only tagging the requester.
 
 ### Testing Checklist
 
-- [ ] Bot user created in Asana
-- [ ] Webhook endpoint deployed and reachable
-- [ ] Webhook handshake succeeds (check Secrets Manager for stored hook secret)
-- [ ] Task assignment triggers the agent
-- [ ]  Agent posts a comment on the task
-- [ ] LangSmith traces appear in the correct project
+- [ ] Bot user created in Asana and PAT captured
+- [ ] Stack deployed; `WebhookUrl`, `WebhookGid`, `WebhookSecretArn`, and `TableName` visible as outputs
+- [ ] Handshake succeeded (verify the hook secret is populated in the CDK-managed Secrets Manager secret)
+- [ ] Asana webhook visible on `GET /webhooks?workspace=…` with the stack's `WebhookGid`
+- [ ] Task assignment triggers `onNewMention`; subsequent comment triggers `onSubscribedMessage`
+- [ ] Agent posts a reply on the task
+- [ ] LangSmith traces appear in the correct project, grouped by `thread.id`
 - [ ] LangSmith trace tree shows tool/model child spans, not only the outer invocation
-- [ ] @mention triggers the agent
-- [ ] Duplicate triggers are deduped across repeated deliveries/retries
+- [ ] Duplicate deliveries are dropped by the Chat SDK state adapter's distributed lock
 - [ ] AgentCore Memory persists conversation history across invocations
+- [ ] Stack destroy removes the webhook registration via the `AsanaChatWebhook` custom resource
 
 ## ✅ Correct
 
 ```bash
-# Deploy and verify
+# Single-stack deploy; no post-deploy reconcile step
+pnpm build
 pnpm deploy
 # Assign a task to the bot in Asana
-# Check CloudWatch logs for webhook + runtime
+# Check CloudWatch logs for handler invocation
 # Check LangSmith for traces
 # Check Asana for bot comment
 ```
@@ -149,11 +220,16 @@ pnpm deploy
 ## ❌ Incorrect
 
 ```bash
-# ❌ Deploying without testing locally first
-pnpm deploy  # Never tested build or synth
+# ❌ Custom post-deploy script that calls POST /webhooks directly —
+# AsanaChatWebhook already registers the webhook as a custom resource.
+pnpm deploy && tsx scripts/reconcile-asana-webhook.ts
+
+# ❌ Two stacks with async invoke between webhook + runtime — the single
+# Lambda + Chat SDK model replaces this.
+pnpm deploy:webhook && pnpm deploy:runtime
 
 # ❌ Only unit tests, no E2E
-pnpm test  # Passes, but webhook was never verified
+pnpm test  # Passes, but the Asana flow was never verified
 
 # ❌ Skipping LangSmith verification
 # "It works in Asana" — but traces show errors you can't see from Asana

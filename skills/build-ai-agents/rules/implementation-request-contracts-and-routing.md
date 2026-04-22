@@ -42,23 +42,43 @@ Use this when the agent must answer multiple question types such as:
 
 ## Parse the Right Asana Content
 
-The parser should prefer:
-1. task description
-2. task title
-3. latest relevant human-authored stories
+Chat SDK surfaces Asana events as typed messages via `@soofi-xyz/chat-adapter-asana`. Derive the current request from the `message` object delivered to the handler — do NOT fetch `task.notes` and stories separately.
 
-Do NOT treat bot-authored example comments or stale previous outputs as fresh input.
+- `chat.onNewMention(thread, message)` — first message on a newly assigned task. `message.raw.kind === "task_description"` and `message.text` holds the task description (plus task title where available in `message.raw`).
+- `chat.onSubscribedMessage(thread, message)` — each subsequent comment. `message.raw.kind === "comment"`.
+
+Parser preference order:
+
+1. The current `message.text` (always the freshest human input).
+2. The task description from history — available either from the first `onNewMention` event persisted in AgentCore Memory, or from `thread.getMessages()` filtered by `raw.kind === "task_description"`.
+3. The task title from `message.raw` or thread metadata, as a last-resort fallback.
+
+Filter out bot-authored messages when deriving the next request — `@soofi-xyz/chat-adapter-asana` exposes `message.author.platformUserId`, which you can compare against the bot user GID (fetched from `/users/me` on first use).
 
 ```typescript
-const candidates = [
-  task.notes?.trim() ?? '',
-  stripHtml(task.html_notes),
-  task.name.trim(),
-  ...stories
-    .filter((story) => story.created_by?.gid !== botUserGid)
-    .map((story) => story.text ?? stripHtml(story.html_text)),
-];
+function deriveCurrentAsk({
+  message,
+  history,
+  botUserGid,
+}: DeriveAskInput): string {
+  const fromMessage = message.text?.trim();
+  if (fromMessage) return fromMessage;
+
+  const taskDescription = history.find(
+    (event) => event.source === 'user' && event.kind === 'task_description',
+  );
+  if (taskDescription?.text) return taskDescription.text.trim();
+
+  return message.raw?.taskName?.trim() ?? '';
+}
+
+// When reading prior events, never let bot-authored messages pose as user input.
+const humanHistory = history.filter(
+  (event) => event.source !== 'bot',
+);
 ```
+
+Do NOT treat bot-authored example comments or stale previous outputs as fresh input — filter on `message.author.platformUserId` or the cached bot GID before feeding history to the model.
 
 ## Route Tools by Source
 
@@ -105,7 +125,12 @@ const request = {
 };
 
 // ❌ Bot examples treated as user input
-const candidates = [task.notes, ...stories.map((story) => story.text)];
+const candidates = history.map((event) => event.text);
+
+// ❌ Hitting the Asana API directly for notes + stories instead of using
+//    the message objects Chat SDK already delivered.
+const task = await asanaClient.getTask(taskGid);
+const stories = await asanaClient.listStories(taskGid);
 
 // ❌ Inventory question forced through the wrong source
 if (question.includes('what assets are available')) {
