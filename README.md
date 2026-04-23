@@ -39,6 +39,7 @@ A [Cursor plugin](https://cursor.com/docs/plugins) packaging company-wide projec
 | [`build-ai-agents`](./skills/build-ai-agents/) | Build AI agents with the rules-agent pattern: Lambda runtime, Asana webhooks, Bedrock + Vercel AI SDK `ToolLoopAgent`, LangSmith telemetry, and AgentCore memory. |
 | [`build-batch-workflows`](./skills/build-batch-workflows/) | Design and implement AWS batch workflows with Step Functions Distributed Map, Glue PySpark, cost gates, throttling, idempotency, and staged test pipelines. |
 | [`build-frontend-backends`](./skills/build-frontend-backends/) | Build fullstack monorepos with Turborepo, AWS Amplify frontends, and tRPC + Lambda backends deployed via CDK. |
+| [`build-html-to-pdf`](./skills/build-html-to-pdf/) | Build HTML-to-PDF generation workflows on AWS Lambda using Playwright and Chromium, with typed request contracts, deterministic HTML rendering, runtime packaging, and verification. |
 | [`build-inbound-sftp-workflows`](./skills/build-inbound-sftp-workflows/) | Build inbound SFTP workflows on AWS with Transfer Family, a Lambda poller, and listing-first transfer validation. |
 | [`build-saas-marketplace`](./skills/build-saas-marketplace/) | Build a multi-tenant SaaS distribution marketplace on AWS — Organizations-backed per-customer accounts, a central marketplace control plane, a `cdk synth`-artifact component registry, cross-account CloudFormation StackSet deploys, and the six register / release / rollback / list / subscribe / unsubscribe operations. |
 | [`build-sms-communication-service`](./skills/build-sms-communication-service/) | Top-level builder skill for the SMS communication service — owns ontology, worker-skill composition, and golden-prompt governance while delegating to audience, template, activity, and runtime workers. |
@@ -81,6 +82,7 @@ soofi-xyz-cursor-plugin/
 │   ├── build-ai-agents/             # Rules-agent pattern for AI agents
 │   ├── build-batch-workflows/       # Step Functions / Glue batch workflows
 │   ├── build-frontend-backends/     # Turborepo + Amplify + tRPC + CDK monorepos
+│   ├── build-html-to-pdf/           # Lambda + Playwright + Chromium HTML-to-PDF workflows
 │   ├── build-inbound-sftp-workflows/ # AWS Transfer Family inbound SFTP integrations
 │   ├── build-saas-marketplace/      # Multi-tenant SaaS marketplace control plane + cross-account CFN distribution (used by Regigigas)
 │   ├── build-sms-communication-service/ # Top-level SMS communication service builder (used by Kadabra)
