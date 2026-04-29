@@ -59,7 +59,8 @@ test:
 
 # Synthesize CDK stack
 build:
-    cdk synth --strict
+    cdk synth --strict \
+      ${CDK_BOOTSTRAP_QUALIFIER:+--context "@aws-cdk/core:bootstrapQualifier=$CDK_BOOTSTRAP_QUALIFIER"}
 
 # Deploy CDK stack
 deploy:
