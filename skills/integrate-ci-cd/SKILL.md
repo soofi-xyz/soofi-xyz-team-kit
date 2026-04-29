@@ -59,11 +59,13 @@ test:
 
 # Synthesize CDK stack
 build:
-    cdk synth --strict
+    cdk synth --strict \
+      ${CDK_BOOTSTRAP_QUALIFIER:+--context "@aws-cdk/core:bootstrapQualifier=$CDK_BOOTSTRAP_QUALIFIER"}
 
 # Deploy CDK stack
 deploy:
-    cdk deploy --require-approval never
+    cdk deploy --require-approval never \
+      ${CDK_BOOTSTRAP_QUALIFIER:+--context "@aws-cdk/core:bootstrapQualifier=$CDK_BOOTSTRAP_QUALIFIER"}
 ```
 
 #### TypeScript (CDK) project example
@@ -148,6 +150,7 @@ jobs:
     with:
       env-vars: |
         TARGET_ENV=prod
+        CDK_BOOTSTRAP_QUALIFIER=slowking
     permissions:
       id-token: write
       contents: read
