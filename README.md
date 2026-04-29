@@ -2,6 +2,27 @@
 
 A [Cursor plugin](https://cursor.com/docs/plugins) packaging company-wide project subagents for AI-assisted development.
 
+## Installation
+
+Clone this repository into Cursor's local plugins directory so it is auto-discovered as `soofi-xyz`:
+
+```bash
+mkdir -p ~/.cursor/plugins/local
+git clone https://github.com/soofi-xyz/cursor-plugin.git ~/.cursor/plugins/local/soofi-xyz
+```
+
+Then reload Cursor. The plugin will load from `~/.cursor/plugins/local/soofi-xyz` and register all agents and skills automatically.
+
+## Updating
+
+Pull the latest agents and skills from the same directory:
+
+```bash
+git -C ~/.cursor/plugins/local/soofi-xyz pull
+```
+
+Reload Cursor after pulling so updated agents, skills, and the manifest are picked up.
+
 ## What's inside
 
 | Component | Location | Description |
