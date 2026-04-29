@@ -62,9 +62,13 @@ Reload Cursor after pulling so updated agents, skills, and the manifest are pick
 | [`build-frontend-backends`](./skills/build-frontend-backends/) | Build fullstack monorepos with Turborepo, AWS Amplify frontends, and tRPC + Lambda backends deployed via CDK. |
 | [`build-html-to-pdf`](./skills/build-html-to-pdf/) | Build HTML-to-PDF generation workflows on AWS Lambda using Playwright and Chromium, with typed request contracts, deterministic HTML rendering, runtime packaging, and verification. |
 | [`build-inbound-sftp-workflows`](./skills/build-inbound-sftp-workflows/) | Build inbound SFTP workflows on AWS with Transfer Family, a Lambda poller, and listing-first transfer validation. |
+| [`build-marketplace-puller`](./skills/build-marketplace-puller/) | Build the Marketplace Puller standalone product — tenant-side scheduled reconciler that polls marketplace desired state, detects drift on subscribed components, and converges via `POST /deploys` (push-primary mode) or a tenant-local CFN executor (pull-only mode). |
+| [`build-product-deployer`](./skills/build-product-deployer/) | Build the Product Deployer standalone product — defines the common CDK contract every product implements, owns the canonical `EnvironmentContext`, and runs the Step Function that turns `(component, version, env_slug)` into a deployed stack via StackSets or assume-role + raw CloudFormation. |
 | [`build-saas-marketplace`](./skills/build-saas-marketplace/) | Build a multi-tenant SaaS distribution marketplace on AWS — Organizations-backed per-customer accounts, a central marketplace control plane, a `cdk synth`-artifact component registry, cross-account CloudFormation StackSet deploys, and the six register / release / rollback / list / subscribe / unsubscribe operations. |
 | [`build-sms-communication-service`](./skills/build-sms-communication-service/) | Top-level builder skill for the SMS communication service — owns ontology, worker-skill composition, and golden-prompt governance while delegating to audience, template, activity, and runtime workers. |
 | [`build-solver-services`](./skills/build-solver-services/) | Build optimization services combining AWS Glue PySpark data prep with Google OR-Tools solvers using the three-layer architecture. |
+| [`build-tenant-account-manager`](./skills/build-tenant-account-manager/) | Build the Tenant Account Manager standalone product — owns customers, environments, and per-environment API keys; mints the bootstrap key issued by the provider for a new customer; supports overlap rotation; ships the shared Lambda authorizer every other marketplace API consumes. |
+| [`build-tenant-domain-router`](./skills/build-tenant-domain-router/) | Build the Tenant Domain Router standalone product — root domain `provider.xyz` in marketplace Route 53, per-environment subdomains delegated via NS to a child hosted zone in each tenant account, ACM strategy, and the SSM-backed base-path contract every other product uses to publish HTTP endpoints. |
 | [`discover-skills`](./skills/discover-skills/) | Discover, search, install, and update agent skills from the company registry. Load before starting any task to check if a relevant skill exists. |
 | [`figma-to-code`](./skills/figma-to-code/) | Frontend engineering workflow to update existing code from Figma designs while preserving logic and adding responsive design test coverage. |
 | [`frontend-bug-fix`](./skills/frontend-bug-fix/) | Frontend bug triage and fix workflow with design comparison, commit analysis, test updates, and verification. |
@@ -105,9 +109,13 @@ soofi-xyz-cursor-plugin/
 │   ├── build-frontend-backends/     # Turborepo + Amplify + tRPC + CDK monorepos
 │   ├── build-html-to-pdf/           # Lambda + Playwright + Chromium HTML-to-PDF workflows
 │   ├── build-inbound-sftp-workflows/ # AWS Transfer Family inbound SFTP integrations
+│   ├── build-marketplace-puller/    # Tenant-side reconciler standalone product (used by Regigigas)
+│   ├── build-product-deployer/      # Common CDK + EnvironmentContext deploy product (used by Regigigas)
 │   ├── build-saas-marketplace/      # Multi-tenant SaaS marketplace control plane + cross-account CFN distribution (used by Regigigas)
 │   ├── build-sms-communication-service/ # Top-level SMS communication service builder (used by Kadabra)
 │   ├── build-solver-services/       # Glue + OR-Tools optimization services
+│   ├── build-tenant-account-manager/ # Customers, environments, API keys, shared authorizer standalone product (used by Regigigas)
+│   ├── build-tenant-domain-router/  # Root domain + per-env subdomains + base-path contract standalone product (used by Regigigas)
 │   ├── discover-skills/             # Registry discovery before task start
 │   ├── figma-to-code/               # Figma-driven frontend updates
 │   ├── frontend-bug-fix/            # UI bug triage and regression prevention
