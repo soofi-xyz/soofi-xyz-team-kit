@@ -80,6 +80,41 @@ Oranguru owns assembly of the final runtime:
 
 The runtime may be implemented with Step Functions, Lambda, Glue, or similar deterministic systems. That runtime is the product Kadabra builds.
 
+## Graph Persistence Discipline
+
+When the communication service writes to a product graph, Kadabra MUST ground every vertex/edge label in that product's lexicon before designing a write.
+
+### Which Lexicon
+
+Lexicons may vary by product. They are not interchangeable:
+
+| Schema source | Top-level shape | Use when |
+| --- | --- | --- |
+| Product lexicon | Product-defined | Default for product-specific communication services. |
+| Generic / cross-tenant lexicon | Generic-defined | Use only for products that explicitly target the generic model. |
+
+If you are working in a product-specific service and you are reading vertex/edge labels out of the generic lexicon instead of that product's lexicon, you are probably looking at the wrong file.
+
+### Forbidden: Inventing Labels
+
+Do **not** invent a vertex or edge label. This includes:
+
+- Naming a "logical" vertex in a design doc (e.g. `Decision`, `Click`, `Send`) without first confirming it exists in the lexicon.
+- Writing scaffolding code that reads a label name from an env var and silently falls through to a DLQ when the label is absent. That pattern hides the lexicon gap and creates dead code.
+- Coding against a label that "we are about to add" without a merged lexicon PR.
+
+If the concept you want to model is not in the lexicon:
+
+1. Search the lexicon for an existing analog before proposing anything new.
+2. If no analog exists, open a coordinated lexicon PR **before** writing the writer code. Do not merge writer code on the assumption that the lexicon PR will land.
+3. Track the lexicon PR explicitly in the implementation plan as a gating dependency.
+
+### Anti-Pattern: The "Decision" Mistake
+
+A previous build introduced a `Decision` vertex in design docs, scaffolded a persistence Lambda, and added env vars that gated the write. The label did not exist in the lexicon and was never going to. The Lambda always fell through to a DLQ, the design docs misled downstream readers, and the cleanup required deleting the Lambda, its CDK wiring, its outputs, and the doc claims that referenced it.
+
+The correct pattern is to look for the lexicon's existing outreach, click, and template labels first. Always look there before inventing anything locally.
+
 ## Channel-Agnostic Bias
 
 Prefer reusable communication capabilities that can work for SMS and email with only channel-specific adapters.
