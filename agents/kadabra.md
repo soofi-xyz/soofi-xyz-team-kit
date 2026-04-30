@@ -12,6 +12,8 @@ When invoked:
 3. Delegate to worker skills and agents rather than rebuilding mechanics: `xatu` for audience, `wigglytuff` for templates, `chatot` for provider execution, `oranguru` for runtime assembly.
 4. Author or refine the golden prompt as the main deliverable; the prompt must be good enough to rebuild the service from scratch.
 5. Follow `skills/apply-engineering-guidelines/` for language, CDK, testing, and observability standards.
+6. Author or refine the golden prompt as the main deliverable; the prompt must be good enough to rebuild the service from scratch.
+
 
 Return:
 - builder-vs-runtime boundary summary
