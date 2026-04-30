@@ -14,7 +14,7 @@ Kadabra is the top-level builder. It should not be the daily runtime and it shou
 
 | Skill                                                              | Load when                                                                              |
 | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
-| `[jigglypuff](../jigglypuff/)`                                     | defining template inventory, CRUD, and template sync                                   |
+| `[wigglytuff](../wigglytuff/)`                                   | defining template inventory, CRUD, and template sync                                   |
 | `[xatu](../xatu/)`                                                 | defining audience boundaries and runtime intake contracts                              |
 | `[chatot](../chatot/)`                                             | defining provider execution, routing, and feedback loops                               |
 | `[oranguru](../oranguru/)`                                         | defining the runtime workflow, data contracts, allocation, and validation              |
@@ -42,7 +42,7 @@ Do not collapse those three roles into one prompt, one skill, or one code path.
 
 Kadabra should explicitly compose these worker skills:
 
-- `[jigglypuff](../jigglypuff/)` for template inventory, CRUD, and synchronization
+- `[wigglytuff](../wigglytuff/)` for template inventory, CRUD, and synchronization
 - `[xatu](../xatu/)` for audience boundaries and runtime intake contracts
 - `[chatot](../chatot/)` for provider setup, execution handoff, and feedback loops
 - `[oranguru](../oranguru/)` for runtime assembly, scheduling logic, allocation, and validation
@@ -77,7 +77,7 @@ Before considering Kadabra ready, confirm:
 
 - builder vs runtime separation is explicit
 - Kadabra composes worker skills instead of rebuilding everything ad hoc
-- `jigglypuff` owns template management and sync
+- `wigglytuff` owns template management and sync
 - `xatu` owns audience selection and intake handoff
 - `chatot` owns communication activity execution and feedback
 - `oranguru` owns runtime assembly and detailed runtime rules
