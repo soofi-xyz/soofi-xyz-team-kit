@@ -41,6 +41,7 @@ Reload Cursor after pulling so updated agents, skills, and the manifest are pick
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/441.png" alt="Chatot" width="96"> | [`chatot`](./agents/chatot.md) | Owns the communication-activity lifecycle — provider setup, routing, send handoff, delivery events, and response ingestion. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/040.png" alt="Wigglytuff" width="96"> | [`wigglytuff`](./agents/wigglytuff.md) | Template-management specialist — Git-backed template inventory, source discovery, metadata normalization, sync workflows, and Asana-facing template operations. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/064.png" alt="Kadabra" width="96"> | [`kadabra`](./agents/kadabra.md) | Top-level SMS communication service builder — composes `xatu`, `wigglytuff`, `chatot`, and `oranguru` and owns the golden prompt. |
+| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/707.png" alt="Klefki" width="96"> | [`klefki`](./agents/klefki.md) | Auditor portal builder — Cognito Managed Login, private S3 file listing, per-user access grants, admin-managed auditors, and Figma-driven UI. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/068.png" alt="Machamp" width="96"> | [`machamp`](./agents/machamp.md) | Designs and implements AWS batch workflows with strategy selection, cost gates, throttling, idempotency, and staged test pipelines. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/376.png" alt="Metagross" width="96"> | [`metagross`](./agents/metagross.md) | Designs and scaffolds fullstack frontend-backend monorepos with Turborepo, Amplify, tRPC, Lambda, and CDK. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/765.png" alt="Oranguru" width="96"> | [`oranguru`](./agents/oranguru.md) | Communication-runtime assembler — composes audience, template, and activity capabilities into deterministic end-to-end channel services. |
@@ -92,6 +93,7 @@ soofi-xyz-cursor-plugin/
 │   ├── chatot.md
 │   ├── wigglytuff.md
 │   ├── kadabra.md
+│   ├── klefki.md
 │   ├── machamp.md
 │   ├── metagross.md
 │   ├── oranguru.md
