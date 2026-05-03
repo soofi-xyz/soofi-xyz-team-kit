@@ -46,6 +46,7 @@ Reload Cursor after pulling so updated agents, skills, and the manifest are pick
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/376.png" alt="Metagross" width="96"> | [`metagross`](./agents/metagross.md) | Designs and scaffolds fullstack frontend-backend monorepos with Turborepo, Amplify, tRPC, Lambda, and CDK. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/164.png" alt="Noctowl" width="96"> | [`noctowl`](./agents/noctowl.md) | Builds general S3-backed audit anomaly analyzers from versioned audit profiles and evidence-backed rule outputs. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/765.png" alt="Oranguru" width="96"> | [`oranguru`](./agents/oranguru.md) | Communication-runtime assembler — composes audience, template, and activity capabilities into deterministic end-to-end channel services. |
+| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/279.png" alt="Pelipper" width="96"> | [`pelipper`](./agents/pelipper.md) | Inbound mailbox-to-work-item specialist — deterministic, event-driven intake from mailbox/webhook sources into work-management systems with a generic rule engine and a webhook + runtime + subscription-manager Lambda topology. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/137.png" alt="Porygon" width="96"> | [`porygon`](./agents/porygon.md) | Unifies and analyzes metrics across vendors and data sources with a lexicon-first, audit-friendly workflow. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/486.png" alt="Regigigas" width="96"> | [`regigigas`](./agents/regigigas.md) | SaaS marketplace architect — centralized marketplace account governing per-customer AWS tenant accounts, CloudFormation bundle distribution (`cdk synth` artifacts), and component register/release/rollback/list/subscribe/unsubscribe operations. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/235.png" alt="Smeargle" width="96"> | [`smeargle`](./agents/smeargle.md) | Responsive design-testing specialist — Playwright design specs across breakpoints, with mocked and real-device lane selection. |
@@ -99,6 +100,7 @@ soofi-xyz-cursor-plugin/
 │   ├── metagross.md
 │   ├── noctowl.md
 │   ├── oranguru.md
+│   ├── pelipper.md
 │   ├── porygon.md
 │   ├── regigigas.md
 │   ├── smeargle.md
