@@ -7,13 +7,12 @@ description: "Lexicon-first metrics for contact-center / operational platforms: 
 
 Use this skill when integrating **third-party contact-center or operational platforms** where you must preserve **auditability**: explain metrics from **atomic facts** where possible, use **vendor rollups** where necessary, store **pipeline-owned analytics as partitioned Parquet**, publish **lexicon-registered CloudWatch** metrics, and keep **one clear lineage** per KPI in the org lexicon.
 
-This skill **specializes** the general [`metrics-skill`](../metrics-skill/) workflow for **atomic + rollup** data models. Run [`discover-skills`](../discover-skills/) first so the registry is current, then follow the mandatory chain below.
+This skill **specializes** the general [`metrics-skill`](../metrics-skill/) workflow for **atomic + rollup** data models. Follow the mandatory chain below.
 
 ## Related Skills
 
 | Kind | Skill | When |
 | --- | --- | --- |
-| Mandatory | [`discover-skills`](../discover-skills/) | Refresh global skills before starting. |
 | Mandatory | [`metrics-skill`](../metrics-skill/) | End-to-end metrics definition, pipeline, dashboard, and delivery gates. |
 | Mandatory | [`build-batch-workflows`](../build-batch-workflows/) | Step Functions, Glue, batch transforms, idempotency, cost gate, and batch metrics emission. |
 | Often | [`apply-engineering-guidelines`](../apply-engineering-guidelines/) | TypeScript/Lambda/Glue standards, observability, testing. |

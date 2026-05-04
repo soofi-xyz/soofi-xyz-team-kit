@@ -23,6 +23,26 @@ git -C ~/.cursor/plugins/local/soofi-xyz pull
 
 Reload Cursor after pulling so updated agents, skills, and the manifest are picked up.
 
+## Quick start
+
+When in doubt, **start with [`arceus`](./agents/arceus.md)** — the master router. Arceus reads this README, the agent definitions, and the skill metadata, then tells you which specialist(s) and skill(s) to use for your task. It does not perform the work itself; it hands you a copy-pasteable invocation hint for the right agent.
+
+Invoke it explicitly with the slash form:
+
+```text
+/arceus I need to add Google Tag Manager to a Vite app and want regression coverage
+```
+
+Or mention it naturally in chat:
+
+```text
+Use the arceus subagent to recommend the right specialist for migrating an SMS template inventory.
+```
+
+Cursor's Agent will also delegate to `arceus` automatically at the start of a task when no specific specialist has been named — so simply describing your task in plain English usually triggers the right routing.
+
+If you already know which specialist you need, skip the router and call them directly — for example `/sylveon` for Figma-to-code work or `/regigigas` for SaaS marketplace architecture. The full roster, with triggers and descriptions, lives in the [Agents](#agents) and [Skills](#skills) tables below.
+
 ## What's inside
 
 | Component | Location | Description |
@@ -36,6 +56,7 @@ Reload Cursor after pulling so updated agents, skills, and the manifest are pick
 | Mascot | Agent | Description |
 | :---: | --- | --- |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/063.png" alt="Abra" width="96"> | [`abra`](./agents/abra.md) | Designs and scaffolds solver services with Glue PySpark, pure Python OR-Tools solvers, and CDK-backed infrastructure. |
+| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/493.png" alt="Arceus" width="96"> | [`arceus`](./agents/arceus.md) | The Alpha Pokémon — master router that reads `README.md`, agent definitions, and skills, then directs the user to the right specialist(s) and skill(s) for any task. Does not implement the work. |
 | <img src="https://archives.bulbagarden.net/media/upload/3/3a/Ash_OS_2.png" alt="Ash" width="96"> | [`ash`](./agents/ash.md) | Designs and implements Asana-triggered Lambda agents using the established Bedrock and telemetry patterns. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/531.png" alt="Audino" width="96"> | [`audino`](./agents/audino.md) | Frontend bug-fix specialist — design comparison, override archaeology, minimal fixes, and regression-proof tests. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/351.png" alt="Castform" width="96"> | [`castform`](./agents/castform.md) | Injects Google Tag Manager (`GTM-…`) into any frontend — official head + body snippets, framework-appropriate root shell, env-aware IDs; does not add standalone GA4 unless you opt out. |
@@ -72,7 +93,6 @@ Reload Cursor after pulling so updated agents, skills, and the manifest are pick
 | [`build-solver-services`](./skills/build-solver-services/) | Build optimization services combining AWS Glue PySpark data prep with Google OR-Tools solvers using the three-layer architecture. |
 | [`build-tenant-account-manager`](./skills/build-tenant-account-manager/) | Build the Tenant Account Manager standalone product — owns customers, environments, and per-environment API keys; mints the bootstrap key issued by the provider for a new customer; supports overlap rotation; ships the shared Lambda authorizer every other marketplace API consumes. |
 | [`build-tenant-domain-router`](./skills/build-tenant-domain-router/) | Build the Tenant Domain Router standalone product — root domain `provider.xyz` in marketplace Route 53, per-environment subdomains delegated via NS to a child hosted zone in each tenant account, ACM strategy, and the SSM-backed base-path contract every other product uses to publish HTTP endpoints. |
-| [`discover-skills`](./skills/discover-skills/) | Discover, search, install, and update agent skills from the company registry. Load before starting any task to check if a relevant skill exists. |
 | [`figma-to-code`](./skills/figma-to-code/) | Frontend engineering workflow to update existing code from Figma designs while preserving logic and adding responsive design test coverage. |
 | [`frontend-bug-fix`](./skills/frontend-bug-fix/) | Frontend bug triage and fix workflow with design comparison, commit analysis, test updates, and verification. |
 | [`integrate-ci-cd`](./skills/integrate-ci-cd/) | Integrate the shared GitHub Actions workflows into a project using the required `justfile` recipes and caller workflows. |
@@ -90,6 +110,7 @@ soofi-xyz-cursor-plugin/
 │   └── plugin.json                  # Plugin manifest (required)
 ├── agents/                          # Subagent definitions (auto-discovered)
 │   ├── abra.md
+│   ├── arceus.md
 │   ├── ash.md
 │   ├── audino.md
 │   ├── castform.md
@@ -122,7 +143,6 @@ soofi-xyz-cursor-plugin/
 │   ├── build-solver-services/       # Glue + OR-Tools optimization services
 │   ├── build-tenant-account-manager/ # Customers, environments, API keys, shared authorizer standalone product (used by Regigigas)
 │   ├── build-tenant-domain-router/  # Root domain + per-env subdomains + base-path contract standalone product (used by Regigigas)
-│   ├── discover-skills/             # Registry discovery before task start
 │   ├── figma-to-code/               # Figma-driven frontend updates
 │   ├── frontend-bug-fix/            # UI bug triage and regression prevention
 │   ├── integrate-ci-cd/             # Shared GitHub Actions workflows
