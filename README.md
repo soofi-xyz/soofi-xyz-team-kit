@@ -61,6 +61,7 @@ If you already know which specialist you need, skip the router and call them dir
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/531.png" alt="Audino" width="96"> | [`audino`](./agents/audino.md) | Frontend bug-fix specialist — design comparison, override archaeology, minimal fixes, and regression-proof tests. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/351.png" alt="Castform" width="96"> | [`castform`](./agents/castform.md) | Injects Google Tag Manager (`GTM-…`) into any frontend — official head + body snippets, framework-appropriate root shell, env-aware IDs; does not add standalone GA4 unless you opt out. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/441.png" alt="Chatot" width="96"> | [`chatot`](./agents/chatot.md) | Owns the communication-activity lifecycle — provider setup, routing, send handoff, delivery events, and response ingestion. |
+| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/534.png" alt="Conkeldurr" width="96"> | [`conkeldurr`](./agents/conkeldurr.md) | Platform engineer — owns the SOCAPITAL platform ontology (Persist, Connect), always asks "extend existing or provision new?" before building, and is fully capable of standing up each product end to end. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/040.png" alt="Wigglytuff" width="96"> | [`wigglytuff`](./agents/wigglytuff.md) | Template-management specialist — Git-backed template inventory, source discovery, metadata normalization, sync workflows, and Asana-facing template operations. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/064.png" alt="Kadabra" width="96"> | [`kadabra`](./agents/kadabra.md) | Top-level SMS communication service builder — composes `xatu`, `wigglytuff`, `chatot`, and `oranguru` and owns the golden prompt. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/707.png" alt="Klefki" width="96"> | [`klefki`](./agents/klefki.md) | Files portal builder — Cognito Managed Login, private S3 folder browsing, per-user grants, custom-domain CloudFront hosting, and Figma-driven UI. |
@@ -83,10 +84,12 @@ If you already know which specialist you need, skip the router and call them dir
 | [`atomic-data`](./skills/atomic-data/) | Atomic row-level facts plus vendor daily rollups for contact-center and operational metrics, Parquet-first storage, CloudWatch + lexicon lineage, and reconciliation patterns. |
 | [`build-ai-agents`](./skills/build-ai-agents/) | Build AI agents with the rules-agent pattern: Lambda runtime, Asana webhooks, Bedrock + Vercel AI SDK `ToolLoopAgent`, LangSmith telemetry, and AgentCore memory. |
 | [`build-batch-workflows`](./skills/build-batch-workflows/) | Design and implement AWS batch workflows with Step Functions Distributed Map, Glue PySpark, cost gates, throttling, idempotency, and staged test pipelines. |
+| [`build-connect-service`](./skills/build-connect-service/) | Build the Connect partner-integration platform — declarative flow specs compiled into Step Functions state machines, partner credential / token registries, on-demand static-IP fabric, webhook task tokens, batch executions, and AWS Transfer Family SFTP connectors. |
 | [`build-frontend-backends`](./skills/build-frontend-backends/) | Build fullstack monorepos with Turborepo, AWS Amplify frontends, and tRPC + Lambda backends deployed via CDK. |
 | [`build-html-to-pdf`](./skills/build-html-to-pdf/) | Build HTML-to-PDF generation workflows on AWS Lambda using Playwright and Chromium, with typed request contracts, deterministic HTML rendering, runtime packaging, and verification. |
 | [`build-inbound-sftp-workflows`](./skills/build-inbound-sftp-workflows/) | Build inbound SFTP workflows on AWS with Transfer Family, a Lambda poller, and listing-first transfer validation. |
 | [`build-marketplace-puller`](./skills/build-marketplace-puller/) | Build the Marketplace Puller standalone product — tenant-side scheduled reconciler that polls marketplace desired state, detects drift on subscribed components, and converges via `POST /deploys` (push-primary mode) or a tenant-local CFN executor (pull-only mode). |
+| [`build-persist-service`](./skills/build-persist-service/) | Build the Persist graph-persistence platform service — Amazon Neptune backend with SigV4-authorised `/persist/*` HTTP API, lexicon-validated GraphSON v3 ingest (sync + async), Neptune CSV bulk-load workflow, and sync + async Gremlin query channels. |
 | [`build-product-deployer`](./skills/build-product-deployer/) | Build the Product Deployer standalone product — defines the common CDK contract every product implements, owns the canonical `EnvironmentContext`, and runs the Step Function that turns `(component, version, env_slug)` into a deployed stack via StackSets or assume-role + raw CloudFormation. |
 | [`build-saas-marketplace`](./skills/build-saas-marketplace/) | Build a multi-tenant SaaS distribution marketplace on AWS — Organizations-backed per-customer accounts, a central marketplace control plane, a `cdk synth`-artifact component registry, cross-account CloudFormation StackSet deploys, and the six register / release / rollback / list / subscribe / unsubscribe operations. |
 | [`build-sms-communication-service`](./skills/build-sms-communication-service/) | Top-level builder skill for the SMS communication service — owns ontology, worker-skill composition, and golden-prompt governance while delegating to audience, template, activity, and runtime workers. |
@@ -115,6 +118,7 @@ soofi-xyz-cursor-plugin/
 │   ├── audino.md
 │   ├── castform.md
 │   ├── chatot.md
+│   ├── conkeldurr.md
 │   ├── wigglytuff.md
 │   ├── kadabra.md
 │   ├── klefki.md
@@ -133,10 +137,12 @@ soofi-xyz-cursor-plugin/
 │   ├── atomic-data/                 # Atomic facts + vendor rollups for operational metrics
 │   ├── build-ai-agents/             # Rules-agent pattern for AI agents
 │   ├── build-batch-workflows/       # Step Functions / Glue batch workflows
+│   ├── build-connect-service/       # Connect partner-integration platform service (used by Conkeldurr)
 │   ├── build-frontend-backends/     # Turborepo + Amplify + tRPC + CDK monorepos
 │   ├── build-html-to-pdf/           # Lambda + Playwright + Chromium HTML-to-PDF workflows
 │   ├── build-inbound-sftp-workflows/ # AWS Transfer Family inbound SFTP integrations
 │   ├── build-marketplace-puller/    # Tenant-side reconciler standalone product (used by Regigigas)
+│   ├── build-persist-service/       # Persist graph-persistence platform service (used by Conkeldurr)
 │   ├── build-product-deployer/      # Common CDK + EnvironmentContext deploy product (used by Regigigas)
 │   ├── build-saas-marketplace/      # Multi-tenant SaaS marketplace control plane + cross-account CFN distribution (used by Regigigas)
 │   ├── build-sms-communication-service/ # Top-level SMS communication service builder (used by Kadabra)
