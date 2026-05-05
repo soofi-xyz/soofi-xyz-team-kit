@@ -67,6 +67,7 @@ If you already know which specialist you need, skip the router and call them dir
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/064.png" alt="Kadabra" width="96"> | [`kadabra`](./agents/kadabra.md) | Top-level SMS communication service builder — composes `xatu`, `wigglytuff`, `chatot`, and `oranguru` and owns the golden prompt. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/707.png" alt="Klefki" width="96"> | [`klefki`](./agents/klefki.md) | Files portal builder — Cognito Managed Login, private S3 folder browsing, per-user grants, custom-domain CloudFront hosting, and Figma-driven UI. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/068.png" alt="Machamp" width="96"> | [`machamp`](./agents/machamp.md) | Designs and implements AWS batch workflows with strategy selection, cost gates, throttling, idempotency, and staged test pipelines. |
+| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/052.png" alt="Meowth" width="96"> | [`meowth`](./agents/meowth.md) | Cursor spend-limit approval workflow builder — EventBridge Scheduler starts a Step Functions Standard state machine (Plan → Map over candidate users → `WaitForTaskToken` Asana approval per user → VerifyAndApply → Aggregate). Opens an Asana task in a configured project assigned to a configured approver when a user crosses a configurable threshold of their `monthlyLimitDollars`, and on task completion the webhook Lambda completes the task token so the state machine raises the user's limit by a configurable increment via `POST /teams/user-spend-limit`, with per-env SSM + Secrets Manager configuration, a DynamoDB cycle ledger, and DEV/PROD CI/CD. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/376.png" alt="Metagross" width="96"> | [`metagross`](./agents/metagross.md) | Designs and scaffolds fullstack frontend-backend monorepos with Turborepo, Amplify, tRPC, Lambda, and CDK. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/164.png" alt="Noctowl" width="96"> | [`noctowl`](./agents/noctowl.md) | Builds general S3-backed audit anomaly analyzers from versioned audit profiles and evidence-backed rule outputs. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/765.png" alt="Oranguru" width="96"> | [`oranguru`](./agents/oranguru.md) | Communication-runtime assembler — composes audience, template, and activity capabilities into deterministic end-to-end channel services. |
@@ -126,6 +127,7 @@ soofi-xyz-cursor-plugin/
 │   ├── kadabra.md
 │   ├── klefki.md
 │   ├── machamp.md
+│   ├── meowth.md
 │   ├── metagross.md
 │   ├── noctowl.md
 │   ├── oranguru.md
