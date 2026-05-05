@@ -59,6 +59,7 @@ If you already know which specialist you need, skip the router and call them dir
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/493.png" alt="Arceus" width="96"> | [`arceus`](./agents/arceus.md) | The Alpha Pokémon — master router that reads `README.md`, agent definitions, and skills, then directs the user to the right specialist(s) and skill(s) for any task. Does not implement the work. |
 | <img src="https://archives.bulbagarden.net/media/upload/3/3a/Ash_OS_2.png" alt="Ash" width="96"> | [`ash`](./agents/ash.md) | Designs and implements Asana-triggered Lambda agents using the established Bedrock and telemetry patterns. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/531.png" alt="Audino" width="96"> | [`audino`](./agents/audino.md) | Frontend bug-fix specialist — design comparison, override archaeology, minimal fixes, and regression-proof tests. |
+| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/628.png" alt="Braviary" width="96"> | [`braviary`](./agents/braviary.md) | Google marketing stack v1 orchestrator — GTM + GA4 + Search Console + Ads linking, stakeholder access, QA handoff; delegates site GTM wiring to `castform`. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/351.png" alt="Castform" width="96"> | [`castform`](./agents/castform.md) | Injects Google Tag Manager (`GTM-…`) into any frontend — official head + body snippets, framework-appropriate root shell, env-aware IDs; does not add standalone GA4 unless you opt out. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/441.png" alt="Chatot" width="96"> | [`chatot`](./agents/chatot.md) | Owns the communication-activity lifecycle — provider setup, routing, send handoff, delivery events, and response ingestion. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/534.png" alt="Conkeldurr" width="96"> | [`conkeldurr`](./agents/conkeldurr.md) | Platform engineer — owns the SOCAPITAL platform ontology (Persist, Connect), always asks "extend existing or provision new?" before building, and is fully capable of standing up each product end to end. |
@@ -119,6 +120,7 @@ soofi-xyz-cursor-plugin/
 │   ├── arceus.md
 │   ├── ash.md
 │   ├── audino.md
+│   ├── braviary.md
 │   ├── castform.md
 │   ├── chatot.md
 │   ├── conkeldurr.md
