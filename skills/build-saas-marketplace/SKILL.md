@@ -7,6 +7,8 @@ description: "Guides creation of a multi-tenant SaaS distribution marketplace on
 
 Step-by-step guide for designing and deploying a multi-tenant SaaS distribution marketplace on AWS. The marketplace is the system that ships **components** (CloudFormation bundles) into **tenant AWS accounts** (one account per customer) and keeps their lifecycle (register, release, rollback, subscribe, unsubscribe) under a central control plane.
 
+The authoritative blueprint is in [`reference/PRD.md`](./reference/PRD.md). Consult it for the current route map, data contracts, workflow requirements, and infrastructure topology before implementation.
+
 ## Core Model
 
 Three objects, kept strictly separate:

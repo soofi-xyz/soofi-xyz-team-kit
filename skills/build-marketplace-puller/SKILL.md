@@ -7,6 +7,8 @@ description: "Guides building the Marketplace Puller — a standalone marketplac
 
 This skill builds **one** of the four standalone products in the marketplace ecosystem. It is the only product that runs **in the tenant account** rather than in the marketplace account, and is the second component subscribed during customer onboarding (right after the Tenant Domain Router). It is itself a marketplace component (`cdk synth` → register → release → subscribe).
 
+The authoritative blueprint is in [`reference/PRD.md`](./reference/PRD.md). Consult it for the current Puller service route map, webhook contracts, workflow requirements, and infrastructure topology before implementation.
+
 Load this skill alongside `skills/build-saas-marketplace/` whenever you are working on tenant-side reconciliation, "should this customer have the latest version", drift detection, or "tenant is in an air-gapped network and can't be pushed to".
 
 ## Why a Puller in Addition to Push?

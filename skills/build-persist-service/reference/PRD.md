@@ -29,6 +29,7 @@ Out-of-band, the service also exposes a **Step Functions state machine** (the **
 ### 1.3 Non-goals
 
 - Persist does **not** expose a public read API beyond Gremlin. Lexicon-aware projection / search lives elsewhere.
+- Persist does **not** provide the legacy document-store surface (`/persistence/transactions`, `/persistence/collections`) or accept API-key authentication. Callers use SigV4 against `/persist/*`; deployment correlation and log records stay in the owning service's storage.
 - Persist does **not** synthesise its own VPC certificates or domains. Custom domains are the caller's responsibility.
 - Persist does **not** own the SOCAPITAL lexicon document; it consumes a lexicon JSON from S3 referenced by an SSM parameter.
 
@@ -735,8 +736,8 @@ For `/persist/ingest` and `/persist/gremlin`, use the bash/zsh `awscurl` helper 
 
 ## 9. Re-creation Checklist (in order)
 
-1. **Repo skeleton**: pnpm workspace, TypeScript 5.6+, `tsconfig.{base,build,app,src,test}.json`, ESLint, Prettier (with import sort), husky + lint-staged, Vitest. Package name is internal.
-2. **Runtime dependencies**: `@aws-lambda-powertools/{logger,metrics,event-handler}`, `@aws-sdk/{client-neptunedata,client-s3,client-sfn,client-sqs,credential-providers}`, `@smithy/{config-resolver,node-config-provider,hash-node,protocol-http,signature-v4}`, `gremlin@^3.8`, `gremlin-aws-sigv4`, `csv-parse`. CDK: `aws-cdk-lib@^2.170`, `constructs`, `aws-cdk@^2.170`. Choose any preferred validation library and structured-error / DI conventions — the contracts in §3 and §6 must be honoured but the implementation style is unconstrained.
+1. **Repo skeleton**: pnpm workspace, TypeScript, `tsconfig.{base,build,app,src,test}.json`, ESLint, Prettier (with import sort), husky + lint-staged, Vitest. Package name is internal.
+2. **Runtime dependencies**: `@aws-lambda-powertools/{logger,metrics,event-handler}`, `@aws-sdk/{client-neptunedata,client-s3,client-sfn,client-sqs,credential-providers}`, `@smithy/{config-resolver,node-config-provider,hash-node,protocol-http,signature-v4}`, `gremlin`, `gremlin-aws-sigv4`, `csv-parse`. CDK: `aws-cdk-lib`, `constructs`, `aws-cdk`. Choose any preferred validation library and structured-error / DI conventions — the contracts in §3 and §6 must be honoured but the implementation style is unconstrained.
 3. **Schemas / contracts**: one module per group in `lambda/schemas/` — `graphson/{types,vertex,edge,ingest,validate}`, `gremlin`, `gremlin-async`, `async-bulk`, `workflow`, `lexicon`, `http`, `errors`. Errors are tagged classes; everything else is type+validator pairs.
 4. **Utils**: `lambda/utils/{csv,errors,graphsonTemporalTransform,lexiconStringFormat,neptuneTemporal,s3}.ts`.
 5. **Configuration**: `lambda/config/neptune.ts` (Neptune host/port/region, retry, connection age) plus per-service config readers tied to the env vars listed in §2.4. Required vars must throw at startup; optional vars must default per §2.4.

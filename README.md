@@ -85,6 +85,7 @@ If you already know which specialist you need, skip the router and call them dir
 | [`atomic-data`](./skills/atomic-data/) | Atomic row-level facts plus vendor daily rollups for contact-center and operational metrics, Parquet-first storage, CloudWatch + lexicon lineage, and reconciliation patterns. |
 | [`build-ai-agents`](./skills/build-ai-agents/) | Build AI agents with the rules-agent pattern: Lambda runtime, Asana webhooks, Bedrock + Vercel AI SDK `ToolLoopAgent`, LangSmith telemetry, and AgentCore memory. |
 | [`build-batch-workflows`](./skills/build-batch-workflows/) | Design and implement AWS batch workflows with Step Functions Distributed Map, Glue PySpark, cost gates, throttling, idempotency, and staged test pipelines. |
+| [`build-bootstrap-cli`](./skills/build-bootstrap-cli/) | Build the Bootstrap CLI — operator-run TypeScript tooling that reads the Account bootstrap manifest, installs the first Deployer locally, then installs Marketplace Puller through that Deployer. |
 | [`build-connect-service`](./skills/build-connect-service/) | Build the Connect partner-integration platform — declarative flow specs compiled into Step Functions state machines, partner credential / token registries, on-demand static-IP fabric, webhook task tokens, batch executions, and AWS Transfer Family SFTP connectors. |
 | [`build-frontend-backends`](./skills/build-frontend-backends/) | Build fullstack monorepos with Turborepo, AWS Amplify frontends, and tRPC + Lambda backends deployed via CDK. |
 | [`build-html-to-pdf`](./skills/build-html-to-pdf/) | Build HTML-to-PDF generation workflows on AWS Lambda using Playwright and Chromium, with typed request contracts, deterministic HTML rendering, runtime packaging, and verification. |
@@ -139,6 +140,7 @@ soofi-xyz-cursor-plugin/
 │   ├── atomic-data/                 # Atomic facts + vendor rollups for operational metrics
 │   ├── build-ai-agents/             # Rules-agent pattern for AI agents
 │   ├── build-batch-workflows/       # Step Functions / Glue batch workflows
+│   ├── build-bootstrap-cli/         # Initial tenant bootstrap CLI for Deployer + Puller
 │   ├── build-connect-service/       # Connect partner-integration platform service (used by Conkeldurr)
 │   ├── build-frontend-backends/     # Turborepo + Amplify + tRPC + CDK monorepos
 │   ├── build-html-to-pdf/           # Lambda + Playwright + Chromium HTML-to-PDF workflows
