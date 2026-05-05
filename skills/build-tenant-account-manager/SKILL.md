@@ -7,6 +7,8 @@ description: "Guides building the Tenant Account Manager — a standalone market
 
 This skill builds **one** of the four standalone products in the marketplace ecosystem. It is the only product that owns the *customer identity* surface — every other product authenticates by calling this one. It is itself a marketplace component (`cdk synth` → register → release → subscribe), and it is the **first** component subscribed when a new customer is onboarded.
 
+The authoritative blueprint is in [`reference/PRD.md`](./reference/PRD.md). Consult it for the current Account service route map, data contracts, workflow requirements, and infrastructure topology before implementation.
+
 Load this skill alongside `skills/build-saas-marketplace/` whenever you are working on customer accounts, API keys, environment creation, or "who is this caller and which environment are they acting on".
 
 ## What This Product Owns

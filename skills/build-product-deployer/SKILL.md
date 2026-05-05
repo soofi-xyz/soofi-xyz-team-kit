@@ -7,6 +7,8 @@ description: "Guides building the Product Deployer — a standalone marketplace 
 
 This skill builds **one** of the four standalone products in the marketplace ecosystem. It is the only product that is allowed to invoke CloudFormation deploys; every other product (including the Marketplace itself, the Tenant Domain Router, the Tenant Account Manager, and the Marketplace Puller) goes through it. It is itself a marketplace component.
 
+The authoritative blueprint is in [`reference/PRD.md`](./reference/PRD.md). Consult it for the current Deployer service route map, bundle contract, workflow requirements, and infrastructure topology before implementation.
+
 Load this skill alongside `skills/build-saas-marketplace/` whenever you are working on the deploy interface, CDK contract, or "how does product X get the right inputs for environment Y".
 
 ## What This Product Owns

@@ -1,7 +1,7 @@
 {
   "name": "soofi-xyz",
   "description": "Company-wide project subagents for AI-assisted development (Abra, Ash, Castform, Ditto, Klefki, Machamp, Metagross, Noctowl, Porygon, Regigigas, Smeargle).",
-  "version": "0.8.1",
+  "version": "0.8.3",
   "author": {
     "name": "Soofi XYZ"
   }
