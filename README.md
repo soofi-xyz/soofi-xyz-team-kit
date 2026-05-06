@@ -59,6 +59,7 @@ If you already know which specialist you need, skip the router and call them dir
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/493.png" alt="Arceus" width="96"> | [`arceus`](./agents/arceus.md) | The Alpha Pokémon — master router that reads `README.md`, agent definitions, and skills, then directs the user to the right specialist(s) and skill(s) for any task. Does not implement the work. |
 | <img src="https://archives.bulbagarden.net/media/upload/3/3a/Ash_OS_2.png" alt="Ash" width="96"> | [`ash`](./agents/ash.md) | Designs and implements Asana-triggered Lambda agents using the established Bedrock and telemetry patterns. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/531.png" alt="Audino" width="96"> | [`audino`](./agents/audino.md) | Frontend bug-fix specialist — design comparison, override archaeology, minimal fixes, and regression-proof tests. |
+| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/628.png" alt="Braviary" width="96"> | [`braviary`](./agents/braviary.md) | Google marketing stack v1 orchestrator — GTM + GA4 + Search Console + Ads linking, stakeholder access, QA handoff; delegates site GTM wiring to `castform`. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/351.png" alt="Castform" width="96"> | [`castform`](./agents/castform.md) | Injects Google Tag Manager (`GTM-…`) into any frontend — official head + body snippets, framework-appropriate root shell, env-aware IDs; does not add standalone GA4 unless you opt out. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/441.png" alt="Chatot" width="96"> | [`chatot`](./agents/chatot.md) | Owns the communication-activity lifecycle — provider setup, routing, send handoff, delivery events, and response ingestion. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/534.png" alt="Conkeldurr" width="96"> | [`conkeldurr`](./agents/conkeldurr.md) | Platform engineer — owns the SOCAPITAL platform ontology (Persist, Connect), always asks "extend existing or provision new?" before building, and is fully capable of standing up each product end to end. |
@@ -67,6 +68,7 @@ If you already know which specialist you need, skip the router and call them dir
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/064.png" alt="Kadabra" width="96"> | [`kadabra`](./agents/kadabra.md) | Top-level SMS communication service builder — composes `xatu`, `wigglytuff`, `chatot`, and `oranguru` and owns the golden prompt. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/707.png" alt="Klefki" width="96"> | [`klefki`](./agents/klefki.md) | Files portal builder — Cognito Managed Login, private S3 folder browsing, per-user grants, custom-domain CloudFront hosting, and Figma-driven UI. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/068.png" alt="Machamp" width="96"> | [`machamp`](./agents/machamp.md) | Designs and implements AWS batch workflows with strategy selection, cost gates, throttling, idempotency, and staged test pipelines. |
+| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/052.png" alt="Meowth" width="96"> | [`meowth`](./agents/meowth.md) | Cursor spend-limit approval workflow builder — EventBridge Scheduler starts a Step Functions Standard state machine (Plan → Map over candidate users → `WaitForTaskToken` Asana approval per user → VerifyAndApply → Aggregate). Opens an Asana task in a configured project assigned to a configured approver when a user crosses a configurable threshold of their `monthlyLimitDollars`, and on task completion the webhook Lambda completes the task token so the state machine raises the user's limit by a configurable increment via `POST /teams/user-spend-limit`, with per-env SSM + Secrets Manager configuration, a DynamoDB cycle ledger, and DEV/PROD CI/CD. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/376.png" alt="Metagross" width="96"> | [`metagross`](./agents/metagross.md) | Designs and scaffolds fullstack frontend-backend monorepos with Turborepo, Amplify, tRPC, Lambda, and CDK. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/164.png" alt="Noctowl" width="96"> | [`noctowl`](./agents/noctowl.md) | Builds general S3-backed audit anomaly analyzers from versioned audit profiles and evidence-backed rule outputs. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/765.png" alt="Oranguru" width="96"> | [`oranguru`](./agents/oranguru.md) | Communication-runtime assembler — composes audience, template, and activity capabilities into deterministic end-to-end channel services. |
@@ -118,6 +120,7 @@ soofi-xyz-cursor-plugin/
 │   ├── arceus.md
 │   ├── ash.md
 │   ├── audino.md
+│   ├── braviary.md
 │   ├── castform.md
 │   ├── chatot.md
 │   ├── conkeldurr.md
@@ -126,6 +129,7 @@ soofi-xyz-cursor-plugin/
 │   ├── kadabra.md
 │   ├── klefki.md
 │   ├── machamp.md
+│   ├── meowth.md
 │   ├── metagross.md
 │   ├── noctowl.md
 │   ├── oranguru.md
