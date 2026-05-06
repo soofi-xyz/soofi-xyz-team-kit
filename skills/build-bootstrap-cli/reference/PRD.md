@@ -13,9 +13,10 @@ The implementation language is **TypeScript**. Bootstrap is a CLI artifact, not 
 Bootstrap owns the initial "no Deployer exists yet" gap in the tenant lifecycle:
 
 1. **Read tenant bootstrap state** from Account using `GET /accounts/{account_id}/bootstrap-manifest`.
-2. **Resolve system-component bundles** from Marketplace for `Deployer` and `MarketplacePuller`.
-3. **Install Deployer locally** into the new AWS sub-account using the operator's AWS credentials and the same bundle validation / parameter rendering rules used by normal Deployer product installs.
-4. **Install Marketplace Puller through Deployer** by calling the newly live `/infra-deployer/deploy-by-token` route.
+2. **Create shared tenant API Gateway resources** in the new AWS sub-account from Account's DNS/certificate inventory: the custom domain and the single tenant Usage Plan bound to the Account-minted service API key. Write resolved outputs to tenant-side SSM parameters.
+3. **Resolve system-component bundles** from Marketplace for `Deployer` and `MarketplacePuller`.
+4. **Install Deployer locally** into the new AWS sub-account using the operator's AWS credentials and the same bundle validation / parameter rendering rules used by normal Deployer product installs.
+5. **Install Marketplace Puller through Deployer** by calling the newly live `/infra-deployer/deploy-by-token` route.
 5. **Verify the tenant is self-deploying** by checking Deployer and Puller information endpoints and optionally creating initial Puller subscriptions.
 
 Account remains the owner of tenant identity, AWS sub-account provisioning, DNS, and service keys. Marketplace remains the owner of catalog components and bundle URLs. Deployer remains the owner of CloudFormation deployment behavior after it exists. Puller remains the owner of subscription, webhook, and reconciliation behavior.
@@ -73,7 +74,7 @@ Optional inputs:
 | Input | Purpose |
 | --- | --- |
 | `--tenant-service-api-key` | Use an already known tenant service key for Deployer/Puller health and Puller deploy calls. |
-| `--comply-token` | Allows the CLI to call Account `GET /service-key` when the service key is not provided. |
+| `--comply-token` | Allows the CLI to call Account `GET /accounts/{account_id}/service-key` when the service key is not provided. |
 | `--deployer-component` / `--puller-component` | Override manifest system-component coordinates for development only. |
 | `--dry-run` | Validate and print plan without writes. |
 | `--state-file` | Path for non-secret resume metadata. |
@@ -103,10 +104,15 @@ type BootstrapManifest = {
   }>;
   service_api_key_id: string;
   service_api_key_rotated_at?: string;
+  service_usage_plan_ssm_param?: string; // defaults to /account/shared-usage-plan-id
   marketplace_api_url: string;
+  // Tenant-account SSM parameter populated by Bootstrap after it creates
+  // the shared API Gateway custom domain.
   account_domain_config_ssm_param: string;
+  // Tenant-account SSM parameter populated by Bootstrap with non-secret
+  // environment defaults for Deployer and product stacks.
+  env_parameters_ssm_param?: string; // defaults to /account/env-parameters
   deploy_regions: Array<{ RegionName: string; [key: string]: unknown }>;
-  env_parameters?: Record<string, unknown>;
   system_components: {
     deployer: { product_id: string; component_id: string };
     marketplace_puller: { product_id: string; component_id: string };
@@ -114,7 +120,7 @@ type BootstrapManifest = {
 };
 ```
 
-The manifest is non-secret. If Account cannot return `aws_account_id`, `subdomain`, `service_api_key_id`, or system-component coordinates, the CLI fails before any AWS write.
+The manifest is non-secret. If Account cannot return `aws_account_id`, `subdomain`, `fqdn`, `hosted_zone_id`, a regional certificate for the selected deployment region, `service_api_key_id`, `account_domain_config_ssm_param`, or system-component coordinates, the CLI fails before any AWS write. `service_usage_plan_ssm_param` defaults to `/account/shared-usage-plan-id` and `env_parameters_ssm_param` defaults to `/account/env-parameters` when omitted for older manifests.
 
 ### 2.3 Marketplace Contract
 
@@ -165,8 +171,7 @@ For Bootstrap, Puller `custom_parameters` must include:
   Subdomain: string;
   MarketplaceHost: string;
   TenantAwsAccountId: string;
-  TenantApiKeyID: string;
-  AccountDomainConfigSsmParam: string;
+  SharedUsagePlanIdSsmParam: string;
 }
 ```
 
@@ -186,28 +191,36 @@ For Bootstrap, Puller `custom_parameters` must include:
 ### 3.2 `bootstrap environment`
 
 1. Run the `plan` validations.
-2. Obtain tenant service API key, either from `--tenant-service-api-key` or Account `GET /service-key` with Comply Authentication.
+2. Obtain tenant service API key, either from `--tenant-service-api-key` or Account `GET /accounts/{account_id}/service-key` with Comply Authentication.
 3. Download the Deployer bundle to a temp directory.
 4. Validate the bundle:
    - zip is reachable and size is within local deploy limits;
    - `config.json` decodes;
    - `bundle_type = "SERVICE"`;
    - component id equals manifest `system_components.deployer.component_id`;
-   - no `environment_token`, raw AWS credentials, or unknown credential-token fields are present.
-5. Render Deployer CFN parameters from the manifest:
+   - the bundle exposes only the documented Deployer install parameters and contains no raw AWS credentials or caller-supplied credential fields.
+5. Ensure the shared tenant API Gateway resources exist before installing Deployer:
+   - for REST API products, create or update a small Bootstrap-owned CloudFormation stack containing `AWS::ApiGateway::DomainName` with `DomainName = manifest.fqdn`, `EndpointConfiguration.Types = ["REGIONAL"]`, `RegionalCertificateArn` from the manifest certificate for the home region, `SecurityPolicy = "TLS_1_2"`, and `RoutingMode = "BASE_PATH_MAPPING_ONLY"`;
+   - if a future product line uses API Gateway v2 APIs, the equivalent stack uses `AWS::ApiGatewayV2::DomainName`; the REST API path remains the default for the PRDs in this repo;
+   - create or update one tenant-wide `AWS::ApiGateway::UsagePlan` named for `manifest.subdomain`, then create exactly one `AWS::ApiGateway::UsagePlanKey` that binds `manifest.service_api_key_id` to that plan;
+   - write a non-secret String SSM parameter at `manifest.service_usage_plan_ssm_param ?? "/account/shared-usage-plan-id"` with the shared Usage Plan id;
+   - create the Route 53 alias records from `manifest.fqdn` to the API Gateway domain's regional target using the CloudFormation outputs `RegionalDomainName` and `RegionalHostedZoneId`;
+   - write a non-secret String SSM parameter at `manifest.account_domain_config_ssm_param` with `{ domain_name, hosted_zone_id, certificate_arn, api_gateway_domain_name, api_gateway_regional_domain_name, api_gateway_regional_hosted_zone_id, routing_mode }`.
+6. Create/discover non-secret tenant environment defaults that product stacks commonly need, then write them as JSON to `manifest.env_parameters_ssm_param ?? "/account/env-parameters"`. Bootstrap, not Account, owns this object because Bootstrap is the first tool with access to the tenant AWS account. The initial object includes only handles Bootstrap created or discovered, such as shared domain outputs and shared Usage Plan id; operators may extend it with additional shared tenant resources later through Deployer-safe configuration, not through Account.
+7. Render Deployer CFN parameters from the manifest and Bootstrap-created defaults:
    - `Subdomain = manifest.subdomain`;
    - `Regions = JSON.stringify(manifest.deploy_regions)`;
    - `AccountDomainConfigSsmParam = manifest.account_domain_config_ssm_param`;
-   - `EnvParameters = JSON.stringify(manifest.env_parameters ?? {})`;
-   - `ServiceApiKeyID = manifest.service_api_key_id`;
+   - `EnvParameters = JSON.stringify(read_json(manifest.env_parameters_ssm_param ?? "/account/env-parameters"))`;
+   - `SharedUsagePlanIdSsmParam = manifest.service_usage_plan_ssm_param ?? "/account/shared-usage-plan-id"`;
    - `ServiceInfo` identifies the Deployer component and bundle.
-6. Locally deploy Deployer stacks using CDK/CloudFormation against the AWS profile's account.
-7. Poll `GET /infra-deployer/information` until healthy or timeout.
-8. Resolve/download Marketplace Puller bundle metadata.
-9. Call Deployer `POST /deploy-by-token` for the Puller bundle.
-10. Poll Deployer status until Puller deploy succeeds or fails.
-11. Poll `GET /marketplace-puller/information` until healthy.
-12. Write final non-secret state and print the tenant endpoints.
+8. Locally deploy Deployer stacks using CDK/CloudFormation against the AWS profile's account. This creates the CDK-owned deploy-code buckets and publishes `/deployer/deploy-code-buckets/<region>` before any normal product deploy runs. The Deployer stack creates only its own `infra-deployer` base-path mapping to the existing custom domain and attaches its API stage to the Bootstrap-created shared Usage Plan.
+9. Poll `GET /infra-deployer/information` until healthy or timeout.
+10. Resolve/download Marketplace Puller bundle metadata.
+11. Call Deployer `POST /deploy-by-token` for the Puller bundle.
+12. Poll Deployer status until Puller deploy succeeds or fails.
+13. Poll `GET /marketplace-puller/information` until healthy.
+14. Write final non-secret state and print the tenant endpoints.
 
 ### 3.3 `bootstrap resume`
 
@@ -345,6 +358,7 @@ Integration tests may use mocked Account/Marketplace HTTP servers and AWS SDK mo
 
 - Account tenant is `ACTIVE`.
 - `GET /accounts/{account_id}/bootstrap-manifest` returns `schema_version = bootstrap-manifest.v1`.
+- The manifest includes an ACM certificate in the Deployer home region so Bootstrap can create the regional API Gateway custom domain before any product base-path mappings exist.
 - Marketplace has valid released bundles for the manifest Deployer and Marketplace Puller components.
 - Operator has an AWS profile/SSO role in the target tenant account with permissions needed by the Deployer bundle's CDK/CloudFormation stacks.
 - Operator has the tenant owner's API key.

@@ -45,7 +45,7 @@ Each successful POST that mints work returns `202 Accepted` with a server-genera
 - Connect does **not** persist partner response bodies long-term; it stages them in S3 with a 30-day lifecycle.
 - Connect does **not** own partner contracts. Partners' OpenAPI shapes are encoded in the flow spec authored by the integrator.
 - Connect does **not** synthesise its own subdomain or ACM certificates. The `Subdomain` parameter is provided by the deployer.
-- Connect does **not** invent its own auth identity. API keys are minted upstream and bound to API Gateway usage plans by the deployer.
+- Connect does **not** invent its own auth identity. API keys are minted upstream; Bootstrap creates the tenant's single shared Usage Plan and binds the service key to it. Connect only attaches its API stage to that shared plan.
 - Connect does **not** broker SOAP envelopes natively — XML traffic is supported as a transport, not as a schema.
 - Connect does **not** host arbitrary user-supplied code. Partners that need transformation logic do it in their own service or via flow primitives (`Pass`, `Choice`, `JSONPath`-driven request mapping).
 - Connect does **not** open raw outbound SSH from Lambda. SFTP traffic goes exclusively through **AWS Transfer Family Connectors** with the listing-first poller flow (see §2.3.7 and §5.6).
@@ -76,7 +76,7 @@ bin/app.ts
 └── ConnectStack    # All Lambdas, S3 buckets, DynamoDB tables, KMS CMK,
                     # Step Functions, REST API + IAM authorisers, API Gateway custom
                     # resources, OpenAPI spec, dynamic /proxy-links/* fabric,
-                    # AWS Transfer Family SFTP connectors + listing-first poller
+                    # SFTP runtime APIs + listing-first poller
 ```
 
 `ConnectStack.addDependency(networkStack)` ensures the network deploys first. Both stacks are declared in **TypeScript** with AWS CDK v2 and deployed exclusively via `cdk deploy`. No Serverless Framework, SAM, Terraform, Pulumi, raw CloudFormation, or other IaC tools are permitted (per §`cloud-aws-primary`).
@@ -138,10 +138,10 @@ There are seven cohorts; the full per-task-type worker matrix lives in §3.5.1.
 | **Compilation pipeline** (driven by `FlowCreationStateMachine` / `LookupCreationStateMachine`) | `TransformFlowSpec`, `TransformLookupSpec`, `AddPassThroughAuthorization`, `AddCallApiAuthorization`, `AddCallTokenManagement`, `AddCredentialsToAuthorization`, `AddDryRun`, `ValidateAslDefinition`, `CreateRuntimeStateMachine`, `UpdateRuntimeStateMachine`, `SaveFlow`                                                                                                                                                                                   | 256–512 MB | 20–30 s  | —                                                                              | Step Functions task                                                                                                           |
 | **Vendor request workers** (residual and streaming HTTP)                                      | `PostMultipartWorker`, `PutMultipartWorker`, `PostBlobWorker`, `PutBlobWorker`, `GetFileWorker`, `HttpJsonStreamingWorker`, `HttpXmlStreamingWorker`, `HttpAnyStreamingWorker`, `FormUrlEncodedStreamingWorker`. Plain JSON / XML / form-encoded / base64 HTTP stays native only for declared inline-small responses; S3/unknown/large responses stream through these workers and return S3 references.                                                                                                                     | 1024 MB    | 20–120 s | —                                                                              | Step Functions task in compiled flow                                                                                          |
 | **Static-IP variants**                                                                         | `HttpJsonStaticIpWorker`, `HttpXmlStaticIpWorker`. Required because Step Functions HTTP Tasks egress from the AWS-managed network and cannot be pinned to the on-demand EIP/NAT; partners that allow-list our static IP must therefore route via these VPC-bound Lambdas.                                                                                                                                                                                     | 1024 MB    | 120 s    | ✓ (`LambdaSg` in two private subnets so egress goes through the on-demand NAT) | Step Functions task                                                                                                           |
-| **SFTP via AWS Transfer Family** (one shared poller, no SSH client in Lambda)                  | `SftpPoller` (resolves config from event → env, starts an `AWS::Transfer::Connector` directory listing, polls `DescribeDirectoryListing`, reads listing JSON from S3, dedupes paths, fans out `StartFileTransfer` with retry on throttling, returns counts + listing URI + bounded errors per `build-inbound-sftp-workflows` Phase 4)                                                                                                                         | 1024 MB    | 900 s    | —                                                                              | Step Functions task in compiled flow (`SFTP` type), EventBridge Scheduler (per-partner schedule), or manual `Invoke` for test |
+| **SFTP via AWS Transfer Family** (one shared poller, no SSH client in Lambda)                  | `SftpPoller` (resolves runtime connector config from `FlowsTable`, starts an AWS Transfer Family directory listing, polls `DescribeDirectoryListing`, reads listing JSON from S3, dedupes paths, fans out `StartFileTransfer` with retry on throttling, returns counts + listing URI + bounded errors per `build-inbound-sftp-workflows` Phase 4)                                                                                                      | 1024 MB    | 900 s    | —                                                                              | Step Functions task in compiled flow (`SFTP` type), runtime-created EventBridge Scheduler schedule, or manual `Invoke` for test |
 | **Flow control & utility workers**                                                             | `ReplyBackWorker`, `DryRunWorker`, `GetCredentialsWorker`, `GetAuthorizationWorker`, `TokenManagementAuthWorker`, `ProgressiveWaitingWorker`, `ProcessFailStatesWorker`, `PollInvocationWorker`, `TokenManagementGetWorker`, `TokenManagementSetWorker`, `SendHealthMetricWorker`, `FakeRangeCreatorWorker`, `CleanupApigwWorker`, `CreateProxyLinkWorker`, `CreateWidgetWorker`                                                                                 | 256–512 MB | 30–120 s | —                                                                              | Mostly Step Functions tasks                                                                                                   |
 | **Static-IP step workers**                                                                     | `CreateInternetGatewayWorker`, `CreatePublicSubnetWorker`, `CreateEipWorker`, `CreateNatGatewayWorker`, `CreateTwoPrivateRoutesWorker`, `ProcessEnableOrDisableErrorWorker`, `DeleteInternetGatewayWorker`, `DeletePublicSubnetWorker`, `DeleteElasticIpWorker`, `DeleteNatGatewayWorker`, `DeleteTwoPrivateRoutesWorker`, `ProcessDeletionErrorWorker`                                                                                                       | 256 MB     | 60 s     | —                                                                              | `EnableStaticIp` / `DisableStaticIp` SFN                                                                                      |
-| **Operational helpers**                                                                        | `ApiUsagePlanCustomResource` (binds the API key to the usage plan), `ApiGatewayLogCustomResource` (installs the access log group), `ProxyResourceCleanupCustomResource` (purges stale `/proxy-links/`* resources on deploy), `HealthApiKeyAuthorizer` (Lambda authoriser)                                                                                                                                                                                     | 256–512 MB | 30–900 s | —                                                                              | CloudFormation custom resources / Lambda authoriser                                                                           |
+| **Operational helpers**                                                                        | `ApiUsagePlanStageAttachmentCustomResource` (attaches this API stage to the Bootstrap-managed shared Usage Plan), `ApiGatewayLogCustomResource` (installs the access log group), `ProxyResourceCleanupCustomResource` (purges stale `/proxy-links/`* resources on deploy), `HealthApiKeyAuthorizer` (Lambda authoriser)                                                                                                                                            | 256–512 MB | 30–900 s | —                                                                              | CloudFormation custom resources / Lambda authoriser                                                                           |
 
 
 #### 2.3.5 Routing fabric
@@ -153,7 +153,7 @@ There are seven cohorts; the full per-task-type worker matrix lives in §3.5.1.
   - `GET /information` → `MOCK` integration returning the deployer-supplied `ServiceInfo` JSON.
   - `/proxy-links/{...}` → minted at runtime by `CreateProxyLinkWorker` (302 redirect to a partner-supplied or S3-presigned URL); torn down by `CleanupApigwWorker` at the end of the flow.
   - `GatewayResponse` rules normalise `INVALID_API_KEY`, `BAD_REQUEST_BODY`, `BAD_REQUEST_PARAMETERS`, and `DEFAULT_4XX` per §3.1.
-- **API Gateway custom domain mapping** under base path `connector-jobs` against the deployer-supplied `Subdomain` (`AWS::ApiGatewayV2::ApiMapping`).
+- **API Gateway custom domain mapping** under base path `connector-jobs` against the Bootstrap-created tenant custom domain passed by Deployer (`AWS::ApiGateway::BasePathMapping` for the REST API). Connect must not create the shared API Gateway `DomainName`.
 - **Step Functions** state machines (six, all `tracingEnabled: true`):
   - `FlowCreationStateMachine` (`STANDARD`) — compile + register a runtime `STANDARD` SFN per flow.
   - `LookupCreationStateMachine` (`STANDARD`) — compile + register a runtime `EXPRESS` SFN per lookup.
@@ -163,12 +163,12 @@ There are seven cohorts; the full per-task-type worker matrix lives in §3.5.1.
   - `EnableStaticIpStateMachine` / `DisableStaticIpStateMachine` (`STANDARD`) — idempotent EIP / NAT provisioning.
   The **runtime** state machines created by `CreateRuntimeStateMachine` / `UpdateRuntimeStateMachine` are dynamic, named `<product?>-<vendor>-<flow>[-<token>]`, and use a constrained `RuntimeStateMachineRole` whose policies are: `lambda:InvokeFunction` on the residual worker ARNs (including `SftpPoller` and the static-IP HTTP workers), `dynamodb:PutItem` on `FlowsTable` for synchronous webhook task-token rows, `**states:InvokeHTTPEndpoint`** on the runtime state-machine ARN itself (constrained per §2.3.6), and `**events:RetrieveConnectionCredentials**` + the matching `secretsmanager:GetSecretValue` on the EventBridge connection-managed secret ARNs for the partners the flow targets.
 - **EventBridge Connections** (`AWS::Events::Connection`, one per partner-auth-profile) hold the credential material for native Step Functions HTTP Tasks. Each connection encodes one of `BASIC` (username/password), `API_KEY` (header name + value), or `OAUTH_CLIENT_CREDENTIALS` (`AuthorizationEndpoint`, `ClientID`, `ClientSecret`, optional `HttpMethod`, optional `OAuthHttpParameters` for body/query/headers). Connection naming is deterministic: `connect-<vendor_name>[-<product_name>][-<auth_profile>]`. Connection ARNs are stored on the partner row (`eventbridge_connection_arns: Record<auth_profile, arn>`) and the compiler stamps the matching ARN onto every native HTTP Task it emits.
-- **EventBridge Scheduler** group `connect-sftp-schedules` hosts one `Schedule` per SFTP partner that opted into automatic polling (`scheduleExpression` from the partner's connector config). Each schedule's target is `SftpPoller` with a static input event matching §6.7.
+- **EventBridge Scheduler** group `connect-sftp-schedules` is created by the Connect stack, but partner schedules are created/updated/deleted at runtime by the SFTP configuration routes. Each schedule's target is `SftpPoller` with a static input event matching §6.7.
 
 #### 2.3.6 IAM (high-level)
 
 - The provider role is **never** wildcarded. Per-Lambda roles use `cdk.aws_iam.Grant.addToPrincipal` so each worker holds only the permissions it needs.
-- The `ConnectHandler` role has: `dynamodb:{Get,Put,Update,Delete,Query,DescribeTable}Item` on `FlowsTable` + `TokensTable`, `kms:{Encrypt,Decrypt,GenerateDataKey,DescribeKey}` on `DataKey`, `s3:{PutObject,GetObject,ListObjectsV2,ListBucket}` on `VendorsResponsesBucket`, `states:{StartExecution,DescribeExecution,GetExecutionHistory,StartSyncExecution,StopExecution,ListExecutions,ListMapRuns,DescribeMapRun,DeleteStateMachine}` on the relevant ARN prefixes, `events:{CreateConnection,UpdateConnection,DescribeConnection,DeleteConnection}` scoped to `arn:aws:events:<region>:<account>:connection/connect-*` (so the credential-management routes can mint and rotate the per-partner Connections that back native HTTP Tasks), plus `lambda:InvokeFunction` on the `SftpPoller` ARN (for `POST /vendors/{vendor_name}/sftp/test-connection`).
+- The `ConnectHandler` role has: `dynamodb:{Get,Put,Update,Delete,Query,DescribeTable}Item` on `FlowsTable` + `TokensTable`, `kms:{Encrypt,Decrypt,GenerateDataKey,DescribeKey}` on `DataKey`, `s3:{PutObject,GetObject,ListObjectsV2,ListBucket}` on `VendorsResponsesBucket`, `states:{StartExecution,DescribeExecution,GetExecutionHistory,StartSyncExecution,StopExecution,ListExecutions,ListMapRuns,DescribeMapRun,DeleteStateMachine}` on the relevant ARN prefixes, `events:{CreateConnection,UpdateConnection,DescribeConnection,DeleteConnection}` scoped to `arn:aws:events:<region>:<account>:connection/connect-*` (so the credential-management routes can mint and rotate the per-partner Connections that back native HTTP Tasks), `transfer:{CreateConnector,UpdateConnector,DeleteConnector,DescribeConnector,TagResource,UntagResource}` scoped to `arn:aws:transfer:<region>:<account>:connector/*`, `scheduler:{CreateSchedule,UpdateSchedule,DeleteSchedule,GetSchedule}` scoped to the `connect-sftp-schedules` group, plus `lambda:InvokeFunction` on the `SftpPoller` ARN (for `POST /vendors/{vendor_name}/sftp/test-connection`).
 - The compilation pipeline workers add `states:{CreateStateMachine,UpdateStateMachine}` and `iam:PassRole` for `RuntimeStateMachineRole` only.
 - The `**RuntimeStateMachineRole`** (assumed by every compiled flow / lookup state machine) holds: `lambda:InvokeFunction` on the residual worker ARNs (multipart, blob, file, static-IP HTTP, `SftpPoller`, `WidgetService`, `CreateProxyLinkWorker`, `CleanupApigwWorker`, `ReplyBackWorker`, `SendHealthMetricWorker`, the auth-helper workers, etc.); `dynamodb:PutItem` on `FlowsTable` for webhook task-token registration through `arn:aws:states:::aws-sdk:dynamodb:putItem.waitForTaskToken`; `**states:InvokeHTTPEndpoint**` scoped to its own state-machine ARN with a `states:HTTPEndpoint` condition listing the partner host allow-list and a `states:HTTPMethod` condition listing the verbs the flow uses (compiler-stamped per flow); `**events:RetrieveConnectionCredentials**` scoped to the EventBridge Connection ARNs the flow references; and `secretsmanager:GetSecretValue` on the secret ARNs created by those Connections (EventBridge stores connection credentials in Secrets Manager). No wildcard HTTP egress permission is ever granted — the host allow-list is recomputed at compile time from the spec's `URL` fields.
 - The streaming HTTP worker roles (`HttpJsonStreamingWorker`, `HttpXmlStreamingWorker`, `HttpAnyStreamingWorker`, `FormUrlEncodedStreamingWorker`, plus the static-IP variants when `ResponseMode="S3"`) hold only `s3:PutObject|GetObject` on `VendorsResponsesBucket/<job_id>/` response prefixes, `kms:Encrypt|GenerateDataKey` on `DataKey` when KMS-backed object metadata is used, and read access to the EventBridge Connection-managed secret needed to sign the outbound request. They stream partner bodies with backpressure and never buffer an unbounded response in memory.
@@ -181,20 +181,23 @@ There are seven cohorts; the full per-task-type worker matrix lives in §3.5.1.
 
 SFTP support follows the **listing-first connector + poller** pattern from `build-inbound-sftp-workflows`. There is **no SSH client running inside any Lambda**; every SFTP interaction goes through AWS Transfer Family.
 
-Per SFTP partner, ConnectStack provisions (declaratively, in CDK):
+The Marketplace Connect bundle is tenant-agnostic and pre-synthesized, so ConnectStack does **not** create partner-specific `AWS::Transfer::Connector` resources at deploy time. It deploys only the generic SFTP runtime capability: the shared `SftpPoller` Lambda, IAM roles/policies, S3 prefixes, route handlers, and the `connect-sftp-schedules` EventBridge Scheduler group. Tenant-specific connector resources are created, imported, updated, or deleted at runtime through Connect's SFTP configuration API.
 
-1. **One `AWS::Transfer::Connector`** of type `SFTP` for each SFTP partner. The connector carries:
-  - `Url: sftp://<partner-host>[:port]` (resolved at deploy from the per-partner config block).
+Per SFTP partner, the runtime configuration route owns:
+
+1. **One AWS Transfer Family connector** of type `SFTP`, either imported by connector id or created by Connect through `transfer:CreateConnector`. The connector carries:
+  - `Url: sftp://<partner-host>[:port]` from the runtime request.
   - `AccessRole`: a per-partner IAM role assumed by Transfer Family with `secretsmanager:GetSecretValue` on the partner's secret ARN and `s3:{PutObject,GetObject,ListBucket}` on `VendorsResponsesBucket/transfer-listings/*` + `…/sftp-inbound/*`.
   - `LoggingRole`: a CloudWatch-Logs-write role for connector access logs.
   - `SftpConfig.UserSecretId`: the partner's Secrets Manager ARN.
-  - `SftpConfig.TrustedHostKeys`: SHA-256 fingerprints of the partner's expected host keys (rotated via a separate connector update; never elided to skip verification).
-2. **One AWS Secrets Manager secret per partner**, keyed by the canonical contract `{ "Url": "sftp://...", "Username": "...", "Password": "..." }` (per `build-inbound-sftp-workflows` Phase 2). Private-key partners use `{ "Url": ..., "Username": ..., "PrivateKey": "..." }` (RSA / Ed25519) instead of `Password`. Secrets are encrypted with `DataKey`.
-3. **The shared `SftpPoller` Lambda** (one for the whole stack, multi-partner) — see §5.6 for the runtime contract.
-4. **An optional `EventBridge::Scheduler::Schedule`** per partner that opted into recurring polling. The schedule's input event matches §6.7 verbatim and includes a deterministic `runId = <partner>-<YYYY>-<MM>-<DD>-<HH>` so concurrent polls deduplicate at the listing level.
-5. **One CloudWatch Logs group per connector** (`/aws/transfer/connector/<connectorId>`) with 30-day retention.
+  - `SftpConfig.TrustedHostKeys`: SHA-256 fingerprints of the partner's expected host keys (rotated via the runtime update route; never elided to skip verification).
+2. **One Connect-owned AWS Secrets Manager secret container per partner**, keyed by the canonical contract `{ "Url": "sftp://...", "Username": "...", "Password": "..." }` (per `build-inbound-sftp-workflows` Phase 2). Private-key partners use `{ "Url": ..., "Username": ..., "PrivateKey": "..." }` (RSA / Ed25519) instead of `Password`. Runtime APIs either import a caller-supplied `secret_arn` or create a Connect-namespaced secret such as `/connect/vendors/<vendor_name>/sftp` with only non-secret bootstrap metadata. The operator fills or rotates the secret value through Connect's `PUT/PATCH /vendors/{vendor_name}/credentials` route before any live transfer is considered ready. Secrets are encrypted with `DataKey`.
+3. **An optional EventBridge Scheduler schedule** per partner that opted into recurring polling. The schedule's input event matches §6.7 verbatim and includes a deterministic `runId = <partner>-<YYYY>-<MM>-<DD>-<HH>` so concurrent polls deduplicate at the listing level.
+4. **Connector metadata on the partner row**, including `sftp_connector_id`, `sftp_secret_arn`, default directories/prefixes, schedule expression/state, validation timestamps, and transfer concurrency.
 
-The mapping between `vendor_name` (Connect's identifier) and the Transfer Family `connectorId` lives on the partner row (`sftp_connector_id`); the per-vendor secret ARN and target prefix are also stored there. Partner-specific values (host, secret ARN, remote directory, target bucket prefix, target schedule, transfer concurrency) are **never hardcoded** in worker source — they flow through the runtime config contract in §6.7. CDK reads them from `cdk.json` context (`connect:sftp:partners`) at synth time and stamps each connector with `sc:sftp:vendor_name=<vendor>` so `SftpPoller` and the test-connection route can locate the right resources by tag.
+The mapping between `vendor_name` (Connect's identifier) and the Transfer Family `connectorId` lives on the partner row (`sftp_connector_id`); the per-vendor secret ARN and target prefix are also stored there. Partner-specific values (host, secret ARN or create-secret flag, remote directory, target bucket prefix, target schedule, transfer concurrency) are **never hardcoded** in worker source, never carried in CDK context, and never owned by Account — they flow through the runtime config contract in §6.7.
+
+SFTP schedules are created disabled by default unless the partner config explicitly sets `schedule_enabled_after_validation=true` and the partner row has `sftp_last_validated_at`. The required readiness path is: deploy/import the secret container, populate credentials through Connect's credential vault route, run `POST /vendors/{vendor_name}/sftp/test-connection`, verify a listing artifact and at least one configured transfer when applicable, then enable the schedule. Account never seeds or retrieves SFTP credentials.
 
 If a partner uses SFTP **only as a flow-driven outbound integration** (push files we generate to them), the same connector definition applies; the flow's `SFTP` step targets the same `SftpPoller` with `direction: "outbound"` (see §3.5.1).
 
@@ -215,7 +218,7 @@ The runtime is configured exclusively via env vars (read once on cold start; mis
 | `VENDORS_RESPONSES_BUCKET`                                                          | from CDK                             | Every worker that stages a response, the widget generator, the data-recovery API                   |
 | `DATA_KMS_KEY_ARN`                                                                  | from CDK                             | DDB column-level encryption helpers                                                                |
 | `BUILD_HASH`                                                                        | provided by deployer                 | Health-metric tagging                                                                              |
-| `SERVICE_API_KEY_ID` / `HEALTH_API_KEY_ID`                                          | provided by deployer                 | API Gateway usage-plan binding + `HealthApiKeyAuthorizer`                                          |
+| `SHARED_USAGE_PLAN_ID_SSM_PARAM` / `HEALTH_API_KEY_ID`                               | `/account/shared-usage-plan-id` / provided by deployer | Shared Usage Plan stage attachment + `HealthApiKeyAuthorizer`                                      |
 | `CREATION_OBJECTS_KEY_PREFIX`                                                       | `_flow_or_lookup_creations/anyflow/` | Async storage of large flow / lookup definitions during compilation                                |
 | `PRE_BATCHED_OBJECTS_PREFIX`                                                        | `_batch_raw_items_object_prefix/`    | Stage S3 input + output for `BatchInvocationStateMachine`                                          |
 | `PROXY_LINKS_PATH`                                                                  | `proxy-links`                        | Sub-path under the API where dynamic proxy resources are minted                                    |
@@ -368,7 +371,7 @@ The compiler (`lambda/services/flow-compiler/transformation.ts`) supports the fo
 | `POST_MULTIPART`, `PUT_MULTIPART`                         | `Post/PutMultipartWorker` (Lambda)                                                                                                                                                                                             | Multipart upload from spec or from a presigned source. **Lambda required** — native HTTP Tasks do not support `multipart/form-data` body construction.                                                                                                                                                                                                                                                                                                                                    |
 | `POST_BLOB`, `PUT_BLOB`                                   | `Post/PutBlobWorker` (Lambda)                                                                                                                                                                                                  | Form-data variants accepting a single file via `blob_url` (streamed via `undici` `Readable.from(response.body)`). **Lambda required** — streamed binary upload is not expressible in a native HTTP Task.                                                                                                                                                                                                                                                                                  |
 | `GET_FILE`                                                | `GetFileWorker` (Lambda)                                                                                                                                                                                                       | Stream a partner file → S3 → mint a presigned URL. **Lambda required** — large binary download must be staged in S3 to fit under the 256 KB SFN-output limit.                                                                                                                                                                                                                                                                                                                             |
-| `SFTP`                                                    | `SftpPoller` (AWS Transfer Family)                                                                                                                                                                                             | Listing-first ingress / egress over an `AWS::Transfer::Connector`. The compiler turns a `SFTP` task into a sync `LambdaInvoke` of `SftpPoller` with `{ vendor_name, connector_id, remote_directory, target_bucket, target_prefix, transfer_concurrency, direction }` (per §6.7). The worker calls `StartDirectoryListing`, polls `DescribeDirectoryListing`, reads the listing JSON from S3, dedupes file paths, fans out `StartFileTransfer`. **No in-process SSH client is permitted.** |
+| `SFTP`                                                    | `SftpPoller` (AWS Transfer Family)                                                                                                                                                                                             | Listing-first ingress / egress over a runtime-configured AWS Transfer Family connector. The compiler turns a `SFTP` task into a sync `LambdaInvoke` of `SftpPoller` with `{ vendor_name, connector_id?, remote_directory, target_bucket, target_prefix, transfer_concurrency, direction }` (per §6.7). The worker resolves connector metadata from `FlowsTable` when `connector_id` is absent, calls `StartDirectoryListing`, polls `DescribeDirectoryListing`, reads the listing JSON from S3, dedupes file paths, fans out `StartFileTransfer`. **No in-process SSH client is permitted.** |
 | `WAIT_FOR_TASK_TOKEN` (auto-injected by webhook)          | (Step Functions AWS SDK integration)                                                                                                                                                                                           | The compiler converts a `WebhookReference` step to `arn:aws:states:::aws-sdk:dynamodb:putItem.waitForTaskToken`, synchronously writes the pending `REQUEST#<request_id>` row to `FlowsTable`, and stores `request_id_expected_path`, `webhook_response_mapping`, `webhook_conditions`, `webhook_auth`, optional `non_blocking` & `processing_order` metadata on the flow row.                                                                                                                                                 |
 | `WIDGET`                                                  | `CreateWidgetWorker`                                                                                                                                                                                                           | Mints a partner widget HTML with the supplied template + render mapping; output goes into `vendors-responses-…/widgets/...`.                                                                                                                                                                                                                                                                                                                                                              |
 | `LINK_TRANSFORMATION`                                     | `CreateProxyLinkWorker` (and `CleanupApigwWorker`)                                                                                                                                                                             | Mints a `/proxy-links/<name>` API Gateway resource at runtime that 302s to the chosen URL; cleaned up at flow end.                                                                                                                                                                                                                                                                                                                                                                        |
@@ -482,11 +485,7 @@ type WebhookReferenceResource = {
   WebhookAuthentication?: { HeaderName: string; Secret: string };
   WebhookConditions?: Array<{ ValuePath: string; ExpectedValues: unknown[] }>;
   WebhookConditionsMatchAll?: boolean;        // default false → OR semantics
-  WebhookResponseMapping?: Record<
-    "Unauthorized" | "ConditionsMismatch" | "NoRunningFlow" | "NoReferenceFound"
-    | "InvocationExpired" | "InvocationTimeout" | "CannotContinue" | "CorruptState",
-    { StatusCode: number }
-  >;
+  WebhookResponseMapping?: WebhookResponseMapping;
   NonBlockingConfiguration?: { ProcessingOrder: "FIFO" | "LIFO" };
   SaveResponseToFile?: boolean;
   SaveOutputTo?: string;                      // defaults to "$.webhook_data"
@@ -578,6 +577,15 @@ All public routes are mounted under the API Gateway base path `/connector-jobs/`
 - `DELETE` deletes the selected credential bucket, removes any associated EventBridge Connection ARNs from the partner row, and idempotently deletes the matching `connect-<vendor_name>[-<product_name>][-<auth_profile>]` EventBridge Connections. 204 on success, 404 if the vendor is unknown.
 - `**PUT` / `PATCH` on `credentials` also synchronises the partner's EventBridge `Connection` resources** so native Step Functions HTTP Tasks (§5.8) can authenticate without code. The handler interprets well-known credential shapes — `{ basic: { username, password } }` → `BASIC` connection, `{ api_key: { header_name, value } }` → `API_KEY` connection, `{ oauth: { authorization_endpoint, client_id, client_secret, http_method?, oauth_http_parameters? } }` → `OAUTH_CLIENT_CREDENTIALS` connection — and idempotently creates / updates `connect-<vendor_name>[-<product_name>][-<auth_profile>]`. The connection ARN map is persisted on the partner row (`eventbridge_connection_arns`); deleting a credential bucket deletes the matching connection.
 - `GET /vendors/{vendor_name}/information` — returns `{ vendor_name, product_name?, credentials: { credentials: bool, "passed-credentials": bool }, eventbridge_connections: Record<auth_profile, { connection_arn, authorization_type, status }> }` (presence-only; never the values).
+
+### 4.2.1 SFTP connector configuration (`/vendors/{vendor_name}/sftp`)
+
+- `PUT /vendors/{vendor_name}/sftp` — create or replace the tenant-specific SFTP connector config. Body `{ mode: "create"|"import", connector_id?, url?, secret_arn?, trusted_host_keys: string[], default_remote_directory?, default_target_prefix?, transfer_concurrency?, schedule_expression?, schedule_enabled_after_validation?: boolean }`. `mode="create"` requires `url`, `secret_arn`, and host keys and calls `transfer:CreateConnector`; `mode="import"` requires `connector_id` and stores the imported connector id after `DescribeConnector` validates it. Writes SFTP fields onto the partner row.
+- `PATCH /vendors/{vendor_name}/sftp` — update non-secret connector metadata, trusted host keys, default directories, concurrency, or schedule settings. Connector updates call `transfer:UpdateConnector`; schedule updates call `scheduler:CreateSchedule|UpdateSchedule|DeleteSchedule` in `connect-sftp-schedules`.
+- `GET /vendors/{vendor_name}/sftp` — presence/configuration view: returns connector id, URL host, default directories/prefixes, schedule state, validation timestamps, and whether a secret is configured, but never secret values.
+- `DELETE /vendors/{vendor_name}/sftp` — disables/deletes the schedule, deletes Connect-created connectors when owned by Connect, preserves imported connectors unless `delete_imported_connector=true`, and clears SFTP fields from the partner row.
+
+These routes are the only place tenant-specific Transfer Family connector resources are created or imported. The pre-synthesized Marketplace bundle never encodes partner hostnames, connector ids, secret ARNs, schedules, directories, or concurrency settings.
 
 ### 4.3 Partner connectivity configurations (`/vendors/{vendor_name}/configurations[/{partner_configuration_id}]`)
 
@@ -693,7 +701,7 @@ Each route scopes its own dependency container so that a config error in an unre
 - **Webhooks router** depends on: `FlowsRepository`, `WebhookConditionEvaluator`, `XmlConverter`, `SfnClient` (for `SendTaskSuccess`), `HealthMetricClient`.
 - **Tokens router** depends on: `TokensRepository`.
 - **Static-IP router** depends on: the EC2 client + the two enable/disable SFN ARNs.
-- **SFTP router** depends on: `FlowsRepository` (to resolve the partner's `sftp_connector_id`), `LambdaClient` (for invoking `SftpPoller`), and the bounded `SftpTestConnectionRequest` schema.
+- **SFTP router** depends on: `FlowsRepository` (to create/import/update/delete the partner's `sftp_connector_id` and runtime metadata), `TransferFamilyClient`, `SchedulerClient`, `LambdaClient` (for invoking `SftpPoller`), and the bounded SFTP config/test schemas.
 
 Containers are constructed **once per Lambda warm container**, not per request, so caches (e.g. SSM-backed config) survive across invocations.
 
@@ -965,6 +973,22 @@ CannotContinueFlowCorruptState     → 4022
 
 Each code has a default HTTP status and a per-flow override slot inside `webhook_response_mapping`.
 
+```ts
+type WebhookErrorCode =
+  | "NoRequestIdFoundInPayload"
+  | "Unauthorized"
+  | "ConditionsMismatch"
+  | "RequestIdNotFoundNoPendingFlow"
+  | "RequestIdAlreadyProcessed"
+  | "CannotContinueFlowBase"
+  | "CannotContinueFlowTimeout"
+  | "CannotContinueFlowExpired"
+  | "CannotContinueFlowCorruptState"
+  | "Default";
+
+type WebhookResponseMapping = Partial<Record<WebhookErrorCode, { StatusCode: number }>>;
+```
+
 ### 6.2 Allowed entities (constructor)
 
 ```ts
@@ -1027,6 +1051,18 @@ type WebhookReferenceRow = {
 ### 6.5 Flow row (DDB)
 
 ```ts
+type WebhookInfo = {
+  request_id_expected_path: string;
+  non_blocking: boolean;
+  processing_order?: "FIFO" | "LIFO";
+  save_webhook_to_file?: boolean;
+  webhook_response_mapping?: WebhookResponseMapping;
+  webhook_conditions?: Array<{ ValuePath: string; ExpectedValues: unknown[] }>;
+  webhook_conditions_match_all?: boolean;     // default false -> OR semantics
+  webhook_auth?: { HeaderName: string; Secret: string };
+  save_output_to?: string;                    // defaults to "$.webhook_data"
+};
+
 type FlowRow = {
   pk: `VENDOR#${string}` | `VENDOR#${string}#${string}`;
   sk: `FLOW#${string}` | "VENDOR";       // "VENDOR" sk holds the partner-level row
@@ -1045,10 +1081,14 @@ type FlowRow = {
   version?: string;
   // SFTP fields live on the VENDOR row (sk: "VENDOR"):
   sftp_connector_id?: string;            // AWS::Transfer::Connector connectorId
+  sftp_connector_ownership?: "CONNECT_MANAGED" | "IMPORTED";
   sftp_secret_arn?: string;              // Secrets Manager ARN holding Url/Username/Password
   sftp_default_remote_directory?: string;
   sftp_default_target_prefix?: string;
   sftp_schedule_expression?: string;     // EventBridge Scheduler expression (optional)
+  sftp_schedule_name?: string;
+  sftp_schedule_enabled?: boolean;
+  sftp_last_validated_at?: string;
   // EventBridge Connection ARNs that back native Step Functions HTTP Tasks (§5.8) live on the VENDOR row:
   eventbridge_connection_arns?: Record<
     string,                              // auth_profile, e.g. "default", "oauth", "basic"
@@ -1126,7 +1166,7 @@ The shape is deliberately a strict superset of what `build-inbound-sftp-workflow
 
 ### 7.1 Authentication & API-key hygiene
 
-- All public mutating routes are API-key-gated — API Gateway enforces the `x-api-key` header, and the deployer's `ApiUsagePlanCustomResource` binds the supplied `SERVICE_API_KEY_ID` to a per-subdomain usage plan. `INVALID_API_KEY` returns the canonical `{"url": ".../get-started", "message": "This key is not valid for this service."}` payload.
+- All public mutating routes are API-key-gated — API Gateway enforces the `x-api-key` header against the Bootstrap-managed shared tenant Usage Plan. Connect's custom resource only attaches this API stage to that shared plan; it does not create a plan or bind an API key. `INVALID_API_KEY` returns the canonical `{"url": ".../get-started", "message": "This key is not valid for this service."}` payload.
 - Webhooks bypass the SOCAPITAL API key and rely on the partner's `webhook_auth.Secret` for authentication. The router still surfaces `event.requestContext.identity.apiKey` (the originating product's API key) so health metrics keep their attribution.
 - `HealthApiKeyAuthorizer` is a separate Lambda authoriser that accepts **either** the service API key **or** the upstream `HEALTH_API_KEY_ID` — used by intra-platform health endpoints.
 - Secrets (API keys, partner credentials, tokens) are **never** logged. The Powertools `Logger` is wrapped with a `redactPaths(['credentials', 'passed_credentials', 'token_value', 'api_key', 'x-api-key', 'webhook_auth.Secret'])` middleware enforced in unit tests (per `cloud-aws-primary` non-negotiable #5).
@@ -1238,9 +1278,9 @@ justfile
 - Node.js 22+ (Lambda runtime is 24).
 - pnpm.
 - AWS CLI / CDK with permissions for VPC, EC2 (subnets, EIP, NAT), Lambda, Step Functions, API Gateway, S3, DynamoDB (with KMS), IAM, CloudFormation, CloudWatch Logs, SSM, **AWS Transfer Family** (`transfer:`* for connector + listing + transfer), **Secrets Manager** (per-partner SFTP credentials), and **EventBridge Scheduler** (per-partner SFTP polling cadence). Deploy region is supplied by the installer/deployer context; Connect does not hardcode a default region.
-- Pre-provisioned `Subdomain` (custom domain bound to an ApiGatewayV2 mapping under `/connector-jobs`).
-- Pre-issued `SERVICE_API_KEY_ID` and `HEALTH_API_KEY_ID` (forwarded by the deployer through CDK context).
-- Per SFTP partner, the contract from `build-inbound-sftp-workflows` Phase 1: hostname / URL, username + password (or private key) **placed in Secrets Manager before deploy** with the canonical `{Url, Username, Password}` keys, expected remote directory, target prefix, schedule expression (if recurring), transfer concurrency cap, and the SHA-256 fingerprints of the partner's host keys.
+- Pre-provisioned `Subdomain` (Bootstrap-created API Gateway REST custom domain with Connect's `AWS::ApiGateway::BasePathMapping` under `/connector-jobs`).
+- Pre-created shared tenant Usage Plan id at `/account/shared-usage-plan-id` and pre-issued `HEALTH_API_KEY_ID` (forwarded by the deployer through CDK context).
+- SFTP partner connectors are configured after deploy through `PUT/PATCH /vendors/{vendor_name}/sftp`; the Marketplace bundle remains tenant-agnostic and carries no partner hostnames, connector ids, secret ARNs, directories, schedules, or concurrency caps.
 
 ### 8.2 Deploy / destroy
 
@@ -1299,13 +1339,13 @@ For request signing the README ships a `bash`/`zsh` `awscurl` helper that wraps 
 5. **Configuration**: `lambda/config/{env,sfn,kms,api-gateway,sftp}.ts` plus per-service config readers tied to the env vars listed in §2.4. Required vars must throw at startup; optional vars must default per §2.4.
 6. **Services** (one file each in `lambda/services/`): `FlowsRepository`, `PartnerConfigurationsRepository`, `TokensRepository`, `CredentialVaultService`, `EventBridgeConnectionRegistry`, `FlowCompiler` (with sub-modules `transformation`, `authorization`, `dry-run`, `creation-and-saving`, `compiler/{const,parameters,to-vendor,general,map-state,lambda-arns,dynamicity-switcher,instructions}`), `WebhookConditionEvaluator`, `WebhookErrorCodes`, `BatchInputPreparer`, `BatchPostProcessor`, `WidgetService`, `ProxyLinkManager`, `S3CreationStore`, `SftpConnectorRegistry`, `HealthMetricClient`, `MetricsBuffer`, plus a composition module `services/index.ts` that exports per-router and per-handler dependency containers.
 7. **Workers** (one file each in `lambda/workers/`): one per `Type` in §3.5.1 — `post-multipart`, `put-multipart`, `post-blob`, `put-blob`, `post-base64`, `post-form-url-encoded`, `get-file`, `widget`, `link-transformation`, `progressive-waiting`, `token-management-get`, `token-management-set`, `fake-range-creator`, `process-fail-states`, `reply-back`, `dry-run`, `get-credentials`, `get-authorization`, `token-management-auth`, `send-health-metric`, `cleanup-apigw`, plus the streaming/static-IP HTTP workers described in §5.9. Each worker imports `tracer.captureLambdaHandler` and `logger.injectLambdaContext`.
-8. **SFTP fabric**: `lambda/sftp/poller.ts` (`SftpPoller`, listing-first per `build-inbound-sftp-workflows`), `lambda/sftp/connector-config.ts` (per-partner config loader from CDK context), and the CDK construct in `lib/sftp-connector.ts` that mints one `AWS::Transfer::Connector` + one Secrets Manager entry + one IAM access role + one EventBridge `Schedule` per SFTP partner.
+8. **SFTP fabric**: `lambda/sftp/poller.ts` (`SftpPoller`, listing-first per `build-inbound-sftp-workflows`), `lambda/sftp/connector-config.ts` (runtime per-partner config loader from `FlowsTable`), and route/service modules that create/import/update/delete AWS Transfer Family connectors plus EventBridge schedules at runtime. No CDK construct mints per-partner connectors in the pre-synthesized bundle.
 9. **Compilation pipeline**: `lambda/flow-creation/{transform-flow,transform-lookup,add-pass-through,add-call-api,add-call-token-management,add-credentials,add-dry-run,validate-asl,create-runtime-state-machine,update-runtime-state-machine,save-flow}.ts`.
 10. **Static-IP fabric**: `lambda/static-ip/{ec2-common/{eip,nat,internet,subnet,route,tag-transformers}.ts, handlers/{create,delete,process-errors}.ts}` and the two ASL definitions assembled in CDK via `sfn.StateMachine.fromString(...)`.
 11. **HTTP layer**: `lambda/http/{request-context.ts, responses.ts}`, `lambda/logging/{powertools.ts, runtime.ts}`, the per-route routers (partners, credentials, configurations, constructor, jobs, batch, webhooks, tokens, static-ip, **sftp**), and `lambda/http/router.ts` mounting them with `prefix="/"`, then `lambda/handler.ts`.
 12. **OpenAPI generator**: `lambda/api/definitions.ts` and `scripts/generate-openapi.ts`. `pnpm api:spec` writes `docs/openapi.json` (the generated spec is checked in).
-13. **CDK stacks**: `lib/network-stack.ts` and `lib/connect-stack.ts` per §2.2 and §2.3, then `bin/app.ts`. Add a `cost-tagging` aspect that stamps `sc:service:name=connect` and `sc:product:name=Connect` on every taggable resource. SFTP partner config feeds in via `cdk.json` context (`connect:sftp:partners`) — partner-specific values are **never hardcoded** in source.
-14. **Custom resources (CDK `AwsCustomResource` or Lambda-backed)**: `ApiUsagePlanCustomResource`, `ApiGatewayLogCustomResource`, `ProxyResourceCleanupCustomResource`, `HealthApiKeyAuthorizer`.
+13. **CDK stacks**: `lib/network-stack.ts` and `lib/connect-stack.ts` per §2.2 and §2.3, then `bin/app.ts`. Add a `cost-tagging` aspect that stamps `sc:service:name=connect` and `sc:product:name=Connect` on every taggable resource. The CDK app must not read SFTP partner config from `cdk.json`; partner-specific SFTP values enter only through runtime APIs.
+14. **Custom resources (CDK `AwsCustomResource` or Lambda-backed)**: `ApiUsagePlanStageAttachmentCustomResource`, `ApiGatewayLogCustomResource`, `ProxyResourceCleanupCustomResource`, `HealthApiKeyAuthorizer`.
 15. **Local Step Functions**: `scripts/start-stepfunctions-local.sh`, `setupTests.ts`, `vitest.config.ts`, `justfile` (`just test` orchestrates docker + vitest), and a CI caller wired to the shared SOCAPITAL workflows.
 16. **Lexicon + Dashboard registration**: every metric introduced in §7.2 MUST land in `cloudwatch-metrics.json` in the [Lexicon](https://github.com/Spring-Oaks-Capital-LLC/lexicon) repo and on the [Main Dashboard](https://github.com/Spring-Oaks-Capital-LLC/main-dashboard) **in the same PR cycle** (per `observability-metrics`).
 17. **Smoke tests**: replicate the seven release-validation steps from §8.3 in the integration suite under `test/integration`, including the `build-inbound-sftp-workflows` Phase 5 live listing-and-transfer check.
