@@ -30,7 +30,7 @@ Out-of-band, the service also exposes a **Step Functions state machine** (the **
 
 - Persist does **not** expose a public read API beyond Gremlin. Lexicon-aware projection / search lives elsewhere.
 - Persist does **not** provide the legacy document-store surface (`/persistence/transactions`, `/persistence/collections`) or accept API-key authentication. Callers use SigV4 against `/persist/*`; deployment correlation and log records stay in the owning service's storage.
-- Persist does **not** synthesise its own VPC certificates or domains. Custom domains are the caller's responsibility.
+- Persist does **not** synthesise its own VPC certificates or domains. Bootstrap creates the tenant's shared API Gateway custom domain before product deployment; Persist owns only its `/persist` mapping to that existing domain.
 - Persist does **not** own the SOCAPITAL lexicon document; it consumes a lexicon JSON from S3 referenced by an SSM parameter.
 
 ---
@@ -106,7 +106,6 @@ All Lambdas are `NodejsFunction` with `runtime=NODEJS_24_X`, `architecture=ARM_6
 | `PersistAsyncBulkAggregateWorker`   | 1024   | 15 min  | ✓   | `FilteredBatchQueue` SQS (`batchSize=6`, similar batching window) | Stage-2 ingest aggregator |
 | `GremlinAsyncValidate`              | 256    | 60 s    | ✓   | Step Functions `LambdaInvoke`                 | Validate-and-set-running for async Gremlin |
 | `GremlinAsyncFailureHandler`        | 256    | 60 s    | ✓   | Step Functions catch                          | Persist failure terminal state |
-| `PersistAsyncGremlinWorker`         | 1024   | 15 min  | ✓   | (retained, no SQS source — Pipes routes to Step Functions instead) | Lambda fallback path for async Gremlin worker |
 | `PersistWorkflowStart`              | 512    | 30 s    | —   | Step Functions                                | Decode/normalise workflow input |
 | `PersistWorkflowCostPredictor`      | 512    | 60 s    | —   | Step Functions                                | List S3 prefixes, compute cost estimate |
 | `PersistWorkflowValidate`           | 1024   | 15 min  | —   | Step Functions Distributed Map item processor | Per-CSV-object lexicon validation |
@@ -121,6 +120,7 @@ Plus an **ECS Fargate** task (ARM64, 1 vCPU / 2048 MB, 120 s stop timeout) packa
 
 - **HTTP API** (`HttpApi` `PersistApi`) with default stage and CORS pre-flight for `*`. Routes:
   - `/persist` and `/persist/{proxy+}` for all methods → `HttpLambdaIntegration(PersistHandler)` with `HttpIamAuthorizer`.
+- **API Gateway custom domain mapping** under base path `persist` against the Bootstrap-created tenant custom domain passed by Deployer (`AWS::ApiGatewayV2::ApiMapping` for the HTTP API). Persist must not create the shared API Gateway `DomainName`; Bootstrap creates it before product deployment.
 - **EventBridge Pipe** (`GremlinAsyncPipe`) source = `GremlinAsyncQueue` (`batchSize: 1`), target = Step Functions `GremlinAsyncStateMachine` (`FIRE_AND_FORGET`). The submission flow is therefore SQS → EventBridge Pipe → Step Functions, **not** SQS → Lambda.
 - **Step Functions / GremlinAsyncStateMachine**:
   ```
@@ -184,7 +184,7 @@ The runtime is configured exclusively via env vars (read once on cold start; mis
 | `GREMLIN_ASYNC_JOBS_TABLE_NAME`             | table name    | DDB-backed job store                         |
 | `GREMLIN_ASYNC_RESULTS_BUCKET` / `GREMLIN_ASYNC_RESULTS_PREFIX` | bucket / `gremlin-async/results` | Result store |
 | `GREMLIN_ASYNC_JOB_TTL_SECONDS`             | `604800` (7 d)| DDB TTL                                      |
-| `GREMLIN_ASYNC_EXECUTION_TIMEOUT_MS`        | `840000` (Lambda) / `3600000` (Fargate) | Execute Gremlin timeout |
+| `GREMLIN_ASYNC_EXECUTION_TIMEOUT_MS`        | `3600000` | Execute Gremlin timeout |
 | `GREMLIN_ASYNC_MAX_EXECUTION_TIMEOUT_MS`    | matches above | Hard ceiling                                 |
 | `GREMLIN_ASYNC_STATUS_REQUEST_TIMEOUT_MS`   | `30000`       | GetGremlinQueryStatus                        |
 | `GREMLIN_ASYNC_CANCEL_REQUEST_TIMEOUT_MS`   | falls back to status timeout | CancelGremlinQuery             |
@@ -417,7 +417,6 @@ This worker is **only** consumed by the workflow (§5.4); it accepts both legacy
   - Calls Neptune Data API `ExecuteGremlinQuery({ gremlinQuery })` with a 14-min request timeout (Lambda) / 1-h timeout (Fargate). Failures map to `GremlinAsyncExecutionError` or `GremlinAsyncExecutionTimeoutError` and become DDB terminal `FAILED`/`TIMEOUT`.
   - On success: re-read job to honour late `cancelRequested`. If still running, write the result document to S3 (`gremlin-async/results/YYYY/MM/DD/<requestId>.json`) including a metadata snapshot, then `compareAndSet(RUNNING → SUCCEEDED)` with `resultS3Uri`/`resultSizeBytes`/`neptuneQueryId`. Send `SendTaskSuccess`. If a write fails after Neptune already executed, fall back to terminal `FAILED` with the original `neptuneQueryId` preserved.
   - Step Functions catch (`HandleFailure` Lambda) writes a terminal failure if any unexpected error escapes the container.
-- **Lambda fallback worker** (`PersistAsyncGremlinWorker`) is retained but no longer SQS-triggered — kept for rollback / diagnostics, with the same logic as the Fargate path but constrained to a 14-min execution budget.
 
 ### 5.3 Step Functions: GremlinAsyncStateMachine
 
