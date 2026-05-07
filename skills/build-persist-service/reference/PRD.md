@@ -8,7 +8,7 @@ Authoritative blueprint for re-creating the **Persist** graph-persistence servic
 
 ### 1.1 Mission
 
-Persist is a serverless graph-persistence layer for SOCAPITAL that fronts an Amazon Neptune cluster behind a SigV4-authenticated HTTPS API. It accepts SOCAPITAL-lexicon-compliant graph data in two shapes (GraphSON v3 documents and Neptune bulk-load CSV) and exposes both synchronous and asynchronous Gremlin query channels.
+Persist is a serverless graph-persistence layer for SOCAPITAL that fronts an Amazon Neptune cluster behind a SigV4-authenticated HTTPS API and an EventBridge fact-ingestion surface. It accepts SOCAPITAL-lexicon-compliant graph data in two shapes (GraphSON v3 documents and Neptune bulk-load CSV) and exposes both synchronous and asynchronous Gremlin query channels.
 
 ### 1.2 Primary user surface
 
@@ -24,7 +24,10 @@ A single AWS API Gateway HTTP API at `/persist/*`, IAM-authorised, with the foll
 | `GET`    | `/persist/gremlin-async/:requestId` | Get terminal/in-flight job state and metadata                                                          |
 | `DELETE` | `/persist/gremlin-async/:requestId` | Idempotent cancel; persists `cancelRequested` intent or terminal `CANCELLED` depending on state        |
 
-Out-of-band, the service also exposes a **Step Functions state machine** (the **Neptune CSV workflow**) for bulk CSV ingest from S3.
+Out-of-band, the service also exposes:
+
+- An **EventBridge rule** for `GraphFactProduced` events emitted by other SOCAPITAL products; Persist validates the embedded GraphSON v3 payload and routes it through the async GraphSON ingest path.
+- A **Step Functions state machine** (the **Neptune CSV workflow**) for bulk CSV ingest from S3.
 
 ### 1.3 Non-goals
 
@@ -32,6 +35,7 @@ Out-of-band, the service also exposes a **Step Functions state machine** (the **
 - Persist does **not** provide the legacy document-store surface (`/persistence/transactions`, `/persistence/collections`) or accept API-key authentication. Callers use SigV4 against `/persist/*`; deployment correlation and log records stay in the owning service's storage.
 - Persist does **not** synthesise its own VPC certificates or domains. Bootstrap creates the tenant's shared API Gateway custom domain before product deployment; Persist owns only its `/persist` mapping to that existing domain.
 - Persist does **not** own the SOCAPITAL lexicon document; it consumes a lexicon JSON from S3 referenced by an SSM parameter.
+- Persist does **not** consume arbitrary EventBridge traffic. It subscribes only to versioned graph-fact events that carry GraphSON v3 and pass the same lexicon and integrity rules as HTTP ingest.
 
 ---
 
@@ -45,7 +49,7 @@ The CDK app is composed of two stacks deployed in order:
 bin/app.ts
 ├── NeptuneStack    # VPC + Neptune cluster + Lambda SG + bulk-load IAM role
 └── PersistStack    # All Lambdas, S3 buckets, SQS queues, DynamoDB, ECS Fargate,
-                    # Step Functions, EventBridge Pipes, HTTP API + IAM authoriser
+                    # Step Functions, EventBridge rules/pipes, HTTP API + IAM authoriser
 ```
 
 `PersistStack.addDependency(neptuneStack)` ensures the database deploys first.
@@ -84,6 +88,7 @@ All buckets enforce `BLOCK_ALL` public access, SSL-only, S3-managed encryption, 
 | `IngestAsyncQueue` (GraphSON async ingest)      | 2 d       | 30 min  | `IngestAsyncDlq`, 5   |
 | `FilteredBatchQueue` (stage-2 aggregator input) | 2 d       | 30 min  | `FilteredBatchDlq`, 5 |
 | `GremlinAsyncQueue` (async Gremlin submissions) | 4 d       | 15 min  | `GremlinAsyncDlq`, 5  |
+| `GraphFactEventDlq` (EventBridge target DLQ)    | 14 d      | n/a     | n/a                   |
 
 Each DLQ has a 4–14-day retention. SQS-managed encryption, `enforceSSL: true` everywhere.
 
@@ -102,6 +107,7 @@ All Lambdas are `NodejsFunction` with `runtime=NODEJS_24_X`, `architecture=ARM_6
 | Function                            | Memory | Timeout | VPC | Trigger                                       | Purpose |
 | ----------------------------------- | ------ | ------- | --- | --------------------------------------------- | ------- |
 | `PersistHandler`                    | 512    | 30 s    | ✓   | API Gateway HTTP API                          | API router for all `/persist/*` routes |
+| `PersistGraphFactHandler`           | 512    | 30 s    | —   | EventBridge rule for `GraphFactProduced`      | Validate graph-fact events and enqueue them for async GraphSON ingest |
 | `PersistAsyncBulkWorker`            | 1024   | 15 min  | ✓   | `IngestAsyncQueue` SQS (`batchSize=400`, `maxBatchingWindow=1m` prod / `3s` test, `maxConcurrency=10`, `reportBatchItemFailures`) | Stage-1 ingest worker |
 | `PersistAsyncBulkAggregateWorker`   | 1024   | 15 min  | ✓   | `FilteredBatchQueue` SQS (`batchSize=6`, similar batching window) | Stage-2 ingest aggregator |
 | `GremlinAsyncValidate`              | 256    | 60 s    | ✓   | Step Functions `LambdaInvoke`                 | Validate-and-set-running for async Gremlin |
@@ -121,6 +127,7 @@ Plus an **ECS Fargate** task (ARM64, 1 vCPU / 2048 MB, 120 s stop timeout) packa
 - **HTTP API** (`HttpApi` `PersistApi`) with default stage and CORS pre-flight for `*`. Routes:
   - `/persist` and `/persist/{proxy+}` for all methods → `HttpLambdaIntegration(PersistHandler)` with `HttpIamAuthorizer`.
 - **API Gateway custom domain mapping** under base path `persist` against the Bootstrap-created tenant custom domain passed by Deployer (`AWS::ApiGatewayV2::ApiMapping` for the HTTP API). Persist must not create the shared API Gateway `DomainName`; Bootstrap creates it before product deployment.
+- **EventBridge rule** (`GraphFactProducedRule`) on the tenant event bus. Pattern: `{ "detail-type": ["GraphFactProduced"], "detail": { "graphson_format": ["graphson-v3"] } }`. Target: `PersistGraphFactHandler`, with bounded EventBridge retry policy and `GraphFactEventDlq` as the target DLQ.
 - **EventBridge Pipe** (`GremlinAsyncPipe`) source = `GremlinAsyncQueue` (`batchSize: 1`), target = Step Functions `GremlinAsyncStateMachine` (`FIRE_AND_FORGET`). The submission flow is therefore SQS → EventBridge Pipe → Step Functions, **not** SQS → Lambda.
 - **Step Functions / GremlinAsyncStateMachine**:
   ```
@@ -139,6 +146,7 @@ Plus an **ECS Fargate** task (ARM64, 1 vCPU / 2048 MB, 120 s stop timeout) packa
 - Workers that emit task callbacks have `states:SendTaskSuccess` / `states:SendTaskFailure` on `*` (Step Functions does not support resource-level constraints here).
 - The Glue start step uses the AWS-required `glue:* on *` (Step Functions optimised integration).
 - API Gateway routes use `HttpIamAuthorizer`; every caller must SigV4-sign `execute-api` requests.
+- `PersistGraphFactHandler` can read the lexicon object, write async payloads to `IngestAsyncPayloadBucket`, and send messages to `IngestAsyncQueue`. The EventBridge rule can invoke only this handler and write failed deliveries to `GraphFactEventDlq`.
 
 ### 2.4 Configuration surface (env vars)
 
@@ -242,7 +250,13 @@ The full request body for ingest/validate is wrapped:
 }
 ```
 
-### 3.3 Lexicon (single source of truth)
+### 3.3 Lexicon (single source of truth and shared ontology)
+
+The SOCAPITAL lexicon is the shared ontology for graph data across products. Persist treats it as the contract that gives graph labels, relationships, and properties stable semantic meaning, so independently deployed products can write and read interconnected data without inventing local vocabulary or coupling directly to Neptune implementation details.
+
+Persist enforces the lexicon at every write boundary. GraphSON ingest, GraphSON async ingest, validation-only requests, and Neptune CSV workflow validation all use lexicon rules to reject unknown entity types, unknown relationships, missing required properties, invalid enum values, invalid formats, and endpoint-label mismatches before persistence starts. Gremlin remains the only public read surface in this PRD, but queries are expected to use lexicon-defined labels and properties so downstream readers operate on the same vocabulary as writers.
+
+Persist does **not** own lexicon governance. The lexicon document is produced and versioned outside this service; Persist consumes the approved JSON, caches it briefly, and fails closed when it cannot refresh. Request-scoped candidate lexicons exist to validate proposed ontology changes before they are promoted, not to let callers bypass the canonical schema.
 
 The lexicon JSON document lives in S3 (URI in SSM `/lexicon/data-uri`). It declares `vertices[]` and `edges[]` rules. Each rule supports:
 
@@ -294,6 +308,39 @@ The HTTP layer is the authoritative tag-to-status mapper. Each error type is a s
 | 503  | `NeptuneConnectionError`, `NeptuneRetriableError`, `S3PayloadStoreError`, `SqsEnqueueError`, `GremlinAsyncJobStoreError`, `GremlinAsyncResultStoreError`, `GremlinAsyncExecutionError`, `GremlinAsyncExecutionTimeoutError`, `GremlinAsyncCancelError` |
 
 The router additionally **sanitises** GraphSON error payloads on the `/ingest` path (e.g. `GremlinExecutionError` is converted into a generic `Internal Server Error` to avoid leaking query text to callers).
+
+### 3.7 EventBridge `GraphFactProduced` event
+
+Products that want Persist to store graph facts asynchronously publish a versioned EventBridge event instead of writing directly to Neptune. The event detail embeds the same GraphSON v3 vertex/edge objects accepted by §3.2, but omits the outer `tinker:graph` wrapper because the EventBridge envelope supplies the product event context.
+
+```json
+{
+  "source": "shorturl",
+  "detail-type": "GraphFactProduced",
+  "detail": {
+    "schema_version": "1.0",
+    "graphson_format": "graphson-v3",
+    "fact_type": "short_url.visited",
+    "entity_types": ["web_visit", "debt"],
+    "idempotency_key": "shorturl:evt_123",
+    "graphson": {
+      "vertices": ["<g:Vertex GraphSON v3 object>"],
+      "edges": ["<g:Edge GraphSON v3 object>"]
+    }
+  }
+}
+```
+
+Contract rules:
+
+- `source` is the producing product namespace (`shorturl`, `connect`, `payments`, etc.) and must be non-empty.
+- `detail-type` must be exactly `GraphFactProduced`.
+- `schema_version` must be exactly `"1.0"` for this contract version.
+- `graphson_format` must be exactly `"graphson-v3"`.
+- `fact_type` is a namespaced event fact, e.g. `short_url.visited`; it is used for routing, logging, and downstream audit.
+- `entity_types` names the lexicon entity labels represented by the fact. Persist logs this metadata, but the labels inside the GraphSON payload remain authoritative and are validated against the lexicon.
+- `idempotency_key` is producer-stable for the logical fact. Replays of the same key and graph must be safe; deterministic graph hashing prevents duplicate vertices/edges, and the key is carried through logs and async payload metadata for audit.
+- `graphson.vertices` and `graphson.edges` are transformed internally into the canonical `{ "@type": "tinker:graph", "@value": { ... } }` shape before validation and persistence.
 
 ---
 
@@ -365,7 +412,7 @@ The container is constructed **once per router**, not per request, so the lexico
   - PUT vertices/edges CSV to `s3://<NEPTUNE_BULK_BUCKET>/bulk-load/YYYY/MM/DD/<batchId>/{vertices,edges}.csv` and start the Neptune bulk load (`StartLoaderJob`, see §5.5).
   - Wait for terminal status. On `LOAD_FAILED` with **only** `SINGLE_CARDINALITY_VIOLATION` for `created_at` and zero `parsingErrors`/`datatypeMismatchErrors`, treat as **effective success** (counted in `toleratedCreatedAtConflictCount`, normalised status `LOAD_COMPLETED_WITH_TOLERATED_CREATED_AT_CONFLICTS`).
   - Per-token bookkeeping: aggregate successful `requestIds` per `task_token` and call `sendTaskSuccess` once per token; on permanent load failure, call `sendTaskFailure` (one per terminal record). Retryable records re-emit as `batchItemFailures`.
-  - Publish CloudWatch metrics `vertices_ingested` / `edges_ingested` with dimension `ingest_method=async_ingest`.
+  - Publish CloudWatch metrics `vertices_ingested` / `edges_ingested` with dimension `ingest_method=async_ingest` for HTTP-originated async payloads or `eventbridge_graph_fact` for EventBridge-originated payloads.
 
 #### 5.1.2 Stage-2 — `PersistAsyncBulkAggregateWorker`
 
@@ -375,6 +422,15 @@ This worker is **only** consumed by the workflow (§5.4); it accepts both legacy
   - **Workflow (`schemaVersion=2`)**: fetch each `source_prefix`'s phase CSV from S3 (`vertices.csv` or `edges.csv`), merge with widened scalar types, upload merged file under `bulk-load-aggregate/YYYY/MM/DD/<batchId>-<executionId>-<phase>/<phase>.csv`, then start a single bulk load (`edgeOnlyLoad: phase==='edges'`). On success, `recordIngestCounts({method:"async_csv_upload", phase, vertices/edges})` and `WorkflowSummaryService.writeSummary(...)` per request, then `sendTaskSuccess` per task token. Cardinality of created_at conflicts is preserved.
   - **GraphSON (`schemaVersion=1`)**: same pattern but loads vertices first then edges. If both merged sets are empty, send a `skipped: true` callback to all tokens.
 - Failure handling: classify retryable vs terminal records by receive count; emit `batchItemFailures` for retryable, send task-failure callbacks for terminal.
+
+#### 5.1.3 EventBridge fact ingest
+
+- `PersistGraphFactHandler` receives `GraphFactProduced` events from EventBridge and validates the envelope/detail contract in §3.7 before any side effect.
+- The handler wraps `detail.graphson` into the canonical GraphSON ingest body, then runs the same schema, integrity, and lexicon validation used by `/persist/ingest-async`.
+- On success, it stores the validated payload in `IngestAsyncPayloadBucket` and sends a `schemaVersion="2"` message to `IngestAsyncQueue`, so EventBridge-originated facts share the same Stage-1/Stage-2 bulk ingest machinery as HTTP async ingest.
+- The async payload metadata includes the EventBridge `id`, `source`, `fact_type`, `entity_types`, and `idempotency_key` so logs, S3 payloads, queue messages, and CloudWatch metrics can be correlated back to the producing product event.
+- Handler failures are surfaced to EventBridge. EventBridge retries according to the rule target policy and then delivers exhausted events to `GraphFactEventDlq`.
+- The resulting Stage-1 ingest publishes the same `vertices_ingested` / `edges_ingested` metrics as async ingest, with `ingest_method=eventbridge_graph_fact`.
 
 ### 5.2 Async Gremlin (`POST /persist/gremlin-async`, `GET …`, `DELETE …`)
 
@@ -550,7 +606,9 @@ A custom HTTPS client signed with SigV4 for the `/loader` endpoint:
 
 ```ts
 // Stage-1 inbound (GraphSON async ingest)
-{ schemaVersion: "2", requestId: string, s3_uri: string, task_token?: string }
+{ schemaVersion: "2", requestId: string, s3_uri: string, task_token?: string,
+  metadata?: { eventId?: string, source?: string, factType?: string,
+               entityTypes?: string[], idempotencyKey?: string } }
 
 // Stage-1 → Stage-2 (GraphSON path)
 { schemaVersion: "1", batchId: string, source_prefix: "s3://…/<batchId>/",
@@ -565,7 +623,18 @@ A custom HTTPS client signed with SigV4 for the `/loader` endpoint:
 Stage-1 GraphSON payload document (S3):
 
 ```ts
-{ schemaVersion: "2", requestId: string, graph: GraphSONIngestBody }
+{
+  schemaVersion: "2",
+  requestId: string,
+  graph: GraphSONIngestBody,
+  metadata?: {
+    eventId?: string,
+    source?: string,
+    factType?: string,
+    entityTypes?: string[],
+    idempotencyKey?: string
+  }
+}
 ```
 
 ### 6.2 Workflow item records
@@ -620,6 +689,26 @@ Workflow summaries are written by `WorkflowSummaryService` to `s3://<NEPTUNE_BUL
 }
 ```
 
+### 6.5 EventBridge graph-fact event schema
+
+```ts
+{
+  source: string,
+  "detail-type": "GraphFactProduced",
+  detail: {
+    schema_version: "1.0",
+    graphson_format: "graphson-v3",
+    fact_type: string,
+    entity_types: string[],
+    idempotency_key: string,
+    graphson: {
+      vertices: GVertex[],
+      edges: GEdge[]
+    }
+  }
+}
+```
+
 ---
 
 ## 7. Cross-cutting Concerns
@@ -654,7 +743,7 @@ Retries: `maxAttempts = NEPTUNE_RETRY_MAX_ATTEMPTS + 1` (default 6), exponential
 
 - **Logger**: AWS Lambda Powertools logger (`POWERTOOLS_SERVICE_NAME=persist*`, `POWERTOOLS_LOG_LEVEL=INFO`). Each handler binds Lambda context once, appends a request-scoped key (`workflowItemRequestId`, `batchRequestId`, `workflowValidationRequestId`, …), and resets the keys in `finally`.
 - **Structured logging across services**: every service emits start/progress/end logs with the same shape — a span name (`ServiceName.method`), structured annotations (`requestId`, `executionId`, `loadId`, `taskToken`, `phase`, `bucket`, `key`, …), and a level (`info`/`warn`/`error`). Polling loops emit progress every N polls or on status change.
-- **Metrics**: AWS Lambda Powertools metrics, namespace `persist`. Buffered counters `vertices_ingested` / `edges_ingested` with dimension `ingest_method` ∈ `sync_ingest|async_ingest|async_csv_upload` (and optional `phase=vertices|edges`). The buffer is flushed in the API handler's `finally` block and in the async-bulk-worker's `finally` block.
+- **Metrics**: AWS Lambda Powertools metrics, namespace `persist`. Buffered counters `vertices_ingested` / `edges_ingested` with dimension `ingest_method` ∈ `sync_ingest|async_ingest|eventbridge_graph_fact|async_csv_upload` (and optional `phase=vertices|edges`). The buffer is flushed in the API handler's `finally` block and in the async-bulk-worker's `finally` block.
 - **Tracing**: Step Functions state machines have `tracingEnabled: true` (X-Ray).
 
 ### 7.6 Long-running command discipline
@@ -675,6 +764,7 @@ The implementation organises behaviour as small services with a clear interface 
 - Unit tests live in `test/services/**/*.ts`, `test/schemas/**/*.ts`, `test/handlers/**/*.ts`, `test/routes/**/*.ts`, `test/http/responses.test.ts`, and `test/cdk/persist-stack.test.ts`.
 - Vitest is the test runner. `setupTests.ts` wires the ingest-metrics reset/flush before/after each test.
 - A real Gremlin Server (TinkerGraph) is required for traversal tests. `just test` (the canonical CI command) starts/stops the docker container automatically using `scripts/start-gremlin-test.sh` and `gremlin/tinkergraph-empty.properties` (string IDs enabled to mirror Neptune `T.id`).
+- EventBridge ingestion tests cover the `GraphFactProduced` schema, wrapper transformation into `tinker:graph`, validation failures before S3/SQS side effects, and successful enqueue metadata.
 - Integration tests live in `test/integration/persist-api.test.ts` and hit a deployed API via SigV4 (`PERSIST_API_URL`, `AWS_PROFILE`).
 - The OpenAPI spec at `docs/openapi.json` is regenerated by `scripts/generate-openapi.ts` (driven from the route definitions module).
 
@@ -692,7 +782,7 @@ The implementation organises behaviour as small services with a clear interface 
 
 - Node.js 22+ (Lambda runtime is 24).
 - pnpm.
-- AWS CLI/CDK with permissions for VPC, Neptune, S3, SQS, DynamoDB, ECS, Step Functions, EventBridge Pipes, IAM, API Gateway, Lambda, CloudWatch Logs, SSM.
+- AWS CLI/CDK with permissions for VPC, Neptune, S3, SQS, DynamoDB, ECS, Step Functions, EventBridge rules and pipes, IAM, API Gateway, Lambda, CloudWatch Logs, SSM.
 - A pre-populated SSM parameter `/lexicon/data-uri` pointing to the lexicon JSON in S3.
 - A pre-populated SSM parameter `/persist-spark/glue/neptune-csv-rehash/job-name` pointing at the persist-spark Glue rehash job.
 
@@ -737,12 +827,12 @@ For `/persist/ingest` and `/persist/gremlin`, use the bash/zsh `awscurl` helper 
 
 1. **Repo skeleton**: pnpm workspace, TypeScript, `tsconfig.{base,build,app,src,test}.json`, ESLint, Prettier (with import sort), husky + lint-staged, Vitest. Package name is internal.
 2. **Runtime dependencies**: `@aws-lambda-powertools/{logger,metrics,event-handler}`, `@aws-sdk/{client-neptunedata,client-s3,client-sfn,client-sqs,credential-providers}`, `@smithy/{config-resolver,node-config-provider,hash-node,protocol-http,signature-v4}`, `gremlin`, `gremlin-aws-sigv4`, `csv-parse`. CDK: `aws-cdk-lib`, `constructs`, `aws-cdk`. Choose any preferred validation library and structured-error / DI conventions — the contracts in §3 and §6 must be honoured but the implementation style is unconstrained.
-3. **Schemas / contracts**: one module per group in `lambda/schemas/` — `graphson/{types,vertex,edge,ingest,validate}`, `gremlin`, `gremlin-async`, `async-bulk`, `workflow`, `lexicon`, `http`, `errors`. Errors are tagged classes; everything else is type+validator pairs.
+3. **Schemas / contracts**: one module per group in `lambda/schemas/` — `graphson/{types,vertex,edge,ingest,validate}`, `eventbridge/graph-fact`, `gremlin`, `gremlin-async`, `async-bulk`, `workflow`, `lexicon`, `http`, `errors`. Errors are tagged classes; everything else is type+validator pairs.
 4. **Utils**: `lambda/utils/{csv,errors,graphsonTemporalTransform,lexiconStringFormat,neptuneTemporal,s3}.ts`.
 5. **Configuration**: `lambda/config/neptune.ts` (Neptune host/port/region, retry, connection age) plus per-service config readers tied to the env vars listed in §2.4. Required vars must throw at startup; optional vars must default per §2.4.
-6. **Services** (one file each in `lambda/services/`): GraphSON (`Hash`, `Decode`, `PersistTransform`, `PersistTransformService`, `SemanticValidationService`, `ValidationService`, `Service`, `AsyncIngestService`); Gremlin (`Client`, `Tx`, `Retry`, `QueryPolicy`, `Service`); Lexicon (`Schema`); Async Gremlin (`JobStore`, `ResultStore`, `Submit`, `Status`, `Cancel`, `Worker`, `NeptuneDataApi`); Async Bulk (`IngestPayload`, `BulkWorker`, `BulkAggregateWorker`, `FilteredBatchEnqueue`, `BulkLoader`, `BulkStage`, `CsvService`, `CsvDedup`, `CsvLexiconValidation`, `CsvWorkflowValidation`); Workflow (`Input`, `CostPredictor`, `ItemRouting`, `ItemStart`, `ItemStatus`, `Summary`, `StepFunctionsCallback`); Metrics (`IngestMetrics`); plus a composition module `services/index.ts` that exports per-router and per-handler dependency containers.
+6. **Services** (one file each in `lambda/services/`): GraphSON (`Hash`, `Decode`, `PersistTransform`, `PersistTransformService`, `SemanticValidationService`, `ValidationService`, `Service`, `AsyncIngestService`); EventBridge (`GraphFactEventService`); Gremlin (`Client`, `Tx`, `Retry`, `QueryPolicy`, `Service`); Lexicon (`Schema`); Async Gremlin (`JobStore`, `ResultStore`, `Submit`, `Status`, `Cancel`, `Worker`, `NeptuneDataApi`); Async Bulk (`IngestPayload`, `BulkWorker`, `BulkAggregateWorker`, `FilteredBatchEnqueue`, `BulkLoader`, `BulkStage`, `CsvService`, `CsvDedup`, `CsvLexiconValidation`, `CsvWorkflowValidation`); Workflow (`Input`, `CostPredictor`, `ItemRouting`, `ItemStart`, `ItemStatus`, `Summary`, `StepFunctionsCallback`); Metrics (`IngestMetrics`); plus a composition module `services/index.ts` that exports per-router and per-handler dependency containers.
 7. **HTTP layer**: `lambda/http/{request-context.ts, responses.ts}`, `lambda/logging/{powertools.ts, runtime.ts}`, the three routers (`graphson`, `gremlin`, `gremlin-async`) and `router.ts` mounting them with `prefix="/persist"`, then `handler.ts`.
-8. **Worker handlers** + **Workflow handlers** + **Fargate entrypoint** in `lambda/{async-bulk-worker, async-bulk-aggregate-worker, gremlin-async-validate, gremlin-async-worker, workflow-start, workflow-cost-predictor, workflow-validate, workflow-item-route, workflow-item-processor, workflow-item-status, workflow-item-status-simple, fargate}/`.
+8. **Worker handlers** + **Workflow handlers** + **EventBridge handler** + **Fargate entrypoint** in `lambda/{graph-fact-event, async-bulk-worker, async-bulk-aggregate-worker, gremlin-async-validate, gremlin-async-worker, workflow-start, workflow-cost-predictor, workflow-validate, workflow-item-route, workflow-item-processor, workflow-item-status, workflow-item-status-simple, fargate}/`.
 9. **OpenAPI generator**: `lambda/api/definitions.ts` and `scripts/generate-openapi.ts`. `pnpm api:spec` writes `docs/openapi.json` (the generated spec is checked in).
 10. **CDK stacks**: `lib/neptune-stack.ts` and `lib/persist-stack.ts` per §2.2 and §2.3, then `bin/app.ts`.
 11. **Local Gremlin**: `scripts/start-gremlin-test.sh`, `gremlin/tinkergraph-empty.properties`, `setupTests.ts`, `vitest.config.ts`, `justfile` (`just test` orchestrates docker + vitest), and a CI caller wired to the shared SOCAPITAL workflows.
@@ -758,6 +848,7 @@ A re-implementation is considered functionally complete when:
 - `POST /persist/ingest` is transactional: a failure on any vertex/edge inside one request leaves zero new records in Neptune.
 - Hashing rules in §3.4 produce identical IDs across two independent runs of the same payload (fuzz-tested by `test/services/GraphSONHash.test.ts`).
 - `POST /persist/validate` accepts both the bare `tinker:graph` payload and the `{ graph, candidate_lexicon_s3_uri }` wrapper, and surfaces issues with `code` + JSON-pointer `path`.
+- `GraphFactProduced` EventBridge events matching §3.7 validate before side effects, enqueue through the same GraphSON async ingest path, preserve `idempotency_key` in metadata, and never write duplicate vertices/edges when the same fact is replayed.
 - Async Gremlin survives the four release-validation steps in §8.3 inside a single deployed environment.
 - The Neptune CSV workflow accepts all three input shapes in §5.4.1 and produces a `workflow-summaries/<executionId>/<phase>/item-<itemIndex>.json` for every successful item.
 - Loaders treat `created_at` `SINGLE_CARDINALITY_VIOLATION` as effective success only when no other error mix is present.
