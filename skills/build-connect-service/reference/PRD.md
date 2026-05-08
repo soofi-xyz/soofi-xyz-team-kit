@@ -1,6 +1,6 @@
 # Connect Service — Product Requirements Document (PRD)
 
-Authoritative blueprint for building the **Connect** partner-integration service. It captures the full feature set, data contracts, runtime behaviour, and infrastructure topology that the service must enforce. The implementation language is **TypeScript everywhere**; infrastructure is **AWS CDK only**, deployed to the installer-supplied tenant AWS region, per the SOCAPITAL Golden Path engineering standards.
+Authoritative blueprint for building the **Connect** partner-integration service. It captures the full feature set, data contracts, runtime behaviour, and infrastructure topology that the service must enforce. The implementation language is **TypeScript everywhere**; infrastructure is **AWS CDK only**, deployed to the installer-supplied tenant AWS region, per the Golden Path engineering standards.
 
 ---
 
@@ -8,7 +8,7 @@ Authoritative blueprint for building the **Connect** partner-integration service
 
 ### 1.1 Mission
 
-Connect is a serverless partner-integration platform for SOCAPITAL that fronts every external data partner (Plaid, Argyle, Atomic, AVMs, credit bureaus, lenders, …) behind a single REST API. It hides the complexity of each partner's quirks (authentication, content type, polling, webhooks, widgets, static-IP allow-listing, multipart payloads, OAuth refresh, etc.) behind one declarative **flow specification** that the platform compiles into an AWS Step Functions state machine and exposes as `POST /vendors/{vendor_name}/{entity}/{name}/jobs`.
+Connect is a serverless partner-integration platform that fronts every external data partner (Plaid, Argyle, Atomic, AVMs, credit bureaus, lenders, …) behind a single REST API. It hides the complexity of each partner's quirks (authentication, content type, polling, webhooks, widgets, static-IP allow-listing, multipart payloads, OAuth refresh, etc.) behind one declarative **flow specification** that the platform compiles into an AWS Step Functions state machine and exposes as `POST /vendors/{vendor_name}/{entity}/{name}/jobs`.
 
 **AWS Step Functions is the single, canonical implementation layer for every Connect workflow.** Every flow and lookup compiles to a Step Functions state machine; there is no "alternative runtime" — no Lambda-only orchestrator, no in-process workflow engine, no SQS-chained worker fan-out. Branching, looping, error handling, retries, parallelism, timeouts, fan-out, and human-in-the-loop waits are expressed exclusively as native ASL constructs (`Choice`, `Map`, `Parallel`, `Retry`, `Catch`, `Wait`, `Wait For Task Token`).
 
@@ -175,7 +175,7 @@ There are seven cohorts; the full per-task-type worker matrix lives in §3.5.1.
 - The `EnableStaticIp` / `DisableStaticIp` workers add the strictly-needed `ec2:`* verbs (`DescribeInternetGateways`, `CreateInternetGateway`, `AttachInternetGateway`, `CreateNatGateway`, `AllocateAddress`, etc.) scoped by tag conditions where possible.
 - The `**SftpPoller`** role has the strictly-needed AWS Transfer Family verbs (per `build-inbound-sftp-workflows` Phase 3 step 4): `transfer:StartDirectoryListing`, `transfer:DescribeDirectoryListing`, `transfer:StartFileTransfer`, `transfer:DescribeConnector` (resource-scoped to `arn:aws:transfer:<region>:<account>:connector/`*), plus `s3:{GetObject,PutObject,ListBucket}` on `VendorsResponsesBucket/transfer-listings/*` and `…/sftp-inbound/*`. It does **not** read partner secrets directly — the **Transfer Family connector role** holds `secretsmanager:GetSecretValue` on the per-partner secret ARNs and `s3:{PutObject,GetObject,ListBucket}` on the same prefixes.
 - Workers that emit task callbacks have `states:SendTaskSuccess` / `states:SendTaskFailure` on `*` (Step Functions does not support resource-level constraints here).
-- API Gateway routes use API-key + per-route IAM where applicable; partner webhooks use the per-flow `webhook_auth.Secret` (no SOCAPITAL credential).
+- API Gateway routes use API-key + per-route IAM where applicable; partner webhooks use the per-flow `webhook_auth.Secret` (no platform credential).
 
 #### 2.3.7 SFTP via AWS Transfer Family Connectors
 
@@ -1167,7 +1167,7 @@ The shape is deliberately a strict superset of what `build-inbound-sftp-workflow
 ### 7.1 Authentication & API-key hygiene
 
 - All public mutating routes are API-key-gated — API Gateway enforces the `x-api-key` header against the Bootstrap-managed shared tenant Usage Plan. Connect's custom resource only attaches this API stage to that shared plan; it does not create a plan or bind an API key. `INVALID_API_KEY` returns the canonical `{"url": ".../get-started", "message": "This key is not valid for this service."}` payload.
-- Webhooks bypass the SOCAPITAL API key and rely on the partner's `webhook_auth.Secret` for authentication. The router still surfaces `event.requestContext.identity.apiKey` (the originating product's API key) so health metrics keep their attribution.
+- Webhooks bypass the API key and rely on the partner's `webhook_auth.Secret` for authentication. The router still surfaces `event.requestContext.identity.apiKey` (the originating product's API key) so health metrics keep their attribution.
 - `HealthApiKeyAuthorizer` is a separate Lambda authoriser that accepts **either** the service API key **or** the upstream `HEALTH_API_KEY_ID` — used by intra-platform health endpoints.
 - Secrets (API keys, partner credentials, tokens) are **never** logged. The Powertools `Logger` is wrapped with a `redactPaths(['credentials', 'passed_credentials', 'token_value', 'api_key', 'x-api-key', 'webhook_auth.Secret'])` middleware enforced in unit tests (per `cloud-aws-primary` non-negotiable #5).
 
@@ -1264,7 +1264,7 @@ justfile
 
 ### 7.9 CI / CD
 
-- `.github/workflows/ci-cd-dev.yml` (PRs to `main`, `TARGET_ENV=dev`) and `.github/workflows/ci-cd-prod.yml` (push to `main`, `TARGET_ENV=prod`) call the SOCAPITAL shared reusable workflows. The repo `justfile` exposes the contract recipes (`just check`, `just test`, `just cdk:synth`, `just cdk:deploy`).
+- `.github/workflows/ci-cd-dev.yml` (PRs to `main`, `TARGET_ENV=dev`) and `.github/workflows/ci-cd-prod.yml` (push to `main`, `TARGET_ENV=prod`) call the shared reusable workflows. The repo `justfile` exposes the contract recipes (`just check`, `just test`, `just cdk:synth`, `just cdk:deploy`).
 - `pnpm` is the package manager. `pnpm check` runs the TypeScript compiler in build mode (`tsc -b`). `pnpm lint` uses ESLint; `pnpm format` uses Prettier with import sort.
 - Husky hooks run `lint-staged` on commit.
 - All deploys go through `cdk deploy` with `--require-approval=any-change` in dev and `--require-approval=broadening` in prod. **No alternative IaC tool is permitted in CI** (per non-negotiable #4).
@@ -1346,7 +1346,7 @@ For request signing the README ships a `bash`/`zsh` `awscurl` helper that wraps 
 12. **OpenAPI generator**: `lambda/api/definitions.ts` and `scripts/generate-openapi.ts`. `pnpm api:spec` writes `docs/openapi.json` (the generated spec is checked in).
 13. **CDK stacks**: `lib/network-stack.ts` and `lib/connect-stack.ts` per §2.2 and §2.3, then `bin/app.ts`. Add a `cost-tagging` aspect that stamps `sc:service:name=connect` and `sc:product:name=Connect` on every taggable resource. The CDK app must not read SFTP partner config from `cdk.json`; partner-specific SFTP values enter only through runtime APIs.
 14. **Custom resources (CDK `AwsCustomResource` or Lambda-backed)**: `ApiUsagePlanStageAttachmentCustomResource`, `ApiGatewayLogCustomResource`, `ProxyResourceCleanupCustomResource`, `HealthApiKeyAuthorizer`.
-15. **Local Step Functions**: `scripts/start-stepfunctions-local.sh`, `setupTests.ts`, `vitest.config.ts`, `justfile` (`just test` orchestrates docker + vitest), and a CI caller wired to the shared SOCAPITAL workflows.
+15. **Local Step Functions**: `scripts/start-stepfunctions-local.sh`, `setupTests.ts`, `vitest.config.ts`, `justfile` (`just test` orchestrates docker + vitest), and a CI caller wired to the shared workflows.
 16. **Lexicon + Dashboard registration**: every metric introduced in §7.2 MUST land in `cloudwatch-metrics.json` in the [Lexicon](https://github.com/Spring-Oaks-Capital-LLC/lexicon) repo and on the [Main Dashboard](https://github.com/Spring-Oaks-Capital-LLC/main-dashboard) **in the same PR cycle** (per `observability-metrics`).
 17. **Smoke tests**: replicate the seven release-validation steps from §8.3 in the integration suite under `test/integration`, including the `build-inbound-sftp-workflows` Phase 5 live listing-and-transfer check.
 

@@ -332,7 +332,7 @@ Runtime dependencies:
 - `zod`
 - `yauzl` or the same zip reader used by Deployer
 
-Dev/test dependencies follow the SOCAPITAL TypeScript standard: Vitest, ESLint, Prettier, `tsc -b`.
+Dev/test dependencies follow the TypeScript standard: Vitest, ESLint, Prettier, `tsc -b`.
 
 ### 7.3 Tests
 
