@@ -1,6 +1,6 @@
 # Marketplace Service — Product Requirements Document (PRD)
 
-Authoritative blueprint for building the **Marketplace** product/data distribution service. It captures the full feature set, data contracts, runtime behaviour, and infrastructure topology that the service must enforce. The implementation language is **TypeScript everywhere**; infrastructure is **AWS CDK only**, deployed to the installer-supplied AWS region, per the SOCAPITAL Golden Path engineering standards.
+Authoritative blueprint for building the **Marketplace** product/data distribution service. It captures the full feature set, data contracts, runtime behaviour, and infrastructure topology that the service must enforce. The implementation language is **TypeScript everywhere**; infrastructure is **AWS CDK only**, deployed to the installer-supplied AWS region, per the Golden Path engineering standards.
 
 ---
 
@@ -8,7 +8,7 @@ Authoritative blueprint for building the **Marketplace** product/data distributi
 
 ### 1.1 Mission
 
-Marketplace is a serverless product/data distribution platform for SOCAPITAL. It catalogs reusable **Components** (services and data configurations) as versioned **Bundles**, organises them under a navigable **Ontology** (families → categories → products → APIs → prices → configurations → components), and **notifies subscribers via signed webhooks whenever a new bundle becomes available** so they can pull and deploy it on their own.
+Marketplace is a serverless product/data distribution platform. It catalogs reusable **Components** (services and data configurations) as versioned **Bundles**, organises them under a navigable **Ontology** (families → categories → products → APIs → prices → configurations → components), and **notifies subscribers via signed webhooks whenever a new bundle becomes available** so they can pull and deploy it on their own.
 
 A **Component** is the unit of distribution. Every component is owned by exactly one **catalog product** (see §3.4) and carries a `type`:
 
@@ -817,7 +817,7 @@ The implementation organises behaviour as small services with a clear interface 
 
 ### 7.11 CI/CD
 
-- `.github/workflows/ci-cd-dev.yml` (PRs to `main`, `TARGET_ENV=dev`) and `.github/workflows/ci-cd-prod.yml` (push to `main`, `TARGET_ENV=prod`) call the SOCAPITAL shared reusable workflows. The repo `justfile` exposes the contract recipes (`just check`, `just test`, `just cdk:synth`, `just cdk:deploy`).
+- `.github/workflows/ci-cd-dev.yml` (PRs to `main`, `TARGET_ENV=dev`) and `.github/workflows/ci-cd-prod.yml` (push to `main`, `TARGET_ENV=prod`) call the shared reusable workflows. The repo `justfile` exposes the contract recipes (`just check`, `just test`, `just cdk:synth`, `just cdk:deploy`).
 - `pnpm` is the package manager. `pnpm check` runs the TypeScript compiler in build mode (`tsc -b`). `pnpm lint` uses ESLint; `pnpm format` uses Prettier with import sort.
 - Husky hooks run `lint-staged` on commit.
 
@@ -896,7 +896,7 @@ For a single-bundle rollback inside the production marketplace: `POST /ontology/
 9. **Custom resources**: `lambda/custom-resources/{api-usage-plan-stage-attachment,api-gateway-log,managed-ontology-v2}.ts` plus the `cfnresponse`-equivalent helper.
 10. **OpenAPI generator**: `lambda/api/definitions.ts` and `scripts/generate-openapi.ts`. `pnpm api:spec` writes `requirements/swagger.yml` (the generated spec is checked in).
 11. **CDK stacks**: `lib/data-stack.ts`, `lib/workflow-stack.ts`, and `lib/marketplace-stack.ts` per §2.1–§2.3, then `bin/app.ts`.
-12. **Local webhook sink**: `scripts/start-webhook-sink.sh`, `scripts/webhook-sink/Dockerfile` (a tiny Node receiver that records every POST body + headers and exposes a `/seen?event_id=...` query endpoint), `setupTests.ts`, `vitest.config.ts`, `justfile` (`just test` orchestrates docker + vitest), and a CI caller wired to the shared SOCAPITAL workflows.
+12. **Local webhook sink**: `scripts/start-webhook-sink.sh`, `scripts/webhook-sink/Dockerfile` (a tiny Node receiver that records every POST body + headers and exposes a `/seen?event_id=...` query endpoint), `setupTests.ts`, `vitest.config.ts`, `justfile` (`just test` orchestrates docker + vitest), and a CI caller wired to the shared workflows.
 13. **Smoke tests**: replicate the five release-validation steps from §8.4 in the integration suite under `test/integration`.
 
 ---

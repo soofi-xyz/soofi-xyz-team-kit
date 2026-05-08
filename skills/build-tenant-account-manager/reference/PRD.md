@@ -1,8 +1,8 @@
 # Account Service — Product Requirements Document (PRD)
 
-Authoritative blueprint for building the **Account** service. Account is SOCAPITAL's serverless tenant-identity-and-bootstrap platform: it mints customer / organization identities, manages the lifecycle of every API key (rotation, revocation, per-account service keys), provisions the **underlying AWS sub-account** that backs every Staircase tenant, configures the **DNS layer** (Route 53 hosted zone, ACM certificates, canonical domain metadata) that exposes that tenant under a `<subdomain>.staircaseapi.com` FQDN, and mints **maintenance access** sessions (short-lived, MFA-gated AWS console credentials) into any tenant on demand.
+Authoritative blueprint for building the **Account** service. Account is the serverless tenant-identity-and-bootstrap service: it mints customer / organization identities, manages the lifecycle of every API key (rotation, revocation, per-account service keys), provisions the **underlying AWS sub-account** that backs every Staircase tenant, configures the **DNS layer** (Route 53 hosted zone, ACM certificates, canonical domain metadata) that exposes that tenant under a `<subdomain>.staircaseapi.com` FQDN, and mints **maintenance access** sessions (short-lived, MFA-gated AWS console credentials) into any tenant on demand.
 
-The implementation language is **TypeScript everywhere**; infrastructure is **AWS CDK only**, deployed to the installer-supplied control-plane AWS region, per the SOCAPITAL Golden Path engineering standards. Account is a **single product, single stack**, deployed once into the marketplace AWS account. Per-tenant operational concerns (configuration drift, quotas, costs, product-deployment inspection / deletion, partner credential vault, partner certificate vault, …) are **explicitly out of scope** — those responsibilities belong to other services and are listed under §1.4 Non-goals.
+The implementation language is **TypeScript everywhere**; infrastructure is **AWS CDK only**, deployed to the installer-supplied control-plane AWS region, per the Golden Path engineering standards. Account is a **single product, single stack**, deployed once into the marketplace AWS account. Per-tenant operational concerns (configuration drift, quotas, costs, product-deployment inspection / deletion, partner credential vault, partner certificate vault, …) are **explicitly out of scope** — those responsibilities belong to other services and are listed under §1.4 Non-goals.
 
 `Account` is the **only persistent entity** Account exposes. There is no separate "environment" / "tenant" / "workspace" concept; an account is **whatever the row in `AccountsTable` represents** at every stage of its life — from a freshly-signed-up identity awaiting email confirmation, through a provisioned AWS sub-account with a live DNS layer, all the way to a disabled tombstone.
 
@@ -12,7 +12,7 @@ The implementation language is **TypeScript everywhere**; infrastructure is **AW
 
 ### 1.1 Mission
 
-Account owns five responsibilities that together make a SOCAPITAL tenant **exist** and stay **operable**:
+Account owns five responsibilities that together make a tenant **exist** and stay **operable**:
 
 1. **Identity issuance** — mint, confirm, and look up customer / organization identities. A `customer` is a single human owner with a self-service email-confirmation flow; an `organization` is a multi-user shared identity created by an existing operator.
 2. **API key management** — manage the full lifecycle of every API key: account-bound keys (the public `x-api-key` value any caller uses to identify the originating account) and per-account **service keys** (used by Staircase products inside one account to call other products in the same account or across accounts). Keys are minted by Account, encrypted at rest, and rotatable via a dedicated workflow that never exposes plaintext to storage. Bootstrap owns the tenant's single shared API Gateway Usage Plan and binds the initial service key to it; Account rotation later updates that one shared Usage Plan binding.
@@ -126,7 +126,7 @@ The bucket enforces `BLOCK_ALL` public access, SSL-only, and `BUCKET_OWNER_ENFOR
 
 | Queue                       | Retention | VT     | DLQ + maxReceiveCount        | Purpose                                                                                                                                                      |
 | --------------------------- | --------- | ------ | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `AccountsProcessingQueue`   | 4 d       | 15 min | `AccountsProcessingDlq`, 5   | Out-of-band post-provisioning work (notify other SOCAPITAL services that a new account is `ACTIVE`).                                                         |
+| `AccountsProcessingQueue`   | 4 d       | 15 min | `AccountsProcessingDlq`, 5   | Out-of-band post-provisioning work (notify other services that a new account is `ACTIVE`).                                                         |
 | `ConfirmationEmailQueue`    | 2 d       | 5 min  | `ConfirmationEmailDlq`, 5    | Decouple DDB stream → SES throughput so a burst of signups never throttles the stream listener.                                                              |
 | `MaintenanceApprovalQueue`  | 1 d       | 5 min  | `MaintenanceApprovalDlq`, 5  | Owner-approval webhooks from the SES email callback are queued and matched against pending `MaintenanceLoginsTable` rows by `MaintenanceApprovalApplier`.    |
 | `IamGarbageCollectionQueue` | 2 d       | 5 min  | `IamGarbageCollectionDlq`, 5 | Session-expiry events, explicit revoke calls, and final TTL deletion signals from `MaintenanceLoginsTable` land here; `IamUserGarbageCollector` consumes and assumes into the tenant sub-account. |
@@ -822,7 +822,7 @@ The implementation organises behaviour as small services with a clear interface 
 
 ### 7.8 CI/CD
 
-- `.github/workflows/ci-cd-dev.yml` (PRs to `main`, `TARGET_ENV=dev`) and `.github/workflows/ci-cd-prod.yml` (push to `main`, `TARGET_ENV=prod`) call the SOCAPITAL shared reusable workflows. The repo `justfile` exposes the contract recipes (`just check`, `just test`, `just cdk:synth`, `just cdk:deploy`).
+- `.github/workflows/ci-cd-dev.yml` (PRs to `main`, `TARGET_ENV=dev`) and `.github/workflows/ci-cd-prod.yml` (push to `main`, `TARGET_ENV=prod`) call the shared reusable workflows. The repo `justfile` exposes the contract recipes (`just check`, `just test`, `just cdk:synth`, `just cdk:deploy`).
 - `pnpm` is the package manager. `pnpm check` runs the TypeScript compiler in build mode (`tsc -b`). `pnpm lint` uses ESLint; `pnpm format` uses Prettier with import sort.
 - Husky hooks run `lint-staged` on commit.
 
@@ -895,7 +895,7 @@ After every deploy, run the seven release-validation calls listed in `README.md`
 8. **Worker handlers** + **Workflow handlers** in `lambda/{provisioning, teardown, confirm-email, domain-config, service-key-rotation, maintenance-access, accounts-processor, iam-user-gc, maintenance-approval-applier, ...}/`.
 9. **OpenAPI generator**: `lambda/api/definitions.ts` and `scripts/generate-openapi.ts`. `pnpm api:spec` writes `docs/openapi.json` (the generated spec is checked in).
 10. **CDK stacks**: `lib/account-shared-stack.ts`, `lib/account-stack.ts`, then `bin/app.ts`.
-11. **Local Step Functions Local**: `scripts/start-step-functions-local.sh`, `setupTests.ts`, `vitest.config.ts`, `justfile` (`just test` orchestrates docker + vitest), and a CI caller wired to the shared SOCAPITAL workflows.
+11. **Local Step Functions Local**: `scripts/start-step-functions-local.sh`, `setupTests.ts`, `vitest.config.ts`, `justfile` (`just test` orchestrates docker + vitest), and a CI caller wired to the shared workflows.
 12. **Smoke tests**: replicate the seven release-validation steps from §8.3 in the integration suite under `test/integration`.
 
 ---

@@ -1,6 +1,6 @@
 # Deployer Service — Product Requirements Document (PRD)
 
-Authoritative blueprint for building the **Deployer** service. It captures the full feature set, data contracts, runtime behaviour, and infrastructure topology that the service must enforce. The implementation language is **TypeScript everywhere**; infrastructure is **AWS CDK only**, deployed to the installer-supplied home AWS region, per the SOCAPITAL Golden Path engineering standards. The current production code at `staircase/deploy` is a Python 3.9 + Serverless Framework implementation; this PRD specifies the equivalent target service in canonical SOCAPITAL form.
+Authoritative blueprint for building the **Deployer** service. It captures the full feature set, data contracts, runtime behaviour, and infrastructure topology that the service must enforce. The implementation language is **TypeScript everywhere**; infrastructure is **AWS CDK only**, deployed to the installer-supplied home AWS region, per the Golden Path engineering standards. The current production code at `staircase/deploy` is a Python 3.9 + Serverless Framework implementation; this PRD specifies the equivalent target service in canonical form.
 
 ---
 
@@ -339,7 +339,7 @@ The manifest MUST NOT contain command strings. There is no `synth_command`, `dep
 `marketplace/app.ts` exports exactly one factory:
 
 ```ts
-import type { MarketplaceCdkAppFactory } from "@socapital/marketplace-cdk";
+import type { MarketplaceCdkAppFactory } from "@internal/marketplace-cdk";
 
 export const createMarketplaceApp: MarketplaceCdkAppFactory = ({ app, context }) => {
   // Product code validates the context version and instantiates stacks.
@@ -770,7 +770,7 @@ The callback payload is intentionally bounded so callers such as Puller can clos
 
 ### 6.4 Persistence collection (lexicon-shaped)
 
-`build_final_collection` produces (`@type` and `@id` fields tie into the SOCAPITAL graph lexicon):
+`build_final_collection` produces (`@type` and `@id` fields tie into the shared graph lexicon):
 
 ```jsonc
 {
@@ -881,7 +881,7 @@ The major service layers:
 
 ### 7.8 CI/CD
 
-- `.github/workflows/ci-cd-dev.yml` (PRs to `main`, `TARGET_ENV=dev`) and `.github/workflows/ci-cd-prod.yml` (push to `main`, `TARGET_ENV=prod`) call the SOCAPITAL shared reusable workflows. The repo `justfile` exposes the contract recipes (`just check`, `just test`, `just cdk:synth`, `just cdk:deploy`).
+- `.github/workflows/ci-cd-dev.yml` (PRs to `main`, `TARGET_ENV=dev`) and `.github/workflows/ci-cd-prod.yml` (push to `main`, `TARGET_ENV=prod`) call the shared reusable workflows. The repo `justfile` exposes the contract recipes (`just check`, `just test`, `just cdk:synth`, `just cdk:deploy`).
 - `pnpm` is the package manager. `pnpm check` runs the TypeScript compiler in build mode (`tsc -b`). `pnpm lint` uses ESLint; `pnpm format` uses Prettier with import sort.
 - Husky hooks run `lint-staged` on commit.
 
@@ -948,7 +948,7 @@ After every deploy run:
 ## 9. Re-creation Checklist (in order)
 
 1. **Repo skeleton**: pnpm workspace, TypeScript, `tsconfig.{base,build,app,src,test}.json`, ESLint, Prettier (with import sort), husky + lint-staged, Vitest. Package name is internal.
-2. **Runtime dependencies**: `@aws-lambda-powertools/{logger,metrics,event-handler}`, `@aws-sdk/{client-cloudformation,client-dynamodb,lib-dynamodb,client-ecr,client-iam,client-kms,client-lambda,client-s3,s3-request-presigner,client-service-quotas,client-sfn,client-sns,client-ssm,client-api-gateway}`, `@smithy/{config-resolver,node-config-provider,protocol-http}`, `archiver`/`yauzl` for zip in/out, built-in `fetch` for outbound HTTP. **Do NOT** depend on `@aws-sdk/credential-providers` static credentials, Fernet, or any cross-account session library — the Deployer never assumes credentials it does not have via its own role. CDK: `aws-cdk-lib`, `constructs`, AWS CDK Toolkit Library, and the internal `@socapital/marketplace-cdk` types. Validation library and DI conventions are the implementer's choice — the contracts in §3 and §6 must be honoured but the implementation style is unconstrained.
+2. **Runtime dependencies**: `@aws-lambda-powertools/{logger,metrics,event-handler}`, `@aws-sdk/{client-cloudformation,client-dynamodb,lib-dynamodb,client-ecr,client-iam,client-kms,client-lambda,client-s3,s3-request-presigner,client-service-quotas,client-sfn,client-sns,client-ssm,client-api-gateway}`, `@smithy/{config-resolver,node-config-provider,protocol-http}`, `archiver`/`yauzl` for zip in/out, built-in `fetch` for outbound HTTP. **Do NOT** depend on `@aws-sdk/credential-providers` static credentials, Fernet, or any cross-account session library — the Deployer never assumes credentials it does not have via its own role. CDK: `aws-cdk-lib`, `constructs`, AWS CDK Toolkit Library, and the internal `@internal/marketplace-cdk` types. Validation library and DI conventions are the implementer's choice — the contracts in §3 and §6 must be honoured but the implementation style is unconstrained.
 3. **Schemas / contracts**: one module per group in `lambda/schemas/` — `deploy-by-token`, `deployment-logs`, `marketplace-product-manifest`, `marketplace-context`, `cfn-event`, `health-metric`, `errors`. Errors are tagged classes; everything else is type+validator pairs. The schema for `deploy-by-token` MUST be closed and reject unknown fields before any side effect.
 4. **Utils**: `lambda/util/{awsUtils,httpUtils,zipExtract,jwtPassthrough}.ts`. JWT decoding is verify-OFF by design (the metadata is upstream-signed and we don't carry the key).
 5. **Configuration**: `lambda/config/deployer.ts` (CFN parameters + env vars per §2.5). Required vars must throw at startup; optional vars must default per §2.5. JSON-decoded `Regions` and `EnvParameters` are validated at cold start; Account domain config is validated when loaded and before any service stack receives domain parameters.
@@ -960,7 +960,7 @@ After every deploy run:
 11. **CDK stacks**: `lib/data-stack.ts`, `lib/workflow-stack.ts`, `lib/deployer-stack.ts` per §2.2 / §2.3 / §2.4, then `bin/app.ts`.
 12. **State-machine ASL**: `lib/state-machines/deploy-artifact.asl.ts` (TypeScript builder using `aws-cdk-lib/aws-stepfunctions` or a plain ASL JSON) compiled by `WorkflowStack`.
 13. **Bootstrap CLI support**: shared modules for source-snapshot validation, `MarketplaceContext` construction, and local Deployer install that satisfy `Bootstrap.md`. The Deployer repo may host `cli/bootstrap.ts`, but `Bootstrap.md` is the authoritative CLI PRD.
-14. **Local runners**: `scripts/start-sfn-local.sh`, `setupTests.ts`, `vitest.config.ts`, `justfile` (`just test` orchestrates docker + vitest), and a CI caller wired to the shared SOCAPITAL workflows.
+14. **Local runners**: `scripts/start-sfn-local.sh`, `setupTests.ts`, `vitest.config.ts`, `justfile` (`just test` orchestrates docker + vitest), and a CI caller wired to the shared workflows.
 15. **Smoke tests**: replicate the five steps from §8.3 in `test/integration/deployer-api.test.ts`, plus a CLI contract test that stubs Account/Marketplace, verifies the Deployer local-deploy plan, and verifies the Puller handoff uses `/infra-deployer/deploy-by-token`.
 
 ---

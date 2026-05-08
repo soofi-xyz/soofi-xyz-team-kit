@@ -8,7 +8,7 @@ Authoritative blueprint for re-creating the **Persist** graph-persistence servic
 
 ### 1.1 Mission
 
-Persist is a serverless graph-persistence layer for SOCAPITAL that fronts an Amazon Neptune cluster behind a SigV4-authenticated HTTPS API and an EventBridge fact-ingestion surface. It accepts SOCAPITAL-lexicon-compliant graph data in two shapes (GraphSON v3 documents and Neptune bulk-load CSV) and exposes both synchronous and asynchronous Gremlin query channels.
+Persist is a serverless graph-persistence layer that fronts an Amazon Neptune cluster behind a SigV4-authenticated HTTPS API and an EventBridge fact-ingestion surface. It accepts lexicon-compliant graph data in two shapes (GraphSON v3 documents and Neptune bulk-load CSV) and exposes both synchronous and asynchronous Gremlin query channels.
 
 ### 1.2 Primary user surface
 
@@ -26,7 +26,7 @@ A single AWS API Gateway HTTP API at `/persist/*`, IAM-authorised, with the foll
 
 Out-of-band, the service also exposes:
 
-- An **EventBridge rule** for `GraphFactProduced` events emitted by other SOCAPITAL products; Persist validates the embedded GraphSON v3 payload and routes it through the async GraphSON ingest path.
+- An **EventBridge rule** for `GraphFactProduced` events emitted by other products; Persist validates the embedded GraphSON v3 payload and routes it through the async GraphSON ingest path.
 - A **Step Functions state machine** (the **Neptune CSV workflow**) for bulk CSV ingest from S3.
 
 ### 1.3 Non-goals
@@ -34,7 +34,7 @@ Out-of-band, the service also exposes:
 - Persist does **not** expose a public read API beyond Gremlin. Lexicon-aware projection / search lives elsewhere.
 - Persist does **not** provide the legacy document-store surface (`/persistence/transactions`, `/persistence/collections`) or accept API-key authentication. Callers use SigV4 against `/persist/*`; deployment correlation and log records stay in the owning service's storage.
 - Persist does **not** synthesise its own VPC certificates or domains. Bootstrap creates the tenant's shared API Gateway custom domain before product deployment; Persist owns only its `/persist` mapping to that existing domain.
-- Persist does **not** own the SOCAPITAL lexicon document; it consumes a lexicon JSON from S3 referenced by an SSM parameter.
+- Persist does **not** own the shared lexicon document; it consumes a lexicon JSON from S3 referenced by an SSM parameter.
 - Persist does **not** consume arbitrary EventBridge traffic. It subscribes only to versioned graph-fact events that carry GraphSON v3 and pass the same lexicon and integrity rules as HTTP ingest.
 
 ---
@@ -252,7 +252,7 @@ The full request body for ingest/validate is wrapped:
 
 ### 3.3 Lexicon (single source of truth and shared ontology)
 
-The SOCAPITAL lexicon is the shared ontology for graph data across products. Persist treats it as the contract that gives graph labels, relationships, and properties stable semantic meaning, so independently deployed products can write and read interconnected data without inventing local vocabulary or coupling directly to Neptune implementation details.
+The shared lexicon is the ontology for graph data across products. Persist treats it as the contract that gives graph labels, relationships, and properties stable semantic meaning, so independently deployed products can write and read interconnected data without inventing local vocabulary or coupling directly to Neptune implementation details.
 
 Persist enforces the lexicon at every write boundary. GraphSON ingest, GraphSON async ingest, validation-only requests, and Neptune CSV workflow validation all use lexicon rules to reject unknown entity types, unknown relationships, missing required properties, invalid enum values, invalid formats, and endpoint-label mismatches before persistence starts. Gremlin remains the only public read surface in this PRD, but queries are expected to use lexicon-defined labels and properties so downstream readers operate on the same vocabulary as writers.
 
@@ -770,7 +770,7 @@ The implementation organises behaviour as small services with a clear interface 
 
 ### 7.9 CI/CD
 
-- `.github/workflows/ci-cd-dev.yml` (PRs to `main`, `TARGET_ENV=dev`) and `.github/workflows/ci-cd-prod.yml` (push to `main`, `TARGET_ENV=prod`) call the SOCAPITAL shared reusable workflows. The repo `justfile` exposes the contract recipes (`just check`, `just test`, `just cdk:synth`, `just cdk:deploy`).
+- `.github/workflows/ci-cd-dev.yml` (PRs to `main`, `TARGET_ENV=dev`) and `.github/workflows/ci-cd-prod.yml` (push to `main`, `TARGET_ENV=prod`) call the shared reusable workflows. The repo `justfile` exposes the contract recipes (`just check`, `just test`, `just cdk:synth`, `just cdk:deploy`).
 - `pnpm` is the package manager. `pnpm check` runs the TypeScript compiler in build mode (`tsc -b`). `pnpm lint` uses ESLint; `pnpm format` uses Prettier with import sort.
 - Husky hooks run `lint-staged` on commit.
 
@@ -835,7 +835,7 @@ For `/persist/ingest` and `/persist/gremlin`, use the bash/zsh `awscurl` helper 
 8. **Worker handlers** + **Workflow handlers** + **EventBridge handler** + **Fargate entrypoint** in `lambda/{graph-fact-event, async-bulk-worker, async-bulk-aggregate-worker, gremlin-async-validate, gremlin-async-worker, workflow-start, workflow-cost-predictor, workflow-validate, workflow-item-route, workflow-item-processor, workflow-item-status, workflow-item-status-simple, fargate}/`.
 9. **OpenAPI generator**: `lambda/api/definitions.ts` and `scripts/generate-openapi.ts`. `pnpm api:spec` writes `docs/openapi.json` (the generated spec is checked in).
 10. **CDK stacks**: `lib/neptune-stack.ts` and `lib/persist-stack.ts` per §2.2 and §2.3, then `bin/app.ts`.
-11. **Local Gremlin**: `scripts/start-gremlin-test.sh`, `gremlin/tinkergraph-empty.properties`, `setupTests.ts`, `vitest.config.ts`, `justfile` (`just test` orchestrates docker + vitest), and a CI caller wired to the shared SOCAPITAL workflows.
+11. **Local Gremlin**: `scripts/start-gremlin-test.sh`, `gremlin/tinkergraph-empty.properties`, `setupTests.ts`, `vitest.config.ts`, `justfile` (`just test` orchestrates docker + vitest), and a CI caller wired to the shared workflows.
 12. **Smoke tests**: replicate the four release-validation steps from §8.3 in the integration suite under `test/integration`.
 
 ---
