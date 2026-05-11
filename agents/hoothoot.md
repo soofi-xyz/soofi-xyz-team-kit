@@ -17,7 +17,7 @@ When invoked:
    - Persist data source details: environment, query intent, required vertex/edge/property names, filters, expected result shape, and expected data volume.
    - Refresh cadence as a CRON or human schedule, plus timezone.
    - Deployment environment, AWS account, region, Amplify app/branch preference, domain expectations, and whether this is a new app or an update.
-   - Access model for this story: Cognito-managed username/password user or permission to generate a Cognito password. Organization SSO and report catalog publishing are separate stories unless explicitly requested.
+   - Access model for this story: Cognito-managed username/password user, organization SSO through Cognito federation, or permission to generate a Cognito password. Report catalog publishing is a separate story unless explicitly requested.
 5. Optionally collect a report design contract when the user has preferences. Do not block on these details if the user has not provided them; choose sensible defaults and state those defaults in the plan:
    - Chart specs: chart type, title, x/y fields, grouping, filters, sorting, colors, labels, and empty-state behavior.
    - Table specs: columns, labels, formatting, totals/subtotals, row limits, sorting, and whether export is allowed.
@@ -76,7 +76,7 @@ When invoked:
 15. Deploy on AWS:
     - Use AWS Amplify static hosting for the frontend unless the target repository already standardizes on another AWS static hosting surface.
     - Use CDK for infrastructure whenever building production-ready resources: Cognito user pool/client/domain, refresh workflow, IAM, Secrets Manager, SSM parameters, S3 artifact bucket if needed, and observability.
-    - Configure Cognito username/password access for the deployed app for this story:
+    - Configure Cognito username/password access for the deployed app when the user requests local report credentials:
       - Create or reuse a dedicated Cognito user pool.
       - Disable public self-signup.
       - Create an app client without a client secret for browser-based Hosted UI flows.
@@ -84,7 +84,16 @@ When invoked:
       - Create the requested report user, or generate one when the user grants permission.
       - Store generated credentials and Cognito configuration in Secrets Manager, never in Git or chat output.
       - Do not use Amplify branch basic auth as the final access model for this story.
-    - Defer organization-account SSO to a separate story unless explicitly requested.
+    - Configure organization SSO through Cognito federation when requested:
+      - Prefer Microsoft Entra ID or another OIDC-compatible provider through Cognito OIDC federation when available. Use SAML 2.0 when the organization already manages access through enterprise SAML apps or requires SAML claims/groups.
+      - Treat Cognito as the relying party between the report app and the organization IdP. The browser app should only integrate with Cognito Hosted UI or Managed Login.
+      - For OIDC federation, register an app in the organization IdP with redirect URI `https://<cognito-domain>/oauth2/idpresponse`. Request at least `openid`, `profile`, and `email` scopes when email/profile claims are needed. Store the IdP client secret in Secrets Manager.
+      - For Microsoft Entra ID OIDC, collect the tenant ID or issuer URL, client ID, client secret, allowed tenant model, requested scopes, and any required group/app-role claim configuration. Use the issuer discovery URL rather than hardcoding endpoints when possible.
+      - For SAML federation, configure the IdP Assertion Consumer Service URL as `https://<cognito-domain>/saml2/idpresponse` and the SP entity ID as `urn:amazon:cognito:sp:<user-pool-id>`. Store or reference the IdP metadata URL/document through infrastructure configuration.
+      - Map IdP claims to Cognito attributes before enabling sign-in. At minimum map a stable subject and email when available; map `email_verified` or equivalent only when the IdP supplies a trustworthy verification claim. If the user pool has required attributes, every required attribute must have an IdP mapping.
+      - Add the external IdP to the Cognito app client supported identity providers and keep callback/logout URLs aligned to the Amplify URL or custom report domain.
+      - If access must be limited to a group or app role, enforce it server-side in the report API/data-artifact layer or with a pre-token-generation/authorizer path. Do not rely only on hiding UI elements.
+      - Return a setup checklist for the identity admin: Cognito domain, OIDC redirect URI or SAML ACS URL, SP entity ID, client ID/secret or metadata URL, scopes, required claims, group/app-role names, callback URLs, logout URLs, and test user.
     - For sensitive or production report data, do not rely only on client-side Cognito gating. Put generated data artifacts behind an authenticated backend, CloudFront/Lambda@Edge, signed URLs, or another server-enforced authorization layer so `public/data/*.json` cannot be fetched directly without authorization.
 16. Make the agent usable by non-technical Cursor users:
     - Ask concise clarifying questions only for missing required business/report/deploy inputs.
@@ -100,9 +109,11 @@ When invoked:
 18. Verify deployed behavior:
     - Amplify URL or custom domain resolves over HTTPS.
     - Amplify branch basic auth is disabled unless it is being used only as a temporary emergency gate.
-    - Cognito Hosted UI is reachable and configured with the correct callback/logout URLs.
+    - Cognito Hosted UI or Managed Login is reachable and configured with the correct callback/logout URLs.
     - The report page redirects unauthenticated users to sign in or shows a Cognito sign-in gate.
-    - A Cognito-created report user can sign in and view the report.
+    - A Cognito-created report user can sign in and view the report when local credentials are enabled.
+    - An organization SSO test user can sign in through the configured external IdP when SSO is enabled.
+    - Required IdP attributes are mapped into Cognito and group/app-role restrictions are enforced outside the static UI when required.
     - Public self-signup is disabled.
     - If real sensitive data is present, direct unauthenticated access to generated data artifacts is blocked by server-side authorization.
     - Scheduled refresh runs on the configured cadence.
@@ -117,6 +128,6 @@ Return:
 - Persist dataset contract, Lexicon discovery result, Gremlin query, async polling plan, and query assumptions
 - visual design contract for charts, tables, KPI cards, and layout
 - refresh pipeline design, CRON, IAM, and observability notes
-- Amplify deployment and Cognito username/password setup runbook
+- Amplify deployment and Cognito username/password or organization SSO setup runbook
 - local and deployed verification steps
 - explicit out-of-scope items, especially report catalog publishing and organization SSO when not requested
