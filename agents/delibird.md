@@ -48,7 +48,13 @@ When invoked:
    - Write deterministic, sorted JSON so diffs are stable.
    - Use AWS credentials from the caller's environment or profile; never store credentials in Git, CLI config, or frontend assets.
    - Make updates idempotent: adding the same report ID updates that report instead of creating duplicates.
-7. Design the one-page frontend for scanning:
+7. Make registration and deployment one complete workflow:
+   - After a report is added or updated, the user must run the deploy/publish command so the hosted catalog URL reflects the change.
+   - The CLI should support a single-command path such as `pnpm report-catalog add ... --deploy` for common use, and a two-step path such as `add` followed by `deploy` for reviewable changes.
+   - `deploy` must upload the validated `reports.json` artifact to the configured AWS catalog location and invalidate or refresh the hosting cache when the selected host requires it.
+   - Return the catalog URL after deploy and tell the user when the new report should be visible.
+   - Do not treat a report as registered until the deployed catalog has been updated or the user explicitly says they only wanted a local/draft catalog change.
+8. Design the one-page frontend for scanning:
    - Header with catalog title, summary, and last-updated timestamp.
    - Search box for title, description, owner, and tags.
    - Environment/category/tag filters when the data includes those fields.
@@ -56,36 +62,36 @@ When invoked:
    - Empty state for no reports and error state for failed catalog JSON load.
    - Responsive layout for desktop and mobile.
    - External links should open safely with `target="_blank"` and `rel="noopener noreferrer"`.
-8. Keep security boundaries explicit:
+9. Keep security boundaries explicit:
    - Do not add catalog authentication unless the user explicitly changes the scope.
    - Do not weaken or bypass report-level authentication.
    - Do not proxy report content through the catalog.
    - Do not store sensitive metadata in the catalog JSON.
    - If the catalog URL is public, make sure the user understands that report names and URLs are discoverable even though the reports themselves authenticate.
-9. Deploy on AWS with production-ready defaults:
+10. Deploy on AWS with production-ready defaults:
    - Prefer HTTPS-only hosting.
    - Use CDK for standalone S3 + CloudFront hosting or reuse the repo's established Amplify deployment path.
    - Enable S3 Block Public Access for buckets that are not intentionally website buckets.
    - Use CloudFront Origin Access Control for S3-hosted static assets.
    - Configure cache headers so `index.html` and `reports.json` refresh quickly while static CSS/JS can cache longer.
    - Output the catalog URL, data bucket, data key, CloudFront distribution ID or Amplify app/branch, and CLI environment variables.
-10. Add focused tests and checks:
+11. Add focused tests and checks:
     - JSON schema/unit tests for report entry validation.
     - CLI tests for add/update/remove/list behavior and duplicate handling.
     - Frontend tests for rendering, search/filter behavior, empty/error states, and safe external links.
     - Infrastructure assertions for private buckets where applicable, HTTPS, OAC, least-privilege CLI upload permissions, and cache behavior.
-11. Verify locally before deploy:
+12. Verify locally before deploy:
     - Local static server renders the catalog from fixture `reports.json`.
     - CLI can validate fixture data and produce deterministic output.
     - No secrets appear in generated files.
     - Links point to expected report URLs.
-12. Verify deployed behavior:
+13. Verify deployed behavior:
     - Catalog URL opens over HTTPS.
     - `reports.json` is reachable by the catalog page.
     - CLI can add or update a report entry and the deployed page reflects the change after cache expiry or invalidation.
     - Report links open the target reports and preserve those reports' own authentication behavior.
     - Browser console has no runtime errors.
-13. Return:
+14. Return:
     - Architecture summary and repository layout.
     - Catalog registration data contract.
     - CLI commands for adding, updating, removing, validating, and deploying report entries.
