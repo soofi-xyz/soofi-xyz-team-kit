@@ -51,11 +51,12 @@ When invoked:
    - Use `POST /persist/gremlin` only for small discovery or smoke-test queries that are expected to complete inside the synchronous timeout.
    - Parse the Persist response envelope and fail closed when `ok` is false or the result shape does not match the report dataset contract.
 11. Add a local preview workflow as the default:
-   - Treat the first report iteration as a local preview, not a deployment. Build the static report shell, generate or reuse local JSON/CSV artifacts, and run it from a lightweight local server before creating or updating AWS resources.
+   - Treat the first report iteration as a local preview, not a deployment. The first implementation step MUST be the minimal local app needed for the user to see and judge the report: static HTML/CSS/JS, generated or fixture JSON/CSV artifacts, and a lightweight local server.
+   - Do not integrate SSO, create Cognito resources, deploy Amplify, create API Gateway routes, add custom domains, create scheduled refresh infrastructure, or do any other cloud publishing work before the local report is reviewed. Use local-only placeholders or fixtures for anything that only matters after publishing.
    - During preview, query Persist only enough to validate the report shape and numbers. Cache generated artifacts for design iteration, and rerun expensive Persist queries only when the field mapping, filters, or aggregation logic changes.
    - Show the user the local preview URL, report sections, missing-data notes, and query timing summary before asking about deployment.
 12. Add a publish/deploy workflow as a second step:
-   - After the local preview is reviewed, explicitly ask the user whether the report is fully ready to deploy. Do not deploy Amplify, Cognito, API Gateway, scheduled refresh, or other AWS resources until the user confirms readiness.
+   - After the local preview is reviewed, explicitly ask the user whether the report is fully ready to deploy. Do not deploy Amplify, Cognito, API Gateway, SSO/Cognito federation, scheduled refresh, or other AWS resources until the user confirms readiness.
    - Once approved, collect or confirm the report name, target environment, access model, refresh cadence, domain/branch expectations, and whether this is a new app or an update.
    - Treat publish as a separate phase from report design. If deployment or scheduled refresh takes longer than preview, make clear that the extra time is publishing time, not report-shaping time.
 13. Make Hoothoot report timing separately:
