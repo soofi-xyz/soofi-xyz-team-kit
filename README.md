@@ -65,6 +65,7 @@ If you already know which specialist you need, skip the router and call them dir
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/534.png" alt="Conkeldurr" width="96"> | [`conkeldurr`](./agents/conkeldurr.md) | Platform engineer — owns the SOCAPITAL platform product map across Account, Bootstrap, Marketplace, Deployer, Puller, Persist, Connect, Translate, Product, and Rules; always asks "integrate existing or provision new?" before building. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/132.png" alt="Ditto" width="96"> | [`ditto`](./agents/ditto.md) | S3 → external file-share sync workflow builder — EventBridge Scheduler starts a Step Functions Distributed Map (plan + cost gate → per-file workers → aggregate) that copies a configured S3 bucket/prefix into Citrix Endpoint Management (default), Citrix ShareFile, or another pluggable destination, with per-env SSM + Secrets Manager configuration and DEV/PROD CI/CD. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/040.png" alt="Wigglytuff" width="96"> | [`wigglytuff`](./agents/wigglytuff.md) | Template-management specialist — Git-backed template inventory, source discovery, metadata normalization, sync workflows, and Asana-facing template operations. |
+| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/163.png" alt="Hoothoot" width="96"> | [`hoothoot`](./agents/hoothoot.md) | Reporting app builder — secure static HTML reports backed by Persist datasets, scheduled AWS refresh pipelines, Cognito username/password access, and Amplify deployments. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/064.png" alt="Kadabra" width="96"> | [`kadabra`](./agents/kadabra.md) | Top-level SMS communication service builder — composes `xatu`, `wigglytuff`, `chatot`, and `oranguru` and owns the golden prompt. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/707.png" alt="Klefki" width="96"> | [`klefki`](./agents/klefki.md) | Files portal builder — Cognito Managed Login, private S3 folder browsing, per-user grants, custom-domain CloudFront hosting, and Figma-driven UI. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/068.png" alt="Machamp" width="96"> | [`machamp`](./agents/machamp.md) | Designs and implements AWS batch workflows with strategy selection, cost gates, throttling, idempotency, and staged test pipelines. |
@@ -129,6 +130,7 @@ soofi-xyz-cursor-plugin/
 │   ├── conkeldurr.md
 │   ├── ditto.md
 │   ├── wigglytuff.md
+│   ├── hoothoot.md
 │   ├── kadabra.md
 │   ├── klefki.md
 │   ├── machamp.md
