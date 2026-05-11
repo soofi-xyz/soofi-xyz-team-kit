@@ -54,11 +54,23 @@ When invoked:
    - Treat the first report iteration as a local preview, not a deployment. The first implementation step MUST be the minimal local app needed for the user to see and judge the report: static HTML/CSS/JS, generated or fixture JSON/CSV artifacts, and a lightweight local server.
    - Do not integrate SSO, create Cognito resources, deploy Amplify, create API Gateway routes, add custom domains, create scheduled refresh infrastructure, or do any other cloud publishing work before the local report is reviewed. Use local-only placeholders or fixtures for anything that only matters after publishing.
    - During preview, query Persist only enough to validate the report shape and numbers. Cache generated artifacts for design iteration, and rerun expensive Persist queries only when the field mapping, filters, or aggregation logic changes.
+   - When the user wants to run a prod-backed report locally, tell them how to refresh and verify their local AWS credentials before querying Persist:
+     - Ask for or confirm the intended prod AWS profile and region; do not guess or silently use the default profile.
+     - If the profile uses AWS SSO, have them run `aws sso login --profile <prod-profile>`.
+     - If the profile uses local access keys, have them update the profile with `aws configure --profile <prod-profile>` or their approved internal credential process; do not ask them to paste access keys into chat.
+     - Verify the active identity with `AWS_PROFILE=<prod-profile> aws sts get-caller-identity` and confirm the returned account is the expected prod account before running report queries.
+     - Run local refresh commands with explicit environment variables such as `AWS_PROFILE=<prod-profile> AWS_REGION=<region> ...` so prod credentials are never implied by shell state.
+     - If credential refresh fails, stop and tell the user exactly which profile/account check failed instead of falling back to fixture data or a non-prod profile without saying so.
    - Show the user the local preview URL, report sections, missing-data notes, and query timing summary before asking about deployment.
 12. Add a publish/deploy workflow as a second step:
    - After the local preview is reviewed, explicitly ask the user whether the report is fully ready to deploy. Do not deploy Amplify, Cognito, API Gateway, SSO/Cognito federation, scheduled refresh, or other AWS resources until the user confirms readiness.
    - Once approved, collect or confirm the report name, target environment, access model, refresh cadence, domain/branch expectations, and whether this is a new app or an update.
    - Treat publish as a separate phase from report design. If deployment or scheduled refresh takes longer than preview, make clear that the extra time is publishing time, not report-shaping time.
+   - Before any production deployment, create a GitHub branch and PR containing the report app, generated artifacts that are meant to be checked in, infrastructure, CI/CD, and documentation changes. Do not deploy directly from a dirty local working tree.
+   - Make the PR reviewable: include the local preview URL or screenshots, data/query timing summary, security/auth notes, and the exact production deploy target.
+   - Wait for GitHub checks to pass. Required checks should include at least format/lint, type-check when applicable, tests, build, and infrastructure synth/diff when CDK is present.
+   - Deploy production through the repository's GitHub Actions pipeline after the PR is merged or explicitly approved for the production workflow. Manual local AWS deploys are only an emergency exception and must be called out as bypassing the normal Hoothoot path.
+   - If the target repository does not yet have a deployment pipeline, add or specify the pipeline first using `skills/integrate-ci-cd/`; do not treat a one-off local AWS upload as the final production deployment path.
 13. Make Hoothoot report timing separately:
    - Measure and return time to first local preview, time spent querying Persist, time spent rendering/building local artifacts, time spent deploying infrastructure, time spent uploading static assets, and time spent running the first deployed refresh.
    - Record per-query timing for every Persist query, including query name, sync vs async endpoint, request ID when available, status, elapsed time, and whether the result came from cache or a fresh Persist run.
@@ -149,6 +161,7 @@ Return:
 - timing summary split by local preview, each Persist query, artifact generation, deployment, static upload, and first deployed refresh
 - visual design contract for charts, tables, KPI cards, and layout
 - refresh pipeline design, CRON, IAM, and observability notes
+- GitHub PR/check status, CI/CD pipeline path, and production deploy result
 - Amplify deployment and Cognito username/password or organization SSO setup runbook
 - local and deployed verification steps
 - explicit out-of-scope items, especially report catalog publishing and organization SSO when not requested
