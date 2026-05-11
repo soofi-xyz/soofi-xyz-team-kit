@@ -81,19 +81,18 @@ bin/app.ts
 
 #### 2.1.1 Marketplace / Deployer distribution contract
 
-Product is distributed as a Marketplace **SERVICE** component and deployed by the tenant-local Deployer. The source snapshot consumed by Deployer must follow the common source-bundle contract:
+Product is distributed as a Marketplace **SERVICE** component and deployed by the tenant-local Deployer. Product source is submitted to Build, and the Marketplace artifact consumed by Deployer is a built CDK cloud assembly:
 
 ```
-source.zip
+cloud-assembly.zip
 ├── marketplace.product.json
-├── package.json
-├── pnpm-lock.yaml
-├── tsconfig.json
-├── marketplace/
-│   └── app.ts
-├── lib/
-├── lambda/
-└── src/
+├── cdk.out/
+│   ├── manifest.json
+│   ├── <StackName>.template.json
+│   ├── <asset-manifest>.assets.json
+│   └── asset.<file-asset-hash>/
+└── build/
+    └── build.manifest.json
 ```
 
 `marketplace.product.json` is declarative only:
@@ -103,7 +102,6 @@ source.zip
   "component_id": "Product",
   "component_name": "Product",
   "bundle_type": "SERVICE",
-  "entrypoint": "marketplace/app.ts",
   "context_schema_version": "1",
   "stacks": ["DataStack", "WorkflowStack", "ProductStack"],
   "base_path": "product",
@@ -115,11 +113,11 @@ source.zip
 }
 ```
 
-The manifest must not include command strings (`synth_command`, `deploy_command`, `post_deploy_command`, package-script lifecycle hooks, or alternate deploy-engine selectors). Deployer owns dependency installation, TypeScript loading, synthesis, asset publication, and deployment through the AWS CDK Toolkit Library.
+The manifest in the deploy artifact must not include command strings (`entrypoint`, `synth_command`, `deploy_command`, `post_deploy_command`, package-script lifecycle hooks, or alternate deploy-engine selectors). Build owns dependency installation, TypeScript loading, synthesis, and asset bundling. Deployer owns deployment-parameter resolution, asset publication, and deployment through the AWS CDK Toolkit Library or platform cloud-assembly deployer.
 
-`marketplace/app.ts` exports exactly one `createMarketplaceApp({ app, context })` factory. The factory validates `context.schemaVersion === "1"`, instantiates `DataStack`, `WorkflowStack`, and `ProductStack`, and returns without calling `app.synth()`, invoking the CDK CLI, reading process-level deployment env vars, or performing AWS SDK side effects at synth time.
+In source, `marketplace/app.ts` exports exactly one `createMarketplaceApp({ app, context })` factory for Build to execute during synth. The factory validates `context.schemaVersion === "1"`, instantiates `DataStack`, `WorkflowStack`, and `ProductStack`, and returns without calling `app.synth()`, invoking the CDK CLI, reading process-level deployment env vars, or performing AWS SDK side effects at synth time.
 
-Product infrastructure consumes `MarketplaceContext.domain`, `MarketplaceContext.basePath ?? "product"`, `MarketplaceContext.sharedUsagePlanIdSsmParam`, and `MarketplaceContext.serviceInfo`. Product CDK code declares only Product-owned resources and its own base-path mapping to the existing Bootstrap-created API Gateway domain. It must not create, copy, delete, or mutate the shared API Gateway custom domain, shared Usage Plan, Account DNS/certificate records, or any other service's API mapping.
+Product infrastructure consumes Build-provided Marketplace context tokens for domain, `basePath ?? "product"`, shared usage plan, and service info. Tenant-varying values must synthesize into CloudFormation parameters listed in Build metadata. Product CDK code declares only Product-owned resources and its own base-path mapping to the existing Bootstrap-created API Gateway domain. It must not create, copy, delete, or mutate the shared API Gateway custom domain, shared Usage Plan, Account DNS/certificate records, or any other service's API mapping.
 
 ### 2.2 DataStack contents
 
@@ -718,7 +716,7 @@ After deploy:
 ## 8. Re-creation Checklist
 
 1. Repo skeleton: pnpm workspace, TypeScript, CDK v2, Vitest, ESLint, Prettier, OpenAPI generator, `justfile`, shared CI callers.
-2. Marketplace/Deployer source-bundle contract: `marketplace.product.json`, `marketplace/app.ts`, `createMarketplaceApp`, `MarketplaceContext` validation, `base_path="product"`, and no command-string deploy hooks.
+2. Build/Marketplace/Deployer cloud-assembly contract: source has `marketplace.product.json`, `marketplace/app.ts`, `createMarketplaceApp`, Marketplace context validation, `base_path="product"`, and no command-string deploy hooks; Build output has `cdk.out/manifest.json`, built assets, `build/build.manifest.json`, and no product source.
 3. CDK stacks: `DataStack`, `WorkflowStack`, `ProductStack`, custom resources for API Gateway logs and shared Usage Plan stage attachment.
 4. Route definitions for every capability group in §1.2, plus generated `docs/openapi.json`.
 5. Product/schema/OpenAPI/partner modules.
@@ -738,7 +736,7 @@ After deploy:
 A re-implementation is functionally complete when:
 
 - Product name and service metadata are **Product** everywhere: tags, `/information`, logs, metrics, and Marketplace registration.
-- The Product source snapshot satisfies the Marketplace/Deployer contract: `marketplace.product.json` declares Product as a `SERVICE` component with `base_path="product"`, `marketplace/app.ts` exports `createMarketplaceApp`, and no product-supplied deploy/synth command fields are present.
+- The Product build satisfies the Marketplace/Deployer contract: source declares Product as a `SERVICE` component with `base_path="product"`, `marketplace/app.ts` exports `createMarketplaceApp` for Build-time synth, Build emits a `CDK_CLOUD_ASSEMBLY` artifact with `cdk.out/manifest.json`, and no product-supplied deploy/synth command fields are present.
 - `POST /products` supports the Product schema/features in §3.2 and validates `marketplace_product_id` plus the legacy `product_identifier` alias against Marketplace.
 - Product Flow Templates can be upserted, listed, read, deleted, compiled to Step Functions, and cleaned up after deletion.
 - Product Flow create/update requires a valid `flow_template_name` for any runnable flow.
