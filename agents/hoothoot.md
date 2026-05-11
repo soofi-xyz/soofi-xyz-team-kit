@@ -68,7 +68,7 @@ When invoked:
    - Treat publish as a separate phase from report design. If deployment or scheduled refresh takes longer than preview, make clear that the extra time is publishing time, not report-shaping time.
    - Before creating a report PR, ask where the user wants the report source pushed:
      - Existing GitHub repository or a new repository.
-     - GitHub owner/organization. Default to `Spring-Oaks-Capital-LLC` only when the user confirms that is the destination.
+     - GitHub owner/organization. Do not default this value; require the user to name the destination.
      - Repository name, visibility, default branch, and whether the agent should create the repository.
      - Working branch name and PR target branch.
    - If the user wants a new repository, create it in the confirmed GitHub organization before pushing report code. Do not assume the current plugin repository is the right report repository.
