@@ -119,6 +119,8 @@ When invoked:
       - Return a setup checklist for the identity admin: Cognito domain, OIDC redirect URI or SAML ACS URL, SP entity ID, client ID/secret or metadata URL, scopes, required claims, group/app-role names, callback URLs, logout URLs, and test user.
     - For sensitive or production report data, do not rely only on client-side Cognito gating. Put generated data artifacts behind an authenticated backend, CloudFront/Lambda@Edge, signed URLs, or another server-enforced authorization layer so `public/data/*.json` cannot be fetched directly without authorization.
 20. Make the agent usable by non-technical Cursor users:
+    - Accept business-only report requests. The user should be able to ask for a report in plain business language without mentioning local preview, Lexicon, Persist, Gremlin, artifacts, Cognito, Amplify, CDK, or deployment workflow details.
+    - Apply the local-preview-first, publish-second, and timing workflows automatically. Do not require the user to repeat these operating instructions in their prompt.
     - Ask concise clarifying questions only for missing required business/report/deploy inputs.
     - Treat chart, layout, and data-shape preferences as optional enhancements; do not force the user to become technical before building a useful first version.
     - Turn business language into an explicit report spec, data contract, visual design contract, build plan, and deploy runbook.
