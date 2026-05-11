@@ -10,7 +10,7 @@ Authoritative blueprint for building the **Rules** marketplace product. It captu
 
 Rules is a tenant-local batch decisioning product. It reads a population of debt identifiers, retrieves each debt's current graph facts through Persist, evaluates lexicon-backed contactability and eligibility rules, and writes the resulting callable debt and phone-number population to S3.
 
-Rules exists to make "who can we contact right now?" a repeatable, auditable batch workflow rather than a hardcoded report. The product compiles rule definitions stored in the shared lexicon ruleset repository into Gremlin projections, runs those projections through Persist's SigV4-authenticated Gremlin API, classifies debts and phone numbers from the returned rule reports, and emits:
+Rules exists to make "who can we contact right now?" a repeatable, auditable batch workflow rather than a hardcoded report. The product compiles rule definitions published by the Lexicon product into Gremlin projections, runs those projections through Persist's SigV4-authenticated Gremlin API, classifies debts and phone numbers from the returned rule reports, and emits:
 
 1. a results dataset containing only debts that passed all debt rules and at least one phone number that passed all phone rules;
 2. per-file statistics and one aggregated statistics document explaining how many debts and phones were accepted or filtered out;
@@ -68,8 +68,8 @@ or, when `save_rules_reports=true`:
 - Rules does **not** expose a public HTTP API or create an API Gateway base-path mapping. Callers start the workflow through AWS Step Functions/IAM.
 - Rules does **not** write to Persist, Neptune, or any graph store. Persist remains the only graph-persistence product; Rules is a read-only graph consumer.
 - Rules does **not** run Gremlin directly against Neptune. It calls Persist's `/persist/gremlin` and `/persist/gremlin-async` APIs with SigV4.
-- Rules does **not** own the lexicon or the rule repository. It consumes rulesets from S3 via the `/lexicon/rulesets-uri` SSM parameter or explicit `rule_s3_uris`.
-- Rules does **not** provide CRUD for rule definitions, rule approval, legal review, or rule publishing. Those belong to lexicon/ruleset management.
+- Rules does **not** own the lexicon or the rule repository. It consumes Lexicon product rulesets from S3 via the `/lexicon/rulesets-uri` SSM parameter or explicit `rule_s3_uris`.
+- Rules does **not** provide CRUD for rule definitions, rule approval, legal review, or rule publishing. Those belong to Lexicon product governance.
 - Rules does **not** guarantee that a passed debt is legally contactable in every downstream channel forever. It produces a point-in-time batch result based on graph data and rules available at execution time.
 - Rules does **not** orchestrate outbound communications. Downstream communication products consume its output; Rules never sends SMS, email, calls, or letters.
 - Rules does **not** synthesise its own subdomain, ACM certificate, Usage Plan, or tenant identity. It has no public API surface.
@@ -104,7 +104,7 @@ bin/app.ts
 
 `RulesStack` is declared in **TypeScript** with AWS CDK v2 and deployed exclusively via `cdk deploy`. No Serverless Framework, SAM, Terraform, Pulumi, raw CloudFormation, or product-supplied deploy scripts are permitted.
 
-The deploy region is the installer-supplied tenant AWS region. `marketplace/app.ts` receives Deployer's validated `MarketplaceContext` and instantiates `RulesStack` with `env.account = context.tenant.accountId` and `env.region = context.tenant.region`. Runtime SigV4 calls use that same region for Persist execute-api signing unless the Persist API URL explicitly identifies a different region through a typed install parameter. The current implementation hardcodes `us-east-2` in `bin/app.ts` and SigV4 calls; that is a migration gap, not a target contract.
+The deploy region is the installer-supplied tenant AWS region. `marketplace/app.ts` receives Build's parameterized `MarketplaceContext` during synth and instantiates `RulesStack` with deploy-time account/region tokens, not concrete Build account values. Runtime SigV4 calls use the deployed region for Persist execute-api signing unless the Persist API URL explicitly identifies a different region through a typed install parameter. The current implementation hardcodes `us-east-2` in `bin/app.ts` and SigV4 calls; that is a migration gap, not a target contract.
 
 ### 2.2 RulesStack contents
 
@@ -130,7 +130,7 @@ rules/<execution-start>/<execution-name>/
 └── aggregated-statistics.json
 ```
 
-Rules does not own a general-purpose input bucket. The workflow reads caller-supplied `s3://...` input files/prefixes and lexicon ruleset objects from S3. Install-time IAM must therefore grant the Rules runtime read access only to the tenant buckets/prefixes it is allowed to process and to the lexicon ruleset bucket. The current implementation grants broad S3 read access; the target product should scope this through deployment parameters or an explicit tenant-managed bucket policy.
+Rules does not own a general-purpose input bucket. The workflow reads caller-supplied `s3://...` input files/prefixes and Lexicon product ruleset objects from S3. Install-time IAM must therefore grant the Rules runtime read access only to the tenant buckets/prefixes it is allowed to process and to the Lexicon ruleset prefix. The current implementation grants broad S3 read access; the target product should scope this through deployment parameters or an explicit tenant-managed bucket policy.
 
 #### 2.2.2 Compute
 
@@ -235,7 +235,7 @@ Install-time configuration is carried through Deployer's `MarketplaceContext.cus
 | `persistSigningRegion` | optional; default `context.tenant.region` | Override only when the Persist API URL is intentionally in a different region. |
 | `lexiconRulesetsUriSsmParam` | optional; default `/lexicon/rulesets-uri` | SSM parameter for the default ruleset catalog S3 prefix. |
 | `allowedInputS3Prefixes` | required for production installs | S3 prefixes that Rules may read when callers provide `input_s3_uri`. |
-| `allowedRulesetS3Prefixes` | required for production installs unless covered by the lexicon bucket policy | S3 prefixes that Rules may read for lexicon ruleset catalog and explicit `rule_s3_uris`. |
+| `allowedRulesetS3Prefixes` | required for production installs unless covered by the Lexicon bucket policy | S3 prefixes that Rules may read for the Lexicon ruleset catalog and explicit `rule_s3_uris`. |
 | `outputRetentionDays` | optional | Lifecycle policy for run outputs; omitted means retain by default. |
 | `batchSize` / `maxConcurrency` / `maxRetries` | optional | Install-time defaults for the runtime env vars `BATCH_SIZE`, `MAX_CONCURRENCY`, and `MAX_RETRIES`. |
 
@@ -266,7 +266,7 @@ Rules:
 
 ### 3.2 Lexicon ruleset catalog
 
-When `rule_s3_uris` is omitted, Rules reads the ruleset catalog from `s3://<bucket>/<prefix>/index.json`, where the bucket/prefix comes from SSM `/lexicon/rulesets-uri`.
+When `rule_s3_uris` is omitted, Rules reads the ruleset catalog from `s3://<bucket>/<prefix>/index.json`, where the bucket/prefix comes from SSM `/lexicon/rulesets-uri` published by the Lexicon product.
 
 `index.json`:
 
@@ -279,12 +279,19 @@ When `rule_s3_uris` is omitted, Rules reads the ruleset catalog from `s3://<buck
       "description": "Phone interaction eligibility rules",
       "version": "1.0.0",
       "manifest_path": "phone-interactions/ruleset.json"
+    },
+    {
+      "id": "sms",
+      "label": "SMS Interactions",
+      "description": "SMS interaction eligibility rules",
+      "version": "1.0.0",
+      "manifest_path": "sms-interactions/ruleset.json"
     }
   ]
 }
 ```
 
-Rules currently selects the catalog item whose `id` is `phone`.
+Rules currently selects the catalog item whose `id` is `phone`. The Lexicon product may publish additional rulesets such as `sms`; Rules ignores them unless a later workflow input or product version explicitly selects them.
 
 Ruleset manifest:
 
@@ -644,7 +651,7 @@ Rules is registered under a Marketplace catalog product named **Rules** and publ
 
 `component_id="Rules"` is the Marketplace-distributed component identity. Lowercase `rules` is only the implementation slug used for package names, tags, SSM paths, S3 prefixes, metrics dimensions, and internal resource names.
 
-The source bundle follows the Deployer product contract. It is an immutable source zip with the Deployer-required layout (`marketplace.product.json`, `package.json`, `pnpm-lock.yaml`, `tsconfig.json`, `marketplace/app.ts`, `lib/`, runtime source/assets), and `marketplace/app.ts` exports `createMarketplaceApp`.
+Rules source follows the Build input contract (`marketplace.product.json`, `package.json`, `pnpm-lock.yaml`, `tsconfig.json`, `marketplace/app.ts`, `lib/`, runtime source/assets). Build consumes that source, runs synth, and publishes a Marketplace artifact that Deployer consumes as a built CDK cloud assembly with `cdk.out/manifest.json`, stack templates, staged assets, and `build/build.manifest.json`.
 
 `marketplace.product.json` is declarative only:
 
@@ -653,7 +660,6 @@ The source bundle follows the Deployer product contract. It is an immutable sour
   "component_id": "Rules",
   "component_name": "Rules",
   "bundle_type": "SERVICE",
-  "entrypoint": "marketplace/app.ts",
   "context_schema_version": "1",
   "stacks": ["RulesStack"],
   "requires": {
@@ -665,39 +671,39 @@ The source bundle follows the Deployer product contract. It is an immutable sour
 ```
 
 - `base_path` is intentionally omitted because Rules has no API Gateway surface and does not create a custom-domain mapping.
-- No product-supplied shell deploy command is used; Deployer owns synth, asset publishing, and CloudFormation deployment.
-- The manifest must not contain `synth_command`, `deploy_command`, `post_deploy_command`, package-script hooks, or any deploy-engine selector.
+- No product-supplied shell deploy command is used; Build owns synth and asset bundling, while Deployer owns asset publishing and CloudFormation deployment.
+- The deploy artifact manifest must not contain `entrypoint`, `synth_command`, `deploy_command`, `post_deploy_command`, package-script hooks, or any deploy-engine selector.
 - Stack resources carry cost tags `sc:service:name=rules` and `sc:product:name=Rules`.
 
 The Marketplace bundle upload contract for Rules is:
 
 ```jsonc
 {
-  "description": "Rules service source snapshot",
-  "bundle_url": "https://<presigned-source-zip>",
-  "dependencies": ["Persist"],
+  "description": "Rules service cloud assembly",
+  "bundle_url": "https://<presigned-build-cloud-assembly-zip>",
+  "dependencies": ["Persist", "Lexicon"],
   "deploy_time_dependencies": []
 }
 ```
 
-`Persist` is a runtime dependency because Rules reads graph data exclusively through Persist. If the lexicon/ruleset catalog is represented in the target Marketplace ontology as its own DATA component, that exact component id must also be listed in `dependencies`; otherwise ruleset access is treated as tenant configuration through `/lexicon/rulesets-uri`.
+`Persist` is a runtime dependency because Rules reads graph data exclusively through Persist. `Lexicon` is a runtime data dependency because Rules reads `/lexicon/rulesets-uri` and the ruleset S3 prefix owned by the Lexicon product. Rules does not list Lexicon in `deploy_time_dependencies` unless a future stack resolves Lexicon's bucket ARN at synth/deploy time instead of through runtime SSM and install parameters.
 
 The publication artifact must satisfy Marketplace's bundle validation gates:
 
 - `bundle_url` is HTTPS, reachable by `HEAD`, and has `Content-Length <= MAX_BUNDLE_BYTES`.
 - Bundle metadata is carried in JWT-shaped `x-amz-meta-service-*` headers, not raw JSON metadata headers.
-- `service-builder.bundle_type` is `SERVICE` and matches the Marketplace component type.
+- `service-builder.artifact_kind` is `CDK_CLOUD_ASSEMBLY`, `service-builder.bundle_type` is `SERVICE`, and both match the Marketplace component type.
 - `service-builder.component_id` / `service-marketplace.component_id`, when present, identify `Rules`.
-- The source snapshot contains no legacy `config.json`, `artifacts/<module>/update.json`, product-supplied command strings, or product-owned deploy scripts.
+- The Build artifact contains `cdk.out/manifest.json`, stack templates, staged file assets, and `build/build.manifest.json`, with no product source directories, legacy `config.json`, `artifacts/<module>/update.json`, product-supplied command strings, or product-owned deploy scripts.
 
 ### 5.2 Install-time prerequisites
 
 Rules requires:
 
 - Persist deployed in the same tenant and publishing `persist-api-url`.
-- SSM `/lexicon/rulesets-uri` pointing at a readable S3 ruleset catalog.
+- Lexicon deployed in the same tenant with SSM `/lexicon/rulesets-uri` pointing at a readable S3 ruleset catalog.
 - IAM permissions for Rules to invoke Persist's `/persist/gremlin` and `/persist/gremlin-async` APIs.
-- IAM/S3 grants for allowed input prefixes and the lexicon ruleset prefix.
+- IAM/S3 grants for allowed input prefixes and the Lexicon ruleset prefix.
 - AWS Glue service role permissions for the preparation job.
 - CDK bootstrap in the target tenant region for Lambda assets and Glue script assets.
 - Deployer `custom_parameters` matching section 2.4 so the stack can scope S3 and Persist IAM without broad wildcard grants.
@@ -751,7 +757,7 @@ The current `justfile` uses `just build` for synth and `just type-check` for Typ
 
 ### 6.2 Integration tests
 
-Integration verification requires a deployed tenant environment with Persist and lexicon rulesets available.
+Integration verification requires a deployed tenant environment with Persist and the Lexicon product's rulesets available.
 
 Test setup:
 
@@ -837,11 +843,11 @@ Before publishing Rules as a marketplace product, the implementation must close 
 8. **Persist client**: resolve `persist-api-url` once per warm container, SigV4-sign `execute-api` requests, call `/persist/gremlin-async`, `/persist/gremlin-async/{requestId}`, and `/persist/gremlin`, and bound per-batch retries/concurrency by `MAX_RETRIES` and `MAX_CONCURRENCY`.
 9. **Worker handlers**: implement `ListFiles`, `SubmitAsyncQuery`, `PollQueryStatus`, `ProcessFile`, `AggregateStatistics`, `ReportPredictedCost`, and `ReportMetrics` with small injectable services where practical so tests can supply S3, SSM, Persist, and CloudWatch doubles.
 10. **Glue preparation job**: implement `rules-prepare-input` as the only Python workload, reading Persist async Gremlin result JSON and writing `debt_id` CSV shards of 50,000 rows under `<outputPrefix>/input/`.
-11. **Marketplace entrypoint**: implement `marketplace/app.ts` and `marketplace.product.json` with `component_id="Rules"`, `component_name="Rules"`, `bundle_type="SERVICE"`, `entrypoint="marketplace/app.ts"`, `stacks=["RulesStack"]`, and no `base_path`. The entrypoint must instantiate `RulesStack` from `MarketplaceContext.tenant` and validate the custom-parameter schema in section 2.4.
+11. **Marketplace entrypoint**: implement `marketplace/app.ts` and `marketplace.product.json` with `component_id="Rules"`, `component_name="Rules"`, `bundle_type="SERVICE"`, `stacks=["RulesStack"]`, and no `base_path`. The entrypoint must instantiate `RulesStack` from Build's parameterized `MarketplaceContext` and validate the custom-parameter schema in section 2.4.
 12. **CDK stack**: create `RulesStack` with the output bucket, shared log group, seven Node.js 24 ARM64 Lambdas, the Glue Python Shell job, the STANDARD state machine in section 2.2.4, least-privilege IAM, SSM `/rules/workflow/state-machine-arn`, and stack outputs.
 13. **Operational metadata**: tag resources with `sc:service:name=rules` and `sc:product:name=Rules`; make `Rules` the Powertools service prefix and CloudWatch metric dimension value.
 14. **Tests**: port and expand the current Vitest coverage for stack wiring, handlers, ruleset loading, rule compiler semantics, query builder output, parser behavior, S3 input parsing, statistics aggregation, and the Filter-to-Rules migration aliases.
-15. **Integration smoke**: deploy into a tenant with Persist and lexicon rulesets, run both input modes, verify S3 artifacts and metrics, and document the exact operator commands.
+15. **Integration smoke**: deploy into a tenant with Persist and Lexicon rulesets, run both input modes, verify S3 artifacts and metrics, and document the exact operator commands.
 
 ---
 
@@ -850,7 +856,7 @@ Before publishing Rules as a marketplace product, the implementation must close 
 A re-implementation is considered functionally complete when:
 
 - The product is discoverable as **Rules** with Marketplace `component_id="Rules"` / `component_name="Rules"`, implementation slug `rules`, stack `RulesStack`, state machine `RulesStateMachine`, output prefix `rules/...`, and SSM `/rules/workflow/state-machine-arn`.
-- The Marketplace source bundle contains a Deployer-compatible `marketplace.product.json`, uses `bundle_type="SERVICE"`, omits `base_path`, declares `dependencies=["Persist"]` plus any catalog-mode lexicon/ruleset DATA component, and uses JWT-shaped `x-amz-meta-service-*` metadata headers.
+- The Marketplace artifact is a Build-produced `CDK_CLOUD_ASSEMBLY` with a Deployer-compatible `marketplace.product.json`, uses `bundle_type="SERVICE"`, omits `base_path`, declares `dependencies=["Persist", "Lexicon"]`, and uses JWT-shaped `x-amz-meta-service-*` metadata headers.
 - Starting the state machine with `input_s3_uri` pointing to a CSV or Parquet file/prefix produces `resultsS3Uri` and `aggregatedStatisticsS3Uri` with the artifact shapes in section 3.6.
 - Starting the state machine without `input_s3_uri` runs Persist async Gremlin discovery, waits for completion, shards all debt identifiers through Glue, and then processes the generated `input/` prefix.
 - `save_rules_reports=true` writes `parts/rules-reports/*_rules_reports.json` and returns `rulesReportsS3Uri`; `save_rules_reports=false` omits both.

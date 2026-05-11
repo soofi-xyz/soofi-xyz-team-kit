@@ -34,7 +34,7 @@ Out-of-band, the service also exposes:
 - Persist does **not** expose a public read API beyond Gremlin. Lexicon-aware projection / search lives elsewhere.
 - Persist does **not** provide the legacy document-store surface (`/persistence/transactions`, `/persistence/collections`) or accept API-key authentication. Callers use SigV4 against `/persist/*`; deployment correlation and log records stay in the owning service's storage.
 - Persist does **not** synthesise its own VPC certificates or domains. Bootstrap creates the tenant's shared API Gateway custom domain before product deployment; Persist owns only its `/persist` mapping to that existing domain.
-- Persist does **not** own the shared lexicon document; it consumes a lexicon JSON from S3 referenced by an SSM parameter.
+- Persist does **not** own the shared lexicon document; it consumes Lexicon product artifacts from S3 through the `/lexicon/data-uri` SSM parameter.
 - Persist does **not** consume arbitrary EventBridge traffic. It subscribes only to versioned graph-fact events that carry GraphSON v3 and pass the same lexicon and integrity rules as HTTP ingest.
 
 ---
@@ -258,18 +258,21 @@ Persist enforces the lexicon at every write boundary. GraphSON ingest, GraphSON 
 
 Persist does **not** own lexicon governance. The lexicon document is produced and versioned outside this service; Persist consumes the approved JSON, caches it briefly, and fails closed when it cannot refresh. Request-scoped candidate lexicons exist to validate proposed ontology changes before they are promoted, not to let callers bypass the canonical schema.
 
-The lexicon JSON document lives in S3 (URI in SSM `/lexicon/data-uri`). It declares `vertices[]` and `edges[]` rules. Each rule supports:
+The lexicon JSON document is published by the Lexicon product to S3, with its canonical URI in SSM `/lexicon/data-uri`. The document declares `vertices[]`, `edges[]`, `common_patterns[]`, and optional metadata keys that consumers must ignore unless their own contract says otherwise. Vertex and edge rules support:
 
 - `type` (label),
 - `properties: { [key]: { type, required?, enum?, format?, items? } }` where `type ∈ string|integer|number|boolean|array`,
 - `required: string[]` (vertex; optional on edge),
-- `from` / `to` (edge endpoint labels).
+- `from` / `to` (edge endpoint labels),
+- `indexes: { [indexName]: { type, enum?, format?, pattern?, change_trigger, subject_query, value_query } }` for derived analytical properties declared by Lexicon.
+
+Derived `indexes` metadata is not an ingest input contract. Persist validates that the canonical lexicon document is structurally readable, but GraphSON and CSV writes are validated against declared vertex/edge labels and ordinary properties. Index maintenance is owned by whichever product implements the derived-index runner.
 
 The loader (`LexiconSchemaService`):
 
 - Reads the URI from `LEXICON_DATA_URI`, parses the S3 URI, fetches the object with a per-request timeout (`LEXICON_OBJECT_TIMEOUT_MS`, default 10 s), JSON-parses it, and validates against the lexicon schema (collecting **all** issues, not just the first).
 - Caches the loaded lexicon in-process for **300 s** with single-flight refresh.
-- Supports a request-scoped **candidate lexicon override** (`candidate_lexicon_s3_uri`) — accepted only if the URI is in the same bucket as the default lexicon and under prefix `ovid-agent-changes/` ending in `.json`.
+- Supports a request-scoped **candidate lexicon override** (`candidate_lexicon_s3_uri`) — accepted only if the URI is in the Lexicon data bucket that backs `/lexicon/data-uri` and under the reserved prefix `ovid-agent-changes/` ending in `.json`.
 - Fails closed: any post-expiry refresh failure surfaces a tagged error (we never serve a stale lexicon).
 
 ### 3.4 Hashed IDs (deterministic)
@@ -783,7 +786,7 @@ The implementation organises behaviour as small services with a clear interface 
 - Node.js 22+ (Lambda runtime is 24).
 - pnpm.
 - AWS CLI/CDK with permissions for VPC, Neptune, S3, SQS, DynamoDB, ECS, Step Functions, EventBridge rules and pipes, IAM, API Gateway, Lambda, CloudWatch Logs, SSM.
-- A pre-populated SSM parameter `/lexicon/data-uri` pointing to the lexicon JSON in S3.
+- A deployed Lexicon product with SSM `/lexicon/data-uri` pointing to the canonical `lexicon.json` in the Lexicon data bucket.
 - A pre-populated SSM parameter `/persist-spark/glue/neptune-csv-rehash/job-name` pointing at the persist-spark Glue rehash job.
 
 ### 8.2 Deploy / destroy
@@ -857,4 +860,3 @@ A re-implementation is considered functionally complete when:
 - All Lambdas use `nodejs24.x`, ARM64, ESM bundling, and the `createRequire` banner so `gremlin`/`gremlin-aws-sigv4` work at runtime.
 - IAM permissions follow least-privilege per §2.3.6.
 - All structured logs include the relevant `requestId` / `executionId` / `loadId` / `taskToken` so an operator can trace a single ingestion end-to-end via CloudWatch Logs Insights.
-
