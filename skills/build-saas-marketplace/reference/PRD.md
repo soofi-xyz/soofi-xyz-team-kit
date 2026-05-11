@@ -445,7 +445,7 @@ The router executes the validation gates **before** any side effect:
 14. **No intersection between `dependencies` and `deploy_time_dependencies`** (422 with the intersecting names).
 15. **No dependency cycle** — topological-sort dry-run over the current component plus the resolved direct dependency owners (422 `Cycle: A -> B -> A`). The resolved layers are persisted on the bundle row as `dependency_layers` and re-emitted in every subsequent notification.
 16. **Every direct dependency must be a registered component with at least one bundle** (422).
-17. **Lexicon-version compatibility** — when the bundle declares `service-builder.lexicon_version_id`, every dependent component must already be on a lexicon ≥ that ID; otherwise 422 `… is incompatible with its clients.`.
+17. **Lexicon-version compatibility** — when the bundle declares `service-builder.lexicon_version_id`, Marketplace treats it as a Lexicon product release id and verifies every dependent component is already on a Lexicon release ≥ that id; otherwise 422 `… is incompatible with its clients.`.
 
 On success, Marketplace mints a ULID `bundle_id`, persists the bundle row (`bundle_status=UPLOADING_IN_PROGRESS`), then `StartExecution` on `PutProductBundle` SFN (§5.1) and returns `202 { component_id, bundle_status: "UPLOADING_IN_PROGRESS", review_id: bundle_id }`.
 

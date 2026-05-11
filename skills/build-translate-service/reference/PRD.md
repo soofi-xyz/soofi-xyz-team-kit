@@ -39,7 +39,7 @@ Every public route except `/translate/information` is API-key-gated through the 
 - Translate does **not** provide a schema-authoring UI. Partner languages are registered by API using caller-supplied schemas and metadata.
 - Translate does **not** provide a custom mapping operation DSL. Mapping authors use normal TypeScript inside reviewed, tested, bundled modules.
 - Translate does **not** accept runtime mapping code from API callers. Mapping code is TypeScript source reviewed, tested, bundled, and deployed either with the Translate runtime service or as Marketplace `DATA` mapping-pack bundles.
-- Translate does **not** own the shared lexicon. It may emit lexicon-compliant JSON objects and call Persist, but lexicon governance and graph persistence remain owned by their products.
+- Translate does **not** own the shared lexicon. It consumes read-only Lexicon product artifacts from S3/SSM, may emit lexicon-compliant JSON objects, and may call Persist, but Lexicon governance and graph persistence remain owned by their products.
 - Translate does **not** keep translated payloads forever. Execution artifacts are retained only for the configured operational window.
 - Translate does **not** create the tenant custom domain or usage plan. Bootstrap and Deployer provide those shared inputs; Translate maps only its `/translate` base path.
 
@@ -52,7 +52,7 @@ Every public route except `/translate/information` is API-key-gated through the 
 These principles anchor every other section and override any conflicting design choice elsewhere in the implementation.
 
 1. **Step Functions is the workflow implementation layer.** Language registration and asynchronous translation execution are STANDARD Step Functions workflows. Branching, retries, catches, callback dispatch, and terminal failure handling are expressed as ASL primitives. There is no in-Lambda workflow orchestrator and no SQS-chained worker runtime.
-2. **Translate runtime is a Marketplace `SERVICE` component.** The runtime service is distributed as a Marketplace source snapshot and deployed by the tenant-local Deployer. The snapshot MUST satisfy Deployer's `marketplace.product.json` + `marketplace/app.ts` contract and deploy exactly the service-owned API, workflows, tables, buckets, and custom resources.
+2. **Translate runtime is a Marketplace `SERVICE` component.** The runtime service source is built by Build and distributed through Marketplace as a CDK cloud assembly artifact deployed by the tenant-local Deployer. The artifact MUST satisfy Deployer's `marketplace.product.json` + `cdk.out/manifest.json` contract and deploy exactly the service-owned API, workflows, tables, buckets, and custom resources.
 3. **Mapping packs are Marketplace `DATA` components when released independently.** Partner or product-specific mapping modules that should version independently from the Translate runtime are bundled as Marketplace `DATA` components. A mapping pack provisions/imports checked-in TypeScript mapping modules, fixtures, and manifest metadata into Translate-owned storage/catalog resources; it has no public runtime and no `deploy_time_dependencies`.
 4. **Shared routing is owned upstream.** Bootstrap creates the tenant custom domain and shared Usage Plan. Deployer passes domain and usage-plan context into Translate. Translate creates only its own base-path mapping under `translate` and idempotently attaches its API stage to the shared plan.
 5. **Mapping execution is side-effect constrained by build-time and runtime controls.** Mapping modules are ordinary TypeScript, but they run through Translate's restricted mapping runner. Static validation rejects forbidden imports, and runtime execution exposes only validated JSON input, mapping context, and approved deterministic helpers.
@@ -182,27 +182,29 @@ CloudFormation / Marketplace context inputs supplied by Deployer:
 | `TRANSLATE_PREVIEW_MAX_BYTES` | `262144` (256 KiB) | Preview route |
 | `TRANSLATE_ASYNC_MAX_BYTES` | `104857600` (100 MiB) | Async submit |
 | `TRANSLATE_CALLBACK_TIMEOUT_MS` | `10000` | Callback worker |
+| `LEXICON_DATA_URI_SSM_PARAM` | `/lexicon/data-uri` | Reserved `lexicon` language resolver |
+| `LEXICON_INTERPROSE_DATA_URI_SSM_PARAM` | `/lexicon/interprose-data-uri` | Reserved `interprose` language resolver |
+| `LEXICON_INTERPROSE_SNAPSHOTS_DATA_URI_SSM_PARAM` | `/lexicon/interprose-snapshots-data-uri` | Reserved `interprose_snapshots` language resolver |
+| `LEXICON_INTERPROSE_TRANSFORM_URI_SSM_PARAM` | `/lexicon/interprose-transform-uri` | Interprose transform helper assets |
+| `LEXICON_RELEASE_URI_SSM_PARAM` | `/lexicon/release-uri` | Lexicon release metadata and schema digest audit |
 | `POWERTOOLS_SERVICE_NAME` | `translate` | Logging / metrics |
 | `POWERTOOLS_LOG_LEVEL` | `INFO` | Logging |
 | `POWERTOOLS_METRICS_NAMESPACE` | `translate` | Metrics |
 
 ### 2.4 Marketplace and Deployer distribution contract
 
-Translate runtime is published to Marketplace as a `SERVICE` component. The Marketplace source snapshot consumed by Deployer MUST include:
+Translate runtime is published to Marketplace as a `SERVICE` component. Source is submitted to Build, and the Marketplace artifact consumed by Deployer MUST include:
 
 ```text
-source.zip
+cloud-assembly.zip
 |-- marketplace.product.json
-|-- package.json
-|-- pnpm-lock.yaml
-|-- tsconfig.json
-|-- marketplace/
-|   `-- app.ts
-|-- lib/
-|-- lambda/
-|-- translate-mappings/
-`-- requirements/
-    `-- swagger.yml
+|-- cdk.out/
+|   |-- manifest.json
+|   |-- TranslateStack.template.json
+|   |-- <asset-manifest>.assets.json
+|   `-- asset.<file-asset-hash>/
+`-- build/
+    `-- build.manifest.json
 ```
 
 `marketplace.product.json`:
@@ -212,7 +214,6 @@ source.zip
   "component_id": "translate",
   "component_name": "Translate",
   "bundle_type": "SERVICE",
-  "entrypoint": "marketplace/app.ts",
   "context_schema_version": "1",
   "stacks": ["TranslateStack"],
   "base_path": "translate",
@@ -224,14 +225,15 @@ source.zip
 }
 ```
 
-`marketplace/app.ts` exports `createMarketplaceApp({ app, context })`, validates `context.schemaVersion === "1"`, and instantiates `TranslateStack` with `context.domain`, `context.basePath`, `context.sharedUsagePlanIdSsmParam`, `context.serviceInfo`, and documented `context.customParameters`. It must not call `app.synth()`, invoke shell commands, read product-defined deployment scripts, or perform AWS SDK side effects at synth time.
+In source, `marketplace/app.ts` exports `createMarketplaceApp({ app, context })` for Build-time synth, validates `context.schemaVersion === "1"`, and instantiates `TranslateStack` with parameterized domain, base path, shared usage-plan, service info, and documented custom-parameter values. It must not call `app.synth()`, invoke shell commands, read product-defined deployment scripts, or perform AWS SDK side effects at synth time. Tenant-varying values must synthesize into CloudFormation parameters listed in Build metadata.
 
 Marketplace registration:
 
 - Component `Translate` is a `SERVICE` component owned by its catalog product.
+- Component `Translate` declares `Lexicon` in `dependencies` because the reserved language resolver reads Lexicon product artifacts through `/lexicon/*` SSM parameters. It does not need `Lexicon` in `deploy_time_dependencies` unless a future stack resolves Lexicon bucket ARNs at synth/deploy time.
 - Mapping packs that are released independently are `DATA` components. They package checked-in TypeScript mapping modules, fixture tests, generated mapping manifests, and a data-only CDK import stack/custom resource that writes assets into the Translate mapping manifest bucket and rows into `TranslateMappingCatalogTable`.
 - `DATA` mapping-pack components must not declare `deploy_time_dependencies`; dependencies on Translate runtime and relevant language/catalog bundles are runtime dependencies in Marketplace terms.
-- Bundle metadata uses the standard `x-amz-meta-service-*` JWT-shaped headers. `service-builder.bundle_type` must be `SERVICE` for the Translate runtime and `DATA` for mapping packs.
+- Bundle metadata uses the standard `x-amz-meta-service-*` JWT-shaped headers. `service-builder.artifact_kind` must be `CDK_CLOUD_ASSEMBLY`; `service-builder.bundle_type` must be `SERVICE` for the Translate runtime and `DATA` for mapping packs.
 
 TranslateStack writes the following SSM parameters so mapping-pack `DATA` bundles can discover the tenant-local import surface without hardcoded resource names:
 
@@ -314,11 +316,19 @@ Language records expose:
 }
 ```
 
-`lexicon` is a reserved language name. Translate may expose it as a readable target/source language backed by Persist, but callers cannot register or overwrite it through Translate.
+`lexicon`, `interprose`, and `interprose_snapshots` are reserved language names owned by the Lexicon product. Translate may expose them as readable source/target language contracts backed by Lexicon S3 artifacts:
+
+| Reserved language | SSM parameter | Backing artifact |
+| --- | --- | --- |
+| `lexicon` | `/lexicon/data-uri` | `lexicon.json` graph ontology |
+| `interprose` | `/lexicon/interprose-data-uri` | `interprose.json` full source schema |
+| `interprose_snapshots` | `/lexicon/interprose-snapshots-data-uri` | `inteprose-snapshots.json` snapshot-constrained source schema |
+
+Callers cannot register or overwrite these names through Translate. Persist remains the graph persistence boundary; it is not the backing store for reserved language schema definitions. Mapping helpers that need Interprose-to-Lexicon SQL assets read the prefix from `/lexicon/interprose-transform-uri`.
 
 ### 3.2 Mapping registration
 
-A mapping is a checked-in TypeScript module. Runtime-owned mappings are registered by adding them to `translate-mappings/registry.ts` in the Translate `SERVICE` source snapshot. Independently released mappings are registered through Marketplace `DATA` mapping-pack bundles that carry their own registry, generated manifest, fixture tests, and data-only CDK import stack. In both cases, the build generates a manifest and a CDK custom resource writes mapping metadata into `TranslateMappingCatalogTable`.
+A mapping is a checked-in TypeScript module. Runtime-owned mappings are registered by adding them to `translate-mappings/registry.ts` in the Translate `SERVICE` source consumed by Build. Independently released mappings are registered through Marketplace `DATA` mapping-pack bundles that carry their own registry, generated manifest, fixture tests, and data-only CDK import stack. In both cases, Build emits a cloud assembly artifact whose custom resource writes mapping metadata into `TranslateMappingCatalogTable`.
 
 Mappings are not authored through API JSON operations. There are no `copy`, `constant`, `arrayMap`, or other custom mapping primitives to maintain. The mapper function is normal TypeScript. Marketplace `DATA` mapping packs are the normative extension path for partner/product mappings that need a release cadence separate from the Translate runtime.
 
@@ -948,6 +958,7 @@ The implementation uses small services with typed interfaces and injectable depe
 - `lambda/routes/*` - API route handlers.
 - `lambda/schemas/*` - request and response validators.
 - `lambda/services/language-store.ts` - DynamoDB/S3 registered language metadata and schema access.
+- `lambda/services/lexicon-artifacts.ts` - SSM/S3 resolver for reserved Lexicon product languages and Interprose transform assets.
 - `lambda/services/mapping-registry.ts` - loads generated mapping registry.
 - `lambda/services/translation-engine.ts` - validates input/output and executes mapping functions.
 - `lambda/services/registration-store.ts` - DynamoDB registration state.
@@ -964,7 +975,7 @@ Factories expose `makeXService(deps)` so tests can supply in-memory stores, fixe
 ### 7.6 Testing strategy
 
 - Unit tests use Vitest.
-- Language registration tests cover JSON Schema validation, schema digesting, example storage, callback handling, and generated type snapshots.
+- Language registration tests cover JSON Schema validation, reserved Lexicon-owned language rejection, schema digesting, example storage, callback handling, and generated type snapshots.
 - Mapping modules have compile-time tests and runtime fixture tests.
 - The translation engine has fixture tests for arbitrary TypeScript mapping functions.
 - Route tests cover request parsing, error mapping, idempotency, artifact URL minting, language lookup, and mapping lookup.
@@ -990,7 +1001,8 @@ Factories expose `makeXService(deps)` so tests can supply in-memory stores, fixe
 - pnpm.
 - AWS CLI/CDK permissions for API Gateway, Lambda, Step Functions, DynamoDB, S3, IAM, CloudWatch Logs, X-Ray, and SSM/custom-domain references supplied by Deployer.
 - Bootstrap-created tenant custom domain and shared API key usage plan.
-- Deployer-compatible Marketplace source snapshot with `marketplace.product.json`, `marketplace/app.ts`, and `requirements/swagger.yml`.
+- Deployed Lexicon product when reserved `lexicon`, `interprose`, or `interprose_snapshots` languages are enabled.
+- Build-produced Marketplace cloud assembly artifact with `marketplace.product.json`, `cdk.out/manifest.json`, staged file assets, `build/build.manifest.json`, and API requirements represented in the synthesized templates/assets.
 
 ### 8.2 Deploy / destroy
 
@@ -1068,7 +1080,7 @@ After every deploy:
 The implementation is functionally complete when:
 
 - The product is named **Translate** in code, stack tags, service metadata, OpenAPI, and Marketplace registration.
-- Translate is published as a Marketplace `SERVICE` component with a Deployer-compatible source snapshot, `marketplace.product.json`, and `marketplace/app.ts`.
+- Translate is published as a Marketplace `SERVICE` component with a Deployer-compatible Build cloud assembly artifact, `marketplace.product.json`, `cdk.out/manifest.json`, and Build provenance.
 - Independently released mapping packs are Marketplace `DATA` components and write only mapping assets/catalog metadata into the Translate import surface.
 - The public API is mounted under `/translate/`; every public route except `/translate/information` requires the tenant service API key.
 - `GET /translate/information` is a no-key API Gateway `MOCK` integration returning Deployer-supplied `ServiceInfo`.
