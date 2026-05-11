@@ -286,11 +286,13 @@ A **ComponentState** row tracks what the Puller currently knows about one compon
   "pending_deploy_run_id?": "run_01H01…",
   "pending_started_at?": "ISO8601 UTC",
   "dependencies?": ["Persist", "Lexicon"],
-  "deploy_time_dependencies?": ["Build"],
-  "dependency_layers?": [[{ "component_id": "Build", "type": "SERVICE", "product_id": "…" }], …],
+  "deploy_time_dependencies?": [],
+  "dependency_layers?": [[{ "component_id": "Persist", "type": "SERVICE", "product_id": "…" }], …],
   "last_bundle_meta?": { … }                               // sanitised, mirrors the notification payload
 }
 ```
+
+Build provenance is artifact metadata, not deployment ordering. Puller must not add `Build` to `dependencies` or `deploy_time_dependencies` merely because a bundle was produced by Build; Marketplace and Deployer validate the Build metadata on the artifact itself.
 
 `live_bundle_id` is the primary field that drives drift detection, but automatic retries are bounded by `last_auto_failed_bundle_id`: `live_bundle_id ≠ last_released_bundle_id ∧ auto_deploy_status == AUTO ∧ pending_bundle_id == null ∧ last_auto_failed_bundle_id != last_released_bundle_id` ⇒ schedule a deploy. If the latest released bundle already failed an automatic deploy, reconcile / drift sweep reports `drifted_failed` and waits for either a newer bundle or an operator-triggered redeploy. `pending_bundle_id` exists to deduplicate: if a webhook arrives while a prior deploy of the same `(component_id, bundle_id)` is in flight, the second webhook is recorded in `DedupeLedgerTable` and discarded. If a webhook arrives for a **newer** bundle while an older bundle is mid-deploy, the older deploy is **not** cancelled — instead the newer bundle is queued as a follow-on by setting `last_released_bundle_id` and letting the next reconcile / drift-sweep pick it up after the current run finishes.
 
