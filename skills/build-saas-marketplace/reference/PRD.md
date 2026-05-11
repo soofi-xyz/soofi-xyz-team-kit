@@ -15,7 +15,7 @@ A **Component** is the unit of distribution. Every component is owned by exactly
 - `SERVICE` — service configurations: stateful CloudFormation/CDK templates, Lambda functions, Sagemaker models, etc.
 - `DATA` — data configurations: static annotations consumed by another product (Connection flows, Language mappings, Language rules, …). Stateless after deploy, no runtime.
 
-A **Bundle** is one immutable revision of a component (artifact URL + signed metadata).
+A **Bundle** is one immutable revision of a component (artifact URL + signed metadata). For production Marketplace uploads, the artifact is expected to be a **Build-produced CDK cloud assembly** as defined in `Build.md`: `service-builder.artifact_kind = "CDK_CLOUD_ASSEMBLY"`, `service-builder.deployer_contract_version = "1"`, and the zip contains `marketplace.product.json`, `cdk.out/manifest.json`, stack templates, asset manifests, staged file assets, and `build/build.manifest.json`. Marketplace validates this provenance before review, then re-hosts the exact built artifact after it passes the review pipeline.
 
 A **Subscription** is a `(component_id, webhook_url)` binding owned by whoever can prove control of the URL via a signing secret. It supersedes the historical "deploy to subscriber environment" + "realtime listener" split: there is now exactly **one** subscription concept, and its sole purpose is to deliver a **`component.bundle.published`** webhook to the registered URL whenever the corresponding component publishes a new `Valid` bundle. Subscribers decide what to do with the notification — typically, they fetch the `bundle_url` and hand it to their local deployer or puller.
 
@@ -41,6 +41,7 @@ Every successful POST that mints work returns `200`/`201`/`202`/`204` per route;
 ### 1.3 Non-goals
 
 - Marketplace does **not** host bundle artifacts at upload time — it consumes a caller-supplied `bundle_url`, validates it (`HEAD` for availability, decodes its metadata header), and re-uploads a sanitised copy to its own S3 bucket only **after** the bundle passes the review pipeline.
+- Marketplace does **not** build product source. Build owns source download, Golden Path checks, CDK synth, cloud assembly portability validation, Lambda minification/obfuscation policy validation, and `service-builder` provenance. Marketplace consumes Build artifacts; it never runs `pnpm`, `tsc`, `vitest`, `cdk synth`, or a product build command.
 - Marketplace does **not** itself deploy CloudFormation / CDK stacks into subscriber accounts. Subscribers receive a notification with a presigned `bundle_url` and are responsible for handing the artifact to their own deployer / puller. There is no per-subscription deploy state machine, no `WAIT_FOR_TASK_TOKEN` deployer callback, and no per-environment credential exchange.
 - Marketplace does **not** maintain an `(api_key, domain_name)` trust relationship with subscribers. A subscription is identified by an opaque `subscription_id` and managed by proof of webhook control plus knowledge of its current `signing_secret` (returned once at create-time and rotation-time). The caller's API key gates access to the Marketplace API, but it is not stored as subscription ownership state and rotation of that key never changes subscription ownership.
 - Marketplace does **not** orchestrate per-subscriber dependency layering at runtime. Dependencies are validated at upload (cycle dry-run, lexicon-version compatibility, assessment-hash freshness — see §4.1.1) and surfaced in the notification payload (`dependencies`, `deploy_time_dependencies`, `dependency_layers`). The Puller treats this metadata as an install-order contract and deploys dependency layers before the notified bundle.
@@ -61,7 +62,8 @@ These principles anchor every other section and override any conflicting design 
 2. **Subscriber notification is push-only and signed.** When a bundle becomes `Valid`, Marketplace fans out a single signed webhook (`component.bundle.published`) to every subscription bound to that component via the `NotifyComponentSubscribers` SFN. Every outbound notification carries an HMAC-SHA256 signature over the canonical body, computed with the per-subscription `signing_secret`. Subscribers verify the signature; Marketplace never needs to know the subscriber's identity beyond the URL.
 3. **Marketplace fan-out replaces every prior pull/deploy variant.** There is no Marketplace-side Deployer integration, no per-subscriber `WAIT_FOR_TASK_TOKEN` callback, no separate "realtime listener" channel, and no expectation that subscribers run a poller against Marketplace. Subscribers can still run their own poller as a redundancy mechanism (against `GET /ontology/products/{product_id}/components/{component_id}/bundles?sort=desc&limit=1`), but the canonical mechanism is the signed webhook.
 4. **Dependency resolution is shallow at write-time only.** Bundle uploads run a dependency-cycle dry-run and a lexicon-version compatibility check; the resolved transitive layers are persisted on the bundle row and surfaced verbatim in every subsequent notification's `dependency_layers` field. Marketplace does not orchestrate dependency installation order at notification time, but the field is normative for subscribers that auto-deploy (notably Puller).
-5. **Tagged AWS-native integrations beat custom code.** Where Step Functions has a first-class service integration (`states:startExecution.sync`, `lambda:invoke`, `s3:getObject`, `dynamodb:GetItem`, EventBridge Pipes), use it. Custom Lambdas exist only for business logic that cannot be expressed natively (e.g. the HMAC-signed HTTP fan-out itself, since Step Functions HTTP Tasks cannot compute per-target signatures).
+5. **Build provenance gates production bundle uploads.** `PUT /ontology/products/{product_id}/components/{component_id}/bundles` validates `service-builder` metadata from Build before any DynamoDB side effect: artifact kind, deployer contract version, component id, bundle type, source/assembly/artifact hashes, template/asset hashes, deployment parameters, and Lambda asset policy (`minified=true`, `obfuscated=true`, `source_maps=false`). Build is provenance metadata, not dependency ordering; components must not list `Build` in `dependencies` or `deploy_time_dependencies` merely because Build produced their artifact.
+6. **Tagged AWS-native integrations beat custom code.** Where Step Functions has a first-class service integration (`states:startExecution.sync`, `lambda:invoke`, `s3:getObject`, `dynamodb:GetItem`, EventBridge Pipes), use it. Custom Lambdas exist only for business logic that cannot be expressed natively (e.g. the HMAC-signed HTTP fan-out itself, since Step Functions HTTP Tasks cannot compute per-target signatures).
 
 ### 2.1 Stacks (AWS CDK)
 
@@ -219,7 +221,7 @@ A **Component** is the unit of distribution. It is owned by exactly one catalog 
   "product_id": "9e4…",                      // owning catalog product (UUIDv4)
   "description": "…",                        // optional
   "dependencies": ["Persist", "Lexicon"],    // runtime deps (zero or more)
-  "deploy_time_dependencies": ["Build"],     // deploy-time deps (zero or more, SERVICE only)
+  "deploy_time_dependencies": ["Persist"],   // deploy-time deps (zero or more, SERVICE only)
   "bundle_status": "Valid|Failed|UPLOADING_IN_PROGRESS|ROLLBACK_IN_PROGRESS",
   "update_at": "ISO8601 UTC",                // last successful publication timestamp
   "created_at": "ISO8601 UTC",
@@ -246,10 +248,20 @@ A **Bundle** is one immutable revision of a component:
   "description": "…",
   "dependencies": ["…"],
   "deploy_time_dependencies": ["…"],
-  "dependency_layers": [[{ "component_id": "Build", "type": "SERVICE", "product_id": "…" }], …],
+  "dependency_layers": [[{ "component_id": "Persist", "type": "SERVICE", "product_id": "…" }], …],
   "lexicon_version_id": "01J42CH184DC48N1PY3R2YCJ9P|null",
   "bundle_meta": {
-    "service-builder":     { "lexicon_version_id?": "…", "bundle_type": "SERVICE|DATA", "version_hash": "…" },
+    "service-builder":     { "version": "2.0", "build_id": "bld_01J…", "component_id": "Connector",
+                             "bundle_type": "SERVICE|DATA", "artifact_kind": "CDK_CLOUD_ASSEMBLY",
+                             "deployer_contract_version": "1", "source_hash": "sha256:…",
+                             "assembly_hash": "sha256:…", "artifact_hash": "sha256:…",
+                             "cloud_assembly": { "manifest_path": "cdk.out/manifest.json",
+                               "template_hashes": { "ConnectorStack": "sha256:…" },
+                               "file_asset_hashes": { "asset.abc": "sha256:…" },
+                               "docker_image_assets": [] },
+                             "deployment_parameters": { "required": ["Subdomain"], "optional": {} },
+                             "lambda_asset_policy": { "minified": true, "obfuscated": true, "source_maps": false },
+                             "lexicon_version_id?": "…" },
     "service-assessor":    { "version_hash": "…" },           // populated by Assess
     "service-test":        { "version_hash": "…" },           // populated by Test (DATA bundles only)
     "service-comply":      { "severity_label": "…" },         // populated by Comply
@@ -259,7 +271,11 @@ A **Bundle** is one immutable revision of a component:
 }
 ```
 
-Bundles are caller-supplied via `bundle_url` (any HTTPS URL whose `HEAD` succeeds with valid metadata in headers and `Content-Length <= MAX_BUNDLE_BYTES`). Bundle metadata is carried in `x-amz-meta-service-*` object metadata headers as unsigned JWT-shaped strings (`<base64url header>.<base64url JSON payload>.`, no signature). Marketplace decodes the JWT payload JSON for validation and review. After the publication state machine succeeds, Marketplace **re-uploads** the artifact to `s3://<BundlesBucket>/bundles/<product_id>/<component_id>/<bundle_id>` with a **sanitised** metadata block (status / version / applied_rules stripped from each `service-*` sub-block) and stamps `service-marketplace.id = <bundle_id>` so subscribers can match by it. The sanitized metadata is written back to S3 using the same JWT-shaped `x-amz-meta-service-*` header format Deployer expects; raw JSON metadata headers are invalid. `dependency_layers` is the topologically-sorted closure computed at upload time and is the same data the notification payload's `dependency_layers` field carries verbatim.
+Bundles are caller-supplied via `bundle_url` (any HTTPS URL whose `HEAD` succeeds with valid metadata in headers and `Content-Length <= MAX_BUNDLE_BYTES`). Bundle metadata is carried in `x-amz-meta-service-*` object metadata headers as unsigned JWT-shaped strings (`<base64url header>.<base64url JSON payload>.`, no signature). Marketplace decodes the JWT payload JSON for validation and review.
+
+For production uploads, `bundle_url` MUST point to a Build-produced CDK cloud assembly artifact (`Build.md` §3): the zip contains `marketplace.product.json`, `cdk.out/manifest.json`, stack templates, asset manifests, staged file assets, and `build/build.manifest.json`; `service-builder.artifact_kind` is `CDK_CLOUD_ASSEMBLY`; `service-builder.deployer_contract_version` is `1`; `service-builder.component_id` and `bundle_type` match the Marketplace component; `service-builder.cloud_assembly` lists template and file-asset hashes; `service-builder.deployment_parameters` lists required deploy-time values; and `service-builder.lambda_asset_policy` proves Lambda runtime assets are already minified, obfuscated, and source-map-free. Development fixtures may bypass this only in explicitly named test environments.
+
+After the publication state machine succeeds, Marketplace **re-uploads** the artifact to `s3://<BundlesBucket>/bundles/<product_id>/<component_id>/<bundle_id>` with a **sanitised** metadata block. Sanitisation strips transient review/build internals such as `applied_rules`, stack traces, raw report excerpts, and non-public diagnostics, but preserves Build provenance required by Deployer: artifact kind, deployer contract version, component id, bundle type, source/assembly/artifact hashes, template/asset hashes, CDK version fields, cloud assembly schema version, deployment parameters, `lambda_asset_policy`, and lexicon version. Marketplace stamps `service-marketplace.id = <bundle_id>` so subscribers can match by it. The sanitized metadata is written back to S3 using the same JWT-shaped `x-amz-meta-service-*` header format Deployer expects; raw JSON metadata headers are invalid. `dependency_layers` is the topologically-sorted closure computed at upload time and is the same data the notification payload's `dependency_layers` field carries verbatim.
 
 ### 3.4 Catalog (Ontology)
 
@@ -353,8 +369,8 @@ Outbound HTTP payload (`POST <webhook_url>`):
     "uploaded_at": "2026-05-05T15:47:58Z",
     "description": "…",
     "dependencies": ["Persist", "Lexicon"],
-    "deploy_time_dependencies": ["Build"],
-    "dependency_layers": [[{ "component_id": "Build", "type": "SERVICE", "product_id": "…" }], …],
+    "deploy_time_dependencies": ["Persist"],
+    "dependency_layers": [[{ "component_id": "Persist", "type": "SERVICE", "product_id": "…" }], …],
     "lexicon_version_id": "01J…|null",
     "bundle_meta": { /* sanitised, see §3.3 */ }
   },
@@ -388,7 +404,7 @@ Headers on every outbound request:
 | 403  | `SubscriptionSecretMismatch` (caller did not prove knowledge of the subscription's current signing secret)                                                                                    |
 | 404  | `ComponentNotFound`, `BundleNotFound`, `SubscriptionNotFound`, `NotificationNotFound`, `ConfigurationNotFound`, `ProductNotFound`, `CategoryNotFound`, `FamilyNotFound`, `ApiNotFound`        |
 | 409  | `ComponentNameConflictAcrossRegistries`, `ComponentInUpdatingState`, `SubscriptionAlreadyExists` (same `component_id` + `webhook_url` pair already exists)                                  |
-| 422  | `InvalidBundleURL`, `BundleTooLarge`, `BundleAssessmentVersionHashOutdated`, `BundleTesterVersionHashOutdated`, `BundleTypeMismatch`, `UnknownBundleType`, `InvalidDependencySpecification`, `IncompatibleLexiconVersionId`, `WebhookUrlUnreachable`, `WebhookUrlInsecure`, `EnvAdminNotConfigured`, `RegulatorProductInvalid`, `EnvironmentInactive` |
+| 422  | `InvalidBundleURL`, `BundleTooLarge`, `BuildArtifactInvalid`, `BundleAssessmentVersionHashOutdated`, `BundleTesterVersionHashOutdated`, `BundleTypeMismatch`, `UnknownBundleType`, `InvalidDependencySpecification`, `IncompatibleLexiconVersionId`, `WebhookUrlUnreachable`, `WebhookUrlInsecure`, `EnvAdminNotConfigured`, `RegulatorProductInvalid`, `EnvironmentInactive` |
 | 500  | `InternalServerError`                                                                                                                                                                        |
 | 504  | `WebhookUrlConnectionTimeout`, `RetryableUpstreamError`                                                                                                                                       |
 
@@ -420,15 +436,16 @@ The router executes the validation gates **before** any side effect:
 5. **Bundle URL must be reachable** — `HEAD bundle_url` with 3 s timeout. 422 `bundle_url is unavailable.` if not.
 6. **Bundle size must be bounded** — require `Content-Length` on the `HEAD` response and reject `Content-Length > MAX_BUNDLE_BYTES` with 422 `BundleTooLarge`. Marketplace's size limit is the platform artifact-size contract; Deployer must reject anything larger too.
 7. **Bundle metadata must be decodable** — extract from response headers, JSON-decode (422 `Unknown bundle type.` on failure).
-8. **Bundle's declared `bundle_type` must match the component's `type`** (422 `Invalid bundle type. Expected - <component.type>, given - <bundle_type>`).
-9. **Assessment version hash must be the latest** — validate against the catalog product's regulator (422). Direct dependencies are similarly checked against the **latest or second-latest** assessment hash.
-10. **DATA bundles must additionally pass the Tester version hash check** when a `service-test` block exists in the latest Test bundle's metadata.
-11. **DATA components cannot have `deploy_time_dependencies`** (422).
-12. **No self-dependency** (422 `cannot depend on itself`).
-13. **No intersection between `dependencies` and `deploy_time_dependencies`** (422 with the intersecting names).
-14. **No dependency cycle** — topological-sort dry-run over the current component plus the resolved direct dependency owners (422 `Cycle: A -> B -> A`). The resolved layers are persisted on the bundle row as `dependency_layers` and re-emitted in every subsequent notification.
-15. **Every direct dependency must be a registered component with at least one bundle** (422).
-16. **Lexicon-version compatibility** — when the bundle declares `service-builder.lexicon_version_id`, every dependent component must already be on a lexicon ≥ that ID; otherwise 422 `… is incompatible with its clients.`.
+8. **Build provenance must be valid** — production uploads require `service-builder.artifact_kind = "CDK_CLOUD_ASSEMBLY"`, `deployer_contract_version = "1"`, `component_id` matching the path component, `bundle_type` matching the component type, `source_hash`/`assembly_hash`/`artifact_hash` fields, `cloud_assembly.manifest_path = "cdk.out/manifest.json"`, template/file-asset hashes, `deployment_parameters`, and `lambda_asset_policy = { minified: true, obfuscated: true, source_maps: false }`. Marketplace also opens the zip header/central directory enough to assert `marketplace.product.json`, `cdk.out/manifest.json`, at least one `*.template.json`, at least one asset manifest when assets are declared, staged file assets, and `build/build.manifest.json` exist without executing source. Failure returns 422 `BuildArtifactInvalid`.
+9. **Bundle's declared `bundle_type` must match the component's `type`** (422 `Invalid bundle type. Expected - <component.type>, given - <bundle_type>`).
+10. **Assessment version hash must be the latest** — validate against the catalog product's regulator (422). Direct dependencies are similarly checked against the **latest or second-latest** assessment hash.
+11. **DATA bundles must additionally pass the Tester version hash check** when a `service-test` block exists in the latest Test bundle's metadata.
+12. **DATA components cannot have `deploy_time_dependencies`** (422).
+13. **No self-dependency** (422 `cannot depend on itself`).
+14. **No intersection between `dependencies` and `deploy_time_dependencies`** (422 with the intersecting names).
+15. **No dependency cycle** — topological-sort dry-run over the current component plus the resolved direct dependency owners (422 `Cycle: A -> B -> A`). The resolved layers are persisted on the bundle row as `dependency_layers` and re-emitted in every subsequent notification.
+16. **Every direct dependency must be a registered component with at least one bundle** (422).
+17. **Lexicon-version compatibility** — when the bundle declares `service-builder.lexicon_version_id`, every dependent component must already be on a lexicon ≥ that ID; otherwise 422 `… is incompatible with its clients.`.
 
 On success, Marketplace mints a ULID `bundle_id`, persists the bundle row (`bundle_status=UPLOADING_IN_PROGRESS`), then `StartExecution` on `PutProductBundle` SFN (§5.1) and returns `202 { component_id, bundle_status: "UPLOADING_IN_PROGRESS", review_id: bundle_id }`.
 
@@ -560,7 +577,7 @@ CheckSkipReview (Choice on $.skip_review)
 - **Inputs**: `{ bundle_url, product_id, component_id, type, bundle_id, dependencies[], deploy_time_dependencies[], dependency_layers, decoded_bundle_metadata, host, api_key, previous_bundle_id?, review_environments, skip_review }`. `review_environments` is loaded by the bundle route from `REVIEW_ENVIRONMENT_HOSTS_SSM_PARAM` plus the optional `SELF_CLEANING_REVIEW_ENVIRONMENT_HOST_SSM_PARAM`; it is never caller-supplied in the bundle upload body.
 - **Comply gate**: `CheckComplyStatus` reads `$.decoded_bundle_metadata.service-comply.severity_label`; `CRITICAL`/`HIGH`/`MEDIUM` → `FailedComplyError` → `UpdateBundleStatus`. Anything else → `comply_status=SUCCEEDED`.
 - **Sandbox delivery** (`DeployBundleToSandbox`): pushes the bundle into every configured `review_environment_hosts[]` target using `review_api_key` (and into `self_cleaning_review_environment_host` with `self_cleaning_review_api_key` when configured) to confirm the artifact actually deploys end-to-end. On terminal failure in any required review environment, the bundle is marked `Failed` and never fans out to subscribers.
-- **Re-upload + sanitisation** (`PutBundleToS3`): re-checks the bundle URL availability, sanitises the metadata (strip `service-*.{status, applied_rules, version}`), stamps `service-marketplace = { component_id, id: bundle_id, status: "SUCCEEDED", issuer: <host>marketplace/, timestamp, version: "1.0" }`, JWT-encodes each sanitized `service-*` metadata payload back into its corresponding `x-amz-meta-service-*` header, uploads to `s3://<BundlesBucket>/bundles/<product_id>/<component_id>/<bundle_id>` with those JWT-shaped metadata headers, and updates the DDB row to `in_review=true, decoded_bundle_metadata=<full>` so the next `UpdateBundleStatus` step can flip `bundle_status=Valid`.
+- **Re-upload + sanitisation** (`PutBundleToS3`): re-checks the bundle URL availability, verifies the downloaded bytes match `service-builder.artifact_hash` when present, sanitises metadata while preserving Build provenance required by Deployer (`artifact_kind`, `deployer_contract_version`, source/assembly/artifact hashes, template/asset hashes, CDK fields, cloud assembly schema version, deployment parameters, `lambda_asset_policy`, component id, bundle type, lexicon version), stamps `service-marketplace = { component_id, id: bundle_id, status: "SUCCEEDED", issuer: <host>marketplace/, timestamp, version: "1.0" }`, JWT-encodes each sanitized `service-*` metadata payload back into its corresponding `x-amz-meta-service-*` header, uploads to `s3://<BundlesBucket>/bundles/<product_id>/<component_id>/<bundle_id>` with those JWT-shaped metadata headers, and updates the DDB row to `in_review=true, decoded_bundle_metadata=<full>` so the next `UpdateBundleStatus` step can flip `bundle_status=Valid`.
 - **OnSuccessOperations** (Parallel): `EmitBundlePublished` (`states:startExecution.sync` against `NotifyComponentSubscribers` SFN — see §5.2) and `PublishSiteArtifacts` (publishes to the configured site env). Both branches catch `States.ALL` to a `Succeed` fallback so a single failure cannot block the success path of the other.
 - **Total budget**: ~14 min (30 polls × 15 s for the deploy loop, plus retry buffers).
 
@@ -849,7 +866,7 @@ Stack outputs: `ApiUrl`, `BundlesBucketName`, `OntologyTableName`, `ComponentsTa
 
 1. `PUT /settings` with at least `review_api_key` and `review_environment_hosts[]` (so bundle uploads can run a sandbox review). Additional keys/hosts (`self_cleaning_review_api_key`, `self_cleaning_review_environment_host`, `site_api_key`, `quicksight_api_key`, `env_administrator_*`, `code_assessment_regulator`) are optional but unlock further capabilities (parallel review env, site publication, analytics dump, regulator-product-bound assessment validation).
 2. Build the catalog hierarchy: `POST /ontology/families` → `…/categories` → `…/categories/{category_id}/products`.
-3. Register the system bootstrap components (`Deployer` and `MarketplacePuller`) as `SERVICE` components, then publish their first reviewed bundles. Fresh tenants cannot self-install products until these bundles exist.
+3. Register the system bootstrap components (`Deployer` and `MarketplacePuller`) as `SERVICE` components, then publish their first reviewed bundles. Their `bundle_url`s must come from Build-produced CDK cloud assemblies just like ordinary product bundles. Fresh tenants cannot self-install products until these bundles exist.
 4. `POST /ontology/products/{product_id}/components` for each additional component you want to publish (`{ component_id, type: "SERVICE"|"DATA", description? }`). Component IDs are globally unique.
 5. `PUT /ontology/products/{product_id}/components/{component_id}/bundles` with each component's first bundle. Poll `GET /reviews/{review_id}` until `SUCCEEDED`.
 6. Subscribers self-register via `POST /subscriptions { component_id, webhook_url }`. They MUST persist the `signing_secret` returned in the `201` body — Marketplace cannot recover it.
@@ -887,8 +904,8 @@ For a single-bundle rollback inside the production marketplace: `POST /ontology/
 
 1. **Repo skeleton**: pnpm workspace, TypeScript, `tsconfig.{base,build,app,src,test}.json`, ESLint, Prettier (with import sort), husky + lint-staged, Vitest. Package name is internal.
 2. **Runtime dependencies**: `@aws-lambda-powertools/{logger,metrics,tracer,event-handler}`, `@aws-sdk/{client-dynamodb,client-s3,client-sfn,client-ssm,client-kms,client-secrets-manager,client-apigateway,credential-providers}`, `aws-sdk-client-mock` (test only), `ulid`, `zod` (or `@sinclair/typebox`), `cfnresponse`-equivalent custom-resource shim. CDK: `aws-cdk-lib`, `constructs`, `aws-cdk`. Choose any preferred validation library and structured-error / DI conventions — the contracts in §3 and §6 must be honoured but the implementation style is unconstrained.
-3. **Schemas / contracts**: one module per group in `lambda/schemas/` — `subscription`, `notification`, `bundle`, `component`, `ontology`, `instance-settings`, `error`. Errors are tagged classes; everything else is type+validator pairs.
-4. **Utils**: `lambda/utils/{trace,ulid,kms,s3-presign,dependency-resolver,assessment-hash,lexicon-version,hmac}.ts`.
+3. **Schemas / contracts**: one module per group in `lambda/schemas/` — `subscription`, `notification`, `bundle`, `build-provenance`, `service-builder-metadata`, `component`, `ontology`, `instance-settings`, `error`. Errors are tagged classes; everything else is type+validator pairs.
+4. **Utils**: `lambda/utils/{trace,ulid,kms,s3-presign,dependency-resolver,assessment-hash,lexicon-version,hmac,zip-manifest}.ts`.
 5. **Configuration**: `lambda/config/instance.ts` (per-instance SSM-backed entries with TTL caching) plus per-service config readers tied to the env vars listed in §2.4. Required vars must throw at startup; optional vars must default per §2.4.
 6. **Services** (one file each in `lambda/services/`): Components (`Repository`, `Linker`, `OntologyValidator`); Bundles (`Repository`, `Publisher`, `Sanitizer`, `Rollback`); Subscriptions (`Repository`, `SecretsBroker`, `LivenessProber`, `OwnershipGuard`); Notifications (`Repository`, `PayloadBuilder`, `WebhookSigner`, `Sender`, `RetryClassifier`, `AutoPause`, `Replay`); Catalog (`FamiliesRepo`, `CategoriesRepo`, `ProductsRepo`, `ApisRepo`, `PricesRepo`, `ConfigurationsRepo`, `MetadataRepo`, `Snapshot`); Instance (`SettingsRepo`, `Status`, `SchemaProjector`); Health (`MetricsEmitter`); Wrapped HTTP clients (`ReviewEnv`, `EnvAdmin`, `Site`, `Persistence`, `WorkDashboard`, `Ontology`); plus a composition module `services/index.ts` that exports per-router and per-handler dependency containers.
 7. **HTTP layer**: `lambda/http/{request-context.ts, responses.ts, decorators.ts}`, `lambda/logging/{powertools.ts, runtime.ts}`, the seven routers (`catalog`, `bundles`, `subscriptions`, `notifications`, `instance`, `analytics`, `info`) and `router.ts` mounting them with `prefix="/marketplace"`, then `handler.ts`.
@@ -909,6 +926,7 @@ A re-implementation is considered functionally complete when:
 - The catalog (§3.4 / §4.3) is the **only** product ontology surface — no `/products`, `/data`, `/product-or-data/...`, or other parallel registry exists. Components are created exclusively via `POST /ontology/products/{product_id}/components` and reachable only via `/ontology/products/{product_id}/components/...` paths.
 - Subscriptions and listeners are unified into a single concept: a `(component_id, webhook_url)` binding with a per-subscription `signing_secret`. There is no separate `/listeners/...` API, no `(api_key, domain_name)` env-admin handshake, no per-subscriber deploy state machine, and no inbound deployer callback route.
 - `PUT /ontology/products/{product_id}/components/{component_id}/bundles` is **transactional** at the schema level: every validation gate in §4.1.1 runs **before** the bundle row is persisted; any failure leaves zero rows in `ComponentsTable`. The SFN-driven publication is asynchronous from the caller's perspective but `bundle_status` is monotonic (`UPLOADING_IN_PROGRESS → Valid|Failed`).
+- Production bundle uploads require Build provenance: `service-builder.artifact_kind="CDK_CLOUD_ASSEMBLY"`, `deployer_contract_version="1"`, matching component/type fields, valid source/assembly/artifact hashes, valid template/file-asset hashes, deployment parameters, and `lambda_asset_policy` proving minified, obfuscated, source-map-free Lambda assets. Marketplace rejects source snapshots and legacy `config.json` / `artifacts/<module>/update.json` bundle shapes with `422 BuildArtifactInvalid`.
 - Once a bundle reaches `Valid`, `PutProductBundle` triggers `NotifyComponentSubscribers` synchronously, which fans out exactly **one** `component.bundle.published` notification per `ACTIVE` subscription bound to the component. Each fan-out preserves a stable `event_id` across retries so receivers can dedupe.
 - Outbound notifications carry an HMAC-SHA256 signature over the **raw** request body, computed with the per-subscription `signing_secret`, in the `X-Marketplace-Signature: v1=<hex>` header. Receivers MUST be able to verify with constant-time comparison; the test-double webhook sink in CI does so.
 - Per-attempt retry policy: 408/429/5xx/network errors are retried up to `NOTIFICATION_RETRY_MAX_ATTEMPTS` (default 5) with exponential backoff `min(base * 2^(n-1), max)`. Other 4xx are terminal. After 3 consecutive `EXHAUSTED` notifications, the subscription auto-pauses with `auto_paused_reason: "auto_paused_after_exhausted"` and stops being a fan-out target until reactivated.

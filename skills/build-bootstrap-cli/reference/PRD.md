@@ -185,7 +185,7 @@ For Bootstrap, Puller `custom_parameters` must include:
 2. Fetch Account bootstrap manifest with `x-api-key`.
 3. Verify the caller-selected AWS profile resolves to the manifest `aws_account_id` via STS `GetCallerIdentity`.
 4. Resolve latest valid Deployer and Marketplace Puller bundles from Marketplace.
-5. Download and inspect bundle headers and `config.json` without deploying.
+5. Download and inspect bundle headers, `marketplace.product.json`, `cdk.out/manifest.json`, and `build/build.manifest.json` without deploying.
 6. Print a redacted plan: target account, subdomain, deploy regions, Deployer bundle id, Puller bundle id, and generated CFN parameter names.
 
 ### 3.2 `bootstrap environment`
@@ -195,10 +195,11 @@ For Bootstrap, Puller `custom_parameters` must include:
 3. Download the Deployer bundle to a temp directory.
 4. Validate the bundle:
    - zip is reachable and size is within local deploy limits;
-   - `config.json` decodes;
-   - `bundle_type = "SERVICE"`;
+   - `x-amz-meta-service-builder` decodes with `artifact_kind = "CDK_CLOUD_ASSEMBLY"`, `deployer_contract_version = "1"`, matching source/assembly/artifact hashes, and `lambda_asset_policy = { minified: true, obfuscated: true, source_maps: false }`;
+   - `marketplace.product.json` decodes and declares `bundle_type = "SERVICE"`;
+   - `cdk.out/manifest.json` and `build/build.manifest.json` exist and agree with the Build metadata;
    - component id equals manifest `system_components.deployer.component_id`;
-   - the bundle exposes only the documented Deployer install parameters and contains no raw AWS credentials or caller-supplied credential fields.
+   - the bundle exposes only the documented Deployer install parameters and contains no raw AWS credentials, caller-supplied credential fields, product source directories, legacy `config.json` / `artifacts/<module>/update.json` deployment shape, or product-supplied command fields.
 5. Ensure the shared tenant API Gateway resources exist before installing Deployer:
    - for REST API products, create or update a small Bootstrap-owned CloudFormation stack containing `AWS::ApiGateway::DomainName` with `DomainName = manifest.fqdn`, `EndpointConfiguration.Types = ["REGIONAL"]`, `RegionalCertificateArn` from the manifest certificate for the home region, `SecurityPolicy = "TLS_1_2"`, and `RoutingMode = "BASE_PATH_MAPPING_ONLY"`;
    - if a future product line uses API Gateway v2 APIs, the equivalent stack uses `AWS::ApiGatewayV2::DomainName`; the REST API path remains the default for the PRDs in this repo;
