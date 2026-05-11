@@ -8,11 +8,11 @@ Authoritative blueprint for building the **Deployer** service. It captures the f
 
 ### 1.1 Mission
 
-Deployer is the marketplace ecosystem's **infrastructure-deployment product**. It is the single component in the platform that actually executes AWS CDK deployments, and it does so **only against the AWS account it is itself running in**. It accepts a presigned URL to an immutable source snapshot, invokes CDK directly through the AWS CDK Toolkit Library inside Deployer-owned workers, drives the synth/asset-publish/CloudFormation deploy loop inside its own account through a single STANDARD AWS Step Functions state machine, and reports terminal status back to the originating caller (Marketplace, in normal operation) over a one-shot HTTPS `callback_url`.
+Deployer is the marketplace ecosystem's **infrastructure-deployment product**. It is the single component in the platform that actually executes AWS CDK deployments, and it does so **only against the AWS account it is itself running in**. It accepts a presigned URL to an immutable Build-produced CDK cloud assembly, validates the built artifact, publishes staged assets into the local account's CDK bootstrap resources, drives the CloudFormation deploy loop inside its own account through a single STANDARD AWS Step Functions state machine, and reports terminal status back to the originating caller (Marketplace, in normal operation) over a one-shot HTTPS `callback_url`.
 
-Because the Deployer is local-account-only, it MUST be installed once per tenant environment — before the other marketplace products (Marketplace Puller, Persist, Connect, …) that the tenant subscribes to. The initial install is performed by the operator-run bootstrap CLI, not by Account or Marketplace: the CLI uses the tenant owner's API key to discover the latest Deployer source snapshot from Marketplace, then uses the operator's AWS profile/SSO credentials to install Deployer into the newly provisioned tenant account. After Deployer is live, every subsequent product install goes through `https://<tenant-subdomain>/infra-deployer/deploy-by-token`; Marketplace never multiplexes one Deployer across accounts.
+Because the Deployer is local-account-only, it MUST be installed once per tenant environment — before the other marketplace products (Marketplace Puller, Persist, Connect, …) that the tenant subscribes to. The initial install is performed by the operator-run bootstrap CLI, not by Account or Marketplace: the CLI uses the tenant owner's API key to discover the latest Deployer cloud assembly artifact from Marketplace, then uses the operator's AWS profile/SSO credentials to install Deployer into the newly provisioned tenant account. After Deployer is live, every subsequent product install goes through `https://<tenant-subdomain>/infra-deployer/deploy-by-token`; Marketplace never multiplexes one Deployer across accounts.
 
-A **bundle** is the unit of distribution, but its payload is source code, not pre-rendered CloudFormation. The zip contains a TypeScript CDK application with a fixed marketplace entrypoint at `marketplace/app.ts` plus a declarative `marketplace.product.json` manifest. Products do **not** provide deploy commands, synth commands, `update.json` templates, Docker build scripts, or per-module artifact layouts. Deployer owns dependency installation policy, CDK app loading, synth, asset publication, stack selection, and deployment. Products own only the CDK constructs and a typed factory that receives Deployer's canonical `MarketplaceContext`.
+A **bundle** is the unit of distribution, and its payload is a built CDK cloud assembly, not product source. The zip contains `marketplace.product.json`, Build's `build/build.manifest.json` provenance file, and `cdk.out/` with `manifest.json`, synthesized CloudFormation templates, asset manifests, and staged file assets. Products do **not** provide deploy commands, synth commands, `update.json` templates, Docker build scripts, per-module artifact layouts, or source files for Deployer to execute. Deployer owns artifact validation, deployment-parameter resolution, asset publication, stack selection, and CloudFormation deployment.
 
 The runtime is **callback-driven**: every long-running CloudFormation operation suspends a Step Functions task with `WAIT_FOR_TASK_TOKEN`. CloudFormation stack events stream into an SNS topic in the same account and **the same AWS region as the target stack**; an SNS-subscribed regional relay matches each event to a persisted task token and calls `SendTaskSuccess` / `SendTaskFailure` against the home-region state machine. The Deployer never busy-waits CloudFormation.
 
@@ -35,14 +35,15 @@ Every successful POST that mints work returns `200` with `{ bundle_id, deploy_id
 ### 1.3 Non-goals
 
 - Deployer does **not** deploy into any AWS account other than its own. There is no cross-account assume-role, no caller-supplied credential blob, no multi-tenant fan-out. To deploy into another account, install another Deployer there.
-- Deployer does **not** mint, host, or sign the source snapshot. It consumes a caller-supplied presigned URL (the legacy wire field is still `artifacts_url`, but it now points to a source snapshot), validates it with a streaming `GET` to read `Content-Length`, rejects snapshots larger than the Marketplace bundle limit (`MAX_DEPLOYER_ARTIFACT_BYTES`, default 256 MiB), and downloads the contents into ephemeral storage on the worker.
+- Deployer does **not** mint, host, or sign the Build artifact. It consumes a caller-supplied presigned URL (the legacy wire field is still `artifacts_url`, but it now points to a built CDK cloud assembly), validates it with a streaming `GET` to read `Content-Length`, rejects artifacts larger than the Marketplace bundle limit (`MAX_DEPLOYER_ARTIFACT_BYTES`, default 256 MiB), and downloads the contents into ephemeral storage on the worker.
+- Deployer does **not** build or synthesize product source. Build owns source normalization, Golden Path checks, CDK synth, cloud assembly portability validation, and Lambda minification/obfuscation policy validation. Deployer re-validates Build provenance and then deploys the built cloud assembly.
 - Deployer does **not** own the marketplace catalog, ontology, or subscription model. That belongs to the **Marketplace** service, which is the canonical caller of `/deploy-by-token`.
 - Deployer does **not** synthesise its own subdomain or ACM certificates. The `Subdomain` parameter is provided by the upstream installer (Marketplace + the marketplace-account product).
 - Deployer does **not** invent its own auth identity. API keys are minted upstream; Bootstrap creates the tenant's single shared API Gateway Usage Plan and binds the service key to it. Deployer only attaches its API stage to that shared plan.
-- Deployer does **not** open raw outbound SSH or run product-supplied build/deploy containers. Docker image assets, when a product CDK app declares them, are built and published only through Deployer's CDK Toolkit execution path and the account's CDK bootstrap ECR resources.
-- Deployer does **not** persist source snapshots long-term. Temporary source extracts, generated CDK cloud assemblies, and build-output objects have bounded retention. Runtime assets are published through the CDK asset publishing flow into the Deployer account's bootstrap resources, not through a product-defined artifact layout.
+- Deployer does **not** open raw outbound SSH or run product-supplied build/deploy containers. Docker image assets are rejected in the first production contract; a future prebuilt-image contract must let Deployer publish image artifacts without building product source.
+- Deployer does **not** persist Build artifacts long-term. Temporary cloud assembly extracts and deployment work objects have bounded retention. Runtime assets are published through the CDK asset publishing flow into the Deployer account's bootstrap resources, not through a product-defined artifact layout.
 - Deployer does **not** perform code review / static analysis. That belongs to the **Comply** service upstream.
-- Deployer does **not** bootstrap itself from its own API. The only supported self-install path is the bootstrap CLI's local deploy mode, which is constrained to the Deployer system component and uses the same source-snapshot validation, `MarketplaceContext` construction, tagging, and CDK deployment semantics as a normal product deploy.
+- Deployer does **not** bootstrap itself from its own API. The only supported self-install path is the bootstrap CLI's local deploy mode, which is constrained to the Deployer system component and uses the same cloud-assembly validation, deployment-parameter resolution, tagging, and CDK deployment semantics as a normal product deploy.
 
 ---
 
@@ -52,11 +53,12 @@ Every successful POST that mints work returns `200` with `{ bundle_id, deploy_id
 
 These principles anchor every other section and override any conflicting design choice elsewhere in the codebase.
 
-1. **Step Functions is the workflow implementation layer.** Every bundle deploy compiles to a single STANDARD `DeployArtifact` state machine. Worker-size dispatch (`SMALL | MEDIUM | LARGE`), per-region fan-out, source validation, CDK synth, asset publication, stack deployment, rollback continuation, and post-success/failure reconciliation are expressed exclusively as ASL primitives (`Choice`, `Map`, `Wait`, `Retry`, `Catch`, `WAIT_FOR_TASK_TOKEN`). There is no second workflow runtime, no in-Lambda step orchestrator, no SQS-chained worker fan-out.
+1. **Step Functions is the workflow implementation layer.** Every bundle deploy compiles to a single STANDARD `DeployArtifact` state machine. Worker-size dispatch (`SMALL | MEDIUM | LARGE`), per-region fan-out, artifact validation, asset publication, stack deployment, rollback continuation, and post-success/failure reconciliation are expressed exclusively as ASL primitives (`Choice`, `Map`, `Wait`, `Retry`, `Catch`, `WAIT_FOR_TASK_TOKEN`). There is no second workflow runtime, no in-Lambda step orchestrator, no SQS-chained worker fan-out.
 2. **CloudFormation status is callback-driven, not polled.** Each CDK Toolkit stack deploy task is invoked with `arn:aws:states:::lambda:invoke.waitForTaskToken`; the worker configures the underlying CloudFormation operation in the target region with `NotificationARNs=[<regional DeploymentNotificationTopic ARN>]` and persists the task token on the stack-deployment row. CloudFormation stack events arrive via the same-region SNS topic to `RegionalDeploymentEventRelay`, which resolves the task token from the home-region DynamoDB tables and calls `states:SendTaskSuccess` / `states:SendTaskFailure` on the home-region state machine. The state machine resumes only when CloudFormation reaches a terminal status. The only places that explicitly wait are `Wait 60s` loops between status reconciliation attempts for transient `*_IN_PROGRESS` states.
-3. **Same-account deployment, explicit context plumbing.** Every CloudFormation, S3, IAM, KMS, Lambda, ECR, and CDK Toolkit action targets the Deployer's **own** account (the one its Lambdas execute in) using the worker's own IAM role. There is no Fernet decrypt, no `STS:AssumeRole`, no static-credential provider, and no cross-account session factory. Per-environment configuration (`Subdomain`, `Regions`, default parameter overrides) is sourced from CFN install-time parameters and SSM at cold start; account domain metadata is fetched from the Bootstrap-created SSM parameter and passed into each service CDK app through a single typed `MarketplaceContext`. Per-call overrides come from the request body's `custom_parameters` field (§3.5) and are carried inside that context. To deploy into a different AWS account, install another Deployer in that account.
-4. **CDK Toolkit execution is the deploy engine.** Deployer invokes the AWS CDK Toolkit Library directly from controlled workers for synth, asset publishing, stack deployment, diff/status lookup, and rollback-related operations. Product source snapshots never supply shell commands, CDK CLI commands, or build hooks.
-5. **Worker right-sizing is explicit and bounded by Marketplace.** Pre-deployment worker memory/disk cohorts are `SMALL = 384 MB`, `MEDIUM = 1024 MB + 1024 MB ephemeral`, `LARGE = 5120 MB + 9216 MB ephemeral`, dispatched by `Choice` on `worker_size` derived from `Content-Length(artifacts_url) * 3`. Deployer rejects source snapshots whose `Content-Length > MAX_DEPLOYER_ARTIFACT_BYTES` (default 256 MiB, matching Marketplace's `MAX_BUNDLE_BYTES`) before starting any deploy. Oversized snapshots do not fall back to product-supplied commands or arbitrary build scripts.
+3. **Same-account deployment, explicit parameter plumbing.** Every CloudFormation, S3, IAM, KMS, Lambda, ECR, and CDK Toolkit action targets the Deployer's **own** account (the one its Lambdas execute in) using the worker's own IAM role. There is no Fernet decrypt, no `STS:AssumeRole`, no static-credential provider, and no cross-account session factory. Per-environment configuration (`Subdomain`, `Regions`, default parameter overrides) is sourced from CFN install-time parameters and SSM at cold start; account domain metadata is fetched from the Bootstrap-created SSM parameter and supplied only to Build-declared CloudFormation parameters. Per-call overrides come from the request body's `custom_parameters` field (§3.5) and are applied only to declared deployment parameters. To deploy into a different AWS account, install another Deployer in that account.
+4. **CDK cloud assembly execution is the deploy engine.** Deployer invokes the AWS CDK Toolkit Library directly from controlled workers, or an equivalent platform asset publisher over the CDK cloud assembly schema, for asset publishing, stack deployment, diff/status lookup, and rollback-related operations. Product artifacts never supply shell commands, CDK CLI commands, source files, or build hooks.
+5. **Build provenance is mandatory for production deploys.** Deployer validates `service-builder.artifact_kind = "CDK_CLOUD_ASSEMBLY"`, `deployer_contract_version = "1"`, source/assembly/artifact hashes, template/file-asset hashes, deployment parameters, component/type fields, and `lambda_asset_policy = { minified: true, obfuscated: true, source_maps: false }` before publishing assets or creating CloudFormation changes. Test fixtures may bypass this only through explicit test-only configuration.
+6. **Worker right-sizing is explicit and bounded by Marketplace.** Pre-deployment worker memory/disk cohorts are `SMALL = 384 MB`, `MEDIUM = 1024 MB + 1024 MB ephemeral`, `LARGE = 5120 MB + 9216 MB ephemeral`, dispatched by `Choice` on `worker_size` derived from `Content-Length(artifacts_url) * 3`. Deployer rejects Build artifacts whose `Content-Length > MAX_DEPLOYER_ARTIFACT_BYTES` (default 256 MiB, matching Marketplace's `MAX_BUNDLE_BYTES`) before starting any deploy. Oversized artifacts do not fall back to product-supplied commands or arbitrary build scripts.
 
 ### 2.1 Stacks (AWS CDK)
 
@@ -88,13 +90,13 @@ bin/app.ts
 
 | Bucket                  | Encryption / ACL                                                                                                              | Lifecycle               | Purpose                                                                                                                         |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `ArtifactsBucket`       | S3-managed AES-256 encryption, `BLOCK_ALL` public access, SSL-only via bucket policy with `aws:SecureTransport=false` deny    | `ExpirationInDays: 14`  | Temporary source snapshots, extracted working sets, CDK cloud assemblies, deployment summaries, and status artifacts             |
-| `CdkRunnerCacheBucket`  | S3-managed AES-256 encryption, `BLOCK_ALL` public access, SSL-only `ListBucket` deny                                          | lifecycle per stage     | Deployer-owned cache for dependency tarballs and CDK Toolkit runner inputs; never a product-defined artifact store              |
+| `ArtifactsBucket`       | S3-managed AES-256 encryption, `BLOCK_ALL` public access, SSL-only via bucket policy with `aws:SecureTransport=false` deny    | `ExpirationInDays: 14`  | Temporary Build artifact extracts, CDK cloud assemblies, deployment summaries, and status artifacts                              |
+| `CdkRunnerCacheBucket`  | S3-managed AES-256 encryption, `BLOCK_ALL` public access, SSL-only `ListBucket` deny                                          | lifecycle per stage     | Deployer-owned cache for CDK Toolkit runner inputs; never a product-defined artifact store                                      |
 | `DeployCodeBucket`      | S3-managed AES-256 encryption, `BLOCK_ALL` public access, SSL-only via bucket policy with `aws:SecureTransport=false` deny    | lifecycle per stage     | Backward-compatible name for Deployer-owned deployment working files; CDK assets are published to CDK bootstrap resources       |
 
 The `ArtifactsBucket` policy explicitly grants the Deployer's runtime role `s3:GetBucketLocation|ListBucket|ListBucketMultipartUploads|GetObject|GetObjectTagging|ListMultipartUploadParts` so the API can presign `artifact_url`s in the status response.
 
-> **Note on deployment working storage.** CDK assets are published to the account's CDK bootstrap bucket/ECR repository through the CDK Toolkit Library. Deployer-owned buckets are only for temporary source extracts, cloud assemblies, runner cache, and status artifacts; product source snapshots do not define deploy-code buckets or artifact destinations.
+> **Note on deployment working storage.** CDK assets are published to the account's CDK bootstrap bucket/ECR repository through the CDK Toolkit Library or platform cloud-assembly deployer. Deployer-owned buckets are only for temporary Build artifact extracts, cloud assemblies, runner cache, and status artifacts; Marketplace artifacts do not define deploy-code buckets or artifact destinations.
 
 #### 2.2.3 DynamoDB
 
@@ -121,21 +123,21 @@ Default TTL for transient rows is **30 days** from creation (`get_ttl()`). Item 
 #### 2.3.1 IAM roles
 
 - **`StateMachineRole`** — assumed by `states.amazonaws.com`, holds `lambda:InvokeFunction`, scoped permissions to invoke CDK runner workers, and `events:*` on `*`.
-- **`CdkToolkitRunnerRole`** — assumed by the Deployer-owned CDK runner workers. It holds the local-account permissions needed by the AWS CDK Toolkit Library to synthesize, publish assets, and deploy stacks: CloudFormation create/update/delete/describe/change-set actions, S3 access to the Deployer working buckets and CDK bootstrap file-asset bucket, ECR push/read permissions to CDK bootstrap image-asset repositories, IAM pass-role for `CloudformationExecRole`, and DynamoDB/KMS writes for deployment status. It never assumes caller-supplied roles and never executes product-supplied command strings.
+- **`CdkToolkitRunnerRole`** — assumed by the Deployer-owned CDK runner workers. It holds the local-account permissions needed by the AWS CDK Toolkit Library or platform cloud-assembly deployer to publish assets and deploy stacks: CloudFormation create/update/delete/describe/change-set actions, S3 access to the Deployer working buckets and CDK bootstrap file-asset bucket, ECR push/read permissions to CDK bootstrap image-asset repositories when the platform later supports prebuilt image assets, IAM pass-role for `CloudformationExecRole`, and DynamoDB/KMS writes for deployment status. It never assumes caller-supplied roles and never executes product-supplied command strings.
 - **`CloudformationExecRole`** — assumed by `cloudformation.amazonaws.com` with `Action: "*"` / `Resource: "*"`. Lives in this stack (the Deployer's own account, which is also the deployment target) and is `iam:PassRole`-passed to CloudFormation by every `CreateStack` / `UpdateStack` call. Declared statically in CDK; never created at runtime.
 - **`CloudWatchRole`** — API Gateway → CloudWatch Logs role.
 
 #### 2.3.2 CDK Toolkit runner
 
-Deployer owns a CDK Toolkit runner used by the `PreDeployment*` workers. The runner is a TypeScript module, not a shell command wrapper. It:
+Deployer owns a CDK cloud assembly runner used by the `PreDeployment*` workers. The runner is a TypeScript module, not a shell command wrapper. It:
 
-- extracts the immutable source snapshot into a temporary workspace;
-- installs dependencies according to Deployer's fixed lockfile policy;
-- imports `marketplace/app.ts`, validates that it exports `createMarketplaceApp`, and calls that factory with an already-created CDK `App` plus `MarketplaceContext`;
-- invokes the AWS CDK Toolkit Library programmatically for synth, asset publishing, deploy, diff/status lookup, and destroy operations;
+- extracts the immutable Build cloud assembly artifact into a temporary workspace;
+- validates `cdk.out/manifest.json`, stack templates, asset manifests, hashes, and deployment parameters;
+- resolves Build-declared CloudFormation parameters from Deployer configuration and the request body;
+- invokes the AWS CDK Toolkit Library or platform cloud-assembly deployer programmatically for asset publishing, deploy, diff/status lookup, and destroy operations;
 - writes cloud assembly metadata and stack-deployment summaries back to `ArtifactsBucket` for status APIs.
 
-The runner MUST NOT call `npx cdk`, `pnpm cdk:*`, arbitrary package scripts, or product-declared command strings. Product `package.json` scripts are ignored for deployment.
+The runner MUST NOT call `npx cdk`, `pnpm cdk:*`, `pnpm install`, arbitrary package scripts, `marketplace/app.ts`, or product-declared command strings. Product source and `package.json` scripts are not present in a valid deployment artifact.
 
 #### 2.3.3 Step Functions: `DeployArtifact`
 
@@ -165,7 +167,7 @@ Per-task standards:
 - `StackAlreadyExistsException` is treated as a normal CDK update path.
 - `States.ALL` catch at the Map level → `PostFailedDeployment`.
 
-Total state machine timeout is unbounded. Per-task timeouts are intentionally longer than the downstream AWS operation budgets they supervise: pre-deployment 600 s; CDK synth/asset/deploy wait-for-token tasks 21600 s (6 h); status reconciliation waits are 60 s; post-success and post-failed 1800 s (30 m).
+Total state machine timeout is unbounded. Per-task timeouts are intentionally longer than the downstream AWS operation budgets they supervise: pre-deployment 600 s; asset/deploy wait-for-token tasks 21600 s (6 h); status reconciliation waits are 60 s; post-success and post-failed 1800 s (30 m).
 
 The state machine is published to SSM at `/deployer/state-machine/deploy-artifact-arn` so the API handler does not depend on CloudFormation `Ref`.
 
@@ -206,7 +208,7 @@ Per-handler `PRODUCT_API_IDENTIFIER` UUIDs are stable and well-known so the upst
 - **API Gateway custom resources** (CFN `Custom::*` types):
   - `ApiUsagePlanStageAttachmentCustom` — reads the Bootstrap-managed shared Usage Plan id from `SharedUsagePlanIdSsmParam` (default `/account/shared-usage-plan-id`) and idempotently adds this API stage to that plan. It MUST NOT create a Usage Plan or bind an API key; Bootstrap owns the single `UsagePlanKey`.
   - `ApiGatewayLogCustom` — wires the API Gateway access log group, enabling `apiGateway: true` tracing-style logs at the stage level.
-  - No custom resource uploads product deploy workers or source bundles. Deployer's CDK runner is packaged as normal Lambda code in `WorkflowStack`.
+  - No custom resource uploads product deploy workers or product source bundles. Deployer's CDK runner is packaged as normal Lambda code in `WorkflowStack`.
 
 #### 2.4.3 IAM (high-level)
 
@@ -214,7 +216,7 @@ Per-handler `PRODUCT_API_IDENTIFIER` UUIDs are stable and well-known so the upst
 - The `DeployByTokenHandler` role has: `dynamodb:{Get,Put,Update,Query}Item` on `DeploymentStatusTable` + `StackBundleMapTable`, `kms:{Encrypt,Decrypt,GenerateDataKey,DescribeKey}` on `DataKey`, `states:StartExecution` on the `DeployArtifact` ARN, and `apigateway:GetApiKey` (for surfacing API GW info into health metrics; see §7.4).
 - The `DeployStatusHandler` role has: `dynamodb:{Get,Query}Item` on `DeploymentStatusTable`, `s3:GetObject` + `s3:PutObject` (presign) on `ArtifactsBucket/*`, and `logs:GetLogEvents` for Deployer-owned Lambda log groups.
 - The `DeploymentLogsHandler` role has: `dynamodb:Query` on `DeploymentLogsTable`.
-- The state machine workers (`Pre/CdkDeployStack/Delete/Rollback/GetStatus/PostSuccess/PostFailed`) hold the union of permissions they need against the local account: `dynamodb:{Get,Put,Update}Item` on `DeploymentStatusTable` + `StackBundleMapTable`, scoped `s3:GetObject|PutObject|DeleteObject|ListBucket|GetBucketLocation` on `ArtifactsBucket`, `CdkRunnerCacheBucket`, and CDK bootstrap file-asset buckets, `kms:*` on `DataKey`, CDK Toolkit-required `cloudformation:{CreateStack,UpdateStack,DeleteStack,DescribeStacks,DescribeStackResources,ListStackResources,ListChangeSets,ExecuteChangeSet,ContinueUpdateRollback,GetTemplate}` on `*`, `iam:PassRole` on `CloudformationExecRole` only, `ec2:Describe*` for CDK context reads, ECR asset-publishing actions on CDK bootstrap repositories, `cloudwatch:{DeleteLogGroup,DescribeLogGroups}` on `*`, `apigateway:*` on `*` only for `update_information_api` and the Deployer's own API custom resources, `lambda:{ListFunctions,GetFunction,InvokeFunction}` on the `CleanLambdaVersion` ARN, `ssm:{GetParameter,GetParametersByPath}` on the `/deployer/*`, `/account/*`, and CDK bootstrap parameter prefixes needed by the runner, `states:SendTaskSuccess` + `states:SendTaskFailure` on `*` (Step Functions does not support resource-level constraints here), and `service-quotas:GetServiceQuota|RequestServiceQuotaIncrease` on `*`. Service API mappings are created by the deployed service stacks, not by Deployer post-deploy copy hooks.
+- The state machine workers (`Pre/CdkDeployStack/Delete/Rollback/GetStatus/PostSuccess/PostFailed`) hold the union of permissions they need against the local account: `dynamodb:{Get,Put,Update}Item` on `DeploymentStatusTable` + `StackBundleMapTable`, scoped `s3:GetObject|PutObject|DeleteObject|ListBucket|GetBucketLocation` on `ArtifactsBucket`, `CdkRunnerCacheBucket`, and CDK bootstrap file-asset buckets, `kms:*` on `DataKey`, CDK Toolkit-required `cloudformation:{CreateStack,UpdateStack,DeleteStack,DescribeStacks,DescribeStackResources,ListStackResources,ListChangeSets,ExecuteChangeSet,ContinueUpdateRollback,GetTemplate}` on `*`, `iam:PassRole` on `CloudformationExecRole` only, optional ECR asset-publishing actions only when the platform later supports prebuilt image assets, `cloudwatch:{DeleteLogGroup,DescribeLogGroups}` on `*`, `apigateway:*` on `*` only for `update_information_api` and the Deployer's own API custom resources, `lambda:{ListFunctions,GetFunction,InvokeFunction}` on the `CleanLambdaVersion` ARN, `ssm:{GetParameter,GetParametersByPath}` on the `/deployer/*`, `/account/*`, and CDK bootstrap parameter prefixes needed by the runner, `states:SendTaskSuccess` + `states:SendTaskFailure` on `*` (Step Functions does not support resource-level constraints here), and `service-quotas:GetServiceQuota|RequestServiceQuotaIncrease` on `*`. Service API mappings are created by the deployed service stacks, not by Deployer post-deploy copy hooks.
 - Each `RegionalDeploymentEventRelay` role holds `dynamodb:{Get,Put,Update}Item` on the home-region `DeploymentStatusTable` + `StackBundleMapTable` and `states:SendTaskSuccess` + `states:SendTaskFailure` on the home-region `DeployArtifact` state machine executions.
 - `iam:PassRole` is granted on `CloudformationExecRole` only (passed to CloudFormation by every `CreateStack` / `UpdateStack`).
 - The `CleanLambdaVersion` role holds `lambda:ListFunctions|ListVersionsByFunction|DeleteFunction` and `lambda:ListLayers|ListLayerVersions|GetLayerVersion|DeleteLayerVersion` on `*`. There is no cross-account variant — it only reaps versions in this account.
@@ -229,10 +231,10 @@ CloudFormation parameters supplied to the Deployer install by the upstream insta
 
 | Parameter            | Default                                | Purpose                                                                                                                                  |
 | -------------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `Subdomain`          | required                               | Tenant FQDN whose API Gateway custom domain was created by Bootstrap; Deployer mounts itself at base path `infra-deployer` and carries the same FQDN in `MarketplaceContext.tenant.subdomain`. |
+| `Subdomain`          | required                               | Tenant FQDN whose API Gateway custom domain was created by Bootstrap; Deployer mounts itself at base path `infra-deployer` and supplies the same FQDN to Build-declared stack parameters. |
 | `Regions`            | required JSON-encoded array             | Active regions this Deployer fans bundles into when `multi_region_deployment=true`. Each entry is `{ "RegionName": "<region>", ...<per-region CFN param overrides> }`; the installer must include the home region if local-only deploys should be allowed. |
-| `AccountDomainConfigSsmParam` | `/account/domain-config` (string)      | SSM parameter containing Account's domain-config endpoint or cached domain-config JSON for this tenant. Deployer resolves it before constructing `MarketplaceContext.domain`. |
-| `EnvParameters`      | `{}` (JSON-encoded object)             | Per-environment non-secret defaults injected into `MarketplaceContext.customParameters` for every deploy (e.g. `{ "VpcId": "vpc-…", "LogBucketName": "…" }`). Merged below request-body `custom_parameters`. |
+| `AccountDomainConfigSsmParam` | `/account/domain-config` (string)      | SSM parameter containing Account's domain-config endpoint or cached domain-config JSON for this tenant. Deployer resolves it before stack deployment and supplies needed values to declared parameters. |
+| `EnvParameters`      | `{}` (JSON-encoded object)             | Per-environment non-secret defaults available to declared deployment parameters for every deploy (e.g. `{ "VpcId": "vpc-…", "LogBucketName": "…" }`). Merged below request-body `custom_parameters`. |
 | `SharedUsagePlanIdSsmParam` | `/account/shared-usage-plan-id`        | SSM parameter containing the Bootstrap-created tenant Usage Plan id; Deployer attaches its API stage to that plan                         |
 | `HealthApiKeyID`     | `null`                                 | Secondary API key accepted by `HealthApiKeyAuthorizer` for `/deployments/logs/*`                                                         |
 | `ProductName`        | `Deploy`                               | Cost-tag value used on every taggable resource as `sc:product:name`                                                                      |
@@ -248,7 +250,7 @@ Env vars (Lambda-level):
 | `HEALTH_API_KEY_ID`                         | from CFN parameter                                       | `HealthApiKeyAuthorizer`                     |
 | `DOMAIN_NAME`                               | from `Subdomain`                                         | Health outbound calls; also the canonical `Subdomain` CFN param value |
 | `REGIONS`                                   | from `Regions`                                           | `PreDeploymentWorker` multi-region planner   |
-| `ACCOUNT_DOMAIN_CONFIG_SSM_PARAM`           | from `AccountDomainConfigSsmParam`                       | Domain metadata lookup for `MarketplaceContext` |
+| `ACCOUNT_DOMAIN_CONFIG_SSM_PARAM`           | from `AccountDomainConfigSsmParam`                       | Domain metadata lookup for deployment parameter resolution |
 | `ENV_PARAMETERS`                            | from `EnvParameters`                                     | Default context parameter bag for every deploy |
 | `MAX_DEPLOYER_ARTIFACT_BYTES`               | `268435456` (256 MiB)                                    | Hard upper bound; must match Marketplace `MAX_BUNDLE_BYTES` |
 | `ACCOUNT_ID`                                | `AWS::AccountId`                                         | Regional SNS topic ARN composition           |
@@ -292,27 +294,35 @@ Validation failures (400) flatten the marshmallow / zod error structure as `{ <f
 
 Every response carries `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload`, `Access-Control-Allow-Origin: *`, `Access-Control-Allow-Headers: *`, and `Access-Control-Allow-Methods: OPTIONS,POST,GET`. The `INVALID_API_KEY` gateway response is overridden to return `{"message":"API key is not valid"}`; `DEFAULT_4XX` returns `{"message":"Request has been declined."}`.
 
-### 3.2 Source snapshot structure (caller responsibility)
+### 3.2 Cloud assembly artifact structure (Build artifact responsibility)
 
-The `artifacts_url` wire field MUST resolve to an immutable `application/zip` source snapshot. The field name is retained for client compatibility, but the payload is source code. Deployer MUST reject legacy prebuilt bundle shapes that rely on `config.json`, `artifacts/<module>/update.json`, product-supplied synth commands, product-supplied deploy commands, or product-owned Docker deployment scripts.
+The `artifacts_url` wire field MUST resolve to an immutable `application/zip` CDK cloud assembly artifact produced by Build and re-hosted by Marketplace. The field name is retained for client compatibility, but the payload is built deployment output. Deployer MUST reject source snapshots, legacy prebuilt bundle shapes that rely on `config.json`, `artifacts/<module>/update.json`, product-supplied synth commands, product-supplied deploy commands, product-owned Docker deployment scripts, or any artifact that requires Deployer to execute product source.
+
+The S3 object metadata MUST include a JWT-shaped `x-amz-meta-service-builder` block with:
+
+- `artifact_kind = "CDK_CLOUD_ASSEMBLY"`;
+- `deployer_contract_version = "1"`;
+- `component_id` and `bundle_type` matching `marketplace.product.json`;
+- `source_hash`, `normalized_source_hash`, `assembly_hash`, `assembly_manifest_hash`, and `artifact_hash`;
+- template and file-asset hashes under `cloud_assembly`;
+- required and optional deploy-time values under `deployment_parameters`;
+- `lambda_asset_policy.minified = true`;
+- `lambda_asset_policy.obfuscated = true`;
+- `lambda_asset_policy.source_maps = false`.
 
 Required layout:
 
 ```
-source.zip
+cloud-assembly.zip
 ├── marketplace.product.json
-├── package.json
-├── pnpm-lock.yaml
-├── tsconfig.json
-├── cdk.json                       # optional; Deployer does not read `app` from it
-├── marketplace/
-│   └── app.ts                     # fixed CDK factory entrypoint
-├── lib/
-│   └── ...                        # CDK constructs/stacks
-├── lambda/
-│   └── ...                        # runtime source/assets referenced by CDK
-└── src/
-    └── ...                        # optional product source
+├── cdk.out/
+│   ├── manifest.json              # CDK cloud assembly manifest
+│   ├── tree.json
+│   ├── <StackName>.template.json
+│   ├── <asset-manifest>.assets.json
+│   └── asset.<file-asset-hash>/    # staged, built file assets
+└── build/
+    └── build.manifest.json        # Build provenance, hashes, checks, Lambda asset policy
 ```
 
 `marketplace.product.json` is declarative only:
@@ -322,7 +332,6 @@ source.zip
   "component_id": "connect",
   "component_name": "Connect",
   "bundle_type": "SERVICE | DATA",
-  "entrypoint": "marketplace/app.ts",
   "context_schema_version": "1",
   "stacks": ["NetworkStack", "ConnectStack"],
   "base_path": "connector-jobs",
@@ -330,27 +339,24 @@ source.zip
     "domain": true,
     "shared_usage_plan": true,
     "identity": false
+  },
+  "lambda_asset_policy": {
+    "minified": true,
+    "obfuscated": true,
+    "source_maps": false
   }
 }
 ```
 
-The manifest MUST NOT contain command strings. There is no `synth_command`, `deploy_command`, `post_deploy_command`, shell hook, or arbitrary executable lifecycle field. Deployer owns dependency installation policy, TypeScript loading, CDK `App` construction, synthesis, asset publishing, and deployment.
+The manifest MUST NOT contain command strings. There is no `entrypoint`, `synth_command`, `deploy_command`, `post_deploy_command`, shell hook, or arbitrary executable lifecycle field in the deploy artifact. Deployer owns deployment-parameter resolution, asset publishing, and deployment.
 
-`marketplace/app.ts` exports exactly one factory:
+Build-time source still uses `marketplace/app.ts`, but that file is consumed by Build only. Deployer receives the resulting CloudFormation templates and resolves the deployment parameters declared by Build. Required `MarketplaceContext` values are represented as CloudFormation parameters in the templates and listed in `service-builder.deployment_parameters`.
 
-```ts
-import type { MarketplaceCdkAppFactory } from "@internal/marketplace-cdk";
-
-export const createMarketplaceApp: MarketplaceCdkAppFactory = ({ app, context }) => {
-  // Product code validates the context version and instantiates stacks.
-};
-```
-
-The factory receives an already-created CDK `App` and a validated `MarketplaceContext`. It must instantiate the product stacks and return without calling `app.synth()`, invoking the CDK CLI, reading process-level deployment env vars, or performing AWS SDK side effects at synth time. CDK assets (Lambda source, Docker image assets, layers, static files) are declared through normal CDK asset constructs; Deployer publishes them through the CDK Toolkit Library.
+For TypeScript/JavaScript Lambda functions, the cloud assembly artifact must contain staged assets generated through the approved platform construct package validated by Build. Deployer re-runs the Lambda asset policy check against the staged file assets in `cdk.out` and fails the deployment before any CloudFormation side effect if a Node.js Lambda asset lacks minification, obfuscation, or source-map stripping.
 
 `bundle_type` controls validation and post-deploy handling:
 
-- `SERVICE`: no Deployer-owned custom-domain copy hook. Each service CDK stack consumes `MarketplaceContext.domain`, `MarketplaceContext.basePath`, and shared usage-plan handles to define only its own base-path mapping (`AWS::ApiGateway::BasePathMapping` for REST APIs, or `AWS::ApiGatewayV2::ApiMapping` for future API Gateway v2 APIs). `PostDeploymentServiceBundleSuccess` is limited to service metadata / information API refresh work and MUST NOT create, copy, delete, or mutate the shared API Gateway custom domain or mappings outside the stack it just deployed.
+- `SERVICE`: no Deployer-owned custom-domain copy hook. Each service CloudFormation template consumes Build-declared parameters for domain, base path, and shared usage-plan handles to define only its own base-path mapping (`AWS::ApiGateway::BasePathMapping` for REST APIs, or `AWS::ApiGatewayV2::ApiMapping` for future API Gateway v2 APIs). `PostDeploymentServiceBundleSuccess` is limited to service metadata / information API refresh work and MUST NOT create, copy, delete, or mutate the shared API Gateway custom domain or mappings outside the stack it just deployed.
 - `DATA`: no Deployer-owned post-deploy hook. Data bundles are expected to provision their own storage/import resources; graph ingestion, when needed, is handled by the deployed component calling the Persist service's SigV4 `/persist/*` API directly.
 
 ### 3.3 Per-environment configuration source
@@ -359,18 +365,18 @@ The Deployer is configured exclusively through CFN install-time parameters and S
 
 | Source                                | Provides                                                                                                                                       |
 | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| CFN parameter `Subdomain`             | Tenant FQDN for the Bootstrap-created API Gateway custom domain. Carried in `MarketplaceContext.tenant.subdomain` and, for non-home regions, region-adjusted before CDK app construction. |
+| CFN parameter `Subdomain`             | Tenant FQDN for the Bootstrap-created API Gateway custom domain. Supplied to matching CloudFormation parameters declared in the Build manifest and, for non-home regions, region-adjusted before stack deployment. |
 | CFN parameter `Regions`               | JSON array of `{ "RegionName": <region>, ...<per-region CFN param overrides> }`. Honoured only when the request body has `multi_region_deployment=true`. |
-| Bootstrap domain config               | Tenant-account SSM parameter written by Bootstrap after it creates the shared API Gateway custom domain. Resolved before CDK app construction and passed in `MarketplaceContext.domain`. Service CDK code consumes these values to create its own base-path mapping only. |
+| Bootstrap domain config               | Tenant-account SSM parameter written by Bootstrap after it creates the shared API Gateway custom domain. Resolved before stack deployment and supplied to matching CloudFormation parameters. Service stacks consume these values to create their own base-path mapping only. |
 | CFN parameter `EnvParameters`         | JSON object of default non-secret product configuration applied to every deploy (e.g. `VpcId`, `LogBucketName`, third-party endpoints).       |
-| Request body field `custom_parameters` | Per-call non-secret overrides; merged on top of `EnvParameters` (request wins) and carried in `MarketplaceContext.customParameters`.         |
-| CDK bootstrap resources               | CDK asset bucket, ECR repository, and deployment roles required by the CDK Toolkit Library. Deployer validates the bootstrap contract before synth/deploy instead of inventing per-product artifact buckets. |
+| Request body field `custom_parameters` | Per-call non-secret overrides; merged on top of `EnvParameters` (request wins) and supplied only to Build-declared CloudFormation parameters. |
+| CDK bootstrap resources               | CDK asset bucket, ECR repository, and deployment roles required by the CDK Toolkit Library. Deployer validates the bootstrap contract before asset publish/deploy instead of inventing per-product artifact buckets. |
 | SSM `/deployer/state-machine/deploy-artifact-arn` | Published by `WorkflowStack`; consumed by the public API handler.                                                                      |
 
-Effective context construction at deploy time:
+Effective deploy-time parameter resolution:
 
 ```ts
-type MarketplaceContext = {
+type ResolvedDeploymentParameters = {
   schemaVersion: "1";
   bundleId: string;
   deployId: string;
@@ -381,6 +387,7 @@ type MarketplaceContext = {
   version?: string;
   commitHash?: string;
   sourceHash: string;
+  assemblyHash: string;
   tenant: {
     accountId: string;
     region: string;
@@ -398,20 +405,21 @@ type MarketplaceContext = {
   sharedUsagePlanIdSsmParam: string;
   serviceInfo: Record<string, unknown>;
   customParameters: Record<string, unknown>;
+  cloudFormationParameters: Record<string, string>;
 };
 ```
 
-Before constructing this object, Deployer resolves the tenant-domain config from `AccountDomainConfigSsmParam`, which Bootstrap writes inside the tenant account after creating the shared API Gateway custom domain. Account remains the source of truth for DNS/certificate inventory, but Deployer deploys against the already-created API Gateway domain. The domain fields are standardized across every service source snapshot so service CDK infrastructure can declare its own base-path mapping to the existing domain and MUST NOT create another API Gateway custom domain.
+Before constructing this object, Deployer resolves the tenant-domain config from `AccountDomainConfigSsmParam`, which Bootstrap writes inside the tenant account after creating the shared API Gateway custom domain. Account remains the source of truth for DNS/certificate inventory, but Deployer deploys against the already-created API Gateway domain. The domain fields are standardized across every service artifact as Build-declared parameters so service CloudFormation templates can declare their own base-path mapping to the existing domain and MUST NOT create another API Gateway custom domain.
 
-`EnvParameters`, per-region `Regions[i]` overrides, and request `custom_parameters` are merged into `MarketplaceContext.customParameters` in that order, with request values winning. Product CDK code is responsible for validating the keys it consumes. Deployer does not translate these values into CloudFormation `Parameters`; CDK synthesis decides which CloudFormation resources, parameters, mappings, and assets are emitted.
+`EnvParameters`, per-region `Regions[i]` overrides, and request `custom_parameters` are merged in that order, with request values winning, but Deployer supplies only keys that Build declared under `service-builder.deployment_parameters`. Missing required values fail before asset publication. Deployer does not synthesize CDK or infer undeclared parameters.
 
-> **No caller-supplied credentials.** The Deployer's Lambdas and CDK Toolkit workers rely entirely on their own IAM roles (§2.4.3) to call CloudFormation, S3, IAM, KMS, ECR, and Lambda. Runtime configuration moves through `MarketplaceContext`, Deployer-owned worker configuration, and SSM Parameter Store. Sensitive values, when a product genuinely needs them, are read from SSM Parameter Store or Secrets Manager using the worker role; they are not passed through request payloads or ad-hoc environment blobs.
+> **No caller-supplied credentials.** The Deployer's Lambdas and CDK Toolkit workers rely entirely on their own IAM roles (§2.4.3) to call CloudFormation, S3, IAM, KMS, ECR, and Lambda. Runtime configuration moves through Build-declared CloudFormation parameters, Deployer-owned worker configuration, and SSM Parameter Store. Sensitive values, when a product genuinely needs them, are read from SSM Parameter Store or Secrets Manager using deployed-resource roles; they are not passed through request payloads or ad-hoc environment blobs.
 
 ### 3.4 Deploy types (worker dispatch)
 
 | Path                   | Worker             | When                                                                                                                                                                                            |
 | ---------------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **CDK Toolkit deploy** | Step Functions     | `Content-Length(artifacts_url) <= MAX_DEPLOYER_ARTIFACT_BYTES`. Worker size dispatched by `WorkerSizeCheck` after multiplying content length by 3 for unzip/install/synth headroom.             |
+| **CDK cloud assembly deploy** | Step Functions     | `Content-Length(artifacts_url) <= MAX_DEPLOYER_ARTIFACT_BYTES`. Worker size dispatched by `WorkerSizeCheck` after multiplying content length by 3 for unzip, validation, asset publishing, and template handling headroom. |
 
 `get_cdk_worker_size(size_bytes_x3)` returns `SMALL` (≤ 78,000,000 B), `MEDIUM` (≤ 384,000,000 B), `LARGE` (≤ 3,000,000,000 B), and raises `LambdaWorkerSizeExceedError` for anything larger. That exception is a validation failure, not a fallback to product-supplied commands.
 
@@ -423,7 +431,7 @@ Before constructing this object, Deployer resolves the tenant-domain config from
 {
   bundle_id?:       string,                          // optional; UUID minted server-side if absent
   transaction_id?:  string,                          // optional; caller-supplied correlation ID; defaults to bundle_id
-  artifacts_url:    string,                          // required; presigned source snapshot URL pattern
+  artifacts_url:    string,                          // required; presigned Build cloud assembly artifact URL pattern
   callback_url?:    string,                          // default "null"; webhook fired once on terminal status
   log_level?:       "INFO" | "DEBUG",                // default INFO
   configuration?: {
@@ -439,8 +447,8 @@ Before constructing this object, Deployer resolves the tenant-domain config from
 
 Validation runs in this order:
 
-1. Schema decode. The request schema is closed: unknown fields are rejected with `400 BadRequest` before any source download or AWS write. Accepted caller-controlled fields are limited to the contract in §3.5. `legacy_deploy`, command fields, and deploy-engine selectors are rejected.
-2. `validate_artifacts_url` — regex match against `PRESIGNED_S3_URL_PATTERN` plus a streaming `GET` (`timeout=3s, allow_redirects=false`) to assert reachability and capture `Content-Length` (cached in `ARTIFACT_SIZE_MAP[url]`). Missing `Content-Length` or `Content-Length > MAX_DEPLOYER_ARTIFACT_BYTES` returns `400 BundleTooLarge`.
+1. Schema decode. The request schema is closed: unknown fields are rejected with `400 BadRequest` before any artifact download or AWS write. Accepted caller-controlled fields are limited to the contract in §3.5. `legacy_deploy`, command fields, and deploy-engine selectors are rejected.
+2. `validate_artifacts_url` — regex match against `PRESIGNED_S3_URL_PATTERN` plus a streaming `GET` (`timeout=3s, allow_redirects=false`) to assert reachability, capture `Content-Length` (cached in `ARTIFACT_SIZE_MAP[url]`), and decode the `service-builder` metadata headers. Missing `Content-Length` or `Content-Length > MAX_DEPLOYER_ARTIFACT_BYTES` returns `400 BundleTooLarge`; missing or incompatible Build provenance, including any artifact kind other than `CDK_CLOUD_ASSEMBLY`, returns `400 BuildProvenanceInvalid`.
 3. If `domain_name` is present, assert `domain_name === <this Deployer's Subdomain>`; otherwise return `400 { domain_name: ["does not match this Deployer's Subdomain"] }`. This catches misrouted calls (e.g. Marketplace targeting the wrong tenant's Deployer) before any side effect.
 
 Any failure returns `400 {<field>: [<msg>, …]}`.
@@ -452,7 +460,7 @@ Any failure returns `400 {<field>: [<msg>, …]}`.
 | Value             | Meaning                                                                                                                                |
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | `REQUEST_MADE`    | Initial state immediately after API accepts the request and writes the root row.                                                      |
-| `PRE_DEPLOYMENT`  | Set by `PreDeploymentWorker` once it begins downloading, validating, and synthesizing the source snapshot; carried on every per-stack row at creation time. |
+| `PRE_DEPLOYMENT`  | Set by `PreDeploymentWorker` once it begins downloading, validating, resolving parameters, and preparing the cloud assembly artifact; carried on every per-stack row at creation time. |
 | `IN_PROGRESS`     | Set by CDK Toolkit deploy workers once CloudFormation has accepted the stack change.                                                       |
 | `SUCCEEDED`       | Set by `PostSuccessDeploymentWorker` on terminal success of the entire bundle, **and** by the regional SNS relay on per-stack `*_COMPLETE` events. |
 | `FAILED`          | Set by the regional SNS relay on per-stack `*_FAILED` / `*_ROLLBACK_COMPLETE` events, and by `PostFailedDeploymentWorker` on terminal bundle failure. |
@@ -472,6 +480,9 @@ Implementation-level error tags (MUST be a tagged class hierarchy with a `_tag` 
 | `ValidationError`                   | 400 with field issues.                                                                                                           |
 | `LambdaWorkerSizeExceedError`       | Internal sizing guard after the platform size check; surfaced as `BundleTooLarge` if reached.                                   |
 | `BundleTooLarge`                    | 400 when `Content-Length` is missing or exceeds `MAX_DEPLOYER_ARTIFACT_BYTES`; Deployer does not accept bundles larger than Marketplace. |
+| `BuildProvenanceInvalid`            | 400 when `service-builder` metadata is missing, not a CDK cloud assembly, has the wrong deployer contract version, mismatched component/type fields, or hashes that do not match the downloaded artifact. |
+| `CloudAssemblyInvalid`              | 400 when `cdk.out/manifest.json`, stack templates, asset manifests, staged file assets, deployment parameters, or CDK bootstrap references do not match the Build manifest or cannot be deployed by Deployer. |
+| `LambdaAssetPolicyViolation`        | 400 before CloudFormation side effects when built asset validation finds a Node.js Lambda asset that is not minified, obfuscated, and source-map-free per Build metadata. |
 | `DeployError`                       | 500; payload may carry `{ deployment_events, status_code }`.                                                                     |
 | `DeploymentRetryExceedError`        | Final terminal failure on `DeleteStack` after `MAX_RETRY_THRESHOLD = 3` retries.                                                 |
 | `StackAlreadyExistsException`       | SFN `Catch` on `CreateStack` → `Next: GetStackStatus`.                                                                           |
@@ -536,7 +547,7 @@ Delete routes never delete the Bootstrap-created shared API Gateway custom domai
 
 ### 5.1 `DeployArtifact` state machine — entry and pre-deployment
 
-The state machine is started by `DeployByTokenHandler` with the §6.3 input. The first stage is `WorkerSizeCheck → PreDeployment{Small,Medium,Large}` (`PreDeploymentWorker` Lambda; one source binary, three CDK deployments at distinct memory/disk cohorts).
+The state machine is started by `DeployByTokenHandler` with the §6.3 input. The first stage is `WorkerSizeCheck → PreDeployment{Small,Medium,Large}` (`PreDeploymentWorker` Lambda; one implementation binary, three deployment workers at distinct memory/disk cohorts).
 
 #### 5.1.1 `PreDeploymentWorker`
 
@@ -544,27 +555,31 @@ For every invocation:
 
 1. Read the per-environment configuration from env vars: `Subdomain = DOMAIN_NAME`, `regions = JSON.parse(REGIONS)`, `account_domain_config = resolveAccountDomainConfig(ACCOUNT_DOMAIN_CONFIG_SSM_PARAM)`, `env_parameters = JSON.parse(ENV_PARAMETERS)`. Treat missing optional values as `[]` / `{}` but fail closed if the Bootstrap-created domain config is unavailable for a `SERVICE` bundle that declares domain parameters.
 2. Compute `active_regions`: always include the home region (`AWS::Region` of this Lambda); if `body.multi_region_deployment === true`, additionally include every entry in `regions[]` whose `RegionName` differs from the home region. Each region carries its own per-region CFN parameter overrides.
-3. Download the source snapshot from `artifacts_url` (streaming `fetch`), parse `x-amz-meta-service-*` JWT-encoded metadata (decoded without verification — the JWTs are stamped by the upstream publisher and we do not own its key), calculate `sourceHash`, and extract the zip into a Lambda-ephemeral `tempfile.TemporaryDirectory` under `/tmp`.
-4. Read `marketplace.product.json`. Bail with `DeployError("marketplace.product.json not found inside source snapshot.")` on miss. Bail with `DeployError("unsupported bundle_type")` unless `bundle_type ∈ {SERVICE, DATA}`. Bail if the manifest contains any command/lifecycle field (`synth_command`, `deploy_command`, `post_deploy_command`, `scripts`, or equivalent) or if `entrypoint !== "marketplace/app.ts"`.
-5. Validate the source snapshot shape:
-   - `package.json`, `pnpm-lock.yaml`, `tsconfig.json`, and `marketplace/app.ts` are present.
-   - `marketplace/app.ts` exports `createMarketplaceApp`.
-   - The manifest's `stacks[]` are non-empty and list the expected CDK stack ids in dependency order.
-   - No legacy `config.json` + `artifacts/<module>/update.json` deployment contract is used.
-6. Prepare Deployer-owned execution:
+3. Download the cloud assembly artifact from `artifacts_url` (streaming `fetch`), parse `x-amz-meta-service-*` JWT-encoded metadata (decoded without verification — the JWTs are stamped by upstream services and Marketplace has already reviewed them), calculate `artifactHash`, and extract the zip into a Lambda-ephemeral `tempfile.TemporaryDirectory` under `/tmp`.
+4. Validate Build provenance before reading any deployable template: `service-builder.artifact_kind === "CDK_CLOUD_ASSEMBLY"`, `deployer_contract_version === "1"`, `artifact_hash` matches the downloaded bytes, `assembly_hash` and `assembly_manifest_hash` match `cdk.out`, and `lambda_asset_policy` requires minified, obfuscated, source-map-free Lambda assets. Read `build/build.manifest.json` and verify it agrees with the S3 metadata.
+5. Read `marketplace.product.json`. Bail with `DeployError("marketplace.product.json not found inside Build artifact.")` on miss. Bail with `DeployError("unsupported bundle_type")` unless `bundle_type ∈ {SERVICE, DATA}`. Bail if the manifest contains any command/lifecycle/source-entrypoint field (`entrypoint`, `synth_command`, `deploy_command`, `post_deploy_command`, `scripts`, or equivalent). Assert manifest `component_id` / `bundle_type` match the Build metadata.
+6. Validate the cloud assembly shape:
+   - `cdk.out/manifest.json` and `build/build.manifest.json` are present and match `service-builder`.
+   - the CDK cloud assembly manifest loads through the supported schema version.
+   - the manifest's stack artifacts are non-empty and list the expected CDK stack ids in dependency order.
+   - every referenced template and file asset exists under `cdk.out` and matches the hashes in `service-builder.cloud_assembly`.
+   - no `dockerImages` assets are present in the first production contract.
+   - no product source directories (`marketplace/`, `lib/`, `src/`, `lambda/`, `test/`), package manager state, legacy `config.json` + `artifacts/<module>/update.json`, or deploy scripts are present.
+7. Prepare Deployer-owned execution:
    - Invoke `CleanLambdaVersion` (`InvocationType: Event`, fire-and-forget) so old Lambda versions in this account are reaped before the new deploy fills storage.
-   - Install dependencies using Deployer's fixed package policy (`pnpm` with the checked-in lockfile, network/cache settings controlled by Deployer). This is not product-controlled and no product command is read from the source snapshot.
-   - Load the TypeScript entrypoint through the Deployer CDK runner, create the CDK `App`, call `createMarketplaceApp({ app, context })`, synthesize with the AWS CDK Toolkit Library, and capture the generated cloud assembly. Deployer never invokes `npx cdk`, `pnpm cdk:*`, or shell command strings supplied by the product.
-7. For each active `region`, build a region-specific `MarketplaceContext` by merging `EnvParameters`, the selected `Regions[i]` entry, and `request.custom_parameters`; adjust `tenant.region`, `tenant.subdomain`, and `domain` handles for non-home regions when Bootstrap provides region-specific domain config.
-8. Use the CDK Toolkit Library to publish file/container assets and deploy the manifest-listed stacks in the order declared by `stacks[]`, while respecting CDK stack dependencies from the synthesized assembly. Deployer records one `PreparedStack` per synthesized stack/region for status lookup and deletion bookkeeping.
-9. `SERVICE` and `DATA` bundles deploy through the same CDK preparation path. `SERVICE` post-success may refresh the deployed `/information` API metadata; `DATA` has no Deployer-owned post-deploy hook.
-10. Optional `limit_check_on_pre_deployment` runs `QuotaService.check()` (the only check today is Lambda code-storage size in this account; raises `LambdaCodeStorageExceedError` at ≥99 % of quota).
-11. On success update root row → `IN_PROGRESS`, emit a `succeeded` health metric, and return §6.3 `pre_deployment_output`.
-12. On any failure: write `root_status = FAILED` with `reason = error.toString()`, emit a `failed` health metric (`invocation_code = 4000` for `LambdaCodeStorageExceedError`, else `5000`), and rethrow so SFN catches it.
+   - Resolve Build-declared deployment parameters from `EnvParameters`, the selected `Regions[i]` entry, Bootstrap domain config, pseudo parameters, and request `custom_parameters`. Missing required parameters raise `CloudAssemblyInvalid`.
+   - Re-run the Lambda asset policy validator against the staged file assets and asset manifests. Raise `LambdaAssetPolicyViolation` if any Node.js Lambda asset lacks Build's minification/obfuscation/source-map guarantees.
+   - Deployer never invokes `pnpm install`, `npx cdk`, `pnpm cdk:*`, `marketplace/app.ts`, or shell command strings supplied by the product.
+8. For each active `region`, build a region-specific parameter map by merging `EnvParameters`, the selected `Regions[i]` entry, and `request.custom_parameters`; adjust tenant region, subdomain, and domain handles for non-home regions when Bootstrap provides region-specific domain config.
+9. Use the CDK Toolkit Library or platform cloud-assembly deployer to publish file assets to the target region's CDK bootstrap bucket and deploy the manifest-listed stack templates in the order declared by `stacks[]`, while respecting CDK stack dependencies from `cdk.out/manifest.json`. Deployer records one `PreparedStack` per stack/region for status lookup and deletion bookkeeping.
+10. `SERVICE` and `DATA` bundles deploy through the same CDK preparation path. `SERVICE` post-success may refresh the deployed `/information` API metadata; `DATA` has no Deployer-owned post-deploy hook.
+11. Optional `limit_check_on_pre_deployment` runs `QuotaService.check()` (the only check today is Lambda code-storage size in this account; raises `LambdaCodeStorageExceedError` at ≥99 % of quota).
+12. On success update root row → `IN_PROGRESS`, emit a `succeeded` health metric, and return §6.3 `pre_deployment_output`.
+13. On any failure: write `root_status = FAILED` with `reason = error.toString()`, emit a `failed` health metric (`invocation_code = 4000` for `LambdaCodeStorageExceedError`, else `5000`), and rethrow so SFN catches it.
 
 The temp directory is cleaned up by the `temp_dir_context` decorator on every exit.
 
-Deployer does not infer product-specific stack ordering. Products that contain multiple stacks MUST list their public stack ids in `marketplace.product.json.stacks[]` in a valid deployment order, and CDK dependencies in the synthesized assembly must agree with that ordering. For products such as Connect (`NetworkStack` before `ConnectStack`) and Persist (`NeptuneStack` before `PersistStack`), the source snapshot must preserve the CDK dependency order through the factory.
+Deployer does not infer product-specific stack ordering. Products that contain multiple stacks MUST list their public stack ids in `marketplace.product.json.stacks[]` in a valid deployment order, and CDK dependencies in the built cloud assembly must agree with that ordering. For products such as Connect (`NetworkStack` before `ConnectStack`) and Persist (`NeptuneStack` before `PersistStack`), Build must preserve the CDK dependency order in `cdk.out/manifest.json`.
 
 ### 5.2 CDK stack-status loop (per stack, per region)
 
@@ -573,7 +588,7 @@ For every prepared stack the state machine runs the loop in §2.3.3. Each branch
 | Lambda                         | Side effect                                                                                                                                                                           |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GetStackStatusWorker`         | Reads CloudFormation stack status by stack name/ARN and sets `stack_exist = stack_status != null`.                                                                                     |
-| `CdkDeployStackWorker`         | Uses the CDK Toolkit Library to deploy the selected synthesized stack artifact, including asset publication, change-set execution, `NotificationARNs=[<sns-topic-arn>]`, `RoleARN=<CloudformationExecRole>`, and standard stack tags. Persists `add_bundle_stack_mapping` and `add_deployment_status({ bundle_id, stack_id, status: IN_PROGRESS, task_token })`. |
+| `CdkDeployStackWorker`         | Uses the CDK Toolkit Library or platform cloud-assembly deployer to deploy the selected stack template from `cdk.out`, including asset publication, change-set execution, `NotificationARNs=[<sns-topic-arn>]`, `RoleARN=<CloudformationExecRole>`, and standard stack tags. Persists `add_bundle_stack_mapping` and `add_deployment_status({ bundle_id, stack_id, status: IN_PROGRESS, task_token })`. |
 | `DeleteStackWorker`            | Best-effort empties S3 buckets and ECR repositories declared in the template before calling `Stack.delete()`. After delete, polls a custom `StackDeleteWaiter` (`Delay=30s, MaxAttempts=120`). Tracks `event.retries` per error code; raises `DeploymentRetryExceedError` once `retries[error_code] ≥ MAX_RETRY_THRESHOLD = 3`. Re-emits `event` with cleared `error` so the SFN catch path can re-loop into `GetStackStatus`. |
 | `RollbackContinueStackWorker`  | `cloudformation.continue_update_rollback(StackName)` then waits on the `stack_rollback_complete` waiter. On `WaiterError`, scans `Stack.events.limit(100)` for `UPDATE_FAILED` events, re-runs `continue_update_rollback(StackName, ResourcesToSkip=<failed_resources>)`, waits again. If still failing, raises `DeployError("Rollback failed for stack:<name>. Cancelling deployment...")`. |
 | `ReviewChangesWorker`          | When CDK/CloudFormation leaves a stack in `REVIEW_IN_PROGRESS`: `list_change_sets(StackName)`. If exactly one change set is in `CREATE_COMPLETE`, `execute_change_set(ChangeSetName, StackName)`. Anything else returns silently — the next `GetStackStatus` will re-evaluate. |
@@ -605,7 +620,7 @@ Stack events can arrive for stacks that were created manually, by an old deploye
 For every `(region_detail, stack_outputs)` pair (using the worker's own regional AWS SDK clients):
 
 1. Call `update_information_api(stack_outputs)` for `SERVICE` bundles only — for each deployed stack that emitted an API Gateway target, look up the stack name via `get_stack_name_from_stack_id(stack_id)` and call `deploy_information_api(stack_name, cf_resource, apigateway_client)` (the `/information` resource on the deployed API gateway gets refreshed with the new bundle's metadata).
-2. `DATA` bundles do not run a Deployer-owned post-deploy hook. Deployer MUST NOT copy API mappings to custom domains; each service CDK stack owns its own base-path mapping using `MarketplaceContext.domain` and `MarketplaceContext.basePath`.
+2. `DATA` bundles do not run a Deployer-owned post-deploy hook. Deployer MUST NOT copy API mappings to custom domains; each service stack owns its own base-path mapping using Build-declared domain and base-path parameters.
 
 On success: write `root_status = SUCCEEDED, finished_at = now()`, fire the optional `callback_url` with the terminal callback payload from §6.3 (`status="SUCCEEDED"`) and retry `total=3, statusForcelist=[403,404,429,500,502,503,504], method_whitelist=[HEAD,POST,OPTIONS]`, retain the deployment summary on the root/per-stack DynamoDB rows, and emit two `succeeded` Health metrics (`invocation_code=2000`). The Deployer does not create deployment-summary collections in a separate Persistence service.
 
@@ -721,7 +736,7 @@ The callback payload is intentionally bounded so callers such as Puller can clos
   bundle_id: string,
   deploy_id: string,                       // dep_<ulid>
   transaction_id: string | "NULL",
-  artifacts_url: string,                    // legacy field name; presigned immutable source snapshot URL
+  artifacts_url: string,                    // legacy field name; presigned immutable Build cloud assembly URL
   worker_size: "SMALL" | "MEDIUM" | "LARGE",
   artifacts_bucket_name: string,
   x_api_key: string,
@@ -730,7 +745,7 @@ The callback payload is intentionally bounded so callers such as Puller can clos
   callback_url: string | "null",
   force_deployment: string,                // JSON.stringify of bool|null
   multi_region_deployment: string,
-  custom_parameters: Record<string, string>,  // request-level MarketplaceContext overrides
+  custom_parameters: Record<string, string>,  // request-level non-secret deployment parameter overrides
   limit_check_on_pre_deployment: boolean
 }
 ```
@@ -741,7 +756,7 @@ The callback payload is intentionally bounded so callers such as Puller can clos
 {
   bundle_id, callback_url, custom_domains,
   transaction_id, component_id, component_name, bundle_type,
-  source_hash, service_info,
+  source_hash, assembly_hash, service_info,
   all_regions_details: [
     {
       target_region, custom_domains, bundle_type,
@@ -753,7 +768,7 @@ The callback payload is intentionally bounded so callers such as Puller can clos
 }
 ```
 
-`PreparedStack` (one per synthesized `(stack, region)`):
+`PreparedStack` (one per built `(stack, region)` deployment target):
 
 ```ts
 {
@@ -761,8 +776,9 @@ The callback payload is intentionally bounded so callers such as Puller can clos
   stack_exist: boolean, stack_id: string|null, stack_status: string|null,
   deployment_status: "PRE_DEPLOYMENT",
   stack_name, target_region,
-  marketplace_context: MarketplaceContext,
+  resolved_parameters: Record<string, string>,
   cloud_assembly_directory: string,
+  template_path: string,
   stack_artifact_id: string,
   asset_manifest_ids: string[]
 }
@@ -854,7 +870,7 @@ The implementation organises behaviour as small services with a clear interface 
 The major service layers:
 
 - `lambda/services/deployment/` — `DeploymentRepository` (DDB CRUD on the three deployment tables), `BundleStackMappingRepository`.
-- `lambda/services/cdk-toolkit/` — `CdkToolkitRunner` (source extraction, dependency install policy, factory loading, synth, asset publish, deploy/destroy/status via AWS CDK Toolkit Library).
+- `lambda/services/cdk-toolkit/` — `CdkToolkitRunner` (cloud assembly extraction, manifest/hash validation, deployment parameter resolution, asset publish, deploy/destroy/status via AWS CDK Toolkit Library or platform cloud-assembly deployer).
 - `lambda/services/cf/` — `CloudFormationService` (status/delete/rollback/review wrappers built on `@aws-sdk/client-cloudformation`), `StackDeleteWaiterFactory`.
 - `lambda/services/lambda/` — `LambdaCleaner` (local version reaper).
 - `lambda/services/quota/` — `QuotaService` (Lambda code-storage check in this account; in-memory TTL cache, 600 s).
@@ -905,7 +921,7 @@ The major service layers:
 
 ### 8.1.1 Bootstrap CLI contract
 
-The bootstrap CLI is specified in `Bootstrap.md`. Deployer owns source-snapshot validation, `MarketplaceContext` construction, and CDK Toolkit deployment semantics reused by the CLI's local Deployer install; Bootstrap owns the user-facing command contract, manifest handling, secret redaction, resume behavior, and the switch from local Deployer install to normal `/deploy-by-token` for Puller.
+The bootstrap CLI is specified in `Bootstrap.md`. Deployer owns cloud-assembly validation, deployment-parameter resolution, and CDK deployment semantics reused by the CLI's local Deployer install; Bootstrap owns the user-facing command contract, manifest handling, secret redaction, resume behavior, and the switch from local Deployer install to normal `/deploy-by-token` for Puller.
 
 ### 8.2 Deploy / destroy
 
@@ -924,10 +940,10 @@ Stack outputs: `DeployerApiUrl`, `DeployArtifactStateMachineArn`, `DeploymentNot
 After every deploy run:
 
 1. `GET https://<subdomain>/infra-deployer/information` returns the `ServiceInfo` JSON.
-2. `POST /deploy-by-token` with a fixture source snapshot from `test/fixtures/sample-source.zip` (presigned URL); assert `200 { bundle_id, deploy_id, transaction_id }`. The body needs only `artifacts_url` (and optionally `bundle_id`, `callback_url`, `custom_parameters`).
+2. `POST /deploy-by-token` with a Build-produced fixture cloud assembly from `test/fixtures/sample-build-cloud-assembly.zip` (presigned URL, including `service-builder` metadata, `cdk.out/manifest.json`, and `build/build.manifest.json`); assert `200 { bundle_id, deploy_id, transaction_id }`. The body needs only `artifacts_url` (and optionally `bundle_id`, `callback_url`, `custom_parameters`).
 3. Poll `GET /deploy/<bundle_id>` every 15 s until `deploy_status ∈ {SUCCEEDED, FAILED}`. Expect `SUCCEEDED` with `bundle_details[*].status == SUCCEEDED`.
 4. Confirm the optional `callback_url` (if supplied) received a `{ status: "SUCCEEDED", bundle_id }` POST.
-5. Issue a deliberate failure (invalid `marketplace.product.json` or broken `marketplace/app.ts` factory), poll status, and expect `FAILED` with bounded diagnostics.
+5. Issue a deliberate failure (invalid `marketplace.product.json`, mismatched template hash, missing deployment parameter, or unminified Lambda asset), poll status, and expect `FAILED` with bounded diagnostics.
 6. Send a request body containing an unknown field; assert `400 BadRequest` with the field-level unknown-property message and no deployment side effect.
 
 ### 8.4 Rollback
@@ -949,7 +965,7 @@ After every deploy run:
 
 1. **Repo skeleton**: pnpm workspace, TypeScript, `tsconfig.{base,build,app,src,test}.json`, ESLint, Prettier (with import sort), husky + lint-staged, Vitest. Package name is internal.
 2. **Runtime dependencies**: `@aws-lambda-powertools/{logger,metrics,event-handler}`, `@aws-sdk/{client-cloudformation,client-dynamodb,lib-dynamodb,client-ecr,client-iam,client-kms,client-lambda,client-s3,s3-request-presigner,client-service-quotas,client-sfn,client-sns,client-ssm,client-api-gateway}`, `@smithy/{config-resolver,node-config-provider,protocol-http}`, `archiver`/`yauzl` for zip in/out, built-in `fetch` for outbound HTTP. **Do NOT** depend on `@aws-sdk/credential-providers` static credentials, Fernet, or any cross-account session library — the Deployer never assumes credentials it does not have via its own role. CDK: `aws-cdk-lib`, `constructs`, AWS CDK Toolkit Library, and the internal `@internal/marketplace-cdk` types. Validation library and DI conventions are the implementer's choice — the contracts in §3 and §6 must be honoured but the implementation style is unconstrained.
-3. **Schemas / contracts**: one module per group in `lambda/schemas/` — `deploy-by-token`, `deployment-logs`, `marketplace-product-manifest`, `marketplace-context`, `cfn-event`, `health-metric`, `errors`. Errors are tagged classes; everything else is type+validator pairs. The schema for `deploy-by-token` MUST be closed and reject unknown fields before any side effect.
+3. **Schemas / contracts**: one module per group in `lambda/schemas/` — `deploy-by-token`, `deployment-logs`, `marketplace-product-manifest`, `build-manifest`, `service-builder-metadata`, `lambda-asset-policy`, `marketplace-context`, `cfn-event`, `health-metric`, `errors`. Errors are tagged classes; everything else is type+validator pairs. The schema for `deploy-by-token` MUST be closed and reject unknown fields before any side effect.
 4. **Utils**: `lambda/util/{awsUtils,httpUtils,zipExtract,jwtPassthrough}.ts`. JWT decoding is verify-OFF by design (the metadata is upstream-signed and we don't carry the key).
 5. **Configuration**: `lambda/config/deployer.ts` (CFN parameters + env vars per §2.5). Required vars must throw at startup; optional vars must default per §2.5. JSON-decoded `Regions` and `EnvParameters` are validated at cold start; Account domain config is validated when loaded and before any service stack receives domain parameters.
 6. **Services** (one file each in `lambda/services/`): Deployment (`Repository`, `BundleStackMapping`); CDK Toolkit (`Runner`, `SourceWorkspace`, `ContextBuilder`, `ManifestValidator`); CF (`Service`, `StackDeleteWaiter`); Lambda (`Cleaner`); Quota (`Service`); Health (`MetricsClient`); ApiGw (`InfoService`); AwsClients (`memoised regional client provider`); plus a composition module `services/index.ts` that exports per-handler dependency containers.
@@ -959,7 +975,7 @@ After every deploy run:
 10. **Operational**: `lambda/clean-lambda-version/handler.ts` plus the per-CFN-custom-resource handlers (`api-gateway-log`, `api-usage-plan-stage-attachment`).
 11. **CDK stacks**: `lib/data-stack.ts`, `lib/workflow-stack.ts`, `lib/deployer-stack.ts` per §2.2 / §2.3 / §2.4, then `bin/app.ts`.
 12. **State-machine ASL**: `lib/state-machines/deploy-artifact.asl.ts` (TypeScript builder using `aws-cdk-lib/aws-stepfunctions` or a plain ASL JSON) compiled by `WorkflowStack`.
-13. **Bootstrap CLI support**: shared modules for source-snapshot validation, `MarketplaceContext` construction, and local Deployer install that satisfy `Bootstrap.md`. The Deployer repo may host `cli/bootstrap.ts`, but `Bootstrap.md` is the authoritative CLI PRD.
+13. **Bootstrap CLI support**: shared modules for cloud-assembly validation, deployment-parameter resolution, and local Deployer install that satisfy `Bootstrap.md`. The Deployer repo may host `cli/bootstrap.ts`, but `Bootstrap.md` is the authoritative CLI PRD.
 14. **Local runners**: `scripts/start-sfn-local.sh`, `setupTests.ts`, `vitest.config.ts`, `justfile` (`just test` orchestrates docker + vitest), and a CI caller wired to the shared workflows.
 15. **Smoke tests**: replicate the five steps from §8.3 in `test/integration/deployer-api.test.ts`, plus a CLI contract test that stubs Account/Marketplace, verifies the Deployer local-deploy plan, and verifies the Puller handoff uses `/infra-deployer/deploy-by-token`.
 
@@ -973,12 +989,13 @@ A re-implementation is considered functionally complete when:
 - The Deployer **never** issues an AWS API call against an account other than its own. There is no `STS:AssumeRole`, no static-credentials provider, no cross-account session factory, and no Fernet decrypt anywhere in the code path. Audited via static analysis (no imports of `@aws-sdk/credential-providers` static factories).
 - The `deploy-by-token` schema rejects unknown fields with a 400 error explaining the local-account contract.
 - `POST /deploy-by-token` is callback-driven: a successful end-to-end deploy keeps the SFN suspended on `WAIT_FOR_TASK_TOKEN` until the same-region `RegionalDeploymentEventRelay` releases it. Any path that busy-waits CFN status from a worker is a bug.
-- `isCdkWorker` + `getCdkWorkerSize` produce bounded worker-cohort decisions across the four reference sizes (61 MB, 256 MB, 1 GB, 4 GB), and oversized source snapshots fail before any deploy side effect.
-- Multi-region deploys build a region-specific `MarketplaceContext` exactly once per region listed in `Regions`, invoke the fixed `marketplace/app.ts` factory without product-supplied commands, and run the flattened per-stack loop sequentially in manifest/CDK dependency order. Deployer does not expose a parallel module deployment switch.
+- `isCdkWorker` + `getCdkWorkerSize` produce bounded worker-cohort decisions across the four reference sizes (61 MB, 256 MB, 1 GB, 4 GB), and oversized Build artifacts fail before any deploy side effect.
+- Production deploys require Build-produced CDK cloud assemblies. Deployer rejects missing or incompatible `service-builder` provenance, mismatched source/assembly/artifact hashes, missing `cdk.out/manifest.json`, missing `build/build.manifest.json`, legacy `config.json` / `artifacts/<module>/update.json` layouts, source snapshots, Docker image assets, and Lambda assets that do not satisfy the minified/obfuscated/source-map-free policy.
+- Multi-region deploys build a region-specific CloudFormation parameter map exactly once per region listed in `Regions`, never invoke product source, and run the flattened per-stack loop sequentially in manifest/CDK dependency order. Deployer does not expose a parallel module deployment switch.
 - The `StackAlreadyExistsException` and `DeploymentInProgressError` SFN catch loops do not infinite-spin; eventually they reach a terminal stack status because every CFN call ultimately moves to a `*_COMPLETE` or `*_FAILED` state and the regional SNS relay releases the task token.
 - `BundleNotFoundException` from the regional SNS relay logs and skips silently — never blocks unrelated stack events.
 - Best-effort downstream (`Persistence`, `Health`, `Account Manager`) outages never fail a deploy; failures are logged and the deploy proceeds.
 - All Lambdas use `nodejs24.x`, ARM64, ESM bundling, and the `createRequire` banner so any CommonJS dependency works at runtime.
 - IAM permissions follow least-privilege per §2.4.3.
 - All structured logs include the relevant `bundle_id` / `stack_id` / `transaction_id` / `target_region` so an operator can trace a single deploy end-to-end via CloudWatch Logs Insights.
-- The Marketplace ↔ Deployer contract is honoured: `POST <tenant-host>/infra-deployer/deploy-by-token` with `{ artifacts_url, bundle_id, callback_url }` (and optional `custom_parameters`, `multi_region_deployment`, `force_deployment`) succeeds when `artifacts_url` points to a valid source snapshot, `GET <tenant-host>/infra-deployer/deploy/<bundle_id>` returns the documented status shape, and the Deployer eventually POSTs `{ status, bundle_id, ... }` to the supplied `callback_url` exactly once on terminal success or failure. The `<tenant-host>` is always the tenant's own subdomain — Marketplace MUST route per-tenant; there is no shared central Deployer.
+- The Marketplace ↔ Deployer contract is honoured: `POST <tenant-host>/infra-deployer/deploy-by-token` with `{ artifacts_url, bundle_id, callback_url }` (and optional `custom_parameters`, `multi_region_deployment`, `force_deployment`) succeeds when `artifacts_url` points to a valid Build cloud assembly, `GET <tenant-host>/infra-deployer/deploy/<bundle_id>` returns the documented status shape, and the Deployer eventually POSTs `{ status, bundle_id, ... }` to the supplied `callback_url` exactly once on terminal success or failure. The `<tenant-host>` is always the tenant's own subdomain — Marketplace MUST route per-tenant; there is no shared central Deployer.

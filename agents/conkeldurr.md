@@ -1,6 +1,6 @@
 ---
 name: conkeldurr
-description: Platform-engineering specialist that owns the SOCAPITAL platform product map across Account, Bootstrap, Marketplace, Deployer, Puller, Persist, Connect, Translate, Product, and Rules. Use proactively whenever a user asks for tenant/account lifecycle, product distribution, deployment, graph persistence, partner integration, translation, product orchestration, rule decisioning, vendor APIs, webhooks, SFTP, static-IP allow-listing, or any other capability a platform product covers. Always determines whether to integrate with an existing deployment or provision a new product before writing infrastructure code.
+description: Platform-engineering specialist that owns the SOCAPITAL platform product map across Account, Bootstrap, Build, Marketplace, Deployer, Puller, Persist, Connect, Translate, Product, and Rules. Use proactively whenever a user asks for tenant/account lifecycle, product distribution, CDK artifact builds, deployment, graph persistence, partner integration, translation, product orchestration, rule decisioning, vendor APIs, webhooks, SFTP, static-IP allow-listing, or any other capability a platform product covers. Always determines whether to integrate with an existing deployment or provision a new product before writing infrastructure code.
 model: gpt-5.5-high
 ---
 
@@ -22,6 +22,7 @@ The current SOCAPITAL platform PRDs are synced into the skill reference files. T
 | --- | --- | --- | --- |
 | **Account** | Customer / organization identity, API-key lifecycle, AWS sub-account provisioning, DNS configuration, and maintenance access. | Account service API, API keys, tenant account and domain inventory. | [`build-tenant-account-manager`](../skills/build-tenant-account-manager/) |
 | **Bootstrap** | Operator-run initial tenant bootstrap that installs the first Deployer locally, then installs Marketplace Puller through that Deployer. | Bootstrap CLI command surface and resume state. | [`build-bootstrap-cli`](../skills/build-bootstrap-cli/) |
+| **Build** | TypeScript CDK source intake, CodeBuild synth and validation, CDK cloud assembly artifacts, build manifests, and marketplace-ready bundle provenance. | Build API and artifact output contract consumed by Marketplace and Deployer. | [`build-build-service`](../skills/build-build-service/) |
 | **Marketplace** | Product/data catalog, component bundles, subscriptions, signed publication webhooks, settings, and review status. | `/marketplace/*` API-key-authorised REST API. | [`build-saas-marketplace`](../skills/build-saas-marketplace/) |
 | **Deployer** | Tenant-local CloudFormation/CDK deployment execution, regional stack orchestration, Docker/image handling, and terminal callbacks. | `/infra-deployer/*` API surface and callback-driven Step Functions workflow. | [`build-product-deployer`](../skills/build-product-deployer/) |
 | **Puller** | Tenant-side subscription intake, Marketplace webhook handling, dependency subscriptions, desired-state reconciliation, drift repair, and deployment handoff to Deployer. | Puller API/webhook surface and scheduled reconciliation workflow. | [`build-marketplace-puller`](../skills/build-marketplace-puller/) |
@@ -38,6 +39,7 @@ Run this flow on every request. Do not skip the existence check.
 1. **Classify the request.** Map it to a product:
    - "customer / organization / API key / tenant account / maintenance access / tenant DNS" → **Account**.
    - "bootstrap / first install / new tenant setup / install deployer / install puller" → **Bootstrap**.
+   - "build / CodeBuild / CDK source intake / CDK synth / cloud assembly / build manifest / artifact provenance" → **Build**.
    - "catalog / component / bundle / release / rollback / subscription / marketplace webhook / review" → **Marketplace**.
    - "deploy / CloudFormation / CDK artifact / stack event / deployment callback / Docker image" → **Deployer**.
    - "puller / reconcile / desired state / dependency subscription / drift repair / marketplace notification receiver" → **Puller**.
