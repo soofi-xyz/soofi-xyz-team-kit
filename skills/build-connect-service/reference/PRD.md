@@ -1176,7 +1176,7 @@ The shape is deliberately a strict superset of what `build-inbound-sftp-workflow
 - Each request gets an `x-sc-trace-id` (UUID) emitted in response headers and recorded in every CloudWatch log entry. The shared `withRequestContext()` middleware (`lambda/http/request-context.ts`) binds it on entry; outbound vendor callers (`callVendorApi`) and the reply-back POST forward `X-Sc-Trace-Id` so downstream systems can correlate.
 - **Powertools Tracer** (X-Ray) is enabled on every Lambda — `tracer.captureLambdaHandler(handler)` and `tracer.captureAWSv3Client(...)` for every AWS SDK client.
 - **Powertools Logger** is JSON-only (`POWERTOOLS_LOG_LEVEL=INFO`). Each handler binds Lambda context once, appends a request-scoped key (`creation_id`, `job_id`, `batch_execution_id`, `request_id`, `task_token`, `vendor_name`, `flow_name`), and resets the keys in `finally`.
-- **Powertools Metrics** are emitted with namespace `connect`. Buffered counters: `jobs_started`, `jobs_completed`, `jobs_failed`, `webhooks_received`, `webhooks_resolved`, `partner_call_errors`, `sftp_listings_started`, `sftp_listings_completed`, `sftp_listings_timed_out`, `sftp_files_transferred`, `sftp_transfer_errors`, with dimensions `{vendor_name, flow_name, status}` (and `direction ∈ inbound|outbound` for SFTP counters). The buffer is flushed in the API handler's `finally` block and in every worker's `finally` block. **Every metric MUST be registered in [Lexicon](https://github.com/Spring-Oaks-Capital-LLC/lexicon)'s `cloudwatch-metrics.json` and surfaced on the [Main Dashboard](https://github.com/Spring-Oaks-Capital-LLC/main-dashboard) before merge** (per `observability-metrics`).
+- **Powertools Metrics** are emitted with namespace `connect`. Buffered counters: `jobs_started`, `jobs_completed`, `jobs_failed`, `webhooks_received`, `webhooks_resolved`, `partner_call_errors`, `sftp_listings_started`, `sftp_listings_completed`, `sftp_listings_timed_out`, `sftp_files_transferred`, `sftp_transfer_errors`, with dimensions `{vendor_name, flow_name, status}` (and `direction ∈ inbound|outbound` for SFTP counters). The buffer is flushed in the API handler's `finally` block and in every worker's `finally` block. **Every metric MUST be registered in the Lexicon product's `cloudwatch-metrics.json` artifact and surfaced on the [Main Dashboard](https://github.com/Spring-Oaks-Capital-LLC/main-dashboard) before merge** (per `observability-metrics`).
 
 ### 7.3 Retry classification
 
@@ -1347,7 +1347,7 @@ For request signing the README ships a `bash`/`zsh` `awscurl` helper that wraps 
 13. **CDK stacks**: `lib/network-stack.ts` and `lib/connect-stack.ts` per §2.2 and §2.3, then `bin/app.ts`. Add a `cost-tagging` aspect that stamps `sc:service:name=connect` and `sc:product:name=Connect` on every taggable resource. The CDK app must not read SFTP partner config from `cdk.json`; partner-specific SFTP values enter only through runtime APIs.
 14. **Custom resources (CDK `AwsCustomResource` or Lambda-backed)**: `ApiUsagePlanStageAttachmentCustomResource`, `ApiGatewayLogCustomResource`, `ProxyResourceCleanupCustomResource`, `HealthApiKeyAuthorizer`.
 15. **Local Step Functions**: `scripts/start-stepfunctions-local.sh`, `setupTests.ts`, `vitest.config.ts`, `justfile` (`just test` orchestrates docker + vitest), and a CI caller wired to the shared workflows.
-16. **Lexicon + Dashboard registration**: every metric introduced in §7.2 MUST land in `cloudwatch-metrics.json` in the [Lexicon](https://github.com/Spring-Oaks-Capital-LLC/lexicon) repo and on the [Main Dashboard](https://github.com/Spring-Oaks-Capital-LLC/main-dashboard) **in the same PR cycle** (per `observability-metrics`).
+16. **Lexicon + Dashboard registration**: every metric introduced in §7.2 MUST land in the Lexicon product's `cloudwatch-metrics.json` artifact and on the [Main Dashboard](https://github.com/Spring-Oaks-Capital-LLC/main-dashboard) **in the same PR cycle** (per `observability-metrics`).
 17. **Smoke tests**: replicate the seven release-validation steps from §8.3 in the integration suite under `test/integration`, including the `build-inbound-sftp-workflows` Phase 5 live listing-and-transfer check.
 
 ---
@@ -1383,7 +1383,7 @@ A re-implementation is considered functionally complete when:
 - All Lambdas use `nodejs24.x`, ARM64, ESM bundling, and the `createRequire` banner so any CommonJS dependency works at runtime. **Zero Python files exist in the repository.**
 - All LLM interactions (if any) go through the **Vercel AI SDK (`ai`) with strict TypeScript and Zod tool schemas** — `grep -r "openai\|@anthropic-ai/sdk\|@aws-sdk/client-bedrock-runtime" lambda/` returns zero hits.
 - IAM permissions follow least-privilege per §2.3.6: in particular, `SftpPoller` does **not** hold `secretsmanager:GetSecretValue` (only the per-partner Transfer Family connector role does).
-- Every metric emitted by the service exists in `cloudwatch-metrics.json` (Lexicon) and is rendered on the Main Dashboard — including the `sftp_listings_started` / `sftp_listings_completed` / `sftp_listings_timed_out` / `sftp_files_transferred` / `sftp_transfer_errors` family.
+- Every metric emitted by the service exists in the Lexicon product's `cloudwatch-metrics.json` artifact and is rendered on the Main Dashboard — including the `sftp_listings_started` / `sftp_listings_completed` / `sftp_listings_timed_out` / `sftp_files_transferred` / `sftp_transfer_errors` family.
 - All structured logs include the relevant `creation_id` / `job_id` / `batch_execution_id` / `request_id` / `task_token` / `vendor_name` / `flow_name` / `connector_id` / `runId` / `listingId` / `x-sc-trace-id` so an operator can trace a single integration call end-to-end via CloudWatch Logs Insights, and **never** include credentials, tokens, `webhook_auth.Secret`, or partner SFTP passwords.
 
 ---
@@ -1887,4 +1887,3 @@ HTTP/1.1 400 Bad Request
   }
 }
 ```
-

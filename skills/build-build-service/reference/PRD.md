@@ -443,7 +443,7 @@ type ServiceBuilderMetadata = {
   artifact_hash: string;
   marketplace_manifest_hash: string;
   lockfile_hash: string;
-  lexicon_version_id?: string;
+  lexicon_version_id?: string;             // Lexicon product release id used for Marketplace compatibility checks
   cdk: {
     stacks: string[];
     cdk_version: string;

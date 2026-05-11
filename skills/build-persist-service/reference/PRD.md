@@ -8,7 +8,7 @@ Authoritative blueprint for re-creating the **Persist** graph-persistence servic
 
 ### 1.1 Mission
 
-Persist is a serverless graph-persistence layer that fronts an Amazon Neptune cluster behind a SigV4-authenticated HTTPS API and an EventBridge fact-ingestion surface. It accepts lexicon-compliant graph data in two shapes (GraphSON v3 documents and Neptune bulk-load CSV) and exposes both synchronous and asynchronous Gremlin query channels.
+Persist is a serverless graph-persistence layer that fronts an Amazon Neptune cluster behind a SigV4-authenticated HTTPS API and an EventBridge fact-ingestion surface. It accepts lexicon-compliant graph data in two shapes (GraphSON v3 documents and Neptune bulk-load CSV), exposes both synchronous and asynchronous Gremlin query channels, and maintains lexicon-declared derived index properties on durable graph elements.
 
 ### 1.2 Primary user surface
 
@@ -28,13 +28,16 @@ Out-of-band, the service also exposes:
 
 - An **EventBridge rule** for `GraphFactProduced` events emitted by other products; Persist validates the embedded GraphSON v3 payload and routes it through the async GraphSON ingest path.
 - A **Step Functions state machine** (the **Neptune CSV workflow**) for bulk CSV ingest from S3.
+- A **Step Functions state machine** (the **Derived Index Rebuild workflow**) for full or selected re-indexing of lexicon-declared derived indexes.
+- An **EventBridge Scheduler rule** that invokes a Neptune Streams poller for incremental derived-index updates after graph writes commit.
 
 ### 1.3 Non-goals
 
 - Persist does **not** expose a public read API beyond Gremlin. Lexicon-aware projection / search lives elsewhere.
+- Persist does **not** provide a general secondary-index or search engine. It only materialises the derived properties declared by Lexicon's `indexes` metadata.
 - Persist does **not** provide the legacy document-store surface (`/persistence/transactions`, `/persistence/collections`) or accept API-key authentication. Callers use SigV4 against `/persist/*`; deployment correlation and log records stay in the owning service's storage.
 - Persist does **not** synthesise its own VPC certificates or domains. Bootstrap creates the tenant's shared API Gateway custom domain before product deployment; Persist owns only its `/persist` mapping to that existing domain.
-- Persist does **not** own the shared lexicon document; it consumes a lexicon JSON from S3 referenced by an SSM parameter.
+- Persist does **not** own the shared lexicon document; it consumes Lexicon product artifacts from S3 through the `/lexicon/data-uri` SSM parameter.
 - Persist does **not** consume arbitrary EventBridge traffic. It subscribes only to versioned graph-fact events that carry GraphSON v3 and pass the same lexicon and integrity rules as HTTP ingest.
 
 ---
@@ -61,7 +64,7 @@ bin/app.ts
   - `LambdaSg` — `allowAllOutbound: true`, attached to every Lambda/Fargate task that talks to Neptune.
   - `NeptuneSg` — egress to `0.0.0.0/0:443` (for S3 bulk loading), ingress on `8182/tcp` from `LambdaSg` and from the VPC CIDR.
 - **Neptune cluster** (`CfnDBCluster`):
-  - Subnet group on isolated subnets, custom cluster parameter group `neptune1.4` with `neptune_query_timeout=3600000` ms.
+  - Subnet group on isolated subnets, custom cluster parameter group `neptune1.4` with `neptune_query_timeout=3600000` ms, `neptune_streams=1`, and `neptune_streams_expiry_days` from CDK context (`30` by default, bounded to AWS's 1–90 day range).
   - `iamAuthEnabled: true`, `storageEncrypted: true`, `enableCloudwatchLogsExports: ["audit"]`, `copyTagsToSnapshot: true`.
   - `deletionProtection` defaults true (false in non-prod via `--context stage=…`).
   - Writer instance `db.r8g.8xlarge`, reader instance `db.r8g.12xlarge`.
@@ -78,6 +81,7 @@ Stack outputs (re-exported at the application level): `NeptuneWriterEndpoint`, `
 | `IngestAsyncPayloadBucket`   | 2-day lifecycle             | GraphSON v3 async-ingest payloads under `ingest-async/YYYY/MM/DD/<requestId>.json`                   |
 | `NeptuneBulkLoadBucket`      | 2-day lifecycle             | Generated/aggregated Neptune CSV files under `bulk-load/`, `bulk-load-aggregate/`, `workflow-rehash/`, plus `workflow-summaries/` |
 | `GremlinAsyncResultsBucket`  | 7-day lifecycle             | JSON result documents from async Gremlin queries under `gremlin-async/results/YYYY/MM/DD/<requestId>.json` |
+| `IndexMaintenanceBucket`     | 14-day lifecycle            | Derived-index rebuild manifests, shard inputs, dry-run diffs, and summaries under `index-rebuild/`   |
 
 All buckets enforce `BLOCK_ALL` public access, SSL-only, S3-managed encryption, and `BUCKET_OWNER_ENFORCED` ownership.
 
@@ -94,11 +98,12 @@ Each DLQ has a 4–14-day retention. SQS-managed encryption, `enforceSSL: true` 
 
 #### 2.3.3 DynamoDB
 
-| Table                   | Key                       | Notes                                                                |
-| ----------------------- | ------------------------- | -------------------------------------------------------------------- |
-| `GremlinAsyncJobsTable` | PK `requestId` (S)        | PAY_PER_REQUEST, AWS-managed encryption, PITR enabled, TTL on `ttlEpochSeconds` (default `7d` from `queuedAt`) |
+| Table                    | Key                       | Notes                                                                |
+| ------------------------ | ------------------------- | -------------------------------------------------------------------- |
+| `GremlinAsyncJobsTable`  | PK `requestId` (S)        | PAY_PER_REQUEST, AWS-managed encryption, PITR enabled, TTL on `ttlEpochSeconds` (default `7d` from `queuedAt`) |
+| `DerivedIndexStateTable` | PK `pk` (S), SK `sk` (S)  | PAY_PER_REQUEST, AWS-managed encryption, PITR enabled. Stores the Neptune Streams checkpoint/lease, rebuild execution metadata, and optional per-index watermarks. |
 
-Item shape mirrors the `GremlinAsyncJobState` schema (see §6.3).
+`GremlinAsyncJobsTable` items mirror the `GremlinAsyncJobState` schema (see §6.3). `DerivedIndexStateTable` items are defined in §6.6.
 
 #### 2.3.4 Compute
 
@@ -119,6 +124,9 @@ All Lambdas are `NodejsFunction` with `runtime=NODEJS_24_X`, `architecture=ARM_6
 | `PersistWorkflowItemProcessor`      | 4096 + 10 GiB ephemeral storage | 15 min | ✓ | Step Functions (with task token in `aggregate` mode) | Dedup → upload → start load (or enqueue stage-2) |
 | `PersistWorkflowItemStatus`         | 1024   | 180 s   | ✓   | Step Functions                                | Detailed bulk-load status check |
 | `PersistWorkflowItemStatusSimple`   | 1024   | 180 s   | ✓   | Step Functions                                | Lightweight bulk-load status check (used inside Distributed Map polling loop) |
+| `IndexRebuildPrepare`               | 512    | 60 s    | ✓   | Step Functions                                | Load canonical lexicon, build selected index catalog, capture stream watermark, and write rebuild manifest |
+| `IndexRebuildShardWorker`           | 1024   | 15 min  | ✓   | Step Functions Distributed Map item processor | Recompute derived index values for a shard of trigger element IDs and write target properties |
+| `IndexStreamPoller`                 | 1024   | 5 min   | ✓   | EventBridge Scheduler                         | Poll Neptune Streams, match committed graph changes to lexicon index triggers, recompute affected properties, and advance checkpoint |
 
 Plus an **ECS Fargate** task (ARM64, 1 vCPU / 2048 MB, 120 s stop timeout) packaged from `lambda/fargate/Dockerfile` that hosts the long-running async-Gremlin executor (`GREMLIN_ASYNC_EXECUTION_TIMEOUT_MS=3600000` ms = 1 h cap).
 
@@ -129,6 +137,7 @@ Plus an **ECS Fargate** task (ARM64, 1 vCPU / 2048 MB, 120 s stop timeout) packa
 - **API Gateway custom domain mapping** under base path `persist` against the Bootstrap-created tenant custom domain passed by Deployer (`AWS::ApiGatewayV2::ApiMapping` for the HTTP API). Persist must not create the shared API Gateway `DomainName`; Bootstrap creates it before product deployment.
 - **EventBridge rule** (`GraphFactProducedRule`) on the tenant event bus. Pattern: `{ "detail-type": ["GraphFactProduced"], "detail": { "graphson_format": ["graphson-v3"] } }`. Target: `PersistGraphFactHandler`, with bounded EventBridge retry policy and `GraphFactEventDlq` as the target DLQ.
 - **EventBridge Pipe** (`GremlinAsyncPipe`) source = `GremlinAsyncQueue` (`batchSize: 1`), target = Step Functions `GremlinAsyncStateMachine` (`FIRE_AND_FORGET`). The submission flow is therefore SQS → EventBridge Pipe → Step Functions, **not** SQS → Lambda.
+- **EventBridge Scheduler** (`IndexStreamPollSchedule`) invokes `IndexStreamPoller` once per minute by default. Neptune Streams do not natively trigger Lambda, so the poller is explicitly scheduled and protected by a DynamoDB lease.
 - **Step Functions / GremlinAsyncStateMachine**:
   ```
   UnwrapSqsRecord ($[0]) → ValidateAndSetRunning (Lambda)
@@ -139,6 +148,7 @@ Plus an **ECS Fargate** task (ARM64, 1 vCPU / 2048 MB, 120 s stop timeout) packa
   ```
   Total state machine timeout: 7200 s (2 h). Tracing enabled.
 - **Step Functions / PersistNeptuneCsvWorkflow** (Neptune CSV bulk-load) – see §5.
+- **Step Functions / PersistIndexRebuildWorkflow** (derived index rebuild) – see §5.6.
 
 #### 2.3.6 IAM (high-level)
 
@@ -147,6 +157,7 @@ Plus an **ECS Fargate** task (ARM64, 1 vCPU / 2048 MB, 120 s stop timeout) packa
 - The Glue start step uses the AWS-required `glue:* on *` (Step Functions optimised integration).
 - API Gateway routes use `HttpIamAuthorizer`; every caller must SigV4-sign `execute-api` requests.
 - `PersistGraphFactHandler` can read the lexicon object, write async payloads to `IngestAsyncPayloadBucket`, and send messages to `IngestAsyncQueue`. The EventBridge rule can invoke only this handler and write failed deliveries to `GraphFactEventDlq`.
+- Derived-index Lambdas can read the lexicon object and `IndexMaintenanceBucket`, read/write `DerivedIndexStateTable`, read Neptune Streams and execute read traversals with `neptune-db:ReadDataViaQuery`, and execute narrowly-scoped property writes with `neptune-db:WriteDataViaQuery` on the writer endpoint. They cannot invoke public API Gateway routes.
 
 ### 2.4 Configuration surface (env vars)
 
@@ -199,6 +210,16 @@ The runtime is configured exclusively via env vars (read once on cold start; mis
 | `GREMLIN_ASYNC_MAX_RECEIVE_COUNT`           | `5`           | Worker retry decision                        |
 | `GREMLIN_BATCH_EXISTS_CHUNK_SIZE`           | `1000`        | Existence checks chunk size                  |
 | `GREMLIN_BATCH_EXISTS_CONCURRENCY`          | `100` (capped at 110) | Existence checks concurrency         |
+| `INDEX_MAINTENANCE_BUCKET`                  | bucket name   | Derived-index rebuild manifests and summaries |
+| `INDEX_REBUILD_PREFIX`                      | `index-rebuild` | Derived-index rebuild S3 prefix            |
+| `DERIVED_INDEX_STATE_TABLE_NAME`            | table name    | Streams checkpoint/lease and rebuild state   |
+| `INDEX_REBUILD_SHARD_SIZE`                  | `1000`        | Trigger element IDs per rebuild shard        |
+| `INDEX_REBUILD_MAX_CONCURRENCY`             | `20`          | Distributed Map default for index rebuild    |
+| `INDEX_STREAM_POLL_LIMIT`                   | `10000`       | Neptune Streams `limit` per poll             |
+| `INDEX_STREAM_POLL_INTERVAL_SECONDS`        | `60`          | EventBridge Scheduler cadence                |
+| `INDEX_STREAM_LEASE_TTL_SECONDS`            | `120`         | Single active stream poller lease duration   |
+| `INDEX_STREAM_MAX_TRANSACTIONS_PER_POLL`    | `250`         | Backpressure guard before yielding to next scheduled poll |
+| `INDEX_STREAM_LAG_WARN_FRACTION`            | `0.50`        | Warn when lag exceeds this fraction of `neptune_streams_expiry_days` |
 | `POWERTOOLS_SERVICE_NAME` / `POWERTOOLS_LOG_LEVEL` / `POWERTOOLS_METRICS_NAMESPACE` | `persist*` / `INFO` / `persist` | Logging + metrics |
 
 ---
@@ -258,27 +279,41 @@ Persist enforces the lexicon at every write boundary. GraphSON ingest, GraphSON 
 
 Persist does **not** own lexicon governance. The lexicon document is produced and versioned outside this service; Persist consumes the approved JSON, caches it briefly, and fails closed when it cannot refresh. Request-scoped candidate lexicons exist to validate proposed ontology changes before they are promoted, not to let callers bypass the canonical schema.
 
-The lexicon JSON document lives in S3 (URI in SSM `/lexicon/data-uri`). It declares `vertices[]` and `edges[]` rules. Each rule supports:
+The lexicon JSON document is published by the Lexicon product to S3, with its canonical URI in SSM `/lexicon/data-uri`. The document declares `vertices[]`, `edges[]`, `common_patterns[]`, and optional metadata keys that consumers must ignore unless their own contract says otherwise. Vertex and edge rules support:
 
 - `type` (label),
 - `properties: { [key]: { type, required?, enum?, format?, items? } }` where `type ∈ string|integer|number|boolean|array`,
 - `required: string[]` (vertex; optional on edge),
-- `from` / `to` (edge endpoint labels).
+- `from` / `to` (edge endpoint labels),
+- `indexes: { [indexName]: { type, enum?, format?, pattern?, change_trigger, subject_query, value_query } }` for derived analytical properties declared by Lexicon. The index key is the durable target property name.
+
+Derived `indexes` metadata is now a Persist runtime contract, but not a caller write contract. GraphSON and CSV writers may not set derived index keys as ordinary properties; those keys are server-managed, rejected at inbound validation boundaries, and excluded from ID hashing when Persist writes them internally. Persist consumes the canonical lexicon to build an `IndexCatalog`:
+
+- Each catalog entry is identified by `{ owner_type, index_name }`; `index_name` is the property key written back to the owning graph element.
+- The owner type is implied by the vertex or edge definition that contains the `indexes` object. Current lexicon data declares debt vertex indexes: `debt_status_latest`, `current_balance`, `account_age_days`, `dsa_company_name`, and `is_dsa`.
+- `type`, `enum`, `format`, `pattern`, `items`, and `minLength` validate the derived value using the same scalar rules as regular properties.
+- `change_trigger.type` and `change_trigger.label` identify the Neptune Streams record that should cause recomputation. Current definitions use edge-label triggers such as `debt_status_changed`, `debt_has_balance`, `company_owns_debt`, and `company_represents_debt`.
+- `subject_query.gremlin` maps the changed graph element id (`__ID__`) to the concrete owner element id.
+- `value_query.gremlin` recomputes the canonical current value from graph history, not from the changed record alone. This is required because historical backfills can insert older events after newer events.
+
+Only the canonical lexicon drives index writes. Candidate lexicons can be used for validation and dry-run rebuild planning, but any rebuild or stream mode that writes to Neptune must reject `candidate_lexicon_s3_uri`.
+
+Index writes use the Neptune writer endpoint and are idempotent: `null` / empty traversal results remove the target property, non-null values are written as single-cardinality properties after type validation, and the write never changes the durable element id. Current promoted lexicon data declares vertex-owned debt indexes; if edge-owned indexes are promoted later, the same catalog/writer contract applies to `g.E(ownerId)`.
 
 The loader (`LexiconSchemaService`):
 
 - Reads the URI from `LEXICON_DATA_URI`, parses the S3 URI, fetches the object with a per-request timeout (`LEXICON_OBJECT_TIMEOUT_MS`, default 10 s), JSON-parses it, and validates against the lexicon schema (collecting **all** issues, not just the first).
 - Caches the loaded lexicon in-process for **300 s** with single-flight refresh.
-- Supports a request-scoped **candidate lexicon override** (`candidate_lexicon_s3_uri`) — accepted only if the URI is in the same bucket as the default lexicon and under prefix `ovid-agent-changes/` ending in `.json`.
+- Supports a request-scoped **candidate lexicon override** (`candidate_lexicon_s3_uri`) — accepted only if the URI is in the Lexicon data bucket that backs `/lexicon/data-uri` and under the reserved prefix `ovid-agent-changes/` ending in `.json`.
 - Fails closed: any post-expiry refresh failure surfaces a tagged error (we never serve a stale lexicon).
 
 ### 3.4 Hashed IDs (deterministic)
 
-Server-managed meta-properties (`created_at`, the literal `id` property) are stripped before hashing. Then:
+Server-managed meta-properties (`created_at`, the literal `id` property, and lexicon-derived index keys) are stripped before hashing. Then:
 
 - **Vertex ID** = `sha256(stable_stringify({ label, properties: normalize(properties) }))`.
 - **Edge ID** = `sha256(stable_stringify({ label, outV: normalize(outV), inV: normalize(inV), properties: normalize(properties) }))` where `outV`/`inV` already use the hashed vertex ID when the endpoint is part of the same payload.
-- Normalisation sorts object keys lexicographically, treats `BigInt` as `{type:"bigint", value: stringDigits}`, recursively normalises GraphSON-typed wrappers, and sorts vertex multi-property values by their stable string. Numbers and booleans pass through; arrays preserve order **except** vertex multi-properties.
+- Normalisation sorts object keys lexicographically, treats `BigInt` as `{type:"bigint", value: stringDigits}`, recursively normalises GraphSON-typed wrappers, and sorts vertex multi-property values by their stable string. Numbers and booleans pass through; arrays preserve order **except** vertex multi-properties. Server-managed fields (`id`, `created_at`, and lexicon-derived index keys) are not hash inputs.
 - Hashed IDs flow back as `g:UUID` typed values in the response payload — the client must use them on subsequent writes.
 
 ### 3.5 GraphSON ingest semantic + integrity rules
@@ -293,6 +328,7 @@ Three-phase validation runs **before** any side effect:
 3. **Semantic / lexicon**:
    - Required vertex/edge properties present (server-managed keys excluded).
    - Unknown vertex/edge labels and properties.
+   - Derived index property keys from `indexes` are treated as server-managed. If a caller supplies one in GraphSON, graph-fact, or CSV input, validation fails before any side effect.
    - Type mismatches (`TypeMismatch`), enum mismatches (`EnumMismatch`), string-format mismatches (`FormatMismatch`) — formats supported: `date`, `date-time`, `email`, `phone_number`, `time`, `uri`. Date formats also accept `g:Date`/`g:Timestamp` GraphSON wrappers and report `expected ISO date string or g:Date` etc.
    - Edge endpoint sanity: `outVLabel`/`inVLabel` must equal the lexicon `from`/`to`, and the labels of vertex IDs referenced inside the same payload must match.
 
@@ -302,7 +338,7 @@ The HTTP layer is the authoritative tag-to-status mapper. Each error type is a s
 
 | HTTP | Tag(s) |
 | ---- | ----- |
-| 400  | `BadRequest`, `GremlinSyntaxError`, `GremlinMutationNotAllowedError`, `GraphSONValidationError`, `GraphSONPayloadValidationError`, `GraphSONIntegrityError` |
+| 400  | `BadRequest`, `GremlinSyntaxError`, `GremlinMutationNotAllowedError`, `GraphSONValidationError`, `GraphSONPayloadValidationError`, `GraphSONIntegrityError`, `DerivedIndexServerManagedPropertyError` |
 | 404  | `VertexNotFoundError`, `GremlinAsyncRequestNotFoundError` |
 | 500  | `GremlinExecutionError`, `GremlinAsyncJobSerializationError`, `GremlinAsyncResultSerializationError`, `GremlinAsyncJobConditionalConflictError`, fallback `InternalServerError` |
 | 503  | `NeptuneConnectionError`, `NeptuneRetriableError`, `S3PayloadStoreError`, `SqsEnqueueError`, `GremlinAsyncJobStoreError`, `GremlinAsyncResultStoreError`, `GremlinAsyncExecutionError`, `GremlinAsyncExecutionTimeoutError`, `GremlinAsyncCancelError` |
@@ -598,6 +634,67 @@ A custom HTTPS client signed with SigV4 for the `/loader` endpoint:
 - **Tolerated created_at conflicts**: when terminal status is `LOAD_FAILED` and the **only** error code present is `SINGLE_CARDINALITY_VIOLATION` for the `created_at` property and `parsingErrors=0` and `datatypeMismatchErrors=0`, the result is normalised to `LOAD_COMPLETED_WITH_TOLERATED_CREATED_AT_CONFLICTS` and `effectiveSuccess=true`. The conflict count flows into `toleratedCreatedAtConflictCount` for observability.
 - **Logging**: progress logs are emitted on status change or every `NEPTUNE_BULK_STATUS_LOG_EVERY_POLLS=12` polls. Failures sample up to 5 error-log entries plus the full `overallStatus` payload.
 
+### 5.6 Derived index maintenance
+
+Persist owns the execution of Lexicon's derived `indexes` contract. The immutable source facts remain canonical; derived index properties are maintained conveniences on the durable owner element for analytical reads. Two mechanisms share the same `IndexCatalog`, Gremlin execution service, type validator, and idempotent writer:
+
+- **Re-indexing**: a durable Step Functions STANDARD workflow for initial materialisation, lexicon index-definition changes, backfills, and time-relative values such as `account_age_days`.
+- **Incremental maintenance**: a scheduled Neptune Streams poller that consumes committed graph changes and updates affected existing index values.
+
+#### 5.6.1 Step Functions: PersistIndexRebuildWorkflow
+
+A STANDARD state machine because rebuilds are long-running, must survive Lambda/container restarts, and need persisted execution state/history. The workflow uses Distributed Map for shard parallelism; Distributed Map stays in STANDARD mode and writes map-run results to `IndexMaintenanceBucket`.
+
+```
+PrepareIndexRebuild              (Lambda: index-rebuild-prepare)
+  → BuildTriggerShardManifest     (same Lambda or nested task)
+  → RecomputeIndexShards          (Distributed Map over S3 shard manifest)
+  → WriteIndexRebuildSummary      (Lambda)
+  → OptionallyAdvanceStreamCheckpoint
+```
+
+Accepted input:
+
+```jsonc
+{
+  "schemaVersion": "1",
+  "mode": "WRITE",                 // "WRITE" | "DRY_RUN"; WRITE requires canonical lexicon
+  "indexes": [                     // optional; omitted means every lexicon-declared index
+    { "owner_type": "debt", "index_name": "current_balance" }
+  ],
+  "costCeilingUsd": 10,
+  "maxConcurrency": 20,
+  "candidate_lexicon_s3_uri": "s3://lexicon-bucket/ovid-agent-changes/<session>/lexicon.json"
+}
+```
+
+Workflow requirements:
+
+1. `PrepareIndexRebuild` loads the lexicon, rejects `mode="WRITE"` with a candidate lexicon, validates all selected index definitions, and writes a manifest under `s3://<INDEX_MAINTENANCE_BUCKET>/<INDEX_REBUILD_PREFIX>/<executionId>/manifest.json`.
+2. Before scanning, the workflow reads the current Neptune Streams `LATEST` event id as a rebuild watermark. On successful initial materialisation it may set the stream checkpoint to that watermark; subsequent polling uses `AFTER_SEQUENCE_NUMBER` so changes that commit after the watermark are replayed.
+3. For each selected index, trigger elements are enumerated from the reader endpoint using the declared trigger label (`g.E().hasLabel(label).id()` for edge triggers, `g.V().hasLabel(label).id()` for vertex triggers). IDs are written into JSONL shard files sized by `INDEX_REBUILD_SHARD_SIZE`.
+4. `RecomputeIndexShards` runs one child execution per shard. For each trigger element id it binds `__ID__` into `subject_query.gremlin`, runs `value_query.gremlin`, validates the result against the index schema, and either writes `property(single, index_name, value)` on the owner element or removes `index_name` when the value is null / empty.
+5. Repeated work is safe. Because `value_query` recomputes the final current value from graph history, two trigger elements for the same owner can race or retry without changing the final result incorrectly.
+6. Dry-run mode performs all reads and validation, writes diffs/samples to S3, and never mutates Neptune or stream checkpoints.
+7. The summary includes `indexesProcessed`, `triggerElementsRead`, `ownerElementsTouched`, `propertiesWritten`, `propertiesRemoved`, `validationFailures`, `dryRun`, `streamWatermark`, and per-index counters.
+
+#### 5.6.2 Neptune Streams incremental indexer
+
+Neptune Streams are enabled in `NeptuneStack`. AWS exposes streams through the Neptune REST API, not as a native Lambda event source, so Persist runs `IndexStreamPoller` from EventBridge Scheduler.
+
+Poller requirements:
+
+1. Acquire a lease in `DerivedIndexStateTable` (`pk="stream"`, `sk="checkpoint"`) before reading. A concurrent invocation exits successfully without work.
+2. Read from `https://<NEPTUNE_READER_HOST>:8182/propertygraph/stream` with `iteratorType=AFTER_SEQUENCE_NUMBER`, `commitNum`, `opNum`, and `limit=INDEX_STREAM_POLL_LIMIT`. Bootstrap is explicit: production must either have a checkpoint from a completed rebuild or fail closed with `IndexStreamCheckpointMissing`.
+3. Parse PG_JSON records. A record matches an index trigger when:
+   - `change_trigger.type === "edge"` and `record.data.type === "e"` and `record.data.key === "label"` and `record.data.value.value === change_trigger.label`, or
+   - `change_trigger.type === "vertex"` and `record.data.type === "vl"` and `record.data.key === "label"` and `record.data.value.value === change_trigger.label`.
+4. Process only complete transactions. The poller groups records until `isLastOp=true`, recomputes all matching indexes for that transaction, and advances the checkpoint to the response `lastEventId` only after every derived-index write succeeds.
+5. Current lexicon indexes are immutable-history add triggers, so `op="ADD"` is the normal path. `REMOVE` trigger records are logged with the full stream event id and skipped unless a future lexicon trigger explicitly declares remove handling.
+6. Index property writes create property stream records (`type="vp"` or `type="ep"`), but they do not retrigger the indexer because trigger matching only uses vertex/edge label records. This prevents index-maintenance feedback loops.
+7. If processing fails after reading records, the checkpoint is not advanced. The next scheduled poll replays the same records; idempotent recomputation makes replay safe.
+8. The poller emits lag metrics from stream `commitTimestamp` and warns when lag exceeds `INDEX_STREAM_LAG_WARN_FRACTION * neptune_streams_expiry_days`. If the checkpoint falls outside the stream retention window, the poller fails closed and the runbook requires a rebuild.
+
 ---
 
 ## 6. Internal Data Schemas
@@ -709,6 +806,60 @@ Workflow summaries are written by `WorkflowSummaryService` to `s3://<NEPTUNE_BUL
 }
 ```
 
+### 6.6 Derived index schemas
+
+`IndexCatalogEntry` is built from the canonical lexicon:
+
+```ts
+{
+  ownerType: string,
+  ownerKind: "vertex" | "edge",
+  indexName: string,
+  valueSchema: { type: "string"|"integer"|"number"|"boolean", enum?: string[], format?: string, pattern?: string },
+  changeTrigger: { type: "vertex"|"edge", label: string },
+  subjectQuery: { gremlin: string },
+  valueQuery: { gremlin: string }
+}
+```
+
+`DerivedIndexStateTable` stream checkpoint item:
+
+```ts
+{
+  pk: "stream",
+  sk: "checkpoint",
+  commitNum: number,
+  opNum: number,
+  lastCommitTimestamp?: number,
+  updatedAt: ISO8601 UTC,
+  leaseOwner?: string,
+  leaseExpiresAtEpochSeconds?: number,
+  sourceExecutionArn?: string
+}
+```
+
+`IndexRebuildSummary` document in S3:
+
+```ts
+{
+  schemaVersion: "1",
+  executionId: string,
+  mode: "WRITE"|"DRY_RUN",
+  lexiconDataUri: string,
+  streamWatermark?: { commitNum: number, opNum: number },
+  indexes: Array<{ ownerType: string, indexName: string, triggerLabel: string }>,
+  counters: {
+    triggerElementsRead: number,
+    ownerElementsTouched: number,
+    propertiesWritten: number,
+    propertiesRemoved: number,
+    validationFailures: number
+  },
+  startedAt: ISO8601 UTC,
+  finishedAt: ISO8601 UTC
+}
+```
+
 ---
 
 ## 7. Cross-cutting Concerns
@@ -743,19 +894,19 @@ Retries: `maxAttempts = NEPTUNE_RETRY_MAX_ATTEMPTS + 1` (default 6), exponential
 
 - **Logger**: AWS Lambda Powertools logger (`POWERTOOLS_SERVICE_NAME=persist*`, `POWERTOOLS_LOG_LEVEL=INFO`). Each handler binds Lambda context once, appends a request-scoped key (`workflowItemRequestId`, `batchRequestId`, `workflowValidationRequestId`, …), and resets the keys in `finally`.
 - **Structured logging across services**: every service emits start/progress/end logs with the same shape — a span name (`ServiceName.method`), structured annotations (`requestId`, `executionId`, `loadId`, `taskToken`, `phase`, `bucket`, `key`, …), and a level (`info`/`warn`/`error`). Polling loops emit progress every N polls or on status change.
-- **Metrics**: AWS Lambda Powertools metrics, namespace `persist`. Buffered counters `vertices_ingested` / `edges_ingested` with dimension `ingest_method` ∈ `sync_ingest|async_ingest|eventbridge_graph_fact|async_csv_upload` (and optional `phase=vertices|edges`). The buffer is flushed in the API handler's `finally` block and in the async-bulk-worker's `finally` block.
+- **Metrics**: AWS Lambda Powertools metrics, namespace `persist`. Buffered counters `vertices_ingested` / `edges_ingested` with dimension `ingest_method` ∈ `sync_ingest|async_ingest|eventbridge_graph_fact|async_csv_upload` (and optional `phase=vertices|edges`). Derived-index metrics include `index_rebuild_trigger_elements`, `index_rebuild_properties_written`, `index_rebuild_properties_removed`, `index_stream_records_read`, `index_stream_transactions_processed`, `index_stream_checkpoint_lag_ms`, and `index_stream_recompute_failures`, all dimensioned by `owner_type` / `index_name` where cardinality is bounded. The buffer is flushed in the API handler's `finally` block and in every worker/poller `finally` block.
 - **Tracing**: Step Functions state machines have `tracingEnabled: true` (X-Ray).
 
 ### 7.6 Long-running command discipline
 
-Every external call (Neptune Data API, S3, Step Functions, SQS, DynamoDB) is wrapped in a promise-with-timeout helper that maps timeouts and SDK errors to the appropriate tagged error. Polling loops emit progress logs before/after each poll with elapsed counters and structured annotations so a stalled run is observable from CloudWatch alone.
+Every external call (Neptune Data API, Neptune Streams REST API, S3, Step Functions, SQS, DynamoDB) is wrapped in a promise-with-timeout helper that maps timeouts and SDK errors to the appropriate tagged error. Polling loops emit progress logs before/after each poll with elapsed counters and structured annotations so a stalled run is observable from CloudWatch alone.
 
 ### 7.7 Service / module structure
 
 The implementation organises behaviour as small services with a clear interface and a swap-in test double. The shape is intentionally framework-light so it can be reproduced in any DI style (constructor injection, factory functions, or a runtime container):
 
 - Each service has a **typed API** (a TypeScript interface), a **runtime factory** that closes over its dependencies (clients, configs, clocks, ID generators), and a **live binding** that wires real AWS SDK clients + env-var-derived config.
-- Complex services (`GremlinAsyncJobStore`, `NeptuneDataApiGremlin`, `GremlinAsyncSubmit`, `GraphSONAsyncIngest`, etc.) expose pure-function factories (`makeXxxService(runtime)`) so tests can pass mocks (in-memory clients, fixed clocks, deterministic UUIDs).
+- Complex services (`GremlinAsyncJobStore`, `NeptuneDataApiGremlin`, `GremlinAsyncSubmit`, `GraphSONAsyncIngest`, `IndexCatalogService`, `IndexRebuildService`, `IndexStreamCheckpointStore`, etc.) expose pure-function factories (`makeXxxService(runtime)`) so tests can pass mocks (in-memory clients, fixed clocks, deterministic UUIDs).
 - Errors are **structured tagged classes** with a discriminator (`type` / `_tag`) so the HTTP layer can `switch` on them when mapping to status codes.
 - Composition is split per route (§4.4) to keep config requirements minimal — a missing env var for an unrelated route must never fail this route.
 
@@ -765,6 +916,8 @@ The implementation organises behaviour as small services with a clear interface 
 - Vitest is the test runner. `setupTests.ts` wires the ingest-metrics reset/flush before/after each test.
 - A real Gremlin Server (TinkerGraph) is required for traversal tests. `just test` (the canonical CI command) starts/stops the docker container automatically using `scripts/start-gremlin-test.sh` and `gremlin/tinkergraph-empty.properties` (string IDs enabled to mirror Neptune `T.id`).
 - EventBridge ingestion tests cover the `GraphFactProduced` schema, wrapper transformation into `tinker:graph`, validation failures before S3/SQS side effects, and successful enqueue metadata.
+- Derived-index unit tests cover index-catalog parsing from lexicon `indexes`, rejection of caller-supplied index properties, value type/enum validation, null-as-remove semantics, and idempotent writer retries. Stream tests use captured/synthetic Neptune PG_JSON records for `ADD`, `REMOVE`, multi-op transactions, duplicate replay, and checkpoint advancement only after successful writes.
+- Rebuild workflow tests cover selected-index planning, candidate lexicon dry-run only, shard generation, Distributed Map item processing, stream watermark capture, and summary counters.
 - Integration tests live in `test/integration/persist-api.test.ts` and hit a deployed API via SigV4 (`PERSIST_API_URL`, `AWS_PROFILE`).
 - The OpenAPI spec at `docs/openapi.json` is regenerated by `scripts/generate-openapi.ts` (driven from the route definitions module).
 
@@ -783,8 +936,9 @@ The implementation organises behaviour as small services with a clear interface 
 - Node.js 22+ (Lambda runtime is 24).
 - pnpm.
 - AWS CLI/CDK with permissions for VPC, Neptune, S3, SQS, DynamoDB, ECS, Step Functions, EventBridge rules and pipes, IAM, API Gateway, Lambda, CloudWatch Logs, SSM.
-- A pre-populated SSM parameter `/lexicon/data-uri` pointing to the lexicon JSON in S3.
+- A deployed Lexicon product with SSM `/lexicon/data-uri` pointing to the canonical `lexicon.json` in the Lexicon data bucket.
 - A pre-populated SSM parameter `/persist-spark/glue/neptune-csv-rehash/job-name` pointing at the persist-spark Glue rehash job.
+- Neptune Streams enabled by `NeptuneStack` (`neptune_streams=1`). After changing stream cluster parameters, all Neptune DB instances must be rebooted for the setting to take effect.
 
 ### 8.2 Deploy / destroy
 
@@ -795,7 +949,7 @@ pnpm cdk:deploy           # NeptuneStack first (CDK auto-orders), then PersistSt
 pnpm cdk:destroy          # only when deletionProtection=false (non-prod)
 ```
 
-Stack outputs: `ApiUrl`, `NeptuneCsvWorkflowArn`, `NeptuneWriterEndpoint`, `NeptuneReaderEndpoint`, `NeptunePort`, `NeptuneClusterResourceId`, `NeptuneVpcId`. Two SSM parameters are created: `persist-api-url` and `persist-neptune-csv-workflow-arn`.
+Stack outputs: `ApiUrl`, `NeptuneCsvWorkflowArn`, `PersistIndexRebuildWorkflowArn`, `NeptuneWriterEndpoint`, `NeptuneReaderEndpoint`, `NeptunePort`, `NeptuneClusterResourceId`, `NeptuneVpcId`. SSM parameters are created for `persist-api-url`, `persist-neptune-csv-workflow-arn`, and `persist-index-rebuild-workflow-arn`.
 
 ### 8.3 Smoke tests
 
@@ -807,6 +961,13 @@ After every deploy run the four release-validation calls listed in `README.md` �
 4. Confirm the status response keeps result bodies out of the metadata and that `resultS3Uri` is reachable.
 
 For `/persist/ingest` and `/persist/gremlin`, use the bash/zsh `awscurl` helper documented in the README.
+
+Derived-index release validation:
+
+1. Run `PersistIndexRebuildWorkflow` in `DRY_RUN` for one selected debt index and confirm the S3 summary reports trigger counts without Neptune writes.
+2. Run the same workflow in `WRITE` after confirming the canonical lexicon is in use; verify a sample owner element has the expected derived property.
+3. Insert a graph fact that creates a matching trigger edge, wait for `IndexStreamPoller`, and verify the property is recomputed plus the stream checkpoint advances.
+4. Confirm `index_stream_checkpoint_lag_ms` is below one poll interval after the test write.
 
 ### 8.4 Rollback
 
@@ -820,6 +981,8 @@ For `/persist/ingest` and `/persist/gremlin`, use the bash/zsh `awscurl` helper 
 - **Created_at single cardinality** noise: tolerated automatically on otherwise-clean loads. Anything else (parsing/datatype errors, mixed error codes) hard-fails.
 - **Stuck async-Gremlin job**: `GET` the request to inspect status. If `RUNNING` past max budget, `DELETE` to register cancel intent — the next Fargate poll (or successive worker restart) will clean up.
 - **Connection storms**: bumping `NEPTUNE_RETRY_MAX_ATTEMPTS` and lowering `GREMLIN_BATCH_EXISTS_CONCURRENCY` is the standard mitigation; the default `100..110` was tuned for `db.r8g.12xlarge` reader.
+- **Index stream checkpoint missing or trimmed**: run `PersistIndexRebuildWorkflow` in `WRITE`, allow it to set the checkpoint from its captured stream watermark, then re-enable the `IndexStreamPollSchedule`. Do not silently start from `LATEST` in production.
+- **Index stream lag warning**: inspect `IndexStreamPoller` logs for failing trigger records, reduce `INDEX_STREAM_POLL_LIMIT` only if Neptune query pressure is the cause, and prefer increasing poll frequency/concurrency after confirming the single-lease invariant remains intact.
 
 ---
 
@@ -827,12 +990,12 @@ For `/persist/ingest` and `/persist/gremlin`, use the bash/zsh `awscurl` helper 
 
 1. **Repo skeleton**: pnpm workspace, TypeScript, `tsconfig.{base,build,app,src,test}.json`, ESLint, Prettier (with import sort), husky + lint-staged, Vitest. Package name is internal.
 2. **Runtime dependencies**: `@aws-lambda-powertools/{logger,metrics,event-handler}`, `@aws-sdk/{client-neptunedata,client-s3,client-sfn,client-sqs,credential-providers}`, `@smithy/{config-resolver,node-config-provider,hash-node,protocol-http,signature-v4}`, `gremlin`, `gremlin-aws-sigv4`, `csv-parse`. CDK: `aws-cdk-lib`, `constructs`, `aws-cdk`. Choose any preferred validation library and structured-error / DI conventions — the contracts in §3 and §6 must be honoured but the implementation style is unconstrained.
-3. **Schemas / contracts**: one module per group in `lambda/schemas/` — `graphson/{types,vertex,edge,ingest,validate}`, `eventbridge/graph-fact`, `gremlin`, `gremlin-async`, `async-bulk`, `workflow`, `lexicon`, `http`, `errors`. Errors are tagged classes; everything else is type+validator pairs.
+3. **Schemas / contracts**: one module per group in `lambda/schemas/` — `graphson/{types,vertex,edge,ingest,validate}`, `eventbridge/graph-fact`, `gremlin`, `gremlin-async`, `async-bulk`, `workflow`, `lexicon`, `derived-index`, `http`, `errors`. Errors are tagged classes; everything else is type+validator pairs.
 4. **Utils**: `lambda/utils/{csv,errors,graphsonTemporalTransform,lexiconStringFormat,neptuneTemporal,s3}.ts`.
 5. **Configuration**: `lambda/config/neptune.ts` (Neptune host/port/region, retry, connection age) plus per-service config readers tied to the env vars listed in §2.4. Required vars must throw at startup; optional vars must default per §2.4.
-6. **Services** (one file each in `lambda/services/`): GraphSON (`Hash`, `Decode`, `PersistTransform`, `PersistTransformService`, `SemanticValidationService`, `ValidationService`, `Service`, `AsyncIngestService`); EventBridge (`GraphFactEventService`); Gremlin (`Client`, `Tx`, `Retry`, `QueryPolicy`, `Service`); Lexicon (`Schema`); Async Gremlin (`JobStore`, `ResultStore`, `Submit`, `Status`, `Cancel`, `Worker`, `NeptuneDataApi`); Async Bulk (`IngestPayload`, `BulkWorker`, `BulkAggregateWorker`, `FilteredBatchEnqueue`, `BulkLoader`, `BulkStage`, `CsvService`, `CsvDedup`, `CsvLexiconValidation`, `CsvWorkflowValidation`); Workflow (`Input`, `CostPredictor`, `ItemRouting`, `ItemStart`, `ItemStatus`, `Summary`, `StepFunctionsCallback`); Metrics (`IngestMetrics`); plus a composition module `services/index.ts` that exports per-router and per-handler dependency containers.
+6. **Services** (one file each in `lambda/services/`): GraphSON (`Hash`, `Decode`, `PersistTransform`, `PersistTransformService`, `SemanticValidationService`, `ValidationService`, `Service`, `AsyncIngestService`); EventBridge (`GraphFactEventService`); Gremlin (`Client`, `Tx`, `Retry`, `QueryPolicy`, `Service`); Lexicon (`Schema`); Derived Index (`Catalog`, `ValueValidation`, `Writer`, `RebuildPlanner`, `RebuildShard`, `StreamClient`, `StreamPoller`, `CheckpointStore`); Async Gremlin (`JobStore`, `ResultStore`, `Submit`, `Status`, `Cancel`, `Worker`, `NeptuneDataApi`); Async Bulk (`IngestPayload`, `BulkWorker`, `BulkAggregateWorker`, `FilteredBatchEnqueue`, `BulkLoader`, `BulkStage`, `CsvService`, `CsvDedup`, `CsvLexiconValidation`, `CsvWorkflowValidation`); Workflow (`Input`, `CostPredictor`, `ItemRouting`, `ItemStart`, `ItemStatus`, `Summary`, `StepFunctionsCallback`); Metrics (`IngestMetrics`); plus a composition module `services/index.ts` that exports per-router and per-handler dependency containers.
 7. **HTTP layer**: `lambda/http/{request-context.ts, responses.ts}`, `lambda/logging/{powertools.ts, runtime.ts}`, the three routers (`graphson`, `gremlin`, `gremlin-async`) and `router.ts` mounting them with `prefix="/persist"`, then `handler.ts`.
-8. **Worker handlers** + **Workflow handlers** + **EventBridge handler** + **Fargate entrypoint** in `lambda/{graph-fact-event, async-bulk-worker, async-bulk-aggregate-worker, gremlin-async-validate, gremlin-async-worker, workflow-start, workflow-cost-predictor, workflow-validate, workflow-item-route, workflow-item-processor, workflow-item-status, workflow-item-status-simple, fargate}/`.
+8. **Worker handlers** + **Workflow handlers** + **EventBridge handler** + **Fargate entrypoint** in `lambda/{graph-fact-event, async-bulk-worker, async-bulk-aggregate-worker, gremlin-async-validate, gremlin-async-worker, workflow-start, workflow-cost-predictor, workflow-validate, workflow-item-route, workflow-item-processor, workflow-item-status, workflow-item-status-simple, index-rebuild-prepare, index-rebuild-shard-worker, index-stream-poller, fargate}/`.
 9. **OpenAPI generator**: `lambda/api/definitions.ts` and `scripts/generate-openapi.ts`. `pnpm api:spec` writes `docs/openapi.json` (the generated spec is checked in).
 10. **CDK stacks**: `lib/neptune-stack.ts` and `lib/persist-stack.ts` per §2.2 and §2.3, then `bin/app.ts`.
 11. **Local Gremlin**: `scripts/start-gremlin-test.sh`, `gremlin/tinkergraph-empty.properties`, `setupTests.ts`, `vitest.config.ts`, `justfile` (`just test` orchestrates docker + vitest), and a CI caller wired to the shared workflows.
@@ -851,10 +1014,13 @@ A re-implementation is considered functionally complete when:
 - `GraphFactProduced` EventBridge events matching §3.7 validate before side effects, enqueue through the same GraphSON async ingest path, preserve `idempotency_key` in metadata, and never write duplicate vertices/edges when the same fact is replayed.
 - Async Gremlin survives the four release-validation steps in §8.3 inside a single deployed environment.
 - The Neptune CSV workflow accepts all three input shapes in §5.4.1 and produces a `workflow-summaries/<executionId>/<phase>/item-<itemIndex>.json` for every successful item.
+- The lexicon `indexes` contract is consumed from the canonical lexicon: callers cannot write derived index properties directly, Persist builds an `IndexCatalog`, and index values are validated against their declared scalar schema before writes.
+- `PersistIndexRebuildWorkflow` can dry-run and write selected debt indexes, stores S3 summaries, captures a stream watermark, and uses a STANDARD durable workflow with Distributed Map shard processing.
+- `IndexStreamPoller` consumes Neptune Streams from the stored checkpoint, matches PG_JSON label records to `change_trigger`, recomputes `subject_query` / `value_query`, writes affected properties idempotently, and advances the checkpoint only after successful transaction processing.
+- If the stream checkpoint is missing or older than the Neptune Streams retention window, production fails closed and requires a rebuild rather than silently skipping to `LATEST`.
 - Loaders treat `created_at` `SINGLE_CARDINALITY_VIOLATION` as effective success only when no other error mix is present.
 - Async ingest never leaves a job stuck in `QUEUED`: failure to enqueue is followed by a best-effort `FAILED` terminal write; failure to validate happens **before** any S3 PUT or SQS send.
 - Lexicon TTL cache (300 s) is reused across requests on the same router and refreshed on expiry; refresh failures fail closed.
 - All Lambdas use `nodejs24.x`, ARM64, ESM bundling, and the `createRequire` banner so `gremlin`/`gremlin-aws-sigv4` work at runtime.
 - IAM permissions follow least-privilege per §2.3.6.
 - All structured logs include the relevant `requestId` / `executionId` / `loadId` / `taskToken` so an operator can trace a single ingestion end-to-end via CloudWatch Logs Insights.
-
