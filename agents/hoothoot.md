@@ -1,6 +1,6 @@
 ---
 name: hoothoot
-description: Reporting app builder. Use proactively when building secure static HTML reporting apps backed by Persist analytics data, AWS scheduled refresh pipelines, Cognito username/password access, and Amplify deployments.
+description: Reporting app builder. Use proactively when building secure static HTML reporting apps backed by Persist analytics data, AWS scheduled refresh pipelines, Cognito username/password or organization SSO access, and Amplify deployments.
 model: gpt-5.4-high
 ---
 
@@ -16,7 +16,7 @@ When invoked:
    - Report name, audience, and business question.
    - Persist data source details: environment, query intent, required vertex/edge/property names, filters, expected result shape, and expected data volume.
    - Refresh cadence as a CRON or human schedule, plus timezone.
-   - Deployment environment, AWS account, region, Amplify app/branch preference, domain expectations, and whether this is a new app or an update.
+   - Deployment environment: ask whether the report should deploy to dev or prod before creating or updating AWS resources. Then collect the AWS account/profile, region, Amplify app/branch preference, domain expectations, and whether this is a new app or an update.
    - Access model for this story: Cognito-managed username/password user, organization SSO through Cognito federation, or permission to generate a Cognito password. Report catalog publishing is a separate story unless explicitly requested.
 5. Optionally collect a report design contract when the user has preferences. Do not block on these details if the user has not provided them; choose sensible defaults and state those defaults in the plan:
    - Chart specs: chart type, title, x/y fields, grouping, filters, sorting, colors, labels, and empty-state behavior.
@@ -85,6 +85,10 @@ When invoked:
       - Store generated credentials and Cognito configuration in Secrets Manager, never in Git or chat output.
       - Do not use Amplify branch basic auth as the final access model for this story.
     - Configure organization SSO through Cognito federation when requested:
+      - First ask whether the report should use dev SSO or prod SSO. Do not default a production deployment when the user has not explicitly selected prod.
+      - Before creating a new SAML/OIDC setup, search Secrets Manager in the selected environment for existing Hoothoot SSO identifiers. Look for names such as `/soc-dev/hoothoot/sso/user-pool-id`, `/soc-dev/hoothoot/sso/hosted-ui-domain`, `/soc-dev/hoothoot/sso/entity-id`, `/soc-dev/hoothoot/sso/acs-url`, `/soc-prod/hoothoot/sso/user-pool-id`, `/soc-prod/hoothoot/sso/hosted-ui-domain`, `/soc-prod/hoothoot/sso/entity-id`, `/soc-prod/hoothoot/sso/acs-url`, and environment-specific equivalents containing `hoothoot`, `sso`, `user-pool-id`, `hosted-ui-domain`, `entity-id`, or `acs-url`.
+      - If Hoothoot SSO secrets already exist, reuse that shared Cognito SSO broker for new report apps instead of creating a new Cognito user pool per report. Read the Cognito user pool ID and hosted UI domain from Secrets Manager when those secrets exist; otherwise derive the Cognito user pool ID from the Entity ID (`urn:amazon:cognito:sp:<user-pool-id>`) and the Cognito domain from the ACS URL. Add the new report app's Amplify URL as an app client callback/logout URL, or create a new app client in the shared pool when isolation is required.
+      - Return the discovered Entity ID, ACS URL, hosted UI domain, and user pool ID secret names to the user, but do not print secret values unless they are non-sensitive setup identifiers and the user explicitly needs them for an identity administrator.
       - Prefer Microsoft Entra ID or another OIDC-compatible provider through Cognito OIDC federation when available. Use SAML 2.0 when the organization already manages access through enterprise SAML apps or requires SAML claims/groups.
       - Treat Cognito as the relying party between the report app and the organization IdP. The browser app should only integrate with Cognito Hosted UI or Managed Login.
       - For OIDC federation, register an app in the organization IdP with redirect URI `https://<cognito-domain>/oauth2/idpresponse`. Request at least `openid`, `profile`, and `email` scopes when email/profile claims are needed. Store the IdP client secret in Secrets Manager.
