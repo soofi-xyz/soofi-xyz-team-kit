@@ -4,7 +4,7 @@ Hoothoot builds secure static reporting apps backed by Persist data. Use it in C
 
 ## Start In Agent Mode
 
-Invoke Hoothoot directly:
+Open Cursor Marketplace, install the Soofi XYZ team kit, then start a new Agent chat and invoke Hoothoot directly:
 
 ```text
 /hoothoot Build a DSA accounts report. Start with a local preview.
@@ -27,7 +27,7 @@ Use Hoothoot to add a chart to my existing report showing pay rate by recovery s
 - The table, KPI card, or chart widgets you want.
 - The business question each widget must answer.
 - How the report should look: layout, chart style, table columns, labels, colors, or examples to match.
-- If the report needs real Persist data, tell Hoothoot whether you already have a prod AWS profile, use SSO, or have an AWS credentials CSV file path.
+- If the report needs real Persist data, tell Hoothoot what you have for AWS access: "I think I have a prod profile", "I use SSO", "I have a credentials CSV", or "I do not know".
 - If you received an AWS credentials CSV, provide only the local file path and the profile name you want Hoothoot to create.
 - Persist fields, filters, companies, dates, or account populations if you know them.
 
@@ -45,6 +45,7 @@ If Hoothoot needs to query Persist with real data, it uses prod Persist. You do 
 
 What Hoothoot should do for you:
 - Check local AWS profiles when the AWS CLI is available.
+- Help locate likely credentials if you do not know the profile name, including checking configured AWS profiles and asking whether you use SSO or have a downloaded credentials CSV.
 - Ask you to pick the right prod profile only if there is more than one possible choice.
 - Verify the selected profile and explain which AWS account it can access.
 - If your profile uses SSO, start the login flow and ask you only to finish the browser login.
@@ -82,17 +83,30 @@ AWS_PROFILE=<profile-name> AWS_REGION=<region> aws sts get-caller-identity
 
 Hoothoot should continue only when the returned AWS account matches the intended prod account. It should run local refresh/query commands with explicit `AWS_PROFILE=<profile-name>` and `AWS_REGION=<region>` values instead of relying on your shell default profile.
 
+## Persist Discovery
+
+After AWS access is verified, Hoothoot should discover the Persist connection details itself. You should not need to provide `PERSIST_API_URL`, `SSM_PARAMETER_NAME`, API Gateway URLs, or refresh script environment variables unless automatic discovery fails.
+
+Hoothoot should use the verified prod profile to:
+- Read the prod AWS account and region from the active credentials.
+- Look up Persist configuration from approved AWS locations such as SSM Parameter Store and Secrets Manager.
+- Search likely parameter names including `persist-api-url`, `/prod/persist-api-url`, `/prod/persist/api-url`, and service-specific names containing `persist` and `api`.
+- Confirm the discovered Persist endpoint with a small read-only smoke query before running report widget queries.
+- Explain what it found in plain language, without exposing secrets.
+- Stop and ask for help only if AWS access works but no approved Persist configuration can be discovered.
+
 ## Expected Workflow
 
 1. Hoothoot confirms the report and widget list.
 2. Hoothoot discovers the relevant Lexicon/Persist fields.
-3. Hoothoot confirms AWS profile/region when real Persist access is needed.
-4. Hoothoot builds a local static preview first.
-5. Hoothoot records query timings per widget.
-6. After you approve the local preview, Hoothoot asks where the report source should live.
-7. Hoothoot creates or updates the report source in GitHub and opens a PR.
-8. After checks and approval, Hoothoot deploys through the configured AWS path.
-9. Hoothoot asks whether to publish the deployed report to the catalog.
+3. If real Persist data is needed, Hoothoot helps locate and verify prod AWS credentials.
+4. After AWS access works, Hoothoot discovers the Persist connection details from AWS.
+5. Hoothoot builds a local static preview first.
+6. Hoothoot records query timings per widget.
+7. After you approve the local preview, Hoothoot asks where the report source should live.
+8. Hoothoot creates or updates the report source in GitHub and opens a PR.
+9. After checks and approval, Hoothoot deploys through the configured AWS path.
+10. Hoothoot asks whether to publish the deployed report to the catalog.
 
 ## Access And Secrets
 
