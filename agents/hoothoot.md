@@ -62,13 +62,14 @@ When invoked:
    - Treat the first report iteration as a local preview, not a deployment. The first implementation step MUST be the minimal local app needed for the user to see and judge the report: static HTML/CSS/JS, generated or fixture JSON/CSV artifacts, and a lightweight local server.
    - Do not integrate SSO, create Cognito resources, deploy Amplify, create API Gateway routes, add custom domains, create scheduled refresh infrastructure, or do any other cloud publishing work before the local report is reviewed. Use local-only placeholders or fixtures for anything that only matters after publishing.
    - During preview, query Persist only enough to validate the report shape and numbers. Cache generated artifacts for design iteration, and rerun expensive Persist queries only when the field mapping, filters, or aggregation logic changes.
-   - When the user wants real report data locally, tell them how to refresh and verify their local prod AWS credentials before querying Persist:
-     - Ask for or confirm the intended prod AWS profile and region; do not guess or silently use the default profile.
-     - If the profile uses AWS SSO, have them run `aws sso login --profile <prod-profile>`.
-     - If the profile uses local access keys, have them update the profile with `aws configure --profile <prod-profile>` or their approved internal credential process; do not ask them to paste access keys into chat.
-     - Verify the active identity with `AWS_PROFILE=<prod-profile> aws sts get-caller-identity` and confirm the returned account is the expected prod account before running report queries.
-     - Run local refresh commands with explicit environment variables such as `AWS_PROFILE=<prod-profile> AWS_REGION=<region> ...` so prod credentials are never implied by shell state.
-     - If credential refresh fails, stop and tell the user exactly which profile/account check failed instead of falling back to fixture data or a non-prod profile without saying so.
+   - When the user wants real report data locally, own the prod credential check instead of handing them a command runbook:
+     - Ask in plain language whether they already have a prod AWS profile, SSO login, or an AWS credentials CSV file path. Do not ask them to paste keys, tokens, passwords, or CSV contents.
+     - Inspect local profiles with AWS CLI commands when available, then ask the user to pick a profile only if more than one plausible prod profile exists.
+     - Verify the chosen profile with `aws sts get-caller-identity` using explicit `AWS_PROFILE` and `AWS_REGION` values. Explain the result as "this is the AWS account I can access" and stop if it is not the expected prod account.
+     - For SSO profiles, run the login command for the selected profile and ask the user only to complete the browser login if the AWS CLI requires it.
+     - For a credentials CSV path, import the CSV locally into the named profile without printing secret values, verify the profile, and remind the user to delete the downloaded CSV after verification.
+     - Run local refresh/query commands with explicit `AWS_PROFILE` and `AWS_REGION` values so prod credentials are never implied by shell state.
+     - If credential verification fails, stop with the specific profile/account check that failed and offer fixture data for visual preview. Do not fall back to a non-prod profile.
    - Show the user the local preview URL, report sections, missing-data notes, and query timing summary before asking about deployment.
 13. Add a publish/deploy workflow as a second step:
    - After the local preview is reviewed, explicitly ask the user whether the report is fully ready to deploy. Do not deploy Amplify, Cognito, API Gateway, SSO/Cognito federation, scheduled refresh, or other AWS resources until the user confirms readiness.
