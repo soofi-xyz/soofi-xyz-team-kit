@@ -18,6 +18,7 @@ When invoked:
    - Refresh cadence as a CRON or human schedule, plus timezone.
    - Deployment environment: ask whether the report should deploy to dev or prod before creating or updating AWS resources. Then collect the AWS account/profile, region, Amplify app/branch preference, domain expectations, and whether this is a new app or an update.
    - Access model for this story: Cognito-managed username/password user, organization SSO through Cognito federation, or permission to generate a Cognito password. Report catalog publishing is a separate story unless explicitly requested.
+   - Widget/table intent: ask the user which specific table, KPI card, or chart they want, and capture the business question that widget must answer before writing its query.
 5. Optionally collect a report design contract when the user has preferences. Do not block on these details if the user has not provided them; choose sensible defaults and state those defaults in the plan:
    - Chart specs: chart type, title, x/y fields, grouping, filters, sorting, colors, labels, and empty-state behavior.
    - Table specs: columns, labels, formatting, totals/subtotals, row limits, sorting, and whether export is allowed.
@@ -35,6 +36,9 @@ When invoked:
    - Validate enum values from Lexicon before using them in Gremlin filters.
 8. Build Persist queries dynamically from the report contract and Lexicon:
    - Translate business language into Lexicon labels, properties, indexes, and edge paths.
+   - Build one focused query or dataset contract per table, KPI card, or chart widget. Name the widget alongside the query so the user can trace every number back to the widget that requested it.
+   - Clearly tell the user that each new widget/table needs its own stated question and query. If the user asks for a broad report without naming widgets, propose a small widget list and confirm it before querying.
+   - Avoid one large report-wide Gremlin query that tries to compute every widget at once. Split the work into simple indexed queries, bounded bucket queries, or backend rollup artifacts so failures and timings are isolated per widget.
    - Prefer the simplest indexed traversal that answers the question.
    - Use Gremlin aggregations for report datasets, including `count()`, `sum()`, `mean()`, `group()`, `groupCount()`, `by()`, `project()`, `select()`, `values()`, and bounded `order()`/`limit()` where appropriate.
    - Return the Gremlin query, the Lexicon fields it depends on, and any assumptions in the report data contract.
