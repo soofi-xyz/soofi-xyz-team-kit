@@ -27,8 +27,8 @@ Use Hoothoot to add a chart to my existing report showing pay rate by recovery s
 - The table, KPI card, or chart widgets you want.
 - The business question each widget must answer.
 - How the report should look: layout, chart style, table columns, labels, colors, or examples to match.
-- Prod AWS profile/region only when the report needs real Persist data for the local preview.
-- If you received an AWS credentials CSV and real Persist data is needed, the local file path and the profile name you want Hoothoot to create.
+- If the report needs real Persist data, tell Hoothoot whether you already have a prod AWS profile, use SSO, or have an AWS credentials CSV file path.
+- If you received an AWS credentials CSV, provide only the local file path and the profile name you want Hoothoot to create.
 - Persist fields, filters, companies, dates, or account populations if you know them.
 
 Do not provide GitHub repository, deployment, authentication, catalog, or refresh-schedule details in the first prompt unless you already know you want to publish. Hoothoot should ask for those only after you approve the local preview.
@@ -41,21 +41,25 @@ Avoid asking for one large query for the whole report. Smaller widget-level quer
 
 ## Persist Access Setup
 
-If Hoothoot needs to query Persist with real data, it uses prod Persist. Your local prod AWS profile must already be configured. Hoothoot should ask for the prod AWS profile and region before running Persist queries.
+If Hoothoot needs to query Persist with real data, it uses prod Persist. You do not need to write export commands or know the refresh script details. Hoothoot should check whether your machine already has a usable prod AWS profile and guide you through the smallest missing step.
 
-For SSO-backed profiles, refresh access before querying:
+What Hoothoot should do for you:
+- Check local AWS profiles when the AWS CLI is available.
+- Ask you to pick the right prod profile only if there is more than one possible choice.
+- Verify the selected profile and explain which AWS account it can access.
+- If your profile uses SSO, start the login flow and ask you only to finish the browser login.
+- If you have an AWS credentials CSV, import it locally without printing the secret values.
+- Stop if the profile does not verify as prod; it should not silently use dev or a default profile.
+
+For SSO-backed profiles, Hoothoot may run this for you and ask you to complete the browser login:
 
 ```bash
 aws sso login --profile <profile-name>
 ```
 
-For locally configured access-key profiles, update the profile through the approved internal process or:
+For locally configured access-key profiles, Hoothoot should prefer an approved internal setup flow or a local CSV file path. Do not paste access keys, session tokens, passwords, or secrets into chat.
 
-```bash
-aws configure --profile <profile-name>
-```
-
-Do not paste access keys, session tokens, passwords, or secrets into chat.
+The goal is that you say what you have, and Hoothoot performs the safe local checks.
 
 ### If You Have An AWS Credentials CSV
 
@@ -70,13 +74,13 @@ Hoothoot can import the CSV locally, configure the named profile, and verify acc
 
 Use SSO when available. Credentials CSV files should be treated as sensitive fallback setup material.
 
-Before Hoothoot runs Persist queries, verify the active account:
+Before Hoothoot runs Persist queries, it should verify the active account:
 
 ```bash
 AWS_PROFILE=<profile-name> AWS_REGION=<region> aws sts get-caller-identity
 ```
 
-Only continue when the returned AWS account matches the intended prod account. Hoothoot should run local refresh/query commands with explicit `AWS_PROFILE=<profile-name>` and `AWS_REGION=<region>` values instead of relying on your shell default profile.
+Hoothoot should continue only when the returned AWS account matches the intended prod account. It should run local refresh/query commands with explicit `AWS_PROFILE=<profile-name>` and `AWS_REGION=<region>` values instead of relying on your shell default profile.
 
 ## Expected Workflow
 
