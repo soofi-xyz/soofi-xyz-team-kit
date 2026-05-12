@@ -27,7 +27,7 @@ Use Hoothoot to add a chart to my existing report showing pay rate by recovery s
 - The table, KPI card, or chart widgets you want.
 - The business question each widget must answer.
 - How the report should look: layout, chart style, table columns, labels, colors, or examples to match.
-- Environment and AWS profile/region only when the report needs real Persist data for the local preview.
+- Prod AWS profile/region only when the report needs real Persist data for the local preview.
 - If you received an AWS credentials CSV and real Persist data is needed, the local file path and the profile name you want Hoothoot to create.
 - Persist fields, filters, companies, dates, or account populations if you know them.
 
@@ -41,7 +41,7 @@ Avoid asking for one large query for the whole report. Smaller widget-level quer
 
 ## Persist Access Setup
 
-If Hoothoot needs to query Persist with real `dev` or `prod` data, your local AWS profile must already be configured for that environment. Hoothoot should ask for the intended AWS profile and region before running Persist queries.
+If Hoothoot needs to query Persist with real data, it uses prod Persist. Your local prod AWS profile must already be configured. Hoothoot should ask for the prod AWS profile and region before running Persist queries.
 
 For SSO-backed profiles, refresh access before querying:
 
@@ -76,7 +76,7 @@ Before Hoothoot runs Persist queries, verify the active account:
 AWS_PROFILE=<profile-name> AWS_REGION=<region> aws sts get-caller-identity
 ```
 
-Only continue when the returned AWS account matches the intended `dev` or `prod` account. Hoothoot should run local refresh/query commands with explicit `AWS_PROFILE=<profile-name>` and `AWS_REGION=<region>` values instead of relying on your shell default profile.
+Only continue when the returned AWS account matches the intended prod account. Hoothoot should run local refresh/query commands with explicit `AWS_PROFILE=<profile-name>` and `AWS_REGION=<region>` values instead of relying on your shell default profile.
 
 ## Expected Workflow
 

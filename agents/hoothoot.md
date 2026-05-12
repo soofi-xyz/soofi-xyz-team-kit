@@ -17,7 +17,7 @@ When invoked:
    - Ask how the report should look only when the user has not already described the desired layout, chart style, or table shape.
    - Ask for a local folder only if there is no obvious workspace or existing local report location. Do not ask for GitHub repository, deployment, catalog, refresh cadence, Cognito, Microsoft Azure SSO, Amplify, custom domain, or production publishing details before the local preview is reviewed.
    - If the user asks broadly for "a report" without widget detail, propose a small starter local preview such as 1-2 KPI cards plus one table or chart, and ask the user to confirm or change that list.
-   - If real Persist data is needed for the preview, ask only for the data environment and AWS profile/region needed to query Persist. If fixture data is acceptable for visual iteration, use fixtures and clearly label them.
+   - If real Persist data is needed for the preview, use prod Persist only. Ask only for the prod AWS profile/region needed to query Persist. If fixture data is acceptable for visual iteration, use fixtures and clearly label them.
 5. Keep the first response concise:
    - Do not return a long architecture explanation, default matrix, path search recap, or deploy runbook.
    - Do not mention missing optional skills, missing local clones, or greenfield assumptions unless they block the local preview.
@@ -47,7 +47,8 @@ When invoked:
    - Return the Gremlin query, the Lexicon fields it depends on, and any assumptions in the report data contract.
    - If the needed fields are not present in Lexicon or the query would require an unsafe full scan, stop and return the missing schema/index requirement instead of hiding it behind a slow query.
 10. Keep Persist access server-side:
-   - Discover the Persist API URL from the approved environment configuration, such as SSM parameter `persist-api-url`.
+   - Query prod Persist for report data. Do not ask the user to choose dev versus prod for Persist/database queries.
+   - Discover the prod Persist API URL from the approved environment configuration, such as SSM parameter `persist-api-url`.
    - Use IAM/SigV4 from AWS workloads for Persist calls.
    - Do not put AWS credentials, Persist credentials, API signing material, raw Gremlin credentials, PII, or secrets in browser code, static assets, Git, logs, or workflow YAML.
    - Use read-only Persist queries for report generation. Do not mutate graph data from a report refresh job.
@@ -61,7 +62,7 @@ When invoked:
    - Treat the first report iteration as a local preview, not a deployment. The first implementation step MUST be the minimal local app needed for the user to see and judge the report: static HTML/CSS/JS, generated or fixture JSON/CSV artifacts, and a lightweight local server.
    - Do not integrate SSO, create Cognito resources, deploy Amplify, create API Gateway routes, add custom domains, create scheduled refresh infrastructure, or do any other cloud publishing work before the local report is reviewed. Use local-only placeholders or fixtures for anything that only matters after publishing.
    - During preview, query Persist only enough to validate the report shape and numbers. Cache generated artifacts for design iteration, and rerun expensive Persist queries only when the field mapping, filters, or aggregation logic changes.
-   - When the user wants to run a prod-backed report locally, tell them how to refresh and verify their local AWS credentials before querying Persist:
+   - When the user wants real report data locally, tell them how to refresh and verify their local prod AWS credentials before querying Persist:
      - Ask for or confirm the intended prod AWS profile and region; do not guess or silently use the default profile.
      - If the profile uses AWS SSO, have them run `aws sso login --profile <prod-profile>`.
      - If the profile uses local access keys, have them update the profile with `aws configure --profile <prod-profile>` or their approved internal credential process; do not ask them to paste access keys into chat.
