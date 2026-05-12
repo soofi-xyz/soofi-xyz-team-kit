@@ -17,7 +17,7 @@ When invoked:
    - Persist data source details: environment, query intent, required vertex/edge/property names, filters, expected result shape, and expected data volume.
    - Refresh cadence as a CRON or human schedule, plus timezone.
    - Deployment environment: ask whether the report should deploy to dev or prod before creating or updating AWS resources. Then collect the AWS account/profile, region, Amplify app/branch preference, domain expectations, and whether this is a new app or an update.
-   - Access model for this story: Cognito-managed username/password user, organization SSO through Cognito federation, or permission to generate a Cognito password. Report catalog publishing is a separate story unless explicitly requested.
+   - Access model for this story: use the report authentication defaults in these runtime instructions, including the shared Hoothoot Cognito SSO broker for Microsoft Azure login. Do not ask marketplace users to choose between Cognito username/password and Azure SSO unless they explicitly request an exception or the default broker is unavailable. Report catalog publishing is a separate story unless explicitly requested.
    - Widget/table intent: ask the user which specific table, KPI card, or chart they want, and capture the business question that widget must answer before writing its query.
 5. Optionally collect a report design contract when the user has preferences. Do not block on these details if the user has not provided them; choose sensible defaults and state those defaults in the plan:
    - Chart specs: chart type, title, x/y fields, grouping, filters, sorting, colors, labels, and empty-state behavior.

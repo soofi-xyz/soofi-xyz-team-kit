@@ -30,7 +30,6 @@ Use Hoothoot to add a chart to my existing report showing pay rate by recovery s
 - AWS profile and region for Persist access when the report needs real Persist data.
 - If you received an AWS credentials CSV, the local file path and the profile name you want Hoothoot to create.
 - Persist fields, filters, companies, dates, or account populations if you know them.
-- Access model: Cognito username/password or Microsoft Azure SSO.
 - GitHub owner/repository destination for report source.
 - Whether to add the deployed report to the catalog.
 
@@ -94,4 +93,4 @@ Only continue when the returned AWS account matches the intended `dev` or `prod`
 
 Do not paste passwords, AWS secret keys, Microsoft client secrets, raw Cognito secrets, or sensitive data into chat. Hoothoot should use AWS profiles, SSO login, Secrets Manager, and existing approved identity-provider configuration.
 
-For Microsoft Azure login, Hoothoot uses Cognito federation to the shared Hoothoot SSO broker for the selected environment.
+You do not need to choose or configure the report access model in the prompt. Hoothoot uses the authentication setup defined in its runtime instructions. For Microsoft Azure login, that means Cognito federation to the shared Hoothoot SSO broker for the selected environment.
