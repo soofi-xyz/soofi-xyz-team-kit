@@ -51,14 +51,24 @@ What Hoothoot should do for you:
 - Ask you to pick the right prod profile only if there is more than one possible choice.
 - Verify the selected profile and explain which AWS account it can access.
 - If your profile uses SSO, start the login flow and ask you only to finish the browser login.
+- If the profile is missing SSO settings, repair or create the profile for you instead of telling you to run `aws configure sso`.
 - If you have an AWS credentials CSV, import it locally without printing the secret values.
 - Stop if the profile does not verify as prod; it should not silently use dev or a default profile.
 
-For SSO-backed profiles, Hoothoot may run this for you and ask you to complete the browser login:
+For SSO-backed profiles, Hoothoot may run the login flow for you and ask you to complete only the browser step:
 
 ```bash
 aws sso login --profile <profile-name>
 ```
+
+If AWS says the profile is missing `sso_start_url` or `sso_region`, Hoothoot should not hand you `aws configure sso` as homework. It should look for SSO settings in other local AWS profiles first. If it still needs information, it should ask in plain language for:
+- The company AWS access portal/start URL.
+- The SSO region.
+- The prod account name or account ID.
+- The role name to use.
+- The profile name you want.
+
+Once those values are known, Hoothoot should configure or repair the local profile, start SSO login, verify the prod account, and continue to Persist discovery.
 
 For locally configured access-key profiles, Hoothoot should prefer an approved internal setup flow or a local CSV file path. Do not paste access keys, session tokens, passwords, or secrets into chat.
 

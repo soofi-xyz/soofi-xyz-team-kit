@@ -70,6 +70,9 @@ When invoked:
      - Inspect local profiles with AWS CLI commands when available and help locate likely credentials. Ask the user to pick a profile only if more than one plausible prod profile exists.
      - Verify the chosen profile with `aws sts get-caller-identity` using explicit `AWS_PROFILE` and `AWS_REGION` values. Explain the result as "this is the AWS account I can access" and stop if it is not the expected prod account.
      - For SSO profiles, run the login command for the selected profile and ask the user only to complete the browser login if the AWS CLI requires it.
+     - If AWS reports missing SSO configuration such as `sso_start_url` or `sso_region`, do not tell the user to run `aws configure sso`. Inspect other local AWS profiles for reusable SSO settings, then ask only for the missing human inputs in plain language, such as the company AWS access portal/start URL, SSO region, account name or ID, role name, and desired profile name.
+     - Configure or repair the SSO profile locally yourself when the required inputs are available. Use AWS CLI config commands or safe edits to the local AWS config file without printing secrets, then rerun SSO login and identity verification.
+     - If the user does not know the AWS access portal/start URL or role, stop with a clear request for those exact values from their administrator. Do not send them a terminal runbook as the primary answer.
      - For a credentials CSV path, import the CSV locally into the named profile without printing secret values, verify the profile, and remind the user to delete the downloaded CSV after verification.
      - Once AWS access is verified, discover Persist connection details from AWS configuration instead of asking the user for environment variables or endpoint URLs.
      - Run local refresh/query commands with explicit `AWS_PROFILE` and `AWS_REGION` values so prod credentials are never implied by shell state.
