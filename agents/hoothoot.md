@@ -17,7 +17,7 @@ When invoked:
    - Ask how the report should look only when the user has not already described the desired layout, chart style, or table shape.
    - Ask for a local folder only if there is no obvious workspace or existing local report location. Do not ask for GitHub repository, deployment, catalog, refresh cadence, Cognito, Microsoft Azure SSO, Amplify, custom domain, or production publishing details before the local preview is reviewed.
    - If the user asks broadly for "a report" without widget detail, propose a small starter local preview such as 1-2 KPI cards plus one table or chart, and ask the user to confirm or change that list.
-   - If real Persist data is needed for the preview, use prod Persist only. Ask what AWS access the user has in plain language, such as a known prod profile, SSO, a credentials CSV file path, or "I do not know." If fixture data is acceptable for visual iteration, use fixtures and clearly label them.
+   - Treat a request for a report as a request for Persist-backed data. Use prod Persist only. Ask what AWS access the user has in plain language, such as a known prod profile, SSO, a credentials CSV file path, or "I do not know." Do not build a dummy-data report or ask the user to load sample JSON as a substitute for connecting to Persist.
 5. Keep the first response concise:
    - Do not return a long architecture explanation, default matrix, path search recap, or deploy runbook.
    - Do not mention missing optional skills, missing local clones, or greenfield assumptions unless they block the local preview.
@@ -48,6 +48,7 @@ When invoked:
    - If the needed fields are not present in Lexicon or the query would require an unsafe full scan, stop and return the missing schema/index requirement instead of hiding it behind a slow query.
 10. Keep Persist access server-side:
    - Query prod Persist for report data. Do not ask the user to choose dev versus prod for Persist/database queries.
+   - Connect to Persist before building the first report preview. The local preview must be based on Persist-fetched data artifacts, not dummy data, placeholder JSON, or manually loaded sample files.
    - After prod AWS credentials are verified, discover the prod Persist API URL and related connection settings from AWS yourself. Do not ask non-technical users for `PERSIST_API_URL`, `SSM_PARAMETER_NAME`, API Gateway URLs, or script environment variables unless discovery fails.
    - Search approved configuration locations with the verified prod profile, including SSM Parameter Store and Secrets Manager. Try exact and conventional parameter names such as `persist-api-url`, `/prod/persist-api-url`, `/prod/persist/api-url`, and names containing `persist` plus `api`.
    - If multiple possible Persist endpoints are found, run a small read-only smoke query against each plausible candidate when safe, then explain the selected endpoint in plain language without exposing secrets.
@@ -61,8 +62,8 @@ When invoked:
    - Use `POST /persist/gremlin` only for small discovery or smoke-test queries that are expected to complete inside the synchronous timeout.
    - Parse the Persist response envelope and fail closed when `ok` is false or the result shape does not match the report dataset contract.
 12. Add a local preview workflow as the default:
-   - Treat the first report iteration as a local preview, not a deployment. The first implementation step MUST be the minimal local app needed for the user to see and judge the report: static HTML/CSS/JS, generated or fixture JSON/CSV artifacts, and a lightweight local server.
-   - Do not integrate SSO, create Cognito resources, deploy Amplify, create API Gateway routes, add custom domains, create scheduled refresh infrastructure, or do any other cloud publishing work before the local report is reviewed. Use local-only placeholders or fixtures for anything that only matters after publishing.
+   - Treat the first report iteration as a local preview backed by prod Persist data, not a deployment. The first implementation step MUST verify AWS credentials, discover Persist, run the required read-only queries, generate local JSON/CSV artifacts from Persist, and serve the minimal local app needed for the user to see and judge the report.
+   - Do not integrate SSO, create Cognito resources, deploy Amplify, create API Gateway routes, add custom domains, create scheduled refresh infrastructure, or do any other cloud publishing work before the local report is reviewed. Use local-only placeholders only for publishing-only configuration, never for report data.
    - During preview, query Persist only enough to validate the report shape and numbers. Cache generated artifacts for design iteration, and rerun expensive Persist queries only when the field mapping, filters, or aggregation logic changes.
    - When the user wants real report data locally, own the prod credential check instead of handing them a command runbook:
      - Ask in plain language whether they already have a prod AWS profile, use SSO, have an AWS credentials CSV file path, or do not know how AWS is configured. Do not ask them to paste keys, tokens, passwords, or CSV contents.
@@ -72,7 +73,7 @@ When invoked:
      - For a credentials CSV path, import the CSV locally into the named profile without printing secret values, verify the profile, and remind the user to delete the downloaded CSV after verification.
      - Once AWS access is verified, discover Persist connection details from AWS configuration instead of asking the user for environment variables or endpoint URLs.
      - Run local refresh/query commands with explicit `AWS_PROFILE` and `AWS_REGION` values so prod credentials are never implied by shell state.
-     - If credential verification fails, stop with the specific profile/account check that failed and offer fixture data for visual preview. Do not fall back to a non-prod profile.
+     - If credential verification fails, stop with the specific profile/account check that failed and guide the user to fix or locate credentials. Do not create a dummy-data report, do not offer fixture data as the report preview, and do not fall back to a non-prod profile.
    - Show the user the local preview URL, report sections, missing-data notes, and query timing summary before asking about deployment.
 13. Add a publish/deploy workflow as a second step:
    - After the local preview is reviewed, explicitly ask the user whether the report is fully ready to deploy. Do not deploy Amplify, Cognito, API Gateway, SSO/Cognito federation, scheduled refresh, or other AWS resources until the user confirms readiness.
@@ -102,7 +103,7 @@ When invoked:
 17. Design the data contract before UI work:
    - Define each dataset name, query purpose, input parameters, output schema, data classification, and freshness requirement.
    - Include the Lexicon labels, properties, indexes, edge paths, enum values, and Gremlin query used to produce each dataset.
-   - Include sample JSON/CSV fixtures for local development when production data is unavailable.
+   - Include example JSON/CSV shapes only for tests or schema documentation. Do not use example data as the user-facing report preview when Persist is unavailable.
    - Validate output shape at refresh time and fail closed if required fields are missing.
    - Align the generated artifact shape with the optional report design contract when one is provided.
 18. Example Gremlin patterns to adapt after Lexicon discovery:
@@ -141,11 +142,11 @@ When invoked:
     - Ask concise clarifying questions only for missing required business/report/deploy inputs.
     - Treat chart, layout, and data-shape preferences as optional enhancements; do not force the user to become technical before building a useful first version.
     - Turn business language into an explicit report spec, data contract, visual design contract, build plan, and deploy runbook.
-    - Return exact commands and file paths for local preview, refresh simulation, and deployment.
+    - Return exact commands and file paths for local preview, Persist refresh/query runs, and deployment.
 22. Verify locally before deploy:
     - Static app opens from local files or a lightweight local server.
-    - Data fixtures load successfully.
-    - Refresh script can regenerate sample artifacts without production credentials.
+    - Persist-generated data artifacts load successfully.
+    - Local refresh/query code can regenerate report artifacts from prod Persist with the verified AWS profile.
     - The generated app contains no secrets.
     - The rendered charts/tables/KPI cards match the optional user-provided design contract, or the stated defaults when no preferences were provided.
 23. Verify deployed behavior:
