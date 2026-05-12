@@ -17,7 +17,7 @@ When invoked:
    - Ask how the report should look only when the user has not already described the desired layout, chart style, or table shape.
    - Ask for a local folder only if there is no obvious workspace or existing local report location. Do not ask for GitHub repository, deployment, catalog, refresh cadence, Cognito, Microsoft Azure SSO, Amplify, custom domain, or production publishing details before the local preview is reviewed.
    - If the user asks broadly for "a report" without widget detail, propose a small starter local preview such as 1-2 KPI cards plus one table or chart, and ask the user to confirm or change that list.
-   - If real Persist data is needed for the preview, use prod Persist only. Ask only for the prod AWS profile/region needed to query Persist. If fixture data is acceptable for visual iteration, use fixtures and clearly label them.
+   - If real Persist data is needed for the preview, use prod Persist only. Ask what AWS access the user has in plain language, such as a known prod profile, SSO, a credentials CSV file path, or "I do not know." If fixture data is acceptable for visual iteration, use fixtures and clearly label them.
 5. Keep the first response concise:
    - Do not return a long architecture explanation, default matrix, path search recap, or deploy runbook.
    - Do not mention missing optional skills, missing local clones, or greenfield assumptions unless they block the local preview.
@@ -48,7 +48,9 @@ When invoked:
    - If the needed fields are not present in Lexicon or the query would require an unsafe full scan, stop and return the missing schema/index requirement instead of hiding it behind a slow query.
 10. Keep Persist access server-side:
    - Query prod Persist for report data. Do not ask the user to choose dev versus prod for Persist/database queries.
-   - Discover the prod Persist API URL from the approved environment configuration, such as SSM parameter `persist-api-url`.
+   - After prod AWS credentials are verified, discover the prod Persist API URL and related connection settings from AWS yourself. Do not ask non-technical users for `PERSIST_API_URL`, `SSM_PARAMETER_NAME`, API Gateway URLs, or script environment variables unless discovery fails.
+   - Search approved configuration locations with the verified prod profile, including SSM Parameter Store and Secrets Manager. Try exact and conventional parameter names such as `persist-api-url`, `/prod/persist-api-url`, `/prod/persist/api-url`, and names containing `persist` plus `api`.
+   - If multiple possible Persist endpoints are found, run a small read-only smoke query against each plausible candidate when safe, then explain the selected endpoint in plain language without exposing secrets.
    - Use IAM/SigV4 from AWS workloads for Persist calls.
    - Do not put AWS credentials, Persist credentials, API signing material, raw Gremlin credentials, PII, or secrets in browser code, static assets, Git, logs, or workflow YAML.
    - Use read-only Persist queries for report generation. Do not mutate graph data from a report refresh job.
@@ -62,13 +64,15 @@ When invoked:
    - Treat the first report iteration as a local preview, not a deployment. The first implementation step MUST be the minimal local app needed for the user to see and judge the report: static HTML/CSS/JS, generated or fixture JSON/CSV artifacts, and a lightweight local server.
    - Do not integrate SSO, create Cognito resources, deploy Amplify, create API Gateway routes, add custom domains, create scheduled refresh infrastructure, or do any other cloud publishing work before the local report is reviewed. Use local-only placeholders or fixtures for anything that only matters after publishing.
    - During preview, query Persist only enough to validate the report shape and numbers. Cache generated artifacts for design iteration, and rerun expensive Persist queries only when the field mapping, filters, or aggregation logic changes.
-   - When the user wants real report data locally, tell them how to refresh and verify their local prod AWS credentials before querying Persist:
-     - Ask for or confirm the intended prod AWS profile and region; do not guess or silently use the default profile.
-     - If the profile uses AWS SSO, have them run `aws sso login --profile <prod-profile>`.
-     - If the profile uses local access keys, have them update the profile with `aws configure --profile <prod-profile>` or their approved internal credential process; do not ask them to paste access keys into chat.
-     - Verify the active identity with `AWS_PROFILE=<prod-profile> aws sts get-caller-identity` and confirm the returned account is the expected prod account before running report queries.
-     - Run local refresh commands with explicit environment variables such as `AWS_PROFILE=<prod-profile> AWS_REGION=<region> ...` so prod credentials are never implied by shell state.
-     - If credential refresh fails, stop and tell the user exactly which profile/account check failed instead of falling back to fixture data or a non-prod profile without saying so.
+   - When the user wants real report data locally, own the prod credential check instead of handing them a command runbook:
+     - Ask in plain language whether they already have a prod AWS profile, use SSO, have an AWS credentials CSV file path, or do not know how AWS is configured. Do not ask them to paste keys, tokens, passwords, or CSV contents.
+     - Inspect local profiles with AWS CLI commands when available and help locate likely credentials. Ask the user to pick a profile only if more than one plausible prod profile exists.
+     - Verify the chosen profile with `aws sts get-caller-identity` using explicit `AWS_PROFILE` and `AWS_REGION` values. Explain the result as "this is the AWS account I can access" and stop if it is not the expected prod account.
+     - For SSO profiles, run the login command for the selected profile and ask the user only to complete the browser login if the AWS CLI requires it.
+     - For a credentials CSV path, import the CSV locally into the named profile without printing secret values, verify the profile, and remind the user to delete the downloaded CSV after verification.
+     - Once AWS access is verified, discover Persist connection details from AWS configuration instead of asking the user for environment variables or endpoint URLs.
+     - Run local refresh/query commands with explicit `AWS_PROFILE` and `AWS_REGION` values so prod credentials are never implied by shell state.
+     - If credential verification fails, stop with the specific profile/account check that failed and offer fixture data for visual preview. Do not fall back to a non-prod profile.
    - Show the user the local preview URL, report sections, missing-data notes, and query timing summary before asking about deployment.
 13. Add a publish/deploy workflow as a second step:
    - After the local preview is reviewed, explicitly ask the user whether the report is fully ready to deploy. Do not deploy Amplify, Cognito, API Gateway, SSO/Cognito federation, scheduled refresh, or other AWS resources until the user confirms readiness.
