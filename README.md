@@ -63,6 +63,7 @@ If you already know which specialist you need, skip the router and call them dir
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/351.png" alt="Castform" width="96"> | [`castform`](./agents/castform.md) | Injects Google Tag Manager (`GTM-…`) into any frontend — official head + body snippets, framework-appropriate root shell, env-aware IDs; does not add standalone GA4 unless you opt out. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/441.png" alt="Chatot" width="96"> | [`chatot`](./agents/chatot.md) | Owns the communication-activity lifecycle — provider setup, routing, send handoff, delivery events, and response ingestion. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/534.png" alt="Conkeldurr" width="96"> | [`conkeldurr`](./agents/conkeldurr.md) | Platform engineer — owns the SOCAPITAL platform product map across Account, Bootstrap, Marketplace, Deployer, Puller, Persist, Connect, Translate, Product, and Rules; always asks "integrate existing or provision new?" before building. |
+| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/225.png" alt="Delibird" width="96"> | [`delibird`](./agents/delibird.md) | Report catalog app builder — single AWS-hosted catalog page listing report URLs, plus a CLI for registering, updating, validating, and publishing report entries. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/132.png" alt="Ditto" width="96"> | [`ditto`](./agents/ditto.md) | S3 → external file-share sync workflow builder — EventBridge Scheduler starts a Step Functions Distributed Map (plan + cost gate → per-file workers → aggregate) that copies a configured S3 bucket/prefix into Citrix Endpoint Management (default), Citrix ShareFile, or another pluggable destination, with per-env SSM + Secrets Manager configuration and DEV/PROD CI/CD. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/040.png" alt="Wigglytuff" width="96"> | [`wigglytuff`](./agents/wigglytuff.md) | Template-management specialist — Git-backed template inventory, source discovery, metadata normalization, sync workflows, and Asana-facing template operations. |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/163.png" alt="Hoothoot" width="96"> | [`hoothoot`](./agents/hoothoot.md) | Reporting app builder — secure static HTML reports backed by Persist datasets, scheduled AWS refresh pipelines, Cognito username/password access, and Amplify deployments. |
@@ -130,6 +131,7 @@ soofi-xyz-cursor-plugin/
 │   ├── castform.md
 │   ├── chatot.md
 │   ├── conkeldurr.md
+│   ├── delibird.md
 │   ├── ditto.md
 │   ├── wigglytuff.md
 │   ├── hoothoot.md
