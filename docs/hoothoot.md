@@ -94,4 +94,4 @@ Only continue when the returned AWS account matches the intended `dev` or `prod`
 
 Do not paste passwords, AWS secret keys, Microsoft client secrets, raw Cognito secrets, or sensitive data into chat. Hoothoot should use AWS profiles, SSO login, Secrets Manager, and existing approved identity-provider configuration.
 
-You do not need to choose or configure the report access model in the prompt. Hoothoot uses the authentication setup defined in its runtime instructions. For Microsoft Azure login, that means Cognito federation to the shared Hoothoot SSO broker for the selected environment.
+You do not need to choose or configure the report access model in the prompt. Published Hoothoot reports use Microsoft Azure SSO through Cognito federation to the shared Hoothoot SSO broker for the selected environment.

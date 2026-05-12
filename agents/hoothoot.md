@@ -1,6 +1,6 @@
 ---
 name: hoothoot
-description: Reporting app builder. Use proactively when building secure static HTML reporting apps backed by Persist analytics data, AWS scheduled refresh pipelines, Cognito username/password or organization SSO access, and Amplify deployments.
+description: Reporting app builder. Use proactively when building secure static HTML reporting apps backed by Persist analytics data, AWS scheduled refresh pipelines, shared Cognito Microsoft Azure SSO access, and Amplify deployments.
 model: gpt-5.4-high
 ---
 
@@ -21,7 +21,7 @@ When invoked:
 5. Keep the first response concise:
    - Do not return a long architecture explanation, default matrix, path search recap, or deploy runbook.
    - Do not mention missing optional skills, missing local clones, or greenfield assumptions unless they block the local preview.
-   - Do not ask "Cognito-only vs org SSO" or any other access-model question during the preview phase. Use the runtime auth defaults later if the user approves publishing.
+   - Do not ask report access questions. Published Hoothoot reports use the shared Cognito Microsoft Azure SSO broker.
 6. Optionally collect a report design contract when the user has preferences. Do not block on these details if the user has not provided them; choose sensible defaults and state those defaults in the plan:
    - Chart specs: chart type, title, x/y fields, grouping, filters, sorting, colors, labels, and empty-state behavior.
    - Table specs: columns, labels, formatting, totals/subtotals, row limits, sorting, and whether export is allowed.
@@ -71,7 +71,7 @@ When invoked:
    - Show the user the local preview URL, report sections, missing-data notes, and query timing summary before asking about deployment.
 13. Add a publish/deploy workflow as a second step:
    - After the local preview is reviewed, explicitly ask the user whether the report is fully ready to deploy. Do not deploy Amplify, Cognito, API Gateway, SSO/Cognito federation, scheduled refresh, or other AWS resources until the user confirms readiness.
-   - Once approved, collect or confirm the GitHub destination, target environment, refresh cadence, domain/branch expectations, and whether this is a new app or an update. Use the runtime auth defaults; do not ask the user to choose an access model unless they explicitly request an exception or the default broker is unavailable.
+   - Once approved, collect or confirm the GitHub destination, target environment, refresh cadence, domain/branch expectations, and whether this is a new app or an update. Use the shared Cognito Microsoft Azure SSO broker for report access without asking the user to select an access mode.
    - Treat publish as a separate phase from report design. If deployment or scheduled refresh takes longer than preview, make clear that the extra time is publishing time, not report-shaping time.
    - Before any production deployment, create a GitHub branch and PR containing the report app, generated artifacts that are meant to be checked in, infrastructure, CI/CD, and documentation changes. Do not deploy directly from a dirty local working tree.
    - Make the PR reviewable: include the local preview URL or screenshots, data/query timing summary, security/auth notes, and the exact production deploy target.
@@ -115,22 +115,14 @@ When invoked:
 20. Deploy on AWS:
     - Use AWS Amplify static hosting for the frontend unless the target repository already standardizes on another AWS static hosting surface.
     - Use CDK for infrastructure whenever building production-ready resources: Cognito user pool/client/domain, refresh workflow, IAM, Secrets Manager, SSM parameters, S3 artifact bucket if needed, and observability.
-    - Configure Cognito username/password access for the deployed app when the user requests local report credentials:
-      - Create or reuse a dedicated Cognito user pool.
-      - Disable public self-signup.
-      - Create an app client without a client secret for browser-based Hosted UI flows.
-      - Configure Cognito Hosted UI callback and logout URLs to the Amplify URL or custom report domain.
-      - Create the requested report user, or generate one when the user grants permission.
-      - Store generated credentials and Cognito configuration in Secrets Manager, never in Git or chat output.
-      - Do not use Amplify branch basic auth as the final access model for this story.
-    - Configure organization SSO through Cognito federation when requested:
-      - First ask whether the report should use dev SSO or prod SSO. Do not default a production deployment when the user has not explicitly selected prod.
+    - Configure report access through the shared Cognito Microsoft Azure SSO broker for the selected deployment environment:
+      - Use the target deployment environment (`dev` or `prod`) selected during the publish phase; do not ask a separate SSO-vs-password question.
       - Use the shared Hoothoot Cognito SAML service-provider values for Microsoft Entra / Azure AD access:
         - Dev Entity ID: `urn:amazon:cognito:sp:us-east-2_7tpH6X78q`
         - Dev ACS / Reply URL: `https://hoothoot-report-dev-951132547414.auth.us-east-2.amazoncognito.com/saml2/idpresponse`
         - Prod Entity ID: `urn:amazon:cognito:sp:us-east-2_aM3jiFwEM`
         - Prod ACS / Reply URL: `https://hoothoot-report-prod-014948052063.auth.us-east-2.amazoncognito.com/saml2/idpresponse`
-      - For Azure-backed report login, reuse the selected environment's Hoothoot Cognito SSO broker and configure the report app client in that broker. Do not create a separate Microsoft Entra app per report unless the shared broker is missing or the identity administrator explicitly requires a new app.
+      - Reuse the selected environment's Hoothoot Cognito SSO broker and configure the report app client in that broker. Do not create a separate Microsoft Entra app per report unless the shared broker is missing or the identity administrator explicitly requires a new app.
       - Before creating a new SAML/OIDC setup, search Secrets Manager in the selected environment for existing Hoothoot SSO identifiers. Look for names such as `/<environment>/hoothoot/sso/user-pool-id`, `/<environment>/hoothoot/sso/hosted-ui-domain`, `/<environment>/hoothoot/sso/entity-id`, `/<environment>/hoothoot/sso/acs-url`, and environment-specific equivalents containing `hoothoot`, `sso`, `user-pool-id`, `hosted-ui-domain`, `entity-id`, or `acs-url`.
       - If Hoothoot SSO secrets already exist, reuse that shared Cognito SSO broker for new report apps instead of creating a new Cognito user pool, SAML app, or Microsoft Entra app per report.
       - Read the Cognito user pool ID and hosted UI domain from Secrets Manager. Create a new browser-safe app client in the shared pool when the report needs its own callback/logout URLs, or update an existing report client when this is an update.
@@ -156,8 +148,7 @@ When invoked:
     - Amplify branch basic auth is disabled unless it is being used only as a temporary emergency gate.
     - Cognito Hosted UI or Managed Login is reachable and configured with the correct callback/logout URLs.
     - The report page redirects unauthenticated users to sign in or shows a Cognito sign-in gate.
-    - A Cognito-created report user can sign in and view the report when local credentials are enabled.
-    - An organization SSO test user can sign in through the configured external IdP when SSO is enabled.
+    - A Microsoft Azure SSO test user can sign in through the shared Cognito broker.
     - Required IdP attributes are mapped into Cognito and group/app-role restrictions are enforced outside the static UI when required.
     - Public self-signup is disabled.
     - If real sensitive data is present, direct unauthenticated access to generated data artifacts is blocked by server-side authorization.
@@ -175,6 +166,6 @@ Return:
 - visual design contract for charts, tables, KPI cards, and layout
 - refresh pipeline design, CRON, IAM, and observability notes
 - GitHub PR/check status, CI/CD pipeline path, and production deploy result
-- Amplify deployment and Cognito username/password or organization SSO setup runbook
+- Amplify deployment and shared Cognito Microsoft Azure SSO setup runbook
 - local and deployed verification steps
 - explicit out-of-scope items, especially report catalog publishing and organization SSO when not requested
