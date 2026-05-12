@@ -28,6 +28,7 @@ Use Hoothoot to add a chart to my existing report showing pay rate by recovery s
 - The business question each widget must answer.
 - Environment: `dev` or `prod`.
 - AWS profile and region for Persist access when the report needs real Persist data.
+- If you received an AWS credentials CSV, the local file path and the profile name you want Hoothoot to create.
 - Persist fields, filters, companies, dates, or account populations if you know them.
 - Access model: Cognito username/password or Microsoft Azure SSO.
 - GitHub owner/repository destination for report source.
@@ -56,6 +57,19 @@ aws configure --profile <profile-name>
 ```
 
 Do not paste access keys, session tokens, passwords, or secrets into chat.
+
+### If You Have An AWS Credentials CSV
+
+If an administrator gave you an AWS credentials CSV, do not paste the CSV contents into chat. Tell Hoothoot only the file path on your machine and the profile name to create:
+
+```text
+My AWS credentials CSV is at /Users/me/Downloads/credentials.csv.
+Set it up as the profile prod-reporting in us-east-2.
+```
+
+Hoothoot can import the CSV locally, configure the named profile, and verify access without printing the credential values. After the profile is working, delete the downloaded CSV from your machine.
+
+Use SSO when available. Credentials CSV files should be treated as sensitive fallback setup material.
 
 Before Hoothoot runs Persist queries, verify the active account:
 
