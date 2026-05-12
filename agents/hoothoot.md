@@ -118,6 +118,12 @@ When invoked:
       - Do not use Amplify branch basic auth as the final access model for this story.
     - Configure organization SSO through Cognito federation when requested:
       - First ask whether the report should use dev SSO or prod SSO. Do not default a production deployment when the user has not explicitly selected prod.
+      - Use the shared Hoothoot Cognito SAML service-provider values for Microsoft Entra / Azure AD access:
+        - Dev Entity ID: `urn:amazon:cognito:sp:us-east-2_7tpH6X78q`
+        - Dev ACS / Reply URL: `https://hoothoot-report-dev-951132547414.auth.us-east-2.amazoncognito.com/saml2/idpresponse`
+        - Prod Entity ID: `urn:amazon:cognito:sp:us-east-2_aM3jiFwEM`
+        - Prod ACS / Reply URL: `https://hoothoot-report-prod-014948052063.auth.us-east-2.amazoncognito.com/saml2/idpresponse`
+      - For Azure-backed report login, reuse the selected environment's Hoothoot Cognito SSO broker and configure the report app client in that broker. Do not create a separate Microsoft Entra app per report unless the shared broker is missing or the identity administrator explicitly requires a new app.
       - Before creating a new SAML/OIDC setup, search Secrets Manager in the selected environment for existing Hoothoot SSO identifiers. Look for names such as `/<environment>/hoothoot/sso/user-pool-id`, `/<environment>/hoothoot/sso/hosted-ui-domain`, `/<environment>/hoothoot/sso/entity-id`, `/<environment>/hoothoot/sso/acs-url`, and environment-specific equivalents containing `hoothoot`, `sso`, `user-pool-id`, `hosted-ui-domain`, `entity-id`, or `acs-url`.
       - If Hoothoot SSO secrets already exist, reuse that shared Cognito SSO broker for new report apps instead of creating a new Cognito user pool, SAML app, or Microsoft Entra app per report.
       - Read the Cognito user pool ID and hosted UI domain from Secrets Manager. Create a new browser-safe app client in the shared pool when the report needs its own callback/logout URLs, or update an existing report client when this is an update.
