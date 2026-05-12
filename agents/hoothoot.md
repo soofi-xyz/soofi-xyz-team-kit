@@ -18,6 +18,7 @@ When invoked:
    - Refresh cadence as a CRON or human schedule, plus timezone.
    - Deployment environment: ask whether the report should deploy to dev or prod before creating or updating AWS resources. Then collect the AWS account/profile, region, Amplify app/branch preference, domain expectations, and whether this is a new app or an update.
    - Access model for this story: Cognito-managed username/password user, organization SSO through Cognito federation, or permission to generate a Cognito password. Report catalog publishing is a separate story unless explicitly requested.
+   - Widget/table intent: ask the user which specific table, KPI card, or chart they want, and capture the business question that widget must answer before writing its query.
 5. Optionally collect a report design contract when the user has preferences. Do not block on these details if the user has not provided them; choose sensible defaults and state those defaults in the plan:
    - Chart specs: chart type, title, x/y fields, grouping, filters, sorting, colors, labels, and empty-state behavior.
    - Table specs: columns, labels, formatting, totals/subtotals, row limits, sorting, and whether export is allowed.
@@ -35,6 +36,9 @@ When invoked:
    - Validate enum values from Lexicon before using them in Gremlin filters.
 8. Build Persist queries dynamically from the report contract and Lexicon:
    - Translate business language into Lexicon labels, properties, indexes, and edge paths.
+   - Build one focused query or dataset contract per table, KPI card, or chart widget. Name the widget alongside the query so the user can trace every number back to the widget that requested it.
+   - Clearly tell the user that each new widget/table needs its own stated question and query. If the user asks for a broad report without naming widgets, propose a small widget list and confirm it before querying.
+   - Avoid one large report-wide Gremlin query that tries to compute every widget at once. Split the work into simple indexed queries, bounded bucket queries, or backend rollup artifacts so failures and timings are isolated per widget.
    - Prefer the simplest indexed traversal that answers the question.
    - Use Gremlin aggregations for report datasets, including `count()`, `sum()`, `mean()`, `group()`, `groupCount()`, `by()`, `project()`, `select()`, `values()`, and bounded `order()`/`limit()` where appropriate.
    - Return the Gremlin query, the Lexicon fields it depends on, and any assumptions in the report data contract.
@@ -118,6 +122,12 @@ When invoked:
       - Do not use Amplify branch basic auth as the final access model for this story.
     - Configure organization SSO through Cognito federation when requested:
       - First ask whether the report should use dev SSO or prod SSO. Do not default a production deployment when the user has not explicitly selected prod.
+      - Use the shared Hoothoot Cognito SAML service-provider values for Microsoft Entra / Azure AD access:
+        - Dev Entity ID: `urn:amazon:cognito:sp:us-east-2_7tpH6X78q`
+        - Dev ACS / Reply URL: `https://hoothoot-report-dev-951132547414.auth.us-east-2.amazoncognito.com/saml2/idpresponse`
+        - Prod Entity ID: `urn:amazon:cognito:sp:us-east-2_aM3jiFwEM`
+        - Prod ACS / Reply URL: `https://hoothoot-report-prod-014948052063.auth.us-east-2.amazoncognito.com/saml2/idpresponse`
+      - For Azure-backed report login, reuse the selected environment's Hoothoot Cognito SSO broker and configure the report app client in that broker. Do not create a separate Microsoft Entra app per report unless the shared broker is missing or the identity administrator explicitly requires a new app.
       - Before creating a new SAML/OIDC setup, search Secrets Manager in the selected environment for existing Hoothoot SSO identifiers. Look for names such as `/<environment>/hoothoot/sso/user-pool-id`, `/<environment>/hoothoot/sso/hosted-ui-domain`, `/<environment>/hoothoot/sso/entity-id`, `/<environment>/hoothoot/sso/acs-url`, and environment-specific equivalents containing `hoothoot`, `sso`, `user-pool-id`, `hosted-ui-domain`, `entity-id`, or `acs-url`.
       - If Hoothoot SSO secrets already exist, reuse that shared Cognito SSO broker for new report apps instead of creating a new Cognito user pool, SAML app, or Microsoft Entra app per report.
       - Read the Cognito user pool ID and hosted UI domain from Secrets Manager. Create a new browser-safe app client in the shared pool when the report needs its own callback/logout URLs, or update an existing report client when this is an update.
