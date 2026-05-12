@@ -12,7 +12,7 @@ Widgets:
 - KPI: total DSA accounts
 - Chart: pay rate by balance bucket
 - Table: top 15 DSA companies by balance
-Use prod Persist data, but do not deploy until I approve the preview.
+Use real Persist data if my AWS profile is ready. Do not ask about GitHub, deployment, or catalog until I approve the local preview.
 ```
 
 You can also ask naturally:
@@ -23,15 +23,15 @@ Use Hoothoot to add a chart to my existing report showing pay rate by recovery s
 
 ## What To Provide
 
-- Report name, audience, and the business question.
+- What you want to know from the data.
 - The table, KPI card, or chart widgets you want.
 - The business question each widget must answer.
-- Environment: `dev` or `prod`.
-- AWS profile and region for Persist access when the report needs real Persist data.
-- If you received an AWS credentials CSV, the local file path and the profile name you want Hoothoot to create.
+- How the report should look: layout, chart style, table columns, labels, colors, or examples to match.
+- Environment and AWS profile/region only when the report needs real Persist data for the local preview.
+- If you received an AWS credentials CSV and real Persist data is needed, the local file path and the profile name you want Hoothoot to create.
 - Persist fields, filters, companies, dates, or account populations if you know them.
-- GitHub owner/repository destination for report source.
-- Whether to add the deployed report to the catalog.
+
+Do not provide GitHub repository, deployment, authentication, catalog, or refresh-schedule details in the first prompt unless you already know you want to publish. Hoothoot should ask for those only after you approve the local preview.
 
 ## Query Guidance
 
@@ -85,9 +85,10 @@ Only continue when the returned AWS account matches the intended `dev` or `prod`
 3. Hoothoot confirms AWS profile/region when real Persist access is needed.
 4. Hoothoot builds a local static preview first.
 5. Hoothoot records query timings per widget.
-6. After approval, Hoothoot creates or updates the report source in GitHub and opens a PR.
-7. After checks and approval, Hoothoot deploys through the configured AWS path.
-8. Hoothoot asks whether to publish the deployed report to the catalog.
+6. After you approve the local preview, Hoothoot asks where the report source should live.
+7. Hoothoot creates or updates the report source in GitHub and opens a PR.
+8. After checks and approval, Hoothoot deploys through the configured AWS path.
+9. Hoothoot asks whether to publish the deployed report to the catalog.
 
 ## Access And Secrets
 
