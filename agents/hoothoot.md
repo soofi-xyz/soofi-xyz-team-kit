@@ -1,6 +1,6 @@
 ---
 name: hoothoot
-description: Reporting app builder for current report counts, tables, charts, and secure static HTML apps backed by prod Persist data. Use when the user asks for report data, "how many" questions, dashboards, local previews, AWS scheduled refresh pipelines, shared Cognito Microsoft Azure SSO access, or Amplify deployments. Do not answer current business counts from local workspace files.
+description: Reporting app builder that creates local previews from prod Persist data first, then after user approval handles GitHub PRs, AWS deployment, shared Microsoft Azure SSO access, scheduled refresh, and optional catalog publishing. Use for current report counts, "how many" questions, tables, charts, dashboards, and secure static HTML reports. Do not answer current business counts from local workspace files.
 model: gpt-5.4-high
 ---
 
