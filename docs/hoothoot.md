@@ -11,36 +11,35 @@ Open Cursor Marketplace, install the Soofi XYZ team kit, then start a new Agent 
 ```text
 /hoothoot Build a report from Persist. Start with a local preview.
 Ask me whether to create a new local project or use an existing local project path.
-Ask me what widgets or tables I want and how I want the data shown.
-First help me verify prod AWS access and connect to Persist. Do not ask about GitHub, deployment, or catalog until I approve the local preview.
+Then help me verify prod AWS access and connect to Persist before creating any report files.
+Do not ask about GitHub, deployment, or catalog until I approve the local preview.
 ```
 
 You can also ask naturally:
 
 ```text
-Use Hoothoot to add a chart to my existing report showing pay rate by recovery score. Create the query for that chart only.
+Use Hoothoot to build a fresh Persist-backed report. Ask where to create it locally, then connect to prod AWS and Persist before creating files.
 ```
 
 If your request is general, Hoothoot should guide the work like this:
 
 ```text
-I will find the relevant Persist data model, create focused queries, ask how you want the data shown, and then build the local report from Persist data.
+First I need the local project path, then I will verify prod AWS access and run a Persist smoke check before creating any report files.
 ```
 
 ## What To Provide
 
 - Where the local report project should live: either a new local project path or an existing local project path.
-- What you want to know from the data.
-- The table, KPI card, or chart widgets you want.
-- The business question each widget must answer.
-- How the report should look: layout, chart style, table columns, labels, colors, or examples to match.
 - For AWS access, Hoothoot should always offer these choices: "I have a prod AWS profile", "I use SSO", "I have an AWS credentials CSV", "I have another local credentials file or profile", or "I do not know".
 - If you received an AWS credentials CSV, provide only the local file path, the profile name you want Hoothoot to create, and the AWS region. Hoothoot should create or update the profile for you and verify the prod account.
+- After AWS/Persist is connected: what you want to know from the data, the table/KPI/chart widgets you want, the business question each widget must answer, and how the report should look.
 - Persist fields, filters, companies, dates, or account populations if you know them.
 
 Do not provide GitHub repository, deployment, authentication, catalog, or refresh-schedule details in the first prompt unless you already know you want to publish. Hoothoot should ask for those only after you approve the local preview.
 
 Hoothoot should not search your machine for an existing project, infer one from your workspace, or decide where the report belongs. It should ask for the local project path first, then use only that path.
+
+After it has the local project path, Hoothoot should connect to prod AWS and prod Persist immediately. It should not create a scaffold, write helper scripts, create example artifacts, run an example refresh, build UI files, or start a local server until AWS verifies and a read-only Persist smoke query succeeds.
 
 Do not ask Hoothoot for a dummy-data or sample-JSON report. A Hoothoot report starts by connecting to prod Persist. If Hoothoot cannot connect, it should keep helping you locate or configure AWS credentials and Persist access before building the preview.
 
@@ -129,24 +128,26 @@ Hoothoot should use the verified prod profile to:
 
 The local preview should be generated from Persist-fetched JSON or CSV artifacts. Static HTML pages cannot call Persist directly from the browser, so Hoothoot should create or use local server-side refresh/query code to fetch the data first, then serve the static preview. It should not hand you a sample JSON file to load as the report.
 
-If Persist is not reachable yet, Hoothoot can prepare layout, CSS, empty states, and data schemas, but it must label that work as structure only. It must not present a chart, KPI, or table as the report until the data is fetched from Persist.
+If Persist is not reachable yet, Hoothoot should not prepare layout, CSS, empty states, data schemas, helper scripts, example artifacts, or UI scaffolds. It should stay in the AWS/Persist setup flow until access works or you explicitly cancel.
 
 ## Expected Workflow
 
 Hoothoot should use this same workflow for every report request. A broad prompt, existing HTML file, sample JSON file, or partial example should not change the order.
 
 1. Hoothoot asks whether to create a new local report project or use an existing local report project, then collects the exact path.
-2. Hoothoot confirms the report and widget list.
-3. Hoothoot discovers the relevant Lexicon/Persist fields.
-4. Hoothoot helps locate and verify prod AWS credentials.
-5. After AWS access works, Hoothoot discovers the Persist connection details from AWS.
-6. Hoothoot runs read-only Persist smoke checks and widget queries.
-7. Hoothoot builds a local static preview from Persist-generated artifacts.
-8. Hoothoot records query timings per widget.
-9. After you approve the local preview, Hoothoot asks where the report source should live.
-10. Hoothoot creates or updates the report source in GitHub and opens a PR.
-11. After checks and approval, Hoothoot deploys through the configured AWS path.
-12. Hoothoot asks whether to publish the deployed report to the catalog.
+2. Hoothoot asks which AWS credential source to use, always offering profile, SSO, credentials CSV path, another credentials file/profile, or "I do not know."
+3. Hoothoot helps locate and verify prod AWS credentials.
+4. After AWS access works, Hoothoot discovers the Persist connection details from AWS.
+5. Hoothoot runs read-only Persist smoke checks.
+6. Hoothoot confirms the report and widget list.
+7. Hoothoot discovers the relevant Lexicon/Persist fields.
+8. Hoothoot runs focused widget queries against prod Persist.
+9. Hoothoot builds a local static preview from Persist-generated artifacts.
+10. Hoothoot records query timings per widget.
+11. After you approve the local preview, Hoothoot asks where the report source should live.
+12. Hoothoot creates or updates the report source in GitHub and opens a PR.
+13. After checks and approval, Hoothoot deploys through the configured AWS path.
+14. Hoothoot asks whether to publish the deployed report to the catalog.
 
 If any step fails, Hoothoot should pause at that step, explain the failure in plain language, ask the next required question, and then resume from that same step. It should not switch to a dummy-data, browser-only, helper-script-only, or manually loaded JSON workflow.
 
