@@ -10,6 +10,7 @@ Open Cursor Marketplace, install the Soofi XYZ team kit, then start a new Agent 
 
 ```text
 /hoothoot Build a report from Persist. Start with a local preview.
+Ask me whether to create a new local project or use an existing local project path.
 Ask me what widgets or tables I want and how I want the data shown.
 First help me verify prod AWS access and connect to Persist. Do not ask about GitHub, deployment, or catalog until I approve the local preview.
 ```
@@ -28,15 +29,18 @@ I will find the relevant Persist data model, create focused queries, ask how you
 
 ## What To Provide
 
+- Where the local report project should live: either a new local project path or an existing local project path.
 - What you want to know from the data.
 - The table, KPI card, or chart widgets you want.
 - The business question each widget must answer.
 - How the report should look: layout, chart style, table columns, labels, colors, or examples to match.
-- For AWS access, tell Hoothoot what you have: "I think I have a prod profile", "I use SSO", "I have a credentials CSV", or "I do not know".
-- If you received an AWS credentials CSV, provide only the local file path and the profile name you want Hoothoot to create.
+- For AWS access, Hoothoot should always offer these choices: "I have a prod AWS profile", "I use SSO", "I have an AWS credentials CSV", "I have another local credentials file or profile", or "I do not know".
+- If you received an AWS credentials CSV, provide only the local file path, the profile name you want Hoothoot to create, and the AWS region. Hoothoot should create or update the profile for you and verify the prod account.
 - Persist fields, filters, companies, dates, or account populations if you know them.
 
 Do not provide GitHub repository, deployment, authentication, catalog, or refresh-schedule details in the first prompt unless you already know you want to publish. Hoothoot should ask for those only after you approve the local preview.
+
+Hoothoot should not search your machine for an existing project, infer one from your workspace, or decide where the report belongs. It should ask for the local project path first, then use only that path.
 
 Do not ask Hoothoot for a dummy-data or sample-JSON report. A Hoothoot report starts by connecting to prod Persist. If Hoothoot cannot connect, it should keep helping you locate or configure AWS credentials and Persist access before building the preview.
 
@@ -55,6 +59,7 @@ Hoothoot uses prod Persist for report data. You do not need to write export comm
 What Hoothoot should do for you:
 - Check local AWS profiles when the AWS CLI is available.
 - Help locate likely credentials if you do not know the profile name, including checking configured AWS profiles and asking whether you use SSO or have a downloaded credentials CSV.
+- Always offer the credentials CSV path option when AWS access is missing. It should not ask only for a prod AWS profile.
 - Ask you to pick the right prod profile only if there is more than one possible choice.
 - Verify the selected profile and explain which AWS account it can access.
 - If your profile uses SSO, start the login flow and ask you only to finish the browser login.
@@ -98,7 +103,7 @@ My AWS credentials CSV is at /Users/me/Downloads/credentials.csv.
 Set it up as the profile prod-reporting in us-east-2.
 ```
 
-Hoothoot can import the CSV locally, configure the named profile, and verify access without printing the credential values. After the profile is working, delete the downloaded CSV from your machine.
+Hoothoot can import the CSV locally, configure the named profile, and verify access without printing the credential values. The user should not have to run `aws configure` manually. After the profile is working, delete the downloaded CSV from your machine.
 
 Use SSO when available. Credentials CSV files should be treated as sensitive fallback setup material.
 
@@ -130,17 +135,18 @@ If Persist is not reachable yet, Hoothoot can prepare layout, CSS, empty states,
 
 Hoothoot should use this same workflow for every report request. A broad prompt, existing HTML file, sample JSON file, or partial example should not change the order.
 
-1. Hoothoot confirms the report and widget list.
-2. Hoothoot discovers the relevant Lexicon/Persist fields.
-3. Hoothoot helps locate and verify prod AWS credentials.
-4. After AWS access works, Hoothoot discovers the Persist connection details from AWS.
-5. Hoothoot runs read-only Persist smoke checks and widget queries.
-6. Hoothoot builds a local static preview from Persist-generated artifacts.
-7. Hoothoot records query timings per widget.
-8. After you approve the local preview, Hoothoot asks where the report source should live.
-9. Hoothoot creates or updates the report source in GitHub and opens a PR.
-10. After checks and approval, Hoothoot deploys through the configured AWS path.
-11. Hoothoot asks whether to publish the deployed report to the catalog.
+1. Hoothoot asks whether to create a new local report project or use an existing local report project, then collects the exact path.
+2. Hoothoot confirms the report and widget list.
+3. Hoothoot discovers the relevant Lexicon/Persist fields.
+4. Hoothoot helps locate and verify prod AWS credentials.
+5. After AWS access works, Hoothoot discovers the Persist connection details from AWS.
+6. Hoothoot runs read-only Persist smoke checks and widget queries.
+7. Hoothoot builds a local static preview from Persist-generated artifacts.
+8. Hoothoot records query timings per widget.
+9. After you approve the local preview, Hoothoot asks where the report source should live.
+10. Hoothoot creates or updates the report source in GitHub and opens a PR.
+11. After checks and approval, Hoothoot deploys through the configured AWS path.
+12. Hoothoot asks whether to publish the deployed report to the catalog.
 
 If any step fails, Hoothoot should pause at that step, explain the failure in plain language, ask the next required question, and then resume from that same step. It should not switch to a dummy-data, browser-only, helper-script-only, or manually loaded JSON workflow.
 

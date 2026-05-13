@@ -17,6 +17,7 @@ When invoked:
    - Do not answer a data question from memory or assumptions. If Persist has not been reached, say that the data is not available yet and continue the AWS/Persist connection flow.
    - It is acceptable to draft static layout shells, CSS, empty states, and data schemas before data is available, but clearly label them as structure only and do not present them as the report.
 5. Follow this canonical workflow for every report request. Do not skip, reorder, or replace it because of user phrasing, a partial example, a local HTML file, a sample JSON file, or a request to "just make the report":
+   - Ask whether the user wants to create a new local report project or use an existing local report project, and collect the exact local path before inspecting or writing project files.
    - Confirm report intent, widgets/tables/charts, and display preferences.
    - Discover the Persist data model from Lexicon and define one dataset contract per widget.
    - Verify prod AWS access locally. If AWS is not connected, stay in credential setup until it verifies or the user explicitly cancels.
@@ -29,12 +30,14 @@ When invoked:
    - Only after approval, collect GitHub/deployment inputs, create/update the repository, open a PR, wait for checks, deploy through the pipeline, configure shared Azure SSO access, and ask whether to publish to the catalog.
    - If any step fails, pause at that step, explain the failure in plain language, ask the next required question, and resume the same workflow from that step. Do not switch to another pattern.
 6. Start with the local report preview only. The first user interaction must be short and about the report itself:
+   - Ask where the local report project should live before looking for project files: either "create a new local project at this path" or "use this existing local project path." Do not infer a path from the current workspace, open files, recent files, repository names, terminal directories, or nearby folders.
    - Ask what the user wants to know from the data.
    - Ask which table, KPI card, or chart widgets they want, and capture the business question each widget must answer.
    - Ask how the report should look only when the user has not already described the desired layout, chart style, or table shape.
-   - Ask for a local folder only if there is no obvious workspace or existing local report location. Do not ask for GitHub repository, deployment, catalog, refresh cadence, Cognito, Microsoft Azure SSO, Amplify, custom domain, or production publishing details before the local preview is reviewed.
+   - Never search for, auto-detect, or assume an existing local project or repository. Do not inspect candidate folders to decide where the report belongs until the user provides the exact path.
+   - Do not ask for GitHub repository, deployment, catalog, refresh cadence, Cognito, Microsoft Azure SSO, Amplify, custom domain, or production publishing details before the local preview is reviewed.
    - If the user asks broadly for "a report" without widget detail, propose a small starter local preview such as 1-2 KPI cards plus one table or chart, and ask the user to confirm or change that list.
-   - Treat a request for a report as a request for Persist-backed data. Use prod Persist only. Ask what AWS access the user has in plain language, such as a known prod profile, SSO, a credentials CSV file path, or "I do not know." Do not build a dummy-data report or ask the user to load sample JSON as a substitute for connecting to Persist.
+   - Treat a request for a report as a request for Persist-backed data. Use prod Persist only. Ask what AWS access the user has in plain language. Always offer these choices together: an existing prod AWS profile, AWS SSO, an AWS credentials CSV local file path, another local credentials file path/profile, or "I do not know." Do not ask only for a prod AWS profile. Do not build a dummy-data report or ask the user to load sample JSON as a substitute for connecting to Persist.
 7. Keep the first response concise:
    - Do not return a long architecture explanation, default matrix, path search recap, or deploy runbook.
    - Do not mention missing optional skills, missing local clones, or greenfield assumptions unless they block the local preview.
@@ -85,7 +88,8 @@ When invoked:
    - Do not integrate SSO, create Cognito resources, deploy Amplify, create API Gateway routes, add custom domains, create scheduled refresh infrastructure, or do any other cloud publishing work before the local report is reviewed. Use local-only placeholders only for publishing-only configuration, never for report data.
    - During preview, query Persist only enough to validate the report shape and numbers. Cache generated artifacts for design iteration, and rerun expensive Persist queries only when the field mapping, filters, or aggregation logic changes.
    - When the user wants real report data locally, own the prod credential check instead of handing them a command runbook:
-     - Ask in plain language whether they already have a prod AWS profile, use SSO, have an AWS credentials CSV file path, or do not know how AWS is configured. Do not ask them to paste keys, tokens, passwords, or CSV contents.
+     - Ask in plain language which AWS credential source they want Hoothoot to use, and always present all supported choices: an existing prod AWS profile, AWS SSO, an AWS credentials CSV local file path, another local credentials file path/profile, or "I do not know." Do not ask only for a prod AWS profile. Do not ask them to paste keys, tokens, passwords, or CSV contents.
+     - If the user chooses an AWS credentials CSV, ask only for the local CSV path, the desired profile name, and the AWS region. Then create or update that profile locally, verify the resulting prod account, and continue to Persist discovery.
      - Inspect local profiles with AWS CLI commands when available and help locate likely credentials. Ask the user to pick a profile only if more than one plausible prod profile exists.
      - Verify the chosen profile with `aws sts get-caller-identity` using explicit `AWS_PROFILE` and `AWS_REGION` values. Explain the result as "this is the AWS account I can access" and stop if it is not the expected prod account.
      - For SSO profiles, run the login command for the selected profile and ask the user only to complete the browser login if the AWS CLI requires it.
