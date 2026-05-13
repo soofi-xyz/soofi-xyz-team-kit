@@ -15,29 +15,28 @@ When invoked:
    - Any number, row, bucket, chart, KPI, table, example result, or claim about the user's data MUST come from prod Persist or from a user-provided file that the user explicitly says is an approved Persist export.
    - Do not use dummy data, sample JSON, model guesses, made-up rows, mocked metrics, or "real-shaped" generated data for a user-facing report preview.
    - Do not answer a data question from memory or assumptions. If Persist has not been reached, say that the data is not available yet and continue the AWS/Persist connection flow.
-   - It is acceptable to draft static layout shells, CSS, empty states, and data schemas before data is available, but clearly label them as structure only and do not present them as the report.
+   - Do not create scaffolds, static layout shells, CSS, empty states, helper scripts, example artifacts, report files, or UI code before prod AWS access is verified and a prod Persist smoke query succeeds.
+   - Do not substitute a nearby metric, label, count, or population for the one the user requested. For example, a request for callable accounts is not answered by counting debts unless Lexicon/Persist shows that the callable account definition is exactly that debt count.
 5. Follow this canonical workflow for every report request. Do not skip, reorder, or replace it because of user phrasing, a partial example, a local HTML file, a sample JSON file, or a request to "just make the report":
    - Ask whether the user wants to create a new local report project or use an existing local report project, and collect the exact local path before inspecting or writing project files.
-   - Confirm report intent, widgets/tables/charts, and display preferences.
-   - Discover the Persist data model from Lexicon and define one dataset contract per widget.
+   - Ask which AWS credential source Hoothoot should use, always offering: an existing prod AWS profile, AWS SSO, an AWS credentials CSV local file path, another local credentials file path/profile, or "I do not know."
    - Verify prod AWS access locally. If AWS is not connected, stay in credential setup until it verifies or the user explicitly cancels.
    - Discover the prod Persist endpoint/configuration from AWS.
    - Run read-only Persist smoke checks.
+   - Confirm report intent, widgets/tables/charts, and display preferences.
+   - Discover the Persist data model from Lexicon and define one dataset contract per widget.
    - Run focused prod Persist queries for each widget and record query timing.
    - Generate local JSON/CSV artifacts from Persist results.
    - Build and serve the local static preview from those Persist-generated artifacts.
    - Ask for approval of the local preview.
    - Only after approval, collect GitHub/deployment inputs, create/update the repository, open a PR, wait for checks, deploy through the pipeline, configure shared Azure SSO access, and ask whether to publish to the catalog.
    - If any step fails, pause at that step, explain the failure in plain language, ask the next required question, and resume the same workflow from that step. Do not switch to another pattern.
-6. Start with the local report preview only. The first user interaction must be short and about the report itself:
+6. Start with the local report preview only. The first user interaction must be short and must only collect the local project decision plus AWS/Persist access path:
    - Ask where the local report project should live before looking for project files: either "create a new local project at this path" or "use this existing local project path." Do not infer a path from the current workspace, open files, recent files, repository names, terminal directories, or nearby folders.
-   - Ask what the user wants to know from the data.
-   - Ask which table, KPI card, or chart widgets they want, and capture the business question each widget must answer.
-   - Ask how the report should look only when the user has not already described the desired layout, chart style, or table shape.
    - Never search for, auto-detect, or assume an existing local project or repository. Do not inspect candidate folders to decide where the report belongs until the user provides the exact path.
    - Do not ask for GitHub repository, deployment, catalog, refresh cadence, Cognito, Microsoft Azure SSO, Amplify, custom domain, or production publishing details before the local preview is reviewed.
-   - If the user asks broadly for "a report" without widget detail, propose a small starter local preview such as 1-2 KPI cards plus one table or chart, and ask the user to confirm or change that list.
    - Treat a request for a report as a request for Persist-backed data. Use prod Persist only. Ask what AWS access the user has in plain language. Always offer these choices together: an existing prod AWS profile, AWS SSO, an AWS credentials CSV local file path, another local credentials file path/profile, or "I do not know." Do not ask only for a prod AWS profile. Do not build a dummy-data report or ask the user to load sample JSON as a substitute for connecting to Persist.
+   - Do not ask detailed widget/display questions, create a starter preview, scaffold files, write helper scripts, run example refreshes, or start a local server until prod AWS access is verified and a prod Persist smoke query succeeds. After that gate passes, ask what the user wants to know from the data, which widgets/tables/charts they want, and how the report should look.
 7. Keep the first response concise:
    - Do not return a long architecture explanation, default matrix, path search recap, or deploy runbook.
    - Do not mention missing optional skills, missing local clones, or greenfield assumptions unless they block the local preview.
@@ -54,7 +53,7 @@ When invoked:
    - Treat Lexicon as the source of truth for vertex labels, edge labels, properties, indexes, enum values, and graph relationships.
    - Inspect the current Lexicon through `skills/exploring-lexicon/` or the active local `src/data/lexicon.json` when working inside a Lexicon-capable workspace. Do not rely on a hardcoded list of known indexes.
    - Use `skills/so-persist-product/` for Persist API behavior, authentication, SigV4 request shape, Gremlin endpoints, and safe read/query patterns.
-   - If the data model or metric definition is unclear after Lexicon inspection, ask the user for the missing business meaning before writing Gremlin. Do not ask other agents to infer the Persist data model or metric definition.
+   - If the data model, metric definition, population filter, or business term is unclear after Lexicon inspection, ask the user for the missing business meaning before writing Gremlin. Do not ask other agents to infer the Persist data model or metric definition.
    - Discover the relevant vertex or edge type for the report request, then inspect both `properties` and `indexes` for queryable fields.
    - Treat Lexicon `indexes` as derived projection fields maintained by Persist. Use them for filtering, grouping, and aggregating when they match the report question, but do not include them in ingest payloads or treat them as authoritative source facts.
    - Inspect neighboring edges when indexes are insufficient, and decide whether the query can safely traverse canonical graph relationships or whether a new Persist index/data-access story is required.
@@ -62,6 +61,9 @@ When invoked:
 11. Build Persist queries dynamically from the report contract and Lexicon:
    - Translate business language into Lexicon labels, properties, indexes, and edge paths.
    - Build one focused query or dataset contract per table, KPI card, or chart widget. Name the widget alongside the query so the user can trace every number back to the widget that requested it.
+   - For every dataset contract, explicitly record the requested entity, population filter, metric calculation, grouping, sorting, and row limit before querying. If any part is unknown, ask the user instead of choosing a substitute.
+   - Keep the report surface limited to the requested widgets/tables/charts. Do not add unrelated KPIs, charts, exploratory sections, sample tables, or broad dashboard defaults unless the user explicitly asks for them.
+   - Validate that the query result answers the requested business question before building the preview. If the result only answers a weaker or different question, stop and ask for the missing filter or definition.
    - Clearly tell the user that each new widget/table needs its own stated question and query. If the user asks for a broad report without naming widgets, propose a small widget list and confirm it before querying.
    - Avoid one large report-wide Gremlin query that tries to compute every widget at once. Split the work into simple indexed queries, bounded bucket queries, or backend rollup artifacts so failures and timings are isolated per widget.
    - Prefer the simplest indexed traversal that answers the question.
@@ -84,7 +86,7 @@ When invoked:
    - Use `POST /persist/gremlin` only for small discovery or smoke-test queries that are expected to complete inside the synchronous timeout.
    - Parse the Persist response envelope and fail closed when `ok` is false or the result shape does not match the report dataset contract.
 14. Add a local preview workflow as the default:
-   - Treat the first report iteration as a local preview backed by prod Persist data, not a deployment. The first implementation step MUST verify AWS credentials, discover Persist, run the required read-only queries, generate local JSON/CSV artifacts from Persist, and serve the minimal local app needed for the user to see and judge the report.
+   - Treat the first report iteration as a local preview backed by prod Persist data, not a deployment. The first implementation step after collecting the local project path MUST verify AWS credentials, discover Persist, and run a read-only Persist smoke query. Only after that gate succeeds may Hoothoot write report files, helper scripts, example artifacts, UI files, or local server scaffolding.
    - Do not integrate SSO, create Cognito resources, deploy Amplify, create API Gateway routes, add custom domains, create scheduled refresh infrastructure, or do any other cloud publishing work before the local report is reviewed. Use local-only placeholders only for publishing-only configuration, never for report data.
    - During preview, query Persist only enough to validate the report shape and numbers. Cache generated artifacts for design iteration, and rerun expensive Persist queries only when the field mapping, filters, or aggregation logic changes.
    - When the user wants real report data locally, own the prod credential check instead of handing them a command runbook:
