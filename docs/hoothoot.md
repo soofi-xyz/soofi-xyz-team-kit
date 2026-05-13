@@ -9,11 +9,8 @@ Hoothoot must not make up data. Every report number, row, bucket, chart, KPI, ta
 Open Cursor Marketplace, install the Soofi XYZ team kit, then start a new Agent chat and invoke Hoothoot directly:
 
 ```text
-/hoothoot Build a DSA accounts report. Start with a local preview.
-Widgets:
-- KPI: total DSA accounts
-- Chart: pay rate by balance bucket
-- Table: top 15 DSA companies by balance
+/hoothoot Build a report from Persist. Start with a local preview.
+Ask me what widgets or tables I want and how I want the data shown.
 First help me verify prod AWS access and connect to Persist. Do not ask about GitHub, deployment, or catalog until I approve the local preview.
 ```
 
