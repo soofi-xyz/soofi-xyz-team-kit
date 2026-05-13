@@ -2,16 +2,15 @@
 
 Hoothoot builds secure static reporting apps backed by prod Persist data. Use it in Cursor Agent mode when you want Hoothoot to connect to Persist, build a local report preview from real data, create a GitHub PR, deploy on AWS, and optionally publish to the catalog.
 
+Hoothoot must not make up data. Every report number, row, bucket, chart, KPI, table, or data claim must come from prod Persist, or from a user-provided file that you explicitly identify as an approved Persist export.
+
 ## Start In Agent Mode
 
 Open Cursor Marketplace, install the Soofi XYZ team kit, then start a new Agent chat and invoke Hoothoot directly:
 
 ```text
-/hoothoot Build a DSA accounts report. Start with a local preview.
-Widgets:
-- KPI: total DSA accounts
-- Chart: pay rate by balance bucket
-- Table: top 15 DSA companies by balance
+/hoothoot Build a report from Persist. Start with a local preview.
+Ask me what widgets or tables I want and how I want the data shown.
 First help me verify prod AWS access and connect to Persist. Do not ask about GitHub, deployment, or catalog until I approve the local preview.
 ```
 
@@ -19,6 +18,12 @@ You can also ask naturally:
 
 ```text
 Use Hoothoot to add a chart to my existing report showing pay rate by recovery score. Create the query for that chart only.
+```
+
+If your request is general, Hoothoot should guide the work like this:
+
+```text
+I will find the relevant Persist data model, create focused queries, ask how you want the data shown, and then build the local report from Persist data.
 ```
 
 ## What To Provide
@@ -33,11 +38,13 @@ Use Hoothoot to add a chart to my existing report showing pay rate by recovery s
 
 Do not provide GitHub repository, deployment, authentication, catalog, or refresh-schedule details in the first prompt unless you already know you want to publish. Hoothoot should ask for those only after you approve the local preview.
 
-Do not ask Hoothoot for a dummy-data or sample-JSON report. A Hoothoot report starts by connecting to prod Persist. If Hoothoot cannot connect, it should stop and help you fix credentials or Persist discovery before building the preview.
+Do not ask Hoothoot for a dummy-data or sample-JSON report. A Hoothoot report starts by connecting to prod Persist. If Hoothoot cannot connect, it should keep helping you locate or configure AWS credentials and Persist access before building the preview.
 
 ## Query Guidance
 
 Tell Hoothoot the specific widget or table you want. Hoothoot should create one focused query or dataset contract per widget.
+
+For general requests, Hoothoot should find the Persist data model from Lexicon first. Lexicon is the source of truth for vertex labels, edge labels, properties, indexes, enum values, and graph relationships. If the schema or metric definition is unclear, Hoothoot should ask you for the missing business meaning before writing the query.
 
 Avoid asking for one large query for the whole report. Smaller widget-level queries make timings clear, reduce timeout risk, and make it easier to verify each number.
 
@@ -54,7 +61,7 @@ What Hoothoot should do for you:
 - If the profile is missing SSO settings, first ask whether you already have credentials it can use, such as a credentials CSV, a local credentials file path, or another profile name.
 - If no existing credentials are available, repair or create the SSO profile for you instead of telling you to run `aws configure sso`.
 - If you have an AWS credentials CSV, import it locally without printing the secret values.
-- Stop if the profile does not verify as prod; it should not silently use dev or a default profile.
+- If the profile does not verify as prod, explain the failed check and keep helping you fix AWS access; it should not silently use dev or a default profile.
 
 For SSO-backed profiles, Hoothoot may run the login flow for you and ask you to complete only the browser step:
 
@@ -76,7 +83,7 @@ If you do not have existing credentials, Hoothoot should ask in plain language f
 - The role name to use.
 - The profile name you want.
 
-Once those values are known, Hoothoot should configure or repair the local profile, start SSO login, verify the prod account, and continue to Persist discovery.
+Once those values are known, Hoothoot should configure or repair the local profile, start SSO login, verify the prod account, and continue to Persist discovery. If any step fails, Hoothoot should explain the failed check and ask the next simple credential question. It should stay in this setup flow until AWS access works or you explicitly cancel.
 
 For locally configured access-key profiles, Hoothoot should prefer an approved internal setup flow or a local CSV file path. Do not paste access keys, session tokens, passwords, or secrets into chat.
 
@@ -101,7 +108,7 @@ Before Hoothoot runs Persist queries, it should verify the active account:
 AWS_PROFILE=<profile-name> AWS_REGION=<region> aws sts get-caller-identity
 ```
 
-Hoothoot should continue only when the returned AWS account matches the intended prod account. It should run local refresh/query commands with explicit `AWS_PROFILE=<profile-name>` and `AWS_REGION=<region>` values instead of relying on your shell default profile.
+Hoothoot should continue to Persist only when the returned AWS account matches the intended prod account. If the account does not verify, Hoothoot should keep helping you fix AWS access instead of building a report with guessed, dummy, or sample data. It should run local refresh/query commands with explicit `AWS_PROFILE=<profile-name>` and `AWS_REGION=<region>` values instead of relying on your shell default profile.
 
 ## Persist Discovery
 
@@ -113,11 +120,15 @@ Hoothoot should use the verified prod profile to:
 - Search likely parameter names including `persist-api-url`, `/prod/persist-api-url`, `/prod/persist/api-url`, and service-specific names containing `persist` and `api`.
 - Confirm the discovered Persist endpoint with a small read-only smoke query before running report widget queries.
 - Explain what it found in plain language, without exposing secrets.
-- Stop and ask for help only if AWS access works but no approved Persist configuration can be discovered.
+- If AWS access works but no approved Persist configuration can be discovered, explain exactly what was checked and ask for the missing approved Persist configuration location. Do not guess an endpoint.
 
 The local preview should be generated from Persist-fetched JSON or CSV artifacts. Static HTML pages cannot call Persist directly from the browser, so Hoothoot should create or use local server-side refresh/query code to fetch the data first, then serve the static preview. It should not hand you a sample JSON file to load as the report.
 
+If Persist is not reachable yet, Hoothoot can prepare layout, CSS, empty states, and data schemas, but it must label that work as structure only. It must not present a chart, KPI, or table as the report until the data is fetched from Persist.
+
 ## Expected Workflow
+
+Hoothoot should use this same workflow for every report request. A broad prompt, existing HTML file, sample JSON file, or partial example should not change the order.
 
 1. Hoothoot confirms the report and widget list.
 2. Hoothoot discovers the relevant Lexicon/Persist fields.
@@ -130,6 +141,8 @@ The local preview should be generated from Persist-fetched JSON or CSV artifacts
 9. Hoothoot creates or updates the report source in GitHub and opens a PR.
 10. After checks and approval, Hoothoot deploys through the configured AWS path.
 11. Hoothoot asks whether to publish the deployed report to the catalog.
+
+If any step fails, Hoothoot should pause at that step, explain the failure in plain language, ask the next required question, and then resume from that same step. It should not switch to a dummy-data, browser-only, helper-script-only, or manually loaded JSON workflow.
 
 ## Access And Secrets
 
