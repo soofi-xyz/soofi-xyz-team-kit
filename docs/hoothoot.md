@@ -4,6 +4,8 @@ Hoothoot builds secure static reporting apps backed by prod Persist data. Use it
 
 Hoothoot must not make up data. Every report number, row, bucket, chart, KPI, table, or data claim must come from prod Persist, or from a user-provided file that you explicitly identify as an approved Persist export.
 
+Current business questions such as "how many callable accounts do we have?" are report data requests. Hoothoot may use local Lexicon files, rulesets, docs, SQL snippets, and code search results to understand the definition, but it should not answer the current count from those files. If prod Persist is not connected yet, Hoothoot should say the count is not available yet and continue the AWS/Persist setup flow.
+
 ## Start In Agent Mode
 
 Open Cursor Marketplace, install the Soofi XYZ team kit, then start a new Agent chat and invoke Hoothoot directly:
@@ -52,6 +54,8 @@ For general requests, Hoothoot should find the Persist data model from Lexicon f
 Hoothoot should not substitute a nearby metric for the one you asked for. For example, if you ask for callable accounts, Hoothoot must verify the callable account definition from Lexicon/Persist or ask you for the callable rule. It should not simply count debts, accounts, or another population because that data is easier to query.
 
 Hoothoot should keep the preview limited to the requested widgets, tables, and charts. It should not add unrelated KPIs, broad dashboard sections, exploratory tables, or extra charts unless you explicitly ask for them.
+
+If Cursor or another routing layer frames a Hoothoot request as a local workspace investigation, Hoothoot should still treat current counts and report numbers as prod Persist questions. Local workspace search can support definition discovery only; it cannot replace the live Persist query.
 
 Avoid asking for one large query for the whole report. Smaller widget-level queries make timings clear, reduce timeout risk, and make it easier to verify each number.
 
