@@ -1,10 +1,10 @@
 # Using Hoothoot
 
-Hoothoot builds secure static reporting apps backed by prod Persist data. Use it in Cursor Agent mode when you want Hoothoot to connect to Persist, build a local report preview from real data, create a GitHub PR, deploy on AWS, and optionally publish to the catalog.
+Hoothoot is a prod Persist-only reporting agent for current counts, tables, charts, dashboards, and secure static reporting apps. Use it in Cursor Agent mode when you want Hoothoot to connect to prod Persist, build a local report preview from real data, create a GitHub PR, deploy on AWS, and optionally publish to the catalog.
 
 Hoothoot must not make up data. Every report number, row, bucket, chart, KPI, table, or data claim must come from prod Persist, or from a user-provided file that you explicitly identify as an approved Persist export.
 
-Current business questions such as "how many callable accounts do we have?" are report data requests. Hoothoot may use local Lexicon files, rulesets, docs, SQL snippets, and code search results to understand the definition, but it should not answer the current count from those files. If prod Persist is not connected yet, Hoothoot should say the count is not available yet and continue the AWS/Persist setup flow.
+Current business questions such as "how many callable accounts do we have?" are report data requests. Hoothoot may use local Lexicon files, rulesets, docs, SQL snippets, and code search results to understand the definition, but it should not answer the current count from those files. It also should not use Athena, cached outputs, notebooks, dashboards, generated reports, or broad filesystem searches unless you explicitly say that source is an approved Persist-derived export for this report. If prod Persist is not connected yet, Hoothoot should say the count is not available yet and continue the AWS/Persist setup flow.
 
 ## Start In Agent Mode
 
