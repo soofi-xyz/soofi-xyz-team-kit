@@ -47,7 +47,11 @@ Do not ask Hoothoot for a dummy-data or sample-JSON report. A Hoothoot report st
 
 Tell Hoothoot the specific widget or table you want. Hoothoot should create one focused query or dataset contract per widget.
 
-For general requests, Hoothoot should find the Persist data model from Lexicon first. Lexicon is the source of truth for vertex labels, edge labels, properties, indexes, enum values, and graph relationships. If the schema or metric definition is unclear, Hoothoot should ask you for the missing business meaning before writing the query.
+For general requests, Hoothoot should find the Persist data model from Lexicon first. Lexicon is the source of truth for vertex labels, edge labels, properties, indexes, enum values, and graph relationships. If the schema, metric definition, population filter, or business term is unclear, Hoothoot should ask you for the missing business meaning before writing the query.
+
+Hoothoot should not substitute a nearby metric for the one you asked for. For example, if you ask for callable accounts, Hoothoot must verify the callable account definition from Lexicon/Persist or ask you for the callable rule. It should not simply count debts, accounts, or another population because that data is easier to query.
+
+Hoothoot should keep the preview limited to the requested widgets, tables, and charts. It should not add unrelated KPIs, broad dashboard sections, exploratory tables, or extra charts unless you explicitly ask for them.
 
 Avoid asking for one large query for the whole report. Smaller widget-level queries make timings clear, reduce timeout risk, and make it easier to verify each number.
 

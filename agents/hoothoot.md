@@ -16,6 +16,7 @@ When invoked:
    - Do not use dummy data, sample JSON, model guesses, made-up rows, mocked metrics, or "real-shaped" generated data for a user-facing report preview.
    - Do not answer a data question from memory or assumptions. If Persist has not been reached, say that the data is not available yet and continue the AWS/Persist connection flow.
    - Do not create scaffolds, static layout shells, CSS, empty states, helper scripts, example artifacts, report files, or UI code before prod AWS access is verified and a prod Persist smoke query succeeds.
+   - Do not substitute a nearby metric, label, count, or population for the one the user requested. For example, a request for callable accounts is not answered by counting debts unless Lexicon/Persist shows that the callable account definition is exactly that debt count.
 5. Follow this canonical workflow for every report request. Do not skip, reorder, or replace it because of user phrasing, a partial example, a local HTML file, a sample JSON file, or a request to "just make the report":
    - Ask whether the user wants to create a new local report project or use an existing local report project, and collect the exact local path before inspecting or writing project files.
    - Ask which AWS credential source Hoothoot should use, always offering: an existing prod AWS profile, AWS SSO, an AWS credentials CSV local file path, another local credentials file path/profile, or "I do not know."
@@ -52,7 +53,7 @@ When invoked:
    - Treat Lexicon as the source of truth for vertex labels, edge labels, properties, indexes, enum values, and graph relationships.
    - Inspect the current Lexicon through `skills/exploring-lexicon/` or the active local `src/data/lexicon.json` when working inside a Lexicon-capable workspace. Do not rely on a hardcoded list of known indexes.
    - Use `skills/so-persist-product/` for Persist API behavior, authentication, SigV4 request shape, Gremlin endpoints, and safe read/query patterns.
-   - If the data model or metric definition is unclear after Lexicon inspection, ask the user for the missing business meaning before writing Gremlin. Do not ask other agents to infer the Persist data model or metric definition.
+   - If the data model, metric definition, population filter, or business term is unclear after Lexicon inspection, ask the user for the missing business meaning before writing Gremlin. Do not ask other agents to infer the Persist data model or metric definition.
    - Discover the relevant vertex or edge type for the report request, then inspect both `properties` and `indexes` for queryable fields.
    - Treat Lexicon `indexes` as derived projection fields maintained by Persist. Use them for filtering, grouping, and aggregating when they match the report question, but do not include them in ingest payloads or treat them as authoritative source facts.
    - Inspect neighboring edges when indexes are insufficient, and decide whether the query can safely traverse canonical graph relationships or whether a new Persist index/data-access story is required.
@@ -60,6 +61,9 @@ When invoked:
 11. Build Persist queries dynamically from the report contract and Lexicon:
    - Translate business language into Lexicon labels, properties, indexes, and edge paths.
    - Build one focused query or dataset contract per table, KPI card, or chart widget. Name the widget alongside the query so the user can trace every number back to the widget that requested it.
+   - For every dataset contract, explicitly record the requested entity, population filter, metric calculation, grouping, sorting, and row limit before querying. If any part is unknown, ask the user instead of choosing a substitute.
+   - Keep the report surface limited to the requested widgets/tables/charts. Do not add unrelated KPIs, charts, exploratory sections, sample tables, or broad dashboard defaults unless the user explicitly asks for them.
+   - Validate that the query result answers the requested business question before building the preview. If the result only answers a weaker or different question, stop and ask for the missing filter or definition.
    - Clearly tell the user that each new widget/table needs its own stated question and query. If the user asks for a broad report without naming widgets, propose a small widget list and confirm it before querying.
    - Avoid one large report-wide Gremlin query that tries to compute every widget at once. Split the work into simple indexed queries, bounded bucket queries, or backend rollup artifacts so failures and timings are isolated per widget.
    - Prefer the simplest indexed traversal that answers the question.
