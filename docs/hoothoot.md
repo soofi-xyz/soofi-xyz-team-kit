@@ -34,8 +34,8 @@ I will find the relevant Persist data model, create focused queries, ask how you
 - The table, KPI card, or chart widgets you want.
 - The business question each widget must answer.
 - How the report should look: layout, chart style, table columns, labels, colors, or examples to match.
-- For AWS access, tell Hoothoot what you have: "I think I have a prod profile", "I use SSO", "I have a credentials CSV", or "I do not know".
-- If you received an AWS credentials CSV, provide only the local file path and the profile name you want Hoothoot to create.
+- For AWS access, Hoothoot should always offer these choices: "I have a prod AWS profile", "I use SSO", "I have an AWS credentials CSV", "I have another local credentials file or profile", or "I do not know".
+- If you received an AWS credentials CSV, provide only the local file path, the profile name you want Hoothoot to create, and the AWS region. Hoothoot should create or update the profile for you and verify the prod account.
 - Persist fields, filters, companies, dates, or account populations if you know them.
 
 Do not provide GitHub repository, deployment, authentication, catalog, or refresh-schedule details in the first prompt unless you already know you want to publish. Hoothoot should ask for those only after you approve the local preview.
@@ -59,6 +59,7 @@ Hoothoot uses prod Persist for report data. You do not need to write export comm
 What Hoothoot should do for you:
 - Check local AWS profiles when the AWS CLI is available.
 - Help locate likely credentials if you do not know the profile name, including checking configured AWS profiles and asking whether you use SSO or have a downloaded credentials CSV.
+- Always offer the credentials CSV path option when AWS access is missing. It should not ask only for a prod AWS profile.
 - Ask you to pick the right prod profile only if there is more than one possible choice.
 - Verify the selected profile and explain which AWS account it can access.
 - If your profile uses SSO, start the login flow and ask you only to finish the browser login.
@@ -102,7 +103,7 @@ My AWS credentials CSV is at /Users/me/Downloads/credentials.csv.
 Set it up as the profile prod-reporting in us-east-2.
 ```
 
-Hoothoot can import the CSV locally, configure the named profile, and verify access without printing the credential values. After the profile is working, delete the downloaded CSV from your machine.
+Hoothoot can import the CSV locally, configure the named profile, and verify access without printing the credential values. The user should not have to run `aws configure` manually. After the profile is working, delete the downloaded CSV from your machine.
 
 Use SSO when available. Credentials CSV files should be treated as sensitive fallback setup material.
 
