@@ -70,6 +70,7 @@ If you already know which specialist you need, skip the router and call them dir
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/163.png" alt="Hoothoot" width="96"> | [`hoothoot`](./agents/hoothoot.md) | Prod Persist-only reporting agent — current counts, tables, charts, local previews, secure static HTML reports, scheduled AWS refresh, shared Microsoft Azure SSO access, and Amplify deployments. | `/hoothoot Build a Persist report. Ask path, then AWS.`<br>[Guide](./docs/hoothoot.md) |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/064.png" alt="Kadabra" width="96"> | [`kadabra`](./agents/kadabra.md) | Top-level SMS communication service builder — composes `xatu`, `wigglytuff`, `chatot`, and `oranguru` and owns the golden prompt. | `/kadabra Build SMS service...` |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/707.png" alt="Klefki" width="96"> | [`klefki`](./agents/klefki.md) | Files portal builder — Cognito Managed Login, private S3 folder browsing, per-user grants, custom-domain CloudFront hosting, and Figma-driven UI. | `/klefki Build file portal...` |
+| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/448.png" alt="Lucario" width="96"> | [`lucario`](./agents/lucario.md) | Media-processing operations agent builder — Asana-triggered M2D run orchestration, replay and approval flows, Interprose verification, and PR-first config/code workflows. | `/lucario Build an M2D operations agent...` |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/068.png" alt="Machamp" width="96"> | [`machamp`](./agents/machamp.md) | Designs and implements AWS batch workflows with strategy selection, cost gates, throttling, idempotency, and staged test pipelines. | `/machamp Build batch workflow...` |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/052.png" alt="Meowth" width="96"> | [`meowth`](./agents/meowth.md) | Cursor spend-limit approval workflow builder — EventBridge Scheduler starts a Step Functions Standard state machine (Plan → Map over candidate users → `WaitForTaskToken` Asana approval per user → VerifyAndApply → Aggregate). Opens an Asana task in a configured project assigned to a configured approver when a user crosses a configurable threshold of their `monthlyLimitDollars`, and on task completion the webhook Lambda completes the task token so the state machine raises the user's limit by a configurable increment via `POST /teams/user-spend-limit`, with per-env SSM + Secrets Manager configuration, a DynamoDB cycle ledger, and DEV/PROD CI/CD. | `/meowth Build spend approval...` |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/376.png" alt="Metagross" width="96"> | [`metagross`](./agents/metagross.md) | Designs and scaffolds fullstack frontend-backend monorepos with Turborepo, Amplify, tRPC, Lambda, and CDK. | `/metagross Scaffold fullstack app...` |
@@ -138,6 +139,7 @@ soofi-xyz-cursor-plugin/
 │   ├── hoothoot.md
 │   ├── kadabra.md
 │   ├── klefki.md
+│   ├── lucario.md
 │   ├── machamp.md
 │   ├── meowth.md
 │   ├── metagross.md
