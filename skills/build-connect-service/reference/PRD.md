@@ -168,7 +168,7 @@ There are seven cohorts; the full per-task-type worker matrix lives in §3.5.1.
 #### 2.3.6 IAM (high-level)
 
 - The provider role is **never** wildcarded. Per-Lambda roles use `cdk.aws_iam.Grant.addToPrincipal` so each worker holds only the permissions it needs.
-- The `ConnectHandler` role has: `dynamodb:{Get,Put,Update,Delete,Query,DescribeTable}Item` on `FlowsTable` + `TokensTable`, `kms:{Encrypt,Decrypt,GenerateDataKey,DescribeKey}` on `DataKey`, `s3:{PutObject,GetObject,ListObjectsV2,ListBucket}` on `VendorsResponsesBucket`, `states:{StartExecution,DescribeExecution,GetExecutionHistory,StartSyncExecution,StopExecution,ListExecutions,ListMapRuns,DescribeMapRun,DeleteStateMachine}` on the relevant ARN prefixes, `events:{CreateConnection,UpdateConnection,DescribeConnection,DeleteConnection}` scoped to `arn:aws:events:<region>:<account>:connection/connect-*` (so the credential-management routes can mint and rotate the per-partner Connections that back native HTTP Tasks), `transfer:{CreateConnector,UpdateConnector,DeleteConnector,DescribeConnector,TagResource,UntagResource}` scoped to `arn:aws:transfer:<region>:<account>:connector/*`, `scheduler:{CreateSchedule,UpdateSchedule,DeleteSchedule,GetSchedule}` scoped to the `connect-sftp-schedules` group, plus `lambda:InvokeFunction` on the `SftpPoller` ARN (for `POST /vendors/{vendor_name}/sftp/test-connection`).
+- The `ConnectHandler` role has: `dynamodb:{Get,Put,Update,Delete,Query,DescribeTable}Item` on `FlowsTable` + `TokensTable`, `kms:{Encrypt,Decrypt,GenerateDataKey,DescribeKey}` on `DataKey`, `s3:{PutObject,GetObject,ListObjectsV2,ListBucket}` on `VendorsResponsesBucket`, `states:{StartExecution,DescribeExecution,GetExecutionHistory,StartSyncExecution,StopExecution,RedriveExecution,ListExecutions,ListMapRuns,DescribeMapRun,DeleteStateMachine}` on the relevant ARN prefixes, `events:{CreateConnection,UpdateConnection,DescribeConnection,DeleteConnection}` scoped to `arn:aws:events:<region>:<account>:connection/connect-*` (so the credential-management routes can mint and rotate the per-partner Connections that back native HTTP Tasks), `transfer:{CreateConnector,UpdateConnector,DeleteConnector,DescribeConnector,TagResource,UntagResource}` scoped to `arn:aws:transfer:<region>:<account>:connector/*`, `scheduler:{CreateSchedule,UpdateSchedule,DeleteSchedule,GetSchedule}` scoped to the `connect-sftp-schedules` group, plus `lambda:InvokeFunction` on the `SftpPoller` ARN (for `POST /vendors/{vendor_name}/sftp/test-connection`).
 - The compilation pipeline workers add `states:{CreateStateMachine,UpdateStateMachine}` and `iam:PassRole` for `RuntimeStateMachineRole` only.
 - The `**RuntimeStateMachineRole`** (assumed by every compiled flow / lookup state machine) holds: `lambda:InvokeFunction` on the residual worker ARNs (multipart, blob, file, static-IP HTTP, `SftpPoller`, `WidgetService`, `CreateProxyLinkWorker`, `CleanupApigwWorker`, `ReplyBackWorker`, `SendHealthMetricWorker`, the auth-helper workers, etc.); `dynamodb:PutItem` on `FlowsTable` for webhook task-token registration through `arn:aws:states:::aws-sdk:dynamodb:putItem.waitForTaskToken`; `**states:InvokeHTTPEndpoint**` scoped to its own state-machine ARN with a `states:HTTPEndpoint` condition listing the partner host allow-list and a `states:HTTPMethod` condition listing the verbs the flow uses (compiler-stamped per flow); `**events:RetrieveConnectionCredentials**` scoped to the EventBridge Connection ARNs the flow references; and `secretsmanager:GetSecretValue` on the secret ARNs created by those Connections (EventBridge stores connection credentials in Secrets Manager). No wildcard HTTP egress permission is ever granted — the host allow-list is recomputed at compile time from the spec's `URL` fields.
 - The streaming HTTP worker roles (`HttpJsonStreamingWorker`, `HttpXmlStreamingWorker`, `HttpAnyStreamingWorker`, `FormUrlEncodedStreamingWorker`, plus the static-IP variants when `ResponseMode="S3"`) hold only `s3:PutObject|GetObject` on `VendorsResponsesBucket/<job_id>/` response prefixes, `kms:Encrypt|GenerateDataKey` on `DataKey` when KMS-backed object metadata is used, and read access to the EventBridge Connection-managed secret needed to sign the outbound request. They stream partner bodies with backpressure and never buffer an unbounded response in memory.
@@ -544,7 +544,7 @@ The HTTP layer is the authoritative tag-to-status mapper. Each error is a struct
 | 400     | `BadRequest`, `BAD_REQUEST_BODY`, `BAD_REQUEST_PARAMETERS`, `ZodValidationError`, `IncorrectStringParametersError`, `IncorrectPathParametersError`, `FlowSpecValidationError`, `InvalidRequestPayloadError`, `InvalidNextToken`, `NoRequestIdFoundInPayload`, `RequestIdNotFoundNoPendingFlow` |
 | 401/403 | `Unauthorized` (webhook auth), API-Gateway `INVALID_API_KEY`                                                                                                                                                                                                                                   |
 | 404     | `VendorNotFound`, `FlowNotFound`, `LookupNotFound`, `ConfigurationNotFound`, `ExecutionNotFound`, `TokenNotFound`, `SftpConnectorNotConfigured`                                                                                                                                                |
-| 409     | `VendorAlreadyExists`, `FlowAlreadyExists`, `LookupAlreadyExists`, `TokenNameAlreadyExists`, `PartnerConfigurationAlreadyExists`, `RequestIdAlreadyProcessed`                                                                                                                                  |
+| 409     | `VendorAlreadyExists`, `FlowAlreadyExists`, `LookupAlreadyExists`, `TokenNameAlreadyExists`, `PartnerConfigurationAlreadyExists`, `RequestIdAlreadyProcessed`, `ExecutionNotRedrivable`                                                                                                      |
 | 413     | `JobInputTooLarge` (mirrors Step Functions `States.DataLimitExceeded`)                                                                                                                                                                                                                         |
 | 422     | `CannotContinueFlowTimeout`, `CannotContinueFlowExpired`, `CannotContinueFlowCorruptState`, `CannotContinueFlowBase`, `AccountManagerUnavailable`, `SftpListingTimeout`                                                                                                                        |
 | 429     | `ThrottlingException` (Step Functions, AWS APIs) → `TooManyRequests`                                                                                                                                                                                                                           |
@@ -637,14 +637,16 @@ For `entity=lookups`: invokes the EXPRESS state machine via `StartSyncExecutionC
 ### 4.7 Batch aggregation (`GET /batch-executions/{batch_execution_id}/aggregation`)
 
 - Calls `DescribeExecutionCommand`, `ListMapRunsCommand({maxResults: 1})`, then `DescribeMapRunCommand`.
-- Returns `{ batch_execution_status, batch_execution_id, batch_execution_items_aggregation: { pending, running, succeeded, failed, timed_out, aborted, total }, batch_execution_executions_aggregation: {...same…} }`. Adds an `error: { error, cause }` block when the SFN status ∈ `{ABORTED, FAILED, TIMED_OUT}`.
+- Returns `{ batch_execution_status, batch_execution_id, batch_execution_items_aggregation: { pending, pending_redrive, running, succeeded, failed, timed_out, aborted, total }, batch_execution_executions_aggregation: {...same…} }`. Adds an `error: { error, cause }` block when the SFN status ∈ `{ABORTED, FAILED, TIMED_OUT}`.
 - 404 on `ExecutionDoesNotExist` / `ValidationException` / missing map run.
+- `POST /batch-executions/{batch_execution_id}/redrive` — calls `RedriveExecutionCommand` on the batch parent execution ARN. For failed Distributed Map runs, Step Functions redrives unsuccessful map children from the parent workflow; Connect must not enumerate child executions or call `StartExecution` itself. Body and error mapping match the job redrive route in §4.8.
 
 ### 4.8 Job status & history
 
-- `GET /vendors/{vendor_name}/flows/{flow_name}/jobs/{job_id}` (`?detailed=…&next_token=…&reverse_order=…&max_results=…`). Tails `DescribeExecutionCommand` + `GetExecutionHistoryCommand`. Detailed mode includes per-state `input_details.request_payload` and `output_details.response_payload` (sanitised through `representations.flowExecutionHistoryErrorCauseNormalizer`). Always returns `executed_events`, `last_event`, `details`, plus an `input` block (`transaction_id`, collection IDs, `callback_url`) and `output` block (`response_payload`, `extraction_errors`). When the request comes from an authoriser context with `disableDataDisplay=true`, `detailed` is forced to `false`, `callback_url` is stripped from `input`, and `output` is emptied. 404 falls back to `tryStatusCorrectionFromInvoker(job_id)` so an in-progress decorator execution still returns `IN_PROGRESS`.
-- `GET /vendors/{vendor_name}/flows/{flow_name}/executions` — `ListExecutionsCommand` over the runtime SFN (or the map-run when `batch_execution_id` is supplied). Supports `next_token`, `status_filter`, `max_results` (Zod-validated). 400 on invalid `next_token`.
+- `GET /vendors/{vendor_name}/flows/{flow_name}/jobs/{job_id}` (`?detailed=…&next_token=…&reverse_order=…&max_results=…`). Tails `DescribeExecutionCommand` + `GetExecutionHistoryCommand`. Detailed mode includes per-state `input_details.request_payload` and `output_details.response_payload` (sanitised through `representations.flowExecutionHistoryErrorCauseNormalizer`). Always returns `executed_events`, `last_event`, `details`, plus an `input` block (`transaction_id`, collection IDs, `callback_url`), an `output` block (`response_payload`, `extraction_errors`), and `redrive: { count, date?, status, status_reason? }` copied from Step Functions `redriveCount`, `redriveDate`, `redriveStatus`, and `redriveStatusReason` when available. When the request comes from an authoriser context with `disableDataDisplay=true`, `detailed` is forced to `false`, `callback_url` is stripped from `input`, and `output` is emptied. 404 falls back to `tryStatusCorrectionFromInvoker(job_id)` so an in-progress decorator execution still returns `IN_PROGRESS`.
+- `GET /vendors/{vendor_name}/flows/{flow_name}/executions` — `ListExecutionsCommand` over the runtime SFN (or the map-run when `batch_execution_id` is supplied). Supports `next_token`, `status_filter`, `max_results` (Zod-validated); `status_filter` includes Step Functions' `PENDING_REDRIVE` status. 400 on invalid `next_token`.
 - `POST /vendors/{vendor_name}/flows/{flow_name}/jobs/{job_id}` — `StopExecutionCommand`. 201 `{ job_id, status: "ABORTED", stop_date }`. 404 on `ExecutionDoesNotExist`.
+- `POST /vendors/{vendor_name}/flows/{flow_name}/jobs/{job_id}/redrive` — redrives an unsuccessful STANDARD Step Functions execution via [`RedriveExecution`](https://docs.aws.amazon.com/step-functions/latest/apireference/API_RedriveExecution.html). Body: `{ client_token?: string }`, where `client_token` maps directly to AWS `clientToken` (`1..64` printable ASCII chars) and should be supplied by callers that may retry the HTTP request; Step Functions keeps idempotent responses for the last 10 successful client tokens for up to 15 minutes. Connect first resolves the job's execution ARN and calls `DescribeExecutionCommand({ includedData: "METADATA_ONLY" })`; if `redriveStatus !== "REDRIVABLE"`, return `409 ExecutionNotRedrivable` with `{ status, redrive_status, redrive_status_reason }`. Otherwise call `RedriveExecutionCommand({ executionArn, clientToken })`. Success returns `202` with `{ job_id, execution_arn, status, redrive_date, redrive_count }`; `status` and `redrive_count` come from a best-effort follow-up `DescribeExecutionCommand` and may lag because Step Functions `DescribeExecution` is eventually consistent. `ExecutionDoesNotExist` maps to 404, `ExecutionLimitExceeded` / Step Functions throttling maps to 429, and transient SFN failures map to `503 StepFunctionsTransientError`.
 
 ### 4.9 Webhooks (`POST /vendors/{vendor_name}/flows/{flow_name}/webhook`)
 
@@ -696,8 +698,9 @@ Each route scopes its own dependency container so that a config error in an unre
 - **Credentials router** depends on: `FlowsRepository`, `CredentialVaultService`, `EventBridgeConnectionRegistry`, and KMS encryption helpers.
 - **Configurations router** depends on: `PartnerConfigurationsRepository`.
 - **Constructor router** depends on: `FlowsRepository`, `flowCreateSchema`, `flowUpdateSchema`, `lookupCreateSchema`, `lookupUpdateSchema`, `S3CreationStore`, `SfnClient`.
-- **Jobs router** depends on: `FlowsRepository`, `PartnerConfigurationsRepository`, `WidgetService`, `SfnClient`, `MetricsBuffer`.
-- **Batch router** depends on: `FlowsRepository`, `BatchInputPreparer`, `S3Client`, `SfnClient`.
+- **Jobs router** depends on: `FlowsRepository`, `PartnerConfigurationsRepository`, `WidgetService`, `SfnClient`, `ExecutionRedriveService`, `MetricsBuffer`.
+- **Batch router** depends on: `FlowsRepository`, `BatchInputPreparer`, `S3Client`, `SfnClient`, `ExecutionRedriveService`.
+- **Execution redrive service** is shared by jobs and batch routes; it resolves the canonical execution ARN, calls `DescribeExecution`, enforces `redriveStatus === "REDRIVABLE"`, invokes `RedriveExecution`, and emits redrive metrics.
 - **Webhooks router** depends on: `FlowsRepository`, `WebhookConditionEvaluator`, `XmlConverter`, `SfnClient` (for `SendTaskSuccess`), `HealthMetricClient`.
 - **Tokens router** depends on: `TokensRepository`.
 - **Static-IP router** depends on: the EC2 client + the two enable/disable SFN ARNs.
@@ -754,6 +757,9 @@ invokeStepFunction       (states:startExecution.sync:2 → $.['__internal.arn_sf
 PostProcessing           (Parallel)
    ├── SendMetric        (Lambda: SendHealthMetricWorker — pushes flow-completion metric to code-health-checker)
    └── ReplyBackErrorBackup (Lambda: ReplyBackWorker)
+FinalizeOriginalStatus
+   ├── $.error present → ExecutionFailedTerminator (Type: Fail)
+   └── otherwise       → Done
 ```
 
 `ReplyBackWorker` is the cross-cutting integration callback. It can run as the natural last step of a successful flow (called from inside the runtime SFN as `ReplyBack`) or as a backup after a `States.Runtime` / `States.DataLimitExceeded` error (called from this branch). It POSTs to the caller-supplied `callback_url` with:
@@ -772,6 +778,14 @@ PostProcessing           (Parallel)
 ```
 
 Headers always include `x-api-key` (the original caller's) and `X-Sc-Trace-Id`. Any non-2xx callback raises `CallProductError` and is retried up to 9 times (with `_WatcherThrottled` back-pressure honoured for `ThrottlingException`).
+
+#### 5.2.1 Execution redrive semantics
+
+Connect redrive is a thin wrapper over AWS Step Functions [`RedriveExecution`](https://docs.aws.amazon.com/step-functions/latest/apireference/API_RedriveExecution.html), not a new `StartExecution` run. The redriven execution keeps the same execution ARN, same input, same state-machine definition, and appends redrive events to the existing execution history. Successful states are not rerun; Step Functions resumes from the failed, aborted, or timed-out state. For `Parallel` and inline `Map` states, only unsuccessful branches / iterations are redriven. For the batch `Distributed Map`, Connect redrives the parent execution; Step Functions handles unsuccessful child workflows and map-run state.
+
+Eligibility is AWS-owned and is checked with `DescribeExecution.redriveStatus` before the mutating call. Connect treats `REDRIVABLE` as the only allowed value and rejects `NOT_REDRIVABLE` / `REDRIVABLE_BY_MAP_RUN` with `409 ExecutionNotRedrivable`. The main AWS constraints to surface in `details` are: Standard workflows only (lookups are EXPRESS and cannot be redriven), execution status is not `SUCCEEDED` or `RUNNING`, execution was started on or after 2023-11-15, redrive is within 14 days after execution close, maximum open time has not exceeded one year, and execution history has fewer than 24,999 events. Retry counters on redriven `Task`, `Parallel`, and inline `Map` states reset to zero for the redrive attempt.
+
+Because native redrive requires an unsuccessful Step Functions execution, Connect failure handling must preserve terminal failure for redrive-eligible jobs. `ReplyBackError` still runs before completion so the caller receives `job_status=Failed`, but partner/runtime failures must then terminate the canonical job execution as `FAILED`, `TIMED_OUT`, or `ABORTED` rather than swallowing the error into a successful wrapper execution. If a flow's failure path intentionally converts an error into business success, the job is not redrivable and the redrive route returns the AWS `redriveStatusReason`.
 
 ### 5.3 Server-side polling (`InvocationPollerStateMachine`)
 
@@ -1176,7 +1190,7 @@ The shape is deliberately a strict superset of what `build-inbound-sftp-workflow
 - Each request gets an `x-sc-trace-id` (UUID) emitted in response headers and recorded in every CloudWatch log entry. The shared `withRequestContext()` middleware (`lambda/http/request-context.ts`) binds it on entry; outbound vendor callers (`callVendorApi`) and the reply-back POST forward `X-Sc-Trace-Id` so downstream systems can correlate.
 - **Powertools Tracer** (X-Ray) is enabled on every Lambda — `tracer.captureLambdaHandler(handler)` and `tracer.captureAWSv3Client(...)` for every AWS SDK client.
 - **Powertools Logger** is JSON-only (`POWERTOOLS_LOG_LEVEL=INFO`). Each handler binds Lambda context once, appends a request-scoped key (`creation_id`, `job_id`, `batch_execution_id`, `request_id`, `task_token`, `vendor_name`, `flow_name`), and resets the keys in `finally`.
-- **Powertools Metrics** are emitted with namespace `connect`. Buffered counters: `jobs_started`, `jobs_completed`, `jobs_failed`, `webhooks_received`, `webhooks_resolved`, `partner_call_errors`, `sftp_listings_started`, `sftp_listings_completed`, `sftp_listings_timed_out`, `sftp_files_transferred`, `sftp_transfer_errors`, with dimensions `{vendor_name, flow_name, status}` (and `direction ∈ inbound|outbound` for SFTP counters). The buffer is flushed in the API handler's `finally` block and in every worker's `finally` block. **Every metric MUST be registered in the Lexicon product's `cloudwatch-metrics.json` artifact and surfaced on the [Main Dashboard](https://github.com/Spring-Oaks-Capital-LLC/main-dashboard) before merge** (per `observability-metrics`).
+- **Powertools Metrics** are emitted with namespace `connect`. Buffered counters: `jobs_started`, `jobs_completed`, `jobs_failed`, `jobs_redrive_requested`, `jobs_redriven`, `jobs_redrive_rejected`, `webhooks_received`, `webhooks_resolved`, `partner_call_errors`, `sftp_listings_started`, `sftp_listings_completed`, `sftp_listings_timed_out`, `sftp_files_transferred`, `sftp_transfer_errors`, with dimensions `{vendor_name, flow_name, status}` (and `direction ∈ inbound|outbound` for SFTP counters). The buffer is flushed in the API handler's `finally` block and in every worker's `finally` block. **Every metric MUST be registered in the Lexicon product's `cloudwatch-metrics.json` artifact and surfaced on the [Main Dashboard](https://github.com/Spring-Oaks-Capital-LLC/main-dashboard) before merge** (per `observability-metrics`).
 
 ### 7.3 Retry classification
 
@@ -1187,6 +1201,7 @@ A shared classifier (`lambda/utils/retry.ts`) inspects the lower-cased error nam
 | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Compilation SFN tasks          | Lambda-side: `Lambda.TooManyRequestsException` (8 attempts × 2 backoff). Catch all: route to `FailState`.                                                                                                                                                                                                                                                                                                 |
 | Runtime decorator              | `StepFunctions.ExecutionLimitExceeded` (10 attempts, linear). Otherwise capture `States.ALL` and run the post-processing branch with `$.error` populated.                                                                                                                                                                                                                                                 |
+| Execution redrive API          | `ExecutionNotRedrivable` maps to `409` with AWS `redriveStatusReason`; `ExecutionLimitExceeded` / throttling maps to `429`; `ExecutionDoesNotExist` maps to `404`; other retriable SFN client errors map to `503 StepFunctionsTransientError`.                                                                                                                                                             |
 | Reply-back / metric branch     | Retries on `Lambda.{ServiceException,AWSLambdaException,SdkClientException,TooManyRequestsException,Unknown}`, `Extension.Crash`, `_WatcherThrottled`, `HTTPError`, `ConnectionError`, `CallProductError` (latter only on reply-back). 10 attempts, 2 s base × 1.5 backoff.                                                                                                                               |
 | Static-IP provisioning         | Per-step retries on Lambda errors; `WaitSignalIfNatIsNotYetCreated` is retried 10× exponentially (worst case ≈85 min).                                                                                                                                                                                                                                                                                    |
 | Vendor outbound calls          | Caller-controlled. The `callVendorApi` helper raises `CallVendorError` on non-2xx and stamps `partner_status_code_for_health_report` for the health pipeline.                                                                                                                                                                                                                                             |
@@ -1334,10 +1349,10 @@ For request signing the README ships a `bash`/`zsh` `awscurl` helper that wraps 
 
 1. **Repo skeleton**: pnpm workspace, TypeScript, `tsconfig.{base,build,app,src,test}.json`, ESLint, Prettier (with import sort), husky + lint-staged, Vitest. Package name is internal.
 2. **Runtime dependencies**: `@aws-lambda-powertools/{logger,tracer,metrics,parameters}`, `@aws-sdk/client-{dynamodb,s3,sfn,apigateway,ec2,kms,lambda,ssm,sts,transfer,secrets-manager,scheduler,eventbridge}`, `@aws-sdk/lib-dynamodb`, `@aws-sdk/s3-request-presigner`, `@smithy/{config-resolver,node-config-provider,protocol-http,signature-v4}`, `aws4`, `zod`, `zod-to-json-schema`, `undici`, `fast-xml-parser`, `csv-parse`, `csv-stringify`. CDK: `aws-cdk-lib`, `constructs`, `aws-cdk`. **No `ssh2`, `ssh2-sftp-client`, `vm2`, `isolated-vm`, Python dependencies, Serverless Framework, SAM, Terraform, or Pulumi.**
-3. **Schemas / contracts**: one Zod module per group in `lambda/schemas/` — `vendor`, `vendor-credentials`, `partner-configuration`, `flow`, `lookup`, `flow-spec`, `flow-invoke`, `batch`, `webhook`, `token`, `static-ip`, `sftp`, `errors`. Errors are tagged classes; everything else is type+validator pairs.
+3. **Schemas / contracts**: one Zod module per group in `lambda/schemas/` — `vendor`, `vendor-credentials`, `partner-configuration`, `flow`, `lookup`, `flow-spec`, `flow-invoke`, `batch`, `redrive`, `webhook`, `token`, `static-ip`, `sftp`, `errors`. Errors are tagged classes; everything else is type+validator pairs.
 4. **Utils**: `lambda/utils/{xml-converter,jsonpath,sigv4,retry,errors,duration,size-guard}.ts`.
 5. **Configuration**: `lambda/config/{env,sfn,kms,api-gateway,sftp}.ts` plus per-service config readers tied to the env vars listed in §2.4. Required vars must throw at startup; optional vars must default per §2.4.
-6. **Services** (one file each in `lambda/services/`): `FlowsRepository`, `PartnerConfigurationsRepository`, `TokensRepository`, `CredentialVaultService`, `EventBridgeConnectionRegistry`, `FlowCompiler` (with sub-modules `transformation`, `authorization`, `dry-run`, `creation-and-saving`, `compiler/{const,parameters,to-vendor,general,map-state,lambda-arns,dynamicity-switcher,instructions}`), `WebhookConditionEvaluator`, `WebhookErrorCodes`, `BatchInputPreparer`, `BatchPostProcessor`, `WidgetService`, `ProxyLinkManager`, `S3CreationStore`, `SftpConnectorRegistry`, `HealthMetricClient`, `MetricsBuffer`, plus a composition module `services/index.ts` that exports per-router and per-handler dependency containers.
+6. **Services** (one file each in `lambda/services/`): `FlowsRepository`, `PartnerConfigurationsRepository`, `TokensRepository`, `CredentialVaultService`, `EventBridgeConnectionRegistry`, `FlowCompiler` (with sub-modules `transformation`, `authorization`, `dry-run`, `creation-and-saving`, `compiler/{const,parameters,to-vendor,general,map-state,lambda-arns,dynamicity-switcher,instructions}`), `WebhookConditionEvaluator`, `WebhookErrorCodes`, `BatchInputPreparer`, `BatchPostProcessor`, `ExecutionRedriveService`, `WidgetService`, `ProxyLinkManager`, `S3CreationStore`, `SftpConnectorRegistry`, `HealthMetricClient`, `MetricsBuffer`, plus a composition module `services/index.ts` that exports per-router and per-handler dependency containers.
 7. **Workers** (one file each in `lambda/workers/`): one per `Type` in §3.5.1 — `post-multipart`, `put-multipart`, `post-blob`, `put-blob`, `post-base64`, `post-form-url-encoded`, `get-file`, `widget`, `link-transformation`, `progressive-waiting`, `token-management-get`, `token-management-set`, `fake-range-creator`, `process-fail-states`, `reply-back`, `dry-run`, `get-credentials`, `get-authorization`, `token-management-auth`, `send-health-metric`, `cleanup-apigw`, plus the streaming/static-IP HTTP workers described in §5.9. Each worker imports `tracer.captureLambdaHandler` and `logger.injectLambdaContext`.
 8. **SFTP fabric**: `lambda/sftp/poller.ts` (`SftpPoller`, listing-first per `build-inbound-sftp-workflows`), `lambda/sftp/connector-config.ts` (runtime per-partner config loader from `FlowsTable`), and route/service modules that create/import/update/delete AWS Transfer Family connectors plus EventBridge schedules at runtime. No CDK construct mints per-partner connectors in the pre-synthesized bundle.
 9. **Compilation pipeline**: `lambda/flow-creation/{transform-flow,transform-lookup,add-pass-through,add-call-api,add-call-token-management,add-credentials,add-dry-run,validate-asl,create-runtime-state-machine,update-runtime-state-machine,save-flow}.ts`.
@@ -1360,6 +1375,7 @@ A re-implementation is considered functionally complete when:
 - Creating a flow with `authorization.credentials ∈ {preset,static,dynamic}` × `authorization.mode ∈ {pass_through,call_api,token_management}` always lands on a real, validated runtime state machine.
 - A flow that contains a `Fail` state always closes with a callback POST to `callback_url` carrying `job_status=Failed`, the canonicalised cause, and the matching status code.
 - A flow that contains a `WAIT_FOR_TASK_TOKEN` step compiles to `arn:aws:states:::aws-sdk:dynamodb:putItem.waitForTaskToken`, creates the pending `REQUEST#<request_id>` row before waiting, is resolvable via the inbound webhook route, and survives the full `WebhookErrorCode → custom-status mapping` matrix in §3.7 / §6.1.
+- `POST /vendors/{vendor_name}/flows/{flow_name}/jobs/{job_id}/redrive` and `POST /batch-executions/{batch_execution_id}/redrive` call Step Functions `RedriveExecution` on the existing STANDARD execution ARN, never start a replacement execution, expose `redrive` metadata through status/history APIs, and reject non-redrivable executions with `409 ExecutionNotRedrivable`.
 - Batch executions paginate per-item outputs back to S3 and surface accurate per-status counts via the aggregation API.
 - Async flow inputs ≥ 256 KiB are rejected at the API layer with `413 JobInputTooLarge` before reaching Step Functions.
 - The ASL validator catches every spec the compiler can emit; specs that pass validation can always be installed via `CreateStateMachine` / `UpdateStateMachine`.
@@ -1612,7 +1628,13 @@ HTTP/1.1 200 OK
   ],
   "input":  { "transaction_id": "txn-2026-05-04-0001", "request_collection_id": "applicant-9001",
               "response_collection_id": "credit-report-9001", "callback_url": "https://…/callback" },
-  "output": null
+  "output": null,
+  "redrive": {
+    "count": 0,
+    "date": null,
+    "status": "NOT_REDRIVABLE",
+    "status_reason": "Execution is RUNNING and cannot be redriven"
+  }
 }
 ```
 
@@ -1652,6 +1674,29 @@ HTTP/1.1 201 Created
 { "job_id": "5e8b1a07-9c4d-4ec1-9f6a-1b3a2c5d4e7f", "status": "ABORTED", "stop_date": "2026-05-04 15:14:08.001" }
 ```
 
+#### 11.9.1 Redrive an unsuccessful job
+
+```http
+POST /connector-jobs/vendors/acme-bureau/flows/pull-credit-report/jobs/5e8b1a07-9c4d-4ec1-9f6a-1b3a2c5d4e7f/redrive
+Content-Type: application/json
+
+{ "client_token": "retry-5e8b1a07-001" }
+```
+
+```json
+HTTP/1.1 202 Accepted
+
+{
+  "job_id": "5e8b1a07-9c4d-4ec1-9f6a-1b3a2c5d4e7f",
+  "execution_arn": "arn:aws:states:us-east-2:123456789012:execution:connect-acme-pull-credit-report:5e8b1a07-9c4d-4ec1-9f6a-1b3a2c5d4e7f",
+  "status": "RUNNING",
+  "redrive_date": "2026-05-04T15:22:30.000Z",
+  "redrive_count": 1
+}
+```
+
+If Step Functions reports `NOT_REDRIVABLE`, Connect returns `409 ExecutionNotRedrivable` with the AWS `redriveStatusReason`, for example `Execution is SUCCEEDED and cannot be redriven` or `Execution redrivable period exceeded`.
+
 ### 11.10 Batch execution
 
 ```http
@@ -1682,9 +1727,9 @@ HTTP/1.1 200 OK
   "batch_execution_status": "RUNNING",
   "batch_execution_id": "b7d2a44c-6c0a-4e22-9ad0-2f1d3e4a5b6c",
   "batch_execution_items_aggregation":
-    { "pending": 0, "running": 12, "succeeded": 88, "failed": 0, "timed_out": 0, "aborted": 0, "total": 100 },
+    { "pending": 0, "pending_redrive": 0, "running": 12, "succeeded": 88, "failed": 0, "timed_out": 0, "aborted": 0, "total": 100 },
   "batch_execution_executions_aggregation":
-    { "pending": 0, "running": 12, "succeeded": 88, "failed": 0, "timed_out": 0, "aborted": 0, "total": 100 }
+    { "pending": 0, "pending_redrive": 0, "running": 12, "succeeded": 88, "failed": 0, "timed_out": 0, "aborted": 0, "total": 100 }
 }
 ```
 

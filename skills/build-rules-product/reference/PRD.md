@@ -1,6 +1,6 @@
 # Rules Product - Product Requirements Document (PRD)
 
-Authoritative blueprint for building the **Rules** marketplace product. It captures the batch workflow, rule contracts, graph-read behaviour, output artifacts, metrics, and infrastructure topology enforced by the current implementation in `../implementation/filter`, with the public product name normalised to **Rules**. The implementation language is **TypeScript everywhere** except Glue Python Shell preparation jobs; infrastructure is **AWS CDK only**, deployed to the installer-supplied tenant AWS region, per the Golden Path engineering standards.
+Authoritative blueprint for building the **Rules** marketplace product. It captures the batch workflow, synchronous single-entity execution path, rule contracts, graph-read behaviour, output artifacts, metrics, and infrastructure topology enforced by the current implementation in `../implementation/filter`, with the public product name normalised to **Rules**. The implementation language is **TypeScript everywhere** except Glue Python Shell preparation jobs; infrastructure is **AWS CDK only**, deployed to the installer-supplied tenant AWS region, per the Golden Path engineering standards.
 
 ---
 
@@ -8,7 +8,7 @@ Authoritative blueprint for building the **Rules** marketplace product. It captu
 
 ### 1.1 Mission
 
-Rules is a tenant-local batch decisioning product. It reads a population of debt identifiers, retrieves each debt's current graph facts through Persist, evaluates lexicon-backed contactability and eligibility rules, and writes the resulting callable debt and phone-number population to S3.
+Rules is a tenant-local decisioning product. It can run batch evaluations over a population of debt identifiers, and it can run synchronous ruleset evaluation for one debt identifier when a downstream product needs a point-in-time decision inside an interactive request path. In both modes, Rules retrieves current graph facts through Persist and evaluates lexicon-backed contactability and eligibility rules.
 
 Rules exists to make "who can we contact right now?" a repeatable, auditable batch workflow rather than a hardcoded report. The product compiles rule definitions published by the Lexicon product into Gremlin projections, runs those projections through Persist's SigV4-authenticated Gremlin API, classifies debts and phone numbers from the returned rule reports, and emits:
 
@@ -17,15 +17,18 @@ Rules exists to make "who can we contact right now?" a repeatable, auditable bat
 3. optional per-debt/per-phone rule reports for audit and debugging;
 4. CloudWatch metrics for suggested call counts, phone counts, rule-failure counts, and estimated/actual run cost.
 
+The synchronous path reuses the same ruleset loader, compiler, query builder, Persist client, and classifier, but it does not create Step Functions executions or S3 run artifacts. It accepts a single `debt_identifier`, returns the decision payload directly, and targets sub-300ms warm-path service latency.
+
 Rules is a **SERVICE** marketplace component because it deploys runtime infrastructure: Step Functions, Lambda, Glue, S3, CloudWatch Logs, and SSM outputs. It is not a DATA component and it is not a rule-authoring repository.
 
 ### 1.2 Primary user surface
 
-Rules does **not** expose a public REST API. Its primary surface is one tenant-local **AWS Step Functions STANDARD state machine** whose ARN is published to SSM and CloudFormation outputs at deploy time.
+Rules does **not** expose a public REST API. Its primary surfaces are a tenant-local **AWS Step Functions STANDARD state machine** for batch runs and an IAM-protected Lambda function for synchronous single-entity evaluation. Both discovery pointers are published to SSM and CloudFormation outputs at deploy time.
 
 | Surface | Identifier | Auth | Purpose |
 | ------- | ---------- | ---- | ------- |
 | **Batch workflow** | SSM `/rules/workflow/state-machine-arn` and stack output `StateMachineArn` | AWS IAM `states:StartExecution` | Run a rules evaluation batch over either a caller-supplied S3 population or the full Persist debt population. |
+| **Single-entity evaluator** | SSM `/rules/sync/evaluator-function-arn` and stack output `EvaluatorFunctionArn` | AWS IAM `lambda:InvokeFunction` | Evaluate one `debt_identifier` synchronously and return the same pass/fail classification used by the batch workflow. |
 | **Output bucket** | stack output `OutputBucketName` | AWS IAM/S3 | Read workflow outputs under `rules/<execution-start>/<execution-name>/...`. |
 | **Operational metrics** | CloudWatch namespace `CDM` | CloudWatch IAM | Observe accepted populations, rule failures, and cost signals. |
 
@@ -63,14 +66,52 @@ or, when `save_rules_reports=true`:
 }
 ```
 
+The synchronous evaluator input is:
+
+```jsonc
+{
+  "debt_identifier": "D001",
+  "ruleset_id": "phone", // optional; default phone
+  "rule_s3_uris": [
+    "s3://lexicon-bucket/rulesets/phone-interactions/rules/not_do_not_call/"
+  ], // optional explicit rule subset
+  "include_rules_report": false // optional; default false
+}
+```
+
+Successful synchronous evaluations return a direct decision payload:
+
+```jsonc
+{
+  "debt_identifier": "D001",
+  "accepted": true,
+  "ruleset_id": "phone",
+  "ruleset_version": "1.0.0",
+  "evaluated_at": "2026-05-19T12:34:56.000Z",
+  "latency_ms": 143,
+  "result": {
+    "debt_identifier": "D001",
+    "balance": 100.25,
+    "first_name": "Jane",
+    "last_name": "Doe",
+    "postal_code": "12345",
+    "tu_score": 650,
+    "preferred_language": "en",
+    "phone_numbers": []
+  }
+}
+```
+
+When `include_rules_report=true`, the response includes `rules_report` and each returned phone may include `phone_rules_report`. The main `result.phone_numbers` list still contains only phones that passed all phone-scoped rules.
+
 ### 1.3 Non-goals
 
-- Rules does **not** expose a public HTTP API or create an API Gateway base-path mapping. Callers start the workflow through AWS Step Functions/IAM.
+- Rules does **not** expose a public HTTP API or create an API Gateway base-path mapping. Batch callers start the workflow through AWS Step Functions/IAM. Synchronous single-entity callers invoke the IAM-protected evaluator Lambda directly unless a future product explicitly adds a private HTTP adapter.
 - Rules does **not** write to Persist, Neptune, or any graph store. Persist remains the only graph-persistence product; Rules is a read-only graph consumer.
 - Rules does **not** run Gremlin directly against Neptune. It calls Persist's `/persist/gremlin` and `/persist/gremlin-async` APIs with SigV4.
 - Rules does **not** own the lexicon or the rule repository. It consumes Lexicon product rulesets from S3 via the `/lexicon/rulesets-uri` SSM parameter or explicit `rule_s3_uris`.
 - Rules does **not** provide CRUD for rule definitions, rule approval, legal review, or rule publishing. Those belong to Lexicon product governance.
-- Rules does **not** guarantee that a passed debt is legally contactable in every downstream channel forever. It produces a point-in-time batch result based on graph data and rules available at execution time.
+- Rules does **not** guarantee that a passed debt is legally contactable in every downstream channel forever. It produces a point-in-time result based on graph data and rules available at execution time.
 - Rules does **not** orchestrate outbound communications. Downstream communication products consume its output; Rules never sends SMS, email, calls, or letters.
 - Rules does **not** synthesise its own subdomain, ACM certificate, Usage Plan, or tenant identity. It has no public API surface.
 - Rules does **not** preserve `Filter` as a public marketplace product name. Internal code may be migrated from `filter`, but product metadata, cost tags, stack outputs, SSM names, and CloudWatch dimensions must use `Rules`.
@@ -83,13 +124,14 @@ or, when `save_rules_reports=true`:
 
 These principles anchor every other section and override any conflicting design choice elsewhere in the codebase.
 
-1. **Step Functions is the workflow implementation layer.** Every batch run is expressed as a STANDARD Step Functions state machine with native `Choice`, `Wait`, `Map`, `Retry`, `Catch`, and service integrations. There is no Lambda-only orchestrator, chained-SQS batch driver, or in-process workflow runtime.
+1. **Step Functions is the batch workflow implementation layer.** Every batch run is expressed as a STANDARD Step Functions state machine with native `Choice`, `Wait`, `Map`, `Retry`, `Catch`, and service integrations. There is no Lambda-only orchestrator, chained-SQS batch driver, or in-process workflow runtime.
 2. **Persist is the graph boundary.** Rules reads graph data only through Persist's SigV4-authenticated APIs. It never connects to Neptune directly, never embeds Neptune endpoints, and never bypasses Persist's read policies.
 3. **Rulesets are lexicon-backed data inputs.** Rule definitions are JSON + Gremlin objects in S3. The runtime compiles supported rules at execution time; rule changes ship as ruleset data revisions, not Lambda code changes, as long as they stay within the supported semantic patterns.
 4. **Batch input is S3 or Persist discovery.** A caller may provide `input_s3_uri` containing CSV/Parquet files with `debt_id`, or omit it to let Rules discover every debt identifier through Persist async Gremlin and prepare batch input through Glue.
-5. **Outputs are immutable run artifacts.** Each execution writes under a unique output prefix. The workflow never mutates prior outputs and never updates graph rows based on a result.
-6. **Metrics are a side effect, not the source of truth.** S3 artifacts are authoritative for run results. CloudWatch metrics are operational summaries that can be missing or delayed without changing the execution output.
-7. **The canonical product identity is Rules.** Marketplace catalog metadata uses `component_id="Rules"` and `component_name="Rules"` / product name `Rules`. Lowercase `rules` is the service slug for source package names, SSM paths, S3 prefixes, tags, metrics dimensions, and internal resource names. Current implementation names like `FilterStack`, `project_name=filter`, and `serviceName=filter` are migration artifacts.
+5. **Single-entity execution is a synchronous read path.** The single-entity evaluator accepts exactly one canonical `debt_identifier`, uses the same compiled rule semantics as batch, performs one Persist `/persist/gremlin` read, and returns the classification directly. It does not start Step Functions, invoke Glue, write S3 artifacts, or emit batch cost metrics.
+6. **Outputs are immutable run artifacts.** Each batch execution writes under a unique output prefix. The workflow never mutates prior outputs and never updates graph rows based on a result.
+7. **Metrics are a side effect, not the source of truth.** S3 artifacts are authoritative for batch run results. Synchronous responses are authoritative for the single request that produced them. CloudWatch metrics are operational summaries that can be missing or delayed without changing either output contract.
+8. **The canonical product identity is Rules.** Marketplace catalog metadata uses `component_id="Rules"` and `component_name="Rules"` / product name `Rules`. Lowercase `rules` is the service slug for source package names, SSM paths, S3 prefixes, tags, metrics dimensions, and internal resource names. Current implementation names like `FilterStack`, `project_name=filter`, and `serviceName=filter` are migration artifacts.
 
 ### 2.1 Stacks (AWS CDK)
 
@@ -98,8 +140,9 @@ The CDK app is a single tenant-local stack:
 ```text
 bin/app.ts
 └── RulesStack    # Output bucket, log group, Lambda workers, Glue Python Shell
-                  # preparation job, STANDARD Step Functions workflow, SSM
-                  # parameter + CloudFormation outputs
+                  # preparation job, synchronous evaluator Lambda, STANDARD
+                  # Step Functions workflow, SSM parameters + CloudFormation
+                  # outputs
 ```
 
 `RulesStack` is declared in **TypeScript** with AWS CDK v2 and deployed exclusively via `cdk deploy`. No Serverless Framework, SAM, Terraform, Pulumi, raw CloudFormation, or product-supplied deploy scripts are permitted.
@@ -145,6 +188,7 @@ All TypeScript Lambdas are `NodejsFunction` with `runtime=NODEJS_24_X`, `archite
 | `AggregateStatisticsFunction` | 512 MB | 1 min | Step Functions task | Merge all per-file statistics into `aggregated-statistics.json`. |
 | `ReportPredictedCostFunction` | 512 MB | 1 min | Step Functions task | Emit a pre-run cost estimate before graph discovery when metrics are enabled. |
 | `ReportMetricsFunction` | 512 MB | 1 min | Step Functions task | Read aggregated statistics and emit CloudWatch metrics for accepted populations, rule failures, and actual estimated cost. |
+| `EvaluateDebtFunction` | 1024 MB | 2 sec | Direct Lambda invoke | Validate one `debt_identifier`, load compiled rules from the warm in-memory cache, query Persist once, classify the debt, and return the synchronous decision payload. |
 
 #### 2.2.3 Glue
 
@@ -195,7 +239,9 @@ Rules publishes:
 | Name | Value | Purpose |
 | ---- | ----- | ------- |
 | `/rules/workflow/state-machine-arn` | `RulesStateMachine` ARN | Stable discovery pointer for operators and downstream orchestrators. |
+| `/rules/sync/evaluator-function-arn` | `EvaluateDebtFunction` ARN | Stable discovery pointer for low-latency single-entity callers. |
 | `StateMachineArn` | `RulesStateMachine` ARN | CloudFormation output for deployment automation. |
+| `EvaluatorFunctionArn` | `EvaluateDebtFunction` ARN | CloudFormation output for deployment automation. |
 | `OutputBucketName` | `RulesOutputBucket` name | CloudFormation output for operators and downstream readers. |
 
 During migration from the current `filter` implementation, the stack may also publish `filter-workflow-state-machine-arn` as an alias. That alias is not part of the long-term product contract.
@@ -203,7 +249,7 @@ During migration from the current `filter` implementation, the stack may also pu
 ### 2.3 IAM (high-level)
 
 - The workflow role can invoke only the Rules worker Lambdas, start/read the single Glue preparation job, and write X-Ray traces.
-- Worker roles are split by capability. `ProcessFileFunction` reads allowed input/ruleset S3 prefixes, writes only to `RulesOutputBucket`, reads `persist-api-url` and `/lexicon/rulesets-uri`, and invokes only the configured Persist execute-api ARN. `ReportMetricsFunction` reads only Rules outputs and writes CloudWatch metric data. `SubmitAsyncQueryFunction` and `PollQueryStatusFunction` read only `persist-api-url` and invoke Persist.
+- Worker roles are split by capability. `ProcessFileFunction` reads allowed input/ruleset S3 prefixes, writes only to `RulesOutputBucket`, reads `persist-api-url` and `/lexicon/rulesets-uri`, and invokes only the configured Persist execute-api ARN. `EvaluateDebtFunction` reads the same ruleset sources, reads `persist-api-url`, invokes only Persist `/persist/gremlin`, and does not have S3 write permissions. `ReportMetricsFunction` reads only Rules outputs and writes CloudWatch metric data. `SubmitAsyncQueryFunction` and `PollQueryStatusFunction` read only `persist-api-url` and invoke Persist.
 - Persist calls are SigV4-signed as `execute-api`. IAM grants should be scoped to the Persist API ARN and method paths `/persist/gremlin` and `/persist/gremlin-async*`; the current implementation's `arn:aws:execute-api:us-east-2:*:*` wildcard is a migration gap, not a target requirement.
 - The Glue role reads the Persist async result object, writes generated input shards to `RulesOutputBucket`, and emits Glue logs. It must not read arbitrary S3 unless the tenant explicitly grants those prefixes.
 - There is no API Gateway, Usage Plan, custom domain, Secrets Manager vault, DynamoDB table, EventBridge schedule, or cross-account assume-role in Rules.
@@ -220,6 +266,9 @@ The runtime is configured through environment variables and SSM. Missing require
 | `BATCH_SIZE` | default `50` | Number of debt IDs per Persist `/persist/gremlin` query. |
 | `MAX_CONCURRENCY` | default `50` | In-process concurrency cap for batch Persist requests inside one `ProcessFileFunction`. |
 | `MAX_RETRIES` | default `5` | Per-batch Persist retry attempts. |
+| `RULESET_CACHE_TTL_SECONDS` | default `300` | Warm-container TTL for loaded and compiled rulesets in both batch workers and the single-entity evaluator. |
+| `SINGLE_ENTITY_PERSIST_TIMEOUT_MS` | default `220` | Fetch timeout budget for the evaluator's single Persist `/persist/gremlin` call. |
+| `SINGLE_ENTITY_TARGET_LATENCY_MS` | default `300` | Service-side warm-path latency SLO used for logging and metrics. |
 | `AWS_REGION` / CDK region | deployment environment | SigV4 signing region and AWS client region. |
 | `POWERTOOLS_SERVICE_NAME` | `rules-*` | Structured logs/traces. |
 | `POWERTOOLS_LOG_LEVEL` | `INFO` | Runtime logging. |
@@ -238,6 +287,8 @@ Install-time configuration is carried through Deployer's `MarketplaceContext.cus
 | `allowedRulesetS3Prefixes` | required for production installs unless covered by the Lexicon bucket policy | S3 prefixes that Rules may read for the Lexicon ruleset catalog and explicit `rule_s3_uris`. |
 | `outputRetentionDays` | optional | Lifecycle policy for run outputs; omitted means retain by default. |
 | `batchSize` / `maxConcurrency` / `maxRetries` | optional | Install-time defaults for the runtime env vars `BATCH_SIZE`, `MAX_CONCURRENCY`, and `MAX_RETRIES`. |
+| `singleEntityProvisionedConcurrency` | optional; recommended `1` or higher for production low-latency callers | Provisioned concurrency for `EvaluateDebtFunction`. The 300ms SLO assumes warm execution or provisioned concurrency. |
+| `singleEntityPersistTimeoutMs` | optional; default `220` | Persist call budget for the synchronous evaluator. |
 
 ---
 
@@ -263,6 +314,93 @@ Rules:
 - `rule_s3_uris`, when provided, must contain at least one S3 prefix. Each prefix must contain exactly one `.json` rule definition and exactly one `.gremlin` query object.
 - `skip_report_metrics=true` disables both predicted and actual metric emission for that execution.
 - `save_rules_reports=true` writes per-debt/per-phone rule report artifacts in addition to the filtered results.
+
+### 3.1.1 Synchronous single-entity input
+
+The evaluator input is intentionally smaller than the batch workflow input:
+
+```jsonc
+{
+  "debt_identifier": "D001",
+  "ruleset_id": "phone",
+  "rule_s3_uris": ["s3://bucket/rulesets/phone-interactions/rules/<rule>/"],
+  "include_rules_report": false
+}
+```
+
+Rules:
+
+- `debt_identifier` is required, must be a non-empty string, and is the canonical graph identifier. The synchronous path does not accept `debt_id` aliases in its public contract.
+- `ruleset_id` is optional and defaults to `phone`. Only rulesets present in the Lexicon catalog are accepted.
+- `rule_s3_uris` follows the same explicit subset contract as the batch workflow. Explicit subsets are cacheable by the normalized URI list.
+- `include_rules_report=false` returns the same filtered decision payload that downstream products should use for action. `include_rules_report=true` adds audit fields to the response without changing pass/fail classification.
+- The evaluator has no `input_s3_uri`, `skip_report_metrics`, or `save_rules_reports` fields. It never reads population input files, writes S3 artifacts, or emits batch cost metrics.
+
+Success response:
+
+```jsonc
+{
+  "debt_identifier": "D001",
+  "accepted": true,
+  "ruleset_id": "phone",
+  "ruleset_version": "1.0.0",
+  "evaluated_at": "2026-05-19T12:34:56.000Z",
+  "latency_ms": 143,
+  "result": {
+    "debt_identifier": "D001",
+    "balance": 100.25,
+    "first_name": "Jane",
+    "last_name": "Doe",
+    "postal_code": "12345",
+    "tu_score": 650,
+    "preferred_language": "en",
+    "phone_numbers": [
+      {
+        "phone_number": "5551112222",
+        "latest_phone_status": "ACTIVE",
+        "latest_rpc_contact_date": "2026-05-08T12:00:00Z",
+        "overall_call_start_time": "09:00",
+        "overall_call_end_time": "20:00",
+        "phone_usage_12_months": "HIGH",
+        "verified": "true",
+        "verification_result": "VERIFIED",
+        "day_windows": []
+      }
+    ]
+  }
+}
+```
+
+Not found response:
+
+```jsonc
+{
+  "debt_identifier": "D404",
+  "accepted": false,
+  "ruleset_id": "phone",
+  "evaluated_at": "2026-05-19T12:34:56.000Z",
+  "latency_ms": 91,
+  "result": null,
+  "reason": "not_loaded_to_graph"
+}
+```
+
+Rejected-by-rules response:
+
+```jsonc
+{
+  "debt_identifier": "D002",
+  "accepted": false,
+  "ruleset_id": "phone",
+  "ruleset_version": "1.0.0",
+  "evaluated_at": "2026-05-19T12:34:56.000Z",
+  "latency_ms": 137,
+  "result": null,
+  "reason": "debt_rule_failed"
+}
+```
+
+`reason` is one of `not_loaded_to_graph`, `debt_rule_failed`, `no_phone_numbers`, or `no_passing_phone_numbers`. When `include_rules_report=true`, rejected responses may include `rules_report` and `phone_numbers[*].phone_rules_report` to explain the rejection; when it is false, rejected responses stay compact and action-safe with `result=null`.
 
 ### 3.2 Lexicon ruleset catalog
 
@@ -397,6 +535,36 @@ POST /persist/gremlin
   "gremlin": "<compiled Gremlin projection for one batch of debt identifiers>"
 }
 ```
+
+Single-entity evaluation uses the same endpoint with a single canonical debt root instead of a `within(...)` batch clause:
+
+```jsonc
+POST /persist/gremlin
+{
+  "gremlin": "<compiled Gremlin projection for debt_identifier='D001'>"
+}
+```
+
+Expected single-entity response:
+
+```jsonc
+{
+  "data": {
+    "results": [
+      {
+        "debt_identifier": "D001",
+        "balance": 100.25,
+        "phone_numbers": [],
+        "rules_report": {
+          "no_open_dispute": true
+        }
+      }
+    ]
+  }
+}
+```
+
+The evaluator treats zero results as `not_loaded_to_graph`. More than one result for the same `debt_identifier` is a data integrity failure and returns a tagged `persist_result_not_unique` error.
 
 Expected batch response:
 
@@ -551,12 +719,14 @@ Optional rules reports:
 Rules is fail-closed:
 
 - Invalid S3 URIs fail the worker.
+- Missing or blank synchronous `debt_identifier` fails validation before ruleset or graph reads.
 - Unsupported input file types fail the worker.
 - Empty explicit `rule_s3_uris` fails before graph reads.
 - Duplicate explicit rule IDs or rule names fail before graph reads.
 - Ruleset catalogs without an item `id="phone"` fail before graph reads.
 - A rule whose Gremlin query cannot be parsed into the supported compiler subset fails before graph reads.
 - Persist non-2xx responses fail the affected batch after bounded retries.
+- Synchronous Persist timeout or non-2xx responses return a tagged evaluator error and emit error metrics; they do not synthesize an accepted or rejected decision.
 - Persist async status `FAILED` fails the workflow through `AsyncQueryFailed`.
 
 There is no partial-success workflow output contract. If a `ProcessFile` map item fails after retries, the Step Functions execution fails and callers should inspect execution history plus any already-written part artifacts.
@@ -620,7 +790,44 @@ CloudWatch metrics:
 
 The current implementation emits `service=Filter` / `source=Filter`; canonical Rules deployments MUST emit `Rules`.
 
-### 4.4 Cost model
+### 4.4 Synchronous single-entity execution
+
+The single-entity evaluator is an IAM-protected Lambda function designed for interactive downstream flows where a caller already knows the canonical `debt_identifier`.
+
+Execution flow:
+
+1. Validate `debt_identifier`, optional `ruleset_id`, optional `rule_s3_uris`, and `include_rules_report`.
+2. Resolve `persist-api-url` from the warm parameter cache.
+3. Load the default ruleset or explicit subset from the warm compiled-rules cache. Cache keys include `ruleset_id`, normalized explicit URI list, manifest version, object ETags when available, and the local date used for date placeholders.
+4. Build the single-id Gremlin projection with `g.V().hasLabel('debt').has('debt_identifier', debtIdentifier)`.
+5. Call Persist `/persist/gremlin` once with SigV4 and `SINGLE_ENTITY_PERSIST_TIMEOUT_MS`.
+6. Classify the returned `DebtResult` with the same classifier used by `ProcessFileFunction`.
+7. Return the decision payload directly and emit operational latency/count metrics.
+
+The evaluator does not write S3 artifacts. Callers that need durable evidence should store the response, request ID, and timestamp in their own activity record, or run the batch workflow with `save_rules_reports=true` for auditable population outputs.
+
+Latency SLO:
+
+| Segment | Target budget |
+| ------- | ------------- |
+| Lambda invoke + event validation | <= 25 ms |
+| Warm SSM/ruleset cache lookup and query build | <= 20 ms |
+| Persist `/persist/gremlin` round trip | <= 220 ms |
+| Classification, response shaping, and metric enqueue | <= 35 ms |
+| **Warm service-side total** | **<= 300 ms p95** |
+
+The 300ms requirement is a warm-path service-side SLO. Production installs that depend on it should configure `singleEntityProvisionedConcurrency >= 1` and keep the Persist graph-read path healthy enough to satisfy the Persist segment budget. Lambda cold starts, caller-side network latency, IAM policy evaluation delays outside the service, and Persist p95 above the configured budget are outside the SLO but must be visible through metrics.
+
+Single-entity metrics:
+
+| Namespace | Metric | Dimensions | Meaning |
+| --------- | ------ | ---------- | ------- |
+| `CDM` | `rules_single_entity_latency_ms` | `service=Rules`, `ruleset=<ruleset-id>` | End-to-end evaluator handler duration. |
+| `CDM` | `rules_single_entity_evaluations` | `service=Rules`, `ruleset=<ruleset-id>`, `accepted=true|false` | Count of completed evaluator decisions. |
+| `CDM` | `rules_single_entity_errors` | `service=Rules`, `error=<tag>` | Count of validation, ruleset, Persist, and classifier failures. |
+| `CDM` | `rules_single_entity_cache_hit` | `service=Rules`, `cache=ruleset|persist-url` | Warm-cache hit count for latency diagnosis. |
+
+### 4.5 Cost model
 
 Rules reports estimated cost from Lambda and Glue constants:
 
@@ -645,7 +852,7 @@ Rules is registered under a Marketplace catalog product named **Rules** and publ
 {
   "component_id": "Rules",
   "type": "SERVICE",
-  "description": "Tenant-local batch rules evaluation product for contactability and eligibility decisions"
+  "description": "Tenant-local rules evaluation product for batch and single-entity contactability and eligibility decisions"
 }
 ```
 
@@ -710,13 +917,15 @@ Rules requires:
 
 ### 5.3 Outputs consumed by downstream products
 
-Downstream products should consume Rules through S3 output URIs, not through internal Lambda logs or CloudWatch metrics. The stable artifacts are:
+Downstream products should consume batch Rules results through S3 output URIs, not through internal Lambda logs or CloudWatch metrics. The stable batch artifacts are:
 
 - `resultsS3Uri` for accepted debt and phone candidates;
 - `aggregatedStatisticsS3Uri` for run-level counts and failure reasons;
 - `rulesReportsS3Uri` when audit mode is enabled.
 
 If a downstream communication product needs a durable handoff, it should store the workflow execution ARN plus these output URIs in its own activity record. Rules does not own downstream activity lifecycle state.
+
+Downstream products that need an interactive, single-debt decision should discover `/rules/sync/evaluator-function-arn` and invoke `EvaluateDebtFunction` with IAM. They should persist the returned decision payload in their own transaction or activity state if they need replayable evidence.
 
 ---
 
@@ -728,6 +937,7 @@ The target repository uses Vitest. Current coverage in `../implementation/filter
 
 - `test/filter-stack.test.ts` - state machine branching for provided input, full graph discovery, rule reports, and rule subset propagation.
 - `test/handler-process-file.test.ts` - per-file classification, explicit rule subset loading, output payload shape, optional rules reports, and no-phone edge cases.
+- `test/handler-evaluate-debt.test.ts` - synchronous input validation, cache-hit/cold-cache behavior, single-id query generation, not-loaded responses, report inclusion, latency metric tags, and no S3 writes.
 - `test/ruleset-loader.test.ts` - default SSM/S3 ruleset loading, explicit prefix loading, duplicate detection, and empty subset rejection.
 - `test/lexicon-rule-compiler.test.ts` and `test/lexicon-rules.test.ts` - compiler semantics for debt/phone/metadata scopes, comments, aliases, hyperedges, conditional rules, unsupported roots, and canonical rule fragments.
 - `test/query-builder.test.ts` - generated Gremlin projection, date placeholders, versioned person traversals, enrichment fields, empty rule projections, and no dangling Gremlin syntax.
@@ -772,17 +982,28 @@ Test setup:
 
 Full-population integration additionally omits `input_s3_uri` and verifies the Persist async Gremlin -> Glue preparation -> per-file map path.
 
+Single-entity integration invokes `EvaluateDebtFunction` directly with IAM:
+
+1. Resolve `/rules/sync/evaluator-function-arn`.
+2. Invoke the function with a known loaded `debt_identifier` and `include_rules_report=true`.
+3. Assert the response returns `accepted`, `result`, `ruleset_id`, `ruleset_version`, `evaluated_at`, and `latency_ms`.
+4. Assert rule-report fields match the batch classifier for the same debt and ruleset.
+5. Invoke a known missing `debt_identifier` and assert `reason="not_loaded_to_graph"`.
+6. Confirm warm p95 service-side latency is under 300ms across a representative sample after at least one warm-up invoke or with provisioned concurrency enabled.
+
 ### 6.3 Operational runbook
 
 Common checks:
 
 1. Confirm the workflow ARN exists at `/rules/workflow/state-machine-arn`.
-2. Confirm `persist-api-url` and `/lexicon/rulesets-uri` exist and point at reachable resources.
-3. Confirm no executions are stuck `RUNNING` past six hours: `aws stepfunctions list-executions --status-filter RUNNING`.
-4. For failed executions, inspect the Step Functions failed state first, then the corresponding Lambda log stream in `RulesLogGroup`.
-5. For low output counts, inspect `aggregated-statistics.json` before CloudWatch metrics; the S3 artifact is authoritative.
-6. For rule compiler failures, validate the offending rule starts from the canonical debt root and has a supported debt/phone traversal shape.
-7. For Persist throttling or transient 5xx, tune `BATCH_SIZE`, `MAX_CONCURRENCY`, and `MAX_RETRIES` conservatively before increasing `ProcessAllFiles` map concurrency.
+2. Confirm the single-entity evaluator ARN exists at `/rules/sync/evaluator-function-arn`.
+3. Confirm `persist-api-url` and `/lexicon/rulesets-uri` exist and point at reachable resources.
+4. Confirm no executions are stuck `RUNNING` past six hours: `aws stepfunctions list-executions --status-filter RUNNING`.
+5. For failed batch executions, inspect the Step Functions failed state first, then the corresponding Lambda log stream in `RulesLogGroup`.
+6. For failed synchronous evaluations, inspect the evaluator log stream by request ID and the `rules_single_entity_errors` metric by `error` tag.
+7. For low output counts, inspect `aggregated-statistics.json` before CloudWatch metrics; the S3 artifact is authoritative.
+8. For rule compiler failures, validate the offending rule starts from the canonical debt root and has a supported debt/phone traversal shape.
+9. For Persist throttling or transient 5xx, tune `BATCH_SIZE`, `MAX_CONCURRENCY`, and `MAX_RETRIES` conservatively before increasing `ProcessAllFiles` map concurrency. For synchronous latency misses, inspect Persist p95, ruleset cache misses, and Lambda cold starts before changing rule semantics.
 
 ### 6.4 Migration from current `filter`
 
@@ -810,6 +1031,7 @@ The current code paths that define the Rules product are:
 
 - `lib/filter-stack.ts` - CDK resources, workflow definition, SSM output, Glue job, and IAM grants.
 - `src/handler.ts` - Step Functions worker handlers, classification loop, S3 outputs, and metrics.
+- `src/handler-evaluate-debt.ts` - direct-invoke synchronous evaluator handler, input validation, warm-cache usage, single-id Persist read, response shaping, and latency metrics.
 - `src/types.ts` - workflow, domain, output, and statistics contracts.
 - `src/ruleset-loader.ts` - SSM/S3 ruleset loading plus explicit rule subset loading.
 - `src/lexicon-rule-compiler.ts`, `src/lexicon-rules.ts`, `src/lexicon-rule-ir.ts`, `src/gremlin-parser.ts` - rule parser/compiler.
@@ -826,6 +1048,7 @@ Before publishing Rules as a marketplace product, the implementation must close 
 - rename public product identifiers from Filter to Rules;
 - scope S3 and execute-api IAM to install-time resources where possible;
 - publish `/rules/workflow/state-machine-arn`;
+- publish `/rules/sync/evaluator-function-arn`;
 - align the `just` recipes with the shared target-service command contract;
 - ensure generated marketplace bundle metadata declares `component_id="Rules"`, `component_name="Rules"`, `bundle_type="SERVICE"`, and dependency metadata for Persist.
 
@@ -835,19 +1058,19 @@ Before publishing Rules as a marketplace product, the implementation must close 
 
 1. **Repo skeleton**: pnpm workspace, TypeScript, `tsconfig.{base,build,app,src,test}.json`, ESLint, Prettier, Vitest, `justfile`, and shared CI caller workflows. Package identity is `@soc/rules` or the marketplace-equivalent internal package name.
 2. **Runtime dependencies**: AWS Lambda Powertools logger/tracer/parameters, AWS SDK clients for S3, SSM, CloudWatch, Smithy SigV4 signing helpers, `csv-parse`, `hyparquet`, `web-tree-sitter`, and `tree-sitter-groovy`. CDK dependencies are `aws-cdk-lib`, `constructs`, `aws-cdk`, and the Glue alpha construct while the product uses Python Shell jobs.
-3. **Contracts**: implement the workflow input, Step Functions intermediate payloads, `DebtResult`, `PhoneNumber`, output artifact payloads, statistics payloads, ruleset catalog, ruleset manifest, rule definition, and explicit-rule-prefix contracts from section 3.
+3. **Contracts**: implement the workflow input, synchronous evaluator input/output, Step Functions intermediate payloads, `DebtResult`, `PhoneNumber`, output artifact payloads, statistics payloads, ruleset catalog, ruleset manifest, rule definition, and explicit-rule-prefix contracts from section 3.
 4. **S3 input module**: parse `s3://` URIs, distinguish file vs prefix inputs, list only `.csv` and `.parquet` objects, and extract non-empty `debt_id` values from both formats.
 5. **Ruleset loader**: read `/lexicon/rulesets-uri`, load `index.json`, select ruleset `id="phone"`, load the manifest, sort rules by `order`, fetch each JSON definition and `.gremlin` query, and support `rule_s3_uris` subset mode with duplicate detection.
 6. **Gremlin parser/compiler**: parse rule traversals with tree-sitter, enforce the canonical debt root, infer `debt` vs `phone` scope, skip `metadata` rules, rewrite supported phone-entry patterns, reject scope mismatches, and emit deterministic `project(...).by(...)` fragments keyed by rule name.
 7. **Query builder**: reproduce the canonical debt projection and phone projection, inject debt and phone rule-report blocks, support single-id and `within(...)` batch clauses, and replace date placeholders for today, seven days ago, and weekday.
-8. **Persist client**: resolve `persist-api-url` once per warm container, SigV4-sign `execute-api` requests, call `/persist/gremlin-async`, `/persist/gremlin-async/{requestId}`, and `/persist/gremlin`, and bound per-batch retries/concurrency by `MAX_RETRIES` and `MAX_CONCURRENCY`.
-9. **Worker handlers**: implement `ListFiles`, `SubmitAsyncQuery`, `PollQueryStatus`, `ProcessFile`, `AggregateStatistics`, `ReportPredictedCost`, and `ReportMetrics` with small injectable services where practical so tests can supply S3, SSM, Persist, and CloudWatch doubles.
+8. **Persist client**: resolve `persist-api-url` once per warm container, SigV4-sign `execute-api` requests, call `/persist/gremlin-async`, `/persist/gremlin-async/{requestId}`, and `/persist/gremlin`, bound per-batch retries/concurrency by `MAX_RETRIES` and `MAX_CONCURRENCY`, and expose a single-call path with `SINGLE_ENTITY_PERSIST_TIMEOUT_MS`.
+9. **Worker handlers**: implement `ListFiles`, `SubmitAsyncQuery`, `PollQueryStatus`, `ProcessFile`, `AggregateStatistics`, `ReportPredictedCost`, `ReportMetrics`, and `EvaluateDebt` with small injectable services where practical so tests can supply S3, SSM, Persist, and CloudWatch doubles.
 10. **Glue preparation job**: implement `rules-prepare-input` as the only Python workload, reading Persist async Gremlin result JSON and writing `debt_id` CSV shards of 50,000 rows under `<outputPrefix>/input/`.
 11. **Marketplace entrypoint**: implement `marketplace/app.ts` and `marketplace.product.json` with `component_id="Rules"`, `component_name="Rules"`, `bundle_type="SERVICE"`, `stacks=["RulesStack"]`, and no `base_path`. The entrypoint must instantiate `RulesStack` from Build's parameterized `MarketplaceContext` and validate the custom-parameter schema in section 2.4.
-12. **CDK stack**: create `RulesStack` with the output bucket, shared log group, seven Node.js 24 ARM64 Lambdas, the Glue Python Shell job, the STANDARD state machine in section 2.2.4, least-privilege IAM, SSM `/rules/workflow/state-machine-arn`, and stack outputs.
+12. **CDK stack**: create `RulesStack` with the output bucket, shared log group, eight Node.js 24 ARM64 Lambdas, the Glue Python Shell job, the STANDARD state machine in section 2.2.4, least-privilege IAM, SSM `/rules/workflow/state-machine-arn`, SSM `/rules/sync/evaluator-function-arn`, and stack outputs.
 13. **Operational metadata**: tag resources with `sc:service:name=rules` and `sc:product:name=Rules`; make `Rules` the Powertools service prefix and CloudWatch metric dimension value.
-14. **Tests**: port and expand the current Vitest coverage for stack wiring, handlers, ruleset loading, rule compiler semantics, query builder output, parser behavior, S3 input parsing, statistics aggregation, and the Filter-to-Rules migration aliases.
-15. **Integration smoke**: deploy into a tenant with Persist and Lexicon rulesets, run both input modes, verify S3 artifacts and metrics, and document the exact operator commands.
+14. **Tests**: port and expand the current Vitest coverage for stack wiring, handlers, synchronous evaluator behavior, ruleset loading, rule compiler semantics, query builder output, parser behavior, S3 input parsing, statistics aggregation, latency metrics, and the Filter-to-Rules migration aliases.
+15. **Integration smoke**: deploy into a tenant with Persist and Lexicon rulesets, run both batch input modes plus the single-entity evaluator, verify S3 artifacts, synchronous response payloads, latency metrics, and document the exact operator commands.
 
 ---
 
@@ -856,18 +1079,23 @@ Before publishing Rules as a marketplace product, the implementation must close 
 A re-implementation is considered functionally complete when:
 
 - The product is discoverable as **Rules** with Marketplace `component_id="Rules"` / `component_name="Rules"`, implementation slug `rules`, stack `RulesStack`, state machine `RulesStateMachine`, output prefix `rules/...`, and SSM `/rules/workflow/state-machine-arn`.
+- The synchronous evaluator is discoverable through SSM `/rules/sync/evaluator-function-arn` and stack output `EvaluatorFunctionArn`.
 - The Marketplace artifact is a Build-produced `CDK_CLOUD_ASSEMBLY` with a Deployer-compatible `marketplace.product.json`, uses `bundle_type="SERVICE"`, omits `base_path`, declares `dependencies=["Persist", "Lexicon"]`, and uses JWT-shaped `x-amz-meta-service-*` metadata headers.
 - Starting the state machine with `input_s3_uri` pointing to a CSV or Parquet file/prefix produces `resultsS3Uri` and `aggregatedStatisticsS3Uri` with the artifact shapes in section 3.6.
 - Starting the state machine without `input_s3_uri` runs Persist async Gremlin discovery, waits for completion, shards all debt identifiers through Glue, and then processes the generated `input/` prefix.
 - `save_rules_reports=true` writes `parts/rules-reports/*_rules_reports.json` and returns `rulesReportsS3Uri`; `save_rules_reports=false` omits both.
 - `skip_report_metrics=true` suppresses predicted and actual metric emission without changing S3 outputs.
+- Invoking `EvaluateDebtFunction` with a valid `debt_identifier` returns a synchronous decision payload with `accepted`, `ruleset_id`, `ruleset_version`, `evaluated_at`, `latency_ms`, and either a filtered `result` or a rejection `reason`.
+- The synchronous evaluator reuses the same ruleset loader, compiler, query builder, Persist client, and classifier semantics as batch, but does not start Step Functions, invoke Glue, or write S3 artifacts.
+- Warm/provisioned-concurrency single-entity evaluations meet p95 service-side latency <= 300ms when the ruleset cache is warm and Persist `/persist/gremlin` p95 stays within the configured `SINGLE_ENTITY_PERSIST_TIMEOUT_MS` budget.
+- `include_rules_report=true` on the synchronous evaluator returns debt and phone rule reports without changing classification; `include_rules_report=false` omits those audit maps.
 - The default ruleset path reads `/lexicon/rulesets-uri`, selects catalog item `id="phone"`, loads all manifest rules in `order`, and compiles supported `debt` and `phone` rules into report keys.
 - `rule_s3_uris` subset mode accepts one or more prefixes, each containing exactly one `.json` definition and one `.gremlin` query, and rejects empty subsets plus duplicate rule IDs or names before any Persist call.
 - Rule compiler failures are fail-closed: unsupported roots, unsupported traversal shapes, parse errors, and scope mismatches stop the file/workflow before graph evaluation.
 - Per-batch Persist calls are SigV4-signed to `execute-api`, use the configured deployment region, retry transient 5xx/fetch failures, and never connect directly to Neptune.
 - Classification matches the current implementation: a debt passes only when all debt rules pass and at least one phone number passes all phone rules; output results include only passing phones and no rule-report maps.
 - `not_loaded_to_graph_count`, `filtered_debts_count`, `filtered_phone_numbers_count`, `not_passed_rules_debts_count`, and `not_passed_rules_statistics` are correct for multi-file runs and merge deterministically into `aggregated-statistics.json`.
-- CloudWatch metrics use namespace `CDM` and `Rules` dimensions for predicted cost, actual cost, suggested debts, suggested phone numbers, and per-rule exclusions.
+- CloudWatch metrics use namespace `CDM` and `Rules` dimensions for predicted cost, actual cost, suggested debts, suggested phone numbers, per-rule exclusions, and synchronous evaluator latency/count/error signals.
 - All Lambdas use `nodejs24.x`, ARM64, ESM bundling, the standard `createRequire` banner, structured logs, X-Ray tracing, and three-month log retention.
 - IAM is scoped to the installed Persist API ARN, allowed input/ruleset S3 prefixes, the Rules output bucket, the single Glue job, and CloudWatch metric writes; broad S3 and `execute-api` wildcards from the seed implementation are removed or explicitly justified.
 - `pnpm check`, `pnpm lint`, `pnpm format:check`, `pnpm test`, `pnpm cdk:synth`, `just check`, `just test`, and `just cdk:synth` all pass in the target repository.
