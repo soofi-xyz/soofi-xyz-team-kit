@@ -1,7 +1,11 @@
 {
   "name": "soofi-xyz",
   "description": "Company-wide project subagents for AI-assisted development (Abra, Ash, Braviary, Castform, Ditto, Hoothoot, Klefki, Lucario, Machamp, Meowth, Metagross, Noctowl, Porygon, Regigigas, Smeargle).",
+<<<<<<< HEAD
   "version": "0.9.31",
+=======
+  "version": "0.9.29",
+>>>>>>> origin/feat/lucario-m2d-workflow
   "author": {
     "name": "Soofi XYZ"
   }
