@@ -85,6 +85,29 @@ export async function createLangSmithFacade(
 4. **Group traces by `sessionId`.** LangSmith uses `LANGSMITH_PROJECT` for project-level grouping and the session ID for thread-level grouping.
 5. **Graceful degradation.** If the API key is missing or tracing is disabled, return unwrapped AI SDK functions. Never fail an invocation because tracing is unavailable.
 6. **Wire every runtime entrypoint through the same facade.** If one invocation path uses raw `ai.ToolLoopAgent`, LangSmith will show only outer wrapper traces for that path.
+7. **Include Bedrock prompt-cache metadata** on traced model runs when `withBedrockPromptCaching` is enabled.
+
+## Bedrock Prompt Cache Metadata
+
+When the agent uses Bedrock prompt caching, merge `BEDROCK_PROMPT_CACHE_METADATA` into the LangSmith provider metadata for each AI turn:
+
+```typescript
+import { createLangSmithProviderOptions } from 'langsmith/experimental/vercel';
+import { BEDROCK_PROMPT_CACHE_METADATA } from '../agent/bedrock-prompt-cache.js';
+
+const langsmithProviderOptions = createLangSmithProviderOptions({
+  metadata: {
+    ls_provider: 'anthropic',
+    ls_model_name: 'claude-sonnet-4-6',
+    bedrock_model_id: env.BEDROCK_MODEL_ID,
+    ...BEDROCK_PROMPT_CACHE_METADATA,
+    session_id: sessionId,
+    thread_id: thread.id,
+  },
+});
+```
+
+See `rules/implementation-bedrock-prompt-caching.md` for the required middleware and cache-usage logging.
 
 ## Trace Depth Verification
 

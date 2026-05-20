@@ -27,7 +27,7 @@ packages:
 │   └── agent-handler/              # Single Lambda: Chat SDK ingress + AI turn
 │       ├── src/
 │       │   ├── chat/               # Chat instance bootstrap (adapters, state, handlers)
-│       │   ├── agent/              # processAgentTurn — model + tools + memory orchestration
+│       │   ├── agent/              # processAgentTurn — model + prompt cache + tools + memory orchestration
 │       │   ├── config/             # env.ts — Zod-validated environment config
 │       │   ├── contracts/          # Request/response Zod schemas
 │       │   ├── identity/           # Actor resolution from Chat SDK message.author
