@@ -5,7 +5,7 @@ description: "Guides creation of AI agents using the rules-agent pattern. Covers
 
 # Building AI Agents
 
-Step-by-step guide for designing and deploying AI agents in this ecosystem. Follow the **ovid-agent / rules-agent** reference implementation, updated for the Chat SDK and the `@soofi-xyz/*` packages that replace hand-rolled Asana webhook code.
+Step-by-step guide for designing and deploying AI agents in this ecosystem. Follow existing **Pokémon-named rules-agent** reference implementations, updated for the Chat SDK and the `@soofi-xyz/*` packages that replace hand-rolled Asana webhook code.
 
 ## Architecture: Lambda Runtime Only
 
@@ -40,9 +40,9 @@ Before implementing, copy this checklist into the working todo list and keep it 
 
 ### Phase 1 — Agent Naming
 
-Pick a Pokémon name from the official Pokédex. The Pokémon's character should resonate with the agent's purpose (e.g., a batch-processing agent could be `machamp`, a solver could be `abra`).
+Pick a Pokémon name from the official Pokédex. The Pokémon's character should resonate with the agent's purpose (e.g., a batch-processing agent could be `machamp-agent`, a solver could be `abra-agent`). Use lowercase `<pokemon>-agent` for runtime repo names and config. Plugin subagents in `agents/` use the plain Pokémon name.
 
-Read `rules/foundation-agent-naming.md`.
+Read `rules/foundation-agent-naming.md` for the full naming contract, examples, and anti-patterns.
 
 ### Phase 2 — Purpose & Runtime Boundaries
 
