@@ -1,11 +1,11 @@
 ---
 name: build-rag-systems
-description: "Build reusable AWS RAG agents with local fixture emulation for knowledge retrieval, prior-decision reuse, semantic mapping, classification, and self-healing runtime workflows. Use when working with RAG, embeddings, OpenSearch retrieval, Bedrock embeddings, knowledge bases, schema/header mapping, confidence thresholds, AWS production RAG, or local emulation."
+description: "Build reusable AWS RAG agents with SAM local Lambda emulation and Docker OpenSearch replay for knowledge retrieval, prior-decision reuse, semantic mapping, classification, and self-healing runtime workflows. Use when working with RAG, embeddings, OpenSearch retrieval, Bedrock embeddings, knowledge bases, schema/header mapping, confidence thresholds, AWS production RAG, or local emulation."
 ---
 
 # Build RAG Systems
 
-Use this skill to build retrieval-augmented systems as reusable agents or reusable agent capabilities. Production uses the approved AWS stack, and every implementation must include local fixture emulation that mirrors the AWS contracts and behavior.
+Use this skill to build retrieval-augmented systems as reusable agents or reusable agent capabilities. Production uses the approved AWS stack, and every implementation must include SAM local Lambda emulation plus Docker OpenSearch replay for fast local confidence.
 
 RAG here includes classic document grounding, but also operational retrieval: reusing prior mappings, classifications, schemas, decisions, reviewer corrections, and examples at runtime.
 
@@ -64,7 +64,7 @@ The retrieval logic must include normalization, exact aliases, string similarity
 
 Read `rules/implementation-retrieval-and-confidence-policy.md`.
 
-### Phase 5 - Implement Local Fixture Emulation First
+### Phase 5 - Implement SAM Local And Docker OpenSearch Replay First
 
 Create the local path before AWS adapters:
 
@@ -72,10 +72,21 @@ Create the local path before AWS adapters:
 - `fixtures/rag/queries/*.json` for input queries and expected decisions
 - filesystem fixture loader for S3 contracts
 - JSONL-backed metadata and review adapter for DynamoDB contracts
-- deterministic retrieval adapter over fixture records for OpenSearch contracts
-- local invoke script that runs the same handler or tool entrypoint as AWS
+- Docker OpenSearch seeded from `fixtures/rag/corpus/*.jsonl`
+- seed script that creates local OpenSearch indexes and fixture documents
+- SAM local invoke path from the synthesized CDK template
+- local invoke script that runs the same Lambda handler or tool entrypoint as AWS
 
-Run golden fixture replay before adding AWS adapters.
+Run this sequence before AWS replay:
+
+```bash
+npx cdk synth
+docker compose up opensearch
+<seed-local-opensearch-command>
+sam local invoke -t cdk.out/<Stack>.template.json <FunctionLogicalId> -e fixtures/rag/queries/<case>.json
+```
+
+Compare retrieved IDs, threshold bands, and final decisions. SAM local and Docker OpenSearch provide fast confidence for handler, event, and retrieval behavior; they do not prove IAM, quotas, or managed AWS service behavior.
 
 ### Phase 6 - Add Review And Learning Loops
 
@@ -148,7 +159,7 @@ Return:
 - corpus and metadata contract
 - retrieval pipeline and confidence policy
 - approved AWS production stack
-- local fixture emulation flow
+- SAM local and Docker OpenSearch replay flow
 - human-review and learning loop, when relevant
 - evaluation and operations plan
 - implementation checklist

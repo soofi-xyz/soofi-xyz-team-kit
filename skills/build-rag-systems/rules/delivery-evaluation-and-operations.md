@@ -8,7 +8,7 @@ tags: [rag, evaluation, observability, operations]
 
 Run the required replay path before relying on retrieval in production.
 
-The path is fixed: local fixture replay, AWS replay against the same contracts, shadow mode, suggest-only mode, limited auto-accept canary, then monitored automation. Do not skip ahead.
+The path is fixed: SAM local plus Docker OpenSearch replay, AWS replay against the same contracts, shadow mode, suggest-only mode, limited auto-accept canary, then monitored automation. Do not skip ahead.
 
 ## Golden Sets
 
@@ -75,7 +75,7 @@ Store sensitive evidence in encrypted stores and log pointers instead of raw con
 
 Use this rollout:
 
-1. local fixture replay
+1. SAM local plus Docker OpenSearch replay
 2. AWS replay against a small corpus
 3. shadow mode
 4. suggest-only mode
@@ -84,17 +84,30 @@ Use this rollout:
 
 Keep a disable flag for retrieval-backed automation. Preserve deterministic fallback or manual review.
 
-## Local Fixture Replay
+## SAM Local And Docker OpenSearch Replay
 
-Before AWS deployment, run local replay against `fixtures/rag/queries/*.json` and `fixtures/rag/corpus/*.jsonl`.
+Before AWS deployment, run local replay through SAM local and Docker OpenSearch.
+
+Run:
+
+```bash
+npx cdk synth
+docker compose up opensearch
+<seed-local-opensearch-command>
+sam local invoke -t cdk.out/<Stack>.template.json <FunctionLogicalId> -e fixtures/rag/queries/<case>.json
+```
 
 Verify:
 
 - fixture ingestion uses the production corpus schema
-- deterministic retrieval returns expected record IDs
+- local OpenSearch index mappings match the production query shape as closely as practical
+- local OpenSearch is seeded from `fixtures/rag/corpus/*.jsonl`
+- OpenSearch retrieval returns expected record IDs
 - thresholds produce expected accept/review/reject decisions
 - review corrections persist through the JSONL adapter
 - agent/tool invocation uses the same request and response contracts
+
+SAM local and Docker OpenSearch validate Lambda event handling, handler packaging, fixture ingestion, and retrieval behavior. They do not validate IAM, AWS quotas, or managed AWS service behavior.
 
 ## AWS Replay
 

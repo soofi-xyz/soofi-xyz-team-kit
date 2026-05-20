@@ -6,7 +6,7 @@ tags: [rag, aws, local-emulation, vector-store, architecture]
 
 # AWS Production And Local Emulation Architecture
 
-Build the RAG capability as a reusable agent or reusable agent capability with two modes: AWS production and local fixture emulation. Local mode must mirror production contracts and retrieval behavior; it is not a separate target architecture.
+Build the RAG capability as a reusable agent or reusable agent capability with two modes: AWS production and local emulation. Local mode uses SAM CLI for Lambda runtime emulation and OpenSearch in Docker for retrieval emulation. Local emulation gives fast confidence, but AWS replay remains the correctness gate for IAM, quotas, and managed-service behavior.
 
 ## Selection Inputs
 
@@ -62,10 +62,22 @@ It must provide:
 - `fixtures/rag/queries/*.json` for local replay inputs and expected final decisions
 - filesystem fixture loader for S3 object contracts
 - JSONL-backed metadata and review adapter for DynamoDB contracts
-- deterministic retrieval adapter over fixture records for OpenSearch contracts
-- local invoke scripts that exercise the same agent turn or retrieval handler
+- Docker OpenSearch for local vector and hybrid retrieval
+- local OpenSearch index mappings that match the production query shape as closely as practical
+- seed script that creates local OpenSearch indexes and loads fixture documents from `fixtures/rag/corpus/*.jsonl`
+- SAM local invocation from the synthesized CDK template
+- local invoke scripts that exercise the same Lambda handler or tool entrypoint as AWS
 
-Mock AWS services only behind interfaces. Do not let mocks change business behavior. Local replay compares retrieved IDs and final decisions, not raw vector scores.
+Use this local sequence:
+
+```bash
+npx cdk synth
+docker compose up opensearch
+<seed-local-opensearch-command>
+sam local invoke -t cdk.out/<Stack>.template.json <FunctionLogicalId> -e fixtures/rag/queries/<case>.json
+```
+
+Mock AWS services only behind interfaces. Do not let mocks change business behavior. Local replay compares retrieved IDs, threshold bands, and final decisions, not raw vector scores.
 
 ## Adapter Contract
 
@@ -78,7 +90,7 @@ Separate pure retrieval logic from infrastructure adapters:
 - `TraceSink`
 - `Clock` and ID generation when deterministic tests need them
 
-AWS and local adapters must implement the same interfaces. Unit tests should run against local adapters; integration or smoke tests should run against AWS adapters.
+AWS and local adapters must implement the same interfaces. The OpenSearch query-building code must be shared between local and AWS modes; only endpoint/auth configuration changes. Unit tests run against local adapters, SAM local exercises the Lambda boundary, and AWS replay validates managed-service behavior.
 
 ## External Systems
 
@@ -90,6 +102,6 @@ Always return:
 
 - reusable agent boundary
 - AWS production stack
-- local fixture emulation flow
+- SAM local and Docker OpenSearch replay flow
 - adapter interfaces shared by both modes
 - verification path from local replay to AWS replay

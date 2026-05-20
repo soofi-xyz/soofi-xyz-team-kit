@@ -8,7 +8,7 @@ tags: [rag, retrieval, confidence, hybrid-search]
 
 Design retrieval as a scored decision pipeline. Do not treat the top vector hit as automatically correct.
 
-AWS production and local emulation must run the same normalization, retrieval, scoring, threshold, reranking, and fallback logic. AWS uses OpenSearch for vector or hybrid retrieval. Local mode uses deterministic retrieval over `fixtures/rag/corpus/*.jsonl` through the same `RetrievalIndex` interface.
+AWS production and local emulation must run the same normalization, retrieval, scoring, threshold, reranking, and fallback logic. AWS uses OpenSearch for vector or hybrid retrieval. Local mode uses OpenSearch running in Docker, seeded from `fixtures/rag/corpus/*.jsonl`, through the same `RetrievalIndex` interface.
 
 ## Retrieval Pipeline
 
@@ -23,7 +23,7 @@ Use this default order:
 7. combine scores into a confidence result
 8. apply threshold policy
 
-The pipeline order must be identical in local and AWS modes. Local replay compares retrieved record IDs, threshold bands, and final decisions. It does not compare raw vector scores.
+The pipeline order and OpenSearch query-building code must be identical in local and AWS modes. Only endpoint and auth configuration may differ. Local replay compares retrieved record IDs, threshold bands, and final decisions. It does not compare raw vector scores.
 
 ## Hybrid Retrieval
 
@@ -75,11 +75,11 @@ Fallback selection must not depend on the execution mode. A local fixture that f
 Use these adapters:
 
 - AWS production retrieval: OpenSearch Serverless or OpenSearch Service.
-- Local retrieval: deterministic fixture-backed adapter over `fixtures/rag/corpus/*.jsonl`.
+- Local retrieval: Docker OpenSearch seeded from `fixtures/rag/corpus/*.jsonl`.
 - AWS metadata/review state: DynamoDB.
 - Local metadata/review state: JSONL fixture adapter.
 
-Do not add alternate local vector stores. Local replay exists to verify contract behavior before AWS replay.
+Do not add alternate local vector stores. Local replay exists to verify Lambda/event handling and OpenSearch retrieval behavior before AWS replay.
 
 ## Prompt Context
 
