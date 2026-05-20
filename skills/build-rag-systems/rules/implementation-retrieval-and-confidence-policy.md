@@ -8,7 +8,7 @@ tags: [rag, retrieval, confidence, hybrid-search]
 
 Design retrieval as a scored decision pipeline. Do not treat the top vector hit as automatically correct.
 
-AWS production and local emulation must run the same normalization, retrieval, scoring, threshold, reranking, and fallback logic. Only the storage/search adapters should differ.
+AWS production and local emulation must run the same normalization, retrieval, scoring, threshold, reranking, and fallback logic. AWS uses OpenSearch for vector or hybrid retrieval. Local mode uses deterministic retrieval over `fixtures/rag/corpus/*.jsonl` through the same `RetrievalIndex` interface.
 
 ## Retrieval Pipeline
 
@@ -23,7 +23,7 @@ Use this default order:
 7. combine scores into a confidence result
 8. apply threshold policy
 
-The pipeline order must be identical in local and AWS modes. If local mode cannot emulate a production retrieval feature, mark that gap explicitly and block automation until AWS smoke tests cover it.
+The pipeline order must be identical in local and AWS modes. Local replay compares retrieved record IDs, threshold bands, and final decisions. It does not compare raw vector scores.
 
 ## Hybrid Retrieval
 
@@ -61,7 +61,7 @@ Do not copy these values blindly. Calibrate thresholds against golden examples.
 
 ## Fallback Paths
 
-Choose fallback by risk:
+Apply fallback by risk:
 
 - deterministic rules for stable structured cases
 - LLM classification or mapping with cited retrieved examples
@@ -69,6 +69,17 @@ Choose fallback by risk:
 - reject and quarantine when safe automation is impossible
 
 Fallback selection must not depend on the execution mode. A local fixture that falls into review must also fall into review in AWS unless the corpus contents intentionally differ.
+
+## Production And Local Adapters
+
+Use these adapters:
+
+- AWS production retrieval: OpenSearch Serverless or OpenSearch Service.
+- Local retrieval: deterministic fixture-backed adapter over `fixtures/rag/corpus/*.jsonl`.
+- AWS metadata/review state: DynamoDB.
+- Local metadata/review state: JSONL fixture adapter.
+
+Do not add alternate local vector stores. Local replay exists to verify contract behavior before AWS replay.
 
 ## Prompt Context
 

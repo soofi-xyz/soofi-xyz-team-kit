@@ -6,9 +6,9 @@ tags: [rag, evaluation, observability, operations]
 
 # Evaluation And Operations
 
-Define evaluation before relying on retrieval in production.
+Run the required replay path before relying on retrieval in production.
 
-Run local emulation first, then AWS production smoke tests against the same contracts. Do not promote a RAG agent when local and AWS behavior diverge without an explicit documented reason.
+The path is fixed: local fixture replay, AWS replay against the same contracts, shadow mode, suggest-only mode, limited auto-accept canary, then monitored automation. Do not skip ahead.
 
 ## Golden Sets
 
@@ -73,30 +73,40 @@ Store sensitive evidence in encrypted stores and log pointers instead of raw con
 
 ## Rollout
 
-Use staged rollout:
+Use this rollout:
 
 1. local fixture replay
-2. offline eval
-3. AWS smoke test against a small corpus
-4. shadow mode
-5. suggest-only mode
-6. limited auto-accept canary
-7. full automation with monitoring
+2. AWS replay against a small corpus
+3. shadow mode
+4. suggest-only mode
+5. limited auto-accept canary
+6. full automation with monitoring
 
 Keep a disable flag for retrieval-backed automation. Preserve deterministic fallback or manual review.
 
-## Local Emulation Verification
+## Local Fixture Replay
 
-Before AWS deployment, verify locally:
+Before AWS deployment, run local replay against `fixtures/rag/queries/*.json` and `fixtures/rag/corpus/*.jsonl`.
+
+Verify:
 
 - fixture ingestion uses the production corpus schema
-- local embeddings or fixture vectors exercise the same embedding interface
-- retrieval returns expected top-k records
+- deterministic retrieval returns expected record IDs
 - thresholds produce expected accept/review/reject decisions
-- review corrections persist through the same interface
+- review corrections persist through the JSONL adapter
 - agent/tool invocation uses the same request and response contracts
 
-After AWS deployment, replay a small equivalent golden set and compare decisions, not raw vector scores.
+## AWS Replay
+
+After AWS deployment, replay the same golden cases through AWS adapters:
+
+- Bedrock embedding calls use the production embedding service
+- S3 source artifacts resolve through production object contracts
+- DynamoDB metadata and review writes use the production table contract
+- OpenSearch retrieval returns acceptable record IDs
+- final decisions match local expectations or produce a documented mismatch
+
+Compare retrieved IDs, threshold bands, and final decisions. Do not compare raw vector scores.
 
 ## Drift Checks
 

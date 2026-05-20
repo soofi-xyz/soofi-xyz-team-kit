@@ -50,7 +50,7 @@ Store:
 - accepted output
 - confidence score
 - decision source: automatic, rule, LLM, reviewer, or override
-- reviewer and review timestamp when applicable
+- reviewer and review timestamp for human-reviewed records
 - reason or evidence
 - model, prompt, embedding model, and retrieval version
 

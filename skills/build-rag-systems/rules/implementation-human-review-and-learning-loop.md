@@ -31,7 +31,7 @@ A review item should include:
 - top candidates and scores
 - proposed output
 - missing or conflicting evidence
-- recommended action
+- proposed action
 - reviewer controls: accept, correct, reject, defer
 
 For header mapping, show the original header, normalized header, neighboring headers, source partner, candidate canonical field, and prior examples that support the suggestion.
