@@ -8,6 +8,8 @@ tags: [rag, evaluation, observability, operations]
 
 Define evaluation before relying on retrieval in production.
 
+Run local emulation first, then AWS production smoke tests against the same contracts. Do not promote a RAG agent when local and AWS behavior diverge without an explicit documented reason.
+
 ## Golden Sets
 
 Create representative fixtures:
@@ -73,13 +75,28 @@ Store sensitive evidence in encrypted stores and log pointers instead of raw con
 
 Use staged rollout:
 
-1. offline eval
-2. shadow mode
-3. suggest-only mode
-4. limited auto-accept canary
-5. full automation with monitoring
+1. local fixture replay
+2. offline eval
+3. AWS smoke test against a small corpus
+4. shadow mode
+5. suggest-only mode
+6. limited auto-accept canary
+7. full automation with monitoring
 
 Keep a disable flag for retrieval-backed automation. Preserve deterministic fallback or manual review.
+
+## Local Emulation Verification
+
+Before AWS deployment, verify locally:
+
+- fixture ingestion uses the production corpus schema
+- local embeddings or fixture vectors exercise the same embedding interface
+- retrieval returns expected top-k records
+- thresholds produce expected accept/review/reject decisions
+- review corrections persist through the same interface
+- agent/tool invocation uses the same request and response contracts
+
+After AWS deployment, replay a small equivalent golden set and compare decisions, not raw vector scores.
 
 ## Drift Checks
 

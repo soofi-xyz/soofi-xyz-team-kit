@@ -8,6 +8,8 @@ tags: [rag, corpus, metadata, provenance]
 
 Define the stored evidence before embedding anything. Retrieval quality depends on stable IDs, useful metadata, and reviewable provenance.
 
+AWS production and local emulation must use the same corpus schemas, serialized records, metadata names, and version fields. Local fixtures should be redacted representative records, not a simplified data model.
+
 ## Required Corpus Fields
 
 Every retrievable record should have:
@@ -83,6 +85,18 @@ Plan metadata filters up front. Common filters:
 - date range
 
 Do not rely on vector similarity to enforce tenant or data-governance boundaries. Use filters or separate indexes.
+
+## Local Fixture Contract
+
+Local fixture records should:
+
+- use the same schema as AWS production records
+- include realistic metadata filters and tenant/account scopes
+- include positive, negative, ambiguous, and low-confidence examples
+- replace sensitive values with deterministic redactions
+- preserve source hashes or fixture hashes for idempotent replay
+
+Do not create local-only fields that production cannot populate.
 
 ## PII And Governance
 

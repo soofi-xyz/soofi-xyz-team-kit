@@ -8,6 +8,8 @@ tags: [rag, retrieval, confidence, hybrid-search]
 
 Design retrieval as a scored decision pipeline. Do not treat the top vector hit as automatically correct.
 
+AWS production and local emulation must run the same normalization, retrieval, scoring, threshold, reranking, and fallback logic. Only the storage/search adapters should differ.
+
 ## Retrieval Pipeline
 
 Use this default order:
@@ -20,6 +22,8 @@ Use this default order:
 6. rerank candidates when needed
 7. combine scores into a confidence result
 8. apply threshold policy
+
+The pipeline order must be identical in local and AWS modes. If local mode cannot emulate a production retrieval feature, mark that gap explicitly and block automation until AWS smoke tests cover it.
 
 ## Hybrid Retrieval
 
@@ -63,6 +67,8 @@ Choose fallback by risk:
 - LLM classification or mapping with cited retrieved examples
 - human review for regulated, financial, or irreversible decisions
 - reject and quarantine when safe automation is impossible
+
+Fallback selection must not depend on the execution mode. A local fixture that falls into review must also fall into review in AWS unless the corpus contents intentionally differ.
 
 ## Prompt Context
 

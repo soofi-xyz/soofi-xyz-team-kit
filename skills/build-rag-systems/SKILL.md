@@ -1,17 +1,17 @@
 ---
 name: build-rag-systems
-description: "Design and implement system-agnostic RAG systems for knowledge retrieval, prior-decision reuse, semantic mapping, classification, and self-healing runtime workflows. Use when working with RAG, embeddings, vector search, retrieval architecture, knowledge bases, schema/header mapping, confidence thresholds, or local/AWS/Azure/GCP/SaaS provider selection."
+description: "Design and implement reusable AWS-backed RAG agents with local emulation for knowledge retrieval, prior-decision reuse, semantic mapping, classification, and self-healing runtime workflows. Use when working with RAG, embeddings, vector search, retrieval architecture, knowledge bases, schema/header mapping, confidence thresholds, AWS production RAG, or local emulation."
 ---
 
 # Build RAG Systems
 
-Use this skill to design retrieval-augmented systems as portable architecture patterns first and provider implementations second.
+Use this skill to design retrieval-augmented systems as reusable agents or reusable agent capabilities. Production is AWS-oriented, and every implementation must include local emulation that mirrors the AWS contracts and behavior.
 
 RAG here includes classic document grounding, but also operational retrieval: reusing prior mappings, classifications, schemas, decisions, reviewer corrections, and examples at runtime.
 
 ## Workflow
 
-Follow these phases in order. Do not choose a vendor before Phase 5.
+Follow these phases in order. Do not design local mode as a separate architecture.
 
 ### Phase 1 - Classify The Use Case
 
@@ -25,7 +25,18 @@ Identify what retrieval is supposed to do:
 
 Read `rules/architecture-rag-use-case-taxonomy.md`.
 
-### Phase 2 - Define Corpus And Metadata
+### Phase 2 - Define The Reusable Agent Boundary
+
+Define how this RAG capability is packaged:
+
+- standalone agent
+- embedded capability inside another agent
+- reusable retrieval library behind an agent tool
+- batch or event-driven retriever called by an agent
+
+Load `../build-ai-agents/` when implementation is requested.
+
+### Phase 3 - Define Corpus And Metadata
 
 Define the durable records before designing embeddings:
 
@@ -37,7 +48,7 @@ Define the durable records before designing embeddings:
 
 Read `rules/implementation-corpus-and-metadata-contract.md`.
 
-### Phase 3 - Design Retrieval And Confidence
+### Phase 4 - Design Retrieval And Confidence
 
 Choose the retrieval strategy:
 
@@ -49,7 +60,7 @@ Choose the retrieval strategy:
 
 Read `rules/implementation-retrieval-and-confidence-policy.md`.
 
-### Phase 4 - Add Review And Learning Loops
+### Phase 5 - Add Review And Learning Loops
 
 For runtime decisions, define what happens below confidence threshold.
 
@@ -60,26 +71,28 @@ For runtime decisions, define what happens below confidence threshold.
 
 Read `rules/implementation-human-review-and-learning-loop.md`.
 
-### Phase 5 - Select Provider Stack
+### Phase 6 - Define AWS Production And Local Emulation
 
-Recommend provider-neutral architecture first, then map it to concrete options:
+Define the AWS production stack and the matching local emulation stack:
 
-- local/dev
-- AWS
-- Azure
-- GCP
-- SaaS vector databases
-- existing relational databases with vector extensions
+- Lambda-compatible agent runtime
+- Bedrock or approved model/embedding access
+- S3 or equivalent object storage contract
+- DynamoDB, Postgres, or another AWS-backed metadata contract
+- OpenSearch, pgvector, or approved AWS retrieval index
+- CloudWatch and LangSmith-style traces where applicable
+- local adapters, fixtures, and invoke scripts that mirror AWS contracts
 
-Read `rules/architecture-provider-agnostic-stack-selection.md`.
+Read `rules/architecture-aws-local-emulation.md`.
 
-### Phase 6 - Evaluate And Operate
+### Phase 7 - Evaluate And Operate
 
 Define verification before production automation:
 
 - golden sets and expected matches
 - precision, recall, acceptance rate, and review rate
 - confidence calibration and drift checks
+- local fixture replay before AWS deployment
 - cost, latency, observability, and rollback
 
 Read `rules/delivery-evaluation-and-operations.md`.
@@ -88,9 +101,10 @@ Read `rules/delivery-evaluation-and-operations.md`.
 
 Ask only what changes the design:
 
+- Is this a standalone RAG agent, a capability inside another agent, or a reusable retrieval library exposed through an agent tool?
 - What is being retrieved: documents, chunks, examples, schemas, mappings, decisions, or records?
 - What does the runtime do with retrieved evidence: answer, classify, map, route, enrich, validate, or automate?
-- Where must it run: local, AWS, Azure, GCP, Vercel, SaaS, existing database, or hybrid?
+- Which AWS account/environment is production, and what local emulation fidelity is required?
 - Does the corpus contain PII, regulated data, tenant-scoped data, or data that cannot enter an LLM prompt?
 - What latency, cost, scale, and freshness limits apply?
 - Is human review required for low-confidence matches?
@@ -98,22 +112,24 @@ Ask only what changes the design:
 
 ## Non-Negotiables
 
-1. Design the portable data and retrieval contract before choosing technology.
+1. Package RAG implementations as reusable agents or reusable agent capabilities.
 2. Do not treat all RAG as document Q&A.
 3. Do not use embeddings alone when exact aliases, schema metadata, or deterministic rules are available.
 4. Do not auto-apply retrieval results without calibrated thresholds and a fallback path.
-5. Do not create a new vector stack when an existing database or search service fits the constraints.
-6. Do not send sensitive retrieved evidence to an LLM without explicit governance.
+5. Local emulation must mirror AWS production contracts and behavior; it must not become a parallel architecture.
+6. Do not create a new vector stack when an existing AWS database or search service fits the constraints.
+7. Do not send sensitive retrieved evidence to an LLM without explicit governance.
 
 ## Output Contract
 
 Return:
 
 - use-case classification
+- reusable agent boundary
 - corpus and metadata contract
 - retrieval pipeline and confidence policy
-- provider-neutral architecture
-- provider-specific stack recommendation and trade-offs
+- AWS production architecture
+- local emulation architecture
 - human-review and learning loop, when relevant
 - evaluation and operations plan
 - implementation checklist
@@ -123,7 +139,7 @@ Return:
 | Rule | File | Impact |
 | --- | --- | --- |
 | RAG use-case taxonomy | `rules/architecture-rag-use-case-taxonomy.md` | CRITICAL |
-| Provider-agnostic stack selection | `rules/architecture-provider-agnostic-stack-selection.md` | CRITICAL |
+| AWS production and local emulation | `rules/architecture-aws-local-emulation.md` | CRITICAL |
 | Corpus and metadata contract | `rules/implementation-corpus-and-metadata-contract.md` | CRITICAL |
 | Retrieval and confidence policy | `rules/implementation-retrieval-and-confidence-policy.md` | CRITICAL |
 | Human review and learning loop | `rules/implementation-human-review-and-learning-loop.md` | HIGH |
