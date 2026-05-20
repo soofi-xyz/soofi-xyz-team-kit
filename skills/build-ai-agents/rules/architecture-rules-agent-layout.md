@@ -83,7 +83,7 @@ const envSchema = z.object({
   CHAT_STATE_KEY_PREFIX: z.string().default('chat-sdk'),
   AGENTCORE_MEMORY_ID: z.string().optional(),
   BEDROCK_MODEL_ID: z.string().default('us.anthropic.claude-sonnet-4-6'),
-  LANGSMITH_PROJECT: z.string().default('my-agent'),
+  LANGSMITH_PROJECT: z.string().default('pikachu-agent'),
   LANGSMITH_API_KEY_SECRET_ARN: z.string().optional(),
 });
 

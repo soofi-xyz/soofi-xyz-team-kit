@@ -8,7 +8,7 @@ tags: [langsmith, telemetry, observability, tracing, ai-sdk]
 
 Wrap the Vercel AI SDK with **LangSmith** for per-turn traces grouped by session. Add tracing BEFORE iterating on prompts or expanding tools.
 
-Reference implementation: [ovid-agent langsmith.ts](https://github.com/Spring-Oaks-Capital-LLC/ovid-agent/blob/master/apps/agent-runtime/src/observability/langsmith.ts).
+Reference implementation: `apps/agent-handler/src/observability/langsmith.ts` in any Pokémon-named runtime agent repo (for example `lucario`).
 
 ## Required Environment Variables
 
