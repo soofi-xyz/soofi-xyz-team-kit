@@ -67,6 +67,7 @@ If you already know which specialist you need, skip the router and call them dir
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/534.png" alt="Conkeldurr" width="96"> | [`conkeldurr`](./agents/conkeldurr.md) | Platform engineer — owns the SOCAPITAL platform product map across Account, Bootstrap, Marketplace, Deployer, Puller, Persist, Connect, Translate, Product, and Rules; always asks "integrate existing or provision new?" before building. | `/conkeldurr Design platform capability...` |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/225.png" alt="Delibird" width="96"> | [`delibird`](./agents/delibird.md) | Report catalog app builder — single AWS-hosted catalog page listing report URLs, plus a CLI for registering, updating, validating, and publishing report entries. | `/delibird Build report catalog...` |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/132.png" alt="Ditto" width="96"> | [`ditto`](./agents/ditto.md) | S3 → external file-share sync workflow builder — EventBridge Scheduler starts a Step Functions Distributed Map (plan + cost gate → per-file workers → aggregate) that copies a configured S3 bucket/prefix into Citrix Endpoint Management (default), Citrix ShareFile, or another pluggable destination, with per-env SSM + Secrets Manager configuration and DEV/PROD CI/CD. | `/ditto Sync S3 files to...` |
+| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/196.png" alt="Espeon" width="96"> | [`espeon`](./agents/espeon.md) | Local RAG POC builder — TypeScript-first source ingestion, Turso/libSQL or embedded vector stores, Vercel AI SDK embeddings/tools, semantic search, and CLI chat. | `/espeon Build a local RAG POC...` |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/040.png" alt="Wigglytuff" width="96"> | [`wigglytuff`](./agents/wigglytuff.md) | Template-management specialist — Git-backed template inventory, source discovery, metadata normalization, sync workflows, and Asana-facing template operations. | `/wigglytuff Manage templates for...` |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/163.png" alt="Hoothoot" width="96"> | [`hoothoot`](./agents/hoothoot.md) | Prod Persist-only reporting agent — current counts, tables, charts, local previews, secure static HTML reports, scheduled AWS refresh, shared Microsoft Azure SSO access, and Amplify deployments. | `/hoothoot Build a Persist report. Ask path, then AWS.`<br>[Guide](./docs/hoothoot.md) |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/064.png" alt="Kadabra" width="96"> | [`kadabra`](./agents/kadabra.md) | Top-level SMS communication service builder — composes `xatu`, `wigglytuff`, `chatot`, and `oranguru` and owns the golden prompt. | `/kadabra Build SMS service...` |
@@ -99,6 +100,7 @@ If you already know which specialist you need, skip the router and call them dir
 | [`build-html-to-pdf`](./skills/build-html-to-pdf/) | Build HTML-to-PDF generation workflows on AWS Lambda using Playwright and Chromium, with typed request contracts, deterministic HTML rendering, runtime packaging, and verification. |
 | [`build-inbound-sftp-workflows`](./skills/build-inbound-sftp-workflows/) | Build inbound SFTP workflows on AWS with Transfer Family, a Lambda poller, and listing-first transfer validation. |
 | [`build-lexicon-product`](./skills/build-lexicon-product/) | Build the Lexicon product — governed graph vocabulary, ruleset data, metric definitions, source-system mapping artifacts, S3/SSM artifact publication, and read-only schema browsing. |
+| [`build-local-rag-pocs`](./skills/build-local-rag-pocs/) | Build local TypeScript RAG proof-of-concepts with Vercel AI SDK, Turso/libSQL or embedded vector stores, source ingestion, embeddings, semantic-search tools, and CLI chat. |
 | [`build-marketplace-puller`](./skills/build-marketplace-puller/) | Build the Marketplace Puller standalone product — tenant-side scheduled reconciler that polls marketplace desired state, detects drift on subscribed components, and converges via `POST /deploys` (push-primary mode) or a tenant-local CFN executor (pull-only mode). |
 | [`build-persist-service`](./skills/build-persist-service/) | Build the Persist graph-persistence platform service — Amazon Neptune backend with SigV4-authorised `/persist/*` HTTP API, lexicon-validated GraphSON v3 ingest (sync + async), Neptune CSV bulk-load workflow, and sync + async Gremlin query channels. |
 | [`build-product-deployer`](./skills/build-product-deployer/) | Build the Product Deployer standalone product — defines the common CDK contract every product implements, owns the canonical `EnvironmentContext`, and runs the Step Function that turns `(component, version, env_slug)` into a deployed stack via StackSets or assume-role + raw CloudFormation. |
@@ -138,6 +140,7 @@ soofi-xyz-cursor-plugin/
 │   ├── conkeldurr.md
 │   ├── delibird.md
 │   ├── ditto.md
+│   ├── espeon.md
 │   ├── wigglytuff.md
 │   ├── hoothoot.md
 │   ├── kadabra.md
@@ -165,6 +168,7 @@ soofi-xyz-cursor-plugin/
 │   ├── build-frontend-backends/     # Turborepo + Amplify + tRPC + CDK monorepos
 │   ├── build-html-to-pdf/           # Lambda + Playwright + Chromium HTML-to-PDF workflows
 │   ├── build-inbound-sftp-workflows/ # AWS Transfer Family inbound SFTP integrations
+│   ├── build-local-rag-pocs/        # Local TypeScript RAG POCs with Vercel AI SDK and local vector databases
 │   ├── build-marketplace-puller/    # Tenant-side reconciler standalone product (used by Regigigas)
 │   ├── build-persist-service/       # Persist graph-persistence platform service (used by Conkeldurr)
 │   ├── build-product-deployer/      # Common CDK + EnvironmentContext deploy product (used by Regigigas)
