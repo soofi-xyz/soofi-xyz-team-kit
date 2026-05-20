@@ -57,6 +57,7 @@ If you already know which specialist you need, skip the router and call them dir
 | Mascot | Agent | Description | Start With |
 | :---: | --- | --- | --- |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/063.png" alt="Abra" width="96"> | [`abra`](./agents/abra.md) | Designs and scaffolds solver services with Glue PySpark, pure Python OR-Tools solvers, and CDK-backed infrastructure. | `/abra Build an optimization solver for...` |
+| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/065.png" alt="Alakazam" width="96"> | [`alakazam`](./agents/alakazam.md) | RAG agent builder — directs reusable AWS RAG agents with Bedrock, OpenSearch, DynamoDB, S3, SAM local, and Docker OpenSearch replay. | `/alakazam Build RAG for...` |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/493.png" alt="Arceus" width="96"> | [`arceus`](./agents/arceus.md) | The Alpha Pokémon — master router that reads `README.md`, agent definitions, and skills, then directs the user to the right specialist(s) and skill(s) for any task. Does not implement the work. | `/arceus Which agent should handle...` |
 | <img src="https://archives.bulbagarden.net/media/upload/3/3a/Ash_OS_2.png" alt="Ash" width="96"> | [`ash`](./agents/ash.md) | Designs and implements Asana-triggered Lambda agents using the established Bedrock and telemetry patterns. | `/ash Build an Asana agent that...` |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/531.png" alt="Audino" width="96"> | [`audino`](./agents/audino.md) | Frontend bug-fix specialist — design comparison, override archaeology, minimal fixes, and regression-proof tests. | `/audino Fix this UI bug...` |
@@ -102,6 +103,7 @@ If you already know which specialist you need, skip the router and call them dir
 | [`build-persist-service`](./skills/build-persist-service/) | Build the Persist graph-persistence platform service — Amazon Neptune backend with SigV4-authorised `/persist/*` HTTP API, lexicon-validated GraphSON v3 ingest (sync + async), Neptune CSV bulk-load workflow, and sync + async Gremlin query channels. |
 | [`build-product-deployer`](./skills/build-product-deployer/) | Build the Product Deployer standalone product — defines the common CDK contract every product implements, owns the canonical `EnvironmentContext`, and runs the Step Function that turns `(component, version, env_slug)` into a deployed stack via StackSets or assume-role + raw CloudFormation. |
 | [`build-product-service`](./skills/build-product-service/) | Build the Product service — product definitions, schemas, OpenAPI metadata, product flow templates, template-backed flows, invocations, waterfalls, reports, SMS, email, widgets, blobs, and operational telemetry. |
+| [`build-rag-systems`](./skills/build-rag-systems/) | Build reusable AWS RAG agents with Bedrock embeddings, OpenSearch retrieval, DynamoDB review state, S3 corpora, SAM local, and Docker OpenSearch replay. |
 | [`build-rules-product`](./skills/build-rules-product/) | Build the Rules product — tenant-local batch decisioning over Persist graph facts, lexicon-backed rule evaluation, callable-population S3 outputs, audit reports, Glue preparation jobs, and CloudWatch metrics. |
 | [`build-saas-marketplace`](./skills/build-saas-marketplace/) | Build a multi-tenant SaaS distribution marketplace on AWS — Organizations-backed per-customer accounts, a central marketplace control plane, a `cdk synth`-artifact component registry, cross-account CloudFormation StackSet deploys, and the six register / release / rollback / list / subscribe / unsubscribe operations. |
 | [`build-sms-communication-service`](./skills/build-sms-communication-service/) | Top-level builder skill for the SMS communication service — owns ontology, worker-skill composition, and golden-prompt governance while delegating to audience, template, activity, and runtime workers. |
@@ -126,6 +128,7 @@ soofi-xyz-cursor-plugin/
 │   └── plugin.json                  # Plugin manifest (required)
 ├── agents/                          # Subagent definitions (auto-discovered)
 │   ├── abra.md
+│   ├── alakazam.md
 │   ├── arceus.md
 │   ├── ash.md
 │   ├── audino.md
@@ -166,6 +169,7 @@ soofi-xyz-cursor-plugin/
 │   ├── build-persist-service/       # Persist graph-persistence platform service (used by Conkeldurr)
 │   ├── build-product-deployer/      # Common CDK + EnvironmentContext deploy product (used by Regigigas)
 │   ├── build-product-service/       # Product orchestration service (used by Conkeldurr)
+│   ├── build-rag-systems/           # AWS-backed RAG agents with local emulation, retrieval, confidence, and evaluation
 │   ├── build-rules-product/         # Batch decisioning Rules product (used by Conkeldurr)
 │   ├── build-saas-marketplace/      # Multi-tenant SaaS marketplace control plane + cross-account CFN distribution (used by Regigigas)
 │   ├── build-sms-communication-service/ # Top-level SMS communication service builder (used by Kadabra)
