@@ -1,6 +1,6 @@
 ---
 name: build-rag-systems
-description: "Build reusable AWS RAG agents with SAM local Lambda emulation and Docker OpenSearch replay for knowledge retrieval, prior-decision reuse, semantic mapping, classification, and self-healing runtime workflows. Use when working with RAG, embeddings, OpenSearch retrieval, Bedrock embeddings, knowledge bases, schema/header mapping, confidence thresholds, AWS production RAG, or local emulation."
+description: "Build reusable AWS RAG systems with OpenSearch retrieval, Bedrock embeddings, SAM local Lambda emulation, Docker OpenSearch replay, historical ingestion, and webhook refresh. Use when working with cloud RAG, embeddings, OpenSearch retrieval, moving a local SQLite/libSQL RAG POC to AWS, knowledge bases, schema/header mapping, confidence thresholds, AWS production RAG, or local emulation."
 ---
 
 # Build RAG Systems
@@ -114,7 +114,30 @@ Use the approved stack:
 
 Read `rules/architecture-aws-local-emulation.md`.
 
-### Phase 8 - Replay, Roll Out, And Operate
+### Phase 8 - Migrate Local POC Data When Present
+
+If the project started with `../build-local-rag-pocs/`, treat the local SQLite/libSQL model as the first production corpus model:
+
+- export `rag_sources`, `rag_chunks`, and `rag_links` to JSONL
+- validate exported records with TypeScript/Zod schemas
+- map chunks into OpenSearch documents with stable IDs, vector dimensions, metadata filters, and embedding version fields
+- preserve source/link/idempotency state outside OpenSearch
+- replay the POC's golden queries against OpenSearch before switching reads
+
+Read `rules/implementation-local-poc-to-opensearch-migration.md`.
+
+### Phase 9 - Load Historical Data And Add Source Refresh
+
+After the production model is defined:
+
+- use `../build-batch-workflows/` for historical backfill strategy, cost gates, throttling, idempotency, failed-record handling, metrics, and replay
+- add source-specific webhooks after historical backfill
+- use EventBridge Scheduler plus incremental polling when webhooks do not exist
+- verify create, update, delete, duplicate, retry, and bad-signature cases with fixtures
+
+Read `rules/implementation-historical-and-webhook-ingestion.md`.
+
+### Phase 10 - Replay, Roll Out, And Operate
 
 Run verification in this order:
 
@@ -163,6 +186,8 @@ Return:
 - human-review and learning loop, when relevant
 - evaluation and operations plan
 - implementation checklist
+- local POC migration plan, when relevant
+- historical backfill and webhook/polling ingestion plan, when relevant
 
 ## Rules Summary
 
@@ -172,5 +197,7 @@ Return:
 | AWS production and local emulation | `rules/architecture-aws-local-emulation.md` | CRITICAL |
 | Corpus and metadata contract | `rules/implementation-corpus-and-metadata-contract.md` | CRITICAL |
 | Retrieval and confidence policy | `rules/implementation-retrieval-and-confidence-policy.md` | CRITICAL |
+| Local POC to OpenSearch migration | `rules/implementation-local-poc-to-opensearch-migration.md` | HIGH |
+| Historical and webhook ingestion | `rules/implementation-historical-and-webhook-ingestion.md` | HIGH |
 | Human review and learning loop | `rules/implementation-human-review-and-learning-loop.md` | HIGH |
 | Evaluation and operations | `rules/delivery-evaluation-and-operations.md` | HIGH |

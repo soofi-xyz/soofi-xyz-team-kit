@@ -14,5 +14,7 @@ Use these files as progressive disclosure. Read only the sections needed for the
 | AWS/local architecture | `architecture-aws-local-emulation.md` | Defining AWS production services and local emulation adapters. |
 | Corpus contract | `implementation-corpus-and-metadata-contract.md` | Defining documents, chunks, examples, mappings, decisions, provenance, or tenant metadata. |
 | Retrieval policy | `implementation-retrieval-and-confidence-policy.md` | Designing top-k, filters, hybrid search, thresholds, reranking, or fallback. |
+| Local POC migration | `implementation-local-poc-to-opensearch-migration.md` | Moving a proven SQLite/libSQL RAG POC into AWS OpenSearch. |
+| Historical and webhook ingestion | `implementation-historical-and-webhook-ingestion.md` | Loading historical corpus data and adding webhook or polling refresh. |
 | Review loop | `implementation-human-review-and-learning-loop.md` | Any retrieved result may be auto-applied or routed to manual review. |
 | Evaluation | `delivery-evaluation-and-operations.md` | Preparing production rollout, accuracy measurement, drift checks, or cost/latency controls. |
