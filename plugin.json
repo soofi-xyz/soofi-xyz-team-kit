@@ -16,5 +16,7 @@
     "frontend",
     "reporting",
     "socapital"
-  ]
+  ],
+  "agents": "agents-copilot/",
+  "skills": "skills/"
 }

@@ -1,0 +1,35 @@
+{
+  "name": "soofi-xyz",
+  "owner": {
+    "name": "Soofi XYZ"
+  },
+  "metadata": {
+    "description": "Company-wide plugins for AI-assisted development.",
+    "version": "0.10.0"
+  },
+  "plugins": [
+    {
+      "name": "soofi-xyz",
+      "description": "Company-wide project subagents and skills for AI-assisted development, including local and AWS RAG, platform services, reporting, frontend, communication, batch, and deployment specialists.",
+      "version": "0.10.0",
+      "author": {
+        "name": "Soofi XYZ"
+      },
+      "homepage": "https://github.com/soofi-xyz/cursor-plugin",
+      "repository": "https://github.com/soofi-xyz/cursor-plugin",
+      "license": "MIT",
+      "keywords": [
+        "agents",
+        "skills",
+        "aws",
+        "rag",
+        "frontend",
+        "reporting",
+        "socapital"
+      ],
+      "source": "./",
+      "agents": "agents-copilot/",
+      "skills": "skills/"
+    }
+  ]
+}

@@ -1,8 +1,10 @@
-# soofi-xyz-cursor-plugin
+# soofi-xyz plugin kit
 
-A [Cursor plugin](https://cursor.com/docs/plugins) packaging company-wide project subagents for AI-assisted development.
+A dual [Cursor plugin](https://cursor.com/docs/plugins) and [GitHub Copilot CLI plugin](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/plugins-creating) packaging company-wide project subagents and skills for AI-assisted development.
 
-## Installation
+## Install
+
+### Cursor
 
 Clone this repository into Cursor's local plugins directory so it is auto-discovered as `soofi-xyz`:
 
@@ -13,7 +15,18 @@ git clone https://github.com/soofi-xyz/cursor-plugin.git ~/.cursor/plugins/local
 
 Then reload Cursor. The plugin will load from `~/.cursor/plugins/local/soofi-xyz` and register all agents and skills automatically.
 
-## Updating
+### GitHub Copilot CLI
+
+Add the marketplace first, then install the plugin from that marketplace:
+
+```bash
+copilot plugin marketplace add soofi-xyz/cursor-plugin
+copilot plugin install soofi-xyz@soofi-xyz
+```
+
+## Update Or Remove
+
+### Cursor
 
 Pull the latest agents and skills from the same directory:
 
@@ -23,11 +36,20 @@ git -C ~/.cursor/plugins/local/soofi-xyz pull
 
 Reload Cursor after pulling so updated agents, skills, and the manifest are picked up.
 
+### GitHub Copilot CLI
+
+Update or uninstall the plugin by name:
+
+```bash
+copilot plugin update soofi-xyz
+copilot plugin uninstall soofi-xyz
+```
+
 ## Quick start
 
 When in doubt, **start with [`arceus`](./agents/arceus.md)** — the master router. Arceus reads this README, the agent definitions, and the skill metadata, then tells you which specialist(s) and skill(s) to use for your task. It does not perform the work itself; it hands you a copy-pasteable invocation hint for the right agent.
 
-Invoke it explicitly with the slash form:
+In Cursor, invoke it explicitly with the slash form:
 
 ```text
 /arceus I need to add Google Tag Manager to a Vite app and want regression coverage
@@ -39,18 +61,11 @@ Or mention it naturally in chat:
 Use the arceus subagent to recommend the right specialist for migrating an SMS template inventory.
 ```
 
-Cursor's Agent will also delegate to `arceus` automatically at the start of a task when no specific specialist has been named — so simply describing your task in plain English usually triggers the right routing.
+In GitHub Copilot CLI, select the custom agent with `/agent` and choose `soofi-xyz:arceus`, or start directly with `--agent soofi-xyz:arceus`.
+
+Cursor's Agent can also delegate to `arceus` automatically at the start of a task when no specific specialist has been named — so simply describing your task in plain English usually triggers the right routing.
 
 If you already know which specialist you need, skip the router and call them directly — for example `/sylveon` for Figma-to-code work or `/regigigas` for SaaS marketplace architecture. The full roster, with triggers and descriptions, lives in the [Agents](#agents) and [Skills](#skills) tables below.
-
-## What's inside
-
-| Component | Location | Description |
-| --- | --- | --- |
-| Agents | [`agents/`](./agents/) | Custom subagent configurations discovered automatically by Cursor |
-| Skills | [`skills/`](./skills/) | Agent skills — one directory per skill with a `SKILL.md` entry point |
-| Docs | [`docs/`](./docs/) | User-facing guides for marketplace and Agent mode usage |
-| Manifest | [`.cursor-plugin/plugin.json`](./.cursor-plugin/plugin.json) | Plugin manifest |
 
 ## Agents
 
@@ -121,88 +136,6 @@ If you already know which specialist you need, skip the router and call them dir
 | [`responsive-design-tests`](./skills/responsive-design-tests/) | Write Playwright design tests for Figma-driven responsive UI updates across mocked and real-device lanes. |
 | [`select-communication-audience`](./skills/select-communication-audience/) | Reusable audience-selection skill for defining eligibility boundaries and packaging filtered communication populations for downstream runtimes. |
 | [`unify-metrics`](./skills/unify-metrics/) | Lexicon-first metric unification: comparability gates, normalization, analysis, and audit-friendly outputs. |
-
-## Repository layout
-
-```text
-soofi-xyz-cursor-plugin/
-├── .cursor-plugin/
-│   └── plugin.json                  # Plugin manifest (required)
-├── agents/                          # Subagent definitions (auto-discovered)
-│   ├── abra.md
-│   ├── alakazam.md
-│   ├── arceus.md
-│   ├── ash.md
-│   ├── audino.md
-│   ├── braviary.md
-│   ├── castform.md
-│   ├── chatot.md
-│   ├── conkeldurr.md
-│   ├── delibird.md
-│   ├── ditto.md
-│   ├── espeon.md
-│   ├── wigglytuff.md
-│   ├── hoothoot.md
-│   ├── kadabra.md
-│   ├── klefki.md
-│   ├── lucario.md
-│   ├── machamp.md
-│   ├── meowth.md
-│   ├── metagross.md
-│   ├── noctowl.md
-│   ├── oranguru.md
-│   ├── porygon.md
-│   ├── regigigas.md
-│   ├── smeargle.md
-│   ├── sylveon.md
-│   └── xatu.md
-├── skills/                          # Agent skills (auto-discovered, one dir per skill)
-│   ├── apply-engineering-guidelines/ # Golden Path engineering standards
-│   ├── assemble-communication-runtime/ # Runtime-assembly worker skill (used by Oranguru)
-│   ├── atomic-data/                 # Atomic facts + vendor rollups for operational metrics
-│   ├── build-ai-agents/             # Rules-agent pattern for AI agents
-│   ├── build-batch-workflows/       # Step Functions / Glue batch workflows
-│   ├── build-build-service/         # Build CDK cloud assembly artifact service (used by Conkeldurr)
-│   ├── build-bootstrap-cli/         # Initial tenant bootstrap CLI for Deployer + Puller
-│   ├── build-connect-service/       # Connect partner-integration platform service (used by Conkeldurr)
-│   ├── build-frontend-backends/     # Turborepo + Amplify + tRPC + CDK monorepos
-│   ├── build-html-to-pdf/           # Lambda + Playwright + Chromium HTML-to-PDF workflows
-│   ├── build-inbound-sftp-workflows/ # AWS Transfer Family inbound SFTP integrations
-│   ├── build-local-rag-pocs/        # Local TypeScript RAG CLIs with provider SDK embeddings and libSQL databases
-│   ├── build-marketplace-puller/    # Tenant-side reconciler standalone product (used by Regigigas)
-│   ├── build-persist-service/       # Persist graph-persistence platform service (used by Conkeldurr)
-│   ├── build-product-deployer/      # Common CDK + EnvironmentContext deploy product (used by Regigigas)
-│   ├── build-product-service/       # Product orchestration service (used by Conkeldurr)
-│   ├── build-rag-systems/           # AWS-backed RAG systems with OpenSearch, POC migration, ingestion, and evaluation
-│   ├── build-rules-product/         # Batch decisioning Rules product (used by Conkeldurr)
-│   ├── build-saas-marketplace/      # Multi-tenant SaaS marketplace control plane + cross-account CFN distribution (used by Regigigas)
-│   ├── build-sms-communication-service/ # Top-level SMS communication service builder (used by Kadabra)
-│   ├── build-solver-services/       # Glue + OR-Tools optimization services
-│   ├── build-tenant-account-manager/ # Customers, environments, API keys, shared authorizer standalone product (used by Regigigas)
-│   ├── build-tenant-domain-router/  # Root domain + per-env subdomains + base-path contract standalone product (used by Regigigas)
-│   ├── build-translate-service/     # Translate language and mapping service (used by Conkeldurr)
-│   ├── figma-to-code/               # Figma-driven frontend updates
-│   ├── frontend-bug-fix/            # UI bug triage and regression prevention
-│   ├── integrate-ci-cd/             # Shared GitHub Actions workflows
-│   ├── manage-channel-templates/    # Template-management worker skill (used by Jigglypuff)
-│   ├── manage-communication-activity/ # Communication-activity worker skill (used by Chatot)
-│   ├── responsive-design-tests/     # Playwright design tests across breakpoints
-│   ├── select-communication-audience/ # Audience-selection worker skill (used by Xatu)
-│   └── unify-metrics/               # Lexicon-first metric unification
-├── docs/                            # User-facing usage guides
-│   └── hoothoot.md                  # Hoothoot marketplace guide
-├── AGENTS.md                        # Contributor guidance for agents/skills in this repo
-├── CONTRIBUTING.md                  # How to contribute
-└── README.md
-```
-
-Cursor discovers components automatically based on folder names. See the [Plugins reference](https://cursor.com/docs/reference/plugins) for the full component model.
-
-## References
-
-- [Cursor Plugins overview](https://cursor.com/docs/plugins)
-- [Plugins reference](https://cursor.com/docs/reference/plugins)
-- [Cursor plugin template](https://github.com/cursor/plugin-template)
 
 ## License
 
