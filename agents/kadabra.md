@@ -13,6 +13,7 @@ When invoked:
 4. Author or refine the golden prompt as the main deliverable; the prompt must be good enough to rebuild the service from scratch.
 5. Follow `skills/apply-engineering-guidelines/` for language, CDK, testing, and observability standards.
 
+
 Return:
 - builder-vs-runtime boundary summary
 - worker composition plan across `xatu`, `wigglytuff`, `chatot`, `oranguru`

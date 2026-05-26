@@ -17,6 +17,7 @@ Use this skill for the communication-activity loop after the audience has been c
 - message handoff to the provider
 - delivery-event ingestion
 - response or outcome ingestion
+- normalized EventBridge event publication for engagement outcomes that other products consume
 - activity-state closure
 
 Keep dispatch and feedback together at this abstraction level.
@@ -31,6 +32,7 @@ Use `Chatot` to define:
 - response and failure handling
 - mapping between provider IDs and internal IDs
 - persistence of delivery and response outcomes
+- EventBridge source/detail-type contracts for provider feedback and replies
 
 For the current SMS service, load `rules/quiq-delivery-and-feedback.md`.
 
@@ -54,6 +56,7 @@ Before considering the communication-activity capability ready, confirm:
 - send idempotency and retry behavior are defined
 - provider events map back to internal communication identifiers
 - delivery and response outcomes are persisted
+- response events that other products need are published to the shared engagement bus
 - the activity lifecycle is closed, not fire-and-forget
 
 ## Rules Summary

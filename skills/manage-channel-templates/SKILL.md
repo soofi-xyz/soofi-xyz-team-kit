@@ -27,6 +27,20 @@ Prefer this split:
 3. sync jobs normalize operational data into the Git contract
 4. runtime systems read the reviewed Git contract instead of querying the source system ad hoc
 
+## Single Source Of Truth At Runtime — No Fallbacks
+
+Once a Git template repo is declared the source of truth for a channel, runtime systems MUST read templates from that repo and only that repo. Specifically:
+
+- Do **not** ship a baked-in template snapshot inside the runtime artifact (no bundled JSON inside the Lambda zip, the Glue job zip, the Spark egg, or the application image) and do **not** fall back to it when the Git fetch fails.
+- Do **not** fall back to the operational source system (Postgres, Snowflake, vendor API, file share) at runtime. The sync job is the one and only writer; the runtime is a reader.
+- Do **not** fall back to a previously cached copy on disk, in S3, or in a SSM/Secrets payload. A stale template silently rendered is worse than a loud failure.
+- If the Git source is unreachable, the runtime MUST fail loudly (exception, alarm, page) so the issue is visible and operators can fix the Git access path.
+- A `LocalTemplateRepository`-style class is acceptable strictly as a test/dev escape hatch, gated behind an explicit caller-supplied path. It MUST NOT be reachable from the production code path without that explicit override, and the production deploy MUST NOT pass that override.
+
+### Anti-Pattern: The Bundled Snapshot Mistake
+
+A previous SMS solver build wired its Glue job as `FallbackTemplateRepository(GitHubTemplateRepository, BundledTemplateRepository)`, where `BundledTemplateRepository` was a directory of JSON files baked into the Glue job's Python package. If GitHub auth failed or rate-limited, the solver silently rendered SMS using the baked-in copy — which had a fixed, stale subset of templates and was last updated whenever the artifact was last redeployed. The operator-visible behavior was "it works"; the consumer-visible behavior was "wrong template body, wrong family mix, no new templates ever." The fix was to delete the bundled snapshot directory entirely, remove the `BundledTemplateRepository` and `FallbackTemplateRepository` classes from the codebase, and let GitHub fetch failures surface as solver job failures. Treat any future "fallback to a bundled / cached / mirrored copy at runtime" proposal as the same anti-pattern.
+
 ## Template Contract Rules
 
 Define and document:
