@@ -1,11 +1,11 @@
 ---
 name: build-ai-agents
-description: "Guides creation of AI agents using the rules-agent pattern. Covers Lambda-first agent runtime design, Chat SDK ingress via @soofi-xyz/chat-adapter-asana, Chat SDK state persistence via @soofi-xyz/chat-state-dynamodb, Vercel AI SDK ToolLoopAgent on Bedrock, multi-intent request routing, LangSmith telemetry, AgentCore-backed AI conversation memory, tools, deployment, and testing. Triggers on: ai agent, build agent, lambda agent, asana bot, chat sdk, chat-adapter-asana, chat-state-dynamodb, webhook agent, tool loop agent, langsmith agent, agent memory, bedrock agent, agentcore memory."
+description: "Guides creation of AI agents using the rules-agent pattern. Covers Lambda-first agent runtime design, Chat SDK ingress via @soofi-xyz/chat-adapter-asana, Chat SDK state persistence via @soofi-xyz/chat-state-dynamodb, Vercel AI SDK ToolLoopAgent on Bedrock, Bedrock prompt caching, multi-intent request routing, LangSmith telemetry, AgentCore-backed AI conversation memory, tools, deployment, and testing. Triggers on: ai agent, build agent, lambda agent, asana bot, chat sdk, chat-adapter-asana, chat-state-dynamodb, webhook agent, tool loop agent, bedrock prompt cache, langsmith agent, agent memory, bedrock agent, agentcore memory."
 ---
 
 # Building AI Agents
 
-Step-by-step guide for designing and deploying AI agents in this ecosystem. Follow the **ovid-agent / rules-agent** reference implementation, updated for the Chat SDK and the `@soofi-xyz/*` packages that replace hand-rolled Asana webhook code.
+Step-by-step guide for designing and deploying AI agents in this ecosystem. Follow existing **Pokémon-named rules-agent** reference implementations, updated for the Chat SDK and the `@soofi-xyz/*` packages that replace hand-rolled Asana webhook code.
 
 ## Architecture: Lambda Runtime Only
 
@@ -15,7 +15,7 @@ The Lambda hosts the Chat SDK (with `@soofi-xyz/chat-adapter-asana`) and runs th
 
 Read `rules/architecture-runtime-selection.md` for the full Lambda boundary guidance.
 
-## Workflow: Seven Phases
+## Workflow: Eight Phases
 
 Follow these phases in order. Each phase gates the next — do NOT skip ahead.
 
@@ -32,17 +32,19 @@ Before implementing, copy this checklist into the working todo list and keep it 
 - [ ] AgentCore Memory configured behind a `ConversationEventStore` interface (separate from Chat SDK state)
 - [ ] Typed multi-intent request contract added when the agent supports multiple asks
 - [ ] AI path uses Vercel AI SDK `ToolLoopAgent` with an Amazon Bedrock model, invoked from inside Chat SDK handlers
+- [ ] Bedrock model wrapped with prompt caching before constructing `ToolLoopAgent`
 - [ ] LangSmith facade added before prompt iteration or tool expansion
 - [ ] `LANGSMITH_API_KEY`, `LANGSMITH_PROJECT`, `LANGSMITH_ENDPOINT`, and `LANGSMITH_TRACING` wired correctly
 - [ ] All AI entrypoints use the same wrapped LangSmith facade and call `flush()` before returning
+- [ ] Bedrock prompt cache read/write token usage logged and cache strategy metadata added to LangSmith runs
 - [ ] Deploy-time/user-side setup values are documented explicitly for the human
 - [ ] End-to-end verification includes checking LangSmith traces, not just functional output
 
 ### Phase 1 — Agent Naming
 
-Pick a Pokémon name from the official Pokédex. The Pokémon's character should resonate with the agent's purpose (e.g., a batch-processing agent could be `machamp`, a solver could be `abra`).
+Pick a Pokémon name from the official Pokédex. The Pokémon's character should resonate with the agent's purpose (e.g., a batch-processing agent could be `machamp-agent`, a solver could be `abra-agent`). Use lowercase `<pokemon>-agent` for runtime repo names and config. Plugin subagents in `agents/` use the plain Pokémon name.
 
-Read `rules/foundation-agent-naming.md`.
+Read `rules/foundation-agent-naming.md` for the full naming contract, examples, and anti-patterns.
 
 ### Phase 2 — Purpose & Runtime Boundaries
 
@@ -101,8 +103,9 @@ npx -y skills add vercel/ai -y
 - Register tools explicitly — do NOT use dynamic tool discovery.
 - When an agent supports multiple question types, use a typed multi-intent request contract and route tools by source instead of coercing every ask into one action.
 - Invoke `agent.run(...)` from inside `chat.onNewMention` / `chat.onSubscribedMessage` — not from a second Lambda.
+- Wrap the Bedrock model with prompt caching before passing it to `ToolLoopAgent`.
 
-Read `rules/implementation-vercel-ai-tool-loop-agent.md` and `rules/implementation-request-contracts-and-routing.md`.
+Read `rules/implementation-vercel-ai-tool-loop-agent.md`, `rules/implementation-bedrock-prompt-caching.md`, and `rules/implementation-request-contracts-and-routing.md`.
 
 ### Phase 6 — Telemetry
 
@@ -143,7 +146,7 @@ Read `rules/delivery-tools-deploy-and-test.md`.
 │   └── agent-handler/              # Single Lambda: Chat SDK ingress + AI turn
 │       ├── src/
 │       │   ├── chat/               # Chat instance bootstrap (adapters, state, handlers)
-│       │   ├── agent/              # processAgentTurn — model + tools + memory
+│       │   ├── agent/              # processAgentTurn — model + prompt cache + tools + memory
 │       │   ├── config/             # env.ts — Zod-validated environment
 │       │   ├── contracts/          # Request/response Zod schemas
 │       │   ├── identity/           # Actor resolution from Chat SDK message.author
@@ -170,10 +173,11 @@ Read `rules/delivery-tools-deploy-and-test.md`.
 1. **Keep the runtime Lambda-friendly.** If the design needs local state, git, bash, or long-lived execution, redesign it before implementing tools.
 2. **Use Chat SDK + `@soofi-xyz/chat-adapter-asana` for ingress.** Do NOT hand-roll handshake, signature verification, event filtering, dedupe, or retry logic.
 3. **Use `ToolLoopAgent` for tool-calling.** Do NOT hand-roll tool loops.
-4. **Persist Chat SDK state in DynamoDB via `@soofi-xyz/chat-state-dynamodb`.** In-memory state is only acceptable in unit tests.
-5. **Add LangSmith BEFORE prompt iteration.** You cannot improve what you cannot observe.
-6. **Isolate AI conversation history behind `ConversationEventStore`** backed by AgentCore Memory. Keep it separate from Chat SDK state.
-7. **Test through real Asana tasks and mentions.** Unit tests alone are insufficient.
+4. **Wrap Bedrock models with prompt caching.** Cache the first system message and last non-system message, then log cache read/write token usage.
+5. **Persist Chat SDK state in DynamoDB via `@soofi-xyz/chat-state-dynamodb`.** In-memory state is only acceptable in unit tests.
+6. **Add LangSmith BEFORE prompt iteration.** You cannot improve what you cannot observe.
+7. **Isolate AI conversation history behind `ConversationEventStore`** backed by AgentCore Memory. Keep it separate from Chat SDK state.
+8. **Test through real Asana tasks and mentions.** Unit tests alone are insufficient.
 
 ## Rules Summary
 
@@ -184,6 +188,7 @@ Read `rules/delivery-tools-deploy-and-test.md`.
 | Repository Layout | `rules/architecture-rules-agent-layout.md` | HIGH |
 | Asana Bot & Webhook (Chat SDK) | `rules/integration-asana-bot-and-webhook.md` | CRITICAL |
 | AI SDK & ToolLoopAgent | `rules/implementation-vercel-ai-tool-loop-agent.md` | CRITICAL |
+| Bedrock Prompt Caching | `rules/implementation-bedrock-prompt-caching.md` | HIGH |
 | Request Contracts & Routing | `rules/implementation-request-contracts-and-routing.md` | CRITICAL |
 | LangSmith Telemetry | `rules/observability-langsmith-telemetry.md` | CRITICAL |
 | Chat SDK State (DynamoDB) | `rules/state-chat-sdk-state.md` | CRITICAL |

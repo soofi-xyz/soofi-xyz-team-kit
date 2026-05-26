@@ -1,7 +1,7 @@
 ---
 title: AI SDK & ToolLoopAgent
 impact: CRITICAL
-tags: [ai-sdk, vercel, tool-loop-agent, bedrock, model, tools]
+tags: [ai-sdk, vercel, tool-loop-agent, bedrock, model, tools, prompt-cache]
 ---
 
 # AI SDK & ToolLoopAgent
@@ -35,16 +35,20 @@ Use Amazon Bedrock models only. Create the provider with explicit region and cre
 ```typescript
 import { createAmazonBedrock } from '@ai-sdk/amazon-bedrock';
 import { fromNodeProviderChain } from '@aws-sdk/credential-providers';
+import { withBedrockPromptCaching } from './bedrock-prompt-cache.js';
 
 const bedrock = createAmazonBedrock({
   region: 'us-east-2',
   credentialProvider: fromNodeProviderChain(),
 });
 
-const model = bedrock('us.anthropic.claude-sonnet-4-6');
+const model = withBedrockPromptCaching(
+  bedrock('us.anthropic.claude-sonnet-4-6'),
+);
 ```
 
 Do NOT hardcode credentials. Use the AWS credential provider chain.
+Do NOT pass a raw Bedrock model into `ToolLoopAgent`; wrap it with `withBedrockPromptCaching` first.
 
 ### Bedrock Model IDs
 
@@ -127,8 +131,9 @@ Keep the `Chat` instance, the `ToolLoopAgent`, and the `ConversationEventStore` 
 2. **Set a system prompt.** Define the agent's role and boundaries clearly.
 3. **Use `ToolLoopAgent`, not `generateText` with manual loops.** The agent handles retries, tool errors, and loop termination.
 4. **Limit tool iterations** if needed — pass `maxIterations` to prevent runaway loops.
-5. **Use typed request contracts for multi-capability agents.** Route tools by intent and source instead of forcing every ask through one fallback flow.
-6. **Keep tools Lambda-friendly.** Prefer API and data-store tools; do not design around local bash or git workflows inside the runtime.
+5. **Wrap Bedrock models with prompt caching.** Use `withBedrockPromptCaching` from `rules/implementation-bedrock-prompt-caching.md`.
+6. **Use typed request contracts for multi-capability agents.** Route tools by intent and source instead of forcing every ask through one fallback flow.
+7. **Keep tools Lambda-friendly.** Prefer API and data-store tools; do not design around local bash or git workflows inside the runtime.
 
 ## Tool Definition
 
@@ -180,7 +185,9 @@ See `rules/observability-langsmith-telemetry.md` for the full facade pattern.
 ```typescript
 // Typed tools, explicit registration, ToolLoopAgent
 const agent = new langsmith.ToolLoopAgent({
-  model: bedrock('us.anthropic.claude-sonnet-4-6'),
+  model: withBedrockPromptCaching(
+    bedrock('us.anthropic.claude-sonnet-4-6'),
+  ),
   tools: { lookupPrimaryRecord, listAvailableAssets, updateTaskOutput },
   system: 'You are the Seneca agent. You inspect requests and return concise task updates.',
 });
@@ -200,6 +207,9 @@ const model = openai('gpt-4o'); // ❌ Must use Bedrock
 
 // ❌ Unsupported or stale Bedrock model ID
 const model = bedrock('anthropic.claude-sonnet-4-6'); // ❌ Verify regional ID or inference profile
+
+// ❌ Raw Bedrock model, no prompt-cache middleware
+const agent = new ToolLoopAgent({ model: bedrock(modelId), tools, system });
 
 // ❌ Dynamic tool discovery
 const tools = await discoverTools(); // ❌ Tools must be explicit

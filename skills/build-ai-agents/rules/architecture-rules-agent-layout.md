@@ -27,7 +27,7 @@ packages:
 │   └── agent-handler/              # Single Lambda: Chat SDK ingress + AI turn
 │       ├── src/
 │       │   ├── chat/               # Chat instance bootstrap (adapters, state, handlers)
-│       │   ├── agent/              # processAgentTurn — model + tools + memory orchestration
+│       │   ├── agent/              # processAgentTurn — model + prompt cache + tools + memory orchestration
 │       │   ├── config/             # env.ts — Zod-validated environment config
 │       │   ├── contracts/          # Request/response Zod schemas
 │       │   ├── identity/           # Actor resolution from Chat SDK message.author
@@ -83,7 +83,7 @@ const envSchema = z.object({
   CHAT_STATE_KEY_PREFIX: z.string().default('chat-sdk'),
   AGENTCORE_MEMORY_ID: z.string().optional(),
   BEDROCK_MODEL_ID: z.string().default('us.anthropic.claude-sonnet-4-6'),
-  LANGSMITH_PROJECT: z.string().default('my-agent'),
+  LANGSMITH_PROJECT: z.string().default('pikachu-agent'),
   LANGSMITH_API_KEY_SECRET_ARN: z.string().optional(),
 });
 
