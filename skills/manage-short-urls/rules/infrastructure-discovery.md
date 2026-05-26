@@ -151,7 +151,7 @@ This rule should grow over time as we hit more environment realities. The goal i
 
 ## 8. Dev Integration Test Capture Pattern
 
-For v1 dev testing, create a temporary SQS queue and EventBridge rule that captures `ShortUrlVisited` events, then delete both after the test. When granting EventBridge permission to send to the queue, `aws sqs set-queue-attributes` expects a JSON map of attributes:
+For v1 dev testing, create a temporary SQS queue and EventBridge rule that captures `GraphFactProduced` events for `detail.fact_type = short_url.visited`, then delete both after the test. When granting EventBridge permission to send to the queue, `aws sqs set-queue-attributes` expects a JSON map of attributes:
 
 ```bash
 aws sqs set-queue-attributes \
