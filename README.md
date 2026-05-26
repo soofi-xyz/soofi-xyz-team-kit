@@ -136,6 +136,7 @@ If you already know which specialist you need, skip the router and call them dir
 | [`responsive-design-tests`](./skills/responsive-design-tests/) | Write Playwright design tests for Figma-driven responsive UI updates across mocked and real-device lanes. |
 | [`select-communication-audience`](./skills/select-communication-audience/) | Reusable audience-selection skill for defining eligibility boundaries and packaging filtered communication populations for downstream runtimes. |
 | [`unify-metrics`](./skills/unify-metrics/) | Lexicon-first metric unification: comparability gates, normalization, analysis, and audit-friendly outputs. |
+| [`use-elephant-query-db`](./skills/use-elephant-query-db/) | User guide for consuming the Vercel Neon `elephant-query-db` database with `@elephant-xyz/query-db` schema imports and TypeScript/Drizzle query code for parcels, permits, Sunbiz companies, and addresses. |
 | [`use-translate-service`](./skills/use-translate-service/) | User guide for calling a deployed Translate service — what a language and a runtime mapping are, the JSON shapes required to register them, the input/output shapes Translate expects, and how to validate, preview, and run asynchronous executions over `/translate/*`. |
 
 ## License
