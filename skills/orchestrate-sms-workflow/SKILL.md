@@ -35,6 +35,33 @@ Required state machines for the current service:
 - `ProcessQuiqEventsWorkflow`: optional near-real-time raw Quiq event processor.
 - `DailyInterproseExportWorkflow`: daily raw Quiq batch processing, processed-row generation, export file writing, and SFTP upload.
 
+## How An Agent Finds The Pieces
+
+When applying this skill inside an implementation repo, discover the concrete resources before changing code:
+
+- Find state machines in CDK by searching for `SmsOrchestrationWorkflowStateMachine`, `SmsSolverWorkflow`, `SmsLifecycleWorkflow`, `DailyInterproseExportWorkflow`, or `new sfn.StateMachine`.
+- Find Lambda handlers by searching for names such as `prepare-batches`, `render-scheduled-send-files`, `send-batch`, `process-quiq-events`, and `export-interprose-files`.
+- Find solver code under likely folders such as `glue_solver/`, `solver/`, or `src/*solver*`; for Kadabra SMS the solver is the Glue/PySpark + OR-Tools runtime that emits `scheduled_send_files`.
+- Find orchestration inputs/outputs in `docs/contracts/`, `README.md`, CDK Step Functions definitions, and tests before inventing a new contract.
+- Find deployed resource names from CDK stack outputs, environment config, or AWS APIs; do not hardcode ARNs from memory.
+
+If any concrete resource is missing, the agent should update the design/skill guidance or ask for the missing integration target instead of pretending the step exists.
+
+## How The Steps Are Invoked
+
+The normal production path is Step Functions-owned:
+
+1. An operator or scheduler starts `SmsOrchestrationWorkflowStateMachine` with the campaign input, usually an `input_s3_uri` plus optional run overrides.
+2. The orchestration workflow invokes the filter step or consumes an already-filtered S3 handoff, depending on the repo's current contract.
+3. The orchestration workflow starts `SmsSolverWorkflow` as a child execution. The solver workflow starts the Glue job and waits for its result.
+4. The orchestration workflow invokes the Jigglypuff render Lambda or render fanout step with the solver's `scheduled_send_files` S3 URI.
+5. The orchestration workflow starts `SmsLifecycleWorkflow` with the rendered scheduled-send file URI.
+6. `SmsLifecycleWorkflow` waits until each batch `scheduledAt`, then enqueues outbound sends to SQS.
+7. The SQS consumer sends to Quiq when the sender is explicitly enabled.
+8. `DailyInterproseExportWorkflow` is invoked by its daily schedule or manually for replay/backfill; it reads raw Quiq S3 events and send context.
+
+Manual testing should invoke the same state machines or Lambdas with narrow payloads. Direct Lambda invocation is acceptable for controlled tests, but it must not become the production orchestration path.
+
 ## Step Contracts
 
 ### Filter
