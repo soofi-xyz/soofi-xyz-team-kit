@@ -95,7 +95,14 @@ Expose a runtime-friendly inventory that downstream systems can trust:
 - explicit variable list
 - explicit active state
 - explicit family/variant semantics
+- optional `asset_id` for MMS media, passed through rendering as `asset_id`
 - no hidden dependence on operational-only columns
+
+For SMS rendering, Jigglypuff must return:
+
+- `rendered_message` as the text artifact consumed by lifecycle
+- `asset_id` when the chosen template has an asset
+- `interaction_identifier` so downstream exports can tie the provider delivery row back to the rendered communication
 
 ## Boundaries
 

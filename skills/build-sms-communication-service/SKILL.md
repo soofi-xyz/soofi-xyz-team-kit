@@ -14,10 +14,11 @@ Kadabra is the top-level builder. It should not be the daily runtime and it shou
 
 | Skill                                                              | Load when                                                                              |
 | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
-| `[wigglytuff](../wigglytuff/)`                                   | defining template inventory, CRUD, and template sync                                   |
-| `[xatu](../xatu/)`                                                 | defining audience boundaries and runtime intake contracts                              |
-| `[chatot](../chatot/)`                                             | defining provider execution, routing, and feedback loops                               |
-| `[oranguru](../oranguru/)`                                         | defining the runtime workflow, data contracts, allocation, and validation              |
+| `[manage-channel-templates](../manage-channel-templates/)`         | defining template inventory, CRUD, and template sync                                   |
+| `[select-communication-audience](../select-communication-audience/)` | defining audience boundaries and runtime intake contracts                              |
+| `[manage-communication-activity](../manage-communication-activity/)` | defining provider execution, routing, and feedback loops                               |
+| `[assemble-communication-runtime](../assemble-communication-runtime/)` | defining the runtime workflow, data contracts, allocation, and validation              |
+| `[orchestrate-sms-workflow](../orchestrate-sms-workflow/)`         | defining the filter -> solver -> Jigglypuff -> lifecycle -> export workflow            |
 | `[building-ai-agents](../building-ai-agents/)`                     | capturing builder prompts, reusable agent structure, and runtime-vs-builder boundaries |
 | `[building-solver-services](../building-solver-services/)`         | implementing the Glue + OR-Tools architecture inside the runtime                       |
 | `[building-batch-workflows](../building-batch-workflows/)`         | defining input contracts, cost gates, throttling, and recoverability                   |
@@ -42,12 +43,32 @@ Do not collapse those three roles into one prompt, one skill, or one code path.
 
 Kadabra should explicitly compose these worker skills:
 
-- `[wigglytuff](../wigglytuff/)` for template inventory, CRUD, and synchronization
-- `[xatu](../xatu/)` for audience boundaries and runtime intake contracts
-- `[chatot](../chatot/)` for provider setup, execution handoff, and feedback loops
-- `[oranguru](../oranguru/)` for runtime assembly, scheduling logic, allocation, and validation
+- `[manage-channel-templates](../manage-channel-templates/)` / Wigglytuff for template inventory, CRUD, and synchronization
+- `[select-communication-audience](../select-communication-audience/)` / Xatu for audience boundaries and runtime intake contracts
+- `[manage-communication-activity](../manage-communication-activity/)` / Chatot for provider setup, execution handoff, and feedback loops
+- `[assemble-communication-runtime](../assemble-communication-runtime/)` / Oranguru for runtime assembly, scheduling logic, allocation, and validation
+- `[orchestrate-sms-workflow](../orchestrate-sms-workflow/)` for the deterministic Step Functions contract that connects filter, solver, Jigglypuff rendering, SMS lifecycle, Quiq feedback, daily export, and SFTP delivery
 
 Kadabra may set requirements on the produced runtime, but the detailed runtime rulebook belongs to the worker skills, not to Kadabra.
+
+## Current SMS Runtime Shape
+
+The current SMS communication service is built as a deterministic workflow:
+
+```text
+Filter -> SmsSolverWorkflow -> Jigglypuff render fanout -> SmsLifecycleWorkflow -> raw Quiq S3 batch processing -> DailyInterproseExportWorkflow
+```
+
+Important learned requirements:
+
+- filter runs before solver with `rule_context: { channel: "SMS" }`; development runs should preserve rule reports
+- solver emits UUID `message_id` values and scheduled send partitions
+- Jigglypuff rendering must return `rendered_message`, `asset_id`, and `interaction_identifier`
+- Quiq payload assets use `{ "assetId": "<asset_id>" }`
+- send context stores local `messageId` and Quiq `providerMessageId`
+- daily export can batch-read raw Quiq S3 date folders directly; S3 notifications are optional
+- export scans a small rolling raw-folder window and filters rows into the legacy 10PM Eastern export day
+- `sms_log` ends with `interaction_identifier`
 
 ## Golden Prompt Standard
 
@@ -81,6 +102,7 @@ Before considering Kadabra ready, confirm:
 - `xatu` owns audience selection and intake handoff
 - `chatot` owns communication activity execution and feedback
 - `oranguru` owns runtime assembly and detailed runtime rules
+- `orchestrate-sms-workflow` owns the cross-step workflow contract and E2E acceptance path
 - a golden prompt exists and is auditable
 - the golden prompt is good enough to support rebuild-from-scratch validation
 - worker boundaries are clear enough that runtime details do not need to live in Kadabra

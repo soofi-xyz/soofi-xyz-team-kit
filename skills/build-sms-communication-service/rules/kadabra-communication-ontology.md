@@ -26,7 +26,7 @@ Do not merge those layers together unless there is a very strong reason.
 
 ## Stable Reusable Capability Inventory
 
-### [`wigglytuff`](../../wigglytuff/)
+### [`manage-channel-templates`](../../manage-channel-templates/) / Wigglytuff
 
 Wigglytuff owns the template system itself:
 
@@ -45,7 +45,7 @@ names, the derived fields, the runtime contract shape, the target GitHub
 repo — live in the per-instance golden prompt that Kadabra uses to invoke
 Wigglytuff. They do not live in this skill.
 
-### [`xatu`](../../xatu/)
+### [`select-communication-audience`](../../select-communication-audience/) / Xatu
 
 Xatu owns the audience boundary:
 
@@ -55,7 +55,7 @@ Xatu owns the audience boundary:
 
 For SMS, Xatu is the bridge between upstream filtering and the runtime's `input_s3_uri` intake.
 
-### [`chatot`](../../chatot/)
+### [`manage-communication-activity`](../../manage-communication-activity/) / Chatot
 
 Chatot owns the activity loop after the audience is chosen:
 
@@ -69,7 +69,7 @@ Chatot owns the activity loop after the audience is chosen:
 
 Dispatch and feedback should stay together at this abstraction level. Do not split them into separate lower-level builder agents unless there is a strong justification.
 
-### [`oranguru`](../../oranguru/)
+### [`assemble-communication-runtime`](../../assemble-communication-runtime/) / Oranguru
 
 Oranguru owns assembly of the final runtime:
 
@@ -79,6 +79,20 @@ Oranguru owns assembly of the final runtime:
 - keep the runtime reproducible from Kadabra's prompt and knowledge base
 
 The runtime may be implemented with Step Functions, Lambda, Glue, or similar deterministic systems. That runtime is the product Kadabra builds.
+
+### [`orchestrate-sms-workflow`](../../orchestrate-sms-workflow/)
+
+The orchestration workflow skill owns the cross-capability Step Functions contract:
+
+- filter before solver with SMS rule context
+- solver handoff into rendered scheduled-send files
+- bounded Jigglypuff render fanout
+- lifecycle execution and scheduled send enforcement
+- Quiq provider id correlation through send context
+- raw Quiq S3 batch processing
+- Interprose export and SFTP delivery
+
+This is not a fifth worker that replaces Xatu, Wigglytuff, Chatot, or Oranguru. It is the explicit choreography layer that prevents their contracts from drifting apart.
 
 ## Graph Persistence Discipline
 
@@ -144,6 +158,7 @@ At minimum, the golden prompt should specify:
 - the GitHub repo or persistence target for templates
 - the runtime entrypoint and external contract
 - the provider and send workflow contract
+- the orchestration state machines and cross-step input/output contracts
 - the required outputs and feedback loop
 - deployment and safety constraints
 
@@ -169,5 +184,6 @@ When reviewing Kadabra or a service Kadabra built, verify:
 - template sync still belongs to Jigglypuff
 - communication dispatch and feedback still belong to Chatot
 - detailed runtime rule ownership stays with Oranguru, not Kadabra
+- cross-step orchestration remains documented in `orchestrate-sms-workflow`
 - the runtime remains deterministic and contract-driven
 - the golden prompt stays aligned with the implementation

@@ -1,6 +1,6 @@
 ---
 name: oranguru
-description: Communication-runtime assembler. Use proactively when composing audience, template, and communication-activity capabilities into deterministic end-to-end channel services, including internal data contracts, candidate generation, scoring, allocation, outputs, and runtime validation.
+description: Communication-runtime assembler. Use proactively when composing audience, template, orchestration, and communication-activity capabilities into deterministic end-to-end channel services, including internal data contracts, candidate generation, scoring, allocation, outputs, and runtime validation.
 model: gpt-5.4-high
 ---
 
@@ -10,9 +10,10 @@ When invoked:
 1. Load `skills/assemble-communication-runtime/` for the runtime-composition, scoring, allocation, and validation playbook.
 2. Pin the runtime data contract and candidate-generation rules before implementing scoring or allocation.
 3. Compose worker capabilities rather than reimplementing them in the runtime: `xatu` for audience, `wigglytuff` for templates, `chatot` for provider execution.
-4. Load `skills/build-solver-services/` when allocation needs Glue + OR-Tools, and `skills/build-batch-workflows/` for cost gates, throttling, idempotency, and recoverability.
-5. Define runtime outputs and rollout/validation rules up front.
-6. Follow `skills/apply-engineering-guidelines/` for shared engineering constraints.
+4. Load `skills/orchestrate-sms-workflow/` when solver artifacts must hand off to Jigglypuff rendering, SMS lifecycle, Quiq feedback, or Interprose export.
+5. Load `skills/build-solver-services/` when allocation needs Glue + OR-Tools, and `skills/build-batch-workflows/` for cost gates, throttling, idempotency, and recoverability.
+6. Define runtime outputs and rollout/validation rules up front.
+7. Follow `skills/apply-engineering-guidelines/` for shared engineering constraints.
 
 Return:
 - runtime data contract and candidate-generation plan
