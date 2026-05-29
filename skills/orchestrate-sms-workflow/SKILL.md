@@ -24,43 +24,44 @@ Do not move filter rules, solver scoring, template CRUD, or provider API details
 The SMS orchestration workflow should be:
 
 ```text
-Filter -> Solver -> Render with Jigglypuff -> SmsLifecycleWorkflow -> Quiq feedback batch -> DailyInterproseExportWorkflow
+Filter -> Solver -> Render with Jigglypuff -> SMS lifecycle -> Quiq feedback processing -> Daily Interprose export
 ```
 
-Required state machines for the current service:
+Expected workflow components:
 
-- `SmsOrchestrationWorkflowStateMachine`: top-level orchestrator.
-- `SmsSolverWorkflow`: prepares solver input, runs Glue/OR-Tools, verifies artifacts.
-- `SmsLifecycleWorkflow`: batches rendered sends, waits until scheduled time, enqueues or sends messages.
-- `ProcessQuiqEventsWorkflow`: optional near-real-time raw Quiq event processor.
-- `DailyInterproseExportWorkflow`: daily raw Quiq batch processing, processed-row generation, export file writing, and SFTP upload.
+- top-level orchestration: owns the campaign run and chains the capabilities.
+- solver workflow: prepares solver input, runs the scheduling optimizer, and verifies artifacts.
+- SMS lifecycle workflow: batches rendered sends, waits until scheduled time, and hands work to provider execution.
+- provider feedback processing: ingests raw Quiq outcomes and maps them to send context.
+- daily export workflow: processes raw provider outcomes, writes reporting files, and handles SFTP delivery when enabled.
 
-## How An Agent Finds The Pieces
+## Capability Meanings
 
-When applying this skill inside an implementation repo, discover the concrete resources before changing code:
+The orchestration skill is top-level. It should know the roles of the SMS capabilities before looking at implementation details:
 
-- Find state machines in CDK by searching for `SmsOrchestrationWorkflowStateMachine`, `SmsSolverWorkflow`, `SmsLifecycleWorkflow`, `DailyInterproseExportWorkflow`, or `new sfn.StateMachine`.
-- Find Lambda handlers by searching for names such as `prepare-batches`, `render-scheduled-send-files`, `send-batch`, `process-quiq-events`, and `export-interprose-files`.
-- Find solver code under likely folders such as `glue_solver/`, `solver/`, or `src/*solver*`; for Kadabra SMS the solver is the Glue/PySpark + OR-Tools runtime that emits `scheduled_send_files`.
-- Find orchestration inputs/outputs in `docs/contracts/`, `README.md`, CDK Step Functions definitions, and tests before inventing a new contract.
-- Find deployed resource names from CDK stack outputs, environment config, or AWS APIs; do not hardcode ARNs from memory.
+- **Filter** is the audience gate. It applies SMS eligibility and hard suppressions, then produces a replayable eligible-population handoff.
+- **Solver** is the scheduling optimizer. It consumes the filtered population, scores eligible candidates, chooses who should receive SMS, assigns each selected record to a local send hour, and emits scheduled send artifacts.
+- **Jigglypuff** is the content-rendering capability. It owns the template inventory and turns scheduled send decisions into final SMS text plus rendering metadata.
+- **SMS lifecycle** is the communication-activity executor. It enforces scheduled send times, hands messages to the provider send path, persists provider correlation, and closes activity state from feedback.
+- **Quiq feedback processing** is the provider-outcome ingestion path. It maps provider events back to internal send context.
+- **Daily Interprose export** is the operational reporting handoff. It turns processed provider outcomes into the expected Interprose files and optional SFTP delivery.
 
-If any concrete resource is missing, the agent should update the design/skill guidance or ask for the missing integration target instead of pretending the step exists.
+These are capability contracts, not implementation locations. An agent should first reason from these roles, then map each role to whatever implementation the current service uses.
 
-## How The Steps Are Invoked
+## Invocation Model
 
-The normal production path is Step Functions-owned:
+The normal production path is orchestrated, not ad hoc:
 
-1. An operator or scheduler starts `SmsOrchestrationWorkflowStateMachine` with the campaign input, usually an `input_s3_uri` plus optional run overrides.
-2. The orchestration workflow invokes the filter step or consumes an already-filtered S3 handoff, depending on the repo's current contract.
-3. The orchestration workflow starts `SmsSolverWorkflow` as a child execution. The solver workflow starts the Glue job and waits for its result.
-4. The orchestration workflow invokes the Jigglypuff render Lambda or render fanout step with the solver's `scheduled_send_files` S3 URI.
-5. The orchestration workflow starts `SmsLifecycleWorkflow` with the rendered scheduled-send file URI.
-6. `SmsLifecycleWorkflow` waits until each batch `scheduledAt`, then enqueues outbound sends to SQS.
-7. The SQS consumer sends to Quiq when the sender is explicitly enabled.
-8. `DailyInterproseExportWorkflow` is invoked by its daily schedule or manually for replay/backfill; it reads raw Quiq S3 events and send context.
+1. A campaign run enters the orchestration workflow with an audience input such as `input_s3_uri` and optional run overrides.
+2. Orchestration obtains the SMS-filtered audience from Filter.
+3. Orchestration invokes Solver with the filtered audience and runtime policy inputs.
+4. Orchestration invokes Jigglypuff rendering with Solver's scheduled send artifacts.
+5. Orchestration invokes SMS lifecycle with the rendered send artifacts.
+6. SMS lifecycle waits until each scheduled send time, then hands send work to the provider execution path.
+7. Provider feedback processing ingests raw Quiq outcomes and correlates them to send context.
+8. Daily Interprose export runs on schedule or replay request and writes the external reporting files.
 
-Manual testing should invoke the same state machines or Lambdas with narrow payloads. Direct Lambda invocation is acceptable for controlled tests, but it must not become the production orchestration path.
+Manual testing should use the same capability boundaries with narrow payloads. Directly invoking a lower-level implementation is acceptable only for controlled testing and must not replace the production orchestration path.
 
 ## Step Contracts
 
@@ -189,7 +190,7 @@ Minimum E2E validation:
 4. Run lifecycle in mock mode and verify send context/artifacts.
 5. For controlled live tests, enable the sender only for the specific direct invoke or queue consumer window, then restore it.
 6. Confirm Quiq raw S3 contains `NotificationsDeliverabilityStatus` for the provider id.
-7. Run `DailyInterproseExportWorkflow` with `uploadSftp: false` first and inspect `sms_log`.
+7. Run the daily Interprose export with SFTP disabled first and inspect `sms_log`.
 8. Run with SFTP enabled only after the preview file is correct.
 
 Acceptance evidence:
