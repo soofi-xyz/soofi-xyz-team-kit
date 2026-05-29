@@ -27,6 +27,16 @@ Use `Xatu` to define:
 
 For the current SMS service, load `reference/sms-runtime-intake-contract.md`.
 
+## SMS Filter Handoff
+
+Kadabra SMS orchestration expects filtering before solving:
+
+- pass `rule_context: { channel: "SMS" }`
+- enable `save_rules_reports: true` in development/debug runs
+- preserve stable debt, person, phone, and evidence identifiers
+- write the eligible population to S3 so the solver run is replayable
+- treat hard suppressions as filter-owned; the solver must not resurrect suppressed rows
+
 ## Boundaries
 
 `Xatu` does not own:
@@ -45,6 +55,7 @@ Before considering the audience capability ready, confirm:
 - hard-filter ownership is explicit
 - the runtime intake contract is documented
 - required identifiers and evidence fields are present
+- filter output is an auditable S3 handoff that the solver can replay
 - the runtime does not need to re-derive the eligible population from raw source systems
 - the handoff shape is replayable and auditable
 

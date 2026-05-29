@@ -36,6 +36,26 @@ Use `Chatot` to define:
 
 For the current SMS service, load `rules/quiq-delivery-and-feedback.md`.
 
+## Current SMS Delivery And Export Lessons
+
+For Kadabra SMS, Chatot must preserve the full provider correlation chain:
+
+- `messageId` is the local Kadabra UUID.
+- `providerMessageId` is the Quiq `mid...` id.
+- send context is keyed by `providerMessageId`.
+- send context stores `debtId`, `phoneNumber`, `templateIdentifier`, `interactionIdentifier`, `messageBody`, `sentAt`, route, and provider status.
+- daily export joins raw Quiq deliverability events to send context before writing `sms_log`.
+
+The daily Interprose export can be batch-oriented:
+
+- read raw Quiq date folders from S3
+- scan a small rolling folder window for late arrivals
+- filter events into the legacy 10PM Eastern export day
+- write deterministic processed rows
+- upload the five pipe files to SFTP only after preview output is correct
+
+Quiq payloads with MMS assets must use `assets: [{ "assetId": "..." }]`.
+
 ## Boundaries
 
 `Chatot` does not own:
@@ -56,6 +76,7 @@ Before considering the communication-activity capability ready, confirm:
 - send idempotency and retry behavior are defined
 - provider events map back to internal communication identifiers
 - delivery and response outcomes are persisted
+- raw Quiq S3 events can be replayed into processed rows without duplicate export rows
 - response events that other products need are published to the shared engagement bus
 - the activity lifecycle is closed, not fire-and-forget
 

@@ -25,8 +25,27 @@ Before assembling the runtime, make sure these capability contracts exist:
 - audience handoff from `xatu`
 - template inventory contract from `wigglytuff`
 - communication activity contract from `chatot`
+- orchestration workflow contract from `orchestrate-sms-workflow` when the runtime is part of the SMS service
 
 The runtime should consume those contracts rather than silently redefining them.
+
+## SMS Runtime Orchestration
+
+For the current SMS service, runtime assembly must fit into this top-level contract:
+
+```text
+Filter -> Solver -> Jigglypuff render -> SmsLifecycleWorkflow -> DailyInterproseExportWorkflow
+```
+
+`Oranguru` still owns solver preparation, scoring, allocation, output verification, and solver artifacts. The orchestration skill owns how those artifacts move through rendering, lifecycle, Quiq feedback, processed S3 rows, and SFTP export.
+
+Solver outputs must be safe for downstream replay:
+
+- UUID `message_id`
+- scheduled timestamp and scheduled hour
+- template identifier
+- debt/person/phone identifiers
+- provider and policy metadata
 
 ## Runtime Reference
 
@@ -51,6 +70,7 @@ Before considering the runtime-assembly capability ready, confirm:
 - internal runtime contracts are explicit
 - candidate generation and allocation phases are documented
 - output artifacts are documented
+- orchestration handoff points are compatible with `orchestrate-sms-workflow`
 - retries, replay, and recovery are defined
 - the runtime can be rebuilt from the stored prompt and worker contracts without hidden tribal knowledge
 
