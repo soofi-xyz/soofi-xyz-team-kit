@@ -53,6 +53,7 @@ soofi-xyz-plugin-kit/
 ├── agents/                           # Source agent definitions
 ├── agents-copilot/                   # `.agent.md` symlinks to agents/
 ├── skills/                           # Agent skills, one directory per skill
+├── scripts/                          # Local validation and maintenance helpers
 ├── docs/                             # User-facing usage guides
 ├── AGENTS.md                         # Contributor guidance
 ├── CONTRIBUTING.md                   # Contribution entry point
@@ -61,11 +62,25 @@ soofi-xyz-plugin-kit/
 
 ## Local validation
 
-Validate Cursor by symlinking this repo into Cursor's local plugin directory and reloading the window:
+Validate Cursor by copying this repo into Cursor's local plugin directory and reloading the window. Copying is preferred for local testing because Cursor's supported local path is `~/.cursor/plugins/local/<plugin-name>/`, the plugin manifest must exist at the copied plugin root, and symlinked local plugins may fail to load in some Cursor versions.
 
 ```bash
-mkdir -p ~/.cursor/plugins/local
-ln -s "$(pwd)" ~/.cursor/plugins/local/soofi-xyz
+scripts/local-cursor-plugin.sh install
+```
+
+The script installs a real local copy at `~/.cursor/plugins/local/soofi-xyz-team-kit-local` and rewrites only the copied manifests so the local plugin name is distinct from the published `soofi-xyz` plugin.
+
+After every meaningful change to agents, skills, rules, docs, manifests, hooks, commands, or MCP config, run `scripts/local-cursor-plugin.sh install` before handing back the work. Prompt the user to test the copied plugin like this:
+
+1. Run **Developer: Reload Window** in Cursor. If the plugin is not detected, fully restart Cursor.
+2. Open **Settings > Plugins** and confirm `soofi-xyz-team-kit-local` is installed.
+3. Disable or remove other `soofi-xyz` plugin installs while testing if duplicate agent or skill names appear.
+4. Run a smoke prompt such as `/arceus Reply with exactly: ok`, then test the changed agent or skill directly.
+
+When preparing or creating a PR, delete the local test copy so the review is not tied to a developer-only install:
+
+```bash
+scripts/local-cursor-plugin.sh remove
 ```
 
 Validate Copilot through the marketplace path, because marketplace installation is the supported user path:
@@ -87,8 +102,10 @@ For development-only direct install checks, use `copilot plugin install ./`. The
 - [ ] `agents-copilot/` contains one `.agent.md` symlink for every source file in `agents/`.
 - [ ] `README.md` tables reflect the new state.
 - [ ] `.cursor-plugin/plugin.json`, `plugin.json`, and `.github/plugin/marketplace.json` versions are in sync.
-- [ ] Plugin still loads locally via `~/.cursor/plugins/local/<name>` after a reload.
+- [ ] `scripts/local-cursor-plugin.sh install` has refreshed `~/.cursor/plugins/local/soofi-xyz-team-kit-local`.
+- [ ] User has been prompted to reload/restart Cursor, confirm `soofi-xyz-team-kit-local` under Settings > Plugins, and smoke-test the changed agent or skill.
 - [ ] Plugin installs locally via `copilot plugin install ./` and lists expected agents / skills.
+- [ ] Before creating a PR, `scripts/local-cursor-plugin.sh remove` has deleted the local Cursor test copy.
 
 ## References
 
