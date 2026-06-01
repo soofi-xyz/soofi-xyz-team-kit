@@ -1,6 +1,6 @@
 ---
 name: candidate-agent-qc-validation
-description: "Evaluate hiring-candidate-built agents against a user story, acceptance criteria, requirements repo, candidate repo, required integrations, integration tests, and user acceptance outcomes. Use for candidate agent QC, hiring assessment, agent-building validation, or Asana tasks that ask to assess an agent against requirements. Produces an evidence-backed verdict, integration setup UX rating, and hiring decision support. Not for designing new agents from scratch — use the appropriate agent-building skill for that."
+description: "Evaluate hiring-candidate-built agents against a user story, acceptance criteria, requirements repo, candidate repo, required integrations, integration tests, and user acceptance outcomes. Use for candidate agent QC, hiring assessment, agent-building validation, or Asana tasks that ask to assess an agent against requirements. Produces a concise evidence-backed verdict, integration setup UX rating, and hiring decision support. Not for designing new agents from scratch — use the appropriate agent-building skill for that."
 ---
 
 # Candidate Agent QC Validation
@@ -19,18 +19,16 @@ This skill is especially appropriate for tasks like:
 
 ## Core Outcome
 
-Produce an evidence-backed candidate evaluation that supports a hiring decision. The evaluation must show:
+Produce a concise, evidence-backed evaluation that supports a hiring decision. Default to the shortest useful answer: verdict first, then only the evidence needed to justify it.
 
-1. What requirement sources were reviewed.
-2. What candidate artifacts were reviewed.
-3. What environment setup was attempted.
-4. What integrations were required and whether they were configured, simulated, or blocked.
-5. What human-assisted authentication or setup steps were requested from the tester.
-6. How easy or difficult it was for the tester to connect required integrations.
-7. What integration tests and user acceptance checks were executed.
-8. Which acceptance criteria passed, failed, or were blocked.
-9. What concrete evidence supports each result.
-10. What risks, gaps, and follow-up questions remain.
+The evaluation must still show:
+
+1. Sources reviewed.
+2. Setup/tests attempted.
+3. Required integrations and whether they passed, failed, or were blocked.
+4. Acceptance criteria results.
+5. Concrete evidence for the verdict.
+6. Hiring-relevant strengths, weaknesses, and follow-ups.
 
 ## Inputs to Collect
 
@@ -172,7 +170,7 @@ Never mark a criterion `Pass` solely because the repository claims support. Pref
 
 ## Output Format
 
-Return the evaluation in Markdown using exactly these top-level sections:
+Return a concise Markdown evaluation using exactly these top-level sections:
 
 ```markdown
 # Candidate Agent QC Evaluation
@@ -181,26 +179,18 @@ Return the evaluation in Markdown using exactly these top-level sections:
 
 ## Inputs Reviewed
 
-## Requirement Summary
-
-## Candidate Artifact Summary
-
-## Environment and Integration Setup
-
-## Human-Assisted Auth and Setup UX
-
-## Tests and Checks Executed
+## Key Findings
 
 ## Acceptance Criteria Results
 
-## Evidence Log
+## Setup and Tests
 
 ## Risks and Blockers
 
-## Hiring Decision Support
-
-## Recommended Follow-Ups
+## Hiring Signal
 ```
+
+Target 40-80 lines. Do not exceed 120 lines unless the user explicitly asks for a detailed audit.
 
 ### Verdict Section
 
@@ -215,88 +205,65 @@ Use `Inconclusive` when critical integrations or requirements are blocked and th
 
 ### Inputs Reviewed Section
 
-List all sources with URLs and IDs where available:
+List only the material sources with URLs and IDs where available:
 
 - assessment task,
-- parent story,
 - candidate repo or artifact,
 - requirements repo or specification,
-- comments or notes reviewed,
-- local commands or generated evidence files.
+- key comments/notes,
+- commit SHA,
+- local evidence path or command set if useful.
 
-### Requirement Summary Section
+### Key Findings Section
 
-Summarize the expected product behavior and convert requirements into a concise checklist. Keep this section factual and evidence-based.
+Use short bullets grouped by outcome:
 
-### Candidate Artifact Summary Section
+- `Passed`: what the candidate clearly satisfied.
+- `Failed`: what evidence shows is missing or broken.
+- `Blocked`: what could not be evaluated because of assessment access or tooling.
 
-Summarize what the candidate built, the apparent architecture, and how it maps to the requested agent. Mention important missing pieces.
-
-### Environment and Integration Setup Section
-
-Use a table with columns:
-
-| Area | Required? | Attempted Setup | Result | Evidence |
-|---|---:|---|---|---|
-
-### Human-Assisted Auth and Setup UX Section
-
-Use this section when any live integration is required or when setup ease is part of the assessment. If no live integrations are required, state `No human-assisted auth required`.
-
-First include a table with columns:
-
-| Integration | Human Tester Action Requested | Required for Task? | Result | UX Rating | Evidence |
-|---|---|---:|---|---|---|
-
-Then include a short `Tester UX Notes` subsection covering discoverability, clarity, friction, error handling, security posture, completion confidence, and time-to-connect when known.
-
-If tester action could not be requested or completed during the run, include the exact request that should be sent to the tester and mark the related live checks as `Blocked - waiting for tester auth`.
-
-### Tests and Checks Executed Section
-
-Use a table with columns:
-
-| Check | Type | Expected | Actual | Status |
-|---|---|---|---|---|
+Keep this section under 12 bullets total.
 
 ### Acceptance Criteria Results Section
 
-Use a table with columns:
+Use a compact table only for high-signal criteria. Merge closely related criteria when the detailed list would be long.
 
 | Criterion | Status | Evidence | Notes |
 |---|---|---|---|
 
-### Evidence Log Section
+Use statuses: `Pass`, `Partial`, `Fail`, `Blocked`, or `Not Applicable`.
 
-Include command outputs, file paths, commit SHAs, inspected docs, and observations. Keep logs concise but sufficient for another reviewer to reproduce the assessment.
+### Setup and Tests Section
+
+Summarize setup and validation in bullets or a small table. Include:
+
+- install/bootstrap result,
+- static checks,
+- candidate-provided tests,
+- requirement-derived tests,
+- integration/auth status.
+
+If live auth is required and unavailable, include a one-paragraph safe tester request. Do not include a long auth checklist unless the user asks for detailed setup instructions.
 
 ### Risks and Blockers Section
 
-Separate:
+Separate only when both exist:
 
 - **Candidate gaps**: issues caused by the submitted artifact.
 - **Assessment blockers**: missing credentials, unclear requirements, inaccessible services, or time/environment limitations.
-- **Process risks**: gaps that could make the hiring signal unreliable.
 
-### Hiring Decision Support Section
+### Hiring Signal Section
 
-Provide a hiring-oriented summary without overclaiming. Include:
+Provide a brief hiring-oriented summary:
 
 - strengths demonstrated,
 - weaknesses demonstrated,
-- suggested interview follow-up questions,
-- whether the candidate appears to understand the agent network and required integrations based on available evidence.
+- whether the candidate appears to understand the agent network and required integrations,
+- 2-4 concrete follow-up questions or actions.
 
-### Recommended Follow-Ups Section
+## Detailed Mode
 
-List concrete next actions, such as:
-
-- ask candidate for missing setup instructions,
-- request a demo,
-- provide sandbox credentials,
-- run a specific integration test,
-- clarify ambiguous acceptance criteria,
-- create an issue for a discovered defect.
+Use a fuller audit format only when the user asks for a "detailed", "full", "audit", or "reproducible" report. In detailed mode, you may add separate sections for requirement summary, candidate artifact summary, human-assisted auth/setup UX, evidence log, and recommended follow-ups.
 
 ## Quality Bar
 
@@ -304,9 +271,9 @@ The final evaluation must be:
 
 - **Evidence-backed**: each substantive claim should point to a file, command, URL, or observed behavior.
 - **Fair**: distinguish candidate failures from blocked assessment conditions.
-- **Reproducible**: include enough commands and context for another evaluator to repeat the checks.
+- **Reproducible**: include enough commands and context for another evaluator to repeat the checks without dumping raw logs.
 - **Hiring-useful**: clearly state what the result says about the candidate's ability to build agents using the required network.
-- **Concise**: prefer direct findings over long narrative.
+- **Concise**: lead with the verdict, group repetitive criteria, avoid raw output unless it changes the decision, and prefer bullets over long narrative.
 
 ## Safety and Confidentiality
 
