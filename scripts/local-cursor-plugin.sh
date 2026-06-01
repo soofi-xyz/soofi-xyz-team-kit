@@ -43,11 +43,20 @@ ensure_target_is_safe() {
 install_plugin() {
   local source_dir
   source_dir="$(repo_root)"
+  local python_bin
+  python_bin="${PYTHON:-}"
+  if [[ -z "${python_bin}" ]]; then
+    if command -v python3 >/dev/null 2>&1; then
+      python_bin="python3"
+    else
+      python_bin="python"
+    fi
+  fi
 
   ensure_target_is_safe
   mkdir -p "${LOCAL_PLUGIN_ROOT}"
 
-  python - "$source_dir" "$TARGET_DIR" "$LOCAL_PLUGIN_NAME" "$LOCAL_PLUGIN_ROOT" <<'PY'
+  "${python_bin}" - "$source_dir" "$TARGET_DIR" "$LOCAL_PLUGIN_NAME" "$LOCAL_PLUGIN_ROOT" <<'PY'
 import json
 import shutil
 import sys
