@@ -74,7 +74,7 @@ For every send:
 
 ## Status Correlation
 
-Quiq deliverability notifications identify the provider message, not the product's internal communication. Before writing a delivery status, the runtime must enrich the Quiq message id through its correlation layer to recover the internal communication or interaction identifier.
+Provider deliverability or status notifications identify the provider message, not the product's internal communication. Before writing a delivery status, the runtime must enrich the provider message id through its correlation layer to recover the internal communication or interaction identifier.
 
 Keep this rule generic: Chatot defines the need for the correlation layer, but the runtime chooses the concrete store, indexes, retention policy, and resource names.
 
@@ -89,9 +89,9 @@ For every correlated status event, produce a normalized outcome containing at le
 
 Publish normalized outcomes to EventBridge, or the product's equivalent engagement bus, when other services need asynchronous delivery facts. Persist the outcome to the product's internal source of truth, such as graph/Persist, before treating external reporting as complete.
 
-Use an idempotency key based on the internal communication identifier, status, and provider status timestamp so repeated Quiq export rows or retried processing do not create duplicate lifecycle facts.
+Use an idempotency key based on the internal communication identifier, status, and provider status timestamp so repeated provider export rows, duplicate webhooks, or retried processing do not create duplicate lifecycle facts.
 
-If a Quiq status event cannot be correlated or persisted, route it to retry/DLQ or pending-event handling with enough context to replay it.
+If a provider status event cannot be correlated or persisted, route it to retry/DLQ or pending-event handling with enough context to replay it.
 
 ## Feedback Loop
 
