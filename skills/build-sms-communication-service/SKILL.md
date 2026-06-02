@@ -28,8 +28,6 @@ Kadabra is the top-level builder. It should not be the daily runtime and it shou
 
 Kadabra should behave like a communication-service builder, not like a monolithic engineer that directly owns every layer.
 
-Read `rules/kadabra-communication-ontology.md` first.
-
 Kadabra must keep these roles separate:
 
 - **Kadabra**: top-level builder/orchestrator that takes the business prompt and composes reusable worker skills
@@ -98,9 +96,3 @@ This skill does NOT directly own:
 
 Those belong to `xatu`, `oranguru`, and `chatot`.
 
-## Rules Summary
-
-
-| Rule                           | File                                      | Impact   |
-| ------------------------------ | ----------------------------------------- | -------- |
-| Kadabra Communication Ontology | `rules/kadabra-communication-ontology.md` | CRITICAL |
