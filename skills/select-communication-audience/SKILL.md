@@ -35,7 +35,7 @@ For the current SMS service, load `reference/sms-runtime-intake-contract.md`.
 - provider execution and feedback processing
 - runtime scoring, allocation, or rollout mechanics
 
-Those belong to `wigglytuff`, `chatot`, or `oranguru`.
+Those belong to `manage-channel-templates`, `chatot`, or `oranguru`.
 
 ## Checklist
 

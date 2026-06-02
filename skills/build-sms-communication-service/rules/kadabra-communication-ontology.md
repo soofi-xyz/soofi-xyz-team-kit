@@ -26,9 +26,9 @@ Do not merge those layers together unless there is a very strong reason.
 
 ## Stable Reusable Capability Inventory
 
-### [`wigglytuff`](../../wigglytuff/)
+### [`manage-channel-templates`](../../manage-channel-templates/)
 
-Wigglytuff owns the template system itself:
+Jigglypuff owns the template system itself:
 
 - template CRUD
 - template metadata
@@ -37,13 +37,13 @@ Wigglytuff owns the template system itself:
 - GitHub-backed template source of truth
 - synchronization from an operational template source into GitHub
 
-Template sync is part of Wigglytuff. It is not a separate lower-level agent.
+Template sync is part of Jigglypuff. It is not a separate lower-level agent.
 
-Wigglytuff is channel- and store-agnostic. Channel-specific details — the
+Jigglypuff is channel- and store-agnostic. Channel-specific details — the
 operational source (Postgres, Snowflake, vendor API, file), the real column
 names, the derived fields, the runtime contract shape, the target GitHub
 repo — live in the per-instance golden prompt that Kadabra uses to invoke
-Wigglytuff. They do not live in this skill.
+the template-management capability. They do not live in this skill.
 
 ### [`xatu`](../../xatu/)
 
