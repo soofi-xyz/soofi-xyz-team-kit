@@ -38,10 +38,15 @@ Reload Cursor after pulling so updated agents, skills, and the manifest are pick
 
 ### GitHub Copilot CLI
 
-Update or uninstall the plugin by name:
+When you are inside the plugin in GitHub Copilot CLI, update it with the plugin-qualified slash command:
+
+```text
+/plugin update soofi-xyz@soofi-xyz
+```
+
+Uninstall the plugin by name:
 
 ```bash
-copilot plugin update soofi-xyz
 copilot plugin uninstall soofi-xyz
 ```
 
