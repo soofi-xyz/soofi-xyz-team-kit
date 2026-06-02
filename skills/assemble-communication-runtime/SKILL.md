@@ -23,7 +23,7 @@ Use this skill when turning reusable communication capabilities into the determi
 Before assembling the runtime, make sure these capability contracts exist:
 
 - audience handoff from `xatu`
-- template inventory contract from `wigglytuff`
+- template inventory contract from `manage-channel-templates`
 - communication activity contract from `chatot`
 
 The runtime should consume those contracts rather than silently redefining them.
@@ -41,7 +41,7 @@ For the current SMS service, start with `reference/current-solver-parity.md`.
 - provider-specific delivery lifecycle ownership
 - top-level builder ontology and golden-prompt governance
 
-Those belong to `wigglytuff`, `xatu`, `chatot`, or `kadabra`.
+Those belong to `manage-channel-templates`, `xatu`, `chatot`, or `kadabra`.
 
 ## Checklist
 

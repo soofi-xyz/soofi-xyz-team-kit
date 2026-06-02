@@ -20,7 +20,7 @@ The SMS runtime should keep that exact outer workflow shape.
 ## Worker Boundaries
 
 - `xatu` owns the upstream audience handoff into this runtime contract
-- `wigglytuff` owns template inventory and sync
+- `manage-channel-templates` owns template inventory and sync
 - `chatot` owns the communication-activity contract around send execution and feedback
 - `oranguru` owns the runtime that applies this parity
 

@@ -30,7 +30,7 @@ When invoked:
    - Use Machamp-style batch boundaries for S3 ingestion, partitioned processing, idempotent runs, cost gates, replay, and backfills.
    - Use Porygon-style metric normalization for rule definitions, rolling windows, temporal joins, and source comparability.
    - Use Chatot-style communication lifecycle thinking for calls, SMS, email, delivery IDs, responses, and provider artifacts.
-   - Use Wigglytuff-style template inventory thinking for letter IDs, language variants, Compumail, and InterProse letters.
+   - Use `manage-channel-templates` template inventory thinking for letter IDs, language variants, Compumail, and InterProse letters.
    - Use Ash-style Lambda agent boundaries if the analyzer is exposed through an Asana/chat agent; keep heavy data processing in batch jobs and have the agent orchestrate runs and summarize results.
 7. Build a domain-neutral core model before profile-specific extensions:
    - `AuditRun`: run ID, profile ID/version, source URI, output URI, date range, timezone, execution mode, config hashes.
