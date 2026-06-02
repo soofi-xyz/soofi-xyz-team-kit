@@ -1,0 +1,41 @@
+name: Validate Plugin
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate plugin manifests and content
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check shell scripts
+        run: |
+          bash -n scripts/sync-copilot-agents.sh
+          bash -n scripts/validate-plugin.sh
+          bash -n scripts/local-cursor-plugin.sh
+
+      - name: Validate plugin files
+        run: scripts/validate-plugin.sh
+
+      - name: Check generated Copilot agents are committed
+        run: scripts/sync-copilot-agents.sh check
+
+      - name: Check diff hygiene
+        run: git diff --check
