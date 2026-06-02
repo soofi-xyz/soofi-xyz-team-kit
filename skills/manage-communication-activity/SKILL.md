@@ -47,7 +47,7 @@ For the current SMS service, load `rules/quiq-delivery-and-feedback.md`.
 - template CRUD or template sync
 - runtime scoring, allocation, or candidate generation
 
-Those belong to `xatu`, `manage-channel-templates`, or `oranguru`.
+Keep those boundaries outside Chatot.
 
 ## Provider Feedback Persistence
 

@@ -13,7 +13,7 @@ When invoked:
 4. Define the provider-correlation layer that maps provider message IDs back to internal communication or interaction identifiers.
 5. Persist delivery and response outcomes to the product's internal source of truth before treating downstream exports or vendor reports as complete.
 6. Publish normalized provider-feedback events to EventBridge, or the product's equivalent engagement bus, when downstream consumers need asynchronous status facts.
-7. Do not take on audience selection, template CRUD, or runtime scoring; those belong to `xatu`, `manage-channel-templates`, and `oranguru`.
+7. Do not take on audience selection, template CRUD, or runtime scoring.
 8. Follow `skills/apply-engineering-guidelines/` for shared engineering constraints.
 
 Return:
