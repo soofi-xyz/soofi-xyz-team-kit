@@ -45,7 +45,7 @@ Apply the same internal lifecycle to every report request. Pick the internal pat
 
 1. **Collect local project and AWS access.**
    - Ask whether the user wants to create a new local report project or use an existing local report project, and collect the exact local path before inspecting or writing project files. Do not infer the path from the current workspace, open files, recent files, repository names, terminal directories, or nearby folders.
-   - Ask which AWS credential source Hoothoot should use, always offering: an existing prod AWS profile, AWS SSO, an AWS credentials CSV local file path, another local credentials file path/profile, or "I do not know."
+   - Ask which AWS credential source Hoothoot should use, always offering: the managed Hoothoot reporting profile for the selected environment (`ProdReportingReadOnly` for prod, `DevReportingReadonly` for explicit dev/test), AWS SSO, an AWS credentials CSV local file path, another local credentials file path/profile, or "I do not know."
    - If the user's prompt does not already state the core business question, ask for that question in the same first interaction. Do not ask detailed widget, chart, layout, deployment, or publishing questions yet.
    - Verify AWS access locally for the selected environment with explicit `AWS_PROFILE` and `AWS_REGION`. If AWS is not connected, stay in credential setup until it verifies or the user explicitly cancels.
    - Discover the selected environment's Persist endpoint, Rules workflow identifiers, and Rules S3 output locations from AWS (SSM Parameter Store and Secrets Manager) under the verified profile.
@@ -112,7 +112,7 @@ Start with the local report preview only. The first user interaction must be sho
 - Ask where the local report project should live before looking for project files: either "create a new local project at this path" or "use this existing local project path." Do not infer a path.
 - Never search for, auto-detect, or assume an existing local project or repository.
 - Do not ask for GitHub repository, deployment, catalog, refresh cadence, Cognito, Microsoft Azure SSO, Amplify, custom domain, or production publishing details before the local preview is reviewed.
-- Treat a request for a report as a request for Persist-backed or Rules-released data. Use prod by default; use dev/non-prod only when the user explicitly frames the work as dev/test and accepts that the numbers are not production truth. Ask what AWS access the user has in plain language, offering all supported choices together (prod profile, SSO, credentials CSV path, another local credentials file/profile, or "I do not know").
+- Treat a request for a report as a request for Persist-backed or Rules-released data. Use prod by default; use dev/non-prod only when the user explicitly frames the work as dev/test and accepts that the numbers are not production truth. Ask what AWS access the user has in plain language, offering all supported choices together (managed Hoothoot reporting profile, SSO, credentials CSV path, another local credentials file/profile, or "I do not know").
 - If the user has not stated the core business question, ask for it once so Hoothoot can resolve the right Lexicon ruleset/filter/rule.
 - Do not ask detailed widget/display questions, scaffold files, write helper scripts, run example refreshes, or start a local server until AWS access is verified for the selected environment, Lexicon rule/filter resolution has run, and a bounded data-shape discovery query or Rules output metadata/sample check succeeds. After that gate passes, summarize what the data supports, then ask which widgets/tables/charts they want and how the report should look.
 
@@ -148,6 +148,7 @@ When the user provides chart, layout, or data-shape preferences, honor them unle
 ## Persist access and queries
 
 - Query prod Persist for direct Lexicon-label data by default. Do not ask the user to choose dev versus prod for business-report queries unless the user has explicitly framed the request as dev/test or non-prod validation.
+- Use the managed Hoothoot reporting profiles when available: `ProdReportingReadOnly` for prod account `014948052063`, and `DevReportingReadonly` for explicit dev/test account `951132547414`; both use `us-east-2` unless the selected repository/config says otherwise.
 - After AWS credentials are verified for the selected environment, discover that environment's Persist API URL and related connection settings from AWS yourself. Search approved configuration locations (SSM Parameter Store, Secrets Manager) using conventional names such as `persist-api-url`, `/<environment>/persist-api-url`, `/<environment>/persist/api-url`, and names containing `persist` plus `api`.
 - If multiple possible Persist endpoints are found, run a small read-only smoke query against each plausible candidate when safe, then explain the selected endpoint in plain language without exposing secrets.
 - Use IAM/SigV4 from AWS workloads for Persist calls.
@@ -164,7 +165,7 @@ When the user provides chart, layout, or data-shape preferences, honor them unle
 ## Rules execution access
 
 - Discover the Rules workflow identifiers, Step Functions ARN(s), and the canonical S3 output prefix for released ruleset outputs from AWS configuration under the verified profile.
-- Read released outputs from S3 with the verified prod profile only. Treat the S3 object's ruleset ref and Lexicon ref as authoritative; do not rename, reshape, or relabel records.
+- Read released outputs from S3 with the verified selected-environment profile only. Treat the S3 object's ruleset ref and Lexicon ref as authoritative; do not rename, reshape, or relabel records.
 - When starting an execution, follow the deployed Rules run contract for input parameters. Surface a cost confirmation for broad runs before submission and record the execution ID, start time, and expected output path.
 - Treat Rules outputs as the preferred source for registered rulesets. When direct Persist integration is used for exact filters or separate rules, never derive a callable, eligible, or decision-bound population by writing a Gremlin query that approximates the rule.
 
@@ -174,20 +175,20 @@ Treat the first report iteration as a local preview backed by Persist or Rules-r
 
 - Do not integrate SSO, create Cognito resources, deploy Amplify, create API Gateway routes, add custom domains, create scheduled refresh infrastructure, or do any other cloud publishing work before the local report is reviewed.
 - During preview, query Persist or read Rules outputs only enough to validate the report shape and numbers. Cache generated artifacts for design iteration, and rerun expensive queries or executions only when the field mapping, filters, or aggregation logic changes.
-- Own the prod credential check instead of handing the user a command runbook:
+- Own the selected-environment credential check instead of handing the user a command runbook:
   - Ask in plain language which AWS credential source they want Hoothoot to use, and always present all supported choices.
-  - If the user chooses an AWS credentials CSV, ask only for the local CSV path, the desired profile name, and the AWS region. Create or update that profile locally, verify the resulting prod account, and continue.
-  - Inspect local profiles with AWS CLI commands when available and help locate likely credentials. Ask the user to pick a profile only if more than one plausible prod profile exists.
-  - Verify the chosen profile with `AWS_PROFILE=<profile> AWS_REGION=<region> aws sts get-caller-identity`. Explain the result as "this is the AWS account I can access" and stop if it is not the expected account. For production business reports, the expected account must be prod.
+  - If the user chooses an AWS credentials CSV, ask only for the local CSV path, the desired profile name, and the AWS region. Create or update that profile locally, verify the resulting selected-environment account, and continue.
+  - Inspect local profiles with AWS CLI commands when available and help locate likely credentials. Prefer `ProdReportingReadOnly` for prod and `DevReportingReadonly` for explicit dev/test; ask the user to pick a profile only if more than one plausible selected-environment profile exists.
+  - Verify the chosen profile with `AWS_PROFILE=<profile> AWS_REGION=<region> aws sts get-caller-identity`. Explain the result as "this is the AWS account I can access" and stop if it is not the expected selected-environment account. For production business reports, the expected account must be prod (`014948052063`); for explicit dev/test reports, the expected account is dev (`951132547414`).
   - For SSO profiles, run the login command for the selected profile and ask the user only to complete the browser login if the AWS CLI requires it.
   - If AWS reports missing SSO configuration such as `sso_start_url` or `sso_region`, do not tell the user to run `aws configure sso`. Inspect other local AWS profiles for reusable SSO settings, then first ask whether they already have an AWS credentials CSV, an existing credentials file path, or another named profile that should be used instead.
-  - If the user has an existing credential file, accept only the local file path and the profile name to create or update. Import or configure it locally without printing secret values, verify the resulting prod account, and remind the user to delete downloaded credential files after verification.
+  - If the user has an existing credential file, accept only the local file path and the profile name to create or update. Import or configure it locally without printing secret values, verify the resulting selected-environment account, and remind the user to delete downloaded credential files after verification.
   - If no existing credentials are available, ask only for the missing SSO inputs in plain language, such as the company AWS access portal/start URL, SSO region, account name or ID, role name, and desired profile name.
   - Configure or repair the SSO profile locally yourself when the required inputs are available. Use AWS CLI config commands or safe edits to the local AWS config file without printing secrets, then rerun SSO login and identity verification.
   - If the user does not have an existing credential file and does not know the AWS access portal/start URL or role, pause report-building and ask for those exact values from their administrator. Keep the conversation in the AWS credential setup flow until AWS access verifies or the user explicitly cancels.
   - For a credentials CSV path, import the CSV locally into the named profile without printing secret values, verify the profile, and remind the user to delete the downloaded CSV after verification.
   - Once AWS access is verified, discover Persist and Rules connection details from AWS configuration instead of asking the user for environment variables or endpoint URLs.
-  - Run local refresh/query commands with explicit `AWS_PROFILE` and `AWS_REGION` values so prod credentials are never implied by shell state.
+  - Run local refresh/query commands with explicit `AWS_PROFILE` and `AWS_REGION` values so selected-environment credentials are never implied by shell state.
   - If credential verification fails, report the specific profile/account check that failed and ask the next simplest credential question. Keep guiding the user until AWS access verifies or the user explicitly cancels. Do not create a dummy-data report, do not offer fixture data as the report preview, and do not fall back to a non-prod profile unless the user explicitly switches to a dev/test report.
 
 Show the user the local preview URL, report sections, missing-data notes, query timing summary, and where to find the compact provenance details before asking about deployment.
