@@ -1,0 +1,72 @@
+{
+  "_meta": {
+    "description": "Style fingerprint of the training final (designer's shipped design), Home page, Wide breakpoint",
+    "figmaFile": "Prism Website Design",
+    "fileKey": "OKxmLy9P7CyNSLxtFurxK8",
+    "pageId": "10:2",
+    "pageName": "🎨 Design System",
+    "nodeId": "209:22798",
+    "capturedAt": "2026-06-05",
+    "capturedWith": "reference/fingerprint.js via use_figma (root info captured separately the same day; the script now includes it natively)",
+    "tallyFormat": "[value, occurrenceCount] pairs, sorted by count descending, truncated to top N"
+  },
+  "version": "final",
+  "node": "Breakpoint=Wide",
+  "root": { "name": "Breakpoint=Wide", "type": "COMPONENT", "w": 1536, "h": 4444, "fills": ["#1d1736"], "effects": [] },
+  "totalNodes": 217,
+  "textCount": 63,
+  "sections": [
+    { "name": "Frame", "h": 699, "layout": "VERTICAL", "align": "CENTER" },
+    { "name": "Frame", "h": 513, "layout": "VERTICAL", "align": "CENTER" },
+    { "name": "Frame", "h": 501, "layout": "VERTICAL", "align": "CENTER" },
+    { "name": "Frame", "h": 903, "layout": "VERTICAL", "align": "CENTER" },
+    { "name": "Frame 9", "h": 605, "layout": "HORIZONTAL", "align": "CENTER" },
+    { "name": "Frame", "h": 500, "layout": "VERTICAL", "align": "CENTER" },
+    { "name": "Sections / CTA Block", "h": 443, "layout": "VERTICAL", "align": "CENTER" },
+    { "name": "Layout", "h": 280, "layout": "HORIZONTAL", "align": "MIN" },
+    { "name": "Layout / Header", "h": 103, "layout": "HORIZONTAL", "align": "CENTER", "note": "last child = floating overlay above hero" }
+  ],
+  "sectionBackgrounds": [
+    "Hero: none (atmosphere shows through)",
+    "G_LINEAR #1d1736/0% > #1d1736/63% > #1d1736 > #16151c (fade hand-off)",
+    "G_LINEAR #16151c > #191622 > #1d1736 (fade hand-off)",
+    "G_LINEAR #1d1736/0% > #1d1736/63% > #1d1736 > #161616 (fade hand-off)",
+    "SOLID #16151c",
+    "G_LINEAR #16151c > #16151c/0% (fade to transparent)",
+    "CTA: none",
+    "Footer: SOLID #1a131f@50% + bg-blur 200",
+    "Header: none (glass overlay)"
+  ],
+  "headings": [
+    { "size": 64, "align": "CENTER", "text": "Redesign work for the age of AI agents." },
+    { "size": 44, "align": "CENTER", "text": "AI tools are everywhere. AI-native work is not." },
+    { "size": 44, "align": "CENTER", "text": "The bottleneck is not your people.  It is how work is design" },
+    { "size": 44, "align": "CENTER", "text": "A practical path from AI pressure to operating-model change." },
+    { "size": 44, "align": "LEFT", "text": "Your agent workforce needs an operating system." },
+    { "size": 44, "align": "LEFT", "text": "Start lightweight. Scale governance as agents spread." },
+    { "size": 44, "align": "CENTER", "text": "Move from experimentation to ownership." },
+    { "size": 44, "align": "CENTER", "text": "Ready to lead how work changes?" }
+  ],
+  "fonts": [["TASA Orbiter Regular", 29], ["TASA Orbiter SemiBold", 23], ["TASA Orbiter Medium", 8], ["mixed", 3]],
+  "sizes": [["17", 27], ["14", 14], ["44", 7], ["18", 6], ["11", 3], ["22", 3], ["24", 2], ["64", 1]],
+  "aligns": [["CENTER", 30], ["LEFT", 30], ["RIGHT", 3]],
+  "lineHeights": [["17/AUTO", 27], ["14/AUTO", 14], ["44/110.00000238418579PERCENT", 7], ["18/AUTO", 6], ["22/AUTO", 3], ["11/AUTO", 3], ["24/AUTO", 2], ["64/110.00000238418579PERCENT", 1]],
+  "textFills": [["#ffffff", 35], ["#f5f5f5", 15], ["#ccf7d7", 11], ["#1d1736", 2]],
+  "solidFills": [["#f5f5f5", 12], ["#342d52@15%", 9], ["#fdfcfc", 8], ["#8edde8", 7], ["#0167c3", 3], ["#1d1736", 2], ["#ccf7d7", 2], ["#1d1736@76%", 2], ["#262524", 2], ["#ffe451", 1], ["#16151c", 1], ["#fc952b", 1], ["#1a131f@50%", 1], ["#0f0441@50%", 1]],
+  "gradientFills": [["LINEAR:#1d1736>#1d1736>#1d1736>#16151c", 1], ["LINEAR:#16151c>#191622>#1d1736", 1], ["LINEAR:#1d1736>#1d1736>#1d1736>#161616", 1], ["LINEAR:#16151c>#16151c", 1]],
+  "spacings": [["10", 15], ["0", 14], ["16", 10], ["32", 6], ["48", 4], ["168", 3], ["24", 2], ["64", 2], ["12", 1], ["40", 1], ["56", 1], ["199", 1], ["1.8891973495483398", 1], ["2.5189297199249268", 1]],
+  "paddings": [["0,0,0,0", 28], ["0,16,0,16", 10], ["11,24,11,24", 4], ["32,0,32,0", 4], ["32,32,32,32", 3], ["104,218,104,218", 2], ["104,48,104,48", 2], ["208,218,80,218", 1], ["0,24,0,24", 1], ["104,218,180,218", 1]],
+  "radii": [["12", 9], ["8", 4], ["32", 4], ["16", 3]],
+  "effects": [["LAYER_BLUR:100", 10], ["BACKGROUND_BLUR:100", 9], ["DROP_SHADOW:5", 5], ["LAYER_BLUR:32.70000076293945", 4], ["LAYER_BLUR:334.6000061035156", 2], ["LAYER_BLUR:50", 2], ["DROP_SHADOW:4", 2], ["LAYER_BLUR:160.74099731445312", 2], ["LAYER_BLUR:123.5999984741211", 2], ["LAYER_BLUR:214.21047973632812", 1]],
+  "strokes": [["#8edde8 w1", 9], ["#4d456e w1", 9], ["#6d9398 wSymbol(figma.mixed)", 4], ["#0167c3 w19", 4], ["#0167c3 w0.6880984902381897", 4], ["#8edde8 w0.6880984902381897", 4], ["#262524 w0.17086170613765717", 3], ["#262524 w0.22781559824943542", 3], ["#ccf7d7 w1", 2], ["#fc952b w28", 2]],
+  "backgroundConstruction": {
+    "gradientInstances": [
+      { "name": "Gradient / Canvas", "parent": "Hero section (does NOT clip)", "x": 0, "y": -260, "w": 1536, "h": 1536, "parentH": 699, "opacity": 1, "note": "oversized, bleeds above and below the hero into neighbors" },
+      { "name": "Gradient / Canvas", "parent": "518x509 card (clips)", "x": 36, "y": -712, "w": 831, "h": 1453, "rotation": -36, "opacity": 0.66, "note": "huge rotated orb peeking through the card's clipping window" },
+      { "name": "Gradient / Canvas", "parent": "231x104 frame", "x": -28, "y": 67, "w": 281, "h": 103, "opacity": 1, "note": "small glow accents, 4 occurrences" }
+    ],
+    "presetComponents": "opaque base layer REMOVED from presets — transparent artwork that composites over anything",
+    "glassRecipe": "9 surfaces standardized: SOLID #342d52@15% fill + BACKGROUND_BLUR 100 + #4d456e w1 hairline + radius 12",
+    "backgroundBlurCount": 11
+  }
+}

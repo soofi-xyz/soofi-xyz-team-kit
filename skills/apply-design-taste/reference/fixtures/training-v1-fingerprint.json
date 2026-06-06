@@ -1,0 +1,66 @@
+{
+  "_meta": {
+    "description": "Style fingerprint of the training V1 (initial Cursor-built design), Home page, Wide breakpoint",
+    "figmaFile": "Prism Website Design",
+    "fileKey": "OKxmLy9P7CyNSLxtFurxK8",
+    "pageId": "247:42363",
+    "pageName": "V0 Cursor Build",
+    "nodeId": "52:823",
+    "capturedAt": "2026-06-05",
+    "capturedWith": "reference/fingerprint.js via use_figma (root info captured separately the same day; the script now includes it natively)",
+    "tallyFormat": "[value, occurrenceCount] pairs, sorted by count descending, truncated to top N"
+  },
+  "version": "V1",
+  "node": "Breakpoint=Wide",
+  "root": { "name": "Breakpoint=Wide", "type": "COMPONENT", "w": 1536, "h": 3991, "fills": ["#161616"], "effects": [] },
+  "totalNodes": 227,
+  "textCount": 100,
+  "sections": [
+    { "name": "Layout / Header", "h": 88, "layout": "HORIZONTAL", "align": "CENTER" },
+    { "name": "Frame", "h": 525, "layout": "VERTICAL", "align": "CENTER" },
+    { "name": "Frame", "h": 395, "layout": "VERTICAL", "align": "CENTER" },
+    { "name": "Frame", "h": 797, "layout": "VERTICAL", "align": "CENTER" },
+    { "name": "Frame", "h": 573, "layout": "VERTICAL", "align": "CENTER" },
+    { "name": "Frame", "h": 279, "layout": "VERTICAL", "align": "CENTER" },
+    { "name": "Frame", "h": 279, "layout": "VERTICAL", "align": "CENTER" },
+    { "name": "Frame", "h": 415, "layout": "VERTICAL", "align": "CENTER" },
+    { "name": "Sections / CTA Block", "h": 360, "layout": "VERTICAL", "align": "CENTER" },
+    { "name": "Layout", "h": 280, "layout": "HORIZONTAL", "align": "MIN" }
+  ],
+  "sectionBackgrounds": [
+    "Header: SOLID #16151c", "Hero: SOLID #161616", "SOLID #1d1736", "SOLID #1d1736", "SOLID #1d1736",
+    "SOLID #161616", "SOLID #1d1736", "SOLID #161616", "CTA: SOLID #16151c", "Footer: SOLID #1a131f@50%"
+  ],
+  "headings": [
+    { "size": 64, "align": "LEFT", "text": "Redesign work for the age of AI agents." },
+    { "size": 44, "align": "LEFT", "text": "AI tools are everywhere. AI-native work is not." },
+    { "size": 44, "align": "LEFT", "text": "The bottleneck is not your people. It is how work is designe" },
+    { "size": 44, "align": "LEFT", "text": "A practical path from AI pressure to operating-model change." },
+    { "size": 44, "align": "LEFT", "text": "Your agent workforce needs an operating system." },
+    { "size": 44, "align": "LEFT", "text": "Start lightweight. Scale governance as agents spread." },
+    { "size": 44, "align": "LEFT", "text": "Move from experimentation to ownership." },
+    { "size": 44, "align": "LEFT", "text": "Ready to lead how work changes?" }
+  ],
+  "fonts": [["TASA Orbiter Regular", 44], ["TASA Orbiter SemiBold", 22], ["Inter Regular", 19], ["TASA Orbiter Medium", 8], ["Inter Medium", 7]],
+  "sizes": [["17", 43], ["11", 22], ["14", 14], ["44", 7], ["22", 5], ["10", 4], ["9", 3], ["24", 1], ["64", 1]],
+  "aligns": [["LEFT", 97], ["RIGHT", 3]],
+  "lineHeights": [["17/AUTO", 43], ["11/AUTO", 22], ["14/AUTO", 14], ["44/110.00000238418579PERCENT", 7], ["22/AUTO", 5], ["10/AUTO", 4], ["9/AUTO", 3], ["64/110.00000238418579PERCENT", 1], ["24/AUTO", 1]],
+  "textFills": [["#ffffff", 58], ["#ccf7d7", 29], ["#f5f5f5", 9], ["#1d1736", 2], ["#ffe451", 2]],
+  "solidFills": [["#ffffff@4%", 16], ["#16151c", 6], ["#161616", 6], ["#f5f5f5", 6], ["#000000", 5], ["#1d1736", 4], ["#141118", 4], ["#fdfcfc", 4], ["#ccf7d7", 3], ["#0167c3", 2], ["#ffffff@72%", 2], ["#ffe451@70%", 2], ["#fc952b", 2], ["#8edde8", 1], ["#ffe451", 1]],
+  "gradientFills": [["LINEAR:#141118>#141118>#141118>#141118", 1]],
+  "spacings": [["0", 12], ["10", 12], ["16", 6], ["14", 5], ["12", 1], ["18", 1], ["24", 1], ["40", 1], ["48", 1], ["56", 1], ["1.8891973495483398", 1]],
+  "paddings": [["0,0,0,0", 25], ["56,0,56,0", 6], ["11,24,11,24", 4], ["24,24,24,24", 3], ["28,40,28,40", 1], ["120,0,80,0", 1], ["80,40,80,40", 1], ["64,40,40,40", 1]],
+  "radii": [["6", 16], ["8", 4], ["0.5", 4], ["12", 3], ["14", 1]],
+  "effects": [["LAYER_BLUR:160", 4], ["LAYER_BLUR:84.65608215332031", 2], ["LAYER_BLUR:63.492061614990234", 2], ["LAYER_BLUR:26", 1], ["LAYER_BLUR:30", 1], ["LAYER_BLUR:18", 1], ["BACKGROUND_BLUR:150", 1]],
+  "strokes": [["#ffffff@12% w1", 16], ["#ffffff@6% w1", 3], ["#262524 w0.17086170613765717", 3], ["#ffffff@6% wSymbol(figma.mixed)", 2], ["#ccf7d7 w1", 2], ["#ffffff@18% w0.8999999761581421", 2], ["#ffffff@23% w0.9800000190734863", 2], ["#ffffff@28% w1.059999942779541", 2], ["#ffffff@33% w1.1399999856948853", 2], ["#ffffff@22% w1", 2]],
+  "backgroundConstruction": {
+    "gradientInstances": [
+      { "name": "Gradient / Canvas (Hero)", "parent": "Hero section", "x": 0, "y": 0, "w": 1536, "h": 596, "opacity": 0.88, "note": "1000x1000 artwork stretched to section bounds" },
+      { "name": "Gradient / Canvas (Minimal)", "parent": "Section", "x": 0, "y": 0, "w": 1536, "h": 805, "opacity": 0.72 },
+      { "name": "Gradient / Canvas (Warm focus)", "parent": "Section", "x": 0, "y": 0, "w": 1536, "h": 283, "opacity": 0.78, "note": "1000x800 artwork aspect-squashed to 283px tall" },
+      { "name": "Gradient / Canvas (Warm focus)", "parent": "Sections / CTA Block", "x": 0, "y": 0, "w": 800, "h": 360, "opacity": 0.78 }
+    ],
+    "presetComponents": "opaque SOLID #16151c base layer baked into every preset",
+    "backgroundBlurCount": 1
+  }
+}
