@@ -43,7 +43,10 @@ Prefer `get_metadata` for orientation and `use_figma` read scripts for aggregate
 - **`fills`/`strokes`/`effects` are read-only arrays**: clone, modify the clone, reassign the whole array.
 - **Text requires loaded fonts.** Before mutating `characters`, font, or size: `await figma.loadFontAsync({family, style})`. For existing text, discover its current fonts via `node.getStyledTextSegments(['fontName'])` and load those — not a guessed default. Style names are exact strings ("Semi Bold", not "SemiBold"); verify with `figma.listAvailableFontsAsync()` when unsure.
 - **Auto-layout for related children.** Use `figma.createAutoLayout('VERTICAL', {...})` instead of `createFrame` + absolute x/y when children stack, align, or gap. Append the child BEFORE setting `layoutSizingHorizontal/Vertical = 'FILL'`; `'HUG'` is valid only on the auto-layout frame itself or its TEXT children; call `resize()` BEFORE setting sizing modes (resize resets them).
+- **Containers never auto-grow.** Appending or moving a child beyond a container's bounds leaves the container's size unchanged — the child shows in the layers panel but renders cropped or fully invisible (clipping frames and component sets especially; the UI grows a set when you drag a variant in, the API does not). After inserting, grow the container to enclose the union of its children's bounds — `resizeWithoutConstraints`, so existing children don't stretch — then verify visibility with a screenshot.
+- **`resize()` moves the envelope only — `rescale()` scales the content.** Resizing a frame leaves children at their original size (they follow constraints/auto-layout), which crops or overflows freeform content. For composite artwork — diagrams, illustrations, any frame or instance whose children sit at fixed positions — use `node.rescale(factor)` (the Scale-tool equivalent) so the whole subtree scales proportionally.
 - `lineHeight`/`letterSpacing` take `{unit, value}` objects, not bare numbers.
+- **`clone()` and `create*()` parent new nodes under `figma.currentPage`** — which resets to the file's FIRST page at the start of every call. A node landing on the wrong Figma page throws no error; it is silent. When the work targets any other page, `await figma.setCurrentPageAsync(workingPage)` BEFORE creating or cloning, and verify the new node's page before building on it (check `node.parent`). Rescue a stray with `workingPage.appendChild(node)` — appendChild moves the node.
 - Position new top-level nodes away from (0,0) — scan existing children and place clear of them. Nested children are positioned by their parent.
 - Never mutate a design you were asked to analyze or use as input. Duplicate (`node.clone()`), transform the clone, return its IDs.
 
@@ -69,6 +72,7 @@ After each compositional mutation step: structural check via returned IDs or `ge
 | `"not implemented"` | `figma.notify()` | Remove it; `return` data instead |
 | Property value out of range | 0–255 color channels | Divide by 255 |
 | `The node with id X does not exist` | Stale ID (detached instance, removed node) | Re-discover from a stable parent via query/metadata |
+| New/cloned node appeared on the file's first page | `clone()`/`create*` parent to `figma.currentPage`, which reset between calls | `setCurrentPageAsync(workingPage)` before creating; move strays with `workingPage.appendChild(node)` |
 | Script hangs | Unawaited Promise or infinite loop | `await` everything; bound loops |
 
 Remember: failed scripts changed nothing — fixing and retrying is safe.
@@ -78,6 +82,7 @@ Remember: failed scripts changed nothing — fixing and retrying is safe.
 - [ ] `fileKey` extracted from a URL; node IDs use `:` form.
 - [ ] Output returned via `return`, including ALL created/mutated node IDs.
 - [ ] At most one `setCurrentPageAsync` per call; multi-page work fanned out in parallel.
+- [ ] Working page set at the start of every call that creates or clones — new nodes land on `figma.currentPage`, which reset to the first page.
 - [ ] Fonts loaded before any text mutation; style names verified, not guessed.
 - [ ] Colors 0–1; paint arrays cloned and reassigned, not mutated in place.
 - [ ] ≤ ~10 logical operations, then a verification step.

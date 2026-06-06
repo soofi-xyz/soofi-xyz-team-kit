@@ -19,6 +19,7 @@ When invoked:
    - Apply mode, placement: ask the user whether in-place editing is allowed. If you cannot ask, NEVER edit in place — copy first, transform the copy. If a required copy cannot be created for any reason, STOP and report; do not continue in place.
    - Learn mode: node IDs for BOTH versions (initial and final), and which skill to write or update (default: `skills/apply-design-taste/`).
 4. Verify write access cheaply before relying on it (create a tiny node, remove it in the same script). If the file is read-only, stop and ask for edit access.
+5. Treat every follow-up request in a continued session (e.g. "now add the mobile breakpoint") as a fresh Figma context: re-locate the working Figma page and the already-transformed screens by node ID, set the current page in each call, and verify each new clone's parent page AND that it actually renders before transforming it (containers don't auto-grow — extend them to enclose new children). Page context resets on every `use_figma` call, and clones silently land on the file's first page when it is skipped. New artifacts always line up beside the existing transformed screens on the working Figma page.
 
 In **apply mode**:
 
@@ -41,7 +42,7 @@ In **learn mode**:
 Before returning, confirm the done checklist:
 
 - [ ] Input designs are untouched and all mutations live in copies — unless the user explicitly permitted in-place editing for this run.
-- [ ] All changes are confined to the targeted Figma page (or its duplicate); no other Figma page in the file was touched.
+- [ ] All changes are confined to the targeted Figma page (or its duplicate); no other Figma page in the file was touched — explicitly check the file's FIRST page, where clones land when the current page wasn't set.
 - [ ] Apply mode: all applicable Direction Checks pass relative to the input's fingerprint.
 - [ ] Apply mode: this run's interpretation is recorded.
 - [ ] Learn mode: no literal values from the training pair leaked into rules outside Provenance.
