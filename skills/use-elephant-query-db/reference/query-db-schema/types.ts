@@ -5,7 +5,21 @@ import type {
   businessRegistrationEvents,
   businessRegistrationParties,
   businessRegistrations,
+  businessReputationAlternateNames,
+  businessReputationCategories,
+  businessReputationComplaintEvents,
+  businessReputationComplaints,
+  businessReputationContacts,
+  businessReputationExternalLinks,
+  businessReputationLicenses,
+  businessReputationLocations,
+  businessReputationMedia,
+  businessReputationProfiles,
+  businessReputationRatingReasons,
+  businessReputationReviews,
+  businessReputationServiceAreas,
   companies,
+  contractorQualityScores,
   deeds,
   factSheets,
   files,
@@ -102,3 +116,44 @@ export type BusinessRegistrationEvent = typeof businessRegistrationEvents.$infer
 export type NewBusinessRegistrationEvent = typeof businessRegistrationEvents.$inferInsert;
 export type SunbizExtractionChunk = typeof sunbizExtractionChunks.$inferSelect;
 export type NewSunbizExtractionChunk = typeof sunbizExtractionChunks.$inferInsert;
+
+export type BusinessReputationProfile = typeof businessReputationProfiles.$inferSelect;
+export type NewBusinessReputationProfile = typeof businessReputationProfiles.$inferInsert;
+export type BusinessReputationAlternateName =
+  typeof businessReputationAlternateNames.$inferSelect;
+export type NewBusinessReputationAlternateName =
+  typeof businessReputationAlternateNames.$inferInsert;
+export type BusinessReputationCategory = typeof businessReputationCategories.$inferSelect;
+export type NewBusinessReputationCategory =
+  typeof businessReputationCategories.$inferInsert;
+export type BusinessReputationRatingReason =
+  typeof businessReputationRatingReasons.$inferSelect;
+export type NewBusinessReputationRatingReason =
+  typeof businessReputationRatingReasons.$inferInsert;
+export type BusinessReputationContact = typeof businessReputationContacts.$inferSelect;
+export type NewBusinessReputationContact = typeof businessReputationContacts.$inferInsert;
+export type BusinessReputationLicense = typeof businessReputationLicenses.$inferSelect;
+export type NewBusinessReputationLicense = typeof businessReputationLicenses.$inferInsert;
+export type BusinessReputationServiceArea =
+  typeof businessReputationServiceAreas.$inferSelect;
+export type NewBusinessReputationServiceArea =
+  typeof businessReputationServiceAreas.$inferInsert;
+export type BusinessReputationLocation = typeof businessReputationLocations.$inferSelect;
+export type NewBusinessReputationLocation = typeof businessReputationLocations.$inferInsert;
+export type BusinessReputationReview = typeof businessReputationReviews.$inferSelect;
+export type NewBusinessReputationReview = typeof businessReputationReviews.$inferInsert;
+export type BusinessReputationComplaint = typeof businessReputationComplaints.$inferSelect;
+export type NewBusinessReputationComplaint =
+  typeof businessReputationComplaints.$inferInsert;
+export type BusinessReputationComplaintEvent =
+  typeof businessReputationComplaintEvents.$inferSelect;
+export type NewBusinessReputationComplaintEvent =
+  typeof businessReputationComplaintEvents.$inferInsert;
+export type BusinessReputationMedia = typeof businessReputationMedia.$inferSelect;
+export type NewBusinessReputationMedia = typeof businessReputationMedia.$inferInsert;
+export type BusinessReputationExternalLink =
+  typeof businessReputationExternalLinks.$inferSelect;
+export type NewBusinessReputationExternalLink =
+  typeof businessReputationExternalLinks.$inferInsert;
+export type ContractorQualityScore = typeof contractorQualityScores.$inferSelect;
+export type NewContractorQualityScore = typeof contractorQualityScores.$inferInsert;
