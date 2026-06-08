@@ -103,7 +103,7 @@ export const propertyImprovements = pgTable(
   },
   (table) => [
     uniqueIndex("property_improvements_source_record_idx").on(table.sourceSystem, table.sourceRecordKey),
-    uniqueIndex("property_improvements_permit_number_idx")
+    index("property_improvements_permit_number_idx")
       .on(table.sourceSystem, table.permitNumber)
       .where(sql`${table.permitNumber} IS NOT NULL`),
     index("property_improvements_dates_idx").on(
