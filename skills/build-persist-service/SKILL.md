@@ -1,6 +1,6 @@
 ---
 name: build-persist-service
-description: "Use when implementing or changing the Persist service from its PRD: Neptune-backed graph persistence, GraphSON ingest, lexicon validation, deterministic IDs, Neptune CSV bulk load, and Gremlin query APIs. Read reference/PRD.md first; combine with conkeldurr, machamp, and apply-engineering-guidelines."
+description: "Use when implementing or changing the Persist service from its PRD: Neptune-backed graph persistence, Persist Blobs, GraphSON ingest, lexicon validation, deterministic IDs, Neptune CSV bulk load, and Gremlin query APIs. Read reference/PRD.md first; combine with conkeldurr, machamp, and apply-engineering-guidelines."
 ---
 
 # Build Persist Service
@@ -21,7 +21,7 @@ This skill is intentionally thin. Use it as a loader for [`reference/PRD.md`](./
 
 ## Implementation Rules
 
-- Treat the PRD as the single source of truth for routes, GraphSON contracts, data contracts, resource shapes, IAM scopes, env vars, error tags, workflows, and verification.
+- Treat the PRD as the single source of truth for routes, GraphSON contracts, Persist Blob handling, data contracts, resource shapes, IAM scopes, env vars, error tags, workflows, and verification.
 - Do not implement from this `SKILL.md` alone.
 - For an existing Persist deployment, integrate through the PRD's `/persist/*` API contracts instead of provisioning a duplicate service.
 - If any old skill or rule file conflicts with the PRD, the PRD wins; update stale guidance instead of layering compatibility shims.
