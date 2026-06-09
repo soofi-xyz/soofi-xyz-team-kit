@@ -1,6 +1,6 @@
 ---
 name: use-elephant-query-db
-description: "User guide for consuming the Vercel Neon Postgres database named elephant-query-db: Vercel environment setup, schema imports from @elephant-xyz/query-db, and exact TypeScript/Drizzle query code for appraisal parcels/properties, Accela permits, Sunbiz companies, and addresses. Use when building Vercel apps, route handlers, dashboards, reports, or agents that query Elephant oracle data. Not for changing loaders or schema migrations."
+description: "User guide for consuming the Vercel Neon Postgres database named elephant-query-db: Vercel environment setup, schema imports from @elephant-xyz/query-db, and exact TypeScript/Drizzle query code for appraisal parcels/properties, Accela permits, BBB contractor reputation/quality scores, Sunbiz companies, and addresses. Use when building Vercel apps, route handlers, dashboards, reports, or agents that query Elephant oracle data. Not for changing loaders or schema migrations."
 ---
 
 # Use Elephant Query DB
@@ -33,5 +33,5 @@ When answering or coding with this skill, return:
 - The Vercel resource name and env var used.
 - The schema objects imported.
 - The exact route/function/file code needed for the requested query.
-- The query path, for example parcel -> property -> permits, permit -> inspections/contacts/links, or company -> business registrations.
+- The query path, for example parcel -> property -> permits, permit -> inspections/contacts/links, company -> BBB reputation/contractor score, or company -> business registrations.
 - Any missing dependency or env setup commands the caller must run.

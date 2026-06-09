@@ -26,7 +26,7 @@ A single AWS API Gateway HTTP API at `/persist/*`, IAM-authorised, with the foll
 
 Out-of-band, the service also exposes:
 
-- An **EventBridge rule** for `GraphFactProduced` events emitted by other products; Persist validates the embedded GraphSON v3 payload and routes it through the async GraphSON ingest path.
+- An **EventBridge rule** for `GraphFactProduced` events emitted by other products. Persist validates the embedded GraphSON v3 payload and routes by size: small facts (vertices + edges <= `SYNC_INGEST_MAX_ELEMENTS`, default 50) are written synchronously in one Neptune transaction, while larger payloads take the async GraphSON ingest path. Payloads carrying `vertexRefs` always take the sync path because references must be verified before any write.
 - A **Step Functions state machine** (the **Neptune CSV workflow**) for bulk CSV ingest from S3.
 - A **Step Functions state machine** (the **Derived Index Rebuild workflow**) for full or selected re-indexing of lexicon-declared derived indexes.
 - An **EventBridge Scheduler rule** that invokes a Neptune Streams poller for incremental derived-index updates after graph writes commit.
@@ -113,7 +113,7 @@ All Lambdas are `NodejsFunction` with `runtime=NODEJS_24_X`, `architecture=ARM_6
 | Function                            | Memory | Timeout | VPC | Trigger                                       | Purpose |
 | ----------------------------------- | ------ | ------- | --- | --------------------------------------------- | ------- |
 | `PersistHandler`                    | 512    | 30 s    | ✓   | API Gateway HTTP API                          | API router for all `/persist/*` routes |
-| `PersistGraphFactHandler`           | 512    | 30 s    | —   | EventBridge rule for `GraphFactProduced`      | Validate graph-fact events and enqueue them for async GraphSON ingest |
+| `PersistGraphFactHandler`           | 512    | 30 s    | ✓   | EventBridge rule for `GraphFactProduced`      | Validate graph-fact events and route them to sync Neptune ingest or async GraphSON ingest |
 | `PersistAsyncBulkWorker`            | 1024   | 15 min  | ✓   | `IngestAsyncQueue` SQS (`batchSize=400`, `maxBatchingWindow=1m` prod / `3s` test, `maxConcurrency=10`, `reportBatchItemFailures`) | Stage-1 ingest worker |
 | `PersistAsyncBulkAggregateWorker`   | 1024   | 15 min  | ✓   | `FilteredBatchQueue` SQS (`batchSize=6`, similar batching window) | Stage-2 ingest aggregator |
 | `GremlinAsyncValidate`              | 256    | 60 s    | ✓   | Step Functions `LambdaInvoke`                 | Validate-and-set-running for async Gremlin |
@@ -158,7 +158,7 @@ Plus an **ECS Fargate** task (ARM64, 1 vCPU / 2048 MB, 120 s stop timeout) packa
 - Workers that emit task callbacks have `states:SendTaskSuccess` / `states:SendTaskFailure` on `*` (Step Functions does not support resource-level constraints here).
 - The Glue start step uses the AWS-required `glue:* on *` (Step Functions optimised integration).
 - API Gateway routes use `HttpIamAuthorizer`; every caller must SigV4-sign `execute-api` requests.
-- `PersistGraphFactHandler` can read the lexicon object, write async payloads to `IngestAsyncPayloadBucket`, and send messages to `IngestAsyncQueue`. The EventBridge rule can invoke only this handler and write failed deliveries to `GraphFactEventDlq`.
+- `PersistGraphFactHandler` runs in the VPC. It can read the lexicon object, verify referenced vertices through the Neptune reader, write graph data through the Neptune writer for the sync path, write async payloads to `IngestAsyncPayloadBucket`, and send messages to `IngestAsyncQueue` for the async path. The EventBridge rule can invoke only this handler and write failed deliveries to `GraphFactEventDlq`.
 - Derived-index Lambdas can read the lexicon object and `IndexMaintenanceBucket`, read/write `DerivedIndexStateTable`, read Neptune Streams and execute read traversals with `neptune-db:ReadDataViaQuery`, and execute narrowly-scoped property writes with `neptune-db:WriteDataViaQuery` on the writer endpoint. They cannot invoke public API Gateway routes.
 
 ### 2.4 Configuration surface (env vars)
@@ -212,6 +212,7 @@ The runtime is configured exclusively via env vars (read once on cold start; mis
 | `GREMLIN_ASYNC_MAX_RECEIVE_COUNT`           | `5`           | Worker retry decision                        |
 | `GREMLIN_BATCH_EXISTS_CHUNK_SIZE`           | `1000`        | Existence checks chunk size                  |
 | `GREMLIN_BATCH_EXISTS_CONCURRENCY`          | `100` (capped at 110) | Existence checks concurrency         |
+| `SYNC_INGEST_MAX_ELEMENTS`                  | `50`          | EventBridge fact-ingest sync/async routing threshold (vertices + edges) |
 | `INDEX_MAINTENANCE_BUCKET`                  | bucket name   | Derived-index rebuild manifests and summaries |
 | `INDEX_REBUILD_PREFIX`                      | `index-rebuild` | Derived-index rebuild S3 prefix            |
 | `DERIVED_INDEX_STATE_TABLE_NAME`            | table name    | Streams checkpoint/lease and rebuild state   |
@@ -263,6 +264,7 @@ The service accepts and returns the GraphSON v3 typed-object representation:
 - IDs (`GraphSONId`) MUST be `g:Int32`, `g:Int64`, or `g:UUID`. Plain string IDs are rejected.
 - Vertices: `g:Vertex` with non-empty `properties` (validated by schema).
 - Edges: `g:Edge` carrying `id`, `label`, `inV/outV` (`GraphSONId`), `inVLabel`, `outVLabel`, optional `properties` (`g:Property` map).
+- Vertex references: `g:VertexRef` carrying `id` (`GraphSONId`) and `label`. This is a Persist extension, not a TinkerPop element type. It declares that the vertex already exists in Neptune and may be used as an edge endpoint without being upserted.
 - Vertex properties: `g:VertexProperty[]` keyed by property name.
 
 The full request body for ingest/validate is wrapped:
@@ -272,6 +274,7 @@ The full request body for ingest/validate is wrapped:
   "@type": "tinker:graph",
   "@value": {
     "vertices": [ { "@type": "g:Vertex", "@value": { ... } } ],
+    "vertexRefs": [ { "@type": "g:VertexRef", "@value": { ... } } ],
     "edges":    [ { "@type": "g:Edge",   "@value": { ... } } ]
   }
 }
@@ -292,6 +295,10 @@ Blob rules:
 - Blob materialisation is recursive inside supported list/set wrappers, but not inside `g:Map` unless a future lexicon contract defines map-shaped blob fields.
 - Blob properties are stored in Neptune as ordinary single-value or multi-value `String` properties containing `s3://...` URIs. Public read paths therefore return the URI, not the original text.
 - Callers MUST NOT pre-supply a plain `s3://` string for a blob property on GraphSON ingest. Persist owns URI generation so graph IDs remain deterministic from original text.
+
+#### 3.2.2 Vertex reference optionality
+
+`vertexRefs` is optional. Payloads that omit it parse and validate exactly like ordinary GraphSON ingest payloads.
 
 ### 3.3 Lexicon (single source of truth and shared ontology)
 
@@ -361,15 +368,48 @@ Three-phase validation runs **before** any side effect:
 1. **Schema decode** (collecting **all** issues, not just the first). On failure returns `GraphSONPayloadValidationError` with `[{ code, path: <JSON Pointer>, message }]`. Union noise is collapsed (e.g. multiple GraphSON wrapper attempts at the same path are reported as a single user-friendly `Type` issue, and the redundant child `/@type Missing` issue under that path is suppressed).
 2. **Integrity**:
    - Empty graph → `EmptyGraph` issue.
-   - Edges referencing vertex IDs not present in the same payload → `MissingEdgeVertex` (with `direction: outV|inV`).
+   - Edges referencing vertex IDs that are neither present in `vertices` nor declared in `vertexRefs` → `MissingEdgeVertex` (with `direction: outV|inV`).
+   - The same ID appearing in both `vertices` and `vertexRefs` → `DuplicateVertexRef`.
    - Vertices that no edge connects to → `IsolatedVertex`.
+   - Refs in `vertexRefs` that no edge connects to → `IsolatedVertexRef`.
 3. **Semantic / lexicon**:
    - Required vertex/edge properties present (server-managed keys excluded).
-   - Unknown vertex/edge labels and properties.
+   - Unknown vertex/edge labels, unknown `vertexRefs` labels, and unknown properties.
    - Derived index property keys from `indexes` are treated as server-managed. If a caller supplies one in GraphSON, graph-fact, or CSV input, validation fails before any side effect.
    - Type mismatches (`TypeMismatch`), enum mismatches (`EnumMismatch`), string-format mismatches (`FormatMismatch`) — formats supported: `date`, `date-time`, `email`, `phone_number`, `time`, `uri`. Date formats also accept `g:Date`/`g:Timestamp` GraphSON wrappers and report `expected ISO date string or g:Date` etc.
    - Blob mismatches (`BlobTypeMismatch`, `BlobTooLarge`, `BlobNotAllowed`) for `persist:Blob` wrappers that are used outside lexicon `blob` properties or exceed the configured byte limit.
    - Edge endpoint sanity: `outVLabel`/`inVLabel` must equal the lexicon `from`/`to`, and the labels of vertex IDs referenced inside the same payload must match.
+
+#### 3.5.1 Cross-authority vertex references
+
+`vertexRefs` supports cross-authority edge writes. A producer can assert an edge to a vertex it did not author without mirroring that endpoint's full property bag into the ingest payload. The producer supplies the existing vertex's deterministic content-hash ID and label:
+
+```json
+{
+  "@type": "g:VertexRef",
+  "@value": {
+    "id": { "@type": "g:UUID", "@value": "<sha256 content hash>" },
+    "label": "phone_number"
+  }
+}
+```
+
+A `g:VertexRef` means: "this vertex already exists in Neptune at this content hash; do not upsert it." The validator treats the ref ID as known for `MissingEdgeVertex` checks, but the persistence layer never writes the referenced vertex. Refs are sync-path only:
+
+- `POST /persist/ingest` accepts `vertexRefs` and verifies them before opening the write transaction.
+- `POST /persist/ingest-async` rejects non-empty `vertexRefs` because the bulk writer cannot verify referenced vertices before loading CSV.
+- `GraphFactProduced` events with any `vertexRefs` route through the sync path regardless of element count.
+- Neptune CSV workflow input does not support `vertexRefs`; CSV rows must contain concrete Neptune IDs.
+
+After validation and before persistence, `verifyVertexRefs` batches a single Gremlin read against all declared refs:
+
+```gremlin
+g.V('hash1','hash2',...).project('id','label').by(id).by(label).toList()
+```
+
+Each returned `(id, label)` pair is compared against the declared ref. A hash that does not resolve to any vertex → `VertexNotFoundForRef`. A hash that resolves to a different label → `LabelMismatchForRef`. A malformed ref ID → `MalformedRefId`. All three surface to HTTP callers as `MissingVertexRef` (404) before any write.
+
+Normalisation pre-populates the internal ID map with verified refs. An edge pointing at a ref hash therefore hashes identically to an edge pointing at a full payload vertex with the same final hash. This preserves idempotency across mirror-vs-ref producer representations.
 
 ### 3.6 Error catalogue → HTTP status
 
@@ -378,7 +418,7 @@ The HTTP layer is the authoritative tag-to-status mapper. Each error type is a s
 | HTTP | Tag(s) |
 | ---- | ----- |
 | 400  | `BadRequest`, `GremlinSyntaxError`, `GremlinMutationNotAllowedError`, `GraphSONValidationError`, `GraphSONPayloadValidationError`, `GraphSONIntegrityError`, `DerivedIndexServerManagedPropertyError`, `PersistBlobValidationError` |
-| 404  | `VertexNotFoundError`, `GremlinAsyncRequestNotFoundError` |
+| 404  | `VertexNotFoundError`, `GremlinAsyncRequestNotFoundError`, `MissingVertexRef` |
 | 500  | `GremlinExecutionError`, `GremlinAsyncJobSerializationError`, `GremlinAsyncResultSerializationError`, `GremlinAsyncJobConditionalConflictError`, `PersistBlobHashCollisionError`, fallback `InternalServerError` |
 | 503  | `NeptuneConnectionError`, `NeptuneRetriableError`, `S3PayloadStoreError`, `SqsEnqueueError`, `PersistBlobStoreError`, `GremlinAsyncJobStoreError`, `GremlinAsyncResultStoreError`, `GremlinAsyncExecutionError`, `GremlinAsyncExecutionTimeoutError`, `GremlinAsyncCancelError` |
 
@@ -386,7 +426,7 @@ The router additionally **sanitises** GraphSON error payloads on the `/ingest` p
 
 ### 3.7 EventBridge `GraphFactProduced` event
 
-Products that want Persist to store graph facts asynchronously publish a versioned EventBridge event instead of writing directly to Neptune. The event detail embeds the same GraphSON v3 vertex/edge objects accepted by §3.2, but omits the outer `tinker:graph` wrapper because the EventBridge envelope supplies the product event context.
+Products that want Persist to store graph facts through the tenant event bus publish a versioned EventBridge event instead of writing directly to Neptune. The event detail embeds the same GraphSON v3 vertex/edge objects accepted by §3.2, but omits the outer `tinker:graph` wrapper because the EventBridge envelope supplies the product event context.
 
 ```json
 {
@@ -400,6 +440,7 @@ Products that want Persist to store graph facts asynchronously publish a version
     "idempotency_key": "shorturl:evt_123",
     "graphson": {
       "vertices": ["<g:Vertex GraphSON v3 object>"],
+      "vertexRefs": ["<g:VertexRef object — optional>"],
       "edges": ["<g:Edge GraphSON v3 object>"]
     }
   }
@@ -415,7 +456,8 @@ Contract rules:
 - `fact_type` is a namespaced event fact, e.g. `short_url.visited`; it is used for routing, logging, and downstream audit.
 - `entity_types` names the lexicon entity labels represented by the fact. Persist logs this metadata, but the labels inside the GraphSON payload remain authoritative and are validated against the lexicon.
 - `idempotency_key` is producer-stable for the logical fact. Replays of the same key and graph must be safe; deterministic graph hashing prevents duplicate vertices/edges, and the key is carried through logs and async payload metadata for audit.
-- `graphson.vertices` and `graphson.edges` are transformed internally into the canonical `{ "@type": "tinker:graph", "@value": { ... } }` shape before validation and persistence.
+- `graphson.vertexRefs` is optional and follows the `g:VertexRef` contract in §3.5.1.
+- `graphson.vertices`, `graphson.vertexRefs`, and `graphson.edges` are transformed internally into the canonical `{ "@type": "tinker:graph", "@value": { ... } }` shape before validation and persistence.
 
 ---
 
@@ -436,9 +478,10 @@ Contract rules:
 - Body: `GraphSONIngestRequest` (see §3.2).
 - Pipeline:
   1. **Validate payload** — schema + integrity + lexicon validation (§3.5).
-  2. **Materialise blobs** — for every lexicon `blob` property, write the original `persist:Blob` text to `PersistBlobBucket` using §3.4.1, replace the value with the canonical S3 URI, and record blob counters. This is the only S3 side effect before the graph transaction; orphaned content-addressed blobs after a later transaction failure are acceptable and must be treated as immutable cache entries.
-  3. **Normalise for persist** — strip meta props, hash IDs from the blob-resolved property graph, build a response copy, then **stamp** `created_at` (`g:Timestamp`, ingest-time epoch ms) on every vertex (`label="created_at"`, deterministic VP id `<vertexId>#created_at`) and edge.
-  4. **Upsert vertices/edges** inside a single `g.tx().begin()` transaction:
+  2. **Verify vertexRefs** — if the payload declares refs, one batched Gremlin read confirms each referenced hash resolves to a vertex at the declared label. Failures surface as `MissingVertexRef` (404). No-op when the payload carries no refs.
+  3. **Materialise blobs** — for every lexicon `blob` property, write the original `persist:Blob` text to `PersistBlobBucket` using §3.4.1, replace the value with the canonical S3 URI, and record blob counters. This is the only S3 side effect before the graph transaction; orphaned content-addressed blobs after a later transaction failure are acceptable and must be treated as immutable cache entries.
+  4. **Normalise for persist** — strip meta props, hash IDs from the blob-resolved property graph, build a response copy, then **stamp** `created_at` (`g:Timestamp`, ingest-time epoch ms) on every payload vertex (`label="created_at"`, deterministic VP id `<vertexId>#created_at`) and edge. Refs are not upserted; they only populate the endpoint ID map for edge hashing and writes.
+  5. **Upsert vertices/edges** inside a single `g.tx().begin()` transaction:
      - `upsertVertex(g, hash, label, props)` = `g.V().has(id, hash).fold().coalesce(unfold(), addV(label).property(id, hash).property(...))`.
      - `upsertEdge(g, hash, outV, label, inV, props)` = `g.E().has(id, hash).fold().coalesce(unfold(), V(out).addE(label).to(V(in)).property(id, hash)...)`.
      - Properties unwrap GraphSON typed values back to host-language primitives (with temporal canonicalisation, see §7.1).
@@ -449,13 +492,14 @@ Contract rules:
 
 - Accepts either the bare `tinker:graph` body **or** a wrapper `{ graph, candidate_lexicon_s3_uri? }`. The router's `parseValidationRequest` returns `400` (`BadRequest`) for malformed wrappers.
 - Runs the **same** validation pipeline as `/ingest` through lexicon/blob validation, but does not materialise blobs, write S3 objects, compute final hash IDs, or persist to Neptune.
+- If the payload contains `vertexRefs`, also runs `verifyVertexRefs`; the route remains side-effect-free but confirms that referenced endpoint vertices exist at the declared labels.
 - Response: `{ valid: true }` on success; otherwise the appropriate validation error.
 
 ### 4.4 Service composition / dependency wiring
 
 Each router scopes its own dependency container so that a config error in an unrelated router cannot break this one. The three composition groups are:
 
-- **GraphSON router** depends on: Gremlin client + transactions, Lexicon loader, GraphSON semantic validator, GraphSON validator, GraphSON sync ingest service, GraphSON async ingest service.
+- **GraphSON router** depends on: Gremlin client + transactions, Lexicon loader, GraphSON semantic validator, GraphSON validator, vertex-ref verifier, Persist Blob service, GraphSON sync ingest service, GraphSON async ingest service.
 - **Gremlin router** depends on: Gremlin client + transactions, GraphSON service (for shared utilities).
 - **Async Gremlin router** depends on: Submit, Status, and Cancel services (each backed by the DDB job store and, for cancel, the Neptune Data API client).
 
@@ -468,6 +512,7 @@ The container is constructed **once per router**, not per request, so the lexico
 ### 5.1 GraphSON async ingest (`POST /persist/ingest-async`)
 
 - Accepts the same payload shape as `/ingest`, optionally with header `x-task-token` to forward a Step Functions task token.
+- Rejects non-empty `vertexRefs` with `GraphSONIntegrityError`; refs require the synchronous verifier in §3.5.1.
 - Pipeline:
   1. Validate payload (full validation, including integrity + lexicon — fail fast before any side effect).
   2. Materialise blobs using the same content-addressed S3 algorithm as sync ingest, replacing every blob value with its canonical URI before hashing.
@@ -503,12 +548,15 @@ This worker is **only** consumed by the workflow (§5.4); it accepts both legacy
 #### 5.1.3 EventBridge fact ingest
 
 - `PersistGraphFactHandler` receives `GraphFactProduced` events from EventBridge and validates the envelope/detail contract in §3.7 before any side effect.
-- The handler wraps `detail.graphson` into the canonical GraphSON ingest body, then runs the same schema, integrity, and lexicon validation used by `/persist/ingest-async`.
-- On success, it stores the validated payload in `IngestAsyncPayloadBucket` and sends a `schemaVersion="2"` message to `IngestAsyncQueue`, so EventBridge-originated facts share the same Stage-1/Stage-2 bulk ingest machinery as HTTP async ingest.
+- The handler wraps `detail.graphson` into the canonical GraphSON ingest body, then runs the same schema, integrity, and lexicon validation used by the HTTP ingest paths.
+- After validation it counts `vertices + edges` and routes with `routeForCounts`:
+  - **Sync path** (`count <= SYNC_INGEST_MAX_ELEMENTS`, default 50): verify any `vertexRefs`, materialise blobs, hash IDs, and upsert in a single Neptune writer transaction through the same `persistSync` path as `POST /persist/ingest`.
+  - **Async path** (`count > SYNC_INGEST_MAX_ELEMENTS` and no refs): materialise blobs, store the resolved payload in `IngestAsyncPayloadBucket`, and send a `schemaVersion="2"` message to `IngestAsyncQueue`, sharing the Stage-1/Stage-2 bulk ingest machinery with HTTP async ingest.
+- A payload carrying `vertexRefs` always takes the sync path regardless of count. If the sync path is unavailable, the handler must fail closed instead of silently enqueueing a ref-bearing payload.
 - The async payload metadata includes the EventBridge `id`, `source`, `fact_type`, `entity_types`, and `idempotency_key` so logs, S3 payloads, queue messages, and CloudWatch metrics can be correlated back to the producing product event.
-- Handler failures are surfaced to EventBridge. EventBridge retries according to the rule target policy and then delivers exhausted events to `GraphFactEventDlq`.
-- The resulting Stage-1 ingest publishes the same `vertices_ingested` / `edges_ingested` metrics as async ingest, with `ingest_method=eventbridge_graph_fact`.
 - Blob materialisation happens before the event payload is written to `IngestAsyncPayloadBucket`; metadata may include blob counts and byte totals, but raw blob text must never be logged or copied outside the blob bucket and the async payload graph.
+- Handler failures are surfaced to EventBridge. EventBridge retries according to the rule target policy and then delivers exhausted events to `GraphFactEventDlq`. Deterministic `MissingVertexRef` failures are acknowledged and skipped because retries will not self-heal unless a new upstream fact creates the referenced vertex; these are counted as `graph_facts_skipped_missing_ref`.
+- Metrics: each accepted fact increments `graph_facts_accepted` with `ingest_method=eventbridge_graph_fact_sync` for the sync path or `eventbridge_graph_fact` for the async path. The sync path publishes `vertices_ingested` / `edges_ingested` with `ingest_method=eventbridge_graph_fact_sync`; the async path publishes the same counters through Stage-1 with `ingest_method=eventbridge_graph_fact`.
 
 ### 5.2 Async Gremlin (`POST /persist/gremlin-async`, `GET …`, `DELETE …`)
 
@@ -843,6 +891,7 @@ Workflow summaries are written by `WorkflowSummaryService` to `s3://<NEPTUNE_BUL
     idempotency_key: string,
     graphson: {
       vertices: GVertex[],
+      vertexRefs?: GVertexRef[],
       edges: GEdge[]
     }
   }
@@ -953,7 +1002,7 @@ Retries: `maxAttempts = NEPTUNE_RETRY_MAX_ATTEMPTS + 1` (default 6), exponential
 
 - **Logger**: AWS Lambda Powertools logger (`POWERTOOLS_SERVICE_NAME=persist*`, `POWERTOOLS_LOG_LEVEL=INFO`). Each handler binds Lambda context once, appends a request-scoped key (`workflowItemRequestId`, `batchRequestId`, `workflowValidationRequestId`, …), and resets the keys in `finally`.
 - **Structured logging across services**: every service emits start/progress/end logs with the same shape — a span name (`ServiceName.method`), structured annotations (`requestId`, `executionId`, `loadId`, `taskToken`, `phase`, `bucket`, `key`, …), and a level (`info`/`warn`/`error`). Polling loops emit progress every N polls or on status change.
-- **Metrics**: AWS Lambda Powertools metrics, namespace `persist`. Buffered counters `vertices_ingested` / `edges_ingested` with dimension `ingest_method` ∈ `sync_ingest|async_ingest|eventbridge_graph_fact|async_csv_upload` (and optional `phase=vertices|edges`). Derived-index metrics include `index_rebuild_trigger_elements`, `index_rebuild_properties_written`, `index_rebuild_properties_removed`, `index_stream_records_read`, `index_stream_transactions_processed`, `index_stream_checkpoint_lag_ms`, and `index_stream_recompute_failures`, all dimensioned by `owner_type` / `index_name` where cardinality is bounded. The buffer is flushed in the API handler's `finally` block and in every worker/poller `finally` block.
+- **Metrics**: AWS Lambda Powertools metrics, namespace `persist`. Buffered counters `vertices_ingested` / `edges_ingested` with dimension `ingest_method` ∈ `sync_ingest|async_ingest|eventbridge_graph_fact|eventbridge_graph_fact_sync|async_csv_upload` (and optional `phase=vertices|edges`). The EventBridge fact handler also emits `graph_facts_accepted` and `graph_facts_skipped_missing_ref`. Derived-index metrics include `index_rebuild_trigger_elements`, `index_rebuild_properties_written`, `index_rebuild_properties_removed`, `index_stream_records_read`, `index_stream_transactions_processed`, `index_stream_checkpoint_lag_ms`, and `index_stream_recompute_failures`, all dimensioned by `owner_type` / `index_name` where cardinality is bounded. The buffer is flushed in the API handler's `finally` block and in every worker/poller `finally` block.
 - **Blob privacy**: raw `persist:Blob` text must never be logged, emitted in metrics, included in error details, or stored in DynamoDB/SQS/EventBridge metadata. Logs and metrics may include `contentHash`, byte length, and S3 URI.
 - **Blob metrics**: emit `blobs_materialized`, `blob_bytes_materialized`, `blob_objects_created`, and `blob_objects_reused` with bounded dimensions `ingest_method` and optional `phase`.
 - **Tracing**: Step Functions state machines have `tracingEnabled: true` (X-Ray).
@@ -976,7 +1025,8 @@ The implementation organises behaviour as small services with a clear interface 
 - Unit tests live in `test/services/**/*.ts`, `test/schemas/**/*.ts`, `test/handlers/**/*.ts`, `test/routes/**/*.ts`, `test/http/responses.test.ts`, and `test/cdk/persist-stack.test.ts`.
 - Vitest is the test runner. `setupTests.ts` wires the ingest-metrics reset/flush before/after each test.
 - A real Gremlin Server (TinkerGraph) is required for traversal tests. `just test` (the canonical CI command) starts/stops the docker container automatically using `scripts/start-gremlin-test.sh` and `gremlin/tinkergraph-empty.properties` (string IDs enabled to mirror Neptune `T.id`).
-- EventBridge ingestion tests cover the `GraphFactProduced` schema, wrapper transformation into `tinker:graph`, validation failures before S3/SQS side effects, and successful enqueue metadata.
+- `vertexRefs` tests cover schema validation, duplicate/isolated refs, missing refs, label mismatch, sync-path verification before writes, async route rejection, and edge ID parity between mirror and ref representations.
+- EventBridge ingestion tests cover the `GraphFactProduced` schema, wrapper transformation into `tinker:graph`, sync-vs-async routing, ref-bearing sync routing, validation failures before S3/SQS/Neptune side effects, skipped missing refs, and successful enqueue metadata.
 - Derived-index unit tests cover index-catalog parsing from lexicon `indexes`, rejection of caller-supplied index properties, value type/enum validation, null-as-remove semantics, and idempotent writer retries. Stream tests use captured/synthetic Neptune PG_JSON records for `ADD`, `REMOVE`, multi-op transactions, duplicate replay, and checkpoint advancement only after successful writes.
 - Rebuild workflow tests cover selected-index planning, candidate lexicon dry-run only, shard generation, Distributed Map item processing, stream watermark capture, and summary counters.
 - Persist Blob tests cover validation of `persist:Blob` wrappers, byte-limit failures, deterministic URI derivation for repeated text, idempotent S3 conflict handling, no raw-text logging, graph ID equality for repeated blob text, graph ID change for changed blob text, and CSV `*:Blob` transformation to staged `*:String` URI columns before rehash/dedup.
@@ -1052,10 +1102,10 @@ Derived-index release validation:
 
 1. **Repo skeleton**: pnpm workspace, TypeScript, `tsconfig.{base,build,app,src,test}.json`, ESLint, Prettier (with import sort), husky + lint-staged, Vitest. Package name is internal.
 2. **Runtime dependencies**: `@aws-lambda-powertools/{logger,metrics,event-handler}`, `@aws-sdk/{client-neptunedata,client-s3,client-sfn,client-sqs,credential-providers}`, `@smithy/{config-resolver,node-config-provider,hash-node,protocol-http,signature-v4}`, `gremlin`, `gremlin-aws-sigv4`, `csv-parse`. CDK: `aws-cdk-lib`, `constructs`, `aws-cdk`. Choose any preferred validation library and structured-error / DI conventions — the contracts in §3 and §6 must be honoured but the implementation style is unconstrained.
-3. **Schemas / contracts**: one module per group in `lambda/schemas/` — `graphson/{types,vertex,edge,ingest,validate}`, `eventbridge/graph-fact`, `gremlin`, `gremlin-async`, `async-bulk`, `workflow`, `lexicon`, `derived-index`, `http`, `errors`. Errors are tagged classes; everything else is type+validator pairs.
+3. **Schemas / contracts**: one module per group in `lambda/schemas/` — `graphson/{types,vertex,vertex-ref,edge,ingest,validate}`, `eventbridge/graph-fact`, `gremlin`, `gremlin-async`, `async-bulk`, `workflow`, `lexicon`, `derived-index`, `http`, `errors`. Errors are tagged classes; everything else is type+validator pairs.
 4. **Utils**: `lambda/utils/{csv,errors,graphsonTemporalTransform,lexiconStringFormat,neptuneTemporal,s3}.ts`.
 5. **Configuration**: `lambda/config/neptune.ts` (Neptune host/port/region, retry, connection age) plus per-service config readers tied to the env vars listed in §2.4, including `lambda/config/blob.ts`. Required vars must throw at startup; optional vars must default per §2.4.
-6. **Services** (one file each in `lambda/services/`): GraphSON (`Hash`, `Decode`, `BlobTransform`, `PersistTransform`, `PersistTransformService`, `SemanticValidationService`, `ValidationService`, `Service`, `AsyncIngestService`); Blob (`PersistBlobService`); EventBridge (`GraphFactEventService`); Gremlin (`Client`, `Tx`, `Retry`, `QueryPolicy`, `Service`); Lexicon (`Schema`); Derived Index (`Catalog`, `ValueValidation`, `Writer`, `RebuildPlanner`, `RebuildShard`, `StreamClient`, `StreamPoller`, `CheckpointStore`); Async Gremlin (`JobStore`, `ResultStore`, `Submit`, `Status`, `Cancel`, `Worker`, `NeptuneDataApi`); Async Bulk (`IngestPayload`, `BulkWorker`, `BulkAggregateWorker`, `FilteredBatchEnqueue`, `BulkLoader`, `BulkStage`, `CsvService`, `CsvDedup`, `CsvLexiconValidation`, `CsvWorkflowValidation`); Workflow (`Input`, `CostPredictor`, `ItemRouting`, `ItemStart`, `ItemStatus`, `Summary`, `StepFunctionsCallback`); Metrics (`IngestMetrics`); plus a composition module `services/index.ts` that exports per-router and per-handler dependency containers.
+6. **Services** (one file each in `lambda/services/`): GraphSON (`Hash`, `Decode`, `BlobTransform`, `PersistTransform`, `PersistTransformService`, `SemanticValidationService`, `ValidationService`, `VertexRefVerifier`, `Service`, `AsyncIngestService`); Blob (`PersistBlobService`); EventBridge (`GraphFactEventService`); Gremlin (`Client`, `Tx`, `Retry`, `QueryPolicy`, `Service`); Lexicon (`Schema`); Derived Index (`Catalog`, `ValueValidation`, `Writer`, `RebuildPlanner`, `RebuildShard`, `StreamClient`, `StreamPoller`, `CheckpointStore`); Async Gremlin (`JobStore`, `ResultStore`, `Submit`, `Status`, `Cancel`, `Worker`, `NeptuneDataApi`); Async Bulk (`IngestPayload`, `BulkWorker`, `BulkAggregateWorker`, `FilteredBatchEnqueue`, `BulkLoader`, `BulkStage`, `CsvService`, `CsvDedup`, `CsvLexiconValidation`, `CsvWorkflowValidation`); Workflow (`Input`, `CostPredictor`, `ItemRouting`, `ItemStart`, `ItemStatus`, `Summary`, `StepFunctionsCallback`); Metrics (`IngestMetrics`); plus a composition module `services/index.ts` that exports per-router and per-handler dependency containers.
 7. **HTTP layer**: `lambda/http/{request-context.ts, responses.ts}`, `lambda/logging/{powertools.ts, runtime.ts}`, the three routers (`graphson`, `gremlin`, `gremlin-async`) and `router.ts` mounting them with `prefix="/persist"`, then `handler.ts`.
 8. **Worker handlers** + **Workflow handlers** + **EventBridge handler** + **Fargate entrypoint** in `lambda/{graph-fact-event, async-bulk-worker, async-bulk-aggregate-worker, gremlin-async-validate, gremlin-async-worker, workflow-start, workflow-cost-predictor, workflow-validate, workflow-item-route, workflow-item-processor, workflow-item-status, workflow-item-status-simple, index-rebuild-prepare, index-rebuild-shard-worker, index-stream-poller, fargate}/`.
 9. **OpenAPI generator**: `lambda/api/definitions.ts` and `scripts/generate-openapi.ts`. `pnpm api:spec` writes `docs/openapi.json` (the generated spec is checked in).
@@ -1071,12 +1121,14 @@ A re-implementation is considered functionally complete when:
 
 - All endpoints in §1.2 return the documented success/error envelopes for the example payloads in `README.md` and the OpenAPI spec.
 - `POST /persist/ingest` is transactional: a failure on any vertex/edge inside one request leaves zero new records in Neptune.
+- `POST /persist/ingest` accepts `vertexRefs`, verifies each ref exists at the declared label before the transaction starts, does not upsert referenced vertices, and returns `MissingVertexRef` (404) with zero writes when verification fails.
+- `POST /persist/ingest-async` rejects non-empty `vertexRefs` before any S3 PUT or SQS send.
 - Hashing rules in §3.4 produce identical IDs across two independent runs of the same payload (fuzz-tested by `test/services/GraphSONHash.test.ts`).
 - `POST /persist/validate` accepts both the bare `tinker:graph` payload and the `{ graph, candidate_lexicon_s3_uri }` wrapper, and surfaces issues with `code` + JSON-pointer `path`.
 - `persist:Blob` values are accepted only for lexicon `blob` properties, are written once to content-addressed S3 keys derived from the exact UTF-8 text hash, and are replaced with deterministic S3 URIs before vertex/edge ID hashing.
 - Re-ingesting the same graph with the same blob text produces the same blob URI and graph element IDs; changing only the blob text produces a different blob URI and graph element ID.
 - Raw blob text is not present in Neptune properties, CloudWatch logs, SQS messages, DynamoDB rows, EventBridge metadata, or HTTP error details after materialisation; only the S3 object contains the original text.
-- `GraphFactProduced` EventBridge events matching §3.7 validate before side effects, enqueue through the same GraphSON async ingest path, preserve `idempotency_key` in metadata, and never write duplicate vertices/edges when the same fact is replayed.
+- `GraphFactProduced` EventBridge events matching §3.7 validate before side effects, route small/ref-bearing facts through sync ingest, route large non-ref facts through async ingest, preserve `idempotency_key` in metadata, and never write duplicate vertices/edges when the same fact is replayed.
 - Async Gremlin survives the four release-validation steps in §8.3 inside a single deployed environment.
 - The Neptune CSV workflow accepts all three input shapes in §5.4.1 and produces a `workflow-summaries/<executionId>/<phase>/item-<itemIndex>.json` for every successful item.
 - The lexicon `indexes` contract is consumed from the canonical lexicon: callers cannot write derived index properties directly, Persist builds an `IndexCatalog`, and index values are validated against their declared scalar schema before writes.

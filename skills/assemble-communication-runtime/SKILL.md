@@ -41,7 +41,7 @@ For the current SMS service, start with `reference/current-solver-parity.md`.
 - provider-specific delivery lifecycle ownership
 - top-level builder ontology and golden-prompt governance
 
-Those belong to `wigglytuff`, `xatu`, `chatot`, or `kadabra`.
+Those belong to `manage-channel-templates`, `xatu`, `chatot`, or the repo-owned service builder prompt.
 
 ## Checklist
 

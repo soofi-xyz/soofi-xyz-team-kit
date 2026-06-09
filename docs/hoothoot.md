@@ -31,7 +31,7 @@ Use Hoothoot to build a fresh Persist-backed report. Ask where to create it loca
 If your request is general, Hoothoot should guide the work like this:
 
 ```text
-First I need the local project path, AWS access path, and the core business question if you have not already stated it. Then I will verify prod AWS access by default, resolve the relevant Lexicon ruleset/filter/rule, and run a bounded data-shape discovery query or Rules output metadata/sample check before creating any report files. If this is explicitly a dev/test report, I will use the named non-prod profile and label the output accordingly.
+First I need the local project path, AWS access path, and the core business question if you have not already stated it. Then I will verify prod AWS access by default, resolve the relevant Lexicon ruleset/filter/rule, and run a bounded data-shape discovery query or Rules output metadata/sample check before creating any report files. If this is explicitly a dev/test report, I will use the managed `DevReportingReadonly` profile and label the output accordingly.
 ```
 
 ## How Hoothoot Decides
@@ -59,7 +59,7 @@ For graph-level requests that are not rule-derived (a simple count of vertices b
 ## What To Provide
 
 - Where the local report project should live: either a new local project path or an existing local project path.
-- For AWS access, Hoothoot should always offer these choices: "I have a prod AWS profile", "I use SSO", "I have an AWS credentials CSV", "I have another local credentials file or profile", or "I do not know".
+- For AWS access, Hoothoot should always offer these choices: "Use the managed Hoothoot reporting profile", "I use SSO", "I have an AWS credentials CSV", "I have another local credentials file or profile", or "I do not know".
 - If you received an AWS credentials CSV, provide only the local file path, the profile name you want Hoothoot to create, and the AWS region. Hoothoot should create or update the profile for you and verify the prod account.
 - Before rule/filter resolution: the core business question, unless you already stated it in your prompt.
 - After AWS access is connected and Hoothoot has inspected the data shape: the table/KPI/chart widgets you want, the business question each widget must answer, and how the report should look.
@@ -105,19 +105,24 @@ If no exact executable ruleset/filter/rule exists, Hoothoot will not approximate
 
 ## Persist Access Setup
 
-Hoothoot uses prod Persist by default for direct Lexicon-label data, direct filter/rule execution, and Rules-released outputs for registered rulesets. For explicit dev/test reports, Hoothoot can use a named non-prod profile and should label the output as non-prod. You do not need to write export commands or know the refresh script details. Hoothoot should check whether your machine already has a usable AWS profile for the selected environment and guide you through the smallest missing step.
+Hoothoot uses prod Persist by default for direct Lexicon-label data, direct filter/rule execution, and Rules-released outputs for registered rulesets. For explicit dev/test reports, Hoothoot can use the managed `DevReportingReadonly` profile and should label the output as non-prod. The managed profiles are:
+
+- Prod: `ProdReportingReadOnly`, account `014948052063`, region `us-east-2`
+- Dev: `DevReportingReadonly`, account `951132547414`, region `us-east-2`
+
+You do not need to write export commands or know the refresh script details. Hoothoot should check whether your machine already has a usable AWS profile for the selected environment and guide you through the smallest missing step.
 
 What Hoothoot should do for you:
 - Check local AWS profiles when the AWS CLI is available.
 - Help locate likely credentials if you do not know the profile name, including checking configured AWS profiles and asking whether you use SSO or have a downloaded credentials CSV.
 - Always offer the credentials CSV path option when AWS access is missing. It should not ask only for a prod AWS profile.
-- Ask you to pick the right prod profile only if there is more than one possible choice.
+- Prefer the managed profile for the selected environment when it exists; ask you to pick a profile only if there is more than one possible choice.
 - Verify the selected profile and explain which AWS account it can access.
 - If your profile uses SSO, start the login flow and ask you only to finish the browser login.
 - If the profile is missing SSO settings, first ask whether you already have credentials it can use, such as a credentials CSV, a local credentials file path, or another profile name.
 - If no existing credentials are available, repair or create the SSO profile for you instead of telling you to run `aws configure sso`.
 - If you have an AWS credentials CSV, import it locally without printing the secret values.
-- If the profile does not verify as the intended account, explain the failed check and keep helping you fix AWS access; it should not silently use dev or a default profile.
+- If the profile does not verify as the intended selected-environment account, explain the failed check and keep helping you fix AWS access; it should not silently use dev or a default profile.
 
 For SSO-backed profiles, Hoothoot may run the login flow for you and ask you to complete only the browser step:
 
@@ -135,11 +140,11 @@ If you have one of those, provide only the local path or profile name. Hoothoot 
 If you do not have existing credentials, Hoothoot should ask in plain language for:
 - The company AWS access portal/start URL.
 - The SSO region.
-- The prod account name or account ID.
-- The role name to use.
+- The selected environment's account name or account ID.
+- The role name to use (`ProdReportingReadOnly` for prod or `DevReportingReadonly` for explicit dev/test when using the managed Hoothoot roles).
 - The profile name you want.
 
-Once those values are known, Hoothoot should configure or repair the local profile, start SSO login, verify the prod account, and continue to Persist/Rules discovery. If any step fails, Hoothoot should explain the failed check and ask the next simple credential question. It should stay in this setup flow until AWS access works or you explicitly cancel.
+Once those values are known, Hoothoot should configure or repair the local profile, start SSO login, verify the selected environment's account, and continue to Persist/Rules discovery. If any step fails, Hoothoot should explain the failed check and ask the next simple credential question. It should stay in this setup flow until AWS access works or you explicitly cancel.
 
 For locally configured access-key profiles, Hoothoot should prefer an approved internal setup flow or a local CSV file path. Do not paste access keys, session tokens, passwords, or secrets into chat.
 
