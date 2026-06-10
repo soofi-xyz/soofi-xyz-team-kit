@@ -7,7 +7,8 @@ Usage:
   scripts/sync-copilot-agents.sh [sync|check]
 
 Copies source agent definitions from agents/*.md into agents-copilot/*.agent.md
-as real files for GitHub Copilot CLI packaging.
+as real files for GitHub Copilot CLI packaging. Agent source files must stay
+valid Cursor agent files; Copilot-only model overrides live in this script.
 
 Commands:
   sync   Update agents-copilot/ to match agents/ (default).
@@ -56,6 +57,9 @@ root = Path(sys.argv[1])
 command = sys.argv[2]
 source_dir = root / "agents"
 target_dir = root / "agents-copilot"
+copilot_model_overrides = {
+    "chansey": "gpt-5.4-mini",
+}
 
 if not source_dir.is_dir():
     raise SystemExit(f"missing source agent directory: {source_dir}")
@@ -76,7 +80,22 @@ def read_agent(path: Path) -> str:
     frontmatter = text[4:frontmatter_end]
     if not re.search(r"(?m)^description:\s*\S", frontmatter):
         raise SystemExit(f"{path.relative_to(root)}: frontmatter must include description")
-    return text if text.endswith("\n") else text + "\n"
+    body = text[frontmatter_end + len("\n---\n"):]
+    copilot_model = copilot_model_overrides.get(path.stem)
+    lines = []
+    for line in frontmatter.splitlines():
+        lines.append(line)
+    if copilot_model:
+        replaced = False
+        for index, line in enumerate(lines):
+            if re.match(r"^model:\s*", line):
+                lines[index] = f"model: {copilot_model}"
+                replaced = True
+                break
+        if not replaced:
+            lines.append(f"model: {copilot_model}")
+    transformed = "---\n" + "\n".join(lines) + "\n---\n" + body
+    return transformed if transformed.endswith("\n") else transformed + "\n"
 
 expected = {}
 for source in sorted(source_dir.glob("*.md")):
