@@ -92,6 +92,8 @@ Hoothoot must never build report queries from graph-internal vertex or edge iden
 
 Report artifacts and audit notes should not contain internal vertex or edge IDs. Row keys should be business identifiers or report-local synthetic row numbers that are clearly not Persist IDs.
 
+Root-vertex-property-only report queries may aggregate directly when they are bounded and Lexicon-validated. If a report query needs to traverse edges or run child/sub-traversals beyond the root vertices, Hoothoot should not run it as one whole-graph traversal. It should first count the root candidate vertices using only root label and root-vertex filters, split the root candidate stream into bounded `range(start, end)` shards, run each shard as a separate Persist async query, and merge the shard outputs locally. Hoothoot should run a first small shard to validate that the returned data shape is correct before launching the rest, and only run a few shards in parallel with conservative concurrency.
+
 ## When A Ruleset Does Not Exist Yet
 
 If no registered or released Lexicon ruleset exists for the rule-derived data you want, Hoothoot should next check whether an exact released filter or separate rule exists and can be executed through read-only Persist integration. It may run that filter/rule only when the definition is explicit, traceable, and validated against Lexicon. It must not invent a query that approximates the rule.
