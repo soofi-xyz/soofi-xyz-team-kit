@@ -15,7 +15,9 @@ Follow these conventions whenever you touch files in this repo.
 ## Agents (`agents/*.md`)
 
 - One agent per file. Filename SHOULD match the agent `name`.
+- Agent names MUST be unused Pokémon names in lowercase kebab-case, and each README Agents table row MUST include the matching Pokémon image. Before adding or renaming an agent, check existing `agents/*.md` names and choose a Pokémon that is not already taken.
 - Frontmatter MUST have `name` (kebab-case) and `description` (what + when to trigger).
+- Keep `agents/*.md` frontmatter compatible with Cursor's documented agent fields. Use `model` for the Cursor agent model; if Copilot needs a different model, add the override in `scripts/sync-copilot-agents.sh` so the generated `agents-copilot/<name>.agent.md` emits the Copilot-specific `model`.
 - Keep the body imperative ("Do X", "Return Y"). Describe the runtime contract: inputs, tools, outputs, verification.
 - `agents/` is the source of truth. Do not edit files in `agents-copilot/` directly.
 - Each source agent MUST have a matching materialized Copilot file at `agents-copilot/<name>.agent.md`.
