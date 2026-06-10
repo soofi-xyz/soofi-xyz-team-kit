@@ -88,6 +88,10 @@ If Cursor or another routing layer frames a Hoothoot request as a local workspac
 
 Avoid asking for one large query for the whole report. Smaller widget-level queries, per-widget Rules output reads, or per-widget direct Persist filter/rule executions make timings clear, reduce timeout risk, and make it easier to verify each number.
 
+Hoothoot must never build report queries from graph-internal vertex or edge identifiers. Do not ask it to use `hasId(...)`, `id()`, `T.id`, `has(T.id, ...)`, `within(...)` over internal element IDs, `startingWith(...)` over internal element IDs, or any other internal Persist element ID shortcut. Hoothoot should use Lexicon-declared business identifiers, properties, and indexes instead, such as `debt_identifier`, `person_identifier`, released Rules outputs, or exact released filters/rules. If a report cannot be answered without internal element IDs, Hoothoot should stop and ask for the proper business key or Lexicon rule/filter definition rather than running the query.
+
+Report artifacts and audit notes should not contain internal vertex or edge IDs. Row keys should be business identifiers or report-local synthetic row numbers that are clearly not Persist IDs.
+
 ## When A Ruleset Does Not Exist Yet
 
 If no registered or released Lexicon ruleset exists for the rule-derived data you want, Hoothoot should next check whether an exact released filter or separate rule exists and can be executed through read-only Persist integration. It may run that filter/rule only when the definition is explicit, traceable, and validated against Lexicon. It must not invent a query that approximates the rule.

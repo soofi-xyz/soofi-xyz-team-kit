@@ -155,6 +155,9 @@ When the user provides chart, layout, or data-shape preferences, honor them unle
 - Do not put AWS credentials, Persist credentials, API signing material, raw Gremlin credentials, PII, or secrets in browser code, static assets, Git, logs, or workflow YAML.
 - Use read-only Persist queries for report generation. Do not mutate graph data from a report refresh job.
 - Use direct Persist integration to execute exact filters or separate rules only after their definitions are resolved and validated. Record the filter/rule source, normalized Gremlin query, Persist endpoint, request ID, timing, and assumptions.
+- Never build report queries from graph-internal vertex or edge identifiers. Do not use `hasId(...)`, `id()`, `T.id`, `has(T.id, ...)`, `within(...)` over internal element IDs, `startingWith(...)` over internal element IDs, or any other traversal that treats Persist's internal element IDs as a report key or partitioning shortcut.
+- Use Lexicon-declared business identifiers, properties, and indexes instead, such as `debt_identifier`, `person_identifier`, registered rule/filter outputs, or other released business keys that the Lexicon exposes for reporting. If the only way to answer a request appears to require internal element IDs, stop and ask for a proper business identifier, released Rules output, or Lexicon filter/rule definition instead of writing the query.
+- Do not project internal graph IDs into report datasets, local artifacts, PR notes, or audit summaries. Dataset row keys must be business identifiers or report-local synthetic row numbers that are clearly not Persist vertex/edge IDs.
 - Use Persist async Gremlin for reporting datasets by default:
   - Submit read-only report queries to `POST /persist/gremlin-async`.
   - Poll `GET /persist/gremlin-async/:requestId` until the query succeeds, fails, or reaches the report job timeout.
@@ -223,7 +226,7 @@ If a query or execution is slow, name it specifically and explain whether the de
 
 - Confirm the target environment before any deploy, then set the stack name, AWS profile/account, region, Amplify branch, Secrets Manager paths, and callback/logout URLs from that environment once. Do not build in one environment and later retrofit another unless the user changes the target.
 - Before the first CDK deploy in an account, inspect the existing CDK bootstrap stack and qualifier. If the account uses a non-default qualifier, configure the stack synthesizer with that qualifier before synthesizing or publishing assets.
-- Run a tiny Persist smoke query for each required label/index family before the full refresh, such as `limit(1).valueMap(true)` and targeted `has('<field>').count()` checks. Use the smoke results to surface missing data early.
+- Run a tiny Persist smoke query for each required label/index family before the full refresh, such as `limit(1).valueMap()` and targeted `has('<field>').count()` checks. Use the smoke results to surface missing data early without returning internal vertex or edge IDs.
 - Prefer one compact indexed aggregation per dataset over query shapes that `fold()` millions of vertices and repeatedly `unfold()` them for each bucket.
 - If any required whole-portfolio query takes close to a Lambda timeout, switch the refresh design to Step Functions, ECS/Fargate, or another long-running worker before deploying the scheduled refresh.
 - Generate the first report artifact as soon as infrastructure and auth are deployed, then verify the artifact summary, missing-data notes, app URL, and unauthenticated data access in one pass before handing back the link.
@@ -252,8 +255,9 @@ Use these only for direct Lexicon-label reads or verified direct Persist filter/
 - Count vertices using an index or property: `g.V().hasLabel('<vertex_label>').has('<field_or_index>', <value>).count()`.
 - Average a numeric projection: `g.V().hasLabel('<vertex_label>').has('<status_or_scope_field>', '<enum_value>').values('<numeric_field_or_index>').mean()`.
 - Group counts by a projection: `g.V().hasLabel('<vertex_label>').groupCount().by('<field_or_index>')`.
-- Project report rows: `g.V().hasLabel('<vertex_label>').has('<filter_field>', <value>).project('id','metric').by(id()).by(values('<metric_field>').fold())`.
+- Project report rows with business keys only: `g.V().hasLabel('<vertex_label>').has('<filter_field>', <value>).project('<business_key>','metric').by(values('<business_identifier_field>').fold()).by(values('<metric_field>').fold())`.
 - Replace placeholders only with labels, fields, indexes, and enum values verified from Lexicon.
+- These examples intentionally avoid `id()`, `hasId(...)`, and internal element IDs. If a query cannot be expressed through Lexicon-verified business identifiers, properties, indexes, released Rules outputs, or exact filters/rules, do not run it.
 
 ## Static report app defaults
 
