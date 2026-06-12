@@ -59,6 +59,28 @@ Default to `pitch` when ambiguous.
 - Hand-off: to publish a draft as a password-protected HTML page, direct the user to the
   publishing step (separate milestone task). Do not deploy from here.
 
+## Publish as a password-protected HTML page
+
+After drafting, you can publish the result as a standalone page with its own password:
+
+1. Render the draft to a **single self-contained HTML file** (`out/<name>.html` in the agent-eevee
+   checkout): inline `<style>`, no external CSS/JS/CDN. Reuse the Capgemini palette from
+   `app/catalog/page.tsx` (`#0070AD`, `#1B365D`, `#F5F7FA`) for a consistent look.
+2. Publish it (prefer the direct tsx binary — sandboxes mangle `npm run`/`npx`):
+
+   ```bash
+   ./node_modules/.bin/tsx --tsconfig tsconfig.json scripts/eevee-publish.ts out/<name>.html --title "<Title>" [--password <p>]
+   ```
+
+   Omit `--password` to auto-generate a strong one. The CLI prints the shareable **URL** and the
+   **password** (shown once — capture both).
+3. Report the URL + password to the user. Each page has its **own** password (independent of the
+   internal catalog), so it is safe to share a single page externally. Do not invent or reuse passwords.
+
+The page is served at `<base>/p/<slug>` behind that per-page password (`base` = `PUBLISH_BASE_URL`
+or the agent-eevee deployment; a soofi.xyz domain maps on later with no code change). The content
+is stored privately (never at a public URL); the gate prompts for the per-page password.
+
 ## Future-compatibility
 
 Retrieval goes through agent-eevee's `lib/vector.ts` + `lib/investor-content.ts` interfaces; a
