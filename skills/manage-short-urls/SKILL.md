@@ -47,7 +47,6 @@ POST /shorten
         v
 IssueFn
   - validate { target_url }
-  - derive created_by from IAM principal
   - generate 10-char base62 token
   - build short_url_path from resolver base URL
   - build GraphSON v3 short_url artifact
@@ -107,7 +106,7 @@ Response:
 Rules:
 
 - `target_url` must be a valid URL, max 2048 chars.
-- The caller does not send `created_by`; the service derives it from IAM principal identity or a server-side identity map.
+- No producer identity is stored on the vertex. Do not derive or persist `created_by`; the graph persistence layer hashes all vertex properties into the vertex identity, so producer-specific properties split the same logical short URL into duplicate vertices.
 - The service returns both the token and the full short URL.
 - If a custom domain is not routable in an environment, return the real resolver API endpoint instead of a placeholder domain.
 
@@ -135,7 +134,8 @@ Required properties:
 | `short_url_token` | Resolver path token |
 | `short_url_path` | Full public short URL returned to producers |
 | `target_url` | Destination URL for redirect |
-| `created_by` | Producer slug derived from IAM identity |
+
+These three properties are the complete identity of the vertex. Do not add producer identity (`created_by`) or other operational metadata: identity-hashed persistence turns every property variant into a separate duplicate vertex for the same logical short URL.
 
 Server-managed properties:
 
@@ -159,15 +159,14 @@ Rules:
 ## Issuance Flow
 
 1. Parse and validate request body.
-2. Derive `created_by` from the IAM principal or server-side mapping.
-3. Generate a random 10-character base62 token.
-4. Query Persist by `short_url_token` to avoid token collision.
-5. Build `short_url_path = <resolver-base-url>/<token>`.
-6. Build GraphSON v3:
-   - `short_url` vertex
+2. Generate a random 10-character base62 token.
+3. Query Persist by `short_url_token` to avoid token collision.
+4. Build `short_url_path = <resolver-base-url>/<token>`.
+5. Build GraphSON v3:
+   - `short_url` vertex (`short_url_token`, `short_url_path`, `target_url` only)
    - optional schema-backed relationship edges
-7. Call Persist `/persist/ingest` synchronously.
-8. Return `{ token, short_url }`.
+6. Call Persist `/persist/ingest` synchronously.
+7. Return `{ token, short_url }`.
 
 ## Resolution Flow
 
@@ -176,7 +175,7 @@ Strict order:
 1. Validate token format. Invalid -> `404`.
 2. Query Persist `/persist/gremlin`:
    - `g.V().hasLabel('short_url').has('short_url_token', token).limit(1)`
-   - project `short_url_token`, `short_url_path`, `target_url`, `created_by`
+   - project `short_url_token`, `short_url_path`, `target_url`
 3. Missing vertex -> `404`.
 4. Build click graph fact.
 5. Synchronously publish EventBridge `GraphFactProduced`.
@@ -257,17 +256,14 @@ A replay Lambda reads the DLQ and republishes the same `GraphFactProduced` event
 
 ## Producer Identity
 
-`created_by` is a producer slug, for example:
+Producer identity is **not** stored on the `short_url` vertex.
 
-- `producer-a`
-- `notification-sender`
-- `email-sender`
-- `partner-a`
+Earlier revisions of this service derived a `created_by` producer slug from the IAM principal and persisted it on the vertex. Because identity-hashed persistence (Persist) computes the vertex id from all properties, every producer variant of the same logical short URL became a separate duplicate vertex with disjoint edges. The property has been removed from the contract.
 
 Rules:
 
-- The caller must not supply `created_by` in the request body or headers.
-- Map IAM principal identity to `created_by` on the server.
+- Do not derive, accept, or persist `created_by` (or any producer/operational metadata) on `short_url` vertices.
+- If producer attribution is ever needed, capture it in logs or on schema-backed edges — never as a vertex identity property.
 - Keep producer identity generic; do not embed channel-specific behavior in the resolver.
 
 ## Infrastructure Requirements
@@ -303,7 +299,7 @@ Run `rules/infrastructure-discovery.md` before custom-domain or bus decisions.
 - webhook URL stored per token
 - per-channel resolver paths unless the configured domain/router requires a prefix
 - arbitrary `metadata` blobs
-- caller-supplied `created_by`
+- any `created_by` / producer-identity property on `short_url` vertices (it joins the identity hash and creates duplicate vertices)
 - business logic in the resolver
 - downstream lifecycle updates in the resolver
 - direct downstream-system calls in the resolver
@@ -316,7 +312,7 @@ Before calling a short-URL service ready:
 
 - `POST /shorten` accepts only `{ target_url }`.
 - Tokens are 10-character base62.
-- `created_by` is derived from IAM identity.
+- `short_url` vertices carry only `short_url_token`, `short_url_path`, and `target_url` — no `created_by`.
 - Persist `/persist/ingest` writes the `short_url` graph artifact synchronously.
 - Persist `/persist/gremlin` resolves tokens.
 - `short_url_path` is the full public short URL.

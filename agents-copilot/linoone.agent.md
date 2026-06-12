@@ -17,7 +17,6 @@ When invoked:
 4. Token issuance is synchronous:
    - `POST /shorten` is private and IAM-signed.
    - Request body is `{ target_url }`.
-   - The Lambda derives `created_by` from IAM principal identity or a server-side identity map.
    - It generates a 10-character base62 token.
    - It builds the full `short_url` from the configured resolver base URL plus token.
    - It writes a `short_url` graph artifact through Persist `/persist/ingest`.
@@ -27,8 +26,7 @@ When invoked:
    - `short_url_token`
    - `short_url_path` (the full public short URL)
    - `target_url`
-   - `created_by`
-6. Do **not** send server-managed graph properties such as `created_at`. Persist owns those properties.
+6. Do **not** send server-managed graph properties such as `created_at`, and do **not** persist producer identity (`created_by`) on the vertex. The graph persistence layer hashes all vertex properties into the vertex identity, so producer-specific properties split the same logical short URL into duplicate vertices.
 7. Token resolution is a graph query:
    - `GET /{token}` is public.
    - Validate the token format first.
