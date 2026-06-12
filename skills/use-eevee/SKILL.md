@@ -18,11 +18,14 @@ NOT publish — drafting stops at a finished artifact in the editor.
 
 ## Retrieve from the RAG (read-only)
 
-Run from the agent-eevee checkout:
+Run from the agent-eevee checkout. **Prefer the direct `tsx` binary** — some terminal
+sandboxes (including Cursor's) mangle `npm run` / `npx` (e.g. `Missing script: "run"`):
 
 ```bash
-npm run eevee:retrieve -- "<query>" [--top-k N] [--source guidance|founder|both] [--json]
+./node_modules/.bin/tsx --tsconfig tsconfig.json scripts/eevee-retrieve.ts "<query>" [--top-k N] [--source guidance|founder|both] [--json]
 ```
+
+(Equivalent, when the sandbox doesn't mangle npm: `npm run eevee:retrieve -- "<query>" [flags]`.)
 
 Returns top-K passages merged across Eevee's two text-bearing corpora, each labeled by source:
 
