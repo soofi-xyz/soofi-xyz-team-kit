@@ -54,12 +54,11 @@ The graph fact must include:
 - short URL token
 - full short URL path
 - target URL
-- producer slug (`created_by`)
 - source IP
 - user agent
 - effective click timestamp
 
-Server-managed `created_at` is not sent by the resolver.
+Server-managed `created_at` is not sent by the resolver. Producer identity (`created_by`) is not part of the contract and must not appear on `short_url` vertices.
 
 ## Consumer Processing
 

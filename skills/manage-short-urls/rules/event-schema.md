@@ -66,9 +66,10 @@ Required properties:
 | `short_url_token` | 10-character base62 resolver token |
 | `short_url_path` | Full public short URL |
 | `target_url` | Destination URL |
-| `created_by` | Producer slug derived at issuance |
 
 Do not include `created_at`. Persist owns server-managed timestamps.
+
+Do not include `created_by` or any other producer-identity property. Identity-hashed persistence turns producer variants of the same logical short URL into duplicate vertices.
 
 ### `short_url_visited` Edge
 
@@ -152,9 +153,9 @@ new events.Rule(this, "ProducerShortUrlClicksRule", {
 });
 ```
 
-If a consumer needs `created_by` filtering, it can either:
+Producer identity is not part of the short URL contract (`created_by` was removed because it duplicated vertices). If a consumer needs producer-level filtering, it can either:
 
-- subscribe to all `short_url.visited` facts and filter after parsing GraphSON, or
+- subscribe to all `short_url.visited` facts and filter after parsing GraphSON on schema-backed fields, or
 - use a separate normalized projection event only if the event architecture explicitly introduces one.
 
 Do not invent a second click event casually. The default transport is `GraphFactProduced`.
