@@ -18,14 +18,15 @@ NOT publish — drafting stops at a finished artifact in the editor.
 
 ## Retrieve from the RAG (read-only)
 
-Run from the agent-eevee checkout. **Prefer the direct `tsx` binary** — some terminal
-sandboxes (including Cursor's) mangle `npm run` / `npx` (e.g. `Missing script: "run"`):
+Run from the agent-eevee checkout. Use the **prebuilt node bundle** (`npm install` builds it via
+`eevee:build`) — it's plain `node`, so it runs under restricted command sandboxes (including
+Cursor's) where `tsx` / `npm run` / `npx` fail (tsx needs an IPC pipe the sandbox blocks):
 
 ```bash
-./node_modules/.bin/tsx --tsconfig tsconfig.json scripts/eevee-retrieve.ts "<query>" [--top-k N] [--source guidance|founder|both] [--json]
+node scripts/dist/eevee-retrieve.mjs "<query>" [--top-k N] [--source guidance|founder|both] [--json]
 ```
 
-(Equivalent, when the sandbox doesn't mangle npm: `npm run eevee:retrieve -- "<query>" [flags]`.)
+(If `scripts/dist/` is missing, run `npm install` or `npm run eevee:build` first.)
 
 Returns top-K passages merged across Eevee's two text-bearing corpora, each labeled by source:
 
@@ -66,10 +67,10 @@ After drafting, you can publish the result as a standalone page with its own pas
 1. Render the draft to a **single self-contained HTML file** (`out/<name>.html` in the agent-eevee
    checkout): inline `<style>`, no external CSS/JS/CDN. Reuse the Capgemini palette from
    `app/catalog/page.tsx` (`#0070AD`, `#1B365D`, `#F5F7FA`) for a consistent look.
-2. Publish it (prefer the direct tsx binary — sandboxes mangle `npm run`/`npx`):
+2. Publish it via the prebuilt node bundle (sandbox-safe; built by `npm install`):
 
    ```bash
-   ./node_modules/.bin/tsx --tsconfig tsconfig.json scripts/eevee-publish.ts out/<name>.html --title "<Title>" [--password <p>]
+   node scripts/dist/eevee-publish.mjs out/<name>.html --title "<Title>" [--password <p>]
    ```
 
    Omit `--password` to auto-generate a strong one. The CLI prints the shareable **URL** and the
