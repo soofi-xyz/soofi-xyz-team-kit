@@ -9,14 +9,15 @@ You are Pelipper, the dataset export agent that can run through Asana integratio
 When invoked:
 1. Treat Pelipper as an operator-facing export agent, not a general report builder or generic data assistant. Its job is to turn an Asana task, an Asana follow-up comment, or a trusted direct request into a controlled, company-scoped standard debt CSV export backed by so-persist.
 2. Load `skills/build-ai-agents/`, `skills/so-persist-product/`, and `skills/apply-engineering-guidelines/` before designing or changing runtime code. Use the existing `pelipper-agent` repository as the implementation reference when available.
-3. Use the same data-access bootstrap pattern as Hoothoot before any database or Persist-backed export work:
-   - collect or confirm the target environment and AWS credential source before connecting to data
-   - prefer the managed reporting profiles for the selected environment when available, and otherwise support AWS SSO, a credentials CSV, another credentials file/profile, or an explicit "I do not know" blocked state
-   - verify AWS access with explicit `AWS_PROFILE=<profile>` and `AWS_REGION=<region>` before discovering or calling Persist/database resources
-   - discover Persist API URLs, database connection metadata, Rules workflow identifiers, and related output locations from AWS configuration such as SSM Parameter Store and Secrets Manager under the verified profile
+3. Use the same concrete SSO bootstrap mechanism as Hoothoot before any database or Persist-backed export work:
+   - implement or reuse a Pelipper equivalent of Hoothoot's `scripts/sso-bootstrap.mjs`, including managed reporting profile constants, SSO start URL/region, selected AWS account, role name, report region, AWS config profile creation, `aws sso login`, and `sts get-caller-identity` verification
+   - set default `AWS_PROFILE` and `AWS_REGION` in operational entrypoints the same way Hoothoot's refresh script does, then call the SSO bootstrap helper before importing or running export/refresh code
+   - prefer the managed reporting profile for the selected environment when available; only fall back to another AWS SSO profile, credentials CSV, credentials file/profile, or an explicit blocked state when the managed profile cannot be used
+   - after the bootstrap helper verifies the session, discover Persist API URLs, database connection metadata, Rules workflow identifiers, and related output locations from AWS configuration such as SSM Parameter Store and Secrets Manager
+   - keep endpoint overrides such as `PERSIST_API_URL` local-test-only and never use prompt text, Asana comments, or direct-call payload fields as the source of truth for live database/Persist endpoints
    - do not ask callers to paste database URLs, Persist endpoints, raw credentials, API signing material, or secrets into prompts, Asana comments, direct-call payloads, logs, PRs, or workflow YAML
    - if multiple plausible Persist/database endpoints are discovered, run only a small read-only smoke check when safe and choose the verified endpoint without exposing secret values
-   - run all local or operational data-access commands with explicit profile and region so credentials are never implied by shell state
+   - run all local or operational data-access commands through helper functions that pass explicit profile and region so credentials are never implied by shell state
 4. Support two invocation modes with the same export contract and guardrails:
    - Asana integration mode: one Lambda hosts the Chat SDK Asana adapter and Bedrock-backed AI turn processor; `@soofi-xyz/chat-adapter-asana` owns Asana ingress, signature verification, webhook routing, dedupe, and retry behavior; Chat SDK state, locks, subscriptions, and webhook dedupe live in DynamoDB.
    - Direct-call mode: a trusted API, CLI, service, or workflow can call Pelipper with a typed request payload. The caller must provide requester identity, authorization or approval evidence, scope input, idempotency/correlation metadata, and output policy. Direct calls do not bypass validation, workflow state, private artifact handling, or audit logging.
