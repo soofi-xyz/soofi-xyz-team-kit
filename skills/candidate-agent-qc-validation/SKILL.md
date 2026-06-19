@@ -1,6 +1,6 @@
 ---
 name: candidate-agent-qc-validation
-description: "Evaluate hiring-candidate-built agents against a user story, acceptance criteria, requirements repo, candidate repo, required integrations, integration tests, and user acceptance outcomes. Use for candidate agent QC, hiring assessment, agent-building validation, or Asana tasks that ask to assess an agent against requirements. Produces a concise evidence-backed verdict, integration setup UX rating, and hiring decision support. Not for designing new agents from scratch — use the appropriate agent-building skill for that."
+description: "Evaluate hiring-candidate-built agents against a user story, acceptance criteria, requirements repo, candidate repo, required integrations, and user acceptance outcomes. Prompts for assignment-sent datetime, fetches last-commit timestamp via GitHub API, scores structure/runtime/agent-network usage, applies scalability discounts, computes weighted overall performance %, and recommends starting compensation capped at $250,000. Use for candidate agent QC, hiring assessment, or Asana tasks that ask to assess an agent against requirements. Not for designing new agents from scratch — use the appropriate agent-building skill for that."
 ---
 
 # Candidate Agent QC Validation
@@ -19,22 +19,25 @@ This skill is especially appropriate for tasks like:
 
 ## Core Outcome
 
-Produce a concise, evidence-backed evaluation that supports a hiring decision. Default to the shortest useful answer: verdict first, then only the evidence needed to justify it.
+Produce a concise, evidence-backed evaluation that supports a hiring decision. Default to the shortest useful answer: **verdict first**, then only the evidence needed to justify it.
 
-The evaluation must still show:
+The evaluation must show:
 
-1. Sources reviewed.
+1. Sources reviewed and timing (assignment sent → last commit).
 2. Setup/tests attempted.
 3. Required integrations and whether they passed, failed, or were blocked.
-4. Acceptance criteria results.
-5. Concrete evidence for the verdict.
-6. Hiring-relevant strengths, weaknesses, and follow-ups.
+4. **Every** user-story acceptance criterion with `Pass` / `Partial` / `Fail` / `Blocked` / `Not Applicable` and evidence.
+5. Dimension scores for agent structure, runtime performance, and agent network usage.
+6. Scalability compromises and applied discounts.
+7. Weighted overall performance % and compensation recommendation (capped at $250,000).
+8. Hiring-relevant strengths, weaknesses, and 2–4 follow-up questions.
 
 ## Inputs to Collect
 
 Before evaluating, identify and record these inputs:
 
 - **Assessment task**: task title, task URL or ID, assignee, due date, parent story, comments, and notes.
+- **Assignment-sent datetime**: when the assignment was sent to the candidate (not tracked in Asana — **prompt the evaluator early**).
 - **Candidate artifact**: repository URL, branch, commit SHA if available, documentation, deployment URL, demo, or packaged files.
 - **Requirement source**: user story, acceptance criteria, requirements repository, README, product brief, tests, or linked issue.
 - **Integration expectations**: APIs, OAuth providers, MCP servers, databases, external services, local environment variables, browser/session requirements, or scheduling hooks.
@@ -44,6 +47,22 @@ Before evaluating, identify and record these inputs:
 If an input is missing, continue with available evidence and mark the affected checks as `Blocked` rather than inventing results.
 
 ## Evaluation Workflow
+
+### Collect Timing Inputs
+
+Do this **before** deep inspection so submission speed can be scored or marked blocked early.
+
+1. **Prompt the evaluator** for the assignment-sent datetime (ISO 8601 preferred; timezone required). This is not in Asana. If the environment supports asking the user a question, use it. If the evaluator does not provide a start time, mark processing speed as `Blocked` and continue evaluating remaining criteria.
+2. Parse the candidate repo URL into `{owner}/{repo}`.
+3. **Fetch the last commit timestamp** on the default branch via the GitHub API:
+   ```bash
+   gh api repos/{owner}/{repo} --jq .default_branch
+   gh api "repos/{owner}/{repo}/commits?per_page=1" --jq '.[0].commit.committer.date'
+   ```
+   Prefer `committer.date`; fall back to `author.date` if committer is missing.
+4. If `gh` is unavailable, use unauthenticated `GET https://api.github.com/repos/{owner}/{repo}/commits?per_page=1` for public repos.
+5. On 404, rate-limit, or auth-required private repos, mark processing speed as `Blocked`, record the reason, and continue other scoring.
+6. When both timestamps are available, compute elapsed duration (human-readable + total hours) from assignment-sent to last-commit.
 
 ### Read the Work Item
 
@@ -158,7 +177,9 @@ For each command or manual check, record:
 
 ### Map Results to Acceptance Criteria
 
-Every acceptance criterion must receive one of these statuses:
+**Every** user-story acceptance criterion must appear in the output table with status and evidence. Do not merge or omit required criteria.
+
+Each criterion receives one of these statuses:
 
 - `Pass`: clear evidence shows the criterion is satisfied.
 - `Partial`: some evidence supports the criterion but important gaps remain.
@@ -167,6 +188,78 @@ Every acceptance criterion must receive one of these statuses:
 - `Not Applicable`: the criterion does not apply to the provided artifact or assessment task; explain why.
 
 Never mark a criterion `Pass` solely because the repository claims support. Prefer demonstrated behavior over documentation claims.
+
+### Score Agent Dimensions
+
+Score each dimension 0–100 with one-line evidence. Use the `build-ai-agents` skill as the baseline for structure and network expectations.
+
+**Agent structure (0–100)** — canonical repo layout, typed contracts, tests, setup docs, secrets handling, CDK/deploy path, error handling. High scores require alignment with the rules-agent layout in `build-ai-agents`.
+
+**Runtime performance (0–100)** — Lambda-friendliness, observed latency/cost signals (runs, logs, benchmarks), reliability patterns (idempotency, retries, timeouts), observability (LangSmith/logging).
+
+**Agent network usage (0–100)** — effective use of the soofi-xyz agent network:
+- `@soofi-xyz/chat-adapter-asana` and `@soofi-xyz/chat-state-dynamodb` (or justified alternative),
+- Vercel AI SDK `ToolLoopAgent` on Bedrock,
+- LangSmith telemetry and AgentCore memory separation,
+- delegation to appropriate plugin agents/skills vs reinventing platform capabilities,
+- Pokémon naming and rules-agent patterns when applicable.
+
+Compute `network_score` as the average of applicable sub-checks; exclude N/A sub-checks from the denominator.
+
+Structure and runtime scores inform the hiring narrative but do **not** enter the weighted overall formula.
+
+### Detect Scalability Compromises
+
+Search code, tests, and run configs for shortcuts that reduce data volume or use sampling. Record each with file/command evidence and apply discounts to the overall score:
+
+| Type | Examples | Discount |
+|---|---|---|
+| Minor | capped page size, fixture-only demo data, single-record smoke test | −3% each (max −9%) |
+| Major | hard sampling that skips required workflows, mocked integrations presented as live, disabled batch paths to avoid load | −7% each (max −21%) |
+
+### Calculate Overall Performance and Compensation
+
+**Acceptance criteria score (0–100):**
+
+- `Pass` → 100 points; `Partial` → 50; `Fail` → 0
+- Exclude `Blocked` and `Not Applicable` from the denominator
+- `criteria_score = round(100 * sum(points) / (100 * applicable_count))`
+
+**Processing speed score (0–100 or Blocked):**
+
+When timing is available, map elapsed hours to `speed_score`:
+
+| Elapsed time | speed_score |
+|---|---|
+| ≤ 24 hours | 100 |
+| 25–48 hours | 85 |
+| 49–72 hours | 70 |
+| 73–96 hours | 55 |
+| 97–120 hours | 40 |
+| > 120 hours | 25 |
+
+Use requirement SLA when specified instead of these defaults.
+
+**Weighted overall performance %:**
+
+```
+base = 0.50 * criteria_score + 0.30 * network_score + 0.20 * speed_score
+# If speed Blocked: base = 0.625 * criteria_score + 0.375 * network_score
+overall_performance_pct = max(0, round(base - scalability_discounts))
+```
+
+**Compensation recommendation** (capped at $250,000):
+
+| overall_performance_pct | Recommended starting compensation |
+|---|---|
+| ≥ 90% | $250,000 (cap) |
+| 85–89% | $225,000 |
+| 80–84% | $200,000 |
+| 75–79% | $175,000 |
+| 70–74% | $150,000 |
+| 60–69% | $125,000 |
+| 50–59% | $100,000 |
+| < 50% | Below band — no compensation recommendation; cite gaps |
 
 ## Output Format
 
@@ -177,11 +270,15 @@ Return a concise Markdown evaluation using exactly these top-level sections:
 
 ## Verdict
 
+## Timing
+
 ## Inputs Reviewed
 
-## Key Findings
-
 ## Acceptance Criteria Results
+
+## Dimension Scores
+
+## Scalability Notes
 
 ## Setup and Tests
 
@@ -190,76 +287,73 @@ Return a concise Markdown evaluation using exactly these top-level sections:
 ## Hiring Signal
 ```
 
-Target 40-80 lines. Do not exceed 120 lines unless the user explicitly asks for a detailed audit.
+Target **40–120 lines**. Lead with the verdict. Do not exceed 120 lines unless the user explicitly asks for a detailed audit.
 
 ### Verdict Section
 
 Include:
 
 - overall result: `Pass`, `Partial Pass`, `Fail`, or `Inconclusive`;
-- one-sentence rationale;
-- confidence level: `High`, `Medium`, or `Low`;
-- the biggest reason for the verdict.
+- `overall_performance_pct`;
+- recommended starting compensation (or "below band");
+- one-sentence rationale tied to the biggest scoring driver;
+- confidence level: `High`, `Medium`, or `Low`.
 
-Use `Inconclusive` when critical integrations or requirements are blocked and there is not enough evidence to judge fairly.
+**Verdict mapping:**
+
+- `Pass` → overall ≥ 80% and no critical criterion `Fail`
+- `Partial Pass` → 60–79% or mixed criteria with recoverable gaps
+- `Fail` → < 60% or critical workflow `Fail`
+- `Inconclusive` → >40% of criteria `Blocked` or insufficient access
+
+### Timing Section
+
+Include assignment-sent datetime, last-commit timestamp (GitHub API source), elapsed duration, `speed_score` or `Blocked` with reason.
 
 ### Inputs Reviewed Section
 
-List only the material sources with URLs and IDs where available:
-
-- assessment task,
-- candidate repo or artifact,
-- requirements repo or specification,
-- key comments/notes,
-- commit SHA,
-- local evidence path or command set if useful.
-
-### Key Findings Section
-
-Use short bullets grouped by outcome:
-
-- `Passed`: what the candidate clearly satisfied.
-- `Failed`: what evidence shows is missing or broken.
-- `Blocked`: what could not be evaluated because of assessment access or tooling.
-
-Keep this section under 12 bullets total.
+List material sources with URLs and IDs: assessment task, candidate repo, requirements repo, key comments, commit SHA, timing inputs.
 
 ### Acceptance Criteria Results Section
 
-Use a compact table only for high-signal criteria. Merge closely related criteria when the detailed list would be long.
+Full table — **every** user-story criterion:
 
 | Criterion | Status | Evidence | Notes |
 |---|---|---|---|
 
-Use statuses: `Pass`, `Partial`, `Fail`, `Blocked`, or `Not Applicable`.
+Statuses: `Pass`, `Partial`, `Fail`, `Blocked`, or `Not Applicable`.
+
+### Dimension Scores Section
+
+| Dimension | Score | Evidence |
+|---|---|---|
+| Agent structure | 0–100 | one line |
+| Runtime performance | 0–100 | one line |
+| Agent network usage | 0–100 | one line |
+
+Include `criteria_score` and `network_score` used in the weighted formula.
+
+### Scalability Notes Section
+
+List compromises found, discount per item, total discount applied.
 
 ### Setup and Tests Section
 
-Summarize setup and validation in bullets or a small table. Include:
-
-- install/bootstrap result,
-- static checks,
-- candidate-provided tests,
-- requirement-derived tests,
-- integration/auth status.
-
-If live auth is required and unavailable, include a one-paragraph safe tester request. Do not include a long auth checklist unless the user asks for detailed setup instructions.
+Summarize install/bootstrap, static checks, candidate tests, requirement-derived tests, integration/auth status. Include integration setup UX rating when evaluated.
 
 ### Risks and Blockers Section
 
-Separate only when both exist:
+Separate when both exist:
 
 - **Candidate gaps**: issues caused by the submitted artifact.
 - **Assessment blockers**: missing credentials, unclear requirements, inaccessible services, or time/environment limitations.
 
 ### Hiring Signal Section
 
-Provide a brief hiring-oriented summary:
-
 - strengths demonstrated,
 - weaknesses demonstrated,
 - whether the candidate appears to understand the agent network and required integrations,
-- 2-4 concrete follow-up questions or actions.
+- **2–4** concrete follow-up questions or actions.
 
 ## Detailed Mode
 
@@ -273,7 +367,7 @@ The final evaluation must be:
 - **Fair**: distinguish candidate failures from blocked assessment conditions.
 - **Reproducible**: include enough commands and context for another evaluator to repeat the checks without dumping raw logs.
 - **Hiring-useful**: clearly state what the result says about the candidate's ability to build agents using the required network.
-- **Concise**: lead with the verdict, group repetitive criteria, avoid raw output unless it changes the decision, and prefer bullets over long narrative.
+- **Concise**: lead with the verdict, avoid raw output unless it changes the decision, and prefer bullets over long narrative.
 
 ## Safety and Confidentiality
 
@@ -295,12 +389,13 @@ If credentials, private repos, external accounts, MCP servers, or production sys
 
 If time or tooling is limited, complete at least:
 
-1. Requirements extraction.
-2. Candidate documentation review.
-3. Candidate code structure review.
+1. Prompt for assignment-sent datetime and attempt GitHub last-commit fetch.
+2. Requirements extraction.
+3. Candidate documentation and code structure review.
 4. Dependency installation attempt.
 5. Test command discovery and execution attempt.
-6. Acceptance-criteria mapping.
-7. Hiring decision support summary.
+6. Acceptance-criteria mapping (every criterion).
+7. Dimension scoring, overall performance %, compensation recommendation.
+8. Hiring decision support summary.
 
 Do not stop with only a narrative review if executable checks are possible.
