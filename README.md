@@ -1,6 +1,6 @@
 # soofi-xyz plugin kit
 
-A dual [Cursor plugin](https://cursor.com/docs/plugins) and [GitHub Copilot CLI plugin](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/plugins-creating) packaging company-wide project subagents and skills for AI-assisted development.
+A [Cursor plugin](https://cursor.com/docs/plugins), [GitHub Copilot CLI plugin](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/plugins-creating), and OpenAI Codex plugin packaging company-wide project subagents and skills for AI-assisted development.
 
 ## Install
 
@@ -23,6 +23,17 @@ Add the marketplace first, then install the plugin from that marketplace:
 copilot plugin marketplace add soofi-xyz/cursor-plugin
 copilot plugin install soofi-xyz@soofi-xyz
 ```
+
+### OpenAI Codex
+
+From this checkout, add the repo marketplace and install the Codex plugin:
+
+```bash
+codex plugin marketplace add ./
+codex plugin add soofi-xyz@soofi-xyz-team-kit
+```
+
+The Codex plugin packages the skills in `skills/`. Project-scoped Codex custom agents are materialized in `.codex/agents/` when you work in this repository.
 
 ## Update Or Remove
 
@@ -50,6 +61,21 @@ Uninstall the plugin by name:
 copilot plugin uninstall soofi-xyz
 ```
 
+### OpenAI Codex
+
+Refresh the marketplace and reinstall from a new Codex thread:
+
+```bash
+codex plugin marketplace upgrade soofi-xyz-team-kit
+codex plugin add soofi-xyz@soofi-xyz-team-kit
+```
+
+Remove the installed Codex plugin by name:
+
+```bash
+codex plugin remove soofi-xyz
+```
+
 ## Quick start
 
 When in doubt, **start with [`arceus`](./agents/arceus.md)** — the master router. Arceus reads this README, the agent definitions, and the skill metadata, then tells you which specialist(s) and skill(s) to use for your task. It does not perform the work itself; it hands you a copy-pasteable invocation hint for the right agent.
@@ -68,9 +94,15 @@ Use the arceus subagent to recommend the right specialist for migrating an SMS t
 
 In GitHub Copilot CLI, select the custom agent with `/agent` and choose `soofi-xyz:arceus`, or start directly with `--agent soofi-xyz:arceus`.
 
+In Codex, start a new thread from this repository and ask Codex to spawn the `arceus` custom agent:
+
+```text
+Spawn the arceus custom agent to recommend the right specialist for migrating an SMS template inventory.
+```
+
 Cursor's Agent can also delegate to `arceus` automatically at the start of a task when no specific specialist has been named — so simply describing your task in plain English usually triggers the right routing.
 
-If you already know which specialist you need, skip the router and call them directly — for example `/sylveon` for Figma-to-code work or `/regigigas` for SaaS marketplace architecture. The full roster, with triggers and descriptions, lives in the [Agents](#agents) and [Skills](#skills) tables below.
+If you already know which specialist you need, skip the router and call them directly — for example `/sylveon` in Cursor, `soofi-xyz:sylveon` in Copilot, or "spawn the `sylveon` custom agent" in Codex for Figma-to-code work. The full roster, with triggers and descriptions, lives in the [Agents](#agents) and [Skills](#skills) tables below.
 
 ## Agents
 

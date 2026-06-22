@@ -12,6 +12,7 @@ main() {
   root="$(repo_root)"
 
   "${root}/scripts/sync-copilot-agents.sh" check
+  "${root}/scripts/sync-codex-agents.sh" check
 
   local python_bin="${PYTHON:-}"
   if [[ -z "${python_bin}" ]]; then
@@ -91,8 +92,10 @@ def require_frontmatter(path, expected_name, kind):
 def validate_manifests():
     manifest_paths = [
         root / ".cursor-plugin" / "plugin.json",
+        root / ".codex-plugin" / "plugin.json",
         root / "plugin.json",
         root / ".github" / "plugin" / "marketplace.json",
+        root / ".agents" / "plugins" / "marketplace.json",
     ]
     for path in manifest_paths:
         if not path.is_file():
@@ -100,28 +103,65 @@ def validate_manifests():
             return
 
     cursor_manifest = json.loads((root / ".cursor-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    codex_manifest = json.loads((root / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8"))
     copilot_manifest = json.loads((root / "plugin.json").read_text(encoding="utf-8"))
-    marketplace = json.loads((root / ".github" / "plugin" / "marketplace.json").read_text(encoding="utf-8"))
+    copilot_marketplace = json.loads((root / ".github" / "plugin" / "marketplace.json").read_text(encoding="utf-8"))
+    codex_marketplace = json.loads((root / ".agents" / "plugins" / "marketplace.json").read_text(encoding="utf-8"))
 
     versions = {
         ".cursor-plugin/plugin.json": cursor_manifest.get("version"),
+        ".codex-plugin/plugin.json": codex_manifest.get("version"),
         "plugin.json": copilot_manifest.get("version"),
-        ".github/plugin/marketplace.json metadata": marketplace.get("metadata", {}).get("version"),
-        ".github/plugin/marketplace.json plugin": (marketplace.get("plugins") or [{}])[0].get("version"),
+        ".github/plugin/marketplace.json metadata": copilot_marketplace.get("metadata", {}).get("version"),
+        ".github/plugin/marketplace.json plugin": (copilot_marketplace.get("plugins") or [{}])[0].get("version"),
     }
     if len(set(versions.values())) != 1:
         details = ", ".join(f"{path}={version}" for path, version in versions.items())
         fail(f"manifest versions must match: {details}")
 
+    if codex_manifest.get("name") != cursor_manifest.get("name"):
+        fail(".codex-plugin/plugin.json: name must match .cursor-plugin/plugin.json")
+    if codex_manifest.get("skills") != "./skills/":
+        fail('.codex-plugin/plugin.json: skills must be "./skills/"')
     if copilot_manifest.get("agents") != "agents-copilot/":
         fail('plugin.json: agents must be "agents-copilot/"')
     if copilot_manifest.get("skills") != "skills/":
         fail('plugin.json: skills must be "skills/"')
 
+    codex_plugins = codex_marketplace.get("plugins")
+    if not isinstance(codex_plugins, list) or not codex_plugins:
+        fail(".agents/plugins/marketplace.json: plugins must contain the Codex plugin entry")
+        return
+
+    codex_entry = next((entry for entry in codex_plugins if entry.get("name") == codex_manifest.get("name")), None)
+    if not codex_entry:
+        fail(".agents/plugins/marketplace.json: missing plugin entry for .codex-plugin/plugin.json name")
+        return
+
+    source = codex_entry.get("source", {})
+    if source.get("source") != "local":
+        fail('.agents/plugins/marketplace.json: source.source must be "local"')
+    if source.get("path") != "./plugins/soofi-xyz":
+        fail('.agents/plugins/marketplace.json: source.path must be "./plugins/soofi-xyz"')
+    codex_plugin_root = root / "plugins" / "soofi-xyz"
+    if not (codex_plugin_root / ".codex-plugin" / "plugin.json").is_file():
+        fail("plugins/soofi-xyz/.codex-plugin/plugin.json: missing Codex marketplace plugin manifest")
+    if not (codex_plugin_root / "skills").is_dir():
+        fail("plugins/soofi-xyz/skills: missing Codex marketplace plugin skills directory")
+
+    policy = codex_entry.get("policy", {})
+    if policy.get("installation") not in {"NOT_AVAILABLE", "AVAILABLE", "INSTALLED_BY_DEFAULT"}:
+        fail(".agents/plugins/marketplace.json: policy.installation has an unsupported value")
+    if policy.get("authentication") not in {"ON_INSTALL", "ON_USE"}:
+        fail(".agents/plugins/marketplace.json: policy.authentication has an unsupported value")
+    if not codex_entry.get("category"):
+        fail(".agents/plugins/marketplace.json: plugin entry must include category")
+
 
 def validate_agents():
     source_dir = root / "agents"
     target_dir = root / "agents-copilot"
+    codex_target_dir = root / ".codex" / "agents"
     source_agents = sorted(source_dir.glob("*.md"))
     if not source_agents:
         fail("agents/: must contain at least one source agent")
@@ -136,6 +176,18 @@ def validate_agents():
         target = target_dir / f"{agent.stem}.agent.md"
         if not target.is_file():
             fail(f"{target.relative_to(root)}: missing Copilot agent copy")
+        elif target.is_symlink():
+            fail(f"{target.relative_to(root)}: must be a real file, not a symlink")
+
+    expected_codex_targets = {codex_target_dir / f"{agent.stem}.toml" for agent in source_agents}
+    actual_codex_targets = set(codex_target_dir.glob("*.toml")) if codex_target_dir.is_dir() else set()
+    for stale in sorted(actual_codex_targets - expected_codex_targets):
+        fail(f"{stale.relative_to(root)}: no matching source agent")
+
+    for agent in source_agents:
+        target = codex_target_dir / f"{agent.stem}.toml"
+        if not target.is_file():
+            fail(f"{target.relative_to(root)}: missing Codex agent copy")
         elif target.is_symlink():
             fail(f"{target.relative_to(root)}: must be a real file, not a symlink")
 
