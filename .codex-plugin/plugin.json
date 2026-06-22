@@ -1,0 +1,39 @@
+{
+  "name": "soofi-xyz",
+  "description": "Company-wide project subagents and skills for AI-assisted development, including local and AWS RAG, platform services, reporting, frontend, communication, batch, and deployment specialists.",
+  "version": "0.15.2",
+  "author": {
+    "name": "Soofi XYZ"
+  },
+  "homepage": "https://github.com/soofi-xyz/cursor-plugin",
+  "repository": "https://github.com/soofi-xyz/cursor-plugin",
+  "license": "MIT",
+  "keywords": [
+    "agents",
+    "skills",
+    "aws",
+    "rag",
+    "frontend",
+    "reporting",
+    "socapital"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Soofi XYZ",
+    "shortDescription": "Company-wide Codex skills for Soofi XYZ engineering workflows.",
+    "longDescription": "Company-wide project skills for AI-assisted development, including local and AWS RAG, platform services, reporting, frontend, communication, batch, and deployment workflows.",
+    "developerName": "Soofi XYZ",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/soofi-xyz/cursor-plugin",
+    "defaultPrompt": [
+      "Use arceus to choose the right specialist.",
+      "Build a Soofi platform service.",
+      "Review a frontend change against design guidance."
+    ],
+    "brandColor": "#111827"
+  }
+}

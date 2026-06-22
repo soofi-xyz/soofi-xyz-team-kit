@@ -1,25 +1,28 @@
-# Cursor And Copilot Plugin — Agent Guidance
+# Cursor, Copilot, And Codex Plugin — Agent Guidance
 
-This repository is a dual [Cursor plugin](https://cursor.com/docs/plugins) and [GitHub Copilot CLI plugin](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/plugins-creating) that ships subagents and agent skills.
+This repository is a [Cursor plugin](https://cursor.com/docs/plugins), [GitHub Copilot CLI plugin](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/plugins-creating), and OpenAI Codex plugin that ships subagents and agent skills.
 
 Follow these conventions whenever you touch files in this repo.
 
 ## Manifests
 
 - Cursor manifest MUST exist at `.cursor-plugin/plugin.json`.
+- Codex manifest MUST exist at `.codex-plugin/plugin.json`.
 - Copilot manifest MUST exist at `plugin.json`.
+- Codex repo marketplace manifest MUST exist at `.agents/plugins/marketplace.json`.
 - Copilot marketplace manifest MUST exist at `.github/plugin/marketplace.json`.
 - `name` MUST be lowercase kebab-case and match the intended plugin identifier.
-- Bump `version` (semver) in both plugin manifests and the marketplace entry whenever you ship a meaningful change.
+- Bump `version` (semver) in all plugin manifests and the Copilot marketplace entry whenever you ship a meaningful change.
 
 ## Agents (`agents/*.md`)
 
 - One agent per file. Filename SHOULD match the agent `name`.
 - Frontmatter MUST have `name` (kebab-case) and `description` (what + when to trigger).
 - Keep the body imperative ("Do X", "Return Y"). Describe the runtime contract: inputs, tools, outputs, verification.
-- `agents/` is the source of truth. Do not edit files in `agents-copilot/` directly.
+- `agents/` is the source of truth. Do not edit files in `agents-copilot/` or `.codex/agents/` directly.
 - Each source agent MUST have a matching materialized Copilot file at `agents-copilot/<name>.agent.md`.
-- After adding, removing, renaming, or editing agents, run `scripts/sync-copilot-agents.sh sync` to refresh `agents-copilot/`.
+- Each source agent MUST have a matching materialized Codex file at `.codex/agents/<name>.toml`.
+- After adding, removing, renaming, or editing agents, run `scripts/sync-copilot-agents.sh sync` and `scripts/sync-codex-agents.sh sync` to refresh generated targets.
 - Add a row to the Agents table in `README.md` when adding or renaming an agent.
 
 ## Skills (`skills/<name>/SKILL.md`)
@@ -41,11 +44,21 @@ Follow these conventions whenever you touch files in this repo.
 - All paths referenced from the manifest MUST be relative and stay inside the repo (no `..`, no absolute paths).
 - Cursor auto-discovers `agents/`, `skills/`, `rules/`, `commands/`, `hooks/hooks.json`, and `mcp.json` — only set explicit component paths in `.cursor-plugin/plugin.json` to override discovery.
 - Copilot reads component paths from the root `plugin.json`; keep `"agents": "agents-copilot/"` and `"skills": "skills/"` unless the repository layout changes deliberately.
+- Codex reads plugin metadata from `.codex-plugin/plugin.json`; keep `"skills": "./skills/"` unless the repository layout changes deliberately.
+- Codex repo marketplace points at `plugins/soofi-xyz/`, whose `.codex-plugin` and `skills` entries are symlinks back to the canonical root manifest and `skills/` tree. Do not edit through the nested symlink path.
+- Codex custom agents are project-scoped TOML files in `.codex/agents/` generated from `agents/`.
 
 ## Repository layout
 
 ```text
 soofi-xyz-plugin-kit/
+├── .agents/
+│   └── plugins/
+│       └── marketplace.json          # OpenAI Codex repo marketplace manifest
+├── .codex/
+│   └── agents/                       # Materialized `.toml` copies for Codex custom agents
+├── .codex-plugin/
+│   └── plugin.json                   # OpenAI Codex plugin manifest
 ├── .github/
 │   └── plugin/
 │       └── marketplace.json          # GitHub Copilot CLI marketplace manifest
@@ -54,6 +67,8 @@ soofi-xyz-plugin-kit/
 ├── plugin.json                       # GitHub Copilot CLI plugin manifest
 ├── agents/                           # Source agent definitions
 ├── agents-copilot/                   # Materialized `.agent.md` copies for Copilot CLI
+├── plugins/
+│   └── soofi-xyz/                    # Codex marketplace plugin folder with symlinked manifest and skills
 ├── skills/                           # Agent skills, one directory per skill
 ├── scripts/                          # Local validation and maintenance helpers
 ├── docs/                             # User-facing usage guides
@@ -64,7 +79,7 @@ soofi-xyz-plugin-kit/
 
 ## Local validation
 
-Run the plugin validation script before preparing a PR. It checks that Copilot agent copies are synced, manifests are consistent, agent and skill frontmatter is valid, source names match paths, Copilot agents are real files, and skills stay under 500 lines.
+Run the plugin validation script before preparing a PR. It checks that Copilot and Codex agent copies are synced, manifests are consistent, agent and skill frontmatter is valid, source names match paths, generated agents are real files, and skills stay under 500 lines.
 
 ```bash
 scripts/validate-plugin.sh
@@ -105,16 +120,29 @@ copilot --agent soofi-xyz:arceus -p "Reply with exactly: ok" --allow-all-tools -
 
 For development-only direct install checks, use `copilot plugin install ./`. The installed CLI may reject bare `.` even though docs show local paths generally.
 
+Validate Codex through the repo marketplace path:
+
+```bash
+scripts/sync-codex-agents.sh check
+codex plugin marketplace add ./
+codex plugin add soofi-xyz@soofi-xyz-team-kit
+codex plugin list
+```
+
+Start a new Codex thread after installing or updating the plugin so Codex reloads skills and project-scoped custom agents.
+
 ## Checklist before committing
 
 - [ ] Frontmatter is valid on every new or changed agent / skill / rule.
 - [ ] `agents-copilot/` contains one real `.agent.md` file for every source file in `agents/`, generated by `scripts/sync-copilot-agents.sh sync`.
+- [ ] `.codex/agents/` contains one real `.toml` file for every source file in `agents/`, generated by `scripts/sync-codex-agents.sh sync`.
 - [ ] `scripts/validate-plugin.sh` passes before preparing or creating a PR.
 - [ ] `README.md` tables reflect the new state.
-- [ ] `.cursor-plugin/plugin.json`, `plugin.json`, and `.github/plugin/marketplace.json` versions are in sync.
+- [ ] `.cursor-plugin/plugin.json`, `.codex-plugin/plugin.json`, `plugin.json`, and `.github/plugin/marketplace.json` versions are in sync.
 - [ ] `scripts/local-cursor-plugin.sh install` has refreshed `~/.cursor/plugins/local/soofi-xyz-team-kit-local`.
 - [ ] User has been prompted to reload/restart Cursor, confirm `soofi-xyz-team-kit-local` under Settings > Plugins, and smoke-test the changed agent or skill.
 - [ ] Plugin installs locally via `copilot plugin install ./` and lists expected agents / skills.
+- [ ] Plugin installs locally via the Codex repo marketplace and lists expected skills.
 - [ ] Before creating a PR, `scripts/local-cursor-plugin.sh remove` has deleted the local Cursor test copy.
 
 ## References
@@ -126,3 +154,6 @@ For development-only direct install checks, use `copilot plugin install ./`. The
 - [Creating a plugin marketplace for GitHub Copilot CLI](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/plugins-marketplace)
 - [GitHub Copilot CLI plugin reference](https://docs.github.com/en/copilot/reference/cli-plugin-reference)
 - [Creating custom agents for Copilot](https://docs.github.com/en/copilot/how-tos/use-copilot-agents/cloud-agent/create-custom-agents-in-your-ide)
+- [OpenAI Codex plugins](https://developers.openai.com/codex/plugins)
+- [OpenAI Codex skills](https://developers.openai.com/codex/skills)
+- [OpenAI Codex custom agents](https://developers.openai.com/codex/subagents)
