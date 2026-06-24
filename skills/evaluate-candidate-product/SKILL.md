@@ -1,112 +1,127 @@
 ---
 name: evaluate-candidate-product
-description: "Functional-testing phase of candidate test-task evaluation, run as a dedicated subagent. First enforce the mandatory gates from evaluate-candidate-intent — no pull request to the task repo, no usable URL/path to the running product, or inaccessible because of a credentials problem all mean an immediate 0 and a Fail verdict. Then drive the live product with the Playwright browser to confirm which acceptance criteria and, most importantly, the core intent are actually satisfied in real use, and score data richness and usefulness (a working app populated with only a handful of rows or items scores extremely low). Ask the operator to provide any access, credentials, or tools that the Playwright browser alone cannot. Use after evaluate-candidate-intent and before or alongside evaluate-candidate-kit-usage."
+description: "Evidence-and-functional-outcome phase of candidate test-task evaluation, run as a dedicated subagent. First enforce the gates from evaluate-candidate-intent — a missing PR to the designated assignment repo, demo artifact, or credentials are explicit Failed gates, and a runtime that cannot be reached and exercised is an absolute hard fail (score 0/100, verdict Fail, for any reason including environment or anti-automation blocks). Then drive the live runtime with the Playwright browser to prove the story's intent through working runtime behavior, data evidence, output evidence, and demo artifacts, evaluate functional outcome before implementation, check assignment-specific access boundaries (for X Engagement, hosted investors-mcp read tools only — flag direct database, vector-store, or blob access as a violation), and return Pass/Partial/Fail/Blocked for each material acceptance criterion. Score functional outcome, evidence quality, access-boundary compliance, runtime/demo quality, and reproducibility. Use after evaluate-candidate-intent."
 ---
 
 # Evaluate Candidate Product
 
 ## When to Use This Skill
 
-Use this skill as the **functional-testing phase** of a candidate test-task evaluation, after `evaluate-candidate-intent` has produced the core intent, weighted criteria, and gates. Run it as a **dedicated subagent** whose only job is to use the candidate's product and report evidence-backed results.
+Use this skill as the **evidence and functional-outcome phase**, after `evaluate-candidate-intent` has produced the intent, evidence model, gates, and weighting. Run it as a **dedicated subagent**. It answers the central question: **does working runtime, data, output, and demo evidence prove the story's intended outcome?** Evaluate the functional outcome **before** any implementation detail.
 
-This skill answers one question above all: **when a real user uses this product, is the core intent actually delivered?**
+For assignment-specific evidence and access boundaries, consult `reference/assignment-evidence-catalogs.md`.
 
-## Step 1 — Enforce the Mandatory Gates (Auto-Fail)
+## Step 1 — Enforce the Gates (Failed / Blocked / Hard Fail)
 
-Check the three gates from `evaluate-candidate-intent` **before any other work**. These are hard gates, not weighted criteria.
+Check the gates from `evaluate-candidate-intent` **before any scoring**. Use concrete reasons.
 
-1. **PR to the task repo** — the candidate must have opened a pull request to the repository that holds the task itself. No PR (or only an unrelated repo with no PR back to the task repo) fails this gate.
-2. **Usable path to the product** — there must be a URL for a web app, or another concrete, documented way to launch and reach the running product.
-3. **Access** — the product must be publicly available, or the candidate must have supplied working credentials. If the product cannot be reached because of a credentials problem, this gate fails.
+1. **PR gate** — a pull request exists against the **designated assignment repository** (not only a standalone repo, email artifact, or private demo). Missing → `Failed`.
+2. **Runtime gate (absolute)** — you must be able to both reach **and** meaningfully exercise the runtime that demonstrates the core intent. If you cannot, the result is **0/100, verdict Fail** — for **any** reason: inaccessible or erroring URL, a login/OAuth you cannot complete, missing or non-working credentials, an automation/anti-bot block, a paywall, or anything else. This applies even when the cause is the evaluation environment, not the candidate. Reviewing the code and concluding "it would probably work" is **0**. An API/MCP surface responding is **0** unless that surface alone fully demonstrates the core intent the candidate was asked to deliver.
+3. **Credentials gate** — required credentials present and working, or the runtime is public. Missing → `Failed` (or `Blocked` if the operator may still supply them).
+4. **Demo gate** — a demo artifact is present and reachable. Missing → `Failed` or `Blocked`.
 
-If **any** gate fails:
+Resolution rules:
 
-- Set the overall score to **0**.
-- Set the verdict to **Fail**.
-- Record exactly which gate failed and the evidence (missing PR link, no usable URL, credential/auth error observed).
-- Do **not** continue to functional scoring. A product that cannot be opened and used has not been delivered.
+- A `Failed` gate forces the overall score to **0** and the verdict to **Fail**. Stop scoring.
+- **Runtime is absolute.** Before declaring the runtime unreachable, make **one** recovery attempt: re-read the PR/submission for a URL, credentials, or run steps, then request operator help (Step 3) — ask for working credentials, a completed login, the runtime URL, or the client/tool needed. If after that attempt you still cannot exercise the runtime, the result is **0/100, verdict Fail**. Do **not** mark the runtime `Blocked` and continue scoring, do **not** average other dimensions, and do **not** return `Partial Pass` or `Inconclusive`. An unexercised runtime is a 0 regardless of cause.
+- `Blocked` (with an `Inconclusive` result for the affected area) is permitted only for a **non-runtime** check (e.g., a secondary artifact) and only when the runtime itself was successfully exercised and the intent proven.
+- For non-runtime gates, distinguish a candidate omission (`Failed`) from an evaluation-environment blocker (`Blocked`). Never penalize the candidate for a non-runtime blocker you could have asked the operator to resolve.
 
-Before failing on access, attempt one reasonable recovery: re-read the submission for a URL, credentials, or run instructions you missed. If access still cannot be obtained, request operator help (see Step 3) rather than guessing. Only fail the access gate after that request cannot be satisfied.
+## Step 2 — Prove the Outcome by Exercising the Runtime (Most Important)
 
-## Step 2 — Test the Live Product with Playwright (Most Important)
+Drive the live runtime as a real user with the Playwright browser (`user-playwright` MCP tools: `browser_navigate`, `browser_click`, `browser_fill`, `browser_screenshot`, `browser_evaluate`, and the rest).
 
-Once the gates pass, **use the product as a real user would** by driving it with the Playwright browser (the `user-playwright` MCP browser tools: `browser_navigate`, `browser_click`, `browser_fill`, `browser_screenshot`, `browser_evaluate`, and the rest).
+- Walk the **primary workflow end to end** — the journey that delivers the intent.
+- Gather the four evidence types the story implies: **working runtime behavior**, **data evidence** (records actually present and used), **output evidence** (what the product produces), and **demo artifacts** (does the demo show the real outcome).
+- Capture for every check: URL/route, action taken, expected result, actual result, and a screenshot or extracted DOM/text.
+- Prefer observed behavior over claims. Never credit a feature you could not make happen in the runtime.
+- Stay read-only on candidate data where possible; avoid destructive actions unless the workflow requires it and the operator allows it.
 
-- Navigate to the live URL and exercise the primary user journey end to end — the journey that delivers the core intent.
-- Drive real interactions: log in, create and read records, run the configured workflow, submit forms, and observe results. Do not judge from screenshots of a landing page alone.
-- Capture evidence: the URL and route, the action taken, the expected result, the actual result, and a screenshot or extracted DOM/text where it supports the finding.
-- Prefer observed behavior over documentation. Never give credit for a feature you could not make happen in the running product.
-- Stay read-only on the candidate's data where possible; do not perform destructive actions unless the workflow under test requires it and the operator allows it.
+## Step 3 — Ask the Operator for Access or Tools When the Browser Is Not Enough
 
-## Step 3 — Ask the Operator for Tools and Access When Playwright Is Not Enough
+When the Playwright browser alone cannot reach or exercise the runtime, **ask the operator** before declaring a block. Request when the product needs credentials/OAuth/one-time codes, a native/desktop/CLI/API client, test data or a sandbox, or network access (VPN/allow-list).
 
-This is critical: when the Playwright browser alone cannot complete a check, **ask the operator (the human running this evaluation) to provide what is needed** rather than silently marking the check blocked.
+State: the capability and why the intent needs it; the exact action the operator should take; the minimum scopes; a warning not to paste secrets into chat (configure locally or via the product setup); and what to report back so you can resume. If the operator cannot unblock it, mark the affected checks `Blocked`.
 
-Ask for help when the product requires, for example:
+## Step 4 — Score Each Functional Evaluation Point (Most Important)
 
-- credentials, an OAuth login, a one-time code, or an invite;
-- a native/desktop/mobile app, a CLI, or an API client instead of a browser;
-- test data, a sandbox account, or a seeded environment;
-- a VPN, allow-listed IP, or other network access.
+Do **not** produce one opaque functional-outcome number. Score every **evaluation point** from the Functional Outcome Breakdown in `evaluate-candidate-intent` individually, from real runtime use.
 
-When you request operator help, state:
+1. For **each evaluation point**, exercise the runtime to confirm it, then assign an anchored band (0/25/50/75/100%). `Points = band × the point's sub-weight`, rounded. Cite the observed action → result (and a screenshot/DOM) for each point.
+2. The **Functional outcome subtotal = the sum of all evaluation-point scores** (max 40). This is the most important judgment in the evaluation.
+3. Score **data scale** within the point(s) it belongs to (e.g., a coverage/scale point): a product populated with only a handful of rows/records/entities is a toy and that point must score **extremely low**, regardless of UI or code polish. Record observed counts and variety.
+4. Separately score **evidence quality** (weight 12): how convincingly runtime/data/output/demo evidence proves the points (strong/observed vs thin/asserted).
+5. Apply **anti-checklist** judgment: a submission that satisfies many technical bullets but misses the points that carry the intent gets a low functional score with an explicit explanation.
+6. If a point cannot be exercised because the **runtime as a whole** was unreachable, the runtime gate already forced 0/Fail (Step 1) — do not score points. A single point you could not reach while the rest of the runtime works is that point scoring 0 with the reason, not a global gate fail.
 
-1. the integration or capability and why it is required for the core intent,
-2. the exact action the operator should take,
-3. the minimum access or scopes needed,
-4. a clear warning not to paste secrets into chat — configure them locally or through the product's setup flow,
-5. what to report back so you can resume (for example, "logged in" or "sandbox record created").
+## Step 5 — Access-Boundary Compliance
 
-If the operator cannot provide access, mark the affected checks `Blocked` and explain what is missing. Do not penalize the candidate for an evaluation-environment blocker unless the candidate failed to document required setup.
+Check the assignment-specific access boundaries from `evaluate-candidate-intent` and `reference/assignment-evidence-catalogs.md`.
 
-## Step 4 — Verify the Core Intent and Acceptance Criteria
+- For **X Engagement**, verify the submission uses the **hosted investors-mcp read tools** and flag any **direct database, vector-store, or blob access** as a violation.
+- Confirm required external dependencies are used through the intended interface, not bypassed.
+- Score access-boundary compliance and cite the evidence (config, network calls, code paths, runtime behavior).
 
-Using the weighted criteria from `evaluate-candidate-intent`:
+## Step 6 — Acceptance Criteria as Evidence Probes
 
-1. Determine, from real use, whether the **core intent** is satisfied. This is the single most important judgment in the whole evaluation.
-2. Walk each acceptance criterion and assign a status: `Pass`, `Partial`, `Fail`, `Blocked`, or `Not Applicable`, each backed by an observed action and result.
-3. Treat a product that demos narrowly but breaks on the real journey as failing the intent, even if isolated features work.
+Walk each material acceptance criterion and assign `Pass`, `Partial`, `Fail`, or `Blocked`, each backed by an observed action/result with a link or observation. Treat criteria as evidence for the outcome, not as a substitute for it.
 
-## Step 5 — Score Data Richness and Usefulness (Weighted Heavily)
+## Step 7 — Runtime/Demo Quality and Reproducibility
 
-Test tasks almost always ask for a genuinely useful platform/product/app with configuration and real content. Evaluate how data-rich and useful the submission is.
-
-- Check whether the product is populated with **as much realistic data as possible**: enough records, configuration, and variety that the product is actually useful.
-- A product that "works" but contains only a handful of items — for example ~5 rows, 5 records, or 5 configured entities — is a toy, not a deliverable, and must be scored **extremely low** on this dimension regardless of how clean the code or UI is.
-- Look for breadth and realism: realistic volumes, varied states, meaningful configuration, and behavior that holds up as data scales — not a single hard-coded happy path.
-- Record concrete counts you observed (rows, records, entities) as evidence for the data-richness score.
+- **Runtime & demo quality**: stability, responsiveness, error handling observed during the run, and whether the demo artifact actually shows the real outcome.
+- **Reproducibility**: whether the runtime and key results can be reached and reproduced from the **pull request as the system of record** (setup docs, working URL/creds, demo) without side-channel context.
 
 ## Output Format
 
-Return a concise Markdown report:
-
 ```markdown
-# Candidate Product — Functional Evaluation
+# Candidate Product — Evidence & Functional Evaluation
 
 ## Gate Result
-<Passed | Failed: which gate, with evidence>   # if Failed, score = 0 and stop
+<Pass | Failed: which gate + reason (score 0/100, verdict Fail, stop) | Runtime not exercised: reason (score 0/100, verdict Fail, stop) | Blocked: non-runtime check + reason>
 
-## Intent Satisfied
-<Yes | Partially | No> — <one-line rationale from real use>
+## Outcome Proven?
+<Yes | Partially | No> — <one line from real use>
+
+## Functional Outcome — Per-Point Scores
+| Evaluation point | Sub-weight | Band | Points | Evidence (action → result) |
+|---|---|---|---|---|
+| <point> | n | <%> | n | <observed> |
+| **Functional outcome subtotal** | **40** | | **n** | |
+
+## Evidence
+- Runtime behavior / Data evidence (counts) / Output evidence / Demo artifact
+
+## Access-Boundary Compliance
+<compliant / violations with evidence>
 
 ## Acceptance Criteria
-| ID | Status | Evidence (action → result) |
+| Criterion | Status | Evidence (action → result / link) |
 |---|---|---|
 
-## Data Richness and Usefulness
-<score + observed counts/variety; call out toy-sized data explicitly>
+## Runtime/Demo Quality & Reproducibility
+<observations>
 
-## Operator Requests / Blockers
-<what was requested or remains blocked, if anything>
+## Dimension Subtotals
+Emit a table for the dimensions this phase owns so the orchestrator can assemble the full scorecard. `Band` is the anchored fraction (0/25/50/75/100%); `Points` = Band × Weight, rounded.
 
-## Weighted Functional Subtotal
-<intent + criteria + data-richness contributions toward the 100-point model>
+| Dimension | Weight | Band | Points | Why |
+|---|---|---|---|---|
+| Functional outcome | 40 | — | n | sum of per-point scores (see Per-Point Scores) |
+| Runtime & demo quality | 20 | <%> | n | <one line> |
+| Evidence quality | 12 | <%> | n | <one line> |
+| Access-boundary compliance | 8 | <%> | n | <one line> |
+| Reproducibility | 4 | <%> | n | <one line> |
+
+If a gate failed or the runtime was not exercised, set every Band to 0 / Points to 0 and state the gate cause in the Why column.
 ```
 
 ## Quality Bar
 
-- Gates are checked first; a gate failure produces a 0 and stops the phase.
-- The core-intent judgment is grounded in an actual Playwright-driven run of the live product.
-- Operator help is requested whenever the browser alone cannot reach the product, before declaring a block.
-- Data richness is scored on observed volume and variety, with toy datasets scored extremely low.
-- Every status cites an action and an observed result, not a documentation claim.
+- Gates first; a `Failed` gate produces 0 and stops the phase.
+- The runtime gate is absolute: a runtime you could not exercise yields 0/100 and Fail, for any reason, after one operator-assisted attempt — never a partial score or `Inconclusive`.
+- The outcome judgment is grounded in a Playwright-driven run of the live runtime.
+- Functional outcome is scored per evaluation point (Per-Point Scores table), and the subtotal is the sum of those points — never one opaque number.
+- Functional outcome is evaluated before implementation; toy data scores extremely low.
+- Access boundaries are checked with assignment-specific rules and cited evidence.
+- Operator help is requested before declaring a block; Failed vs Blocked is distinguished.
+- Every criterion status cites an observed action/result, not a documentation claim.
