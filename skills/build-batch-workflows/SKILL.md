@@ -1,6 +1,6 @@
 ---
 name: build-batch-workflows
-description: "Guides creation of batch data processing workflows on AWS. Covers input data analysis, choosing Step Functions Distributed Map vs AWS Glue PySpark, testing pipelines, cost controls, throttling, idempotency, metrics, and mandatory PagerDuty alerting on critical failures. Triggers on: batch job, batch workflow, data pipeline, data processing job, ETL pipeline, bulk processing, distributed map, glue job, batch failure alerting, pagerduty, dead-letter queue."
+description: "Guides creation of batch data processing workflows on AWS. Covers input data analysis, choosing Step Functions Distributed Map vs AWS Glue PySpark, testing pipelines, cost controls, throttling, idempotency, transaction boundary exits, metrics, and mandatory PagerDuty alerting on critical failures. Triggers on: batch job, batch workflow, data pipeline, data processing job, ETL pipeline, bulk processing, distributed map, glue job, batch failure alerting, pagerduty, dead-letter queue, transaction safe exit, expiration, queue age, boundary guard."
 ---
 
 # Building Batch Workflows
@@ -87,6 +87,16 @@ state, or a DLQ alarm) so one page fires per failed execution. Read
 `rules/principle-failure-alerting.md`, and use the SOCAPITAL `integrating-pagerduty`
 skill for the integration contract.
 
+### 8. Transaction Boundary Exits
+
+Every batch workflow that performs an external or irreversible transaction MUST
+define per-item expiration/boundary criteria and re-check them immediately before
+the side effect. If an item is stale, unsafe, outside a policy window, over cost,
+or over capacity, the workflow MUST take the safe exit: do not perform the
+transaction. Route the item to a DLQ, expired output, skipped artifact,
+manual-review queue, or terminal state with a machine-readable reason. Read
+`rules/principle-transaction-boundary-exits.md`.
+
 ## Rules Summary
 
 | Rule | File | Impact |
@@ -99,3 +109,4 @@ skill for the integration contract.
 | Idempotency & Recovery | `rules/principle-idempotency.md` | HIGH |
 | Throttling & Concurrency | `rules/principle-throttling.md` | HIGH |
 | Critical Failure Alerting | `rules/principle-failure-alerting.md` | CRITICAL |
+| Transaction Boundary Exits | `rules/principle-transaction-boundary-exits.md` | CRITICAL |
