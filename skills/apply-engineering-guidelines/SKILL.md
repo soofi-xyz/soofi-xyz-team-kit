@@ -1,6 +1,6 @@
 ---
 name: apply-engineering-guidelines
-description: "Apply the repository Golden Path engineering standards. Use when building new services, refactoring existing code, setting up infrastructure, configuring CI/CD, choosing libraries, writing tests, adding observability, alerting, or reviewing architecture decisions. Covers tech stack (TypeScript for all services, Python only for PySpark/Glue), AWS/CDK infrastructure, testing strategy (Vitest/Pytest), observability (structured logs, X-Ray, metrics), mandatory PagerDuty alerting on critical failures, and AI policy. Triggers on: new service, scaffold, refactor, architecture review, tech stack question, infrastructure setup, CDK, testing setup, logging, observability, metrics, pagerduty, alerting, on-call, critical failure, CI/CD pipeline. Do NOT trigger for general coding questions unrelated to the repository standards."
+description: "Apply the repository Golden Path engineering standards. Use when building new services, refactoring existing code, setting up infrastructure, configuring CI/CD, choosing libraries, writing tests, adding observability, alerting, transaction boundary exits, or reviewing architecture decisions. Covers tech stack (TypeScript for all services, Python only for PySpark/Glue), AWS/CDK infrastructure, testing strategy (Vitest/Pytest), observability (structured logs, X-Ray, metrics), mandatory PagerDuty alerting on critical failures, transaction safe exits before external side effects, and AI policy. Triggers on: new service, scaffold, refactor, architecture review, tech stack question, infrastructure setup, CDK, testing setup, logging, observability, metrics, pagerduty, alerting, on-call, critical failure, transaction, boundary exit, safe exit, expiration, DLQ, CI/CD pipeline. Do NOT trigger for general coding questions unrelated to the repository standards."
 ---
 
 # Engineering Guidelines
@@ -21,6 +21,7 @@ Follow these standards when building or refactoring any service in this ecosyste
 | Type checking | **tsc** (TS) · **basedpyright** (Python) |
 | Observability | **Powertools** (Logger + Tracer + Metrics) · **CloudWatch** · **X-Ray** |
 | Critical failure alerting | **PagerDuty** (Events API v2) — page on-call for every critical failure |
+| Transaction safety | **Boundary exits** — do not perform expired/unsafe external side effects |
 
 ## Rule Categories
 
@@ -30,6 +31,7 @@ Follow these standards when building or refactoring any service in this ecosyste
 | 2 | Cloud & Infrastructure | `cloud-` | CRITICAL |
 | 3 | Testing & Quality | `testing-` | HIGH |
 | 4 | Observability | `observability-` | HIGH |
+| 5 | Reliability | `reliability-` | CRITICAL |
 
 ## Rules Summary
 
@@ -53,6 +55,10 @@ Follow these standards when building or refactoring any service in this ecosyste
 - `observability-metrics` — Business-level metrics per service: items processed, items failed, duration
 - `observability-pagerduty-alerting` — Page on-call via PagerDuty (Events API v2) for every critical failure; no critical issue may fail silently
 
+### 5. Reliability (CRITICAL)
+
+- `reliability-transaction-boundary-exits` — Every external or irreversible transaction MUST define pre-transaction guards, expiration criteria, safe exits, reason metadata, durable evidence, negative tests, and visibility metrics before the side effect runs
+
 ## How to Use These Rules
 
 Read individual rule files in `rules/` for detailed explanations, rationale, and code examples:
@@ -66,6 +72,7 @@ rules/testing-strategy.md
 rules/observability-logging-tracing.md
 rules/observability-metrics.md
 rules/observability-pagerduty-alerting.md
+rules/reliability-transaction-boundary-exits.md
 ```
 
 ## Applying the Guidelines
@@ -79,6 +86,7 @@ When building or refactoring a service:
 5. **Add observability** per `observability-logging-tracing` — Powertools Logger, Tracer, Metrics on every Lambda.
 6. **Emit business metrics** per `observability-metrics` — items processed/failed, duration.
 7. **Wire critical-failure alerting** per `observability-pagerduty-alerting` — page on-call via PagerDuty for every terminal/critical failure so nothing fails silently.
+8. **Define transaction boundary exits** per `reliability-transaction-boundary-exits` — any external or irreversible side effect must have expiration criteria, a pre-transaction guard, a safe exit, reason metadata, durable evidence, negative tests, and visibility metrics.
 
 ## Non-Negotiables
 
@@ -91,3 +99,4 @@ These are hard constraints that MUST NOT be violated without VP-level approval:
 5. **No secrets in logs.** Never log passwords, tokens, secrets, or PII.
 6. **Every metric registered in [Lexicon](https://github.com/Spring-Oaks-Capital-LLC/lexicon)** (`cloudwatch-metrics.json`) **and displayed on [Main Dashboard](https://github.com/Spring-Oaks-Capital-LLC/main-dashboard).** No metric may exist in code without both.
 7. **Every service and workflow MUST page on-call via PagerDuty for critical failures.** Critical production issues MUST NEVER fail silently. Any service/workflow capable of a terminal or critical failure MUST trigger a PagerDuty alert on that path (see `observability-pagerduty-alerting` and the SOCAPITAL `integrating-pagerduty` skill). Swallowing a critical failure with a log-only handler is FORBIDDEN.
+8. **Every external or irreversible transaction MUST have boundary exits.** Before calling a provider, writing to an external system, charging money, exporting files, publishing production state, or starting a side-effecting workflow, implement a final guard plus safe exit for expired, unsafe, over-cost, over-capacity, or policy-closed work. Silent continuation past a boundary is FORBIDDEN.
