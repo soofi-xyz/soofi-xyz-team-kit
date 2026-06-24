@@ -1,6 +1,6 @@
 ---
 name: apply-engineering-guidelines
-description: "Apply the repository Golden Path engineering standards. Use when building new services, refactoring existing code, setting up infrastructure, configuring CI/CD, choosing libraries, writing tests, adding observability, or reviewing architecture decisions. Covers tech stack (TypeScript for all services, Python only for PySpark/Glue), AWS/CDK infrastructure, testing strategy (Vitest/Pytest), observability (structured logs, X-Ray), and AI policy. Triggers on: new service, scaffold, refactor, architecture review, tech stack question, infrastructure setup, CDK, testing setup, logging, observability, CI/CD pipeline. Do NOT trigger for general coding questions unrelated to the repository standards."
+description: "Apply the repository Golden Path engineering standards. Use when building new services, refactoring existing code, setting up infrastructure, configuring CI/CD, choosing libraries, writing tests, adding observability, alerting, or reviewing architecture decisions. Covers tech stack (TypeScript for all services, Python only for PySpark/Glue), AWS/CDK infrastructure, testing strategy (Vitest/Pytest), observability (structured logs, X-Ray, metrics), mandatory PagerDuty alerting on critical failures, and AI policy. Triggers on: new service, scaffold, refactor, architecture review, tech stack question, infrastructure setup, CDK, testing setup, logging, observability, metrics, pagerduty, alerting, on-call, critical failure, CI/CD pipeline. Do NOT trigger for general coding questions unrelated to the repository standards."
 ---
 
 # Engineering Guidelines
@@ -20,6 +20,7 @@ Follow these standards when building or refactoring any service in this ecosyste
 | Formatting & linting | **Prettier + ESLint** (TS) · **Ruff** (Python) |
 | Type checking | **tsc** (TS) · **basedpyright** (Python) |
 | Observability | **Powertools** (Logger + Tracer + Metrics) · **CloudWatch** · **X-Ray** |
+| Critical failure alerting | **PagerDuty** (Events API v2) — page on-call for every critical failure |
 
 ## Rule Categories
 
@@ -50,6 +51,7 @@ Follow these standards when building or refactoring any service in this ecosyste
 
 - `observability-logging-tracing` — Powertools Logger/Tracer/Metrics on every Lambda, structured JSON logs, X-Ray tracing
 - `observability-metrics` — Business-level metrics per service: items processed, items failed, duration
+- `observability-pagerduty-alerting` — Page on-call via PagerDuty (Events API v2) for every critical failure; no critical issue may fail silently
 
 ## How to Use These Rules
 
@@ -63,6 +65,7 @@ rules/cloud-aws-primary.md
 rules/testing-strategy.md
 rules/observability-logging-tracing.md
 rules/observability-metrics.md
+rules/observability-pagerduty-alerting.md
 ```
 
 ## Applying the Guidelines
@@ -75,6 +78,7 @@ When building or refactoring a service:
 4. **Configure CI/CD** per `testing-strategy` — formatter, linter, type checker, tests in GitHub Actions.
 5. **Add observability** per `observability-logging-tracing` — Powertools Logger, Tracer, Metrics on every Lambda.
 6. **Emit business metrics** per `observability-metrics` — items processed/failed, duration.
+7. **Wire critical-failure alerting** per `observability-pagerduty-alerting` — page on-call via PagerDuty for every terminal/critical failure so nothing fails silently.
 
 ## Non-Negotiables
 
@@ -86,3 +90,4 @@ These are hard constraints that MUST NOT be violated without VP-level approval:
 4. **CDK is the ONLY permitted IaC tool.** All infrastructure MUST be defined in CDK and deployed via `cdk deploy`. Do NOT use Terraform, Pulumi, SAM, CloudFormation YAML/JSON, Serverless Framework, or any other IaC tool.
 5. **No secrets in logs.** Never log passwords, tokens, secrets, or PII.
 6. **Every metric registered in [Lexicon](https://github.com/Spring-Oaks-Capital-LLC/lexicon)** (`cloudwatch-metrics.json`) **and displayed on [Main Dashboard](https://github.com/Spring-Oaks-Capital-LLC/main-dashboard).** No metric may exist in code without both.
+7. **Every service and workflow MUST page on-call via PagerDuty for critical failures.** Critical production issues MUST NEVER fail silently. Any service/workflow capable of a terminal or critical failure MUST trigger a PagerDuty alert on that path (see `observability-pagerduty-alerting` and the SOCAPITAL `integrating-pagerduty` skill). Swallowing a critical failure with a log-only handler is FORBIDDEN.
