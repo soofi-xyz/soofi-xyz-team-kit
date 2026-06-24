@@ -26,7 +26,7 @@ Record these. If an input is missing, note it; `evaluate-candidate-product` turn
 
 - **Assignment**: the user story or the assignment repository, title/ID, description, comments, attachments, and the **designated assignment repository** the PR must target (PrismTeam where applicable).
 - **Candidate pull request**: the PR URL against the designated assignment repo, branch, and head commit.
-- **Runtime**: a runtime URL (web app) or another concrete, documented way to launch and exercise the running product.
+- **Runtime**: a **deployed, hosted runtime URL** the candidate stood up and that the evaluator can reach and exercise **without building, installing, or running the app**. A locally set-up app does not count — `localhost`/`127.0.0.1`, a dev server the evaluator must start (`npm run dev`, `vite`, `docker compose up`), local Docker, "clone and run it locally", or a tunnel that just exposes the candidate's machine all fail the runtime gate.
 - **Demo**: a demo video or other demo artifact, ideally reachable from the PR.
 - **Credentials**: any credentials needed to exercise the runtime (or confirmation it is public).
 - **Assignment-sent datetime**: when the assignment was sent to the candidate.
@@ -83,7 +83,7 @@ Emit a Functional Outcome Breakdown table:
 These are not weighted. `evaluate-candidate-product` enforces them. Mark each `Pass`, `Failed` (candidate omission), or `Blocked` (evaluator-side access the operator could not resolve), each with a concrete reason.
 
 1. **PR gate** — work is submitted as a pull request against the designated assignment repository, not only a standalone repo, email artifact, or private demo.
-2. **Runtime gate (absolute)** — the evaluator must be able to both reach **and** meaningfully exercise the runtime that demonstrates the core intent. If the runtime cannot be exercised — for **any** reason, including an inaccessible or erroring URL, a login/OAuth that cannot be completed, missing or non-working credentials, an automation/anti-bot block, or any other access failure — the overall score is **0/100** and the verdict is **Fail**, full stop. This is true even when the cause is the evaluation environment rather than the candidate. Make exactly one operator-assisted access attempt first; if the runtime still cannot be exercised, score 0. Never soften an unexercised runtime to a partial score, `Partial Pass`, or `Inconclusive`.
+2. **Runtime gate (absolute, deployed only)** — the candidate must provide a **deployed, hosted runtime** (publicly reachable, or reachable via operator-supplied credentials/login to that hosted deployment), and the evaluator must be able to both reach **and** meaningfully exercise it **without building, installing, or running the app**. A **locally set-up app is not an acceptable runtime**: `localhost`/`127.0.0.1`, a dev server the evaluator must start, local Docker, "clone and run it locally", or a tunnel that merely exposes the candidate's machine all **fail** this gate, and the evaluator must never run or host the app to satisfy it. If the runtime cannot be exercised — for **any** reason, including no deployed runtime, a local-only app, an inaccessible or erroring URL, a login/OAuth that cannot be completed, missing or non-working credentials, an automation/anti-bot block, or any other access failure — the overall score is **0/100** and the verdict is **Fail**, full stop. This is true even when the cause is the evaluation environment rather than the candidate. Make exactly one operator-assisted access attempt first (for the deployed URL, credentials, or a completed login — not to run the app for you); if the deployed runtime still cannot be exercised, score 0. Never soften an unexercised runtime to a partial score, `Partial Pass`, or `Inconclusive`.
 3. **Credentials gate** — required credentials are present and working (or the runtime is public).
 4. **Demo gate** — a demo artifact is present and reachable.
 
@@ -154,7 +154,7 @@ Return a compact Markdown handoff:
 
 ## Gates
 - PR to designated repo: <Pass | Failed | Blocked + reason>
-- Runtime accessible & exercisable: <Pass | Failed | Blocked + reason>
+- Deployed runtime reachable & exercisable (no local-only app): <Pass | Failed | Blocked + reason>
 - Credentials: <Pass | Failed | Blocked + reason>
 - Demo artifact: <Pass | Failed | Blocked + reason>
 

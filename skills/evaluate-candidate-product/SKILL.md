@@ -1,6 +1,6 @@
 ---
 name: evaluate-candidate-product
-description: "Evidence-and-functional-outcome phase of candidate test-task evaluation, run as a dedicated subagent. First enforce the gates from evaluate-candidate-intent — a missing PR to the designated assignment repo, demo artifact, or credentials are explicit Failed gates, and a runtime that cannot be reached and exercised is an absolute hard fail (score 0/100, verdict Fail, for any reason including environment or anti-automation blocks). Then drive the live runtime with the Playwright browser to prove the story's intent through working runtime behavior, data evidence, output evidence, and demo artifacts, evaluate functional outcome before implementation, check assignment-specific access boundaries (for X Engagement, hosted investors-mcp read tools only — flag direct database, vector-store, or blob access as a violation), and return Pass/Partial/Fail/Blocked for each material acceptance criterion. Score functional outcome, evidence quality, access-boundary compliance, runtime/demo quality, and reproducibility. Use after evaluate-candidate-intent."
+description: "Evidence-and-functional-outcome phase of candidate test-task evaluation, run as a dedicated subagent. First enforce the gates from evaluate-candidate-intent — a missing PR to the designated assignment repo, demo artifact, or credentials are explicit Failed gates, and any runtime that is not a candidate-deployed hosted runtime (a locally run app such as localhost, a dev server, or local Docker), or that otherwise cannot be reached and exercised, is an absolute hard fail (score 0/100, verdict Fail, for any reason including environment or anti-automation blocks). Then drive the live deployed runtime with the Playwright browser to prove the story's intent through working runtime behavior, data evidence, output evidence, and demo artifacts, evaluate functional outcome before implementation, check assignment-specific access boundaries (for X Engagement, hosted investors-mcp read tools only — flag direct database, vector-store, or blob access as a violation), and return Pass/Partial/Fail/Blocked for each material acceptance criterion. Score functional outcome, evidence quality, access-boundary compliance, runtime/demo quality, and reproducibility. Use after evaluate-candidate-intent."
 ---
 
 # Evaluate Candidate Product
@@ -16,20 +16,20 @@ For assignment-specific evidence and access boundaries, consult `reference/assig
 Check the gates from `evaluate-candidate-intent` **before any scoring**. Use concrete reasons.
 
 1. **PR gate** — a pull request exists against the **designated assignment repository** (not only a standalone repo, email artifact, or private demo). Missing → `Failed`.
-2. **Runtime gate (absolute)** — you must be able to both reach **and** meaningfully exercise the runtime that demonstrates the core intent. If you cannot, the result is **0/100, verdict Fail** — for **any** reason: inaccessible or erroring URL, a login/OAuth you cannot complete, missing or non-working credentials, an automation/anti-bot block, a paywall, or anything else. This applies even when the cause is the evaluation environment, not the candidate. Reviewing the code and concluding "it would probably work" is **0**. An API/MCP surface responding is **0** unless that surface alone fully demonstrates the core intent the candidate was asked to deliver.
+2. **Runtime gate (absolute, deployed only)** — the runtime must be a **candidate-deployed, hosted runtime** you can reach and exercise **without building, installing, or running the app yourself**, and you must be able to both reach **and** meaningfully exercise it. A **locally set-up app does not count**: `localhost`/`127.0.0.1`, a dev server you must start (`npm run dev`, `vite`, `docker compose up`), local Docker, "clone and run it locally", or a tunnel that merely exposes the candidate's machine are all **0/100, verdict Fail** — never run or host the app yourself to create a runtime. If you cannot reach and exercise the deployed runtime, the result is **0/100, verdict Fail** — for **any** reason: no deployed runtime, a local-only app, an inaccessible or erroring URL, a login/OAuth you cannot complete, missing or non-working credentials, an automation/anti-bot block, a paywall, or anything else. This applies even when the cause is the evaluation environment, not the candidate. Reviewing the code and concluding "it would probably work" is **0**. Running it locally yourself is **0**. An API/MCP surface responding is **0** unless that surface alone fully demonstrates the core intent the candidate was asked to deliver.
 3. **Credentials gate** — required credentials present and working, or the runtime is public. Missing → `Failed` (or `Blocked` if the operator may still supply them).
 4. **Demo gate** — a demo artifact is present and reachable. Missing → `Failed` or `Blocked`.
 
 Resolution rules:
 
 - A `Failed` gate forces the overall score to **0** and the verdict to **Fail**. Stop scoring.
-- **Runtime is absolute.** Before declaring the runtime unreachable, make **one** recovery attempt: re-read the PR/submission for a URL, credentials, or run steps, then request operator help (Step 3) — ask for working credentials, a completed login, the runtime URL, or the client/tool needed. If after that attempt you still cannot exercise the runtime, the result is **0/100, verdict Fail**. Do **not** mark the runtime `Blocked` and continue scoring, do **not** average other dimensions, and do **not** return `Partial Pass` or `Inconclusive`. An unexercised runtime is a 0 regardless of cause.
+- **Runtime is absolute and must be deployed.** Before declaring the deployed runtime unreachable, make **one** recovery attempt: re-read the PR/submission for a deployed URL or credentials, then request operator help (Step 3) — ask for working credentials, a completed login, or the deployed runtime URL/client needed (never ask the operator to run or host the app for you). A local-only app or "run it locally" instructions are not a recovery path — they fail the gate. If after that attempt you still cannot exercise the deployed runtime, the result is **0/100, verdict Fail**. Do **not** mark the runtime `Blocked` and continue scoring, do **not** average other dimensions, and do **not** return `Partial Pass` or `Inconclusive`. An unexercised or local-only runtime is a 0 regardless of cause.
 - `Blocked` (with an `Inconclusive` result for the affected area) is permitted only for a **non-runtime** check (e.g., a secondary artifact) and only when the runtime itself was successfully exercised and the intent proven.
 - For non-runtime gates, distinguish a candidate omission (`Failed`) from an evaluation-environment blocker (`Blocked`). Never penalize the candidate for a non-runtime blocker you could have asked the operator to resolve.
 
 ## Step 2 — Prove the Outcome by Exercising the Runtime (Most Important)
 
-Drive the live runtime as a real user with the Playwright browser (`user-playwright` MCP tools: `browser_navigate`, `browser_click`, `browser_fill`, `browser_screenshot`, `browser_evaluate`, and the rest).
+Drive the live **deployed** runtime as a real user with the Playwright browser (`user-playwright` MCP tools: `browser_navigate`, `browser_click`, `browser_fill`, `browser_screenshot`, `browser_evaluate`, and the rest). Do not build, install, or run the candidate's app yourself — exercise only the hosted runtime they deployed.
 
 - Walk the **primary workflow end to end** — the journey that delivers the intent.
 - Gather the four evidence types the story implies: **working runtime behavior**, **data evidence** (records actually present and used), **output evidence** (what the product produces), and **demo artifacts** (does the demo show the real outcome).
@@ -41,7 +41,7 @@ Drive the live runtime as a real user with the Playwright browser (`user-playwri
 
 When the Playwright browser alone cannot reach or exercise the runtime, **ask the operator** before declaring a block. Request when the product needs credentials/OAuth/one-time codes, a native/desktop/CLI/API client, test data or a sandbox, or network access (VPN/allow-list).
 
-State: the capability and why the intent needs it; the exact action the operator should take; the minimum scopes; a warning not to paste secrets into chat (configure locally or via the product setup); and what to report back so you can resume. If the operator cannot unblock it, mark the affected checks `Blocked`.
+State: the capability and why the intent needs it; the exact action the operator should take **against the candidate's deployed runtime** (provide the hosted URL, working credentials, or a completed login — not run or host the app for you); the minimum scopes; a warning not to paste secrets into chat; and what to report back so you can resume. If the operator cannot unblock it, mark the affected checks `Blocked` — except that an unreachable or local-only **runtime** is never `Blocked`, it is the absolute 0/Fail from Step 1.
 
 ## Step 4 — Score Each Functional Evaluation Point (Most Important)
 
@@ -118,8 +118,8 @@ If a gate failed or the runtime was not exercised, set every Band to 0 / Points 
 ## Quality Bar
 
 - Gates first; a `Failed` gate produces 0 and stops the phase.
-- The runtime gate is absolute: a runtime you could not exercise yields 0/100 and Fail, for any reason, after one operator-assisted attempt — never a partial score or `Inconclusive`.
-- The outcome judgment is grounded in a Playwright-driven run of the live runtime.
+- The runtime gate is absolute and deployed-only: a non-deployed/local-only app or a runtime you could not exercise yields 0/100 and Fail, for any reason, after one operator-assisted attempt — never a partial score or `Inconclusive`, and never run the app yourself to pass it.
+- The outcome judgment is grounded in a Playwright-driven run of the live deployed runtime.
 - Functional outcome is scored per evaluation point (Per-Point Scores table), and the subtotal is the sum of those points — never one opaque number.
 - Functional outcome is evaluated before implementation; toy data scores extremely low.
 - Access boundaries are checked with assignment-specific rules and cited evidence.
