@@ -1,6 +1,6 @@
 ---
 name: build-batch-workflows
-description: "Guides creation of batch data processing workflows on AWS. Covers input data analysis, choosing Step Functions Distributed Map vs AWS Glue PySpark, testing pipelines, cost controls, throttling, idempotency, and metrics. Triggers on: batch job, batch workflow, data pipeline, data processing job, ETL pipeline, bulk processing, distributed map, glue job."
+description: "Guides creation of batch data processing workflows on AWS. Covers input data analysis, choosing Step Functions Distributed Map vs AWS Glue PySpark, testing pipelines, cost controls, throttling, idempotency, metrics, and mandatory PagerDuty alerting on critical failures. Triggers on: batch job, batch workflow, data pipeline, data processing job, ETL pipeline, bulk processing, distributed map, glue job, batch failure alerting, pagerduty, dead-letter queue."
 ---
 
 # Building Batch Workflows
@@ -78,6 +78,15 @@ Workflows MUST be retriable, redrivable, and recoverable. Never do the same work
 
 Read `rules/principle-throttling.md` for the throttling architecture.
 
+### 7. Alert On Critical Failures
+
+Every workflow MUST page on-call via **PagerDuty** when it fails critically — a
+batch run MUST NEVER fail silently. Wire a PagerDuty trigger at the terminal
+failure path (Step Functions top-level `Catch` before `Fail`, failed Glue run
+state, or a DLQ alarm) so one page fires per failed execution. Read
+`rules/principle-failure-alerting.md`, and use the SOCAPITAL `integrating-pagerduty`
+skill for the integration contract.
+
 ## Rules Summary
 
 | Rule | File | Impact |
@@ -89,3 +98,4 @@ Read `rules/principle-throttling.md` for the throttling architecture.
 | Cost Prediction Gate | `rules/principle-cost-gate.md` | CRITICAL |
 | Idempotency & Recovery | `rules/principle-idempotency.md` | HIGH |
 | Throttling & Concurrency | `rules/principle-throttling.md` | HIGH |
+| Critical Failure Alerting | `rules/principle-failure-alerting.md` | CRITICAL |
