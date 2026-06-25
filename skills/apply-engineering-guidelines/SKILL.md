@@ -1,6 +1,6 @@
 ---
 name: apply-engineering-guidelines
-description: "Apply the repository Golden Path engineering standards. Use when building new services, refactoring existing code, setting up infrastructure, configuring CI/CD, choosing libraries, writing tests, adding observability, alerting, or reviewing architecture decisions. Covers tech stack (TypeScript for all services, Python only for PySpark/Glue), AWS/CDK infrastructure, testing strategy (Vitest/Pytest), observability (structured logs, X-Ray, metrics), mandatory PagerDuty alerting on critical failures, and AI policy. Triggers on: new service, scaffold, refactor, architecture review, tech stack question, infrastructure setup, CDK, testing setup, logging, observability, metrics, pagerduty, alerting, on-call, critical failure, CI/CD pipeline. Do NOT trigger for general coding questions unrelated to the repository standards."
+description: "Apply the repository Golden Path engineering standards. Use when building new services, refactoring existing code, setting up infrastructure, configuring CI/CD, choosing libraries, writing tests, adding observability, alerting, monitoring, or reviewing architecture decisions. Covers tech stack (TypeScript for all services, Python only for PySpark/Glue), AWS/CDK infrastructure, testing strategy (Vitest/Pytest), observability (structured logs, X-Ray, metrics), mandatory PagerDuty alerting on critical failures, self-resolving DLQ channel alarms, and AI policy. Triggers on: new service, scaffold, refactor, architecture review, tech stack question, infrastructure setup, CDK, testing setup, logging, observability, metrics, pagerduty, alerting, on-call, critical failure, dlq, dead-letter queue, cloudwatch alarm, channel notification, alarm fatigue, CI/CD pipeline. Do NOT trigger for general coding questions unrelated to the repository standards."
 ---
 
 # Engineering Guidelines
@@ -21,6 +21,7 @@ Follow these standards when building or refactoring any service in this ecosyste
 | Type checking | **tsc** (TS) · **basedpyright** (Python) |
 | Observability | **Powertools** (Logger + Tracer + Metrics) · **CloudWatch** · **X-Ray** |
 | Critical failure alerting | **PagerDuty** (Events API v2) — page on-call for every critical failure |
+| DLQ / channel monitoring | **One self-resolving CloudWatch alarm per DLQ** fanned out to channels (email / chat / **PagerDuty**) — never per-item alerts |
 
 ## Rule Categories
 
@@ -52,6 +53,7 @@ Follow these standards when building or refactoring any service in this ecosyste
 - `observability-logging-tracing` — Powertools Logger/Tracer/Metrics on every Lambda, structured JSON logs, X-Ray tracing
 - `observability-metrics` — Business-level metrics per service: items processed, items failed, duration
 - `observability-pagerduty-alerting` — Page on-call via PagerDuty (Events API v2) for every critical failure; no critical issue may fail silently
+- `observability-dlq-alarms` — One self-resolving CloudWatch alarm per DLQ fans out to channels (email/chat/**PagerDuty**) when the DLQ is non-empty and clears itself on drain (auto-resolving the PagerDuty incident); works together with `observability-pagerduty-alerting`
 
 ## How to Use These Rules
 
@@ -66,6 +68,7 @@ rules/testing-strategy.md
 rules/observability-logging-tracing.md
 rules/observability-metrics.md
 rules/observability-pagerduty-alerting.md
+rules/observability-dlq-alarms.md
 ```
 
 ## Applying the Guidelines
@@ -79,6 +82,7 @@ When building or refactoring a service:
 5. **Add observability** per `observability-logging-tracing` — Powertools Logger, Tracer, Metrics on every Lambda.
 6. **Emit business metrics** per `observability-metrics` — items processed/failed, duration.
 7. **Wire critical-failure alerting** per `observability-pagerduty-alerting` — page on-call via PagerDuty for every terminal/critical failure so nothing fails silently.
+8. **Add self-resolving DLQ monitoring** per `observability-dlq-alarms` — attach one stateful CloudWatch alarm per DLQ that fans out to channels (email/chat/PagerDuty) when the DLQ is non-empty and clears itself on drain. This works together with PagerDuty alerting: the alarm owns the lifecycle and PagerDuty is one subscriber that auto-resolves.
 
 ## Non-Negotiables
 

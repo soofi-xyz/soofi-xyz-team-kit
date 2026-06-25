@@ -143,7 +143,7 @@ If you already know which specialist you need, skip the router and call them dir
 
 | Skill | Description |
 | --- | --- |
-| [`apply-engineering-guidelines`](./skills/apply-engineering-guidelines/) | Apply the Golden Path engineering standards for tech stack, infrastructure, testing, observability, mandatory PagerDuty alerting on critical failures, and AI implementation choices. |
+| [`apply-engineering-guidelines`](./skills/apply-engineering-guidelines/) | Apply the Golden Path engineering standards for tech stack, infrastructure, testing, observability, mandatory PagerDuty alerting on critical failures, self-resolving DLQ channel alarms, and AI implementation choices. |
 | [`assemble-communication-runtime`](./skills/assemble-communication-runtime/) | Runtime-assembly skill for composing audience, template, and communication-activity capabilities into deterministic end-to-end channel services. |
 | [`atomic-data`](./skills/atomic-data/) | Atomic row-level facts plus vendor daily rollups for contact-center and operational metrics, Parquet-first storage, CloudWatch + lexicon lineage, and reconciliation patterns. |
 | [`babysit-release`](./skills/babysit-release/) | Extends PR babysitting through merge, production release monitoring, and evidence-backed follow-up fix PRs while stopping for unknown production configuration. |
