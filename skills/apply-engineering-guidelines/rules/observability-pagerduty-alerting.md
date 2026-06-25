@@ -40,10 +40,16 @@ contract. The required pattern is:
 
 Wire the alert at the point where a failure becomes terminal — e.g. a Step
 Functions `Catch` that routes to a PagerDuty-trigger task before the `Fail`
-state, an SQS DLQ alarm/consumer, or a `catch`/finalizer in a Lambda that owns a
-critical operation. Keep the alert payload decoupled from any one workflow's
-internal shape; pass a clear `summary`, a `source`, and structured
-`custom_details`.
+state, or a `catch`/finalizer in a Lambda that owns a critical operation. Keep
+the alert payload decoupled from any one workflow's internal shape; pass a clear
+`summary`, a `source`, and structured `custom_details`.
+
+For **DLQ / queue-depth** signals, do NOT POST a trigger per failed message.
+Drive PagerDuty from a single self-resolving CloudWatch alarm so the incident
+auto-resolves when the DLQ drains and re-triggers when it refills — see
+`observability-dlq-alarms`. PagerDuty is then **one of several channels** the
+alarm fans out to (alongside email and chat), and the two rules work together:
+the alarm owns the lifecycle, PagerDuty is a subscriber.
 
 ### ✅ Correct
 
