@@ -1,0 +1,12 @@
+{
+  "$schema": "https://cursor.com/schemas/mcp.json",
+  "mcpServers": {
+    "elephant": {
+      "command": "npx",
+      "args": ["-y", "@elephant-xyz/mcp@1.7.0"],
+      "env": {
+        "ORACLE_GEO_INDEX_IPNS": "k51qzi5uqu5djo3756w73x3swtt63g9y7igj7tvv1gs4skjk3haj3fuk7qosdi"
+      }
+    }
+  }
+}

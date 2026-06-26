@@ -13,7 +13,11 @@ mkdir -p ~/.cursor/plugins/local
 git clone https://github.com/soofi-xyz/cursor-plugin.git ~/.cursor/plugins/local/soofi-xyz
 ```
 
-Then reload Cursor. The plugin will load from `~/.cursor/plugins/local/soofi-xyz` and register all agents and skills automatically.
+Then reload Cursor. The plugin will load from `~/.cursor/plugins/local/soofi-xyz` and register all agents, skills, and the bundled **`elephant`** MCP server (`mcp.json`) automatically.
+
+**Donphan / Elephant MCP:** Requires Node **22.18+** and **`@elephant-xyz/mcp` ≥ 1.7.0** on npm (Oracle open-data + geo tools). After install or `git pull`, reload Cursor and confirm **`elephant`** is enabled under **Settings → MCP**. Do not set an empty `OPENAI_API_KEY` on the MCP server — optional only for `getVerifiedScriptExamples`.
+
+**Elephant routing:** `donphan` + `use-elephant-mcp` = explore open data via MCP; `oracle` + `use-oracle` = ingest/refresh sources; `use-elephant-query-db` = SQL over Neon.
 
 ### GitHub Copilot CLI
 
@@ -45,7 +49,7 @@ Pull the latest agents and skills from the same directory:
 git -C ~/.cursor/plugins/local/soofi-xyz pull
 ```
 
-Reload Cursor after pulling so updated agents, skills, and the manifest are picked up.
+Reload Cursor after pulling so updated agents, skills, MCP config, and the manifest are picked up.
 
 ### GitHub Copilot CLI
 
@@ -119,6 +123,7 @@ If you already know which specialist you need, skip the router and call them dir
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/534.png" alt="Conkeldurr" width="96"> | [`conkeldurr`](./agents/conkeldurr.md) | Platform engineer — owns the SOCAPITAL platform product map across Account, Bootstrap, Marketplace, Deployer, Puller, Persist, Connect, Translate, Product, and Rules; always asks "integrate existing or provision new?" before building. | `/conkeldurr Design platform capability...` |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/225.png" alt="Delibird" width="96"> | [`delibird`](./agents/delibird.md) | Report catalog app builder — single AWS-hosted catalog page listing report URLs, plus a CLI for registering, updating, validating, and publishing report entries. | `/delibird Build report catalog...` |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/132.png" alt="Ditto" width="96"> | [`ditto`](./agents/ditto.md) | S3 → external file-share sync workflow builder — EventBridge Scheduler starts a Step Functions Distributed Map (plan + cost gate → per-file workers → aggregate) that copies a configured S3 bucket/prefix into Citrix Endpoint Management (default), Citrix ShareFile, or another pluggable destination, with per-env SSM + Secrets Manager configuration and DEV/PROD CI/CD. | `/ditto Sync S3 files to...` |
+| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/239.png" alt="Donphan" width="96"> | [`donphan`](./agents/donphan.md) | Elephant MCP data exploration agent — answers natural-language questions about Oracle open-data properties (appraisal, permits, Sunbiz, BBB contractors, geo filters, lexicon schemas) via bundled `@elephant-xyz/mcp` tools. Not for Neon SQL or county ingestion. | `/donphan How many sub-par electric contractors in Lee County?` |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/133.png" alt="Eevee" width="96"> | [`eevee`](./agents/eevee.md) | Editorial sub-agent backed by the Eevee RAG — retrieves from the live knowledge base (Guidance library + founder articles) and drafts pitches, propositions, website copy, and decks in Eevee's voice. Does not publish. | `/eevee Draft a proposition for...` |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/196.png" alt="Espeon" width="96"> | [`espeon`](./agents/espeon.md) | End-to-end RAG system builder — local TypeScript CLI POC first, then AWS OpenSearch migration, historical backfill, webhook ingestion, and rollout. | `/espeon Build an end-to-end RAG system...` |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/040.png" alt="Wigglytuff" width="96"> | [`wigglytuff`](./agents/wigglytuff.md) | Template-management specialist — Git-backed template inventory, source discovery, metadata normalization, sync workflows, and Asana-facing template operations. | `/wigglytuff Manage templates for...` |
@@ -181,6 +186,7 @@ If you already know which specialist you need, skip the router and call them dir
 | [`unify-metrics`](./skills/unify-metrics/) | Lexicon-first metric unification: comparability gates, normalization, analysis, and audit-friendly outputs. |
 | [`use-eevee`](./skills/use-eevee/) | Operate the Eevee editorial agent from Cursor: retrieve from the live Eevee RAG (Guidance library + founder articles) via the agent-eevee CLI, then draft in Eevee's voice using Eevee's prompts. Read-only; does not publish. |
 | [`use-elephant-query-db`](./skills/use-elephant-query-db/) | User guide for consuming the Vercel Neon `elephant-query-db` database with `@elephant-xyz/query-db` schema imports and TypeScript/Drizzle query code for parcels, permits, Sunbiz companies, and addresses. |
+| [`use-elephant-mcp`](./skills/use-elephant-mcp/) | Operating guide for exploring Elephant Oracle open-data via bundled `@elephant-xyz/mcp` in Cursor — property/contractor/business questions, geo filters, schema tools, and MCP setup. Not for Neon SQL or ingestion. |
 | [`use-oracle`](./skills/use-oracle/) | Operating guide for the Oracle ingestion agent: install and drive the `elephant-xyz/skills` (`onboard-county` + stage skills) on the `oracle-node` pipeline to discover, ingest, validate, and refresh county property/permit plus Sunbiz/BBB data into the Neon query DB. IPFS/indexing/MCP/NEO out of scope. |
 | [`use-translate-service`](./skills/use-translate-service/) | User guide for calling a deployed Translate service — what a language and a runtime mapping are, the JSON shapes required to register them, the input/output shapes Translate expects, and how to validate, preview, and run asynchronous executions over `/translate/*`. |
 
