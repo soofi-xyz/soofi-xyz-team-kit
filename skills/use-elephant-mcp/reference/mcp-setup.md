@@ -40,11 +40,10 @@ Servers** (same as root `mcp.json`):
 {
   "mcpServers": {
     "elephant": {
-      "command": "npx",
+      "command": "bash",
       "args": [
-        "-y",
-        "--package=github:elephant-xyz/elephant-mcp#v1.7.0",
-        "mcp"
+        "-c",
+        "exec npx -y --package=github:elephant-xyz/elephant-mcp#v1.7.0 mcp"
       ],
       "env": {
         "ORACLE_OPEN_DATA_IPNS": "k51qzi5uqu5dlzgslzedrnk4whtd7ip69l0pmd3zxelz8hwjorbeyy0pyyeu4m",
@@ -55,9 +54,10 @@ Servers** (same as root `mcp.json`):
 }
 ```
 
-**Smoke test (terminal):** `npx -y --package=github:elephant-xyz/elephant-mcp#v1.7.0 mcp` should
-start the stdio server (Ctrl+C to stop). Requires network access to GitHub and the npm registry
-(for dependencies).
+**Smoke test (terminal):** `bash -c 'exec npx -y --package=github:elephant-xyz/elephant-mcp#v1.7.0 mcp'`
+should start the stdio server (Ctrl+C to stop). Requires network access to GitHub and the npm registry
+(for dependencies). Pre-warming this once before opening Cursor avoids `ENOTEMPTY` errors from
+concurrent `npx` cache writes on first MCP connect.
 
 Or use the one-click install from the
 [elephant-mcp README](https://github.com/elephant-xyz/elephant-mcp#cursor) — then rename or
@@ -97,6 +97,7 @@ Oracle open-data tools work without embeddings.
 | `getVerifiedScriptExamples` fails | Add a real `OPENAI_API_KEY` to server env, or configure AWS Bedrock credentials |
 | First query is slow | `npx` clones GitHub and builds elephant-mcp on first start — can take 1–3 minutes |
 | `elephant` red / install fails | Confirm Node **22.18+**; run smoke test above; check MCP error log for git/network or build errors |
+| `npm error ENOTEMPTY` in `_npx` cache | Quit Cursor; `rm -rf ~/.npm/_npx`; run smoke test once; reopen Cursor |
 | GitHub install blocked (proxy/firewall) | Use a local `elephant-mcp` checkout (`npm start` + `cwd`) or publish `@elephant-xyz/mcp@1.7.0` to npm |
 | After npm publishes 1.7.0 | Kit may switch `args` to `["-y", "@elephant-xyz/mcp@1.7.0"]` for faster cold starts |
 
