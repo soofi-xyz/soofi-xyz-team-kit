@@ -2,11 +2,10 @@
   "$schema": "https://cursor.com/schemas/mcp.json",
   "mcpServers": {
     "elephant": {
-      "command": "npx",
+      "command": "bash",
       "args": [
-        "-y",
-        "--package=github:elephant-xyz/elephant-mcp#v1.7.0",
-        "mcp"
+        "-c",
+        "exec npx -y --package=github:elephant-xyz/elephant-mcp#v1.7.0 mcp"
       ],
       "env": {
         "ORACLE_OPEN_DATA_IPNS": "k51qzi5uqu5dlzgslzedrnk4whtd7ip69l0pmd3zxelz8hwjorbeyy0pyyeu4m",
