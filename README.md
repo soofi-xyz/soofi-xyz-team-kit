@@ -15,7 +15,7 @@ git clone https://github.com/soofi-xyz/cursor-plugin.git ~/.cursor/plugins/local
 
 Then reload Cursor. The plugin will load from `~/.cursor/plugins/local/soofi-xyz` and register all agents, skills, and the bundled **`elephant`** MCP server (`mcp.json`) automatically.
 
-**Donphan / Elephant MCP:** Requires Node **22.18+** and **`@elephant-xyz/mcp` ≥ 1.7.0** on npm (Oracle open-data + geo tools). After install or `git pull`, reload Cursor and confirm **`elephant`** is enabled under **Settings → MCP**. Do not set an empty `OPENAI_API_KEY` on the MCP server — optional only for `getVerifiedScriptExamples`.
+**Donphan / Elephant MCP:** Requires Node **22.18+** and **`@elephant-xyz/mcp` ≥ 1.7.0** (Oracle open-data + geo tools). After install or `git pull`, reload Cursor and confirm **`elephant`** is enabled under **Settings → MCP**. Verify with `getOracleDatasetInfo`: Lee County should report `propertyCount` ~**511695** (not ~4,664). Do not set an empty `OPENAI_API_KEY` on the MCP server — optional only for `getVerifiedScriptExamples`. If npm still lacks 1.7.0, use a local `elephant-mcp` checkout until publish.
 
 **Elephant routing:** `donphan` + `use-elephant-mcp` = explore open data via MCP; `oracle` + `use-oracle` = ingest/refresh sources; `use-elephant-query-db` = SQL over Neon.
 
