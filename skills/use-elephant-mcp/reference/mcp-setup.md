@@ -21,8 +21,9 @@ manual JSON editing required.
 
 ### Verify connectivity
 
-Call `getOracleDatasetInfo` with an empty input. A healthy response includes `county`,
-`propertyCount`, and export timestamps. If this fails, see troubleshooting below.
+Call `getOracleDatasetInfo` with an empty input. A healthy Lee County response includes
+`county: "lee"`, `propertyCount` around **511695**, a non-null `ipnsName`, and export timestamps.
+If `propertyCount` is ~4644 and `ipnsName` is null, see troubleshooting below.
 
 ## Manual fallback
 
@@ -36,6 +37,7 @@ Servers** (same as root `mcp.json`):
       "command": "npx",
       "args": ["-y", "@elephant-xyz/mcp@1.7.0"],
       "env": {
+        "ORACLE_OPEN_DATA_IPNS": "k51qzi5uqu5dlzgslzedrnk4whtd7ip69l0pmd3zxelz8hwjorbeyy0pyyeu4m",
         "ORACLE_GEO_INDEX_IPNS": "k51qzi5uqu5djo3756w73x3swtt63g9y7igj7tvv1gs4skjk3haj3fuk7qosdi"
       }
     }
@@ -60,6 +62,9 @@ teammates rely on.
 | `OPENAI_API_KEY` | `getVerifiedScriptExamples` (OpenAI path) | **Not in bundled config** — add manually only when set; empty value crashes startup |
 | `AWS_REGION` | Bedrock embeddings | `us-east-1` |
 | AWS credential chain | Bedrock when no OpenAI key | IAM role, env vars, or `~/.aws/credentials` |
+| `ORACLE_OPEN_DATA_IPNS` | Property open-data tools (`getOracleDatasetInfo`, `listOracleProperties`, etc.) | Set in bundled `mcp.json` — Lee `oracle-open-data-lee` (`k51qzi5uqu5dlz…`) |
+| `ORACLE_OPEN_DATA_INDEX_CID` | Property tools (alternative) | Omit when using IPNS; fixed CID pins a snapshot |
+| `ORACLE_OPEN_DATA_MANIFEST_CID` | Legacy flat manifest fallback | Only used when IPNS unset — default is ~4,664 pilot manifest |
 | `ORACLE_GEO_INDEX_IPNS` | Geo tools | Set in bundled `mcp.json` (Lee County reference index) |
 | `ORACLE_GEO_INDEX_CID` | Geo tools (alternative) | Fixed CID when IPNS unset |
 | `LOG_LEVEL` | Diagnostics | `info` |
@@ -72,9 +77,12 @@ Oracle open-data tools work without embeddings.
 | Symptom | Fix |
 |---------|-----|
 | `elephant` missing in MCP panel | Reload Cursor; confirm plugin path under `~/.cursor/plugins/local/` |
+| `propertyCount` ~4,664, `ipnsName` null | Add `ORACLE_OPEN_DATA_IPNS` to server env and reload Cursor |
+| `propertyCount` ~4,664, `ipnsName` set | IPNS still points at pilot manifest — full county open-data publish + IPNS re-point needed |
 | Geo tools fail | Bundled `ORACLE_GEO_INDEX_IPNS` should be present; re-pull plugin |
 | `getVerifiedScriptExamples` fails | Add a real `OPENAI_API_KEY` to server env, or configure AWS Bedrock credentials |
 | First query is slow | `npx` downloads `@elephant-xyz/mcp` on first start — normal |
+| `npx` cannot find `@elephant-xyz/mcp@1.7.0` | npm may still be on 1.6.0 — use a local `elephant-mcp` checkout (`npm start` + `cwd`) until 1.7.0 is published |
 
 ## Related agents in this kit
 
