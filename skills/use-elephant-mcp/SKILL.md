@@ -25,8 +25,9 @@ Do **not** use this skill for:
 ## Prerequisites
 
 - **Node.js 22.18+**
-- **Elephant MCP** via this plugin's bundled `mcp.json` (server name **`elephant`**). Reload
-  Cursor after installing/updating the kit; confirm **`elephant`** is enabled under MCP settings.
+- **Elephant MCP** via this plugin's bundled `mcp.json` (server name **`elephant`**), installing
+  **v1.7.0** from `github:elephant-xyz/elephant-mcp#v1.7.0` until npm publishes `@elephant-xyz/mcp@1.7.0`.
+  Reload Cursor after installing/updating the kit; confirm **`elephant`** is enabled under MCP settings.
 - **Optional env** (for teammates, not hard-coded in skill text):
   - `OPENAI_API_KEY` in the shell for `getVerifiedScriptExamples`, or AWS creds for Bedrock
   - Geo index and package version are preconfigured in the plugin `mcp.json`

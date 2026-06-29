@@ -6,13 +6,19 @@ This kit ships **`mcp.json`** at the plugin root. When you install or update the
 plugin and **reload Cursor**, the MCP server **`elephant`** is registered automatically — no
 manual JSON editing required.
 
+**Install source (interim):** Bundled `mcp.json` installs **elephant-mcp v1.7.0** from the public
+GitHub repo via `npx` because **`@elephant-xyz/mcp@1.7.0` is not on npm yet** (latest published
+is 1.6.0, which lacks Oracle open-data and geo tools). When 1.7.0 is published to npm, the kit
+may switch back to `@elephant-xyz/mcp@1.7.0`.
+
 **Teammate checklist:**
 
 1. Node.js **22.18+** (`node -v`)
 2. Plugin installed (see kit `README.md`) and Cursor reloaded after updates
-3. **Settings → MCP** — confirm **`elephant`** is listed and enabled
+3. **Settings → MCP** — confirm **`elephant`** is listed and enabled (first start may take 1–3
+   minutes while `npx` clones GitHub and runs the package build)
 4. Optional: add `OPENAI_API_KEY` to the `elephant` server env **only if** you have a key and
-   need `getVerifiedScriptExamples`. Do **not** set an empty key — `@elephant-xyz/mcp` crashes on
+   need `getVerifiedScriptExamples`. Do **not** set an empty key — elephant-mcp crashes on
    startup if `OPENAI_API_KEY` is present but blank. Without it, open-data and geo tools work;
    embeddings fall back to AWS Bedrock when AWS credentials are available.
 
@@ -35,7 +41,11 @@ Servers** (same as root `mcp.json`):
   "mcpServers": {
     "elephant": {
       "command": "npx",
-      "args": ["-y", "@elephant-xyz/mcp@1.7.0"],
+      "args": [
+        "-y",
+        "--package=github:elephant-xyz/elephant-mcp#v1.7.0",
+        "mcp"
+      ],
       "env": {
         "ORACLE_OPEN_DATA_IPNS": "k51qzi5uqu5dlzgslzedrnk4whtd7ip69l0pmd3zxelz8hwjorbeyy0pyyeu4m",
         "ORACLE_GEO_INDEX_IPNS": "k51qzi5uqu5djo3756w73x3swtt63g9y7igj7tvv1gs4skjk3haj3fuk7qosdi"
@@ -44,6 +54,10 @@ Servers** (same as root `mcp.json`):
   }
 }
 ```
+
+**Smoke test (terminal):** `npx -y --package=github:elephant-xyz/elephant-mcp#v1.7.0 mcp` should
+start the stdio server (Ctrl+C to stop). Requires network access to GitHub and the npm registry
+(for dependencies).
 
 Or use the one-click install from the
 [elephant-mcp README](https://github.com/elephant-xyz/elephant-mcp#cursor) — then rename or
@@ -81,8 +95,10 @@ Oracle open-data tools work without embeddings.
 | `propertyCount` ~4,664, `ipnsName` set | IPNS still points at pilot manifest — full county open-data publish + IPNS re-point needed |
 | Geo tools fail | Bundled `ORACLE_GEO_INDEX_IPNS` should be present; re-pull plugin |
 | `getVerifiedScriptExamples` fails | Add a real `OPENAI_API_KEY` to server env, or configure AWS Bedrock credentials |
-| First query is slow | `npx` downloads `@elephant-xyz/mcp` on first start — normal |
-| `npx` cannot find `@elephant-xyz/mcp@1.7.0` | npm may still be on 1.6.0 — use a local `elephant-mcp` checkout (`npm start` + `cwd`) until 1.7.0 is published |
+| First query is slow | `npx` clones GitHub and builds elephant-mcp on first start — can take 1–3 minutes |
+| `elephant` red / install fails | Confirm Node **22.18+**; run smoke test above; check MCP error log for git/network or build errors |
+| GitHub install blocked (proxy/firewall) | Use a local `elephant-mcp` checkout (`npm start` + `cwd`) or publish `@elephant-xyz/mcp@1.7.0` to npm |
+| After npm publishes 1.7.0 | Kit may switch `args` to `["-y", "@elephant-xyz/mcp@1.7.0"]` for faster cold starts |
 
 ## Related agents in this kit
 
