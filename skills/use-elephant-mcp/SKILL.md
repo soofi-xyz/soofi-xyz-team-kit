@@ -48,9 +48,21 @@ to the exact registered tool name (e.g. `getOracleDatasetInfo`).
 
 ## Exploration playbook
 
-There is **no full-text search** across all properties. Narrow geographically or paginate,
-then fetch consolidated JSON and filter in reasoning.
+For **attribute / aggregate / count / filter** questions (how many, by owner, by zip, by city,
+by value, by acreage, by material) use the **SQL query path** below — SQL over the open parquet.
+For geo-scoped or per-record questions, narrow geographically or paginate, then fetch
+consolidated JSON.
 
+0. **Attribute / aggregate / count / filter (PRIMARY)** — `getPropertyQuerySchema` (learn the
+   ~37 columns) → `queryProperties` with ONE read-only `SELECT`/`WITH…SELECT` over the
+   `properties` view. Single statement, SELECT/CTE only; row cap auto-applies (default 100,
+   max 1000). Use `ILIKE '%…%'` for owner (`owners_text`), city (`address_city`), material
+   (`exterior_wall_material`). This runs SQL over the **OPEN IPFS parquet via MCP (NOT Neon)** —
+   do **not** hand these off to `use-elephant-query-db`. `county` defaults to `lee` and must
+   match the MCP's `PROPERTY_QUERY_TABLE_MAP`. Coverage varies by county: Lee has no
+   acreage/material (NULL); HOA (`hoa_flag`) is NULL everywhere — confirm with
+   `getPropertyQuerySchema` / `SELECT count(col)` and say "not available for this county"
+   rather than inventing.
 1. **Dataset context** — `getOracleDatasetInfo` → county, `propertyCount`, freshness timestamps
 2. **Geo-scoped questions** — `findPropertiesInArea` (bbox or polygon) → parcel/property IDs in
    area → `getOracleProperty` on candidates
@@ -74,7 +86,8 @@ then fetch consolidated JSON and filter in reasoning.
 - Never claim a **full-count** answer without stating geo scope, pagination limits, and how many
   records were actually inspected.
 - Report **methodology**: tools called, area/bbox used, sample size, filter rules applied.
-- Hand off to `use-elephant-query-db` when the user needs SQL joins at scale over Neon.
+- Open-data attribute/aggregate/filter SQL runs here via `queryProperties` (open IPFS parquet,
+  not Neon) — only hand off to `use-elephant-query-db` for Neon-only rows/joins not in the parquet.
 - Hand off to `use-oracle` when the user wants to ingest or refresh source data.
 
 ## Expected output
