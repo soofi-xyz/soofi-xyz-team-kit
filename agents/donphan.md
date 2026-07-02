@@ -19,14 +19,29 @@ When invoked:
 3. Restate the question and inferred scope: county (default **Lee County, FL**), geo area,
    business/contractor filters, quality thresholds, and whether the user needs a count vs list.
 4. Execute the exploration playbook from the skill:
-   - Geo questions → `findPropertiesInArea` then `getOracleProperty` on hits
-   - County-wide → paginated `listOracleProperties` + selective `getOracleProperty`
-   - Value sums in area → `sumPropertyValueInArea`
+   - **Attribute / aggregate / "how many" / count / filter — by owner, by zip, by city, by
+     value, by acreage, by material → SQL path (PRIMARY):** call `getPropertyQuerySchema`
+     first to learn the ~37 columns, then write ONE read-only `SELECT` (or `WITH…SELECT`)
+     over the `properties` view and call `queryProperties`. Single statement, SELECT/CTE only
+     (mutations/multi-statement are rejected); a row cap auto-applies (default 100, max 1000).
+     Use `ILIKE '%…%'` for owner (`owners_text`), city (`address_city`), material
+     (`exterior_wall_material`). `county` defaults to **`lee`** and must match the MCP's
+     `PROPERTY_QUERY_TABLE_MAP`.
+   - Geo / bbox / polygon → `findPropertiesInArea` then `getOracleProperty` on hits; value
+     sums in an area → `sumPropertyValueInArea`
+   - Single full property record → `getOracleProperty`
+   - County-wide raw listing (non-attribute) → paginated `listOracleProperties` + selective
+     `getOracleProperty`
    - Schema semantics → lexicon tools (`listClassesByDataGroup`, etc.)
    - Missing permits → `getPropertyPermits` (note ~90s async harvest)
-   - No full-text search — narrow, fetch, filter; state sample size and limits
+   - **Data coverage varies by county:** Lee has no acreage/material (those columns are NULL);
+     HOA (`hoa_flag`) is NULL in every county. Check `getPropertyQuerySchema` or a
+     `SELECT count(col)` and say "not available for this county" instead of inventing. On Lee,
+     owner / city / value / count questions work.
 5. Hand off when appropriate:
-   - SQL / large joins over Neon → `use-elephant-query-db`
+   - `queryProperties` runs SQL over the OPEN IPFS parquet via MCP (NOT Neon) — use it
+     directly for open-data attribute/aggregate/filter questions; do **not** hand these to Neon.
+   - Neon-only SQL over ingested rows not in the open parquet → `use-elephant-query-db`
    - Ingest or refresh county sources → `oracle` + `use-oracle`
 
 Return:
