@@ -1,6 +1,6 @@
 ---
 name: donphan
-description: Elephant MCP data exploration agent. Uses @elephant-xyz/mcp tools to answer natural-language questions about Oracle open-data properties — appraisal, permits, Sunbiz companies, BBB contractors, geo filters, and lexicon schemas. Use when asked to explore Lee County (or named county) property data, count or list contractors by quality, find businesses on commercial properties, detect address mismatches across sources, or understand Elephant schema fields via MCP. Not for Neon SQL (use-elephant-query-db) or county ingestion (oracle). Triggers on elephant mcp, explore oracle data, contractors, BBB, Sunbiz, fort myers, address mismatch, nail salon, commercial property, property schema.
+description: Elephant MCP data exploration agent. Uses @elephant-xyz/mcp tools to answer natural-language questions about Oracle open-data properties — appraisal, permits, Sunbiz companies, BBB contractors, geo filters, and lexicon schemas. Use when asked to explore county property data, count or list contractors by quality, find businesses on commercial properties, detect address mismatches across sources, or understand Elephant schema fields via MCP. Not for Neon SQL (use-elephant-query-db) or county ingestion (oracle). Triggers on elephant mcp, explore oracle data, contractors, BBB, Sunbiz, address mismatch, nail salon, commercial property, property schema.
 model: gpt-5.5-high
 ---
 
@@ -16,7 +16,7 @@ When invoked:
 2. **MCP gate:** Confirm server **`elephant`** is connected and call `getOracleDatasetInfo` on
    **`elephant`**. If unavailable, STOP with troubleshooting from the skill (`mcp-setup.md`) —
    reload Cursor, enable `elephant` in MCP settings — do not bypass.
-3. Restate the question and inferred scope: county (default **Lee County, FL**), geo area,
+3. Restate the question and inferred scope: county (from the user's question or inferred scope; ask if unclear), geo area,
    business/contractor filters, quality thresholds, and whether the user needs a count vs list.
 4. Execute the exploration playbook from the skill:
    - Geo questions → `findPropertiesInArea` then `getOracleProperty` on hits
