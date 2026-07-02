@@ -10,6 +10,8 @@ Authoritative blueprint for re-creating the **Persist** graph-persistence servic
 
 Persist is a serverless graph-persistence layer that fronts an Amazon Neptune cluster behind a SigV4-authenticated HTTPS API and an EventBridge fact-ingestion surface. It accepts lexicon-compliant graph data in two shapes (GraphSON v3 documents and Neptune bulk-load CSV), exposes both synchronous and asynchronous Gremlin query channels, accelerates full-text Gremlin reads through Amazon Neptune full-text search backed by Amazon OpenSearch, and maintains lexicon-declared derived index properties on durable graph elements.
 
+Persist additionally exposes a **polymorphic GraphQL read surface** whose object types are generated deterministically from the lexicon. Each field resolves against the data source declared in a Persist-owned resolution map — the Neptune graph, a configured DynamoDB table, or the Interprose vendor API — without the caller knowing or choosing the source. GraphQL is strictly read-only; all writes stay on the existing GraphSON/CSV/event ingest contracts.
+
 ### 1.2 Primary user surface
 
 A single AWS API Gateway HTTP API at `/persist/*`, IAM-authorised, with the following capabilities:
@@ -23,6 +25,8 @@ A single AWS API Gateway HTTP API at `/persist/*`, IAM-authorised, with the foll
 | `POST`   | `/persist/gremlin-async`            | Submit a long-running Gremlin query for asynchronous execution; returns `requestId`                    |
 | `GET`    | `/persist/gremlin-async/:requestId` | Get terminal/in-flight job state and metadata                                                          |
 | `DELETE` | `/persist/gremlin-async/:requestId` | Idempotent cancel; persists `cancelRequested` intent or terminal `CANCELLED` depending on state        |
+| `POST`   | `/persist/graphql`                  | Read-only GraphQL query execution over lexicon-generated types with per-field data-source resolution (Neptune, DynamoDB, or Interprose) |
+| `GET`    | `/persist/graphql/schema`           | Return the currently active generated GraphQL SDL plus lexicon and resolution-map version metadata     |
 
 Out-of-band, the service also exposes:
 
@@ -34,8 +38,10 @@ Out-of-band, the service also exposes:
 
 ### 1.3 Non-goals
 
-- Persist does **not** expose a public read API beyond Gremlin. OpenSearch-backed full-text search is accessed through the existing Gremlin read surface, not through a separate `/persist/search` endpoint or a raw OpenSearch endpoint.
+- Persist's public read surfaces are Gremlin and the lexicon-generated GraphQL API — nothing else. OpenSearch-backed full-text search is accessed through the existing Gremlin read surface, not through a separate `/persist/search` endpoint or a raw OpenSearch endpoint.
 - Persist does **not** provide an arbitrary search engine or caller-defined OpenSearch schema. It only maintains the OpenSearch documents required for Neptune full-text search over Persist's graph data and the derived properties declared by Lexicon's `indexes` metadata.
+- The GraphQL surface does **not** accept caller-defined types, caller-defined resolvers, mutations, or subscriptions. The schema is generated from the lexicon; the field-to-source routing comes only from the Persist-owned resolution map (§3.9). Callers cannot select or override a data source per request.
+- Persist does **not** proxy arbitrary Interprose operations. Interprose is reachable only as a resolution target for fields declared in the resolution map, through the batched, cached, rate-limited resolver client in §4.5 — never as a passthrough API.
 - Persist does **not** provide the legacy document-store surface (`/persistence/transactions`, `/persistence/collections`) or accept API-key authentication. Callers use SigV4 against `/persist/*`; deployment correlation and log records stay in the owning service's storage.
 - Persist does **not** synthesise its own VPC certificates or domains. Bootstrap creates the tenant's shared API Gateway custom domain before product deployment; Persist owns only its `/persist` mapping to that existing domain.
 - Persist does **not** own the shared lexicon document; it consumes Lexicon product artifacts from S3 through the `/lexicon/data-uri` SSM parameter.
@@ -132,7 +138,8 @@ All Lambdas are `NodejsFunction` with `runtime=NODEJS_24_X`, `architecture=ARM_6
 
 | Function                            | Memory | Timeout | VPC | Trigger                                       | Purpose |
 | ----------------------------------- | ------ | ------- | --- | --------------------------------------------- | ------- |
-| `PersistHandler`                    | 512    | 30 s    | ✓   | API Gateway HTTP API                          | API router for all `/persist/*` routes |
+| `PersistHandler`                    | 512    | 30 s    | ✓   | API Gateway HTTP API                          | API router for all `/persist/*` routes except GraphQL |
+| `PersistGraphQlHandler`             | 1024   | 30 s    | ✓   | API Gateway HTTP API                          | Read-only GraphQL executor: lexicon-generated schema, per-field resolution to Neptune, DynamoDB, or Interprose |
 | `PersistGraphFactHandler`           | 512    | 30 s    | ✓   | EventBridge rule for `GraphFactProduced`      | Validate graph-fact events and route them to sync Neptune ingest or async GraphSON ingest |
 | `PersistAsyncBulkWorker`            | 1024   | 15 min  | ✓   | `IngestAsyncQueue` SQS (`batchSize=400`, `maxBatchingWindow=1m` prod / `3s` test, `maxConcurrency=10`, `reportBatchItemFailures`) | Stage-1 ingest worker |
 | `PersistAsyncBulkAggregateWorker`   | 1024   | 15 min  | ✓   | `FilteredBatchQueue` SQS (`batchSize=6`, similar batching window) | Stage-2 ingest aggregator |
@@ -154,7 +161,8 @@ Plus an **ECS Fargate** task (ARM64, 1 vCPU / 2048 MB, 120 s stop timeout) packa
 #### 2.4.5 Routing fabric
 
 - **HTTP API** (`HttpApi` `PersistApi`) with default stage and CORS pre-flight for `*`. Routes:
-  - `/persist` and `/persist/{proxy+}` for all methods → `HttpLambdaIntegration(PersistHandler)` with `HttpIamAuthorizer`.
+  - `POST /persist/graphql` and `GET /persist/graphql/schema` → `HttpLambdaIntegration(PersistGraphQlHandler)` with `HttpIamAuthorizer`. These explicit routes take precedence over the proxy route.
+  - `/persist` and `/persist/{proxy+}` for all other methods/paths → `HttpLambdaIntegration(PersistHandler)` with `HttpIamAuthorizer`.
 - **API Gateway custom domain mapping** under base path `persist` against the Bootstrap-created tenant custom domain passed by Deployer (`AWS::ApiGatewayV2::ApiMapping` for the HTTP API). Persist must not create the shared API Gateway `DomainName`; Bootstrap creates it before product deployment.
 - **EventBridge rule** (`GraphFactProducedRule`) on the tenant event bus. Pattern: `{ "detail-type": ["GraphFactProduced"], "detail": { "graphson_format": ["graphson-v3"] } }`. Target: `PersistGraphFactHandler`, with bounded EventBridge retry policy and `GraphFactEventDlq` as the target DLQ.
 - **EventBridge Pipe** (`GremlinAsyncPipe`) source = `GremlinAsyncQueue` (`batchSize: 1`), target = Step Functions `GremlinAsyncStateMachine` (`FIRE_AND_FORGET`). The submission flow is therefore SQS → EventBridge Pipe → Step Functions, **not** SQS → Lambda.
@@ -182,6 +190,7 @@ Plus an **ECS Fargate** task (ARM64, 1 vCPU / 2048 MB, 120 s stop timeout) packa
 - API Gateway routes use `HttpIamAuthorizer`; every caller must SigV4-sign `execute-api` requests.
 - `PersistGraphFactHandler` runs in the VPC. It can read the lexicon object, verify referenced vertices through the Neptune reader, write graph data through the Neptune writer for the sync path, write async payloads to `IngestAsyncPayloadBucket`, and send messages to `IngestAsyncQueue` for the async path. The EventBridge rule can invoke only this handler and write failed deliveries to `GraphFactEventDlq`.
 - Derived-index Lambdas can read the lexicon object and `IndexMaintenanceBucket`, read/write `DerivedIndexStateTable`, read Neptune Streams and execute read traversals with `neptune-db:ReadDataViaQuery`, and execute narrowly-scoped property writes with `neptune-db:WriteDataViaQuery` on the writer endpoint. They cannot invoke public API Gateway routes.
+- `PersistGraphQlHandler` is strictly read-only: `neptune-db:connect` + `neptune-db:ReadDataViaQuery` against the reader endpoint, `s3:GetObject` on the lexicon object and the resolution-map object, `dynamodb:GetItem`/`dynamodb:BatchGetItem`/`dynamodb:Query` only on the tables named in the resolution map, and `secretsmanager:GetSecretValue` only on the Interprose credentials secret. It gets no Neptune write actions, no ingest bucket/queue access, and no OpenSearch write access.
 
 ### 2.5 Configuration surface (env vars)
 
@@ -264,6 +273,17 @@ The runtime is configured exclusively via env vars (read once on cold start; mis
 | `PERSIST_BLOB_PREFIX`                       | `persist-blobs` | Blob object key prefix                     |
 | `PERSIST_BLOB_MAX_BYTES`                    | `1048576` (1 MiB) | Maximum UTF-8 byte length for one blob value |
 | `PERSIST_BLOB_OBJECT_TIMEOUT_MS`            | `10000`       | S3 PUT/HEAD timeout for blob materialisation |
+| `GRAPHQL_RESOLUTION_MAP_URI`                | —             | S3 URI of the Persist-owned resolution map (§3.9); required by `PersistGraphQlHandler`, fails closed when missing or invalid |
+| `GRAPHQL_RESOLUTION_MAP_TIMEOUT_MS`         | `10000`       | Resolution-map S3 fetch timeout                |
+| `GRAPHQL_MAX_QUERY_DEPTH`                   | `8`           | Reject queries deeper than this before execution |
+| `GRAPHQL_MAX_QUERY_COMPLEXITY`              | `1000`        | Static complexity budget per request (fields × list multipliers) |
+| `GRAPHQL_MAX_LIST_PAGE_SIZE`                | `100`         | Hard cap on `first` pagination arguments       |
+| `GRAPHQL_FIELD_TIMEOUT_MS`                  | `5000`        | Per-source resolver timeout (each Neptune/DynamoDB/Interprose batch call) |
+| `INTERPROSE_BASE_URL`                       | —             | Interprose API base URL; required only when the resolution map declares `interprose` sources |
+| `INTERPROSE_CREDENTIALS_SECRET_ARN`         | —             | Secrets Manager secret holding Interprose credentials |
+| `INTERPROSE_MAX_CONCURRENT_REQUESTS`        | `4`           | Per-container concurrency cap toward Interprose |
+| `INTERPROSE_MAX_BATCH_SIZE`                 | `25`          | Max keys coalesced into one Interprose batch call |
+| `INTERPROSE_CACHE_TTL_SECONDS`              | `60`          | In-process TTL cache for Interprose resolver responses |
 | `POWERTOOLS_SERVICE_NAME` / `POWERTOOLS_LOG_LEVEL` / `POWERTOOLS_METRICS_NAMESPACE` | `persist*` / `INFO` / `persist` | Logging + metrics |
 
 ---
@@ -454,10 +474,12 @@ The HTTP layer is the authoritative tag-to-status mapper. Each error type is a s
 
 | HTTP | Tag(s) |
 | ---- | ----- |
-| 400  | `BadRequest`, `GremlinSyntaxError`, `GremlinMutationNotAllowedError`, `GremlinFtsPolicyError`, `GraphSONValidationError`, `GraphSONPayloadValidationError`, `GraphSONIntegrityError`, `DerivedIndexServerManagedPropertyError`, `PersistBlobValidationError` |
+| 400  | `BadRequest`, `GremlinSyntaxError`, `GremlinMutationNotAllowedError`, `GremlinFtsPolicyError`, `GraphSONValidationError`, `GraphSONPayloadValidationError`, `GraphSONIntegrityError`, `DerivedIndexServerManagedPropertyError`, `PersistBlobValidationError`, `GraphQlRequestError`, `GraphQlComplexityError` |
 | 404  | `VertexNotFoundError`, `GremlinAsyncRequestNotFoundError`, `MissingVertexRef` |
-| 500  | `GremlinExecutionError`, `GremlinAsyncJobSerializationError`, `GremlinAsyncResultSerializationError`, `GremlinAsyncJobConditionalConflictError`, `OpenSearchSyncStateError`, `PersistBlobHashCollisionError`, fallback `InternalServerError` |
+| 500  | `GremlinExecutionError`, `GremlinAsyncJobSerializationError`, `GremlinAsyncResultSerializationError`, `GremlinAsyncJobConditionalConflictError`, `OpenSearchSyncStateError`, `PersistBlobHashCollisionError`, `GraphQlSchemaGenerationError`, `GraphQlResolutionMapError`, fallback `InternalServerError` |
 | 503  | `NeptuneConnectionError`, `NeptuneRetriableError`, `S3PayloadStoreError`, `SqsEnqueueError`, `PersistBlobStoreError`, `GremlinAsyncJobStoreError`, `GremlinAsyncResultStoreError`, `GremlinAsyncExecutionError`, `GremlinAsyncExecutionTimeoutError`, `GremlinAsyncCancelError`, `OpenSearchIndexUnavailable`, `OpenSearchIndexLagExceeded`, `OpenSearchSyncCheckpointMissing` |
+
+GraphQL transport errors above apply only to whole-request failures (malformed document, complexity rejection, schema/resolution-map load failure). Per-field data-source failures do **not** fail the HTTP request; they surface inside the GraphQL `errors` array with a `null` field value (§4.5).
 
 The router additionally **sanitises** GraphSON error payloads on the `/ingest` path (e.g. `GremlinExecutionError` is converted into a generic `Internal Server Error` to avoid leaking query text to callers).
 
@@ -518,6 +540,54 @@ Indexing rules:
 - Server-managed `created_at`, hashed IDs, and lexicon-derived index properties may be indexed because callers can read them through Gremlin; callers still cannot set server-managed properties at ingest boundaries.
 - Non-string indexing is enabled for safe scalar types so Gremlin FTS can sort/filter using fields such as `predicates.amount.value` when the underlying OpenSearch mapping supports it. When sorting by a non-string field, queries must use the `.value` suffix required by Neptune FTS.
 - The OpenSearch index is eventually consistent with Neptune. Persist exposes the lag through metrics and may fail FTS queries with `OpenSearchIndexLagExceeded` when `SEARCH_FRESHNESS_MAX_LAG_SECONDS` is configured and the sync checkpoint is too far behind.
+
+### 3.9 GraphQL schema generation and the resolution map
+
+#### 3.9.1 Schema generation from the lexicon
+
+The GraphQL schema is generated deterministically from the canonical lexicon at load time — there is no hand-authored SDL for lexicon types. The same 300 s TTL / single-flight / fail-closed loading rules as §3.3 apply; a lexicon refresh regenerates the schema. Candidate lexicons are **not** accepted on the GraphQL surface.
+
+Generation rules:
+
+- Every lexicon vertex `type` becomes a GraphQL object type. The type name is the vertex label converted to PascalCase (`debt` → `Debt`, `phone_number` → `PhoneNumber`); field names keep the lexicon's snake_case verbatim so property vocabulary stays identical across Gremlin and GraphQL.
+- Every lexicon property maps by `type`: `string` → `String`, `integer` → `PersistInt64` (custom scalar, serialised as string when out of `Int` range), `number` → `Float`, `boolean` → `Boolean`, `array` → list of the mapped `items` type, `blob` → `String` carrying the persisted `s3://` URI (never original text, matching §3.2.1).
+- Properties with `enum` become GraphQL enum types named `<Type><Property>Enum` with lexicon values verbatim; values that are not valid GraphQL enum names fall back to `String` with the enum documented in the field description.
+- `format: date|date-time|time` map to the custom scalar `PersistDateTime` (ISO-8601 string). Element IDs are `ID!` carrying the deterministic content-hash ID from §3.4.
+- Lexicon-derived index keys (§3.3) appear as ordinary read fields on their owner type.
+- Every lexicon edge becomes a relationship field on both endpoint types: the `from` type gets a field named after the edge label returning the `to` type, and the `to` type gets the reverse field prefixed by convention (`rev_<label>`). Relationship fields returning lists use `first`/`after` pagination arguments bounded by `GRAPHQL_MAX_LIST_PAGE_SIZE`. Edge properties are exposed through a `<Label>Connection`/edge wrapper only when the lexicon edge declares properties; otherwise the field returns the target type directly.
+- Required lexicon properties are non-null **only** when their resolution source is `graph`; any field resolved from DynamoDB or Interprose is nullable regardless of lexicon `required`, because an external-source failure must degrade to `null` + error entry instead of destroying the parent selection (§4.5).
+- The root `Query` type exposes, per vertex type: `<type>(id: ID!)` single lookup and `<type>_by(...)` lookups for lexicon-indexed properties. No free-form traversal or filter DSL is generated; complex traversals remain Gremlin's job.
+- Generation is a pure function of `(lexicon document, resolution map)`. Two loads of the same inputs must yield byte-identical SDL; the SDL and a content hash are returned by `GET /persist/graphql/schema`.
+
+#### 3.9.2 Resolution map (Persist-owned artifact)
+
+Field-to-source routing lives in a versioned JSON artifact owned by Persist — **not** in the lexicon (physical topology must not leak into the shared ontology) and **not** hardcoded in resolver code. The artifact is stored in a Persist-owned S3 location referenced by `GRAPHQL_RESOLUTION_MAP_URI`, loaded with the same TTL/fail-closed discipline as the lexicon, and validated against the current lexicon at load time.
+
+```json
+{
+  "schema_version": "1.0",
+  "defaults": { "source": "graph" },
+  "types": {
+    "debt": {
+      "fields": {
+        "current_balance": { "source": "graph" },
+        "servicing_notes": { "source": "dynamodb", "table_env": "GRAPHQL_DDB_TABLE_SERVICING", "key": { "pk": "debt#${id}", "sk": "servicing_notes" }, "attribute": "notes" },
+        "live_payment_status": { "source": "interprose", "operation": "getAccountStatus", "key_field": "interprose_account_id", "response_path": "status" }
+      }
+    }
+  }
+}
+```
+
+Contract rules:
+
+- `source ∈ graph|dynamodb|interprose`. Unlisted types/fields inherit `defaults.source` (normally `graph`).
+- Every mapped field must exist in the lexicon for that type; unknown types, unknown fields, malformed key templates, and `interprose` entries whose `key_field` is not a lexicon property of the owner type are load-time validation errors (`GraphQlResolutionMapError`, fail closed).
+- `dynamodb` entries name their table through an env-var indirection (`table_env`) so IAM grants and CDK wiring stay explicit per table; key templates may interpolate only the element `id` and lexicon properties already resolved from the graph.
+- `interprose` entries name a whitelisted operation from the Persist Interprose client (§4.5); arbitrary URLs or verbs in the map are rejected.
+- Relationship fields (edges) always resolve from the graph. Only scalar/leaf fields may be routed to DynamoDB or Interprose.
+- The map carries `schema_version` and is content-hashed; the active hash is exposed via `GET /persist/graphql/schema` and logged with every GraphQL request for auditability.
+- Changing a field's source is a caller-invisible operation by design, but it changes freshness semantics — treat map promotion like a lexicon promotion (reviewed artifact, not ad-hoc edits).
 
 ---
 
@@ -580,8 +650,71 @@ Each router scopes its own dependency container so that a config error in an unr
 - **GraphSON router** depends on: Gremlin client + transactions, Lexicon loader, GraphSON semantic validator, GraphSON validator, vertex-ref verifier, Persist Blob service, GraphSON sync ingest service, GraphSON async ingest service.
 - **Gremlin router** depends on: Gremlin client + transactions, GraphSON service (for shared utilities), Gremlin FTS policy/config, and optional OpenSearch sync-state freshness reader.
 - **Async Gremlin router** depends on: Submit, Status, and Cancel services (each backed by the DDB job store and, for cancel, the Neptune Data API client).
+- **GraphQL handler** (separate Lambda, §4.5) depends on: Lexicon loader, resolution-map loader, schema generator, Gremlin reader client, DynamoDB resolver client, and Interprose resolver client.
 
 The container is constructed **once per router**, not per request, so the lexicon TTL cache survives across invocations within the same Lambda warm container.
+
+### 4.5 `POST /persist/graphql` and `GET /persist/graphql/schema`
+
+- Request schema: `{ query: string (1..100,000), variables?: object, operationName?: string }`. Mutations and subscriptions in the document are rejected with `GraphQlRequestError` (400) before execution — the generated schema contains no mutation/subscription root, and the executor additionally refuses non-`query` operations defensively.
+- **Runtime (normative)**: the GraphQL executor MUST run inside the `PersistGraphQlHandler` Lambda behind the existing IAM-authorised HTTP API, using GraphQL Yoga on `graphql-js`. Do **not** use AWS AppSync, a standalone GraphQL server (ECS/Fargate/ALB), or API-Gateway-level GraphQL features: resolvers must reach Neptune inside the VPC, reuse the SigV4 auth and envelope conventions, share the Gremlin connection state managers and retry classifier with the rest of Persist, and keep IAM least-privilege on a single role. A managed resolver layer would degenerate into Lambda resolvers while losing those invariants.
+- **Static guards before execution**: parse → depth check (`GRAPHQL_MAX_QUERY_DEPTH`) → complexity estimate (`GRAPHQL_MAX_QUERY_COMPLEXITY`, list fields multiplied by their bounded `first` argument). Violations return `GraphQlComplexityError` (400) without touching any data source.
+- **Execution model**:
+  - Graph-sourced fields resolve through the Neptune **reader** with the same read-only policy, retry classification, and connection state manager as `/persist/gremlin`. The planner groups graph fields per element so one element resolves its graph properties in one traversal, not one traversal per field.
+  - DynamoDB-sourced fields resolve through `BatchGetItem`/`Query` per the resolution-map key template.
+  - Interprose-sourced fields resolve through the Persist Interprose client: whitelisted operations only, credentials from `INTERPROSE_CREDENTIALS_SECRET_ARN`, concurrency capped by `INTERPROSE_MAX_CONCURRENT_REQUESTS`, and an in-process TTL response cache (`INTERPROSE_CACHE_TTL_SECONDS`).
+  - **All three source clients batch per request** (DataLoader pattern): resolver keys collected within one execution tick are coalesced into batched source calls (`INTERPROSE_MAX_BATCH_SIZE`, `GREMLIN_BATCH_EXISTS_CHUNK_SIZE`-style chunking for graph reads, DynamoDB 100-key batches). N+1 fan-out per list item is a defect, not a tuning knob.
+  - Every source batch call is wrapped in `GRAPHQL_FIELD_TIMEOUT_MS`.
+- **Partial-failure semantics**: a failed source batch nulls only the affected fields and appends GraphQL `errors` entries with `extensions: { code, source: "graph"|"dynamodb"|"interprose", retriable: boolean }`. Error messages never include Interprose URLs, credentials, raw vendor responses, or Gremlin query text. Interprose being down must not fail graph-backed fields, and vice versa.
+- **Freshness semantics**: graph fields reflect committed Neptune state (derived indexes are eventually consistent per §5.6), Interprose fields are live vendor reads subject to the TTL cache, DynamoDB fields reflect the owning table's write discipline. The response `extensions.sources` object reports, per source used: `{ used: true, cacheHit?: boolean, durationMs: number }` so callers can observe mixed freshness without learning the field-level mapping.
+- **Response**: standard GraphQL over HTTP — `{ data, errors?, extensions }` with HTTP 200 for any executed document. The §3.1 envelope applies only to transport-level rejections (400/500/503 tags in §3.6).
+- `GET /persist/graphql/schema` returns `{ sdl: string, sdlHash: string, lexiconUri: string, resolutionMapHash: string, generatedAt: string }`. This is the introspection-of-record; runtime introspection queries are also allowed since the surface is IAM-authorised.
+- **Observability**: metrics `graphql_requests`, `graphql_request_duration_ms`, `graphql_field_resolutions` / `graphql_field_failures` dimensioned by `source` (bounded: `graph|dynamodb|interprose`), `graphql_complexity_rejections`, `interprose_resolver_calls`, `interprose_resolver_cache_hits`, `interprose_resolver_throttles`. Structured logs carry `requestId`, `operationName`, `sdlHash`, `resolutionMapHash`, per-source batch counts, and durations — never resolved values.
+
+#### 4.5.1 Resolver architecture (normative)
+
+The resolver layer follows a **ports-and-adapters** design so that adding a data source never touches the schema generator, the executor, or existing adapters. Field resolution behaviour is data-driven from the resolution map — there is no hand-written resolver function per type or per field.
+
+**The `SourceResolver` port.** Every data source is one adapter implementing a single interface:
+
+```typescript
+interface SourceResolver<TEntry extends ResolutionMapEntry = ResolutionMapEntry> {
+  /** Discriminator matching resolution-map `source` values. */
+  readonly source: string;
+  /** Load-time validation of one map entry against the lexicon. Returns tagged issues; any issue fails the map load closed. */
+  validateEntry(entry: TEntry, ownerType: LexiconType, lexicon: Lexicon): ResolutionMapIssue[];
+  /** Batched fetch. One call per (entry, execution level), never per parent item. Keys are parent element IDs plus the graph-resolved lexicon properties the entry's key template references. */
+  batchLoad(entry: TEntry, keys: readonly ResolverKey[], ctx: GraphQLRequestContext): Promise<ReadonlyArray<ResolverResult>>;
+}
+```
+
+The signature above is normative in shape, not in typing style: express the async/error channel in the codebase's runtime (e.g. `Effect<ReadonlyArray<ResolverResult>, BatchError, R>` instead of a rejecting `Promise`), as long as the three members and their semantics are preserved.
+
+- `ResolverResult` is `{ ok: true, value }` or `{ ok: false, error: TaggedError }` per key — an adapter never throws for per-key failures, so one bad key cannot poison a batch. Batch-level failures (timeout, connection) fail the batch's effect and null every field served by that batch.
+- Adapters own their transport concerns internally: the graph adapter wraps the shared Gremlin reader state manager and retry classifier (§7.2/§7.3); the DynamoDB adapter owns `BatchGetItem` chunking to 100 keys; the Interprose adapter owns the operation whitelist, credential fetch, `INTERPROSE_MAX_CONCURRENT_REQUESTS` semaphore, `INTERPROSE_MAX_BATCH_SIZE` coalescing, and the TTL response cache. The executor knows none of this.
+- Each adapter follows §7.7: a typed interface, a construction path that takes clients/clocks/config as injected dependencies, and a live binding — expressed in the codebase's established runtime/DI style (e.g. Effect services and layers). Tests pass in-memory fakes through the same interface.
+
+**The registry.** `SourceResolverRegistry` is a map from `source` discriminator to adapter, assembled once in the composition module. Resolution-map loading validates that every `source` value in the map has a registered adapter and calls each adapter's `validateEntry` for its entries. **Adding a new data source is exactly three changes**: implement the port, register the adapter, and extend the resolution-map schema's `source` enum plus entry shape. No changes to executor, planner, schema generator, or other adapters — this is the open–closed boundary and reviewers must reject designs that special-case a source inside the executor.
+
+**The generic field resolver.** The schema generator attaches one generic resolver factory to every field, closed over that field's resolution-map entry:
+
+- `graph`-sourced scalar fields resolve from the parent object: the planner fetches all graph-sourced fields of an element in **one** traversal per (type, execution level) through the graph adapter, and the field resolver is a property read on that prefetched record.
+- Externally-sourced fields resolve through a per-request DataLoader keyed by `(typeName, fieldName)`, which delegates to `registry.get(entry.source).batchLoad(...)`.
+- Relationship fields resolve through the graph adapter's traversal loaders with the pagination bounds from §3.9.1.
+
+**Per-request context.** `GraphQLRequestContext` is constructed per request and carries the DataLoader instances (batching/memoisation scope is exactly one request — no cross-request caching except the Interprose adapter's internal TTL cache), the request deadline derived from `GRAPHQL_FIELD_TIMEOUT_MS`, `requestId`, `sdlHash`, `resolutionMapHash`, and the metrics/log emitters. Nothing resolver-related lives in shared mutable state except the warm-container schema and map caches.
+
+**Component boundaries (not file layout).** The PRD constrains interfaces and dependency directions, not modules or filenames — express these in whatever runtime/DI style the codebase already uses (e.g. Effect services/layers), per §7.7. The required components and their allowed dependencies are:
+
+- **Schema generator** — a pure function `(lexicon, resolutionMap) → { schema, sdl, sdlHash }`. No I/O, no clients, no clock. Everything else depends on its output, never the reverse.
+- **Resolution-map service** — owns S3 load, TTL cache, and fail-closed validation (delegating per-entry checks to each adapter's `validateEntry`). Depends only on the S3 client, the lexicon service, and the registry.
+- **Source-resolver registry** — the only component that knows the set of adapters. The executor and schema generator depend on the registry interface, never on a concrete adapter.
+- **Source adapters** (`graph`, `dynamodb`, `interprose`, and future ones) — implement the `SourceResolver` port; depend on their own transport clients and config, never on the executor, the registry, or each other.
+- **Query guards** — pure pre-execution depth/complexity checks over the parsed document; no data-source dependencies.
+- **Context factory** — builds `GraphQLRequestContext` per request; the only place DataLoaders are constructed.
+- **Handler/executor** — wires Yoga to the generated schema, guards, and context factory. It contains no source-specific logic; if the executor needs to know which source a field uses, the design is wrong.
+
+**Adapter conformance tests.** A single shared contract suite runs against every registered adapter through the `SourceResolver` port: batch-call-count assertions (one call per entry per level), per-key error isolation, batch-level failure propagation, timeout mapping to tagged errors, and `validateEntry` rejection of malformed entries. A new adapter must pass this suite before registration; adapter-specific behaviour (whitelist, cache, chunking) gets its own tests on top.
 
 ---
 
@@ -1210,6 +1343,7 @@ The implementation organises behaviour as small services with a clear interface 
 - Rebuild workflow tests cover selected-index planning, candidate lexicon dry-run only, shard generation, Distributed Map item processing, stream watermark capture, and summary counters.
 - Persist Blob tests cover validation of `persist:Blob` wrappers, byte-limit failures, deterministic URI derivation for repeated text, idempotent S3 conflict handling, no raw-text logging, graph ID equality for repeated blob text, graph ID change for changed blob text, and CSV `*:Blob` transformation to staged `*:String` URI columns before rehash/dedup.
 - Gremlin FTS tests cover allowed `Neptune#fts.*` `withSideEffect` keys, rejection of arbitrary side effects, endpoint injection/validation, bounded `maxResults`/`batchSize`, query-type allowlisting, and mapping OpenSearch lag/unavailable states to the tagged errors in §3.6.
+- GraphQL tests cover deterministic SDL generation from lexicon fixtures (byte-identical across two loads, snapshot-tested), scalar/enum/edge mapping rules, resolution-map validation failures (unknown type/field, bad key template, non-whitelisted Interprose operation), depth/complexity rejection, per-source batching (asserting one batched call per source per execution level, not per item), partial-failure nulling with `extensions.source`, Interprose cache/throttle behaviour with a mock client, mutation/subscription rejection, and read-only IAM posture in `test/cdk/persist-stack.test.ts`. Every source adapter additionally passes the shared `SourceResolver` contract suite (§4.5.1).
 - OpenSearch replication tests cover document transformation from graph elements, non-string indexing metadata, blob URI indexing without raw blob text, initial backfill shard summaries, sample parity checks, idempotent stream replay, delete handling, and checkpoint advancement only after successful OpenSearch writes.
 - Integration tests live in `test/integration/persist-api.test.ts` and hit a deployed API via SigV4 (`PERSIST_API_URL`, `AWS_PROFILE`).
 - The OpenAPI spec at `docs/openapi.json` is regenerated by `scripts/generate-openapi.ts` (driven from the route definitions module).
@@ -1232,6 +1366,7 @@ The implementation organises behaviour as small services with a clear interface 
 - A deployed Lexicon product with SSM `/lexicon/data-uri` pointing to the canonical `lexicon.json` in the Lexicon data bucket.
 - A pre-populated SSM parameter `/persist-spark/glue/neptune-csv-rehash/job-name` pointing at the persist-spark Glue rehash job.
 - Neptune Streams enabled by `NeptuneStack` (`neptune_streams=1`). After changing stream cluster parameters, all Neptune DB instances must be rebooted for the setting to take effect.
+- A published resolution-map object at `GRAPHQL_RESOLUTION_MAP_URI` (a defaults-only map routing everything to `graph` is valid). When the map declares `interprose` sources: a Secrets Manager secret with Interprose credentials and `INTERPROSE_BASE_URL`. When it declares `dynamodb` sources: the referenced tables deployed and named through the `table_env` indirection.
 
 ### 8.2 Deploy / destroy
 
@@ -1254,6 +1389,14 @@ After every deploy run the four release-validation calls listed in `README.md` �
 4. Confirm the status response keeps result bodies out of the metadata and that `resultS3Uri` is reachable.
 
 For `/persist/ingest` and `/persist/gremlin`, use the bash/zsh `awscurl` helper documented in the README.
+
+GraphQL release validation:
+
+1. `GET /persist/graphql/schema` returns SDL whose `sdlHash` matches the deployed lexicon + resolution map.
+2. A signed query selecting only graph-backed fields returns data with `extensions.sources.interprose` absent (proving field-level laziness).
+3. A query mixing graph and Interprose fields returns both, with `extensions.sources` reporting each source used.
+4. With Interprose credentials deliberately broken in non-prod, the same query returns graph fields plus `null` Interprose fields and `errors[].extensions.source == "interprose"` — HTTP 200, no request-level failure.
+5. A query exceeding `GRAPHQL_MAX_QUERY_DEPTH` returns `GraphQlComplexityError` (400) without any data-source call in the logs.
 
 Derived-index release validation:
 
@@ -1294,11 +1437,11 @@ OpenSearch / Neptune FTS release validation:
 
 1. **Repo skeleton**: pnpm workspace, TypeScript, `tsconfig.{base,build,app,src,test}.json`, ESLint, Prettier (with import sort), husky + lint-staged, Vitest. Package name is internal.
 2. **Runtime dependencies**: `@aws-lambda-powertools/{logger,metrics,event-handler}`, `@aws-sdk/{client-neptunedata,client-s3,client-sfn,client-sqs,credential-providers}`, `@smithy/{config-resolver,node-config-provider,hash-node,protocol-http,signature-v4}`, `gremlin`, `gremlin-aws-sigv4`, `csv-parse`. CDK: `aws-cdk-lib`, `constructs`, `aws-cdk`. Choose any preferred validation library and structured-error / DI conventions — the contracts in §3 and §6 must be honoured but the implementation style is unconstrained.
-3. **Schemas / contracts**: one module per group in `lambda/schemas/` — `graphson/{types,vertex,vertex-ref,edge,ingest,validate}`, `eventbridge/graph-fact`, `gremlin`, `gremlin-async`, `async-bulk`, `workflow`, `lexicon`, `derived-index`, `opensearch-fts`, `http`, `errors`. Errors are tagged classes; everything else is type+validator pairs.
+3. **Schemas / contracts**: one module per group in `lambda/schemas/` — `graphson/{types,vertex,vertex-ref,edge,ingest,validate}`, `eventbridge/graph-fact`, `gremlin`, `gremlin-async`, `async-bulk`, `workflow`, `lexicon`, `derived-index`, `opensearch-fts`, `graphql/{request,resolution-map}`, `http`, `errors`. Errors are tagged classes; everything else is type+validator pairs.
 4. **Utils**: `lambda/utils/{csv,errors,graphsonTemporalTransform,lexiconStringFormat,neptuneTemporal,s3}.ts`.
 5. **Configuration**: `lambda/config/neptune.ts` (Neptune host/port/region, retry, connection age) plus per-service config readers tied to the env vars listed in §2.5, including `lambda/config/blob.ts` and `lambda/config/opensearch.ts`. Required vars must throw at startup; optional vars must default per §2.5.
-6. **Services** (one file each in `lambda/services/`): GraphSON (`Hash`, `Decode`, `BlobTransform`, `PersistTransform`, `PersistTransformService`, `SemanticValidationService`, `ValidationService`, `VertexRefVerifier`, `Service`, `AsyncIngestService`); Blob (`PersistBlobService`); EventBridge (`GraphFactEventService`); Gremlin (`Client`, `Tx`, `Retry`, `QueryPolicy`, `FtsPolicy`, `Service`); Lexicon (`Schema`); Derived Index (`Catalog`, `ValueValidation`, `Writer`, `RebuildPlanner`, `RebuildShard`, `StreamClient`, `StreamPoller`, `CheckpointStore`); OpenSearch FTS (`DocumentTransform`, `IndexClient`, `BackfillPlanner`, `BackfillShard`, `StreamPoller`, `CheckpointStore`, `FreshnessService`); Async Gremlin (`JobStore`, `ResultStore`, `Submit`, `Status`, `Cancel`, `Worker`, `NeptuneDataApi`); Async Bulk (`IngestPayload`, `BulkWorker`, `BulkAggregateWorker`, `FilteredBatchEnqueue`, `BulkLoader`, `BulkStage`, `CsvService`, `CsvDedup`, `CsvLexiconValidation`, `CsvWorkflowValidation`); Workflow (`Input`, `CostPredictor`, `ItemRouting`, `ItemStart`, `ItemStatus`, `Summary`, `StepFunctionsCallback`); Metrics (`IngestMetrics`); plus a composition module `services/index.ts` that exports per-router and per-handler dependency containers.
-7. **HTTP layer**: `lambda/http/{request-context.ts, responses.ts}`, `lambda/logging/{powertools.ts, runtime.ts}`, the three routers (`graphson`, `gremlin`, `gremlin-async`) and `router.ts` mounting them with `prefix="/persist"`, then `handler.ts`.
+6. **Services** (one file each in `lambda/services/`): GraphSON (`Hash`, `Decode`, `BlobTransform`, `PersistTransform`, `PersistTransformService`, `SemanticValidationService`, `ValidationService`, `VertexRefVerifier`, `Service`, `AsyncIngestService`); Blob (`PersistBlobService`); EventBridge (`GraphFactEventService`); Gremlin (`Client`, `Tx`, `Retry`, `QueryPolicy`, `FtsPolicy`, `Service`); Lexicon (`Schema`); Derived Index (`Catalog`, `ValueValidation`, `Writer`, `RebuildPlanner`, `RebuildShard`, `StreamClient`, `StreamPoller`, `CheckpointStore`); OpenSearch FTS (`DocumentTransform`, `IndexClient`, `BackfillPlanner`, `BackfillShard`, `StreamPoller`, `CheckpointStore`, `FreshnessService`); Async Gremlin (`JobStore`, `ResultStore`, `Submit`, `Status`, `Cancel`, `Worker`, `NeptuneDataApi`); Async Bulk (`IngestPayload`, `BulkWorker`, `BulkAggregateWorker`, `FilteredBatchEnqueue`, `BulkLoader`, `BulkStage`, `CsvService`, `CsvDedup`, `CsvLexiconValidation`, `CsvWorkflowValidation`); Workflow (`Input`, `CostPredictor`, `ItemRouting`, `ItemStart`, `ItemStatus`, `Summary`, `StepFunctionsCallback`); GraphQL per the §4.5.1 component boundaries (schema generator, resolution-map service, source-resolver registry, the three source adapters, query guards, request-context factory — organised in the codebase's established runtime/DI style, not a prescribed file layout); Metrics (`IngestMetrics`); plus a composition module `services/index.ts` that exports per-router and per-handler dependency containers.
+7. **HTTP layer**: `lambda/http/{request-context.ts, responses.ts}`, `lambda/logging/{powertools.ts, runtime.ts}`, the three routers (`graphson`, `gremlin`, `gremlin-async`) and `router.ts` mounting them with `prefix="/persist"`, then `handler.ts`. The GraphQL surface is a separate handler entrypoint (its own Lambda, §2.4.4) wired to its own explicit routes (§2.4.5); its internal organisation follows the §4.5.1 component boundaries rather than a prescribed layout.
 8. **Worker handlers** + **Workflow handlers** + **EventBridge handler** + **Fargate entrypoint** in `lambda/{graph-fact-event, async-bulk-worker, async-bulk-aggregate-worker, gremlin-async-validate, gremlin-async-worker, workflow-start, workflow-cost-predictor, workflow-validate, workflow-item-route, workflow-item-processor, workflow-item-status, workflow-item-status-simple, index-rebuild-prepare, index-rebuild-shard-worker, index-stream-poller, opensearch-backfill-prepare, opensearch-backfill-shard-worker, opensearch-stream-poller, fargate}/`.
 9. **OpenAPI generator**: `lambda/api/definitions.ts` and `scripts/generate-openapi.ts`. `pnpm api:spec` writes `docs/openapi.json` (the generated spec is checked in).
 10. **CDK stacks**: `lib/neptune-stack.ts`, `lib/persist-search-stack.ts`, and `lib/persist-stack.ts` per §2.2, §2.3, and §2.4, then `bin/app.ts`.
@@ -1333,6 +1476,12 @@ A re-implementation is considered functionally complete when:
 - `OpenSearchStreamPoller` consumes Neptune Streams from `SearchSyncStateTable`, writes/deletes OpenSearch documents idempotently using the model in §3.8, and advances the checkpoint only after successful OpenSearch writes.
 - If the OpenSearch checkpoint is missing, older than the Neptune Streams retention window, or sample parity fails after rebuild, Gremlin FTS fails closed and the runbook requires an OpenSearch rebuild rather than silently using stale search results.
 - OpenSearch outages or lag do not block GraphSON ingest, CSV ingest, derived-index maintenance, or non-FTS Gremlin reads.
+- `POST /persist/graphql` executes read-only queries against a schema generated deterministically from the canonical lexicon; two loads of the same lexicon + resolution map produce byte-identical SDL, and `GET /persist/graphql/schema` reports the matching `sdlHash` and `resolutionMapHash`.
+- Field-to-source routing comes exclusively from the validated Persist-owned resolution map; unknown types/fields, malformed key templates, and non-whitelisted Interprose operations fail the map load closed (`GraphQlResolutionMapError`), and callers can neither see nor select data sources.
+- Queries selecting only graph-backed fields never call Interprose or DynamoDB (verified via resolver-client spies); mixed queries batch per source per execution level with no per-item fan-out.
+- An Interprose or DynamoDB source failure nulls only the affected fields and appends `errors[].extensions.source`, returning HTTP 200 with all graph-backed data intact; mutations, subscriptions, and depth/complexity violations are rejected before any data-source call.
+- `PersistGraphQlHandler` IAM allows only Neptune reader query actions, resolution-map/lexicon S3 reads, the mapped DynamoDB tables, and the Interprose credentials secret — no write actions of any kind.
+- The GraphQL runtime is GraphQL Yoga inside `PersistGraphQlHandler` (no AppSync, no standalone server), and the resolver layer honours the §4.5.1 ports-and-adapters contract: every data source is a `SourceResolver` adapter behind the registry, field behaviour is driven entirely by the resolution map through the generic field resolver, adding a source requires no executor/planner/schema-generator changes, and every adapter passes the shared contract test suite.
 - Loaders treat `created_at` `SINGLE_CARDINALITY_VIOLATION` as effective success only when no other error mix is present.
 - Async ingest never leaves a job stuck in `QUEUED`: failure to enqueue is followed by a best-effort `FAILED` terminal write; failure to validate happens **before** any S3 PUT or SQS send.
 - Lexicon TTL cache (300 s) is reused across requests on the same router and refreshed on expiry; refresh failures fail closed.

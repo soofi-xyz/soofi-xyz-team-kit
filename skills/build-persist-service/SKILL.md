@@ -1,6 +1,6 @@
 ---
 name: build-persist-service
-description: "Use when implementing or changing the Persist service from its PRD: Neptune-backed graph persistence, Persist Blobs, GraphSON ingest, lexicon validation, deterministic IDs, Neptune CSV bulk load, and Gremlin query APIs. Read reference/PRD.md first; combine with conkeldurr, machamp, and apply-engineering-guidelines."
+description: "Use when implementing or changing the Persist service from its PRD: Neptune-backed graph persistence, Persist Blobs, GraphSON ingest, lexicon validation, deterministic IDs, Neptune CSV bulk load, Gremlin query APIs, and the lexicon-generated polymorphic GraphQL read surface with per-field resolution to Neptune, DynamoDB, or Interprose. Read reference/PRD.md first; combine with conkeldurr, machamp, and apply-engineering-guidelines."
 ---
 
 # Build Persist Service
@@ -18,6 +18,7 @@ This skill is intentionally thin. Use it as a loader for [`reference/PRD.md`](./
 - Use `conkeldurr` first for platform product classification, existing-deployment checks, and build-vs-integrate decisions.
 - Use `machamp` for the Neptune CSV workflow, async processing, cost gates, throttling, idempotency, and workflow verification.
 - Use `regigigas` only when Persist must be packaged, released, subscribed, or deployed through the marketplace ecosystem.
+- Read the `integrating-interprose` skill when a PRD task touches Interprose-sourced GraphQL fields, to pick correct endpoints and request/response shapes for the whitelisted resolver operations.
 
 ## Implementation Rules
 
