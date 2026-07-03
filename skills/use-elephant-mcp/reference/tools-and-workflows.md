@@ -16,6 +16,32 @@ All tools are registered in
 
 Slim list entry fields: `propertyId`, `parcelIdentifier`, `cid`, `county`, `fileSizeBytes`.
 
+### Property SQL query (open parquet via DuckDB)
+
+| Tool | Purpose | Key inputs |
+|------|---------|------------|
+| `getPropertyQuerySchema` | Lists the property query-table's ~37 columns + descriptions — **call FIRST** to learn columns | `county?` (default `lee`) |
+| `queryProperties` | Runs ONE read-only `SELECT`/`WITH…SELECT` over the `properties` view (per-county Parquet read from IPFS via DuckDB) and returns rows | `county?` (default `lee`), `sql`, `limit?` |
+
+This is the **PRIMARY path for attribute / aggregate / count / filter questions** — "how
+many", by owner, by zip, by city, by value, by acreage, by material. It runs SQL over the
+**OPEN IPFS parquet via MCP (NOT Neon)** — do not hand these questions off to
+`use-elephant-query-db`.
+
+Constraints on `queryProperties`:
+
+- **Single statement, `SELECT`/CTE only.** Mutations and multi-statement SQL are rejected.
+- A **row cap auto-applies** (default 100, max 1000) via `limit`.
+- The queried view is always named **`properties`**.
+- Use `ILIKE '%…%'` for text matching: owner (`owners_text`), city (`address_city`),
+  material (`exterior_wall_material`).
+- `county` must match the MCP server's `PROPERTY_QUERY_TABLE_MAP` (default `lee`).
+
+**Data coverage varies by county.** Lee has no acreage/material (those columns are NULL);
+HOA (`hoa_flag`) is NULL in every county. Call `getPropertyQuerySchema` or run a
+`SELECT count(col)` to confirm a column is populated, and state "not available for this
+county" rather than inventing values. On Lee, owner / city / value / count questions work.
+
 ### Geo (derived index)
 
 | Tool | Purpose | Key inputs |
@@ -49,22 +75,25 @@ Requires embedding provider (OpenAI or Bedrock).
 
 ```
 User question
+├─ "How many …" / by owner / by zip / by city / by value / by acreage / by material
+│   (attribute · aggregate · count · filter) — PRIMARY PATH
+│   └─ getPropertyQuerySchema (learn columns)
+│   └─ queryProperties (ONE SELECT/CTE over the `properties` view; ILIKE for text)
+│       — SQL over the OPEN IPFS parquet via MCP, NOT Neon; do not hand off to query-db
 ├─ "What fields exist on class X?" / schema semantics
 │   └─ listClassesByDataGroup → listPropertiesByClassName → getPropertySchema
 ├─ "How do I map source Y to Elephant?"
 │   └─ getVerifiedScriptExamples (+ schema tools as needed)
-├─ "In [city/area] …" (geo scoped)
+├─ "In [city/area] …" (geo scoped, bbox/polygon)
 │   └─ getOracleDatasetInfo
 │   └─ findPropertiesInArea (bbox/polygon)
 │   └─ getOracleProperty on hits (filter in reasoning)
-├─ "Total value in [area]"
+├─ "Total value in [area]" (geo)
 │   └─ sumPropertyValueInArea
-├─ "List/count properties with [business/contractor trait]" (county-wide or geo)
-│   └─ getOracleDatasetInfo
-│   └─ findPropertiesInArea OR listOracleProperties (paginate)
-│   └─ getOracleProperty on candidates → filter BBB/Sunbiz/permit fields
+├─ "Full record for parcel/property X"
+│   └─ getOracleProperty
 ├─ "Address mismatch …"
-│   └─ same fetch path → compare address fields (see consolidated-property-shape)
+│   └─ getOracleProperty → compare address fields (see consolidated-property-shape)
 └─ "Permits for parcel …" (missing in consolidated JSON)
     └─ getPropertyPermits → poll if status indicates harvest in progress
 ```
