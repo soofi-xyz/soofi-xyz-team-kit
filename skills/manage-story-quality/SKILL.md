@@ -1,13 +1,13 @@
 ---
 name: manage-story-quality
-description: "Operating guide for the WOW Story Quality Agent (soofi-xyz/wow-website): on new Asana task creation in configured projects, a Vercel runtime rewrites the story via LLM into the WOW format (clear title, Context / Description / single-sentence Acceptance Criterion / Demo Script), updates the task, and opens a review subtask assigned to the creator. Covers onboarding new orgs/projects (seed script, PATs, webhook auto-registration), the webhook + 15-min sweeper trigger paths, the idempotent story_agent_tasks ledger, diagnosing missed or failed stories, and changing the WOW format prompt. Triggers on: story quality agent, story agent, WOW story format, rewrite Asana stories, onboard a project to the story agent, story agent missed a task, story_agent_tasks, seed-story-agent."
+description: "Operating guide for the WOW Story Quality Agent (soofi-xyz/wow-website): on new Asana task creation in configured projects, a Vercel runtime rewrites the story via LLM into the WOW format (clear title, Context / Description / Acceptance Criteria bullets / Demo Script), updates the task, and opens a review subtask assigned to the creator. Covers onboarding new orgs/projects (seed script, PATs, webhook auto-registration), the webhook + 15-min sweeper trigger paths, the idempotent story_agent_tasks ledger, diagnosing missed or failed stories, and changing the WOW format prompt. Triggers on: story quality agent, story agent, WOW story format, rewrite Asana stories, onboard a project to the story agent, story agent missed a task, story_agent_tasks, seed-story-agent."
 ---
 
 # Manage Story Quality
 
 The Story Quality Agent lives in **`soofi-xyz/wow-website`** and runs on Vercel. When a task is
 created in a configured Asana project, it rewrites the story with an LLM (clear imperative title;
-WOW-structured description: Context / Description / exactly-one-sentence Acceptance Criterion /
+WOW-structured description: Context / Description / a bulleted list of verb-first Acceptance Criteria /
 Demo Script), updates the task, and creates a review subtask assigned to the story's creator.
 This skill is the operating contract: onboard projects, trace processing, diagnose misses, and
 change the format. Do not re-implement the agent; operate the one in `wow-website`.
