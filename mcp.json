@@ -5,10 +5,12 @@
       "command": "bash",
       "args": [
         "-c",
-        "exec npx -y --package=github:elephant-xyz/elephant-mcp#v1.7.0 mcp"
+        "exec npx -y --package=github:elephant-xyz/elephant-mcp#main mcp"
       ],
       "env": {
-        "ORACLE_OPEN_DATA_IPNS": "k51qzi5uqu5dlzgslzedrnk4whtd7ip69l0pmd3zxelz8hwjorbeyy0pyyeu4m",
+        "PROPERTY_QUERY_TABLE_MAP": "{\"lee\":\"https://ipfs.filebase.io/ipns/k51qzi5uqu5djd4ohcf3qm87dhlt0e270xw8ejhkyia62edr76uj0u05hrf7m5\"}",
+        "ORACLE_OPEN_DATA_IPNS_MAP": "{\"lee\":\"k51qzi5uqu5dlzgslzedrnk4whtd7ip69l0pmd3zxelz8hwjorbeyy0pyyeu4m\",\"palm-beach\":\"k51qzi5uqu5dgjnt84x8vnj2c9uwxomkpykwdvmf6xg43wwcxsifo6w1sp1wwh\"}",
+        "ORACLE_OPEN_DATA_DEFAULT_COUNTY": "lee",
         "ORACLE_GEO_INDEX_IPNS": "k51qzi5uqu5djo3756w73x3swtt63g9y7igj7tvv1gs4skjk3haj3fuk7qosdi"
       }
     }

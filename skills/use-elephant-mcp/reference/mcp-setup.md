@@ -6,10 +6,10 @@ This kit ships **`mcp.json`** at the plugin root. When you install or update the
 plugin and **reload Cursor**, the MCP server **`elephant`** is registered automatically — no
 manual JSON editing required.
 
-**Install source (interim):** Bundled `mcp.json` installs **elephant-mcp v1.7.0** from the public
-GitHub repo via `npx` because **`@elephant-xyz/mcp@1.7.0` is not on npm yet** (latest published
-is 1.6.0, which lacks Oracle open-data and geo tools). When 1.7.0 is published to npm, the kit
-may switch back to `@elephant-xyz/mcp@1.7.0`.
+**Install source (interim):** Bundled `mcp.json` installs **elephant-mcp `main`** from the public
+GitHub repo via `npx` because **npm `@elephant-xyz/mcp@latest` is still 1.6.0** (lacks
+`queryProperties`, multi-county open data, and current geo tools). When a newer version is
+published to npm, the kit may switch to a tagged release for faster cold starts.
 
 **Teammate checklist:**
 
@@ -29,6 +29,8 @@ may switch back to `@elephant-xyz/mcp@1.7.0`.
 
 Call `getOracleDatasetInfo` with an empty input. A healthy Lee County response includes
 `county: "lee"`, `propertyCount` around **511695**, a non-null `ipnsName`, and export timestamps.
+For Palm Beach, call `getOracleDatasetInfo` with `county: "palm-beach"` — expect
+`propertyCount` around **653945**. Use kebab-case county slugs (`palm-beach`, not `Palm Beach`).
 If `propertyCount` is ~4644 and `ipnsName` is null, see troubleshooting below.
 
 ## Manual fallback
@@ -43,10 +45,12 @@ Servers** (same as root `mcp.json`):
       "command": "bash",
       "args": [
         "-c",
-        "exec npx -y --package=github:elephant-xyz/elephant-mcp#v1.7.0 mcp"
+        "exec npx -y --package=github:elephant-xyz/elephant-mcp#main mcp"
       ],
       "env": {
-        "ORACLE_OPEN_DATA_IPNS": "k51qzi5uqu5dlzgslzedrnk4whtd7ip69l0pmd3zxelz8hwjorbeyy0pyyeu4m",
+        "PROPERTY_QUERY_TABLE_MAP": "{\"lee\":\"https://ipfs.filebase.io/ipns/k51qzi5uqu5djd4ohcf3qm87dhlt0e270xw8ejhkyia62edr76uj0u05hrf7m5\"}",
+        "ORACLE_OPEN_DATA_IPNS_MAP": "{\"lee\":\"k51qzi5uqu5dlzgslzedrnk4whtd7ip69l0pmd3zxelz8hwjorbeyy0pyyeu4m\",\"palm-beach\":\"k51qzi5uqu5dgjnt84x8vnj2c9uwxomkpykwdvmf6xg43wwcxsifo6w1sp1wwh\"}",
+        "ORACLE_OPEN_DATA_DEFAULT_COUNTY": "lee",
         "ORACLE_GEO_INDEX_IPNS": "k51qzi5uqu5djo3756w73x3swtt63g9y7igj7tvv1gs4skjk3haj3fuk7qosdi"
       }
     }
@@ -54,7 +58,7 @@ Servers** (same as root `mcp.json`):
 }
 ```
 
-**Smoke test (terminal):** `bash -c 'exec npx -y --package=github:elephant-xyz/elephant-mcp#v1.7.0 mcp'`
+**Smoke test (terminal):** `bash -c 'exec npx -y --package=github:elephant-xyz/elephant-mcp#main mcp'`
 should start the stdio server (Ctrl+C to stop). Requires network access to GitHub and the npm registry
 (for dependencies). Pre-warming this once before opening Cursor avoids `ENOTEMPTY` errors from
 concurrent `npx` cache writes on first MCP connect.
@@ -76,10 +80,13 @@ teammates rely on.
 | `OPENAI_API_KEY` | `getVerifiedScriptExamples` (OpenAI path) | **Not in bundled config** — add manually only when set; empty value crashes startup |
 | `AWS_REGION` | Bedrock embeddings | `us-east-1` |
 | AWS credential chain | Bedrock when no OpenAI key | IAM role, env vars, or `~/.aws/credentials` |
-| `ORACLE_OPEN_DATA_IPNS` | Property open-data tools (`getOracleDatasetInfo`, `listOracleProperties`, etc.) | Set in bundled `mcp.json` — Lee `oracle-open-data-lee` (`k51qzi5uqu5dlz…`) |
-| `ORACLE_OPEN_DATA_INDEX_CID` | Property tools (alternative) | Omit when using IPNS; fixed CID pins a snapshot |
+| `PROPERTY_QUERY_TABLE_MAP` | `queryProperties`, `getPropertyQuerySchema` (SQL over open Parquet) | Bundled — **lee** query table on Filebase IPNS |
+| `ORACLE_OPEN_DATA_IPNS_MAP` | Multi-county open data (`getOracleDatasetInfo`, `listOracleProperties`, etc.) | Bundled — **lee** + **palm-beach** |
+| `ORACLE_OPEN_DATA_DEFAULT_COUNTY` | County when a tool omits `county` | `lee` |
+| `ORACLE_OPEN_DATA_IPNS` | Legacy single-county open data | Superseded by `ORACLE_OPEN_DATA_IPNS_MAP` in bundled config |
+| `ORACLE_OPEN_DATA_INDEX_CID` | Property tools (alternative) | Omit when using IPNS map |
 | `ORACLE_OPEN_DATA_MANIFEST_CID` | Legacy flat manifest fallback | Only used when IPNS unset — default is ~4,664 pilot manifest |
-| `ORACLE_GEO_INDEX_IPNS` | Geo tools | Set in bundled `mcp.json` (Lee County reference index) |
+| `ORACLE_GEO_INDEX_IPNS` | Geo tools (Lee reference index) | Set in bundled `mcp.json` |
 | `ORACLE_GEO_INDEX_CID` | Geo tools (alternative) | Fixed CID when IPNS unset |
 | `LOG_LEVEL` | Diagnostics | `info` |
 
@@ -91,15 +98,16 @@ Oracle open-data tools work without embeddings.
 | Symptom | Fix |
 |---------|-----|
 | `elephant` missing in MCP panel | Reload Cursor; confirm plugin path under `~/.cursor/plugins/local/` |
-| `propertyCount` ~4,664, `ipnsName` null | Add `ORACLE_OPEN_DATA_IPNS` to server env and reload Cursor |
+| County "not served" / `queryProperties` blocked | County missing from bundled maps — ingest via `oracle` + `use-oracle`, publish query table, add to `PROPERTY_QUERY_TABLE_MAP` / `ORACLE_OPEN_DATA_IPNS_MAP` |
+| `propertyCount` ~4,664, `ipnsName` null | Add open-data IPNS (or county map entry) to server env and reload Cursor |
 | `propertyCount` ~4,664, `ipnsName` set | IPNS still points at pilot manifest — full county open-data publish + IPNS re-point needed |
 | Geo tools fail | Bundled `ORACLE_GEO_INDEX_IPNS` should be present; re-pull plugin |
 | `getVerifiedScriptExamples` fails | Add a real `OPENAI_API_KEY` to server env, or configure AWS Bedrock credentials |
 | First query is slow | `npx` clones GitHub and builds elephant-mcp on first start — can take 1–3 minutes |
 | `elephant` red / install fails | Confirm Node **22.18+**; run smoke test above; check MCP error log for git/network or build errors |
 | `npm error ENOTEMPTY` in `_npx` cache | Quit Cursor; `rm -rf ~/.npm/_npx`; run smoke test once; reopen Cursor |
-| GitHub install blocked (proxy/firewall) | Use a local `elephant-mcp` checkout (`npm start` + `cwd`) or publish `@elephant-xyz/mcp@1.7.0` to npm |
-| After npm publishes 1.7.0 | Kit may switch `args` to `["-y", "@elephant-xyz/mcp@1.7.0"]` for faster cold starts |
+| GitHub install blocked (proxy/firewall) | Use a local `elephant-mcp` checkout (`npm start` + `cwd`) or publish a newer `@elephant-xyz/mcp` to npm |
+| After npm publishes >1.6.0 | Kit may switch `args` to `["-y", "@elephant-xyz/mcp@<version>"]` for faster cold starts |
 
 ## Related agents in this kit
 
