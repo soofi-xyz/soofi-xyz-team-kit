@@ -29,7 +29,18 @@ published to npm, the kit may switch to a tagged release for faster cold starts.
 
 Call `getOracleDatasetInfo` with an empty input. A healthy Lee County response includes
 `county: "lee"`, `propertyCount` around **511695**, a non-null `ipnsName`, and export timestamps.
-If `propertyCount` is ~4644 and `ipnsName` is null, see troubleshooting below.
+For other bundled counties, pass `county` explicitly (kebab-case slugs):
+
+| County | `county` arg | Expected `propertyCount` (approx.) |
+|--------|--------------|-------------------------------------|
+| Lee | _(omit or `"lee"`) | ~511695 |
+| Palm Beach | `"palm-beach"` | ~653945 |
+| Miami-Dade | `"miami-dade"` | ~933087 |
+| Orange | `"orange"` | verify live via MCP |
+
+SQL counts/filters via `queryProperties` work for all four counties in the bundled
+`PROPERTY_QUERY_TABLE_MAP`. If `propertyCount` is ~4644 and `ipnsName` is null, see
+troubleshooting below.
 
 ## Manual fallback
 
@@ -46,7 +57,9 @@ Servers** (same as root `mcp.json`):
         "exec npx -y --package=github:elephant-xyz/elephant-mcp#main mcp"
       ],
       "env": {
-        "ORACLE_OPEN_DATA_IPNS": "k51qzi5uqu5dlzgslzedrnk4whtd7ip69l0pmd3zxelz8hwjorbeyy0pyyeu4m",
+        "PROPERTY_QUERY_TABLE_MAP": "{\"lee\":\"https://ipfs.filebase.io/ipns/k51qzi5uqu5djd4ohcf3qm87dhlt0e270xw8ejhkyia62edr76uj0u05hrf7m5\",\"palm-beach\":\"https://ipfs.filebase.io/ipns/k51qzi5uqu5dlu7hx158su5palzzxdbl6zcm8ojh7645bxisxs0cf0s158h6h3\",\"miami-dade\":\"https://ipfs.filebase.io/ipns/k51qzi5uqu5dgqktver4htb060qxfnaytjhybcxlfkp22vtgygbx2lb4t1h1xs\",\"orange\":\"https://ipfs.filebase.io/ipns/k51qzi5uqu5dhgte20ho86rzg5b7h0ght3a2js5wz0t55i96aaf1d12wpl8efn\"}",
+        "ORACLE_OPEN_DATA_IPNS_MAP": "{\"lee\":\"k51qzi5uqu5dlzgslzedrnk4whtd7ip69l0pmd3zxelz8hwjorbeyy0pyyeu4m\",\"palm-beach\":\"k51qzi5uqu5dgjnt84x8vnj2c9uwxomkpykwdvmf6xg43wwcxsifo6w1sp1wwh\",\"miami-dade\":\"k51qzi5uqu5dk9i59xxm579a5bziprxpygv8wyi01n2ivd5kj9h5u90g1tzn1d\",\"orange\":\"k51qzi5uqu5dm1g8re6sb3kv9yfh1xtcuohwhrvuklp7ky6l5gj62yrf1potyz\"}",
+        "ORACLE_OPEN_DATA_DEFAULT_COUNTY": "lee",
         "ORACLE_GEO_INDEX_IPNS": "k51qzi5uqu5djo3756w73x3swtt63g9y7igj7tvv1gs4skjk3haj3fuk7qosdi"
       }
     }
@@ -76,10 +89,13 @@ teammates rely on.
 | `OPENAI_API_KEY` | `getVerifiedScriptExamples` (OpenAI path) | **Not in bundled config** — add manually only when set; empty value crashes startup |
 | `AWS_REGION` | Bedrock embeddings | `us-east-1` |
 | AWS credential chain | Bedrock when no OpenAI key | IAM role, env vars, or `~/.aws/credentials` |
-| `ORACLE_OPEN_DATA_IPNS` | Property open-data tools (`getOracleDatasetInfo`, `listOracleProperties`, etc.) | Set in bundled `mcp.json` — Lee `oracle-open-data-lee` (`k51qzi5uqu5dlz…`) |
-| `ORACLE_OPEN_DATA_INDEX_CID` | Property tools (alternative) | Omit when using IPNS; fixed CID pins a snapshot |
+| `PROPERTY_QUERY_TABLE_MAP` | `queryProperties`, `getPropertyQuerySchema` (SQL over open Parquet) | Bundled — **lee**, **palm-beach**, **miami-dade**, **orange** (matches prod Vercel MCP) |
+| `ORACLE_OPEN_DATA_IPNS_MAP` | Multi-county open data (`getOracleDatasetInfo`, `listOracleProperties`, etc.) | Bundled — **lee**, **palm-beach**, **miami-dade**, **orange** (matches prod Vercel MCP) |
+| `ORACLE_OPEN_DATA_DEFAULT_COUNTY` | County when a tool omits `county` | `lee` |
+| `ORACLE_OPEN_DATA_IPNS` | Legacy single-county open data | Superseded by `ORACLE_OPEN_DATA_IPNS_MAP` in bundled config |
+| `ORACLE_OPEN_DATA_INDEX_CID` | Property tools (alternative) | Omit when using IPNS map |
 | `ORACLE_OPEN_DATA_MANIFEST_CID` | Legacy flat manifest fallback | Only used when IPNS unset — default is ~4,664 pilot manifest |
-| `ORACLE_GEO_INDEX_IPNS` | Geo tools | Set in bundled `mcp.json` (Lee County reference index) |
+| `ORACLE_GEO_INDEX_IPNS` | Geo tools (Lee reference index) | Set in bundled `mcp.json` |
 | `ORACLE_GEO_INDEX_CID` | Geo tools (alternative) | Fixed CID when IPNS unset |
 | `LOG_LEVEL` | Diagnostics | `info` |
 
@@ -91,7 +107,8 @@ Oracle open-data tools work without embeddings.
 | Symptom | Fix |
 |---------|-----|
 | `elephant` missing in MCP panel | Reload Cursor; confirm plugin path under `~/.cursor/plugins/local/` |
-| `propertyCount` ~4,664, `ipnsName` null | Add `ORACLE_OPEN_DATA_IPNS` to server env and reload Cursor |
+| County "not served" / `queryProperties` blocked | County missing from bundled maps — ingest via `oracle` + `use-oracle`, publish query table, add to `PROPERTY_QUERY_TABLE_MAP` / `ORACLE_OPEN_DATA_IPNS_MAP` |
+| `propertyCount` ~4,664, `ipnsName` null | Add open-data IPNS (or county map entry) to server env and reload Cursor |
 | `propertyCount` ~4,664, `ipnsName` set | IPNS still points at pilot manifest — full county open-data publish + IPNS re-point needed |
 | Geo tools fail | Bundled `ORACLE_GEO_INDEX_IPNS` should be present; re-pull plugin |
 | `getVerifiedScriptExamples` fails | Add a real `OPENAI_API_KEY` to server env, or configure AWS Bedrock credentials |
