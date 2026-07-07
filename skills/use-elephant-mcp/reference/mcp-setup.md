@@ -6,10 +6,10 @@ This kit ships **`mcp.json`** at the plugin root. When you install or update the
 plugin and **reload Cursor**, the MCP server **`elephant`** is registered automatically — no
 manual JSON editing required.
 
-**Install source (interim):** Bundled `mcp.json` installs **elephant-mcp v1.7.0** from the public
-GitHub repo via `npx` because **`@elephant-xyz/mcp@1.7.0` is not on npm yet** (latest published
-is 1.6.0, which lacks Oracle open-data and geo tools). When 1.7.0 is published to npm, the kit
-may switch back to `@elephant-xyz/mcp@1.7.0`.
+**Install source (interim):** Bundled `mcp.json` installs **elephant-mcp `main`** from the public
+GitHub repo via `npx` because **npm `@elephant-xyz/mcp@latest` is still 1.6.0** (lacks
+`queryProperties`, multi-county open data, and current geo tools). When a newer version is
+published to npm, the kit may switch to a tagged release for faster cold starts.
 
 **Teammate checklist:**
 
@@ -43,7 +43,7 @@ Servers** (same as root `mcp.json`):
       "command": "bash",
       "args": [
         "-c",
-        "exec npx -y --package=github:elephant-xyz/elephant-mcp#v1.7.0 mcp"
+        "exec npx -y --package=github:elephant-xyz/elephant-mcp#main mcp"
       ],
       "env": {
         "ORACLE_OPEN_DATA_IPNS": "k51qzi5uqu5dlzgslzedrnk4whtd7ip69l0pmd3zxelz8hwjorbeyy0pyyeu4m",
@@ -54,7 +54,7 @@ Servers** (same as root `mcp.json`):
 }
 ```
 
-**Smoke test (terminal):** `bash -c 'exec npx -y --package=github:elephant-xyz/elephant-mcp#v1.7.0 mcp'`
+**Smoke test (terminal):** `bash -c 'exec npx -y --package=github:elephant-xyz/elephant-mcp#main mcp'`
 should start the stdio server (Ctrl+C to stop). Requires network access to GitHub and the npm registry
 (for dependencies). Pre-warming this once before opening Cursor avoids `ENOTEMPTY` errors from
 concurrent `npx` cache writes on first MCP connect.
@@ -98,8 +98,8 @@ Oracle open-data tools work without embeddings.
 | First query is slow | `npx` clones GitHub and builds elephant-mcp on first start — can take 1–3 minutes |
 | `elephant` red / install fails | Confirm Node **22.18+**; run smoke test above; check MCP error log for git/network or build errors |
 | `npm error ENOTEMPTY` in `_npx` cache | Quit Cursor; `rm -rf ~/.npm/_npx`; run smoke test once; reopen Cursor |
-| GitHub install blocked (proxy/firewall) | Use a local `elephant-mcp` checkout (`npm start` + `cwd`) or publish `@elephant-xyz/mcp@1.7.0` to npm |
-| After npm publishes 1.7.0 | Kit may switch `args` to `["-y", "@elephant-xyz/mcp@1.7.0"]` for faster cold starts |
+| GitHub install blocked (proxy/firewall) | Use a local `elephant-mcp` checkout (`npm start` + `cwd`) or publish a newer `@elephant-xyz/mcp` to npm |
+| After npm publishes >1.6.0 | Kit may switch `args` to `["-y", "@elephant-xyz/mcp@<version>"]` for faster cold starts |
 
 ## Related agents in this kit
 
