@@ -45,7 +45,7 @@ Two trigger paths feed one idempotent pipeline:
 
 Idempotency is enforced by the `story_agent_tasks` ledger: `task_gid` is the primary key
 (duplicate events are no-ops), a row must be atomically claimed `pending → processing` before
-work starts, and a rewritten story carries the marker `Formatted by Kadabra` in its
+work starts, and a rewritten story carries the marker `Formatted by Kirlia` in its
 notes — a resumed attempt sees the marker, skips the rewrite, and only finishes the missing
 steps (including finding an already-created review subtask by its `Review: agent-edited story — `
 name prefix instead of duplicating it).
@@ -174,5 +174,6 @@ is `anthropic/claude-opus-4.8`, overridable per deployment with `STORY_AGENT_MOD
   and its handshake will be rejected anyway.
 - Never print or commit PATs, `ENCRYPTION_KEY`, `CRON_SECRET`, or decrypted webhook secrets.
 - Reprocessing a story on purpose: delete its `story_agent_tasks` row AND remove the
-  `Formatted by Kadabra` marker from the task notes, or the resume path will skip the
+  `Formatted by Kirlia` marker from the task notes (older tasks may carry the legacy
+  `Formatted by Kadabra` marker, which is also recognized), or the resume path will skip the
   rewrite.
