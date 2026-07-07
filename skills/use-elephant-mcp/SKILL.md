@@ -27,13 +27,12 @@ Do **not** use this skill for:
 - **Node.js 22.18+**
 - **Elephant MCP** via this plugin's bundled `mcp.json` (server name **`elephant`**), installing
   **`main`** from `github:elephant-xyz/elephant-mcp#main` until npm publishes a build with
-  `queryProperties` and multi-county open data. Reload Cursor after installing/updating the kit;
-  confirm **`elephant`** is enabled under MCP settings.
-- **Bundled counties:** **lee** (SQL query table + open data) and **palm-beach** (open data).
-  Other counties return "not served" until ingested and added to the MCP env maps.
+  `queryProperties` and current Oracle open-data/geo tools. Reload Cursor after installing/updating
+  the kit; confirm **`elephant`** is enabled under MCP settings.
 - **Optional env** (for teammates, not hard-coded in skill text):
   - `OPENAI_API_KEY` in the shell for `getVerifiedScriptExamples`, or AWS creds for Bedrock
-- **Default county when omitted:** `lee`. Pass kebab-case slugs (`palm-beach`, `miami-dade`) on tool calls.
+  - Geo index and open-data IPNS are preconfigured in the plugin `mcp.json`
+- **Default dataset:** Lee County, FL (reference). Confirm if the user names another county.
 
 ## MCP gate (mandatory)
 
