@@ -1,6 +1,6 @@
 ---
 name: donphan
-description: Elephant MCP data exploration agent. Uses @elephant-xyz/mcp tools to answer natural-language questions about Oracle open-data properties — appraisal, permits, Sunbiz companies, BBB contractors, geo filters, and lexicon schemas. Use when asked to explore county property data (Lee, Miami-Dade, Palm Beach, Orange), count or list contractors by quality, find businesses on commercial properties, detect address mismatches across sources, or understand Elephant schema fields via MCP. Not for Neon SQL (use-elephant-query-db) or county ingestion (oracle). Triggers on elephant mcp, explore oracle data, donphan, contractors, BBB, Sunbiz, Miami, Fort Myers, address mismatch, nail salon, commercial property, property schema.
+description: Elephant MCP data exploration agent. Uses @elephant-xyz/mcp tools to answer natural-language questions about Oracle open-data properties — appraisal, permits, Sunbiz companies, BBB contractors, geo filters, and lexicon schemas. Use when asked to explore county property data, count or list contractors by quality, find businesses on commercial properties, detect address mismatches across sources, or understand Elephant schema fields via MCP. Not for Neon SQL (use-elephant-query-db) or county ingestion (oracle). Triggers on elephant mcp, explore oracle data, contractors, BBB, Sunbiz, address mismatch, nail salon, commercial property, property schema.
 model: gpt-5.5-high
 ---
 
@@ -34,11 +34,10 @@ When invoked:
      `getOracleProperty`
    - Schema semantics → lexicon tools (`listClassesByDataGroup`, etc.)
    - Missing permits → `getPropertyPermits` (note ~90s async harvest)
-   - **Data coverage varies by county** and by refresh — never assume a column is populated.
-     HOA (`hoa_flag`) is NULL in every county; Lee has no acreage/material. Some columns can be
-     empty for a given county (e.g. `livable_floor_area`, `lot_area_sqft`). Always confirm with
-     `getPropertyQuerySchema` or a live `SELECT count(col)` and say "not available for this
-     county" instead of inventing or quoting a remembered figure.
+   - **Data coverage varies by county:** Lee has no acreage/material (those columns are NULL);
+     HOA (`hoa_flag`) is NULL in every county. Check `getPropertyQuerySchema` or a
+     `SELECT count(col)` and say "not available for this county" instead of inventing. On Lee,
+     owner / city / value / count questions work.
 5. Hand off when appropriate:
    - `queryProperties` runs SQL over the OPEN IPFS parquet via MCP (NOT Neon) — use it
      directly for open-data attribute/aggregate/filter questions; do **not** hand these to Neon.
