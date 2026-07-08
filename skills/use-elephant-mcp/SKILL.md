@@ -1,6 +1,6 @@
 ---
 name: use-elephant-mcp
-description: "Operating guide for exploring Elephant data through the @elephant-xyz/mcp server in Cursor: Oracle open-data properties (appraisal, permits, Sunbiz, BBB), geo filters, lexicon schemas, and verified transform examples. Use when asking natural-language questions about Lee County properties, contractors, businesses, address mismatches, or schema fields — via MCP tools only. Not for Neon SQL (use-elephant-query-db) or county ingestion (use-oracle). Triggers on: elephant mcp, explore oracle data, donphan, contractors, BBB, Sunbiz, fort myers, address mismatch, nail salon, commercial property, property schema."
+description: "Operating guide for exploring Elephant data through the @elephant-xyz/mcp server in Cursor: Oracle open-data properties (appraisal, permits, Sunbiz, BBB), geo filters, lexicon schemas, and verified transform examples. Use when asking natural-language questions about Lee, Miami-Dade, Palm Beach, or Orange County properties, contractors, businesses, address mismatches, or schema fields — via MCP tools only. Not for Neon SQL (use-elephant-query-db) or county ingestion (use-oracle). Triggers on: elephant mcp, explore oracle data, donphan, contractors, BBB, Sunbiz, Miami, Fort Myers, address mismatch, nail salon, commercial property, property schema."
 ---
 
 # Use Elephant MCP
@@ -32,7 +32,8 @@ Do **not** use this skill for:
 - **Optional env** (for teammates, not hard-coded in skill text):
   - `OPENAI_API_KEY` in the shell for `getVerifiedScriptExamples`, or AWS creds for Bedrock
   - Geo index and open-data IPNS are preconfigured in the plugin `mcp.json`
-- **Default dataset:** Lee County, FL (reference). Confirm if the user names another county.
+- **Default dataset:** Lee County, FL (reference). Bundled `mcp.json` also serves **`miami-dade`**,
+  **`palm-beach`**, and **`orange`**. Confirm county if the user names another.
 
 ## MCP gate (mandatory)
 
@@ -60,10 +61,12 @@ consolidated JSON.
    max 1000). Use `ILIKE '%…%'` for owner (`owners_text`), city (`address_city`), material
    (`exterior_wall_material`). This runs SQL over the **OPEN IPFS parquet via MCP (NOT Neon)** —
    do **not** hand these off to `use-elephant-query-db`. `county` defaults to `lee` and must
-   match the MCP's `PROPERTY_QUERY_TABLE_MAP`. Coverage varies by county: Lee has no
-   acreage/material (NULL); HOA (`hoa_flag`) is NULL everywhere — confirm with
-   `getPropertyQuerySchema` / `SELECT count(col)` and say "not available for this county"
-   rather than inventing.
+   match the MCP's `PROPERTY_QUERY_TABLE_MAP`. Coverage varies by county:
+   - **Lee:** no acreage/material (NULL); owner/city/value/count work.
+   - **Miami-Dade (`miami-dade`):** owner/city/zip/value work; `livable_floor_area` **0%**;
+     `lot_area_sqft` ~61%.
+   - **HOA (`hoa_flag`):** NULL everywhere. Confirm with `getPropertyQuerySchema` /
+     `SELECT count(col)` — say "not available for this county" rather than inventing.
 1. **Dataset context** — `getOracleDatasetInfo` → county, `propertyCount`, freshness timestamps
 2. **Geo-scoped questions** — `findPropertiesInArea` (bbox or polygon) → parcel/property IDs in
    area → `getOracleProperty` on candidates

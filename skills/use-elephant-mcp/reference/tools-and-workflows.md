@@ -37,10 +37,18 @@ Constraints on `queryProperties`:
   material (`exterior_wall_material`).
 - `county` must match the MCP server's `PROPERTY_QUERY_TABLE_MAP` (default `lee`).
 
-**Data coverage varies by county.** Lee has no acreage/material (those columns are NULL);
-HOA (`hoa_flag`) is NULL in every county. Call `getPropertyQuerySchema` or run a
-`SELECT count(col)` to confirm a column is populated, and state "not available for this
-county" rather than inventing values. On Lee, owner / city / value / count questions work.
+**Data coverage varies by county.**
+
+| County key | Owner/zip/city | Acreage / sqft | Material | Notes |
+|------------|----------------|----------------|----------|-------|
+| `lee` | ✓ | NULL acreage/material | NULL | Reference county |
+| `miami-dade` | ✓ | `lot_area_sqft` ~61%; `livable_floor_area` **0%** | sparse | ~933k properties |
+| `palm-beach` | ✓ | `lot_area_sqft` ~92% (acre derived) | varies | |
+| `orange` | ✓ | varies | varies | |
+
+**HOA (`hoa_flag`):** NULL in every county (reserved placeholder). Call
+`getPropertyQuerySchema` or run `SELECT count(col)` to confirm a column is populated, and state
+"not available for this county" rather than inventing values.
 
 ### Geo (derived index)
 

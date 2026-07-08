@@ -3,14 +3,24 @@
 These patterns use **MCP tools only**. There is no bulk search API — always state how many
 records you inspected versus total dataset size from `getOracleDatasetInfo`.
 
-## Reference bounding boxes (Lee County, FL)
+## Reference bounding boxes
 
 Use `findPropertiesInArea` with a `bbox` unless the user supplies a polygon.
+
+### Lee County, FL
 
 | Area | minLat | minLng | maxLat | maxLng | Notes |
 |------|--------|--------|--------|--------|-------|
 | Fort Myers (city core) | 26.50 | -81.92 | 26.68 | -81.78 | Good default for "Fort Myers" |
 | Lee County (wide) | 26.30 | -82.35 | 26.95 | -81.55 | Large; many properties |
+
+### Miami-Dade County, FL
+
+| Area | minLat | minLng | maxLat | maxLng | Notes |
+|------|--------|--------|--------|--------|-------|
+| Downtown Miami | 25.75 | -80.22 | 25.79 | -80.18 | Dense urban core |
+| Miami (city-wide) | 25.70 | -80.35 | 25.87 | -80.12 | Good default for "Miami" |
+| Miami-Dade (wide) | 25.14 | -80.88 | 25.98 | -80.12 | Very large; prefer city bbox |
 
 Tune bbox if results look wrong; report the bbox you used.
 
