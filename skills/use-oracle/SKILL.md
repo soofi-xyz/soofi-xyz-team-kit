@@ -16,8 +16,9 @@ the milestone scope boundary.
 `elephant-xyz/skills` implements the pipeline: appraisal scrape → lexicon transform → permit
 harvest → Sunbiz/BBB enrichment → Neon query DB → open-data publish → query-table index.
 **Lee County, FL** is the first full reference; **Miami-Dade County, FL** is the second full
-county (933,087 folios, indexed 2026-07). Oracle is the named entry point that runs the skills;
-it never re-implements a stage.
+county. Oracle is the named entry point that runs the skills; it never re-implements a stage.
+Point-in-time counts live in each county's `oracle-node/docs/<county>-county-findings.md`, not
+here — always reconcile counts live against the source at run time.
 
 ## Prerequisites
 

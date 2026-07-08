@@ -61,12 +61,10 @@ consolidated JSON.
    max 1000). Use `ILIKE '%…%'` for owner (`owners_text`), city (`address_city`), material
    (`exterior_wall_material`). This runs SQL over the **OPEN IPFS parquet via MCP (NOT Neon)** —
    do **not** hand these off to `use-elephant-query-db`. `county` defaults to `lee` and must
-   match the MCP's `PROPERTY_QUERY_TABLE_MAP`. Coverage varies by county:
-   - **Lee:** no acreage/material (NULL); owner/city/value/count work.
-   - **Miami-Dade (`miami-dade`):** owner/city/zip/value work; `livable_floor_area` **0%**;
-     `lot_area_sqft` ~61%.
-   - **HOA (`hoa_flag`):** NULL everywhere. Confirm with `getPropertyQuerySchema` /
-     `SELECT count(col)` — say "not available for this county" rather than inventing.
+   match the MCP's `PROPERTY_QUERY_TABLE_MAP`. Coverage varies by county and by refresh: Lee has
+   no acreage/material (NULL); `hoa_flag` is NULL everywhere; some columns can be empty for a
+   given county. Confirm with `getPropertyQuerySchema` / a live `SELECT count(col)` and say "not
+   available for this county" rather than inventing or quoting a remembered figure.
 1. **Dataset context** — `getOracleDatasetInfo` → county, `propertyCount`, freshness timestamps
 2. **Geo-scoped questions** — `findPropertiesInArea` (bbox or polygon) → parcel/property IDs in
    area → `getOracleProperty` on candidates

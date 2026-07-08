@@ -34,11 +34,11 @@ When invoked:
      `getOracleProperty`
    - Schema semantics → lexicon tools (`listClassesByDataGroup`, etc.)
    - Missing permits → `getPropertyPermits` (note ~90s async harvest)
-   - **Data coverage varies by county:** Lee has no acreage/material (those columns are NULL);
-     HOA (`hoa_flag`) is NULL in every county. **Miami-Dade** (`miami-dade`): owner/city/zip/value
-     queries work; `livable_floor_area` is **0%** populated; `lot_area_sqft` ~61%. Check
-     `getPropertyQuerySchema` or a `SELECT count(col)` and say "not available for this county"
-     instead of inventing.
+   - **Data coverage varies by county** and by refresh — never assume a column is populated.
+     HOA (`hoa_flag`) is NULL in every county; Lee has no acreage/material. Some columns can be
+     empty for a given county (e.g. `livable_floor_area`, `lot_area_sqft`). Always confirm with
+     `getPropertyQuerySchema` or a live `SELECT count(col)` and say "not available for this
+     county" instead of inventing or quoting a remembered figure.
 5. Hand off when appropriate:
    - `queryProperties` runs SQL over the OPEN IPFS parquet via MCP (NOT Neon) — use it
      directly for open-data attribute/aggregate/filter questions; do **not** hand these to Neon.
