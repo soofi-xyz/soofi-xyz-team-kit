@@ -57,7 +57,7 @@ Servers** (same as root `mcp.json`):
         "exec npx -y --package=github:elephant-xyz/elephant-mcp#main mcp"
       ],
       "env": {
-        "PROPERTY_QUERY_TABLE_MAP": "{\"lee\":\"https://ipfs.filebase.io/ipns/k51qzi5uqu5djd4ohcf3qm87dhlt0e270xw8ejhkyia62edr76uj0u05hrf7m5\",\"palm-beach\":\"https://ipfs.filebase.io/ipns/k51qzi5uqu5dlu7hx158su5palzzxdbl6zcm8ojh7645bxisxs0cf0s158h6h3\",\"miami-dade\":\"https://ipfs.filebase.io/ipns/k51qzi5uqu5dgqktver4htb060qxfnaytjhybcxlfkp22vtgygbx2lb4t1h1xs\",\"orange\":\"https://ipfs.filebase.io/ipns/k51qzi5uqu5dhgte20ho86rzg5b7h0ght3a2js5wz0t55i96aaf1d12wpl8efn\"}",
+        "PROPERTY_QUERY_TABLE_MAP": "{\"lee\":\"https://ipfs.filebase.io/ipns/k51qzi5uqu5djd4ohcf3qm87dhlt0e270xw8ejhkyia62edr76uj0u05hrf7m5\",\"palm-beach\":\"https://ipfs.filebase.io/ipns/k51qzi5uqu5dlu7hx158su5palzzxdbl6zcm8ojh7645bxisxs0cf0s158h6h3\",\"miami-dade\":\"https://ipfs.filebase.io/ipns/k51qzi5uqu5dgqktver4htb060qxfnaytjhybcxlfkp22vtgygbx2lb4t1h1xs\",\"orange\":\"https://ipfs.filebase.io/ipns/k51qzi5uqu5dhgte20ho86rzg5b7h0ght3a2js5wz0t55i96aaf1d12wpl8efn\",\"santa-clara\":\"https://ipfs.filebase.io/ipns/k51qzi5uqu5dgnc94h8ce98ds0cb5yoidmcebpwnvccug4upasgbzpyz3ffgs5\"}",
         "ORACLE_OPEN_DATA_IPNS_MAP": "{\"lee\":\"k51qzi5uqu5dlzgslzedrnk4whtd7ip69l0pmd3zxelz8hwjorbeyy0pyyeu4m\",\"palm-beach\":\"k51qzi5uqu5dgjnt84x8vnj2c9uwxomkpykwdvmf6xg43wwcxsifo6w1sp1wwh\",\"miami-dade\":\"k51qzi5uqu5dk9i59xxm579a5bziprxpygv8wyi01n2ivd5kj9h5u90g1tzn1d\",\"orange\":\"k51qzi5uqu5dm1g8re6sb3kv9yfh1xtcuohwhrvuklp7ky6l5gj62yrf1potyz\"}",
         "ORACLE_OPEN_DATA_DEFAULT_COUNTY": "lee",
         "ORACLE_GEO_INDEX_IPNS": "k51qzi5uqu5djo3756w73x3swtt63g9y7igj7tvv1gs4skjk3haj3fuk7qosdi"
@@ -89,7 +89,7 @@ teammates rely on.
 | `OPENAI_API_KEY` | `getVerifiedScriptExamples` (OpenAI path) | **Not in bundled config** — add manually only when set; empty value crashes startup |
 | `AWS_REGION` | Bedrock embeddings | `us-east-1` |
 | AWS credential chain | Bedrock when no OpenAI key | IAM role, env vars, or `~/.aws/credentials` |
-| `PROPERTY_QUERY_TABLE_MAP` | `queryProperties`, `getPropertyQuerySchema` (SQL over open Parquet) | Bundled — **lee**, **palm-beach**, **miami-dade**, **orange** (matches prod Vercel MCP) |
+| `PROPERTY_QUERY_TABLE_MAP` | `queryProperties`, `getPropertyQuerySchema` (SQL over open Parquet) | Bundled — **lee**, **palm-beach**, **miami-dade**, **orange**, **santa-clara** |
 | `ORACLE_OPEN_DATA_IPNS_MAP` | Multi-county open data (`getOracleDatasetInfo`, `listOracleProperties`, etc.) | Bundled — **lee**, **palm-beach**, **miami-dade**, **orange** (matches prod Vercel MCP) |
 | `ORACLE_OPEN_DATA_DEFAULT_COUNTY` | County when a tool omits `county` | `lee` |
 | `ORACLE_OPEN_DATA_IPNS` | Legacy single-county open data | Superseded by `ORACLE_OPEN_DATA_IPNS_MAP` in bundled config |
