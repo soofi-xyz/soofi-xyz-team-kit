@@ -89,9 +89,9 @@ Apply the same internal lifecycle to every report request. Pick the internal pat
    - All new data insertion must go through this registration path. Do not write data into Persist, Rules outputs, or the report from any other source.
 
 7. **Build and test optimized Persist queries before comparing results.**
-   - For every Persist-backed report question, first draft the optimized query plan from the validated Lexicon labels, properties, indexes, and edge paths. Prefer indexed root filters, bounded projections, one focused dataset per widget, and sharded async queries for edge/sub-traversal workloads.
+   - For every Persist-backed report question, first draft the optimized query plan from the validated Lexicon labels, properties, indexes, and edge paths. Prefer Neptune#fts for count/filter/search predicates on FTS-mirrored labels (`person`, `phone_number`, `email`, `address`, `debt`, `phone_call`); otherwise prefer indexed root filters, bounded projections, one focused dataset per widget, and sharded async queries for edge/sub-traversal workloads.
    - Run the smallest safe Persist smoke/profile query needed to test the plan before launching broad comparisons: confirm the root candidate count, sample row shape, and any report-specific fields, metrics, date semantics, statuses, joins, grouping keys, or business definitions that require clarification. Do not run comparisons or target scenarios until the underlying query plan has passed this bounded test and the needed definitions are clear.
-   - Capture available fields, row/count summary, obvious groupable dimensions, freshness timestamp, query/output timing, and rule/filter provenance for the audit/details section.
+   - Capture available fields, row/count summary, obvious groupable dimensions, freshness timestamp (including `fts.syncLagSeconds` when FTS was used), query/output timing, and rule/filter provenance for the audit/details section.
    - Do not treat sampled rows as a final report artifact. Use them to prove the query shape and avoid designing widgets against fields that do not exist.
    - If the tested Persist query shape contradicts the business question, revise the query plan from Lexicon and retest. Ask the user only when the business definition itself is missing or ambiguous.
 
@@ -145,9 +145,9 @@ When the user provides chart, layout, or data-shape preferences, honor them unle
 ## Lexicon and Persist usage
 
 - Inspect Lexicon for vertex labels, edge labels, properties, indexes, enum values, registered rulesets, filters, separate rules, and release metadata. Do not use Lexicon, rulesets, filters, docs, or SQL artifacts as current data results.
-- Use the Persist skill for Persist API behavior, authentication, SigV4 request shape, Gremlin endpoints, and safe read/query patterns.
+- Use the Persist skill for Persist API behavior, authentication, SigV4 request shape, Gremlin endpoints, and safe read/query patterns. For Neptune#fts deep reference, use soc-team-kit skill `so-persist-product` → `rules/gremlin-fts-queries.md` when available.
 - Use shared business-logic catalog files only as definition sources, not as current counts. If a definition has `status: "proxy"`, keep that proxy status visible in the dataset contract, report copy, and user summary; surface unresolved filters and caveats instead of presenting the definition as operational truth.
-- Treat Lexicon `indexes` as derived projection fields maintained by Persist. Use them for filtering, grouping, and aggregating when they match the report question, but do not include them in ingest payloads or treat them as authoritative source facts.
+- Treat Lexicon `indexes` as derived projection fields maintained by Persist. Use them for filtering, grouping, and aggregating when they match the report question, but do not include them in ingest payloads or treat them as authoritative source facts. On FTS-mirrored labels, prefer Neptune#fts over plain index scans for large filtered counts and searches.
 - Validate enum values from Lexicon before using them in Gremlin filters.
 - If the data model, metric definition, population filter, or business term is unclear after Lexicon inspection, ask the user for the missing business meaning before writing Gremlin. Do not ask other agents to infer the Persist data model or metric definition.
 
@@ -165,14 +165,23 @@ When the user provides chart, layout, or data-shape preferences, honor them unle
 - Never build report queries from graph-internal vertex or edge identifiers. Do not use `hasId(...)`, `id()`, `T.id`, `has(T.id, ...)`, `within(...)` over internal element IDs, `startingWith(...)` over internal element IDs, or any other traversal that treats Persist's internal element IDs as a report key or partitioning shortcut.
 - Use Lexicon-declared business identifiers, properties, and indexes instead, such as `debt_identifier`, `person_identifier`, registered rule/filter outputs, or other released business keys that the Lexicon exposes for reporting. If the only way to answer a request appears to require internal element IDs, stop and ask for a proper business identifier, released Rules output, or Lexicon filter/rule definition instead of writing the query.
 - Do not project internal graph IDs into report datasets, local artifacts, PR notes, or audit summaries. Dataset row keys must be business identifiers or report-local synthetic row numbers that are clearly not Persist vertex/edge IDs.
-- Root-vertex-property-only report queries may aggregate directly when they are bounded and validated against Lexicon. If a query needs to traverse edges or run child/sub-traversals beyond the root vertices, do not run it as one whole-graph traversal. First run a root candidate count using only the root label and root-vertex filters, then split the root candidate stream into bounded `range(start, end)` shards such as `range(0, 50000)`, `range(50000, 100000)`, and `range(100000, totalCount)`.
-- For edge/sub-traversal reports, execute each `range(...)` shard as its own Persist async query and merge the shard outputs locally. Start with the first small shard to validate that the returned fields, cardinality, and aggregation shape are what the report needs before launching the remaining shards. It is acceptable to run a few shards in parallel with conservative concurrency, but avoid launching an unbounded fanout that can saturate Neptune.
+- Root-vertex-property-only report queries may aggregate directly when they are bounded and validated against Lexicon. If a query needs to traverse edges or run child/sub-traversals beyond the root vertices, do not run it as one whole-graph traversal. First run a root candidate count using only the root label and root-vertex filters, then split the root candidate stream into bounded `range(start, end)` shards such as `range(0, 50000)`, `range(50000, 100000)`, and `range(100000, totalCount)`. Prefer Neptune#fts for large filtered counts/searches on FTS-mirrored labels instead of plain whole-graph scans or hourly windowing.
+- For edge/sub-traversal reports on non-FTS paths, execute each `range(...)` shard as its own Persist async query and merge the shard outputs locally. Start with the first small shard to validate that the returned fields, cardinality, and aggregation shape are what the report needs before launching the remaining shards. It is acceptable to run a few shards in parallel with conservative concurrency, but avoid launching an unbounded fanout that can saturate Neptune. For `phone_call` and other FTS-mirrored edge filters, use Neptune#fts first (with `dedup().by('interaction_identifier')` for call-level counts) rather than plain edge scans.
 - Use Persist async Gremlin for reporting datasets by default:
   - Submit read-only report queries to `POST /persist/gremlin-async`.
   - Poll `GET /persist/gremlin-async/:requestId` until the query succeeds, fails, or reaches the report job timeout.
   - Use `DELETE /persist/gremlin-async/:requestId` to cancel abandoned or superseded report jobs when supported by the caller.
-  - Use `POST /persist/gremlin` only for small discovery or smoke-test queries that are expected to complete inside the synchronous timeout.
+  - Use `POST /persist/gremlin` only for small discovery or smoke-test queries that are expected to complete inside the synchronous timeout. Prefer sync for FTS day/month windows that finish in ~1–15s; use async for multi-month or very large match sets.
   - Parse the Persist response envelope and fail closed when `ok` is false or the result shape does not match the report dataset contract.
+- Prefer Neptune#fts for eligible Persist count/filter/search questions. Persist mirrors selected labels into OpenSearch and exposes them through the same SigV4-signed `POST /persist/gremlin` endpoint; do not query OpenSearch directly.
+  - Indexed scope (~1.47B documents; freshness typically seconds; responses carry `fts.syncLagSeconds`): vertices `person`, `phone_number`, `email`, `address`, `debt` (all lexicon fields plus derived indexes such as `debt_status_latest`, `current_balance`) and edge `phone_call` (all lexicon fields).
+  - Use FTS for any report/count/filter whose predicates live on those labels — debts by status/balance/state/creditor, persons by name, addresses by state/zip/city, phone numbers by `location_type`, emails by domain search, calls by date/outcome. FTS answers day/month/whole-population windows in ~1–15s where plain traversals need hourly windowing and time out.
+  - Keep plain Gremlin for relationship walking (`bothV` / `in` / `out` chains) and non-indexed labels. Compose when needed: FTS step first to select entities, then graph steps.
+  - Compound pattern: one `has('*', 'Neptune#fts <lucene>')` step = one OpenSearch query. Chained FTS `has()` steps = separate queries. Field paths: `predicates.<property>.value`, `entity_type` for label, `document_type` `vertex`|`edge`.
+  - AND/OR rules (empirically verified): Lucene `query_string` does not follow boolean-algebra precedence — unparenthesized `A OR B AND C` can return zero where `(A OR B) AND C` returns thousands. Always parenthesize OR groups; same-field OR shorthand `field:(X OR Y)`; negation `AND NOT field:value` (never as the sole clause); date/numeric ranges `[inclusive TO exclusive}`.
+  - `phone_call` semantics: every call is typically two self-loop edges (status `ATTEMPTED` + outcome) sharing `interaction_identifier`. Call-level counts MUST `dedup().by('interaction_identifier')` (or filter `AND NOT predicates.status.value:ATTEMPTED`). Edge counts ≈ 2× conversations. Eastern-day boundaries = 04:00Z during EDT (compute from `America/New_York`).
+  - Pitfalls: `values('x').dedup()` after FTS breaks pushdown (times out; use `dedup().by('x')`); never supply `Neptune#fts.endpoint` (policy rejects); do not set `Neptune#fts.maxResults` above 1000 (policy cap; counts paginate internally); `Neptune#fts.sortBy` needs the `.value` suffix for non-string fields.
+  - On `503 OpenSearchIndexLagExceeded` (mirror behind its 300s gate), fall back to plain traversal or retry later. Deep reference: `so-persist-product` → `rules/gremlin-fts-queries.md`.
 
 ## Rules execution access
 
@@ -236,8 +245,8 @@ If a query or execution is slow, name it specifically and explain whether the de
 - Confirm the target environment before any deploy, then set the stack name, AWS profile/account, region, Amplify branch, Secrets Manager paths, and callback/logout URLs from that environment once. Do not build in one environment and later retrofit another unless the user changes the target.
 - Before the first CDK deploy in an account, inspect the existing CDK bootstrap stack and qualifier. If the account uses a non-default qualifier, configure the stack synthesizer with that qualifier before synthesizing or publishing assets.
 - Run a tiny Persist smoke query for each required label/index family before the full refresh, such as `limit(1).valueMap()` and targeted `has('<field>').count()` checks. Use the smoke results to surface missing data early without returning internal vertex or edge IDs.
-- Prefer one compact indexed aggregation per dataset over query shapes that `fold()` millions of vertices and repeatedly `unfold()` them for each bucket.
-- For any report dataset that needs edge traversals or nested sub-traversals from a broad root population, prefer a counted-and-sharded root traversal (`count()` first, then bounded `range(...)` slices) over a single whole-graph traversal. Validate the first shard before running the full batch.
+- Prefer one compact indexed aggregation per dataset over query shapes that `fold()` millions of vertices and repeatedly `unfold()` them for each bucket. Prefer Neptune#fts for large filtered counts/searches on mirrored labels before falling back to plain indexed scans or sharded ranges.
+- For any report dataset that needs edge traversals or nested sub-traversals from a broad root population, prefer Neptune#fts when the root filters are on FTS-mirrored labels; otherwise prefer a counted-and-sharded root traversal (`count()` first, then bounded `range(...)` slices) over a single whole-graph traversal. Validate the first shard before running the full batch.
 - If any required whole-portfolio query takes close to a Lambda timeout, switch the refresh design to Step Functions, ECS/Fargate, or another long-running worker before deploying the scheduled refresh.
 - Generate the first report artifact as soon as infrastructure and auth are deployed, then verify the artifact summary, missing-data notes, app URL, and unauthenticated data access in one pass before handing back the link.
 
@@ -262,7 +271,20 @@ If a query or execution is slow, name it specifically and explain whether the de
 
 Use these only for direct Lexicon-label reads or verified direct Persist filter/rule executions after the exact rule/filter has been resolved and validated. Do not adapt these patterns to approximate a missing callable, eligible, or decision-bound population.
 
-- Count vertices using an index or property: `g.V().hasLabel('<vertex_label>').has('<field_or_index>', <value>).count()`.
+- Prefer Neptune#fts when predicates are on FTS-mirrored labels; otherwise count with an index or property: `g.V().hasLabel('<vertex_label>').has('<field_or_index>', <value>).count()`.
+- FTS debt filter/count (compound single OpenSearch query):
+  ```groovy
+  g.withSideEffect('Neptune#fts.queryType','query_string')
+   .V().has('*','Neptune#fts predicates.debt_status_latest.value:ACTIVE AND predicates.current_balance.value:[1000 TO 5000} AND predicates.primary_state_code.value:(TX OR FL) AND entity_type:debt')
+   .count()
+  ```
+- FTS phone_call conversations for one Eastern day (dedupe required):
+  ```groovy
+  g.withSideEffect('Neptune#fts.queryType','query_string')
+   .E().has('*','Neptune#fts predicates.phone_contact_type.value:RIGHT_PARTY AND predicates.effective_at.value:[2026-07-08T04:00:00.000Z TO 2026-07-09T04:00:00.000Z} AND entity_type:phone_call')
+   .dedup().by('interaction_identifier')
+   .count()
+  ```
 - Average a numeric projection: `g.V().hasLabel('<vertex_label>').has('<status_or_scope_field>', '<enum_value>').values('<numeric_field_or_index>').mean()`.
 - Group counts by a projection: `g.V().hasLabel('<vertex_label>').groupCount().by('<field_or_index>')`.
 - Project report rows with business keys only: `g.V().hasLabel('<vertex_label>').has('<filter_field>', <value>).project('<business_key>','metric').by(values('<business_identifier_field>').fold()).by(values('<metric_field>').fold())`.
