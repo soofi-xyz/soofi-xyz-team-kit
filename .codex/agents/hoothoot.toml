@@ -293,6 +293,7 @@ Use these only for direct Lexicon-label reads or verified direct Persist filter/
   - If Hoothoot SSO secrets already exist, reuse that shared Cognito SSO broker for new report apps instead of creating a new Cognito user pool, SAML app, or Microsoft Entra app per report.
   - Read the Cognito user pool ID and hosted UI domain from Secrets Manager. Create a new browser-safe app client in the shared pool when the report needs its own callback/logout URLs, or update an existing report client when this is an update.
   - Add the report's Amplify URL or custom domain to the app client's callback and logout URLs, and configure the static app with the shared hosted UI domain, user pool ID, new or reused app client ID, `openid profile email` scopes, and the existing Cognito IdP provider name, normally `AzureAD`.
+  - Configure report logout to return to an explicit signed-out landing state, currently `signed_out=1`, and have the static auth helper suppress automatic Cognito re-login while that state is present. The signed-out view must show a manual Sign in action that clears the flag and starts the normal Hosted UI PKCE flow.
   - Return the SSO secret names and selected environment to the user. Do not print secret values unless they are non-sensitive setup identifiers and the user explicitly needs them for an identity administrator.
   - Only escalate to the identity administrator when the selected environment has no Hoothoot SSO secrets or the reused shared SSO broker fails during deployed verification.
 - For sensitive or production report data, do not rely only on client-side Cognito gating. Put generated data artifacts behind an authenticated backend, CloudFront/Lambda@Edge, signed URLs, or another server-enforced authorization layer so `public/data/*.json` cannot be fetched directly without authorization.
@@ -321,6 +322,7 @@ Use these only for direct Lexicon-label reads or verified direct Persist filter/
 - Amplify branch basic auth is disabled unless it is being used only as a temporary emergency gate.
 - Cognito Hosted UI or Managed Login is reachable and configured with the correct callback/logout URLs.
 - The report page redirects unauthenticated users to sign in or shows a Cognito sign-in gate.
+- Signing out lands on the explicit signed-out state without immediately re-authenticating through the still-active SSO session, and the manual Sign in button returns to the report through the normal PKCE flow.
 - A Microsoft Azure SSO test user can sign in through the shared Cognito broker.
 - Required IdP attributes are mapped into Cognito and group/app-role restrictions are enforced outside the static UI when required.
 - Public self-signup is disabled.
