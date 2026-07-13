@@ -123,17 +123,36 @@ Use real Spring Oaks repositories during the ramp. The learner should not try to
 | `solver` | Scheduling optimization, Spark prep, OR-Tools assignment, Glue runtime, capacity constraints | Step Functions + Distributed Map + Lambda enrichment + Glue PySpark + OR-Tools + S3 outputs | `glue_job/solver_glue_job.py`, `src/or_solver.py`, `cdk/solver_cdk/solver_stack.py`, workflow input/output docs |
 | `transform` | Table-to-graph transform, cost gating, Glue PySpark, mapping SQL, Neptune bulk-load CSV outputs | TypeScript CDK + Lambda cost/metrics + Step Functions + Glue PySpark + S3 outputs | `bin/`, `lib/`, `src/lambdas/`, `src/shared/`, `glue_scripts/`, `docs/`, `test/` |
 
+### Recent Spring Oaks Repository Focus
+
+Prioritize Spring-Oaks-Capital-LLC repositories created after February 2026. These repos are newer and better reflect the current architecture, product boundaries, and agent/skill patterns the learner needs to understand.
+
+Refresh the current list with GitHub CLI when possible:
+
+```bash
+gh repo list Spring-Oaks-Capital-LLC --limit 200 --json name,description,createdAt,url --jq 'sort_by(.createdAt) | reverse | .[] | select(.createdAt >= "2026-03-01T00:00:00Z") | [.createdAt, .name, .description, .url] | @tsv'
+```
+
+Use the recent repos by category:
+
+- Core graph/product platform: `filter`, `persist-ingest`, `skill-neptune-export`, `soc-team-kit`, `account`, `build`, `deploy`, `connect`, `translate`, `graph-action-workflow`, `persist-cleanup`.
+- Communication and campaigns: `sms-workflow`, `sms-template-sync`, `templates-inventory`, `jigglypuff-agent`, `sms-automated-sender`, `sms-metrics`, `sms-interprose-exporter`, `mail-campaign`, `campaign-assignment`, `short-url-service`.
+- Data, metrics, reports, and audit: `livevox-metrics`, `livevox-metrics-pipeline`, `livevox-interactions`, `livevox-campaigns`, `expected-value`, `shared-business-logic`, `report-catalog`, `hoothoot-agent`, `audit-file-portal`, `nyc-audit-agent`, `call-effort-report-workflow`.
+- Agents and operations: `ovid-agent`, `lucario-agent`, `pelipper-agent`, `claydol-agent`, `claydol-runtime-agent`, `dispute-email-agent`, `hermes-agent`, `cursor-spend-approver`, `s3-citrix-sync`, `compumailinc-inbound-sftp`.
+
+The learner does not need to clone or master every repo. For each category, pick one repo and complete the product navigation worksheet. Prefer repos that are already checked out locally; otherwise inspect `README.md`, `AGENTS.md`, and repo metadata through GitHub before asking the learner to clone anything.
+
 ### Suggested Repository Rotation
 
 Use this rotation so the learner sees the same architecture concepts in real code:
 
-- Day 1: map `soc-team-kit` first, then map one product repo such as `persist` or `filter`.
-- Day 2: use `filter` or `persist` to study TypeScript Lambda boundaries and typed validation.
+- Day 1: map `soc-team-kit` first, then map a recent repo such as `filter`, `sms-workflow`, `short-url-service`, or `campaign-assignment`.
+- Day 2: use `filter`, `persist-ingest`, or another recent TypeScript Lambda repo to study typed boundaries and validation.
 - Day 3: use `persist` for API contracts and product boundaries.
 - Day 4: use `lexicon` plus `persist` to understand schema ownership, GraphSON, S3 blobs, SSM, Secrets Manager, and durable graph state.
-- Day 5: use `sms-workflow`, `filter`, `solver`, and `transform` to compare Step Functions, SQS, EventBridge, Glue, and S3 output contracts.
-- Day 6: use CDK stacks from `persist`, `filter`, `sms-workflow`, or `transform` to practice reading infrastructure.
-- Day 7: use `persist` and `filter` to practice logs, metrics, X-Ray, DLQs, PagerDuty paths, and production safety.
+- Day 5: use recent workflow repos such as `sms-workflow`, `mail-campaign`, `graph-action-workflow`, `campaign-assignment`, `solver`, and `transform` to compare Step Functions, SQS, EventBridge, Glue, and S3 output contracts.
+- Day 6: use CDK stacks from recent repos such as `filter`, `sms-workflow`, `short-url-service`, `s3-citrix-sync`, `account`, `build`, `deploy`, or `transform` to practice reading infrastructure.
+- Day 7: use `filter`, `persist-ingest`, `sms-workflow`, or `mail-campaign` to practice logs, metrics, X-Ray, DLQs, PagerDuty paths, and production safety.
 - Day 8: use `soofi-xyz-team-kit` and `soc-team-kit` to understand agent/plugin boundaries, then design an Asana-triggered agent.
 - Day 9: compare all product patterns and route each example to the right kit agent or skill.
 - Day 10: use the capstone to combine agent, product API, state, observability, and AWS reasoning.

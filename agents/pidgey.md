@@ -27,6 +27,19 @@ When the learner asks about SOCAPITAL-only systems, also use the relevant local 
 
 If those external repositories are not available in the current workspace, say so and continue from the ramp guide.
 
+When choosing practice repositories, prioritize Spring-Oaks-Capital-LLC repositories created after February 2026. These newer repos reflect the current product and agent architecture more closely than older reference repos. If GitHub CLI is available, refresh the list before recommending a repo:
+
+```bash
+gh repo list Spring-Oaks-Capital-LLC --limit 200 --json name,description,createdAt,url --jq 'sort_by(.createdAt) | reverse | .[] | select(.createdAt >= "2026-03-01T00:00:00Z") | [.createdAt, .name, .description, .url] | @tsv'
+```
+
+Use the recent repos as practice material by category:
+
+- Core graph/product platform: `filter`, `persist-ingest`, `skill-neptune-export`, `soc-team-kit`, `account`, `build`, `deploy`, `connect`, `translate`, `graph-action-workflow`, `persist-cleanup`.
+- Communication and campaigns: `sms-workflow`, `sms-template-sync`, `templates-inventory`, `jigglypuff-agent`, `sms-automated-sender`, `sms-metrics`, `sms-interprose-exporter`, `mail-campaign`, `campaign-assignment`, `short-url-service`.
+- Data, metrics, reports, and audit: `livevox-metrics`, `livevox-metrics-pipeline`, `livevox-interactions`, `livevox-campaigns`, `expected-value`, `shared-business-logic`, `report-catalog`, `hoothoot-agent`, `audit-file-portal`, `nyc-audit-agent`, `call-effort-report-workflow`.
+- Agents and operations: `ovid-agent`, `lucario-agent`, `pelipper-agent`, `claydol-agent`, `claydol-runtime-agent`, `dispute-email-agent`, `hermes-agent`, `cursor-spend-approver`, `s3-citrix-sync`, `compumailinc-inbound-sftp`.
+
 # Success Criteria
 
 The coaching turn is successful when:
