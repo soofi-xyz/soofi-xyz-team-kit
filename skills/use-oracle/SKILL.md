@@ -1,6 +1,6 @@
 ---
 name: use-oracle
-description: "Operating guide for the Oracle public-data ingestion agent: install and drive the elephant-xyz/skills (onboard-county + stage skills) against the oracle-node pipeline to discover, ingest, validate, and refresh county property/permit plus Sunbiz/BBB data into the Neon query DB. Covers the oracle-node checkout layout, sibling repos, AWS_PROFILE/AWS_REGION setup, the stage-skill map, and the milestone scope boundary (Lee County, four sources, query DB; IPFS/indexing/MCP/NEO out). Triggers on: oracle, onboard county, ingest county data, refresh Lee County, appraisal/permit/Sunbiz/BBB ingestion, oracle-node, county-discovery."
+description: "Operating guide for the Oracle public-data ingestion agent: install and drive the elephant-xyz/skills (onboard-county + stage skills) against the oracle-node pipeline to discover, ingest, validate, refresh, and publish county property/permit plus Sunbiz/BBB data and coverage into Neon + Filebase/IPFS for MCP/Donphan/Miranda consumption. Covers the oracle-node checkout layout, sibling repos, AWS_PROFILE/AWS_REGION setup, the stage-skill map, and the coverage/IPNS handoff. Triggers on: oracle, onboard county, ingest county data, refresh Lee County, appraisal/permit/Sunbiz/BBB ingestion, oracle-node, county-discovery, coverage."
 ---
 
 # Use Oracle
@@ -14,9 +14,9 @@ the milestone scope boundary.
 ## What Oracle drives
 
 `elephant-xyz/skills` implements the pipeline: appraisal scrape → lexicon transform → permit
-harvest → Sunbiz/BBB enrichment → Neon query DB. Lee County, FL is the first full implementation;
-the skills generalize it to any county. Oracle is the named entry point that runs them; it never
-re-implements a stage.
+harvest → Sunbiz/BBB enrichment → Neon query DB → public Filebase/IPFS publish surfaces. Lee
+County, FL is the first full implementation; the skills generalize it to any county. Oracle is the
+named entry point that runs them; it never re-implements a stage.
 
 ## Prerequisites
 
@@ -77,16 +77,40 @@ To read ingested data (parcels, permits, Sunbiz companies, BBB, addresses), use 
 **`use-elephant-query-db`** skill — the Neon resource is `elephant-query-db`; read credentials
 from `DATABASE_URL`; never hardcode or print them.
 
+## Coverage publish contract
+
+Every county onboarding must publish coverage as a public IPFS/IPNS contract, not as an AWS URL:
+
+1. Load county data into Neon through the normal source tracks: appraisal, permits, Sunbiz, BBB.
+2. Keep `oracle_dataset_coverage` updated per `(county, source)` with `ingested_count`,
+   `expected_count`, and load timestamp range. For a completed source, `expected_count` must be set
+   so MCP can report `completionPercent`.
+3. After each load/index refresh window, run the query DB publish path so it:
+   - rebuilds and publishes the partial query-table Parquet to `oracle-query-table-<county>`;
+   - writes `.dataset-coverage/<county>/dataset-coverage.json`;
+   - uploads that JSON to Filebase/IPFS;
+   - updates `oracle-dataset-coverage-<county>` IPNS.
+4. Public consumers use IPFS/IPNS only:
+   - Donphan reads coverage through MCP `getOracleDatasetInfo`.
+   - Miranda can read the same public `dataset-coverage.json` gateway URL directly.
+   - Never point users at AWS S3 for coverage; S3 is internal orchestration/artifact storage only.
+5. Once a county coverage IPNS is published, wire MCP in one of two ways:
+   - add it to `DATASET_COVERAGE_MAP` for immediate runtime consumption; or
+   - add it to MCP's built-in default coverage map when the county is officially public.
+
+Current built-in MCP coverage defaults are Lee, Miami-Dade, Orange, and Palm Beach. New counties
+must follow the same `oracle-dataset-coverage-<county>` IPNS naming convention.
+
 ## Milestone scope (this story)
 
-**In:** Oracle agent + skill packaging; discover Lee County sources; refresh all four source
-categories (appraisal/property, permits, Sunbiz, BBB) into the local Neon query DB; validate
-completeness against source availability.
+**In:** Oracle agent + skill packaging; discover county sources; refresh the source categories
+(appraisal/property, permits, Sunbiz, BBB) into the Neon query DB; validate completeness against
+source availability; publish the per-county query table and dataset coverage to Filebase/IPFS/IPNS;
+wire MCP so Donphan can query the county and qualify answers by coverage.
 
-**Out (separate story `1215644141347714` — "Oracle Open Data Index and MCP Layer"):** public
-IPFS publishing, on-chain / blockchain-style indexing, MCP exposure of Oracle data, NEO rewiring,
-and any Elephant.xyz UI. Do not build these here; just do not foreclose them — data lands in S3 +
-Neon in a structure that story builds on.
+**Out:** NEO rewiring, on-chain/blockchain-style indexing beyond the query table, and any
+Elephant.xyz UI changes. Miranda's website consumes the public coverage JSON, but Oracle only
+produces and publishes the data contract.
 
 ## Rules
 

@@ -116,7 +116,7 @@ for path in stale:
 for target, content in expected.items():
     if target.is_symlink():
         target.unlink()
-    target.write_text(content, encoding="utf-8", newline="\n")
+    target.write_text(content, encoding="utf-8")
 
 print(f"synced {len(expected)} Copilot agent files")
 if stale:
