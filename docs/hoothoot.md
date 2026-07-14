@@ -1,6 +1,6 @@
 # Using Hoothoot
 
-Hoothoot is a prod-first Persist reporting agent that runs a single Lexicon-rule-aware flow. It consumes the existing Lexicon, Rules, Persist, Campaign Assignment, and report-publishing products; it does not build or redesign those platform products as part of report work. Use it in Cursor Agent mode when you want Hoothoot to connect to prod Persist, resolve the relevant Lexicon ruleset/filter/rule, build a local report preview from real data, create a GitHub PR, deploy on AWS, and optionally publish to the catalog. When you explicitly approve a source mutation and its maximum cost, Hoothoot may also pass a completed Filter execution to Campaign Assignment for campaign assignment.
+Hoothoot is a prod-first Persist reporting agent that runs a single Lexicon-rule-aware flow. It consumes the existing Lexicon, Rules, Persist, Campaign Assignment, and report-publishing products; it does not build or redesign those platform products as part of report work. Use it in Cursor Agent mode when you want Hoothoot to connect to prod Persist, resolve the relevant Lexicon ruleset/filter/rule, build a local report preview from real data, create a GitHub PR, deploy on AWS, and optionally publish to the catalog. When you explicitly approve a source mutation and its maximum cost, Hoothoot may also pass exactly one population source to Campaign Assignment: a completed Filter execution ARN, or an approved S3 URI for already-filtered Filter-results JSON.
 
 Hoothoot does not operate in separate user-visible modes. Every report request moves through the same internal decision lifecycle, but Hoothoot should keep those internal paths invisible and describe the work in plain language: what it found, what data source it used, what is missing, and what happens next.
 
@@ -56,6 +56,7 @@ For graph-level requests that are not rule-derived (a simple count of vertices b
 - For broad runs (whole-portfolio scans, untargeted aggregations, full Rules executions, or broad direct Persist filter/rule executions), Hoothoot surfaces a cost confirmation step and waits for your explicit go-ahead.
 - No dummy, sample, or unverified data is shown in the preview or the deployed report.
 - Campaign assignment is a separate source mutation. Hoothoot must obtain explicit source-mutation approval and explicit approval of the maximum cost before it starts Campaign Assignment; report, preview, Filter, or deployment approval does not imply either approval.
+- Campaign Assignment accepts exactly one population source: `filter_completed_execution_arn`, or `input_s3_uri` pointing to an already-filtered Filter-results JSON object or prefix. Hoothoot must never send both. Raw CSV, raw source exports, arbitrary JSON, and unfiltered input are invalid assignment sources.
 - Hoothoot never calls Persist ingest directly and never puts Campaign Assignment, Persist ingest, or another graph write in a report refresh or scheduled reporting workflow.
 - Hoothoot never starts SMS, email, mail, or another communication channel automatically. After a campaign is assigned and reconciled, it may offer a separate channel launch that requires its own approval and runtime.
 
@@ -68,7 +69,7 @@ For graph-level requests that are not rule-derived (a simple count of vertices b
 - After AWS access is connected and Hoothoot has inspected the data shape: the table/KPI/chart widgets you want, the business question each widget must answer, and how the report should look.
 - Persist fields, filters, companies, dates, or account populations if you know them.
 - If you want to insert or mutate source data, say so explicitly. Missing ruleset/filter/rule definitions for rule-derived reports are handled through a focused Lexicon PR when the business intent is clear.
-- If you want campaign assignment, provide or approve the campaign identifier, name, purpose, and maximum cost. Hoothoot will resolve the Filter population first and ask for source-mutation approval before starting Campaign Assignment.
+- If you want campaign assignment, provide or approve the campaign identifier, name, purpose, and maximum cost. Hoothoot will prefer a completed Filter execution ARN when it ran or owns Filter because that source has stronger directly verifiable provenance. You may instead supply an S3 object or prefix as `input_s3_uri` only when it is already-filtered Filter-results JSON. Hoothoot will present the selected source URI, environment, scope, and cost and ask for explicit source-mutation approval before starting Campaign Assignment.
 
 Do not provide GitHub repository, deployment, authentication, catalog, or refresh-schedule details in the first prompt unless you already know you want to publish. Hoothoot should ask for those only after you approve the local preview.
 
@@ -211,11 +212,14 @@ If Persist or Rules is not reachable yet, Hoothoot should not prepare layout, CS
 Campaign assignment is not part of report generation or refresh. Hoothoot may perform it only as a separate source-mutation action:
 
 1. Resolve the exact registered Filter for the requested population.
-2. Reuse a valid completed Filter execution, or run Filter through its deployed contract and wait until the execution completes successfully. A running, failed, timed-out, aborted, or stale Filter execution cannot be assigned.
-3. Present the campaign identifier, name, purpose, completed Filter execution ARN, environment, expected scope, and maximum cost.
+2. Select exactly one population source:
+   - Prefer `filter_completed_execution_arn` when Hoothoot ran or owns Filter because the completed execution provides stronger directly verifiable provenance. Reuse a valid completed Filter execution, or run Filter through its deployed contract and wait until the execution completes successfully. A running, failed, timed-out, aborted, or stale Filter execution cannot be assigned.
+   - Use `input_s3_uri` only when you explicitly supply or approve an S3 object or prefix as an already-filtered population and Hoothoot verifies that it is Filter-results JSON for the same environment and scope. Raw CSV, raw source exports, arbitrary JSON, and unfiltered input are not valid.
+   - Never provide both source fields. Hoothoot fails closed if both or neither are present.
+3. Present the campaign identifier, name, purpose, selected source field and value, source URI when applicable, environment, expected scope, and maximum cost.
 4. Wait for explicit source-mutation approval and explicit maximum-cost approval. One approval may cover both only when both are clearly stated together.
 5. Using the separate operator profile, read `/campaign-assignment/<env>/state-machine-arn` with `ssm:GetParameter`.
-6. Start Campaign Assignment with exactly this input shape:
+6. Start Campaign Assignment with the unchanged `campaign-assignment/v1` contract and exactly one source. The preferred completed-Filter form is:
 
    ```json
    {
@@ -231,6 +235,22 @@ Campaign assignment is not part of report generation or refresh. Hoothoot may pe
    ```
 
    Replace `max_cost_usd` with the explicitly approved maximum cost.
+   The explicitly approved, already-filtered S3 form is:
+
+   ```json
+   {
+     "contract_version": "campaign-assignment/v1",
+     "input_s3_uri": "s3://<bucket>/<filter-results-object-or-prefix>",
+     "campaign": {
+       "campaign_identifier": "<identifier>",
+       "name": "<name>",
+       "purpose": "<purpose>"
+     },
+     "max_cost_usd": 0
+   }
+   ```
+
+   Replace `max_cost_usd` with the explicitly approved maximum cost. Do not include `filter_completed_execution_arn` in this form.
 7. Poll the execution with `states:DescribeExecution` until a terminal state. Hoothoot must wait for final reconciled success; a started execution or intermediate assignment completion is not success.
 8. Accept only these bounded final output fields: `status`, `campaign_identifier`, `campaign_vertex_id`, `debts_received`, `missing_debt_count`, `debts_without_person_count`, `persons_linked`, `edges_upserted`, `chunk_count`, `manifest_s3_uri`, and `estimated_cost_usd`.
 9. Report aggregate counts, scalar campaign references, status, estimated cost, and manifest location only. Never report identifier arrays or enumerate debt, person, account, edge, or missing-record identifiers from the execution or manifest. On failure, timeout, abort, reconciliation mismatch, cost-limit stop, or an unexpected output shape, report the terminal status and safe retry guidance.
@@ -262,7 +282,7 @@ Hoothoot should use this same lifecycle for every report request. A broad prompt
 19. Hoothoot creates or updates the report source in GitHub and opens a PR with provenance, timing, and no PII.
 20. After checks and approval, Hoothoot deploys through the configured AWS path.
 21. Hoothoot asks whether to publish the deployed report to the catalog.
-22. If you separately request campaign assignment, Hoothoot resolves or runs Filter, waits for successful completion, obtains source-mutation and maximum-cost approval, invokes Campaign Assignment through the least-privilege operator path, and waits for final reconciled success.
+22. If you separately request campaign assignment, Hoothoot selects exactly one approved source—preferably the completed Filter execution ARN when Hoothoot ran or owns Filter, or an explicitly approved `input_s3_uri` for already-filtered Filter-results JSON—presents its URI/environment/scope/cost, obtains source-mutation and maximum-cost approval, invokes Campaign Assignment through the least-privilege operator path, and waits for final reconciled success.
 23. Hoothoot reports only the bounded status, aggregate counts, scalar campaign references, estimated cost, and manifest location without PII or identifier arrays, then may offer a separate explicitly approved channel launch.
 
 If any step fails, Hoothoot should pause at that step, explain the failure in plain language, ask the next required question, and then resume from that same step. It should not switch to a dummy-data, browser-only, helper-script-only, or manually loaded JSON workflow.
