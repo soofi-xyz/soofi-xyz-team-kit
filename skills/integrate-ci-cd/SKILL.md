@@ -96,20 +96,54 @@ test:
 
 # Synthesize CDK stack
 build:
-    cdk synth --strict
+    cdk synth --strict \
+      ${CDK_BOOTSTRAP_QUALIFIER:+--context "@aws-cdk/core:bootstrapQualifier=$CDK_BOOTSTRAP_QUALIFIER"}
 
 # Deploy CDK stack
 deploy:
-    cdk deploy --require-approval never
+    cdk deploy --require-approval never \
+      ${CDK_BOOTSTRAP_QUALIFIER:+--context "@aws-cdk/core:bootstrapQualifier=$CDK_BOOTSTRAP_QUALIFIER"}
 ```
 
 Refer to the [Just Programmer's Manual](https://just.systems/man/en/) for syntax details.
 
-### Step 2 — Create caller workflows
+### Step 2 — Discover The CDK Bootstrap Qualifier
+
+Use explicit credentials for the target account and the same region that the
+workflow will use. Replace `target-account-profile` with the operator's profile:
+
+```bash
+export AWS_PROFILE=target-account-profile
+export AWS_REGION=us-east-2 # match the workflow's aws-region input
+
+aws sts get-caller-identity \
+  --query Account \
+  --output text
+
+aws ssm get-parameters-by-path \
+  --region "$AWS_REGION" \
+  --path /cdk-bootstrap/ \
+  --query "Parameters[?ends_with(Name, '/version')].Name" \
+  --output text
+```
+
+Confirm that the account ID is the intended deployment account. If exactly one
+`/cdk-bootstrap/<qualifier>/version` parameter exists, use that qualifier. If
+multiple qualifiers exist, require a repository-owned environment mapping; do
+not guess. If none exists, stop and escalate instead of bootstrapping or
+retrying blindly.
+
+Pass the selected qualifier to every `cdk synth` and `cdk deploy` command for
+that environment.
+
+### Step 3 — Create caller workflows
 
 Create two workflow files in `.github/workflows/` in the project.
 
 #### `.github/workflows/ci-cd-dev.yml`
+
+Replace `dev-qualifier` with the qualifier discovered for the development
+account:
 
 ```yaml
 name: DEV CI/CD
@@ -127,12 +161,16 @@ jobs:
     with:
       env-vars: |
         TARGET_ENV=dev
+        CDK_BOOTSTRAP_QUALIFIER=dev-qualifier
     permissions:
       id-token: write
       contents: read
 ```
 
 #### `.github/workflows/ci-cd-prod.yml`
+
+Replace `prod-qualifier` with the qualifier discovered for the production
+account:
 
 ```yaml
 name: PROD CI/CD
@@ -150,13 +188,13 @@ jobs:
     with:
       env-vars: |
         TARGET_ENV=prod
-        CDK_BOOTSTRAP_QUALIFIER=slowking
+        CDK_BOOTSTRAP_QUALIFIER=prod-qualifier
     permissions:
       id-token: write
       contents: read
 ```
 
-### Step 3 — Pass custom environment variables (if needed)
+### Step 4 — Pass custom environment variables (if needed)
 
 Use the `env-vars` input to pass arbitrary `KEY=VALUE` pairs. These are written to `$GITHUB_ENV` and available to all justfile recipes.
 
@@ -168,7 +206,7 @@ with:
     ANOTHER_VAR=bar
 ```
 
-### Step 4 — Override AWS region (if needed)
+### Step 5 — Override AWS region (if needed)
 
 The default AWS region is `us-east-2`. Override it with the `aws-region` input:
 
@@ -177,7 +215,7 @@ with:
   aws-region: "us-west-2"
 ```
 
-### Step 5 — Verify
+### Step 6 — Verify
 
 1. Open a PR targeting `main` — the DEV workflow should trigger.
 2. Merge the PR — the PROD workflow should trigger.
@@ -203,3 +241,4 @@ with:
 | AWS credentials failure | Ensure `id-token: write` permission is set at both workflow and job level |
 | Missing recipe error | Add all six required recipes to the justfile: `format`, `lint`, `type-check`, `test`, `build`, `deploy` |
 | Workflow not triggering on PR | Ensure the PR targets `main` and the workflow file exists on the PR branch |
+| CDK execution role uses the wrong qualifier | Discover `/cdk-bootstrap/*/version` in the target account and pass the same `CDK_BOOTSTRAP_QUALIFIER` to synth and deploy |

@@ -18,14 +18,15 @@ When invoked:
 8. Add LangSmith tracing before prompt iteration or tool expansion; group traces by `thread.id`.
 9. Keep AI conversation history in **AgentCore Memory** behind a `ConversationEventStore` interface. This is separate from the Chat SDK state adapter — do not mix them. Append turns with deterministic `clientToken` values derived from `message.id`.
 10. Keep deploy-time setup explicit for the human: the operator must collect `ASANA_PAT` and `ASANA_WORKSPACE_GID` from the agent's Asana profile. `ASANA_BOT_USER_GID` and `ASANA_WEBHOOK_RESOURCE_GIDS` are NOT required any more — the adapter resolves the bot identity via `/users/me` and the CDK construct registers the webhook against the bot's *My Tasks* user-task-list automatically.
-11. Verify the implementation end to end, including real task flow (assignment + comment + completion reaction), LangSmith traces, Chat SDK thread locking, and AgentCore Memory persistence.
-12. Follow `skills/apply-engineering-guidelines/` for shared engineering constraints.
+11. Before provisioning a webhook, resolve and report each environment's bot GID, workspace GID, and effective resource GID (the explicit `resourceGid`, or the bot's user-task-list from `/users/me/user_task_list?workspace=…`). Require a separate bot user and PAT per active environment of the same agent. Stop if the bot GID is reused; do not copy a production PAT into development.
+12. Verify the implementation end to end, including real task flow (assignment + comment + completion reaction), LangSmith traces, Chat SDK thread locking, and AgentCore Memory persistence.
+13. Follow `skills/apply-engineering-guidelines/` for shared engineering constraints.
 
 Return:
 
 - chosen Pokémon name and short rationale for the fit
 - architecture and runtime boundaries (single Lambda, Chat SDK handlers, external state layout)
 - implementation checklist (Chat SDK wiring, `@soofi-xyz/chat-state-dynamodb` state, `AsanaChatWebhook` CDK construct, AgentCore Memory, Bedrock model + tools, LangSmith)
-- deployment and configuration requirements, including the exact Asana values the human must collect
+- deployment and configuration requirements, including the exact Asana values the human must collect and the per-environment webhook ownership plan
 - end-to-end verification steps covering Asana task flow, LangSmith traces, Chat SDK locking, and AgentCore Memory persistence
 '''

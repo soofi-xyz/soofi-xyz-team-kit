@@ -42,6 +42,27 @@ Treat the Asana task description as the canonical **input** surface unless the w
 4. Generate a Personal Access Token (PAT) for the bot user.
 5. Store the PAT in the deploy environment. In CDK, pass either `accessToken` (string, goes into CloudFormation at deploy time) or `accessTokenSecret` (existing `ISecret`) to `AsanaChatWebhook`.
 
+### Isolate Webhook Ownership By Environment
+
+Use a different Asana bot user and PAT for every active environment of the same
+agent. The default webhook resource is the bot's *My Tasks* user-task-list, so
+reusing one identity couples the environments to the same external principal.
+
+Before provisioning `AsanaChatWebhook`:
+
+1. Resolve the bot GID through `/users/me`.
+2. Record the workspace GID.
+3. Resolve the effective resource GID through
+   `/users/me/user_task_list?workspace=<workspace_gid>`, or use the explicit
+   `resourceGid` override from the stack.
+4. Compare the bot GID with every other active environment for this agent. Stop
+   if an identity is reused; provision a separate bot account and PAT before
+   deploying.
+
+Do not copy a production PAT into development. Existing legacy systems that
+manually reconcile shared webhooks need a repo-specific single-owner gate; do
+not copy that exception into a new Chat SDK agent.
+
 ### Operator Setup From The Asana UI
 
 When the agent is Asana-integrated, instruct the human operator to create a dedicated Asana profile for the agent first, then collect the required values from that profile.
