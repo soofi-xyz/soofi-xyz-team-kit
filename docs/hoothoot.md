@@ -8,7 +8,7 @@ Hoothoot must not make up data. Every report number, row, bucket, chart, KPI, ta
 
 Current business questions such as "how many calls were scheduled on this date?" are report data requests. Hoothoot may use local files to understand definitions, but it does not answer current counts from local files, caches, notebooks, dashboards, generated reports, user-provided exports, or broad filesystem searches. It uses Athena only for the approved communication/call scope; otherwise it uses Persist/Rules. If the required live source is not connected, Hoothoot says the count is not available yet and continues AWS setup.
 
-Prod is the default for report numbers. Approved Athena reads use `socapital-prod` in `us-east-2` and verify account `014948052063`. Other Hoothoot paths may use dev only when you explicitly request dev/test validation and accept that those numbers are not production truth. Every AWS command still needs an explicit profile and region.
+Prod is the default for report numbers. Approved Athena reads reuse the production profile selected through Hoothoot's normal AWS access flow, run in `us-east-2`, and verify account `014948052063`; they do not require a separate Athena-specific profile. Hoothoot supplies the selected profile and region to its commands rather than asking you to export shell variables. Other Hoothoot paths may use dev only when you explicitly request dev/test validation and accept that those numbers are not production truth.
 
 ## Start In Agent Mode
 
@@ -65,7 +65,7 @@ For counts and easy date filters over orchestrated call eligibility/schedules or
 ## What To Provide
 
 - For a report/app, where the local project should live: either a new local path or an existing project path. Standalone count/date-filter questions do not need a project path.
-- Approved Athena communication/call reads use the exact `socapital-prod` profile. For other AWS access, Hoothoot should offer the managed reporting profile, SSO, credentials CSV, another local credentials file/profile, or "I do not know".
+- Approved Athena communication/call reads use the same production profile selected through the normal Hoothoot AWS access flow. For every source route, Hoothoot should offer the managed reporting profile, SSO, credentials CSV, another local credentials file/profile, or "I do not know".
 - If you received an AWS credentials CSV, provide only the local file path, the profile name you want Hoothoot to create, and the AWS region. Hoothoot should create or update the profile for you and verify the prod account.
 - Before rule/filter resolution: the core business question, unless you already stated it in your prompt.
 - After AWS access is connected and Hoothoot has inspected the data shape: the table/KPI/chart widgets you want, the business question each widget must answer, and how the report should look.
@@ -107,7 +107,7 @@ The canonical runbook and compact CLI/SQL examples are in [`access-orchestrate-c
 
 Key behavior:
 
-- Verify `socapital-prod`, `us-east-2`, and account `014948052063`.
+- Reuse the production profile selected through Hoothoot's normal AWS access flow; set it explicitly with `AWS_PROFILE=<selected-profile>`, use `us-east-2`, and verify account `014948052063`.
 - Discover Athena workgroups and verified result settings, `AwsDataCatalog`, Glue databases/tables/columns/partitions, business IDs, and timestamps.
 - Use the current `orchestrate_call_outputs` tables only after rediscovery: `workflow_run_catalog`, `eligible_to_call`, and `scheduled_calls`.
 - Treat `year INT`, `month INT`, and `date DATE` as the current partition keys. Map "day" to `date`, never invent `day`, and prune partitions whenever possible.
@@ -156,6 +156,7 @@ What Hoothoot should do for you:
 - Prefer the managed profile for the selected environment when it exists; ask you to pick a profile only if there is more than one possible choice.
 - Verify the selected profile and explain which AWS account it can access.
 - If your profile uses SSO, start the login flow and ask you only to finish the browser login.
+- If Athena, Glue, or its query-result storage denies access, start one re-login through the same selected SSO profile and ask you only to finish the browser step, then retry once. If access is still denied, report the exact permission your administrator must add; repeated login cannot grant permissions missing from the role.
 - If the profile is missing SSO settings, first ask whether you already have credentials it can use, such as a credentials CSV, a local credentials file path, or another profile name.
 - If no existing credentials are available, repair or create the SSO profile for you instead of telling you to run `aws configure sso`.
 - If you have an AWS credentials CSV, import it locally without printing the secret values.
@@ -281,7 +282,7 @@ Hoothoot should use this same lifecycle for every report request. A broad prompt
 
 1. For a report/app, Hoothoot collects the exact local project path. It skips this question for a standalone count/date filter.
 2. Hoothoot collects the core business question if missing.
-3. Hoothoot routes approved communication/call counts and date filters to `socapital-prod` Athena; other requests use the normal prod Persist/Rules access flow.
+3. Hoothoot routes approved communication/call counts and date filters to Athena using the production profile selected through the normal AWS access flow; other requests use the normal prod Persist/Rules source path.
 4. Hoothoot verifies the expected AWS account with explicit profile/region.
 5. For Athena, it discovers workgroups, result settings, `AwsDataCatalog`, Glue tables/columns/partitions, and actual availability under the canonical skill.
 6. For other sources, it discovers Persist/Rules details and resolves Lexicon rulesets, filters, or separate rules.

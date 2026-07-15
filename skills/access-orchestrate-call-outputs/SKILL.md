@@ -13,7 +13,7 @@ Use this skill as the canonical Athena access contract for Hoothoot. Keep the ag
   - orchestrated call eligibility or scheduled-call output;
   - a live, discoverable `phone_call` entity;
   - live, discoverable email-message or SMS-message entities.
-- Use production only: profile `socapital-prod`, region `us-east-2`, expected account `014948052063`.
+- Use production only. Reuse the AWS profile selected through Hoothoot's normal access flow, set it explicitly on every command, use region `us-east-2`, and require account `014948052063`. Do not require a separate Athena-specific profile name.
 - Use `AwsDataCatalog` and names discovered from Athena/Glue. Never guess a workgroup, result location, database, table, identifier, timestamp, or partition column.
 - Keep Athena read-only. Run only metadata calls and `SELECT`/`WITH` queries. Do not run DDL, CTAS, `INSERT`, `UPDATE`, `DELETE`, `MERGE`, `UNLOAD`, repairs, crawlers, or source-data mutation.
 - Do not expand this approval to unrelated Athena datasets. Use Hoothoot's normal Lexicon/Rules/Persist path outside these communication/call entities.
@@ -23,23 +23,25 @@ Use this skill as the canonical Athena access contract for Hoothoot. Keep the ag
 
 ## Discover access before querying
 
-Run every AWS command with the profile and region explicit.
+Run every AWS command with the profile and region explicit. In the examples below, `SELECTED_AWS_PROFILE` is the profile already selected and verified through Hoothoot's normal AWS access flow. Hoothoot must define this variable in its own command environment; never ask the user to export `AWS_PROFILE` or define `SELECTED_AWS_PROFILE`.
 
 1. Verify caller identity and stop unless the account is exactly `014948052063`:
 
 ```bash
-AWS_PROFILE=socapital-prod AWS_REGION=us-east-2 \
+AWS_PROFILE="$SELECTED_AWS_PROFILE" AWS_REGION=us-east-2 \
   aws sts get-caller-identity --query '{Account:Account,Arn:Arn}' --output json
 ```
+
+If caller identity or an Athena, Glue, or query-result S3 read fails because the SSO session is invalid or returns `AccessDenied`, Hoothoot starts re-login through the same selected SSO profile and asks the user only to complete the browser sign-in. Re-run caller identity and retry the failed read once. If `AccessDenied` persists, stop and return the exact denied action/resource as a required administrator permission change; re-login cannot grant IAM permissions absent from the role.
 
 2. List workgroups, choose an enabled approved workgroup from the returned metadata, and inspect its configuration:
 
 ```bash
-AWS_PROFILE=socapital-prod AWS_REGION=us-east-2 \
+AWS_PROFILE="$SELECTED_AWS_PROFILE" AWS_REGION=us-east-2 \
   aws athena list-work-groups \
   --query 'WorkGroups[].{Name:Name,State:State,Description:Description}' --output table
 
-AWS_PROFILE=socapital-prod AWS_REGION=us-east-2 \
+AWS_PROFILE="$SELECTED_AWS_PROFILE" AWS_REGION=us-east-2 \
   aws athena get-work-group --work-group "$WORKGROUP" \
   --query 'WorkGroup.{Name:Name,State:State,Enforce:Configuration.EnforceWorkGroupConfiguration,OutputLocation:Configuration.ResultConfiguration.OutputLocation,ExpectedBucketOwner:Configuration.ResultConfiguration.ExpectedBucketOwner,Encryption:Configuration.ResultConfiguration.EncryptionConfiguration}' \
   --output json
@@ -50,15 +52,15 @@ AWS_PROFILE=socapital-prod AWS_REGION=us-east-2 \
 4. Confirm `AwsDataCatalog`, then discover databases and tables:
 
 ```bash
-AWS_PROFILE=socapital-prod AWS_REGION=us-east-2 \
+AWS_PROFILE="$SELECTED_AWS_PROFILE" AWS_REGION=us-east-2 \
   aws athena list-data-catalogs --work-group "$WORKGROUP" \
   --query 'DataCatalogsSummary[].CatalogName' --output table
 
-AWS_PROFILE=socapital-prod AWS_REGION=us-east-2 \
+AWS_PROFILE="$SELECTED_AWS_PROFILE" AWS_REGION=us-east-2 \
   aws glue get-databases --catalog-id 014948052063 \
   --query 'DatabaseList[].Name' --output table
 
-AWS_PROFILE=socapital-prod AWS_REGION=us-east-2 \
+AWS_PROFILE="$SELECTED_AWS_PROFILE" AWS_REGION=us-east-2 \
   aws glue get-tables --catalog-id 014948052063 --database-name "$DATABASE" \
   --query 'TableList[].Name' --output table
 ```
@@ -66,13 +68,13 @@ AWS_PROFILE=socapital-prod AWS_REGION=us-east-2 \
 5. Inspect every selected table's columns, partition keys, location, and live partitions:
 
 ```bash
-AWS_PROFILE=socapital-prod AWS_REGION=us-east-2 \
+AWS_PROFILE="$SELECTED_AWS_PROFILE" AWS_REGION=us-east-2 \
   aws glue get-table --catalog-id 014948052063 \
   --database-name "$DATABASE" --name "$TABLE" \
   --query 'Table.{Columns:StorageDescriptor.Columns[].{Name:Name,Type:Type},PartitionKeys:PartitionKeys[].{Name:Name,Type:Type},Location:StorageDescriptor.Location}' \
   --output json
 
-AWS_PROFILE=socapital-prod AWS_REGION=us-east-2 \
+AWS_PROFILE="$SELECTED_AWS_PROFILE" AWS_REGION=us-east-2 \
   aws glue get-partitions --catalog-id 014948052063 \
   --database-name "$DATABASE" --table-name "$TABLE" \
   --query 'Partitions[].Values' --output json
@@ -137,10 +139,10 @@ Before every answer:
 To discover future candidates, inspect all discovered database/table names and then validate each candidate's schema and semantics. A compact CLI search is:
 
 ```bash
-for database in $(AWS_PROFILE=socapital-prod AWS_REGION=us-east-2 \
+for database in $(AWS_PROFILE="$SELECTED_AWS_PROFILE" AWS_REGION=us-east-2 \
   aws glue get-databases --catalog-id 014948052063 \
   --query 'DatabaseList[].Name' --output text); do
-  AWS_PROFILE=socapital-prod AWS_REGION=us-east-2 \
+  AWS_PROFILE="$SELECTED_AWS_PROFILE" AWS_REGION=us-east-2 \
     aws glue get-tables --catalog-id 014948052063 --database-name "$database" \
     --query "TableList[?contains(Name, 'phone') || contains(Name, 'call') || contains(Name, 'email') || contains(Name, 'sms') || contains(Name, 'message')].Name" \
     --output text
@@ -154,7 +156,7 @@ When a requested entity becomes available, Athena is preferred for its counts an
 Use discovered workgroup/database/result settings to execute these read-only queries. If the workgroup does not enforce its result location:
 
 ```bash
-QUERY_ID=$(AWS_PROFILE=socapital-prod AWS_REGION=us-east-2 \
+QUERY_ID=$(AWS_PROFILE="$SELECTED_AWS_PROFILE" AWS_REGION=us-east-2 \
   aws athena start-query-execution \
   --work-group "$WORKGROUP" \
   --query-execution-context "Catalog=AwsDataCatalog,Database=$DATABASE" \
@@ -162,11 +164,11 @@ QUERY_ID=$(AWS_PROFILE=socapital-prod AWS_REGION=us-east-2 \
   --query-string "$SQL" \
   --query 'QueryExecutionId' --output text)
 
-AWS_PROFILE=socapital-prod AWS_REGION=us-east-2 \
+AWS_PROFILE="$SELECTED_AWS_PROFILE" AWS_REGION=us-east-2 \
   aws athena get-query-execution --query-execution-id "$QUERY_ID" \
   --query 'QueryExecution.Status' --output json
 
-AWS_PROFILE=socapital-prod AWS_REGION=us-east-2 \
+AWS_PROFILE="$SELECTED_AWS_PROFILE" AWS_REGION=us-east-2 \
   aws athena get-query-results --query-execution-id "$QUERY_ID" \
   --max-results 100
 ```

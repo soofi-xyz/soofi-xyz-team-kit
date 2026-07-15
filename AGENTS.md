@@ -48,6 +48,12 @@ Follow these conventions whenever you touch files in this repo.
 - Codex repo marketplace points at `plugins/soofi-xyz/`, whose `.codex-plugin` and `skills` entries are symlinks back to the canonical root manifest and `skills/` tree. Do not edit through the nested symlink path.
 - Codex custom agents are project-scoped TOML files in `.codex/agents/` generated from `agents/`.
 
+## AWS access guidance
+
+- Do not hardcode a developer-specific AWS profile name in agents, skills, docs, or command examples.
+- Reuse the profile selected and verified through the agent's existing AWS access flow, and show it as `AWS_PROFILE=<selected-profile>` or a clearly defined shell variable.
+- Keep account and region checks explicit so a reusable profile name cannot silently target the wrong environment.
+
 ## Repository layout
 
 ```text
