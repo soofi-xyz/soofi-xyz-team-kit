@@ -8,7 +8,7 @@ Hoothoot must not make up data. Every report number, row, bucket, chart, KPI, ta
 
 Current business questions such as "how many calls were scheduled on this date?" are report data requests. Hoothoot may use local files to understand definitions, but it does not answer current counts from local files, caches, notebooks, dashboards, generated reports, user-provided exports, or broad filesystem searches. It uses Athena only for the approved communication/call scope; otherwise it uses Persist/Rules. If the required live source is not connected, Hoothoot says the count is not available yet and continues AWS setup.
 
-Prod is the default for report numbers. Approved Athena reads reuse the production profile selected through Hoothoot's normal AWS access flow, run in `us-east-2`, and verify account `014948052063`; they do not require a separate Athena-specific profile. Other Hoothoot paths may use dev only when you explicitly request dev/test validation and accept that those numbers are not production truth. Every AWS command still needs an explicit profile and region.
+Prod is the default for report numbers. Approved Athena reads reuse the production profile selected through Hoothoot's normal AWS access flow, run in `us-east-2`, and verify account `014948052063`; they do not require a separate Athena-specific profile. Hoothoot supplies the selected profile and region to its commands rather than asking you to export shell variables. Other Hoothoot paths may use dev only when you explicitly request dev/test validation and accept that those numbers are not production truth.
 
 ## Start In Agent Mode
 
@@ -156,6 +156,7 @@ What Hoothoot should do for you:
 - Prefer the managed profile for the selected environment when it exists; ask you to pick a profile only if there is more than one possible choice.
 - Verify the selected profile and explain which AWS account it can access.
 - If your profile uses SSO, start the login flow and ask you only to finish the browser login.
+- If Athena, Glue, or its query-result storage denies access, start one re-login through the same selected SSO profile and ask you only to finish the browser step, then retry once. If access is still denied, report the exact permission your administrator must add; repeated login cannot grant permissions missing from the role.
 - If the profile is missing SSO settings, first ask whether you already have credentials it can use, such as a credentials CSV, a local credentials file path, or another profile name.
 - If no existing credentials are available, repair or create the SSO profile for you instead of telling you to run `aws configure sso`.
 - If you have an AWS credentials CSV, import it locally without printing the secret values.

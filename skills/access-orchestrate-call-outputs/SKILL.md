@@ -23,7 +23,7 @@ Use this skill as the canonical Athena access contract for Hoothoot. Keep the ag
 
 ## Discover access before querying
 
-Run every AWS command with the profile and region explicit. In the examples below, `SELECTED_AWS_PROFILE` is the profile already selected and verified through Hoothoot's normal AWS access flow.
+Run every AWS command with the profile and region explicit. In the examples below, `SELECTED_AWS_PROFILE` is the profile already selected and verified through Hoothoot's normal AWS access flow. Hoothoot must define this variable in its own command environment; never ask the user to export `AWS_PROFILE` or define `SELECTED_AWS_PROFILE`.
 
 1. Verify caller identity and stop unless the account is exactly `014948052063`:
 
@@ -31,6 +31,8 @@ Run every AWS command with the profile and region explicit. In the examples belo
 AWS_PROFILE="$SELECTED_AWS_PROFILE" AWS_REGION=us-east-2 \
   aws sts get-caller-identity --query '{Account:Account,Arn:Arn}' --output json
 ```
+
+If caller identity or an Athena, Glue, or query-result S3 read fails because the SSO session is invalid or returns `AccessDenied`, Hoothoot starts re-login through the same selected SSO profile and asks the user only to complete the browser sign-in. Re-run caller identity and retry the failed read once. If `AccessDenied` persists, stop and return the exact denied action/resource as a required administrator permission change; re-login cannot grant IAM permissions absent from the role.
 
 2. List workgroups, choose an enabled approved workgroup from the returned metadata, and inspect its configuration:
 
