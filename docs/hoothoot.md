@@ -294,7 +294,7 @@ Hoothoot should use this same lifecycle for every report request. A broad prompt
 
 1. For a report/app, Hoothoot collects the exact local project path. It skips this question for a standalone count/date filter.
 2. Hoothoot collects the core business question if missing.
-3. Hoothoot routes approved communication/call counts and date filters to Athena using the production profile selected through the normal AWS access flow; other requests use the normal prod Persist/Rules source path.
+3. Hoothoot routes approved communication/call counts and date filters, plus ACTIVE derived-index snapshot questions (`debt_derived_indexes.active_index_values`), to Athena using the production profile selected through the normal AWS access flow; other requests use the normal prod Persist/Rules source path.
 4. Hoothoot verifies the expected AWS account with explicit profile/region.
 5. For Athena, it discovers workgroups, result settings, `AwsDataCatalog`, Glue tables/columns/partitions, and actual availability under the canonical skill.
 6. For other sources, it discovers Persist/Rules details and resolves Lexicon rulesets, filters, or separate rules.
