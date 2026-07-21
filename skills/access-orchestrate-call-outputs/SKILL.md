@@ -1,6 +1,6 @@
 ---
 name: access-orchestrate-call-outputs
-description: Query approved production Athena communication and calling datasets for counts and date filtering while preserving workflow lineage. Use for orchestrated call eligibility/schedules and for discoverable phone-call, email-message, or SMS-message entities; inspect live Glue metadata and partitions before claiming availability.
+description: Query approved production Athena communication, calling, and payment-plan snapshot datasets for counts and date filtering while preserving workflow lineage. Use for orchestrated call eligibility/schedules; discoverable phone-call, email-message, or SMS-message entities; and current-snapshot payment_plan / payment_plan_installment tables; inspect live Glue metadata and partitions before claiming availability.
 ---
 
 # Access Orchestrate Call Outputs
@@ -12,11 +12,12 @@ Use this skill as the canonical Athena access contract for Hoothoot. Keep the ag
 - Prefer Athena for counts and easy date filtering when the requested entity is one of:
   - orchestrated call eligibility or scheduled-call output;
   - a live, discoverable `phone_call` entity;
-  - live, discoverable email-message or SMS-message entities.
+  - live, discoverable email-message or SMS-message entities;
+  - current-snapshot `payment_plan` or `payment_plan_installment` rows in `orchestrate_call_outputs`.
 - Use production only. Reuse the AWS profile selected through Hoothoot's normal access flow, set it explicitly on every command, use region `us-east-2`, and require account `014948052063`. Do not require a separate Athena-specific profile name.
 - Use `AwsDataCatalog` and names discovered from Athena/Glue. Never guess a workgroup, result location, database, table, identifier, timestamp, or partition column.
 - Keep Athena read-only. Run only metadata calls and `SELECT`/`WITH` queries. Do not run DDL, CTAS, `INSERT`, `UPDATE`, `DELETE`, `MERGE`, `UNLOAD`, repairs, crawlers, or source-data mutation.
-- Do not expand this approval to unrelated Athena datasets. Use Hoothoot's normal Lexicon/Rules/Persist path outside these communication/call entities.
+- Do not expand this approval to unrelated Athena datasets. Use Hoothoot's normal Lexicon/Rules/Persist path outside these communication/call and payment-plan snapshot entities.
 - Do not substitute an easy Athena count for a business-defined population. Confirm that the discovered table semantics match the user's wording.
 - Add `LIMIT` to row samples, project only necessary non-sensitive columns, and do not expose phone numbers, email addresses, message bodies, names, addresses, SSNs, or other PII in chat, logs, screenshots, or report provenance.
 - For debt-backed counts, retain Hoothoot's default exclusion of identifiers matching the `UNMATCHED_SSN` placeholder pattern unless the user explicitly asks to analyze them.
@@ -126,7 +127,18 @@ ORDER BY solver_start_time, solver_execution_id;
 
 ## Availability and planned entity families
 
-Athena communication coverage is expanding gradually. Planned entity families are `phone_call`, email messages, and SMS messages, with historical coverage intended from January 2026 onward. Plans are not evidence.
+Athena communication coverage is expanding gradually. Live entity tables in `orchestrate_call_outputs` currently include `phone_call`, `email_message`, `text_message`, and `payment` when present in Glue; rediscover before claiming coverage. Historical communication coverage is intended from January 2026 onward, but Glue partitions are the evidence.
+
+### Payment plan snapshot tables (live)
+
+`orchestrate_call_outputs` also has current-snapshot payment-plan tables published alongside the communication entities:
+
+- `payment_plan` — one row per `payment_plan_identifier`
+- `payment_plan_installment` — one row per `payment_schedule_identifier`
+
+Initial release `v20260721-initial-1-business`: 1,812,121 plans and 3,161,152 installments. Both use integer partitions `year`, `month`, and `day` (not `date`). Plan day comes from the America/New_York date of UTC `created_at`; installment day comes from `scheduled_payment_date` with no timezone conversion. Observed initial range is 2020-01-20 through 2026-07-21; confirm live partitions before counting. Treat these as point-in-time snapshots, not lifecycle history and not future-obligation coverage; they do not auto-refresh.
+
+Key columns: plan has `plan_type` (`INSTALLMENT`/`OTHER` only), `canonical_status`, `total_amount`, `scheduled_total` (keep independent), `created_at`; installment has `scheduled_payment_date`, `scheduled_amount`, `payment_method`, `canonical_status`, and `linked_payment_identifiers` (`array<string>`). Currency is `DECIMAL(18,2)`. Prefer Athena for payment-plan/installment counts and status aggregations when these tables match the question.
 
 Before every answer:
 
@@ -136,7 +148,7 @@ Before every answer:
 4. State which requested entity families are present, absent, partial, or stale.
 5. Never claim January 2026 coverage, or any planned table, merely because this skill mentions it.
 
-To discover future candidates, inspect all discovered database/table names and then validate each candidate's schema and semantics. A compact CLI search is:
+To discover candidates, inspect all discovered database/table names and then validate each candidate's schema and semantics. A compact CLI search is:
 
 ```bash
 for database in $(AWS_PROFILE="$SELECTED_AWS_PROFILE" AWS_REGION=us-east-2 \
@@ -144,7 +156,7 @@ for database in $(AWS_PROFILE="$SELECTED_AWS_PROFILE" AWS_REGION=us-east-2 \
   --query 'DatabaseList[].Name' --output text); do
   AWS_PROFILE="$SELECTED_AWS_PROFILE" AWS_REGION=us-east-2 \
     aws glue get-tables --catalog-id 014948052063 --database-name "$database" \
-    --query "TableList[?contains(Name, 'phone') || contains(Name, 'call') || contains(Name, 'email') || contains(Name, 'sms') || contains(Name, 'message')].Name" \
+    --query "TableList[?contains(Name, 'phone') || contains(Name, 'call') || contains(Name, 'email') || contains(Name, 'sms') || contains(Name, 'message') || contains(Name, 'payment')].Name" \
     --output text
 done
 ```

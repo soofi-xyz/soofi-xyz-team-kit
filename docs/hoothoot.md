@@ -109,13 +109,14 @@ Key behavior:
 
 - Reuse the production profile selected through Hoothoot's normal AWS access flow; set it explicitly with `AWS_PROFILE=<selected-profile>`, use `us-east-2`, and verify account `014948052063`.
 - Discover Athena workgroups and verified result settings, `AwsDataCatalog`, Glue databases/tables/columns/partitions, business IDs, and timestamps.
-- Use the current `orchestrate_call_outputs` tables only after rediscovery: `workflow_run_catalog`, `eligible_to_call`, and `scheduled_calls`.
-- Treat `year INT`, `month INT`, and `date DATE` as the current partition keys. Map "day" to `date`, never invent `day`, and prune partitions whenever possible.
+- Use the current `orchestrate_call_outputs` run-aware tables only after rediscovery: `workflow_run_catalog`, `eligible_to_call`, and `scheduled_calls`.
+- Treat `year INT`, `month INT`, and `date DATE` as the run-aware partition keys. Map "day" to `date`, never invent `day`, and prune partitions whenever possible.
 - Start run-aware questions from `workflow_run_catalog`; explicitly select `solver_execution_id`, `filter_source_id`, and `classification`; join scheduled rows to exact Filter lineage, never date alone.
-- Inspect live availability and state actual entities, date ranges, and gaps. Phone-call, email-message, and SMS-message history from January 2026 onward is planned, not proof of availability.
+- Inspect live availability and state actual entities, date ranges, and gaps. Live entity tables in the same database can include `phone_call`, `email_message`, `text_message`, `payment`, and current-snapshot `payment_plan` / `payment_plan_installment` when present in Glue; January 2026 communication history is intended, not proof.
+- Prefer Athena for payment-plan / installment counts via `payment_plan` and `payment_plan_installment` (one current row per plan / schedule identifier; integer `year`/`month`/`day` partitions; point-in-time snapshot, not lifecycle or future-obligation coverage).
 - Count rows and distinct discovered business identifiers separately when those semantics differ.
 - Keep queries read-only, bound samples with `LIMIT`, verify result output, and do not expose PII or message contents.
-- Apply the static-through-`2026-07-14` no-auto-refresh warning only to the current `orchestrate_call_outputs` corrective backfill.
+- Apply the static-through-`2026-07-14` no-auto-refresh warning only to the current run-aware call-output corrective backfill; payment-plan snapshots are a separate current snapshot and also do not auto-refresh.
 
 ## Athena Persist ACTIVE Derived Indexes
 
