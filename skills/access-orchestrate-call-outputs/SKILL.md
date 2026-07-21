@@ -1,6 +1,6 @@
 ---
 name: access-orchestrate-call-outputs
-description: Query approved production Athena communication, calling, and payment-plan snapshot datasets for counts and date filtering while preserving workflow lineage. Use for orchestrated call eligibility/schedules; discoverable phone-call, email-message, or SMS-message entities; and current-snapshot payment_plan / payment_plan_installment tables; inspect live Glue metadata and partitions before claiming availability.
+description: Query approved production Athena communication, calling, payment, and payment-plan snapshot datasets for counts and date filtering while preserving workflow lineage. Use for orchestrated call eligibility/schedules; approved live entity tables phone_call, email_message, text_message (SMS), and payment; and current-snapshot payment_plan / payment_plan_installment tables; inspect live Glue metadata and partitions before claiming coverage.
 ---
 
 # Access Orchestrate Call Outputs
@@ -11,13 +11,16 @@ Use this skill as the canonical Athena access contract for Hoothoot. Keep the ag
 
 - Prefer Athena for counts and easy date filtering when the requested entity is one of:
   - orchestrated call eligibility or scheduled-call output;
-  - a live, discoverable `phone_call` entity;
-  - live, discoverable email-message or SMS-message entities;
+  - `phone_call` (phone-call / interaction counts and date filters);
+  - `email_message` (email-message counts and date filters);
+  - `text_message` (SMS / text-message counts and date filters);
+  - `payment` (actual payment counts, amounts, and date filters);
   - current-snapshot `payment_plan` or `payment_plan_installment` rows in `orchestrate_call_outputs`.
+- These six `orchestrate_call_outputs` entity/snapshot families are approved Athena query targets. Do not fall back to Persist for ordinary counts of `phone_call`, `email_message`, `text_message`, or `payment` once Glue shows the table. Rediscover schema, partitions, and date coverage before every count; do not treat the tables as optional or “planned.”
 - Use production only. Reuse the AWS profile selected through Hoothoot's normal access flow, set it explicitly on every command, use region `us-east-2`, and require account `014948052063`. Do not require a separate Athena-specific profile name.
 - Use `AwsDataCatalog` and names discovered from Athena/Glue. Never guess a workgroup, result location, database, table, identifier, timestamp, or partition column.
 - Keep Athena read-only. Run only metadata calls and `SELECT`/`WITH` queries. Do not run DDL, CTAS, `INSERT`, `UPDATE`, `DELETE`, `MERGE`, `UNLOAD`, repairs, crawlers, or source-data mutation.
-- Do not expand this approval to unrelated Athena datasets. Use Hoothoot's normal Lexicon/Rules/Persist path outside these communication/call and payment-plan snapshot entities.
+- Do not expand this approval to unrelated Athena datasets. Use Hoothoot's normal Lexicon/Rules/Persist path outside these communication/call/payment and payment-plan snapshot entities.
 - Do not substitute an easy Athena count for a business-defined population. Confirm that the discovered table semantics match the user's wording.
 - Add `LIMIT` to row samples, project only necessary non-sensitive columns, and do not expose phone numbers, email addresses, message bodies, names, addresses, SSNs, or other PII in chat, logs, screenshots, or report provenance.
 - For debt-backed counts, retain Hoothoot's default exclusion of identifiers matching the `UNMATCHED_SSN` placeholder pattern unless the user explicitly asks to analyze them.
@@ -125,9 +128,18 @@ WHERE year = 2026
 ORDER BY solver_start_time, solver_execution_id;
 ```
 
-## Availability and planned entity families
+## Approved entity tables
 
-Athena communication coverage is expanding gradually. Live entity tables in `orchestrate_call_outputs` currently include `phone_call`, `email_message`, `text_message`, and `payment` when present in Glue; rediscover before claiming coverage. Historical communication coverage is intended from January 2026 onward, but Glue partitions are the evidence.
+These live `orchestrate_call_outputs` tables are approved Athena sources for Hoothoot counts and date filters. Prefer Athena over Persist when the question is answered by them:
+
+| Table | Use for |
+| --- | --- |
+| `phone_call` | Phone-call / interaction counts and date filters |
+| `email_message` | Email-message counts and date filters |
+| `text_message` | SMS / text-message counts and date filters |
+| `payment` | Actual payment counts, amounts, and date filters |
+
+All four use integer partitions `year`, `month`, and `day` (not `date`). Historical coverage is intended from January 2026 onward; Glue partitions are the evidence for actual ranges and gaps. Rediscover before every answer — approval authorizes the query path, not a frozen coverage claim.
 
 ### Payment plan snapshot tables (live)
 
