@@ -1,6 +1,6 @@
 ---
 name: access-orchestrate-call-outputs
-description: Query approved production Athena communication, calling, payment, and payment-plan snapshot datasets for counts and date filtering while preserving workflow lineage. Use for orchestrated call eligibility/schedules; approved live entity tables phone_call, email_message, text_message (SMS), and payment; and current-snapshot payment_plan / payment_plan_installment tables; inspect live Glue metadata and partitions before claiming coverage.
+description: Query approved production Athena communication, calling, payment, payment-plan lifecycle, and payment-plan snapshot datasets for counts and date filtering while preserving workflow lineage. Use for orchestrated call eligibility/schedules; phone_call, email_message, text_message (SMS), payment; payment_plan_lifecycle_events for inventory/additions/endings (populated through 2026-07-21); and current-snapshot payment_plan / payment_plan_installment; inspect live Glue metadata and partitions before claiming coverage.
 ---
 
 # Access Orchestrate Call Outputs
@@ -15,12 +15,13 @@ Use this skill as the canonical Athena access contract for Hoothoot. Keep the ag
   - `email_message` (email-message counts and date filters);
   - `text_message` (SMS / text-message counts and date filters);
   - `payment` (actual payment counts, amounts, and date filters);
-  - current-snapshot `payment_plan` or `payment_plan_installment` rows in `orchestrate_call_outputs`.
-- These six `orchestrate_call_outputs` entity/snapshot families are approved Athena query targets. Do not fall back to Persist for ordinary counts of `phone_call`, `email_message`, `text_message`, or `payment` once Glue shows the table. Rediscover schema, partitions, and date coverage before every count; do not treat the tables as optional or “planned.”
+  - `payment_plan_lifecycle_events` (Payment Plan Inventory; monthly additions/endings; amended/recovered; in-force-at-cutoff);
+  - current-snapshot `payment_plan` or `payment_plan_installment` rows (current status/amounts only — not lifecycle ledgers).
+- These `orchestrate_call_outputs` families are approved Athena query targets. Do not fall back to Persist for ordinary counts of `phone_call`, `email_message`, `text_message`, or `payment` once Glue shows the table. For payment-plan inventory semantics, query **`payment_plan_lifecycle_events`**, not the snapshot tables. Rediscover schema, partitions, and date coverage before every count; do not treat the tables as optional or “planned.”
 - Use production only. Reuse the AWS profile selected through Hoothoot's normal access flow, set it explicitly on every command, use region `us-east-2`, and require account `014948052063`. Do not require a separate Athena-specific profile name.
 - Use `AwsDataCatalog` and names discovered from Athena/Glue. Never guess a workgroup, result location, database, table, identifier, timestamp, or partition column.
 - Keep Athena read-only. Run only metadata calls and `SELECT`/`WITH` queries. Do not run DDL, CTAS, `INSERT`, `UPDATE`, `DELETE`, `MERGE`, `UNLOAD`, repairs, crawlers, or source-data mutation.
-- Do not expand this approval to unrelated Athena datasets. Use Hoothoot's normal Lexicon/Rules/Persist path outside these communication/call/payment and payment-plan snapshot entities.
+- Do not expand this approval to unrelated Athena datasets. Use Hoothoot's normal Lexicon/Rules/Persist path outside these communication/call/payment and payment-plan entities.
 - Do not substitute an easy Athena count for a business-defined population. Confirm that the discovered table semantics match the user's wording.
 - Add `LIMIT` to row samples, project only necessary non-sensitive columns, and do not expose phone numbers, email addresses, message bodies, names, addresses, SSNs, or other PII in chat, logs, screenshots, or report provenance.
 - For debt-backed counts, retain Hoothoot's default exclusion of identifiers matching the `UNMATCHED_SSN` placeholder pattern unless the user explicitly asks to analyze them.
@@ -141,16 +142,23 @@ These live `orchestrate_call_outputs` tables are approved Athena sources for Hoo
 
 All four use integer partitions `year`, `month`, and `day` (not `date`). Historical coverage is intended from January 2026 onward; Glue partitions are the evidence for actual ranges and gaps. Rediscover before every answer — approval authorizes the query path, not a frozen coverage claim.
 
-### Payment plan snapshot tables (live)
+### Payment plan tables (live)
 
-`orchestrate_call_outputs` also has current-snapshot payment-plan tables published alongside the communication entities:
+Route by question type:
 
-- `payment_plan` — one row per `payment_plan_identifier`
-- `payment_plan_installment` — one row per `payment_schedule_identifier`
+| Table | Query this for |
+| --- | --- |
+| `payment_plan_lifecycle_events` | Payment Plan Inventory; monthly additions/endings; amended/recovered; latest-active-before-cutoff |
+| `payment_plan` | Current plan status / type / amounts only |
+| `payment_plan_installment` | Current installment schedules only |
 
-Initial release `v20260721-initial-1-business`: 1,812,121 plans and 3,161,152 installments. Both use integer partitions `year`, `month`, and `day` (not `date`). Plan day comes from the America/New_York date of UTC `created_at`; installment day comes from `scheduled_payment_date` with no timezone conversion. Observed initial range is 2020-01-20 through 2026-07-21; confirm live partitions before counting. Treat these as point-in-time snapshots, not lifecycle history and not future-obligation coverage; they do not auto-refresh.
+**Lifecycle (required for inventory):** `orchestrate_call_outputs.payment_plan_lifecycle_events`, release `v20260722-lifecycle-1-business`, 3,455,095 rows. Grain: `debt_identifier` + `payment_plan_identifier` + `status` + `effective_at`. Statuses `ACTIVE` / `COMPLETED` / `CANCELLED` / `DEFAULTED`. Integer partitions `year`/`month`/`day` = America/New_York date of UTC `effective_at`. Also has `source_*_date`, `debt_is_placeholder`, `snapshot_at`.
 
-Key columns: plan has `plan_type` (`INSTALLMENT`/`OTHER` only), `canonical_status`, `total_amount`, `scheduled_total` (keep independent), `created_at`; installment has `scheduled_payment_date`, `scheduled_amount`, `payment_method`, `canonical_status`, and `linked_payment_identifiers` (`array<string>`). Currency is `DECIMAL(18,2)`. Prefer Athena for payment-plan/installment counts and status aggregations when these tables match the question.
+**Populated through 2026-07-21** inclusive (observed `effective_at` / partitions 2020-01-20 through 2026-07-21; Stage `snapshot_at` `2026-07-21 11:00:40` UTC). Static — does not auto-refresh; always state this cutoff. Events mirror Lexicon `debt_payment_plan_status_changed` from Stage columns, not an unbounded multi-cycle log beyond those columns.
+
+**Snapshots:** `payment_plan` / `payment_plan_installment`, release `v20260721-initial-1-business` (1,812,121 / 3,161,152). Same **through 2026-07-21** Stage cutoff. Plan day from NY date of UTC `created_at`; installment day from `scheduled_payment_date`. Not lifecycle history and not future-obligation coverage.
+
+Key snapshot columns: plan has `plan_type` (`INSTALLMENT`/`OTHER` only), `canonical_status`, `total_amount`, `scheduled_total` (keep independent), `created_at`; installment has `scheduled_payment_date`, `scheduled_amount`, `payment_method`, `canonical_status`, and `linked_payment_identifiers` (`array<string>`). Currency is `DECIMAL(18,2)`.
 
 Before every answer:
 
