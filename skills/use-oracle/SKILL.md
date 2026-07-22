@@ -93,6 +93,10 @@ Every county onboarding must publish coverage as a public IPFS/IPNS contract, no
 4. Public consumers use IPFS/IPNS only:
    - Donphan reads coverage through MCP `getOracleDatasetInfo`.
    - Miranda can read the same public `dataset-coverage.json` gateway URL directly.
+   - The Watchog hero-facts service (`watchog` + `build-elephant-hero-facts`) consumes this
+     coverage plus a versioned dataset catalog to detect newly published counties and propose
+     source-backed elephant.xyz homepage-hero facts; it needs a production read interface and a
+     catalog that enumerates counties, not the developer MCP map.
    - Never point users at AWS S3 for coverage; S3 is internal orchestration/artifact storage only.
 5. Once a county coverage IPNS is published, wire MCP in one of two ways:
    - add it to `DATASET_COVERAGE_MAP` for immediate runtime consumption; or
