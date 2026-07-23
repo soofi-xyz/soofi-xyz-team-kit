@@ -34,7 +34,7 @@ Prefer Oracle emitting a `DatasetPublished` event (county published/refreshed) a
 Implement a single typed gateway that is the only path to Elephant data. It MUST:
 
 - **Enumerate counties from the coverage feed / MCP**, never from a hard-coded list or the plugin `mcp.json`.
-- Snapshot per county: `propertyCount`, per-source coverage, `lastLoadedAt`, and the immutable `datasetRevision`.
+- Snapshot per county: `propertyCount`, per-source coverage, `lastLoadedAt`, and the immutable `datasetRevision`. **Deriving the revision (confirmed by probing):** `getOracleDatasetInfo` returns a stable `ipnsName` pointer (not a per-version hash) and `cid` may be null, so compute `datasetRevision` from the change-bearing fields — the per-source `lastLoadedAt` values plus `ingestedCount`/`completionPercent` (for example a hash of `{source, lastLoadedAt, ingestedCount}` across sources). This changes exactly when the data changes.
 - Call only the **same read-only MCP tools/queries Donphan uses** — `getOracleDatasetInfo`, `queryProperties` (SELECT/CTE only; single statement; row caps), and the geo tools. The model never issues arbitrary SQL.
 - For every calculation, record `{ recipeId, countyKey, queryText, parameters, canonicalResult, resultHash, dataReadAt, datasetRevision }`.
 - Apply **bounded concurrency, jitter, and retry with backoff.** Concurrent Filebase metadata reads have already returned HTTP 429 — treat 429/5xx as a throttle signal, back off, and surface a non-fact outcome rather than hammering the endpoint.
