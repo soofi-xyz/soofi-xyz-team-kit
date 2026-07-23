@@ -8,35 +8,34 @@ tags: catalog, dataset, county-discovery, gateway, snapshot, change-detection, r
 
 Watchog can only produce fresh facts if it can reliably answer three questions on a schedule: **which counties/datasets are published now, what changed since last time, and exactly which data revision backs each number.** This requires a production data contract, not the Cursor MCP.
 
-### The runtime is not Cursor
+### Reuse Donphan's data path, not the Cursor agent
 
-`donphan` reads data by calling the `elephant` MCP server that this plugin's `mcp.json` starts locally with `npx`. That works inside Cursor. It is **not** a supported server-to-server interface, and the bundled IPNS county map is a developer convenience that must not be hard-coded into a production service. A scheduled AWS runtime needs its own read path.
+`donphan` reads data by calling the `elephant` MCP. This plugin's `mcp.json` starts that MCP locally with `npx` for Cursor, but a **production, Vercel-hosted Elephant MCP also exists** (the bundled config "matches prod Vercel MCP"). The scheduled service calls that **same hosted MCP** with the **same verified queries**, so Watchog's facts stay consistent with the currently live, Donphan-authored facts and keep Donphan's geographic tools (`findPropertiesInArea`, `sumPropertyValueInArea`) that the Neon query DB lacks. Do not depend on the local developer `mcp.json`, and do not hard-code the bundled IPNS county map. A human may also use Donphan interactively in Cursor to propose candidate facts; Watchog verifies and publishes them through the same gates.
 
 ### Required upstream contract (Phase 1 gate)
 
-Before building live scans, confirm both exist. If either is missing, STOP and give the human this exact ask for the Elephant data owner:
+Before building live scans, confirm access to the hosted MCP and a way to enumerate counties. If either is missing, STOP and give the human this exact ask for the Elephant data owner:
 
-1. A production, server-to-server, **read-only** interface (documented HTTPS API, remote MCP endpoint, or approved SDK) with DEV and PROD base URLs, authentication method, and read-only credentials.
-2. A **versioned dataset catalog** that lists every currently published county and lets the caller detect newly published ones. Each entry must include:
+1. The production, **server-to-server** Elephant MCP endpoint (the hosted MCP Donphan's live facts already come from), with its transport/URL, authentication method, and read-only credentials for DEV and PROD.
+2. A way to **enumerate every published county** and detect newly published ones. If the MCP has no list-counties tool, derive the set from the Oracle coverage feed (`oracle-dataset-coverage-<county>`) plus per-county `getOracleDatasetInfo`. Each county entry must yield:
    - `countyKey` (for example `lee`, `palm-beach`) and display name + state
-   - data endpoint / CID / IPNS reference
    - per-source coverage (`appraisal`, `permits`, `sunbiz`, `bbb`) with `ingestedCount`, `expectedCount`, `completionPercent`
    - `propertyCount`
    - source `firstLoadedAt` / `lastLoadedAt`
-   - an **immutable `datasetRevision`** id that changes whenever the underlying data changes
-3. Supported read-only **aggregate query** operations (the current example: number of properties in Lee County).
+   - an **immutable `datasetRevision`** id that changes whenever the underlying data changes (derive from the coverage revision / IPNS pointer if the MCP does not return one)
+3. Supported read-only **aggregate query** operations (the current example: number of properties in Lee County) — the same `queryProperties` / geo tools Donphan uses.
 4. **Rate limits**: requests per second/minute, max concurrency, query timeout/size, and required behavior for HTTP 429/5xx.
 5. A **DEV/sandbox** endpoint or fixture dataset for testing without full-volume production reads.
 
-Prefer Oracle emitting a `DatasetPublished` event (county published/refreshed) as the primary trigger, with the recurring scan as reconciliation. A new county is eligible only after its query data **and** coverage report are published (see `use-oracle` coverage publish contract).
+Prefer Oracle emitting a `DatasetPublished` event (county published/refreshed) as the primary trigger, with the recurring scan as reconciliation. A new county is eligible only after its query data **and** coverage report are published (see `use-oracle` coverage publish contract). Neon (`use-elephant-query-db`) is an optional fallback only for data the MCP does not expose.
 
-### ElephantDataGateway (read-only)
+### ElephantDataGateway (read-only, wraps the hosted MCP)
 
 Implement a single typed gateway that is the only path to Elephant data. It MUST:
 
-- **Enumerate counties from the catalog**, never from a hard-coded list or the plugin `mcp.json`.
+- **Enumerate counties from the coverage feed / MCP**, never from a hard-coded list or the plugin `mcp.json`.
 - Snapshot per county: `propertyCount`, per-source coverage, `lastLoadedAt`, and the immutable `datasetRevision`.
-- Run only **read-only aggregate queries** equivalent to Donphan's verified `queryProperties` / `getOracleDatasetInfo` contract (SELECT/CTE only; single statement; row caps). The model never issues arbitrary SQL.
+- Call only the **same read-only MCP tools/queries Donphan uses** — `getOracleDatasetInfo`, `queryProperties` (SELECT/CTE only; single statement; row caps), and the geo tools. The model never issues arbitrary SQL.
 - For every calculation, record `{ recipeId, countyKey, queryText, parameters, canonicalResult, resultHash, dataReadAt, datasetRevision }`.
 - Apply **bounded concurrency, jitter, and retry with backoff.** Concurrent Filebase metadata reads have already returned HTTP 429 — treat 429/5xx as a throttle signal, back off, and surface a non-fact outcome rather than hammering the endpoint.
 - Never print or log credentials, tokens, or raw CIDs beyond what is needed for provenance.
