@@ -15,7 +15,7 @@ Compose this skill with `build-ai-agents` (Chat SDK Asana ingress, DynamoDB stat
 2. **Verify twice against a pinned dataset revision** — before creating a review task, and again immediately before opening the PR. Reject on any mismatch or a changed/stale revision.
 3. **Human approval is mandatory before publish.** No fact reaches the website without an authorized Asana approval that still matches the current data.
 4. **Publish is content-only and never auto-merged.** Watchog opens a GitHub PR that changes only the hero-content file. A human reviews and merges; the site's existing deployment publishes it.
-5. **Reuse Donphan's data path, not the Cursor agent.** Donphan is an interactive Cursor agent, but it reads through the Elephant MCP — and a production, Vercel-hosted Elephant MCP exists. The scheduled service calls that same hosted MCP with the same verified queries so its facts match the currently live ones; it must not depend on the local developer `mcp.json`. A human may still use Donphan interactively to propose candidate facts.
+5. **Reuse Donphan's MCP package and data paths, not the Cursor agent.** Donphan is interactive. Upstream provides no central hosted endpoint, but `elephant-mcp` includes a stateless Streamable HTTP transport and Vercel build. Deploy that transport for Watchog from a pinned `main` commit, configure the same public query-table/coverage maps, and use the same verified tools so automated facts match the currently live ones. A human may still use Donphan interactively to propose candidates.
 6. **Fail closed.** Missing config, unreachable data, partial coverage, and stale revisions produce observable non-fact outcomes, never guesses or silent failures.
 
 ## Architecture
@@ -43,7 +43,7 @@ Follow in order; each phase gates the next.
 
 ### Phase 1 — Establish the data contract
 
-Confirm server-to-server access to the production, Vercel-hosted Elephant MCP that Donphan already uses (URL, auth, rate limits), plus a way to enumerate published counties. `getOracleDatasetInfo(county)` reports one named county but cannot enumerate newly published counties, so pair it with the Oracle coverage feed; the bundled Cursor MCP map is a developer convenience only. If that access is not yet available, STOP and hand the human the exact ask (see `rules/catalog-dataset-monitoring.md`). You may still scaffold code and tests against fixtures.
+Deploy or connect to a Watchog-owned Vercel deployment of `elephant-mcp`'s stateless HTTP transport, pinned to a `main` commit that contains current query-table tools. Configure the same public data maps Donphan uses and protect the endpoint from arbitrary callers. Enumerate counties through `listPublishedCounties`, backed by Oracle's canonical `oracle-node/catalog/published-counties.json`; use `getOracleDatasetInfo(county)` for each county's live count and coverage details (see `rules/catalog-dataset-monitoring.md`).
 
 ### Phase 2 — Data gateway and change detection
 

@@ -12,15 +12,15 @@ The service touches public data endpoints, a human review queue, and the product
 
 - Make the **first** workflow step predict and gate run cost against a per-env `cost-ceiling` (per `build-batch-workflows` cost gate). Pause for approval above the ceiling.
 - Throttle every upstream read via the `ElephantDataGateway`. **Measured behavior of the public Elephant gateway (`ipfs.filebase.io`), confirmed by probing:**
-  - **Concurrency = 1.** Calling multiple counties in parallel reliably triggers HTTP 429; sequential calls succeed. Do not fan out county reads.
-  - **Backoff on 429.** Even a single call can 429 transiently; it recovers after a short pause (≈25s observed). Retry with exponential backoff (e.g. 2s → 4s → 8s, small max attempts) and treat exhaustion as a non-fact outcome, not a crash.
+  - **Concurrency = 1.** Five counties were probed sequentially; all metadata and aggregate counts succeeded. Do not fan out county reads.
+  - **Backoff on 429.** A single Santa Clara metadata call and a Lee geo call each returned 429, then succeeded after 10 seconds; an earlier Miami-Dade probe recovered after 25 seconds. Honor `Retry-After` when present; otherwise use jittered delays of approximately 10s → 30s → 60s, then persist a retryable non-fact outcome.
   - **Cache.** Cache each county's metadata/query result for the run so the same object is not refetched; this is the main lever that keeps 429s rare.
   - A throttle is a non-fact outcome, not a retry storm.
 - Respect any dedicated/hosted endpoint the data owner provides; make concurrency, backoff, and limits configuration, not hard-coded.
 
 ### Probe before first live scan
 
-Before enabling the schedule, run a standalone probe (in the `watchog-agent` repo, run the way the runtime will — not in Cursor) to characterize the data source:
+Before enabling the schedule, repeat the standalone probe against Watchog's deployed HTTP MCP (not only Cursor) to characterize the production path:
 
 1. Sweep all counties sequentially (concurrency = 1); record per call success/429/error, latency, and any `Retry-After`.
 2. On 429, back off and record recovery time.
