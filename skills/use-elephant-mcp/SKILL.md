@@ -1,6 +1,6 @@
 ---
 name: use-elephant-mcp
-description: "Operating guide for exploring Elephant data through the @elephant-xyz/mcp server in Cursor: Oracle open-data properties (appraisal, permits, Sunbiz, BBB), geo filters, lexicon schemas, and verified transform examples. Use when asking natural-language questions about Lee County properties, contractors, businesses, address mismatches, or schema fields — via MCP tools only. Not for Neon SQL (use-elephant-query-db) or county ingestion (use-oracle). Triggers on: elephant mcp, explore oracle data, donphan, contractors, BBB, Sunbiz, fort myers, address mismatch, nail salon, commercial property, property schema."
+description: "Operating guide for exploring Elephant data through the @elephant-xyz/mcp server in Cursor: Oracle open-data properties and Overture business places, including appraisal, permits, Sunbiz, BBB, categories, geo filters, lexicon schemas, and verified transforms. Use for county property questions, business-category counts/groups, restaurants, nail salons, contractors, address mismatches, or schema fields — via MCP tools only. Not for direct Neon/IPFS access or county ingestion. Triggers on: elephant mcp, explore oracle data, donphan, overture places, business category, restaurants, nail salons, contractors, BBB, Sunbiz, fort myers, address mismatch, commercial property, property schema."
 ---
 
 # Use Elephant MCP
@@ -49,12 +49,23 @@ to the exact registered tool name (e.g. `getOracleDatasetInfo`).
 
 ## Exploration playbook
 
-For **attribute / aggregate / count / filter** questions (how many, by owner, by zip, by city,
-by value, by acreage, by material) use the **SQL query path** below — SQL over the open parquet.
+For **property attribute / aggregate / count / filter** questions (how many, by owner, by zip,
+by city, by value, by acreage, by material) use the property SQL query path below.
+For **Overture business place/category** questions, use the structured places query path.
 For geo-scoped or per-record questions, narrow geographically or paginate, then fetch
 consolidated JSON.
 
-0. **Attribute / aggregate / count / filter (PRIMARY)** — `getPropertyQuerySchema` (learn the
+0. **Business places / categories** — `getPlaceQuerySchema` for the county → `queryPlaces`.
+   Use `mode: "count"` for counts, `"rows"` for lists, and `"groupByPrimaryCategory"` for
+   grouped primary categories. Use exact `taxonomyPrimary` for a single primary label and
+   `taxonomyHierarchyMember` for roll-ups (for example, `restaurant` anywhere in the
+   `/`-delimited hierarchy). Do not count taxonomy alternates. For business/co-location counts
+   and lists, default `hostedService` to `"exclude"` and disclose that advisory hosted
+   ATMs/kiosks/services were excluded; use `"include"` when the user requests every source row.
+   Report Overture release/licence provenance and honest `completionPercent: null` because no
+   authoritative all-business denominator exists. Never read the places IPFS URL or Neon
+   directly; the MCP resolves the catalog-authorized parquet.
+1. **Property attribute / aggregate / count / filter** — `getPropertyQuerySchema` (learn the
    ~37 columns) → `queryProperties` with ONE read-only `SELECT`/`WITH…SELECT` over the
    `properties` view. Single statement, SELECT/CTE only; row cap auto-applies (default 100,
    max 1000). Use `ILIKE '%…%'` for owner (`owners_text`), city (`address_city`), material
@@ -64,31 +75,33 @@ consolidated JSON.
    acreage/material (NULL); HOA (`hoa_flag`) is NULL everywhere — confirm with
    `getPropertyQuerySchema` / `SELECT count(col)` and say "not available for this county"
    rather than inventing.
-1. **Dataset context** — `getOracleDatasetInfo` → county, `propertyCount`, freshness timestamps
-2. **Geo-scoped questions** — `findPropertiesInArea` (bbox or polygon) → parcel/property IDs in
+2. **Dataset context** — `getOracleDatasetInfo` → county, `propertyCount`, freshness timestamps
+3. **Geo-scoped questions** — `findPropertiesInArea` (bbox or polygon) → parcel/property IDs in
    area → `getOracleProperty` on candidates
-3. **County-wide discovery** — `listOracleProperties` with pagination (`limit` max 500,
+4. **County-wide discovery** — `listOracleProperties` with pagination (`limit` max 500,
    increase `offset`) → selective `getOracleProperty`
-4. **Value aggregates in area** — `sumPropertyValueInArea` when the question is AVM sum/count
+5. **Value aggregates in area** — `sumPropertyValueInArea` when the question is AVM sum/count
    in a bbox/polygon
-5. **Contractor / business quality** — `getOracleProperty` → inspect BBB blocks and Sunbiz
+6. **Contractor / business quality** — `getOracleProperty` → inspect BBB blocks and Sunbiz
    registrations (see consolidated-property-shape)
-6. **Address mismatches** — compare appraisal, permit, and Sunbiz address fields in consolidated
+7. **Address mismatches** — compare appraisal, permit, and Sunbiz address fields in consolidated
    JSON; cite field paths and normalized keys when present
-7. **Missing permits** — `getPropertyPermits` (may enqueue async harvest; poll after ~90s)
-8. **Schema semantics** — `listClassesByDataGroup`, `listPropertiesByClassName`,
+8. **Missing permits** — `getPropertyPermits` (may enqueue async harvest; poll after ~90s)
+9. **Schema semantics** — `listClassesByDataGroup`, `listPropertiesByClassName`,
    `getPropertySchema` when the user asks what a field means or which class owns it
-9. **Transform / mapping help** — `getVerifiedScriptExamples` (requires embedding credentials)
+10. **Transform / mapping help** — `getVerifiedScriptExamples` (requires embedding credentials)
 
 ## Non-negotiables
 
 - **MCP tools only** for Elephant data reads in this workflow.
+- Never access places parquet/index/NOTICE through direct IPFS/HTTP or query Neon from Donphan.
 - Never hard-code or print API keys, AWS secrets, or IPFS credentials.
 - Never claim a **full-count** answer without stating geo scope, pagination limits, and how many
   records were actually inspected.
 - Report **methodology**: tools called, area/bbox used, sample size, filter rules applied.
 - Open-data attribute/aggregate/filter SQL runs here via `queryProperties` (open IPFS parquet,
   not Neon) — only hand off to `use-elephant-query-db` for Neon-only rows/joins not in the parquet.
+- Overture places rows/counts/groups run through structured `queryPlaces`, not `queryProperties`.
 - Hand off to `use-oracle` when the user wants to ingest or refresh source data.
 
 ## Expected output

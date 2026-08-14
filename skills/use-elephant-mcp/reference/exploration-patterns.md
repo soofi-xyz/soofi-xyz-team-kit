@@ -45,21 +45,24 @@ To keep sessions responsive:
 **Note:** BBB profiles may attach to permits/properties via enrichment — one property may surface
 multiple contractors; count businesses, not parcels, unless the user asks per-property.
 
-## Pattern 2: Commercial properties with nail salons in Fort Myers
+## Pattern 2: Nail salons in Fort Myers
 
-**Example:** "List all commercial properties with nail salons in Fort Myers."
+**Example:** "List nail salons in Fort Myers."
 
-1. `getOracleDatasetInfo`
-2. `findPropertiesInArea` with Fort Myers bbox (table above)
-3. For each hit (up to cap), `getOracleProperty`
-4. **Commercial property** signals (appraisal / property):
-   - `propertyType` / `propertyUsageType` commercial indicators
-   - `zoning` commercial codes when present
-5. **Nail salon** signals (Sunbiz / business on site):
-   - `companies` / `businessRegistrations` legal name or description contains `nail`
-   - NAICS `812113` (nail salons) when present in registration metadata
-   - Permit descriptions mentioning nail salon (secondary signal)
-6. Return: parcel ID, site address, business name, evidence fields, count found vs area total.
+1. `getPlaceQuerySchema` with `county: "lee"` — record release, licence gate, and null completion.
+2. `queryPlaces` with:
+   - `county: "lee"`
+   - `mode: "rows"`
+   - `filters.taxonomyPrimary: { value: "nail_salon", match: "exact" }`
+   - `filters.locality: { value: "Fort Myers", match: "exact" }`
+   - `filters.hostedService: "exclude"` (default business-location policy; disclose it)
+   - deterministic `sortBy: "name"`, increasing `offset` if the user needs every row
+3. Return: `totalCount`, the page size/offset, GERS id, name, category, address/locality,
+   operating status, confidence, hosted-service evidence, and Overture release.
+
+Do not call these "commercial properties with nail salons." The places table is business-point
+data and the published parcel-link step is not complete. A commercial-property join is a
+different question and must be reported unavailable until a published MCP linkage exists.
 
 ## Pattern 3: Address mismatches
 
@@ -86,9 +89,45 @@ See [`consolidated-property-shape.md`](./consolidated-property-shape.md) for fie
 3. If response indicates harvest in progress, wait ~90s and retry once
 4. Re-fetch consolidated data or use permit payload from tool response
 
+## Pattern 5: Restaurant count in Lee County
+
+**Example:** "How many restaurants are in Lee County?"
+
+1. `getPlaceQuerySchema` with `county: "lee"`.
+2. Interpret "restaurants" as a taxonomy roll-up, not only the exact
+   `taxonomy_primary = restaurant` label.
+3. `queryPlaces` with:
+   - `mode: "count"`
+   - `filters.taxonomyHierarchyMember: "restaurant"`
+   - `filters.hostedService: "exclude"` unless the user requests hosted services
+4. Report the exact roll-up rule, hosted-service exclusion, `totalCount`, Overture release,
+   licence-gate status, county, and `completionPercent: null`.
+
+If the user explicitly asks for the exact primary category `restaurant`, use
+`taxonomyPrimary: { value: "restaurant", match: "exact" }` instead and say that it excludes
+specialized descendants such as cafe or seafood restaurant.
+
+## Pattern 6: Group Lee businesses by primary category
+
+1. `getPlaceQuerySchema` with `county: "lee"`.
+2. `queryPlaces` with:
+   - `mode: "groupByPrimaryCategory"`
+   - `filters.hostedService: "exclude"` by default, disclosed
+   - `limit`/`offset` until all `totalGroups` are returned when the user requests a full table
+3. Preserve the MCP order: `placeCount` descending, `taxonomyPrimary` ascending for ties.
+4. Report `totalCount`, `totalGroups`, page coverage, release, licence gate, and null completion.
+
+Group only `taxonomy_primary`. Do not merge alternates into counts and do not claim the grouped
+rows are a complete census of Lee businesses.
+
 ## Honest limitations
 
-- No server-side filter for business type or BBB rating — client-side filtering after fetch.
+- Overture place category/name/location/status/hosted/confidence filters are server-side through
+  structured `queryPlaces`; BBB rating still requires consolidated property evidence.
+- No published place-to-parcel link is exposed through MCP yet, so place rows cannot prove a
+  business occupies a specific commercial parcel.
+- Overture `completionPercent` is intentionally NULL because no authoritative all-business
+  denominator exists.
 - Geo index uses property **centroid** only (not building footprint).
 - Dataset may lag live county portals — cite `exportedAt` / `completedAt` from dataset info.
 - For heavy analytics (joins, SQL, dashboards), hand off to `use-elephant-query-db`.
