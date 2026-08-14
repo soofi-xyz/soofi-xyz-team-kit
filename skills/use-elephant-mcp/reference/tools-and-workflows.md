@@ -16,6 +16,38 @@ All tools are registered in
 
 Slim list entry fields: `propertyId`, `parcelIdentifier`, `cid`, `county`, `fileSizeBytes`.
 
+### Overture places query (catalog-authorized public parquet)
+
+| Tool | Purpose | Key inputs |
+|------|---------|------------|
+| `getPlaceQuerySchema` | Lists the real places parquet columns, exact structured query contract, release/licence provenance, safety limits, and null completeness — **call FIRST per county** | `county` |
+| `queryPlaces` | Returns filtered place rows, a total count, or grouped primary-category aggregates without accepting SQL or URLs | `county`, `mode?`, `filters?`, `sortBy?`, `sortDirection?`, `limit?`, `offset?` |
+
+`queryPlaces` modes:
+
+- `rows` — deterministic page plus `totalCount`
+- `count` — exact filtered `totalCount`
+- `groupByPrimaryCategory` — deterministic `taxonomy_primary` groups and counts
+
+Important filters:
+
+- `taxonomyPrimary: { value, match: "exact" | "contains" }` — one primary label; use this
+  dimension for exact category counts and grouped output.
+- `taxonomyHierarchyMember` — exact case-insensitive segment anywhere in the `/`-delimited
+  hierarchy; use this for a roll-up such as `restaurant`.
+- `basicCategory`, `nameContains`, `normalizedNameContains`, `locality`, `postcode`,
+  `operatingStatus`, and `minConfidence`.
+- `hostedService: "include" | "exclude" | "only"` — MCP defaults to `include`. Donphan defaults
+  business-location/co-location counts and lists to `exclude` and explains that advisory hosted
+  ATMs/kiosks/services were removed. Use `include` to reconcile the full published source count.
+
+Do not use taxonomy alternates for counts: they are not part of the public query contract and
+are not a reliable count dimension. Default rows omit public business `websites`, `phones`, and
+`emails`. Query responses include release/provenance, publication index/notice URLs, and
+`completionPercent: null`; there is no authoritative denominator for all business locations.
+The MCP resolves `placesTableUrl` only from `listPublishedCounties`' canonical catalog and
+rejects caller SQL/URLs.
+
 ### Property SQL query (open parquet via DuckDB)
 
 | Tool | Purpose | Key inputs |
@@ -75,6 +107,14 @@ Requires embedding provider (OpenAI or Bedrock).
 
 ```
 User question
+├─ Overture business/place/category count, list, or group
+│   └─ getPlaceQuerySchema (learn fields, release, licence, null completeness)
+│   └─ queryPlaces (structured filters; no SQL/URL)
+│       ├─ count → mode=count
+│       ├─ list → mode=rows
+│       ├─ group → mode=groupByPrimaryCategory
+│       ├─ exact primary label → taxonomyPrimary
+│       └─ roll-up → taxonomyHierarchyMember
 ├─ "How many …" / by owner / by zip / by city / by value / by acreage / by material
 │   (attribute · aggregate · count · filter) — PRIMARY PATH
 │   └─ getPropertyQuerySchema (learn columns)
@@ -100,6 +140,9 @@ User question
 
 ## Pagination strategy
 
+- `queryPlaces`: use `limit`/`offset`; every row page includes the complete filtered
+  `totalCount`. Sort is deterministic with GERS id as the tie-breaker. Group pages are ordered
+  by count descending then primary category ascending.
 - `listOracleProperties`: use `limit=500` and walk `offset` until you have enough candidates or
   hit a practical cap (state cap in exploration-patterns).
 - Prefer **geo narrow first** when the user names a city or neighborhood — fewer
@@ -108,5 +151,7 @@ User question
 ## Error handling
 
 - Tool errors return MCP text content with a message — surface verbatim to the user.
+- A county with `placesTableUrl: null` has no published places table; report that unavailable
+  state rather than switching to direct IPFS/Neon.
 - `getPropertyPermits` may return a status indicating harvest in progress; wait ~90s and retry.
 - Geo tools fail clearly when geo index env is missing — point to `mcp-setup.md`.

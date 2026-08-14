@@ -8,8 +8,8 @@ manual JSON editing required.
 
 **Install source (interim):** Bundled `mcp.json` installs **elephant-mcp `main`** from the public
 GitHub repo via `npx` because **npm `@elephant-xyz/mcp@latest` is still 1.6.0** (lacks
-`queryProperties`, multi-county open data, and current geo tools). When a newer version is
-published to npm, the kit may switch to a tagged release for faster cold starts.
+`queryProperties`, `queryPlaces`, multi-county open data, and current geo tools). When a newer
+version is published to npm, the kit may switch to a tagged release for faster cold starts.
 
 **Teammate checklist:**
 
@@ -41,6 +41,11 @@ For other bundled counties, pass `county` explicitly (kebab-case slugs):
 SQL counts/filters via `queryProperties` work for all four counties in the bundled
 `PROPERTY_QUERY_TABLE_MAP`. If `propertyCount` is ~4644 and `ipnsName` is null, see
 troubleshooting below.
+
+Overture places discovery is catalog-driven rather than an environment map. Call
+`listPublishedCounties` and inspect nullable `placesTableUrl`, then call
+`getPlaceQuerySchema`/`queryPlaces`. Lee currently publishes **40,191** rows. A null
+`placesTableUrl` means the county has no published places query table.
 
 ## Manual fallback
 
@@ -92,6 +97,7 @@ teammates rely on.
 | AWS credential chain | Bedrock when no OpenAI key | IAM role, env vars, or `~/.aws/credentials` |
 | `PROPERTY_QUERY_TABLE_MAP` | `queryProperties`, `getPropertyQuerySchema` (SQL over open Parquet) | Bundled — **lee**, **palm-beach**, **miami-dade**, **orange**, **santa-clara** |
 | `PERMIT_QUERY_TABLE_MAP` | `queryPermits`, `getPermitQuerySchema`, `getPermitCoverage` (SQL over open permit Parquet) | Bundled — **santa-clara** (only county with a published permit table so far; add others as they publish) |
+| `PUBLISHED_COUNTY_CATALOG_URL` | `listPublishedCounties`, `getPlaceQuerySchema`, `queryPlaces` | Oracle's canonical catalog by default; places URLs are accepted only from non-null catalog `placesTableUrl` entries and validated as trusted HTTPS IPFS parquet URLs |
 | `ORACLE_OPEN_DATA_IPNS_MAP` | Multi-county open data (`getOracleDatasetInfo`, `listOracleProperties`, etc.) | Bundled — **lee**, **palm-beach**, **miami-dade**, **orange** (matches prod Vercel MCP) |
 | `ORACLE_OPEN_DATA_DEFAULT_COUNTY` | County when a tool omits `county` | `lee` |
 | `ORACLE_OPEN_DATA_IPNS` | Legacy single-county open data | Superseded by `ORACLE_OPEN_DATA_IPNS_MAP` in bundled config |
@@ -110,6 +116,9 @@ Oracle open-data tools work without embeddings.
 |---------|-----|
 | `elephant` missing in MCP panel | Reload Cursor; confirm plugin path under `~/.cursor/plugins/local/` |
 | County "not served" / `queryProperties` blocked | County missing from bundled maps — ingest via `oracle` + `use-oracle`, publish query table, add to `PROPERTY_QUERY_TABLE_MAP` / `ORACLE_OPEN_DATA_IPNS_MAP` |
+| `getPlaceQuerySchema` / `queryPlaces` missing | Update the kit/MCP GitHub `main` install, reload Cursor, and confirm the `elephant` server restarted |
+| Places unavailable / `placesTableUrl is null` | The canonical catalog has no places artifact for that county; do not bypass through Neon or direct IPFS |
+| Places query times out | Retry once after the public IPNS gateway resolves; if repeated, report the 60-second MCP timeout and catalog URL without switching data paths |
 | `propertyCount` ~4,664, `ipnsName` null | Add open-data IPNS (or county map entry) to server env and reload Cursor |
 | `propertyCount` ~4,664, `ipnsName` set | IPNS still points at pilot manifest — full county open-data publish + IPNS re-point needed |
 | Geo tools fail | Bundled `ORACLE_GEO_INDEX_IPNS` should be present; re-pull plugin |
