@@ -1,26 +1,30 @@
 ---
 name: manage-story-quality
-description: "Operating guide for the WOW Story Quality Agent (soofi-xyz/wow-website): when someone @-mentions the bot (Kirlia) in a comment on an Asana task of custom type Story, a Vercel runtime rewrites the story via LLM into the WOW format (clear title, Context / Description / Acceptance Criteria bullets / Demo Script), updates the task, and creates or refreshes a review subtask assigned to the mention author. Covers enabling/disabling projects via bot membership (discovery sweep), the org seed script and PATs, the webhook + 15-min sweeper trigger paths, the idempotent story_agent_tasks ledger, diagnosing missed or failed stories, and changing the WOW format prompt. Triggers on: story quality agent, story agent, WOW story format, rewrite Asana stories, mention the story bot, enable the story agent on a project, story agent missed a task, story_agent_tasks, seed-story-agent."
+description: "Operating guide for Kirlia (soofi-xyz/kirlia-agent): when someone @-mentions the bot in a comment on an Asana task of custom type Story, a Vercel runtime rewrites the story via LLM into the WOW format (clear title, Context / Description / Acceptance Criteria bullets / Demo Script), updates the task, and creates or refreshes a review subtask assigned to the mention author. Covers enabling/disabling projects via bot membership (discovery sweep), the org seed script and PATs, webhook + 15-min sweeper paths, the idempotent story_agent_tasks ledger, diagnosing missed or failed stories, changing the WOW format prompt, and cutover from wow-website. Triggers on: kirlia, kirlia-agent, story quality agent, story agent, WOW story format, rewrite Asana stories, mention the story bot, enable the story agent on a project, story agent missed a task, story_agent_tasks, seed-story-agent."
 ---
 
 # Manage Story Quality
 
-The Story Quality Agent lives in **`soofi-xyz/wow-website`** and runs on Vercel. When someone
-@-mentions the bot user (Kirlia) in a comment on a task of custom task type **Story** in a project
-the bot is a member of, it rewrites the story with an LLM (clear imperative title;
-WOW-structured description: Context / Description / a bulleted list of verb-first Acceptance Criteria /
+Kirlia lives in **`soofi-xyz/kirlia-agent`** and runs on Vercel. When someone @-mentions the
+bot user (Kirlia) in a comment on a task of custom task type **Story** in a project the bot
+is a member of, it rewrites the story with an LLM (clear imperative title; WOW-structured
+description: Context / Description / a bulleted list of verb-first Acceptance Criteria /
 Demo Script), updates the task, and creates a review subtask assigned to the mention author.
 Mentioning the bot again on an already-rewritten story deliberately re-rewrites it from the
 current content and refreshes the existing review subtask in place — it is never duplicated.
-This skill is the operating contract: enable projects, trace processing, diagnose misses, and
-change the format. Do not re-implement the agent; operate the one in `wow-website`.
+This skill is the operating contract: enable projects, trace processing, diagnose misses,
+change the format, and cut over from the former `wow-website` home. Do not re-implement the
+agent; operate the one in `kirlia-agent`. Do not send this work to `hypno` — Hypno's WOW
+CLI drafts or creates stories from Cursor; Kirlia rewrites live Asana Story tasks on `@mention`.
 
-Code map (all paths inside `wow-website`):
+Code map (all paths inside `kirlia-agent`):
 
 - `src/lib/story-agent/` — config, guards, events, mentions, discovery, prompt, LLM, processor, sweeper, Asana client
 - `src/app/api/asana/webhooks/story-agent/route.ts` — webhook receiver (handshake + deliveries)
 - `src/app/api/asana/webhooks/story-agent/sweep/route.ts` — sweeper endpoint (Vercel cron, `*/15 * * * *` in `vercel.json`)
 - `scripts/seed-story-agent.mjs` — org identity registration (stored PATs only; projects come from membership discovery)
+- `scripts/migrate-data.mjs` — copy `story_agent_*` rows from the wow-website Neon database
+- `scripts/reset-webhooks-for-cutover.mjs` — clear stored webhook GIDs/secrets so the sweeper re-registers on the new URL
 - DB tables (Drizzle, `src/lib/schema.ts`): `story_agent_orgs`, `story_agent_projects`, `story_agent_tasks`
 
 ## When To Use This Skill
@@ -29,8 +33,11 @@ Code map (all paths inside `wow-website`):
 - Diagnose a story the agent missed, skipped, mangled, or failed on.
 - Change the WOW story format or the rewrite rules.
 - Rotate an org PAT or move a project between orgs.
+- Cut over from the former `wow-website` story-agent home (migrate ledger rows, reset webhooks).
 
-Do not use it for building new Asana agents from scratch — that is `build-ai-agents`.
+Do not use it for Hypno's personal WOW CLI (`create-story` / `my-tasks` / `store-*` in
+`hypno-agent`) — that is `asana-initiatives`. Do not use it for building new Asana Lambda
+agents from scratch — that is `build-ai-agents` / `ash`.
 
 ## How Processing Works
 
@@ -115,11 +122,11 @@ own tasks and comments — never reuse a teammate's personal PAT.
    `pat` accepts a literal token, `env:VAR_NAME` (preferred — tokens never land on disk), or
    `null` for explicit env-fallback mode (no `pat_enc` stored). A `projects` array is accepted
    as a bootstrap convenience only — discovery overrides it against actual memberships.
-2. Run it from the `wow-website` checkout with `DATABASE_URL` and a 64-char hex
+2. Run it from the `kirlia-agent` checkout with `DATABASE_URL` and a 64-char hex
    `ENCRYPTION_KEY` set (it also reads `.env.local`):
 
    ```bash
-   node scripts/seed-story-agent.mjs ./story-agent.config.json
+   npm run seed:story-agent -- ./story-agent.config.json
    ```
 
    It validates each PAT via `GET /users/me`, records the agent user gid, and encrypts the PAT
@@ -179,7 +186,7 @@ The format lives in one constant: **`STORY_AGENT_SYSTEM_PROMPT` in
 `src/lib/story-agent/prompt.ts`** — it is the founder's (Soofi's) own agent prompt, kept as
 close to his wording as possible, with an output-contract section adapting it to the structured
 pipeline. When a change goes beyond wording, update the three layers together, then run
-`tests/story-agent/`:
+`npm run test:story-agent`:
 
 1. `prompt.ts` — the system prompt rules (section order, sentence rules).
 2. `llm.ts` (`rewriteSchema`) + `validate.ts` — structural schema and semantic validation; the
@@ -191,10 +198,34 @@ pipeline. When a change goes beyond wording, update the three layers together, t
 Model selection: plain `provider/model` strings resolve through the Vercel AI Gateway; default
 is `anthropic/claude-opus-4.8`, overridable per deployment with `STORY_AGENT_MODEL`.
 
+## Cutover From wow-website
+
+Kirlia was extracted from `soofi-xyz/wow-website`. Operate `kirlia-agent`; do not add new
+story-agent code to wow-website.
+
+1. Provision the kirlia-agent Neon database and run migrations (`npm run db:migrate` or `db:push`).
+2. Copy ledger rows, reusing the same `ENCRYPTION_KEY` so encrypted PATs and webhook secrets
+   remain readable:
+
+   ```bash
+   SOURCE_DATABASE_URL="<wow-website-neon-url>" DATABASE_URL="<kirlia-agent-neon-url>" npm run migrate:data
+   ```
+3. Deploy kirlia-agent with env vars set, including `ASANA_WEBHOOK_BASE_URL` for the new host.
+4. Clear stored webhook GIDs/secrets once so the sweeper re-registers on the new URL:
+
+   ```bash
+   npm run reset:webhooks
+   ```
+5. Run a manual sweep (`Authorization: Bearer $CRON_SECRET`) and confirm `webhooksCreated`.
+6. Disable the story-agent cron in wow-website (`vercel.json`).
+7. Smoke-test an @mention in Asana, then remove leftover story-agent code from wow-website
+   after monitoring.
+
 ## Environment
 
 | Variable | Purpose |
 |---|---|
+| `DATABASE_URL` | Neon Postgres connection string for kirlia-agent |
 | `ASANA_STORY_AGENT_PAT` | Fallback PAT used when an org has no (decryptable) `pat_enc` — covers normal orgs; also a discovery identity |
 | `AI_GATEWAY_API_KEY` | AI Gateway auth for **local runs only** — deployments use Vercel OIDC automatically; do not set it in Vercel |
 | `ASANA_WEBHOOK_BASE_URL` | Optional webhook target base URL override; defaults to the Vercel production URL |
@@ -203,6 +234,7 @@ is `anthropic/claude-opus-4.8`, overridable per deployment with `STORY_AGENT_MOD
 | `STORY_AGENT_MODEL` | Optional model override (`provider/model` via AI Gateway) |
 | `STORY_AGENT_REQUIRED_TYPE` | Custom task type required for rewriting (default `Story`; `""` disables the filter) |
 | `STORY_AGENT_WORKSPACE_ALLOWLIST` | Comma-separated workspace gids discovery may touch. Unset in prod = all the bot's workspaces; non-prod deployments MUST set it (e.g. to the sandbox workspace) so they never reconcile production workspaces and steal their webhooks |
+| `VERCEL_AUTOMATION_BYPASS_SECRET` | If the Vercel deployment is protection-gated, appends the bypass header to webhook target URLs |
 
 ## Operational Cautions
 

@@ -11,6 +11,8 @@ Guide for designing and extending the **hypno-agent** runtime — a Google Chat 
 
 **Not** the same as `skills/build-ai-agents/` (Lambda + `@soofi-xyz/chat-adapter-asana`). Hypno uses `@chat-adapter/gchat` and Next.js.
 
+**Not** Kirlia (`skills/manage-story-quality/`, runtime [`soofi-xyz/kirlia-agent`](https://github.com/soofi-xyz/kirlia-agent)). Kirlia rewrites live Asana Story tasks on bot `@mention`. Hypno's WOW mode drafts or creates stories from Cursor via `create-story`.
+
 ## When to use
 
 - Change Google Chat bot behavior, tools, or prompts
