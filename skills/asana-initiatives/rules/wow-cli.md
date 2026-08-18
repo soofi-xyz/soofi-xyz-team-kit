@@ -12,7 +12,7 @@ tags:
 
 Hypno drives personal Asana work through `scripts/manage-initiatives.mjs` — a plain-node ESM CLI (no tsx/npx, sandbox-safe). It self-loads `.env.local` and resolves the Asana token from the selected account. Run commands from the hypno-agent repo root.
 
-**WOW mode** is for individual contributors: surface assigned tasks, draft responses, create WOW user stories inside existing projects, and consolidate duplicates. It is **not** initiative project creation (`split`/`convert`/admin).
+**WOW mode** is for individual contributors: surface assigned tasks, draft responses, create WOW user stories inside existing projects, and consolidate duplicates. It is **not** initiative project creation (`split`/`convert`/admin). It is also **not** the Kirlia Asana `@mention` rewriter (`soofi-xyz/kirlia-agent` / `manage-story-quality`) — hand live story-bot diagnosis and prompt changes to `kirlia`.
 
 ## Account selection
 
