@@ -6,14 +6,14 @@ A [Cursor plugin](https://cursor.com/docs/plugins), [GitHub Copilot CLI plugin](
 
 ### Cursor
 
-Clone this repository into Cursor's local plugins directory so it is auto-discovered as `soofi-xyz`:
+Clone this repository into Cursor's local plugins directory so it is auto-discovered as `soofi-xyz-team-kit`:
 
 ```bash
 mkdir -p ~/.cursor/plugins/local
-git clone https://github.com/soofi-xyz/cursor-plugin.git ~/.cursor/plugins/local/soofi-xyz
+git clone https://github.com/soofi-xyz/cursor-plugin.git ~/.cursor/plugins/local/soofi-xyz-team-kit
 ```
 
-Then reload Cursor. The plugin will load from `~/.cursor/plugins/local/soofi-xyz` and register all agents, skills, and the bundled **`elephant`** MCP server (`mcp.json`) automatically.
+Then reload Cursor. The plugin will load from `~/.cursor/plugins/local/soofi-xyz-team-kit` and register all agents, skills, and the bundled **`elephant`** MCP server (`mcp.json`) automatically.
 
 **Donphan / Elephant MCP:** Requires Node **22.18+**. Bundled `mcp.json` installs **elephant-mcp `main`** from GitHub (`npx --package=github:elephant-xyz/elephant-mcp#main`) because **npm `@elephant-xyz/mcp@latest` is still 1.6.0** (lacks `queryProperties` and multi-county tools). After install or `git pull`, reload Cursor and confirm **`elephant`** is enabled under **Settings → MCP** (first start may take 1–3 minutes). Bundled counties match prod Vercel MCP: **lee** (~511695), **palm-beach** (~653945), **miami-dade** (~933087), **orange** — verify with `getOracleDatasetInfo` and `queryProperties`. Do not set an empty `OPENAI_API_KEY` on the MCP server — optional only for `getVerifiedScriptExamples`.
 
@@ -25,7 +25,7 @@ Add the marketplace first, then install the plugin from that marketplace:
 
 ```bash
 copilot plugin marketplace add soofi-xyz/cursor-plugin
-copilot plugin install soofi-xyz@soofi-xyz
+copilot plugin install soofi-xyz-team-kit@soofi-xyz
 ```
 
 ### OpenAI Codex
@@ -34,7 +34,7 @@ From this checkout, add the repo marketplace and install the Codex plugin:
 
 ```bash
 codex plugin marketplace add ./
-codex plugin add soofi-xyz@soofi-xyz-team-kit
+codex plugin add soofi-xyz-team-kit@soofi-xyz-team-kit
 ```
 
 The Codex plugin packages the skills in `skills/`. Project-scoped Codex custom agents are materialized in `.codex/agents/` when you work in this repository.
@@ -46,7 +46,7 @@ The Codex plugin packages the skills in `skills/`. Project-scoped Codex custom a
 Pull the latest agents and skills from the same directory:
 
 ```bash
-git -C ~/.cursor/plugins/local/soofi-xyz pull
+git -C ~/.cursor/plugins/local/soofi-xyz-team-kit pull
 ```
 
 Reload Cursor after pulling so updated agents, skills, MCP config, and the manifest are picked up.
@@ -56,13 +56,13 @@ Reload Cursor after pulling so updated agents, skills, MCP config, and the manif
 When you are inside the plugin in GitHub Copilot CLI, update it with the plugin-qualified slash command:
 
 ```text
-/plugin update soofi-xyz@soofi-xyz
+/plugin update soofi-xyz-team-kit@soofi-xyz
 ```
 
 Uninstall the plugin by name:
 
 ```bash
-copilot plugin uninstall soofi-xyz
+copilot plugin uninstall soofi-xyz-team-kit
 ```
 
 ### OpenAI Codex
@@ -71,13 +71,13 @@ Refresh the marketplace and reinstall from a new Codex thread:
 
 ```bash
 codex plugin marketplace upgrade soofi-xyz-team-kit
-codex plugin add soofi-xyz@soofi-xyz-team-kit
+codex plugin add soofi-xyz-team-kit@soofi-xyz-team-kit
 ```
 
 Remove the installed Codex plugin by name:
 
 ```bash
-codex plugin remove soofi-xyz
+codex plugin remove soofi-xyz-team-kit
 ```
 
 ## Quick start
@@ -96,7 +96,7 @@ Or mention it naturally in chat:
 Use the arceus subagent to recommend the right specialist for migrating an SMS template inventory.
 ```
 
-In GitHub Copilot CLI, select the custom agent with `/agent` and choose `soofi-xyz:arceus`, or start directly with `--agent soofi-xyz:arceus`.
+In GitHub Copilot CLI, select the custom agent with `/agent` and choose `soofi-xyz-team-kit:arceus`, or start directly with `--agent soofi-xyz-team-kit:arceus`.
 
 In Codex, start a new thread from this repository and ask Codex to spawn the `arceus` custom agent:
 
@@ -106,7 +106,7 @@ Spawn the arceus custom agent to recommend the right specialist for migrating an
 
 Cursor's Agent can also delegate to `arceus` automatically at the start of a task when no specific specialist has been named — so simply describing your task in plain English usually triggers the right routing.
 
-If you already know which specialist you need, skip the router and call them directly — for example `/sylveon` in Cursor, `soofi-xyz:sylveon` in Copilot, or "spawn the `sylveon` custom agent" in Codex for Figma-to-code work. The full roster, with triggers and descriptions, lives in the [Agents](#agents) and [Skills](#skills) tables below.
+If you already know which specialist you need, skip the router and call them directly — for example `/sylveon` in Cursor, `soofi-xyz-team-kit:sylveon` in Copilot, or "spawn the `sylveon` custom agent" in Codex for Figma-to-code work. The full roster, with triggers and descriptions, lives in the [Agents](#agents) and [Skills](#skills) tables below.
 
 ## Agents
 

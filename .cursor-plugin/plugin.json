@@ -1,7 +1,7 @@
 {
-  "name": "soofi-xyz",
+  "name": "soofi-xyz-team-kit",
   "description": "Company-wide project subagents and skills for AI-assisted development, including local and AWS RAG, platform services, reporting, frontend, communication, batch, and deployment specialists.",
-  "version": "0.30.0",
+  "version": "0.30.1",
   "author": {
     "name": "Soofi XYZ"
   },
@@ -19,5 +19,5 @@
     "elephant",
     "mcp"
   ],
-  "mcp": "mcp.json"
+  "mcpServers": "mcp.json"
 }

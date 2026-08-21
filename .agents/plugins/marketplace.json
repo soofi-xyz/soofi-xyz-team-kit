@@ -5,10 +5,10 @@
   },
   "plugins": [
     {
-      "name": "soofi-xyz",
+      "name": "soofi-xyz-team-kit",
       "source": {
         "source": "local",
-        "path": "./plugins/soofi-xyz"
+        "path": "./plugins/soofi-xyz-team-kit"
       },
       "policy": {
         "installation": "AVAILABLE",
