@@ -45,7 +45,7 @@ Follow these conventions whenever you touch files in this repo.
 - Cursor auto-discovers `agents/`, `skills/`, `rules/`, `commands/`, `hooks/hooks.json`, and `mcp.json` — only set explicit component paths in `.cursor-plugin/plugin.json` to override discovery.
 - Copilot reads component paths from the root `plugin.json`; keep `"agents": "agents-copilot/"` and `"skills": "skills/"` unless the repository layout changes deliberately.
 - Codex reads plugin metadata from `.codex-plugin/plugin.json`; keep `"skills": "./skills/"` unless the repository layout changes deliberately.
-- Codex repo marketplace points at `plugins/soofi-xyz/`, whose `.codex-plugin` and `skills` entries are symlinks back to the canonical root manifest and `skills/` tree. Do not edit through the nested symlink path.
+- Codex repo marketplace points at `plugins/soofi-xyz-team-kit/`, whose `.codex-plugin` and `skills` entries are symlinks back to the canonical root manifest and `skills/` tree. Do not edit through the nested symlink path.
 - Codex custom agents are project-scoped TOML files in `.codex/agents/` generated from `agents/`.
 
 ## AWS access guidance
@@ -74,7 +74,7 @@ soofi-xyz-plugin-kit/
 ├── agents/                           # Source agent definitions
 ├── agents-copilot/                   # Materialized `.agent.md` copies for Copilot CLI
 ├── plugins/
-│   └── soofi-xyz/                    # Codex marketplace plugin folder with symlinked manifest and skills
+│   └── soofi-xyz-team-kit/           # Codex marketplace plugin folder with symlinked manifest and skills
 ├── skills/                           # Agent skills, one directory per skill
 ├── scripts/                          # Local validation and maintenance helpers
 ├── docs/                             # User-facing usage guides
@@ -97,13 +97,13 @@ Validate Cursor by copying this repo into Cursor's local plugin directory and re
 scripts/local-cursor-plugin.sh install
 ```
 
-The script installs a real local copy at `~/.cursor/plugins/local/soofi-xyz-team-kit-local` and rewrites only the copied manifests so the local plugin name is distinct from the published `soofi-xyz` plugin.
+The script installs a real local copy at `~/.cursor/plugins/local/soofi-xyz-team-kit-local` and rewrites only the copied manifests so the local plugin name is distinct from the published `soofi-xyz-team-kit` plugin.
 
 After every meaningful change to agents, skills, rules, docs, manifests, hooks, commands, or MCP config, run `scripts/local-cursor-plugin.sh install` before handing back the work. Prompt the user to test the copied plugin like this:
 
 1. Run **Developer: Reload Window** in Cursor. If the plugin is not detected, fully restart Cursor.
 2. Open **Settings > Plugins** and confirm `soofi-xyz-team-kit-local` is installed.
-3. Disable or remove other `soofi-xyz` plugin installs while testing if duplicate agent or skill names appear.
+3. Disable or remove other `soofi-xyz-team-kit` plugin installs while testing if duplicate agent or skill names appear.
 4. Run a smoke prompt such as `/arceus Reply with exactly: ok`, then test the changed agent or skill directly.
 
 When preparing or creating a PR, delete the local test copy so the review is not tied to a developer-only install:
@@ -116,12 +116,12 @@ Validate Copilot through the marketplace path, because marketplace installation 
 
 ```bash
 scripts/sync-copilot-agents.sh check
-copilot plugin uninstall soofi-xyz
+copilot plugin uninstall soofi-xyz-team-kit
 copilot plugin marketplace remove soofi-xyz
 copilot plugin marketplace add ./
-copilot plugin install soofi-xyz@soofi-xyz
+copilot plugin install soofi-xyz-team-kit@soofi-xyz
 copilot plugin list
-copilot --agent soofi-xyz:arceus -p "Reply with exactly: ok" --allow-all-tools --no-remote
+copilot --agent soofi-xyz-team-kit:arceus -p "Reply with exactly: ok" --allow-all-tools --no-remote
 ```
 
 For development-only direct install checks, use `copilot plugin install ./`. The installed CLI may reject bare `.` even though docs show local paths generally.
@@ -131,7 +131,7 @@ Validate Codex through the repo marketplace path:
 ```bash
 scripts/sync-codex-agents.sh check
 codex plugin marketplace add ./
-codex plugin add soofi-xyz@soofi-xyz-team-kit
+codex plugin add soofi-xyz-team-kit@soofi-xyz-team-kit
 codex plugin list
 ```
 

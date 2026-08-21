@@ -111,7 +111,7 @@ rewrite_json(target / "plugin.json", lambda data: data.__setitem__("name", local
 def rewrite_marketplace(data):
     data["name"] = local_name
     for plugin in data.get("plugins", []):
-        if plugin.get("name") == "soofi-xyz":
+        if plugin.get("name") == "soofi-xyz-team-kit":
             plugin["name"] = local_name
 
 rewrite_json(target / ".github" / "plugin" / "marketplace.json", rewrite_marketplace)
@@ -126,7 +126,7 @@ PY
   echo "Next test steps:"
   echo "  1. In Cursor, run Developer: Reload Window. If the plugin is not detected, fully restart Cursor."
   echo "  2. Open Settings > Plugins and confirm '${LOCAL_PLUGIN_NAME}' is installed."
-  echo "  3. Disable or remove other soofi-xyz plugin installs while testing if duplicate agent/skill names appear."
+  echo "  3. Disable or remove other soofi-xyz-team-kit plugin installs while testing if duplicate agent/skill names appear."
   echo "  4. Run a small smoke prompt, for example: /arceus Reply with exactly: ok"
 }
 
