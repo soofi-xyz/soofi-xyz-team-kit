@@ -108,7 +108,7 @@ const workflow = new sfn.StateMachine(this, 'DailyLoad', {
 
 ### References
 
-- `integrating-pagerduty` skill (SOCAPITAL `soc-team-kit` plugin) — routing key
+- `integrating-pagerduty` skill (SOCAPITAL internal plugin) — routing key
   retrieval, Events API v2 call, payload structure, and IAM.
 - [PagerDuty Events API v2](https://developer.pagerduty.com/docs/send-alert-event)
 - [Step Functions error handling (Catch / Retry)](https://docs.aws.amazon.com/step-functions/latest/dg/concepts-error-handling.html)
