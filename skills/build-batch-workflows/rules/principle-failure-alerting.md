@@ -94,7 +94,7 @@ except Exception:
 
 ### References
 
-- `integrating-pagerduty` skill (SOCAPITAL `soc-team-kit` plugin).
+- `integrating-pagerduty` skill (SOCAPITAL internal plugin).
 - `apply-engineering-guidelines` → `observability-pagerduty-alerting` rule.
 - [Step Functions error handling (Catch / Retry)](https://docs.aws.amazon.com/step-functions/latest/dg/concepts-error-handling.html)
 - [PagerDuty Events API v2](https://developer.pagerduty.com/docs/send-alert-event)
