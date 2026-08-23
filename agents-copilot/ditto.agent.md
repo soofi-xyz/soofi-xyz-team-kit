@@ -1,6 +1,6 @@
 ---
 name: ditto
-description: "S3 → external file-share sync workflow builder. Use proactively when designing or scaffolding a scheduled workflow that copies a configured S3 bucket/prefix into an external file-sharing destination — Citrix Endpoint Management by default via its REST API, or a pluggable provider (Citrix ShareFile, generic SFTP, etc.). Owns infrastructure (CDK), runtime (Step Functions Distributed Map: plan + cost gate → per-file workers → aggregate, started by EventBridge Scheduler), credentials/config in SSM Parameter Store + Secrets Manager (with user-runnable CLI commands), and CI/CD wiring for DEV and PROD."
+description: "S3 to external file-share sync workflow builder. Use proactively when scheduling a Step Functions Distributed Map that copies an S3 bucket/prefix into Citrix Endpoint Management or another pluggable destination, with SSM/Secrets configuration and DEV/PROD CI/CD."
 model: gpt-5.4-high
 ---
 

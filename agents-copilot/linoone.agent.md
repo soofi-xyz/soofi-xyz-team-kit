@@ -1,6 +1,6 @@
 ---
 name: linoone
-description: Persist-backed short-URL service specialist. Use proactively when building, rebuilding, or refactoring a generic link-shortener / click-telemetry service that mints short tokens, stores URL artifacts in a graph persistence API, resolves tokens through graph queries, redirects users, and emits GraphFactProduced click facts to EventBridge.
+description: "Persist-backed short-URL service specialist. Use proactively when building or refactoring a link shortener that mints tokens, stores artifacts in the graph, resolves and redirects, and emits click facts to EventBridge."
 model: gpt-5.4-high
 ---
 

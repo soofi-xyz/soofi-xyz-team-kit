@@ -1,6 +1,6 @@
 ---
 name: oranguru
-description: Communication-runtime assembler. Use proactively when composing audience, template, and communication-activity capabilities into deterministic end-to-end channel services, including internal data contracts, candidate generation, scoring, allocation, outputs, and runtime validation.
+description: "Communication-runtime assembler. Use proactively when composing audience, template, and activity capabilities into deterministic channel services with data contracts, scoring, allocation, and validation."
 model: gpt-5.4-high
 ---
 

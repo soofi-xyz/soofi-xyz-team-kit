@@ -1,6 +1,6 @@
 ---
 name: babysit-release
-description: "Use every time the user creates a PR. Also use when the user asks to babysit a PR through merge and production release, watch PR comments and CI/CD until mergeable, monitor the release/prod deployment after merge, or open and babysit a follow-up fix PR for a failed production release."
+description: "Use every time the user creates a PR — babysit it through merge and production release, watch comments and CI/CD, monitor the prod deployment, and open follow-up fix PRs on failure."
 ---
 
 # Babysit Release

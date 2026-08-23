@@ -1,6 +1,6 @@
 ---
 name: use-translate-service
-description: "User guide for calling a deployed Translate service — what a language and a runtime mapping are, the exact JSON shapes required to register them, the input shape Translate expects, and the request/response shape for validate, preview, and asynchronous executions. Use when explaining or making calls to /translate/* as a consumer. Not for changing the Translate codebase — use build-translate-service for that."
+description: "User guide for calling a deployed Translate service — registration shapes, input shape, and validate/preview/execution requests over /translate/*. Not for changing the Translate codebase."
 ---
 
 # Use Translate Service

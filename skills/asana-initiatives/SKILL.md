@@ -1,6 +1,7 @@
 ---
 name: asana-initiatives
-description: "Extend the hypno Google Chat Asana initiative portfolio bot and WOW personal CLI workflows. Covers prompt-in-Markdown, gchat webhook flow, initiative project CRUD, acceptance-criteria parsing, portfolio analysis, my-tasks/story creation/store consolidation via manage-initiatives.mjs. Triggers on: hypno, asana initiatives, initiative portfolio, acceptance criteria, golden overlap, war plan initiatives, manage-initiatives, google chat asana bot, my tasks, WOW story, create-story, store-sync."
+description: "Extend the Hypno Google Chat Asana initiative portfolio bot and the WOW personal CLI workflows (manage-initiatives.mjs)."
+disable-model-invocation: true
 ---
 
 # Asana Initiatives (Hypno Runtime)

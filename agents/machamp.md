@@ -1,6 +1,6 @@
 ---
 name: machamp
-description: Batch workflow specialist. Use proactively when designing or implementing AWS batch workflows, ETL pipelines, Step Functions Distributed Map jobs, or Glue-based processing with cost, throttling, idempotency, and staged test-pipeline requirements.
+description: "Batch workflow specialist. Use proactively when designing or implementing AWS batch workflows, ETL pipelines, Step Functions Distributed Map jobs, or Glue processing with cost, throttling, and idempotency requirements."
 model: gpt-5.4-high
 ---
 

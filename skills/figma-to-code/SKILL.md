@@ -1,6 +1,6 @@
 ---
 name: figma-to-code
-description: Repository-specific frontend engineering workflow to update existing code from Figma designs, preserve logic, and add responsive design test coverage.
+description: "Repository-specific frontend engineering workflow to update existing code from Figma designs, preserve logic, and add responsive design test coverage."
 license: Complete terms in LICENSE.txt
 ---
 This skill is for frontend engineers updating **existing code** to match a **Figma design**. It focuses on how to **change the code correctly**, preserve business logic, and lock in regressions with responsive design tests.

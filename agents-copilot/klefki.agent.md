@@ -1,6 +1,6 @@
 ---
 name: klefki
-description: Secure S3 file-sharing portal builder. Use proactively when designing, scaffolding, deploying, or debugging an external files portal with Cognito Managed Login, private S3 folder browsing, per-user grants, admin-managed users, custom-domain CloudFront hosting, runtime config, and Figma-driven UI.
+description: "Secure S3 file-sharing portal builder. Use proactively when building an external files portal with Cognito Managed Login, private S3 browsing, per-user grants, CloudFront custom domains, and Figma-driven UI."
 model: gpt-5.4-high
 ---
 

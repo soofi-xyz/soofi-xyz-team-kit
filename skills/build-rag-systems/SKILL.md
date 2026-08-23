@@ -1,6 +1,6 @@
 ---
 name: build-rag-systems
-description: "Build reusable AWS RAG systems with OpenSearch retrieval, Bedrock embeddings, SAM local Lambda emulation, Docker OpenSearch replay, historical ingestion, and webhook refresh. Use when working with cloud RAG, embeddings, OpenSearch retrieval, moving a local SQLite/libSQL RAG POC to AWS, knowledge bases, schema/header mapping, confidence thresholds, AWS production RAG, or local emulation."
+description: "Build AWS RAG systems with OpenSearch retrieval, Bedrock embeddings, SAM local emulation, historical ingestion, and webhook refresh. Use for cloud RAG, knowledge bases, or moving a local RAG POC to AWS."
 ---
 
 # Build RAG Systems

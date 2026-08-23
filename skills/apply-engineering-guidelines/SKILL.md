@@ -1,6 +1,6 @@
 ---
 name: apply-engineering-guidelines
-description: "Apply the repository Golden Path engineering standards. Use when building new services, refactoring existing code, setting up infrastructure, configuring CI/CD, choosing libraries, writing tests, adding observability, alerting, monitoring, or reviewing architecture decisions. Covers tech stack (TypeScript for all services, Python only for PySpark/Glue), AWS/CDK infrastructure, testing strategy (Vitest/Pytest), observability (structured logs, X-Ray, metrics), mandatory PagerDuty alerting on critical failures, self-resolving DLQ channel alarms, and AI policy. Triggers on: new service, scaffold, refactor, architecture review, tech stack question, infrastructure setup, CDK, testing setup, logging, observability, metrics, pagerduty, alerting, on-call, critical failure, dlq, dead-letter queue, cloudwatch alarm, channel notification, alarm fatigue, CI/CD pipeline. Do NOT trigger for general coding questions unrelated to the repository standards."
+description: "Apply the repository Golden Path engineering standards. Use when building or refactoring services, choosing stack or libraries, setting up CDK infrastructure, tests, CI/CD, observability, or PagerDuty alerting, or reviewing architecture."
 ---
 
 # Engineering Guidelines

@@ -1,6 +1,6 @@
 ---
 name: pelipper
-description: Asana-integrated or directly callable dataset export agent. Use proactively when designing, operating, or extending Pelipper, the agent that turns approved Asana board-scoped requests, interactive agent requests from verified users, or trusted API/CLI requests into company-scoped debt data extracts backed by so-persist. Handles Agency Name or explicit company-scope resolution, requested-field mapping, export/query validation, direct authorized results or S3 presigned export links, status checks, and guardrails against model-authored filters or raw Gremlin.
+description: "Dataset export agent. Use proactively when operating or extending Pelipper, which turns Asana board-scoped or trusted direct requests into company-scoped debt data extracts backed by so-persist, with scope validation and presigned S3 links."
 model: gpt-5.5-high
 ---
 

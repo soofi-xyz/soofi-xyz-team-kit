@@ -1,6 +1,7 @@
 ---
 name: evaluate-candidate-implementation
-description: "Implementation phase of candidate test-task evaluation, run as a dedicated subagent, after the functional outcome is understood. Evaluate technical implementation quality — architecture, code structure, and the technical depth behind acceptance-criteria coverage — comparing against any reference repositories the story points at (for example the investors-mcp reference fork). Then score kit-usage conformance: determine which soofi-xyz kit agent(s)/skill(s) should have built a task like this by consulting arceus and README.md, consult each relevant builder agent as a read-only reviewer for a 0–100 coding score, and aggregate. Return separate implementation-quality and kit-usage scores with file-level evidence. Use after evaluate-candidate-product so implementation is judged third, never before the outcome."
+description: "Phase 3 of candidate test-task evaluation — score implementation quality and soofi-xyz kit-usage conformance."
+disable-model-invocation: true
 ---
 
 # Evaluate Candidate Implementation

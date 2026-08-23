@@ -1,6 +1,6 @@
 ---
 name: atomic-data
-description: "Lexicon-first metrics for contact-center / operational platforms: combine row-level (atomic) facts with vendor daily rollups, Parquet in object storage, CloudWatch publication, and clear lineage in cloudwatch-metrics.json and lexicon.json. Use when designing or implementing atomic vs rollup layers, reconciliation, inbound/outbound classification rules (e.g. LIVEVOX_INBOUND_RULES_JSON), metrics_mapper business keys, Athena reconciliation views, or per-agent daily reporting. Triggers on: atomic metrics, call_fact, vendor rollup, contact center metrics, agent daily metrics, metrics reconciliation, Parquet derived layer, blob vs atomic storage, operational platform metrics."
+description: "Lexicon-first metrics for operational platforms — atomic row-level facts vs vendor rollups, Parquet layers, CloudWatch publication, reconciliation, lineage. Use when designing atomic/rollup layers or per-agent daily reporting."
 ---
 
 # Atomic Data Metrics

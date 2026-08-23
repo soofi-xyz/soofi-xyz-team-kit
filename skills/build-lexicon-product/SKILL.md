@@ -1,6 +1,7 @@
 ---
 name: build-lexicon-product
-description: "Use when implementing or changing the Lexicon product from its PRD: governed graph vocabulary, ruleset data, metric definitions, source-system mapping artifacts, S3/SSM artifact publication, and the read-only schema browser. Read reference/PRD.md first; combine with conkeldurr, unown, porygon, and apply-engineering-guidelines."
+description: "Implement or change the Lexicon product from its PRD — governed graph vocabulary, rulesets, metric definitions, artifact publication, schema browser. Read reference/PRD.md first."
+disable-model-invocation: true
 ---
 
 # Build Lexicon Product

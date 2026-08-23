@@ -1,6 +1,7 @@
 ---
 name: build-build-service
-description: "Use when implementing or changing the Build service from its PRD: TypeScript CDK source intake, CodeBuild synth and validation, CDK cloud assembly artifacts, artifact provenance, build manifests, and marketplace-ready bundle outputs. Read reference/PRD.md first; combine with conkeldurr, regigigas, machamp, and apply-engineering-guidelines."
+description: "Implement or change the Build service from its PRD — CDK source intake, CodeBuild synth, cloud assembly artifacts, marketplace bundles. Read reference/PRD.md first."
+disable-model-invocation: true
 ---
 
 # Build Build Service

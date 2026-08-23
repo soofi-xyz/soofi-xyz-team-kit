@@ -1,6 +1,7 @@
 ---
 name: evaluate-candidate-product
-description: "Evidence-and-functional-outcome phase of candidate test-task evaluation, run as a dedicated subagent. First enforce the gates from evaluate-candidate-intent — a missing PR to the designated assignment repo, demo artifact, or credentials are explicit Failed gates, and any runtime that is not a candidate-deployed hosted runtime (a locally run app such as localhost, a dev server, or local Docker), or that otherwise cannot be reached and exercised, is an absolute hard fail (score 0/100, verdict Fail, for any reason including environment or anti-automation blocks). Then drive the live deployed runtime with the Playwright browser to prove the story's intent through working runtime behavior, data evidence, output evidence, and demo artifacts, evaluate functional outcome before implementation, check assignment-specific access boundaries (for X Engagement, hosted investors-mcp read tools only — flag direct database, vector-store, or blob access as a violation), and return Pass/Partial/Fail/Blocked for each material acceptance criterion. Score functional outcome, evidence quality, access-boundary compliance, runtime/demo quality, and reproducibility. Use after evaluate-candidate-intent."
+description: "Phase 2 of candidate test-task evaluation — enforce gates, drive the deployed runtime with Playwright, and score functional outcome and evidence."
+disable-model-invocation: true
 ---
 
 # Evaluate Candidate Product

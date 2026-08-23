@@ -1,6 +1,7 @@
 ---
 name: build-connect-service
-description: "Use when implementing or changing the Connect service from its PRD: partner integrations, flow specs, credentials and tokens, webhooks, static IP, SFTP, batch executions, and connector job APIs. Read reference/PRD.md first; combine with conkeldurr, machamp, and apply-engineering-guidelines."
+description: "Implement or change the Connect service from its PRD — partner integrations, flow specs, credentials, webhooks, SFTP, connector jobs. Read reference/PRD.md first."
+disable-model-invocation: true
 ---
 
 # Build Connect Service

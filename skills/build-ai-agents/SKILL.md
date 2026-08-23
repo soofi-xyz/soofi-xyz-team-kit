@@ -1,6 +1,6 @@
 ---
 name: build-ai-agents
-description: "Guides creation of AI agents using the rules-agent pattern. Covers Lambda-first agent runtime design, Chat SDK ingress via @soofi-xyz/chat-adapter-asana, Chat SDK state persistence via @soofi-xyz/chat-state-dynamodb, Vercel AI SDK ToolLoopAgent on Bedrock, Bedrock prompt caching, multi-intent request routing, LangSmith telemetry, AgentCore-backed AI conversation memory, tools, deployment, and testing. Triggers on: ai agent, build agent, lambda agent, asana bot, chat sdk, chat-adapter-asana, chat-state-dynamodb, webhook agent, tool loop agent, bedrock prompt cache, langsmith agent, agent memory, bedrock agent, agentcore memory."
+description: "Create AI agents with the rules-agent pattern — Lambda-first runtime, Chat SDK ingress and state, Vercel AI SDK ToolLoopAgent on Bedrock, prompt caching, LangSmith telemetry, AgentCore memory. Use for chat bots, webhook agents, and tool-loop agents."
 ---
 
 # Building AI Agents

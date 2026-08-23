@@ -1,6 +1,6 @@
 ---
 name: build-solver-services
-description: "Guides creation of optimization services that combine AWS Glue PySpark data preparation with Google OR-Tools solvers. Covers the three-layer architecture (Spark prep → collect bridge → OR-Tools solve → Spark output), solver module design, Glue job wiring, CDK infrastructure, and testing strategy. Triggers on: solver, optimization, OR-Tools, min-cost-flow, assignment problem, scheduling optimizer, PySpark solver, capacity assignment, constraint optimization."
+description: "Build optimization services combining Glue PySpark preparation with Google OR-Tools solvers (min-cost-flow, assignment, scheduling), including CDK wiring and testing."
 ---
 
 # Building Solver Services

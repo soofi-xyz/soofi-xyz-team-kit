@@ -1,6 +1,7 @@
 ---
 name: manage-short-urls
-description: "Design, rebuild, and operate a generic Persist-backed short-URL service. Covers token issuance, GraphSON v3 persistence, graph-query resolution, public redirects, GraphFactProduced click facts on EventBridge, SQS DLQ replay, custom-domain discovery, and forbidden legacy patterns such as DynamoDB token tables, Snowflake dependencies, webhooks, metadata blobs, and business logic in the resolver."
+description: "Design, rebuild, and operate the Persist-backed short-URL service — token issuance, graph resolution, public redirects, click facts."
+disable-model-invocation: true
 ---
 
 # Manage Short URLs

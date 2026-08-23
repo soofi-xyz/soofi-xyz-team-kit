@@ -1,6 +1,6 @@
 ---
 name: use-eevee
-description: "Operate the Eevee editorial agent from Cursor: retrieve from the live Eevee RAG via the agent-eevee retrieve CLI, then draft pitches/propositions/website copy in Eevee's voice using Eevee's prompts. Triggers on: eevee, editorial draft, pitch, proposition, capability deck, white paper, rfp response, website copy, founder content."
+description: "Operate the Eevee editorial agent — retrieve from the live Eevee RAG via the agent-eevee CLI and draft pitches, propositions, decks, and website copy in Eevee's voice."
 ---
 
 # Use Eevee from Cursor

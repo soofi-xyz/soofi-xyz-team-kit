@@ -1,6 +1,7 @@
 ---
 name: manage-story-quality
-description: "Operating guide for Kirlia (soofi-xyz/kirlia-agent): when someone @-mentions the bot in a comment on an Asana task of custom type Story, a Vercel runtime rewrites the story via LLM into the WOW format (clear title, Context / Description / Acceptance Criteria bullets / Demo Script), updates the task, and creates or refreshes a review subtask assigned to the mention author. Covers enabling/disabling projects via bot membership (discovery sweep), the org seed script and PATs, webhook + 15-min sweeper paths, the idempotent story_agent_tasks ledger, diagnosing missed or failed stories, changing the WOW format prompt, and cutover from wow-website. Triggers on: kirlia, kirlia-agent, story quality agent, story agent, WOW story format, rewrite Asana stories, mention the story bot, enable the story agent on a project, story agent missed a task, story_agent_tasks, seed-story-agent."
+description: "Operate and extend Kirlia, the Asana story-quality bot that rewrites @mentioned Story tasks into the WOW format — enablement, webhooks, ledger, diagnosis."
+disable-model-invocation: true
 ---
 
 # Manage Story Quality

@@ -1,6 +1,7 @@
 ---
 name: build-translate-service
-description: "Use when implementing or changing the Translate service from its PRD: registered partner languages, versioned TypeScript mappings, validation, preview, asynchronous translation executions, mapping packs, and execution telemetry. Read reference/PRD.md first; combine with conkeldurr, machamp, and apply-engineering-guidelines."
+description: "Implement or change the Translate service from its PRD — registered languages, versioned TypeScript mappings, validation, preview, async executions. Read reference/PRD.md first."
+disable-model-invocation: true
 ---
 
 # Build Translate Service

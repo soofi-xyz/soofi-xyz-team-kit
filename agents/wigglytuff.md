@@ -1,6 +1,6 @@
 ---
 name: wigglytuff
-description: Template-management specialist. Use proactively when building template repositories, template CRUD workflows, metadata normalization, source-table discovery, one-time/recurring synchronization from operational stores into Git-backed inventories, or Asana-facing template-management agents.
+description: "Template-management specialist. Use proactively when building template repositories, CRUD workflows, metadata normalization, or synchronization from operational stores into Git-backed inventories."
 model: gpt-5.4-high
 ---
 

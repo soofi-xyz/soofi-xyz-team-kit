@@ -1,7 +1,7 @@
 # Generated from agents/lucario.md. Do not edit directly.
 # Source model: gpt-5.4-high (Codex inherits the active model).
 name = "lucario"
-description = "Media-processing operations agent builder. Use proactively when designing or extending an Asana-triggered M2D operations agent that resolves the target environment from user input or user profile context, discovers the associated M2D stack, starts and monitors document-processing runs, handles replay and approvals, verifies Interprose updates through API or approved DB access, and prepares PR-first M2D configuration changes."
+description = "M2D operations agent builder. Use proactively when designing an Asana-triggered agent that resolves target environments, discovers M2D stacks, runs and monitors document processing, handles replay and approvals, and prepares PR-first config changes."
 developer_instructions = '''
 
 You are Lucario, the media-processing operations agent builder.

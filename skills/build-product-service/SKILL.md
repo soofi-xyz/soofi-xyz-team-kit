@@ -1,6 +1,7 @@
 ---
 name: build-product-service
-description: "Use when implementing or changing the Product service from its PRD: products, schemas, OpenAPI metadata, product flow templates, template-backed flows, invocations, waterfalls, reports, SMS, email, widgets, blobs, and operational telemetry. Read reference/PRD.md first; combine with conkeldurr, machamp, and apply-engineering-guidelines."
+description: "Implement or change the Product service from its PRD — products, schemas, flows, invocations, waterfalls, reports, widgets, telemetry. Read reference/PRD.md first."
+disable-model-invocation: true
 ---
 
 # Build Product Service

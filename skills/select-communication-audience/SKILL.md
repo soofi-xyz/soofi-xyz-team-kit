@@ -1,6 +1,6 @@
 ---
 name: select-communication-audience
-description: "Define reusable audience-selection and eligibility-handoff patterns for communication services. Covers upstream filter boundaries, runtime intake contracts, external input schemas, and how eligible populations are packaged for downstream optimization. Use when building audience-selection agents, filter-to-runtime handoffs, communication segmentation, or `input_s3_uri`-style intake contracts."
+description: "Define audience-selection and eligibility-handoff patterns — filter boundaries, runtime intake contracts, external input schemas, and eligible-population packaging."
 ---
 
 # Select Communication Audience

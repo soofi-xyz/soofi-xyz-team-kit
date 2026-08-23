@@ -1,6 +1,7 @@
 ---
 name: build-product-deployer
-description: "Use when implementing or changing the Deployer service from its PRD: tenant-local CloudFormation/CDK deployment execution, bundle contracts, regional stack orchestration, Docker image handling, callbacks, and status inspection. Read reference/PRD.md first; combine with conkeldurr, regigigas, and apply-engineering-guidelines."
+description: "Implement or change the Deployer service from its PRD — tenant-local CloudFormation/CDK execution, bundle contracts, callbacks, status inspection. Read reference/PRD.md first."
+disable-model-invocation: true
 ---
 
 # Build Product Deployer

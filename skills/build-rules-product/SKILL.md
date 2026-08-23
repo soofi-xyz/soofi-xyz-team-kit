@@ -1,6 +1,7 @@
 ---
 name: build-rules-product
-description: "Use when implementing or changing the Rules product from its PRD: tenant-local batch decisioning, rule contracts, Persist graph reads, callable-population outputs, audit reports, metrics, Glue preparation jobs, and Step Functions workflows. Read reference/PRD.md first; combine with conkeldurr, machamp, and apply-engineering-guidelines."
+description: "Implement or change the Rules product from its PRD — tenant-local batch decisioning, rule contracts, audit reports, Glue jobs, Step Functions. Read reference/PRD.md first."
+disable-model-invocation: true
 ---
 
 # Build Rules Product

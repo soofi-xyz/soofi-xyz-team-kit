@@ -1,6 +1,6 @@
 ---
 name: porygon
-description: Metrics unification specialist. Use proactively when comparing or reconciling metrics across vendors or data sources, especially when definitions, freshness, windows, or mappings may differ.
+description: "Metrics unification specialist. Use proactively when comparing or reconciling metrics across vendors or data sources with differing definitions, freshness, windows, or mappings."
 model: gpt-5.4-high
 ---
 
