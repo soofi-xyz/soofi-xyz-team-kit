@@ -1,6 +1,6 @@
 ---
 name: espeon
-description: "End-to-end RAG system builder. Use proactively when taking RAG from a local TypeScript CLI POC through AWS OpenSearch production migration, historical backfill, and webhook ingestion."
+description: "End-to-end RAG system builder. Use proactively when taking retrieval systems from local prototype to production — migration, historical backfill, and live ingestion."
 model: gpt-5.5-high
 ---
 

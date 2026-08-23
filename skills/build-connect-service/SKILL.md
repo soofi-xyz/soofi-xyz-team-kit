@@ -1,6 +1,6 @@
 ---
 name: build-connect-service
-description: "Implement or change the Connect service from its PRD — partner integrations, flow specs, credentials, webhooks, SFTP, connector jobs. Read reference/PRD.md first."
+description: "Implementing or changing the Connect service from its PRD — partner integrations, flows, credentials, webhooks, file transfer, connector jobs. Read reference/PRD.md first."
 disable-model-invocation: true
 ---
 

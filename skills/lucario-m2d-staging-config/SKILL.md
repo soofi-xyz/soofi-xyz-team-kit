@@ -1,6 +1,6 @@
 ---
 name: lucario-m2d-staging-config
-description: "Change or operate Lucario's M2D portfolio staging-config updates, S3 publication, GitHub PR creation, and sample-media verification."
+description: "Changing or operating Lucario's M2D portfolio staging-config updates — config publication, change requests, and sample-media verification."
 disable-model-invocation: true
 ---
 

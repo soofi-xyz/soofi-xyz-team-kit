@@ -1,6 +1,6 @@
 ---
 name: integrate-ci-cd
-description: "Integrate the shared CI/CD GitHub Actions workflows into a project — caller workflows, justfile recipes, and environment variable configuration."
+description: "Integrating the shared CI/CD pipelines into a project — caller workflows, required recipes, and environment configuration."
 ---
 
 # Integrating CI/CD

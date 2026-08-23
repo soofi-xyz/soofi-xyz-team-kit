@@ -1,6 +1,6 @@
 ---
 name: build-persist-service
-description: "Implement or change the Persist service from its PRD — Neptune graph persistence, GraphSON ingest, Gremlin query APIs, lexicon-generated GraphQL reads. Read reference/PRD.md first."
+description: "Implementing or changing the Persist service from its PRD — graph persistence, validated ingest, bulk load, query interfaces, read surfaces. Read reference/PRD.md first."
 disable-model-invocation: true
 ---
 

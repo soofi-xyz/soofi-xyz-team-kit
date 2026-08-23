@@ -1,6 +1,6 @@
 ---
 name: build-product-service
-description: "Implement or change the Product service from its PRD — products, schemas, flows, invocations, waterfalls, reports, widgets, telemetry. Read reference/PRD.md first."
+description: "Implementing or changing the Product service from its PRD — products, schemas, flows, invocations, reports, messaging, widgets, telemetry. Read reference/PRD.md first."
 disable-model-invocation: true
 ---
 

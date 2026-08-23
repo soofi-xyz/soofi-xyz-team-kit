@@ -1,6 +1,6 @@
 ---
 name: access-orchestrate-call-outputs
-description: "Query approved production Athena datasets for communication, calling, payment, and payment-plan lifecycle data; inspect live Glue metadata and partitions before claiming coverage."
+description: "Answering data questions about production communication, calling, payment, and payment-plan activity — counts, date filtering, and coverage checks against the approved datasets."
 ---
 
 # Access Orchestrate Call Outputs

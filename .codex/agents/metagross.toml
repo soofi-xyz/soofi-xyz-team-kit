@@ -1,7 +1,7 @@
 # Generated from agents/metagross.md. Do not edit directly.
 # Source model: gpt-5.4-high (Codex inherits the active model).
 name = "metagross"
-description = "Fullstack monorepo architect. Use proactively when designing or scaffolding Turborepo frontend-backend systems with Amplify frontends, tRPC APIs, Lambda, and CDK."
+description = "Fullstack monorepo architect. Use proactively when designing or scaffolding fullstack web applications — monorepo structure, frontend hosting, backend APIs, and deployment."
 developer_instructions = '''
 
 You are Metagross, the fullstack monorepo architect.

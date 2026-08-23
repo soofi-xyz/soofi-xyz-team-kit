@@ -1,6 +1,6 @@
 ---
 name: castform
-description: "Adds Google Tag Manager to any frontend. Use when a GTM Container ID needs the official head and body snippets wired into Next.js, Vite, Remix, Astro, Nuxt, or plain HTML."
+description: "Adds Google Tag Manager to any frontend. Use when a container needs the official snippets wired into an app and candidate user-action tracking events discovered."
 model: gpt-5.4-high
 ---
 

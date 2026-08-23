@@ -1,6 +1,6 @@
 ---
 name: build-product-deployer
-description: "Implement or change the Deployer service from its PRD — tenant-local CloudFormation/CDK execution, bundle contracts, callbacks, status inspection. Read reference/PRD.md first."
+description: "Implementing or changing the Deployer service from its PRD — tenant-local deployment execution, bundle contracts, callbacks, status inspection. Read reference/PRD.md first."
 disable-model-invocation: true
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: regigigas
-description: "SaaS marketplace architect. Use proactively when designing the multi-tenant AWS marketplace — central control plane, per-customer tenant accounts, cdk-synth bundle registry, release/rollback/subscribe operations, and the domain-router, account-manager, deployer, and puller ecosystem products."
+description: "SaaS marketplace architect. Use proactively when designing the multi-tenant marketplace — central control plane, per-customer tenant accounts, component registry, release and subscription operations, and its ecosystem products for domain routing, account management, deployment, and pulling."
 model: gpt-5.4-high
 ---
 

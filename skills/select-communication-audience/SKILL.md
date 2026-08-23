@@ -1,6 +1,6 @@
 ---
 name: select-communication-audience
-description: "Define audience-selection and eligibility-handoff patterns — filter boundaries, runtime intake contracts, external input schemas, and eligible-population packaging."
+description: "Defining audience selection and eligibility for communications — filter boundaries, intake contracts, input schemas, and packaging eligible populations for downstream runtimes."
 ---
 
 # Select Communication Audience

@@ -1,6 +1,6 @@
 ---
 name: build-lexicon-product
-description: "Implement or change the Lexicon product from its PRD — governed graph vocabulary, rulesets, metric definitions, artifact publication, schema browser. Read reference/PRD.md first."
+description: "Implementing or changing the Lexicon product from its PRD — governed vocabulary, rulesets, metric definitions, artifact publication, schema browsing. Read reference/PRD.md first."
 disable-model-invocation: true
 ---
 

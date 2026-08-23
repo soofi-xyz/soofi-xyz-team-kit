@@ -1,6 +1,6 @@
 ---
 name: evaluate-candidate-product
-description: "Phase 2 of candidate test-task evaluation — enforce gates, drive the deployed runtime with Playwright, and score functional outcome and evidence."
+description: "Phase 2 of candidate test-task evaluation — enforce gates, exercise the candidate's deployed runtime, and score functional outcome and evidence."
 disable-model-invocation: true
 ---
 

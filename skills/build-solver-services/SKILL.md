@@ -1,6 +1,6 @@
 ---
 name: build-solver-services
-description: "Build optimization services combining Glue PySpark preparation with Google OR-Tools solvers (min-cost-flow, assignment, scheduling), including CDK wiring and testing."
+description: "Building optimization services for assignment, scheduling, and constraint problems — data preparation, solver design, infrastructure, and testing."
 ---
 
 # Building Solver Services

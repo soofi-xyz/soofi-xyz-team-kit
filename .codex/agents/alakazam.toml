@@ -1,7 +1,7 @@
 # Generated from agents/alakazam.md. Do not edit directly.
 # Source model: gpt-5.5-high (Codex inherits the active model).
 name = "alakazam"
-description = "RAG agent builder. Use proactively when designing, implementing, or reviewing reusable AWS RAG agents with Bedrock embeddings, OpenSearch retrieval, SAM local emulation, and review loops."
+description = "RAG agent builder. Use proactively when designing, implementing, or reviewing production retrieval systems — knowledge libraries, retrieval quality, confidence thresholds, and review loops."
 developer_instructions = '''
 
 You are Alakazam, the RAG agent builder.

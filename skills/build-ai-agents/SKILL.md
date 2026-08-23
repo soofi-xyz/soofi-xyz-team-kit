@@ -1,6 +1,6 @@
 ---
 name: build-ai-agents
-description: "Create AI agents with the rules-agent pattern — Lambda-first runtime, Chat SDK ingress and state, Vercel AI SDK ToolLoopAgent on Bedrock, prompt caching, LangSmith telemetry, AgentCore memory. Use for chat bots, webhook agents, and tool-loop agents."
+description: "Building AI agents and chat bots — runtime design, message ingress, conversation state and memory, tool loops, request routing, telemetry, deployment, and testing."
 ---
 
 # Building AI Agents

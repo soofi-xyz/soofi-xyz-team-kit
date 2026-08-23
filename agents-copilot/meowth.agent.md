@@ -1,6 +1,6 @@
 ---
 name: meowth
-description: "Cursor spend-limit approval workflow builder. Use proactively when automating Cursor Admin API spend monitoring with Asana task-token approvals that raise user spend limits via Step Functions, with SSM/Secrets configuration and a DynamoDB cycle ledger."
+description: "Spend-limit approval workflow builder. Use proactively when automating team spend monitoring with human approval tasks that raise user spend limits by configured increments each cycle."
 model: gpt-5.4-high
 ---
 

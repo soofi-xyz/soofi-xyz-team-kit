@@ -1,6 +1,6 @@
 ---
 name: build-batch-workflows
-description: "Build batch data processing on AWS — Step Functions Distributed Map vs Glue PySpark, throttling, idempotency, cost controls, metrics, PagerDuty alerting. Use for batch jobs, ETL, and bulk processing."
+description: "Building batch workflows and data processing pipelines — processing strategy selection, testing, cost control, throttling, idempotency, and failure alerting."
 ---
 
 # Building Batch Workflows

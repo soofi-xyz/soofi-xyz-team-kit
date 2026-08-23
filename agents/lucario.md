@@ -1,6 +1,6 @@
 ---
 name: lucario
-description: "M2D operations agent builder. Use proactively when designing an Asana-triggered agent that resolves target environments, discovers M2D stacks, runs and monitors document processing, handles replay and approvals, and prepares PR-first config changes."
+description: "M2D operations agent builder. Use proactively when designing an Asana-triggered agent that resolves target environments, runs and monitors document processing, handles replay and approvals, and prepares reviewed configuration changes."
 model: gpt-5.4-high
 ---
 

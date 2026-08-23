@@ -1,6 +1,6 @@
 ---
 name: build-tenant-domain-router
-description: "Build or change the Tenant Domain Router — root-domain ownership, per-tenant subdomain NS delegation, ACM strategy, base-path mapping contract."
+description: "Building or changing the Tenant Domain Router — root-domain ownership, per-tenant subdomains, certificates, and the endpoint-attachment contract other products consume."
 disable-model-invocation: true
 ---
 

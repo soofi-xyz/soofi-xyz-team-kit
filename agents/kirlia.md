@@ -1,6 +1,6 @@
 ---
 name: kirlia
-description: "WOW Story Quality operator for soofi-xyz/kirlia-agent. Use proactively when operating or extending the Kirlia Asana story rewriter — project enablement, missed-rewrite diagnosis, prompt changes, webhook cutover. Not Hypno's personal CLI."
+description: "WOW Story Quality operator. Use proactively when operating or extending the Kirlia story rewriter — project enablement, missed-rewrite diagnosis, prompt changes, trigger cutover. Not Hypno's personal workflows."
 model: gpt-5.5-high
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: use-eevee
-description: "Operate the Eevee editorial agent — retrieve from the live Eevee RAG via the agent-eevee CLI and draft pitches, propositions, decks, and website copy in Eevee's voice."
+description: "Drafting editorial content in the organization's voice — pitches, propositions, website copy, papers, and decks grounded in the curated knowledge base."
 ---
 
 # Use Eevee from Cursor

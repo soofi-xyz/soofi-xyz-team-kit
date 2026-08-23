@@ -1,6 +1,6 @@
 ---
 name: apply-engineering-guidelines
-description: "Apply the repository Golden Path engineering standards. Use when building or refactoring services, choosing stack or libraries, setting up CDK infrastructure, tests, CI/CD, observability, or PagerDuty alerting, or reviewing architecture."
+description: "Applying the company Golden Path engineering standards. Use when building or refactoring services, choosing technologies, setting up infrastructure, testing, CI/CD, observability, or alerting, or reviewing architecture."
 ---
 
 # Engineering Guidelines

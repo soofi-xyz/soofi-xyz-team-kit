@@ -1,6 +1,6 @@
 ---
 name: build-tenant-account-manager
-description: "Implement or change the Account service from its PRD — customer identity, API keys, AWS sub-account provisioning, DNS, bootstrap manifest. Read reference/PRD.md first."
+description: "Implementing or changing the Account service from its PRD — customer identity, credentials, tenant provisioning, domains, bootstrap manifest. Read reference/PRD.md first."
 disable-model-invocation: true
 ---
 

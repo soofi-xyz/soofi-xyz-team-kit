@@ -1,6 +1,6 @@
 ---
 name: build-saas-marketplace
-description: "Implement or change the Marketplace service from its PRD — catalog, component bundles, releases, subscriptions, signed webhooks, review flows. Read reference/PRD.md first."
+description: "Implementing or changing the Marketplace service from its PRD — catalog, bundles, releases, rollbacks, subscriptions, webhooks, review flows. Read reference/PRD.md first."
 disable-model-invocation: true
 ---
 

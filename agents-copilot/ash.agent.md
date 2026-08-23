@@ -1,6 +1,6 @@
 ---
 name: ash
-description: "AI-agent builder. Use proactively when designing or extending Asana-triggered Lambda agents on the Chat SDK, Bedrock via the Vercel AI SDK, AgentCore memory, and LangSmith telemetry."
+description: "AI-agent builder. Use proactively when designing or extending Asana-triggered agents — message ingress, conversation state and memory, model reasoning, and telemetry."
 model: gpt-5.4-high
 ---
 

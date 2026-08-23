@@ -1,6 +1,6 @@
 ---
 name: lucario-m2d-doc-replay
-description: "Change or operate Lucario's M2D failed-document replay, run status, manual approval, and restart-from-beginning behavior."
+description: "Changing or operating Lucario's M2D failed-document replay, run status, manual approval, and restart-from-beginning behavior."
 disable-model-invocation: true
 ---
 

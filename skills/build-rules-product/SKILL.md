@@ -1,6 +1,6 @@
 ---
 name: build-rules-product
-description: "Implement or change the Rules product from its PRD — tenant-local batch decisioning, rule contracts, audit reports, Glue jobs, Step Functions. Read reference/PRD.md first."
+description: "Implementing or changing the Rules product from its PRD — batch decisioning, rule contracts, population outputs, audit reports, metrics. Read reference/PRD.md first."
 disable-model-invocation: true
 ---
 

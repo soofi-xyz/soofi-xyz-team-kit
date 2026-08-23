@@ -1,6 +1,6 @@
 ---
 name: eevee
-description: "Editorial sub-agent backed by the Eevee RAG. Use proactively when drafting pitches, propositions, website copy, papers, RFP responses, or decks in Eevee's voice; can publish password-protected HTML pages."
+description: "Editorial sub-agent backed by the Eevee knowledge base. Use proactively when drafting pitches, propositions, website copy, papers, RFP responses, or decks in Eevee's voice; can publish password-protected pages."
 model: gpt-5.5-high
 ---
 

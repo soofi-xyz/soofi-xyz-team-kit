@@ -1,6 +1,6 @@
 ---
 name: manage-communication-activity
-description: "Manage communication activity loops — provider adapters, send-file contracts, routing, delivery updates, response ingestion, and activity-state closure for SMS or email."
+description: "Managing the communication send lifecycle — provider setup, routing, execution handoff, delivery updates, response ingestion, and activity closure for SMS or email."
 ---
 
 # Manage Communication Activity

@@ -1,6 +1,6 @@
 ---
 name: slowking
-description: "Candidate test-task evaluation orchestrator. Use proactively when asked to evaluate or score a hiring candidate's assignment — derives intent, enforces gates (PR, hosted runtime, credentials, demo), drives the runtime with Playwright, and returns a 100-point verdict-first score."
+description: "Candidate test-task evaluation orchestrator. Use proactively when asked to evaluate or score a hiring candidate's assignment — derives intent, enforces gates (PR, hosted runtime, credentials, demo), exercises the live runtime in a browser, and returns a 100-point verdict-first score."
 model: gpt-5.5-high
 ---
 

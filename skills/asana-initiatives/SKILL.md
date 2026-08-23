@@ -1,6 +1,6 @@
 ---
 name: asana-initiatives
-description: "Extend the Hypno Google Chat Asana initiative portfolio bot and the WOW personal CLI workflows (manage-initiatives.mjs)."
+description: "Extending the Hypno initiative-portfolio chat bot and its personal task and story workflows."
 disable-model-invocation: true
 ---
 

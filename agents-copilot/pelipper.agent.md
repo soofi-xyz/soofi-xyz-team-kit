@@ -1,6 +1,6 @@
 ---
 name: pelipper
-description: "Dataset export agent. Use proactively when operating or extending Pelipper, which turns Asana board-scoped or trusted direct requests into company-scoped debt data extracts backed by so-persist, with scope validation and presigned S3 links."
+description: "Dataset export agent. Use proactively when operating or extending Pelipper, which turns approved board-scoped or trusted direct requests into company-scoped data extracts with scope validation and secure download links."
 model: gpt-5.5-high
 ---
 

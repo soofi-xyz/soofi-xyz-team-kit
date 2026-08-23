@@ -1,6 +1,6 @@
 ---
 name: build-marketplace-puller
-description: "Implement or change the Marketplace Puller from its PRD — subscription intake, marketplace webhooks, desired-state reconciliation, drift repair, deployer handoff. Read reference/PRD.md first."
+description: "Implementing or changing the Marketplace Puller from its PRD — subscription intake, desired-state reconciliation, drift repair, deployer handoff. Read reference/PRD.md first."
 disable-model-invocation: true
 ---
 

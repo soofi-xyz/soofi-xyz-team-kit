@@ -1,6 +1,6 @@
 ---
 name: atomic-data
-description: "Lexicon-first metrics for operational platforms — atomic row-level facts vs vendor rollups, Parquet layers, CloudWatch publication, reconciliation, lineage. Use when designing atomic/rollup layers or per-agent daily reporting."
+description: "Designing metrics layers that combine row-level facts with vendor rollups — reconciliation, classification rules, lineage, and per-agent daily reporting for operational platforms."
 ---
 
 # Atomic Data Metrics

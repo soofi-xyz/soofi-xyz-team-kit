@@ -1,6 +1,6 @@
 ---
 name: evaluate-candidate-implementation
-description: "Phase 3 of candidate test-task evaluation — score implementation quality and soofi-xyz kit-usage conformance."
+description: "Phase 3 of candidate test-task evaluation — score implementation quality and kit-usage conformance."
 disable-model-invocation: true
 ---
 

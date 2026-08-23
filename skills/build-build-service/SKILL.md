@@ -1,6 +1,6 @@
 ---
 name: build-build-service
-description: "Implement or change the Build service from its PRD — CDK source intake, CodeBuild synth, cloud assembly artifacts, marketplace bundles. Read reference/PRD.md first."
+description: "Implementing or changing the Build service from its PRD — source intake, build and validation, artifact provenance, marketplace-ready bundles. Read reference/PRD.md first."
 disable-model-invocation: true
 ---
 

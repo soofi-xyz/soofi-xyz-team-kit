@@ -1,6 +1,6 @@
 ---
 name: build-bootstrap-cli
-description: "Implement or change the Bootstrap CLI from its PRD — tenant bootstrap, manifest intake, first Deployer install, resume state. Read reference/PRD.md first."
+description: "Implementing or changing the Bootstrap CLI from its PRD — initial tenant setup, manifest intake, first installs, resume and status. Read reference/PRD.md first."
 disable-model-invocation: true
 ---
 

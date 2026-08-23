@@ -1,6 +1,6 @@
 ---
 name: frontend-bug-fix
-description: "Repository-specific frontend bug triage and fix workflow with design comparison, commit analysis, test updates, and verification."
+description: "Triaging and fixing frontend bugs — design comparison, root-cause analysis in history, minimal fixes, test updates, and verification."
 ---
 This skill helps frontend designers and engineers find, diagnose, and fix UI bugs in the repositories by comparing the product to source designs, auditing overrides in commit history, and strengthening tests to prevent regressions.
 ## When to Use

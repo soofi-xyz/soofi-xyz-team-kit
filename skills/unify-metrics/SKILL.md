@@ -1,6 +1,6 @@
 ---
 name: unify-metrics
-description: "Design lexicon-first metrics workflows — metric discovery, vendor-to-canonical mapping, CloudWatch registration, pipeline integration, dashboard delivery. Use when adding or changing a metric."
+description: "Defining and delivering business metrics end to end — metric discovery, vendor-to-canonical mapping, registration, pipeline integration, and dashboards. Use when adding or changing a metric."
 ---
 
 # Unify Metrics

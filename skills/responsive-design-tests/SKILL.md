@@ -1,6 +1,6 @@
 ---
 name: responsive-design-tests
-description: "Write Playwright design tests for Figma-driven responsive UI updates across mobile, tablet, and desktop breakpoints."
+description: "Writing automated design tests that verify responsive UI changes across mobile, tablet, and desktop breakpoints."
 ---
 
 # Responsive Design Tests

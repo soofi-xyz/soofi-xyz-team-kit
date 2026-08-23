@@ -1,6 +1,6 @@
 ---
 name: delibird
-description: "Report catalog app builder. Use proactively when designing, deploying, or updating the single AWS-hosted catalog page that lists report URLs, plus its report-registration CLI."
+description: "Report catalog app builder. Use proactively when designing, deploying, or updating the single hosted catalog page that lists report URLs, plus its report-registration tooling."
 model: gpt-5.4-high
 ---
 

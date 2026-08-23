@@ -1,6 +1,6 @@
 ---
 name: manage-story-quality
-description: "Operate and extend Kirlia, the Asana story-quality bot that rewrites @mentioned Story tasks into the WOW format — enablement, webhooks, ledger, diagnosis."
+description: "Operating and extending Kirlia, the story-quality bot that rewrites mentioned Asana stories into the WOW format — enablement, triggers, ledger, diagnosis."
 disable-model-invocation: true
 ---
 

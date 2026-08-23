@@ -1,6 +1,6 @@
 ---
 name: manage-channel-templates
-description: "Manage SMS and email channel templates in Git-backed inventories — CRUD, metadata normalization, family/variant structure, and sync from operational stores to GitHub."
+description: "Managing message templates for SMS and email — creating, updating, organizing, and synchronizing template inventories from operational stores."
 ---
 
 # Manage Channel Templates

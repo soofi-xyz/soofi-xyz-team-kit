@@ -1,6 +1,6 @@
 ---
 name: manage-short-urls
-description: "Design, rebuild, and operate the Persist-backed short-URL service — token issuance, graph resolution, public redirects, click facts."
+description: "Designing, rebuilding, and operating the short-URL service — token issuance, link resolution, public redirects, click telemetry."
 disable-model-invocation: true
 ---
 
