@@ -1,6 +1,7 @@
 ---
 name: build-tenant-domain-router
-description: "Guides building the Tenant Domain Router — a standalone marketplace product that owns a single root domain (e.g. `provider.xyz`), mints one delegated subdomain per tenant environment (e.g. `customer.provider.xyz`), and exposes a uniform contract for any other product to attach a base path under that subdomain. Covers the marketplace-account parent hosted zone, NS-delegation to per-tenant child hosted zones, ACM certificate strategy, and the API Gateway / CloudFront base-path-mapping interface that other products consume. Triggers on: tenant subdomain, root domain delegation, route53 hosted zone delegation, per-tenant DNS, base path mapping, multi-tenant custom domain, ACM wildcard, marketplace domain product."
+description: "Building or changing the Tenant Domain Router — root-domain ownership, per-tenant subdomains, certificates, and the endpoint-attachment contract other products consume."
+disable-model-invocation: true
 ---
 
 # Building the Tenant Domain Router

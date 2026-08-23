@@ -1,6 +1,6 @@
 ---
 name: build-frontend-backends
-description: "Guides creation of fullstack monorepo apps with Turborepo, AWS Amplify frontends, and tRPC + Lambda backends deployed via CDK. Covers monorepo structure, shared modules, tRPC routers, API Gateway custom domains, and multi-app deployment. Triggers on: frontend backend, fullstack app, trpc, turborepo, monorepo, amplify app, web app backend, api for frontend, multi-app monorepo."
+description: "Building fullstack web applications — monorepo structure, shared modules, frontend hosting, backend APIs, custom domains, and multi-app deployment."
 ---
 
 # Building Frontend Backends

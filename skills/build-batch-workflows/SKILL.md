@@ -1,6 +1,6 @@
 ---
 name: build-batch-workflows
-description: "Guides creation of batch data processing workflows on AWS. Covers input data analysis, choosing Step Functions Distributed Map vs AWS Glue PySpark, testing pipelines, cost controls, throttling, idempotency, metrics, and mandatory PagerDuty alerting on critical failures. Triggers on: batch job, batch workflow, data pipeline, data processing job, ETL pipeline, bulk processing, distributed map, glue job, batch failure alerting, pagerduty, dead-letter queue."
+description: "Building batch workflows and data processing pipelines — processing strategy selection, testing, cost control, throttling, idempotency, and failure alerting."
 ---
 
 # Building Batch Workflows

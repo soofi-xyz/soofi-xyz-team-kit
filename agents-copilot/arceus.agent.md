@@ -1,6 +1,6 @@
 ---
 name: arceus
-description: Master router for this kit. Use proactively at the start of any task when the user has not named a specific agent, asks "which agent or skill should I use", wants an overview of available specialists, or needs to be routed to the right combination of agents and skills. Returns recommendations with rationale and invocation hints — does not perform the implementation.
+description: "Master router for this kit. Use proactively at the start of any task when no specific agent is named — recommends the right agents and skills with invocation hints; does not implement."
 model: gpt-5.5-medium
 readonly: true
 ---

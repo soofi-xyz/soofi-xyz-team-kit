@@ -1,6 +1,6 @@
 ---
 name: assemble-communication-runtime
-description: "Assemble deterministic communication runtimes from reusable audience, template, and activity capabilities. Covers runtime workflow composition, internal data contracts, candidate generation, scoring, allocation, outputs, and runtime validation. Use when building or refactoring communication runtimes, workflow assembly agents, or end-to-end channel services."
+description: "Assembling end-to-end communication runtimes from reusable audience, template, and activity capabilities — workflow composition, data contracts, scoring, allocation, validation."
 ---
 
 # Assemble Communication Runtime

@@ -1,6 +1,6 @@
 ---
 name: build-local-rag-pocs
-description: Build simple local TypeScript RAG CLIs for agents to query, with libSQL file databases, embedding-backed search, machine-readable commands, and AGENTS.md usage instructions. Use when prototyping local RAG, evaluating corpora, building query-only RAG tools, or teaching agents to use local retrieval from the terminal.
+description: "Prototyping local retrieval (RAG) tools that agents can query from the terminal — corpus evaluation, search quality, machine-readable output, and usage instructions."
 ---
 
 # Build Local RAG CLIs

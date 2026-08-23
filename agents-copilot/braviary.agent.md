@@ -1,6 +1,6 @@
 ---
 name: braviary
-description: Orchestrates Google marketing stack v1 (GTM, GA4, Search Console, Google Ads linking, stakeholder admin access, QA handoff). Use when coordinating the full implementation across Google consoles and application code; delegates frontend GTM wiring to `castform`.
+description: "Google marketing stack orchestrator. Use when coordinating GTM, GA4, Search Console, and Google Ads linking across consoles and code; delegates frontend GTM wiring to castform."
 model: gpt-5.4-high
 ---
 

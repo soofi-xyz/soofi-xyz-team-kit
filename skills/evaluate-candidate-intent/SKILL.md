@@ -1,6 +1,7 @@
 ---
 name: evaluate-candidate-intent
-description: "First phase of candidate test-task evaluation. Read the assignment user story (or assignment repository), candidate pull request, runtime URL, demo video, credentials, and the assignment-sent datetime, then derive the story's one-sentence intent — the business outcome that would make the work obviously useful — before any scoring. Fetch the candidate's latest commit timestamp from GitHub and compute elapsed delivery time. Build the evidence model (actors, workflow, data objects, scale signals, runtime proof, access boundaries, demo evidence), the pass/fail gates (PR to the designated assignment repo, runtime, credentials, demo), and the weighted 100-point scoring model. Use at the start of a hiring-candidate evaluation, before functional or implementation review. Not for designing new agents or products from scratch."
+description: "Phase 1 of candidate test-task evaluation — derive the story's business intent, then build the evidence model, the pass/fail gates, and the 100-point scoring model."
+disable-model-invocation: true
 ---
 
 # Evaluate Candidate Intent
@@ -10,6 +11,8 @@ description: "First phase of candidate test-task evaluation. Read the assignment
 Use this skill as the **first phase** of evaluating a hiring candidate's assignment (for example a PrismTeam task such as X Engagement Reply Agent, Oracle Property Intelligence Platform, Agent Network Registration and Certification Platform, or the investors-mcp reference fork). It turns an assignment user story plus a submission into an evaluable contract: a one-sentence intent, an evidence model, pass/fail gates, and a weighted 100-point model.
 
 Evaluate by **intended business outcome first**. Acceptance criteria are evidence probes, not a replacement for intent. Hand the output to `evaluate-candidate-product` (evidence and functional outcome) and `evaluate-candidate-implementation` (implementation quality and kit usage).
+
+All three evaluation skills are manual-invocation only (`disable-model-invocation: true`), so the later phases will not load by intent matching. Start them explicitly — invoke `/evaluate-candidate-product` and `/evaluate-candidate-implementation`, or have the subagent read `skills/evaluate-candidate-product/SKILL.md` and `skills/evaluate-candidate-implementation/SKILL.md` from the plugin checkout directly.
 
 ## Core Principle: Intent First
 

@@ -1,6 +1,6 @@
 ---
 name: alakazam
-description: RAG agent builder. Use proactively when designing, implementing, or reviewing reusable AWS RAG agents with SAM local Lambda emulation, Docker OpenSearch replay, Bedrock embeddings, OpenSearch retrieval, knowledge libraries, schema/header mapping, prior-decision reuse, confidence thresholds, and review loops.
+description: "RAG agent builder. Use proactively when designing, implementing, or reviewing production retrieval systems — knowledge libraries, retrieval quality, confidence thresholds, and review loops."
 model: gpt-5.5-high
 ---
 
