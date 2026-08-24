@@ -6,12 +6,15 @@ usage() {
 Usage:
   scripts/sync-claude-agents.sh [sync|check]
 
-Materializes source agent definitions from agents/*.md into agents-claude/*.md
-as project-scoped Claude Code custom agents.
+Generates Claude Code skill wrappers from source agent definitions.
+Each agent in agents/*.md gets a skills/<name>/SKILL.md wrapper with
+context: fork so it runs in its own context window.
+
+Existing non-agent skills in skills/ are left untouched.
 
 Commands:
-  sync   Update agents-claude/ to match agents/ (default).
-  check  Verify agents-claude/ is already synced.
+  sync   Update skill wrappers to match agents/ (default).
+  check  Verify skill wrappers are already synced.
 USAGE
 }
 
@@ -50,7 +53,6 @@ main() {
   "${python_bin}" - "$root" "$command" "${SYNC_SOURCE_DIR:-}" "${SYNC_TARGET_DIR:-}" <<'PY'
 import re
 import sys
-import os
 from pathlib import Path
 
 root = Path(sys.argv[1])
@@ -59,23 +61,15 @@ source_dir_override = sys.argv[3] if len(sys.argv) > 3 and sys.argv[3] else None
 target_dir_override = sys.argv[4] if len(sys.argv) > 4 and sys.argv[4] else None
 
 source_dir = Path(source_dir_override) if source_dir_override else root / "agents"
-target_dir = Path(target_dir_override) if target_dir_override else root / "agents-claude"
+target_dir = Path(target_dir_override) if target_dir_override else root / "skills"
 
 kebab_case = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
-
-MODEL_MAP = {
-    "gpt-5.5-high": "opus",
-    "gpt-5.5-medium": "sonnet",
-    "gpt-5.4-high": "sonnet",
-}
 
 if not source_dir.is_dir():
     raise SystemExit(f"missing source agent directory: {source_dir}")
 
 if command == "sync":
     target_dir.mkdir(parents=True, exist_ok=True)
-elif not target_dir.is_dir():
-    raise SystemExit(f"missing Claude agent directory: {target_dir}")
 
 
 def parse_frontmatter(path: Path):
@@ -108,7 +102,7 @@ def parse_frontmatter(path: Path):
     return fields, body
 
 
-def render_agent(source: Path) -> str:
+def render_skill(source: Path) -> str:
     fields, body = parse_frontmatter(source)
     name = fields.get("name", "")
     description = fields.get("description", "")
@@ -124,86 +118,93 @@ def render_agent(source: Path) -> str:
     if not body.strip():
         raise SystemExit(f"{source.name}: body must not be empty")
 
-    # Build frontmatter lines
-    fm_lines = []
-    fm_lines.append(f"name: {name}")
-    fm_lines.append(f"description: {description}")
+    # Escape description for single-quoted YAML string
+    desc_escaped = description.replace("'", "''")
 
-    # Map model
-    source_model = fields.get("model", "")
-    mapped_model = MODEL_MAP.get(source_model, "inherit")
-    fm_lines.append(f"model: {mapped_model}")
-
-    # Readonly translation
-    is_readonly = fields.get("readonly", "").lower() == "true"
-    if is_readonly:
-        fm_lines.append("permissionMode: plan")
-        fm_lines.append("tools: Read, Glob, Grep, Bash")
-
-    # Pass through all other fields (not name, description, model, readonly)
-    skip_keys = {"name", "description", "model", "readonly"}
-    for key, value in fields.items():
-        if key not in skip_keys:
-            fm_lines.append(f"{key}: {value}")
-
-    # Build output
-    lines = []
-    lines.append("---")
-    for fl in fm_lines:
-        lines.append(fl)
-    lines.append("---")
-    lines.append(f"<!-- Generated from agents/{source.name}. Do not edit directly. -->")
-
-    if not body.endswith("\n"):
-        body += "\n"
-    # body starts right after the closing ---\n of source frontmatter
-    output = "\n".join(lines) + "\n" + body
+    # Build SKILL.md content
+    output = f"---\nname: {name}\ndescription: '{desc_escaped}'\ncontext: fork\n---\n{body}"
+    if not output.endswith("\n"):
+        output += "\n"
     return output
 
 
+# Collect expected skill wrappers (one per source agent)
 expected = {}
+agent_names = set()
 for source in sorted(source_dir.glob("*.md")):
-    expected[target_dir / f"{source.stem}.md"] = render_agent(source)
+    agent_names.add(source.stem)
+    skill_dir = target_dir / source.stem
+    expected[skill_dir / "SKILL.md"] = render_skill(source)
 
-existing = set(target_dir.glob("*.md"))
-expected_paths = set(expected)
-stale = sorted(existing - expected_paths)
+# In check/sync, only touch skill dirs that correspond to agents.
+# Leave non-agent skills untouched.
+stale = []
+for child in sorted(target_dir.iterdir()):
+    if not child.is_dir():
+        continue
+    skill_md = child / "SKILL.md"
+    if not skill_md.is_file():
+        continue
+    if child.name in agent_names:
+        continue
+    # This is a non-agent skill — leave it alone.
+
+# Find agent skill dirs that exist but shouldn't (agent was removed)
+for child in sorted(target_dir.iterdir()):
+    if not child.is_dir():
+        continue
+    skill_md = child / "SKILL.md"
+    if not skill_md.is_file():
+        continue
+    # Only consider it stale if the SKILL.md contains the generated marker
+    # and the agent name is not in the current source set
+    if child.name not in agent_names:
+        content = skill_md.read_text(encoding="utf-8-sig").replace("\r\n", "\n")
+        if "context: fork" in content and content.startswith("---\nname:"):
+            # Looks like a generated agent skill wrapper — check if it's stale
+            # Only mark as stale if there's no source agent for it AND
+            # it doesn't have any other files (rules/, reference/, etc.)
+            other_files = [f for f in child.iterdir() if f.name != "SKILL.md"]
+            if not other_files:
+                stale.append(child)
 
 changed = []
-for target, content in expected.items():
-    if target.is_symlink():
-        changed.append(target)
-        continue
+for target_path, content in expected.items():
+    skill_dir = target_path.parent
     try:
-        existing_content = target.read_text(encoding="utf-8-sig")
+        existing_content = target_path.read_text(encoding="utf-8-sig")
     except FileNotFoundError:
-        changed.append(target)
+        changed.append(target_path)
         continue
     existing_content = existing_content.replace("\r\n", "\n").replace("\r", "\n")
     if existing_content != content:
-        changed.append(target)
+        changed.append(target_path)
 
 if command == "check":
     if stale or changed:
         for path in stale:
-            print(f"stale: {path.name}")
+            rel = path.relative_to(target_dir) if target_dir in path.parents else path
+            print(f"stale: {rel}")
         for path in changed:
-            print(f"out of sync: {path.name}")
-        raise SystemExit("agents-claude is out of sync; run scripts/sync-claude-agents.sh sync")
-    print(f"agents-claude is synced ({len(expected)} agents)")
+            rel = path.relative_to(target_dir) if target_dir in path.parents else path
+            print(f"out of sync: {rel}")
+        raise SystemExit("Claude Code agent skills are out of sync; run scripts/sync-claude-agents.sh sync")
+    print(f"Claude Code agent skills are synced ({len(expected)} agents)")
     raise SystemExit(0)
 
+# Sync: remove stale, write changed
+import shutil
 for path in stale:
-    path.unlink()
+    shutil.rmtree(path)
 
-for target, content in expected.items():
-    if target.is_symlink():
-        target.unlink()
-    target.write_text(content, encoding="utf-8")
+for target_path, content in expected.items():
+    skill_dir = target_path.parent
+    skill_dir.mkdir(parents=True, exist_ok=True)
+    target_path.write_text(content, encoding="utf-8")
 
-print(f"synced {len(expected)} Claude agent files")
+print(f"synced {len(expected)} Claude Code agent skill wrappers")
 if stale:
-    print(f"removed {len(stale)} stale Claude agent files")
+    print(f"removed {len(stale)} stale agent skill directories")
 PY
 }
 

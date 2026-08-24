@@ -199,18 +199,11 @@ def validate_agents():
         elif target.is_symlink():
             fail(f"{target.relative_to(root)}: must be a real file, not a symlink")
 
-    claude_target_dir = root / "agents-claude"
-    expected_claude_targets = {claude_target_dir / f"{agent.stem}.md" for agent in source_agents}
-    actual_claude_targets = set(claude_target_dir.glob("*.md")) if claude_target_dir.is_dir() else set()
-    for stale in sorted(actual_claude_targets - expected_claude_targets):
-        fail(f"{stale.relative_to(root)}: no matching source agent")
-
+    skills_dir = root / "skills"
     for agent in source_agents:
-        target = claude_target_dir / f"{agent.stem}.md"
-        if not target.is_file():
-            fail(f"{target.relative_to(root)}: missing Claude Code agent copy")
-        elif target.is_symlink():
-            fail(f"{target.relative_to(root)}: must be a real file, not a symlink")
+        skill_md = skills_dir / agent.stem / "SKILL.md"
+        if not skill_md.is_file():
+            fail(f"{skill_md.relative_to(root)}: missing Claude Code agent skill wrapper")
 
 
 def validate_skills():
