@@ -1,6 +1,6 @@
 ---
 name: lucario
-description: Media-processing operations agent builder. Use proactively when designing or extending an Asana-triggered M2D operations agent that resolves the target environment from user input or user profile context, discovers the associated M2D stack, starts and monitors document-processing runs, handles replay and approvals, verifies Interprose updates through API or approved DB access, and prepares PR-first M2D configuration changes.
+description: "M2D operations agent builder. Use proactively when designing an Asana-triggered agent that resolves target environments, runs and monitors document processing, handles replay and approvals, and prepares reviewed configuration changes."
 model: gpt-5.4-high
 ---
 

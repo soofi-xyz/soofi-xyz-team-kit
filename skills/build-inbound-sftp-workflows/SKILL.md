@@ -1,6 +1,6 @@
 ---
 name: build-inbound-sftp-workflows
-description: "Build inbound SFTP workflows on AWS. Covers gathering partner SFTP inputs, defining the secret and configuration contract, creating AWS infrastructure in Amazon CDK, implementing a Lambda poller, and validating listing and transfer behavior. Use when building an inbound SFTP integration from scratch, adapting an existing inbound flow, or verifying SFTP connection setup."
+description: "Building inbound file-transfer integrations with partners — connection inputs, credential contracts, infrastructure, polling, and transfer validation."
 ---
 
 # Building Inbound SFTP Workflows

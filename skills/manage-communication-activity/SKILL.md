@@ -1,6 +1,6 @@
 ---
 name: manage-communication-activity
-description: "Manage reusable communication activity loops across provider setup, send-file contracts, routing, execution handoff, delivery updates, response ingestion, and activity-state closure. Use when building provider adapters, communication activity agents, send workflows, delivery feedback processing, or channel operations for SMS or email."
+description: "Managing the communication send lifecycle — provider setup, routing, execution handoff, delivery updates, response ingestion, and activity closure for SMS or email."
 ---
 
 # Manage Communication Activity

@@ -17,6 +17,8 @@ Every batch workflow MUST begin with a cost prediction step that estimates proce
 
 **Ask the user:** "What is the cost ceiling (in USD) for this workflow?"
 
+The gate requires a ceiling and a pause-on-exceed path — not that the ceiling be configurable. A fixed, conservative ceiling built into the workflow is a valid intentional contract; do not flag it merely for being hardcoded.
+
 ### Architecture
 
 ```

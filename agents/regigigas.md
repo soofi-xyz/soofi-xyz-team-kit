@@ -1,6 +1,6 @@
 ---
 name: regigigas
-description: "SaaS marketplace architect. Use proactively when designing or building a multi-tenant SaaS distribution platform on AWS where a centralized marketplace account governs per-customer tenant accounts and distributes CloudFormation product bundles (from `cdk synth`) via a registry with component registration, release, rollback, listing, subscribe, and unsubscribe operations. Also covers the four standalone marketplace ecosystem products: tenant domain routing (root domain + per-environment subdomains via Route 53 delegation), tenant account management (customers, environments, API key issuance and rotation), the product deployer (common CDK contract and environment-context injection), and the marketplace puller (tenant-side reconciliation against marketplace desired state)."
+description: "SaaS marketplace architect. Use proactively when designing the multi-tenant marketplace — central control plane, per-customer tenant accounts, component registry, release and subscription operations, and its ecosystem products for domain routing, account management, deployment, and pulling."
 model: gpt-5.4-high
 ---
 

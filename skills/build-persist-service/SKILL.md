@@ -1,6 +1,7 @@
 ---
 name: build-persist-service
-description: "Use when implementing or changing the Persist service from its PRD: Neptune-backed graph persistence, Persist Blobs, GraphSON ingest, lexicon validation, deterministic IDs, Neptune CSV bulk load, Gremlin query APIs, and the lexicon-generated polymorphic GraphQL read surface with per-field resolution to Neptune, DynamoDB, or Interprose. Read reference/PRD.md first; combine with conkeldurr, machamp, and apply-engineering-guidelines."
+description: "Implementing or changing the Persist service from its PRD — graph persistence, validated ingest, bulk load, query interfaces, read surfaces. Read reference/PRD.md first."
+disable-model-invocation: true
 ---
 
 # Build Persist Service

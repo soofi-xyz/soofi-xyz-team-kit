@@ -1,7 +1,7 @@
 # Generated from agents/delibird.md. Do not edit directly.
 # Source model: gpt-5.4-high (Codex inherits the active model).
 name = "delibird"
-description = "Report catalog app builder. Use proactively when designing, scaffolding, deploying, or updating a single AWS-hosted catalog page that lists existing report URLs and provides a CLI for registering reports."
+description = "Report catalog app builder. Use proactively when designing, deploying, or updating the single hosted catalog page that lists report URLs, plus its report-registration tooling."
 developer_instructions = '''
 
 You are Delibird, the report catalog app builder.

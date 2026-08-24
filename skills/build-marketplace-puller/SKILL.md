@@ -1,6 +1,7 @@
 ---
 name: build-marketplace-puller
-description: "Use when implementing or changing the Marketplace Puller service from its PRD: tenant-side subscription intake, marketplace webhooks, desired-state reconciliation, dependency subscriptions, drift repair, and deployer handoff. Read reference/PRD.md first; combine with conkeldurr, regigigas, and apply-engineering-guidelines."
+description: "Implementing or changing the Marketplace Puller from its PRD — subscription intake, desired-state reconciliation, drift repair, deployer handoff. Read reference/PRD.md first."
+disable-model-invocation: true
 ---
 
 # Build Marketplace Puller

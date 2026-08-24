@@ -1,6 +1,7 @@
 ---
 name: build-bootstrap-cli
-description: "Use when implementing or changing the Bootstrap CLI from its PRD: initial tenant bootstrap, Account bootstrap manifest intake, local first-Deployer install, Marketplace Puller install through Deployer, resume state, and status checks. Read reference/PRD.md first; combine with conkeldurr, regigigas, and apply-engineering-guidelines."
+description: "Implementing or changing the Bootstrap CLI from its PRD — initial tenant setup, manifest intake, first installs, resume and status. Read reference/PRD.md first."
+disable-model-invocation: true
 ---
 
 # Build Bootstrap CLI

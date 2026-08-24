@@ -1,6 +1,6 @@
 ---
 name: build-html-to-pdf
-description: "Build HTML-to-PDF generation workflows on AWS Lambda using Playwright and Chromium. Covers typed request contracts, template registries, deterministic HTML rendering, Lambda Chromium packaging, PDF metadata and policy, and verification. Use when building or refactoring server-side PDF generation, print-first HTML templates, Lambda PDF renderers, or Chromium-based document generation. Triggers on: html to pdf, pdf generation, pdf renderer, chromium pdf, playwright pdf, lambda chromium, server-side pdf, print html, document rendering."
+description: "Building server-side document generation that renders HTML templates to PDF — request contracts, template registries, deterministic rendering, verification."
 ---
 
 # Building HTML To PDF

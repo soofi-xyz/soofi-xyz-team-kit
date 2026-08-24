@@ -1,6 +1,6 @@
 ---
 name: access-orchestrate-call-outputs
-description: Query approved production Athena communication, calling, payment, payment-plan lifecycle, and payment-plan snapshot datasets for counts and date filtering while preserving workflow lineage. Use for orchestrated call eligibility/schedules; phone_call, email_message, text_message (SMS), payment; payment_plan_lifecycle_events for inventory/additions/endings (populated through 2026-07-21); and current-snapshot payment_plan / payment_plan_installment; inspect live Glue metadata and partitions before claiming coverage.
+description: "Answering data questions about production communication, calling, payment, and payment-plan activity — counts, date filtering, and coverage checks against the approved datasets."
 ---
 
 # Access Orchestrate Call Outputs

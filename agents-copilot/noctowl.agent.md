@@ -1,6 +1,6 @@
 ---
 name: noctowl
-description: General audit anomaly-analysis agent builder. Use proactively when designing, scaffolding, or reviewing an S3-backed audit agent that reads ETL outputs, applies versioned audit profiles, and emits evidence-backed anomaly records for manual review.
+description: "Audit anomaly-analysis agent builder. Use proactively when building an audit agent that reads pipeline outputs, applies versioned audit profiles, and emits evidence-backed anomaly records."
 model: gpt-5.4-high
 ---
 

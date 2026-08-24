@@ -1,6 +1,6 @@
 ---
 name: build-batch-workflows
-description: "Guides creation of batch data processing workflows on AWS. Covers input data analysis, choosing Step Functions Distributed Map vs AWS Glue PySpark, testing pipelines, cost controls, throttling, idempotency, metrics, and mandatory PagerDuty alerting on critical failures. Triggers on: batch job, batch workflow, data pipeline, data processing job, ETL pipeline, bulk processing, distributed map, glue job, batch failure alerting, pagerduty, dead-letter queue."
+description: "Building batch workflows and data processing pipelines — processing strategy selection, testing, cost control, throttling, idempotency, and failure alerting."
 ---
 
 # Building Batch Workflows
@@ -86,6 +86,18 @@ failure path (Step Functions top-level `Catch` before `Fail`, failed Glue run
 state, or a DLQ alarm) so one page fires per failed execution. Read
 `rules/principle-failure-alerting.md`, and use the SOCAPITAL `integrating-pagerduty`
 skill for the integration contract.
+
+## Judging Existing Architectures
+
+The principles above define what a workflow must do — not where every piece must live or how it must be shaped. When assessing an existing workflow, recognize these as valid architectures, not defects:
+
+- **Split responsibilities.** Responsibilities may be split across repositories or deployment units. A producer can own metric definition, emission, and contract tests while separate systems own metric registration, dashboards, alarms, or consumption. Judge each side only against what it owns.
+- **Complete producer contracts.** A missing consumer-side integration is not a producer defect when the producer's contract is complete and the integration is not required for the workflow to operate safely.
+- **Control-plane reads vs. processing workloads.** Reads of metadata, catalogs, or control-plane state are not processing workloads. Do not apply processing-workload requirements (strategy selection, cost gating, volume-sized throttling) to them.
+- **Fixed conservative ceilings.** A fixed, conservative safety or cost ceiling can be an intentional contract. Configurability is not inherently superior to a deliberately chosen conservative limit.
+- **Polyglot layers.** Different system layers may use different languages and toolchains when the boundaries between them are explicit. Apply each language's listed tooling within its layer; the mix itself is not a finding.
+
+When reporting findings, report only concrete violations of the named principles above — cite the principle and the specific violation. The absence of a pattern that no principle requires is not a finding.
 
 ## Rules Summary
 
