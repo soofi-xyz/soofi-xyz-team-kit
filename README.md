@@ -1,6 +1,6 @@
 # soofi-xyz plugin kit
 
-A [Cursor plugin](https://cursor.com/docs/plugins), [GitHub Copilot CLI plugin](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/plugins-creating), and OpenAI Codex plugin packaging company-wide project subagents and skills for AI-assisted development.
+A [Cursor plugin](https://cursor.com/docs/plugins), [GitHub Copilot CLI plugin](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/plugins-creating), OpenAI Codex plugin, and [Claude Code plugin](https://code.claude.com/docs/en/plugins-reference) packaging company-wide project subagents and skills for AI-assisted development.
 
 ## Install
 
@@ -18,6 +18,24 @@ Then reload Cursor. The plugin will load from `~/.cursor/plugins/local/soofi-xyz
 **Donphan / Elephant MCP:** Requires Node **22.18+**. Bundled `mcp.json` installs **elephant-mcp `main`** from GitHub (`npx --package=github:elephant-xyz/elephant-mcp#main`) because **npm `@elephant-xyz/mcp@latest` is still 1.6.0** (lacks `queryProperties` and multi-county tools). After install or `git pull`, reload Cursor and confirm **`elephant`** is enabled under **Settings → MCP** (first start may take 1–3 minutes). Bundled counties match prod Vercel MCP: **lee** (~511695), **palm-beach** (~653945), **miami-dade** (~933087), **orange** — verify with `getOracleDatasetInfo` and `queryProperties`. Do not set an empty `OPENAI_API_KEY` on the MCP server — optional only for `getVerifiedScriptExamples`.
 
 **Elephant routing:** `donphan` + `use-elephant-mcp` = explore open data via MCP; `oracle` + `use-oracle` = ingest/refresh sources; `watchog` + `build-elephant-hero-facts` = build the scheduled homepage hero-facts service (monitor → verify → Asana approval → content-only PR); `use-elephant-query-db` = SQL over Neon.
+
+### Claude Code
+
+Clone this repository and run the installer:
+
+```bash
+git clone https://github.com/soofi-xyz/cursor-plugin.git soofi-xyz-team-kit
+cd soofi-xyz-team-kit
+scripts/local-claude-code-plugin.sh install
+```
+
+Or load the plugin for a single session:
+
+```bash
+claude --plugin-dir /path/to/soofi-xyz-team-kit
+```
+
+Then restart Claude Code. The plugin registers all agents, skills, and the bundled **`elephant`** MCP server automatically.
 
 ### GitHub Copilot CLI
 
@@ -50,6 +68,21 @@ git -C ~/.cursor/plugins/local/soofi-xyz-team-kit pull
 ```
 
 Reload Cursor after pulling so updated agents, skills, MCP config, and the manifest are picked up.
+
+### Claude Code
+
+Pull the latest and reinstall:
+
+```bash
+git -C /path/to/soofi-xyz-team-kit pull
+cd /path/to/soofi-xyz-team-kit && scripts/local-claude-code-plugin.sh install
+```
+
+Remove the plugin:
+
+```bash
+scripts/local-claude-code-plugin.sh remove
+```
 
 ### GitHub Copilot CLI
 
@@ -104,9 +137,17 @@ In Codex, start a new thread from this repository and ask Codex to spawn the `ar
 Spawn the arceus custom agent to recommend the right specialist for migrating an SMS template inventory.
 ```
 
+In Claude Code, invoke agents with the slash command:
+
+```text
+/soofi-xyz-team-kit:arceus I need to add Google Tag Manager to a Vite app and want regression coverage
+```
+
+Or describe the task naturally — Claude Code auto-delegates to the right plugin skill based on its description.
+
 Cursor's Agent can also delegate to `arceus` automatically at the start of a task when no specific specialist has been named — so simply describing your task in plain English usually triggers the right routing.
 
-If you already know which specialist you need, skip the router and call them directly — for example `/sylveon` in Cursor, `soofi-xyz-team-kit:sylveon` in Copilot, or "spawn the `sylveon` custom agent" in Codex for Figma-to-code work. The full roster, with triggers and descriptions, lives in the [Agents](#agents) and [Skills](#skills) tables below.
+If you already know which specialist you need, skip the router and call them directly — for example `/sylveon` in Cursor, `soofi-xyz-team-kit:sylveon` in Copilot, `/soofi-xyz-team-kit:sylveon` in Claude Code, or "spawn the `sylveon` custom agent" in Codex for Figma-to-code work. The full roster, with triggers and descriptions, lives in the [Agents](#agents) and [Skills](#skills) tables below.
 
 ## Agents
 

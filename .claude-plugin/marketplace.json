@@ -1,0 +1,19 @@
+{
+  "name": "soofi-xyz-team-kit",
+  "owner": {
+    "name": "Soofi XYZ",
+    "url": "https://github.com/soofi-xyz/cursor-plugin"
+  },
+  "metadata": {
+    "version": "0.30.1",
+    "description": "Company-wide project subagents and skills for AI-assisted development."
+  },
+  "plugins": [
+    {
+      "name": "soofi-xyz-team-kit",
+      "source": "./",
+      "version": "0.30.1",
+      "description": "Company-wide project subagents and skills for AI-assisted development, including local and AWS RAG, platform services, reporting, frontend, communication, batch, and deployment specialists."
+    }
+  ]
+}
