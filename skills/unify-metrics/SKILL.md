@@ -118,6 +118,18 @@ Stop and ask instead of guessing when:
 - requested dimensions are high-cardinality or unsuitable for CloudWatch dashboards
 - the correct dashboard section, title, period, or owning repo is unclear
 
+## Judging Existing Architectures
+
+The operating rules and gates above define what metrics work must guarantee — not where every piece must live or how it must be shaped. When assessing existing metrics work, recognize these as valid architectures, not defects:
+
+- **Validation at the trust boundary.** Judge validation where untrusted data first enters the system. Layers behind that boundary may rely on already-validated data; identical validation logic repeated in every layer is not required, and its absence is not a finding.
+- **Publish-once, render-many.** A server-side publisher may validate and shape an artifact once at publish time while a browser or downstream consumer only fetches and renders it. A renderer that does not re-validate a publisher-validated artifact is not a defect.
+- **Layered language policies.** Browser assets and backend pipeline code may intentionally follow different language policies and toolchains. Apply each policy within its own layer; the mix itself is not a finding.
+- **Cross-repository interfaces.** An interface — a schema, metric definition, payload shape, or API surface — may be produced in one repository and registered, visualized, or consumed in another. Judge each repository only against the side of the interface it owns.
+- **Complete producer interfaces.** The absence of separately owned consumer wiring is not a defect in a changed producer file when the emitted interface is complete and testable on its own.
+
+Keep reporting concrete type, schema, runtime, API-contract, and boundary defects under the named operating rules and gates above — cite the specific rule, gate, or contract that is violated. The absence of a pattern that no rule requires is not a finding.
+
 ## Files To Read
 
 - [`reference/repo-map.md`](./reference/repo-map.md)

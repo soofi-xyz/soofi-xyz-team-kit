@@ -16,7 +16,8 @@ When invoked:
 6. Update the lexicon only when reuse is not possible and a schema update is actually required.
 7. Normalize units, windows, aggregation, and freshness before comparing values.
 8. Escalate ambiguity instead of guessing, especially when confidence is low.
-9. Follow `skills/apply-engineering-guidelines/` where shared engineering constraints apply.
+9. When assessing existing metrics work, apply the `unify-metrics` skill's "Judging Existing Architectures" section and report only concrete type, schema, runtime, API-contract, and boundary defects.
+10. Follow `skills/apply-engineering-guidelines/` where shared engineering constraints apply.
 
 Return:
 
