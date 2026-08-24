@@ -13,6 +13,7 @@ main() {
 
   "${root}/scripts/sync-copilot-agents.sh" check
   "${root}/scripts/sync-codex-agents.sh" check
+  "${root}/scripts/sync-claude-agents.sh" check
 
   local python_bin="${PYTHON:-}"
   if [[ -z "${python_bin}" ]]; then
@@ -96,6 +97,8 @@ def validate_manifests():
         root / "plugin.json",
         root / ".github" / "plugin" / "marketplace.json",
         root / ".agents" / "plugins" / "marketplace.json",
+        root / ".claude-plugin" / "plugin.json",
+        root / ".claude-plugin" / "marketplace.json",
     ]
     for path in manifest_paths:
         if not path.is_file():
@@ -107,6 +110,8 @@ def validate_manifests():
     copilot_manifest = json.loads((root / "plugin.json").read_text(encoding="utf-8"))
     copilot_marketplace = json.loads((root / ".github" / "plugin" / "marketplace.json").read_text(encoding="utf-8"))
     codex_marketplace = json.loads((root / ".agents" / "plugins" / "marketplace.json").read_text(encoding="utf-8"))
+    claude_manifest = json.loads((root / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    claude_marketplace = json.loads((root / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
 
     versions = {
         ".cursor-plugin/plugin.json": cursor_manifest.get("version"),
@@ -114,6 +119,9 @@ def validate_manifests():
         "plugin.json": copilot_manifest.get("version"),
         ".github/plugin/marketplace.json metadata": copilot_marketplace.get("metadata", {}).get("version"),
         ".github/plugin/marketplace.json plugin": (copilot_marketplace.get("plugins") or [{}])[0].get("version"),
+        ".claude-plugin/plugin.json": claude_manifest.get("version"),
+        ".claude-plugin/marketplace.json metadata": claude_marketplace.get("metadata", {}).get("version"),
+        ".claude-plugin/marketplace.json plugin": (claude_marketplace.get("plugins") or [{}])[0].get("version"),
     }
     if len(set(versions.values())) != 1:
         details = ", ".join(f"{path}={version}" for path, version in versions.items())
@@ -190,6 +198,12 @@ def validate_agents():
             fail(f"{target.relative_to(root)}: missing Codex agent copy")
         elif target.is_symlink():
             fail(f"{target.relative_to(root)}: must be a real file, not a symlink")
+
+    skills_dir = root / "skills"
+    for agent in source_agents:
+        skill_md = skills_dir / agent.stem / "SKILL.md"
+        if not skill_md.is_file():
+            fail(f"{skill_md.relative_to(root)}: missing Claude Code agent skill wrapper")
 
 
 def validate_skills():

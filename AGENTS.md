@@ -1,6 +1,6 @@
-# Cursor, Copilot, And Codex Plugin — Agent Guidance
+# Cursor, Copilot, Codex, And Claude Code Plugin — Agent Guidance
 
-This repository is a [Cursor plugin](https://cursor.com/docs/plugins), [GitHub Copilot CLI plugin](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/plugins-creating), and OpenAI Codex plugin that ships subagents and agent skills.
+This repository is a [Cursor plugin](https://cursor.com/docs/plugins), [GitHub Copilot CLI plugin](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/plugins-creating), OpenAI Codex plugin, and Claude Code plugin that ships subagents and agent skills.
 
 Follow these conventions whenever you touch files in this repo.
 
@@ -11,6 +11,8 @@ Follow these conventions whenever you touch files in this repo.
 - Copilot manifest MUST exist at `plugin.json`.
 - Codex repo marketplace manifest MUST exist at `.agents/plugins/marketplace.json`.
 - Copilot marketplace manifest MUST exist at `.github/plugin/marketplace.json`.
+- Claude Code plugin manifest MUST exist at `.claude-plugin/plugin.json`.
+- Claude Code marketplace manifest MUST exist at `.claude-plugin/marketplace.json`.
 - `name` MUST be lowercase kebab-case and match the intended plugin identifier.
 - Bump `version` (semver) in all plugin manifests and the Copilot marketplace entry whenever you ship a meaningful change.
 
@@ -22,7 +24,8 @@ Follow these conventions whenever you touch files in this repo.
 - `agents/` is the source of truth. Do not edit files in `agents-copilot/` or `.codex/agents/` directly.
 - Each source agent MUST have a matching materialized Copilot file at `agents-copilot/<name>.agent.md`.
 - Each source agent MUST have a matching materialized Codex file at `.codex/agents/<name>.toml`.
-- After adding, removing, renaming, or editing agents, run `scripts/sync-copilot-agents.sh sync` and `scripts/sync-codex-agents.sh sync` to refresh generated targets.
+- Each source agent MUST have a matching materialized Claude Code file at `agents-claude/<name>.md`.
+- After adding, removing, renaming, or editing agents, run `scripts/sync-copilot-agents.sh sync`, `scripts/sync-codex-agents.sh sync`, and `scripts/sync-claude-agents.sh sync` to refresh generated targets.
 - Add a row to the Agents table in `README.md` when adding or renaming an agent.
 
 ## Skills (`skills/<name>/SKILL.md`)
@@ -47,6 +50,7 @@ Follow these conventions whenever you touch files in this repo.
 - Codex reads plugin metadata from `.codex-plugin/plugin.json`; keep `"skills": "./skills/"` unless the repository layout changes deliberately.
 - Codex repo marketplace points at `plugins/soofi-xyz-team-kit/`, whose `.codex-plugin` and `skills` entries are symlinks back to the canonical root manifest and `skills/` tree. Do not edit through the nested symlink path.
 - Codex custom agents are project-scoped TOML files in `.codex/agents/` generated from `agents/`.
+- Claude Code reads the plugin manifest from `.claude-plugin/plugin.json`; keep `"agents": "./agents-claude/"` unless the repository layout changes deliberately.
 
 ## AWS access guidance
 
@@ -63,6 +67,9 @@ soofi-xyz-plugin-kit/
 │       └── marketplace.json          # OpenAI Codex repo marketplace manifest
 ├── .codex/
 │   └── agents/                       # Materialized `.toml` copies for Codex custom agents
+├── .claude-plugin/
+│   ├── plugin.json                   # Claude Code plugin manifest
+│   └── marketplace.json              # Claude Code marketplace manifest
 ├── .codex-plugin/
 │   └── plugin.json                   # OpenAI Codex plugin manifest
 ├── .github/
@@ -72,12 +79,14 @@ soofi-xyz-plugin-kit/
 │   └── plugin.json                   # Cursor plugin manifest
 ├── plugin.json                       # GitHub Copilot CLI plugin manifest
 ├── agents/                           # Source agent definitions
+├── agents-claude/                    # Materialized `.md` copies for Claude Code
 ├── agents-copilot/                   # Materialized `.agent.md` copies for Copilot CLI
 ├── plugins/
 │   └── soofi-xyz-team-kit/           # Codex marketplace plugin folder with symlinked manifest and skills
 ├── skills/                           # Agent skills, one directory per skill
 ├── scripts/                          # Local validation and maintenance helpers
 ├── docs/                             # User-facing usage guides
+├── mcp-claude.json                   # Elephant MCP config for Claude Code plugin
 ├── AGENTS.md                         # Contributor guidance
 ├── CONTRIBUTING.md                   # Contribution entry point
 └── README.md                         # Usage guide
