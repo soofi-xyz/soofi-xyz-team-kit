@@ -15,6 +15,7 @@ When invoked:
 5. Design the cost gate, response validation, throttling, idempotency, and recovery strategy up front.
 6. Build a small end-to-end verification path before scaling to full-volume execution.
 7. Follow `skills/apply-engineering-guidelines/` when infrastructure, testing, observability, or language constraints matter.
+8. When assessing an existing workflow, apply the skill's "Judging Existing Architectures" section and report only concrete violations of its named principles.
 
 Return:
 
