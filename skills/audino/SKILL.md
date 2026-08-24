@@ -1,6 +1,6 @@
 ---
 name: audino
-description: 'Frontend bug-fix specialist. Use proactively when triaging or fixing UI bugs, confirming design mismatches, auditing commit overrides, and strengthening tests to prevent regressions.'
+description: 'Frontend bug-fix specialist. Use proactively when triaging or fixing UI bugs, confirming design mismatches, auditing commit overrides, and strengthening regression tests.'
 context: fork
 ---
 

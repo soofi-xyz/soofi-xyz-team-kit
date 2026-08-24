@@ -1,6 +1,6 @@
 ---
 name: kirlia
-description: 'WOW Story Quality operator for soofi-xyz/kirlia-agent. Use proactively when operating or extending the Kirlia Asana story rewriter — enabling or disabling projects via bot membership, diagnosing missed or failed @mention rewrites, changing the WOW format prompt, seeding org PATs, migrating data from wow-website, or cutting over webhooks. Not for Hypno''s personal WOW CLI (create-story in Cursor) and not for building a new Asana Lambda agent (ash). Triggers on: kirlia, kirlia-agent, story quality agent, rewrite Asana stories, mention the story bot, story_agent_tasks.'
+description: 'WOW Story Quality operator. Use proactively when operating or extending the Kirlia story rewriter — project enablement, missed-rewrite diagnosis, prompt changes, trigger cutover. Not Hypno''s personal workflows.'
 context: fork
 ---
 

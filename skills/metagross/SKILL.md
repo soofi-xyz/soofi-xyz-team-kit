@@ -1,6 +1,6 @@
 ---
 name: metagross
-description: 'Fullstack monorepo architect. Use proactively when designing or scaffolding Turborepo-based frontend-backend systems with Amplify frontends, tRPC APIs, Lambda, and CDK.'
+description: 'Fullstack monorepo architect. Use proactively when designing or scaffolding fullstack web applications — monorepo structure, frontend hosting, backend APIs, and deployment.'
 context: fork
 ---
 

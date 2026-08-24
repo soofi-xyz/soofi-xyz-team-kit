@@ -1,6 +1,6 @@
 ---
 name: xatu
-description: 'Audience-selection specialist. Use proactively when defining filter-to-runtime handoffs, communication segmentation, `input_s3_uri`-style runtime intake contracts, or eligibility boundaries for communication services.'
+description: 'Audience-selection specialist. Use proactively when defining filter-to-runtime handoffs, communication segmentation, runtime intake contracts, or eligibility boundaries for communication services.'
 context: fork
 ---
 

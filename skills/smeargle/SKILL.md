@@ -1,6 +1,6 @@
 ---
 name: smeargle
-description: 'Responsive design-test specialist. Use proactively when Figma-driven UI updates need Playwright coverage across mobile/tablet/desktop — writing mocked `test/design` specs, real-device `test/browser` specs, or tightening existing design tests after a regression.'
+description: 'Responsive design-test specialist. Use proactively when design-driven UI updates need automated test coverage across mobile, tablet, and desktop breakpoints.'
 context: fork
 ---
 

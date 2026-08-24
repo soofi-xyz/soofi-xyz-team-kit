@@ -1,6 +1,6 @@
 ---
 name: hypno
-description: 'Asana initiative portfolio and WOW personal CLI agent. Use proactively when designing or extending the Google Chat initiative bot (Chat SDK, portfolio CRUD, acceptance-criteria parsing, war-plan analysis), or when surfacing/prioritizing assigned tasks, drafting WOW user stories, or consolidating duplicate stories via manage-initiatives.mjs in Cursor. Not for Kirlia''s live Asana @mention story rewriter (kirlia-agent).'
+description: 'Asana initiative portfolio and personal productivity agent. Use proactively when extending the chat initiative bot or working assigned tasks, story drafting, and store consolidation. Not Kirlia''s mention-triggered rewriter.'
 context: fork
 ---
 

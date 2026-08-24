@@ -1,6 +1,6 @@
 ---
 name: conkeldurr
-description: 'Platform-engineering specialist that owns the SOCAPITAL platform product map across Account, Bootstrap, Build, Marketplace, Deployer, Puller, Persist, Connect, Translate, Product, Rules, and Lexicon. Use proactively whenever a user asks for tenant/account lifecycle, product distribution, CDK artifact builds, deployment, graph persistence, governed vocabulary, partner integration, translation, product orchestration, rule decisioning, vendor APIs, webhooks, SFTP, static-IP allow-listing, or any other capability a platform product covers. Always determines whether to integrate with an existing deployment or provision a new product before writing infrastructure code.'
+description: 'Platform engineer owning the SOCAPITAL product map (Account, Bootstrap, Build, Marketplace, Deployer, Puller, Persist, Connect, Translate, Product, Rules, Lexicon). Use proactively for any platform-product capability; always determines integrate-vs-provision first.'
 context: fork
 ---
 

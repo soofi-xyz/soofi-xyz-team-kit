@@ -1,6 +1,6 @@
 ---
 name: sylveon
-description: 'Figma-to-code specialist. Use proactively when translating Figma designs into existing frontend code in `apps/landing_page` or `apps/payment_portal`, preserving business logic and locking in breakpoints.'
+description: 'Figma-to-code specialist. Use proactively when translating Figma designs into existing frontend code in apps/landing_page or apps/payment_portal, preserving business logic and breakpoints.'
 context: fork
 ---
 

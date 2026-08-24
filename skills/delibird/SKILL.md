@@ -1,6 +1,6 @@
 ---
 name: delibird
-description: 'Report catalog app builder. Use proactively when designing, scaffolding, deploying, or updating a single AWS-hosted catalog page that lists existing report URLs and provides a CLI for registering reports.'
+description: 'Report catalog app builder. Use proactively when designing, deploying, or updating the single hosted catalog page that lists report URLs, plus its report-registration tooling.'
 context: fork
 ---
 

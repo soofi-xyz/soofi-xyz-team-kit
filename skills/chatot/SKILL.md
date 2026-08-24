@@ -1,6 +1,6 @@
 ---
 name: chatot
-description: 'Communication-activity specialist. Use proactively when building provider adapters, send workflows, routing, delivery feedback processing, response ingestion, or closing the communication-activity lifecycle for SMS or email.'
+description: 'Communication-activity specialist. Use proactively when building provider adapters, send workflows, routing, delivery feedback, response ingestion, or activity lifecycle closure for SMS or email.'
 context: fork
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: abra
-description: 'Solver-service specialist. Use proactively when designing or scaffolding optimization services that combine Glue PySpark data preparation with OR-Tools solver logic.'
+description: 'Optimization specialist. Use proactively when designing or scaffolding services that solve assignment, scheduling, or constraint-optimization problems over prepared data.'
 context: fork
 ---
 

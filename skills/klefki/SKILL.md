@@ -1,6 +1,6 @@
 ---
 name: klefki
-description: 'Secure S3 file-sharing portal builder. Use proactively when designing, scaffolding, deploying, or debugging an external files portal with Cognito Managed Login, private S3 folder browsing, per-user grants, admin-managed users, custom-domain CloudFront hosting, runtime config, and Figma-driven UI.'
+description: 'Secure file-sharing portal builder. Use proactively when building an external portal with managed login, private folder browsing, per-user grants, custom-domain hosting, and design-driven UI.'
 context: fork
 ---
 
