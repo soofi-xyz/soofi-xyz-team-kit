@@ -1,0 +1,145 @@
+import {
+  boolean,
+  date,
+  index,
+  numeric,
+  pgTable,
+  text,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
+
+import {
+  createdAtColumn,
+  jsonObjectColumn,
+  nullableJsonObjectColumn,
+  sourceMetadataColumns,
+  updatedAtColumn,
+} from "./shared.js";
+
+export const unnormalizedAddresses = pgTable(
+  "unnormalized_addresses",
+  {
+    unnormalizedAddressId: uuid("unnormalized_address_id").primaryKey().defaultRandom(),
+    requestIdentifier: text("request_identifier"),
+    fullAddress: text("full_address"),
+    countyJurisdiction: text("county_jurisdiction"),
+    latitude: numeric("latitude", { precision: 10, scale: 7 }),
+    longitude: numeric("longitude", { precision: 10, scale: 7 }),
+    sourceHttpRequest: nullableJsonObjectColumn("source_http_request"),
+    entryHttpRequest: nullableJsonObjectColumn("entry_http_request"),
+    sourcePayload: jsonObjectColumn("source_payload"),
+    ...sourceMetadataColumns(),
+    createdAt: createdAtColumn(),
+    updatedAt: updatedAtColumn(),
+  },
+  (table) => [
+    uniqueIndex("unnormalized_addresses_source_record_idx").on(
+      table.sourceSystem,
+      table.sourceRecordKey,
+    ),
+    index("unnormalized_addresses_full_address_idx").on(table.fullAddress),
+  ],
+);
+
+export const addresses = pgTable(
+  "addresses",
+  {
+    addressId: uuid("address_id").primaryKey().defaultRandom(),
+    requestIdentifier: text("request_identifier"),
+    streetNumber: text("street_number"),
+    streetPreDirectionalText: text("street_pre_directional_text"),
+    streetName: text("street_name"),
+    streetSuffixType: text("street_suffix_type"),
+    streetPostDirectionalText: text("street_post_directional_text"),
+    unitIdentifier: text("unit_identifier"),
+    cityName: text("city_name"),
+    municipalityName: text("municipality_name"),
+    countyName: text("county_name"),
+    stateCode: text("state_code"),
+    postalCode: text("postal_code"),
+    plusFourPostalCode: text("plus_four_postal_code"),
+    countryCode: text("country_code"),
+    latitude: numeric("latitude", { precision: 10, scale: 7 }),
+    longitude: numeric("longitude", { precision: 10, scale: 7 }),
+    township: text("township"),
+    range: text("range"),
+    section: text("section"),
+    block: text("block"),
+    lot: text("lot"),
+    routeNumber: text("route_number"),
+    unnormalizedAddress: text("unnormalized_address"),
+    normalizedAddressKey: text("normalized_address_key"),
+    normalizedAddressHash: text("normalized_address_hash"),
+    sourceHttpRequest: nullableJsonObjectColumn("source_http_request"),
+    sourcePayload: jsonObjectColumn("source_payload"),
+    ...sourceMetadataColumns(),
+    createdAt: createdAtColumn(),
+    updatedAt: updatedAtColumn(),
+  },
+  (table) => [
+    uniqueIndex("addresses_source_record_idx").on(table.sourceSystem, table.sourceRecordKey),
+    index("addresses_postal_code_idx").on(table.postalCode),
+    index("addresses_city_street_idx").on(
+      table.cityName,
+      table.streetName,
+      table.streetNumber,
+    ),
+    index("addresses_normalized_key_idx").on(table.normalizedAddressKey),
+    index("addresses_normalized_hash_idx").on(table.normalizedAddressHash),
+    index("addresses_state_zip_hash_idx").on(
+      table.stateCode,
+      table.postalCode,
+      table.normalizedAddressHash,
+    ),
+    index("addresses_unnormalized_idx").on(table.unnormalizedAddress),
+  ],
+);
+
+export const people = pgTable(
+  "people",
+  {
+    personId: uuid("person_id").primaryKey().defaultRandom(),
+    requestIdentifier: text("request_identifier"),
+    prefixName: text("prefix_name"),
+    firstName: text("first_name"),
+    middleName: text("middle_name"),
+    lastName: text("last_name"),
+    suffixName: text("suffix_name"),
+    fullName: text("full_name"),
+    normalizedName: text("normalized_name"),
+    birthDate: date("birth_date"),
+    usCitizenshipStatus: text("us_citizenship_status"),
+    veteranStatus: boolean("veteran_status"),
+    sourceHttpRequest: nullableJsonObjectColumn("source_http_request"),
+    sourcePayload: jsonObjectColumn("source_payload"),
+    ...sourceMetadataColumns(),
+    createdAt: createdAtColumn(),
+    updatedAt: updatedAtColumn(),
+  },
+  (table) => [
+    uniqueIndex("people_source_record_idx").on(table.sourceSystem, table.sourceRecordKey),
+    index("people_normalized_name_idx").on(table.normalizedName),
+    index("people_full_name_idx").on(table.fullName),
+  ],
+);
+
+export const companies = pgTable(
+  "companies",
+  {
+    companyId: uuid("company_id").primaryKey().defaultRandom(),
+    requestIdentifier: text("request_identifier"),
+    name: text("name"),
+    normalizedName: text("normalized_name"),
+    sourceHttpRequest: nullableJsonObjectColumn("source_http_request"),
+    sourcePayload: jsonObjectColumn("source_payload"),
+    ...sourceMetadataColumns(),
+    createdAt: createdAtColumn(),
+    updatedAt: updatedAtColumn(),
+  },
+  (table) => [
+    uniqueIndex("companies_source_record_idx").on(table.sourceSystem, table.sourceRecordKey),
+    index("companies_normalized_name_idx").on(table.normalizedName),
+    index("companies_name_idx").on(table.name),
+  ],
+);
