@@ -53,7 +53,7 @@ rejects caller SQL/URLs.
 
 | Tool | Purpose | Key inputs |
 |------|---------|------------|
-| `getPropertyQuerySchema` | Lists the property query-table's ~37 columns + descriptions — **call FIRST** to learn columns | `county?` (default `lee`) |
+| `getPropertyQuerySchema` | Lists the property query-table's ~37 columns + descriptions — use when columns are **unknown** or may be NULL for the county | `county?` (default `lee`) |
 | `queryProperties` | Runs ONE read-only `SELECT`/`WITH…SELECT` over the `properties` view (per-county Parquet read from IPFS via DuckDB) and returns rows | `county?` (default `lee`), `sql`, `limit?` |
 
 This is the **PRIMARY path for attribute / aggregate / count / filter questions** — "how
@@ -61,10 +61,17 @@ many", by owner, by zip, by city, by value, by acreage, by material. It runs SQL
 **OPEN IPFS parquet via MCP (NOT Neon)** — do not hand these questions off to
 `use-elephant-query-db`.
 
+**Fast path:** for aggregates/filters on stable columns (`address_city`, `address_state`,
+`address_zip`, `owners_text`, `avm_value`, `parcel_identifier`, `property_id`, `latitude`,
+`longitude`), call `queryProperties` directly — do **not** require
+`getPropertyQuerySchema` or `getOracleDatasetInfo` first. Discover only the `queryProperties`
+tool schema (single-tool), not the full MCP namespace.
+
 Constraints on `queryProperties`:
 
 - **Single statement, `SELECT`/CTE only.** Mutations and multi-statement SQL are rejected.
-- A **row cap auto-applies** (default 100, max 1000) via `limit`.
+- A **row cap auto-applies** (default 100, max 1000) via `limit` for row lists; `COUNT`/`SUM`
+  aggregates return one row so the cap is irrelevant.
 - The queried view is always named **`properties`**.
 - Use `ILIKE '%…%'` for text matching: owner (`owners_text`), city (`address_city`),
   material (`exterior_wall_material`).
@@ -72,8 +79,11 @@ Constraints on `queryProperties`:
 
 **Data coverage varies by county.** Lee has no acreage/material (those columns are NULL);
 HOA (`hoa_flag`) is NULL in every county. Call `getPropertyQuerySchema` or run a
-`SELECT count(col)` to confirm a column is populated, and state "not available for this
+`SELECT count(col)` when the column may be empty, and state "not available for this
 county" rather than inventing values. On Lee, owner / city / value / count questions work.
+
+**Latency:** on MCP `-32001` or IPFS HTTP 429, retry once then report; prefer narrow filters
+over county-wide scans on huge counties.
 
 ### Permit SQL query
 
@@ -122,18 +132,23 @@ Requires embedding provider (OpenAI or Bedrock).
 ```
 User question
 ├─ Overture business/place/category count, list, or group
-│   └─ getPlaceQuerySchema (learn fields, release, licence, null completeness)
+│   └─ getPlaceQuerySchema (once per county: fields, release, licence, null completeness)
 │   └─ queryPlaces (structured filters; no SQL/URL)
 │       ├─ count → mode=count
 │       ├─ list → mode=rows
 │       ├─ group → mode=groupByPrimaryCategory
 │       ├─ exact primary label → taxonomyPrimary
 │       └─ roll-up → taxonomyHierarchyMember
-├─ "How many …" / by owner / by zip / by city / by value / by acreage / by material
-│   (attribute · aggregate · count · filter) — PRIMARY PATH
-│   └─ getPropertyQuerySchema (learn columns)
-│   └─ queryProperties (ONE SELECT/CTE over the `properties` view; ILIKE for text)
-│       — SQL over the OPEN IPFS parquet via MCP, NOT Neon; do not hand off to query-db
+├─ "How many …" / by owner / by zip / by city / by value (stable columns)
+│   (attribute · aggregate · count · filter) — FAST PATH
+│   └─ queryProperties directly (ONE SELECT/CTE; COUNT/SUM ok)
+│       — skip getPropertyQuerySchema + getOracleDatasetInfo
+│       — SQL over the OPEN IPFS parquet via MCP, NOT Neon
+├─ "How many …" involving acreage / material / unknown columns
+│   └─ getPropertyQuerySchema (confirm column exists / is populated)
+│   └─ queryProperties
+├─ Dataset scale / coverage / freshness (when asked, or after failures)
+│   └─ getOracleDatasetInfo (county)
 ├─ "What fields exist on class X?" / schema semantics
 │   └─ listClassesByDataGroup → listPropertiesByClassName → getPropertySchema
 ├─ "How do I map source Y to Elephant?"
@@ -141,7 +156,6 @@ User question
 ├─ "How many permits …" / permit aggregates for a county in PERMIT_QUERY_TABLE_MAP
 │   └─ getPermitQuerySchema then queryPermits
 ├─ "In [city/area] …" (geo scoped, bbox/polygon)
-│   └─ getOracleDatasetInfo (county)
 │   └─ findPropertiesInArea (county + bbox/polygon)
 │   └─ getOracleProperty on hits (county; filter in reasoning)
 ├─ "Total value in [area]" (geo)
@@ -174,3 +188,7 @@ User question
   wait ~90s and retry in that case. If harvest is not configured, say so.
 - Geo tools without `county` search the default county (Lee). Pass `county` for every
   non-default question.
+- MCP `-32001` / IPFS HTTP 429: retry **once**, then report; prefer narrow filters over
+  county-wide scans on huge counties.
+- Prefer single-tool `GetDynamicTools` (`toolName` set); do not re-list the full elephant
+  namespace between calls in the same turn.
