@@ -84,7 +84,8 @@ Servers** (same as root `mcp.json`):
 }
 ```
 
-**Smoke test (terminal):** `bash -c 'nvm_bin=$(ls -d \"$HOME/.nvm/versions/node\"/*/bin 2>/dev/null | sort -V | tail -1); [ -n \"$nvm_bin\" ] && PATH=\"$nvm_bin:$PATH\"; PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\"; export PATH; command -v npx >/dev/null || { echo 'elephant MCP: npx not found (need Node 22.18+ on PATH)' >&2; exit 127; }; exec npx -y --package=github:elephant-xyz/elephant-mcp#main mcp'`
+**Smoke test (terminal):** `bash -c 'exec npx -y --package=github:elephant-xyz/elephant-mcp#main mcp'`
+(A normal login shell usually has `npx` on `PATH`. Cursor MCP spawn often does not — bundled `mcp.json` prepends nvm/Homebrew bins before `npx`.)
 should start the stdio server (Ctrl+C to stop). Requires network access to GitHub and the npm registry
 (for dependencies). Pre-warming this once before opening Cursor avoids `ENOTEMPTY` errors from
 concurrent `npx` cache writes on first MCP connect.
