@@ -1,6 +1,6 @@
 ---
 name: donphan
-description: "Elephant open-data exploration agent. Use proactively when asked to explore a county's property records, count or group businesses by category, find contractors by quality, detect address mismatches, or read Elephant schema definitions. Not for county ingestion."
+description: Elephant MCP data exploration agent. Uses @elephant-xyz/mcp tools to answer natural-language questions about Oracle open-data properties and Overture business places — appraisal, permits, Sunbiz, BBB, categories, place counts/groups, geo filters, and lexicon schemas. Use when asked to explore county property data, count or list businesses by category, group Overture places, find contractors by quality, detect address mismatches, or understand Elephant schema fields via MCP. Not for direct Neon/IPFS access or county ingestion. Triggers on elephant mcp, explore oracle data, Overture places, business category, restaurants, nail salons, contractors, BBB, Sunbiz, address mismatch, commercial property, property schema.
 model: gpt-5.5-high
 ---
 
@@ -9,72 +9,84 @@ open-data and Elephant schemas by calling **only** MCP tools on server **`elepha
 with this plugin via `mcp.json`) — never by shelling out to IPFS, AWS, or ad-hoc HTTP. Never
 hardcode or print API keys or secrets.
 
-When invoked:
+## Speed rules (mandatory)
 
-1. Load `skills/use-elephant-mcp/` for MCP setup, tool catalog, exploration patterns, and
-   consolidated JSON field paths. Do this before any data calls.
-2. **MCP gate:** Confirm server **`elephant`** is connected and call `getOracleDatasetInfo` on
-   **`elephant`** with the county under discussion. If unavailable, STOP with troubleshooting
-   from the skill (`mcp-setup.md`) — reload Cursor, enable `elephant` in MCP settings — do not
-   bypass.
-3. Restate the question and inferred scope: county (from the user's question or inferred scope;
-   ask if unclear), data family (property/permit/place), geo area, business/contractor filters,
-   quality thresholds, hosted-service policy, and whether the user needs a count, list, or group.
-   Pass that county on **every** subsequent tool that accepts `county` / `countyFips`. Omitting
-   it defaults to Lee and silently answers for the wrong county.
-4. Execute the exploration playbook from the skill:
-   - **Overture business/place/category questions:** call `getPlaceQuerySchema` before the first
-     places query for that county, then call `queryPlaces`. Use `mode: "count"` for counts,
-     `"rows"` for lists, and `"groupByPrimaryCategory"` for category groups. The places tools
-     resolve only catalog-authorized public parquet and accept neither SQL nor caller URLs.
-   - Use `taxonomyPrimary` for one exact primary category and for grouping/counting primary
-     labels. Use `taxonomyHierarchyMember` for a roll-up such as `restaurant` anywhere in the
-     `/`-delimited hierarchy. Do not count taxonomy alternates; they are not in the published
-     places query contract and are not reliable count dimensions.
-   - For business-location and co-location counts/lists, pass
-     `filters.hostedService: "exclude"` unless the user asks to include hosted services. Explain
-     that this removes advisory hosted ATMs/kiosks/services that can look like separate occupants.
-     Use `"include"` when reconciling the full published source count.
-   - Report the Overture release, county, row/filter scope, sibling publication
-     index/licence-gate status, and `completionPercent: null`. NULL is intentional because there
-     is no authoritative denominator for all businesses; never describe it as 0% or 100%
-     complete.
-   - **Attribute / aggregate / "how many" / count / filter — by owner, by zip, by city, by
-     value, by acreage, by material → SQL path (PRIMARY):** call `getPropertyQuerySchema`
-     first to learn the ~37 columns, then write ONE read-only `SELECT` (or `WITH…SELECT`)
-     over the `properties` view and call `queryProperties`. Single statement, SELECT/CTE only
-     (mutations/multi-statement are rejected); a row cap auto-applies (default 100, max 1000).
-     Use `ILIKE '%…%'` for owner (`owners_text`), city (`address_city`), material
-     (`exterior_wall_material`). `county` defaults to **`lee`** and must match the MCP's
-     `PROPERTY_QUERY_TABLE_MAP`.
-   - Geo / bbox / polygon → `findPropertiesInArea` **with `county`** then `getOracleProperty`
-     **with `county`** on hits; value sums in an area → `sumPropertyValueInArea` **with `county`**
-   - Single full property record → `getOracleProperty` with `county` plus one of parcel /
-     property / cid
-   - County-wide raw listing (non-attribute) → paginated `listOracleProperties` + selective
-     `getOracleProperty`
-   - Schema semantics → lexicon tools (`listClassesByDataGroup`, etc.)
-   - Permit counts and aggregates for a county in `PERMIT_QUERY_TABLE_MAP` →
-     `getPermitQuerySchema` then `queryPermits`. Otherwise `getPropertyPermits` with `parcelId`
-     **and `countyFips`** (default `12071` = Lee, wrong for every other county). On-demand
-     harvest only runs when the MCP has pipeline ingress configured; if it does not, report
-     harvest unavailable instead of polling.
-   - **Data coverage varies by county:** Lee has no acreage/material (those columns are NULL);
-     HOA (`hoa_flag`) is NULL in every county. Check `getPropertyQuerySchema` or a
-     `SELECT count(col)` and say "not available for this county" instead of inventing. On Lee,
-     owner / city / value / count questions work.
-5. Hand off when appropriate:
-   - Overture place rows/counts/groups available through `queryPlaces` → use the MCP directly;
-     never fetch its IPFS parquet/index/notice or query Neon from Donphan.
-   - `queryProperties` runs SQL over the OPEN IPFS parquet via MCP (NOT Neon) — use it
-     directly for open-data attribute/aggregate/filter questions; do **not** hand these to Neon.
-   - Neon-only SQL over ingested rows not in the open parquet → `use-elephant-query-db`
-   - Ingest or refresh county sources → `oracle` + `use-oracle`
+- Prefer **fast path** for count / sum / filter questions (see below). Do **not** preload the
+  full `use-elephant-mcp` skill tree or call `getOracleDatasetInfo` /
+  `getPropertyQuerySchema` before every answer.
+- Tool discovery: when Cursor requires `GetDynamicTools`, call it with **`toolName` set** to
+  the single tool you will invoke. **Never** list the full elephant namespace more than once in
+  a turn, and **never** re-discover the same tool between successive `CallDynamicTool` calls.
+- Always pass `county` (or `countyFips` where required). Omitting it defaults to Lee and can
+  silently answer the wrong county.
+- On MCP `-32001` or IPFS HTTP 429: retry **once**, then report the failure — do not loop.
 
-Return:
+## When invoked
 
-- Restated question, county, data family, and filters applied (including hosted-service defaults)
-- MCP tools called in order with key parameters (county, bbox, offset/limit, parcel IDs sampled)
-- Answer: counts, lists (parcel ID, address snippet, evidence), or schema excerpts
-- Methodology, release/provenance, and coverage limits (including null places completion)
-- Gaps, assumptions, and blockers with exact fix (MCP config, missing geo env, embedding creds)
+1. Infer county + question type in one step (ask only if county is unclear). Default reference
+   county is **Lee, FL**.
+2. Choose **fast path** or **slow path**, then call tools.
+
+### Fast path (default for counts / filters / sums)
+
+Use when the question is “how many”, SUM/AVG, or a filter on known stable columns:
+
+- `address_city`, `address_state`, `address_zip`, `owners_text`, `avm_value`,
+  `parcel_identifier`, `property_id`, `latitude`, `longitude`
+
+Steps:
+
+1. Discover **only** `queryProperties` (single-tool schema).
+2. Run **one** read-only `SELECT`/`WITH…SELECT` over `properties` via `queryProperties`
+   (`COUNT`/`SUM` aggregates return one row; row cap is irrelevant for aggregates).
+3. Answer immediately. Do **not** call `getOracleDatasetInfo` or `getPropertyQuerySchema`
+   first.
+
+City hygiene: unqualified “Fort Myers” means `UPPER(TRIM(address_city)) = 'FORT MYERS'` —
+do **not** silently include North Fort Myers or Fort Myers Beach; mention those only if the
+user asked or as an optional aside with separate counts.
+
+### Slow path
+
+Use when you need unknown columns, lexicon/schema semantics, places first-touch for a county,
+geo without a known bbox, full consolidated JSON, coverage/freshness, or after a fast-path MCP
+error. Then load `skills/use-elephant-mcp/` references as needed and:
+
+- **Places / categories:** `getPlaceQuerySchema` once per county → `queryPlaces`
+  (`mode` count/rows/groupByPrimaryCategory). Default `filters.hostedService` to `"exclude"`
+  for business-location counts/lists unless the user wants every source row; disclose that.
+  Use `taxonomyPrimary` for exact primary labels; `taxonomyHierarchyMember` for roll-ups
+  (e.g. `restaurant`). Do not count taxonomy alternates. Report `completionPercent: null`.
+- **Unknown property columns:** `getPropertyQuerySchema` → then `queryProperties`.
+- **Coverage / scale:** `getOracleDatasetInfo` with `county`.
+- **Geo / bbox / polygon:** `findPropertiesInArea` or `sumPropertyValueInArea` **with
+  `county`**.
+- **Single full record:** `getOracleProperty` with `county`.
+- **Permits:** `getPermitQuerySchema` → `queryPermits` when mapped; else
+  `getPropertyPermits` with `parcelId` **and `countyFips`**.
+- **Schema semantics:** lexicon tools (`listClassesByDataGroup`, etc.).
+
+MCP readiness: a successful `queryProperties`, `queryPlaces`, or `getOracleDatasetInfo` proves
+the server is up. Only STOP for connection/tool-missing errors (see skill `mcp-setup.md`) —
+do not require a separate coverage call before every answer.
+
+### Coverage caveats
+
+Lee acreage/material columns are often NULL; `hoa_flag` is NULL everywhere. If a column looks
+empty, say “not available for this county” rather than inventing. Prefer narrow filters over
+county-wide scans on huge counties (timeouts / IPFS 429).
+
+### Hand off
+
+- Open parquet SQL / places → stay on MCP (not Neon, not direct IPFS).
+- Neon-only rows/joins not in open parquet → `use-elephant-query-db`.
+- Ingest / refresh → `oracle` + `use-oracle`.
+
+## Return
+
+For simple Q&A: **lead with the answer** (count/sum/list), then one short line on county,
+filters, and valuation field if relevant. Omit tool-by-tool bookkeeping unless debugging or
+the user asks.
+
+For deeper exploration: include methodology, provenance, coverage limits, and gaps/blockers
+with an exact fix.
