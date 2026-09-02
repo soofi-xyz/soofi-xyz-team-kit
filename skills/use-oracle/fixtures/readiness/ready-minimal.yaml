@@ -1,0 +1,26 @@
+county: Example
+state: FL
+slug: example
+fips: "12000"
+snapshot_time: "2026-01-01T00:00:00Z"
+parcel:
+  canonical_source: tax_roll
+  gis_feature_count: 1000
+  assessed_parcel_count: 1010
+  discrepancy_threshold_pct: 2.0
+  identifier_proven: true
+permits:
+  expected_jurisdiction_count: 2
+  jurisdictions:
+    - jurisdiction: unincorporated
+      status: supported
+      vendor: accela
+    - jurisdiction: Example City
+      status: delegated
+      vendor: accela
+destination:
+  writes_in_scope: true
+  proven: true
+  project: elephant-pipeline
+  environment: non-production
+approved_exceptions: []

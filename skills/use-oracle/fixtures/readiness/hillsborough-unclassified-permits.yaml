@@ -1,0 +1,34 @@
+# Dated 2026 discovery snapshot. Parcel discrepancy is immaterial; permits are not.
+county: Hillsborough
+state: FL
+slug: hillsborough
+fips: "12057"
+snapshot_time: "2026-01-01T00:00:00Z"
+parcel:
+  canonical_source: tax_roll
+  gis_feature_count: 531612
+  assessed_parcel_count: 530915
+  tax_roll_year: 2026
+  tax_roll_status: certified
+  discrepancy_threshold_pct: 2.0
+  identifier_proven: true
+permits:
+  expected_jurisdiction_count: 4
+  jurisdictions:
+    - jurisdiction: unincorporated
+      status: supported
+      vendor: accela
+    - jurisdiction: Tampa
+      status: supported
+      vendor: accela
+    - jurisdiction: Plant City
+      status: supported
+      vendor: accela
+    - jurisdiction: Temple Terrace
+      status: needs-review
+destination:
+  writes_in_scope: true
+  proven: true
+  project: elephant-pipeline
+  environment: non-production
+approved_exceptions: []

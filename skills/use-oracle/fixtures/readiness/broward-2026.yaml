@@ -1,0 +1,25 @@
+# Dated 2026 discovery snapshot. Not a live constant.
+county: Broward
+state: FL
+slug: broward
+fips: "12011"
+snapshot_time: "2026-01-01T00:00:00Z"
+parcel:
+  canonical_source: gis
+  gis_feature_count: 556230
+  assessed_parcel_count: 758147
+  tax_roll_year: 2026
+  tax_roll_status: preliminary
+  discrepancy_threshold_pct: 2.0
+  identifier_proven: false
+permits:
+  expected_jurisdiction_count: 32
+  jurisdictions:
+    - jurisdiction: unincorporated
+      status: needs-review
+      vendor: epermits-onestop
+      notes: ePermits OneStop must not be assumed to contain unified historical municipal permit records
+destination:
+  writes_in_scope: true
+  proven: false
+approved_exceptions: []
