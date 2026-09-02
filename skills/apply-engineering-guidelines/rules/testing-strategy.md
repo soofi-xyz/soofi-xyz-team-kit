@@ -35,6 +35,17 @@ tags: testing, vitest, pytest, ci, github-actions, mocking, unit, integration
 - If a database can be started in a container for tests, prefer that over heavy mocking.
 - Use the approved AWS mock libraries listed above.
 
+### Dependency Failure Testing
+
+For every external dependency on a workflow path, test timeout, rejection,
+throttling, and unavailable responses. Follow
+`architecture-critical-path-isolation.md`:
+
+- critical-gate failures must prevent the primary operation;
+- auxiliary failures must not block or regress durable primary state;
+- compensatable failures must leave durable recovery work;
+- retries and replay must not duplicate the primary operation.
+
 ### ✅ Correct
 
 ```typescript
