@@ -1,6 +1,6 @@
 ---
 name: build-batch-workflows
-description: "Building batch workflows and data processing pipelines — processing strategy selection, testing, cost control, throttling, idempotency, and failure alerting."
+description: "Building reliable batch workflows and data pipelines — processing strategy, critical-path isolation, side-effect classification, fault injection, cost control, throttling, idempotency, recovery, and failure alerting."
 ---
 
 # Building Batch Workflows
@@ -24,7 +24,13 @@ Before writing any code, fully understand the data.
 2. **If anything is unclear — STOP and ask.** Do not guess data shape or volume.
 3. **Document the input contract** — define a schema (JSON Schema, TypeScript type, or Pydantic model) for the input data.
 
-### Phase 2 — Choose the Processing Strategy
+### Phase 2 — Classify Dependencies And Choose The Processing Strategy
+
+Before selecting a tool, classify every external dependency and side effect as
+primary state, critical gate, auxiliary projection, or compensatable follow-up.
+Complete the failure matrix in
+`rules/principle-critical-path-isolation.md`. Do not implement until every
+synchronous dependency has a documented correctness reason.
 
 Based on what needs to happen to the data, pick the right tool:
 
@@ -40,8 +46,9 @@ Read `rules/strategy-step-functions.md` and `rules/strategy-glue.md` for detaile
 
 1. **Get mock data.** If the user has not provided sample data — **ask for it now.** Do not proceed without data.
 2. **Create a test pipeline** that processes a small subset (10–100 records) end-to-end.
-3. **Validate outputs** against expected results before scaling up.
-4. **Keep the feedback loop tight** — deploy and test should take minutes, not hours.
+3. **Inject dependency failures** and verify critical gates block while auxiliary failures do not regress primary state.
+4. **Validate outputs** against expected results before scaling up.
+5. **Keep the feedback loop tight** — deploy and test should take minutes, not hours.
 
 ## Principles (Non-Negotiable)
 
@@ -65,11 +72,18 @@ Every batch workflow MUST have a **cost prediction step** as its first step. Rea
 
 Every workflow MUST emit metrics on data processed. Prefer **per-worker-unit metrics** — each Lambda invocation or Glue task emits its own metrics as it processes items. This is preferred over a single metric emitted at the end of the entire workflow execution, because it gives real-time visibility into progress and failures. Follow the `apply-engineering-guidelines` skill's `observability-metrics` rule — see [observability-metrics.md](../../apply-engineering-guidelines/rules/observability-metrics.md).
 
-### 5. Idempotency and Recoverability
+### 5. Isolate Critical Paths
+
+Every workflow MUST persist primary state before auxiliary projections and MUST
+document why each synchronous dependency is critical. Use an outbox, queue,
+event, or replayable DLQ for decoupled work. Read
+`rules/principle-critical-path-isolation.md`.
+
+### 6. Idempotency and Recoverability
 
 Workflows MUST be retriable, redrivable, and recoverable. Never do the same work twice. Read `rules/principle-idempotency.md`.
 
-### 6. Respect External System Limits
+### 7. Respect External System Limits
 
 **Ask the user:**
 - What are the rate limits of the target system? (requests per second/minute)
@@ -78,7 +92,7 @@ Workflows MUST be retriable, redrivable, and recoverable. Never do the same work
 
 Read `rules/principle-throttling.md` for the throttling architecture.
 
-### 7. Alert On Critical Failures
+### 8. Alert On Critical Failures
 
 Every workflow MUST page on-call via **PagerDuty** when it fails critically — a
 batch run MUST NEVER fail silently. Wire a PagerDuty trigger at the terminal
@@ -108,6 +122,7 @@ When reporting findings, report only concrete violations of the named principles
 | Input Validation | `rules/principle-input-validation.md` | CRITICAL |
 | Response Validation | `rules/principle-response-validation.md` | CRITICAL |
 | Cost Prediction Gate | `rules/principle-cost-gate.md` | CRITICAL |
+| Critical Path Isolation | `rules/principle-critical-path-isolation.md` | CRITICAL |
 | Idempotency & Recovery | `rules/principle-idempotency.md` | HIGH |
 | Throttling & Concurrency | `rules/principle-throttling.md` | HIGH |
 | Critical Failure Alerting | `rules/principle-failure-alerting.md` | CRITICAL |

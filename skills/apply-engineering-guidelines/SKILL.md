@@ -1,6 +1,6 @@
 ---
 name: apply-engineering-guidelines
-description: "Applying the company Golden Path engineering standards. Use when building or refactoring services, choosing technologies, setting up infrastructure, testing, CI/CD, observability, or alerting, or reviewing architecture."
+description: "Applying company Golden Path engineering standards for services and workflows — technology, AWS/CDK, critical-path isolation, fault injection, testing, CI/CD, observability, PagerDuty, and DLQ monitoring."
 ---
 
 # Engineering Guidelines
@@ -22,6 +22,7 @@ Follow these standards when building or refactoring any service in this ecosyste
 | Observability | **Powertools** (Logger + Tracer + Metrics) · **CloudWatch** · **X-Ray** |
 | Critical failure alerting | **PagerDuty** (Events API v2) — page on-call for every critical failure |
 | DLQ / channel monitoring | **One self-resolving CloudWatch alarm per DLQ** fanned out to channels (email / chat / **PagerDuty**) — never per-item alerts |
+| Failure isolation | **Primary state before auxiliary side effects** · explicit critical gates · replayable outbox/DLQ |
 
 ## Rule Categories
 
@@ -29,8 +30,9 @@ Follow these standards when building or refactoring any service in this ecosyste
 | --- | --- | --- | --- |
 | 1 | Tech Stack & Languages | `stack-` | CRITICAL |
 | 2 | Cloud & Infrastructure | `cloud-` | CRITICAL |
-| 3 | Testing & Quality | `testing-` | HIGH |
-| 4 | Observability | `observability-` | HIGH |
+| 3 | Architecture & Reliability | `architecture-` | CRITICAL |
+| 4 | Testing & Quality | `testing-` | HIGH |
+| 5 | Observability | `observability-` | HIGH |
 
 ## Rules Summary
 
@@ -44,11 +46,15 @@ Follow these standards when building or refactoring any service in this ecosyste
 
 - `cloud-aws-primary` — AWS-first with `us-east-2`, **CDK is the only permitted IaC tool**, cost tagging
 
-### 3. Testing & Quality (HIGH)
+### 3. Architecture & Reliability (CRITICAL)
 
-- `testing-strategy` — Testing pyramid, tooling standards, mock guidance
+- `architecture-critical-path-isolation` — Classify primary state, critical gates, auxiliary projections, and compensatable follow-ups; persist primary outcomes before replayable side effects
 
-### 4. Observability (HIGH)
+### 4. Testing & Quality (HIGH)
+
+- `testing-strategy` — Testing pyramid, tooling standards, mock guidance, dependency fault injection
+
+### 5. Observability (HIGH)
 
 - `observability-logging-tracing` — Powertools Logger/Tracer/Metrics on every Lambda, structured JSON logs, X-Ray tracing
 - `observability-metrics` — Business-level metrics per service: items processed, items failed, duration
@@ -64,6 +70,7 @@ rules/stack-typescript-for-apis.md
 rules/stack-python-for-data.md
 rules/stack-ai-sdk-for-llm.md
 rules/cloud-aws-primary.md
+rules/architecture-critical-path-isolation.md
 rules/testing-strategy.md
 rules/observability-logging-tracing.md
 rules/observability-metrics.md
@@ -78,11 +85,12 @@ When building or refactoring a service:
 1. **Default to TypeScript** for all workloads — APIs, Lambdas, batch, Step Functions, etc.
 2. **Use Python only for PySpark + AWS Glue jobs.** For any other workload, use TypeScript.
 3. **Set up infrastructure** per `cloud-aws-primary` — CDK in the same language as the service.
-4. **Configure CI/CD** per `testing-strategy` — formatter, linter, type checker, tests in GitHub Actions.
-5. **Add observability** per `observability-logging-tracing` — Powertools Logger, Tracer, Metrics on every Lambda.
-6. **Emit business metrics** per `observability-metrics` — items processed/failed, duration.
-7. **Wire critical-failure alerting** per `observability-pagerduty-alerting` — page on-call via PagerDuty for every terminal/critical failure so nothing fails silently.
-8. **Add self-resolving DLQ monitoring** per `observability-dlq-alarms` — attach one stateful CloudWatch alarm per DLQ that fans out to channels (email/chat/PagerDuty) when the DLQ is non-empty and clears itself on drain. This works together with PagerDuty alerting: the alarm owns the lifecycle and PagerDuty is one subscriber that auto-resolves.
+4. **Classify workflow dependencies** per `architecture-critical-path-isolation` before implementation.
+5. **Configure CI/CD** per `testing-strategy` — formatter, linter, type checker, tests in GitHub Actions.
+6. **Add observability** per `observability-logging-tracing` — Powertools Logger, Tracer, Metrics on every Lambda.
+7. **Emit business metrics** per `observability-metrics` — items processed/failed, duration.
+8. **Wire critical-failure alerting** per `observability-pagerduty-alerting` — page on-call via PagerDuty for every terminal/critical failure so nothing fails silently.
+9. **Add self-resolving DLQ monitoring** per `observability-dlq-alarms` — attach one stateful CloudWatch alarm per DLQ that fans out to channels (email/chat/PagerDuty) when the DLQ is non-empty and clears itself on drain. This works together with PagerDuty alerting: the alarm owns the lifecycle and PagerDuty is one subscriber that auto-resolves.
 
 ## Non-Negotiables
 
@@ -95,3 +103,4 @@ These are hard constraints that MUST NOT be violated without VP-level approval:
 5. **No secrets in logs.** Never log passwords, tokens, secrets, or PII.
 6. **Every metric registered in [Lexicon](https://github.com/Spring-Oaks-Capital-LLC/lexicon)** (`cloudwatch-metrics.json`) **and displayed on [Main Dashboard](https://github.com/Spring-Oaks-Capital-LLC/main-dashboard).** No metric may exist in code without both.
 7. **Every service and workflow MUST page on-call via PagerDuty for critical failures.** Critical production issues MUST NEVER fail silently. Any service/workflow capable of a terminal or critical failure MUST trigger a PagerDuty alert on that path (see `observability-pagerduty-alerting` and the SOCAPITAL `integrating-pagerduty` skill). Swallowing a critical failure with a log-only handler is FORBIDDEN.
+8. **Primary workflow state MUST be durable before auxiliary projections run.** Keep synchronous dependencies only when they are documented correctness gates. Graph, analytics, reporting, search, and notification failures MUST NOT block primary progress unless the business contract explicitly makes them critical. Fault-injection tests MUST verify every external failure boundary.
