@@ -69,7 +69,7 @@ Servers** (same as root `mcp.json`):
       "command": "bash",
       "args": [
         "-c",
-        "exec npx -y --package=github:elephant-xyz/elephant-mcp#main mcp"
+        "nvm_bin=$(ls -d \"$HOME/.nvm/versions/node\"/*/bin 2>/dev/null | sort -V | tail -1); [ -n \"$nvm_bin\" ] && PATH=\"$nvm_bin:$PATH\"; PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\"; export PATH; command -v npx >/dev/null || { echo 'elephant MCP: npx not found (need Node 22.18+ on PATH)' >&2; exit 127; }; exec npx -y --package=github:elephant-xyz/elephant-mcp#main mcp"
       ],
       "env": {
         "PROPERTY_QUERY_TABLE_MAP": "{\"chester\":\"https://ipfs.filebase.io/ipns/k51qzi5uqu5dho0b79m6k93jdthnpjf6j9d6abn2jl7rjro0e31icjpg83vy0f\",\"hillsborough\":\"https://ipfs.filebase.io/ipns/k51qzi5uqu5diqz0l68gfi22qk0w8aqhsm7pcgje535uz8vhu8p37ynm2po0fh\",\"lee\":\"https://ipfs.filebase.io/ipns/k51qzi5uqu5djd4ohcf3qm87dhlt0e270xw8ejhkyia62edr76uj0u05hrf7m5\",\"miami-dade\":\"https://ipfs.filebase.io/ipns/k51qzi5uqu5dgqktver4htb060qxfnaytjhybcxlfkp22vtgygbx2lb4t1h1xs\",\"montgomery\":\"https://ipfs.filebase.io/ipns/k51qzi5uqu5dknn192e4mzltecz3cul4byog3x9oydaxsiecf1huk3woqrkpnj\",\"orange\":\"https://ipfs.filebase.io/ipns/k51qzi5uqu5dhgte20ho86rzg5b7h0ght3a2js5wz0t55i96aaf1d12wpl8efn\",\"palm-beach\":\"https://ipfs.filebase.io/ipns/k51qzi5uqu5dlu7hx158su5palzzxdbl6zcm8ojh7645bxisxs0cf0s158h6h3\",\"pinellas\":\"https://ipfs.filebase.io/ipns/k51qzi5uqu5dhmo3zv6xvidksgvsqkfer3nw1s4v7bcbafpl66btpyab3zv9ir\",\"polk\":\"https://ipfs.filebase.io/ipns/k51qzi5uqu5dj7acu8xg9ugfk670m8b185q4h7pz2gp8cv3mos15ftb4yz6w7o\",\"rock-island\":\"https://ipfs.filebase.io/ipns/k51qzi5uqu5djbtswq6lb4p7xbf3nu8bzdzokdtcdld1r2vx6asn7lgfuk54wt\",\"santa-clara\":\"https://ipfs.filebase.io/ipns/k51qzi5uqu5dgnc94h8ce98ds0cb5yoidmcebpwnvccug4upasgbzpyz3ffgs5\"}",
@@ -85,6 +85,7 @@ Servers** (same as root `mcp.json`):
 ```
 
 **Smoke test (terminal):** `bash -c 'exec npx -y --package=github:elephant-xyz/elephant-mcp#main mcp'`
+(A normal login shell usually has `npx` on `PATH`. Cursor MCP spawn often does not — bundled `mcp.json` prepends nvm/Homebrew bins before `npx`.)
 should start the stdio server (Ctrl+C to stop). Requires network access to GitHub and the npm registry
 (for dependencies). Pre-warming this once before opening Cursor avoids `ENOTEMPTY` errors from
 concurrent `npx` cache writes on first MCP connect.
@@ -137,6 +138,7 @@ Oracle open-data tools work without embeddings.
 | `getVerifiedScriptExamples` fails | Add a real `OPENAI_API_KEY` to server env, or configure AWS Bedrock credentials |
 | First query is slow | `npx` clones GitHub and builds elephant-mcp on first start — can take 1–3 minutes |
 | `elephant` red / install fails | Confirm Node **22.18+**; run smoke test above; check MCP error log for git/network or build errors |
+| `bash: exec: npx: not found` / MCP `-32000` | Cursor's MCP spawn often has a minimal `PATH` (no nvm). Bundled `mcp.json` prepends nvm + Homebrew bins before `npx`. Reinstall/reload the plugin if you still see this on an older copy. |
 | `npm error ENOTEMPTY` in `_npx` cache | Quit Cursor; `rm -rf ~/.npm/_npx`; run smoke test once; reopen Cursor |
 | GitHub install blocked (proxy/firewall) | Use a local `elephant-mcp` checkout (`npm start` + `cwd`) or publish a newer `@elephant-xyz/mcp` to npm |
 | After npm publishes >1.6.0 | Kit may switch `args` to `["-y", "@elephant-xyz/mcp@<version>"]` for faster cold starts |
