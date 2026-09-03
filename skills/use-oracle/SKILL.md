@@ -1,6 +1,6 @@
 ---
 name: use-oracle
-description: "Operating guide for the Oracle public-data ingestion agent. Use when installing and driving the elephant-xyz ingestion skills to discover, ingest, validate, refresh, and publish a county's property, permit, corporate-registry, and contractor-reputation data plus its coverage snapshot. Enforces fail-closed readiness and honest completeness."
+description: "Operating guide for the Oracle public-data ingestion agent. Use when driving bundled ingestion skills under skills/ and the bundled runtime at skills/use-oracle/runtime/ to discover, ingest, validate, refresh, and publish a county's property, permit, corporate-registry, and contractor-reputation data plus its coverage snapshot. Enforces fail-closed readiness and honest completeness."
 ---
 
 # Use Oracle

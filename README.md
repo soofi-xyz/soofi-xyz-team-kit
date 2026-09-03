@@ -213,7 +213,6 @@ If you already know which specialist you need, skip the router and call them dir
 | [`sunbiz-corporate-ingest`](./skills/sunbiz-corporate-ingest/) | Ingest Florida Sunbiz corporate registration bulk data scoped to a county. |
 | [`transform-v2-builder`](./skills/transform-v2-builder/) | Build, run, and debug Elephant CLI transform v2 handler packages. |
 | [`unify-metrics`](./skills/unify-metrics/) | Lexicon-first metric unification: comparability gates, normalization, analysis, and audit-friendly outputs. |
-| [`validate-county-transform`](./skills/validate-county-transform/) | Prove a county's transform scripts extract 100% of available appraiser-site data across property-type variability. |
 | [`use-eevee`](./skills/use-eevee/) | Operate the Eevee editorial agent from Cursor: retrieve from the live Eevee RAG (Guidance library + founder articles) via the agent-eevee CLI, then draft in Eevee's voice using Eevee's prompts. Read-only; does not publish. |
 | [`use-elephant-query-db`](./skills/use-elephant-query-db/) | User guide for consuming the Vercel Neon `elephant-query-db` database with `@elephant-xyz/query-db` schema imports and TypeScript/Drizzle query code for parcels, permits, Sunbiz companies, places, and addresses. |
 | [`use-elephant-mcp`](./skills/use-elephant-mcp/) | Operating guide for exploring Elephant Oracle open-data via bundled `@elephant-xyz/mcp` in Cursor — property/contractor/business questions, geo filters, schema tools, and MCP setup. Not for Neon SQL or ingestion. |
@@ -222,6 +221,7 @@ If you already know which specialist you need, skip the router and call them dir
 | [`use-rotom`](./skills/use-rotom/) | Operate the Rotom weekly stakeholder email runtime from Cursor: Google Chat drafting, template/example memory, per-user Asana OAuth, hosted HTML output, and the runtime contract in `elephant-xyz/rotom-agent`. |
 | [`use-transform-evaluator`](./skills/use-transform-evaluator/) | Wrap the upstream `elephant-xyz/AI-Agent` LangGraph CLI so Oracle users can generate, repair, and validate county or seed transform outputs without turning the evaluator into a separate runtime agent. |
 | [`use-translate-service`](./skills/use-translate-service/) | User guide for calling a deployed Translate service — what a language and a runtime mapping are, the JSON shapes required to register them, the input/output shapes Translate expects, and how to validate, preview, and run asynchronous executions over `/translate/*`. |
+| [`validate-county-transform`](./skills/validate-county-transform/) | Prove a county's transform scripts extract 100% of available appraiser-site data across property-type variability. |
 
 ## License
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Fail-closed county readiness validator for elephant-pipeline YAML catalogs.
+"""Fail-closed county readiness validator for bundled runtime YAML catalogs.
 
-Reads elephant-pipeline/docs/<county>-sources.yaml (or a fixture path). Prints a JSON
+Reads skills/use-oracle/runtime/docs/<county>-sources.yaml (or a fixture path). Prints a JSON
 readiness report. Exit 0 only when every gate is PASS, APPROVED_EXCEPTION, or
 NOT_APPLICABLE. Any BLOCKED gate exits 1.
 

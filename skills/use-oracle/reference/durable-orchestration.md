@@ -293,7 +293,7 @@ When one source is blocked, continue every independent safe workstream.
 After each county:
 
 - Store changing counts, URLs, source states, and timestamps in
-  `elephant-pipeline/docs/<county>-sources.yaml`.
+  `skills/use-oracle/runtime/docs/<county>-sources.yaml`.
 - Store reusable rules, vendor signatures, identifier traps, pagination strategies, CAPTCHA
   states, and reconciliation patterns in this Oracle skill (`skills/use-oracle/`).
 - Add a regression fixture under `skills/use-oracle/fixtures/readiness/`, named by
