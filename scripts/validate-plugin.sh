@@ -23,6 +23,8 @@ main() {
     fi
   fi
 
+  "${python_bin}" "${root}/skills/use-oracle/scripts/validate-county-readiness.py" --self-test
+
   "${python_bin}" - "$root" <<'PY'
 import json
 import re

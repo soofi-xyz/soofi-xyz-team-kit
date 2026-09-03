@@ -1,0 +1,38 @@
+county: Example
+state: FL
+slug: example
+fips: "12000"
+snapshot_time: "2026-01-01T00:00:00Z"
+parcel:
+  canonical_source: tax_roll
+  gis_feature_count: 1000
+  assessed_parcel_count: 1010
+  discrepancy_threshold_pct: 2.0
+  discrepancy_explanation: GIS omits separately assessed condo units; tax roll is canonical
+  separately_assessed_without_geometry: acknowledged
+  identifier_proven: true
+permits:
+  expected_jurisdiction_count: 2
+  assumes_unified_countywide_history: false
+  jurisdictions:
+    - jurisdiction: unincorporated
+      status: supported
+      vendor: accela
+      historical_records: true
+    - jurisdiction: Example City
+      status: delegated
+      vendor: accela
+      historical_records: true
+destination:
+  writes_in_scope: true
+  proven: true
+  project: elephant-pipeline
+  environment: non-production
+  independent_identity_sources:
+    - neon_console_project_and_branch
+    - configured_branch_and_endpoint_ids
+enrichment:
+  bbb:
+    advertised_listing_count: 2001
+    expected_count: 2001
+approved_exceptions: []

@@ -1,0 +1,46 @@
+# Failure mode: parcel counts can reconcile while permit jurisdictions stay unclassified.
+# Distilled from a 2026 ingest where GIS vs tax-roll differed by ~0.13% but each
+# municipality still needed its own permit source. Apply to every county.
+county: Example
+state: FL
+slug: example-permit-gap
+fips: "12000"
+snapshot_time: "2026-01-01T00:00:00Z"
+parcel:
+  canonical_source: tax_roll
+  gis_feature_count: 531612
+  assessed_parcel_count: 530915
+  tax_roll_year: 2026
+  tax_roll_status: certified
+  discrepancy_threshold_pct: 2.0
+  discrepancy_explanation: source vintage between GIS extract and certified tax roll
+  separately_assessed_without_geometry: none
+  identifier_proven: true
+permits:
+  expected_jurisdiction_count: 4
+  assumes_unified_countywide_history: false
+  jurisdictions:
+    - jurisdiction: unincorporated
+      status: supported
+      vendor: accela
+      historical_records: true
+    - jurisdiction: City A
+      status: supported
+      vendor: accela
+      historical_records: true
+    - jurisdiction: City B
+      status: supported
+      vendor: accela
+      historical_records: true
+    - jurisdiction: City C
+      status: needs-review
+      historical_records: true
+destination:
+  writes_in_scope: true
+  proven: true
+  project: elephant-pipeline
+  environment: non-production
+  independent_identity_sources:
+    - neon_console_project_and_branch
+    - configured_branch_and_endpoint_ids
+approved_exceptions: []

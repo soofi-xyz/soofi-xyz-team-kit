@@ -1,0 +1,37 @@
+# Failure mode: GIS feature count is not the assessed-property population.
+# Distilled from a 2026 county ingest where GIS was ~26% below the tax roll
+# (condos and other units without unique polygons). Apply to every county.
+county: Example
+state: FL
+slug: example-gis-gap
+fips: "12000"
+snapshot_time: "2026-01-01T00:00:00Z"
+parcel:
+  canonical_source: gis
+  gis_feature_count: 556230
+  assessed_parcel_count: 758147
+  tax_roll_year: 2026
+  tax_roll_status: preliminary
+  discrepancy_threshold_pct: 2.0
+  identifier_proven: false
+permits:
+  expected_jurisdiction_count: 2
+  assumes_unified_countywide_history: false
+  jurisdictions:
+    - jurisdiction: unincorporated
+      status: supported
+      vendor: accela
+      historical_records: true
+    - jurisdiction: Example City
+      status: supported
+      vendor: accela
+      historical_records: true
+destination:
+  writes_in_scope: true
+  proven: true
+  project: elephant-pipeline
+  environment: non-production
+  independent_identity_sources:
+    - neon_console_project_and_branch
+    - configured_branch_and_endpoint_ids
+approved_exceptions: []
