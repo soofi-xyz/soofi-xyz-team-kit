@@ -6,11 +6,11 @@ County readiness is **enforced** by
 validator and STOP on a non-zero exit.
 
 The machine-readable county source catalog is
-`elephant-pipeline/docs/<county>-sources.yaml` — the same file `county-discovery` already
-writes. Do not create `Counties-trasform-scripts/<county>/sources/sources.json`.
+`skills/use-oracle/runtime/docs/<county>-sources.yaml` — the same file `county-discovery`
+already writes. Do not create `Counties-trasform-scripts/<county>/sources/sources.json`.
 
-Human findings stay in `elephant-pipeline/docs/<county>-county-findings.md` and are PR'd to
-`Counties-trasform-scripts/<county>/docs/`.
+Human findings stay in `skills/use-oracle/runtime/docs/<county>-county-findings.md` and are
+PR'd to `Counties-trasform-scripts/<county>/docs/`.
 
 Read the YAML catalog before any refresh. When a probe reveals a quirk, incident, or URL
 change, update the YAML in the same piece of work.
@@ -51,7 +51,7 @@ seed, pilot, or full ingestion:
 
 ```bash
 python3 skills/use-oracle/scripts/validate-county-readiness.py \
-  elephant-pipeline/docs/<county>-sources.yaml
+  skills/use-oracle/runtime/docs/<county>-sources.yaml
 ```
 
 **STOP** before `county-seed-data`, adapter pilots/scale-out, or `county-ingest-run` while
