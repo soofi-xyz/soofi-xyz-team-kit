@@ -20,6 +20,8 @@ SCHEMA_PATH = SKILL_DIR / "reference" / "portal-spec.schema.json"
 LAMBDA_RULES = SKILL_DIR / "rules" / "02-deterministic-lambda-template.md"
 LAMBDA_REFERENCE = SKILL_DIR / "reference" / "portal-api-stack.ts"
 REPO_PREVIEW_RULES = SKILL_DIR / "rules" / "03-repo-and-amplify-preview.md"
+VERIFICATION_RULES = SKILL_DIR / "rules" / "04-verification-gates.md"
+LATENCY_REFERENCE = SKILL_DIR / "reference" / "measure-latency.mjs"
 
 SOURCE_TYPES = ("figma", "portal_url", "other_design", "source_repo")
 REQUIRED_SCHEMA_FIELDS = (
@@ -93,6 +95,28 @@ REPO_PREVIEW_TOKENS = (
     "deployment output",
     "custom domain",
     "out of scope",
+)
+VERIFICATION_TOKENS = (
+    "100%",
+    "80%",
+    "mobile",
+    "tablet",
+    "desktop",
+    "BrowserStack",
+    "preview",
+    "real feature",
+    "p95",
+    "< 200",
+    "coverage",
+    "latency JSON",
+)
+LATENCY_SCRIPT_TOKENS = (
+    "API_URL",
+    "DATASET_PATH",
+    "REQUEST_COUNT",
+    ".sort(",
+    "p95",
+    ">= 200",
 )
 
 
@@ -260,6 +284,18 @@ def assert_repo_preview_contract() -> None:
         fail("preview URL must never be constructed from an embedded app ID")
 
 
+def assert_verification_contract() -> None:
+    rules_text = read_text(VERIFICATION_RULES)
+    latency_text = read_text(LATENCY_REFERENCE)
+
+    for token in VERIFICATION_TOKENS:
+        if token.lower() not in rules_text.lower():
+            fail(f"verification rules must include {token!r}")
+    for token in LATENCY_SCRIPT_TOKENS:
+        if token not in latency_text:
+            fail(f"latency reference must include {token!r}")
+
+
 def main() -> int:
     skill_text = read_text(SKILL_MD)
     rules_text = read_text(INTAKE_RULES)
@@ -272,6 +308,7 @@ def main() -> int:
     assert_schema_contract(schema)
     assert_lambda_template_contract()
     assert_repo_preview_contract()
+    assert_verification_contract()
 
     print("build-portals contract tests passed")
     return 0
