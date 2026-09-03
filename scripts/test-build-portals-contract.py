@@ -19,6 +19,7 @@ INTAKE_RULES = SKILL_DIR / "rules" / "01-intake-and-portal-spec.md"
 SCHEMA_PATH = SKILL_DIR / "reference" / "portal-spec.schema.json"
 LAMBDA_RULES = SKILL_DIR / "rules" / "02-deterministic-lambda-template.md"
 LAMBDA_REFERENCE = SKILL_DIR / "reference" / "portal-api-stack.ts"
+REPO_PREVIEW_RULES = SKILL_DIR / "rules" / "03-repo-and-amplify-preview.md"
 
 SOURCE_TYPES = ("figma", "portal_url", "other_design", "source_repo")
 REQUIRED_SCHEMA_FIELDS = (
@@ -80,6 +81,18 @@ LAMBDA_TEMPLATE_TOKENS = (
     "p95",
     "DurationAlarm",
     "ErrorAlarm",
+)
+REPO_PREVIEW_TOKENS = (
+    "gh repo create",
+    "feat/portal-v1",
+    "apps/web",
+    "apps/api",
+    "packages/shared",
+    "amplify.yml",
+    "feature-branch API",
+    "deployment output",
+    "custom domain",
+    "out of scope",
 )
 
 
@@ -233,6 +246,20 @@ def assert_lambda_template_contract() -> None:
         fail("Lambda rules must document least-privilege and wildcard IAM policy")
 
 
+def assert_repo_preview_contract() -> None:
+    rules_text = read_text(REPO_PREVIEW_RULES)
+    lowered = rules_text.lower()
+
+    for token in REPO_PREVIEW_TOKENS:
+        if token.lower() not in lowered:
+            fail(f"repo and Amplify preview rules must include {token!r}")
+
+    if "production api" not in lowered or "reject" not in lowered:
+        fail("preview rules must reject production API URLs")
+    if "app id" not in lowered or "never construct" not in lowered:
+        fail("preview URL must never be constructed from an embedded app ID")
+
+
 def main() -> int:
     skill_text = read_text(SKILL_MD)
     rules_text = read_text(INTAKE_RULES)
@@ -244,6 +271,7 @@ def main() -> int:
     schema = load_schema()
     assert_schema_contract(schema)
     assert_lambda_template_contract()
+    assert_repo_preview_contract()
 
     print("build-portals contract tests passed")
     return 0
