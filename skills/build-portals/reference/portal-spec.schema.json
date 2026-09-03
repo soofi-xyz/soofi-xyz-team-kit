@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://soofi.xyz/schemas/portal-spec.json",
+  "title": "PortalSpec",
+  "description": "Normalized portal delivery contract produced after intake and before scaffolding.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "sourceType",
+    "screens",
+    "breakpoints",
+    "auth",
+    "apis",
+    "secrets",
+    "infra",
+    "testPersonas",
+    "datasetRef",
+    "hosting",
+    "openQuestions"
+  ],
+  "properties": {
+    "sourceType": {
+      "type": "string",
+      "enum": ["figma", "portal_url", "other_design", "source_repo"],
+      "description": "Exactly one primary design source selected during intake."
+    },
+    "designSource": {
+      "type": "object",
+      "description": "Optional intake artifact describing how the primary source was read.",
+      "additionalProperties": true
+    },
+    "deliveryContext": {
+      "type": "object",
+      "description": "Optional intake artifact for org-supplied delivery inputs.",
+      "additionalProperties": true
+    },
+    "screens": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["route", "purpose", "states"],
+        "additionalProperties": false,
+        "properties": {
+          "route": { "type": "string", "minLength": 1 },
+          "purpose": { "type": "string", "minLength": 1 },
+          "states": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "breakpoints": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["name", "widthPx"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "enum": ["mobile", "tablet", "desktop"] },
+          "widthPx": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    "auth": {
+      "type": "object",
+      "required": ["mode", "callbackEnvKeys"],
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["none", "magic-link", "password", "SSO", "copy-from-reference"]
+        },
+        "callbackEnvKeys": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "reference": { "type": "string" }
+      }
+    },
+    "apis": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "method", "latencyBudgetMs"],
+        "additionalProperties": false,
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "method": {
+            "type": "string",
+            "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+          },
+          "requestShape": { "type": "string" },
+          "responseShape": { "type": "string" },
+          "upstreams": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "latencyBudgetMs": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    "secrets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "purpose", "status"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "purpose": { "type": "string", "minLength": 1 },
+          "status": {
+            "type": "string",
+            "enum": ["discovered", "placeholder"]
+          }
+        }
+      }
+    },
+    "infra": {
+      "type": "object",
+      "required": [
+        "memoryMb",
+        "timeoutSeconds",
+        "provisionedConcurrency",
+        "logRetentionDays"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "memoryMb": { "type": "integer", "minimum": 128 },
+        "timeoutSeconds": { "type": "integer", "minimum": 1 },
+        "provisionedConcurrency": { "type": "integer", "minimum": 0 },
+        "logRetentionDays": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "testPersonas": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "role"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "role": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "datasetRef": {
+      "type": "object",
+      "required": ["location", "format"],
+      "additionalProperties": false,
+      "properties": {
+        "location": { "type": "string", "minLength": 1 },
+        "format": { "type": "string", "minLength": 1 },
+        "notes": { "type": "string" }
+      }
+    },
+    "hosting": {
+      "type": "object",
+      "required": ["mode", "customDomain"],
+      "additionalProperties": false,
+      "properties": {
+        "mode": { "type": "string", "enum": ["amplify-preview"] },
+        "customDomain": { "type": "string", "enum": ["out_of_scope_v1"] },
+        "amplifyAppRef": { "type": "string" }
+      }
+    },
+    "openQuestions": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Unresolved blockers. Must be empty before scaffolding."
+    }
+  }
+}
