@@ -1,0 +1,151 @@
+#!/usr/bin/env python3
+"""Reject tenant-specific or credential-like content in generic Hoopa files."""
+
+from __future__ import annotations
+
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+from urllib.parse import urlparse
+
+ROOT = Path(__file__).resolve().parent.parent
+SCANNED_FILES = (
+    ROOT / "agents" / "hoopa.md",
+    ROOT / "agents-copilot" / "hoopa.agent.md",
+    ROOT / ".codex" / "agents" / "hoopa.toml",
+)
+BUILD_PORTALS_DIR = ROOT / "skills" / "build-portals"
+README_PATH = ROOT / "README.md"
+
+ALLOWED_URL_HOSTS = {
+    "assets.pokemon.com",
+    "example.com",
+    "json-schema.org",
+    "soofi.xyz",
+}
+URL_PATTERN = re.compile(r"https?://[^\s<>)\]\"'`]+", re.IGNORECASE)
+ACCOUNT_ID_PATTERN = re.compile(r"(?<!\d)\d{12}(?!\d)")
+CREDENTIAL_PATTERNS = (
+    ("AWS access key", re.compile(r"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b")),
+    ("GitHub token", re.compile(r"\bgh[pousr]_[A-Za-z0-9]{20,}\b")),
+    ("Slack token", re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{10,}\b")),
+    (
+        "private key",
+        re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
+    ),
+)
+
+
+def configured_literals() -> tuple[str, ...]:
+    raw = os.environ.get("PORTAL_PROHIBITED_LITERALS", "")
+    return tuple(value.strip() for value in raw.splitlines() if value.strip())
+
+
+def scan_text(label: str, text: str, literals: tuple[str, ...]) -> list[str]:
+    findings: list[str] = []
+    lowered = text.casefold()
+
+    for literal in literals:
+        if literal.casefold() in lowered:
+            findings.append(f"{label}: prohibited configured literal found")
+
+    for match in URL_PATTERN.finditer(text):
+        host = (urlparse(match.group(0)).hostname or "").casefold()
+        if host not in ALLOWED_URL_HOSTS:
+            findings.append(f"{label}: non-allowlisted URL host {host!r}")
+
+    if ACCOUNT_ID_PATTERN.search(text):
+        findings.append(f"{label}: possible 12-digit cloud account identifier")
+
+    for credential_type, pattern in CREDENTIAL_PATTERNS:
+        if pattern.search(text):
+            findings.append(f"{label}: possible {credential_type}")
+
+    return findings
+
+
+def read_scanned_content() -> list[tuple[str, str]]:
+    content: list[tuple[str, str]] = []
+    paths = [*SCANNED_FILES, *sorted(BUILD_PORTALS_DIR.rglob("*"))]
+
+    for path in paths:
+        if path.is_file():
+            content.append((str(path.relative_to(ROOT)), path.read_text("utf-8")))
+
+    if README_PATH.is_file():
+        hoopa_rows = [
+            line
+            for line in README_PATH.read_text("utf-8").splitlines()
+            if "hoopa" in line.casefold()
+        ]
+        content.append(("README.md (Hoopa rows)", "\n".join(hoopa_rows)))
+
+    return content
+
+
+def added_diff_content() -> str:
+    commands = (
+        ["git", "diff", "--cached", "--unified=0", "--", *relative_targets()],
+        ["git", "diff", "--unified=0", "--", *relative_targets()],
+    )
+    additions: list[str] = []
+
+    for command in commands:
+        result = subprocess.run(
+            command,
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        additions.extend(
+            line[1:]
+            for line in result.stdout.splitlines()
+            if line.startswith("+") and not line.startswith("+++")
+        )
+
+    return "\n".join(additions)
+
+
+def relative_targets() -> list[str]:
+    return [
+        "agents/hoopa.md",
+        "agents-copilot/hoopa.agent.md",
+        ".codex/agents/hoopa.toml",
+        "skills/build-portals",
+        "README.md",
+    ]
+
+
+def self_test() -> None:
+    fixture = "Reference portal: https://customer-portal.invalid/sign-in"
+    findings = scan_text("self-test fixture", fixture, ())
+    if not findings:
+        raise AssertionError("scanner self-test failed to reject a customer URL")
+
+
+def main() -> int:
+    self_test()
+    literals = configured_literals()
+    findings: list[str] = []
+
+    for label, text in read_scanned_content():
+        findings.extend(scan_text(label, text, literals))
+
+    diff = added_diff_content()
+    if diff:
+        findings.extend(scan_text("current git diff additions", diff, literals))
+
+    if findings:
+        for finding in sorted(set(findings)):
+            print(f"sanitization failed: {finding}", file=sys.stderr)
+        return 1
+
+    print("build-portals sanitization passed")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

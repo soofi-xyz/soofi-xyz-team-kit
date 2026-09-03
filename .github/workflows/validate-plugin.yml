@@ -34,6 +34,9 @@ jobs:
       - name: Validate plugin files
         run: scripts/validate-plugin.sh
 
+      - name: Check Hoopa tenant-neutral content
+        run: python3 scripts/check-build-portals-sanitization.py
+
       - name: Check generated Copilot agents are committed
         run: scripts/sync-copilot-agents.sh check
 
