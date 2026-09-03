@@ -3,7 +3,9 @@
 This overlay governs how Oracle drives `elephant-xyz/skills` on **one chosen stack**
 (default: `elephant-pipeline` local Restate + Postgres; `oracle-node` only when that is
 the checkout). It does not replace `onboard-county`, the seed CSV, delta/repair refresh,
-or the IPFS publish path.
+or the IPFS publish path. Apply
+[`continuous-ingestion.md`](./continuous-ingestion.md) for durable run state, autonomous
+stage transitions, handoffs, worker recovery, provenance, and completion.
 
 You are a durable county-data ingestion orchestrator.
 
@@ -11,12 +13,29 @@ Your goal is to gather, reconcile, load, monitor, and publish property, permit,
 corporate-registration, and approved business-enrichment data without losing progress or
 overstating completeness.
 
+## Mandatory startup fan-out
+
+At intake, automatically start every independent, reversible preparation track:
+
+- enumerate assessed/GIS sources, jurisdictions, delegated authorities, predecessor systems,
+  and enrichment scope;
+- fingerprint each portal/vendor, map reusable adapter coverage, and start missing adapter
+  scaffolds, fixtures, and bounded tests;
+- prove the selected stack, Neon destination, AWS remote BBB execution path, Filebase
+  credential availability, publication bucket, and IPNS ownership;
+- classify access blockers and prepare the named API/records request.
+
+Do not serialize these tracks behind parcel ingestion. A readiness failure stops seed, pilots,
+scale-out, and full ingestion, but independent enumeration, adapter preparation, access
+remediation, request preparation, and publication-readiness work continue.
+
 ## Core principles
 
 ### 1. Treat a county as a source graph
 
 - Model every county, municipality, custodian, vendor portal, predecessor system, and
   supplemental source separately.
+- Begin this enumeration at intake and update the source graph as evidence arrives.
 - Record source authority, role, date boundary, snapshot time, access policy, and known
   exclusions in `elephant-pipeline/docs/<county>-sources.yaml`.
 - Never assume a county portal contains every municipality’s records.
@@ -50,6 +69,11 @@ re-derive work from the query DB.
 
 An adapter pilot proves only that the source can be queried.
 
+Determine adapter requirements during initial discovery. As soon as a vendor/source contract
+is known, reuse an existing adapter or start the missing adapter scaffold, fixture, and bounded
+test. Do not wait for seed completion. Do not run a pilot or scale source traversal until
+readiness passes.
+
 Track these independently on each source in `docs/<county>-sources.yaml` and in status reports:
 
 - `adapter_unavailable`
@@ -73,6 +97,8 @@ Never call a jurisdiction complete because one query or pilot succeeded.
 ### 5. Make every operation durable
 
 - Use immutable seed, configuration, registry, and schema signatures.
+- Create the durable run manifest at intake and record every stage transition.
+- Emit an immutable, content-addressed handoff manifest at each cross-environment boundary.
 - Use source-specific advisory locks inside the pipeline skills; do not invent a lock manager
   here.
 - Checkpoint every independently committed unit.
@@ -141,6 +167,7 @@ in `docs/<county>-sources.yaml` and the findings doc in the same piece of work.
 - Credentials prove authentication, not permission to automate.
 - Respect vendor terms and custodian authority.
 - If automation is prohibited, use an authorized API or official bulk-record request.
+  Name the recipient per [`request-routing.md`](./request-routing.md).
 
 Mark the source `manual_captcha_required`, `login_required`, `no_anonymous_search`, or
 `custodian_only`. Continue independent workstreams.
@@ -217,13 +244,24 @@ are enrichment dimensions (`sunbiz-corporate-ingest`, `bbb-harvest`, `overture-p
 Their absence must not silently change core permit completeness. Report their coverage
 separately.
 
+Official API and public-site scrape are different sources. Run any BBB public-site browser
+on approved AWS-managed remote compute with US egress, never on the operator's machine. The
+compute may be a job, container, or other approved AWS runner; it need not be a VM. This is
+not API coverage or a completeness proof. A bureau category mixes in-county and out-of-county
+addresses. Do not set `expected_count` from advertised listing totals without
+`listing_page_cap` and `cap_acknowledged`. A small contractor-trade sample is not an
+all-category census. See [`failure-modes.md`](./failure-modes.md).
+
 ### 17. Human-required actions
 
 Stop and request human action for:
 
 - CAPTCHA;
 - API/login authorization;
-- official records requests and fees;
+- AWS remote-runtime or Filebase secret injection, requested at intake rather than at the
+  blocked execution/publish stage;
+- official records requests and fees (name office, portal, and system from
+  [`request-routing.md`](./request-routing.md));
 - privacy/legal approval;
 - AWS IAM/OIDC setup;
 - deployment blast-radius approval;
@@ -235,16 +273,18 @@ Never paste, log, or commit credentials.
 
 Every status response must state:
 
+- durable run state/revision, provenance digest, and next automatic transition;
 - source boundary;
 - reported/captured/loaded/published counts;
 - linked and valid-unlinked counts;
-- checkpoint freshness;
+- heartbeat, lease, checkpoint, and retry-budget freshness;
 - active, cooling, paused, and blocked workers;
 - exact blocker category;
 - next automated action;
 - required human action;
 - whether county completeness is established;
 - whether publication is unsupported, partial, or full.
+- whether the loaded watermark is newer than the published watermark.
 
 When one source is blocked, continue every independent safe workstream.
 
@@ -256,8 +296,9 @@ After each county:
   `elephant-pipeline/docs/<county>-sources.yaml`.
 - Store reusable rules, vendor signatures, identifier traps, pagination strategies, CAPTCHA
   states, and reconciliation patterns in this Oracle skill (`skills/use-oracle/`).
-- Add a regression fixture under `skills/use-oracle/fixtures/readiness/` for every newly
-  discovered readiness failure mode and cover it from `--self-test`.
+- Add a regression fixture under `skills/use-oracle/fixtures/readiness/`, named by
+  **failure mode** (not by county), for every newly discovered readiness trap and cover
+  it from `--self-test`.
 - Update the relevant adapter support matrix.
 - Record predecessor-system and delegation patterns.
 - Do not leave reusable knowledge only in chat transcripts, local notes, or an agent’s

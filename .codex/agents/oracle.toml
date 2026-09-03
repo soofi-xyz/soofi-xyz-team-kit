@@ -28,12 +28,17 @@ If both markers are present, or neither, STOP and ask. Never warn-and-continue. 
 
 When invoked:
 
-1. Load `skills/use-oracle/` and `skills/county-readiness-preflight/` before running anything.
+1. Load `skills/use-oracle/`, including
+   `reference/continuous-ingestion.md`, and `skills/county-readiness-preflight/` before
+   running anything. Start or resume the durable run coordinator; the chat session is not
+   the workflow engine.
 2. Confirm the target and scope. Default county = **Lee County, FL** (the reference implementation). Sources this milestone: appraisal/property records, county permits, Florida Sunbiz corporations, BBB contractor reputation. Confirm pilot (~25 parcels) vs full county run.
-3. Verify the workspace is ready (per `use-oracle`): skills installed in the **chosen** checkout (`npx skills add elephant-xyz/skills --all -y`), sibling repos present. Local stack needs Docker/Restate; AWS stack needs `AWS_PROFILE` / `AWS_REGION`. If the chosen stack cannot be proven, STOP before any live run — you may still do source discovery and dry planning.
+3. Immediately launch independent startup tracks: enumerate all property/permit/enrichment sources and predecessor systems; fingerprint vendors and start missing adapter scaffolds, fixtures, and bounded tests; prove the chosen stack and Neon destination; verify an AWS-managed remote BBB browser path; verify Filebase credential availability, bucket, and IPNS ownership; and prepare named API/records requests for blocked sources. Request missing AWS/Filebase access at intake and continue every other safe track. Do not wait for parcel ingestion or a later failure to expose these blockers. Local stack needs Docker/Restate; AWS stack needs `AWS_PROFILE` / `AWS_REGION`. BBB browser execution is always remote AWS work even when ingestion is local.
 4. Drive the pipeline through the skills — never improvise commands the skills do not define:
-   - `onboard-county` — intake → discovery → catalog YAML → **run `validate-county-readiness.py`** → seed → appraisal → transform-validate → permit adapter → run → enrichment → query-DB reconcile. Answer intake once. **The validator is required even when the user invokes `onboard-county` directly.** Non-zero exit = STOP before `county-seed-data`, pilot, or full ingest. Interrupt at unreadiness, CAPTCHA, login, custodian-only access, or an unproven destination. After `PASS`, continue stages; interrupt only for a genuine blocker. When one source is blocked, continue every independent safe workstream.
+   - `onboard-county` — intake + startup fan-out → discovery/enumeration → catalog YAML + adapter preparation + execution/destination/publication readiness → **run `validate-county-readiness.py`** → seed → adapter pilots → appraisal → transform-validate → run → enrichment → query-DB reconcile. Answer intake once. **The validator is required even when the user invokes `onboard-county` directly.** Non-zero exit = STOP before `county-seed-data`, pilot, adapter scale-out, or full ingest—not before bounded enumeration, adapter implementation/fixtures, access remediation, or publication-readiness work. Interrupt only for a human-owned blocker; continue every independent safe workstream. Name the records recipient from `use-oracle/reference/request-routing.md` — never say “request a bulk export” without an office, portal or email, and system scope. Blocked/custodian-only/manual-only catalog rows need a complete `records_request`.
    - or run a single stage directly: `county-discovery`, `county-seed-data` (only after PASS), `county-appraisal-onboarding`, `county-permit-adapter`, `sunbiz-corporate-ingest`, `bbb-harvest`, `county-ingest-run` (only after PASS).
+   - Always read `use-oracle/reference/failure-modes.md` with the skill. Drive `bbb-harvest` as public-site category harvest unless an approved API token exists. Run any required browser on approved AWS-managed remote compute with US egress, never on the operator's machine; it need not be a VM and is not official API coverage. Runtime Secrets apply at process start—start a new AWS job/runner after adding AWS or Filebase keys.
+   - After every successful stage or handoff, persist the transition and automatically enqueue the next dependency-ready work. Do not stop at pilot, capture, load, status, or agent-session boundaries. Supervise heartbeats/leases/checkpoints, recover compatible stale work with fencing and bounded retries, and consume immutable cross-environment handoff manifests.
 5. Validate completeness and load. Use `validate-county-transform` and `monitoring-county-ingestion`; reconcile with `query-db-loading-matching`. Read the query DB through `use-elephant-query-db`. Never call a jurisdiction complete because a pilot succeeded; completeness requires the eight evidence gates in `use-oracle`.
 6. Index + publish the county (after load + reconcile). Run `county-query-table-publish`: export the query-table Parquet, pass the validation GATE (parquet rows == distinct folio, 0 dup/null folios), then publish. **PII publish is human-approved, then automated:** the `Publish` object dry-runs until a human POSTs `Publish/<county>/approve`; after that, `tick` uploads to Filebase/IPFS. The agent prepares, validates, and may `--dry-run`. Coverage is public IPFS/IPNS only. Enumerate published counties with MCP `listPublishedCounties` (or `oracle-node/catalog/published-counties.json`) — do not embed a hardcoded county list. Regenerate MCP maps from that catalog (`use-elephant-mcp`). Never point Donphan, Miranda, or users at AWS S3.
 
@@ -52,7 +57,9 @@ Each county's machine-readable catalog is `elephant-pipeline/docs/<county>-sourc
 Source of truth is `skills/onboard-county/SKILL.md` (Ground rules) in the installed skills — read it before any run. In summary:
 
 - Choose exactly one stack before loading stage procedures.
-- Run `validate-county-readiness.py` against `docs/<county>-sources.yaml` before seed, pilot, or full ingest — including when `onboard-county` is invoked directly. Non-zero exit is a stop.
+- At intake, automatically fan out source/jurisdiction enumeration, adapter determination and implementation, AWS remote BBB runtime setup, Neon proof, Filebase/IPNS readiness, and blocker request routing. Do not serialize independent preparation behind ingest.
+- Before every remote dispatch, freeze repository branch/commit/tree, runtime image, source-catalog, configuration, registry, schema, and checkpoint signatures in the durable run manifest. Reject drift.
+- At the jump of **every** new ingest, run `validate-county-readiness.py` against `docs/<county>-sources.yaml` before seed, pilot, or full ingest — including when `onboard-county` is invoked directly. Non-zero exit is a stop. Apply GIS-vs-tax-roll, per-jurisdiction permits, one-stop-is-not-history, destination identity, records-request, and BBB advertised-count rules to the county in front of you; do not treat prior counties as special cases.
 - Extract everything, never drop data: capture raw HTML, keep unmapped fields in `source_payload`, log lexicon gaps.
 - The seed CSV is the input of record; never re-derive work from the query DB.
 - Everything is idempotent: stable keys and `ON CONFLICT` loads, so resume means re-sending the same work.
@@ -60,11 +67,14 @@ Source of truth is `skills/onboard-county/SKILL.md` (Ground rules) in the instal
 - Keep portal concurrency gentle with stepwise ramp-up and burn-in; permit workers start at 2.
 - Before local portal probing, confirm the egress IP is US: `curl -s ipinfo.io/country`.
 - On the **aws** stack, before and during runs, confirm `EmergencyStopEnabled=false` and event-source mappings `Enabled`.
+- Completion means reconciled capture and load, frozen immutable publication, remote digest/count readback, catalog/MCP registration, and Donphan smoke success. If the loaded watermark advances after publication, enqueue a new immutable snapshot automatically.
 - Never commit scraped data or secrets; PR code, docs, and findings as they are created.
 
 Return (required status report):
 
 - source boundary: county, jurisdictions, and sources targeted, plus pilot/full scope
+- startup-track state: enumeration, adapter work, AWS BBB execution, Neon proof, Filebase/IPNS readiness, and request routing
+- durable controller state/revision, provenance digest, stage dependencies, worker leases/fencing/checkpoints/retry budgets, and next automatic transition
 - reported / captured / loaded / published counts per source (artifact counts + Neon DB counts); never convert a missing export into zero records
 - linked and valid-unlinked counts (null property links are valid unmatched records)
 - checkpoint freshness
@@ -73,6 +83,7 @@ Return (required status report):
 - next automated action and required human action
 - whether county completeness is established (all eight evidence gates) — name gaps; never claim a refresh you did not verify against source availability
 - whether publication is unsupported, partial, or full
+- loaded versus published watermark and whether a replacement immutable snapshot is queued
 - which skill(s) you drove and the per-stage outcomes
 - the indexing outcome: query-table validation gate result (rows vs distinct folio), the query-table IPNS name, catalog-driven MCP wiring (`listPublishedCounties` / `published-counties.json`), the coverage IPNS name, per-county column/source-coverage gaps, and a donphan smoke-query confirming the county is served with coverage — or, if publish is waiting on `Publish/<county>/approve`, exactly what is staged for human approval then automated `tick`
 - a reminder that the property-consolidation open-data publish and NEO rewiring remain separate stories

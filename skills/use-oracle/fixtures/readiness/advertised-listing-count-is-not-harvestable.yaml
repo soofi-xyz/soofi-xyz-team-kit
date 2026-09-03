@@ -31,4 +31,8 @@ destination:
   independent_identity_sources:
     - neon_console_project_and_branch
     - configured_branch_and_endpoint_ids
+enrichment:
+  bbb:
+    advertised_listing_count: 2001
+    expected_count: 2001
 approved_exceptions: []

@@ -12,7 +12,7 @@ parcel:
   separately_assessed_without_geometry: acknowledged
   identifier_proven: true
 permits:
-  expected_jurisdiction_count: 2
+  expected_jurisdiction_count: 3
   assumes_unified_countywide_history: false
   jurisdictions:
     - jurisdiction: unincorporated
@@ -23,6 +23,10 @@ permits:
       status: delegated
       vendor: accela
       historical_records: true
+    - jurisdiction: Example Village
+      status: blocked
+      vendor: opengov
+      historical_records: false
 destination:
   writes_in_scope: true
   proven: true

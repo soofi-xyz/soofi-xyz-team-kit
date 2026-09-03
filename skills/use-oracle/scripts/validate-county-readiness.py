@@ -25,8 +25,34 @@ PERMIT_CLASSIFICATIONS = {
     "custodian-only",
 }
 UNCLASSIFIED = {"needs-review", None, "", "unclassified"}
+REQUEST_REQUIRED_STATUSES = {"blocked", "custodian-only", "manual-only"}
+VALID_REQUEST_ROUTES = {"api-first", "records-first"}
+GEOMETRY_NULL_POLICY = {"acknowledged", "none"}
+CENTRAL_PORTAL_KINDS = {
+    "central-submission",
+    "supplemental-approval",
+    "application-intake",
+    "onestop",
+}
 DEFAULT_DISCREPANCY_THRESHOLD_PCT = 2.0
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures" / "readiness"
+GATE_OWNERS = {
+    "catalog_metadata": "county-discovery",
+    "parcel": "county-discovery",
+    "permit": "county-discovery / county-permit-adapter",
+    "destination": "bootstrap-oracle-infra / query-db-loading-matching",
+    "enrichment": "bbb-harvest",
+}
+SAFE_PREPARATION_ACTIONS = [
+    "Continue bounded source and jurisdiction enumeration",
+    "Continue adapter fingerprinting, scaffolds, fixtures, and bounded tests",
+    "Continue AWS BBB runtime, Neon destination, and Filebase/IPNS readiness",
+    "Prepare named API or records requests for blocked sources",
+]
+READY_AUTO_ADVANCE_ACTION = (
+    "Start the next dependency-ready stage from the durable run manifest "
+    "without operator confirmation"
+)
 
 
 def _parse_scalar(raw: str):
@@ -158,6 +184,26 @@ def _approved(catalog: dict, gate: str) -> dict | None:
     return None
 
 
+def _identity_sources(raw: object) -> list[str]:
+    if isinstance(raw, list):
+        return [str(item).strip() for item in raw if str(item).strip()]
+    if isinstance(raw, str):
+        return [part.strip() for part in raw.split(",") if part.strip()]
+    return []
+
+
+def _records_request_complete(row: dict) -> bool:
+    req = row.get("records_request")
+    if not isinstance(req, dict):
+        return False
+    office = str(req.get("recipient_office") or "").strip()
+    scope = str(req.get("system_scope") or "").strip()
+    route = str(req.get("route") or "").strip()
+    portal = str(req.get("request_portal_url") or "").strip()
+    email = str(req.get("request_email") or "").strip()
+    return bool(office and scope and route in VALID_REQUEST_ROUTES and (portal or email))
+
+
 def _as_number(value) -> float | None:
     if value is None or value == "":
         return None
@@ -198,63 +244,89 @@ def evaluate(catalog: dict) -> dict:
         threshold = DEFAULT_DISCREPANCY_THRESHOLD_PCT
     canonical = (parcel.get("canonical_source") or "").strip().lower()
     exception = _approved(catalog, "parcel")
+    parcel_reasons: list[str] = []
+    discrepancy_pct = None
 
     if assessed is None:
-        gates.append(
-            _gate(
-                "parcel",
-                "BLOCKED",
-                "canonical assessed-property count is missing; GIS is not a substitute denominator",
-                "Record tax-roll/NAL/appraiser assessed count and choose a canonical source",
-            )
+        parcel_reasons.append(
+            "canonical assessed-property count is missing; GIS is not a substitute denominator"
         )
     else:
-        discrepancy_pct = None
         if gis is not None and assessed > 0:
             discrepancy_pct = abs(gis - assessed) / assessed * 100.0
+        counts_differ = gis is not None and gis != assessed
+        if counts_differ and not str(parcel.get("discrepancy_explanation") or "").strip():
+            parcel_reasons.append(
+                "GIS and assessed counts differ but parcel.discrepancy_explanation is missing"
+            )
+        if (
+            gis is not None
+            and gis < assessed
+            and str(parcel.get("separately_assessed_without_geometry") or "").strip().lower()
+            not in GEOMETRY_NULL_POLICY
+        ):
+            parcel_reasons.append(
+                "GIS count is below assessed count; catalog must set "
+                "parcel.separately_assessed_without_geometry to acknowledged or none "
+                "(condos and other units without unique polygons)"
+            )
         unresolved = (
             discrepancy_pct is not None
             and discrepancy_pct > threshold
             and exception is None
         )
         gis_only = canonical in {"gis", "geometry", "polygon"} and exception is None
-        if unresolved or (gis_only and discrepancy_pct is not None and discrepancy_pct > threshold):
+        if unresolved or (
+            gis_only and discrepancy_pct is not None and discrepancy_pct > threshold
+        ):
             pretty = f"{discrepancy_pct:.1f}" if discrepancy_pct is not None else "unknown"
-            gates.append(
-                _gate(
-                    "parcel",
-                    "BLOCKED",
-                    (
-                        f"GIS {gis} vs assessed {assessed} is approximately {pretty}% "
-                        f"(threshold {threshold}%); unresolved material discrepancy; "
-                        "GIS-only seeding is not allowed"
-                    ),
-                    "Document cause, canonical denominator, seed decision, excluded population, and coverage effect, then record an approved exception",
-                )
+            parcel_reasons.append(
+                f"GIS {gis} vs assessed {assessed} is approximately {pretty}% "
+                f"(threshold {threshold}%); unresolved material discrepancy; "
+                "GIS-only seeding is not allowed"
             )
-        elif exception and discrepancy_pct is not None and discrepancy_pct > threshold:
-            gates.append(
-                _gate(
-                    "parcel",
-                    "APPROVED_EXCEPTION",
-                    f"{exception.get('reason')} (discrepancy {discrepancy_pct:.1f}%)",
-                )
+    if parcel_reasons and exception is None:
+        gates.append(
+            _gate(
+                "parcel",
+                "BLOCKED",
+                "; ".join(parcel_reasons),
+                "Record tax-roll/NAL counts, explain any GIS gap, address geometry-null units, and do not seed from GIS alone when the gap is material",
             )
-        else:
-            pretty = f"{discrepancy_pct:.2f}%" if discrepancy_pct is not None else "n/a"
-            gates.append(
-                _gate(
-                    "parcel",
-                    "PASS",
-                    f"canonical={canonical or 'tax_roll'} assessed={assessed} gis={gis} discrepancy={pretty}",
-                )
+        )
+    elif exception and parcel_reasons:
+        gates.append(
+            _gate(
+                "parcel",
+                "APPROVED_EXCEPTION",
+                f"{exception.get('reason')} (discrepancy {discrepancy_pct:.1f}%)"
+                if discrepancy_pct is not None
+                else str(exception.get("reason")),
             )
+        )
+    else:
+        pretty = f"{discrepancy_pct:.2f}%" if discrepancy_pct is not None else "n/a"
+        gates.append(
+            _gate(
+                "parcel",
+                "PASS",
+                f"canonical={canonical or 'tax_roll'} assessed={assessed} gis={gis} discrepancy={pretty}",
+            )
+        )
 
     permits = catalog.get("permits") or {}
     jurisdictions = permits.get("jurisdictions") or []
     expected = permits.get("expected_jurisdiction_count")
     permit_exception = _approved(catalog, "permit")
+    permit_reasons: list[str] = []
     unclassified = []
+    missing_history_flag = []
+    central_as_history = []
+    missing_request = []
+    if permits.get("assumes_unified_countywide_history") is True:
+        permit_reasons.append(
+            "assumes_unified_countywide_history is true; a county portal is not every municipality's historical permit source"
+        )
     for row in jurisdictions:
         if not isinstance(row, dict):
             unclassified.append("<invalid-row>")
@@ -263,33 +335,44 @@ def evaluate(catalog: dict) -> dict:
         name = row.get("jurisdiction") or "<unnamed>"
         if status in UNCLASSIFIED or status not in PERMIT_CLASSIFICATIONS:
             unclassified.append(name)
-    count_mismatch = expected is not None and int(expected) != len(jurisdictions)
+        if row.get("historical_records") not in {True, False}:
+            missing_history_flag.append(name)
+        kind = str(row.get("portal_kind") or "").strip().lower()
+        if kind in CENTRAL_PORTAL_KINDS and row.get("historical_records") is True:
+            central_as_history.append(name)
+        if status in REQUEST_REQUIRED_STATUSES and not _records_request_complete(row):
+            missing_request.append(name)
     if expected is None:
+        permit_reasons.append("expected_jurisdiction_count is missing")
+    elif int(expected) != len(jurisdictions):
+        permit_reasons.append(
+            f"cataloged {len(jurisdictions)} jurisdictions != expected {expected}"
+        )
+    if unclassified:
+        permit_reasons.append("unclassified: " + ", ".join(unclassified))
+    if missing_history_flag:
+        permit_reasons.append(
+            "historical_records true/false missing for: " + ", ".join(missing_history_flag)
+        )
+    if central_as_history:
+        permit_reasons.append(
+            "central-submission/onestop/supplemental portals treated as historical records: "
+            + ", ".join(central_as_history)
+        )
+    if missing_request:
+        permit_reasons.append(
+            "records_request missing or incomplete for: " + ", ".join(missing_request)
+        )
+    if permit_reasons and permit_exception is None:
         gates.append(
             _gate(
                 "permit",
                 "BLOCKED",
-                "expected_jurisdiction_count is missing",
-                "Enumerate every incorporated, unincorporated, delegated, and predecessor jurisdiction",
+                "; ".join(permit_reasons),
+                "Enumerate every incorporated, unincorporated, delegated, and predecessor jurisdiction; classify each; catalog records_request for blocked/custodian/manual-only rows; do not treat a county one-stop or application portal as complete municipal history",
             )
         )
-    elif (unclassified or count_mismatch) and permit_exception is None:
-        reasons = []
-        if count_mismatch:
-            reasons.append(
-                f"cataloged {len(jurisdictions)} jurisdictions != expected {expected}"
-            )
-        if unclassified:
-            reasons.append("unclassified: " + ", ".join(unclassified))
-        gates.append(
-            _gate(
-                "permit",
-                "BLOCKED",
-                "; ".join(reasons),
-                "Classify every jurisdiction (no needs-review) before seed or ingest",
-            )
-        )
-    elif permit_exception and (unclassified or count_mismatch):
+    elif permit_exception and permit_reasons:
         gates.append(
             _gate(
                 "permit",
@@ -317,13 +400,24 @@ def evaluate(catalog: dict) -> dict:
             )
         )
     elif destination.get("proven") is True:
-        gates.append(
-            _gate(
-                "destination",
-                "PASS",
-                "destination independently proven",
+        sources = _identity_sources(destination.get("independent_identity_sources"))
+        if len(sources) < 2:
+            gates.append(
+                _gate(
+                    "destination",
+                    "BLOCKED",
+                    "destination proven requires two independent identity sources",
+                    "Prove destination from two independent sources (for example console project/branch and configured IDs) before writes",
+                )
             )
-        )
+        else:
+            gates.append(
+                _gate(
+                    "destination",
+                    "PASS",
+                    "destination independently proven",
+                )
+            )
     else:
         gates.append(
             _gate(
@@ -334,13 +428,55 @@ def evaluate(catalog: dict) -> dict:
             )
         )
 
+    enrichment = catalog.get("enrichment") or {}
+    bbb = enrichment.get("bbb") if isinstance(enrichment, dict) else None
+    if not isinstance(bbb, dict) or not bbb:
+        gates.append(_gate("enrichment", "PASS", "no BBB advertised-count claim"))
+    else:
+        advertised = bbb.get("advertised_listing_count")
+        expected_bbb = bbb.get("expected_count")
+        try:
+            advertised_n = int(advertised) if advertised is not None else None
+            expected_n = int(expected_bbb) if expected_bbb is not None else None
+        except (TypeError, ValueError):
+            advertised_n = None
+            expected_n = None
+        cap = bbb.get("listing_page_cap")
+        acknowledged = bbb.get("cap_acknowledged") is True
+        if (
+            advertised_n is not None
+            and expected_n is not None
+            and advertised_n == expected_n
+            and (cap is None or not acknowledged)
+        ):
+            gates.append(
+                _gate(
+                    "enrichment",
+                    "BLOCKED",
+                    "BBB expected_count equals advertised_listing_count without listing_page_cap and cap_acknowledged",
+                    "Do not treat advertised listing totals as harvestable; record listing_page_cap and cap_acknowledged when expected_count matches the advertised count",
+                )
+            )
+        else:
+            gates.append(_gate("enrichment", "PASS", "BBB advertised-count claim is bounded"))
+
     blocked = [gate for gate in gates if gate["status"] == "BLOCKED"]
+    for gate in blocked:
+        gate["blocker_owner"] = GATE_OWNERS.get(gate["gate"], "oracle")
     overall = "BLOCKED" if blocked else "PASS"
-    next_action = (
-        blocked[0]["required_action"]
+    next_automated_actions = (
+        SAFE_PREPARATION_ACTIONS.copy()
         if blocked
-        else "Readiness passed. Pilot or full ingest may proceed."
+        else [READY_AUTO_ADVANCE_ACTION]
     )
+    required_blocker_actions = [
+        {
+            "gate": gate["gate"],
+            "owner": gate["blocker_owner"],
+            "required_action": gate["required_action"],
+        }
+        for gate in blocked
+    ]
     return {
         "overall": overall,
         "catalog": {
@@ -350,8 +486,13 @@ def evaluate(catalog: dict) -> dict:
             "fips": str(catalog.get("fips")) if catalog.get("fips") is not None else None,
         },
         "gates": gates,
-        "next_automated_action": next_action if blocked else None,
-        "next_permissible_automated_action": next_action,
+        "preparation_allowed": True,
+        "execution_allowed": overall == "PASS",
+        "auto_advance_required": True,
+        "required_blocker_actions": required_blocker_actions,
+        "next_automated_actions": next_automated_actions,
+        "next_automated_action": next_automated_actions[0],
+        "next_permissible_automated_action": next_automated_actions[0],
         "seed_allowed": overall == "PASS",
         "ingest_allowed": overall == "PASS",
     }
@@ -373,28 +514,32 @@ def run_self_test() -> int:
     errors: list[str] = []
     cases = [
         (
-            "broward-2026.yaml",
+            "material-gis-assessed-discrepancy.yaml",
             1,
             lambda report: (
-                _expect(report["overall"] == "BLOCKED", "broward must BLOCK", errors),
-                _expect(report["seed_allowed"] is False, "broward must forbid seed", errors),
+                _expect(report["overall"] == "BLOCKED", "material GIS gap must BLOCK", errors),
+                _expect(report["seed_allowed"] is False, "material GIS gap must forbid seed", errors),
                 _expect(
                     any(
                         gate["gate"] == "parcel" and gate["status"] == "BLOCKED"
                         for gate in report["gates"]
                     ),
-                    "broward parcel gate must BLOCK",
+                    "material GIS gap must BLOCK the parcel gate",
                     errors,
                 ),
                 _expect(
-                    any("26.6" in gate["evidence"] for gate in report["gates"] if gate["gate"] == "parcel"),
-                    "broward evidence must include approximately 26.6% discrepancy",
+                    any(
+                        "GIS-only seeding is not allowed" in gate["evidence"]
+                        for gate in report["gates"]
+                        if gate["gate"] == "parcel"
+                    ),
+                    "parcel evidence must forbid GIS-only seeding",
                     errors,
                 ),
             ),
         ),
         (
-            "hillsborough-unclassified-permits.yaml",
+            "unclassified-permit-jurisdiction.yaml",
             1,
             lambda report: (
                 _expect(
@@ -402,7 +547,7 @@ def run_self_test() -> int:
                         gate["gate"] == "parcel" and gate["status"] == "PASS"
                         for gate in report["gates"]
                     ),
-                    "hillsborough parcel gate must PASS",
+                    "small reconciled GIS gap may PASS parcel",
                     errors,
                 ),
                 _expect(
@@ -410,10 +555,25 @@ def run_self_test() -> int:
                         gate["gate"] == "permit" and gate["status"] == "BLOCKED"
                         for gate in report["gates"]
                     ),
-                    "hillsborough permit gate must BLOCK",
+                    "unclassified municipal permit must BLOCK",
                     errors,
                 ),
-                _expect(report["seed_allowed"] is False, "hillsborough must forbid seed", errors),
+                _expect(report["seed_allowed"] is False, "unclassified permit must forbid seed", errors),
+            ),
+        ),
+        (
+            "unified-portal-not-municipal-history.yaml",
+            1,
+            lambda report: (
+                _expect(
+                    any(
+                        gate["gate"] == "permit" and gate["status"] == "BLOCKED"
+                        for gate in report["gates"]
+                    ),
+                    "unified county portal must not count as municipal history",
+                    errors,
+                ),
+                _expect(report["seed_allowed"] is False, "unified-portal trap must forbid seed", errors),
             ),
         ),
         (
@@ -423,6 +583,88 @@ def run_self_test() -> int:
                 _expect(report["overall"] == "PASS", "ready catalog must PASS", errors),
                 _expect(report["seed_allowed"] is True, "ready catalog must allow seed", errors),
                 _expect(report["ingest_allowed"] is True, "ready catalog must allow ingest", errors),
+                _expect(
+                    report["execution_allowed"] is True,
+                    "ready catalog must allow execution",
+                    errors,
+                ),
+                _expect(
+                    report["next_automated_action"] == READY_AUTO_ADVANCE_ACTION,
+                    "ready catalog must auto-advance without operator confirmation",
+                    errors,
+                ),
+            ),
+        ),
+        (
+            "blocked-without-request-route.yaml",
+            1,
+            lambda report: (
+                _expect(
+                    any(
+                        gate["gate"] == "permit" and gate["status"] == "BLOCKED"
+                        for gate in report["gates"]
+                    ),
+                    "blocked jurisdiction without records_request must BLOCK permit",
+                    errors,
+                ),
+                _expect(
+                    any(
+                        "records_request missing or incomplete" in gate["evidence"]
+                        for gate in report["gates"]
+                        if gate["gate"] == "permit"
+                    ),
+                    "permit evidence must name incomplete records_request",
+                    errors,
+                ),
+                _expect(report["seed_allowed"] is False, "missing records_request must forbid seed", errors),
+                _expect(
+                    report["preparation_allowed"] is True,
+                    "readiness block must allow independent preparation",
+                    errors,
+                ),
+                _expect(
+                    report["execution_allowed"] is False,
+                    "readiness block must forbid execution",
+                    errors,
+                ),
+                _expect(
+                    report["next_automated_actions"] == SAFE_PREPARATION_ACTIONS,
+                    "readiness block must return all safe continuation actions",
+                    errors,
+                ),
+                _expect(
+                    any(
+                        item["gate"] == "permit"
+                        and item["owner"] == "county-discovery / county-permit-adapter"
+                        for item in report["required_blocker_actions"]
+                    ),
+                    "blocked permit gate must name its owner",
+                    errors,
+                ),
+            ),
+        ),
+        (
+            "advertised-listing-count-is-not-harvestable.yaml",
+            1,
+            lambda report: (
+                _expect(
+                    any(
+                        gate["gate"] == "enrichment" and gate["status"] == "BLOCKED"
+                        for gate in report["gates"]
+                    ),
+                    "advertised BBB count without cap acknowledgement must BLOCK enrichment",
+                    errors,
+                ),
+                _expect(
+                    any(
+                        "advertised_listing_count without listing_page_cap" in gate["evidence"]
+                        for gate in report["gates"]
+                        if gate["gate"] == "enrichment"
+                    ),
+                    "enrichment evidence must reject advertised BBB totals",
+                    errors,
+                ),
+                _expect(report["seed_allowed"] is False, "BBB advertised-count trap must forbid seed", errors),
             ),
         ),
     ]

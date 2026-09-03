@@ -16,10 +16,18 @@ rules.
 1. [`reference/durable-orchestration.md`](./reference/durable-orchestration.md) — core
    principles, adapter vs inventory status, CAPTCHA/login as access states, required status
    report, human-required actions, durable learning loop
-2. [`reference/readiness-and-completeness.md`](./reference/readiness-and-completeness.md) —
-   YAML catalog fields, parcel/permit/destination gates, reconciliation equations,
-   completeness evidence, publication fail-closed, dated regression examples
-3. [`../county-readiness-preflight/SKILL.md`](../county-readiness-preflight/SKILL.md) — the
+2. [`reference/continuous-ingestion.md`](./reference/continuous-ingestion.md) — autonomous
+   stage advancement, durable handoffs, worker leases/recovery, runtime provenance,
+   end-to-end completion, and immutable republish on snapshot drift
+3. [`reference/readiness-and-completeness.md`](./reference/readiness-and-completeness.md) —
+   YAML catalog fields, jump-of-ingest rules, parcel/permit/destination gates,
+   reconciliation, completeness, publication fail-closed
+4. [`reference/failure-modes.md`](./reference/failure-modes.md) — ingest and enrichment
+   traps (caps, sessions, BBB page vs advertised totals, AWS-remote browser vs operator
+   laptop, secrets inject only at process start, S3 staging ≠ Filebase)
+5. [`reference/request-routing.md`](./reference/request-routing.md) — name **who** receives
+   a records or API request; catalog `records_request` fields
+6. [`../county-readiness-preflight/SKILL.md`](../county-readiness-preflight/SKILL.md) — the
    deterministic validator. `onboard-county` must run it before seed, pilot, or full ingest.
 
 ## Choose the stack first
@@ -29,7 +37,7 @@ procedure. Do not warn-and-continue.
 
 | Marker in the checkout | Stack | Load these procedures |
 |---|---|---|
-| `elephant-pipeline` (`docker-compose`, Restate, `docs/`) | **local** | `elephant-xyz/skills` `main`: Restate + Postgres. `bootstrap-oracle-infra` is local Docker. Filebase credentials only when publishing is in scope. |
+| `elephant-pipeline` (`docker-compose`, Restate, `docs/`) | **local** | `elephant-xyz/skills` `main`: Restate + Postgres. `bootstrap-oracle-infra` is local Docker. |
 | `oracle-node` (AWS/SQS, CDK) | **aws** | AWS profile/region, SQS seed feeder. Do not run Restate handlers. |
 
 `elephant-xyz/skills` `main` targets **elephant-pipeline**. Use oracle-node procedures only
@@ -37,6 +45,11 @@ when the checkout **is** oracle-node.
 
 If both markers are present, or neither, **STOP** and ask which stack this run uses. Never
 run Restate procedures against an AWS repo, or AWS procedures against the local stack.
+
+The selected ingestion stack does not determine where BBB browser automation runs. Run
+BBB public-site browser work on approved **AWS-managed remote compute** with US egress,
+never in a browser on the operator's machine. Do not require a VM specifically; use the
+approved AWS job/container/compute path supplied by `bbb-harvest`.
 
 ## What Oracle drives
 
@@ -55,6 +68,12 @@ it never re-implements a stage.
 - **AWS stack:** `AWS_PROFILE` / `AWS_REGION` for the existing `elephant-oracle-node`
   account. Skills never hardcode accounts. STOP before any live AWS run if access is
   missing — discovery still does not need AWS.
+- **BBB public-site harvest:** an approved AWS remote execution path with US egress and
+  secrets injected at process start. This applies even when the chosen ingestion stack is
+  local.
+- **Publication:** verify Filebase credential availability, target bucket, and IPNS
+  ownership at intake whenever publication is in scope. Request missing secret injection
+  immediately; never wait until the publish stage or copy secret values into the catalog.
 - For local portal probing, a **US egress IP**.
 - Install skills from the chosen checkout:
 
@@ -90,20 +109,54 @@ Human findings stay in `elephant-pipeline/docs/<county>-county-findings.md` and 
 | `query-db-loading-matching` | Load artifacts into the query DB and cross-match by parcel id / address hash |
 | `transform-v2-builder` | Author/repair county transform handler packages for elephant-cli transform v2 |
 
+## Start independent work immediately
+
+After intake, create and start the county work queue automatically. Do not wait for one
+track to finish before beginning another, and do not ask for confirmation for reversible
+discovery or scaffolding:
+
+1. **Enumerate the full source graph:** assessed/GIS sources, every permit jurisdiction,
+   delegated authority, predecessor system, Sunbiz boundary, and BBB category scope. Start
+   bulk/list/API discovery and custodian-route research immediately.
+2. **Determine adapter work:** fingerprint each portal/vendor, map it to an existing
+   reusable adapter, and start missing adapter scaffolds, fixtures, and bounded tests as
+   soon as the vendor is known. Do not wait for parcel ingestion to finish.
+3. **Prove execution and destinations:** verify the chosen ingestion stack, the AWS remote
+   BBB execution path, Neon destination identity, Filebase credential availability,
+   publication bucket, and IPNS ownership. If access is missing, request it immediately
+   while the other tracks continue.
+4. **Open blocker routes:** for CAPTCHA, login, prohibited automation, custodian-only
+   access, or unavailable exports, classify the state and prepare the named API or records
+   request from `reference/request-routing.md` immediately.
+
+The readiness gate blocks seed, pilots, adapter scale-out, and full ingestion. It does not
+block source enumeration, bounded probes, adapter implementation/fixtures, access setup,
+records-request preparation, or publication-readiness checks.
+
+Start or reuse the durable coordinator defined in
+[`reference/continuous-ingestion.md`](./reference/continuous-ingestion.md). A successful
+stage or status message must enqueue the next eligible stage; do not pause for operator
+confirmation. Persist all stage transitions and cross-environment handoffs in the run
+manifest.
+
 ## Mandatory operating sequence
 
-Follow this sequence for every county. Do not stage a full seed, implement against an
-assumed source, or begin bulk traversal before readiness **passes the validator**. Bounded
-discovery probes are permitted before readiness validation.
+Follow this sequence for **every** county, including the first ingest. The preflight
+encodes failure modes learned from prior counties (GIS vs tax-roll, fragmented permit
+jurisdictions, county one-stop portals). Do not treat those counties as special cases —
+apply the same gates at the jump of any new ingest. Do not stage a full seed, run a pilot,
+or begin bulk traversal before the validator passes. Begin enumeration, adapter
+determination and implementation, access remediation, and publication readiness during
+bounded discovery; never implement against an assumed source.
 
 | Step | Action | Existing skill / artifact |
 |---|---|---|
-| 1 | Operator intake | `onboard-county` intake |
+| 1 | Operator intake + launch the independent startup work queue | `onboard-county` intake |
 | 2 | Review prior findings, transforms, adapters, manifests, and checkpoints | `elephant-pipeline/docs/` plus `Counties-trasform-scripts/<county>/` |
-| 3 | Bounded source discovery | `county-discovery` |
-| 4 | Build the machine-readable county source catalog | `elephant-pipeline/docs/<county>-sources.yaml` |
-| 5–6 | County Readiness Preflight + exceptions | `county-readiness-preflight` validator; **STOP** before seed/adapters if any gate is `BLOCKED` |
-| 7–8 | Adapters + pilots | `county-permit-adapter`, `county-appraisal-onboarding`, `validate-county-transform` |
+| 3 | Bounded source discovery + full jurisdiction/source enumeration | `county-discovery` |
+| 4 | Build the catalog; start required adapter fixtures/scaffolds; prove Neon, AWS BBB execution, and Filebase readiness | `docs/<county>-sources.yaml`, `county-permit-adapter`, `bootstrap-oracle-infra` |
+| 5–6 | County Readiness Preflight + exceptions | `county-readiness-preflight` validator; **STOP** before seed, pilots, or scale-out if any gate is `BLOCKED` |
+| 7–8 | Complete adapters + pilots | `county-permit-adapter`, `county-appraisal-onboarding`, `validate-county-transform` |
 | 9–10 | Checkpointed ingest + load | `county-ingest-run`, `query-db-loading-matching` |
 | 11–12 | Privacy derivatives + publish | `county-query-table-publish`, `county-open-data-publish` |
 | 13 | Verify through Donphan | MCP smoke after publish (`listPublishedCounties`, `getOracleDatasetInfo`) |
@@ -121,13 +174,18 @@ start a full `county-ingest-run`. A passing report (`overall: PASS`, `seed_allow
 is required before pilot or full ingestion.
 
 Unreadiness, CAPTCHA, login, and custodian-only access are genuine blockers. When one
-source is blocked, continue every independent safe workstream.
+source is blocked, continue every independent safe workstream. Name the records
+recipient from [`reference/request-routing.md`](./reference/request-routing.md) — never
+say “request a bulk export” without an office, portal, and system scope.
+
+The validator's `next_automated_actions` are mandatory continuation work, not suggestions.
+Drive them while blocker owners handle `required_blocker_actions`.
 
 ## How to run
 
 - **Full county:** invoke `onboard-county`. Answer intake once. Drive discovery and update
-  `docs/<county>-sources.yaml`. **Run the validator.** Only after PASS continue seed →
-  adapters → pilot → full run. Example:
+  `docs/<county>-sources.yaml` while the independent startup tracks run. **Run the
+  validator.** Only after PASS continue seed → adapter pilots → full run. Example:
 
   > Onboard Lee County, FL with the `onboard-county` skill. Start with a ~25-parcel pilot.
 
@@ -148,12 +206,14 @@ write. Do not open writer connections from this plugin.
 Every county onboarding must publish coverage as a public IPFS/IPNS contract, not as an
 AWS URL:
 
-1. Load county data through the normal source tracks: appraisal, permits, Sunbiz, BBB.
-2. Keep `oracle_dataset_coverage` updated per `(county, source)`.
-3. After each load/index refresh window, run the query-table and coverage publish path.
-4. Public consumers use IPFS/IPNS only. Donphan reads coverage through MCP
+1. At intake, verify the Filebase credential is available to the eventual publish runtime,
+   the target bucket is correct, and IPNS ownership is proven. Request missing access now.
+2. Load county data through the normal source tracks: appraisal, permits, Sunbiz, BBB.
+3. Keep `oracle_dataset_coverage` updated per `(county, source)`.
+4. After each load/index refresh window, run the query-table and coverage publish path.
+5. Public consumers use IPFS/IPNS only. Donphan reads coverage through MCP
    `getOracleDatasetInfo`. Never point users at AWS S3.
-5. Wire MCP from the **canonical published-county catalog**, not from a hardcoded county
+6. Wire MCP from the **canonical published-county catalog**, not from a hardcoded county
    list in this skill:
    - call MCP `listPublishedCounties`; or
    - read `oracle-node/catalog/published-counties.json`;
@@ -185,9 +245,24 @@ changes.
 - Drive the skills; never improvise ingestion commands a skill does not define.
 - Never hardcode or print AWS account ids, secrets, or `DATABASE_URL`.
 - Never skip `validate-county-readiness.py` before seed, pilot, or full ingest.
+- Run until the requested scope reaches a terminal state in `continuous-ingestion.md`.
+  Automatically advance successful stages, supervise durable workers, consume exact handoff
+  manifests, and recover compatible stale work within its retry budget.
+- Record repository/runtime/configuration/schema provenance before remote dispatch. Never
+  silently run a different branch, dirty tree, stale skill copy, or mismatched checkpoint.
 - Report completeness honestly. Never call a jurisdiction complete because a pilot succeeded.
 - Never solve, bypass, OCR, or evade CAPTCHA.
 - Preserve valid unmatched records.
 - Keep enrichment (Sunbiz, BBB, places) separate from core permit completeness.
+- Drive `bbb-harvest` as a public-site category harvest unless an approved API token
+  exists. Run any required browser on approved AWS-managed remote compute with US egress,
+  never on the operator's machine. It is not official API coverage. Do not set
+  `expected_count` from an advertised listing total without `listing_page_cap` and
+  `cap_acknowledged`.
+- Runtime Secrets apply at process start. Start a new AWS job/runner after adding AWS or
+  Filebase keys; do not assume a running process received them.
+- Mark complete only after capture, load, immutable publish, remote readback, catalog/MCP
+  registration, and Donphan smoke tests all pass. If loaded data advances after freeze,
+  automatically create a new immutable snapshot; never mutate the published one.
 - Every status response must use the required status report in
   [`reference/durable-orchestration.md`](./reference/durable-orchestration.md).

@@ -28,14 +28,16 @@ Record the following in `docs/<county>-sources.yaml`:
 - Geometry source and feature count
 - Parcel identifier formats and exact join keys
 - Count discrepancy, explanation, and seed decision
+- `parcel.separately_assessed_without_geometry` (`acknowledged` or `none`) when GIS is below assessed
 - Appraisal access method and safe throughput
 - One permit entry per jurisdiction or delegated authority
-- Official custodian, portal, vendor, and tenant/agency identifier
-- Record-search capability versus application-submission capability
+- `permits.assumes_unified_countywide_history` (must not be true)
+- Official custodian, portal, vendor, tenant/agency identifier, and `portal_kind`
+- Record-search / `historical_records` versus application-submission capability
 - Anonymous, authenticated, CAPTCHA, manual, or custodian-only access state
 - Earliest accessible record date and known exclusions
-- Adapter status and test evidence
-- Reported count and enumeration strategy
+- Adapter family, reuse decision, implementation status, fixture, and test evidence
+- Reported count, enumeration strategy, and enumeration status
 - Pagination, result-cap, partition, and drift behavior
 - Safe concurrency and full-run estimate
 - Publication rights and privacy constraints
@@ -52,10 +54,14 @@ python3 skills/use-oracle/scripts/validate-county-readiness.py \
   elephant-pipeline/docs/<county>-sources.yaml
 ```
 
-**STOP** before `county-seed-data`, adapter scale-out, or `county-ingest-run` while any gate
-is `BLOCKED`. This applies when `onboard-county` is invoked directly.
+**STOP** before `county-seed-data`, adapter pilots/scale-out, or `county-ingest-run` while
+any gate is `BLOCKED`. This applies when `onboard-county` is invoked directly.
 
-Bounded discovery probes are permitted before readiness validation.
+At intake, automatically begin bounded source/jurisdiction enumeration, adapter
+fingerprinting and implementation scaffolds, AWS remote BBB execution setup, destination
+proof, Filebase credential-readiness checks, and named records-request preparation. These
+independent preparation tracks continue while a readiness gate is blocked; bulk traversal
+and pilots do not.
 
 Report each gate as:
 
@@ -66,6 +72,28 @@ Report each gate as:
 
 A readiness report must name the evidence, blocker owner, required action, and next permissible
 automated action.
+
+The validator returns `preparation_allowed`, `execution_allowed`,
+`required_blocker_actions`, and `next_automated_actions`. Execute every safe continuation
+action while blocked. On PASS, enqueue the next dependency-ready stage from the durable run
+manifest without waiting for operator confirmation.
+
+### Jump-of-ingest rules (every county)
+
+Apply these before seed on the county in front of you. They are reusable failure modes,
+not a roster of special counties:
+
+- GIS polygons are not the assessed-property population. Compare GIS to the tax roll.
+- If counts differ, `parcel.discrepancy_explanation` is required. Above the 2% threshold,
+  GIS-only seeding is BLOCKED until an approved exception names the cause, canonical
+  denominator, seed decision, excluded population, and coverage effect.
+- If GIS is below assessed, set `separately_assessed_without_geometry` so condominium and
+  other units without unique geometry are not dropped.
+- Enumerate every incorporated, unincorporated, delegated, and predecessor jurisdiction.
+  No `needs-review`. A close parcel match does not skip municipal permit discovery.
+- Never treat a county one-stop, application-intake, or supplemental-approval portal as
+  unified historical municipal permits (`assumes_unified_countywide_history` must not be
+  true; `portal_kind` in that family cannot have `historical_records: true`).
 
 ### Parcel readiness gate
 
@@ -97,9 +125,14 @@ automated action.
 - Identify one authoritative source boundary per jurisdiction and historical period.
 - Every required vendor must have a reusable adapter, test fixture, throughput measurement, or
   explicit implementation plan (`county-permit-adapter` / Accela template / generic path).
+- Determine this during initial discovery and start missing adapter scaffolds, fixtures, and
+  bounded tests as soon as the source contract is known. Do not wait for parcel ingestion.
 - Determine result caps, pagination behavior, date boundaries, record-type partitions, session
   requirements, and anonymous-access limits before scaling.
 - Blocked or unavailable jurisdictions must remain visible in coverage.
+- For `blocked`, `custodian-only`, and `manual-only` rows, catalog `records_request` with
+  `recipient_office`, `system_scope`, `route` (`api-first` or `records-first`), and a
+  portal URL or email (`reference/request-routing.md`).
 
 ### Destination readiness gate
 
@@ -119,6 +152,21 @@ Before writes, independently prove through `bootstrap-oracle-infra` and
 Refuse to write if the target cannot be independently proven. Do not open writer connections
 from this plugin.
 
+Start destination and publication readiness at intake. Verify the Filebase credential by
+secret identifier/availability and a safe runtime check—never by storing its value in the
+catalog—plus the target bucket and IPNS owner. If access is missing, request secret injection
+immediately and continue independent discovery and adapter work.
+
+When `destination.writes_in_scope` is true and `proven` is true, list at least two
+`independent_identity_sources` (for example Neon console project/branch **and** configured
+branch/endpoint IDs). Do not copy expected IDs from the connection under test.
+
+### Enrichment readiness gate
+
+Sunbiz, BBB, and places do not control permit completeness. If `enrichment.bbb.expected_count`
+equals `advertised_listing_count`, the catalog must also set `listing_page_cap` and
+`cap_acknowledged: true`. Advertised directory totals are not harvestable census counts.
+
 ## Readiness validation
 
 The validator fails (`exit 1`) when:
@@ -133,6 +181,9 @@ The validator fails (`exit 1`) when:
 - Enumeration boundaries or result caps are unknown
 - Throughput and full-run duration are unknown
 - The destination cannot be independently proven
+- `destination.proven` is true without two independent identity sources
+- A blocked / custodian-only / manual-only jurisdiction lacks `records_request`
+- BBB `expected_count` copies an advertised listing total without a page-cap acknowledgment
 - Publication targets or approvals are missing when publication is in scope
 - Existing checkpoints do not match the current source, registry, configuration, or schema
   signatures
@@ -223,33 +274,30 @@ four-county default list in this skill.
 `Publish/<county>/approve`; then `tick` uploads. Do not skip approval, and do not require the
 human to run the upload command except as break-glass.
 
+Apply the atomic completion and snapshot-drift rules in
+[`continuous-ingestion.md`](./continuous-ingestion.md). A capture or load milestone is not
+done; completion requires remote publication readback and MCP visibility. A newer loaded
+watermark automatically creates a new immutable snapshot.
+
 Availability must be typed `unsupported`, `supported_partial`, or `supported_full`. Never
 represent unsupported access as zero records.
 
-## Non-normative regression examples
+## Failure-mode fixtures
 
-These examples are regression cases, not permanent runtime constants. Always refresh live
-source evidence. Encoded fixtures (must keep passing `--self-test`):
+These fixtures prove the jump-of-ingest rules. They are not a list of counties to treat
+as special cases. Numbers inside a fixture are illustrative. Always refresh live source
+evidence for the county being ingested.
 
-- `fixtures/readiness/broward-2026.yaml` — GIS-only seeding BLOCKED (~26.6% discrepancy)
-- `fixtures/readiness/hillsborough-unclassified-permits.yaml` — parcel PASS; permit BLOCKED
-  while Temple Terrace remains `needs-review`
-- `fixtures/readiness/ready-minimal.yaml` — PASS; seed and ingest allowed
+| Fixture | Mode |
+|---|---|
+| `fixtures/readiness/material-gis-assessed-discrepancy.yaml` | Material GIS vs tax-roll gap; GIS-only seed BLOCKED |
+| `fixtures/readiness/unclassified-permit-jurisdiction.yaml` | Parcel PASS; unclassified municipality BLOCKED |
+| `fixtures/readiness/unified-portal-not-municipal-history.yaml` | County one-stop is not municipal permit history |
+| `fixtures/readiness/ready-minimal.yaml` | PASS |
+| `fixtures/readiness/blocked-without-request-route.yaml` | Blocked/custodian/manual-only rows need `records_request` |
+| `fixtures/readiness/advertised-listing-count-is-not-harvestable.yaml` | Advertised BBB listings are not `expected_count` without a page-cap acknowledgment |
 
-### Broward (dated 2026 discovery snapshot)
-
-- GIS exposed approximately 556,230 features.
-- The preliminary DOR roll reported approximately 758,147 assessed real-property parcels.
-- GIS-only seeding must fail readiness because the approximately 26.6% difference is material.
-- The resolution must address tax-roll ingestion, condominium units, geometry-null properties,
-  and final reconciliation.
-- Broward contains 31 municipalities plus unincorporated or delegated jurisdictions.
-- ePermits OneStop must not be assumed to contain unified historical municipal permit records.
-
-### Hillsborough (dated 2026 discovery snapshot)
-
-- GIS exposed approximately 531,612 features.
-- DOR reported approximately 530,915 real-property parcels.
-- The approximately 0.13% difference may pass after source-vintage reconciliation.
-- Permit discovery must still cover unincorporated Hillsborough, Tampa, Plant City, and Temple
-  Terrace separately.
+Provenance: these modes were learned during 2026 Florida ingests (large GIS-under-tax-roll
+gaps with condo/geometry-null units; close GIS/tax-roll match that still required separate
+municipal permit sources; central e-permits portals that were not historical coverage).
+Keep the rules; do not hard-code those county names into runtime behavior.
