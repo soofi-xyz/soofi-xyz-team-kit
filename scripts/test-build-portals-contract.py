@@ -17,6 +17,8 @@ SKILL_DIR = ROOT / "skills" / "build-portals"
 SKILL_MD = SKILL_DIR / "SKILL.md"
 INTAKE_RULES = SKILL_DIR / "rules" / "01-intake-and-portal-spec.md"
 SCHEMA_PATH = SKILL_DIR / "reference" / "portal-spec.schema.json"
+LAMBDA_RULES = SKILL_DIR / "rules" / "02-deterministic-lambda-template.md"
+LAMBDA_REFERENCE = SKILL_DIR / "reference" / "portal-api-stack.ts"
 
 SOURCE_TYPES = ("figma", "portal_url", "other_design", "source_repo")
 REQUIRED_SCHEMA_FIELDS = (
@@ -64,6 +66,20 @@ PIPELINE_STAGES = (
     "Integrate",
     "Verify",
     "Handoff",
+)
+LAMBDA_TEMPLATE_TOKENS = (
+    "PortalApiStackProps",
+    "PortalApiStack",
+    "memorySize",
+    "timeoutSeconds",
+    "provisionedConcurrentExecutions",
+    "'live'",
+    "grantRead",
+    "LogGroup",
+    "Tracing.ACTIVE",
+    "p95",
+    "DurationAlarm",
+    "ErrorAlarm",
 )
 
 
@@ -200,6 +216,23 @@ def assert_schema_contract(schema: dict) -> None:
         fail("schema must reject documents missing required fields")
 
 
+def assert_lambda_template_contract() -> None:
+    rules_text = read_text(LAMBDA_RULES)
+    reference_text = read_text(LAMBDA_REFERENCE)
+    corpus = "\n".join([rules_text, reference_text])
+
+    for token in LAMBDA_TEMPLATE_TOKENS:
+        if token not in corpus:
+            fail(f"deterministic Lambda template must include {token!r}")
+
+    if "512" not in reference_text or "30" not in reference_text:
+        fail("Lambda reference must default to 512 MB and 30 seconds")
+    if "provisionedConcurrentExecutions = 0" not in reference_text:
+        fail("Lambda reference must default provisioned concurrency to 0")
+    if "wildcard" not in rules_text.lower() or "least-privilege" not in rules_text.lower():
+        fail("Lambda rules must document least-privilege and wildcard IAM policy")
+
+
 def main() -> int:
     skill_text = read_text(SKILL_MD)
     rules_text = read_text(INTAKE_RULES)
@@ -210,6 +243,7 @@ def main() -> int:
 
     schema = load_schema()
     assert_schema_contract(schema)
+    assert_lambda_template_contract()
 
     print("build-portals contract tests passed")
     return 0

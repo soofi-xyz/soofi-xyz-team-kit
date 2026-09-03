@@ -1,0 +1,78 @@
+---
+title: Deterministic Lambda Template
+impact: CRITICAL
+tags: lambda, cdk, api-gateway, iam, secrets, observability
+---
+
+# Deterministic Lambda Template
+
+Generate every portal backend from `reference/portal-api-stack.ts`. Copy it into
+the new portal repository and change only values supplied by the normalized
+portal spec. Do not put tenant values back into this generic reference.
+
+## Required inputs
+
+Map these `portal-spec.json` values to `PortalApiStackProps`:
+
+- `apiName` and `functionName`
+- `allowedOrigins`
+- `memorySize` (default `512` MB)
+- `timeoutSeconds` (default `30`)
+- `provisionedConcurrentExecutions` (default `0`)
+- `secretNames`
+- non-secret `environment`
+
+Account, region, origins, secret names, and environment values are
+organization-supplied. Keep placeholders when the operator explicitly permits
+them. Never infer or embed those values.
+
+## Deterministic infrastructure
+
+The generated stack must contain:
+
+1. One Node.js Lambda with active X-Ray tracing and Powertools service,
+   metrics, and log-level environment variables.
+2. An explicit `/aws/lambda/<functionName>` log group retained for 30 days.
+3. An HTTP API with operator-supplied CORS origins and a proxy route.
+4. A `live` Lambda alias backed by `currentVersion` only when provisioned
+   concurrency is greater than zero. With zero, integrate the unqualified
+   function and do not publish an unnecessary version.
+5. Named Secrets Manager references with `grantRead` on the execution target.
+   Secret values never enter CDK source, CloudFormation parameters, or Lambda
+   environment variables.
+6. A p95 duration alarm at the API budget of 200 ms and an error alarm.
+7. CloudFormation outputs for the API endpoint and function name.
+
+## IAM policy
+
+Use least-privilege grants from CDK resources, such as `secret.grantRead()`.
+Wildcard IAM resources or actions are forbidden unless AWS does not support
+resource-level scoping for the required action. Any unavoidable wildcard must
+be narrowly action-scoped and explained inline beside the policy statement.
+Do not attach managed administrator policies.
+
+## Provisioned concurrency
+
+`provisionedConcurrentExecutions: 0` is the safe default and means no alias is
+created. A positive value creates alias `live` and points API Gateway at that
+alias. The feature environment must use the configured value from the portal
+spec; production sizing is not guessed.
+
+## Secrets
+
+`secretNames` contains approved secret names or operator-approved placeholder
+names, never secret values. The handler retrieves values from Secrets Manager
+at runtime. Its execution role receives read access only to the listed secrets.
+
+## Verification
+
+Synthesize the generated stack and inspect the template before deployment:
+
+```bash
+pnpm --filter api-cdk cdk synth
+pnpm --filter api-cdk cdk diff
+```
+
+Reject the generated stack if defaults became hardcoded constraints, origins
+became `*`, secrets were placed in environment variables, or broad IAM was
+introduced.
