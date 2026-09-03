@@ -55,6 +55,29 @@
     "breakpoints": {
       "type": "array",
       "minItems": 3,
+      "allOf": [
+        {
+          "contains": {
+            "type": "object",
+            "required": ["name"],
+            "properties": { "name": { "const": "mobile" } }
+          }
+        },
+        {
+          "contains": {
+            "type": "object",
+            "required": ["name"],
+            "properties": { "name": { "const": "tablet" } }
+          }
+        },
+        {
+          "contains": {
+            "type": "object",
+            "required": ["name"],
+            "properties": { "name": { "const": "desktop" } }
+          }
+        }
+      ],
       "items": {
         "type": "object",
         "required": ["name", "widthPx"],

@@ -34,6 +34,9 @@ jobs:
       - name: Validate plugin files
         run: scripts/validate-plugin.sh
 
+      - name: Check build-portals contract
+        run: python3 scripts/test-build-portals-contract.py
+
       - name: Check Hoopa tenant-neutral content
         run: python3 scripts/check-build-portals-sanitization.py
 

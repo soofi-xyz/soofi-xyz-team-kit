@@ -24,6 +24,9 @@ for (let index = 0; index < REQUEST_COUNT; index += 1) {
   validateRequest(request, index % dataset.length);
 
   const headers = new Headers(request.headers ?? {});
+  for (const [headerName, envName] of Object.entries(request.headerEnv ?? {})) {
+    headers.set(headerName, requireEnv(envName));
+  }
   const init = {
     method: request.method ?? 'GET',
     headers,
@@ -116,6 +119,21 @@ function validateRequest(request, index) {
   }
   if (request.path.startsWith('//')) {
     throw new Error(`dataset request ${index}.path cannot be protocol-relative`);
+  }
+  if (
+    request.headerEnv !== undefined &&
+    (request.headerEnv === null ||
+      typeof request.headerEnv !== 'object' ||
+      Array.isArray(request.headerEnv))
+  ) {
+    throw new Error(`dataset request ${index}.headerEnv must be an object`);
+  }
+  for (const [headerName, envName] of Object.entries(request.headerEnv ?? {})) {
+    if (!headerName || typeof envName !== 'string' || !envName) {
+      throw new Error(
+        `dataset request ${index}.headerEnv must map header names to environment variable names`,
+      );
+    }
   }
 }
 

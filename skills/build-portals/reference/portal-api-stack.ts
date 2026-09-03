@@ -6,6 +6,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as nodejs from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
+import * as path from 'node:path';
 import { Construct } from 'constructs';
 
 export interface PortalApiStackProps extends cdk.StackProps {
@@ -37,6 +38,9 @@ export class PortalApiStack extends cdk.Stack {
     if (allowedOrigins.length === 0) {
       throw new Error('allowedOrigins must contain at least one explicit origin');
     }
+    if (allowedOrigins.includes('*')) {
+      throw new Error('allowedOrigins cannot contain a wildcard origin');
+    }
     if (provisionedConcurrentExecutions < 0) {
       throw new Error('provisionedConcurrentExecutions cannot be negative');
     }
@@ -49,7 +53,7 @@ export class PortalApiStack extends cdk.Stack {
 
     const handler = new nodejs.NodejsFunction(this, 'PortalApiFunction', {
       functionName,
-      entry: '../src/handler.ts',
+      entry: path.join(__dirname, '../../src/handler.ts'),
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'handler',
       memorySize,
@@ -97,13 +101,20 @@ export class PortalApiStack extends cdk.Stack {
       },
     });
 
+    const lambdaIntegration = new integrations.HttpLambdaIntegration(
+      'PortalLambdaIntegration',
+      executionTarget,
+    );
+
+    httpApi.addRoutes({
+      path: '/',
+      methods: [apigwv2.HttpMethod.ANY],
+      integration: lambdaIntegration,
+    });
     httpApi.addRoutes({
       path: '/{proxy+}',
       methods: [apigwv2.HttpMethod.ANY],
-      integration: new integrations.HttpLambdaIntegration(
-        'PortalLambdaIntegration',
-        executionTarget,
-      ),
+      integration: lambdaIntegration,
     });
 
     new cloudwatch.Alarm(this, 'DurationAlarm', {

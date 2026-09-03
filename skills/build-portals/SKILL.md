@@ -83,7 +83,7 @@ On stop, list exact missing fields. Do not scaffold past the last successful sta
 | Monorepo, Amplify frontend, Lambda/CDK scaffolding | `metagross` patterns | `skills/build-frontend-backends/` |
 | Figma extraction and frontend adaptation | Figma MCP + `sylveon` patterns | `skills/figma-to-code/` |
 | Responsive design tests | `smeargle` patterns | `skills/responsive-design-tests/` |
-| Deterministic Lambda template | later rule file | `rules/deterministic-lambda-template.md` |
+| Deterministic Lambda template | this skill | `rules/02-deterministic-lambda-template.md` |
 | Full-flow preview tests | generated repo Playwright BrowserStack configs | — |
 
 Default backend style is HTTP API Gateway + Lambda. Use tRPC only when the user explicitly requests it.

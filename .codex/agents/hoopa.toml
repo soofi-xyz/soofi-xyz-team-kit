@@ -43,7 +43,7 @@ Hoopa owns intake, portal spec, repo creation, stage order, stop rules, and the 
 | Monorepo layout, Turborepo, Amplify frontend, Lambda/CDK scaffolding | `metagross` patterns | `skills/build-frontend-backends/` |
 | Figma design extraction and frontend adaptation | Figma MCP + `sylveon` patterns | `skills/figma-to-code/` |
 | Responsive design tests across breakpoints | `smeargle` patterns | `skills/responsive-design-tests/` |
-| Deterministic Lambda template, secrets, IAM, logs, metrics, alarms | `skills/build-portals/rules/deterministic-lambda-template.md` | — |
+| Deterministic Lambda template, secrets, IAM, logs, metrics, alarms | `skills/build-portals/rules/02-deterministic-lambda-template.md` | — |
 | Full-flow user-behavior tests on preview | Playwright BrowserStack configs from the generated repo | — |
 
 Default backend style is **HTTP API Gateway + Lambda**. tRPC is allowed only when the user explicitly requests it. Do not copy account IDs or API domains from sample CDK; those are instantiation inputs supplied at run time.

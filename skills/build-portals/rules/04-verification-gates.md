@@ -84,16 +84,17 @@ The dataset is a non-empty JSON array of request objects:
   {
     "path": "/records/search",
     "method": "POST",
-    "headers": { "authorization": "Bearer SECRET_PLACEHOLDER_TEST_TOKEN" },
+    "headerEnv": { "authorization": "TEST_AUTHORIZATION" },
     "body": { "query": "representative-input" }
   }
 ]
 ```
 
-Store real test credentials outside the dataset file and substitute them at
-runtime in the generated repository. Never commit a populated authorization
-header. Run enough requests to represent the accepted flow; increase
-`REQUEST_COUNT` when the supplied dataset or performance plan requires it.
+Store real test credentials outside the dataset file. `headerEnv` maps an HTTP
+header to the environment variable containing its complete runtime value, such
+as `Bearer <token>`. Never commit a populated authorization header. Run enough
+requests to represent the accepted flow; increase `REQUEST_COUNT` when the
+supplied dataset or performance plan requires it.
 
 Sort measured durations and calculate the nearest-rank percentile. The p95
 requirement is strictly `< 200` ms; p95 equal to or greater than 200 ms fails.

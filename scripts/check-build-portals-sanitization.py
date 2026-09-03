@@ -36,6 +36,14 @@ CREDENTIAL_PATTERNS = (
         re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
     ),
 )
+CREDENTIAL_ASSIGNMENT_PATTERN = re.compile(
+    r"""(?ix)
+    \b(?:password|passwd|secret|token|api[_-]?key)\b
+    \s*[:=]\s*
+    ["']([^"']+)["']
+    """
+)
+SAFE_ASSIGNMENT_MARKERS = ("placeholder", "example", "${", "process.env")
 
 
 def configured_literals() -> tuple[str, ...]:
@@ -62,6 +70,11 @@ def scan_text(label: str, text: str, literals: tuple[str, ...]) -> list[str]:
     for credential_type, pattern in CREDENTIAL_PATTERNS:
         if pattern.search(text):
             findings.append(f"{label}: possible {credential_type}")
+
+    for match in CREDENTIAL_ASSIGNMENT_PATTERN.finditer(text):
+        value = match.group(1).casefold()
+        if not any(marker in value for marker in SAFE_ASSIGNMENT_MARKERS):
+            findings.append(f"{label}: possible plain-text credential assignment")
 
     return findings
 
@@ -120,10 +133,14 @@ def relative_targets() -> list[str]:
 
 
 def self_test() -> None:
-    fixture = "Reference portal: https://customer-portal.invalid/sign-in"
-    findings = scan_text("self-test fixture", fixture, ())
-    if not findings:
+    customer_url_fixture = "Reference: https://customer-portal.invalid/sign-in"
+    if not scan_text("customer URL fixture", customer_url_fixture, ()):
         raise AssertionError("scanner self-test failed to reject a customer URL")
+
+    credential_fixture = 'password = "fixture-real-value"'
+    findings = scan_text("credential fixture", credential_fixture, ())
+    if not any("credential assignment" in finding for finding in findings):
+        raise AssertionError("scanner self-test failed to reject a credential")
 
 
 def main() -> int:

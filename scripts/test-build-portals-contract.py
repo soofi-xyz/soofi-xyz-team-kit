@@ -210,6 +210,15 @@ def assert_schema_contract(schema: dict) -> None:
         if source_type not in source_enum:
             fail(f"schema sourceType enum must include {source_type!r}")
 
+    breakpoint_schema = schema.get("properties", {}).get("breakpoints", {})
+    breakpoint_constraints = json.dumps(breakpoint_schema.get("allOf", []))
+    for breakpoint_name in ("mobile", "tablet", "desktop"):
+        if f'"const": "{breakpoint_name}"' not in breakpoint_constraints:
+            fail(
+                "schema breakpoints must require one "
+                f"{breakpoint_name!r} breakpoint"
+            )
+
     valid_example = {
         "sourceType": "portal_url",
         "screens": [
