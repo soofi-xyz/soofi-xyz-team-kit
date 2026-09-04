@@ -214,9 +214,22 @@ describe("captureAndTransform (Gate B fixture, no network)", () => {
       expect(manifest.results[0].error).toMatch(/No local HTML fixture/);
       expect(manifest.results[0].error).toMatch(/--live-fetch was not supplied/);
 
+      // A 1-of-1 all-failure run is NOT a valid export by default (fail-closed
+      // gate, review finding #1): `checked` stays 0 (nothing to structurally
+      // check), but the run as a whole is reported invalid rather than
+      // trivially "valid".
       const validation = await validateRun(manifest);
-      expect(validation.valid).toBe(true);
+      expect(validation.valid).toBe(false);
       expect(validation.checked).toBe(0);
+      expect(validation.issues.some((issue) => /0 of 1 seed rows produced a successful parcel/.test(issue.reason))).toBe(
+        true,
+      );
+
+      // `{ allowEmpty: true }` (CLI: --allow-empty) explicitly opts back into
+      // treating the all-failure run as valid.
+      const allowedValidation = await validateRun(manifest, { allowEmpty: true });
+      expect(allowedValidation.valid).toBe(true);
+      expect(allowedValidation.checked).toBe(0);
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
@@ -333,6 +346,113 @@ describe("manifest reconciliation + retry ledger (Global Constraint)", () => {
     expect(validation.valid).toBe(false);
     expect(validation.issues.some((issue) => /duplicate parcelId/.test(issue.reason))).toBe(true);
     void fixtureRow;
+  });
+});
+
+describe("all-fail empty-export gate (Review finding #1, fail-closed by default)", () => {
+  it("validateRun rejects a 1-of-1 all-permanent-failure run by default, and accepts it with allowEmpty", async () => {
+    const tempDir = await mkdtemp(path.join(tmpdir(), "duval-all-fail-validate-"));
+    try {
+      const [fixtureRow] = await loadFixtureSeedRows();
+      const fixtureHtml = await readFile(path.join(FIXTURE_DIR, "html", `${PARCEL_ID}.html`), "utf8");
+      // Same HTML fixture served under a mismatched parcel id: this is a
+      // deterministic *permanent* failure (RE Number mismatch), not just a
+      // missing-fixture retryable one, so the only reason `checked` stays 0
+      // is that nothing succeeded — not that nothing was attempted.
+      const permanentRow = { ...fixtureRow, parcel_id: "0000000001", source_identifier: "0000000001R" };
+      const htmlDir = path.join(tempDir, "html");
+      await mkdir(htmlDir, { recursive: true });
+      await writeFile(path.join(htmlDir, `${permanentRow.parcel_id}.html`), fixtureHtml, "utf8");
+
+      const outputDir = path.join(tempDir, "ingest");
+      const manifest = await captureAndTransform({
+        seedRows: [permanentRow],
+        htmlDir,
+        outputDir,
+        liveFetch: false,
+      });
+      expect(manifest.reconciled).toEqual({ seedRows: 1, success: 0, permanentFailure: 1, retryableFailure: 0 });
+
+      const rejected = await validateRun(manifest);
+      expect(rejected.valid).toBe(false);
+      expect(rejected.checked).toBe(0);
+      expect(
+        rejected.issues.some((issue) => /0 of 1 seed rows produced a successful parcel/.test(issue.reason)),
+      ).toBe(true);
+
+      const accepted = await validateRun(manifest, { allowEmpty: true });
+      expect(accepted.valid).toBe(true);
+      expect(accepted.checked).toBe(0);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("validateRun does not require allowEmpty for a genuinely empty seed (seedRows === 0)", async () => {
+    const manifest = {
+      outputDir: "/unused",
+      results: [],
+      reconciled: { seedRows: 0, success: 0, permanentFailure: 0, retryableFailure: 0 },
+    };
+    const validation = await validateRun(manifest);
+    expect(validation).toEqual({ valid: true, checked: 0, issues: [] });
+  });
+
+  it("buildPublicationArtifacts throws on a 1-of-1 all-failure run by default, and writes a zero-row table with allowEmpty", async () => {
+    const tempDir = await mkdtemp(path.join(tmpdir(), "duval-all-fail-export-"));
+    try {
+      const [fixtureRow] = await loadFixtureSeedRows();
+      const missingRow = { ...fixtureRow, parcel_id: "9999999999", source_identifier: "9999999999R" };
+      const outputDir = path.join(tempDir, "ingest");
+      await captureAndTransform({
+        seedRows: [missingRow],
+        htmlDir: path.join(FIXTURE_DIR, "html"),
+        outputDir,
+        liveFetch: false,
+      });
+
+      const publishDir = path.join(tempDir, "publish");
+      await expect(
+        buildPublicationArtifacts({ outputDir, seedRows: [missingRow], publishDir }),
+      ).rejects.toThrow(/Refusing to publish an empty Duval query table/);
+
+      // Nothing was written on the rejected attempt.
+      const { access } = await import("node:fs/promises");
+      await expect(access(path.join(publishDir, "query-table.parquet"))).rejects.toThrow();
+
+      const artifacts = await buildPublicationArtifacts({
+        outputDir,
+        seedRows: [missingRow],
+        publishDir,
+        allowEmpty: true,
+      });
+      expect(artifacts.rowCount).toBe(0);
+      expect(artifacts.expectedCount).toBe(1);
+
+      const rows = await readParquetRows(artifacts.parquetPath);
+      expect(rows).toHaveLength(0);
+
+      const coverage = JSON.parse(await readFile(artifacts.coveragePath, "utf8"));
+      expect(coverage.datasets[0].ingested_count).toBe(0);
+      expect(coverage.datasets[0].expected_count).toBe(1);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("buildPublicationArtifacts never throws the empty-export error for a genuinely empty seed (seedRows === 0)", async () => {
+    const tempDir = await mkdtemp(path.join(tmpdir(), "duval-zero-seed-export-"));
+    try {
+      const artifacts = await buildPublicationArtifacts({
+        outputDir: path.join(tempDir, "ingest"),
+        seedRows: [],
+        publishDir: path.join(tempDir, "publish"),
+      });
+      expect(artifacts.rowCount).toBe(0);
+      expect(artifacts.expectedCount).toBe(0);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
   });
 });
 

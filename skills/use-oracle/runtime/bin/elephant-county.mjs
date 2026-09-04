@@ -82,16 +82,19 @@ async function readSeedRows(seedPath) {
 }
 
 /**
- * `elephant-county ingest --county <key> --seed <csv> --html-dir <dir> [--skip-validate] [--live-fetch] --output <run-dir>`
+ * `elephant-county ingest --county <key> --seed <csv> --html-dir <dir> [--skip-validate] [--live-fetch] [--allow-empty] --output <run-dir>`
  *
  * Fails closed on live fetch: a missing local HTML file is an error unless
- * `--live-fetch` is explicitly supplied (Global Constraint).
+ * `--live-fetch` is explicitly supplied (Global Constraint). Also fails
+ * closed on an all-failure run: if every seed row failed, `validateRun`
+ * reports the run invalid unless `--allow-empty` is explicitly supplied
+ * (adapters that don't recognize `allowEmpty`, e.g. Pinellas, ignore it).
  *
  * @param {readonly string[]} argv - Arguments after `ingest`.
  * @returns {Promise<void>} Resolves once the run manifest is written and printed.
  */
 async function runIngest(argv) {
-  const flags = parseFlags(argv, ["skip-validate", "live-fetch"]);
+  const flags = parseFlags(argv, ["skip-validate", "live-fetch", "allow-empty"]);
   const adapter = requireAdapter(String(flags.county));
   const seedRows = await readSeedRows(String(flags.seed));
   const manifest = await adapter.captureAndTransform({
@@ -101,7 +104,7 @@ async function runIngest(argv) {
     liveFetch: flags["live-fetch"] === true,
   });
   if (flags["skip-validate"] !== true) {
-    const validation = await adapter.validateRun(manifest);
+    const validation = await adapter.validateRun(manifest, { allowEmpty: flags["allow-empty"] === true });
     if (!validation.valid) {
       console.error(JSON.stringify({ event: "ingest_validation_failed", validation }));
       process.exitCode = 1;
@@ -112,19 +115,24 @@ async function runIngest(argv) {
 }
 
 /**
- * `elephant-county export --county <key> --seed <csv> --run <run-dir> --output <publish-dir>`
+ * `elephant-county export --county <key> --seed <csv> --run <run-dir> --output <publish-dir> [--allow-empty]`
+ *
+ * Fails closed on an empty export: if every seed row failed to produce a
+ * complete parcel, this refuses to publish a zero-row query table unless
+ * `--allow-empty` is explicitly supplied (Global Constraint).
  *
  * @param {readonly string[]} argv - Arguments after `export`.
  * @returns {Promise<void>} Resolves once publication artifacts are written and printed.
  */
 async function runExport(argv) {
-  const flags = parseFlags(argv);
+  const flags = parseFlags(argv, ["allow-empty"]);
   const adapter = requireAdapter(String(flags.county));
   const seedRows = await readSeedRows(String(flags.seed));
   const artifacts = await adapter.buildPublicationArtifacts({
     outputDir: String(flags.run),
     seedRows,
     publishDir: String(flags.output),
+    allowEmpty: flags["allow-empty"] === true,
   });
   console.log(JSON.stringify({ event: "export_complete", artifacts }, null, 2));
 }
@@ -186,8 +194,8 @@ async function main() {
   if (command === "replay") return runReplayCommand(rest);
   console.error(
     "Usage: elephant-county <ingest|export|publish|replay> --county <key> [...flags]\n" +
-      "  ingest  --county <key> --seed <csv> --html-dir <dir> [--skip-validate] [--live-fetch] --output <run-dir>\n" +
-      "  export  --county <key> --seed <csv> --run <run-dir> --output <publish-dir>\n" +
+      "  ingest  --county <key> --seed <csv> --html-dir <dir> [--skip-validate] [--live-fetch] [--allow-empty] --output <run-dir>\n" +
+      "  export  --county <key> --seed <csv> --run <run-dir> --output <publish-dir> [--allow-empty]\n" +
       "  publish --county <key> --input <publish-dir> [--dry-run] [--approve <manifest>]\n" +
       "  replay  --county <key> --fixture <dir> --output <dir>",
   );

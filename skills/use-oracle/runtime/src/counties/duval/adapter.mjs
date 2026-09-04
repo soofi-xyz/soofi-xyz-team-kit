@@ -431,17 +431,35 @@ export async function captureAndTransform({ seedRows, htmlDir, outputDir, liveFe
  */
 
 /**
+ * @typedef {object} ValidateRunOptions
+ * @property {boolean} [allowEmpty] - When true, a run with `seedRows > 0` and
+ *   zero successful parcels is not treated as an error (Global Constraint
+ *   fail-closed gate; see {@link validateRun}). Defaults to false.
+ */
+
+/**
  * Structurally validate an ingest run: the manifest reconciles
  * (`seed = success + permanent_failure + retryable_failure`), every
- * `parcelId` is unique, and every `success` parcel has a real
- * `transformed.zip` containing `data/property.json` and `data/address.json`.
- * Never calls `@elephant-xyz/cli validate` (Global Constraint).
+ * `parcelId` is unique, at least one parcel succeeded (unless the seed was
+ * empty or `options.allowEmpty` is set), and every `success` parcel has a
+ * real `transformed.zip` containing `data/property.json` and
+ * `data/address.json`. Never calls `@elephant-xyz/cli validate` (Global
+ * Constraint).
+ *
+ * A run where every seed row failed (`checked === 0` with a non-empty seed)
+ * is fail-closed by default: it is reported as invalid rather than
+ * trivially "valid" (there is nothing to check), because a caller that
+ * doesn't inspect `checked` could otherwise treat a 100%-failure run as a
+ * green light to publish. Pass `{ allowEmpty: true }` to explicitly permit
+ * this (e.g. a deliberate empty/no-op export).
  *
  * @param {{ outputDir: string, results: ParcelTransformResult[], reconciled?: import("./validate.mjs").ManifestReconciliation }} manifest - Ingest run manifest.
+ * @param {ValidateRunOptions} [options] - Validation options.
  * @returns {Promise<{ valid: boolean, checked: number, issues: RunValidationIssue[] }>}
  *   Validation summary.
  */
-export async function validateRun(manifest) {
+export async function validateRun(manifest, options = {}) {
+  const allowEmpty = options.allowEmpty === true;
   /** @type {RunValidationIssue[]} */
   const issues = [];
   let checked = 0;
@@ -461,6 +479,14 @@ export async function validateRun(manifest) {
     assertUniqueParcelIds(manifest.results);
   } catch (error) {
     issues.push({ parcelId: null, reason: error instanceof Error ? error.message : String(error) });
+  }
+  if (reconciled.seedRows > 0 && reconciled.success === 0 && !allowEmpty) {
+    issues.push({
+      parcelId: null,
+      reason:
+        `0 of ${reconciled.seedRows} seed rows produced a successful parcel; refusing to treat an all-failure ` +
+        `run as valid. Pass { allowEmpty: true } (CLI: --allow-empty) to permit an empty export.`,
+    });
   }
 
   for (const parcel of manifest.results) {
@@ -495,6 +521,16 @@ export async function validateRun(manifest) {
  */
 
 /**
+ * @typedef {object} BuildPublicationArtifactsOptions
+ * @property {string} outputDir - Ingest run directory (holds `<parcel_id>/transformed.zip` per parcel).
+ * @property {readonly Record<string, string>[]} seedRows - Seed rows the ingest run attempted.
+ * @property {string} publishDir - Destination directory for the Parquet/coverage/manifest files.
+ * @property {boolean} [allowEmpty] - When true, permit writing a zero-row
+ *   query table for a non-empty seed (Global Constraint fail-closed gate;
+ *   see {@link buildPublicationArtifacts}). Defaults to false.
+ */
+
+/**
  * Build the query-table Parquet + dataset-coverage JSON from a completed
  * ingest run. Unlike Pinellas (which requires every seed row to have
  * succeeded), Duval query-table rows are exactly the successfully
@@ -502,11 +538,15 @@ export async function validateRun(manifest) {
  * successful complete parcels`) — a permanently or retryably failed parcel
  * is silently excluded rather than failing the export.
  *
- * @param {{ outputDir: string, seedRows: readonly Record<string, string>[], publishDir: string }} run - Ingest output plus seed rows and destination directory.
+ * Fails closed on an empty export: if the seed was non-empty but zero
+ * parcels produced a row (e.g. every parcel failed), this throws *before*
+ * writing any Parquet/coverage file, rather than silently publishing a
+ * zero-row table, unless `options.allowEmpty` is explicitly `true`.
+ *
+ * @param {BuildPublicationArtifactsOptions} run - Ingest output, seed rows, destination directory, and options.
  * @returns {Promise<PublicationArtifacts>} Written artifact paths and counts.
  */
-export async function buildPublicationArtifacts({ outputDir, seedRows, publishDir }) {
-  await mkdir(publishDir, { recursive: true });
+export async function buildPublicationArtifacts({ outputDir, seedRows, publishDir, allowEmpty = false }) {
   const expectedCount = seedRows.length;
   /** @type {Record<string, unknown>[]} */
   const rows = [];
@@ -530,7 +570,14 @@ export async function buildPublicationArtifacts({ outputDir, seedRows, publishDi
   if (new Set(identifiers).size !== identifiers.length) {
     throw new Error("Query table would contain duplicate request_identifier values");
   }
+  if (expectedCount > 0 && rows.length === 0 && allowEmpty !== true) {
+    throw new Error(
+      `Refusing to publish an empty Duval query table: 0 of ${expectedCount} seed rows produced a successful, ` +
+        `complete parcel. Pass { allowEmpty: true } (CLI: --allow-empty) to permit an empty export.`,
+    );
+  }
 
+  await mkdir(publishDir, { recursive: true });
   const parquetPath = path.join(publishDir, "query-table.parquet");
   const coveragePath = path.join(publishDir, "dataset-coverage.json");
   const manifestPath = path.join(publishDir, "manifest.json");
