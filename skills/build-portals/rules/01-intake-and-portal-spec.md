@@ -6,11 +6,34 @@ tags: [intake, portal-spec, figma, stop-rules]
 
 # Intake And Portal Spec
 
-Use this rule during Hoopa stage 1 (**Intake**) and stage 2 (**Normalize**). Convert one `designSource` plus `deliveryContext` into schema-valid `portal-spec.json` with **zero** unresolved `openQuestions` before scaffolding.
+Use this rule during Hoopa stage 1 (**Intake**) and stage 2 (**Normalize**).
+Resolve whether the user wants a new repository or an incremental change first,
+then write a schema-valid `portal-spec.json` with zero unresolved
+`openQuestions` before implementation.
 
 ## Inputs
 
-### `designSource` (exactly one primary source)
+### Resolve delivery intent first
+
+Set exactly one `deliveryMode`:
+
+| `deliveryMode` | Use when | Required context |
+| --- | --- | --- |
+| `new_repository` | The user wants a new portal or explicitly asks for a new repository | One primary `designSource` plus new-repository delivery context |
+| `existing_repository` | The user wants to add, change, fix, or manage code in a current project | Accessible repository, change request, base branch, feature branch, and PR authorization |
+
+If intent is unclear, ask: **“Should I create a new repository or modify the
+existing project and open a PR?”** If the request explicitly says “in this
+repo,” “update the portal backend,” or names an existing project to change,
+select `existing_repository` without forcing a redundant question. State the
+selected mode before making changes.
+
+Every run also requires a `changeRequest` with a concise summary, affected
+scopes (`frontend`, `backend`, `infrastructure`, `testing`, or `deployment`),
+and supplied acceptance criteria. Backend-only work is valid and does not
+require a Figma file or other UI design.
+
+### `designSource` for `new_repository` (exactly one primary source)
 
 Select exactly one row. Reject mixed primary sources. Ask the user to choose if they supply more than one.
 
@@ -20,6 +43,10 @@ Select exactly one row. Reject mixed primary sources. Ask the user to choose if 
 | `portal_url` | User supplies a live portal URL | Fetch public pages for layout, routes, and copy | If sign-in is required, do not bypass auth. Ask for credentials, a session artifact, screenshots, or a `source_repo` |
 | `other_design` | User supplies screenshots, written UX notes, a component inventory, or equivalent non-Figma artifacts | Structured notes plus any provided images or docs | Stop if screens and routes cannot be reconstructed. Ask for missing artifacts |
 | `source_repo` | User supplies an existing application repository as the design reference | Read routes, components, and styling from the repo the user can access | Stop if the repo is inaccessible. Ask for access or alternate artifacts |
+
+For `existing_repository`, set `sourceType: source_repo` and treat the project
+being modified as the source. Design input is optional unless the change affects
+UI behavior or visual acceptance criteria.
 
 ### Figma routing rule
 
@@ -31,6 +58,8 @@ Select exactly one row. Reject mixed primary sources. Ask the user to choose if 
 
 Collect these org-supplied values. Missing items become `openQuestions` entries and block scaffolding.
 
+#### New repository
+
 | Field | Required | Hard stop when missing |
 | --- | --- | --- |
 | GitHub org, visibility, and repository name | Yes | Stop. Ask for org, visibility, and new repository name |
@@ -41,30 +70,42 @@ Collect these org-supplied values. Missing items become `openQuestions` entries 
 | `testPersonas` and `datasetRef` | Yes | Stop. Ask for personas and a dataset location for live latency checks |
 | BrowserStack credentials | Yes when full-flow verification is required and creds are not in the environment | Stop. Ask for BrowserStack project credentials |
 
-Optional overrides: Lambda memory, timeout, provisioned concurrency, allowed origins, frontend framework.
+#### Existing repository
+
+| Field | Required | Hard stop when missing |
+| --- | --- | --- |
+| Repository path or URL and read/write access | Yes | Stop. Ask for an accessible checkout or repository |
+| Change request and acceptance criteria | Yes | Stop. Ask what behavior or backend capability must change |
+| Base branch and feature branch | Yes; discover repository default and derive a feature name when unambiguous | Stop only when the base or destination is ambiguous |
+| Permission to push and open a PR | Yes | Stop before external writes if authorization is absent |
+| Deployment context | Only when deployment is requested or needed for an acceptance criterion | Stop before deployment, not before local implementation |
+| Dataset or BrowserStack credentials | Only when latency or browser-flow gates apply to the requested scope | Mark unrelated gates not applicable rather than blocking the change |
+
+Optional overrides: Lambda memory, timeout, provisioned concurrency, allowed
+origins, frontend framework, PR title, and whether to update an existing PR.
 
 ## Normalize to `portal-spec.json`
 
 After intake succeeds, write `portal-spec.md` and `portal-spec.json` in the target repo. Validate against `reference/portal-spec.schema.json`.
 
-Required top-level fields:
+Required top-level fields for every mode:
 
+- `deliveryMode`
 - `sourceType`
-- `screens[]`
-- `breakpoints[]`
-- `auth`
-- `apis[]`
-- `secrets[]`
-- `infra`
-- `testPersonas[]`
-- `datasetRef`
-- `hosting`
+- `changeRequest`
 - `openQuestions[]`
+
+`new_repository` additionally requires `screens`, `breakpoints`, `auth`,
+`apis`, `secrets`, `infra`, `testPersonas`, `datasetRef`, and `hosting`.
+`existing_repository` requires `repositoryContext`; include only the optional
+portal fields relevant to the requested change.
 
 ### Stop-before-scaffold rule
 
-- If `openQuestions` is non-empty, stop and ask the user. **Do not scaffold** past Normalize.
-- Only advance to **Create repo** when the spec is schema-valid and `openQuestions` is an empty array.
+- If `openQuestions` is non-empty, stop and ask the user. **Do not scaffold or
+  modify code** past Normalize.
+- Only prepare a repository workspace when the spec is schema-valid and
+  `openQuestions` is an empty array.
 
 ## Correct vs incorrect intake
 
@@ -114,7 +155,12 @@ Agent: asks which source is primary; records the other as supplemental context o
 
 ```json
 {
+  "deliveryMode": "new_repository",
   "sourceType": "other_design",
+  "changeRequest": {
+    "summary": "Create a portal from the supplied design",
+    "scopes": ["frontend", "backend", "infrastructure"]
+  },
   "screens": [
     {
       "route": "/",
@@ -144,6 +190,26 @@ Agent: asks which source is primary; records the other as supplemental context o
   "hosting": {
     "mode": "amplify-preview",
     "customDomain": "out_of_scope_v1"
+  },
+  "openQuestions": []
+}
+```
+
+## Example existing-project backend change
+
+```json
+{
+  "deliveryMode": "existing_repository",
+  "sourceType": "source_repo",
+  "changeRequest": {
+    "summary": "Add a backend endpoint and its infrastructure",
+    "scopes": ["backend", "infrastructure"],
+    "acceptanceCriteria": ["Open a pull request with passing API tests"]
+  },
+  "repositoryContext": {
+    "repository": "example-org/example-portal",
+    "baseBranch": "main",
+    "featureBranch": "feat/add-portal-endpoint"
   },
   "openQuestions": []
 }

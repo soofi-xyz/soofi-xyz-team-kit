@@ -24,8 +24,14 @@ VERIFICATION_RULES = SKILL_DIR / "rules" / "04-verification-gates.md"
 LATENCY_REFERENCE = SKILL_DIR / "reference" / "measure-latency.mjs"
 
 SOURCE_TYPES = ("figma", "portal_url", "other_design", "source_repo")
+DELIVERY_MODES = ("new_repository", "existing_repository")
 REQUIRED_SCHEMA_FIELDS = (
+    "deliveryMode",
     "sourceType",
+    "changeRequest",
+    "openQuestions",
+)
+NEW_REPOSITORY_SCHEMA_FIELDS = (
     "screens",
     "breakpoints",
     "auth",
@@ -35,9 +41,11 @@ REQUIRED_SCHEMA_FIELDS = (
     "testPersonas",
     "datasetRef",
     "hosting",
-    "openQuestions",
 )
 REQUIRED_SKILL_TOKENS = (
+    "new_repository",
+    "existing_repository",
+    "changeRequest",
     "figma",
     "portal_url",
     "other_design",
@@ -153,6 +161,11 @@ def validate_required_properties(schema: dict, document: dict, label: str) -> No
 def validate_against_schema(schema: dict, document: dict, label: str) -> None:
     validate_required_properties(schema, document, label)
 
+    delivery_mode = document.get("deliveryMode")
+    allowed_modes = schema.get("properties", {}).get("deliveryMode", {}).get("enum")
+    if allowed_modes and delivery_mode not in allowed_modes:
+        fail(f"{label}: deliveryMode must be one of {allowed_modes}")
+
     source_type = document.get("sourceType")
     allowed = schema.get("properties", {}).get("sourceType", {}).get("enum")
     if allowed and source_type not in allowed:
@@ -161,6 +174,19 @@ def validate_against_schema(schema: dict, document: dict, label: str) -> None:
     open_questions = document.get("openQuestions")
     if not isinstance(open_questions, list):
         fail(f"{label}: openQuestions must be an array")
+
+    if delivery_mode == "new_repository":
+        missing = [
+            field for field in NEW_REPOSITORY_SCHEMA_FIELDS if field not in document
+        ]
+        if missing:
+            fail(
+                f"{label}: new_repository missing required fields: "
+                f"{', '.join(missing)}"
+            )
+    elif delivery_mode == "existing_repository":
+        if "repositoryContext" not in document:
+            fail(f"{label}: existing_repository requires repositoryContext")
 
 
 def assert_skill_corpus_contains_tokens(corpus: str) -> None:
@@ -189,6 +215,10 @@ def assert_skill_corpus_contains_tokens(corpus: str) -> None:
 
 def assert_intake_rules(corpus: str) -> None:
     lowered = corpus.lower()
+    if "new_repository" not in lowered or "existing_repository" not in lowered:
+        fail("intake rules must resolve new vs existing repository intent first")
+    if "backend" not in lowered or "change request" not in lowered:
+        fail("intake rules must support scoped backend changes")
     if "exactly one" not in lowered:
         fail("intake rules must require exactly one primary design source")
     if "other_design" not in lowered:
@@ -210,6 +240,23 @@ def assert_schema_contract(schema: dict) -> None:
         if source_type not in source_enum:
             fail(f"schema sourceType enum must include {source_type!r}")
 
+    delivery_mode_enum = (
+        schema.get("properties", {}).get("deliveryMode", {}).get("enum", [])
+    )
+    for delivery_mode in DELIVERY_MODES:
+        if delivery_mode not in delivery_mode_enum:
+            fail(f"schema deliveryMode enum must include {delivery_mode!r}")
+
+    conditional_contract = json.dumps(schema.get("allOf", []))
+    for token in (
+        "new_repository",
+        "existing_repository",
+        "repositoryContext",
+        "source_repo",
+    ):
+        if token not in conditional_contract:
+            fail(f"schema conditionals must include {token!r}")
+
     breakpoint_schema = schema.get("properties", {}).get("breakpoints", {})
     breakpoint_constraints = json.dumps(breakpoint_schema.get("allOf", []))
     for breakpoint_name in ("mobile", "tablet", "desktop"):
@@ -220,7 +267,12 @@ def assert_schema_contract(schema: dict) -> None:
             )
 
     valid_example = {
+        "deliveryMode": "new_repository",
         "sourceType": "portal_url",
+        "changeRequest": {
+            "summary": "Create a portal from the supplied design",
+            "scopes": ["frontend", "backend", "infrastructure"],
+        },
         "screens": [
             {
                 "route": "/",
@@ -248,6 +300,22 @@ def assert_schema_contract(schema: dict) -> None:
         "openQuestions": [],
     }
     validate_against_schema(schema, valid_example, "valid example")
+
+    existing_example = {
+        "deliveryMode": "existing_repository",
+        "sourceType": "source_repo",
+        "changeRequest": {
+            "summary": "Add one backend endpoint",
+            "scopes": ["backend"],
+        },
+        "repositoryContext": {
+            "repository": "example-org/example-portal",
+            "baseBranch": "main",
+            "featureBranch": "feat/add-backend-endpoint",
+        },
+        "openQuestions": [],
+    }
+    validate_against_schema(schema, existing_example, "existing repository example")
 
     blocked_example = dict(valid_example)
     blocked_example["openQuestions"] = ["Need GitHub org and repository name"]

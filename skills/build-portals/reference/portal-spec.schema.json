@@ -6,23 +6,92 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
+    "deliveryMode",
     "sourceType",
-    "screens",
-    "breakpoints",
-    "auth",
-    "apis",
-    "secrets",
-    "infra",
-    "testPersonas",
-    "datasetRef",
-    "hosting",
+    "changeRequest",
     "openQuestions"
   ],
+  "allOf": [
+    {
+      "if": {
+        "properties": { "deliveryMode": { "const": "new_repository" } },
+        "required": ["deliveryMode"]
+      },
+      "then": {
+        "required": [
+          "screens",
+          "breakpoints",
+          "auth",
+          "apis",
+          "secrets",
+          "infra",
+          "testPersonas",
+          "datasetRef",
+          "hosting"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": { "deliveryMode": { "const": "existing_repository" } },
+        "required": ["deliveryMode"]
+      },
+      "then": {
+        "required": ["repositoryContext"],
+        "properties": {
+          "sourceType": { "const": "source_repo" }
+        }
+      }
+    }
+  ],
   "properties": {
+    "deliveryMode": {
+      "type": "string",
+      "enum": ["new_repository", "existing_repository"],
+      "description": "Whether Hoopa creates a repository or changes an existing project."
+    },
     "sourceType": {
       "type": "string",
       "enum": ["figma", "portal_url", "other_design", "source_repo"],
-      "description": "Exactly one primary design source selected during intake."
+      "description": "Primary design source for new portals, or source_repo for existing-project work."
+    },
+    "changeRequest": {
+      "type": "object",
+      "required": ["summary", "scopes"],
+      "additionalProperties": false,
+      "properties": {
+        "summary": { "type": "string", "minLength": 1 },
+        "scopes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "frontend",
+              "backend",
+              "infrastructure",
+              "testing",
+              "deployment"
+            ]
+          }
+        },
+        "acceptanceCriteria": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "repositoryContext": {
+      "type": "object",
+      "required": ["repository", "baseBranch", "featureBranch"],
+      "additionalProperties": false,
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "baseBranch": { "type": "string", "minLength": 1 },
+        "featureBranch": { "type": "string", "minLength": 1 },
+        "pullRequestUrl": { "type": "string", "format": "uri" }
+      }
     },
     "designSource": {
       "type": "object",

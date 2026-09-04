@@ -1,27 +1,45 @@
 ---
 name: build-portals
-description: "Portal delivery playbook for intake, normalized portal specs, repo creation, Lambda scaffolding, Amplify preview, and verification gates."
+description: "Portal delivery and maintenance playbook for creating new repositories or incrementally changing existing portal frontend, backend, infrastructure, tests, and deployments through pull requests."
 ---
 
 # Build Portals
 
-Use this skill when Hoopa (or another orchestrator) must turn one primary design source plus delivery context into a new portal repository with frontend, Lambda backend, Amplify preview, and verified quality gates.
+Use this skill when Hoopa must create a portal repository or modify an existing
+portal project. Resolve that intent before collecting mode-specific inputs.
 
 Also load `skills/apply-engineering-guidelines/` on every run.
 
 ## Consumes
 
-- `designSource` — exactly one primary source among `figma`, `portal_url`, `other_design`, or `source_repo`
+- `deliveryMode` — exactly one of `new_repository` or `existing_repository`
+- `changeRequest` — summary, affected scopes, and acceptance criteria
+- `designSource` — required only for `new_repository`; exactly one primary source among `figma`, `portal_url`, `other_design`, or `source_repo`
+- `repositoryContext` — required for `existing_repository`; repository, base branch, feature branch, and optional current PR
 - `deliveryContext` — org-supplied GitHub, AWS, Amplify, auth/API, test, and verification inputs
 
 ## Produces
 
-- `portal-spec.md` and schema-valid `portal-spec.json` in the target repo
-- Zero unresolved `openQuestions` before scaffolding begins
+- `portal-spec.md` and schema-valid `portal-spec.json` in the target repository
+- A new repository or an incremental feature branch in the existing repository
+- A pull request for review; never merge it without explicit approval
+- Zero unresolved `openQuestions` before repository writes begin
 
 Read `rules/01-intake-and-portal-spec.md` for intake, hard-stop fields, Figma MCP routing, and normalization rules. Validate JSON against `reference/portal-spec.schema.json`.
 
-## Primary design sources
+## Delivery-mode decision
+
+At the start, determine or ask whether the user wants:
+
+1. `new_repository` — create and scaffold a new portal, or
+2. `existing_repository` — inspect the current project, increment its code, and
+   open or update a pull request.
+
+Do not default to new-repository creation. An explicit request to update the
+current portal or manage its backend selects `existing_repository`. Backend-only
+changes are supported and do not require design input.
+
+## Primary design sources for new repositories
 
 | `sourceType` | How to read it |
 | --- | --- |
@@ -34,7 +52,7 @@ Exported Figma screenshots are `other_design`, not `figma`. Do not fake Figma ac
 
 ## Required delivery context
 
-Never invent these values. Missing fields are hard stops:
+Never invent these values. For `new_repository`, missing fields are hard stops:
 
 - GitHub org, visibility, and repository name
 - Confirmation to **create a new repo**
@@ -44,7 +62,14 @@ Never invent these values. Missing fields are hard stops:
 - `testPersonas` and `datasetRef` for live latency checks
 - BrowserStack project credentials when full-flow verification is required and creds are absent
 
-Record unresolved items in `openQuestions`. Stop and ask the user. **Do not scaffold** while `openQuestions` is non-empty.
+For `existing_repository`, require repository access, a concrete change request,
+base/feature branch resolution, and permission to push and create a PR.
+Deployment, dataset, Figma, Amplify, and BrowserStack inputs are required only
+when the requested scope or acceptance criteria need them. Do not block a
+backend-only code change on an unrelated design or browser gate.
+
+Record unresolved items in `openQuestions`. Stop and ask the user. **Do not
+scaffold or modify code** while `openQuestions` is non-empty.
 
 ## Nine-stage workflow
 
@@ -90,17 +115,24 @@ Default backend style is HTTP API Gateway + Lambda. Use tRPC only when the user 
 
 ## Portal spec fields
 
-Required in `portal-spec.json`:
+Required in every `portal-spec.json`:
 
+- `deliveryMode`: `new_repository` | `existing_repository`
 - `sourceType`: `figma` | `portal_url` | `other_design` | `source_repo`
-- `screens[]`: route, purpose, required states
+- `changeRequest`: summary, affected scopes, acceptance criteria
+- `repositoryContext`: required for existing-project changes
+
+Required for new portals and included for existing-project changes only when
+relevant:
+
+- `screens[]`: route, purpose, required states when UI is in scope
 - `breakpoints[]`: mobile, tablet, desktop widths for design tests
 - `auth`: mode plus callback env keys
 - `apis[]`: path, method, shapes, upstreams, latency budget
 - `secrets[]`: name, purpose, discovered-or-placeholder status
 - `infra`: memory, timeout, provisioned concurrency, log retention
-- `testPersonas[]` and `datasetRef`
-- `hosting`: Amplify preview; custom domain `out_of_scope_v1`
+- `testPersonas[]` and `datasetRef` when their gates apply
+- `hosting`: required for new portals or hosting changes
 - `openQuestions[]`: unresolved blockers (must be empty before scaffold)
 
 ## Credential rule
