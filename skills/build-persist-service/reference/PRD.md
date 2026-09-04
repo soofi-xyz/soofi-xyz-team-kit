@@ -327,7 +327,7 @@ GraphSON messages: [`async-graphson-ingest-and-graph-facts.md`](./async-graphson
 
 ### 7.3 Retry classification
 
-[`gremlin-sync-query.md`](./gremlin-sync-query.md) §8.
+Classification as implemented: [`gremlin-sync-query.md`](./gremlin-sync-query.md) §8. Decision guide for timeouts and retries across every surface: [`timeouts-and-retries.md`](./timeouts-and-retries.md).
 
 ### 7.4 Transactions
 
