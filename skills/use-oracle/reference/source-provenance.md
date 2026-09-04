@@ -4,6 +4,9 @@ The bundled Elephant ingestion skills and query-db schema snapshots in this plug
 originate from upstream repositories at pinned commits. Author metadata from the
 source skills is preserved in each skill's YAML frontmatter (`metadata.author`).
 
+What to do with those upstream git repos (keep / gate / archive — not a delete list)
+is in [`docs/elephant-source-repos.md`](../../../docs/elephant-source-repos.md).
+
 | Source repository | Pinned commit | Bundled location |
 |---|---|---|
 | [oracle-node](https://github.com/elephant-xyz/oracle-node) | `ff68b0b6812598d07e0f4aaa322ddbfe230f20b9` | `skills/{stage-skill}/`, `skills/monitoring-oracle-ingestion/` |

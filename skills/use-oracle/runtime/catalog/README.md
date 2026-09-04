@@ -24,7 +24,9 @@ entries deterministically. Coverage is mandatory; `permitQueryTableUrl` and `pla
 may be `null`.
 
 Consumers should use Elephant MCP `listPublishedCounties` instead of coupling directly to
-this repository path.
+this repository path. Until elephant-mcp’s default URL is retargeted, only clients that set
+`PUBLISHED_COUNTY_CATALOG_URL` (this kit’s `mcp.json`) read this file; see
+[`docs/elephant-source-repos.md`](../../../../../docs/elephant-source-repos.md).
 
 ## `mcp-overlays.json` — counties outside the catalog
 
