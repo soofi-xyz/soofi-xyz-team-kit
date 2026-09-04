@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reject tenant-specific or credential-like content in generic Hoopa files."""
+"""Reject machine-detectable tenant or credential content in Hoopa files."""
 
 from __future__ import annotations
 
@@ -44,6 +44,23 @@ CREDENTIAL_ASSIGNMENT_PATTERN = re.compile(
     """
 )
 SAFE_ASSIGNMENT_MARKERS = ("placeholder", "example", "${", "process.env")
+CLOUD_RESOURCE_URI_PATTERN = re.compile(
+    r"\b(?:s3|ssm|secretsmanager)://[^\s<>)\]\"'`]+|"
+    r"\barn:aws(?:-[a-z]+)?:[a-z0-9-]+:[^\s<>)\]\"'`]+",
+    re.IGNORECASE,
+)
+AMPLIFY_ID_ASSIGNMENT_PATTERN = re.compile(
+    r"""(?ix)
+    \b(?:amplify[_-]?app[_-]?id|app[_-]?id)\b
+    \s*[:=]\s*
+    ["'](d[a-z0-9]{8,})["']
+    """
+)
+ORGANIZATION_NAME_PATTERN = re.compile(
+    r"\b(?:[A-Z][A-Za-z0-9&.-]*\s+){1,5}"
+    r"(?:LLC|Inc\.?|Corporation|Corp\.?|Holdings|Capital)\b"
+)
+SAFE_TENANT_MARKERS = ("example", "placeholder", "invalid")
 
 
 def configured_literals() -> tuple[str, ...]:
@@ -75,6 +92,19 @@ def scan_text(label: str, text: str, literals: tuple[str, ...]) -> list[str]:
         value = match.group(1).casefold()
         if not any(marker in value for marker in SAFE_ASSIGNMENT_MARKERS):
             findings.append(f"{label}: possible plain-text credential assignment")
+
+    for match in CLOUD_RESOURCE_URI_PATTERN.finditer(text):
+        value = match.group(0).casefold()
+        if not any(marker in value for marker in SAFE_TENANT_MARKERS):
+            findings.append(f"{label}: possible tenant cloud resource reference")
+
+    if AMPLIFY_ID_ASSIGNMENT_PATTERN.search(text):
+        findings.append(f"{label}: possible Amplify app identifier")
+
+    for match in ORGANIZATION_NAME_PATTERN.finditer(text):
+        value = match.group(0).casefold()
+        if not any(marker in value for marker in SAFE_TENANT_MARKERS):
+            findings.append(f"{label}: possible organization name")
 
     return findings
 
@@ -141,6 +171,14 @@ def self_test() -> None:
     findings = scan_text("credential fixture", credential_fixture, ())
     if not any("credential assignment" in finding for finding in findings):
         raise AssertionError("scanner self-test failed to reject a credential")
+
+    resource_fixture = "dataset = s3://tenant-prod/customer-records.json"
+    if not scan_text("resource fixture", resource_fixture, ()):
+        raise AssertionError("scanner self-test failed to reject a cloud resource")
+
+    organization_fixture = "Customer: Acme Debt Holdings"
+    if not scan_text("organization fixture", organization_fixture, ()):
+        raise AssertionError("scanner self-test failed to reject an organization")
 
 
 def main() -> int:

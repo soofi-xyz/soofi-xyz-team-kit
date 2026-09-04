@@ -19,6 +19,8 @@
       },
       "then": {
         "required": [
+          "designSource",
+          "deliveryContext",
           "screens",
           "breakpoints",
           "auth",
@@ -57,7 +59,7 @@
     },
     "changeRequest": {
       "type": "object",
-      "required": ["summary", "scopes"],
+      "required": ["summary", "scopes", "acceptanceCriteria"],
       "additionalProperties": false,
       "properties": {
         "summary": { "type": "string", "minLength": 1 },
@@ -78,30 +80,111 @@
         },
         "acceptanceCriteria": {
           "type": "array",
+          "minItems": 1,
           "items": { "type": "string", "minLength": 1 }
         }
       }
     },
     "repositoryContext": {
       "type": "object",
-      "required": ["repository", "baseBranch", "featureBranch"],
+      "required": [
+        "repository",
+        "baseBranch",
+        "featureBranch",
+        "writeAuthorized",
+        "pullRequestAuthorized"
+      ],
       "additionalProperties": false,
       "properties": {
         "repository": { "type": "string", "minLength": 1 },
         "baseBranch": { "type": "string", "minLength": 1 },
         "featureBranch": { "type": "string", "minLength": 1 },
+        "writeAuthorized": { "const": true },
+        "pullRequestAuthorized": { "const": true },
         "pullRequestUrl": { "type": "string", "format": "uri" }
       }
     },
     "designSource": {
       "type": "object",
-      "description": "Optional intake artifact describing how the primary source was read.",
+      "description": "The primary design source used for a new portal.",
+      "required": ["reference"],
+      "properties": {
+        "reference": { "type": "string", "minLength": 1 }
+      },
       "additionalProperties": true
     },
     "deliveryContext": {
       "type": "object",
-      "description": "Optional intake artifact for org-supplied delivery inputs.",
-      "additionalProperties": true
+      "description": "Organization-supplied destination and deployment decisions for a new portal.",
+      "required": [
+        "repository",
+        "repositoryVisibility",
+        "createRepositoryAuthorized",
+        "pullRequestAuthorized",
+        "deploymentAuthorized",
+        "aws",
+        "amplify"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "repository": {
+          "type": "string",
+          "pattern": "^[^\\s/]+/[^\\s/]+$"
+        },
+        "repositoryVisibility": {
+          "type": "string",
+          "enum": ["private", "internal", "public"]
+        },
+        "createRepositoryAuthorized": { "const": true },
+        "pullRequestAuthorized": { "const": true },
+        "deploymentAuthorized": { "type": "boolean" },
+        "aws": {
+          "type": "object",
+          "required": ["mode"],
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": ["configured", "placeholders"]
+            },
+            "accountId": {
+              "type": "string",
+              "pattern": "^\\d{12}$"
+            },
+            "region": { "type": "string", "minLength": 1 }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": { "mode": { "const": "configured" } },
+                "required": ["mode"]
+              },
+              "then": { "required": ["accountId", "region"] }
+            }
+          ]
+        },
+        "amplify": {
+          "type": "object",
+          "required": ["mode"],
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": ["attach", "configure"]
+            },
+            "appRef": { "type": "string", "minLength": 1 }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": { "mode": { "const": "attach" } },
+                "required": ["mode"]
+              },
+              "then": { "required": ["appRef"] }
+            }
+          ]
+        }
+      }
     },
     "screens": {
       "type": "array",
@@ -214,17 +297,67 @@
     "infra": {
       "type": "object",
       "required": [
+        "apiName",
+        "functionName",
+        "allowedOrigins",
         "memoryMb",
         "timeoutSeconds",
         "provisionedConcurrency",
-        "logRetentionDays"
+        "logRetentionDays",
+        "alarmTopicArn"
       ],
       "additionalProperties": false,
       "properties": {
-        "memoryMb": { "type": "integer", "minimum": 128 },
-        "timeoutSeconds": { "type": "integer", "minimum": 1 },
+        "apiName": { "type": "string", "minLength": 1 },
+        "functionName": { "type": "string", "minLength": 1 },
+        "allowedOrigins": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "format": "uri" }
+        },
+        "memoryMb": {
+          "type": "integer",
+          "minimum": 128,
+          "maximum": 10240
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 900
+        },
         "provisionedConcurrency": { "type": "integer", "minimum": 0 },
-        "logRetentionDays": { "type": "integer", "minimum": 1 }
+        "logRetentionDays": {
+          "type": "integer",
+          "enum": [
+            1,
+            3,
+            5,
+            7,
+            14,
+            30,
+            60,
+            90,
+            120,
+            150,
+            180,
+            365,
+            400,
+            545,
+            731,
+            1096,
+            1827,
+            2192,
+            2557,
+            2922,
+            3288,
+            3653
+          ]
+        },
+        "alarmTopicArn": {
+          "type": "string",
+          "minLength": 1
+        }
       }
     },
     "testPersonas": {

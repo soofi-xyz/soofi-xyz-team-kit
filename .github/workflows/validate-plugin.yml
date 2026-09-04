@@ -25,6 +25,9 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install validation dependencies
+        run: python -m pip install "jsonschema==4.25.1"
+
       - name: Check shell scripts
         run: |
           bash -n scripts/sync-copilot-agents.sh
@@ -37,7 +40,7 @@ jobs:
       - name: Check build-portals contract
         run: python3 scripts/test-build-portals-contract.py
 
-      - name: Check Hoopa tenant-neutral content
+      - name: Check Hoopa sanitization heuristics
         run: python3 scripts/check-build-portals-sanitization.py
 
       - name: Check generated Copilot agents are committed

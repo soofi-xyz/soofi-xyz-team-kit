@@ -44,10 +44,15 @@ In `new_repository` mode, after preflight and explicit confirmation:
 gh repo create "$GITHUB_ORG/$REPOSITORY_NAME" \
   --"$REPOSITORY_VISIBILITY" \
   --description "$USER_SUPPLIED_DESCRIPTION" \
+  --add-readme \
   --clone
 cd "$REPOSITORY_NAME"
+BASE_BRANCH="$(git branch --show-current)"
 git switch -c feat/portal-v1
 ```
+
+The initial README commit establishes the repository's actual default/base
+branch before feature work begins. Do not assume its name is `main`.
 
 Use `private`, `internal`, or `public` only when that exact visibility is in
 the portal spec. Do not add organization-specific defaults to this skill.
@@ -62,9 +67,14 @@ The required workspaces are `apps/web`, `apps/api`, and `packages/shared`.
 apps/
   web/                  # frontend application
   api/                  # Lambda handler and API tests
-    cdk/                # PortalApiStack and deployment entry point
+    cdk/
+      lib/              # PortalApiStack
+      bin/              # deployment entry point
 packages/
   shared/               # API contracts and shared types
+.github/
+  workflows/
+    ci.yml              # lint, typecheck, tests/coverage, build, CDK synth
 amplify.yml             # frontend preview build configuration
 package.json
 pnpm-workspace.yaml
@@ -73,20 +83,32 @@ turbo.json
 
 Copy the normalized `portal-spec.md` and `portal-spec.json` into the new
 repository. Copy the deterministic Lambda reference into `apps/api/cdk` and
-replace placeholders only from the portal spec.
+place it at `apps/api/cdk/lib/portal-api-stack.ts`; replace placeholders only
+from the portal spec.
 
-Commit the scaffold to the feature branch and push it:
+The generated `ci.yml` must run the repository's formatter/linter, typecheck,
+unit tests with coverage, production build, and CDK synthesis on pull requests.
+
+Commit the scaffold, push the feature branch, and open its PR against the
+resolved base branch:
 
 ```bash
 git add .
 git commit -m "feat: scaffold portal frontend and API"
 git push --set-upstream origin feat/portal-v1
+gh pr create \
+  --base "$BASE_BRANCH" \
+  --head feat/portal-v1 \
+  --title "$PR_TITLE" \
+  --body "$PR_BODY"
 ```
 
 ## Amplify preview
 
 Apply this section only to new portals or existing-project changes whose scope
 includes hosting or deployment.
+
+Stop unless `deliveryContext.deploymentAuthorized` is `true`.
 
 Use the operator's selected AWS profile and the Amplify app named or approved
 in the portal spec. If no app exists, create it only when the spec explicitly
@@ -98,19 +120,20 @@ deployed **feature-branch API** URL. Preview verification must reject a
 production API URL, a localhost URL, or a mock endpoint. Record the feature API
 deployment output before starting the frontend build.
 
-Read the preview URL from the Amplify deployment output or branch/job response.
-Never construct a preview URL from an embedded Amplify app ID, customer domain,
-or guessed branch hostname. Store the returned preview URL in handoff evidence,
-not in this generic skill.
+Read the Amplify app's returned `defaultDomain` and the created branch name from
+resource metadata. Derive the preview origin only from those returned values;
+never use an embedded app ID, customer domain, or guessed hostname. Confirm the
+actual branch/job URL matches that origin and store it in handoff evidence.
 
 ## Required order
 
-1. Deploy `apps/api/cdk` into the approved feature environment.
-2. Capture its API URL from CloudFormation deployment output.
-3. Configure the Amplify preview branch with that API URL.
-4. Start the Amplify build from `feat/portal-v1`.
-5. Read the preview URL from deployment output.
-6. Run integration and BrowserStack flows against that preview URL.
+1. Create or connect the approved Amplify app and `feat/portal-v1` branch.
+2. Read the branch name and app `defaultDomain`; derive and record the preview origin from that returned metadata.
+3. Deploy `apps/api/cdk` with that exact origin in `allowedOrigins`.
+4. Capture the API URL from CloudFormation deployment output.
+5. Configure the Amplify preview branch with that API URL and start its build.
+6. Confirm the returned branch/job URL matches the recorded preview origin.
+7. Run integration and BrowserStack flows against that preview URL.
 
 Stop if the API deployment fails or if the preview resolves to any API other
 than the recorded feature environment.

@@ -8,7 +8,9 @@ description: "Portal delivery and maintenance playbook for creating new reposito
 Use this skill when Hoopa must create a portal repository or modify an existing
 portal project. Resolve that intent before collecting mode-specific inputs.
 
-Also load `skills/apply-engineering-guidelines/` on every run.
+For existing-project changes, load and follow the target repository's own agent
+and engineering rules. New-portal defaults never override an established stack
+without an explicit, reviewed migration.
 
 ## Consumes
 
@@ -57,6 +59,7 @@ Never invent these values. For `new_repository`, missing fields are hard stops:
 
 - GitHub org, visibility, and repository name
 - Confirmation to **create a new repo**
+- Permission to push/open a PR and explicit deployment authorization
 - AWS account and region, or permission to emit placeholders
 - Amplify app to attach, or permission to configure Amplify preview hosting
 - Auth model and API contract, or explicit copy-from-reference instruction
@@ -111,7 +114,7 @@ On stop, list exact missing fields. Do not scaffold past the last successful sta
 
 | Domain | Delegate to | Load |
 | --- | --- | --- |
-| Monorepo, Amplify frontend, Lambda/CDK scaffolding | `metagross` patterns | `skills/build-frontend-backends/` |
+| New-portal architecture and scaffolding | `metagross` patterns constrained by the portal spec | Do not load a conflicting one-size-fits-all stack skill |
 | Figma extraction and frontend adaptation | Figma MCP + `sylveon` patterns | `skills/figma-to-code/` |
 | Responsive design tests | `smeargle` patterns | `skills/responsive-design-tests/` |
 | Deterministic Lambda template | this skill | `rules/02-deterministic-lambda-template.md` |
@@ -127,7 +130,8 @@ Required in every `portal-spec.json`:
 - `deliveryMode`: `new_repository` | `existing_repository`
 - `sourceType`: `figma` | `portal_url` | `other_design` | `source_repo`
 - `changeRequest`: summary, affected scopes, acceptance criteria
-- `repositoryContext`: required for existing-project changes
+- `designSource` and authorized `deliveryContext`: required for new repositories
+- `repositoryContext`: existing repo/base/feature branch plus write and PR authorization
 
 Required for new portals and included for existing-project changes only when
 relevant:
@@ -137,7 +141,7 @@ relevant:
 - `auth`: mode plus callback env keys
 - `apis[]`: path, method, shapes, upstreams, latency budget
 - `secrets[]`: name, purpose, discovered-or-placeholder status
-- `infra`: memory, timeout, provisioned concurrency, log retention
+- `infra`: API/function names, exact CORS origins, memory, timeout, provisioned concurrency, log retention, alarm topic
 - `testPersonas[]` and `datasetRef` when their gates apply
 - `hosting`: required for new portals or hosting changes
 - `openQuestions[]`: unresolved blockers (must be empty before scaffold)

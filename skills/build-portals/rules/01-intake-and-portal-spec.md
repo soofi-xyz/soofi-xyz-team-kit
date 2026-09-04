@@ -64,6 +64,8 @@ Collect these org-supplied values. Missing items become `openQuestions` entries 
 | --- | --- | --- |
 | GitHub org, visibility, and repository name | Yes | Stop. Ask for org, visibility, and new repository name |
 | Permission to create a new repo | Yes | Stop. Confirm Hoopa should **create a new repo** |
+| Permission to push and open a PR | Yes | Stop before repository writes when absent |
+| Deployment authorization | Explicit true/false decision | A false value permits code/PR work but blocks deployment |
 | AWS account and region | Yes, or explicit placeholder permission | Stop. Ask for account/region or permission to emit placeholders |
 | Amplify preview target | Yes, or explicit permission to configure preview hosting | Stop. Ask which Amplify app to attach or for permission to configure preview hosting |
 | Auth model and API contract | Yes, unless user instructs copy-from-reference | Stop. Ask for auth model and API contract, or name the reference portal/repo to copy |
@@ -105,8 +107,9 @@ Required top-level fields for every mode:
 - `changeRequest`
 - `openQuestions[]`
 
-`new_repository` additionally requires `screens`, `breakpoints`, `auth`,
-`apis`, `secrets`, `infra`, `testPersonas`, `datasetRef`, and `hosting`.
+`new_repository` additionally requires structured `designSource` and
+`deliveryContext`, plus `screens`, `breakpoints`, `auth`, `apis`, `secrets`,
+`infra`, `testPersonas`, `datasetRef`, and `hosting`.
 `existing_repository` requires `repositoryContext`; include only the optional
 portal fields relevant to the requested change.
 
@@ -169,7 +172,20 @@ Agent: asks which source is primary; records the other as supplemental context o
   "sourceType": "other_design",
   "changeRequest": {
     "summary": "Create a portal from the supplied design",
-    "scopes": ["frontend", "backend", "infrastructure"]
+    "scopes": ["frontend", "backend", "infrastructure"],
+    "acceptanceCriteria": ["Open a reviewable pull request with all required gates passing"]
+  },
+  "designSource": {
+    "reference": "https://example.com/reference-portal"
+  },
+  "deliveryContext": {
+    "repository": "example-org/example-portal",
+    "repositoryVisibility": "private",
+    "createRepositoryAuthorized": true,
+    "pullRequestAuthorized": true,
+    "deploymentAuthorized": false,
+    "aws": { "mode": "placeholders" },
+    "amplify": { "mode": "configure" }
   },
   "screens": [
     {
@@ -187,10 +203,14 @@ Agent: asks which source is primary; records the other as supplemental context o
   "apis": [],
   "secrets": [],
   "infra": {
+    "apiName": "example-portal-api",
+    "functionName": "example-portal-handler",
+    "allowedOrigins": ["https://example.com"],
     "memoryMb": 512,
     "timeoutSeconds": 30,
     "provisionedConcurrency": 0,
-    "logRetentionDays": 30
+    "logRetentionDays": 30,
+    "alarmTopicArn": "SECRET_PLACEHOLDER_ALARM_TOPIC_ARN"
   },
   "testPersonas": [{ "name": "anonymous", "role": "visitor" }],
   "datasetRef": {
@@ -219,7 +239,9 @@ Agent: asks which source is primary; records the other as supplemental context o
   "repositoryContext": {
     "repository": "example-org/example-portal",
     "baseBranch": "main",
-    "featureBranch": "feat/add-portal-endpoint"
+    "featureBranch": "feat/add-portal-endpoint",
+    "writeAuthorized": true,
+    "pullRequestAuthorized": true
   },
   "openQuestions": []
 }

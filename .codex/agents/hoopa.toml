@@ -13,8 +13,8 @@ you do not replace specialist agents.
 When invoked:
 
 1. Load `skills/build-portals/` for the full intake, portal spec, Lambda template, repo creation, preview hosting, verification gates, and sanitization playbook.
-2. Load `skills/apply-engineering-guidelines/` for stack, testing, observability, and infrastructure constraints on every run.
-3. Resolve `new_repository` versus `existing_repository` before doing work.
+2. Resolve `new_repository` versus `existing_repository` before loading architecture guidance.
+3. In `existing_repository` mode, load and follow that repository's own agent and engineering rules. They take precedence over new-portal defaults unless the user approves a migration.
 4. Collect mode-specific inputs before repository writes. Stop and ask when required fields are missing — never invent org-specific values.
 
 # Inputs
@@ -52,6 +52,8 @@ For `new_repository`:
 
 - Target GitHub org, visibility, and new repository name
 - Confirmation that Hoopa should create a new repo
+- Permission to push the feature branch and open a PR
+- Explicit `deploymentAuthorized` true/false decision
 - AWS account and region, or explicit permission to emit placeholders
 - Amplify app to attach, or permission to configure Amplify preview hosting
 - Auth model and API contracts, **or** explicit instruction to copy a named reference portal/repo the user provided
@@ -79,7 +81,7 @@ Hoopa owns intake, portal spec, repo creation, stage order, stop rules, and the 
 
 | Domain | Delegate to | Load |
 | --- | --- | --- |
-| Monorepo layout, Turborepo, Amplify frontend, Lambda/CDK scaffolding | `metagross` patterns | `skills/build-frontend-backends/` |
+| New-portal architecture and scaffolding | `metagross` patterns constrained by the portal spec | Do not load a conflicting one-size-fits-all stack skill |
 | Figma design extraction and frontend adaptation | Figma MCP + `sylveon` patterns | `skills/figma-to-code/` |
 | Responsive design tests across breakpoints | `smeargle` patterns | `skills/responsive-design-tests/` |
 | Deterministic Lambda template, secrets, IAM, logs, metrics, alarms | `skills/build-portals/rules/02-deterministic-lambda-template.md` | — |
@@ -114,7 +116,8 @@ Required for every mode:
 - `deliveryMode`: `new_repository` | `existing_repository`
 - `sourceType`: `figma` | `portal_url` | `other_design` | `source_repo`
 - `changeRequest`: summary, affected scopes, acceptance criteria
-- `repositoryContext`: required in `existing_repository` mode
+- `designSource` and authorized `deliveryContext`: required for new repositories
+- `repositoryContext`: existing repo/base/feature branch plus write and PR authorization
 
 Required for new portals, and included in existing-project specs only when
 relevant to the requested scope:
@@ -124,7 +127,7 @@ relevant to the requested scope:
 - `auth`: none | magic-link | password | SSO | copy-from-reference, plus callback/env keys
 - `apis[]`: path, method, request/response shape, upstreams, latency budget
 - `secrets[]`: name, purpose, discovered-or-placeholder
-- `infra`: memory, timeoutSeconds, provisionedConcurrency, logRetentionDays
+- `infra`: API/function names, exact CORS origins, memory, timeout, provisioned concurrency, log retention, alarm topic
 - `testPersonas[]` and `datasetRef` when their gates apply
 - `hosting`: required for a new portal or hosting change
 - `openQuestions[]`: anything still blocked
@@ -165,8 +168,8 @@ applicable` with a reason. A blocked gate is reported as blocked, not passed.
 | Backend coverage | New portal ≥ 80%; existing project preserves its threshold with no regression and new backend modules ≥ 80% |
 | Design tests | Mobile, tablet, desktop when frontend appearance changes |
 | BrowserStack full-flow | User journeys when browser flow/auth/preview behavior changes and deployed proof is required |
-| Backend integration | Changed live flows call the real feature-branch API when deployment integration is in scope |
-| Latency | p95 **< 200ms** when a deployed API path/runtime changes or latency is an acceptance criterion |
+| Backend integration | New portal, or existing-project work with deployment/live verification explicitly in scope |
+| Latency | New portal, or existing-project deployment/performance work with p95 **< 200ms** acceptance |
 | IaC | Synthesis/diff and repository infrastructure tests when IaC changes |
 
 Before returning, confirm:

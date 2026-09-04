@@ -8,12 +8,27 @@ Run standalone from the plugin repo root:
 
 from __future__ import annotations
 
+import copy
 import json
+import os
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
+
+try:
+    from jsonschema import Draft202012Validator, FormatChecker
+    from jsonschema.exceptions import SchemaError
+except ModuleNotFoundError:
+    print(
+        "missing test dependency: install jsonschema",
+        file=sys.stderr,
+    )
+    raise SystemExit(2)
 
 ROOT = Path(__file__).resolve().parent.parent
 SKILL_DIR = ROOT / "skills" / "build-portals"
+HOOPA_AGENT = ROOT / "agents" / "hoopa.md"
 SKILL_MD = SKILL_DIR / "SKILL.md"
 INTAKE_RULES = SKILL_DIR / "rules" / "01-intake-and-portal-spec.md"
 SCHEMA_PATH = SKILL_DIR / "reference" / "portal-spec.schema.json"
@@ -33,17 +48,6 @@ REQUIRED_SCHEMA_FIELDS = (
     "sourceType",
     "changeRequest",
     "openQuestions",
-)
-NEW_REPOSITORY_SCHEMA_FIELDS = (
-    "screens",
-    "breakpoints",
-    "auth",
-    "apis",
-    "secrets",
-    "infra",
-    "testPersonas",
-    "datasetRef",
-    "hosting",
 )
 REQUIRED_SKILL_TOKENS = (
     "new_repository",
@@ -84,9 +88,13 @@ PIPELINE_STAGES = (
 LAMBDA_TEMPLATE_TOKENS = (
     "PortalApiStackProps",
     "PortalApiStack",
+    "memoryMb",
     "memorySize",
     "timeoutSeconds",
+    "provisionedConcurrency",
     "provisionedConcurrentExecutions",
+    "logRetentionDays",
+    "alarmTopicArn",
     "'live'",
     "grantRead",
     "LogGroup",
@@ -94,14 +102,22 @@ LAMBDA_TEMPLATE_TOKENS = (
     "p95",
     "DurationAlarm",
     "ErrorAlarm",
+    "ApiLatencyAlarm",
+    "Http5xxAlarm",
+    "SnsAction",
 )
 REPO_PREVIEW_TOKENS = (
     "gh repo create",
+    "--add-readme",
     "feat/portal-v1",
     "apps/web",
     "apps/api",
+    "apps/api/cdk/lib",
     "packages/shared",
+    ".github",
+    "ci.yml",
     "amplify.yml",
+    "gh pr create",
     "feature-branch API",
     "deployment output",
     "custom domain",
@@ -128,6 +144,8 @@ VERIFICATION_TOKENS = (
 )
 LATENCY_SCRIPT_TOKENS = (
     "API_URL",
+    "EXPECTED_API_URL",
+    "ALLOW_MUTATING_REQUESTS",
     "DATASET_PATH",
     "REQUEST_COUNT",
     ".sort(",
@@ -166,47 +184,33 @@ def load_schema() -> dict:
         fail(f"{SCHEMA_PATH.relative_to(ROOT)}: invalid JSON ({exc})")
     if not isinstance(schema, dict):
         fail(f"{SCHEMA_PATH.relative_to(ROOT)}: schema root must be an object")
+    try:
+        Draft202012Validator.check_schema(schema)
+    except SchemaError as exc:
+        fail(f"{SCHEMA_PATH.relative_to(ROOT)}: invalid JSON Schema ({exc})")
     return schema
 
 
-def validate_required_properties(schema: dict, document: dict, label: str) -> None:
-    required = schema.get("required")
-    if not isinstance(required, list):
-        fail(f"{SCHEMA_PATH.relative_to(ROOT)}: required must be a list")
-    missing = [field for field in required if field not in document]
-    if missing:
-        fail(f"{label}: missing required fields: {', '.join(missing)}")
-
-
 def validate_against_schema(schema: dict, document: dict, label: str) -> None:
-    validate_required_properties(schema, document, label)
+    errors = sorted(
+        Draft202012Validator(
+            schema,
+            format_checker=FormatChecker(),
+        ).iter_errors(document),
+        key=lambda error: list(error.absolute_path),
+    )
+    if errors:
+        details = "; ".join(
+            f"{'/'.join(map(str, error.absolute_path)) or '<root>'}: {error.message}"
+            for error in errors
+        )
+        fail(f"{label}: schema validation failed: {details}")
 
-    delivery_mode = document.get("deliveryMode")
-    allowed_modes = schema.get("properties", {}).get("deliveryMode", {}).get("enum")
-    if allowed_modes and delivery_mode not in allowed_modes:
-        fail(f"{label}: deliveryMode must be one of {allowed_modes}")
 
-    source_type = document.get("sourceType")
-    allowed = schema.get("properties", {}).get("sourceType", {}).get("enum")
-    if allowed and source_type not in allowed:
-        fail(f"{label}: sourceType must be one of {allowed}")
-
-    open_questions = document.get("openQuestions")
-    if not isinstance(open_questions, list):
-        fail(f"{label}: openQuestions must be an array")
-
-    if delivery_mode == "new_repository":
-        missing = [
-            field for field in NEW_REPOSITORY_SCHEMA_FIELDS if field not in document
-        ]
-        if missing:
-            fail(
-                f"{label}: new_repository missing required fields: "
-                f"{', '.join(missing)}"
-            )
-    elif delivery_mode == "existing_repository":
-        if "repositoryContext" not in document:
-            fail(f"{label}: existing_repository requires repositoryContext")
+def assert_schema_rejects(schema: dict, document: dict, label: str) -> None:
+    validator = Draft202012Validator(schema, format_checker=FormatChecker())
+    if validator.is_valid(document):
+        fail(f"{label}: schema unexpectedly accepted invalid document")
 
 
 def assert_skill_corpus_contains_tokens(corpus: str) -> None:
@@ -292,6 +296,17 @@ def assert_schema_contract(schema: dict) -> None:
         "changeRequest": {
             "summary": "Create a portal from the supplied design",
             "scopes": ["frontend", "backend", "infrastructure"],
+            "acceptanceCriteria": ["Open a reviewed pull request"],
+        },
+        "designSource": {"reference": "https://example.com/reference-portal"},
+        "deliveryContext": {
+            "repository": "example-org/example-portal",
+            "repositoryVisibility": "private",
+            "createRepositoryAuthorized": True,
+            "pullRequestAuthorized": True,
+            "deploymentAuthorized": False,
+            "aws": {"mode": "placeholders"},
+            "amplify": {"mode": "configure"},
         },
         "screens": [
             {
@@ -309,10 +324,14 @@ def assert_schema_contract(schema: dict) -> None:
         "apis": [],
         "secrets": [],
         "infra": {
+            "apiName": "example-portal-api",
+            "functionName": "example-portal-handler",
+            "allowedOrigins": ["https://example.com"],
             "memoryMb": 512,
             "timeoutSeconds": 30,
             "provisionedConcurrency": 0,
             "logRetentionDays": 30,
+            "alarmTopicArn": "SECRET_PLACEHOLDER_ALARM_TOPIC_ARN",
         },
         "testPersonas": [{"name": "anonymous", "role": "visitor"}],
         "datasetRef": {"location": "s3://example-bucket/example-dataset", "format": "json"},
@@ -327,11 +346,14 @@ def assert_schema_contract(schema: dict) -> None:
         "changeRequest": {
             "summary": "Add one backend endpoint",
             "scopes": ["backend"],
+            "acceptanceCriteria": ["Open a pull request with API tests"],
         },
         "repositoryContext": {
             "repository": "example-org/example-portal",
             "baseBranch": "main",
             "featureBranch": "feat/add-backend-endpoint",
+            "writeAuthorized": True,
+            "pullRequestAuthorized": True,
         },
         "openQuestions": [],
     }
@@ -341,13 +363,44 @@ def assert_schema_contract(schema: dict) -> None:
     blocked_example["openQuestions"] = ["Need GitHub org and repository name"]
     validate_against_schema(schema, blocked_example, "blocked example")
 
-    incomplete = {"sourceType": "figma"}
-    try:
-        validate_required_properties(schema, incomplete, "incomplete example")
-    except AssertionError:
-        pass
-    else:
-        fail("schema must reject documents missing required fields")
+    assert_schema_rejects(schema, {"sourceType": "figma"}, "incomplete example")
+
+    wrong_existing_source = copy.deepcopy(existing_example)
+    wrong_existing_source["sourceType"] = "figma"
+    assert_schema_rejects(
+        schema,
+        wrong_existing_source,
+        "existing repository with non-repository source",
+    )
+
+    unauthorized_existing = copy.deepcopy(existing_example)
+    unauthorized_existing["repositoryContext"]["pullRequestAuthorized"] = False
+    assert_schema_rejects(
+        schema,
+        unauthorized_existing,
+        "existing repository without PR authorization",
+    )
+
+    missing_new_context = copy.deepcopy(valid_example)
+    del missing_new_context["deliveryContext"]
+    assert_schema_rejects(
+        schema,
+        missing_new_context,
+        "new repository without delivery context",
+    )
+
+    missing_acceptance_criteria = copy.deepcopy(existing_example)
+    del missing_acceptance_criteria["changeRequest"]["acceptanceCriteria"]
+    assert_schema_rejects(
+        schema,
+        missing_acceptance_criteria,
+        "change request without acceptance criteria",
+    )
+
+    invalid_infra = copy.deepcopy(valid_example)
+    invalid_infra["infra"]["memoryMb"] = 10_241
+    invalid_infra["infra"]["timeoutSeconds"] = 901
+    assert_schema_rejects(schema, invalid_infra, "invalid Lambda limits")
 
 
 def assert_lambda_template_contract() -> None:
@@ -361,7 +414,7 @@ def assert_lambda_template_contract() -> None:
 
     if "512" not in reference_text or "30" not in reference_text:
         fail("Lambda reference must default to 512 MB and 30 seconds")
-    if "provisionedConcurrentExecutions = 0" not in reference_text:
+    if "provisionedConcurrency = 0" not in reference_text:
         fail("Lambda reference must default provisioned concurrency to 0")
     if "wildcard" not in rules_text.lower() or "least-privilege" not in rules_text.lower():
         fail("Lambda rules must document least-privilege and wildcard IAM policy")
@@ -377,8 +430,18 @@ def assert_repo_preview_contract() -> None:
 
     if "production api" not in lowered or "reject" not in lowered:
         fail("preview rules must reject production API URLs")
-    if "app id" not in lowered or "never construct" not in lowered:
-        fail("preview URL must never be constructed from an embedded app ID")
+    if "embedded app id" not in lowered or "returned metadata" not in lowered:
+        fail("preview origin must use returned Amplify metadata, not embedded IDs")
+
+    ordered_tokens = (
+        "--add-readme",
+        'base_branch="$(git branch --show-current)"',
+        "git switch -c feat/portal-v1",
+        "gh pr create",
+    )
+    positions = [lowered.find(token) for token in ordered_tokens]
+    if any(position < 0 for position in positions) or positions != sorted(positions):
+        fail("new-repository workflow must establish a base before branch and PR")
 
 
 def assert_verification_contract() -> None:
@@ -391,6 +454,79 @@ def assert_verification_contract() -> None:
     for token in LATENCY_SCRIPT_TOKENS:
         if token not in latency_text:
             fail(f"latency reference must include {token!r}")
+    if (
+        "for `existing_repository`, apply only" not in rules_text.lower()
+        or "`deployment` is in `changerequest.scopes`" not in rules_text.lower()
+    ):
+        fail("live gates must be opt-in for existing-repository changes")
+
+
+def assert_latency_runner_safety() -> None:
+    syntax = subprocess.run(
+        ["node", "--check", str(LATENCY_REFERENCE)],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if syntax.returncode != 0:
+        fail(f"latency reference has invalid JavaScript: {syntax.stderr}")
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        dataset_path = Path(temp_dir) / "dataset.json"
+        dataset_path.write_text(
+            json.dumps([{"method": "POST", "path": "/records"}]),
+            encoding="utf-8",
+        )
+        base_env = {
+            **os.environ,
+            "API_URL": "https://feature.example.com",
+            "EXPECTED_API_URL": "https://feature.example.com",
+            "DATASET_PATH": str(dataset_path),
+            "REQUEST_COUNT": "1",
+        }
+
+        mutation = subprocess.run(
+            ["node", str(LATENCY_REFERENCE)],
+            cwd=ROOT,
+            env=base_env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if mutation.returncode == 0 or "ALLOW_MUTATING_REQUESTS" not in mutation.stderr:
+            fail("latency runner must reject mutating requests without opt-in")
+
+        mismatch_env = {
+            **base_env,
+            "EXPECTED_API_URL": "https://other.example.com",
+        }
+        mismatch = subprocess.run(
+            ["node", str(LATENCY_REFERENCE)],
+            cwd=ROOT,
+            env=mismatch_env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if mismatch.returncode == 0 or "must match" not in mismatch.stderr:
+            fail("latency runner must reject a target mismatch")
+
+        insecure_env = {
+            **base_env,
+            "API_URL": "http://feature.example.com",
+            "EXPECTED_API_URL": "http://feature.example.com",
+        }
+        insecure = subprocess.run(
+            ["node", str(LATENCY_REFERENCE)],
+            cwd=ROOT,
+            env=insecure_env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if insecure.returncode == 0 or "must use https" not in insecure.stderr:
+            fail("latency runner must reject insecure API URLs")
 
 
 def assert_existing_repository_contract() -> None:
@@ -399,6 +535,34 @@ def assert_existing_repository_contract() -> None:
     for token in EXISTING_REPOSITORY_TOKENS:
         if token.lower() not in rules_text.lower():
             fail(f"existing-repository rules must include {token!r}")
+
+
+def assert_hoopa_agent_contract() -> None:
+    agent_text = read_text(HOOPA_AGENT)
+    lowered = agent_text.lower()
+    required = (
+        "new_repository",
+        "existing_repository",
+        "state the selected mode",
+        "repository's own agent and engineering rules",
+        "preserve the existing checkout",
+        "feature branch",
+        "open or update the pr",
+        "never merge",
+        "backend-only work is valid",
+    )
+    for token in required:
+        if token not in lowered:
+            fail(f"Hoopa agent contract must include {token!r}")
+
+    prohibited = (
+        "skills/apply-engineering-guidelines/",
+        "skills/build-frontend-backends/",
+        "default and only v1 path",
+    )
+    for token in prohibited:
+        if token in lowered:
+            fail(f"Hoopa agent must not impose conflicting directive {token!r}")
 
 
 def main() -> int:
@@ -414,7 +578,9 @@ def main() -> int:
     assert_lambda_template_contract()
     assert_repo_preview_contract()
     assert_verification_contract()
+    assert_latency_runner_safety()
     assert_existing_repository_contract()
+    assert_hoopa_agent_contract()
 
     print("build-portals contract tests passed")
     return 0

@@ -14,19 +14,23 @@ reviewed migration. Do not put tenant values back into this generic reference.
 
 ## Required inputs
 
-Map these `portal-spec.json` values to `PortalApiStackProps`:
+Map these `portal-spec.json` values directly to `PortalApiStackProps`:
 
-- `apiName` and `functionName`
-- `allowedOrigins`
-- `memorySize` (default `512` MB)
-- `timeoutSeconds` (default `30`)
-- `provisionedConcurrentExecutions` (default `0`)
-- `secretNames`
+- `infra.apiName` and `infra.functionName`
+- `infra.allowedOrigins`
+- `infra.memoryMb` (default `512` MB)
+- `infra.timeoutSeconds` (default `30`)
+- `infra.provisionedConcurrency` (default `0`)
+- `infra.logRetentionDays`
+- `infra.alarmTopicArn`
+- secret names from `secrets[]`
 - non-secret `environment`
 
 Account, region, origins, secret names, and environment values are
 organization-supplied. Keep placeholders when the operator explicitly permits
-them. Never infer or embed those values.
+them. Never infer or embed those values. An alarm-topic placeholder may
+synthesize for code review, but it blocks deployment until replaced by an
+approved SNS topic ARN.
 
 ## Deterministic infrastructure
 
@@ -34,7 +38,7 @@ The generated stack must contain:
 
 1. One Node.js Lambda with active X-Ray tracing and Powertools service,
    metrics, and log-level environment variables.
-2. An explicit `/aws/lambda/<functionName>` log group retained for 30 days.
+2. An explicit `/aws/lambda/<functionName>` log group using the configured retention.
 3. An HTTP API with operator-supplied CORS origins and a proxy route.
 4. A `live` Lambda alias backed by `currentVersion` only when provisioned
    concurrency is greater than zero. With zero, integrate the unqualified
@@ -42,7 +46,8 @@ The generated stack must contain:
 5. Named Secrets Manager references with `grantRead` on the execution target.
    Secret values never enter CDK source, CloudFormation parameters, or Lambda
    environment variables.
-6. A p95 duration alarm at the API budget of 200 ms and an error alarm.
+6. Lambda duration/error and HTTP API latency/5xx alarms, all connected to the
+   operator-supplied SNS topic.
 7. CloudFormation outputs for the API endpoint and function name.
 
 ## IAM policy
@@ -55,7 +60,7 @@ Do not attach managed administrator policies.
 
 ## Provisioned concurrency
 
-`provisionedConcurrentExecutions: 0` is the safe default and means no alias is
+`provisionedConcurrency: 0` is the safe default and means no alias is
 created. A positive value creates alias `live` and points API Gateway at that
 alias. The feature environment must use the configured value from the portal
 spec; production sizing is not guessed.

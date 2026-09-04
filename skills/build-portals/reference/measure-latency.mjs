@@ -3,13 +3,23 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { performance } from 'node:perf_hooks';
 
-const API_URL = requireEnv('API_URL').replace(/\/+$/, '');
+const API_URL = normalizeApiUrl(requireEnv('API_URL'), 'API_URL');
+const EXPECTED_API_URL = normalizeApiUrl(
+  requireEnv('EXPECTED_API_URL'),
+  'EXPECTED_API_URL',
+);
+if (API_URL !== EXPECTED_API_URL) {
+  throw new Error('API_URL must match the recorded EXPECTED_API_URL');
+}
+
 const DATASET_PATH = requireEnv('DATASET_PATH');
 const REQUEST_COUNT = parsePositiveInteger(
   requireEnv('REQUEST_COUNT'),
   'REQUEST_COUNT',
 );
 const outputPath = process.env.LATENCY_OUTPUT_PATH;
+const allowMutatingRequests = process.env.ALLOW_MUTATING_REQUESTS === 'true';
+const mutatingMethods = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 const dataset = JSON.parse(await readFile(DATASET_PATH, 'utf8'));
 if (!Array.isArray(dataset) || dataset.length === 0) {
@@ -22,13 +32,20 @@ let failedResponses = 0;
 for (let index = 0; index < REQUEST_COUNT; index += 1) {
   const request = dataset[index % dataset.length];
   validateRequest(request, index % dataset.length);
+  const method = (request.method ?? 'GET').toUpperCase();
+  if (mutatingMethods.has(method) && !allowMutatingRequests) {
+    throw new Error(
+      `dataset request ${index % dataset.length} uses ${method}; set ` +
+        'ALLOW_MUTATING_REQUESTS=true only for an approved synthetic/test target',
+    );
+  }
 
   const headers = new Headers(request.headers ?? {});
   for (const [headerName, envName] of Object.entries(request.headerEnv ?? {})) {
     headers.set(headerName, requireEnv(envName));
   }
   const init = {
-    method: request.method ?? 'GET',
+    method,
     headers,
     signal: AbortSignal.timeout(10_000),
   };
@@ -106,6 +123,22 @@ function parsePositiveInteger(value, name) {
   return parsed;
 }
 
+function normalizeApiUrl(value, name) {
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error(`${name} must be a valid URL`);
+  }
+  if (parsed.protocol !== 'https:') {
+    throw new Error(`${name} must use https`);
+  }
+  if (parsed.username || parsed.password || parsed.search || parsed.hash) {
+    throw new Error(`${name} cannot contain credentials, query, or fragment`);
+  }
+  return parsed.toString().replace(/\/+$/, '');
+}
+
 function validateRequest(request, index) {
   if (
     request === null ||
@@ -119,6 +152,15 @@ function validateRequest(request, index) {
   }
   if (request.path.startsWith('//')) {
     throw new Error(`dataset request ${index}.path cannot be protocol-relative`);
+  }
+  if (
+    request.method !== undefined &&
+    (typeof request.method !== 'string' ||
+      !['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(
+        request.method.toUpperCase(),
+      ))
+  ) {
+    throw new Error(`dataset request ${index}.method is not supported`);
   }
   if (
     request.headerEnv !== undefined &&

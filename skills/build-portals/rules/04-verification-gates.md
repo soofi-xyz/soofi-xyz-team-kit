@@ -19,7 +19,7 @@ mock results.
 
 | Changed scope | Additional required gates |
 | --- | --- |
-| Backend behavior | API unit/contract tests; integration and latency when a live API path is changed or requested |
+| Backend behavior | API unit/contract tests; live integration and latency only when deployment/live verification is explicitly in scope |
 | Frontend behavior or appearance | Responsive design tests |
 | User flow, auth, or preview deployment | BrowserStack full flow when credentials and a deployed target are required by acceptance criteria |
 | Infrastructure | Synthesis/diff plus the repository's infrastructure tests |
@@ -81,8 +81,9 @@ All required flows must pass.
 
 ## Gate 4: Backend integration
 
-Apply when a changed backend path must be exercised in a deployed feature/dev
-environment or through a real upstream.
+For `new_repository`, apply this gate. For `existing_repository`, apply only
+when `deployment` is in `changeRequest.scopes` or an acceptance criterion
+explicitly requires live feature/dev or real-upstream verification.
 
 Seed or attach the user-supplied `datasetRef` in the approved development
 environment. Run API contract and frontend integration tests against the
@@ -93,9 +94,9 @@ Redact credentials and customer records from logs and evidence.
 
 ## Gate 5: API latency
 
-Apply when the change creates or modifies a deployed API path, runtime,
-upstream, memory/concurrency setting, or an explicit latency acceptance
-criterion.
+For `new_repository`, apply this gate. For `existing_repository`, apply only
+when `deployment` is in `changeRequest.scopes` and API performance is affected,
+or an acceptance criterion explicitly requires latency evidence.
 
 Measure deployed API responses with representative data from `datasetRef`.
 This gate measures the complete API response, not page load, local handlers, or
@@ -103,11 +104,16 @@ mocks. Use `reference/measure-latency.mjs`:
 
 ```bash
 API_URL="$FEATURE_API_URL" \
+EXPECTED_API_URL="$RECORDED_FEATURE_API_URL" \
 DATASET_PATH="$REPRESENTATIVE_DATASET_PATH" \
 REQUEST_COUNT=100 \
 LATENCY_OUTPUT_PATH="artifacts/latency.json" \
 node skills/build-portals/reference/measure-latency.mjs
 ```
+
+`EXPECTED_API_URL` must come independently from the recorded feature-stack
+deployment output; the runner rejects a mismatched target. It accepts only
+HTTPS URLs without embedded credentials, query strings, or fragments.
 
 The dataset is a non-empty JSON array of request objects:
 
@@ -127,6 +133,11 @@ header to the environment variable containing its complete runtime value, such
 as `Bearer <token>`. Never commit a populated authorization header. Run enough
 requests to represent the accepted flow; increase `REQUEST_COUNT` when the
 supplied dataset or performance plan requires it.
+
+GET and HEAD are the safe default. A dataset containing POST, PUT, PATCH, or
+DELETE requires `ALLOW_MUTATING_REQUESTS=true` plus an explicitly approved
+synthetic/test tenant and idempotent or disposable test data. Never run the
+latency tool against production.
 
 Sort measured durations and calculate the nearest-rank percentile. The p95
 requirement is strictly `< 200` ms; p95 equal to or greater than 200 ms fails.

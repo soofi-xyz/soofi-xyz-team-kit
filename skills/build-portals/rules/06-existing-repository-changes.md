@@ -120,9 +120,11 @@ Stop before code changes when:
 - the requested behavior or acceptance criteria are ambiguous
 - existing user changes overlap the requested files and inclusion is unclear
 - branch pushes or pull-request creation were not authorized
-- required secrets, datasets, or deployment credentials are missing for a
-  requested live verification step
 
 List only blockers relevant to the requested scope. A missing UI design is not
 a backend-change blocker, and missing deployment access does not prevent a
 code-only PR when deployment was not requested.
+
+If secrets, datasets, or credentials are missing only for a requested live
+deployment or verification step, continue the safe local implementation and PR.
+Report that gate as blocked and stop immediately before the external action.
