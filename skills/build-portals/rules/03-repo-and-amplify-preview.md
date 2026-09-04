@@ -4,31 +4,41 @@ impact: CRITICAL
 tags: github, repository, amplify, preview, turborepo
 ---
 
-# Repository Creation and Amplify Preview
+# Repository Workflow and Amplify Preview
 
-Create a new repository only after `portal-spec.json` is schema-valid and
-contains `openQuestions: []`. Use only the GitHub organization, repository
-name, visibility, AWS account, region, and Amplify choice recorded in that
-spec. Never infer a destination.
+Prepare either a new repository or an existing-project feature branch only
+after `portal-spec.json` is schema-valid and contains `openQuestions: []`.
+Never infer a destination.
 
 ## Preflight
 
-Run the selected GitHub and AWS access checks before any write:
+Run the GitHub access checks before repository writes:
 
 ```bash
 gh auth status
-gh repo view "$GITHUB_ORG/$REPOSITORY_NAME"
+gh repo view "$TARGET_REPOSITORY"
+```
+
+Run AWS checks only when deployment is in scope:
+
+```bash
 AWS_PROFILE="$SELECTED_AWS_PROFILE" aws sts get-caller-identity
 AWS_PROFILE="$SELECTED_AWS_PROFILE" aws configure get region
 ```
 
-Confirm the AWS account and region match the portal spec. If the destination
-repository already exists, stop and ask whether to use it; do not overwrite,
-delete, or silently choose another name.
+Confirm the AWS account and region match the portal spec when applicable.
+
+For `existing_repository`, inspect the selected project and follow
+`rules/06-existing-repository-changes.md`. Do not run `gh repo create`, replace
+its workspace layout, or add Amplify/CDK unless the change request requires it.
+
+For `new_repository`, if the destination already exists, stop and ask whether
+the user intended `existing_repository`; do not overwrite, delete, or silently
+choose another name.
 
 ## Create the repository and branch
 
-After preflight and explicit new-repo confirmation:
+In `new_repository` mode, after preflight and explicit confirmation:
 
 ```bash
 gh repo create "$GITHUB_ORG/$REPOSITORY_NAME" \
@@ -74,6 +84,9 @@ git push --set-upstream origin feat/portal-v1
 ```
 
 ## Amplify preview
+
+Apply this section only to new portals or existing-project changes whose scope
+includes hosting or deployment.
 
 Use the operator's selected AWS profile and the Amplify app named or approved
 in the portal spec. If no app exists, create it only when the spec explicitly

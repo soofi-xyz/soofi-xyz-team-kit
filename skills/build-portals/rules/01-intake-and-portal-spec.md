@@ -84,9 +84,19 @@ Collect these org-supplied values. Missing items become `openQuestions` entries 
 Optional overrides: Lambda memory, timeout, provisioned concurrency, allowed
 origins, frontend framework, PR title, and whether to update an existing PR.
 
+For existing-project work, `openQuestions` contains only decisions required
+before code can be changed safely. Missing credentials for a later, explicitly
+requested deployment or live verification step do not block local
+implementation; record those as gate blockers and stop before that external
+step.
+
 ## Normalize to `portal-spec.json`
 
-After intake succeeds, write `portal-spec.md` and `portal-spec.json` in the target repo. Validate against `reference/portal-spec.schema.json`.
+After intake succeeds, validate the normalized contract against
+`reference/portal-spec.schema.json`. In `new_repository` mode, write
+`portal-spec.md` and `portal-spec.json` in the target repo. In
+`existing_repository` mode, keep it transient unless the user or repository
+convention requests a committed change spec.
 
 Required top-level fields for every mode:
 

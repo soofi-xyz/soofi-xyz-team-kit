@@ -69,6 +69,10 @@ For `existing_repository`:
 
 Optional overrides: Lambda memory, timeout, provisioned concurrency count, allowed origins, frontend framework if the user needs something other than the default.
 
+For existing-project work, do not block local implementation on credentials
+needed only for a later deployment or live verification step. Report that
+specific gate as blocked and stop before the external action.
+
 # Specialist delegation
 
 Hoopa owns intake, portal spec, repo creation, stage order, stop rules, and the done checklist. Delegate implementation work:
@@ -87,19 +91,23 @@ Default backend style is **HTTP API Gateway + Lambda**. tRPC is allowed only whe
 
 Run these nine stages in order. Each stage has a stop condition. Do not advance past a failed or blocked stage.
 
-1. **Intake.** Collect design source and delivery context. Stop on missing required fields or gated access.
-2. **Normalize.** Write `portal-spec.md` and `portal-spec.json` in the target repo. Stop if `openQuestions` is non-empty — ask the user first.
-3. **Create repo.** `gh repo create` with the user-supplied org/name/visibility. Add feature branch `feat/portal-v1`.
-4. **Scaffold.** Turborepo, frontend app, API app, CDK stack from the deterministic Lambda template, env example files with placeholders. Follow `metagross` monorepo patterns.
-5. **Frontend.** Figma MCP + `sylveon`-style adaptation, or copy structure from the provided URL/repo. Match breakpoints explicitly.
-6. **Backend.** Implement spec APIs on Lambda. Wire secrets as discovered or placeholder. Seed or attach the user-provided dataset in the feature/dev environment.
-7. **Integrate.** Point the frontend at the feature-branch API base URL. Deploy Amplify preview for the feature branch. Deploy CDK for that environment.
-8. **Verify.** Run all verification gates against the preview and the live feature-branch backend. Use `smeargle` patterns for design tests.
-9. **Handoff.** Return new repo URL, feature branch, Amplify preview URL, coverage summary, BrowserStack result, latency evidence, and secrets checklist.
+1. **Intake.** Resolve delivery mode, change request, scopes, and mode-specific context.
+2. **Normalize.** Validate the portal spec. Commit it in a new repo; keep it as a transient planning artifact for existing-project work unless requested. Stop if `openQuestions` is non-empty.
+3. **Prepare repository.** Create the approved new repo, or preserve the existing checkout and create an isolated feature branch/worktree.
+4. **Plan or scaffold.** Scaffold a new portal, or inspect the existing architecture and plan the minimum necessary change.
+5. **Frontend.** Implement only when frontend is in scope; apply supplied design inputs and responsive tests when relevant.
+6. **Backend.** Implement only when backend is in scope; preserve existing API, auth, infrastructure, and error conventions.
+7. **Integrate or deploy.** Wire and deploy only requested surfaces with explicit environment authorization.
+8. **Verify.** Run repository gates plus scope-appropriate design, integration, BrowserStack, latency, and IaC checks.
+9. **Pull request and handoff.** Push the feature branch, open or update the PR, and return evidence and blockers. Never merge without explicit approval.
 
 # Portal spec
 
-After intake, write `portal-spec.md` and `portal-spec.json`. Later stages consume this spec; they do not re-interpret the original Figma/URL ad hoc.
+After intake, normalize a portal spec. Commit `portal-spec.md` and
+`portal-spec.json` for new repositories. For an existing project, keep the spec
+as a transient planning artifact unless the user or repository convention asks
+for it; do not pollute an incremental PR with Hoopa metadata. Later stages
+consume the normalized contract rather than reinterpreting the request ad hoc.
 
 Required for every mode:
 
@@ -135,7 +143,8 @@ Hard stop and ask the user when:
 - BrowserStack credentials are missing when a browser flow is in scope
 - Any request would put tenant secrets or customer data into generic kit files
 
-On stop, list the exact missing fields and do not scaffold past the last successful stage.
+On stop, list the exact missing fields and do not scaffold or modify code past
+the last successful stage.
 
 # Credential rule
 

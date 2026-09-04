@@ -20,7 +20,8 @@ Also load `skills/apply-engineering-guidelines/` on every run.
 
 ## Produces
 
-- `portal-spec.md` and schema-valid `portal-spec.json` in the target repository
+- A schema-valid portal spec: committed in a new repository, or kept as a
+  transient planning artifact for an existing repository unless requested
 - A new repository or an incremental feature branch in the existing repository
 - A pull request for review; never merge it without explicit approval
 - Zero unresolved `openQuestions` before repository writes begin
@@ -70,20 +71,23 @@ backend-only code change on an unrelated design or browser gate.
 
 Record unresolved items in `openQuestions`. Stop and ask the user. **Do not
 scaffold or modify code** while `openQuestions` is non-empty.
+For existing-project work, keep later deployment/verification credential gaps
+out of `openQuestions` when local implementation can proceed; report them as
+gate blockers before the external step.
 
 ## Nine-stage workflow
 
 Run these stages in order. Do not advance past a failed or blocked stage.
 
-1. **Intake.** Collect `designSource` and `deliveryContext`. Stop on missing required fields, gated Figma access, or inaccessible reference portals.
-2. **Normalize.** Write `portal-spec.md` and `portal-spec.json`. Stop if `openQuestions` is non-empty — ask the user first.
-3. **Create repo.** Create the GitHub repository with user-supplied org/name/visibility. Add feature branch `feat/portal-v1`.
-4. **Scaffold.** Turborepo layout, frontend app, API app, CDK stack skeleton, env examples with placeholders.
-5. **Frontend.** Figma MCP + `figma-to-code` patterns, or copy structure from the provided URL/repo. Match spec breakpoints.
-6. **Backend.** Implement spec APIs on Lambda. Wire discovered secrets or placeholders. Attach the user-provided dataset in the feature environment.
-7. **Integrate.** Point the frontend at the feature-branch API base URL. Deploy Amplify preview and the feature-environment CDK stack.
-8. **Verify.** Run verification gates against preview and live feature-branch backend. Use `responsive-design-tests` patterns for breakpoint checks.
-9. **Handoff.** Return repo URL, feature branch, Amplify preview URL, coverage summary, BrowserStack result, latency evidence, and secrets checklist.
+1. **Intake.** Resolve `deliveryMode`, `changeRequest`, affected scopes, and mode-specific context.
+2. **Normalize.** Validate the portal spec. Commit it in a new repo; keep it transient for existing-project work unless requested. Stop if `openQuestions` is non-empty.
+3. **Prepare repository.** Create the approved new repo, or preserve the existing checkout and create an isolated feature branch/worktree.
+4. **Plan or scaffold.** Scaffold the new portal, or inspect the existing architecture and plan the minimum necessary change.
+5. **Frontend.** Implement only when frontend is in scope; use Figma/design tests when supplied or required.
+6. **Backend.** Implement only when backend is in scope; follow the repository's existing API/IaC patterns before applying new-portal defaults.
+7. **Integrate or deploy.** Wire and deploy only the requested surfaces and only with explicit environment authorization.
+8. **Verify.** Run gates that apply to the changed scopes and the repository's required CI suite.
+9. **Pull request and handoff.** Push the feature branch, open or update a PR, and return evidence plus blockers. Never merge without approval.
 
 ## Stop-before-scaffold rule
 
@@ -93,10 +97,12 @@ Hard stop and ask when:
 
 - **Figma MCP cannot read** the file
 - A reference portal requires sign-in and no access method was provided
-- GitHub org, repository name, or permission to create a repo is missing
+- The delivery mode or change request is ambiguous
+- New-repository destination or creation permission is missing
+- Existing-repository access, base branch, feature branch, or PR permission is missing
 - Auth model or API contract is missing and the user did not instruct copy-from-reference
-- `datasetRef` for the latency check is missing
-- BrowserStack credentials are missing when full-flow verification is required
+- `datasetRef` is missing when latency verification applies
+- BrowserStack credentials are missing when a browser flow applies
 - Any step would place tenant secrets or customer data into generic kit files
 
 On stop, list exact missing fields. Do not scaffold past the last successful stage.
@@ -109,6 +115,7 @@ On stop, list exact missing fields. Do not scaffold past the last successful sta
 | Figma extraction and frontend adaptation | Figma MCP + `sylveon` patterns | `skills/figma-to-code/` |
 | Responsive design tests | `smeargle` patterns | `skills/responsive-design-tests/` |
 | Deterministic Lambda template | this skill | `rules/02-deterministic-lambda-template.md` |
+| Existing-project incremental changes | this skill | `rules/06-existing-repository-changes.md` |
 | Full-flow preview tests | generated repo Playwright BrowserStack configs | — |
 
 Default backend style is HTTP API Gateway + Lambda. Use tRPC only when the user explicitly requests it.
@@ -141,9 +148,10 @@ relevant:
 2. If missing, emit `SECRET_PLACEHOLDER_<NAME>` in CDK/env examples and a secrets checklist in the PR.
 3. Never hardcode passwords, tokens, customer records, or live account identifiers into generic kit files.
 
-## Related rules (later tasks)
+## Related rules
 
-- `rules/deterministic-lambda-template.md`
-- `rules/repo-and-amplify-preview.md`
-- `rules/verification-gates.md`
-- `rules/sanitization.md`
+- `rules/02-deterministic-lambda-template.md`
+- `rules/03-repo-and-amplify-preview.md`
+- `rules/04-verification-gates.md`
+- `rules/05-sanitization.md`
+- `rules/06-existing-repository-changes.md`

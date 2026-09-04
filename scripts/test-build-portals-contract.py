@@ -22,6 +22,9 @@ LAMBDA_REFERENCE = SKILL_DIR / "reference" / "portal-api-stack.ts"
 REPO_PREVIEW_RULES = SKILL_DIR / "rules" / "03-repo-and-amplify-preview.md"
 VERIFICATION_RULES = SKILL_DIR / "rules" / "04-verification-gates.md"
 LATENCY_REFERENCE = SKILL_DIR / "reference" / "measure-latency.mjs"
+EXISTING_REPOSITORY_RULES = (
+    SKILL_DIR / "rules" / "06-existing-repository-changes.md"
+)
 
 SOURCE_TYPES = ("figma", "portal_url", "other_design", "source_repo")
 DELIVERY_MODES = ("new_repository", "existing_repository")
@@ -70,13 +73,13 @@ HARD_STOP_FIELDS = (
 PIPELINE_STAGES = (
     "Intake",
     "Normalize",
-    "Create repo",
-    "Scaffold",
+    "Prepare repository",
+    "Plan or scaffold",
     "Frontend",
     "Backend",
-    "Integrate",
+    "Integrate or deploy",
     "Verify",
-    "Handoff",
+    "Pull request and handoff",
 )
 LAMBDA_TEMPLATE_TOKENS = (
     "PortalApiStackProps",
@@ -125,6 +128,18 @@ LATENCY_SCRIPT_TOKENS = (
     ".sort(",
     "p95",
     ">= 200",
+)
+EXISTING_REPOSITORY_TOKENS = (
+    "git status --short",
+    "git worktree",
+    "base branch",
+    "feature branch",
+    "preserve user changes",
+    "existing architecture",
+    "minimum necessary",
+    "gh pr create",
+    "update an existing PR",
+    "never merge",
 )
 
 
@@ -373,6 +388,14 @@ def assert_verification_contract() -> None:
             fail(f"latency reference must include {token!r}")
 
 
+def assert_existing_repository_contract() -> None:
+    rules_text = read_text(EXISTING_REPOSITORY_RULES)
+
+    for token in EXISTING_REPOSITORY_TOKENS:
+        if token.lower() not in rules_text.lower():
+            fail(f"existing-repository rules must include {token!r}")
+
+
 def main() -> int:
     skill_text = read_text(SKILL_MD)
     rules_text = read_text(INTAKE_RULES)
@@ -386,6 +409,7 @@ def main() -> int:
     assert_lambda_template_contract()
     assert_repo_preview_contract()
     assert_verification_contract()
+    assert_existing_repository_contract()
 
     print("build-portals contract tests passed")
     return 0
