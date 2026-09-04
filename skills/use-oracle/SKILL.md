@@ -19,15 +19,17 @@ rules.
 2. [`reference/continuous-ingestion.md`](./reference/continuous-ingestion.md) — autonomous
    stage advancement, durable handoffs, worker leases/recovery, runtime provenance,
    end-to-end completion, and immutable republish on snapshot drift
-3. [`reference/readiness-and-completeness.md`](./reference/readiness-and-completeness.md) —
+3. [`reference/continuous-safe-optimization.md`](./reference/continuous-safe-optimization.md) —
+   measured bottlenecks, bounded experiments, automatic rollback, and load/publication batching
+4. [`reference/readiness-and-completeness.md`](./reference/readiness-and-completeness.md) —
    YAML catalog fields, jump-of-ingest rules, parcel/permit/destination gates,
    reconciliation, completeness, publication fail-closed
-4. [`reference/failure-modes.md`](./reference/failure-modes.md) — ingest and enrichment
+5. [`reference/failure-modes.md`](./reference/failure-modes.md) — ingest and enrichment
    traps (caps, sessions, BBB page vs advertised totals, AWS-remote browser vs operator
    laptop, secrets inject only at process start, S3 staging ≠ Filebase)
-5. [`reference/request-routing.md`](./reference/request-routing.md) — name **who** receives
+6. [`reference/request-routing.md`](./reference/request-routing.md) — name **who** receives
    a records or API request; catalog `records_request` fields
-6. [`../county-readiness-preflight/SKILL.md`](../county-readiness-preflight/SKILL.md) — the
+7. [`../county-readiness-preflight/SKILL.md`](../county-readiness-preflight/SKILL.md) — the
    deterministic validator. `onboard-county` must run it before seed, pilot, or full ingest.
 
 ## Choose the stack first
@@ -262,7 +264,8 @@ changes.
 - Runtime Secrets apply at process start. Start a new AWS job/runner after adding AWS or
   Filebase keys; do not assume a running process received them.
 - Mark complete only after capture, load, immutable publish, remote readback, catalog/MCP
-  registration, and Donphan smoke tests all pass. If loaded data advances after freeze,
-  automatically create a new immutable snapshot; never mutate the published one.
+  registration, and Donphan smoke tests all pass. If loaded data advances after freeze, mark
+  publication stale and queue a replacement immutable snapshot under the continuous safe
+  optimization policy; never mutate the published one.
 - Every status response must use the required status report in
   [`reference/durable-orchestration.md`](./reference/durable-orchestration.md).
