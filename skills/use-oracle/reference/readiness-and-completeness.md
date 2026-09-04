@@ -266,9 +266,10 @@ Before publication:
 - add a catalog entry only after readback passes.
 
 Existing query-table GATE still applies: parquet rows == distinct folio in the query DB, 0
-dup/null folios — never skip the reconcile. Regenerate `PROPERTY_QUERY_TABLE_MAP` from
-`oracle-node/catalog/published-counties.json` or MCP `listPublishedCounties`. Do not embed a
-four-county default list in this skill.
+dup/null folios — never skip the reconcile. Regenerate `PROPERTY_QUERY_TABLE_MAP` from this
+kit's bundled `skills/use-oracle/runtime/catalog/published-counties.json` (via
+`npm run catalog:sync-mcp-json --prefix skills/use-oracle/runtime`) or MCP
+`listPublishedCounties`. Do not embed a four-county default list in this skill.
 
 **PII publish is human-approved, then automated:** dry-run until a human POSTs
 `Publish/<county>/approve`; then `tick` uploads. Do not skip approval, and do not require the
