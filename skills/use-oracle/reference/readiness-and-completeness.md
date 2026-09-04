@@ -6,11 +6,11 @@ County readiness is **enforced** by
 validator and STOP on a non-zero exit.
 
 The machine-readable county source catalog is
-`elephant-pipeline/docs/<county>-sources.yaml` — the same file `county-discovery` already
-writes. Do not create `Counties-trasform-scripts/<county>/sources/sources.json`.
+`skills/use-oracle/runtime/docs/<county>-sources.yaml` — the same file `county-discovery`
+already writes. Do not create `Counties-trasform-scripts/<county>/sources/sources.json`.
 
-Human findings stay in `elephant-pipeline/docs/<county>-county-findings.md` and are PR'd to
-`Counties-trasform-scripts/<county>/docs/`.
+Human findings stay in `skills/use-oracle/runtime/docs/<county>-county-findings.md` and are
+PR'd to `Counties-trasform-scripts/<county>/docs/`.
 
 Read the YAML catalog before any refresh. When a probe reveals a quirk, incident, or URL
 change, update the YAML in the same piece of work.
@@ -51,7 +51,7 @@ seed, pilot, or full ingestion:
 
 ```bash
 python3 skills/use-oracle/scripts/validate-county-readiness.py \
-  elephant-pipeline/docs/<county>-sources.yaml
+  skills/use-oracle/runtime/docs/<county>-sources.yaml
 ```
 
 **STOP** before `county-seed-data`, adapter pilots/scale-out, or `county-ingest-run` while
@@ -266,9 +266,10 @@ Before publication:
 - add a catalog entry only after readback passes.
 
 Existing query-table GATE still applies: parquet rows == distinct folio in the query DB, 0
-dup/null folios — never skip the reconcile. Regenerate `PROPERTY_QUERY_TABLE_MAP` from
-`oracle-node/catalog/published-counties.json` or MCP `listPublishedCounties`. Do not embed a
-four-county default list in this skill.
+dup/null folios — never skip the reconcile. Regenerate `PROPERTY_QUERY_TABLE_MAP` from this
+kit's bundled `skills/use-oracle/runtime/catalog/published-counties.json` (via
+`npm run catalog:sync-mcp-json --prefix skills/use-oracle/runtime`) or MCP
+`listPublishedCounties`. Do not embed a four-county default list in this skill.
 
 **PII publish is human-approved, then automated:** dry-run until a human POSTs
 `Publish/<county>/approve`; then `tick` uploads. Do not skip approval, and do not require the

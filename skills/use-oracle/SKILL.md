@@ -1,15 +1,15 @@
 ---
 name: use-oracle
-description: "Operating guide for the Oracle public-data ingestion agent. Use when installing and driving the elephant-xyz ingestion skills to discover, ingest, validate, refresh, and publish a county's property, permit, corporate-registry, and contractor-reputation data plus its coverage snapshot. Enforces fail-closed readiness and honest completeness."
+description: "Operating guide for the Oracle public-data ingestion agent. Use when driving bundled ingestion skills under skills/ and the bundled runtime at skills/use-oracle/runtime/ to discover, ingest, validate, refresh, and publish a county's property, permit, corporate-registry, and contractor-reputation data plus its coverage snapshot. Enforces fail-closed readiness and honest completeness."
 ---
 
 # Use Oracle
 
 Oracle is the public-data ingestion agent. It does NOT contain its own ingestion code — it
-**drives the existing `elephant-xyz/skills`** (`onboard-county` and its stage skills) against
-**one chosen stack**, and reads results from the query DB. This skill is the operating
-contract: stack selection, catalog path, readiness gate, stage map, and publish/coverage
-rules.
+**drives the bundled stage skills** under `skills/` (`onboard-county` and its stage skills)
+against **one chosen runtime** at `skills/use-oracle/runtime/`, and reads results from the
+query DB. This skill is the operating contract: stack selection, catalog path, readiness gate,
+stage map, and publish/coverage rules.
 
 ## Always read
 
@@ -27,24 +27,30 @@ rules.
    laptop, secrets inject only at process start, S3 staging ≠ Filebase)
 5. [`reference/request-routing.md`](./reference/request-routing.md) — name **who** receives
    a records or API request; catalog `records_request` fields
-6. [`../county-readiness-preflight/SKILL.md`](../county-readiness-preflight/SKILL.md) — the
+6. [`reference/source-provenance.md`](./reference/source-provenance.md) — upstream SHAs and
+   bundled skill import provenance
+7. [`reference/self-contained-ingestion.md`](./reference/self-contained-ingestion.md) —
+   install, offline replay, bounded live pilot, publish dry-run, approval-gated publish,
+   catalog update, MCP smoke, and the clean-room verification gate. The team-facing test
+   evidence template for changes to the bundled runtime.
+8. [`../county-readiness-preflight/SKILL.md`](../county-readiness-preflight/SKILL.md) — the
    deterministic validator. `onboard-county` must run it before seed, pilot, or full ingest.
 
 ## Choose the stack first
 
-Identify **exactly one** runtime from the current checkout **before** loading any stage
-procedure. Do not warn-and-continue.
+Identify **exactly one** runtime from `skills/use-oracle/runtime/` **before** loading any
+stage procedure. Do not warn-and-continue.
 
-| Marker in the checkout | Stack | Load these procedures |
+| Marker in the runtime | Stack | Load these procedures |
 |---|---|---|
-| `elephant-pipeline` (`docker-compose`, Restate, `docs/`) | **local** | `elephant-xyz/skills` `main`: Restate + Postgres. `bootstrap-oracle-infra` is local Docker. |
-| `oracle-node` (AWS/SQS, CDK) | **aws** | AWS profile/region, SQS seed feeder. Do not run Restate handlers. |
+| `docker-compose.yml`, Restate services, `docs/` | **local** | Bundled `skills/` stage skills. `bootstrap-oracle-infra` is local Docker + Restate. Status: `monitoring-county-ingestion`. |
+| AWS/SQS, CDK, `catalog/published-counties.json` | **aws** | AWS profile/region, SQS seed feeder. Do not run Restate handlers. Status: `monitoring-oracle-ingestion`. |
 
-`elephant-xyz/skills` `main` targets **elephant-pipeline**. Use oracle-node procedures only
-when the checkout **is** oracle-node.
+The bundled runtime targets **local Restate + Postgres** by default. Use AWS procedures only
+when the runtime checkout contains oracle-node AWS markers.
 
 If both markers are present, or neither, **STOP** and ask which stack this run uses. Never
-run Restate procedures against an AWS repo, or AWS procedures against the local stack.
+run Restate procedures against an AWS runtime, or AWS procedures against the local stack.
 
 The selected ingestion stack does not determine where BBB browser automation runs. Run
 BBB public-site browser work on approved **AWS-managed remote compute** with US egress,
@@ -53,16 +59,16 @@ approved AWS job/container/compute path supplied by `bbb-harvest`.
 
 ## What Oracle drives
 
-`elephant-xyz/skills` implements the pipeline: appraisal scrape → lexicon transform → permit
-harvest → Sunbiz/BBB enrichment → query DB → public Filebase/IPFS publish surfaces. Lee
-County, FL is the first full implementation. Oracle is the named entry point that runs them;
-it never re-implements a stage.
+Bundled stage skills under `skills/` implement the pipeline: appraisal scrape → lexicon
+transform → permit harvest → Sunbiz/BBB enrichment → query DB → public Filebase/IPFS publish
+surfaces. Lee County, FL is the first full implementation. Oracle is the named entry point
+that runs them; it never re-implements a stage.
 
 ## Prerequisites
 
-- Work happens in a checkout of the **chosen stack** (`elephant-pipeline` or `oracle-node`)
-  with sibling repos next to it: `elephant-query-db`, `Counties-trasform-scripts`, and
-  `lexicon` (optional).
+- Work happens in the bundled runtime at **`skills/use-oracle/runtime/`** with sibling repos
+  next to it when transforms or query-db tooling are needed: `Counties-trasform-scripts`, and
+  `lexicon` (optional). Query DB schema is bundled in `use-elephant-query-db`.
 - **Local stack:** Docker, Node 22+, `restate` CLI, `gh` authenticated. No cloud account
   for ingestion.
 - **AWS stack:** `AWS_PROFILE` / `AWS_REGION` for the existing `elephant-oracle-node`
@@ -75,20 +81,18 @@ it never re-implements a stage.
   ownership at intake whenever publication is in scope. Request missing secret injection
   immediately; never wait until the publish stage or copy secret values into the catalog.
 - For local portal probing, a **US egress IP**.
-- Install skills from the chosen checkout:
-
-```bash
-npx skills add elephant-xyz/skills --all -y
-```
+- Stage skills are bundled in this plugin under `skills/<skill-name>/SKILL.md`. Do **not**
+  install skills from external registries.
 
 ## Source catalog
 
-The machine-readable county source catalog is **`elephant-pipeline/docs/<county>-sources.yaml`**.
+The machine-readable county source catalog is
+**`skills/use-oracle/runtime/docs/<county>-sources.yaml`**.
 `county-discovery` already writes it. Do **not** invent
 `Counties-trasform-scripts/<county>/sources/sources.json`.
 
-Human findings stay in `elephant-pipeline/docs/<county>-county-findings.md` and are PR'd to
-`Counties-trasform-scripts/<county>/docs/` as discovery already requires.
+Human findings stay in `skills/use-oracle/runtime/docs/<county>-county-findings.md` and are
+PR'd to `Counties-trasform-scripts/<county>/docs/` as discovery already requires.
 
 ## Stage-skill map
 
@@ -103,11 +107,17 @@ Human findings stay in `elephant-pipeline/docs/<county>-county-findings.md` and 
 | `validate-county-transform` | Prove transforms extract 100% of available data across variability |
 | `county-permit-adapter` | Build the county permit-portal harvester (Accela template + generic path) |
 | `county-ingest-run` | Deploy/start the backpressure-aware seed feeder — only after readiness PASS |
-| `monitoring-county-ingestion` | Queue/invocation health, artifact counts, DB counts, ETAs |
+| `monitoring-county-ingestion` | **Local stack:** queue/invocation health, artifact counts, DB counts, ETAs |
+| `monitoring-oracle-ingestion` | **AWS stack:** SQS/Lambda health, S3 artifact counts, ETAs |
 | `sunbiz-corporate-ingest` | Florida statewide Sunbiz corporate bulk ingest + lexicon transform |
 | `bbb-harvest` | BBB contractor category harvest for reputation/quality enrichment |
 | `query-db-loading-matching` | Load artifacts into the query DB and cross-match by parcel id / address hash |
 | `transform-v2-builder` | Author/repair county transform handler packages for elephant-cli transform v2 |
+| `overture-places-ingest` | Overture Maps places taxonomy, boundary, and publication gates |
+| `county-open-data-publish` | Consolidated property JSON to Filebase/IPFS with IPNS |
+| `county-query-table-publish` | Columnar query-table Parquet export and MCP wiring |
+| `deploy-open-data-mcp` | Self-host the Elephant open-data MCP server |
+| `durable-workflow-builder` | Author Restate pipeline workflows and handlers |
 
 ## Start independent work immediately
 
@@ -152,7 +162,7 @@ bounded discovery; never implement against an assumed source.
 | Step | Action | Existing skill / artifact |
 |---|---|---|
 | 1 | Operator intake + launch the independent startup work queue | `onboard-county` intake |
-| 2 | Review prior findings, transforms, adapters, manifests, and checkpoints | `elephant-pipeline/docs/` plus `Counties-trasform-scripts/<county>/` |
+| 2 | Review prior findings, transforms, adapters, manifests, and checkpoints | `skills/use-oracle/runtime/docs/` plus `Counties-trasform-scripts/<county>/` |
 | 3 | Bounded source discovery + full jurisdiction/source enumeration | `county-discovery` |
 | 4 | Build the catalog; start required adapter fixtures/scaffolds; prove Neon, AWS BBB execution, and Filebase readiness | `docs/<county>-sources.yaml`, `county-permit-adapter`, `bootstrap-oracle-infra` |
 | 5–6 | County Readiness Preflight + exceptions | `county-readiness-preflight` validator; **STOP** before seed, pilots, or scale-out if any gate is `BLOCKED` |
@@ -166,7 +176,7 @@ bounded discovery; never implement against an assumed source.
 
 ```bash
 python3 skills/use-oracle/scripts/validate-county-readiness.py \
-  elephant-pipeline/docs/<county>-sources.yaml
+  skills/use-oracle/runtime/docs/<county>-sources.yaml
 ```
 
 Non-zero exit = STOP. Do not call `county-seed-data`, do not start a pilot, and do not
@@ -216,9 +226,11 @@ AWS URL:
 6. Wire MCP from the **canonical published-county catalog**, not from a hardcoded county
    list in this skill:
    - call MCP `listPublishedCounties`; or
-   - read `oracle-node/catalog/published-counties.json`;
+   - read `skills/use-oracle/runtime/catalog/published-counties.json`;
    - regenerate `PROPERTY_QUERY_TABLE_MAP` / `DATASET_COVERAGE_MAP` from that catalog
-     (`node scripts/print-mcp-env-maps.mjs` in an `oracle-node` checkout).
+     (`npm run catalog:sync-mcp-json --prefix skills/use-oracle/runtime`, or equivalently
+     `npm run catalog:mcp-maps --prefix skills/use-oracle/runtime` to print the maps
+     without writing `mcp.json`).
 
 Availability must be typed from the catalog (`publicationScope.level` and readiness
 `unsupported` / `supported_partial` / `supported_full`). Never represent unsupported
