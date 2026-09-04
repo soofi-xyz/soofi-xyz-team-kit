@@ -5,3 +5,5 @@ downloads/
 !.env.example
 *.log
 .DS_Store
+__pycache__/
+*.pyc

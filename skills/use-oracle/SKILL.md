@@ -29,7 +29,11 @@ stage map, and publish/coverage rules.
    a records or API request; catalog `records_request` fields
 6. [`reference/source-provenance.md`](./reference/source-provenance.md) — upstream SHAs and
    bundled skill import provenance
-7. [`../county-readiness-preflight/SKILL.md`](../county-readiness-preflight/SKILL.md) — the
+7. [`reference/self-contained-ingestion.md`](./reference/self-contained-ingestion.md) —
+   install, offline replay, bounded live pilot, publish dry-run, approval-gated publish,
+   catalog update, MCP smoke, and the clean-room verification gate. The team-facing test
+   evidence template for changes to the bundled runtime.
+8. [`../county-readiness-preflight/SKILL.md`](../county-readiness-preflight/SKILL.md) — the
    deterministic validator. `onboard-county` must run it before seed, pilot, or full ingest.
 
 ## Choose the stack first
@@ -224,7 +228,9 @@ AWS URL:
    - call MCP `listPublishedCounties`; or
    - read `skills/use-oracle/runtime/catalog/published-counties.json`;
    - regenerate `PROPERTY_QUERY_TABLE_MAP` / `DATASET_COVERAGE_MAP` from that catalog
-     (`node scripts/print-mcp-env-maps.mjs` in an `oracle-node` checkout).
+     (`npm run catalog:sync-mcp-json --prefix skills/use-oracle/runtime`, or equivalently
+     `npm run catalog:mcp-maps --prefix skills/use-oracle/runtime` to print the maps
+     without writing `mcp.json`).
 
 Availability must be typed from the catalog (`publicationScope.level` and readiness
 `unsupported` / `supported_partial` / `supported_full`). Never represent unsupported

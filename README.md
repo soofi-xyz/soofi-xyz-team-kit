@@ -19,6 +19,15 @@ Then reload Cursor. The plugin will load from `~/.cursor/plugins/local/soofi-xyz
 
 **Elephant routing:** `donphan` + `use-elephant-mcp` = explore open data via MCP; `oracle` + `use-oracle` = ingest/refresh sources; `use-transform-evaluator` = run the upstream LangGraph transform helper under Oracle; `watchog` + `build-elephant-hero-facts` = build the scheduled homepage hero-facts service (monitor → verify → Asana approval → content-only PR); `use-elephant-query-db` = SQL over Neon.
 
+**Self-contained ingestion runtime:** `oracle` drives a fully bundled, self-contained ingestion
+runtime at `skills/use-oracle/runtime/` (Node **22.18+**, `npm ci && npm test` there). It never
+requires a sibling `oracle-node`, `Counties-trasform-scripts`, or `elephant-query-db` checkout,
+and never runs `npx skills add`. See
+[`skills/use-oracle/reference/self-contained-ingestion.md`](./skills/use-oracle/reference/self-contained-ingestion.md)
+for install, offline replay, bounded live pilot, publish dry-run, approval-gated publish,
+catalog update, and MCP smoke commands, and run `python3 scripts/check-plugin-clean-room.py`
+before opening a PR that touches it.
+
 ### GitHub Copilot CLI
 
 Add the marketplace first, then install the plugin from that marketplace:
