@@ -1,6 +1,6 @@
 ---
 name: county-readiness-preflight
-description: "Fail-closed county readiness validator. Use before county-seed-data, county-ingest-run, onboard-county, or any pilot or full ingest. At the start of every new county, validates elephant-pipeline/docs/<county>-sources.yaml for GIS vs tax-roll, permit-jurisdiction classification, destination proof, records-request recipients, and BBB advertised-count traps."
+description: "Fail-closed county readiness validator. Use before county-seed-data, county-ingest-run, onboard-county, or any pilot or full ingest. At the start of every new county, validates skills/use-oracle/runtime/docs/<county>-sources.yaml for GIS vs tax-roll, permit-jurisdiction classification, destination proof, records-request recipients, and BBB advertised-count traps."
 ---
 
 # County Readiness Preflight
@@ -50,7 +50,7 @@ failure modes, not a list of special counties:
 
 ```bash
 python3 skills/use-oracle/scripts/validate-county-readiness.py \
-  <elephant-pipeline>/docs/<county>-sources.yaml
+  skills/use-oracle/runtime/docs/<county>-sources.yaml
 ```
 
 Exit **0** only when `overall` is `PASS` and `seed_allowed` / `ingest_allowed` are true.
@@ -63,7 +63,7 @@ confirmation.
 ## When it must run
 
 Run after `county-discovery` has written or updated
-`elephant-pipeline/docs/<county>-sources.yaml`, and **again** immediately before:
+`skills/use-oracle/runtime/docs/<county>-sources.yaml`, and **again** immediately before:
 
 - `county-seed-data`
 - `onboard-county` continuing past discovery into seed

@@ -1,9 +1,9 @@
 # Durable county-data ingestion overlay
 
-This overlay governs how Oracle drives `elephant-xyz/skills` on **one chosen stack**
-(default: `elephant-pipeline` local Restate + Postgres; `oracle-node` only when that is
-the checkout). It does not replace `onboard-county`, the seed CSV, delta/repair refresh,
-or the IPFS publish path. Apply
+This overlay governs how Oracle drives bundled stage skills under `skills/` on **one chosen
+runtime** at `skills/use-oracle/runtime/` (default: local Restate + Postgres; AWS markers
+only when the runtime contains oracle-node infrastructure). It does not replace
+`onboard-county`, the seed CSV, delta/repair refresh, or the IPFS publish path. Apply
 [`continuous-ingestion.md`](./continuous-ingestion.md) for durable run state, autonomous
 stage transitions, handoffs, worker recovery, provenance, and completion.
 
@@ -37,7 +37,7 @@ remediation, request preparation, and publication-readiness work continue.
   supplemental source separately.
 - Begin this enumeration at intake and update the source graph as evidence arrives.
 - Record source authority, role, date boundary, snapshot time, access policy, and known
-  exclusions in `elephant-pipeline/docs/<county>-sources.yaml`.
+  exclusions in `skills/use-oracle/runtime/docs/<county>-sources.yaml`.
 - Never assume a county portal contains every municipality’s records.
 - Never treat supplemental county approvals as complete municipal permits.
 
@@ -293,7 +293,7 @@ When one source is blocked, continue every independent safe workstream.
 After each county:
 
 - Store changing counts, URLs, source states, and timestamps in
-  `elephant-pipeline/docs/<county>-sources.yaml`.
+  `skills/use-oracle/runtime/docs/<county>-sources.yaml`.
 - Store reusable rules, vendor signatures, identifier traps, pagination strategies, CAPTCHA
   states, and reconciliation patterns in this Oracle skill (`skills/use-oracle/`).
 - Add a regression fixture under `skills/use-oracle/fixtures/readiness/`, named by

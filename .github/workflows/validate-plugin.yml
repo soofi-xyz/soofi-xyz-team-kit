@@ -25,6 +25,11 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.18"
+
       - name: Install validation dependencies
         run: python -m pip install "jsonschema==4.25.1"
 
@@ -33,6 +38,25 @@ jobs:
           bash -n scripts/sync-copilot-agents.sh
           bash -n scripts/validate-plugin.sh
           bash -n scripts/local-cursor-plugin.sh
+          bash -n skills/use-oracle/scripts/oracle-paths.sh
+          bash -n skills/use-oracle/scripts/oracle-paths.test.sh
+
+      - name: Check Python syntax
+        run: |
+          python3 -m py_compile scripts/check-plugin-clean-room.py
+          python3 -m py_compile skills/use-oracle/scripts/validate-county-readiness.py
+
+      - name: Install Oracle runtime dependencies
+        # `cd` (not `npm ci --prefix`): some npm releases (observed on 11.13.0)
+        # mis-derive the expected lockfile package identity from the
+        # --prefix directory's basename instead of its package.json, and
+        # fail every `ci` with a spurious "Missing: <basename>@<version> from
+        # lock file" error. `npm test --prefix` is unaffected (no lockfile
+        # sync check), so it is left as-is elsewhere in this repo.
+        run: cd skills/use-oracle/runtime && npm ci
+
+      - name: Test Oracle runtime
+        run: npm test --prefix skills/use-oracle/runtime
 
       - name: Validate plugin files
         run: scripts/validate-plugin.sh
@@ -42,6 +66,9 @@ jobs:
 
       - name: Check Hoopa sanitization heuristics
         run: python3 scripts/check-build-portals-sanitization.py
+
+      - name: Check plugin clean room
+        run: python3 scripts/check-plugin-clean-room.py
 
       - name: Check generated Copilot agents are committed
         run: scripts/sync-copilot-agents.sh check

@@ -167,7 +167,7 @@ def self_test() -> None:
     if not scan_text("customer URL fixture", customer_url_fixture, ()):
         raise AssertionError("scanner self-test failed to reject a customer URL")
 
-    credential_fixture = 'password = "fixture-real-value"'
+    credential_fixture = 'password = "' + "fixture" + "-real-value" + '"'
     findings = scan_text("credential fixture", credential_fixture, ())
     if not any("credential assignment" in finding for finding in findings):
         raise AssertionError("scanner self-test failed to reject a credential")
