@@ -18,10 +18,12 @@ import { parseCsvRecords } from "../src/core/csv.mjs";
 import { publishFilebase } from "../src/core/filebase.mjs";
 import { runReplay } from "../src/core/replay.mjs";
 import { pinellasAdapter } from "../src/counties/pinellas/adapter.mjs";
+import { duvalAdapter } from "../src/counties/duval/adapter.mjs";
 
 /** @type {Record<string, import("../src/core/replay.mjs").CountyAdapter>} */
 const ADAPTERS = {
   pinellas: pinellasAdapter,
+  duval: duvalAdapter,
 };
 
 /**
