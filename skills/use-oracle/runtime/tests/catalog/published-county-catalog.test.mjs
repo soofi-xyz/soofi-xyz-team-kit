@@ -39,15 +39,16 @@ describe("published county catalog", () => {
     expect(DEFAULT_CATALOG_PATH).not.toContain("oracle-node");
   });
 
-  it("validates the tracked bundled catalog and contains exactly the twelve locked counties", async () => {
+  it("validates the tracked bundled catalog and contains exactly the thirteen locked counties", async () => {
     const tracked = JSON.parse(await readFile(trackedCatalogPath, "utf8"));
 
     const result = validateCatalog(tracked);
 
-    expect(result.counties).toHaveLength(12);
+    expect(result.counties).toHaveLength(13);
     expect(result.counties.map((county) => county.countyKey)).toEqual([
       "broward",
       "chester",
+      "duval",
       "hillsborough",
       "lee",
       "miami-dade",
@@ -59,6 +60,28 @@ describe("published county catalog", () => {
       "rock-island",
       "seminole",
     ]);
+  });
+
+  it("carries the locked Duval entry exactly", async () => {
+    const tracked = JSON.parse(await readFile(trackedCatalogPath, "utf8"));
+    const duval = validateCatalog(tracked).counties.find(
+      (county) => county.countyKey === "duval",
+    );
+
+    expect(duval).toEqual({
+      countyKey: "duval",
+      countyName: "Duval",
+      stateCode: "FL",
+      countyFips: "12031",
+      status: "published",
+      queryTableUrl:
+        "https://ipfs.filebase.io/ipns/k51qzi5uqu5dle7swd06u9ebrgw375b5vhhhtiiz7un7udfsar0rci53x2w5y4",
+      datasetCoverageUrl:
+        "https://ipfs.filebase.io/ipns/k51qzi5uqu5dgqc52fnea1o42e27dr4os0mrdf5ixonuv8kdztdnxclflazf4w",
+      permitQueryTableUrl: null,
+      placesTableUrl: null,
+      updatedAt: "2026-09-04T18:43:43.000Z",
+    });
   });
 
   it("carries the locked Seminole entry exactly", async () => {
