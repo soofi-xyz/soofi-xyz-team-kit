@@ -19,7 +19,7 @@ export const SOURCE_SYSTEM = "duval_appraiser";
 export const COUNTY_KEY = "duval";
 export const COUNTY_NAME = "Duval";
 export const STATE_CODE = "FL";
-export const QUERY_TABLE_BUCKET = "elephant-oracle-query-table-duval";
+export const QUERY_TABLE_BUCKET = "elephant-oracle-query-table";
 export const QUERY_TABLE_IPNS_LABEL = "oracle-query-table-duval";
 export const COVERAGE_IPNS_LABEL = "oracle-dataset-coverage-duval";
 
