@@ -278,7 +278,8 @@ human to run the upload command except as break-glass.
 Apply the atomic completion and snapshot-drift rules in
 [`continuous-ingestion.md`](./continuous-ingestion.md). A capture or load milestone is not
 done; completion requires remote publication readback and MCP visibility. A newer loaded
-watermark automatically creates a new immutable snapshot.
+watermark marks publication stale and automatically queues a replacement immutable snapshot;
+execute that queue under [`continuous-safe-optimization.md`](./continuous-safe-optimization.md).
 
 Availability must be typed `unsupported`, `supported_partial`, or `supported_full`. Never
 represent unsupported access as zero records.
