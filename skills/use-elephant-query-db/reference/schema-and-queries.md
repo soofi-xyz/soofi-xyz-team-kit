@@ -1,6 +1,6 @@
 # Schema And Query Code
 
-This database serves normalized Elephant oracle data from Lee appraisal, Accela permits, BBB contractor reputation/quality data, and Sunbiz corporate registrations.
+This database serves normalized Elephant oracle data from Lee appraisal, Accela permits, BBB contractor reputation/quality data, Sunbiz corporate registrations, and Overture Maps business locations (places).
 
 ## Schema Surface
 
@@ -28,6 +28,10 @@ import {
   businessReputationRatingReasons,
   businessReputationReviews,
   businessReputationServiceAreas,
+  businessLocationCategories,
+  businessLocationParcelLinks,
+  businessLocationSources,
+  businessLocations,
   companies,
   companyProfileView,
   contractorQualityScores,
@@ -40,6 +44,7 @@ import {
   layouts,
   lots,
   ownerships,
+  overturePlaceExtractions,
   parcels,
   people,
   permitContacts,
@@ -69,6 +74,7 @@ import {
   type BusinessReputationComplaintEvent,
   type BusinessReputationProfile,
   type BusinessReputationReview,
+  type BusinessReputationServiceArea,
   type ContractorQualityScore,
   type Company,
   type Inspection,
@@ -90,7 +96,10 @@ Primary read paths:
 - Permits: `property_improvements`, `inspections`, `permit_contacts`, `permit_events`, `permit_fees`, `permit_links`, `permit_custom_fields`, `permit_search_view`
 - BBB contractor quality: `business_reputation_profiles`, `business_reputation_reviews`, `business_reputation_complaints`, `business_reputation_complaint_events`, `business_reputation_contacts`, `business_reputation_categories`, `business_reputation_external_links`, `contractor_quality_scores`
 - Sunbiz: `companies`, `business_registrations`, `business_registration_addresses`, `business_registration_parties`, `business_registration_annual_reports`, `business_registration_events`, `company_profile_view`
+- Overture places: `business_locations`, `business_location_categories`, `business_location_sources`, `overture_place_extractions`, `business_location_parcel_links` (schema stub until parcel linking exists)
 - Address search: `addresses`, `unnormalized_addresses`, `address_profile_view`
+
+County places data is loaded by the `overture-places-ingest` stage skill. Query current rows with `business_locations.is_current = true` and filter by `county_key`.
 
 ## Exact Schema Files
 
@@ -105,6 +114,7 @@ reference/query-db-schema/
     ├── core.ts
     ├── index.ts
     ├── permits.ts
+    ├── places.ts
     ├── shared.ts
     ├── sunbiz.ts
     └── views.ts
@@ -124,8 +134,11 @@ Then import from the copied schema module:
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
 import * as schema from "@/elephant-query-db/schema";
-import { propertyImprovements, permitSearchView } from "@/elephant-query-db/schema";
+import { propertyImprovements, permitSearchView, businessLocations } from "@/elephant-query-db/schema";
 import type { PropertyImprovement } from "@/elephant-query-db/types";
+import type { InferSelectModel } from "drizzle-orm";
+
+type BusinessLocationRow = InferSelectModel<typeof businessLocations>;
 ```
 
 If the copied files are used, install their runtime dependencies:
@@ -165,7 +178,7 @@ Put reusable query functions in a server-only module such as `src/server/elephan
 ```ts
 import "server-only";
 
-import { desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, or, sql, type InferSelectModel } from "drizzle-orm";
 import {
   addressProfileView,
   businessReputationAlternateNames,
@@ -181,6 +194,8 @@ import {
   businessReputationRatingReasons,
   businessReputationReviews,
   businessReputationServiceAreas,
+  businessLocations,
+  businessLocationCategories,
   businessRegistrations,
   companyProfileView,
   contractorQualityScores,
@@ -218,6 +233,22 @@ export type PropertyProfileRow = typeof propertyProfileView.$inferSelect;
 export type PermitSearchRow = typeof permitSearchView.$inferSelect;
 export type CompanyProfileRow = typeof companyProfileView.$inferSelect;
 export type AddressProfileRow = typeof addressProfileView.$inferSelect;
+
+export type BusinessLocationSearchRow = Pick<
+  InferSelectModel<typeof businessLocations>,
+  | "businessLocationId"
+  | "countyKey"
+  | "gersId"
+  | "namePrimary"
+  | "normalizedName"
+  | "taxonomyPrimary"
+  | "basicCategory"
+  | "operatingStatus"
+  | "addressLocality"
+  | "addressPostcode"
+  | "latitude"
+  | "longitude"
+>;
 
 export type BusinessReputationSearchRow = Pick<
   BusinessReputationProfile,
@@ -633,6 +664,49 @@ export async function searchCompanies(
 }
 
 /**
+ * List current Overture business locations for a county, optionally filtered by taxonomy.
+ *
+ * @param countyKey - County slug, for example `lee`.
+ * @param taxonomyPrimary - Optional Overture primary taxonomy label.
+ * @param limit - Maximum number of locations to return.
+ * @returns Current business location rows ordered by name.
+ */
+export async function listBusinessLocationsByCounty(
+  countyKey: string,
+  taxonomyPrimary?: string,
+  limit = 50,
+): Promise<readonly BusinessLocationSearchRow[]> {
+  const filters = [
+    eq(businessLocations.countyKey, countyKey),
+    eq(businessLocations.isCurrent, true),
+  ];
+
+  if (taxonomyPrimary !== undefined && taxonomyPrimary.trim().length > 0) {
+    filters.push(eq(businessLocations.taxonomyPrimary, taxonomyPrimary.trim()));
+  }
+
+  return elephantDb
+    .select({
+      businessLocationId: businessLocations.businessLocationId,
+      countyKey: businessLocations.countyKey,
+      gersId: businessLocations.gersId,
+      namePrimary: businessLocations.namePrimary,
+      normalizedName: businessLocations.normalizedName,
+      taxonomyPrimary: businessLocations.taxonomyPrimary,
+      basicCategory: businessLocations.basicCategory,
+      operatingStatus: businessLocations.operatingStatus,
+      addressLocality: businessLocations.addressLocality,
+      addressPostcode: businessLocations.addressPostcode,
+      latitude: businessLocations.latitude,
+      longitude: businessLocations.longitude,
+    })
+    .from(businessLocations)
+    .where(and(...filters))
+    .orderBy(businessLocations.namePrimary)
+    .limit(limit);
+}
+
+/**
  * Search normalized address profile rows.
  *
  * @param searchText - Partial address text.
@@ -811,6 +885,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 - BBB contractor score rows are in `contractor_quality_scores`; tie them to permits through `company_id` on `property_improvements.contractor_company_id` and `permit_contacts.company_id`, or through `business_reputation_profile_id` for profile detail pages.
 - BBB loader artifacts preserve all browser-harvested visible text, JSON-LD, links, profile/subpage HTML, and Lee permit seed metadata in `business_reputation_profiles.source_payload`.
 - `business_registrations.document_number` is the Sunbiz natural key.
+- Overture places live in `business_locations` with child rows in `business_location_categories` and `business_location_sources`. Release-level extract metadata is in `overture_place_extractions`. Filter `business_locations.is_current = true` for the active release; join categories on `business_location_id` for taxonomy labels. Ingestion is driven by `overture-places-ingest`; query examples are in [`reference/schema-and-queries.md`](./reference/schema-and-queries.md).
 - `parcels.parcel_identifier` and `properties.parcel_identifier` use normalized digits-only parcel identifiers.
 - Use `source_system`, `source_record_key`, `source_record_hash`, and `source_artifact_uri` for audit and reconciliation screens.
 - Use `source_payload` only when typed columns do not yet expose a source field needed by the UI.

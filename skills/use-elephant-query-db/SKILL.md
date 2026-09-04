@@ -1,6 +1,6 @@
 ---
 name: use-elephant-query-db
-description: "User guide for reading the deployed elephant-query-db database. Use when building apps, route handlers, dashboards, reports, or agents that query Elephant parcels, permits, contractor reputation, companies, and addresses. Not for loader changes or schema migrations."
+description: "User guide for reading the deployed elephant-query-db database. Use when building apps, route handlers, dashboards, reports, or agents that query Elephant parcels, permits, contractor reputation, companies, Overture business locations (places), and addresses. Not for loader changes or schema migrations."
 ---
 
 # Use Elephant Query DB
@@ -33,5 +33,5 @@ When answering or coding with this skill, return:
 - The Vercel resource name and env var used.
 - The schema objects imported.
 - The exact route/function/file code needed for the requested query.
-- The query path, for example parcel -> property -> permits, permit -> inspections/contacts/links, company -> BBB reputation/contractor score, or company -> business registrations.
+- The query path, for example parcel -> property -> permits, permit -> inspections/contacts/links, company -> BBB reputation/contractor score, company -> business registrations, or county -> Overture business locations (`business_locations` loaded by `overture-places-ingest`).
 - Any missing dependency or env setup commands the caller must run.
