@@ -6,6 +6,7 @@ import {
   foreignKey,
   index,
   integer,
+  jsonb,
   numeric,
   pgTable,
   text,
@@ -27,7 +28,7 @@ export const parcels = pgTable(
   "parcels",
   {
     parcelId: uuid("parcel_id").primaryKey().defaultRandom(),
-    requestIdentifier: text("request_identifier"),
+    requestIdentifier: text("request_identifier").notNull(),
     parcelIdentifier: text("parcel_identifier").notNull(),
     countyName: text("county_name"),
     stateCode: text("state_code"),
@@ -40,9 +41,9 @@ export const parcels = pgTable(
   },
   (table) => [
     uniqueIndex("parcels_source_record_idx").on(table.sourceSystem, table.sourceRecordKey),
-    unique("parcels_jurisdiction_key_parcel_identifier_unique").on(
+    unique("parcels_jurisdiction_key_request_identifier_unique").on(
       table.jurisdictionKey,
-      table.parcelIdentifier,
+      table.requestIdentifier,
     ),
     index("parcels_identifier_idx").on(table.parcelIdentifier),
   ],
@@ -337,6 +338,68 @@ export const geometries = pgTable(
   (table) => [
     uniqueIndex("geometries_source_record_idx").on(table.sourceSystem, table.sourceRecordKey),
     index("geometries_property_idx").on(table.propertyId),
+  ],
+);
+
+/**
+ * Exact linear rings associated with a normalized geometry component.
+ *
+ * Existing `geometries.latitude` / `longitude` consumers remain unchanged.
+ * Ordering columns plus the source geometry type preserve Polygon and
+ * MultiPolygon hierarchy, while coordinates retain every source position,
+ * including interior rings (holes).
+ */
+export const geometryRings = pgTable(
+  "geometry_rings",
+  {
+    geometryRingId: uuid("geometry_ring_id").primaryKey().defaultRandom(),
+    geometryId: uuid("geometry_id")
+      .notNull()
+      .references(() => geometries.geometryId, { onDelete: "cascade" }),
+    requestIdentifier: text("request_identifier").notNull(),
+    sourceGeometryType: text("source_geometry_type").notNull(),
+    polygonIndex: integer("polygon_index").notNull(),
+    ringIndex: integer("ring_index").notNull(),
+    ringRole: text("ring_role").notNull(),
+    coordinates: jsonb("coordinates")
+      .$type<readonly (readonly number[])[]>()
+      .notNull(),
+    sourcePayload: jsonObjectColumn("source_payload"),
+    ...sourceMetadataColumns(),
+    createdAt: createdAtColumn(),
+    updatedAt: updatedAtColumn(),
+  },
+  (table) => [
+    uniqueIndex("geometry_rings_source_record_idx").on(
+      table.sourceSystem,
+      table.sourceRecordKey,
+    ),
+    unique("geometry_rings_geometry_polygon_ring_unique").on(
+      table.geometryId,
+      table.polygonIndex,
+      table.ringIndex,
+    ),
+    index("geometry_rings_geometry_idx").on(table.geometryId),
+    index("geometry_rings_request_idx").on(
+      table.sourceSystem,
+      table.requestIdentifier,
+    ),
+    check(
+      "geometry_rings_source_type_check",
+      sql`${table.sourceGeometryType} IN ('Polygon', 'MultiPolygon')`,
+    ),
+    check(
+      "geometry_rings_role_check",
+      sql`${table.ringRole} IN ('exterior', 'interior')`,
+    ),
+    check(
+      "geometry_rings_indexes_check",
+      sql`${table.polygonIndex} >= 0 AND ${table.ringIndex} >= 0`,
+    ),
+    check(
+      "geometry_rings_role_index_check",
+      sql`(${table.ringIndex} = 0 AND ${table.ringRole} = 'exterior') OR (${table.ringIndex} > 0 AND ${table.ringRole} = 'interior')`,
+    ),
   ],
 );
 

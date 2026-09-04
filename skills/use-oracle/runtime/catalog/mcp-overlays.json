@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "1.0",
+  "counties": [
+    {
+      "countyKey": "santa-clara",
+      "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dgnc94h8ce98ds0cb5yoidmcebpwnvccug4upasgbzpyz3ffgs5",
+      "permitQueryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dm5dkii3wz7hj8vqurb1b773uy0qj9nlvsvgaqqyccuurz8kmic",
+      "datasetCoverageUrl": null
+    }
+  ]
+}

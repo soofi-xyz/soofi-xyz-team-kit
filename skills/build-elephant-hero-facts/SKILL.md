@@ -44,7 +44,7 @@ Follow in order; each phase gates the next.
 
 ### Phase 1 — Establish the data contract
 
-Deploy or connect to a Watchog-owned Vercel deployment of `elephant-mcp`'s stateless HTTP transport, pinned to a `main` commit that contains current query-table tools. Configure the same public data maps Donphan uses and protect the endpoint from arbitrary callers. Enumerate counties through `listPublishedCounties`, backed by Oracle's canonical `oracle-node/catalog/published-counties.json`; use `getOracleDatasetInfo(county)` for each county's live count and coverage details (see `rules/catalog-dataset-monitoring.md`).
+Deploy or connect to a Watchog-owned Vercel deployment of `elephant-mcp`'s stateless HTTP transport, pinned to a `main` commit that contains current query-table tools. Configure the same public data maps Donphan uses and protect the endpoint from arbitrary callers. Enumerate counties through `listPublishedCounties`, backed by this kit's bundled canonical catalog at `skills/use-oracle/runtime/catalog/published-counties.json`; use `getOracleDatasetInfo(county)` for each county's live count and coverage details (see `rules/catalog-dataset-monitoring.md`).
 
 ### Phase 2 — Data gateway and change detection
 

@@ -1,5 +1,7 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   date,
   index,
   integer,
@@ -214,6 +216,64 @@ export const businessRegistrationEvents = pgTable(
     index("business_registration_events_registration_date_idx").on(
       table.businessRegistrationId,
       table.eventDate,
+    ),
+  ],
+);
+
+/**
+ * Private, provenance-complete Illinois SOS component evidence.
+ *
+ * Supplemental Corporation and LLC bulk files have independent snapshot dates
+ * and can contain multiple records per official file number. Keeping each
+ * source record here avoids forcing private agent/officer/member details into
+ * public company tables before a field allowlist has been reviewed.
+ */
+export const illinoisSosComponentRecords = pgTable(
+  "illinois_sos_component_records",
+  {
+    illinoisSosComponentRecordId: uuid("illinois_sos_component_record_id")
+      .primaryKey()
+      .defaultRandom(),
+    entityKind: text("entity_kind").notNull(),
+    component: text("component").notNull(),
+    fileNumber: text("file_number").notNull(),
+    snapshotDate: date("snapshot_date").notNull(),
+    sourceFileName: text("source_file_name").notNull(),
+    sourceLineNumber: integer("source_line_number").notNull(),
+    recordFields: jsonObjectColumn("record_fields"),
+    privacyClassification: text("privacy_classification")
+      .notNull()
+      .default("private_non_publishable"),
+    publicationApproved: boolean("publication_approved").notNull().default(false),
+    sourcePayload: jsonObjectColumn("source_payload"),
+    ...sourceMetadataColumns(),
+    createdAt: createdAtColumn(),
+    updatedAt: updatedAtColumn(),
+  },
+  (table) => [
+    unique("illinois_sos_component_records_source_record_unique").on(
+      table.sourceSystem,
+      table.sourceRecordKey,
+    ),
+    index("illinois_sos_component_records_entity_file_idx").on(
+      table.entityKind,
+      table.fileNumber,
+    ),
+    index("illinois_sos_component_records_snapshot_idx").on(
+      table.component,
+      table.snapshotDate,
+    ),
+    check(
+      "illinois_sos_component_records_entity_kind_check",
+      sql`${table.entityKind} in ('corporation', 'llc')`,
+    ),
+    check(
+      "illinois_sos_component_records_privacy_check",
+      sql`${table.privacyClassification} = 'private_non_publishable'`,
+    ),
+    check(
+      "illinois_sos_component_records_publication_check",
+      sql`${table.publicationApproved} = false`,
     ),
   ],
 );
