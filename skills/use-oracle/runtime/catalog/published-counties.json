@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0",
-  "generatedAt": "2026-09-01T14:16:20.247Z",
+  "generatedAt": "2026-09-04T19:48:08.482Z",
   "counties": [
     {
       "countyKey": "broward",
@@ -25,6 +25,18 @@
       "permitQueryTableUrl": null,
       "placesTableUrl": null,
       "updatedAt": "2026-08-12T21:46:00.000Z"
+    },
+    {
+      "countyKey": "duval",
+      "countyName": "Duval",
+      "stateCode": "FL",
+      "countyFips": "12031",
+      "status": "published",
+      "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dle7swd06u9ebrgw375b5vhhhtiiz7un7udfsar0rci53x2w5y4",
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dgqc52fnea1o42e27dr4os0mrdf5ixonuv8kdztdnxclflazf4w",
+      "permitQueryTableUrl": null,
+      "placesTableUrl": null,
+      "updatedAt": "2026-09-04T18:43:43.000Z"
     },
     {
       "countyKey": "hillsborough",

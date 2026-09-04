@@ -128,17 +128,17 @@ describe("syncMcpJson against a synthetic mcp.json fixture", () => {
       overlayPath,
     });
 
-    expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(13);
+    expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(14);
     expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP)).toHaveLength(4);
-    expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(12);
+    expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(13);
 
     const written = JSON.parse(await readFile(fixturePath, "utf8"));
     const env = written.mcpServers.elephant.env;
 
     expect(JSON.parse(env.PROPERTY_QUERY_TABLE_MAP)).not.toHaveProperty("stale-county");
-    expect(Object.keys(JSON.parse(env.PROPERTY_QUERY_TABLE_MAP))).toHaveLength(13);
+    expect(Object.keys(JSON.parse(env.PROPERTY_QUERY_TABLE_MAP))).toHaveLength(14);
     expect(Object.keys(JSON.parse(env.PERMIT_QUERY_TABLE_MAP))).toHaveLength(4);
-    expect(Object.keys(JSON.parse(env.DATASET_COVERAGE_MAP))).toHaveLength(12);
+    expect(Object.keys(JSON.parse(env.DATASET_COVERAGE_MAP))).toHaveLength(13);
     expect(env.PUBLISHED_COUNTY_CATALOG_URL).toBe(PUBLISHED_COUNTY_CATALOG_URL);
 
     // Preserved untouched.
@@ -267,20 +267,23 @@ describe("merge-mcp-env-maps", () => {
   it("buildMergedMcpEnvMaps against the tracked catalog + overlay matches the locked key counts", async () => {
     const maps = await buildMergedMcpEnvMaps({ catalogPath, overlayPath });
 
-    expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(13);
+    expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(14);
     expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP)).toHaveLength(4);
-    expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(12);
+    expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(13);
     expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP).sort()).toEqual([
       "broward",
       "montgomery",
       "rock-island",
       "santa-clara",
     ]);
+    expect(maps.PROPERTY_QUERY_TABLE_MAP.duval).toBeDefined();
+    expect(maps.DATASET_COVERAGE_MAP.duval).toBeDefined();
+    expect(maps.PERMIT_QUERY_TABLE_MAP).not.toHaveProperty("duval");
   });
 });
 
 describe("syncMcpJson against a copy of the real repo-root mcp.json", () => {
-  it("produces the locked 13/4/12 key counts and preserves the real launcher untouched", async () => {
+  it("produces the locked 14/4/13 key counts and preserves the real launcher untouched", async () => {
     const fixturePath = join(tmpDir, "mcp.json");
     const original = await readFile(repoRootMcpJsonPath, "utf8");
     await writeFile(fixturePath, original, "utf8");
@@ -292,12 +295,15 @@ describe("syncMcpJson against a copy of the real repo-root mcp.json", () => {
       overlayPath,
     });
 
-    expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(13);
+    expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(14);
     expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP)).toHaveLength(4);
-    expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(12);
+    expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(13);
     expect(maps.PROPERTY_QUERY_TABLE_MAP["santa-clara"]).toBeDefined();
     expect(maps.PERMIT_QUERY_TABLE_MAP["santa-clara"]).toBeDefined();
     expect(maps.DATASET_COVERAGE_MAP).not.toHaveProperty("santa-clara");
+    expect(maps.PROPERTY_QUERY_TABLE_MAP.duval).toBeDefined();
+    expect(maps.DATASET_COVERAGE_MAP.duval).toBeDefined();
+    expect(maps.PERMIT_QUERY_TABLE_MAP).not.toHaveProperty("duval");
 
     const written = JSON.parse(await readFile(fixturePath, "utf8"));
     expect(written.mcpServers.elephant.command).toBe(
