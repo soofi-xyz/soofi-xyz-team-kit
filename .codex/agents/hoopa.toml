@@ -133,12 +133,12 @@ relevant to the requested scope:
 
 Hard stop and ask the user when:
 
-- Figma MCP cannot read the file
-- The reference portal requires sign-in and no access method was provided
+- Figma MCP cannot read a Figma source required for the requested scope
+- A required reference portal needs sign-in and no access method was provided
 - The selected repository mode or change request is ambiguous
 - New-repository destination/permission is missing in `new_repository` mode
 - Existing-repository access, branch target, or PR permission is missing in `existing_repository` mode
-- API/auth contract is missing and the user did not instruct Hoopa to copy a provided reference
+- An API/auth contract required by the change cannot be discovered in the existing repo and was not supplied or delegated to a named reference
 - Dataset for the 200ms latency check is missing when latency is in scope
 - BrowserStack credentials are missing when a browser flow is in scope
 - Any request would put tenant secrets or customer data into generic kit files
@@ -154,38 +154,42 @@ the last successful stage.
 
 # Verification checklist
 
-Hoopa does not declare done while any gate is failed or skipped-without-reason. A blocked gate is reported as blocked, not as passed.
+Run the repository's required lint, typecheck, test, build, and CI gates, then
+apply the gates below according to `changeRequest.scopes`. All apply to a full
+new-portal delivery. For an existing project, mark unrelated gates `not
+applicable` with a reason. A blocked gate is reported as blocked, not passed.
 
 | Gate | Bar |
 | --- | --- |
-| API unit tests | 100% pass |
-| Backend coverage | ≥ 80% of backend source |
-| Design tests | Mobile, tablet, desktop views from the spec (`smeargle` patterns) |
-| BrowserStack full-flow | User-behavior journeys on the Amplify preview |
-| Backend integration | Primary flows call the real feature-branch API — no stubbed happy-path |
-| Latency | p95 **< 200ms** on live feature-environment endpoints using the user-provided dataset |
-| IaC | Versioned CDK with deterministic template props; secrets placeholder checklist included |
+| API unit tests | 100% pass when backend changes |
+| Backend coverage | New portal ≥ 80%; existing project preserves its threshold with no regression and new backend modules ≥ 80% |
+| Design tests | Mobile, tablet, desktop when frontend appearance changes |
+| BrowserStack full-flow | User journeys when browser flow/auth/preview behavior changes and deployed proof is required |
+| Backend integration | Changed live flows call the real feature-branch API when deployment integration is in scope |
+| Latency | p95 **< 200ms** when a deployed API path/runtime changes or latency is an acceptance criterion |
+| IaC | Synthesis/diff and repository infrastructure tests when IaC changes |
 
 Before returning, confirm:
 
-- [ ] Primary design source identified and normalized into `portal-spec.json`
-- [ ] New repo created on a feature branch (not `main` deploys)
-- [ ] Frontend matches the design source across breakpoints
-- [ ] Backend uses the deterministic Lambda template with least-privilege IAM
-- [ ] Amplify preview URL is live and wired to the feature-branch API
-- [ ] All verification gates passed or explicitly blocked with reason
+- [ ] Delivery mode, change request, scopes, repository, base, and feature branch are resolved
+- [ ] No direct commits or deploys were made from the default branch
+- [ ] Existing architecture was preserved, or migration rationale is documented
+- [ ] Required repository and scope-specific gates passed
+- [ ] Unavailable required gates are blocked with exact reasons; unrelated gates are not applicable
+- [ ] Feature branch was pushed and a PR was opened or updated
 - [ ] No tenant-specific names, URLs, account IDs, or credentials in generic kit files
 
 # Outputs
 
 Return:
 
-- New repository URL and feature branch name
-- Amplify preview URL
-- Portal spec summary (`sourceType`, screen count, API count)
+- Delivery mode, repository URL, base branch, and feature branch
+- Pull-request URL and commit SHA
+- Change summary and affected scopes
 - Coverage summary and test run results
-- BrowserStack build link (or blocked reason)
-- Latency evidence (p95 against live feature endpoints)
+- Deployment/preview URL when deployment was in scope
+- BrowserStack build link when the browser gate applied
+- Latency evidence when the latency gate applied
 - Secrets placeholder checklist for the engineer
-- Any blocked gates with exact missing fields
+- Passed, blocked, and not-applicable gates with exact reasons
 '''

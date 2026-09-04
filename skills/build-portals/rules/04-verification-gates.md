@@ -6,22 +6,44 @@ tags: tests, coverage, browserstack, design, integration, latency
 
 # Portal Verification Gates
 
-Run every gate against the `feat/portal-v1` preview and its real feature
-backend. A portal is not ready for handoff until every required gate passes and
-its evidence is recorded. Do not replace failures with waivers or mock results.
+Always run the repository's required gates: lint, typecheck, relevant tests,
+build, and any CI checks required by its conventions. Then select
+scope-appropriate gates below from `changeRequest.scopes`.
+
+All five gates apply to a full `new_repository` portal delivery. For an
+`existing_repository` change, run a gate only when the changed surface or an
+acceptance criterion requires it. Mark unrelated gates **not applicable** with
+a one-line reason; do not call them blocked or passed. A required gate must pass
+and retain evidence before handoff. Do not replace failures with waivers or
+mock results.
+
+| Changed scope | Additional required gates |
+| --- | --- |
+| Backend behavior | API unit/contract tests; integration and latency when a live API path is changed or requested |
+| Frontend behavior or appearance | Responsive design tests |
+| User flow, auth, or preview deployment | BrowserStack full flow when credentials and a deployed target are required by acceptance criteria |
+| Infrastructure | Synthesis/diff plus the repository's infrastructure tests |
+| Code-only refactor | Repository gates and focused regression tests; live deployment gates are not applicable |
 
 ## Gate 1: API unit tests
 
+Apply when backend code, API contracts, or backend infrastructure changes.
+
 - Require a 100% test pass rate.
-- Require at least 80% statement, branch, function, and line coverage for the
-  backend.
+- For a new portal, require at least 80% statement, branch, function, and line
+  coverage for the backend.
+- For an existing project, require no coverage regression, preserve its
+  existing threshold, and require at least 80% coverage for new backend modules
+  unless the repository has a stricter rule.
 - Exercise successful responses, validation failures, authorization behavior,
   upstream failures, and timeout/error mapping.
 - Save the machine-readable coverage artifact path and summary.
 
-Any failed test or coverage metric below 80% blocks handoff.
+Any failed applicable test or violated coverage threshold blocks handoff.
 
 ## Gate 2: Responsive design tests
+
+Apply only when frontend behavior or appearance changes.
 
 Use the portal spec's exact route and state inventory. Capture and compare all
 required screens at the declared mobile, tablet, and desktop widths. Test at
@@ -32,6 +54,9 @@ An approved baseline update must be reviewable in the feature branch; never
 update baselines merely to hide a mismatch.
 
 ## Gate 3: BrowserStack full flow
+
+Apply when the change affects a user flow, authentication, browser integration,
+or a deployed preview and the acceptance criteria require cross-browser proof.
 
 Run Playwright user-behavior flows in BrowserStack against the deployed
 Amplify preview URL. Cover the primary persona journey, auth boundaries,
@@ -56,6 +81,9 @@ All required flows must pass.
 
 ## Gate 4: Backend integration
 
+Apply when a changed backend path must be exercised in a deployed feature/dev
+environment or through a real upstream.
+
 Seed or attach the user-supplied `datasetRef` in the approved development
 environment. Run API contract and frontend integration tests against the
 deployed backend. Do not use fixtures that bypass Lambda, API Gateway,
@@ -64,6 +92,10 @@ authorization, secrets retrieval, or required upstream calls.
 Redact credentials and customer records from logs and evidence.
 
 ## Gate 5: API latency
+
+Apply when the change creates or modifies a deployed API path, runtime,
+upstream, memory/concurrency setting, or an explicit latency acceptance
+criterion.
 
 Measure deployed API responses with representative data from `datasetRef`.
 This gate measures the complete API response, not page load, local handlers, or
@@ -102,8 +134,8 @@ Any non-successful API response also fails.
 
 ## Required evidence
 
-Keep these artifacts in the generated portal repository or approved CI store
-and attach their links to the delivery task:
+Keep applicable artifacts in the repository or approved CI store and attach
+their links to the pull request and delivery task:
 
 - unit-test result and coverage path
 - responsive design baselines and diff report
@@ -114,4 +146,5 @@ and attach their links to the delivery task:
 - integration test result
 
 Evidence must identify the feature commit tested. Missing, stale, production,
-or mock-backed evidence blocks handoff.
+or mock-backed evidence blocks handoff only when that gate applies. The handoff
+must separately list passed, blocked, and not-applicable gates.

@@ -108,6 +108,11 @@ REPO_PREVIEW_TOKENS = (
     "out of scope",
 )
 VERIFICATION_TOKENS = (
+    "repository's required gates",
+    "scope-appropriate",
+    "not applicable",
+    "no coverage regression",
+    "pull request",
     "100%",
     "80%",
     "mobile",

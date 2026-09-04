@@ -95,12 +95,12 @@ Stages 3 onward require a schema-valid `portal-spec.json` with `openQuestions: [
 
 Hard stop and ask when:
 
-- **Figma MCP cannot read** the file
-- A reference portal requires sign-in and no access method was provided
+- **Figma MCP cannot read** a Figma source required by the change
+- A required reference portal needs sign-in and no access method was provided
 - The delivery mode or change request is ambiguous
 - New-repository destination or creation permission is missing
 - Existing-repository access, base branch, feature branch, or PR permission is missing
-- Auth model or API contract is missing and the user did not instruct copy-from-reference
+- A required auth/API contract cannot be discovered in the existing repo and was not supplied or delegated to a named reference
 - `datasetRef` is missing when latency verification applies
 - BrowserStack credentials are missing when a browser flow applies
 - Any step would place tenant secrets or customer data into generic kit files

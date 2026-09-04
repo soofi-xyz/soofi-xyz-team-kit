@@ -6,9 +6,11 @@ tags: lambda, cdk, api-gateway, iam, secrets, observability
 
 # Deterministic Lambda Template
 
-Generate every portal backend from `reference/portal-api-stack.ts`. Copy it into
-the new portal repository and change only values supplied by the normalized
-portal spec. Do not put tenant values back into this generic reference.
+For `new_repository`, generate the portal backend from
+`reference/portal-api-stack.ts`. For `existing_repository`, preserve the
+project's established backend and IaC patterns; use this template only when the
+change creates a new Lambda-backed service or explicitly adopts it through a
+reviewed migration. Do not put tenant values back into this generic reference.
 
 ## Required inputs
 
