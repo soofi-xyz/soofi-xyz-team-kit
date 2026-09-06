@@ -75,12 +75,12 @@ describe("published county catalog", () => {
       countyFips: "12031",
       status: "published",
       queryTableUrl:
-        "https://ipfs.filebase.io/ipns/k51qzi5uqu5dle7swd06u9ebrgw375b5vhhhtiiz7un7udfsar0rci53x2w5y4",
+        "https://k51qzi5uqu5dle7swd06u9ebrgw375b5vhhhtiiz7un7udfsar0rci53x2w5y4.ipns.dweb.link/",
       datasetCoverageUrl:
-        "https://ipfs.filebase.io/ipns/k51qzi5uqu5dgqc52fnea1o42e27dr4os0mrdf5ixonuv8kdztdnxclflazf4w",
+        "https://k51qzi5uqu5dgqc52fnea1o42e27dr4os0mrdf5ixonuv8kdztdnxclflazf4w.ipns.dweb.link/",
       permitQueryTableUrl: null,
       placesTableUrl: null,
-      updatedAt: "2026-09-04T18:43:43.000Z",
+      updatedAt: "2026-09-06T03:13:41.000Z",
     });
   });
 

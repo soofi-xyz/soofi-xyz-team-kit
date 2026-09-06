@@ -12,17 +12,43 @@
  * @module core/filebase
  */
 
+import { createHash } from "node:crypto";
 import { access, readFile } from "node:fs/promises";
-import { createRequire } from "node:module";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-
-const require = createRequire(import.meta.url);
-/** @type {{ of: (data: Buffer) => Promise<string> }} */
-const ipfsHash = require("ipfs-only-hash");
+import { z } from "zod";
 
 export const FILEBASE_S3_ENDPOINT = "https://s3.filebase.com";
 export const FILEBASE_NAMES_API = "https://api.filebase.io/v1/names";
 export const FILEBASE_GATEWAY = "https://ipfs.filebase.io";
+export const FILEBASE_APPROVAL_SCHEMA_VERSION =
+  "elephant.filebase-publish-approval.v1";
+
+const approvalArtifactSchema = z
+  .object({
+    bytes: z.number().int().positive(),
+    sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  })
+  .strict();
+
+const filebaseApprovalSchema = z
+  .object({
+    schemaVersion: z.literal(FILEBASE_APPROVAL_SCHEMA_VERSION),
+    action: z.literal("publish-query-table-and-coverage"),
+    county: z.string().min(1),
+    bucket: z.string().min(1),
+    queryTableIpnsLabel: z.string().min(1),
+    coverageIpnsLabel: z.string().min(1),
+    artifacts: z
+      .object({
+        queryTable: approvalArtifactSchema,
+        coverage: approvalArtifactSchema,
+      })
+      .strict(),
+    approved: z.literal(true),
+    approvedBy: z.string().min(1),
+    approvedAt: z.string().datetime({ offset: true }),
+  })
+  .strict();
 
 /**
  * @typedef {object} FilebaseArtifacts
@@ -118,6 +144,55 @@ async function fileExists(candidate) {
   }
 }
 
+function bufferIntegrity(body) {
+  return {
+    bytes: body.length,
+    sha256: createHash("sha256").update(body).digest("hex"),
+  };
+}
+
+export function validateFilebaseApproval(
+  value,
+  artifacts,
+  parquetBody,
+  coverageBody,
+) {
+  const approval = filebaseApprovalSchema.parse(value);
+  const expected = {
+    county: artifacts.county,
+    bucket: artifacts.bucket,
+    queryTableIpnsLabel: artifacts.queryTableIpnsLabel,
+    coverageIpnsLabel: artifacts.coverageIpnsLabel,
+    artifacts: {
+      queryTable: bufferIntegrity(parquetBody),
+      coverage: bufferIntegrity(coverageBody),
+    },
+  };
+  for (const key of [
+    "county",
+    "bucket",
+    "queryTableIpnsLabel",
+    "coverageIpnsLabel",
+  ]) {
+    if (approval[key] !== expected[key]) {
+      throw new Error(
+        `Filebase approval ${key} does not match the publication artifact`,
+      );
+    }
+  }
+  for (const name of ["queryTable", "coverage"]) {
+    if (
+      approval.artifacts[name].bytes !== expected.artifacts[name].bytes ||
+      approval.artifacts[name].sha256 !== expected.artifacts[name].sha256
+    ) {
+      throw new Error(
+        `Filebase approval ${name} integrity does not match the publication artifact`,
+      );
+    }
+  }
+  return approval;
+}
+
 /**
  * Upload one object to Filebase and return its CID.
  *
@@ -130,7 +205,6 @@ async function fileExists(candidate) {
  * @returns {Promise<string>} Filebase CID.
  */
 async function uploadFilebaseObject({ client, bucket, key, body, contentType }) {
-  const localCid = await ipfsHash.of(body);
   const command = new PutObjectCommand({ Bucket: bucket, Key: key, Body: body, ContentType: contentType });
   /** @type {string | undefined} */
   let headerCid;
@@ -152,9 +226,9 @@ async function uploadFilebaseObject({ client, bucket, key, body, contentType }) 
     { step: "deserialize", name: `captureFilebaseCid-${key}`, priority: "low" },
   );
   await client.send(command);
-  const cid = headerCid?.trim() || localCid;
+  const cid = headerCid?.trim();
   if (typeof cid !== "string" || cid.length === 0) {
-    throw new Error(`Filebase returned no CID for ${key}`);
+    throw new Error(`Filebase returned no x-amz-meta-cid header for ${key}`);
   }
   return cid;
 }
@@ -251,6 +325,15 @@ export async function publishFilebase(artifacts, config) {
   });
   const parquetBody = await readFile(artifacts.parquetPath);
   const coverageBody = await readFile(artifacts.coveragePath);
+  const approval = JSON.parse(
+    await readFile(config.approvalManifestPath, "utf8"),
+  );
+  validateFilebaseApproval(
+    approval,
+    artifacts,
+    parquetBody,
+    coverageBody,
+  );
   const queryTableCid = await uploadFilebaseObject({
     client,
     bucket: artifacts.bucket,
