@@ -1,6 +1,7 @@
 {
   "fixtureKind": "bounded_live_access_evidence",
   "capturedAt": "2026-09-06T05:00:00.000Z",
+  "updatedAt": "2026-09-06T12:16:00.000Z",
   "observations": [
     {
       "source": "jaxepics",
@@ -38,6 +39,19 @@
       "action": "Do not retry at scale until a normal anonymous session can be established from the execution egress."
     },
     {
+      "source": "atlantic-beach-bsa-terms",
+      "request": {
+        "method": "GET",
+        "url": "https://www.bsaonline.com/TermsOfUse/BsaoTermsOfUse"
+      },
+      "response": {
+        "status": 200,
+        "classification": "automation_prohibited",
+        "bodyExcerpt": "BS&A Software expressly prohibits the use of any software, including scripts, bots, automated processes, devices or any processes to scrape data."
+      },
+      "action": "Disable live automated BS&A routing and obtain Atlantic Beach permit history directly from the municipality."
+    },
+    {
       "source": "atlantic-beach-etrakit",
       "request": {
         "method": "GET",
@@ -48,7 +62,7 @@
         "classification": "access_denied",
         "bodyExcerpt": "Service Unavailable"
       },
-      "action": "Use the municipality's current BS&A portal. Keep eTRAKiT as historical gap evidence only."
+      "action": "Keep eTRAKiT as historical gap evidence and request both current and predecessor records from the municipality."
     }
   ]
 }

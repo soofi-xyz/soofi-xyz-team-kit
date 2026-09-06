@@ -31,7 +31,19 @@ describe("permit profiles", () => {
       profile.jurisdictions
         .filter((item) => item.status === "blocked")
         .map((item) => item.key),
-    ).toEqual(["jacksonville-beach", "atlantic-beach"]);
+    ).toEqual(["jacksonville-beach"]);
+    expect(
+      profile.jurisdictions
+        .filter((item) => item.status === "manual-only")
+        .map((item) => item.key),
+    ).toEqual(["atlantic-beach"]);
+    expect(
+      profile.jurisdictions.find((item) => item.key === "atlantic-beach"),
+    ).toMatchObject({
+      adapterKey: null,
+      adapterConfig: null,
+      recordsRequest: { route: "records-first" },
+    });
     expect(
       profile.jurisdictions
         .filter((item) => item.status === "unavailable")

@@ -41,7 +41,7 @@ permits:
     - jurisdiction_key: jacksonville-beach
       status: blocked-session-contract
     - jurisdiction_key: atlantic-beach
-      status: blocked-parcel-enumeration
+      status: automation-prohibited-records-request
     - jurisdiction_key: neptune-beach
       status: no-public-historical-search
     - jurisdiction_key: baldwin
@@ -142,24 +142,25 @@ permits:
         route: api-first
     - jurisdiction: Atlantic Beach
       key: atlantic-beach
-      status: blocked
+      status: manual-only
       vendor: BS&A Online with CentralSquare eTRAKiT predecessor history
       portal_kind: historical-search
       portal: https://bsaonline.com/?uid=3261
       predecessor_portal: https://atlb-trk.aspgov.com/eTRAKiT/Search/permit.aspx
       historical_records: true
       anonymous_access: true
-      adapter: bsa
-      implementation_status: detail-only
-      parcel_search: BS&A can locate the parcel and fetch a known permit, but the parcel record does not enumerate a known historical permit
-      enumeration_status: blocked-parcel-enumeration
-      known_exclusions: eTRAKiT history is WAF-blocked and BS&A requires a known record number for migrated historical permits
+      adapter: none
+      parser_fixture: bsa
+      implementation_status: parser-fixture-only
+      parcel_search: Manual BS&A search can locate records, but automated access is prohibited by the vendor terms
+      enumeration_status: automation-prohibited
+      known_exclusions: BS&A terms expressly prohibit scripts, bots, scraping, and automated processes; predecessor eTRAKiT is unavailable, so ingestion requires a municipal records export
       publication_rights: Florida public building-permit records; publish privacy-limited normalized facts only
       records_request:
         recipient_office: City of Atlantic Beach Building Division
         request_portal_url: https://atlanticbeachfl.justfoia.com/publicportal/home/newrequest
         system_scope: Complete permit and inspection export including parcel identifiers and predecessor eTRAKiT records
-        route: api-first
+        route: records-first
     - jurisdiction: Neptune Beach
       key: neptune-beach
       status: unavailable

@@ -36,15 +36,15 @@
     },
     {
       "jurisdictionKey": "atlantic-beach",
-      "adapterKey": "bsa",
-      "status": "blocked",
+      "adapterKey": null,
+      "status": "manual_only",
       "searchUrl": "https://bsaonline.com/SiteSearch/BuildingDepartmentRecordSearch?uid=3261",
       "observations": [
-        "The anonymous BS&A session, advanced-record wizard, record-number search, pagination endpoint, selection POST, and permit-detail redirect were certified.",
-        "Known public record RES21-0037 returned one result, permit key 54715, parcel 171190 0000, details, inspections, fees, and lifecycle dates.",
-        "A nonsense record-number query returned a terminal zero-result response.",
-        "Parcel search reaches the correct property, but its permit grid omits that known historical permit, so complete parcel enumeration is not certified.",
-        "The predecessor eTRAKiT host returned HTTP 403/503 and is retained as a documented blocked source."
+        "BS&A Online terms expressly prohibit scripts, bots, scraping, automated processes, and circumvention of service limits, so no live automated adapter is enabled.",
+        "Sanitized parser fixtures preserve the previously observed shape for record RES21-0037, permit key 54715, parcel 171190 0000, details, inspections, fees, and lifecycle dates.",
+        "The fixtures cover a terminal zero-result response and pagination without authorizing further automated access.",
+        "The predecessor eTRAKiT host returned HTTP 403/503 and is retained as a documented unavailable source.",
+        "Complete current BS&A and predecessor eTRAKiT history must be obtained directly from the City of Atlantic Beach."
       ],
       "recordsRequestUrl": "https://atlanticbeachfl.justfoia.com/publicportal/home/newrequest"
     },

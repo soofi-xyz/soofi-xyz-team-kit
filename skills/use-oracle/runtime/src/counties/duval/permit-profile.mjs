@@ -90,23 +90,17 @@ export const duvalPermitProfile = validatePermitProfile({
       name: "Atlantic Beach",
       routingCities: ["ATLANTIC BEACH"],
       defaultForUnmatchedCity: false,
-      status: "blocked",
+      status: "manual-only",
       historicalRecords: true,
-      adapterKey: "bsa",
-      adapterConfig: {
-        baseUrl: "https://bsaonline.com/",
-        apiBaseUrl: null,
-        municipalityId: "3261",
-        parcelFieldNames: ["searchText"],
-        minimumDelayMs: 1500,
-      },
+      adapterKey: null,
+      adapterConfig: null,
       parcelSearchFormat: "source-specific",
       sources: [
         {
           key: "bsa-online",
           url: "https://bsaonline.com/?uid=3261",
           role: "historical-search",
-          access: "public",
+          access: "manual-only",
         },
         {
           key: "etrakit-history",
@@ -119,7 +113,7 @@ export const duvalPermitProfile = validatePermitProfile({
         recipientOffice: "City of Atlantic Beach Building Division",
         systemScope:
           "Complete permit and inspection export including parcel identifiers and predecessor eTRAKiT records",
-        route: "api-first",
+        route: "records-first",
         requestUrl:
           "https://atlanticbeachfl.justfoia.com/publicportal/home/newrequest",
       },
