@@ -115,6 +115,8 @@ describe("syncMcpJson against a synthetic mcp.json fixture", () => {
             DATASET_COVERAGE_MAP: "{}",
             PERMIT_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS:
               '{"duval":"QmImmutablePermitCid"}',
+            DATASET_COVERAGE_CID_FALLBACK_MAP_ADDITIONS:
+              '{"duval":"QmImmutableCoverageCid"}',
             ORACLE_OPEN_DATA_IPNS_MAP: '{"lee":"abc"}',
             ORACLE_OPEN_DATA_DEFAULT_COUNTY: "lee",
             ORACLE_GEO_INDEX_IPNS: "geo-ipns-value",
@@ -146,6 +148,9 @@ describe("syncMcpJson against a synthetic mcp.json fixture", () => {
     // Preserved untouched.
     expect(env.PERMIT_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS).toBe(
       '{"duval":"QmImmutablePermitCid"}',
+    );
+    expect(env.DATASET_COVERAGE_CID_FALLBACK_MAP_ADDITIONS).toBe(
+      '{"duval":"QmImmutableCoverageCid"}',
     );
     expect(env.ORACLE_OPEN_DATA_IPNS_MAP).toBe('{"lee":"abc"}');
     expect(env.ORACLE_OPEN_DATA_DEFAULT_COUNTY).toBe("lee");
@@ -334,5 +339,18 @@ describe("syncMcpJson against a copy of the real repo-root mcp.json", () => {
       originalParsed.mcpServers.elephant.env
         .PERMIT_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS,
     );
+    expect(
+      written.mcpServers.elephant.env
+        .DATASET_COVERAGE_CID_FALLBACK_MAP_ADDITIONS,
+    ).toBe(
+      originalParsed.mcpServers.elephant.env
+        .DATASET_COVERAGE_CID_FALLBACK_MAP_ADDITIONS,
+    );
+    expect(
+      JSON.parse(
+        written.mcpServers.elephant.env
+          .DATASET_COVERAGE_CID_FALLBACK_MAP_ADDITIONS,
+      ).duval,
+    ).toBe("QmQRiMu8ecW3Gk2eymebRfWFVBy73i3Fg8R3GAoMveAMHm");
   });
 });
