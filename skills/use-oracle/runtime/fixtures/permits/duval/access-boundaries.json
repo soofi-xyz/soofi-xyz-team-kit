@@ -1,0 +1,54 @@
+{
+  "fixtureKind": "bounded_live_access_evidence",
+  "capturedAt": "2026-09-06T05:00:00.000Z",
+  "observations": [
+    {
+      "source": "jaxepics",
+      "request": {
+        "method": "GET",
+        "url": "https://jaxepicsapi.coj.net/api/Permits"
+      },
+      "response": {
+        "status": 403,
+        "classification": "access_denied",
+        "bodyExcerpt": "Access Denied"
+      },
+      "awsBatchResponse": {
+        "region": "us-east-1",
+        "jobId": "5d61c46c-364e-4a95-b2de-b4da996c6f31",
+        "metadataStatus": 200,
+        "parcelSearchStatus": 200,
+        "permitDetailStatus": 200,
+        "parcelSearchElapsedMs": 709,
+        "permitDetailElapsedMs": 386
+      },
+      "action": "Run JaxEPICS harvesting only from the approved AWS Batch egress; retain the local denial as an execution-boundary check."
+    },
+    {
+      "source": "jacksonville-beach-click2gov",
+      "request": {
+        "method": "GET",
+        "url": "https://jakb-egov.aspgov.com/Click2GovBP/selectpermit.html"
+      },
+      "response": {
+        "status": 200,
+        "classification": "vendor_error_page",
+        "bodyExcerpt": "You have encountered an error please contact CentralSquare. Your support ID is:"
+      },
+      "action": "Do not retry at scale until a normal anonymous session can be established from the execution egress."
+    },
+    {
+      "source": "atlantic-beach-etrakit",
+      "request": {
+        "method": "GET",
+        "url": "https://atlb-trk.aspgov.com/eTRAKiT/Search/permit.aspx"
+      },
+      "response": {
+        "status": 403,
+        "classification": "access_denied",
+        "bodyExcerpt": "Service Unavailable"
+      },
+      "action": "Use the municipality's current BS&A portal. Keep eTRAKiT as historical gap evidence only."
+    }
+  ]
+}
