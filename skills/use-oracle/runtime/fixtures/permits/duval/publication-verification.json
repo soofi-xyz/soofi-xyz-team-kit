@@ -2,6 +2,7 @@
   "schemaVersion": "elephant.permit-publication-verification.v1",
   "countyKey": "duval",
   "verifiedAt": "2026-09-06T12:10:24.475Z",
+  "ipnsVerifiedAt": "2026-09-06T12:16:23.295Z",
   "publicationScope": {
     "level": "full",
     "denominatorBasis": "county_total",
