@@ -1,9 +1,7 @@
-import { createBsaAdapter } from "./bsa.mjs";
 import { createClick2GovAdapter } from "./click2gov.mjs";
 import { createJaxEpicsAdapter } from "./jaxepics.mjs";
 
 const adapterFactories = Object.freeze({
-  bsa: createBsaAdapter,
   click2gov: createClick2GovAdapter,
   jaxepics: createJaxEpicsAdapter,
 });

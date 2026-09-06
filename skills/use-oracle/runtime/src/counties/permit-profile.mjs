@@ -69,7 +69,7 @@ const jurisdictionSchema = z
     status: z.enum(["supported", "blocked", "manual-only", "unavailable"]),
     historicalRecords: z.boolean(),
     adapterKey: z
-      .enum(["jaxepics", "click2gov", "bsa", "etrakit"])
+      .enum(["jaxepics", "click2gov", "etrakit"])
       .nullable(),
     adapterConfig: adapterConfigSchema.nullable(),
     parcelSearchFormat: z.enum(["duval-re", "digits-only", "source-specific"]),

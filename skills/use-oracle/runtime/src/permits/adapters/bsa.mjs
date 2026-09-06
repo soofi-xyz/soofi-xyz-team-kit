@@ -5,7 +5,6 @@ import {
   normalizedPermitRecordSchema,
 } from "../contracts.mjs";
 import { PermitSourceError } from "../errors.mjs";
-import { PermitHttpClient } from "../http.mjs";
 import {
   isRoofPermit,
   normalizeDuvalParcelIdentifier,
@@ -219,51 +218,5 @@ export function normalizeBsaPermit(
     inspections: parsed.inspections,
     relatedRecords: parsed.relatedRecords,
     sourcePayload: parsed,
-  });
-}
-
-export function createBsaAdapter(jurisdiction, options = {}) {
-  const config = jurisdiction.adapterConfig;
-  const client =
-    options.client ??
-    new PermitHttpClient({
-      minimumDelayMs: config.minimumDelayMs,
-      maxAttempts: options.maxAttempts ?? 3,
-    });
-  return Object.freeze({
-    key: "bsa",
-    async probe() {
-      const url = new URL(config.baseUrl);
-      url.searchParams.set("uid", config.municipalityId);
-      const { body } = await client.text(url);
-      return {
-        status: /City of Atlantic Beach|MunicipalityHome/i.test(body)
-          ? "ok"
-          : "unexpected",
-      };
-    },
-    async searchParcel() {
-      throw new PermitSourceError(
-        "BS&A parcel search does not enumerate migrated historical permits",
-        {
-          classification: "blocked",
-          code: "parcel_enumeration_unavailable",
-        },
-      );
-    },
-    async fetchPermitDetail(reference, request) {
-      const sourceUrl =
-        reference.sourceUrl ??
-        new URL(
-          `CD_RecordDetails/Permit?permitId=${encodeURIComponent(reference.sourceRecordId)}&uid=${encodeURIComponent(config.municipalityId)}`,
-          config.baseUrl,
-        ).href;
-      const { body } = await client.text(sourceUrl);
-      const parsed = parseBsaPermitDetailHtml(body, {
-        permitId: reference.sourceRecordId,
-        sourceUrl,
-      });
-      return normalizeBsaPermit(parsed, { ...request, sourceUrl });
-    },
   });
 }
