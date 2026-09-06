@@ -60,7 +60,7 @@ describe("Duval query-table row mapping (Gate B fixture)", () => {
   });
 
   it("exposes the Duval Filebase destination constants", () => {
-    expect(QUERY_TABLE_BUCKET).toBe("elephant-oracle-query-table-duval");
+    expect(QUERY_TABLE_BUCKET).toBe("elephant-oracle-query-table");
     expect(QUERY_TABLE_IPNS_LABEL).toBe("oracle-query-table-duval");
     expect(COVERAGE_IPNS_LABEL).toBe("oracle-dataset-coverage-duval");
     expect(COUNTY_KEY).toBe("duval");
