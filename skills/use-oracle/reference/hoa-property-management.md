@@ -23,8 +23,46 @@ Relationships are CID fields on the referencing object, not graph edges.
 | `company` (manager) | `Property_Management` | `sunbiz_document_number` |
 
 Local object CIDs are `sha256:<hex>` of the canonical payload before the `cid` field.
-They remain local hashes until an object-upload path to Filebase exists; this workflow
-does not currently publish these objects or replace the hashes with IPFS CIDs.
+They remain local hashes after enrichment. The approval-gated publication path uploads
+the bundle and returns its Filebase CID; enrichment alone does not upload or replace
+the row-level hashes.
+
+## Publication destination
+
+Use the existing Broward query-table Filebase destination:
+
+- Bucket: `elephant-oracle-query-table` (shared by the supported county profiles; do
+  not create a separate HOA/PM product bucket).
+- Enriched table key: `<county>/query-table.parquet`.
+- Enriched coverage key: `<county>/dataset-coverage.json`.
+- HOA/PM object bundle key: `<county>/hoa-pm/objects.jsonl`.
+- Broward labels: `oracle-query-table-broward` and
+  `oracle-dataset-coverage-broward`.
+- Duval labels: `oracle-query-table-duval` and
+  `oracle-dataset-coverage-duval`.
+
+Always resolve labels from the county publication profile and verify the resulting
+network keys against `runtime/catalog/published-counties.json`. Sharing the bucket
+does not mean sharing an IPNS name: never point Broward's labels at Duval/Jacksonville
+artifacts or write Duval rows into Broward's parquet.
+
+The HOA/PM object bundle is CID-linked from the enriched query table and shares the
+county's existing bucket under the county-scoped `hoa-pm/` prefix. It does not get a
+second product bucket or a shared cross-county IPNS label.
+
+Publication remains human-approval gated. Plan the exact destination without network
+writes:
+
+```bash
+cd skills/use-oracle/runtime
+node bin/elephant-county.mjs hoa-pm-publish \
+  --county broward \
+  --input <enriched-dir> \
+  --dry-run
+```
+
+Do not remove `--dry-run` until the exact query table, coverage JSON, and HOA/PM object
+bundle are bound into an approved publication manifest. This step does not upload.
 
 ## Command
 

@@ -40,7 +40,10 @@ const approvalArtifactSchema = z
 const filebaseApprovalSchema = z
   .object({
     schemaVersion: z.literal(FILEBASE_APPROVAL_SCHEMA_VERSION),
-    action: z.literal("publish-query-table-and-coverage"),
+    action: z.enum([
+      "publish-query-table-and-coverage",
+      "publish-query-table-coverage-and-hoa-pm-objects",
+    ]),
     county: z.string().min(1),
     bucket: z.string().min(1),
     queryTableIpnsLabel: z.string().min(1),
@@ -49,6 +52,7 @@ const filebaseApprovalSchema = z
       .object({
         queryTable: approvalArtifactSchema,
         coverage: approvalArtifactSchema,
+        hoaPmObjects: approvalArtifactSchema.optional(),
       })
       .strict(),
     approved: z.literal(true),
@@ -93,6 +97,7 @@ const permitFilebaseApprovalSchema = z
  * @property {string} county - County key, used only for log/error context.
  * @property {string} parquetPath - Absolute path to the query-table Parquet file.
  * @property {string} coveragePath - Absolute path to the dataset-coverage JSON file.
+ * @property {string} [hoaPmObjectsPath] - Optional HOA/PM CID-linked JSONL object bundle.
  * @property {string} bucket - Filebase S3 bucket for this county.
  * @property {string} queryTableIpnsLabel - Existing Filebase IPNS label for the query table.
  * @property {string} coverageIpnsLabel - Existing Filebase IPNS label for dataset coverage.
@@ -194,9 +199,14 @@ export function validateFilebaseApproval(
   artifacts,
   parquetBody,
   coverageBody,
+  hoaPmObjectsBody = null,
 ) {
   const approval = filebaseApprovalSchema.parse(value);
   const expected = {
+    action:
+      hoaPmObjectsBody === null
+        ? "publish-query-table-and-coverage"
+        : "publish-query-table-coverage-and-hoa-pm-objects",
     county: artifacts.county,
     bucket: artifacts.bucket,
     queryTableIpnsLabel: artifacts.queryTableIpnsLabel,
@@ -204,9 +214,13 @@ export function validateFilebaseApproval(
     artifacts: {
       queryTable: bufferIntegrity(parquetBody),
       coverage: bufferIntegrity(coverageBody),
+      ...(hoaPmObjectsBody === null
+        ? {}
+        : { hoaPmObjects: bufferIntegrity(hoaPmObjectsBody) }),
     },
   };
   for (const key of [
+    "action",
     "county",
     "bucket",
     "queryTableIpnsLabel",
@@ -218,7 +232,7 @@ export function validateFilebaseApproval(
       );
     }
   }
-  for (const name of ["queryTable", "coverage"]) {
+  for (const name of Object.keys(expected.artifacts)) {
     if (
       approval.artifacts[name].bytes !== expected.artifacts[name].bytes ||
       approval.artifacts[name].sha256 !== expected.artifacts[name].sha256
@@ -597,7 +611,7 @@ export async function updateExistingFilebaseName(
  *
  * @param {FilebaseArtifacts} artifacts - Parquet/coverage paths and destination labels.
  * @param {PublishFilebaseConfig} config - Dry-run flag, approval manifest, and credentials source.
- * @returns {Promise<{ dryRun: true, bucket: string, queryTableIpnsLabel: string, coverageIpnsLabel: string } | { dryRun: false, queryTableCid: string, coverageCid: string, queryTableIpns: string, coverageIpns: string }>}
+ * @returns {Promise<{ dryRun: true, bucket: string, queryTableIpnsLabel: string, coverageIpnsLabel: string, hoaPmObjectsKey?: string, approvalAction?: string } | { dryRun: false, queryTableCid: string, coverageCid: string, hoaPmObjectsCid?: string, queryTableIpns: string, coverageIpns: string }>}
  *   Dry-run report, or the published CIDs/IPNS URLs.
  */
 export async function publishFilebase(artifacts, config) {
@@ -609,6 +623,13 @@ export async function publishFilebase(artifacts, config) {
       bucket: artifacts.bucket,
       queryTableIpnsLabel: artifacts.queryTableIpnsLabel,
       coverageIpnsLabel: artifacts.coverageIpnsLabel,
+      ...(artifacts.hoaPmObjectsPath
+        ? {
+            hoaPmObjectsKey: `${artifacts.county}/hoa-pm/objects.jsonl`,
+            approvalAction:
+              "publish-query-table-coverage-and-hoa-pm-objects",
+          }
+        : {}),
     };
   }
 
@@ -640,6 +661,9 @@ export async function publishFilebase(artifacts, config) {
   });
   const parquetBody = await readFile(artifacts.parquetPath);
   const coverageBody = await readFile(artifacts.coveragePath);
+  const hoaPmObjectsBody = artifacts.hoaPmObjectsPath
+    ? await readFile(artifacts.hoaPmObjectsPath)
+    : null;
   const approval = JSON.parse(
     await readFile(config.approvalManifestPath, "utf8"),
   );
@@ -648,6 +672,7 @@ export async function publishFilebase(artifacts, config) {
     artifacts,
     parquetBody,
     coverageBody,
+    hoaPmObjectsBody,
   );
   const queryTableCid = await uploadFilebaseObject({
     client,
@@ -663,12 +688,23 @@ export async function publishFilebase(artifacts, config) {
     body: coverageBody,
     contentType: "application/json",
   });
+  const hoaPmObjectsCid =
+    hoaPmObjectsBody === null
+      ? undefined
+      : await uploadFilebaseObject({
+          client,
+          bucket: artifacts.bucket,
+          key: `${artifacts.county}/hoa-pm/objects.jsonl`,
+          body: hoaPmObjectsBody,
+          contentType: "application/x-ndjson",
+        });
   const queryName = await upsertFilebaseName(token, artifacts.queryTableIpnsLabel, queryTableCid);
   const coverageName = await upsertFilebaseName(token, artifacts.coverageIpnsLabel, coverageCid);
   return {
     dryRun: false,
     queryTableCid,
     coverageCid,
+    ...(hoaPmObjectsCid === undefined ? {} : { hoaPmObjectsCid }),
     queryTableIpns: `${FILEBASE_GATEWAY}/ipns/${queryName.network_key}`,
     coverageIpns: `${FILEBASE_GATEWAY}/ipns/${coverageName.network_key}`,
   };
