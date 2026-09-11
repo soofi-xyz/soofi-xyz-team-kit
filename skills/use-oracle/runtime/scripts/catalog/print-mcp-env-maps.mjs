@@ -13,6 +13,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
  * @typedef {object} PublishedCounty
  * @property {string} countyKey
  * @property {string | null} [queryTableUrl]
+ * @property {string | null} [queryTableCid]
  * @property {string | null} [permitQueryTableUrl]
  * @property {string | null} [datasetCoverageUrl]
  */
@@ -27,7 +28,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
  * Counties without a URL for a given field are omitted from that map.
  *
  * @param {PublishedCountyCatalog} catalog Canonical catalog JSON.
- * @returns {{ PROPERTY_QUERY_TABLE_MAP: Record<string, string>, PERMIT_QUERY_TABLE_MAP: Record<string, string>, DATASET_COVERAGE_MAP: Record<string, string> }}
+ * @returns {{ PROPERTY_QUERY_TABLE_MAP: Record<string, string>, PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS: Record<string, string>, PERMIT_QUERY_TABLE_MAP: Record<string, string>, DATASET_COVERAGE_MAP: Record<string, string> }}
  */
 export function mcpEnvMapsFromCatalog(catalog) {
   const counties = Array.isArray(catalog?.counties) ? catalog.counties : [];
@@ -59,6 +60,8 @@ export function mcpEnvMapsFromCatalog(catalog) {
 
   return {
     PROPERTY_QUERY_TABLE_MAP: mapField("queryTableUrl"),
+    PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS:
+      mapField("queryTableCid"),
     PERMIT_QUERY_TABLE_MAP: mapField("permitQueryTableUrl"),
     DATASET_COVERAGE_MAP: mapField("datasetCoverageUrl"),
   };

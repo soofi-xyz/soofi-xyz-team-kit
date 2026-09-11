@@ -3,6 +3,7 @@ import { createReadStream } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
+import { zstdCompressSync, zstdDecompressSync } from "node:zlib";
 
 import { ParquetSchema, ParquetWriter } from "@dsnp/parquetjs";
 
@@ -11,6 +12,25 @@ import { resolveHoaAndPropertyManagement, stampPropertyCids } from "./hoa-pm-heu
 
 const require = createRequire(import.meta.url);
 const { ParquetReader } = require("@dsnp/parquetjs");
+const { PARQUET_COMPRESSION_METHODS } = require(
+  "@dsnp/parquetjs/dist/lib/compression.js",
+);
+
+// @dsnp/parquetjs supports GZIP and SNAPPY but omits ZSTD even though its
+// Parquet metadata parser recognizes that codec. Node 22.18+ provides native
+// ZSTD, matching this runtime's minimum Node version.
+PARQUET_COMPRESSION_METHODS.ZSTD ??= {
+  deflate: (value) => zstdCompressSync(value),
+  inflate: (value) => zstdDecompressSync(value),
+};
+
+const PARQUET_COMPRESSION_NAMES = {
+  0: "UNCOMPRESSED",
+  1: "SNAPPY",
+  2: "GZIP",
+  4: "BROTLI",
+  6: "ZSTD",
+};
 
 const REQUIRED_COLUMNS = {
   hoa_cid: "UTF8",
@@ -29,15 +49,22 @@ async function sha256File(filePath) {
   return hash.digest("hex");
 }
 
-function withHoaPmSchema(schemaFields) {
+function withHoaPmSchema(schemaFields, compressionByField, defaultCompression) {
   const output = structuredClone(schemaFields);
+  for (const [fieldName, compression] of compressionByField) {
+    if (output[fieldName]) output[fieldName].compression = compression;
+  }
   for (const [fieldName, fieldType] of Object.entries(REQUIRED_COLUMNS)) {
     if (output[fieldName] && output[fieldName].type !== fieldType) {
       throw new Error(
         `HOA/PM enrichment requires ${fieldName} ${fieldType} column`,
       );
     }
-    output[fieldName] = { type: fieldType, optional: true };
+    output[fieldName] = {
+      type: fieldType,
+      optional: true,
+      compression: output[fieldName]?.compression ?? defaultCompression,
+    };
   }
   return output;
 }
@@ -56,15 +83,34 @@ function parquetFieldDefinition(field) {
   };
 }
 
-async function inferSchemaFields(parquetPath) {
+async function inspectInputParquet(parquetPath) {
   const reader = await ParquetReader.openFile(parquetPath);
   try {
-    return Object.fromEntries(
+    const schemaFields = Object.fromEntries(
       Object.entries(reader.schema.fields).map(([name, field]) => [
         name,
         parquetFieldDefinition(field),
       ]),
     );
+    const compressionByField = new Map();
+    for (const rowGroup of reader.metadata.row_groups ?? []) {
+      for (const column of rowGroup.columns ?? []) {
+        const fieldName = column.meta_data?.path_in_schema?.[0];
+        const compression = PARQUET_COMPRESSION_NAMES[column.meta_data?.codec];
+        if (!fieldName || !compression) continue;
+        const previous = compressionByField.get(fieldName);
+        if (previous && previous !== compression) {
+          throw new Error(
+            `HOA/PM enrichment requires one compression codec per field; ${fieldName} uses ${previous} and ${compression}`,
+          );
+        }
+        compressionByField.set(fieldName, compression);
+      }
+    }
+    const codecs = [...new Set(compressionByField.values())];
+    const defaultCompression =
+      codecs.length === 1 ? codecs[0] : compressionByField.values().next().value ?? "UNCOMPRESSED";
+    return { schemaFields, compressionByField, defaultCompression };
   } finally {
     await reader.close();
   }
@@ -122,8 +168,11 @@ export async function enrichQueryTableWithHoaPm({
   objectsDir,
   manifestPath,
 }) {
+  const input = await inspectInputParquet(inputParquet);
   const outputSchemaFields = withHoaPmSchema(
-    schemaFields ?? (await inferSchemaFields(inputParquet)),
+    schemaFields ?? input.schemaFields,
+    input.compressionByField,
+    input.defaultCompression,
   );
   const sunbizCompanies =
     companies ?? (await loadSunbizCompanies(sunbizExtractDir));

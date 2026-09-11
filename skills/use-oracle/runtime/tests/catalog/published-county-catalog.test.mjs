@@ -78,6 +78,7 @@ describe("published county catalog", () => {
       status: "published",
       queryTableUrl:
         "https://k51qzi5uqu5dle7swd06u9ebrgw375b5vhhhtiiz7un7udfsar0rci53x2w5y4.ipns.dweb.link/",
+      queryTableCid: null,
       datasetCoverageUrl:
         "https://k51qzi5uqu5dgqc52fnea1o42e27dr4os0mrdf5ixonuv8kdztdnxclflazf4w.ipns.dweb.link/",
       permitQueryTableUrl:
@@ -139,6 +140,20 @@ describe("published county catalog", () => {
       "alameda",
       "lee",
     ]);
+  });
+
+  it("clears a prior fallback CID when a republish omits the new CID", () => {
+    const catalog = validateCatalog({
+      ...baseCatalog,
+      counties: [{ ...baseCatalog.counties[0], queryTableCid: "QmOldCid" }],
+    });
+    const updated = upsertCounty(
+      catalog,
+      { ...catalog.counties[0], queryTableCid: null },
+      "2026-07-24T10:01:00.000Z",
+    );
+
+    expect(updated.counties[0].queryTableCid).toBeNull();
   });
 
   it("rejects a FIPS code already assigned to another county", () => {

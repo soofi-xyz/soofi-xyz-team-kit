@@ -70,6 +70,7 @@ describe("mergeEnv", () => {
 
     expect(Object.keys(merged)).toEqual([
       "PROPERTY_QUERY_TABLE_MAP",
+      "PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS",
       "PERMIT_QUERY_TABLE_MAP",
       "DATASET_COVERAGE_MAP",
       "PUBLISHED_COUNTY_CATALOG_URL",
@@ -145,6 +146,14 @@ describe("syncMcpJson against a synthetic mcp.json fixture", () => {
     expect(Object.keys(JSON.parse(env.DATASET_COVERAGE_MAP))).toHaveLength(15);
     expect(env.PUBLISHED_COUNTY_CATALOG_URL).toBe(PUBLISHED_COUNTY_CATALOG_URL);
 
+    const propertyFallbacks = JSON.parse(
+      env.PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS,
+    );
+    expect(propertyFallbacks).not.toHaveProperty("duval");
+    expect(propertyFallbacks).not.toHaveProperty("broward");
+    expect(propertyFallbacks.lee).toBe(
+      "QmVZ28CinPN3JUyBBut9xXZNeN5842Ym8mf61AP7MuDtH3",
+    );
     // Preserved untouched.
     expect(env.PERMIT_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS).toBe(
       '{"duval":"QmImmutablePermitCid"}',
@@ -357,6 +366,12 @@ describe("syncMcpJson against a copy of the real repo-root mcp.json", () => {
         written.mcpServers.elephant.env
           .PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS,
       ).duval,
-    ).toBe("QmXAyzo7S6k35cD5cKBHm4qXqAVo2QDKWMYkBZJ8soNe5z");
+    ).toBeUndefined();
+    expect(
+      JSON.parse(
+        written.mcpServers.elephant.env
+          .PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS,
+      ).broward,
+    ).toBeUndefined();
   });
 });

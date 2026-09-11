@@ -1,7 +1,8 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -17,6 +18,9 @@ import { enrichQueryTableWithHoaPm } from "../src/enrichment/query-table-hoa-pm.
 const require = createRequire(import.meta.url);
 const { ParquetReader } = require("@dsnp/parquetjs");
 const temporaryDirectories = [];
+const zstdFixture = fileURLToPath(
+  new URL("./fixtures/hoa-pm-zstd.parquet", import.meta.url),
+);
 const portableInputSchema = {
   property_id: { type: "UTF8", optional: true },
   parcel_identifier: { type: "UTF8", optional: true },
@@ -140,6 +144,44 @@ describe("hoa-pm heuristic", () => {
 });
 
 describe("hoa-pm query-table enrich", () => {
+  it("reads ZSTD input and preserves ZSTD output compression", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "hoa-pm-zstd-"));
+    temporaryDirectories.push(directory);
+    const inputCoverage = path.join(directory, "input-coverage.json");
+    const outputParquet = path.join(directory, "output", "query-table.parquet");
+    await writeFile(
+      inputCoverage,
+      `${JSON.stringify({ county: "duval", datasets: [] })}\n`,
+    );
+
+    const summary = await enrichQueryTableWithHoaPm({
+      countyKey: "duval",
+      inputParquet: zstdFixture,
+      inputCoverage,
+      companies: [hoaCompany, managerCompany],
+      outputParquet,
+      outputCoverage: path.join(directory, "output", "dataset-coverage.json"),
+      manifestPath: path.join(directory, "output", "manifest.json"),
+    });
+
+    expect(summary.propertyCount).toBe(2);
+    expect((await stat(zstdFixture)).size).toBeLessThan(512 * 1024);
+    const reader = await ParquetReader.openFile(outputParquet);
+    try {
+      expect(
+        new Set(
+          reader.metadata.row_groups.flatMap((rowGroup) =>
+            rowGroup.columns.map((column) => column.meta_data.codec),
+          ),
+        ),
+      ).toEqual(new Set([6]));
+      const cursor = reader.getCursor();
+      expect((await cursor.next()).hoa_pm_status).toBe("matched");
+    } finally {
+      await reader.close();
+    }
+  });
+
   it("writes CID columns and data-group objects", async () => {
     const directory = await mkdtemp(path.join(tmpdir(), "hoa-pm-"));
     temporaryDirectories.push(directory);
