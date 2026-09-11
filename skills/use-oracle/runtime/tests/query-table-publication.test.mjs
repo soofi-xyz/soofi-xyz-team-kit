@@ -71,7 +71,10 @@ describe("query-table publication lookup", () => {
       bucket: "elephant-oracle-query-table",
       queryTableIpnsLabel: "oracle-query-table-pinellas-hoa-pm",
       coverageIpnsLabel: "oracle-dataset-coverage-pinellas-hoa-pm",
+      queryTableKey: "pinellas/hoa-pm/query-table.parquet",
+      coverageKey: "pinellas/hoa-pm/dataset-coverage.json",
     });
+    expect(report.result.queryTableKey).not.toBe("pinellas/query-table.parquet");
     expect(report.result.queryTableIpnsLabel).not.toBe(
       "oracle-query-table-pinellas",
     );

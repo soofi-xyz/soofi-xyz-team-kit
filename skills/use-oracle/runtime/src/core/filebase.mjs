@@ -23,6 +23,7 @@ import {
 } from "node:fs/promises";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { z } from "zod";
+import { resolveFilebasePublicationKeys } from "./hoa-pm-publication-keys.mjs";
 
 export const FILEBASE_S3_ENDPOINT = "https://s3.filebase.com";
 export const FILEBASE_NAMES_API = "https://api.filebase.io/v1/names";
@@ -616,16 +617,26 @@ export async function updateExistingFilebaseName(
  */
 export async function publishFilebase(artifacts, config) {
   const env = config.env ?? process.env;
+  const objectKeys = resolveFilebasePublicationKeys(artifacts);
 
   if (config.dryRun === true) {
+    const overlayLabels =
+      typeof artifacts.queryTableIpnsLabel === "string" &&
+      artifacts.queryTableIpnsLabel.endsWith("-hoa-pm");
     return {
       dryRun: true,
       bucket: artifacts.bucket,
       queryTableIpnsLabel: artifacts.queryTableIpnsLabel,
       coverageIpnsLabel: artifacts.coverageIpnsLabel,
+      ...(overlayLabels
+        ? {
+            queryTableKey: objectKeys.queryTableKey,
+            coverageKey: objectKeys.coverageKey,
+          }
+        : {}),
       ...(artifacts.hoaPmObjectsPath
         ? {
-            hoaPmObjectsKey: `${artifacts.county}/hoa-pm/objects.jsonl`,
+            hoaPmObjectsKey: objectKeys.hoaPmObjectsKey ?? `${artifacts.county}/hoa-pm/objects.jsonl`,
             approvalAction:
               "publish-query-table-coverage-and-hoa-pm-objects",
           }
@@ -677,14 +688,14 @@ export async function publishFilebase(artifacts, config) {
   const queryTableCid = await uploadFilebaseObject({
     client,
     bucket: artifacts.bucket,
-    key: `${artifacts.county}/query-table.parquet`,
+    key: objectKeys.queryTableKey,
     body: parquetBody,
     contentType: "application/vnd.apache.parquet",
   });
   const coverageCid = await uploadFilebaseObject({
     client,
     bucket: artifacts.bucket,
-    key: `${artifacts.county}/dataset-coverage.json`,
+    key: objectKeys.coverageKey,
     body: coverageBody,
     contentType: "application/json",
   });
@@ -694,7 +705,7 @@ export async function publishFilebase(artifacts, config) {
       : await uploadFilebaseObject({
           client,
           bucket: artifacts.bucket,
-          key: `${artifacts.county}/hoa-pm/objects.jsonl`,
+          key: objectKeys.hoaPmObjectsKey,
           body: hoaPmObjectsBody,
           contentType: "application/x-ndjson",
         });

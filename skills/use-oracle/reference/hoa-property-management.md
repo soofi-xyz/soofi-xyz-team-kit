@@ -33,9 +33,11 @@ Use the existing shared query-table Filebase bucket with a separate dataset name
 
 - Bucket: `elephant-oracle-query-table` (shared by published counties; do
   not create a separate HOA/PM product bucket).
-- Enriched table key: `<county>/query-table.parquet`.
-- Enriched coverage key: `<county>/dataset-coverage.json`.
+- Enriched table key: `<county>/hoa-pm/query-table.parquet`.
+- Enriched coverage key: `<county>/hoa-pm/dataset-coverage.json`.
 - HOA/PM object bundle key: `<county>/hoa-pm/objects.jsonl`.
+- Never write HOA/PM slices to the official keys `<county>/query-table.parquet`
+  or `<county>/dataset-coverage.json`.
 - HOA/PM labels: `oracle-query-table-<county>-hoa-pm` and
   `oracle-dataset-coverage-<county>-hoa-pm`.
 
