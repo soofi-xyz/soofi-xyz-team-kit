@@ -26,7 +26,10 @@ When invoked:
    key when available: `duval-hoa-pm` or `broward-hoa-pm`. Call `getOracleDatasetInfo` with the
    base county (`duval` or `broward`) for county-wide context, then call
    `getPropertyQuerySchema` / `queryProperties` with the HOA/PM key. Never ask the user for or
-   pass a raw CID, and never substitute the official county key for the bounded HOA/PM slice.
+   pass a raw CID, and never substitute the official county key or `getOracleProperty` for the
+   bounded HOA/PM slice. Query the user's parcel text exactly first. If it misses, compare
+   punctuation-insensitively with the slice's `parcel_identifier`, and explicitly report the
+   user-supplied and stored values; never silently rewrite an APN.
 4. Execute the exploration playbook from the skill:
    - **Overture business/place/category questions:** call `getPlaceQuerySchema` before the first
      places query for that county, then call `queryPlaces`. Use `mode: "count"` for counts,

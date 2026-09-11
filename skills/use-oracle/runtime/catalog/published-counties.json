@@ -34,9 +34,9 @@
       "stateCode": "FL",
       "countyFips": "12031",
       "status": "published",
-      "queryTableUrl": "https://k51qzi5uqu5dle7swd06u9ebrgw375b5vhhhtiiz7un7udfsar0rci53x2w5y4.ipns.dweb.link/",
+      "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dle7swd06u9ebrgw375b5vhhhtiiz7un7udfsar0rci53x2w5y4",
       "queryTableCid": null,
-      "datasetCoverageUrl": "https://k51qzi5uqu5dgqc52fnea1o42e27dr4os0mrdf5ixonuv8kdztdnxclflazf4w.ipns.dweb.link/",
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dgqc52fnea1o42e27dr4os0mrdf5ixonuv8kdztdnxclflazf4w",
       "permitQueryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dll7nwe1o7s1htngeoxrou8k593xieuziw9521444vh3pd7v4y1",
       "placesTableUrl": null,
       "updatedAt": "2026-09-08T14:12:04.353Z"
@@ -75,7 +75,7 @@
       "status": "published",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dgqktver4htb060qxfnaytjhybcxlfkp22vtgygbx2lb4t1h1xs",
       "queryTableCid": "QmTdx2rn9CV6eXR7UXTm8ae1iF1UmMcRLsedPaUAphGM5x",
-      "datasetCoverageUrl": "https://k51qzi5uqu5djj45hvhz6z2dnsdg6pkgucds99t0f78d5gmwu19bfv8o9tygno.ipns.dweb.link/",
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5djj45hvhz6z2dnsdg6pkgucds99t0f78d5gmwu19bfv8o9tygno",
       "permitQueryTableUrl": null,
       "placesTableUrl": null,
       "updatedAt": "2026-07-07T09:58:45.095Z"
@@ -101,7 +101,7 @@
       "status": "published",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dhgte20ho86rzg5b7h0ght3a2js5wz0t55i96aaf1d12wpl8efn",
       "queryTableCid": "QmegcWdrCvYcJBqmsLw8JardEp8FkMsoefV55pFJkBG8E3",
-      "datasetCoverageUrl": "https://k51qzi5uqu5dj8n2f8nowh8kts53rvpr62zfj0mz9izc11rfzv56q7m4161lg7.ipns.dweb.link/",
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dj8n2f8nowh8kts53rvpr62zfj0mz9izc11rfzv56q7m4161lg7",
       "permitQueryTableUrl": null,
       "placesTableUrl": null,
       "updatedAt": "2026-07-06T16:28:01.347Z"
@@ -127,7 +127,7 @@
       "status": "published",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dlu7hx158su5palzzxdbl6zcm8ojh7645bxisxs0cf0s158h6h3",
       "queryTableCid": "QmQDSbE8Au6JiTJyXe45dLu3Nz54eJgJnE73EXqFDgyDRY",
-      "datasetCoverageUrl": "https://k51qzi5uqu5djwga4mcd8nx1gbwy4o9rks3gkoe1u5py5wi9tieea7h44nh4g2.ipns.dweb.link/",
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5djwga4mcd8nx1gbwy4o9rks3gkoe1u5py5wi9tieea7h44nh4g2",
       "permitQueryTableUrl": null,
       "placesTableUrl": null,
       "updatedAt": "2026-07-02T14:21:44.544Z"
