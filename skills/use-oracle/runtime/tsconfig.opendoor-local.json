@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "types": ["node"]
+  },
+  "include": [
+    "bin/opendoor-local-appraisal.mjs",
+    "src/local/opendoor-local.mjs",
+    "src/local/opendoor-query-table.mjs",
+    "src/core/csv.mjs"
+  ]
+}

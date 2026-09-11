@@ -1,0 +1,2 @@
+parcel_id,source_identifier,situs_address,method,url,county,county_fips,elephant_uuid,elephant_token,opendoor_address
+1000001,1000001,1 SYNTHETIC TEST WAY,GET,https://www.lakecopropappr.com/property-details.aspx?AltKey=1000001,lake,12069,00000000-0000-5000-8000-000000000001,address:v1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,"1 Synthetic Test Way, Example, FL, 00000"

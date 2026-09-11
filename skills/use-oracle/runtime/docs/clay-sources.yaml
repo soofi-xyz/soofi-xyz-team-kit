@@ -1,0 +1,115 @@
+county: Clay
+state: FL
+slug: clay
+fips: "12019"
+snapshot_time: "2026-09-11T20:24:00Z"
+
+scope:
+  pipeline: opendoor-targeted-appraisal
+  target_rows: 706
+  seed_source: workspace:oracle-node/data/seeds/clay.csv
+  seed_sha256: d7c861037921fa31c37987b4c21c727d0461dafc0420342f690e895d7022a32c
+  identity_projection_sha256: 011804a7df0523b026acf1a0f84d20501eec0bd46c22be9f3406df5562580c1a
+  identity_contract: Preserve each source elephant_uuid and elephant_token byte-for-byte; do not derive or remint either value.
+  appraisal_only: true
+  permits_in_scope: false
+  database_load_in_scope: false
+  public_publication_in_scope: false
+
+parcel:
+  canonical_source: Florida EDR 2026 assessed-parcel projection backed by the Clay County Property Appraiser active assessment roll
+  assessed_parcel_count: 105429
+  gis_feature_count: 84620
+  discrepancy_threshold_pct: 2.0
+  discrepancy_explanation: The statewide parcel GIS has one feature per mapped parcel and omits separately assessed condominium and other non-polygon accounts; the assessed-property denominator is therefore larger and remains canonical.
+  separately_assessed_without_geometry: acknowledged
+  identifier_proven: true
+  identifier_name: Parcel ID
+  identifier_format: Hyphenated text in the form NN-NN-NN-NNNNNN-NNN-NN
+  join_rule: Preserve the seed parcel_id as exact hyphenated text without numeric coercion and send it unchanged as the qPublic KeyValue.
+  appraisal_source:
+    official_office: https://www.ccpao.com/
+    official_property_search: https://qpublic.schneidercorp.com/Application.aspx?AppID=830&LayerID=15008&PageTypeID=2&PageID=6754
+    property_details: https://qpublic.schneidercorp.com/Application.aspx
+    official_active_roll: https://www.ccpao.com/parcel-information/
+    target_adapter: clay-qpublic-beacon-v1
+    request_method: GET
+    request_contract: AppID=830, LayerID=15008, PageTypeID=4, PageID=6754, and KeyValue equal to the exact hyphenated parcel_id
+    expected_response: qPublic Beacon property-detail HTML containing the parcel summary, Buildings section, sales grid, and valuation grid used by the pinned transforms
+    plain_http_probe: 403 Cloudflare managed challenge with cf-mitigated=challenge from non-US operator egress
+    server_side_cloud_probe: Enable JavaScript and cookies to continue challenge
+    aws_batch_egress: unproven; no AWS job was submitted or deployed in this preparation task
+  count_evidence:
+    assessed_projection: https://www.edr.state.fl.us/Content/conferences/advalorem/adval_parcelcounts.pdf
+    projection_categories_2026: "AG 832 + HX 60346 + NRES 5611 + RES 38640 = 105429"
+    active_assessment_roll: https://www.ccpao.com/parcel-information/
+    gis_layer: https://gis.floridahealth.gov/server/rest/services/EHWATER/Parcels/MapServer/9
+    gis_count_query: "where=1%3D1&returnCountOnly=true&f=json"
+
+transform:
+  source_repository: https://github.com/elephant-xyz/Counties-trasform-scripts
+  source_commit: "39300ce69bcd8920176cb3cf902b49725ad09e38"
+  source_path: clay/scripts
+  runtime_path: counties/clay/transforms
+  module_type: commonjs
+  dependency: cheerio resolved from the runtime node_modules through NODE_PATH
+  execution_order: ownerMapping.js, structureMapping.js, utilityMapping.js, layoutMapping.js, data_extractor.js
+  required_inputs: input.html, property_seed.json, unnormalized_address.json, and seed.csv or input.csv
+  intermediate_outputs: owners/owner_data.json, owners/structure_data.json, owners/utilities_data.json, and owners/layout_data.json
+  validation_limit: Live selector validation is blocked until a real qPublic property card can be captured from approved US or AWS egress.
+
+permits:
+  expected_jurisdiction_count: 5
+  assumes_unified_countywide_history: false
+  scope_note: Permit capture and permit completeness are excluded from this appraisal-only OpenDoor target run; each authority is listed only to prevent appraisal readiness from being represented as countywide permit readiness.
+  jurisdictions:
+    - jurisdiction: Unincorporated Clay County
+      status: excluded
+      portal_kind: outside-appraisal-run
+      portal: https://www.claycountygov.com/government/building
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: City of Green Cove Springs
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: City of Keystone Heights
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: Town of Orange Park
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: Town of Penney Farms
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+
+source_inventory:
+  property_appraisal: https://www.ccpao.com/
+  property_search: https://qpublic.schneidercorp.com/Application.aspx?AppID=830&LayerID=15008&PageTypeID=2&PageID=6754
+  property_bulk: https://www.ccpao.com/parcel-information/
+  property_geometry: https://www.ccpao.com/certified-data/
+  state_geometry_count: https://gis.floridahealth.gov/server/rest/services/EHWATER/Parcels/MapServer/9
+  jurisdiction_evidence: https://www.claycountygov.com/government/welcome-to-clay-county
+  permit_authority_boundary: Unincorporated Clay County plus four incorporated municipalities, with permit harvesting explicitly outside this run.
+
+destination:
+  writes_in_scope: false
+  proven: false
+  mode: Private appraisal artifacts in the isolated development S3 bucket only; no database, Filebase, IPNS, county catalog, or MCP write is in scope.
+
+publication:
+  status: not-in-scope
+  property_consolidation: not-in-scope
+  query_table: not-in-scope
+  coverage_ipns: not-in-scope
+
+approved_exceptions:
+  - gate: parcel
+    reason: The official 2026 EDR assessed projection is used only as the readiness denominator for this 706-row OpenDoor-target-only appraisal capture; the approximately 19.7 percent GIS gap is acknowledged and does not authorize a full-county completeness claim.

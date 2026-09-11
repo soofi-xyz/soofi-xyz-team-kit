@@ -1,0 +1,127 @@
+county: Lake
+state: FL
+slug: lake
+fips: "12069"
+snapshot_time: "2026-09-11T20:20:00Z"
+
+parcel:
+  canonical_source: Florida EDR 2026 assessed-parcel projection backed by Lake County Property Appraiser and DOR roll history
+  assessed_parcel_count: 216152
+  gis_feature_count: 172134
+  discrepancy_threshold_pct: 2.0
+  discrepancy_explanation: The official parcel GIS has one feature per mapped parcel and omits separately assessed condominium and other non-polygon accounts; the assessed-property denominator is therefore larger and remains canonical.
+  separately_assessed_without_geometry: acknowledged
+  identifier_proven: true
+  identifier_name: Alternate Key
+  identifier_format: numeric text
+  join_rule: Preserve ALT_KEY as text without numeric coercion; use it as the property-details AltKey query value.
+  appraisal_source:
+    property_details: https://www.lakecopropappr.com/property-details.aspx
+    official_bulk_directory: https://c.lakecountyfl.gov/FTP/PA_office/Data/
+    official_preliminary_roll: NALExtractPublic_063026.txt
+    target_adapter: lake-property-details-v1
+  count_evidence:
+    assessed_projection: https://www.edr.state.fl.us/Content/conferences/advalorem/adval_parcelcounts.pdf
+    projection_categories_2026: "AG 4247 + HX 115209 + NRES 16447 + RES 80249 = 216152"
+    gis_layer: https://maps.floridahealth.gov/server/rest/services/EHWATER/Parcels/MapServer/33
+    gis_count_query: "where=1%3D1&returnCountOnly=true&f=json"
+
+permits:
+  expected_jurisdiction_count: 15
+  assumes_unified_countywide_history: false
+  scope_note: Permit capture is excluded from this appraisal-only OpenDoor target run; classification here prevents the county portal from being misrepresented as complete municipal history.
+  jurisdictions:
+    - jurisdiction: Unincorporated Lake County
+      status: excluded
+      portal_kind: outside-appraisal-run
+      portal: https://lakecountyfl.gov/building-services
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: Astatula
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: Clermont
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: Eustis
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: Fruitland Park
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: Groveland
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: Howey-in-the-Hills
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: Lady Lake
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: Leesburg
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: Mascotte
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: Minneola
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: Montverde
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: Mount Dora
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: Tavares
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: Umatilla
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+
+source_inventory:
+  property_appraisal: https://www.lakecopropappr.com/property-search.aspx
+  property_bulk: https://c.lakecountyfl.gov/FTP/PA_office/Data/
+  property_geometry: https://maps.floridahealth.gov/server/rest/services/EHWATER/Parcels/MapServer/33
+  permit_authority_boundary: Unincorporated Lake County plus fourteen incorporated municipalities, each with independent permit authority.
+
+destination:
+  writes_in_scope: false
+  proven: false
+  mode: Private appraisal artifacts in the isolated elephant-dev S3 bucket only; no database, Filebase, IPNS, catalog, or MCP write.
+
+publication:
+  status: not-in-scope
+
+approved_exceptions:
+  - gate: parcel
+    reason: The official 2026 EDR assessed projection is used only as the readiness denominator for this 770-row target-only appraisal capture; the 20.4 percent GIS gap is explained by separately assessed non-polygon accounts and does not authorize a full-county completeness claim.

@@ -1,0 +1,233 @@
+county: Volusia
+state: FL
+slug: volusia
+fips: "12127"
+snapshot_time: "2026-09-11T20:30:00Z"
+
+scope:
+  pipeline: opendoor-targeted-appraisal
+  selection: opendoor-target-only
+  appraisal: in-scope
+  permits: not-in-scope
+  database_load: not-in-scope
+  public_publication: not-in-scope
+  completeness_claim: targeted-selection-only
+
+target_selection:
+  seed_path: oracle-node/data/seeds/volusia.csv
+  source_rows: 798
+  matched_rows: 784
+  seed_rows: 784
+  unique_parcels: 784
+  unmatched_rows: 14
+  seed_sha256: e54eef549aa8e4d83d10d9d9f88dec1c1d5f6cd13ef7550da185c95638525ba6
+  identity_policy: Preserve every supplied elephant_uuid and elephant_token byte-for-byte; never remint.
+  identity_evidence: The match report records three rows whose supplied identity differs from a fresh mint, so the supplied OpenDoor identity is authoritative for this run.
+
+parcel:
+  canonical_source: Volusia County Property Appraiser 2026 Preliminary Tax Roll
+  assessed_parcel_count: 313582
+  gis_feature_count: 313739
+  discrepancy_threshold_pct: 2.0
+  discrepancy_explanation: The assessed count is the official 2026 preliminary real-property roll while the GIS count is a live ownership-polygon layer queried on 2026-09-11; the 157-record difference is approximately 0.05 percent and reflects source model and snapshot timing rather than authority for GIS-only seeding.
+  separately_assessed_without_geometry: acknowledged
+  identifier_proven: true
+  identifier_name: Alternate Key
+  identifier_format: seven-digit numeric text
+  emitted_identifier_name: Parcel ID
+  emitted_identifier_format: twelve-digit numeric text
+  join_rule: Preserve the seven-digit ALTKEY as the request_identifier and send it as the altkey query parameter; preserve the twelve-digit Parcel ID emitted by the detail page as parcel_identifier without reminting address identity.
+  appraisal_source:
+    owner: Volusia County Property Appraiser
+    search_page: https://paproapp.vcgov.org/search/real-property
+    property_detail_template: "https://paproapp.vcgov.org/parcel/summary/?altkey={ALTKEY}"
+    method: GET
+    input_parameter: altkey
+    target_adapter: volusia-property-summary-browser-v1
+    browser_required: true
+    continue_button: "#acceptDataDisclaimer"
+    consent_cookie_name: acceptedNewDisclaimer
+    response_markers: Parcel ID, Alternate Key, Property Use, Physical Address, section-values, section-sales
+    seed_url_status: The seed URL pattern /search/real-property/{ALTKEY} currently renders the search/disclaimer page and is not the property-detail response expected by the transforms.
+  access_evidence:
+    remote_cloud_http_status: 200
+    remote_cloud_result: The official host and parcel-summary route are reachable from isolated cloud-style HTTP egress without a 403 or geo-block, but return the disclaimer gate until browser consent.
+    local_headless_browser_result: After clicking #acceptDataDisclaimer, ALTKEY 3279557 returned the expected parcel detail markers.
+    actual_aws_batch_probe: not-run
+    actual_aws_batch_probe_reason: AWS execution and deployment are explicitly outside this county-preparation task.
+  count_evidence:
+    assessed_roll: https://vcpa.vcgov.org/files/historical/2026/prelim/charts/pcgroupvolusiaecho2026preliminary.pdf
+    assessed_roll_label: 2026 Preliminary Tax Roll Real Property
+    gis_layer: https://maps2.vcgov.org/arcgis/rest/services/Pictometry_Parcels/MapServer/0
+    gis_count_query: "where=1%3D1&returnCountOnly=true&f=json"
+    official_database_download: https://paproapp.vcgov.org/download/database
+    current_working_roll_archive: https://paproapp.vcgov.org/files/database/CAMA_DATA_EXPORT.zip
+
+transforms:
+  source_repository: Counties-trasform-scripts
+  source_commit: 39300ce69bcd8920176cb3cf902b49725ad09e38
+  source_path: volusia/scripts
+  runtime_path: counties/volusia/transforms
+  execution_order:
+    - ownerMapping.js
+    - structureMapping.js
+    - utilityMapping.js
+    - layoutMapping.js
+    - data_extractor.js
+  input_contract:
+    required_html: input.html
+    required_property_seed: property_seed.json
+    required_address: unnormalized_address.json
+    optional_geometry_csv: input.csv
+    generated_intermediates: owners/owner_data.json, owners/structure_data.json, owners/utilities_data.json, owners/layout_data.json
+    generated_output: data/*.json
+  pinned_sha256:
+    data_extractor_js: a92078167b071cb12c8685416e1b1b02e6f0d7663c6ebc6e012cc9f693265990
+    layoutMapping_js: dc1a9d63d831ca29e0c93e514b14a3eb3d198d933c850a753b444f30132ea0cb
+    ownerMapping_js: 61a2a8bc45c27f78aa785443bdd319476d0ca626d491bc062109eb8145cee241
+    structureMapping_js: fb4cc69ef8b73bdb23b63786d1e6d3eb442268705e9befd6530b13983cd9b482
+    utilityMapping_js: c62a2b8d1ef041438f75ed8b78f44828a162a4066c0d9c4583846ffdf7bc2bc1
+  local_validation:
+    javascript_syntax: pass
+    source_pin_byte_match: pass
+    live_smoke_altkey: "3279557"
+    live_smoke_http_status: 200
+    scripts_executed: 5
+    property_json: present
+    address_json: present
+    parcel_json: missing
+    emitted_parcel_identifier: "523816050150"
+    property_usage_type: Residential
+    county_name: Volusia
+    result: partial
+    limitation: The canonical scripts execute and emit property/address data, but the extractor defines and never invokes createParcelAndGeometry; full Lake-runner compatibility and 10-20 parcel field-coverage validation are not established.
+
+runner_handoff:
+  blockers:
+    - Parameterize Lake-only county, FIPS, adapter, transform path, source validator, request schema, S3 keys, handoff names, and runtime-source digest.
+    - Replace the stale seed /search/real-property/{ALTKEY} URL with the reviewed /parcel/summary/?altkey={ALTKEY} request contract.
+    - Add a browser-capable container path that clicks #acceptDataDisclaimer; the current appraisal image contains neither Chrome nor Puppeteer.
+    - Keep seven-digit ALTKEY request_identifier separate from the twelve-digit Parcel ID emitted by the detail page.
+    - Synthesize data/parcel.json or fix the upstream Volusia extractor before applying the current Lake output validator.
+    - Decide whether to supply input.csv parcel_polygon; the current runner writes seed.csv while the Volusia extractor looks for input.csv and its maps5 geometry fallback is unavailable.
+    - Preserve supplied elephant_uuid and elephant_token as opaque authoritative values; validation must not remint or rewrite them.
+    - Run an actual AWS Batch browser smoke and a diverse 10-20 parcel transform coverage suite before scale-out.
+
+permits:
+  expected_jurisdiction_count: 17
+  assumes_unified_countywide_history: false
+  scope_note: Permit discovery, capture, identity baselines, and completeness are excluded from this appraisal-only OpenDoor target run; these classifications must not be interpreted as permit coverage.
+  jurisdiction_evidence: https://www.volusia.org/visitors/cities-and-communities.stml
+  authority_evidence: https://vcpa.vcgov.org/info/permits/?altid=422208010082&taxdist=201
+  jurisdictions:
+    - jurisdiction: Unincorporated Volusia County
+      status: excluded
+      portal_kind: outside-appraisal-run
+      portal: https://www.volusia.org/services/growth-and-resource-management/building-and-zoning/
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: Daytona Beach
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: Daytona Beach Shores
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: DeBary
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: DeLand
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: Deltona
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: Edgewater
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: Holly Hill
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: Lake Helen
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: New Smyrna Beach
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: Oak Hill
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: Orange City
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: Ormond Beach
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: Pierson
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: Ponce Inlet
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: Port Orange
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+    - jurisdiction: South Daytona
+      status: excluded
+      portal_kind: outside-appraisal-run
+      historical_records: false
+      implementation_status: not-in-appraisal-run
+
+source_inventory:
+  property_appraisal: https://paproapp.vcgov.org/search/real-property
+  property_bulk: https://paproapp.vcgov.org/download/database
+  property_geometry: https://maps2.vcgov.org/arcgis/rest/services/Pictometry_Parcels/MapServer/0
+  permit_authority_boundary: Unincorporated Volusia County plus sixteen incorporated municipalities, each excluded from this appraisal-only run.
+
+destination:
+  writes_in_scope: false
+  proven: false
+  mode: Private appraisal artifacts in the isolated AWS S3 bucket only; no database, Filebase, IPNS, published-county catalog, or MCP write.
+
+publication:
+  status: not-in-scope
+  support_level: unsupported
+  public_property_dataset: false
+  public_permit_dataset: false
+  query_table: false
+  filebase: false
+  ipns: false
+  catalog: false
+  mcp: false
+
+enrichment:
+  status: not-in-scope

@@ -9,6 +9,7 @@
   },
   "bin": {
     "elephant-county": "bin/elephant-county.mjs",
+    "opendoor-local-appraisal": "bin/opendoor-local-appraisal.mjs",
     "permit-backfill": "bin/permit-backfill.mjs",
     "permit-source-coverage": "bin/permit-source-coverage.mjs",
     "probe-broward-permits": "bin/probe-broward-permits.mjs"
@@ -17,6 +18,10 @@
     "test": "vitest run && npm run test:transforms",
     "test:watch": "vitest",
     "test:transforms": "node scripts/run-transform-tests.mjs",
+    "test:opendoor-local": "vitest run tests/opendoor-local.test.mjs",
+    "opendoor:local": "node bin/opendoor-local-appraisal.mjs",
+    "opendoor:local:lint": "node --check bin/opendoor-local-appraisal.mjs && node --check src/local/opendoor-local.mjs && node --check src/local/opendoor-query-table.mjs",
+    "opendoor:local:typecheck": "tsc -p tsconfig.opendoor-local.json --noEmit",
     "test:catalog": "vitest run tests/catalog",
     "permits:backfill": "node bin/permit-backfill.mjs",
     "permits:backfill-plan": "node bin/permit-backfill.mjs",
@@ -40,7 +45,7 @@
     "@aws-sdk/client-s3": "^3.879.0",
     "@aws-sdk/client-sts": "^3.1127.0",
     "@dsnp/parquetjs": "^1.8.7",
-    "adm-zip": "^0.6.0",
+    "adm-zip": "^0.6.1",
     "cheerio": "^1.1.2",
     "pg": "^8.23.0",
     "puppeteer-core": "^25.10.0",
