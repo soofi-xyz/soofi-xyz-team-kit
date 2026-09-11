@@ -16,14 +16,24 @@ import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import {
   access,
+  mkdir,
   readFile,
   rename,
   stat,
   writeFile,
 } from "node:fs/promises";
+import path from "node:path";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { z } from "zod";
 import { resolveFilebasePublicationKeys } from "./hoa-pm-publication-keys.mjs";
+import {
+  hoaPmPublicationLayers,
+  isIpfsCid,
+  parseHoaPmObjects,
+  publishableHoaPmObject,
+  restampHoaPmObjectBundle,
+} from "../enrichment/hoa-pm-object-publication.mjs";
+import { restampHoaPmQueryTable } from "../enrichment/query-table-hoa-pm.mjs";
 
 export const FILEBASE_S3_ENDPOINT = "https://s3.filebase.com";
 export const FILEBASE_NAMES_API = "https://api.filebase.io/v1/names";
@@ -43,7 +53,7 @@ const filebaseApprovalSchema = z
     schemaVersion: z.literal(FILEBASE_APPROVAL_SCHEMA_VERSION),
     action: z.enum([
       "publish-query-table-and-coverage",
-      "publish-query-table-coverage-and-hoa-pm-objects",
+      "publish-query-table-coverage-and-resolvable-hoa-pm-objects",
     ]),
     county: z.string().min(1),
     bucket: z.string().min(1),
@@ -108,8 +118,10 @@ const permitFilebaseApprovalSchema = z
  * @typedef {object} PublishFilebaseConfig
  * @property {boolean} dryRun - When true, never touches the network; reports intended labels/bucket only.
  * @property {string | null} [approvalManifestPath] - Path to a human-signed approval manifest, required for a live publish.
+ * @property {string | null} [receiptPath] - Resumable receipt path, required for live HOA/PM object publication.
  * @property {NodeJS.ProcessEnv} [env] - Environment to read Filebase credentials from. Defaults to `process.env`.
  * @property {string} [endpoint] - Override the Filebase S3 endpoint (tests only).
+ * @property {number} [objectConcurrency] - Bounded individual-object upload concurrency.
  */
 
 /**
@@ -207,7 +219,7 @@ export function validateFilebaseApproval(
     action:
       hoaPmObjectsBody === null
         ? "publish-query-table-and-coverage"
-        : "publish-query-table-coverage-and-hoa-pm-objects",
+        : "publish-query-table-coverage-and-resolvable-hoa-pm-objects",
     county: artifacts.county,
     bucket: artifacts.bucket,
     queryTableIpnsLabel: artifacts.queryTableIpnsLabel,
@@ -346,6 +358,211 @@ async function writePublicationReceipt(filePath, value) {
   const temporaryPath = `${filePath}.tmp-${process.pid}`;
   await writeFile(temporaryPath, `${JSON.stringify(value, null, 2)}\n`);
   await rename(temporaryPath, filePath);
+}
+
+async function mapWithConcurrency(values, concurrency, operation) {
+  const results = new Array(values.length);
+  let nextIndex = 0;
+  async function worker() {
+    while (nextIndex < values.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      results[index] = await operation(values[index], index);
+    }
+  }
+  await Promise.all(
+    Array.from(
+      { length: Math.min(concurrency, Math.max(values.length, 1)) },
+      worker,
+    ),
+  );
+  return results;
+}
+
+function hoaPmObjectKey(county, object) {
+  const group = String(object.data_group).replace(/[^A-Za-z0-9_-]+/g, "_");
+  const type = String(object.type).replace(/[^A-Za-z0-9_-]+/g, "_");
+  return `${county}/hoa-pm/objects/${group}/${type}/${object.cid.slice("sha256:".length)}.json`;
+}
+
+async function publishResolvableHoaPmObjects({
+  artifacts,
+  config,
+  client,
+  token,
+  objectKeys,
+  parquetBody,
+  coverageBody,
+  hoaPmObjectsBody,
+  approval,
+}) {
+  if (typeof config.receiptPath !== "string" || config.receiptPath.trim().length === 0) {
+    throw new Error("Live HOA/PM publication requires --receipt <path>");
+  }
+  const receiptPath = config.receiptPath;
+  const sourceArtifacts = {
+    queryTable: bufferIntegrity(parquetBody),
+    coverage: bufferIntegrity(coverageBody),
+    hoaPmObjects: bufferIntegrity(hoaPmObjectsBody),
+  };
+  let receipt = {
+    schemaVersion: "elephant.filebase-hoa-pm-publication-receipt.v1",
+    status: "publishing",
+    county: artifacts.county,
+    bucket: artifacts.bucket,
+    approvedBy: approval.approvedBy,
+    approvedAt: approval.approvedAt,
+    sourceArtifacts,
+    objects: {},
+    uploads: {},
+    names: {},
+  };
+  if (await fileExists(receiptPath)) {
+    const existing = JSON.parse(await readFile(receiptPath, "utf8"));
+    if (
+      existing.county !== receipt.county ||
+      existing.bucket !== receipt.bucket ||
+      JSON.stringify(existing.sourceArtifacts) !== JSON.stringify(sourceArtifacts)
+    ) {
+      throw new Error("Existing HOA/PM publication receipt is incompatible");
+    }
+    receipt = existing;
+  }
+
+  const objects = parseHoaPmObjects(hoaPmObjectsBody);
+  const publishedCidByLocalCid = new Map(
+    Object.entries(receipt.objects).map(([localCid, published]) => {
+      if (!isIpfsCid(published.cid)) {
+        throw new Error(`Receipt has invalid published CID for ${localCid}`);
+      }
+      return [localCid, published.cid];
+    }),
+  );
+  for (const layer of hoaPmPublicationLayers(objects)) {
+    const pending = layer.filter((object) => !publishedCidByLocalCid.has(object.cid));
+    const published = await mapWithConcurrency(
+      pending,
+      config.objectConcurrency ?? 12,
+      async (object) => {
+        const key = hoaPmObjectKey(artifacts.county, object);
+        const cid = await uploadFilebaseObject({
+          client,
+          bucket: artifacts.bucket,
+          key,
+          body: publishableHoaPmObject(object, publishedCidByLocalCid),
+          contentType: "application/json",
+        });
+        if (!isIpfsCid(cid)) {
+          throw new Error(`Filebase returned invalid object CID for ${object.cid}`);
+        }
+        return { localCid: object.cid, cid, key, type: object.type };
+      },
+    );
+    for (const result of published) {
+      publishedCidByLocalCid.set(result.localCid, result.cid);
+      receipt.objects[result.localCid] = {
+        cid: result.cid,
+        key: result.key,
+        type: result.type,
+      };
+    }
+    await writePublicationReceipt(receiptPath, receipt);
+  }
+
+  const outputDir = path.join(
+    path.dirname(receiptPath),
+    `${artifacts.county}-hoa-pm-published`,
+  );
+  await mkdir(outputDir, { recursive: true });
+  const publishedParquetPath = path.join(outputDir, "query-table.parquet");
+  const queryTable = await restampHoaPmQueryTable({
+    inputParquet: artifacts.parquetPath,
+    outputParquet: publishedParquetPath,
+    publishedCidByLocalCid,
+  });
+  const publishedObjectsBody = restampHoaPmObjectBundle(
+    objects,
+    publishedCidByLocalCid,
+  );
+  const publishedObjectsPath = path.join(outputDir, "objects.jsonl");
+  await writeFile(publishedObjectsPath, publishedObjectsBody);
+  receipt.outputArtifacts = {
+    queryTable: await fileIntegrity(publishedParquetPath),
+    coverage: bufferIntegrity(coverageBody),
+    hoaPmObjects: bufferIntegrity(publishedObjectsBody),
+  };
+  receipt.reconciliation = {
+    sourceObjectRows: hoaPmObjectsBody
+      .toString("utf8")
+      .split(/\r?\n/)
+      .filter(Boolean).length,
+    uniqueObjectCount: objects.length,
+    publishedObjectCount: publishedCidByLocalCid.size,
+    ...queryTable,
+  };
+  await writePublicationReceipt(receiptPath, receipt);
+
+  if (!receipt.uploads.queryTable) {
+    receipt.uploads.queryTable = {
+      key: objectKeys.queryTableKey,
+      cid: await uploadFilebaseFile({
+        client,
+        bucket: artifacts.bucket,
+        key: objectKeys.queryTableKey,
+        filePath: publishedParquetPath,
+        contentType: "application/vnd.apache.parquet",
+      }),
+    };
+    await writePublicationReceipt(receiptPath, receipt);
+  }
+  if (!receipt.uploads.coverage) {
+    receipt.uploads.coverage = {
+      key: objectKeys.coverageKey,
+      cid: await uploadFilebaseObject({
+        client,
+        bucket: artifacts.bucket,
+        key: objectKeys.coverageKey,
+        body: coverageBody,
+        contentType: "application/json",
+      }),
+    };
+    await writePublicationReceipt(receiptPath, receipt);
+  }
+  if (!receipt.uploads.hoaPmObjects) {
+    receipt.uploads.hoaPmObjects = {
+      key: objectKeys.hoaPmObjectsKey,
+      cid: await uploadFilebaseObject({
+        client,
+        bucket: artifacts.bucket,
+        key: objectKeys.hoaPmObjectsKey,
+        body: publishedObjectsBody,
+        contentType: "application/x-ndjson",
+      }),
+    };
+    await writePublicationReceipt(receiptPath, receipt);
+  }
+  for (const [name, label, cid] of [
+    ["queryTable", artifacts.queryTableIpnsLabel, receipt.uploads.queryTable.cid],
+    ["coverage", artifacts.coverageIpnsLabel, receipt.uploads.coverage.cid],
+  ]) {
+    if (!receipt.names[name]) {
+      receipt.names[name] = await upsertFilebaseName(token, label, cid);
+      await writePublicationReceipt(receiptPath, receipt);
+    }
+  }
+  receipt.status = "complete";
+  receipt.completedAt = new Date().toISOString();
+  await writePublicationReceipt(receiptPath, receipt);
+  return {
+    dryRun: false,
+    queryTableCid: receipt.uploads.queryTable.cid,
+    coverageCid: receipt.uploads.coverage.cid,
+    hoaPmObjectsCid: receipt.uploads.hoaPmObjects.cid,
+    objectCount: receipt.reconciliation.uniqueObjectCount,
+    queryTableIpns: `${FILEBASE_GATEWAY}/ipns/${receipt.names.queryTable.network_key}`,
+    coverageIpns: `${FILEBASE_GATEWAY}/ipns/${receipt.names.coverage.network_key}`,
+    receiptPath,
+  };
 }
 
 export async function publishPermitFilebase(artifacts, config) {
@@ -638,7 +855,7 @@ export async function publishFilebase(artifacts, config) {
         ? {
             hoaPmObjectsKey: objectKeys.hoaPmObjectsKey ?? `${artifacts.county}/hoa-pm/objects.jsonl`,
             approvalAction:
-              "publish-query-table-coverage-and-hoa-pm-objects",
+              "publish-query-table-coverage-and-resolvable-hoa-pm-objects",
           }
         : {}),
     };
@@ -685,6 +902,19 @@ export async function publishFilebase(artifacts, config) {
     coverageBody,
     hoaPmObjectsBody,
   );
+  if (hoaPmObjectsBody !== null) {
+    return publishResolvableHoaPmObjects({
+      artifacts,
+      config,
+      client,
+      token,
+      objectKeys,
+      parquetBody,
+      coverageBody,
+      hoaPmObjectsBody,
+      approval,
+    });
+  }
   const queryTableCid = await uploadFilebaseObject({
     client,
     bucket: artifacts.bucket,

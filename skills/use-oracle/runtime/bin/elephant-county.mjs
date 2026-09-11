@@ -510,6 +510,8 @@ async function runHoaPmPublishCommand(argv) {
       dryRun: flags["dry-run"] === true,
       approvalManifestPath:
         typeof flags.approve === "string" ? flags.approve : null,
+      receiptPath:
+        typeof flags.receipt === "string" ? flags.receipt : null,
       env: process.env,
     },
   );
@@ -1061,7 +1063,7 @@ async function main() {
       "  avm-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --records <avm-records.jsonl> --source-manifest <json> --output-dir <dir>\n" +
       "  hoa-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --records <hoa-memberships.jsonl> --source-manifest <json> --output-dir <dir>\n" +
       "  hoa-pm-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --sunbiz-extract <dir> --output-dir <dir>\n" +
-      "  hoa-pm-publish --county <published-county-key> --input <enriched-dir> [--dry-run] [--approve <manifest>]\n" +
+      "  hoa-pm-publish --county <published-county-key> --input <enriched-dir> [--dry-run] [--approve <manifest> --receipt <json>]\n" +
       "  bbb-harvest --county <profile-key> --category <reviewed-key> --job-id <id> --max-pages N --max-profiles N --max-requests N --max-duration-minutes N --output <dir>\n" +
       "  bbb-reconcile --county <profile-key> --harvest-root <category-dirs-root> --input-coverage <json> --output-dir <dir>\n" +
       "  bbb-link --county duval --input-parquet <query-table.parquet> --input-coverage <dataset-coverage.json> --bbb-profiles <bbb-profiles.jsonl> --bbb-reconciliation-manifest <json> --permit-source <jaxepics-bid-map.jsonl.gz> --permit-artifact-manifest <json> --output-dir <dir>\n" +

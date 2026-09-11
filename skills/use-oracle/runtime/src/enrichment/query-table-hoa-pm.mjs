@@ -243,3 +243,57 @@ export async function enrichQueryTableWithHoaPm({
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
   return manifest;
 }
+
+export async function restampHoaPmQueryTable({
+  inputParquet,
+  outputParquet,
+  publishedCidByLocalCid,
+}) {
+  const input = await inspectInputParquet(inputParquet);
+  const rows = await readQueryRows(inputParquet);
+  const writer = await ParquetWriter.openFile(
+    new ParquetSchema(
+      withHoaPmSchema(
+        input.schemaFields,
+        input.compressionByField,
+        input.defaultCompression,
+      ),
+    ),
+    outputParquet,
+  );
+  let hoaCidCount = 0;
+  let propertyManagerCidCount = 0;
+  try {
+    for (const row of rows) {
+      const restamped = { ...row };
+      for (const [field, counter] of [
+        ["hoa_cid", "hoa"],
+        ["property_manager_cid", "propertyManager"],
+      ]) {
+        const current = restamped[field];
+        if (typeof current !== "string" || current.length === 0) continue;
+        if (current.startsWith("sha256:")) {
+          const published = publishedCidByLocalCid.get(current);
+          if (!published) {
+            throw new Error(`Query table ${field} references unpublished object ${current}`);
+          }
+          restamped[field] = published;
+        }
+        if (restamped[field].startsWith("sha256:")) {
+          throw new Error(`Query table ${field} retained a local sha256 CID`);
+        }
+        if (counter === "hoa") hoaCidCount += 1;
+        else propertyManagerCidCount += 1;
+      }
+      await writer.appendRow(toParquetRecord(restamped));
+    }
+  } finally {
+    await writer.close();
+  }
+  return {
+    rowCount: rows.length,
+    hoaCidCount,
+    propertyManagerCidCount,
+    outputParquetSha256: await sha256File(outputParquet),
+  };
+}
