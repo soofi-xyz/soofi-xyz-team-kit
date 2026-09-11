@@ -13,7 +13,7 @@
  */
 
 import { createHash } from "node:crypto";
-import { mintAddressIdentity } from "../../core/address-signature.mjs";
+import { mintSitusAddressIdentity } from "../../core/address-signature.mjs";
 import { parseUnnormalizedAddress, toInteger, toNumber, toText } from "../../core/query-table.mjs";
 
 export const SOURCE_SYSTEM = "duval_appraiser";
@@ -140,12 +140,10 @@ export function mapTransformedFilesToQueryTableRow({ parcelId, files, seedRow })
 
   const addressStreet = parsed.street;
   const addressZip = parsed.postalCode ?? toText(seedRow?.zip);
-  const identity = mintAddressIdentity({
-    country: "us",
+  const identity = mintSitusAddressIdentity({
     state: STATE_CODE,
     postalCode: addressZip,
     street: addressStreet,
-    unit: toText(address.unit_identifier),
   });
 
   return {

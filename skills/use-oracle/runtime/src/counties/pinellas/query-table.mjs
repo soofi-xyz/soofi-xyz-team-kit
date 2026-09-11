@@ -18,7 +18,7 @@
  */
 
 import { createHash } from "node:crypto";
-import { mintAddressIdentity } from "../../core/address-signature.mjs";
+import { mintSitusAddressIdentity } from "../../core/address-signature.mjs";
 import { parseUnnormalizedAddress, toInteger, toNumber, toText } from "../../core/query-table.mjs";
 
 export const SOURCE_SYSTEM = "pinellas_appraiser";
@@ -144,12 +144,10 @@ export function mapTransformedFilesToQueryTableRow({ strap, files, seedRow }) {
 
   const addressStreet = (situsHasContent ? parsed.street : null) ?? parsed.street;
   const addressZip = (situsHasContent ? parsed.postalCode : null) ?? toText(seedRow?.zip) ?? parsed.postalCode;
-  const identity = mintAddressIdentity({
-    country: "us",
+  const identity = mintSitusAddressIdentity({
     state: STATE_CODE,
     postalCode: addressZip,
     street: addressStreet,
-    unit: toText(address.unit_identifier),
   });
 
   return {

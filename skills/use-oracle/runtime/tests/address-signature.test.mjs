@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { mintAddressIdentity } from "../src/core/address-signature.mjs";
+import {
+  mintAddressIdentity,
+  mintSitusAddressIdentity,
+} from "../src/core/address-signature.mjs";
 
 const GOLDEN_SIGNATURE =
   "address:v1|country:2:us|state:2:fl|postal_code:5:32225|street:17:11659 jonathan rd|unit:0:";
@@ -76,5 +79,19 @@ describe("mintAddressIdentity", () => {
     });
 
     expect(identity?.signature).toContain("|unit:5:apt 2");
+  });
+
+  it("always serializes an empty unit for property situs identity", () => {
+    expect(
+      mintSitusAddressIdentity({
+        state: "FL",
+        postalCode: "32225",
+        street: "11659 JONATHAN RD",
+      }),
+    ).toEqual({
+      signature: GOLDEN_SIGNATURE,
+      elephantUuid: GOLDEN_UUID,
+      elephantToken: GOLDEN_TOKEN,
+    });
   });
 });
