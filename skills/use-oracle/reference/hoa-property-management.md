@@ -29,22 +29,20 @@ the row-level hashes.
 
 ## Publication destination
 
-Use the existing Broward query-table Filebase destination:
+Use the existing shared query-table Filebase destination:
 
-- Bucket: `elephant-oracle-query-table` (shared by the supported county profiles; do
+- Bucket: `elephant-oracle-query-table` (shared by published counties; do
   not create a separate HOA/PM product bucket).
 - Enriched table key: `<county>/query-table.parquet`.
 - Enriched coverage key: `<county>/dataset-coverage.json`.
 - HOA/PM object bundle key: `<county>/hoa-pm/objects.jsonl`.
-- Broward labels: `oracle-query-table-broward` and
-  `oracle-dataset-coverage-broward`.
-- Duval labels: `oracle-query-table-duval` and
-  `oracle-dataset-coverage-duval`.
+- County-scoped labels: `oracle-query-table-<county>` and
+  `oracle-dataset-coverage-<county>`.
 
-Always resolve labels from the county publication profile and verify the resulting
-network keys against `runtime/catalog/published-counties.json`. Sharing the bucket
-does not mean sharing an IPNS name: never point Broward's labels at Duval/Jacksonville
-artifacts or write Duval rows into Broward's parquet.
+Always require the county in `runtime/catalog/published-counties.json`, then derive
+labels from that county key. Permit profiles do not control HOA/PM publication.
+Sharing the bucket does not mean sharing an IPNS name: never point one county's
+labels at another county's artifacts.
 
 The HOA/PM object bundle is CID-linked from the enriched query table and shares the
 county's existing bucket under the county-scoped `hoa-pm/` prefix. It does not get a
