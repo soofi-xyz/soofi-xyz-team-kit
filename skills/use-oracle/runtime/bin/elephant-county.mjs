@@ -23,6 +23,7 @@ import {
   publishFilebase,
   publishPermitFilebase,
 } from "../src/core/filebase.mjs";
+import { requireQueryTablePublication } from "../src/core/query-table-publication.mjs";
 import { runReplay } from "../src/core/replay.mjs";
 import {
   exportCoverageArtifact,
@@ -493,7 +494,7 @@ async function runHoaPmPublishCommand(argv) {
   const flags = parseFlags(argv, ["dry-run"]);
   const countyKey = requireStringFlag(flags, "county");
   const inputDir = requireStringFlag(flags, "input");
-  const publication = requirePermitProfile(countyKey).publication;
+  const publication = requireQueryTablePublication(countyKey);
   const result = await publishFilebase(
     {
       county: countyKey,
@@ -501,7 +502,7 @@ async function runHoaPmPublishCommand(argv) {
       coveragePath: path.join(inputDir, "dataset-coverage.json"),
       hoaPmObjectsPath: path.join(inputDir, "objects", "hoa-pm-objects.jsonl"),
       bucket: publication.bucket,
-      queryTableIpnsLabel: publication.propertyQueryTableIpnsLabel,
+      queryTableIpnsLabel: publication.queryTableIpnsLabel,
       coverageIpnsLabel: publication.coverageIpnsLabel,
     },
     {
@@ -1059,7 +1060,7 @@ async function main() {
       "  avm-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --records <avm-records.jsonl> --source-manifest <json> --output-dir <dir>\n" +
       "  hoa-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --records <hoa-memberships.jsonl> --source-manifest <json> --output-dir <dir>\n" +
       "  hoa-pm-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --sunbiz-extract <dir> --output-dir <dir>\n" +
-      "  hoa-pm-publish --county <profile-key> --input <enriched-dir> [--dry-run] [--approve <manifest>]\n" +
+      "  hoa-pm-publish --county <published-county-key> --input <enriched-dir> [--dry-run] [--approve <manifest>]\n" +
       "  bbb-harvest --county <profile-key> --category <reviewed-key> --job-id <id> --max-pages N --max-profiles N --max-requests N --max-duration-minutes N --output <dir>\n" +
       "  bbb-reconcile --county <profile-key> --harvest-root <category-dirs-root> --input-coverage <json> --output-dir <dir>\n" +
       "  bbb-link --county duval --input-parquet <query-table.parquet> --input-coverage <dataset-coverage.json> --bbb-profiles <bbb-profiles.jsonl> --bbb-reconciliation-manifest <json> --permit-source <jaxepics-bid-map.jsonl.gz> --permit-artifact-manifest <json> --output-dir <dir>\n" +
