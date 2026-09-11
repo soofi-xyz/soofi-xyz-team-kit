@@ -1,6 +1,6 @@
 ---
 name: onboard-county
-description: "Orchestrate end-to-end onboarding of a new US county into the elephant durable-workflow ingestion pipeline - starting with a mandatory operator intake (local stack, seed data, sources, scope), then sequencing discovery, source feasibility, seed data, appraisal, transform validation, permit adapter, run, and enrichment stages. Use when asked to onboard, ingest, or \"do the same as Lee County\" for a new county, or when unsure which county skill applies."
+description: "Orchestrate end-to-end onboarding of a new US county into the elephant durable-workflow ingestion pipeline - starting with a mandatory operator intake (local stack, seed data, sources, scope), then sequencing discovery, source feasibility, seed data, appraisal, transform validation, identity baseline (Sunbiz legal entities plus official DBPR licenses/qualifiers/qualified businesses), permit harvest, identity resolution, and reputation enrichment. Use when asked to onboard, ingest, or \"do the same as Lee County\" for a new county, or when unsure which county skill applies."
 metadata: {"author":"elephant-xyz"}
 ---
 # Onboard County
@@ -28,8 +28,11 @@ supports it):
    at `data/seeds/<county>.csv`)? If not, do you know the county's bulk parcel-roll source,
    or should I research one?
 4. **Sources & Compute Execution Mode** — which appraiser portal and permit vendor, or should discovery determine
-   them? Any sources to explicitly avoid? Sunbiz corporate enrichment (FL) and BBB
-   contractor enrichment: yes/no? Other candidates (tax collector, recorder, GIS, code
+   them? Any sources to explicitly avoid? For Florida the identity baseline is required
+   before permit harvest: Sunbiz (legal entities / `document_number`; Sunbiz does **not**
+   issue contractor licenses) plus the official DBPR licensing snapshot (licenses,
+   qualifiers, qualified-business relationships). BBB contractor reputation harvest:
+   yes/no? Other candidates (tax collector, recorder, GIS, code
    enforcement) are added scope with their own harvest/transform plan; operator interest
    only puts a source into discovery — bulk acquisition still requires the feasibility
    check below.
@@ -80,11 +83,14 @@ you go; batch questions when possible.
 ## Target outcome
 
 The county runs locally under the durable workflow stack: every parcel's appraisal data
-scraped and transformed to lexicon, commercial/industrial parcels enriched with permit
-history, all loaded into Postgres and joinable with Sunbiz/BBB enrichment — findings and
+scraped and transformed to lexicon; the identity network pre-populated (Sunbiz companies
+plus DBPR licenses/qualifiers/qualified businesses); commercial/industrial parcels then
+harvested for permit history (raw, omitted licenses preserved); permit contacts resolved
+to `companies.company_id` edges; BBB/places reputation loaded separately — findings and
 scripts PR'd to `Counties-trasform-scripts`, and the reconciled data published to IPFS
 behind the county's IPNS name and served via the open-data MCP when publishing is in
-scope (per the intake's publish-scope answer).
+scope (per the intake's publish-scope answer). Do not treat Sunbiz/BBB as a post-permit
+join that creates legal identity.
 
 ## Stage checklist
 
@@ -104,43 +110,64 @@ Track progress in the county's findings doc (PR'd to `Counties-trasform-scripts`
 5. **Transform validation** — `validate-county-transform`: 10-20 diverse parcels; prove
    100% field coverage vs raw captures; log lexicon gaps. Gate: do not scale before this
    passes. (Authoring new handlers: `transform-v2-builder`.)
-6. **Permit adapter** — `county-permit-adapter`: per-vendor module in `PermitHarvest`,
-   local tests, single-parcel smoke test. Service changes: see
-   `durable-workflow-builder`.
-7. **Pilot run** — `county-ingest-run` §pilot: ~25 parcels end-to-end, verify every
-   artifact class plus DB rows, including residential-skip and permit-less paths. Apply
-   the 48-hour feasibility gate before committing to full acquisition.
-8. **Full run & Warm Worker Pool** — `county-ingest-run`: start the `CountyIngest` feeder or
+6. **Identity baseline FIRST** — pre-populate official companies before any permit harvest.
+   Drive `sunbiz-corporate-ingest` for Florida legal entities and `document_number`. Then
+   apply the fail-closed DBPR adequacy gate: official, loaded, reconciled, dated coverage
+   of licenses, qualifier/person relationships, qualified-business relationships, status,
+   and effective dates for the ingest window. Missing, stale, unreconciled, empty,
+   BBB-only, or name-only lists are not adequate. If inadequate, acquire the official
+   Florida DBPR snapshot next (same class as Sunbiz). If no dedicated DBPR skill exists
+   yet, still execute official public records/downloads at conservative rate, write a
+   private snapshot with provenance/digests, load supported tables, and record remaining
+   schema gaps without inventing SID/license-entity fields. Permits wait until DBPR is
+   adequate or the operator explicitly aborts. If adequate, do not re-harvest DBPR unless
+   freshness is stale versus the as-of rule. Sunbiz is first among identity sources; DBPR
+   is not optional and is never moved after permits.
+7. **Permit adapter** — `county-permit-adapter`: per-vendor module in `PermitHarvest`,
+   local tests, single-parcel smoke test. Adapter scaffolds may start during discovery;
+   do not harvest permits for the county until step 6's Sunbiz load and adequate DBPR
+   snapshot are loaded and reconciled. Service changes: see `durable-workflow-builder`.
+8. **Pilot run** — `county-ingest-run` §pilot: ~25 parcels end-to-end **after** the
+   identity baseline. Verify every artifact class plus DB rows, including residential-skip
+   and permit-less paths. Capture permits raw; preserve omitted licenses. Apply the
+   48-hour feasibility gate before committing to full acquisition.
+9. **Full run & Warm Worker Pool** — `county-ingest-run`: start the `CountyIngest` feeder or
    streamed `TransformPool` worker pool (pre-compiles Node VM, Cheerio, and transforms to
    avoid subprocess spawning overhead; stream parcel seed rows with async generators to prevent
    heap memory exhaustion). Monitor continuously with the 9-stage lifecycle dashboard (`monitoring-county-ingestion`).
-9. **Permit Deep Enrichment & Municipal Adapters** — `county-permit-adapter`: classify trades (roofing,
-   HVAC, solar, pool, plumbing), route municipal portals (Accela, Click2Gov, MaintStar), and run
-   either local warm workers or AWS Lambda distributed scraping with self-healing retry buffers.
-10. **Multi-Source Enrichment** — `sunbiz-corporate-ingest` (FL counties), `bbb-harvest` (multi-trade:
-   Roofing, HVAC, Solar), and `overture-places-ingest` (Census TIGER spatial boundary clipping).
-11. **Consolidation & Reconcile** — Choose Pathway:
+10. **Permit identity resolution** — apply
+    `skills/use-oracle/reference/permit-evidence-preflight.md`. A license number on the
+    permit is deterministic. If omitted, match company name + licensed qualifier against
+    the pre-populated identity records, unique candidate only, with DBPR qualification
+    effective on the permit attribution date. Stamp `companies.company_id` onto
+    `permit_contacts.company_id` and, only when all contractor contacts agree,
+    `property_improvements.contractor_company_id`. Do not invent a SID. Do not write an
+    inferred license into raw `permit_contacts.license_number`.
+11. **Reputation / places** — `bbb-harvest` (multi-trade: Roofing, HVAC, Solar) and
+    `overture-places-ingest` (Census TIGER spatial boundary clipping). These are not
+    license, qualifier, or corporate-identity evidence.
+12. **Consolidation & Reconcile** — Choose Pathway:
     - **Fast Direct Parquet Export** (`export-<county>-direct-parquet.ts`): build in-memory permit/BBB/Sunbiz
       indexes and write validated Parquet directly in ~15 mins.
     - **Postgres Bulk Loader** (`run-<county>-appraisal-bulk-load.ts`): unlogged staging tables, post-COPY
       indexing, and CTE predicate pushdown.
 
-Stages 12–14 are conditional — run them only **when publishing is in scope** (the
+Stages 13–15 are conditional — run them only **when publishing is in scope** (the
 intake's publish-scope answer). When publishing is excluded, the run completes here,
 after query-DB reconciliation and the artifact/code handoff.
 
-12. **Publish open data** *(when publishing is in scope)* — `county-open-data-publish`: export the reconciled county →
+13. **Publish open data** *(when publishing is in scope)* — `county-open-data-publish`: export the reconciled county →
     1-file-per-property + sharded index → the county's OWN Filebase bucket → re-point its
     IPNS name. PII publish is gated: the loop dry-runs until a human POSTs the approve
     handler on the county's `Publish` object
     (`curl localhost:8080/restate/call/Publish/<county>/approve --json '{}'`).
     Verify published index CID == export index CID and correct `propertyCount` before
     declaring done.
-13. **Index & publish query table** *(when publishing is in scope)* — `county-query-table-publish`: export the flat
+14. **Index & publish query table** *(when publishing is in scope)* — `county-query-table-publish`: export the flat
     per-property query-table Parquet, pass the validation GATE (parquet rows == distinct
     folio, 0 dup/null folios), publish to the county's OWN IPNS (configure `SET unsafe_disable_etag_checks = true;`
     for DuckDB HTTPFS range read compatibility), wire the MCP's `PROPERTY_QUERY_TABLE_MAP`.
-14. **Serve via MCP → NEO** *(when publishing is in scope)* — `deploy-open-data-mcp`: add the county's IPNS name to the
+15. **Serve via MCP → NEO** *(when publishing is in scope)* — `deploy-open-data-mcp`: add the county's IPNS name to the
     MCP's `ORACLE_OPEN_DATA_IPNS_MAP`, restart the local MCP (or redeploy the hosted
     MCP) after changing environment variables, confirm NEO renders the county.
 
@@ -184,3 +211,8 @@ Record each PR URL in the findings doc.
   anything else.
 - Prioritize commercial properties when asked: sort the seed CSV; the eligibility branch
   already limits permit harvest to commercial/industrial usage types.
+- Identity baseline before permits, every time. Sunbiz first, then fail-closed DBPR
+  adequacy; acquire official DBPR if inadequate. Harvest permits second (raw), then
+  resolve and stamp `companies.company_id` edges. Do not harvest permits first, in
+  parallel with those registries, treat missing DBPR as a forever gap, or treat
+  Sunbiz/BBB as the licensing method.

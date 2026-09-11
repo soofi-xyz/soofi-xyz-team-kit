@@ -18,7 +18,7 @@ overstating completeness.
 At intake, automatically start every independent, reversible preparation track:
 
 - enumerate assessed/GIS sources, jurisdictions, delegated authorities, predecessor systems,
-  and enrichment scope;
+  identity-registry routes (Sunbiz + official DBPR), and reputation-enrichment scope;
 - fingerprint each portal/vendor, map reusable adapter coverage, and start missing adapter
   scaffolds, fixtures, and bounded tests;
 - prove the selected stack, Neon destination, AWS remote BBB execution path, Filebase
@@ -236,13 +236,18 @@ A county may be marked complete only when every completeness gate in
 [`readiness-and-completeness.md`](./readiness-and-completeness.md) passes. The completeness flag
 is derived from frozen manifests — not adapter counts, dashboard labels, or pilot success.
 
-### 16. Keep enrichment separate
+### 16. Keep identity baseline and reputation enrichment separate
 
-Sunbiz, BBB, reviews, complaints, roofing classification, inspections, and contractor matching
-are enrichment dimensions (`sunbiz-corporate-ingest`, `bbb-harvest`, `overture-places-ingest`).
+Identity baseline is a predecessor of permit harvest, not an enrichment dimension. For
+Florida, `sunbiz-corporate-ingest` loads legal entities and `document_number`; the official
+DBPR snapshot loads licenses, qualifiers, and qualified-business relationships. Sunbiz
+does not issue contractor licenses.
 
-Their absence must not silently change core permit completeness. Report their coverage
-separately.
+BBB, reviews, complaints, and `overture-places-ingest` are reputation/context enrichment
+(`bbb-harvest`, `overture-places-ingest`). Their absence must not silently change core
+permit-capture completeness. Report their coverage separately. Inadequate Sunbiz/DBPR
+blocks automatic permit identity linking and enqueues official-source acquisition next;
+it does not authorize harvesting permits first or recording a forever gap.
 
 Official API and public-site scrape are different sources. Run any BBB public-site browser
 on approved AWS-managed remote compute with US egress, never on the operator's machine. The

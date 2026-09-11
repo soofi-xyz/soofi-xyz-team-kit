@@ -1,12 +1,17 @@
 ---
 name: sunbiz-corporate-ingest
-description: "Ingest Florida Sunbiz corporate registration bulk data scoped to a county - bulk download, ZIP-prefix extraction, and lexicon transform as one durable batch job. Use when onboarding a Florida county's business-registration data, refreshing quarterly Sunbiz data, or matching corporate entities to county addresses."
+description: "Load Florida Sunbiz corporate registration as the official legal-entity identity baseline (document_number) before county permit harvest - bulk download, ZIP-prefix extraction, and lexicon transform as one durable batch job. Use when pre-populating Florida companies for a county, refreshing quarterly Sunbiz data, or matching corporate entities to county addresses. Sunbiz does not issue contractor licenses."
 metadata: {"author":"elephant-xyz"}
 ---
 # Sunbiz Corporate Ingest
 
 Sunbiz is STATEWIDE Florida data — the pipeline is fully reusable across FL counties.
-County ZIP scope comes from the validated enrichment profile under
+Sunbiz is the official corporate registry (legal entities / `document_number`). It does
+not issue contractor licenses and is not a substitute for DBPR. Load and reconcile this
+snapshot as identity baseline **before** the county's permit harvest. After Sunbiz,
+apply the DBPR adequacy gate and acquire official DBPR if inadequate — Sunbiz is first
+among identity sources, not a substitute for licensing. County ZIP scope
+comes from the validated county profile under
 `skills/use-oracle/runtime/src/counties/`; do not pass an ad hoc production ZIP list.
 
 ## 1. Acquire the bulk file
@@ -29,7 +34,9 @@ Daily incremental files (`YYYYMMDDc.txt`) are plain text and work directly.
 The implementation lives in `skills/use-oracle/runtime/src/enrichment/` and is exposed
 through `elephant-county`. It validates the archive entry list and SHA-256, expands with
 system `unzip`, streams every fixed-width record once, writes checksummed JSONL chunks,
-transforms them to lexicon records, and enriches the county query table.
+transforms them to lexicon records, and writes the Sunbiz identity rows used by the
+county query table. The CLI still uses `sunbiz-enrich`; that command is identity-baseline
+load, not post-permit enrichment.
 
 ```bash
 cd skills/use-oracle/runtime
@@ -65,10 +72,13 @@ Complete when `invalidRecordCount == 0` and `transformedRecordCount == sourceRec
 Load with the enrichment prefix per `query-db-loading-matching`:
 `--sunbiz-prefix enrichment/sunbiz/<quarter>/<county>/business-registration-v1/classes/`.
 
-## 4. Address matching (optional, later)
+## 4. Address matching (optional, after both identity and permits exist)
 
-A follow-on step matches a supplied address batch (e.g. permit work locations) against
-the corporate addresses — useful once enough permits have accumulated for the county.
+A follow-on step may match a supplied address batch (e.g. permit work locations) against
+already-loaded corporate addresses. Do not delay the Sunbiz identity baseline until
+permits accumulate. Permit contractor identity uses the permit-evidence-preflight
+resolver (license number, else unique company+qualifier with temporal DBPR
+qualification), not this address match.
 
 ## Known gaps (do not silently fix)
 

@@ -6,7 +6,15 @@ metadata: {"author":"elephant-xyz"}
 # County Ingest Run
 
 Prerequisites: `bootstrap-oracle-infra` checks pass; appraisal onboarding, transform
-validation, and the permit adapter are done for the county.
+validation, and the permit adapter are done for the county. Before any permit harvest
+(pilot or full `PermitFeed`), load and reconcile the identity baseline: Sunbiz legal
+entities first, then a fail-closed adequate official DBPR snapshot (licenses,
+qualifier/person relationships, qualified-business relationships, status, and effective
+dates covering the ingest window). Adapter build may already exist; harvesting permits
+first or in parallel with those registries is not allowed. If DBPR is missing, stale,
+unreconciled, empty, BBB-only, or name-only, acquire the official snapshot next — do not
+treat that as a terminal recorded gap and do not start `PermitFeed` until DBPR is
+adequate or the operator explicitly aborts.
 
 Run parameters (county slug, jobId, pilot vs full scope, seed CSV) come from the
 `onboard-county` intake — don't re-ask what's already established. If entered directly
@@ -16,7 +24,9 @@ sustained traffic to county websites and should never start on guessed inputs.
 ## Run shape
 
 Property-first: each parcel flows prepare → transform → validate (fail-closed) →
-eligibility branch → permit harvest → query DB, individually. Input is ONLY the seed CSV
+eligibility branch → permit harvest → query DB, individually. County-level identity
+registries (Sunbiz + official DBPR) are a predecessor of this permit harvest, not a later
+enrichment join. Input is ONLY the seed CSV
 at `data/seeds/<county>.csv` (never re-derive work from the DB). The `CountyIngest`
 workflow (keyed `<county>-<jobId>`) fans into per-chunk `IngestChunk` children (~10k
 rows each, keyed `<county>-<jobId>-c<N>`) that dispatch `Parcel.process` in bounded
