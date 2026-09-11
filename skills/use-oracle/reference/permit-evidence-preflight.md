@@ -138,16 +138,35 @@ historical boundary, or decision window changes.
 - Mark unsupported or malformed identifiers `invalid_quarantined` with raw evidence.
   Keep ambiguous records valid-unlinked; never choose a property link by guess.
 
-### Longitudinal age or absence inference
+### Roof-age estimation and longitudinal absence
 
-- Require reconciled coverage for every applicable current authority, historical period,
-  and predecessor/archive source across the full inference window.
-- Record coverage start/end, expected count or explicit unknown, captured count,
-  reconciliation, and predecessor gaps before treating permit absence as evidence.
-- Require valid decision-relevant lifecycle/work dates. Do not use application dates or
-  quarantined dates as proof of completed work.
-- If any required window is partial, capped, unknown, or blocked, make the age/absence
-  conclusion ineligible and report the residual uncertainty.
+Estimate primary roof age from the property's built/home year plus accepted roofing
+permits. Keep this rule county-neutral; put source vocabulary and status mappings in the
+county/source profile.
+
+1. Classify work only from explicit source text retained in detail/scope evidence.
+   Require a profile-tested class of `primary_roof_replacement`,
+   `primary_roof_new_construction`, `repair_or_coating`, or `accessory_roof`.
+   Unresolved or contradictory scope is `needs_review`.
+2. Accept a replacement/reroof anchor only when the permit is completed and has a valid
+   completion or close date. Use the latest accepted anchor. This resets the primary
+   roof age with **high** confidence.
+3. If no later accepted replacement exists, accept a completed new-construction permit
+   with a valid completion or close date. This sets **medium** confidence.
+4. Otherwise use a valid built/home year as the anchor with **low** confidence.
+5. An open replacement does not reset age. Repair, coating, gazebo, awning, and other
+   accessory-roof work never reset primary roof age.
+
+Never synthesize a missing date. Exclude `invalid_quarantined` or chronologically
+impossible dates from anchors. If no valid anchor remains, the estimate is ineligible.
+
+Record coverage start/end, expected count or explicit unknown, captured count,
+reconciliation, and predecessor/archive gaps. Partial, capped, unknown, or blocked
+historical coverage does **not** make an otherwise valid roof-age estimate ineligible;
+it lowers certainty through an explicit coverage caveat because an unobserved later
+replacement may exist. Do not use partial history to assert that no replacement
+occurred, and do not upgrade low/medium confidence because a portal returned no later
+permit.
 
 ### Corporate and license attribution
 
@@ -183,8 +202,8 @@ Run these four steps in order. There is no parallel path and no alternate order.
 
 Do not begin a county's permit harvest while step 1 is unloaded or unreconciled. If the
 DBPR snapshot is inadequate, acquire official Florida DBPR data next — same class of work
-as `sunbiz-corporate-ingest`. If no dedicated DBPR skill exists yet, still execute official
-public records/downloads at conservative rate, write a private snapshot with
+as `sunbiz-corporate-ingest` — through `dbpr-license-ingest`. Use official public
+records/downloads at conservative rate, write a private snapshot with
 provenance/digests, load supported tables, and record remaining schema gaps without
 inventing SID or license-entity fields. Missing DBPR is not a terminal recorded gap and
 never authorizes harvesting permits first, resolving from permit text alone, or treating
@@ -325,18 +344,13 @@ exists, temporal company resolution is `unresolved`; do not substitute the curre
 Treat punctuation folding, hyphenation, shared surnames, common officers, shared
 addresses, brands, and regex/fuzzy similarity as collision signals, not merge evidence.
 
-Use this fixed regression example:
-
-- `Z Roofing & Waterproofing` — Sunbiz document `P10000010379`; license
-  `CCC1333102`.
-- `Z-ROOFING, INC.` — Sunbiz document `P05000095314`; license `CCC1326046`.
-
-An exact verified `CCC1333102` may resolve the first license identity and then its
-temporally valid qualified-business relationship. It must never resolve the second
-company because normalized names look similar. A permit that says only “Z Roofing”
-without a license and without unique official qualifier/effective-period evidence is
-`ambiguous`, not linked. Keep historical display names without licenses as source-name
-attribution.
+Keep a generic collision regression fixture with two distinct legal companies whose
+names normalize similarly and whose official license numbers differ. An exact verified
+license may resolve only its temporally valid qualified-business relationship. It must
+never resolve the other company because normalized names look similar. A permit carrying
+only the shared/similar display name, without a license and without unique official
+qualifier/effective-period evidence, is `ambiguous`, not linked. Keep historical display
+names without licenses as source-name attribution.
 
 ### Stamp only supported edges
 
@@ -424,8 +438,8 @@ Require fixture and bounded integration tests proving:
 - exact DBPR license normalization resolves one license and rejects zero/multiple
   matches;
 - a license-to-business relationship is selected only inside its effective period;
-- the two Z Roofing entities remain separate, including name-only and hyphen-folded
-  cases;
+- two fixture companies with similar normalized names remain separate, including
+  name-only and hyphen-folded cases;
 - a unique company+qualifier+temporal candidate is accepted, while name-only, shared
   qualifier, and multiple-candidate cases require review;
 - historical display names without license/legal ID remain source-name attribution;
@@ -575,11 +589,13 @@ conflicting.”
 **Correct:** “Apply the county profile's proven lossless normalization. Quarantine an
 unsupported format and preserve the permit as valid-unlinked.”
 
-**Incorrect:** “No permit was found in the current portal, so the roof is older than the
-requested window.”
+**Incorrect:** “No permit was found in the current portal, so the roof is definitely as
+old as the building,” or “partial history makes every roof-age estimate ineligible.”
 
-**Correct:** “Make age inference ineligible until every relevant authority and predecessor
-source reconciles across the full window with valid lifecycle/work dates.”
+**Correct:** “Use the latest valid completed replacement close/completion date at high
+confidence, otherwise completed new construction at medium confidence, otherwise the
+built/home year at low confidence. State every partial-history caveat and never use a
+quarantined date or permit absence as a replacement anchor.”
 
 **Incorrect:** “The historical permit names Example Roofing, so attach the likely state
 license and corporate entity.”
@@ -594,19 +610,19 @@ person to resolve every matching permit qualifier.”
 official identity evidence before writing `permit_contacts.person_id` or treating name
 text as an exact qualifier identity.”
 
-**Incorrect:** “The permit has `CCC1333102`, so permanently attach the company with the
-closest current name.”
+**Incorrect:** “The permit has a license number, so permanently attach the company with
+the closest current name.”
 
-**Correct:** “Verify `CCC1333102` with DBPR, select the DBPR qualified-business
-relationship effective on the permit attribution date, resolve that legal business to
-one Sunbiz document and `companies.company_id`, then write a versioned company edge.”
+**Correct:** “Verify the license with the official licensing authority, select the
+qualified-business relationship effective on the permit attribution date, resolve that
+legal business to one corporate-registry record and `companies.company_id`, then write a
+versioned company edge.”
 
-**Incorrect:** “Normalize punctuation and merge `Z Roofing & Waterproofing`
-(`P10000010379` / `CCC1333102`) with `Z-ROOFING, INC.`
-(`P05000095314` / `CCC1326046`).”
+**Incorrect:** “Normalize punctuation and merge two distinct companies whose legal names
+look similar.”
 
-**Correct:** “Keep both legal entities and licenses distinct. A name-only ‘Z Roofing’
-permit remains ambiguous without unique official qualifier and temporal evidence.”
+**Correct:** “Keep both legal entities and licenses distinct. A name-only permit remains
+ambiguous without unique official qualifier and temporal evidence.”
 
 **Incorrect:** “DBPR is missing, so record `dbpr_snapshot_unavailable` and harvest
 permits anyway, or wait forever for a future skill.”

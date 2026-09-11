@@ -7,14 +7,15 @@ metadata: {"author":"elephant-xyz"}
 
 Prerequisites: `bootstrap-oracle-infra` checks pass; appraisal onboarding, transform
 validation, and the permit adapter are done for the county. Before any permit harvest
-(pilot or full `PermitFeed`), load and reconcile the identity baseline: Sunbiz legal
-entities first, then a fail-closed adequate official DBPR snapshot (licenses,
-qualifier/person relationships, qualified-business relationships, status, and effective
-dates covering the ingest window). Adapter build may already exist; harvesting permits
-first or in parallel with those registries is not allowed. If DBPR is missing, stale,
-unreconciled, empty, BBB-only, or name-only, acquire the official snapshot next — do not
-treat that as a terminal recorded gap and do not start `PermitFeed` until DBPR is
-adequate or the operator explicitly aborts.
+(pilot or full `PermitFeed`), load and reconcile the identity baseline: the official
+corporate registry first, then a fail-closed adequate official contractor-licensing
+snapshot (licenses, qualifier/person relationships, qualified-business relationships,
+status, and effective dates covering the ingest window). In Florida, run
+`sunbiz-corporate-ingest` then `dbpr-license-ingest`; elsewhere name and use the official
+state equivalents in the county profile. Adapter build may already exist; harvesting
+permits first or in parallel with those registries is not allowed. If licensing data is
+missing, stale, unreconciled, empty, reputation-only, or name-only, acquire the official
+snapshot next and do not start `PermitFeed` until adequate or the operator aborts.
 
 Run parameters (county slug, jobId, pilot vs full scope, seed CSV) come from the
 `onboard-county` intake — don't re-ask what's already established. If entered directly
@@ -36,6 +37,12 @@ which walks eligibility artifacts and dispatches permit
 harvests in its OWN bounded windows — neither side ever queues the whole county.
 Journal replay is the only checkpoint. See `durable-workflow-builder` patterns
 1 (backpressure feeder), 2 (layered concurrency), and 11 (chunked fan-out).
+
+For an operator-requested full re-ingest, preserve this one order: readiness PASS and
+seed/appraisal backbone → official corporate registry → official licensing-authority
+adequacy-or-acquire → permit detail/contact harvest → permit evidence preflight and
+versioned identity resolution → company-edge backfill, index verification, Query-DB
+load/reconciliation and product-query rerun → BBB/places enrichment.
 
 Everything runs locally: `docker compose up -d` (Restate + Postgres), services
 process on :9080 (`npm run dev`), registered via
@@ -257,5 +264,11 @@ just has no data.
   DB folio count covers `ready`); then permit-eligible vs permits loaded.
 - Final publish: confirm the `Publish` tick ran post-approval and a smoke query answers
   for the county (`county-query-table-publish`).
+- Before wrap-up, backfill existing `permit_contacts.company_id` with the current
+  versioned official-registry resolver. Set
+  `property_improvements.contractor_company_id` only when all contractor-role contacts
+  agree. Preserve raw names and omitted licenses; unresolved, ambiguous, or conflicting
+  contacts remain unlinked. Verify company-FK indexes and rerun the product query in
+  `use-oracle/reference/roof-age-and-identity-reingest.md`.
 - PR findings and any transform-script changes to `Counties-trasform-scripts`
   (`gh pr create`); commit code/docs, never data.
