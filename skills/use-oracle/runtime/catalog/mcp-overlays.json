@@ -2,6 +2,20 @@
   "schemaVersion": "1.0",
   "counties": [
     {
+      "countyKey": "broward-hoa-pm",
+      "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dk6mb5efisoifp0qdk3rcgcfoiarxs8boyazsct79c09814owrc",
+      "queryTableCid": "QmWHNrpSHLv6g5MpcjBLknUAMQhtNknh2GVq5Y49Qd9vFc",
+      "permitQueryTableUrl": null,
+      "datasetCoverageUrl": null
+    },
+    {
+      "countyKey": "duval-hoa-pm",
+      "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dlz8wfk5f0e8fypn8vc58u5kes2a4cdauo4469anq03x9vx1i6y",
+      "queryTableCid": "QmTmqT5X2Afn8Zq7Nsu8iVRs3EuBWyNDW8aKBXp6WiNe4N",
+      "permitQueryTableUrl": null,
+      "datasetCoverageUrl": null
+    },
+    {
       "countyKey": "santa-clara",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dgnc94h8ce98ds0cb5yoidmcebpwnvccug4upasgbzpyz3ffgs5",
       "permitQueryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dm5dkii3wz7hj8vqurb1b773uy0qj9nlvsvgaqqyccuurz8kmic",

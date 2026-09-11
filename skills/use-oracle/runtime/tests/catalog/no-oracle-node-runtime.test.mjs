@@ -49,7 +49,11 @@ describe("catalog self-containment (no oracle-node at runtime)", () => {
     const keys = overlay.counties.map((county) => county.countyKey);
 
     expect(keys).not.toContain("seminole");
-    expect(keys).toEqual(["santa-clara"]);
+    expect(keys).toEqual([
+      "broward-hoa-pm",
+      "duval-hoa-pm",
+      "santa-clara",
+    ]);
   });
 
   it("PUBLISHED_COUNTY_CATALOG_URL points at this repository, never oracle-node", () => {

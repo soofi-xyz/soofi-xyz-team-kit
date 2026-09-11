@@ -22,6 +22,11 @@ When invoked:
    quality thresholds, hosted-service policy, and whether the user needs a count, list, or group.
    Pass that county on **every** subsequent tool that accepts `county` / `countyFips`. Omitting
    it defaults to Lee and silently answers for the wrong county.
+   For HOA/property-management questions, automatically use the separate query-only dataset
+   key when available: `duval-hoa-pm` or `broward-hoa-pm`. Call `getOracleDatasetInfo` with the
+   base county (`duval` or `broward`) for county-wide context, then call
+   `getPropertyQuerySchema` / `queryProperties` with the HOA/PM key. Never ask the user for or
+   pass a raw CID, and never substitute the official county key for the bounded HOA/PM slice.
 4. Execute the exploration playbook from the skill:
    - **Overture business/place/category questions:** call `getPlaceQuerySchema` before the first
      places query for that county, then call `queryPlaces`. Use `mode: "count"` for counts,
@@ -62,7 +67,8 @@ When invoked:
      harvest unavailable instead of polling.
    - **Data coverage varies by county:** Lee has no acreage/material (those columns are NULL);
      HOA membership (`hoa_flag`) is NULL unless Chapter 720 records were approved.
-     After `hoa-pm-enrich`, call `getPropertyQuerySchema` and query `subdivision`,
+     HOA/PM keys are bounded evidence slices (Duval: 1,330 rows; Broward: 331 rows), not
+     complete county tables. After `hoa-pm-enrich`, call `getPropertyQuerySchema` and query `subdivision`,
      `hoa_name`, `hoa_cid`, `property_manager_name`, `property_manager_cid`, and
      `hoa_pm_status` when those columns exist. Use `hoa_pm_status` to explain misses:
      `no_subdivision`, `no_sunbiz_hoa`, `not_unique`, `no_agent_company`, or
