@@ -43,6 +43,7 @@ ensure_target_is_safe() {
 install_plugin() {
   local source_dir
   source_dir="$(repo_root)"
+  local conflicting_dir="${LOCAL_PLUGIN_ROOT}/soofi-xyz-team-kit"
   local python_bin
   python_bin="${PYTHON:-}"
   if [[ -z "${python_bin}" ]]; then
@@ -127,6 +128,12 @@ PY
   echo
   echo "Installed local Cursor plugin copy:"
   echo "  ${TARGET_DIR}"
+  if [[ "${conflicting_dir}" != "${TARGET_DIR}" && -d "${conflicting_dir}" ]]; then
+    echo
+    echo "WARNING: conflicting local plugin copy detected:"
+    echo "  ${conflicting_dir}"
+    echo "Disable or remove it before reloading Cursor; duplicate agent names can select stale guidance."
+  fi
   echo
   echo "Next test steps:"
   echo "  1. In Cursor, run Developer: Reload Window. If the plugin is not detected, fully restart Cursor."

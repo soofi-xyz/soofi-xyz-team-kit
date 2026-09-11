@@ -315,6 +315,14 @@ describe("merge-mcp-env-maps", () => {
     expect(maps.PROPERTY_QUERY_TABLE_MAP["osceola-hoa-pm"]).toBeDefined();
     expect(maps.DATASET_COVERAGE_MAP.duval).toBeDefined();
     expect(maps.PERMIT_QUERY_TABLE_MAP.duval).toBeDefined();
+    expect(maps.PROPERTY_QUERY_TABLE_MAP.duval).toMatch(
+      /^https:\/\/ipfs\.filebase\.io\/ipns\//,
+    );
+    expect(
+      Object.values(maps.DATASET_COVERAGE_MAP).every(
+        (url) => !url.includes("dweb.link"),
+      ),
+    ).toBe(true);
   });
 });
 

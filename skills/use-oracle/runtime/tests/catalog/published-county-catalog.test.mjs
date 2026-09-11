@@ -77,10 +77,10 @@ describe("published county catalog", () => {
       countyFips: "12031",
       status: "published",
       queryTableUrl:
-        "https://k51qzi5uqu5dle7swd06u9ebrgw375b5vhhhtiiz7un7udfsar0rci53x2w5y4.ipns.dweb.link/",
+        "https://ipfs.filebase.io/ipns/k51qzi5uqu5dle7swd06u9ebrgw375b5vhhhtiiz7un7udfsar0rci53x2w5y4",
       queryTableCid: null,
       datasetCoverageUrl:
-        "https://k51qzi5uqu5dgqc52fnea1o42e27dr4os0mrdf5ixonuv8kdztdnxclflazf4w.ipns.dweb.link/",
+        "https://ipfs.filebase.io/ipns/k51qzi5uqu5dgqc52fnea1o42e27dr4os0mrdf5ixonuv8kdztdnxclflazf4w",
       permitQueryTableUrl:
         "https://ipfs.filebase.io/ipns/k51qzi5uqu5dll7nwe1o7s1htngeoxrou8k593xieuziw9521444vh3pd7v4y1",
       placesTableUrl: null,

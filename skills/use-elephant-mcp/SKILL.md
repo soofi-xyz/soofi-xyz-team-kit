@@ -52,7 +52,12 @@ then append `-hoa-pm` to the base key for `getPropertyQuerySchema` and `queryPro
 Available base keys are Broward, Duval, Hillsborough, Lee, Miami-Dade, Orange, Osceola,
 Palm Beach, Pasco, Pinellas, Polk, and Seminole. These catalog-managed MCP overlays
 intentionally have no coverage snapshot and are not returned by `listPublishedCounties`;
-schema success is their availability gate. Never ask the user for or pass a raw CID.
+schema success is their availability gate. Treat HOA/property-manager lookup as an attribute
+query: do not use `getOracleProperty` and do not substitute the base county's property table.
+Never ask the user for or pass a raw CID. Query the supplied APN exactly first. If it misses,
+a second SQL query may compare `regexp_replace(parcel_identifier, '[^0-9]', '', 'g')` to the
+digits from the supplied APN, but report both exact strings when that fallback matches. Never
+silently rewrite the user-facing identifier.
 
 When calling tools in Cursor, use `CallMcpTool` with `server`: **`elephant`** and `toolName` set
 to the exact registered tool name (e.g. `getOracleDatasetInfo`).
