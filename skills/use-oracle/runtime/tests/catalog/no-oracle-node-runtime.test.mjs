@@ -44,6 +44,31 @@ describe("catalog self-containment (no oracle-node at runtime)", () => {
     expect(keys).not.toContain("santa-clara");
   });
 
+  it("keeps CSV-parcel OpenDoor counties overlay-only, never catalogized", async () => {
+    const catalog = await loadCatalogLike(DEFAULT_CATALOG_PATH);
+    const keys = catalog.counties.map((county) => county.countyKey);
+
+    for (const county of [
+      "sumter",
+      "alachua",
+      "okaloosa",
+      "bay",
+      "walton",
+      "holmes",
+      "jackson",
+      "leon",
+      "levy",
+      "flagler",
+      "brevard",
+      "indian-river",
+      "hardee",
+      "hendry",
+      "monroe",
+    ]) {
+      expect(keys).not.toContain(county);
+    }
+  });
+
   it("keeps base counties catalog-only while allowing distinct HOA/PM overlays", async () => {
     const overlay = await loadCatalogLike(DEFAULT_OVERLAY_PATH);
     const keys = overlay.counties.map((county) => county.countyKey);
@@ -79,6 +104,21 @@ describe("catalog self-containment (no oracle-node at runtime)", () => {
       "sarasota",
       "st-johns",
       "volusia",
+      "sumter",
+      "alachua",
+      "okaloosa",
+      "bay",
+      "walton",
+      "holmes",
+      "jackson",
+      "leon",
+      "levy",
+      "flagler",
+      "brevard",
+      "indian-river",
+      "hardee",
+      "hendry",
+      "monroe",
     ]);
   });
 
