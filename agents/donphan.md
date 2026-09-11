@@ -61,7 +61,12 @@ When invoked:
      harvest only runs when the MCP has pipeline ingress configured; if it does not, report
      harvest unavailable instead of polling.
    - **Data coverage varies by county:** Lee has no acreage/material (those columns are NULL);
-     HOA (`hoa_flag`) is NULL in every county; `elephant_uuid` / `elephant_token` are NULL until
+     HOA membership (`hoa_flag`) is NULL unless Chapter 720 records were approved.
+     After `hoa-pm-enrich`, call `getPropertyQuerySchema` and query `subdivision`,
+     `hoa_name`, `hoa_cid`, `property_manager_name`, and `property_manager_cid`
+     when those columns exist. NULL means no unique Sunbiz HOA/PM hit, not "no HOA
+     in the county." `elephant_uuid` / `elephant_token` are NULL until
+     a republish. Check `getPropertyQuerySchema` or a
      a republish. Check `getPropertyQuerySchema` or a
      `SELECT count(col)` and say "not available for this county" instead of inventing. On Lee,
      owner / city / value / count questions work.
