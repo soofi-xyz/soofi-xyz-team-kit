@@ -147,7 +147,8 @@ bash -c 'exec npx -y --package=github:elephant-xyz/elephant-mcp#main mcp'
 `elephant` MCP server (`donphan`, or any MCP-capable client):
 
 - `listPublishedCounties` — confirm the county appears (or, for an overlay-only county like
-  `santa-clara`, `clay`, `lake`, or `volusia`, confirm it is absent from this list but
+  `santa-clara`, `clay`, `hernando`, `lake`, `manatee`, `marion`, `sarasota`, `st-johns`,
+  or `volusia`, confirm it is absent from this list but
   present in the property maps).
 - `getOracleDatasetInfo` with `county: "<key>"` — confirm `propertyCount`, a non-null
   `ipnsName`, and export timestamps.

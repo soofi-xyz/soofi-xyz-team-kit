@@ -8,8 +8,26 @@
       "datasetCoverageUrl": null
     },
     {
+      "countyKey": "hernando",
+      "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dkwvqnjz9nvbc7flec5mh45nbhbcag58xqcqdgyz29cnjkufejn",
+      "permitQueryTableUrl": null,
+      "datasetCoverageUrl": null
+    },
+    {
       "countyKey": "lake",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5di1mqi5em3e27fzl5dd5omxia9ygh6nvglwyvysgh7mf67sczee",
+      "permitQueryTableUrl": null,
+      "datasetCoverageUrl": null
+    },
+    {
+      "countyKey": "manatee",
+      "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dgdkdaqjqcfbitxztes15d3xeijvoiw3c4qww2bn7y9r8156mrp",
+      "permitQueryTableUrl": null,
+      "datasetCoverageUrl": null
+    },
+    {
+      "countyKey": "marion",
+      "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5di75mio2v7vrp4nma0pymqa9wi9g4btxuelq321lzzy7rpvbb16",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
@@ -17,6 +35,18 @@
       "countyKey": "santa-clara",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dgnc94h8ce98ds0cb5yoidmcebpwnvccug4upasgbzpyz3ffgs5",
       "permitQueryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dm5dkii3wz7hj8vqurb1b773uy0qj9nlvsvgaqqyccuurz8kmic",
+      "datasetCoverageUrl": null
+    },
+    {
+      "countyKey": "sarasota",
+      "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dkkb8cl537wonbqjb1jrulmd41wo5hwkgikfhbi01o1jjexbfpm",
+      "permitQueryTableUrl": null,
+      "datasetCoverageUrl": null
+    },
+    {
+      "countyKey": "st-johns",
+      "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dkedxzhpjiq4ej66oec16qh4undjp1gqc1lc1f9sowbxmcauy15",
+      "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
     {
