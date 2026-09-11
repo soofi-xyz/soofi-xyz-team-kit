@@ -2,11 +2,11 @@ import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
+import { ParquetSchema, ParquetWriter } from "@dsnp/parquetjs";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { writeQueryTableParquet } from "../src/core/query-table.mjs";
+import { toParquetRecord, writeQueryTableParquet } from "../src/core/query-table.mjs";
 import {
   findHoaCompanies,
   findPropertyManagementCompany,
@@ -18,14 +18,29 @@ import { enrichQueryTableWithHoaPm } from "../src/enrichment/query-table-hoa-pm.
 const require = createRequire(import.meta.url);
 const { ParquetReader } = require("@dsnp/parquetjs");
 const temporaryDirectories = [];
-const zstdFixture = fileURLToPath(
-  new URL("./fixtures/hoa-pm-zstd.parquet", import.meta.url),
-);
 const portableInputSchema = {
   property_id: { type: "UTF8", optional: true },
   parcel_identifier: { type: "UTF8", optional: true },
   subdivision: { type: "UTF8", optional: true },
 };
+
+async function writeZstdQueryTableParquet(parquetPath, rows) {
+  const schemaFields = Object.fromEntries(
+    Object.entries(portableInputSchema).map(([name, field]) => [
+      name,
+      { ...field, compression: "ZSTD" },
+    ]),
+  );
+  const writer = await ParquetWriter.openFile(
+    new ParquetSchema(schemaFields),
+    parquetPath,
+  );
+  try {
+    for (const row of rows) await writer.appendRow(toParquetRecord(row));
+  } finally {
+    await writer.close();
+  }
+}
 
 afterEach(async () => {
   await Promise.all(
@@ -147,8 +162,21 @@ describe("hoa-pm query-table enrich", () => {
   it("reads ZSTD input and preserves ZSTD output compression", async () => {
     const directory = await mkdtemp(path.join(tmpdir(), "hoa-pm-zstd-"));
     temporaryDirectories.push(directory);
+    const inputParquet = path.join(directory, "input.parquet");
     const inputCoverage = path.join(directory, "input-coverage.json");
     const outputParquet = path.join(directory, "output", "query-table.parquet");
+    await writeZstdQueryTableParquet(inputParquet, [
+      {
+        property_id: "property-1",
+        parcel_identifier: "1605480000",
+        subdivision: "Example Subdivision",
+      },
+      {
+        property_id: "property-2",
+        parcel_identifier: "0969250000",
+        subdivision: "Unknown Place",
+      },
+    ]);
     await writeFile(
       inputCoverage,
       `${JSON.stringify({ county: "duval", datasets: [] })}\n`,
@@ -156,7 +184,7 @@ describe("hoa-pm query-table enrich", () => {
 
     const summary = await enrichQueryTableWithHoaPm({
       countyKey: "duval",
-      inputParquet: zstdFixture,
+      inputParquet,
       inputCoverage,
       companies: [hoaCompany, managerCompany],
       outputParquet,
@@ -165,7 +193,7 @@ describe("hoa-pm query-table enrich", () => {
     });
 
     expect(summary.propertyCount).toBe(2);
-    expect((await stat(zstdFixture)).size).toBeLessThan(512 * 1024);
+    expect((await stat(inputParquet)).size).toBeLessThan(512 * 1024);
     const reader = await ParquetReader.openFile(outputParquet);
     try {
       expect(
