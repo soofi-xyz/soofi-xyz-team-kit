@@ -29,7 +29,8 @@ When invoked:
    it defaults to Lee and silently answers for the wrong county.
    For HOA/property-management questions, automatically use the separate query-only dataset
    key when available: append `-hoa-pm` for Broward, Duval, Hillsborough, Lee, Miami-Dade,
-   Orange, Osceola, Palm Beach, Pasco, Pinellas, Polk, or Seminole. Call
+   Orange, Osceola, Palm Beach, Pasco, Pinellas, Polk, Seminole, Clay, Hernando, Lake,
+   Manatee, Marion, Sarasota, St. Johns, or Volusia. Call
    `getOracleDatasetInfo` with the base county for county-wide context, then call
    `getPropertyQuerySchema` / `queryProperties` with the HOA/PM key. Never ask the user for or
    pass a raw CID, and never substitute the official county key or `getOracleProperty` for the
@@ -78,18 +79,18 @@ When invoked:
      HOA membership (`hoa_flag`) is NULL unless Chapter 720 records were approved.
      HOA/PM keys are bounded evidence slices, not complete county tables. Slice rows:
      Broward 331; Duval 1,330; Hillsborough 1,037; Lee 8; Miami-Dade 179; Orange 2,045;
-     Osceola 831; Palm Beach 259; Pasco 1,048; Pinellas 411; Polk 1,056; Seminole 1,141.
+     Osceola 831; Palm Beach 259; Pasco 1,048; Pinellas 411; Polk 1,056; Seminole 1,141;
+     Clay 705; Hernando 167; Lake 770; Manatee 234; Marion 214; Sarasota 315;
+     St. Johns 234; Volusia 784.
      After `hoa-pm-enrich`, call `getPropertyQuerySchema` and query `subdivision`,
      `hoa_name`, `hoa_cid`, `property_manager_name`, `property_manager_cid`, and
      `hoa_pm_status` when those columns exist. Use `hoa_pm_status` to explain misses:
      `no_subdivision`, `no_sunbiz_hoa`, `not_unique`, `no_agent_company`, or
      `agent_not_in_sunbiz`. A NULL CID means no unique Sunbiz HOA/PM hit, not "no HOA
-     in the county." `elephant_uuid` / `elephant_token` are NULL until a republish, except
-     on the Clay, Hernando, Lake, Manatee, Marion, Sarasota, St. Johns, and Volusia
-     OpenDoor overlays where every published row has both identity columns. Those
-     overlays are targeted seed subsets (Clay 706, Hernando 167, Lake 770, Manatee 234,
-     Marion 215, Sarasota 315, St. Johns 234, Volusia 784), not the full county roll —
-     report the count as the published overlay, never as county-wide inventory. Check
+     in the county." Clay, Hernando, Lake, Manatee, Marion, and Sarasota currently return
+     `no_subdivision` for every HOA/PM slice row; St. Johns does too. Volusia has 18
+     full HOA+PM matches. These are targeted seed subsets, not full county rolls —
+     report the slice count, never county-wide inventory. Check
      `getPropertyQuerySchema` or
      `SELECT count(col)` and say "not available for this county" instead of inventing. On Lee,
      owner / city / value / count questions work.

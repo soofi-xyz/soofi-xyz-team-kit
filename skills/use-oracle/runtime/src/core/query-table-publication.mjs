@@ -5,6 +5,10 @@ export const PUBLISHED_COUNTY_CATALOG_PATH = new URL(
   "../../catalog/published-counties.json",
   import.meta.url,
 );
+export const MCP_OVERLAY_CATALOG_PATH = new URL(
+  "../../catalog/mcp-overlays.json",
+  import.meta.url,
+);
 
 const COUNTY_KEY_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -46,9 +50,31 @@ export function queryTablePublicationFromCatalog(catalog, countyKey) {
   });
 }
 
+export function queryTablePublicationFromSources(catalog, overlays, countyKey) {
+  try {
+    return queryTablePublicationFromCatalog(catalog, countyKey);
+  } catch (catalogError) {
+    const counties = Array.isArray(overlays?.counties) ? overlays.counties : [];
+    const matches = counties.filter(
+      (county) =>
+        county?.countyKey === countyKey &&
+        typeof county?.queryTableUrl === "string",
+    );
+    if (matches.length !== 1) throw catalogError;
+    return Object.freeze({
+      bucket: QUERY_TABLE_BUCKET,
+      queryTableIpnsLabel: `oracle-query-table-${countyKey}`,
+      coverageIpnsLabel: `oracle-dataset-coverage-${countyKey}`,
+    });
+  }
+}
+
 export function requireQueryTablePublication(countyKey) {
   const catalog = JSON.parse(
     readFileSync(PUBLISHED_COUNTY_CATALOG_PATH, "utf8"),
   );
-  return queryTablePublicationFromCatalog(catalog, countyKey);
+  const overlays = JSON.parse(
+    readFileSync(MCP_OVERLAY_CATALOG_PATH, "utf8"),
+  );
+  return queryTablePublicationFromSources(catalog, overlays, countyKey);
 }

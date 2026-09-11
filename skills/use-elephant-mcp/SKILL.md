@@ -50,7 +50,8 @@ Before exploring data:
 For a query-only HOA/PM slice, call `getOracleDatasetInfo` with the base county for context,
 then append `-hoa-pm` to the base key for `getPropertyQuerySchema` and `queryProperties`.
 Available base keys are Broward, Duval, Hillsborough, Lee, Miami-Dade, Orange, Osceola,
-Palm Beach, Pasco, Pinellas, Polk, and Seminole. These catalog-managed MCP overlays
+Palm Beach, Pasco, Pinellas, Polk, Seminole, Clay, Hernando, Lake, Manatee, Marion,
+Sarasota, St. Johns, and Volusia. These MCP overlays
 intentionally have no coverage snapshot and are not returned by `listPublishedCounties`;
 schema success is their availability gate. Treat HOA/property-manager lookup as an attribute
 query: do not use `getOracleProperty` and do not substitute the base county's property table.
@@ -103,9 +104,10 @@ consolidated JSON.
    `hoa-pm-enrich`, automatically route HOA/property-management questions for an available
    base key to its `-hoa-pm` key. These are bounded slices, not county-wide denominators.
    `hoa_cid` / `property_manager_cid` may be populated. Identity columns are NULL
-   until a republish includes them, except the Clay, Hernando, Lake, Manatee, Marion,
-   Sarasota, St. Johns, and Volusia overlays where they are
-   populated on every row — confirm with
+   until a republish includes them. The new slices have 705 Clay, 167 Hernando,
+   770 Lake, 234 Manatee, 214 Marion, 315 Sarasota, 234 St. Johns, and 784 Volusia
+   rows. Clay through St. Johns currently have no full HOA+PM match because every
+   row lacks `subdivision`; Volusia has 18 full matches. Confirm with
    `getPropertyQuerySchema` / `SELECT count(col)` and say "not available for this county"
    rather than inventing.
 2. **Dataset context** — `getOracleDatasetInfo` → county, `propertyCount`, freshness timestamps
