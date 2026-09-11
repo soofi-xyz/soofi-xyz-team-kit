@@ -76,6 +76,7 @@ export const duvalEnrichmentProfile = validateEnrichmentProfile({
       property_manager_cid: { type: "UTF8", optional: true },
       property_manager_name: { type: "UTF8", optional: true },
       property_manager_sunbiz_document_number: { type: "UTF8", optional: true },
+      hoa_pm_status: { type: "UTF8", optional: true },
     },
   },
   publication: {

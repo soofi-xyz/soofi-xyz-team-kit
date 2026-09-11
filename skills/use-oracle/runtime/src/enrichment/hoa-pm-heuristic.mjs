@@ -28,17 +28,36 @@ function uniqueByDocument(matches) {
   return [...documents.values()];
 }
 
+function subdivisionMatchNames(subdivision) {
+  const normalized = normalizeEntityName(subdivision);
+  if (!normalized) return [];
+  const tokens = normalized.split(" ");
+  const stripped = [...tokens];
+  if (/^\d{3,6}$/.test(stripped[0] ?? "")) stripped.shift();
+  if (/^\d{1,3}$/.test(stripped.at(-1) ?? "")) {
+    stripped.pop();
+    if (/^(BLK|BLOCK|LOT|PHASE|SEC|SECTION|TRACT|UNIT)$/.test(stripped.at(-1) ?? "")) {
+      stripped.pop();
+    }
+  }
+  const conservativeBase = stripped.join(" ");
+  const alphaTokens = stripped.filter((token) => /[A-Z]/.test(token));
+  return conservativeBase !== normalized && alphaTokens.length >= 2
+    ? [normalized, conservativeBase]
+    : [normalized];
+}
+
 export function findHoaCompanies(subdivision, companies) {
-  const subdivisionName = normalizeEntityName(subdivision);
-  if (!subdivisionName) {
+  const subdivisionNames = subdivisionMatchNames(subdivision);
+  if (subdivisionNames.length === 0) {
     return { status: "no_subdivision", matches: [] };
   }
   const matches = companies.filter((company) => {
     if (company.status && company.status !== "ACTIVE") return false;
     const entityName = normalizeEntityName(company.entityName);
     if (!entityName) return false;
-    if (!entityName.includes(subdivisionName)) return false;
-    return HOA_NAME_MARKERS.test(entityName) || entityName === subdivisionName;
+    if (!subdivisionNames.some((name) => entityName.includes(name))) return false;
+    return HOA_NAME_MARKERS.test(entityName) || subdivisionNames.includes(entityName);
   });
   const unique = uniqueByDocument(matches);
   if (unique.length === 0) return { status: "no_sunbiz_hoa", matches: [] };
@@ -90,7 +109,7 @@ function companyObject(company, dataGroup) {
 
 function hoaObject({ company, companyCid, propertyManagerCid }) {
   const payload = {
-    data_group: "HOA ",
+    data_group: "HOA_",
     type: "homeowners_association",
     homeowners_association_name: company.entityName ?? null,
     sunbiz_document_number: company.documentNumber,
@@ -117,24 +136,21 @@ export function resolveHoaAndPropertyManagement({ subdivision, companies }) {
     };
   }
   const hoaCompany = hoaSearch.matches[0];
-  const hoaCompanyObject = companyObject(hoaCompany, "HOA ");
+  const hoaCompanyObject = companyObject(hoaCompany, "HOA_");
   const pmSearch = findPropertyManagementCompany(hoaCompany, companies);
   const propertyManagementCompany =
     pmSearch.status === "matched" ? pmSearch.matches[0] : null;
   const propertyManagement =
     propertyManagementCompany === null
       ? null
-      : companyObject(propertyManagementCompany, "Property Management");
+      : companyObject(propertyManagementCompany, "Property_Management");
   const hoa = hoaObject({
     company: hoaCompany,
     companyCid: hoaCompanyObject.cid,
     propertyManagerCid: propertyManagement?.cid ?? null,
   });
   return {
-    status:
-      pmSearch.status === "matched"
-        ? "matched"
-        : `hoa_matched_${pmSearch.status}`,
+    status: pmSearch.status,
     hoa,
     hoaCompany: hoaCompanyObject,
     propertyManagement,

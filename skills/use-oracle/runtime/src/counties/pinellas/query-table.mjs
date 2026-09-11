@@ -196,6 +196,7 @@ export function mapTransformedFilesToQueryTableRow({ strap, files, seedRow }) {
     property_manager_cid: null,
     property_manager_name: null,
     property_manager_sunbiz_document_number: null,
+    hoa_pm_status: null,
   };
 }
 
@@ -250,4 +251,5 @@ export const QUERY_TABLE_SCHEMA_FIELDS = Object.freeze({
   property_manager_cid: { type: "UTF8", optional: true },
   property_manager_name: { type: "UTF8", optional: true },
   property_manager_sunbiz_document_number: { type: "UTF8", optional: true },
+  hoa_pm_status: { type: "UTF8", optional: true },
 });

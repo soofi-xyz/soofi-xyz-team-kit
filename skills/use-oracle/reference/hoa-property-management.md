@@ -5,6 +5,10 @@ subdivision, looking up a unique Florida Sunbiz company for that subdivision, th
 reading the HOA company's registered-agent / communication company and looking that
 company up in Sunbiz.
 
+Use the statewide Sunbiz company dataset. Do not use the ZIP-filtered county extract
+produced by `sunbiz-filter` / `sunbiz-enrich`, because an HOA or manager can be registered
+outside the property's county.
+
 This does **not** set `hoa_flag` (Chapter 720 membership stays on `hoa-enrich`).
 
 ## Objects and CID stamps
@@ -14,12 +18,13 @@ Relationships are CID fields on the referencing object, not graph edges.
 | Object | Data group | CID fields |
 | --- | --- | --- |
 | `property` | County query table / property | `hoa_cid`, `property_manager_cid` |
-| `homeowners_association` | `HOA ` | `company_cid`, `property_manager_cid` |
-| `company` (HOA legal entity) | `HOA ` | `sunbiz_document_number` |
-| `company` (manager) | `Property Management` | `sunbiz_document_number` |
+| `homeowners_association` | `HOA_` | `company_cid`, `property_manager_cid` |
+| `company` (HOA legal entity) | `HOA_` | `sunbiz_document_number` |
+| `company` (manager) | `Property_Management` | `sunbiz_document_number` |
 
 Local object CIDs are `sha256:<hex>` of the canonical payload before the `cid` field.
-IPFS publish replaces those with Filebase CIDs when the objects are uploaded.
+They remain local hashes until an object-upload path to Filebase exists; this workflow
+does not currently publish these objects or replace the hashes with IPFS CIDs.
 
 ## Command
 
@@ -33,8 +38,9 @@ node bin/elephant-county.mjs hoa-pm-enrich \
   --output-dir <output-dir>
 ```
 
-Misses stay explicit: `no_subdivision`, `no_sunbiz_hoa`, `not_unique`, `no_agent_company`,
-`agent_not_in_sunbiz`. Do not invent an HOA from subdivision name alone.
+`hoa_pm_status` is Donphan's miss channel. Misses stay explicit: `no_subdivision`,
+`no_sunbiz_hoa`, `not_unique`, `no_agent_company`, `agent_not_in_sunbiz`. Do not invent
+an HOA from subdivision name alone.
 
 ## DoD evidence (this pass)
 

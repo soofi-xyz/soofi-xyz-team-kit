@@ -474,13 +474,10 @@ async function runHoaEnrichCommand(argv) {
 
 async function runHoaPmEnrichCommand(argv) {
   const flags = parseFlags(argv);
-  const profile = requireEnrichmentProfile(
-    requireStringFlag(flags, "county"),
-  );
+  const countyKey = requireStringFlag(flags, "county");
   const outputDir = requireStringFlag(flags, "output-dir");
   const summary = await enrichQueryTableWithHoaPm({
-    countyKey: profile.countyKey,
-    schemaFields: profile.queryTable.schemaFields,
+    countyKey,
     inputParquet: requireStringFlag(flags, "input-parquet"),
     inputCoverage: requireStringFlag(flags, "input-coverage"),
     sunbizExtractDir: requireStringFlag(flags, "sunbiz-extract"),

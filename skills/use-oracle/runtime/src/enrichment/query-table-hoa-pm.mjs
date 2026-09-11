@@ -19,6 +19,7 @@ const REQUIRED_COLUMNS = {
   property_manager_cid: "UTF8",
   property_manager_name: "UTF8",
   property_manager_sunbiz_document_number: "UTF8",
+  hoa_pm_status: "UTF8",
 };
 
 async function sha256File(filePath) {
@@ -28,13 +29,44 @@ async function sha256File(filePath) {
   return hash.digest("hex");
 }
 
-function requireHoaPmSchema(schemaFields) {
+function withHoaPmSchema(schemaFields) {
+  const output = structuredClone(schemaFields);
   for (const [fieldName, fieldType] of Object.entries(REQUIRED_COLUMNS)) {
-    if (schemaFields?.[fieldName]?.type !== fieldType) {
+    if (output[fieldName] && output[fieldName].type !== fieldType) {
       throw new Error(
         `HOA/PM enrichment requires ${fieldName} ${fieldType} column`,
       );
     }
+    output[fieldName] = { type: fieldType, optional: true };
+  }
+  return output;
+}
+
+function parquetFieldDefinition(field) {
+  if (field.path?.length !== 1 || field.isNested) {
+    throw new Error(`HOA/PM enrichment only supports scalar Parquet field ${field.name}`);
+  }
+  const type = field.originalType === "UTF8" ? "UTF8" : field.primitiveType;
+  if (!["BOOLEAN", "BYTE_ARRAY", "DOUBLE", "FLOAT", "INT32", "INT64", "INT96", "UTF8"].includes(type)) {
+    throw new Error(`Unsupported Parquet field type for ${field.name}: ${type}`);
+  }
+  return {
+    type,
+    optional: field.repetitionType !== "REQUIRED",
+  };
+}
+
+async function inferSchemaFields(parquetPath) {
+  const reader = await ParquetReader.openFile(parquetPath);
+  try {
+    return Object.fromEntries(
+      Object.entries(reader.schema.fields).map(([name, field]) => [
+        name,
+        parquetFieldDefinition(field),
+      ]),
+    );
+  } finally {
+    await reader.close();
   }
 }
 
@@ -90,7 +122,9 @@ export async function enrichQueryTableWithHoaPm({
   objectsDir,
   manifestPath,
 }) {
-  requireHoaPmSchema(schemaFields);
+  const outputSchemaFields = withHoaPmSchema(
+    schemaFields ?? (await inferSchemaFields(inputParquet)),
+  );
   const sunbizCompanies =
     companies ?? (await loadSunbizCompanies(sunbizExtractDir));
   const rows = await readQueryRows(inputParquet);
@@ -112,7 +146,7 @@ export async function enrichQueryTableWithHoaPm({
   await mkdir(path.dirname(outputParquet), { recursive: true });
   if (objectsDir) await mkdir(objectsDir, { recursive: true });
   const writer = await ParquetWriter.openFile(
-    new ParquetSchema(structuredClone(schemaFields)),
+    new ParquetSchema(outputSchemaFields),
     outputParquet,
   );
   try {
