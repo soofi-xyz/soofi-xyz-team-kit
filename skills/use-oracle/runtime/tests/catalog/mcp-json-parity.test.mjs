@@ -132,7 +132,7 @@ describe("syncMcpJson against a synthetic mcp.json fixture", () => {
       overlayPath,
     });
 
-    expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(16);
+    expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(19);
     expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP)).toHaveLength(5);
     expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(15);
 
@@ -140,7 +140,7 @@ describe("syncMcpJson against a synthetic mcp.json fixture", () => {
     const env = written.mcpServers.elephant.env;
 
     expect(JSON.parse(env.PROPERTY_QUERY_TABLE_MAP)).not.toHaveProperty("stale-county");
-    expect(Object.keys(JSON.parse(env.PROPERTY_QUERY_TABLE_MAP))).toHaveLength(16);
+    expect(Object.keys(JSON.parse(env.PROPERTY_QUERY_TABLE_MAP))).toHaveLength(19);
     expect(Object.keys(JSON.parse(env.PERMIT_QUERY_TABLE_MAP))).toHaveLength(5);
     expect(Object.keys(JSON.parse(env.DATASET_COVERAGE_MAP))).toHaveLength(15);
     expect(env.PUBLISHED_COUNTY_CATALOG_URL).toBe(PUBLISHED_COUNTY_CATALOG_URL);
@@ -277,7 +277,7 @@ describe("merge-mcp-env-maps", () => {
   it("buildMergedMcpEnvMaps against the tracked catalog + overlay matches the locked key counts", async () => {
     const maps = await buildMergedMcpEnvMaps({ catalogPath, overlayPath });
 
-    expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(16);
+    expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(19);
     expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP)).toHaveLength(5);
     expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(15);
     expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP).sort()).toEqual([
@@ -294,7 +294,7 @@ describe("merge-mcp-env-maps", () => {
 });
 
 describe("syncMcpJson against a copy of the real repo-root mcp.json", () => {
-  it("produces the locked 16/5/15 key counts and preserves the real launcher untouched", async () => {
+  it("produces the locked 19/5/15 key counts and preserves the real launcher untouched", async () => {
     const fixturePath = join(tmpDir, "mcp.json");
     const original = await readFile(repoRootMcpJsonPath, "utf8");
     await writeFile(fixturePath, original, "utf8");
@@ -306,9 +306,12 @@ describe("syncMcpJson against a copy of the real repo-root mcp.json", () => {
       overlayPath,
     });
 
-    expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(16);
+    expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(19);
     expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP)).toHaveLength(5);
     expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(15);
+    expect(maps.PROPERTY_QUERY_TABLE_MAP.clay).toBeDefined();
+    expect(maps.PROPERTY_QUERY_TABLE_MAP.lake).toBeDefined();
+    expect(maps.PROPERTY_QUERY_TABLE_MAP.volusia).toBeDefined();
     expect(maps.PROPERTY_QUERY_TABLE_MAP["santa-clara"]).toBeDefined();
     expect(maps.PERMIT_QUERY_TABLE_MAP["santa-clara"]).toBeDefined();
     expect(maps.DATASET_COVERAGE_MAP).not.toHaveProperty("santa-clara");

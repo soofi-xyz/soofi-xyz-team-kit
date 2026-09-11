@@ -31,7 +31,8 @@ this repository path. Until elephant-mcp’s default URL is retargeted, only cli
 ## `mcp-overlays.json` — counties outside the catalog
 
 Some counties are published to the Elephant MCP property/permit query-table maps without (yet)
-meeting the bar for the canonical catalog above — currently only **`santa-clara`**. These live
+meeting the bar for the canonical catalog above — currently **`santa-clara`** plus the
+targeted OpenDoor identity overlays **`clay`**, **`lake`**, and **`volusia`**. These live
 in `mcp-overlays.json`, a small, separate file with just the fields the MCP env maps need
 (`queryTableUrl`, `permitQueryTableUrl`, `datasetCoverageUrl`, any of which may be `null`).
 Overlay counties are **not** returned by `listPublishedCounties` and do not count toward
