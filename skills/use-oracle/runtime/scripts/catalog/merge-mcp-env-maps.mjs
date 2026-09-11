@@ -17,6 +17,7 @@ import { mcpEnvMapsFromCatalog, stringifyMcpEnvMaps } from "./print-mcp-env-maps
  * @typedef {object} McpOverlayCounty
  * @property {string} countyKey
  * @property {string | null} [queryTableUrl]
+ * @property {string | null} [queryTableCid]
  * @property {string | null} [permitQueryTableUrl]
  * @property {string | null} [datasetCoverageUrl]
  */
@@ -34,9 +35,8 @@ import { mcpEnvMapsFromCatalog, stringifyMcpEnvMaps } from "./print-mcp-env-maps
  * @returns {ReturnType<typeof mcpEnvMapsFromCatalog>}
  */
 export function mcpEnvMapsFromOverlay(overlay) {
-  // The overlay's per-county shape is a strict subset of the catalog's per-county shape
-  // (only the three URL fields the env maps read), so the catalog mapper can build the
-  // overlay maps too.
+  // The overlay's per-dataset shape is a strict subset of the catalog's shape, so the
+  // catalog mapper can build both stable URL maps and immutable CID fallbacks.
   return mcpEnvMapsFromCatalog(overlay);
 }
 

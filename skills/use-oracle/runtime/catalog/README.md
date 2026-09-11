@@ -34,14 +34,18 @@ this repository path. Until elephant-mcp’s default URL is retargeted, only cli
 `PUBLISHED_COUNTY_CATALOG_URL` (this kit’s `mcp.json`) read this file; see
 [`docs/elephant-source-repos.md`](../../../../../docs/elephant-source-repos.md).
 
-## `mcp-overlays.json` — counties outside the catalog
+## `mcp-overlays.json` — query datasets outside the county catalog
 
-Some counties are published to the Elephant MCP property/permit query-table maps without (yet)
-meeting the bar for the canonical catalog above — currently only **`santa-clara`**. These live
-in `mcp-overlays.json`, a small, separate file with just the fields the MCP env maps need
-(`queryTableUrl`, `permitQueryTableUrl`, `datasetCoverageUrl`, any of which may be `null`).
-Overlay counties are **not** returned by `listPublishedCounties` and do not count toward
-`DATASET_COVERAGE_MAP` unless they also carry a `datasetCoverageUrl`.
+Some query datasets must be addressable through Elephant MCP without replacing an official
+county table or claiming full county publication. These live in `mcp-overlays.json`, a small,
+catalog-managed file with the fields the MCP env maps need (`queryTableUrl`, optional
+`queryTableCid`, `permitQueryTableUrl`, and `datasetCoverageUrl`). Overlay keys are **not**
+returned by `listPublishedCounties` and do not count toward `DATASET_COVERAGE_MAP` unless they
+also carry a `datasetCoverageUrl`.
+
+Bounded HOA/PM evidence slices use distinct keys such as `duval-hoa-pm` and
+`broward-hoa-pm`. Their query-table and CID fallback entries must never replace `duval` or
+`broward`; official county keys remain reserved for full county publications.
 
 Do not add a county to `mcp-overlays.json` if it already qualifies for the full catalog above —
 promote it into `published-counties.json` instead (`npm run catalog:update`).

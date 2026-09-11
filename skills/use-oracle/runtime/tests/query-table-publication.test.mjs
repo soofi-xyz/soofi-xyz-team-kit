@@ -50,7 +50,7 @@ describe("query-table publication lookup", () => {
     ).toThrow('Unknown published --county "not-published"');
   });
 
-  it("wires hoa-pm-publish to the catalog lookup", () => {
+  it("publishes HOA/PM to separate dataset labels", () => {
     const stdout = execFileSync(
       process.execPath,
       [
@@ -69,9 +69,12 @@ describe("query-table publication lookup", () => {
     expect(report.result).toMatchObject({
       dryRun: true,
       bucket: "elephant-oracle-query-table",
-      queryTableIpnsLabel: "oracle-query-table-pinellas",
-      coverageIpnsLabel: "oracle-dataset-coverage-pinellas",
+      queryTableIpnsLabel: "oracle-query-table-pinellas-hoa-pm",
+      coverageIpnsLabel: "oracle-dataset-coverage-pinellas-hoa-pm",
     });
+    expect(report.result.queryTableIpnsLabel).not.toBe(
+      "oracle-query-table-pinellas",
+    );
     expect(report.result.queryTableIpnsLabel).not.toBe(
       "oracle-query-table-broward",
     );
