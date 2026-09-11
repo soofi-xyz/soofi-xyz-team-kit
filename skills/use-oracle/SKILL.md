@@ -312,7 +312,11 @@ AWS URL:
    list in this skill:
    - call MCP `listPublishedCounties`; or
    - read `skills/use-oracle/runtime/catalog/published-counties.json`;
-   - regenerate `PROPERTY_QUERY_TABLE_MAP` / `DATASET_COVERAGE_MAP` from that catalog
+   - record the publish flow's immutable `queryTableCid` in the catalog update (omit it
+     only to disable fallback; never carry the prior publication's CID forward);
+   - regenerate `PROPERTY_QUERY_TABLE_MAP`,
+     `PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS`, and
+     `DATASET_COVERAGE_MAP` from that catalog
      (`npm run catalog:sync-mcp-json --prefix skills/use-oracle/runtime`, or equivalently
      `npm run catalog:mcp-maps --prefix skills/use-oracle/runtime` to print the maps
      without writing `mcp.json`).

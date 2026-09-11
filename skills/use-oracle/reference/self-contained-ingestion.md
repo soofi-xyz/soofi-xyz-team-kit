@@ -123,8 +123,13 @@ Add or refresh a published county (mandatory coverage URL; permit/places URLs ma
 npm run catalog:update --prefix skills/use-oracle/runtime -- \
   --county-key "<key>" --county-name "<Name>" --state-code "<ST>" \
   --county-fips "<fips>" --query-table-url "https://..." \
+  --query-table-cid "<queryTableCid from publish output>" \
   --dataset-coverage-url "https://..." --updated-at "<ISO-8601>"
 ```
+
+Always pass the immutable query-table CID emitted by the publish flow. Omitting it explicitly
+disables that county's CID fallback; the updater and sync never carry an older publication's
+CID forward.
 
 Then regenerate the root `mcp.json` env maps from the catalog + overlay:
 

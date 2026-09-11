@@ -1,11 +1,12 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import { ParquetSchema, ParquetWriter } from "@dsnp/parquetjs";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { writeQueryTableParquet } from "../src/core/query-table.mjs";
+import { toParquetRecord, writeQueryTableParquet } from "../src/core/query-table.mjs";
 import {
   findHoaCompanies,
   findPropertyManagementCompany,
@@ -22,6 +23,24 @@ const portableInputSchema = {
   parcel_identifier: { type: "UTF8", optional: true },
   subdivision: { type: "UTF8", optional: true },
 };
+
+async function writeZstdQueryTableParquet(parquetPath, rows) {
+  const schemaFields = Object.fromEntries(
+    Object.entries(portableInputSchema).map(([name, field]) => [
+      name,
+      { ...field, compression: "ZSTD" },
+    ]),
+  );
+  const writer = await ParquetWriter.openFile(
+    new ParquetSchema(schemaFields),
+    parquetPath,
+  );
+  try {
+    for (const row of rows) await writer.appendRow(toParquetRecord(row));
+  } finally {
+    await writer.close();
+  }
+}
 
 afterEach(async () => {
   await Promise.all(
@@ -140,6 +159,57 @@ describe("hoa-pm heuristic", () => {
 });
 
 describe("hoa-pm query-table enrich", () => {
+  it("reads ZSTD input and preserves ZSTD output compression", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "hoa-pm-zstd-"));
+    temporaryDirectories.push(directory);
+    const inputParquet = path.join(directory, "input.parquet");
+    const inputCoverage = path.join(directory, "input-coverage.json");
+    const outputParquet = path.join(directory, "output", "query-table.parquet");
+    await writeZstdQueryTableParquet(inputParquet, [
+      {
+        property_id: "property-1",
+        parcel_identifier: "1605480000",
+        subdivision: "Example Subdivision",
+      },
+      {
+        property_id: "property-2",
+        parcel_identifier: "0969250000",
+        subdivision: "Unknown Place",
+      },
+    ]);
+    await writeFile(
+      inputCoverage,
+      `${JSON.stringify({ county: "duval", datasets: [] })}\n`,
+    );
+
+    const summary = await enrichQueryTableWithHoaPm({
+      countyKey: "duval",
+      inputParquet,
+      inputCoverage,
+      companies: [hoaCompany, managerCompany],
+      outputParquet,
+      outputCoverage: path.join(directory, "output", "dataset-coverage.json"),
+      manifestPath: path.join(directory, "output", "manifest.json"),
+    });
+
+    expect(summary.propertyCount).toBe(2);
+    expect((await stat(inputParquet)).size).toBeLessThan(512 * 1024);
+    const reader = await ParquetReader.openFile(outputParquet);
+    try {
+      expect(
+        new Set(
+          reader.metadata.row_groups.flatMap((rowGroup) =>
+            rowGroup.columns.map((column) => column.meta_data.codec),
+          ),
+        ),
+      ).toEqual(new Set([6]));
+      const cursor = reader.getCursor();
+      expect((await cursor.next()).hoa_pm_status).toBe("matched");
+    } finally {
+      await reader.close();
+    }
+  });
+
   it("writes CID columns and data-group objects", async () => {
     const directory = await mkdtemp(path.join(tmpdir(), "hoa-pm-"));
     temporaryDirectories.push(directory);

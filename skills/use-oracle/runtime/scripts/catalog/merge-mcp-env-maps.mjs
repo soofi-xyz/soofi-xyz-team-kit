@@ -76,6 +76,7 @@ export function mergeMcpEnvMaps(catalogMaps, overlayMaps) {
   const merged = {};
   for (const field of [
     "PROPERTY_QUERY_TABLE_MAP",
+    "PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS",
     "PERMIT_QUERY_TABLE_MAP",
     "DATASET_COVERAGE_MAP",
   ]) {
