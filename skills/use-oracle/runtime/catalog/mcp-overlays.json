@@ -16,6 +16,76 @@
       "datasetCoverageUrl": null
     },
     {
+      "countyKey": "hillsborough-hoa-pm",
+      "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dk0vrq2nzaa9bxuarqgqd8ayqzs4yk36n3k02exgjr4y8hnyzli",
+      "queryTableCid": "Qmcq6LXPQtASvcC7ZxRCBMyXv1ajrLzWiH7vcZqXHYQ2Rh",
+      "permitQueryTableUrl": null,
+      "datasetCoverageUrl": null
+    },
+    {
+      "countyKey": "lee-hoa-pm",
+      "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dko6l4jajqqfi7pm8k7df33w6c8prsvqup7edm91a1486ukswk4",
+      "queryTableCid": "QmWHAWGnPCo5D2kMnVnTeVcafoS34WGAKd7TNny9HpvFcN",
+      "permitQueryTableUrl": null,
+      "datasetCoverageUrl": null
+    },
+    {
+      "countyKey": "miami-dade-hoa-pm",
+      "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dknbly4i90rdjsl2v74sfrbfctux1a844t3ttqgnz5et0yn16yr",
+      "queryTableCid": "QmVNhRdYMw62G8qbNADzmh3nq4X48N87DCAzzH9jkejkYk",
+      "permitQueryTableUrl": null,
+      "datasetCoverageUrl": null
+    },
+    {
+      "countyKey": "orange-hoa-pm",
+      "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5div4mt8yg2utwy1n8iytxxiagvqvgh1ctftyehygk20nnb11yfq",
+      "queryTableCid": "QmdzbFeHmeMRpUK52WNetraD6RS6sQhGvSt9LPSH2e37pK",
+      "permitQueryTableUrl": null,
+      "datasetCoverageUrl": null
+    },
+    {
+      "countyKey": "osceola-hoa-pm",
+      "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5diai4v9hf3dt30gloyidgg7zkhagdji8ljs335t69cxnysgv1ko",
+      "queryTableCid": "QmYung7bgmZvauewhwn1cFJrgpfgedhpRve9kqEeP3RnUW",
+      "permitQueryTableUrl": null,
+      "datasetCoverageUrl": null
+    },
+    {
+      "countyKey": "palm-beach-hoa-pm",
+      "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dicgs18vee4x9joam13mlohykbsackhxawi5tasb1lye7hljmqi",
+      "queryTableCid": "QmbFyFmm8VttvVspwvYTseGZSn7jzSy4jKyAt4kSaDMhGy",
+      "permitQueryTableUrl": null,
+      "datasetCoverageUrl": null
+    },
+    {
+      "countyKey": "pasco-hoa-pm",
+      "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5djfhl65fzob3ghicinqxiqzstgu70yfh4v0246y4x8kwy3tp5tg",
+      "queryTableCid": "QmdLTNYMtXyey9ku3UXGsuxzyjSUzvKSCBrE6Z6WD2LiqX",
+      "permitQueryTableUrl": null,
+      "datasetCoverageUrl": null
+    },
+    {
+      "countyKey": "pinellas-hoa-pm",
+      "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dhunnyikvu2hwwun14cvyalavouxrfo953skk64u3dfbfm7xk8n",
+      "queryTableCid": "QmeK4LfYt4B9PtbkFdwiadgHsegmEKx2GN3acxpiYGvnyt",
+      "permitQueryTableUrl": null,
+      "datasetCoverageUrl": null
+    },
+    {
+      "countyKey": "polk-hoa-pm",
+      "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dijubgg2vg3cu8jnm5qe611rteggn8udjyskzvp2lv7d4k8gu0s",
+      "queryTableCid": "QmZiaWJAx9UF4RMSX1xVwswzYsEjEQXKUomN1qjSEF3cZN",
+      "permitQueryTableUrl": null,
+      "datasetCoverageUrl": null
+    },
+    {
+      "countyKey": "seminole-hoa-pm",
+      "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dhsksg7e2me2zhso3phdi1lvmcup6ypiywjtnatw21yxzk3d3md",
+      "queryTableCid": "QmNTi9U1PRvNDjkZXztUC5t98fr3eQ338hMeVWVboZUEvn",
+      "permitQueryTableUrl": null,
+      "datasetCoverageUrl": null
+    },
+    {
       "countyKey": "santa-clara",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dgnc94h8ce98ds0cb5yoidmcebpwnvccug4upasgbzpyz3ffgs5",
       "permitQueryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dm5dkii3wz7hj8vqurb1b773uy0qj9nlvsvgaqqyccuurz8kmic",

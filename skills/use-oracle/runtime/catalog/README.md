@@ -43,9 +43,9 @@ catalog-managed file with the fields the MCP env maps need (`queryTableUrl`, opt
 returned by `listPublishedCounties` and do not count toward `DATASET_COVERAGE_MAP` unless they
 also carry a `datasetCoverageUrl`.
 
-Bounded HOA/PM evidence slices use distinct keys such as `duval-hoa-pm` and
-`broward-hoa-pm`. Their query-table and CID fallback entries must never replace `duval` or
-`broward`; official county keys remain reserved for full county publications.
+Bounded HOA/PM evidence slices use distinct `<county>-hoa-pm` keys. Their query-table and
+CID fallback entries must never replace the base county key; official county keys remain
+reserved for full county publications.
 
 Do not add a county to `mcp-overlays.json` if it already qualifies for the full catalog above —
 promote it into `published-counties.json` instead (`npm run catalog:update`).

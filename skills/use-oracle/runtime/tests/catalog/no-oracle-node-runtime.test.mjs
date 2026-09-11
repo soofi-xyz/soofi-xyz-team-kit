@@ -44,7 +44,7 @@ describe("catalog self-containment (no oracle-node at runtime)", () => {
     expect(keys).not.toContain("santa-clara");
   });
 
-  it("rejects an overlay entry for Seminole — it must stay catalog-only", async () => {
+  it("keeps base counties catalog-only while allowing distinct HOA/PM overlays", async () => {
     const overlay = await loadCatalogLike(DEFAULT_OVERLAY_PATH);
     const keys = overlay.counties.map((county) => county.countyKey);
 
@@ -52,6 +52,16 @@ describe("catalog self-containment (no oracle-node at runtime)", () => {
     expect(keys).toEqual([
       "broward-hoa-pm",
       "duval-hoa-pm",
+      "hillsborough-hoa-pm",
+      "lee-hoa-pm",
+      "miami-dade-hoa-pm",
+      "orange-hoa-pm",
+      "osceola-hoa-pm",
+      "palm-beach-hoa-pm",
+      "pasco-hoa-pm",
+      "pinellas-hoa-pm",
+      "polk-hoa-pm",
+      "seminole-hoa-pm",
       "santa-clara",
     ]);
   });
