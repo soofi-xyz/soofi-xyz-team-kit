@@ -474,13 +474,10 @@ async function runHoaEnrichCommand(argv) {
 
 async function runHoaPmEnrichCommand(argv) {
   const flags = parseFlags(argv);
-  const profile = requireEnrichmentProfile(
-    requireStringFlag(flags, "county"),
-  );
+  const countyKey = requireStringFlag(flags, "county");
   const outputDir = requireStringFlag(flags, "output-dir");
   const summary = await enrichQueryTableWithHoaPm({
-    countyKey: profile.countyKey,
-    schemaFields: profile.queryTable.schemaFields,
+    countyKey,
     inputParquet: requireStringFlag(flags, "input-parquet"),
     inputCoverage: requireStringFlag(flags, "input-coverage"),
     sunbizExtractDir: requireStringFlag(flags, "sunbiz-extract"),
@@ -490,6 +487,31 @@ async function runHoaPmEnrichCommand(argv) {
     manifestPath: path.join(outputDir, "hoa-pm-enrichment-manifest.json"),
   });
   console.log(JSON.stringify({ event: "hoa_pm_enrich_complete", summary }, null, 2));
+}
+
+async function runHoaPmPublishCommand(argv) {
+  const flags = parseFlags(argv, ["dry-run"]);
+  const countyKey = requireStringFlag(flags, "county");
+  const inputDir = requireStringFlag(flags, "input");
+  const publication = requirePermitProfile(countyKey).publication;
+  const result = await publishFilebase(
+    {
+      county: countyKey,
+      parquetPath: path.join(inputDir, "query-table.parquet"),
+      coveragePath: path.join(inputDir, "dataset-coverage.json"),
+      hoaPmObjectsPath: path.join(inputDir, "objects", "hoa-pm-objects.jsonl"),
+      bucket: publication.bucket,
+      queryTableIpnsLabel: publication.propertyQueryTableIpnsLabel,
+      coverageIpnsLabel: publication.coverageIpnsLabel,
+    },
+    {
+      dryRun: flags["dry-run"] === true,
+      approvalManifestPath:
+        typeof flags.approve === "string" ? flags.approve : null,
+      env: process.env,
+    },
+  );
+  console.log(JSON.stringify({ event: "hoa_pm_publish_complete", result }, null, 2));
 }
 
 async function runAvmEnrichCommand(argv) {
@@ -996,6 +1018,7 @@ async function main() {
   if (command === "sunbiz-enrich") return runSunbizEnrichCommand(rest);
   if (command === "hoa-enrich") return runHoaEnrichCommand(rest);
   if (command === "hoa-pm-enrich") return runHoaPmEnrichCommand(rest);
+  if (command === "hoa-pm-publish") return runHoaPmPublishCommand(rest);
   if (command === "avm-enrich") return runAvmEnrichCommand(rest);
   if (command === "bbb-harvest") return runBbbHarvestCommand(rest);
   if (command === "bbb-reconcile") return runBbbReconcileCommand(rest);
@@ -1021,7 +1044,7 @@ async function main() {
     return runPermitPublishCommand(rest);
   }
   console.error(
-    "Usage: elephant-county <ingest|export|publish|export-coverage|sign-coverage-approval|publish-coverage|replay|sunbiz-prepare|sunbiz-filter|sunbiz-transform|sunbiz-enrich|avm-enrich|hoa-enrich|hoa-pm-enrich|bbb-harvest|bbb-reconcile|bbb-link|enrichment-finalize|permit-probe|permit-bounded-harvest|permit-resume|permit-reconcile|permit-export|permit-bulk-export|permit-publish> [...flags]\n" +
+    "Usage: elephant-county <ingest|export|publish|export-coverage|sign-coverage-approval|publish-coverage|replay|sunbiz-prepare|sunbiz-filter|sunbiz-transform|sunbiz-enrich|avm-enrich|hoa-enrich|hoa-pm-enrich|hoa-pm-publish|bbb-harvest|bbb-reconcile|bbb-link|enrichment-finalize|permit-probe|permit-bounded-harvest|permit-resume|permit-reconcile|permit-export|permit-bulk-export|permit-publish> [...flags]\n" +
       "  ingest  --county <key> --seed <csv> --html-dir <dir> [--skip-validate] [--live-fetch] [--allow-empty] --output <run-dir>\n" +
       "  export  --county <key> --seed <csv> --run <run-dir> --output <publish-dir> [--allow-empty]\n" +
       "  publish --county <key> --input <publish-dir> [--dry-run] [--approve <manifest>]\n" +
@@ -1036,6 +1059,7 @@ async function main() {
       "  avm-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --records <avm-records.jsonl> --source-manifest <json> --output-dir <dir>\n" +
       "  hoa-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --records <hoa-memberships.jsonl> --source-manifest <json> --output-dir <dir>\n" +
       "  hoa-pm-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --sunbiz-extract <dir> --output-dir <dir>\n" +
+      "  hoa-pm-publish --county <profile-key> --input <enriched-dir> [--dry-run] [--approve <manifest>]\n" +
       "  bbb-harvest --county <profile-key> --category <reviewed-key> --job-id <id> --max-pages N --max-profiles N --max-requests N --max-duration-minutes N --output <dir>\n" +
       "  bbb-reconcile --county <profile-key> --harvest-root <category-dirs-root> --input-coverage <json> --output-dir <dir>\n" +
       "  bbb-link --county duval --input-parquet <query-table.parquet> --input-coverage <dataset-coverage.json> --bbb-profiles <bbb-profiles.jsonl> --bbb-reconciliation-manifest <json> --permit-source <jaxepics-bid-map.jsonl.gz> --permit-artifact-manifest <json> --output-dir <dir>\n" +
@@ -1076,6 +1100,8 @@ export {
   runSunbizTransformCommand,
   runSunbizEnrichCommand,
   runHoaEnrichCommand,
+  runHoaPmEnrichCommand,
+  runHoaPmPublishCommand,
   runAvmEnrichCommand,
   runBbbHarvestCommand,
   runBbbReconcileCommand,

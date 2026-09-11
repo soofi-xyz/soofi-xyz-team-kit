@@ -21,6 +21,15 @@ const ARTIFACTS = {
   coverageIpnsLabel: "oracle-dataset-coverage-pinellas",
 };
 
+const HOA_PM_ARTIFACTS = {
+  ...ARTIFACTS,
+  county: "broward",
+  bucket: "elephant-oracle-query-table",
+  queryTableIpnsLabel: "oracle-query-table-broward",
+  coverageIpnsLabel: "oracle-dataset-coverage-broward",
+  hoaPmObjectsPath: "/does/not/matter/hoa-pm-objects.jsonl",
+};
+
 function approvalFor(parquetBody, coverageBody) {
   return {
     schemaVersion: FILEBASE_APPROVAL_SCHEMA_VERSION,
@@ -100,6 +109,21 @@ describe("Filebase credential + dry-run gating", () => {
       bucket: ARTIFACTS.bucket,
       queryTableIpnsLabel: ARTIFACTS.queryTableIpnsLabel,
       coverageIpnsLabel: ARTIFACTS.coverageIpnsLabel,
+    });
+  });
+
+  it("plans HOA/PM objects under a county-scoped prefix without network access", async () => {
+    const result = await publishFilebase(HOA_PM_ARTIFACTS, {
+      dryRun: true,
+      env: {},
+    });
+    expect(result).toEqual({
+      dryRun: true,
+      bucket: "elephant-oracle-query-table",
+      queryTableIpnsLabel: "oracle-query-table-broward",
+      coverageIpnsLabel: "oracle-dataset-coverage-broward",
+      hoaPmObjectsKey: "broward/hoa-pm/objects.jsonl",
+      approvalAction: "publish-query-table-coverage-and-hoa-pm-objects",
     });
   });
 

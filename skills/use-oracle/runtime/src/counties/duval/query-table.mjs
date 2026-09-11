@@ -193,5 +193,6 @@ export function mapTransformedFilesToQueryTableRow({ parcelId, files, seedRow })
     property_manager_cid: null,
     property_manager_name: null,
     property_manager_sunbiz_document_number: null,
+    hoa_pm_status: null,
   };
 }

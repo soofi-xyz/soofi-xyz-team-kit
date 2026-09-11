@@ -1,10 +1,10 @@
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { duvalEnrichmentProfile } from "../src/counties/duval/enrichment-profile.mjs";
 import { writeQueryTableParquet } from "../src/core/query-table.mjs";
 import {
   findHoaCompanies,
@@ -14,7 +14,14 @@ import {
 } from "../src/enrichment/hoa-pm-heuristic.mjs";
 import { enrichQueryTableWithHoaPm } from "../src/enrichment/query-table-hoa-pm.mjs";
 
+const require = createRequire(import.meta.url);
+const { ParquetReader } = require("@dsnp/parquetjs");
 const temporaryDirectories = [];
+const portableInputSchema = {
+  property_id: { type: "UTF8", optional: true },
+  parcel_identifier: { type: "UTF8", optional: true },
+  subdivision: { type: "UTF8", optional: true },
+};
 
 afterEach(async () => {
   await Promise.all(
@@ -49,6 +56,34 @@ describe("hoa-pm heuristic", () => {
     expect(result.matches[0].documentNumber).toBe("N123456");
   });
 
+  it("strips a numeric tract prefix and trailing unit number", () => {
+    const beaconHoa = {
+      ...hoaCompany,
+      entityName: "BEACON HILLS & HARBOR HOMEOWNERS ASSOCIATION INC",
+    };
+    const result = findHoaCompanies(
+      "02944 BEACON HILLS & HARBOR 01",
+      [beaconHoa, managerCompany],
+    );
+    expect(result.status).toBe("matched");
+    expect(result.matches[0].documentNumber).toBe("N123456");
+  });
+
+  it("fails closed when stripped subdivision names match multiple HOAs", () => {
+    const result = findHoaCompanies("02944 BEACON HILLS & HARBOR 01", [
+      {
+        ...hoaCompany,
+        entityName: "BEACON HILLS & HARBOR HOMEOWNERS ASSOCIATION INC",
+      },
+      {
+        ...hoaCompany,
+        documentNumber: "N999999",
+        entityName: "BEACON HILLS & HARBOR COMMUNITY ASSOCIATION INC",
+      },
+    ]);
+    expect(result.status).toBe("not_unique");
+  });
+
   it("does not invent an HOA from subdivision name alone", () => {
     const result = findHoaCompanies("Example Subdivision", [managerCompany]);
     expect(result.status).toBe("no_sunbiz_hoa");
@@ -73,6 +108,18 @@ describe("hoa-pm heuristic", () => {
     expect(result.status).toBe("agent_not_in_sunbiz");
   });
 
+  it("stamps the explicit property-manager miss reason", () => {
+    const resolution = resolveHoaAndPropertyManagement({
+      subdivision: "Example Subdivision",
+      companies: [{ ...hoaCompany, registeredAgent: null }],
+    });
+    expect(resolution.status).toBe("no_agent_company");
+    expect(
+      stampPropertyCids({ parcel_identifier: "1605480000" }, resolution)
+        .hoa_pm_status,
+    ).toBe("no_agent_company");
+  });
+
   it("stamps HOA and PM CIDs on the property object", () => {
     const resolution = resolveHoaAndPropertyManagement({
       subdivision: "Example Subdivision",
@@ -88,6 +135,7 @@ describe("hoa-pm heuristic", () => {
     expect(stamped.property_manager_cid).toBe(resolution.propertyManagement.cid);
     expect(stamped.hoa_sunbiz_document_number).toBe("N123456");
     expect(stamped.property_manager_sunbiz_document_number).toBe("L654321");
+    expect(stamped.hoa_pm_status).toBe("matched");
   });
 });
 
@@ -97,9 +145,10 @@ describe("hoa-pm query-table enrich", () => {
     temporaryDirectories.push(directory);
     const inputParquet = path.join(directory, "input.parquet");
     const inputCoverage = path.join(directory, "input-coverage.json");
+    const outputParquet = path.join(directory, "output", "query-table.parquet");
     await writeQueryTableParquet({
       parquetPath: inputParquet,
-      schemaFields: duvalEnrichmentProfile.queryTable.schemaFields,
+      schemaFields: portableInputSchema,
       rows: [
         {
           property_id: "property-1",
@@ -119,12 +168,11 @@ describe("hoa-pm query-table enrich", () => {
     );
 
     const summary = await enrichQueryTableWithHoaPm({
-      countyKey: "duval",
-      schemaFields: duvalEnrichmentProfile.queryTable.schemaFields,
+      countyKey: "broward",
       inputParquet,
       inputCoverage,
       companies: [hoaCompany, managerCompany],
-      outputParquet: path.join(directory, "output", "query-table.parquet"),
+      outputParquet,
       outputCoverage: path.join(directory, "output", "dataset-coverage.json"),
       objectsDir: path.join(directory, "output", "objects"),
       manifestPath: path.join(directory, "output", "hoa-pm-enrichment-manifest.json"),
@@ -136,7 +184,32 @@ describe("hoa-pm query-table enrich", () => {
       .trim()
       .split("\n")
       .map((line) => JSON.parse(line));
-    expect(objects.some((object) => object.type === "homeowners_association")).toBe(true);
-    expect(objects.some((object) => object.data_group === "Property Management")).toBe(true);
+    expect(
+      objects.some(
+        (object) =>
+          object.type === "homeowners_association" &&
+          object.data_group === "HOA_",
+      ),
+    ).toBe(true);
+    expect(
+      objects.some((object) => object.data_group === "Property_Management"),
+    ).toBe(true);
+
+    const reader = await ParquetReader.openFile(outputParquet);
+    try {
+      const cursor = reader.getCursor();
+      const rows = [];
+      let row = await cursor.next();
+      while (row) {
+        rows.push(row);
+        row = await cursor.next();
+      }
+      expect(rows.map((row) => row.hoa_pm_status)).toEqual([
+        "matched",
+        "no_sunbiz_hoa",
+      ]);
+    } finally {
+      await reader.close();
+    }
   });
 });

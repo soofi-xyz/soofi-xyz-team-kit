@@ -63,11 +63,12 @@ When invoked:
    - **Data coverage varies by county:** Lee has no acreage/material (those columns are NULL);
      HOA membership (`hoa_flag`) is NULL unless Chapter 720 records were approved.
      After `hoa-pm-enrich`, call `getPropertyQuerySchema` and query `subdivision`,
-     `hoa_name`, `hoa_cid`, `property_manager_name`, and `property_manager_cid`
-     when those columns exist. NULL means no unique Sunbiz HOA/PM hit, not "no HOA
-     in the county." `elephant_uuid` / `elephant_token` are NULL until
-     a republish. Check `getPropertyQuerySchema` or a
-     a republish. Check `getPropertyQuerySchema` or a
+     `hoa_name`, `hoa_cid`, `property_manager_name`, `property_manager_cid`, and
+     `hoa_pm_status` when those columns exist. Use `hoa_pm_status` to explain misses:
+     `no_subdivision`, `no_sunbiz_hoa`, `not_unique`, `no_agent_company`, or
+     `agent_not_in_sunbiz`. A NULL CID means no unique Sunbiz HOA/PM hit, not "no HOA
+     in the county." `elephant_uuid` / `elephant_token` are NULL until a republish.
+     Check `getPropertyQuerySchema` or
      `SELECT count(col)` and say "not available for this county" instead of inventing. On Lee,
      owner / city / value / count questions work.
 5. Hand off when appropriate:
