@@ -88,6 +88,148 @@ describe("hoa-pm heuristic", () => {
     expect(result.matches[0].documentNumber).toBe("N123456");
   });
 
+  it.each([
+    ["05042 SAN PABLO CREEK UNIT 3A", "SAN PABLO CREEK HOMEOWNERS' ASSOCIATION, INC.", "N93000001051"],
+    ["06540 COTTAGES AT ARGYLE CONDOMINIUM", "THE COTTAGES AT ARGYLE CONDOMINIUM ASSOCIATION, INC.", "N06000009522"],
+    ["DUPREE LAKES PHASE 3D", "DUPREE LAKES HOMEOWNERS ASSOCIATION, INC.", "N05000002012"],
+    ["SUNDANCE PLACE PHASE TWO", "SUNDANCE PLACE HOMEOWNERS ASSOCIATION, INC.", "N14000002147"],
+    ["ASHLEY COVE UNIT 3", "ASHLEY COVE HOMEOWNER'S ASSOCIATION, INC.", "N98000004343"],
+    ["PINE RIDGE UNIT 01", "PINE RIDGE HOA, INC.", "N10000000001"],
+    ["PINE RIDGE PH 2", "PINE RIDGE POA, INC.", "N10000000002"],
+    ["PINE RIDGE SEC 14", "PINE RIDGE COA, INC.", "N10000000003"],
+    ["PINE RIDGE SECTION 3", "PINE RIDGE ASSN, INC.", "N10000000004"],
+    ["PINE RIDGE NBHD 4", "PINE RIDGE ASSOC, INC.", "N10000000005"],
+    ["PINE RIDGE VLG 5", "PINE RIDGE ASSOCIATION, INC.", "N10000000006"],
+    ["PINE RIDGE REPLAT", "PINE RIDGE COMMUNITY ASSOCIATION, INC.", "N10000000007"],
+    ["PINE RIDGE PARTIAL REPLAT", "PINE RIDGE CIVIC ASSOCIATION, INC.", "N10000000008"],
+    ["PINE RIDGE 20", "PINE RIDGE PROPERTY OWNERS ASSOCIATION, INC.", "N10000000009"],
+    ["PINE RIDGE TWENTY", "PINE RIDGE HOMEOWNERS' ASSOCIATION, INC.", "N10000000010"],
+  ])("matches deterministic subdivision normalization: %s", (subdivision, entityName, documentNumber) => {
+    const result = findHoaCompanies(subdivision, [
+      { ...hoaCompany, documentNumber, entityName },
+    ]);
+    expect(result.status).toBe("matched");
+    expect(result.matches[0].documentNumber).toBe(documentNumber);
+  });
+
+  it.each([
+    "PINE & GLEN HOMEOWNERS ASSOCIATION, INC.",
+    "PINE AND GLEN HOMEOWNERS' ASSOCIATION INC",
+    "PINE AND GLEN HOMEOWNER'S ASSOCIATION, INC.",
+    "PINE AND GLEN CONDOMINIUM ASSOCIATION, INC.",
+    "PINE AND GLEN ASSOCIATION, INC.",
+    "PINE AND GLEN ASSOC, INC.",
+    "PINE AND GLEN ASSN, INC.",
+    "PINE AND GLEN PROPERTY OWNERS ASSOCIATION, INC.",
+    "PINE AND GLEN COMMUNITY ASSOCIATION, INC.",
+    "PINE AND GLEN CIVIC ASSOCIATION, INC.",
+    "PINE AND GLEN POA, INC.",
+    "PINE AND GLEN COA, INC.",
+    "PINE AND GLEN HOA, INC.",
+    "THE PINE AND GLEN HOMEOWNERS ASSOCIATION, INC.",
+  ])("recognizes deterministic Sunbiz association suffix: %s", (entityName) => {
+    const result = findHoaCompanies("Pine & Glen", [
+      { ...hoaCompany, entityName },
+    ]);
+    expect(result.status).toBe("matched");
+  });
+
+  it("normalizes PH/PHASE, SEC/SECTION, and word-number forms", () => {
+    const phase = findHoaCompanies("PINE RIDGE PH TWO", [
+      {
+        ...hoaCompany,
+        entityName: "PINE RIDGE PHASE 2 HOMEOWNERS ASSOCIATION, INC.",
+      },
+    ]);
+    const section = findHoaCompanies("PINE RIDGE SEC THREE", [
+      {
+        ...hoaCompany,
+        entityName: "PINE RIDGE SECTION 3 HOMEOWNERS ASSOCIATION, INC.",
+      },
+    ]);
+    expect(phase.status).toBe("matched");
+    expect(section.status).toBe("matched");
+  });
+
+  it("uses principal-address county only to resolve an explicit statewide collision", () => {
+    const result = findHoaCompanies(
+      "Pine Ridge",
+      [
+        {
+          ...hoaCompany,
+          documentNumber: "N10000000001",
+          entityName: "PINE RIDGE HOMEOWNERS ASSOCIATION, INC.",
+          principalAddress: { county: "Duval County" },
+        },
+        {
+          ...hoaCompany,
+          documentNumber: "N10000000002",
+          entityName: "PINE RIDGE COMMUNITY ASSOCIATION, INC.",
+          principalAddress: { county: "Orange" },
+        },
+      ],
+      { countyKey: "duval" },
+    );
+    expect(result.status).toBe("matched");
+    expect(result.matches[0].documentNumber).toBe("N10000000001");
+  });
+
+  it("stays not_unique when geography cannot disambiguate a collision", () => {
+    const result = findHoaCompanies(
+      "Pine Ridge",
+      [
+        {
+          ...hoaCompany,
+          documentNumber: "N10000000001",
+          entityName: "PINE RIDGE HOMEOWNERS ASSOCIATION, INC.",
+          principalAddress: { county: "Duval" },
+        },
+        {
+          ...hoaCompany,
+          documentNumber: "N10000000002",
+          entityName: "PINE RIDGE COMMUNITY ASSOCIATION, INC.",
+          principalAddress: {},
+        },
+      ],
+      { countyKey: "duval" },
+    );
+    expect(result.status).toBe("not_unique");
+  });
+
+  it("keeps a unique legacy match even when a different normalized candidate exists", () => {
+    const result = findHoaCompanies("FOO BAR UNIT 3A", [
+      {
+        ...hoaCompany,
+        documentNumber: "N11111111111",
+        entityName: "FOO BAR UNIT 3A HOMEOWNERS ASSOCIATION INC",
+      },
+      {
+        ...hoaCompany,
+        documentNumber: "N22222222222",
+        entityName: "FOO BAR HOMEOWNERS ASSOCIATION INC",
+      },
+    ]);
+    expect(result.status).toBe("matched");
+    expect(result.matches[0].documentNumber).toBe("N11111111111");
+  });
+
+  it("collapses duplicate ACTIVE filings with an identical normalized legal name", () => {
+    const result = findHoaCompanies("Villages of Westport", [
+      {
+        ...hoaCompany,
+        documentNumber: "L25000228020",
+        entityName: "VILLAGES OF WESTPORT HOMEOWNERS ASSOCIATION, INC.",
+      },
+      {
+        ...hoaCompany,
+        documentNumber: "N25000008620",
+        entityName: "VILLAGES OF WESTPORT HOMEOWNERS ASSOCIATION INC",
+      },
+    ]);
+    expect(result.status).toBe("matched");
+    expect(result.matches[0].documentNumber).toBe("L25000228020");
+  });
+
   it("fails closed when stripped subdivision names match multiple HOAs", () => {
     const result = findHoaCompanies("02944 BEACON HILLS & HARBOR 01", [
       {
@@ -108,10 +250,21 @@ describe("hoa-pm heuristic", () => {
     expect(result.status).toBe("no_sunbiz_hoa");
   });
 
+  it("rejects an INACTIVE Sunbiz association", () => {
+    const result = findHoaCompanies("Example Subdivision", [
+      { ...hoaCompany, status: "INACTIVE" },
+    ]);
+    expect(result.status).toBe("no_sunbiz_hoa");
+  });
+
   it("fails closed when two HOA companies match", () => {
     const result = findHoaCompanies("Example Subdivision", [
       hoaCompany,
-      { ...hoaCompany, documentNumber: "N999999" },
+      {
+        ...hoaCompany,
+        documentNumber: "N999999",
+        entityName: "EXAMPLE SUBDIVISION COMMUNITY ASSOCIATION INC",
+      },
     ]);
     expect(result.status).toBe("not_unique");
   });

@@ -133,6 +133,8 @@ export async function loadSunbizCompanies(sunbizExtractDir) {
         documentNumber: entity.documentNumber,
         entityName: entity.entityName,
         status: entity.status,
+        filedDate: entity.filedDate ?? null,
+        principalAddress: entity.principalAddress ?? null,
         registeredAgent: entity.registeredAgent ?? null,
       });
     }
@@ -180,11 +182,18 @@ export async function enrichQueryTableWithHoaPm({
   const objects = [];
   const stamped = [];
   const statusCounts = {};
+  const resolutionBySubdivision = new Map();
   for (const row of rows) {
-    const resolution = resolveHoaAndPropertyManagement({
-      subdivision: row.subdivision,
-      companies: sunbizCompanies,
-    });
+    const cacheKey = `${row.subdivision ?? ""}`;
+    let resolution = resolutionBySubdivision.get(cacheKey);
+    if (!resolution) {
+      resolution = resolveHoaAndPropertyManagement({
+        subdivision: row.subdivision,
+        companies: sunbizCompanies,
+        countyKey,
+      });
+      resolutionBySubdivision.set(cacheKey, resolution);
+    }
     statusCounts[resolution.status] = (statusCounts[resolution.status] ?? 0) + 1;
     if (resolution.hoa) objects.push(resolution.hoa);
     if (resolution.hoaCompany) objects.push(resolution.hoaCompany);
