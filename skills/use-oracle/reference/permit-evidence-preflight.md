@@ -166,8 +166,26 @@ scope. For Florida, use Sunbiz as the official corporate registry and DBPR as th
 official contractor licensing authority. For another state, name equivalent official
 authorities in the source profile and apply the same gates.
 
-Start registry ingestion before permit identity matching. Permit capture may proceed in
-parallel, but do not auto-resolve an edge until both registry prerequisites pass.
+Run these four steps in order. There is no parallel path and no alternate order.
+
+1. **Pre-populate the identity network first.** Load and reconcile the official corporate
+   registry and the official licensing registry — legal companies, license numbers,
+   licensees/qualifiers, and qualified-business relationships with effective dates — so the
+   official records already exist before any permit is ingested.
+2. **Ingest permit data second.** Permits are a loose set and frequently omit the license
+   number. Capture them raw and unmodified, including the omission.
+3. **Resolve identity against the pre-populated records.** A license number carried on the
+   permit is deterministic. When it is omitted, match the company name plus the licensed
+   individual's (qualifier's) name against the pre-populated identity records under the
+   unique-candidate and temporal rules in the ladder below.
+4. **Stamp the resolved identity as permit edges** so later queries traverse IDs instead of
+   regex over raw names and license text.
+
+Do not begin a county's permit harvest while step 1 is unloaded or unreconciled. If the
+licensing snapshot cannot be obtained, record the capability gap, leave identity
+unresolved, and keep the ordering — a missing licensing registry never authorizes
+harvesting permits first, resolving from permit text alone, or treating corporate-registry
+enrichment after permits as the default path.
 
 ### Use the supported identity vocabulary
 
@@ -213,7 +231,8 @@ cannot retain and reconcile that provenance, record
 
 ### Pass the registry prerequisite gate
 
-Before automatic resolution, require:
+This gate belongs to step 1. Clear items 1 and 2 before permit harvest begins, and item 3
+before any resolution attempt:
 
 1. A loaded, reconciled Sunbiz snapshot containing `companies`,
    `business_registrations`, document numbers, public filing roles, source record keys,
@@ -236,8 +255,12 @@ business, and effective relationship dates. Do not substitute BBB, a permit port
 Sunbiz, a search engine, or name similarity for DBPR.
 
 If either registry snapshot is missing, stale for the requested as-of decision, capped,
-unreconciled, or unsupported, record the exact gap and do not auto-link. Continue raw
-permit ingestion and bounded official-source preparation.
+unreconciled, or unsupported, record the exact gap, disable automatic linking, and drive
+the bounded official-source or named records request for it. The identity-baseline step
+must reach a terminal state — loaded and reconciled, or an explicitly recorded capability
+gap with resolution disabled — before the permit harvest step starts. Permits captured
+under a recorded gap stay raw: omitted licenses stay omitted and every identity edge stays
+unresolved until the registry evidence arrives.
 
 ### Preserve the permit extraction contract
 
@@ -319,6 +342,11 @@ After a company outcome passes, write only these supported edges:
 If contractor-role contacts resolve to different companies, retain valid contact-level
 edges and leave the permit-level edge null with outcome `conflicting`. Never write
 `permit_contacts.person_id` from name-only evidence.
+
+Never write an inferred or resolved license into raw `permit_contacts.license_number`. An
+omitted permit license stays omitted; the verified license identity lives only in the
+immutable resolution ledger until a reviewed migration adds a canonical license entity and
+permit-license edge.
 
 Before writing, require:
 
