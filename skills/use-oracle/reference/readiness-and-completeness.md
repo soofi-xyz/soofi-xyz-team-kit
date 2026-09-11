@@ -254,7 +254,8 @@ counts, dashboard labels, or pilot success.
 Never set `oracle_dataset_coverage.expected_count` as if a source were complete unless these
 gates pass for that source. Reputation/places gaps (BBB, places) must not silently change
 core permit-capture completeness. Identity-baseline gaps (Sunbiz, DBPR) block automatic
-identity edges and must be reported as such.
+identity edges and enqueue official-source acquisition; they are not a terminal wait
+and do not authorize permit harvest first.
 
 ## Publish fail-closed
 

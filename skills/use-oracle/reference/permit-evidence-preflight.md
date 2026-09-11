@@ -182,10 +182,14 @@ Run these four steps in order. There is no parallel path and no alternate order.
    regex over raw names and license text.
 
 Do not begin a county's permit harvest while step 1 is unloaded or unreconciled. If the
-licensing snapshot cannot be obtained, record the capability gap, leave identity
-unresolved, and keep the ordering — a missing licensing registry never authorizes
-harvesting permits first, resolving from permit text alone, or treating corporate-registry
-enrichment after permits as the default path.
+DBPR snapshot is inadequate, acquire official Florida DBPR data next — same class of work
+as `sunbiz-corporate-ingest`. If no dedicated DBPR skill exists yet, still execute official
+public records/downloads at conservative rate, write a private snapshot with
+provenance/digests, load supported tables, and record remaining schema gaps without
+inventing SID or license-entity fields. Missing DBPR is not a terminal recorded gap and
+never authorizes harvesting permits first, resolving from permit text alone, or treating
+corporate-registry enrichment after permits as the default path. Permits wait until DBPR
+is adequate or the operator explicitly aborts.
 
 ### Use the supported identity vocabulary
 
@@ -237,30 +241,35 @@ before any resolution attempt:
 1. A loaded, reconciled Sunbiz snapshot containing `companies`,
    `business_registrations`, document numbers, public filing roles, source record keys,
    snapshot time, artifact digest, and freshness state.
-2. A loaded, reconciled official DBPR snapshot containing normalized contractor license
-   numbers, license status, qualifier identity evidence, qualified-business
-   relationships, relationship effective dates, source record keys, snapshot time,
-   artifact digest, and freshness state.
+2. An **adequate** official DBPR snapshot: official source, loaded, reconciled, dated,
+   and covering the ingest window with licenses, qualifier/person relationships,
+   qualified-business relationships, status, and effective dates, plus source record keys,
+   snapshot time, and artifact digest. Missing, stale, unreconciled, empty, BBB-only, or
+   name-only contractor lists are not adequate.
 3. A documented as-of rule proving the snapshots and effective periods support the
    permit attribution date. A current snapshot without relationship history does not
    prove a historical company relationship.
 
-Sunbiz is authoritative for Florida legal entities, document numbers, and public filing
-roles. It is not the licensing authority and does not provide DBPR license IDs. A named
-Sunbiz officer, registered agent, or other party is not a canonical individual identity
-solely because the name appears in a filing.
+Sunbiz is first among identity sources and is authoritative for Florida legal entities,
+document numbers, and public filing roles. It is not the licensing authority and does not
+provide DBPR license IDs. A named Sunbiz officer, registered agent, or other party is not
+a canonical individual identity solely because the name appears in a filing.
 
-DBPR is authoritative for contractor license number, status, qualifier, qualified
-business, and effective relationship dates. Do not substitute BBB, a permit portal,
-Sunbiz, a search engine, or name similarity for DBPR.
+DBPR is not optional. It is authoritative for contractor license number, status,
+qualifier, qualified business, and effective relationship dates. Do not substitute BBB, a
+permit portal, Sunbiz, a search engine, or name similarity for DBPR.
 
-If either registry snapshot is missing, stale for the requested as-of decision, capped,
-unreconciled, or unsupported, record the exact gap, disable automatic linking, and drive
-the bounded official-source or named records request for it. The identity-baseline step
-must reach a terminal state — loaded and reconciled, or an explicitly recorded capability
-gap with resolution disabled — before the permit harvest step starts. Permits captured
-under a recorded gap stay raw: omitted licenses stay omitted and every identity edge stays
-unresolved until the registry evidence arrives.
+On ingest or re-ingest: if Sunbiz is inadequate, run `sunbiz-corporate-ingest` next. If
+DBPR is inadequate, acquire the official snapshot next (dedicated skill if present;
+otherwise official DBPR public records/downloads at conservative rate). Load whatever
+supported tables exist; record remaining schema gaps without inventing SID or
+license-entity fields. Do not skip acquisition. Do not harvest permits until both
+registries are adequate or the operator explicitly aborts. If DBPR is already adequate,
+do not re-harvest it unless freshness is stale versus the as-of rule.
+
+Schema gaps (no generic `SID`, no canonical DBPR license entity, no permit-license FK)
+are not the same as a missing snapshot. Record schema gaps after loading supported
+tables. They do not disable the acquire stage.
 
 ### Preserve the permit extraction contract
 
@@ -410,7 +419,8 @@ eligibility.
 
 Require fixture and bounded integration tests proving:
 
-- missing/stale Sunbiz or DBPR snapshots block automatic linking;
+- missing/stale Sunbiz or inadequate DBPR snapshots block automatic linking and enqueue
+  official-source acquisition, never permit-first harvest;
 - exact DBPR license normalization resolves one license and rejects zero/multiple
   matches;
 - a license-to-business relationship is selected only inside its effective period;
@@ -597,6 +607,14 @@ one Sunbiz document and `companies.company_id`, then write a versioned company e
 
 **Correct:** “Keep both legal entities and licenses distinct. A name-only ‘Z Roofing’
 permit remains ambiguous without unique official qualifier and temporal evidence.”
+
+**Incorrect:** “DBPR is missing, so record `dbpr_snapshot_unavailable` and harvest
+permits anyway, or wait forever for a future skill.”
+
+**Correct:** “Fail the adequacy gate. Acquire the official Florida DBPR snapshot next.
+If no dedicated skill exists, download official public records at conservative rate,
+write a private snapshot with provenance, load supported tables, and keep permits
+waiting until the snapshot is adequate or the operator aborts.”
 
 **Incorrect:** “Write the verified DBPR license into `business_reputation_license_id`
 and call it the permit's license edge.”

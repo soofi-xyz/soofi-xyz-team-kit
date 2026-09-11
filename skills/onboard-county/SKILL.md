@@ -111,17 +111,22 @@ Track progress in the county's findings doc (PR'd to `Counties-trasform-scripts`
    100% field coverage vs raw captures; log lexicon gaps. Gate: do not scale before this
    passes. (Authoring new handlers: `transform-v2-builder`.)
 6. **Identity baseline FIRST** — pre-populate official companies before any permit harvest.
-   Drive `sunbiz-corporate-ingest` for Florida legal entities and `document_number`. Load
-   the official DBPR snapshot for license numbers, qualifiers, and qualified-business
-   relationships with effective dates. Sunbiz is not a licensing source. No bundled skill
-   ingests DBPR: treat that snapshot as a required prerequisite, record
-   `dbpr_snapshot_unavailable` if missing, do not auto-link, and do not skip or move this
-   stage after permits.
+   Drive `sunbiz-corporate-ingest` for Florida legal entities and `document_number`. Then
+   apply the fail-closed DBPR adequacy gate: official, loaded, reconciled, dated coverage
+   of licenses, qualifier/person relationships, qualified-business relationships, status,
+   and effective dates for the ingest window. Missing, stale, unreconciled, empty,
+   BBB-only, or name-only lists are not adequate. If inadequate, acquire the official
+   Florida DBPR snapshot next (same class as Sunbiz). If no dedicated DBPR skill exists
+   yet, still execute official public records/downloads at conservative rate, write a
+   private snapshot with provenance/digests, load supported tables, and record remaining
+   schema gaps without inventing SID/license-entity fields. Permits wait until DBPR is
+   adequate or the operator explicitly aborts. If adequate, do not re-harvest DBPR unless
+   freshness is stale versus the as-of rule. Sunbiz is first among identity sources; DBPR
+   is not optional and is never moved after permits.
 7. **Permit adapter** — `county-permit-adapter`: per-vendor module in `PermitHarvest`,
    local tests, single-parcel smoke test. Adapter scaffolds may start during discovery;
-   do not harvest permits for the county until step 6 is loaded and reconciled (or the
-   licensing gap is recorded and resolution is disabled). Service changes: see
-   `durable-workflow-builder`.
+   do not harvest permits for the county until step 6's Sunbiz load and adequate DBPR
+   snapshot are loaded and reconciled. Service changes: see `durable-workflow-builder`.
 8. **Pilot run** — `county-ingest-run` §pilot: ~25 parcels end-to-end **after** the
    identity baseline. Verify every artifact class plus DB rows, including residential-skip
    and permit-less paths. Capture permits raw; preserve omitted licenses. Apply the
@@ -206,7 +211,8 @@ Record each PR URL in the findings doc.
   anything else.
 - Prioritize commercial properties when asked: sort the seed CSV; the eligibility branch
   already limits permit harvest to commercial/industrial usage types.
-- Identity baseline before permits, every time. Pre-populate Sunbiz legal entities plus
-  the official DBPR licensing snapshot, harvest permits second (raw), then resolve and
-  stamp `companies.company_id` edges. Do not harvest permits first, in parallel with
-  those registries, or treat Sunbiz/BBB as the identity method.
+- Identity baseline before permits, every time. Sunbiz first, then fail-closed DBPR
+  adequacy; acquire official DBPR if inadequate. Harvest permits second (raw), then
+  resolve and stamp `companies.company_id` edges. Do not harvest permits first, in
+  parallel with those registries, treat missing DBPR as a forever gap, or treat
+  Sunbiz/BBB as the licensing method.

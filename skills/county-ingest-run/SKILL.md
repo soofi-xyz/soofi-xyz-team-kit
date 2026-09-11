@@ -8,10 +8,13 @@ metadata: {"author":"elephant-xyz"}
 Prerequisites: `bootstrap-oracle-infra` checks pass; appraisal onboarding, transform
 validation, and the permit adapter are done for the county. Before any permit harvest
 (pilot or full `PermitFeed`), load and reconcile the identity baseline: Sunbiz legal
-entities plus the official DBPR licensing snapshot. Adapter build may already exist;
-harvesting permits first or in parallel with those registries is not allowed. A missing
-DBPR snapshot is a recorded capability gap that disables auto-linking and does not
-authorize reordering.
+entities first, then a fail-closed adequate official DBPR snapshot (licenses,
+qualifier/person relationships, qualified-business relationships, status, and effective
+dates covering the ingest window). Adapter build may already exist; harvesting permits
+first or in parallel with those registries is not allowed. If DBPR is missing, stale,
+unreconciled, empty, BBB-only, or name-only, acquire the official snapshot next — do not
+treat that as a terminal recorded gap and do not start `PermitFeed` until DBPR is
+adequate or the operator explicitly aborts.
 
 Run parameters (county slug, jobId, pilot vs full scope, seed CSV) come from the
 `onboard-county` intake — don't re-ask what's already established. If entered directly

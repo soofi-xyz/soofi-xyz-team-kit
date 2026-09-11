@@ -8,7 +8,9 @@ metadata: {"author":"elephant-xyz"}
 Sunbiz is STATEWIDE Florida data — the pipeline is fully reusable across FL counties.
 Sunbiz is the official corporate registry (legal entities / `document_number`). It does
 not issue contractor licenses and is not a substitute for DBPR. Load and reconcile this
-snapshot as identity baseline **before** the county's permit harvest. County ZIP scope
+snapshot as identity baseline **before** the county's permit harvest. After Sunbiz,
+apply the DBPR adequacy gate and acquire official DBPR if inadequate — Sunbiz is first
+among identity sources, not a substitute for licensing. County ZIP scope
 comes from the validated county profile under
 `skills/use-oracle/runtime/src/counties/`; do not pass an ad hoc production ZIP list.
 

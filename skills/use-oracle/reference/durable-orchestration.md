@@ -245,8 +245,9 @@ does not issue contractor licenses.
 
 BBB, reviews, complaints, and `overture-places-ingest` are reputation/context enrichment
 (`bbb-harvest`, `overture-places-ingest`). Their absence must not silently change core
-permit-capture completeness. Report their coverage separately. Missing Sunbiz/DBPR blocks
-automatic permit identity linking and does not authorize harvesting permits first.
+permit-capture completeness. Report their coverage separately. Inadequate Sunbiz/DBPR
+blocks automatic permit identity linking and enqueues official-source acquisition next;
+it does not authorize harvesting permits first or recording a forever gap.
 
 Official API and public-site scrape are different sources. Run any BBB public-site browser
 on approved AWS-managed remote compute with US egress, never on the operator's machine. The

@@ -73,13 +73,11 @@ order for every county; there is no alternate order and no parallel permit path:
 
 1. **Parcel backbone** — appraisal/property capture plus lexicon transform. This produces
    the seed CSV and property records that everything else hangs off.
-2. **Identity baseline, pre-populated first** — load and reconcile the official corporate
-   registry and the official contractor-licensing registry so the companies, licenses, and
-   qualifiers already exist before any permit is ingested. In Florida that is
-   `sunbiz-corporate-ingest` for legal entities and `document_number`, plus an official
-   **DBPR** snapshot for license numbers, licensees/qualifiers, qualified-business
-   relationships, and their effective dates. Sunbiz is the corporate registry only; it
-   does not issue contractor licenses and contains no license IDs.
+2. **Identity baseline, pre-populated first** — Sunbiz first (`sunbiz-corporate-ingest`
+   for legal entities and `document_number`), then fail-closed adequate official **DBPR**
+   (licenses, qualifier/person relationships, qualified-business relationships, status,
+   effective dates). If DBPR is inadequate, acquire it next. Sunbiz is the corporate
+   registry only; it does not issue contractor licenses.
 3. **Permit harvest, second** — `county-permit-adapter` then `county-ingest-run`. Permits
    are a loose set that frequently omits license numbers, which is exactly why the identity
    baseline must already be loaded.
@@ -99,11 +97,20 @@ BBB and Overture places are reputation/context enrichment that runs after the ab
 are never license, qualifier, or corporate-identity evidence, and permit harvest followed by
 Sunbiz enrichment is not a valid path.
 
-No bundled skill ingests DBPR. Treat the official DBPR snapshot load as a **required
-prerequisite**: when it is missing, record the capability gap
-(`dbpr_snapshot_unavailable`), do not auto-link any permit identity, and still keep the
-identity-baseline stage ahead of permit harvest. A missing DBPR snapshot never authorizes
-reordering.
+On every county ingest or re-ingest, apply a **fail-closed DBPR adequacy gate**, then
+acquire if needed. A DBPR snapshot is adequate only if it is official, loaded,
+reconciled, dated, and includes licenses, qualifier/person relationships,
+qualified-business relationships, status, and effective dates covering the ingest window.
+Missing, stale, unreconciled, empty, BBB-only, or name-only contractor lists are **not**
+adequate. If inadequate: do not skip, do not wait forever, and do not harvest permits.
+Acquire the official Florida DBPR snapshot next (same class of work as
+`sunbiz-corporate-ingest`). If no dedicated DBPR skill exists yet, still execute this
+stage from official DBPR public records/downloads at conservative rate; write a private
+snapshot with provenance/digests; load whatever supported tables exist; record remaining
+schema gaps without inventing SID or license-entity fields. Permits wait until the
+snapshot is adequate or the operator explicitly aborts. If adequate: do not re-harvest
+DBPR unless freshness is stale versus the as-of rule; proceed to permit harvest second.
+Sunbiz remains first among identity sources, but DBPR is not optional.
 
 Lee County, FL is the first full implementation. Oracle is the named entry point that runs
 these stages; it never re-implements a stage.
@@ -150,7 +157,7 @@ PR'd to `Counties-trasform-scripts/<county>/docs/` as discovery already requires
 | `county-appraisal-onboarding` | Browser flow, per-county prepare queue, transform-script wiring |
 | `validate-county-transform` | Prove transforms extract 100% of available data across variability |
 | `sunbiz-corporate-ingest` | **Identity baseline, before permits.** Official Florida corporate registry: legal entities and `document_number`. Not a licensing source |
-| official DBPR snapshot load | **Identity baseline, before permits.** Official contractor licenses, licensees/qualifiers, qualified-business relationships and effective dates. No bundled skill yet — required prerequisite, record the gap if unavailable |
+| official DBPR snapshot load | **Identity baseline, before permits.** Adequacy gate then acquire: licenses, qualifiers/persons, qualified-business relationships, status, and effective dates. If no dedicated skill, still acquire from official DBPR public records; load supported tables; record schema gaps without inventing SID/license-entity fields |
 | `county-permit-adapter` | Build the county permit-portal harvester (Accela template + generic path) — only after the identity baseline is loaded and reconciled |
 | `county-ingest-run` | Deploy/start the backpressure-aware seed feeder — only after readiness PASS and, for permits, after the identity baseline |
 | `monitoring-county-ingestion` | **Local stack:** queue/invocation health, artifact counts, DB counts, ETAs |
@@ -185,12 +192,11 @@ discovery or scaffolding:
 4. **Open blocker routes:** for CAPTCHA, login, prohibited automation, custodian-only
    access, or unavailable exports, classify the state and prepare the named API or records
    request from `reference/request-routing.md` immediately.
-5. **Pre-populate the identity registries:** run the official corporate-registry load
-   (`sunbiz-corporate-ingest` for Florida) and the official licensing/qualified-business
-   snapshot load, and prove their adapters, schema, and freshness. This stage finishes
-   before permit harvest starts; do not begin permit capture for the county while the
-   identity baseline is still unloaded or unreconciled. Record an explicit capability gap
-   when the licensing snapshot, entity, or edge is unsupported.
+5. **Pre-populate the identity registries:** run `sunbiz-corporate-ingest` for Florida,
+   then the DBPR adequacy gate. If DBPR is inadequate, acquire the official snapshot next
+   and finish that stage before permit harvest. Schema gaps (no SID, no license-entity
+   table) are recorded after loading supported tables; they do not authorize skipping
+   acquisition or harvesting permits first.
 
 The readiness gate blocks seed, pilots, adapter scale-out, and full ingestion. It does not
 block source enumeration, bounded probes, adapter implementation/fixtures, access setup,
@@ -219,7 +225,7 @@ bounded discovery; never implement against an assumed source.
 | 3 | Bounded source discovery + full jurisdiction/source enumeration | `county-discovery` |
 | 4 | Build the catalog and per-source permit capability/coverage matrix; prove the identity-registry routes, adapters, schema, and freshness; start required adapter fixtures/scaffolds; prove Neon, AWS BBB execution, and Filebase readiness | `docs/<county>-sources.yaml`, `reference/permit-evidence-preflight.md`, `sunbiz-corporate-ingest` when applicable, `county-permit-adapter`, `bootstrap-oracle-infra` |
 | 5–6 | County Readiness Preflight + exceptions | `county-readiness-preflight` validator; **STOP** before seed, pilots, or scale-out if any gate is `BLOCKED` |
-| 7 | **Pre-populate the identity baseline.** Load and reconcile the official corporate registry and the official contractor-licensing snapshot. Permit harvest for the county does not start until this stage completes or its capability gap is recorded | `sunbiz-corporate-ingest`, official DBPR snapshot load |
+| 7 | **Pre-populate the identity baseline.** Sunbiz first, then fail-closed DBPR adequacy. If inadequate, acquire official DBPR next. Permit harvest waits until DBPR is adequate or the operator aborts | `sunbiz-corporate-ingest`, official DBPR snapshot load |
 | 8 | Complete appraisal and permit adapters and run eligible pilots | `county-appraisal-onboarding`, `validate-county-transform`, `county-permit-adapter` |
 | 9 | **Harvest permits second**, then run the per-source permit evidence preflight, the identity resolver, and supported company-edge stamping | `county-ingest-run`, `reference/permit-evidence-preflight.md` |
 | 10 | Checkpointed load + reconcile, then reputation/context enrichment | `query-db-loading-matching`, `bbb-harvest`, `overture-places-ingest` |
@@ -256,9 +262,9 @@ Drive them while blocker owners handle `required_blocker_actions`.
 
 - **Full county:** invoke `onboard-county`. Answer intake once. Drive discovery and update
   `docs/<county>-sources.yaml` while the independent startup tracks run. **Run the
-  validator.** Only after PASS continue seed → appraisal → identity baseline (Sunbiz +
-  official DBPR) → permit harvest → preflight, resolver, and company-edge stamping →
-  load/reconcile → enrichment → publish. Example:
+  validator.** Only after PASS continue seed → appraisal → identity baseline (Sunbiz, then
+  fail-closed DBPR adequacy/acquire) → permit harvest → preflight, resolver, and
+  company-edge stamping → load/reconcile → enrichment → publish. Example:
 
   > Onboard Lee County, FL with the `onboard-county` skill. Start with a ~25-parcel pilot.
 
@@ -281,8 +287,8 @@ AWS URL:
 
 1. At intake, verify the Filebase credential is available to the eventual publish runtime,
    the target bucket is correct, and IPNS ownership is proven. Request missing access now.
-2. Load county data in the mandatory order: appraisal, identity baseline (Sunbiz plus the
-   official DBPR licensing snapshot), permits, then BBB enrichment.
+2. Load county data in the mandatory order: appraisal, identity baseline (Sunbiz first,
+   then adequate official DBPR), permits, then BBB enrichment.
 3. Keep `oracle_dataset_coverage` updated per `(county, source)`.
 4. After each load/index refresh window, run the query-table and coverage publish path.
    For an already-published county whose coverage pointer alone needs repair, use the
@@ -330,16 +336,19 @@ changes.
 - Run the permit evidence preflight before every permit-backed decision or publication.
   Preserve indexed vs live evidence, distinguish confirmed empty from unavailable, and
   drive only immutable, bounded, source-specific repairs.
-- Identity baseline first, permits second, every time. Load and reconcile the official
-  corporate registry and the official licensing/qualified-business snapshot before
-  harvesting the county's permits. Match a present license number deterministically;
-  otherwise match company name + licensed qualifier name against the pre-populated
-  identity records, unique candidate only, with DBPR qualification effective on the permit
-  attribution date. Stamp `companies.company_id` onto `permit_contacts.company_id` and, only
-  on unanimous contractor contacts, `property_improvements.contractor_company_id`. Never
-  write an inferred license into raw `permit_contacts.license_number`, and never invent a
-  generic SID. Report missing canonical license entities, license edges, or resolver
-  provenance as schema/capability gaps instead of inventing IDs.
+- Identity baseline first, permits second, every time. Sunbiz companies/`document_number`
+  first among identity sources, then fail-closed DBPR adequacy (official, loaded,
+  reconciled, dated coverage of licenses, qualifier/person relationships,
+  qualified-business relationships, status, and effective dates). If DBPR is inadequate,
+  acquire it next; do not treat missing DBPR as a terminal recorded gap or as permission
+  to harvest permits. Match a present license number deterministically; otherwise match
+  company name + licensed qualifier name against the pre-populated identity records,
+  unique candidate only, with DBPR qualification effective on the permit attribution date.
+  Stamp `companies.company_id` onto `permit_contacts.company_id` and, only on unanimous
+  contractor contacts, `property_improvements.contractor_company_id`. Never write an
+  inferred license into raw `permit_contacts.license_number`, and never invent a generic
+  SID. Report missing canonical license entities, license edges, or resolver provenance as
+  schema gaps after loading supported tables — not as a reason to skip DBPR acquisition.
 - Run until the requested scope reaches a terminal state in `continuous-ingestion.md`.
   Automatically advance successful stages, supervise durable workers, consume exact handoff
   manifests, and recover compatible stale work within its retry budget.

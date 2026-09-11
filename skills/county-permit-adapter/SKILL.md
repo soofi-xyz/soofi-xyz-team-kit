@@ -7,7 +7,8 @@ metadata: {"author":"elephant-xyz"}
 
 **Harvest order.** Build the vendor module as soon as the portal is fingerprinted.
 Do not start county permit harvest until the identity baseline (Sunbiz legal entities
-plus the official DBPR licensing snapshot) is loaded and reconciled. Capture contacts
+plus an **adequate** official DBPR licensing snapshot) is loaded and reconciled. If DBPR
+is inadequate, acquire it before harvest; do not start harvest under a recorded gap. Capture contacts
 raw; preserve omitted `license_number` values; never write an inferred DBPR license into
 raw `permit_contacts.license_number`; never stamp `companies.company_id` from portal
 name/regex matching. Identity resolution is
