@@ -8,6 +8,7 @@ import { zstdCompressSync, zstdDecompressSync } from "node:zlib";
 import { ParquetSchema, ParquetWriter } from "@dsnp/parquetjs";
 
 import { toParquetRecord } from "../core/query-table.mjs";
+import { isIpfsCid } from "./hoa-pm-object-publication.mjs";
 import { resolveHoaAndPropertyManagement, stampPropertyCids } from "./hoa-pm-heuristic.mjs";
 
 const require = createRequire(import.meta.url);
@@ -158,6 +159,90 @@ async function readQueryRows(parquetPath) {
   return rows;
 }
 
+export function hoaPmPropertyLinkKey(row) {
+  return JSON.stringify([
+    row.property_cid,
+    row.hoa_cid ?? null,
+    row.property_manager_cid ?? null,
+  ]);
+}
+
+async function readOfficialPropertyCids(parquetPath, parcelIdentifiers) {
+  const wanted = new Set(parcelIdentifiers);
+  const cids = new Map();
+  const reader = await ParquetReader.openFile(parquetPath);
+  try {
+    const cursor = reader.getCursor();
+    let row = await cursor.next();
+    while (row && cids.size < wanted.size) {
+      const parcelIdentifier = row.parcel_identifier ?? row.parcel_id;
+      if (wanted.has(parcelIdentifier) && isIpfsCid(row.property_cid)) {
+        cids.set(parcelIdentifier, row.property_cid);
+      }
+      row = await cursor.next();
+    }
+  } finally {
+    await reader.close();
+  }
+  return cids;
+}
+
+export async function readHoaPmPropertyLinks(
+  parquetPath,
+  officialParquetPath = null,
+) {
+  const rows = await readQueryRows(parquetPath);
+  const missingParcels = rows
+    .filter(
+      (row) =>
+        (row.hoa_cid || row.property_manager_cid) &&
+        !isIpfsCid(row.property_cid),
+    )
+    .map((row) => row.parcel_identifier);
+  const officialPropertyCids =
+    missingParcels.length > 0 && officialParquetPath
+      ? await readOfficialPropertyCids(officialParquetPath, missingParcels)
+      : new Map();
+  const links = new Map();
+  for (const row of rows) {
+    if (!row.hoa_cid && !row.property_manager_cid) continue;
+    const propertyCid = isIpfsCid(row.property_cid)
+      ? row.property_cid
+      : officialPropertyCids.get(row.parcel_identifier);
+    if (!isIpfsCid(propertyCid)) {
+      throw new Error(
+        `Matched HOA/PM row ${row.parcel_identifier ?? "<unknown>"} has invalid property_cid`,
+      );
+    }
+    for (const [field, value] of [
+      ["hoa_cid", row.hoa_cid],
+      ["property_manager_cid", row.property_manager_cid],
+    ]) {
+      if (value != null && !isIpfsCid(value)) {
+        throw new Error(
+          `Matched HOA/PM row ${row.parcel_identifier ?? "<unknown>"} has invalid ${field}`,
+        );
+      }
+    }
+    const linkedRow = { ...row, property_cid: propertyCid };
+    const key = hoaPmPropertyLinkKey(linkedRow);
+    links.set(key, {
+      key,
+      parcelIdentifier: row.parcel_identifier ?? null,
+      propertyCid,
+      hoaCid: row.hoa_cid ?? null,
+      propertyManagerCid: row.property_manager_cid ?? null,
+    });
+  }
+  return {
+    rowCount: rows.length,
+    matchedRowCount: rows.filter(
+      (row) => row.hoa_cid || row.property_manager_cid,
+    ).length,
+    links: [...links.values()],
+  };
+}
+
 export async function enrichQueryTableWithHoaPm({
   countyKey,
   schemaFields,
@@ -303,6 +388,51 @@ export async function restampHoaPmQueryTable({
     rowCount: rows.length,
     hoaCidCount,
     propertyManagerCidCount,
+    outputParquetSha256: await sha256File(outputParquet),
+  };
+}
+
+export async function restampHoaPmPropertyCids({
+  inputParquet,
+  outputParquet,
+  publishedPropertyCidByParcel,
+}) {
+  const input = await inspectInputParquet(inputParquet);
+  const rows = await readQueryRows(inputParquet);
+  const writer = await ParquetWriter.openFile(
+    new ParquetSchema(
+      withHoaPmSchema(
+        input.schemaFields,
+        input.compressionByField,
+        input.defaultCompression,
+      ),
+    ),
+    outputParquet,
+  );
+  let matchedRowCount = 0;
+  try {
+    for (const row of rows) {
+      const restamped = { ...row };
+      if (row.hoa_cid || row.property_manager_cid) {
+        matchedRowCount += 1;
+        const published = publishedPropertyCidByParcel.get(
+          row.parcel_identifier,
+        );
+        if (!isIpfsCid(published)) {
+          throw new Error(
+            `Matched HOA/PM row ${row.parcel_identifier ?? "<unknown>"} has no published property CID`,
+          );
+        }
+        restamped.property_cid = published;
+      }
+      await writer.appendRow(toParquetRecord(restamped));
+    }
+  } finally {
+    await writer.close();
+  }
+  return {
+    rowCount: rows.length,
+    matchedRowCount,
     outputParquetSha256: await sha256File(outputParquet),
   };
 }

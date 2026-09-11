@@ -4,14 +4,14 @@
     {
       "countyKey": "broward-hoa-pm",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dk6mb5efisoifp0qdk3rcgcfoiarxs8boyazsct79c09814owrc",
-      "queryTableCid": "QmY8bpBydPPzdTDnudPWePCyBNitasqTdL6CsvmUwXLUNQ",
+      "queryTableCid": "QmVYunjHppM4Bs8K5J5jgJc8kCZgWReqADhzQhnb4uFHuJ",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dmfz3uiboalucubotcglsxyy84egvrbwzgya1gzztuhtmi8gnpp"
     },
     {
       "countyKey": "duval-hoa-pm",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dlz8wfk5f0e8fypn8vc58u5kes2a4cdauo4469anq03x9vx1i6y",
-      "queryTableCid": "QmfY6SpsH6PbPpTDrRzokxyG4YE58zz6ahUkDCnRrBTYvj",
+      "queryTableCid": "QmYMTp6D2WmJ3Vdwz33ZEVdeUMQ3BZiybrc31yEX1ULbdb",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dl0ebjpm9jzpc82um8ocoi4y7w4bmdnv8d3p0qlalqtyliwrqyu"
     },
@@ -53,14 +53,14 @@
     {
       "countyKey": "palm-beach-hoa-pm",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dicgs18vee4x9joam13mlohykbsackhxawi5tasb1lye7hljmqi",
-      "queryTableCid": "QmZViHVuAm9Y6ogLeg9qY7YkKF66U2e7hTC9B93ay2SqhH",
+      "queryTableCid": "QmTCQ3AqQCmU43ZEhLGZk5iZcgyJHgGeeWsdtuujmsjDW5",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dhud6orwbs2l4eby3lr5fdycvuzl6gix485c99acm3gxolsczaa"
     },
     {
       "countyKey": "pasco-hoa-pm",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5djfhl65fzob3ghicinqxiqzstgu70yfh4v0246y4x8kwy3tp5tg",
-      "queryTableCid": "QmeZESjgqGkQVN8ZrVv2fFH2bfcpt94RwDLx92bmWEaebk",
+      "queryTableCid": "Qmc7oYgB96isFUVQ6d4EjLd8wyFaGuV84zsRdUuD4Tnpyx",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dkihaqtcx17t56xk4tra6gbmnajxjfs0sb4mqksgnzoc5a14wlk"
     },
@@ -74,7 +74,7 @@
     {
       "countyKey": "polk-hoa-pm",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dijubgg2vg3cu8jnm5qe611rteggn8udjyskzvp2lv7d4k8gu0s",
-      "queryTableCid": "Qme2J6mYRNC8W2U15PWvM8yMZXAwgzNTUWEi9jQmLoer28",
+      "queryTableCid": "QmZ4RdzjVCwGGM5zYnQ555zHQsj8Xu4txgagiMxFKBJa8w",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5direilg2bjojjs6rkrsvgdu6qzw4kc2h8zqxrrn93ndxikxcybm"
     },
