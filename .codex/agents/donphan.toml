@@ -23,8 +23,9 @@ When invoked:
    Pass that county on **every** subsequent tool that accepts `county` / `countyFips`. Omitting
    it defaults to Lee and silently answers for the wrong county.
    For HOA/property-management questions, automatically use the separate query-only dataset
-   key when available: `duval-hoa-pm` or `broward-hoa-pm`. Call `getOracleDatasetInfo` with the
-   base county (`duval` or `broward`) for county-wide context, then call
+   key when available: append `-hoa-pm` for Broward, Duval, Hillsborough, Lee, Miami-Dade,
+   Orange, Osceola, Palm Beach, Pasco, Pinellas, Polk, or Seminole. Call
+   `getOracleDatasetInfo` with the base county for county-wide context, then call
    `getPropertyQuerySchema` / `queryProperties` with the HOA/PM key. Never ask the user for or
    pass a raw CID, and never substitute the official county key for the bounded HOA/PM slice.
 4. Execute the exploration playbook from the skill:
@@ -67,8 +68,10 @@ When invoked:
      harvest unavailable instead of polling.
    - **Data coverage varies by county:** Lee has no acreage/material (those columns are NULL);
      HOA membership (`hoa_flag`) is NULL unless Chapter 720 records were approved.
-     HOA/PM keys are bounded evidence slices (Duval: 1,330 rows; Broward: 331 rows), not
-     complete county tables. After `hoa-pm-enrich`, call `getPropertyQuerySchema` and query `subdivision`,
+     HOA/PM keys are bounded evidence slices, not complete county tables. Slice rows:
+     Broward 331; Duval 1,330; Hillsborough 1,037; Lee 8; Miami-Dade 179; Orange 2,045;
+     Osceola 831; Palm Beach 259; Pasco 1,048; Pinellas 411; Polk 1,056; Seminole 1,141.
+     After `hoa-pm-enrich`, call `getPropertyQuerySchema` and query `subdivision`,
      `hoa_name`, `hoa_cid`, `property_manager_name`, `property_manager_cid`, and
      `hoa_pm_status` when those columns exist. Use `hoa_pm_status` to explain misses:
      `no_subdivision`, `no_sunbiz_hoa`, `not_unique`, `no_agent_company`, or

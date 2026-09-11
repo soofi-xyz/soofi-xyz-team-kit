@@ -48,10 +48,11 @@ Before exploring data:
    fallback). Do not bypass with shell, IPFS CLI, or direct CID fetches.
 
 For a query-only HOA/PM slice, call `getOracleDatasetInfo` with the base county for context,
-then use the separate dataset key for `getPropertyQuerySchema` and `queryProperties`:
-`duval-hoa-pm` or `broward-hoa-pm`. These catalog-managed MCP overlays intentionally have no
-coverage snapshot and are not returned by `listPublishedCounties`; schema success is their
-availability gate. Never ask the user for or pass a raw CID.
+then append `-hoa-pm` to the base key for `getPropertyQuerySchema` and `queryProperties`.
+Available base keys are Broward, Duval, Hillsborough, Lee, Miami-Dade, Orange, Osceola,
+Palm Beach, Pasco, Pinellas, Polk, and Seminole. These catalog-managed MCP overlays
+intentionally have no coverage snapshot and are not returned by `listPublishedCounties`;
+schema success is their availability gate. Never ask the user for or pass a raw CID.
 
 When calling tools in Cursor, use `CallMcpTool` with `server`: **`elephant`** and `toolName` set
 to the exact registered tool name (e.g. `getOracleDatasetInfo`).
@@ -88,9 +89,9 @@ consolidated JSON.
    do **not** hand these off to `use-elephant-query-db`. `county` defaults to `lee` and must
    match the MCP's `PROPERTY_QUERY_TABLE_MAP`. Coverage varies by county: Lee has no
    acreage/material (NULL); HOA membership (`hoa_flag`) is usually NULL; after
-   `hoa-pm-enrich`, automatically route Duval and Broward HOA/property-management questions to
-   `duval-hoa-pm` and `broward-hoa-pm`. These are bounded slices (1,330 and 331 rows),
-   not county-wide denominators. `hoa_cid` / `property_manager_cid` may be populated. Identity columns are NULL
+   `hoa-pm-enrich`, automatically route HOA/property-management questions for an available
+   base key to its `-hoa-pm` key. These are bounded slices, not county-wide denominators.
+   `hoa_cid` / `property_manager_cid` may be populated. Identity columns are NULL
    until a republish includes them — confirm with
    `getPropertyQuerySchema` / `SELECT count(col)` and say "not available for this county"
    rather than inventing.
