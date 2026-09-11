@@ -2,9 +2,11 @@
 
 // New for this kit: `oracle-node`'s catalog has no concept of counties published to the
 // MCP env maps outside the canonical catalog. This kit needs one — currently
-// `santa-clara` — so `catalog/mcp-overlays.json` carries just the URL fields the MCP env
-// maps need for those counties, and this module merges them with the catalog-derived maps
-// from `print-mcp-env-maps.mjs`. Overlay entries never override a catalog entry: a
+// Santa Clara, the HOA/PM `<county>-hoa-pm` slices, and the OpenDoor identity overlays
+// (`clay`, `hernando`, `lake`, `manatee`, `marion`, `sarasota`, `st-johns`, `volusia`) —
+// so `catalog/mcp-overlays.json` carries just the URL fields the MCP env maps need for
+// those keys, and this module merges them with the catalog-derived maps from
+// `print-mcp-env-maps.mjs`. Overlay entries never override a catalog entry: a
 // countyKey must live in exactly one of the catalog or the overlay.
 
 import { readFile } from "node:fs/promises";

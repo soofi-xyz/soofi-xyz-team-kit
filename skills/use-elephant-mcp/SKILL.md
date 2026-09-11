@@ -64,7 +64,13 @@ to the exact registered tool name (e.g. `getOracleDatasetInfo`).
 
 **Pass `county` on every tool that accepts it.** Omitting it silently falls back to the default
 county (Lee) and answers the wrong question. `listPublishedCounties` returns the canonical
-catalog of counties the server can serve.
+catalog of counties the server can serve. Overlay counties (`clay`, `hernando`, `lake`,
+`manatee`, `marion`, `santa-clara`, `sarasota`, `st-johns`, `volusia`) are queryable
+through `PROPERTY_QUERY_TABLE_MAP` even when absent from that catalog. For those,
+`getOracleDatasetInfo` may return `source: "query-table"` and `publicationScope: null`;
+continue with `queryProperties`. Clay, Hernando, Lake, Manatee, Marion, Sarasota,
+St. Johns, and Volusia are targeted OpenDoor identity overlays (not full county rolls);
+every overlay row has `elephant_uuid` / `elephant_token`.
 
 ## Exploration playbook
 
@@ -97,7 +103,9 @@ consolidated JSON.
    `hoa-pm-enrich`, automatically route HOA/property-management questions for an available
    base key to its `-hoa-pm` key. These are bounded slices, not county-wide denominators.
    `hoa_cid` / `property_manager_cid` may be populated. Identity columns are NULL
-   until a republish includes them — confirm with
+   until a republish includes them, except the Clay, Hernando, Lake, Manatee, Marion,
+   Sarasota, St. Johns, and Volusia overlays where they are
+   populated on every row — confirm with
    `getPropertyQuerySchema` / `SELECT count(col)` and say "not available for this county"
    rather than inventing.
 2. **Dataset context** — `getOracleDatasetInfo` → county, `propertyCount`, freshness timestamps

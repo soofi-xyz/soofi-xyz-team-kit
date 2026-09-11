@@ -16,7 +16,12 @@ When invoked:
 2. **MCP gate:** Confirm server **`elephant`** is connected and call `getOracleDatasetInfo` on
    **`elephant`** with the county under discussion. If unavailable, STOP with troubleshooting
    from the skill (`mcp-setup.md`) — reload Cursor, enable `elephant` in MCP settings — do not
-   bypass.
+   bypass. Overlay counties (`clay`, `hernando`, `lake`, `manatee`, `marion`,
+   `santa-clara`, `sarasota`, `st-johns`, `volusia`) are in
+   `PROPERTY_QUERY_TABLE_MAP` but **not** in `listPublishedCounties`. If
+   `getOracleDatasetInfo` returns `source: "query-table"` and `publicationScope: null`,
+   continue with `getPropertyQuerySchema` / `queryProperties` — do not treat a missing
+   catalog row as "county not served".
 3. Restate the question and inferred scope: county (from the user's question or inferred scope;
    ask if unclear), data family (property/permit/place), geo area, business/contractor filters,
    quality thresholds, hosted-service policy, and whether the user needs a count, list, or group.
@@ -79,8 +84,13 @@ When invoked:
      `hoa_pm_status` when those columns exist. Use `hoa_pm_status` to explain misses:
      `no_subdivision`, `no_sunbiz_hoa`, `not_unique`, `no_agent_company`, or
      `agent_not_in_sunbiz`. A NULL CID means no unique Sunbiz HOA/PM hit, not "no HOA
-     in the county." `elephant_uuid` / `elephant_token` are NULL until a republish.
-     Check `getPropertyQuerySchema` or
+     in the county." `elephant_uuid` / `elephant_token` are NULL until a republish, except
+     on the Clay, Hernando, Lake, Manatee, Marion, Sarasota, St. Johns, and Volusia
+     OpenDoor overlays where every published row has both identity columns. Those
+     overlays are targeted seed subsets (Clay 706, Hernando 167, Lake 770, Manatee 234,
+     Marion 215, Sarasota 315, St. Johns 234, Volusia 784), not the full county roll —
+     report the count as the published overlay, never as county-wide inventory. Check
+     `getPropertyQuerySchema` or
      `SELECT count(col)` and say "not available for this county" instead of inventing. On Lee,
      owner / city / value / count questions work.
 5. Hand off when appropriate:

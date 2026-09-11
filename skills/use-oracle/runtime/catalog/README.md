@@ -47,6 +47,10 @@ Bounded HOA/PM evidence slices use distinct `<county>-hoa-pm` keys. Their query-
 CID fallback entries must never replace the base county key; official county keys remain
 reserved for full county publications.
 
+Targeted OpenDoor identity overlays currently include **`clay`**, **`hernando`**, **`lake`**,
+**`manatee`**, **`marion`**, **`sarasota`**, **`st-johns`**, and **`volusia`**, plus
+**`santa-clara`**. These are MCP overlays, not full catalog counties.
+
 Do not add a county to `mcp-overlays.json` if it already qualifies for the full catalog above —
 promote it into `published-counties.json` instead (`npm run catalog:update`).
 

@@ -62,7 +62,15 @@ describe("catalog self-containment (no oracle-node at runtime)", () => {
       "pinellas-hoa-pm",
       "polk-hoa-pm",
       "seminole-hoa-pm",
+      "clay",
+      "hernando",
+      "lake",
+      "manatee",
+      "marion",
       "santa-clara",
+      "sarasota",
+      "st-johns",
+      "volusia",
     ]);
   });
 
