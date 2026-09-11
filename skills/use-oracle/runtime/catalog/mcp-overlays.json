@@ -144,30 +144,35 @@
     {
       "countyKey": "clay",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dh0kg04p42xp3ncl2jig9to5quyfaoe2zxn59v1kvpd9opx7vej",
+      "queryTableCid": "QmYFhNUZSUGMAR3dRgQ21qqaMnQtH7jPPE1YfdJxpg3g5F",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
     {
       "countyKey": "hernando",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dkwvqnjz9nvbc7flec5mh45nbhbcag58xqcqdgyz29cnjkufejn",
+      "queryTableCid": "QmWvVCXsxJdcJGBdbAKvJaqMWg3QQMiuGVJLfK9LZHa9M7",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
     {
       "countyKey": "lake",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5di1mqi5em3e27fzl5dd5omxia9ygh6nvglwyvysgh7mf67sczee",
+      "queryTableCid": "QmWoRusP3Pwp2UiSfXHheANdiL43HYYARCxLEmkBcrKLMn",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
     {
       "countyKey": "manatee",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dgdkdaqjqcfbitxztes15d3xeijvoiw3c4qww2bn7y9r8156mrp",
+      "queryTableCid": "QmYFv7AAzvt751LeynfYJW3vVLPd3iRWB1Cai5T83wcG7W",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
     {
       "countyKey": "marion",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5di75mio2v7vrp4nma0pymqa9wi9g4btxuelq321lzzy7rpvbb16",
+      "queryTableCid": "QmfL23JxBU2iKqxKw6XiCyUFnM4R5xuKYgQ9E6te6C5qEM",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
@@ -180,18 +185,21 @@
     {
       "countyKey": "sarasota",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dkkb8cl537wonbqjb1jrulmd41wo5hwkgikfhbi01o1jjexbfpm",
+      "queryTableCid": "QmRhn3zmoCyAFQbDRydYMYQF27a48kn7kXtykZo7TMssyC",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
     {
       "countyKey": "st-johns",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dkedxzhpjiq4ej66oec16qh4undjp1gqc1lc1f9sowbxmcauy15",
+      "queryTableCid": "QmPCeVZU4e73h3S7y4FKHogGBn2hRkVHsVkeNPBti9tvmj",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
     {
       "countyKey": "volusia",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dhnd4vohzvanyz8d1olfz0bnc0god0r8uqgt6bjk3akmaryj85e",
+      "queryTableCid": "QmV9VjtzWiuQu7Finegy3UNW3cCD24Dou8nogtJEHAzeDS",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     }
