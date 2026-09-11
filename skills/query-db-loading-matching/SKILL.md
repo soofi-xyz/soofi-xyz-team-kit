@@ -261,6 +261,82 @@ The remaining floor is `ON CONFLICT` unique-index maintenance on the multi-GB ta
    a unique candidate. Do not write inferred licenses into raw
    `permit_contacts.license_number`.
 
+## Backfill permit company edges
+
+After the official corporate and licensing identity baseline is adequate, run the
+versioned resolver across already-ingested contractor-role contacts as well as newly
+captured contacts.
+
+- Write `permit_contacts.company_id` only for an accepted official-registry resolution.
+- Write `property_improvements.contractor_company_id` only when every contractor-role
+  contact on that permit resolves to the same company.
+- Preserve raw names, source payloads, and an omitted `license_number` exactly as
+  captured. Never fill the raw field from DBPR or another licensing authority.
+- Keep `unresolved`, `ambiguous`, and `conflicting` contacts unlinked. A different
+  resolver version or source-snapshot digest may supersede a prior result only through
+  the immutable resolution ledger.
+- Require idempotency: identical source hashes, registry snapshots, and resolver version
+  produce no new edge or ledger row. Reconcile evaluated contacts, accepted links,
+  unanimous permit links, conflicts, nulls, stale edges, and orphans.
+
+The bundled runtime's `src/permits/private-company-match.mjs` is not sufficient for this
+backfill: it uses BBB/name/phone candidates and write-if-null behavior without official
+licensing-authority temporal proof or a versioned immutable ledger. Do not run it as the
+authoritative resolver.
+
+## Company-edge index gate
+
+Verify both company foreign-key columns are indexed before the product rerun:
+
+```sql
+SELECT t.relname AS table_name, i.relname AS index_name,
+       pg_get_indexdef(ix.indexrelid) AS index_definition
+FROM pg_index ix
+JOIN pg_class t ON t.oid = ix.indrelid
+JOIN pg_class i ON i.oid = ix.indexrelid
+JOIN pg_namespace n ON n.oid = t.relnamespace
+WHERE n.nspname = 'public'
+  AND t.relname IN ('permit_contacts', 'property_improvements')
+  AND (
+    pg_get_indexdef(ix.indexrelid) LIKE '%(company_id)%'
+    OR pg_get_indexdef(ix.indexrelid) LIKE '%(contractor_company_id)%'
+  );
+```
+
+This plugin carries a Query-DB schema reference, not the owning Query-DB migrations.
+When either index is absent, record `permit_company_fk_index_missing` and have the Query
+DB operator run the existing live-safe pattern outside a transaction:
+
+```sql
+CREATE INDEX CONCURRENTLY IF NOT EXISTS permit_contacts_company_idx
+  ON public.permit_contacts (company_id)
+  WHERE company_id IS NOT NULL;
+CREATE INDEX CONCURRENTLY IF NOT EXISTS property_improvements_contractor_company_idx
+  ON public.property_improvements (contractor_company_id)
+  WHERE contractor_company_id IS NOT NULL;
+```
+
+Read back both definitions and run `ANALYZE public.permit_contacts;` and
+`ANALYZE public.property_improvements;`. Do not claim the performance gate passed from a
+foreign key alone; PostgreSQL does not automatically index referencing columns.
+
+## Rerun the product query
+
+After edge reconciliation and the index gate, follow
+`skills/use-oracle/reference/roof-age-and-identity-reingest.md`:
+
+1. select parcels and only roofing permits accepted by the frozen explicit-text work
+   classifier;
+2. traverse `permit_contacts.company_id` or unanimous
+   `property_improvements.contractor_company_id`;
+3. select other permits for those exact company UUIDs;
+4. calculate old-roof candidates from the county-neutral roof-age estimator.
+
+Regex/name/license-text searches are discovery inputs for unresolved repair candidates,
+never resolved product rows. Return accepted classifier IDs/version, resolver
+version/snapshot digests, edge/index reconciliation, old-roof confidence and historical
+coverage caveat, and unresolved/ambiguous/conflicting exclusions.
+
 ## Reconciliation gotchas (hard-won)
 
 - **`files` + `ownerships` merge LAST in `APPRAISAL_TABLE_ORDER`** — mid-load they read 0.

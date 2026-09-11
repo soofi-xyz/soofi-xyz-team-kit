@@ -6,10 +6,12 @@ metadata: {"author":"elephant-xyz"}
 # County Permit Adapter
 
 **Harvest order.** Build the vendor module as soon as the portal is fingerprinted.
-Do not start county permit harvest until the identity baseline (Sunbiz legal entities
-plus an **adequate** official DBPR licensing snapshot) is loaded and reconciled. If DBPR
-is inadequate, acquire it before harvest; do not start harvest under a recorded gap. Capture contacts
-raw; preserve omitted `license_number` values; never write an inferred DBPR license into
+Do not start county permit harvest until the identity baseline (official corporate
+registry plus an **adequate** official contractor-licensing snapshot) is loaded and
+reconciled. In Florida use `sunbiz-corporate-ingest` plus `dbpr-license-ingest`; elsewhere
+use the official equivalents named in the county profile. If licensing data is
+inadequate, acquire it before harvest; do not start under a recorded gap. Capture contacts
+raw; preserve omitted `license_number` values; never write an inferred license into
 raw `permit_contacts.license_number`; never stamp `companies.company_id` from portal
 name/regex matching. Identity resolution is
 `skills/use-oracle/reference/permit-evidence-preflight.md` after harvest.
@@ -139,6 +141,13 @@ When deep permit enrichment exceeds local single-IP bandwidth (e.g. 500k+ permit
    location, description, contractors, inspections, fees, related records). Extract
    everything visible; fields without a lexicon home stay in the payload (see
    `validate-county-transform` class-(c) policy).
+   - Preserve opened/application, issue, final-inspection, completion, and close dates as
+     separate fields with source labels. Never synthesize a missing date.
+   - Retain explicit source text used to classify primary-roof replacement/reroof, new
+     construction, repair/coating, gazebo/awning, or other accessory-roof work. An open
+     permit or a roof keyword alone is not proof of completed replacement.
+   - Capture every contact role/name/license omission and the immutable detail/contact
+     artifact digest needed by the versioned identity resolver.
 4. **Stable keys + resume** — deterministic artifact keys (`safeKeyPart()` for parcel
    ids), `skipExisting`/`skipCompleted` checks, and a per-parcel status JSON
    (`status/<folio>.json` — monitoring counts these against the eligible total). Work
