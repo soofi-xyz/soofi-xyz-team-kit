@@ -24,6 +24,7 @@ export const PUBLISHED_COUNTY_CATALOG_URL =
 /** Keys this script fully owns and rewrites on every sync, in their canonical order. */
 export const MANAGED_ENV_KEYS = [
   "PROPERTY_QUERY_TABLE_MAP",
+  "PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS",
   "PERMIT_QUERY_TABLE_MAP",
   "DATASET_COVERAGE_MAP",
   "PUBLISHED_COUNTY_CATALOG_URL",
@@ -66,6 +67,9 @@ export const DEFAULT_OVERLAY_PATH = resolve(
 export function buildManagedEnvEntries(maps) {
   return {
     PROPERTY_QUERY_TABLE_MAP: JSON.stringify(maps.PROPERTY_QUERY_TABLE_MAP),
+    PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS: JSON.stringify(
+      maps.PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS ?? {},
+    ),
     PERMIT_QUERY_TABLE_MAP: JSON.stringify(maps.PERMIT_QUERY_TABLE_MAP),
     DATASET_COVERAGE_MAP: JSON.stringify(maps.DATASET_COVERAGE_MAP),
     PUBLISHED_COUNTY_CATALOG_URL,

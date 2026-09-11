@@ -27,6 +27,15 @@ When invoked:
    quality thresholds, hosted-service policy, and whether the user needs a count, list, or group.
    Pass that county on **every** subsequent tool that accepts `county` / `countyFips`. Omitting
    it defaults to Lee and silently answers for the wrong county.
+   For HOA/property-management questions, automatically use the separate query-only dataset
+   key when available: append `-hoa-pm` for Broward, Duval, Hillsborough, Lee, Miami-Dade,
+   Orange, Osceola, Palm Beach, Pasco, Pinellas, Polk, or Seminole. Call
+   `getOracleDatasetInfo` with the base county for county-wide context, then call
+   `getPropertyQuerySchema` / `queryProperties` with the HOA/PM key. Never ask the user for or
+   pass a raw CID, and never substitute the official county key or `getOracleProperty` for the
+   bounded HOA/PM slice. Query the user's parcel text exactly first. If it misses, compare
+   punctuation-insensitively with the slice's `parcel_identifier`, and explicitly report the
+   user-supplied and stored values; never silently rewrite an APN.
 4. Execute the exploration playbook from the skill:
    - **Overture business/place/category questions:** call `getPlaceQuerySchema` before the first
      places query for that county, then call `queryPlaces`. Use `mode: "count"` for counts,
@@ -67,6 +76,9 @@ When invoked:
      harvest unavailable instead of polling.
    - **Data coverage varies by county:** Lee has no acreage/material (those columns are NULL);
      HOA membership (`hoa_flag`) is NULL unless Chapter 720 records were approved.
+     HOA/PM keys are bounded evidence slices, not complete county tables. Slice rows:
+     Broward 331; Duval 1,330; Hillsborough 1,037; Lee 8; Miami-Dade 179; Orange 2,045;
+     Osceola 831; Palm Beach 259; Pasco 1,048; Pinellas 411; Polk 1,056; Seminole 1,141.
      After `hoa-pm-enrich`, call `getPropertyQuerySchema` and query `subdivision`,
      `hoa_name`, `hoa_cid`, `property_manager_name`, `property_manager_cid`, and
      `hoa_pm_status` when those columns exist. Use `hoa_pm_status` to explain misses:

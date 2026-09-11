@@ -495,6 +495,7 @@ async function runHoaPmPublishCommand(argv) {
   const countyKey = requireStringFlag(flags, "county");
   const inputDir = requireStringFlag(flags, "input");
   const publication = requireQueryTablePublication(countyKey);
+  const datasetKey = `${countyKey}-hoa-pm`;
   const result = await publishFilebase(
     {
       county: countyKey,
@@ -502,8 +503,8 @@ async function runHoaPmPublishCommand(argv) {
       coveragePath: path.join(inputDir, "dataset-coverage.json"),
       hoaPmObjectsPath: path.join(inputDir, "objects", "hoa-pm-objects.jsonl"),
       bucket: publication.bucket,
-      queryTableIpnsLabel: publication.queryTableIpnsLabel,
-      coverageIpnsLabel: publication.coverageIpnsLabel,
+      queryTableIpnsLabel: `oracle-query-table-${datasetKey}`,
+      coverageIpnsLabel: `oracle-dataset-coverage-${datasetKey}`,
     },
     {
       dryRun: flags["dry-run"] === true,

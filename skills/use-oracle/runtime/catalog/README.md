@@ -14,9 +14,15 @@ npm run catalog:update --prefix skills/use-oracle/runtime -- \
   --state-code "FL" \
   --county-fips "12071" \
   --query-table-url "https://..." \
+  --query-table-cid "Qm..." \
   --dataset-coverage-url "https://..." \
   --updated-at "2026-07-24T00:00:00.000Z"
 ```
+
+Pass the immutable CID returned by the publish flow as `--query-table-cid`. If it is omitted,
+the catalog stores `null` and MCP has no immutable fallback for that county; it never retains
+the previous publication's CID. This makes a missing bump visible as a gateway failure instead
+of silently serving an obsolete schema.
 
 The updater reads back the public query table and coverage artifacts, verifies the coverage
 county identity, validates URLs and timestamps, rejects duplicate keys/FIPS codes, and sorts
@@ -28,16 +34,22 @@ this repository path. Until elephant-mcp’s default URL is retargeted, only cli
 `PUBLISHED_COUNTY_CATALOG_URL` (this kit’s `mcp.json`) read this file; see
 [`docs/elephant-source-repos.md`](../../../../../docs/elephant-source-repos.md).
 
-## `mcp-overlays.json` — counties outside the catalog
+## `mcp-overlays.json` — query datasets outside the county catalog
 
-Some counties are published to the Elephant MCP property/permit query-table maps without (yet)
-meeting the bar for the canonical catalog above — currently **`santa-clara`** plus the
-targeted OpenDoor identity overlays **`clay`**, **`hernando`**, **`lake`**, **`manatee`**,
-**`marion`**, **`sarasota`**, **`st-johns`**, and **`volusia`**. These live
-in `mcp-overlays.json`, a small, separate file with just the fields the MCP env maps need
-(`queryTableUrl`, `permitQueryTableUrl`, `datasetCoverageUrl`, any of which may be `null`).
-Overlay counties are **not** returned by `listPublishedCounties` and do not count toward
-`DATASET_COVERAGE_MAP` unless they also carry a `datasetCoverageUrl`.
+Some query datasets must be addressable through Elephant MCP without replacing an official
+county table or claiming full county publication. These live in `mcp-overlays.json`, a small,
+catalog-managed file with the fields the MCP env maps need (`queryTableUrl`, optional
+`queryTableCid`, `permitQueryTableUrl`, and `datasetCoverageUrl`). Overlay keys are **not**
+returned by `listPublishedCounties` and do not count toward `DATASET_COVERAGE_MAP` unless they
+also carry a `datasetCoverageUrl`.
+
+Bounded HOA/PM evidence slices use distinct `<county>-hoa-pm` keys. Their query-table and
+CID fallback entries must never replace the base county key; official county keys remain
+reserved for full county publications.
+
+Targeted OpenDoor identity overlays currently include **`clay`**, **`hernando`**, **`lake`**,
+**`manatee`**, **`marion`**, **`sarasota`**, **`st-johns`**, and **`volusia`**, plus
+**`santa-clara`**. These are MCP overlays, not full catalog counties.
 
 Do not add a county to `mcp-overlays.json` if it already qualifies for the full catalog above —
 promote it into `published-counties.json` instead (`npm run catalog:update`).
@@ -45,8 +57,9 @@ promote it into `published-counties.json` instead (`npm run catalog:update`).
 ## Regenerating the root `mcp.json` env maps
 
 `scripts/catalog/sync-mcp-json.mjs` merges `published-counties.json` and `mcp-overlays.json`
-into `PROPERTY_QUERY_TABLE_MAP`, `PERMIT_QUERY_TABLE_MAP`, and `DATASET_COVERAGE_MAP`, then
-writes them directly into the repo-root `mcp.json`'s `mcpServers.elephant.env`, alongside a
+into `PROPERTY_QUERY_TABLE_MAP`, `PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS`,
+`PERMIT_QUERY_TABLE_MAP`, and `DATASET_COVERAGE_MAP`, then writes them directly into the
+repo-root `mcp.json`'s `mcpServers.elephant.env`, alongside a
 `PUBLISHED_COUNTY_CATALOG_URL` pointing at this file's raw GitHub URL. It preserves every other
 env key (`ORACLE_OPEN_DATA_*`, `ORACLE_GEO_INDEX_IPNS`) and the bash/npx MCP launcher untouched.
 

@@ -2,10 +2,11 @@
 
 // New for this kit: `oracle-node`'s catalog has no concept of counties published to the
 // MCP env maps outside the canonical catalog. This kit needs one — currently
-// `santa-clara`, `clay`, `hernando`, `lake`, `manatee`, `marion`, `sarasota`,
-// `st-johns`, and `volusia` — so `catalog/mcp-overlays.json` carries just the URL fields the MCP env
-// maps need for those counties, and this module merges them with the catalog-derived maps
-// from `print-mcp-env-maps.mjs`. Overlay entries never override a catalog entry: a
+// Santa Clara, the HOA/PM `<county>-hoa-pm` slices, and the OpenDoor identity overlays
+// (`clay`, `hernando`, `lake`, `manatee`, `marion`, `sarasota`, `st-johns`, `volusia`) —
+// so `catalog/mcp-overlays.json` carries just the URL fields the MCP env maps need for
+// those keys, and this module merges them with the catalog-derived maps from
+// `print-mcp-env-maps.mjs`. Overlay entries never override a catalog entry: a
 // countyKey must live in exactly one of the catalog or the overlay.
 
 import { readFile } from "node:fs/promises";
@@ -18,6 +19,7 @@ import { mcpEnvMapsFromCatalog, stringifyMcpEnvMaps } from "./print-mcp-env-maps
  * @typedef {object} McpOverlayCounty
  * @property {string} countyKey
  * @property {string | null} [queryTableUrl]
+ * @property {string | null} [queryTableCid]
  * @property {string | null} [permitQueryTableUrl]
  * @property {string | null} [datasetCoverageUrl]
  */
@@ -35,9 +37,8 @@ import { mcpEnvMapsFromCatalog, stringifyMcpEnvMaps } from "./print-mcp-env-maps
  * @returns {ReturnType<typeof mcpEnvMapsFromCatalog>}
  */
 export function mcpEnvMapsFromOverlay(overlay) {
-  // The overlay's per-county shape is a strict subset of the catalog's per-county shape
-  // (only the three URL fields the env maps read), so the catalog mapper can build the
-  // overlay maps too.
+  // The overlay's per-dataset shape is a strict subset of the catalog's shape, so the
+  // catalog mapper can build both stable URL maps and immutable CID fallbacks.
   return mcpEnvMapsFromCatalog(overlay);
 }
 
@@ -77,6 +78,7 @@ export function mergeMcpEnvMaps(catalogMaps, overlayMaps) {
   const merged = {};
   for (const field of [
     "PROPERTY_QUERY_TABLE_MAP",
+    "PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS",
     "PERMIT_QUERY_TABLE_MAP",
     "DATASET_COVERAGE_MAP",
   ]) {

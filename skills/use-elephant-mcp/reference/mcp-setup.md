@@ -47,7 +47,9 @@ SQL counts/filters via `queryProperties` work for every county in the bundled
 
 Do not hand-edit the county maps in `mcp.json`. They are derived from this kit's bundled
 published-county catalog (`skills/use-oracle/runtime/catalog/published-counties.json`) plus the
-small overlay of counties published outside the catalog (currently `santa-clara`, `clay`, `hernando`, `lake`, `manatee`, `marion`, `sarasota`, `st-johns`, and `volusia`, in
+small overlay of query datasets published outside the catalog (HOA/PM `<county>-hoa-pm`
+slices, `santa-clara`, and the OpenDoor identity overlays `clay`, `hernando`, `lake`,
+`manatee`, `marion`, `sarasota`, `st-johns`, and `volusia`, in
 `skills/use-oracle/runtime/catalog/mcp-overlays.json`). Regenerate `mcp.json` directly with:
 
 ```bash
@@ -116,7 +118,7 @@ teammates rely on.
 | `OPENAI_API_KEY` | `getVerifiedScriptExamples` (OpenAI path) | **Not in bundled config** — add manually only when set; empty value crashes startup |
 | `AWS_REGION` | Bedrock embeddings | `us-east-1` |
 | AWS credential chain | Bedrock when no OpenAI key | IAM role, env vars, or `~/.aws/credentials` |
-| `PROPERTY_QUERY_TABLE_MAP` | `queryProperties`, `getPropertyQuerySchema`, geo tools (SQL over open Parquet) | Bundled — every county in Oracle's published catalog, plus **santa-clara**, **clay**, **hernando**, **lake**, **manatee**, **marion**, **sarasota**, **st-johns**, and **volusia** |
+| `PROPERTY_QUERY_TABLE_MAP` | `queryProperties`, `getPropertyQuerySchema`, geo tools (SQL over open Parquet) | Bundled — every county in Oracle's published catalog, plus HOA/PM `<county>-hoa-pm` slices, **santa-clara**, and the OpenDoor identity overlays **clay**, **hernando**, **lake**, **manatee**, **marion**, **sarasota**, **st-johns**, and **volusia** |
 | `PERMIT_QUERY_TABLE_MAP` | `queryPermits`, `getPermitQuerySchema`, `getPermitCoverage` (SQL over open permit Parquet) | Bundled — **broward**, **montgomery**, **rock-island**, **santa-clara** (the counties with a published permit table; add others as they publish) |
 | `DATASET_COVERAGE_MAP` | `getOracleDatasetInfo` coverage `datasets[]` | Bundled — every county with a published coverage snapshot |
 | `PUBLISHED_COUNTY_CATALOG_URL` | `listPublishedCounties`, `getPlaceQuerySchema`, `queryPlaces` | Bundled — set to this kit's own catalog raw-GitHub URL (`.../skills/use-oracle/runtime/catalog/published-counties.json`) so the server matches what this repo ships, instead of Oracle's upstream catalog default; places URLs are accepted only from non-null catalog `placesTableUrl` entries and validated as trusted HTTPS IPFS parquet URLs |

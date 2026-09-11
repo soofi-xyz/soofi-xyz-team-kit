@@ -29,24 +29,28 @@ the row-level hashes.
 
 ## Publication destination
 
-Use the existing shared query-table Filebase destination:
+Use the existing shared query-table Filebase bucket with a separate dataset namespace:
 
 - Bucket: `elephant-oracle-query-table` (shared by published counties; do
   not create a separate HOA/PM product bucket).
-- Enriched table key: `<county>/query-table.parquet`.
-- Enriched coverage key: `<county>/dataset-coverage.json`.
+- Enriched table key: `<county>/hoa-pm/query-table.parquet`.
+- Enriched coverage key: `<county>/hoa-pm/dataset-coverage.json`.
 - HOA/PM object bundle key: `<county>/hoa-pm/objects.jsonl`.
-- County-scoped labels: `oracle-query-table-<county>` and
-  `oracle-dataset-coverage-<county>`.
+- Never write HOA/PM slices to the official keys `<county>/query-table.parquet`
+  or `<county>/dataset-coverage.json`.
+- HOA/PM labels: `oracle-query-table-<county>-hoa-pm` and
+  `oracle-dataset-coverage-<county>-hoa-pm`.
 
 Always require the county in `runtime/catalog/published-counties.json`, then derive
-labels from that county key. Permit profiles do not control HOA/PM publication.
-Sharing the bucket does not mean sharing an IPNS name: never point one county's
-labels at another county's artifacts.
+the separate HOA/PM labels from that base county key. Permit profiles do not control
+HOA/PM publication. Never update `oracle-query-table-<county>` or
+`oracle-dataset-coverage-<county>` from this bounded enrichment path: those official
+labels remain reserved for the full county publication.
 
 The HOA/PM object bundle is CID-linked from the enriched query table and shares the
-county's existing bucket under the county-scoped `hoa-pm/` prefix. It does not get a
-second product bucket or a shared cross-county IPNS label.
+county's existing bucket under the county-scoped `hoa-pm/` prefix. Register the query
+slice under the distinct MCP dataset key `<county>-hoa-pm`; it does not replace the
+official county key.
 
 Publication remains human-approval gated. Plan the exact destination without network
 writes:

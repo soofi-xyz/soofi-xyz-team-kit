@@ -30,6 +30,7 @@ export const DEFAULT_CATALOG_PATH = resolve(
  * @property {string} countyFips Stable five-digit US county FIPS code.
  * @property {"published"} status Publication state.
  * @property {string} queryTableUrl Public query-table Parquet URL.
+ * @property {string | null} queryTableCid Immutable query-table CID, or null to disable fallback.
  * @property {string} datasetCoverageUrl Public dataset coverage URL.
  * @property {string | null} permitQueryTableUrl Public permit query-table URL.
  * @property {string | null} placesTableUrl Public Overture places-table URL.
@@ -77,6 +78,15 @@ function assertUrl(value, fieldName, nullable = false) {
   const parsed = new URL(value);
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
     throw new Error(`${fieldName} must use http or https`);
+  }
+}
+
+function assertCid(value, fieldName) {
+  if (
+    value !== null &&
+    (typeof value !== "string" || !/^[A-Za-z0-9]+$/.test(value))
+  ) {
+    throw new Error(`${fieldName} must be an immutable CID or null`);
   }
 }
 
@@ -151,6 +161,9 @@ export function validateCatalog(input) {
       throw new Error(`counties[${index}].status must be 'published'`);
     }
     assertUrl(row.queryTableUrl, `counties[${index}].queryTableUrl`);
+    const queryTableCid =
+      row.queryTableCid === undefined ? null : row.queryTableCid;
+    assertCid(queryTableCid, `counties[${index}].queryTableCid`);
     assertUrl(row.datasetCoverageUrl, `counties[${index}].datasetCoverageUrl`);
     assertUrl(
       row.permitQueryTableUrl,
@@ -175,6 +188,7 @@ export function validateCatalog(input) {
       countyFips: row.countyFips,
       status: "published",
       queryTableUrl: row.queryTableUrl,
+      queryTableCid,
       datasetCoverageUrl: row.datasetCoverageUrl,
       permitQueryTableUrl: row.permitQueryTableUrl,
       placesTableUrl,
@@ -369,6 +383,7 @@ export async function main(argv) {
     countyFips: args["county-fips"],
     status: "published",
     queryTableUrl: args["query-table-url"],
+    queryTableCid: optionalUrl(args["query-table-cid"]),
     datasetCoverageUrl: args["dataset-coverage-url"],
     permitQueryTableUrl: optionalUrl(args["permit-query-table-url"]),
     placesTableUrl: optionalUrl(args["places-table-url"]),
