@@ -23,9 +23,12 @@ Relationships are CID fields on the referencing object, not graph edges.
 | `company` (manager) | `Property_Management` | `sunbiz_document_number` |
 
 Local object CIDs are `sha256:<hex>` of the canonical payload before the `cid` field.
-They remain local hashes after enrichment. The approval-gated publication path uploads
-the bundle and returns its Filebase CID; enrichment alone does not upload or replace
-the row-level hashes.
+They remain local hashes after enrichment. The approval-gated publication path validates
+those hashes, deduplicates the objects, uploads company objects first, replaces the HOA's
+`company_cid` and `property_manager_cid` with the returned IPFS CIDs, then uploads each HOA
+object. It finally re-stamps the query table's `hoa_cid` / `property_manager_cid`, uploads
+the re-stamped table and a real-CID object inventory, and moves only the HOA/PM IPNS labels.
+Enrichment alone does not upload or replace the row-level hashes.
 
 ## Publication destination
 
@@ -36,6 +39,8 @@ Use the existing shared query-table Filebase bucket with a separate dataset name
 - Enriched table key: `<county>/hoa-pm/query-table.parquet`.
 - Enriched coverage key: `<county>/hoa-pm/dataset-coverage.json`.
 - HOA/PM object bundle key: `<county>/hoa-pm/objects.jsonl`.
+- Individual browsable object keys:
+  `<county>/hoa-pm/objects/<data-group>/<type>/<local-sha256>.json`.
 - Never write HOA/PM slices to the official keys `<county>/query-table.parquet`
   or `<county>/dataset-coverage.json`.
 - HOA/PM labels: `oracle-query-table-<county>-hoa-pm` and
@@ -63,8 +68,11 @@ node bin/elephant-county.mjs hoa-pm-publish \
   --dry-run
 ```
 
-Do not remove `--dry-run` until the exact query table, coverage JSON, and HOA/PM object
-bundle are bound into an approved publication manifest. This step does not upload.
+Do not remove `--dry-run` until the exact source query table, coverage JSON, and HOA/PM
+object bundle are bound into a new approved publication manifest with action
+`publish-query-table-coverage-and-resolvable-hoa-pm-objects`. A live run also requires
+`--receipt <path>` so object-CID mappings and uploads resume safely. Never reuse an
+approval for changed bytes.
 
 ## Command
 

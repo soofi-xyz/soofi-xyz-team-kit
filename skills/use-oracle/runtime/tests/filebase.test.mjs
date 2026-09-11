@@ -123,7 +123,8 @@ describe("Filebase credential + dry-run gating", () => {
       queryTableIpnsLabel: "oracle-query-table-broward",
       coverageIpnsLabel: "oracle-dataset-coverage-broward",
       hoaPmObjectsKey: "broward/hoa-pm/objects.jsonl",
-      approvalAction: "publish-query-table-coverage-and-hoa-pm-objects",
+      approvalAction:
+        "publish-query-table-coverage-and-resolvable-hoa-pm-objects",
     });
   });
 
