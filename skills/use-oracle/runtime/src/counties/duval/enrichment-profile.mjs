@@ -70,6 +70,12 @@ export const duvalEnrichmentProfile = validateEnrichmentProfile({
       has_bbb_contractor: { type: "BOOLEAN", optional: true },
       has_pa_corp_tenant: { type: "BOOLEAN", optional: true },
       hoa_flag: { type: "BOOLEAN", optional: true },
+      hoa_cid: { type: "UTF8", optional: true },
+      hoa_name: { type: "UTF8", optional: true },
+      hoa_sunbiz_document_number: { type: "UTF8", optional: true },
+      property_manager_cid: { type: "UTF8", optional: true },
+      property_manager_name: { type: "UTF8", optional: true },
+      property_manager_sunbiz_document_number: { type: "UTF8", optional: true },
     },
   },
   publication: {

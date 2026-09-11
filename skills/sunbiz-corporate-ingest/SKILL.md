@@ -86,6 +86,7 @@ qualification), not this address match.
 
 - `corevent.zip` (filing-history events) is not ingested — separate scope.
 - `party_type_code` decoding is incomplete; officers are not normalized to person/company.
+- The HOA/PM heuristic (`hoa-pm-enrich`) uses registered-agent **company** name, not officer rows.
 - Unmapped fields are intentionally preserved in the output for future lexicon expansion.
 
 ## Persist your work

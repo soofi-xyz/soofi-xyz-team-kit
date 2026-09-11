@@ -81,7 +81,8 @@ consolidated JSON.
    `normalizedAddressHash`. This runs SQL over the **OPEN IPFS parquet via MCP (NOT Neon)** —
    do **not** hand these off to `use-elephant-query-db`. `county` defaults to `lee` and must
    match the MCP's `PROPERTY_QUERY_TABLE_MAP`. Coverage varies by county: Lee has no
-   acreage/material (NULL); HOA (`hoa_flag`) is NULL everywhere; identity columns are NULL
+   acreage/material (NULL); HOA membership (`hoa_flag`) is usually NULL; after
+   `hoa-pm-enrich`, `hoa_cid` / `property_manager_cid` may be populated. Identity columns are NULL
    until a republish includes them — confirm with
    `getPropertyQuerySchema` / `SELECT count(col)` and say "not available for this county"
    rather than inventing.

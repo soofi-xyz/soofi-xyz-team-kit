@@ -74,7 +74,10 @@ Constraints on `queryProperties`:
 - `county` must match the MCP server's `PROPERTY_QUERY_TABLE_MAP` (default `lee`).
 
 **Data coverage varies by county.** Lee has no acreage/material (those columns are NULL);
-HOA (`hoa_flag`) is NULL in every county. `elephant_uuid` / `elephant_token` are NULL until
+HOA (`hoa_flag`) is NULL unless Chapter 720 membership records were approved.
+After HOA/PM enrichment, query `subdivision`, `hoa_name`, `hoa_cid`,
+`property_manager_name`, and `property_manager_cid` when `getPropertyQuerySchema`
+lists them. NULL on those columns means no unique Sunbiz hit. `elephant_uuid` / `elephant_token` are NULL until
 a republish. Call `getPropertyQuerySchema` or run a
 `SELECT count(col)` to confirm a column is populated, and state "not available for this
 county" rather than inventing values. On Lee, owner / city / value / count questions work.
