@@ -46,9 +46,10 @@ Use the existing shared query-table Filebase bucket with a separate dataset name
 - HOA/PM labels: `oracle-query-table-<county>-hoa-pm` and
   `oracle-dataset-coverage-<county>-hoa-pm`.
 
-Always require the county in `runtime/catalog/published-counties.json`, then derive
-the separate HOA/PM labels from that base county key. Permit profiles do not control
-HOA/PM publication. Never update `oracle-query-table-<county>` or
+Require either a published county in `runtime/catalog/published-counties.json` or a
+query-table-only county in `runtime/catalog/mcp-overlays.json`, then derive the separate
+HOA/PM labels from that base county key. Permit profiles do not control HOA/PM
+publication. Never update `oracle-query-table-<county>` or
 `oracle-dataset-coverage-<county>` from this bounded enrichment path: those official
 labels remain reserved for the full county publication.
 
@@ -65,6 +66,7 @@ cd skills/use-oracle/runtime
 node bin/elephant-county.mjs hoa-pm-publish \
   --county broward \
   --input <enriched-dir> \
+  --query-table-only \
   --dry-run
 ```
 
@@ -72,7 +74,9 @@ Do not remove `--dry-run` until the exact source query table, coverage JSON, and
 object bundle are bound into a new approved publication manifest with action
 `publish-query-table-coverage-and-resolvable-hoa-pm-objects`. A live run also requires
 `--receipt <path>` so object-CID mappings and uploads resume safely. Never reuse an
-approval for changed bytes.
+approval for changed bytes. Use `--query-table-only` when another workflow owns
+`objects.jsonl`; it publishes only the query table and coverage and leaves the object
+key untouched.
 
 ## Command
 

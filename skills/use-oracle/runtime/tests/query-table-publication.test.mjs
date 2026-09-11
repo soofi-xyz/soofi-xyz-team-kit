@@ -6,8 +6,10 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import {
+  MCP_OVERLAY_CATALOG_PATH,
   PUBLISHED_COUNTY_CATALOG_PATH,
   queryTablePublicationFromCatalog,
+  queryTablePublicationFromSources,
   requireQueryTablePublication,
 } from "../src/core/query-table-publication.mjs";
 
@@ -15,6 +17,9 @@ const testDir = dirname(fileURLToPath(import.meta.url));
 const cliPath = resolve(testDir, "../bin/elephant-county.mjs");
 const catalog = JSON.parse(
   readFileSync(PUBLISHED_COUNTY_CATALOG_PATH, "utf8"),
+);
+const overlays = JSON.parse(
+  readFileSync(MCP_OVERLAY_CATALOG_PATH, "utf8"),
 );
 
 const HOA_PM_COUNTIES = [
@@ -30,6 +35,14 @@ const HOA_PM_COUNTIES = [
   "osceola",
   "duval",
   "broward",
+  "clay",
+  "hernando",
+  "lake",
+  "manatee",
+  "marion",
+  "sarasota",
+  "st-johns",
+  "volusia",
 ];
 
 describe("query-table publication lookup", () => {
@@ -50,7 +63,17 @@ describe("query-table publication lookup", () => {
     ).toThrow('Unknown published --county "not-published"');
   });
 
-  it("publishes HOA/PM to separate dataset labels", () => {
+  it("accepts query-table-only counties from the MCP overlay", () => {
+    expect(
+      queryTablePublicationFromSources(catalog, overlays, "clay"),
+    ).toEqual({
+      bucket: "elephant-oracle-query-table",
+      queryTableIpnsLabel: "oracle-query-table-clay",
+      coverageIpnsLabel: "oracle-dataset-coverage-clay",
+    });
+  });
+
+  it("publishes HOA/PM query tables to separate dataset labels and keys", () => {
     const stdout = execFileSync(
       process.execPath,
       [
@@ -61,6 +84,7 @@ describe("query-table publication lookup", () => {
         "--input",
         "/dry-run-input-is-not-read",
         "--dry-run",
+        "--query-table-only",
       ],
       { encoding: "utf8" },
     );
@@ -74,6 +98,7 @@ describe("query-table publication lookup", () => {
       queryTableKey: "pinellas/hoa-pm/query-table.parquet",
       coverageKey: "pinellas/hoa-pm/dataset-coverage.json",
     });
+    expect(report.result).not.toHaveProperty("hoaPmObjectsKey");
     expect(report.result.queryTableKey).not.toBe("pinellas/query-table.parquet");
     expect(report.result.queryTableIpnsLabel).not.toBe(
       "oracle-query-table-pinellas",
