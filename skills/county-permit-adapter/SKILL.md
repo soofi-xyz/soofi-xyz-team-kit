@@ -5,6 +5,14 @@ metadata: {"author":"elephant-xyz"}
 ---
 # County Permit Adapter
 
+**Harvest order.** Build the vendor module as soon as the portal is fingerprinted.
+Do not start county permit harvest until the identity baseline (Sunbiz legal entities
+plus the official DBPR licensing snapshot) is loaded and reconciled. Capture contacts
+raw; preserve omitted `license_number` values; never write an inferred DBPR license into
+raw `permit_contacts.license_number`; never stamp `companies.company_id` from portal
+name/regex matching. Identity resolution is
+`skills/use-oracle/reference/permit-evidence-preflight.md` after harvest.
+
 The `PermitHarvest` Restate service (`services/permit-harvest.ts`) exposes
 `harvestParcel({county, jobId, parcel_id})` and dispatches to the county's vendor module — a plain
 TypeScript module registered with the service. The Accela module is the template:

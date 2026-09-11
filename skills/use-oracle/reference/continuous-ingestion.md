@@ -100,8 +100,13 @@ recovery action, and continue independent workstreams.
 
 ## Automatic stage transitions
 
-- Intake launches source/jurisdiction enumeration, adapter determination/build, execution and
-  destination proof, Filebase/IPNS readiness, and blocker routing in parallel.
+- Intake launches source/jurisdiction enumeration, adapter determination/build, identity-registry
+  route proof, execution and destination proof, Filebase/IPNS readiness, and blocker routing
+  in parallel. Adapter build is not permit harvest.
+- After appraisal/transform readiness, enqueue identity-baseline load (Sunbiz + official DBPR)
+  before permit harvest. Do not enqueue `PermitFeed` or county permit capture while that
+  baseline is unloaded or unreconciled unless the licensing gap is recorded and auto-linking
+  is disabled.
 - Readiness `PASS` enqueues the next dependency-ready seed/pilot/run stages automatically.
 - A capture handoff enqueues transform/validation; a valid transform handoff enqueues
   idempotent load/match; a reconciled load advances the loaded watermark and enqueues publish

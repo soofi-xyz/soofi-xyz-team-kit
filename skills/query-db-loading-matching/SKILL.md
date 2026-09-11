@@ -1,6 +1,6 @@
 ---
 name: query-db-loading-matching
-description: "Load county artifacts (appraisal, permits, Sunbiz, BBB) from the pipeline data dir into the Postgres query DB and cross-match records by parcel id and normalized address hash. Use when loading transformed data into the query DB, reconciling row counts, linking permits or companies to parcels, or debugging missing query-db data."
+description: "Load county artifacts (appraisal, Sunbiz identity baseline, permits, BBB) from the pipeline data dir into the Postgres query DB and cross-match records by parcel id and normalized address hash. Use when loading transformed data into the query DB, reconciling row counts, linking permits or companies to parcels, or debugging missing query-db data."
 metadata: {"author":"elephant-xyz"}
 ---
 # Query DB Loading & Matching
@@ -255,6 +255,11 @@ The remaining floor is `ON CONFLICT` unique-index maintenance on the multi-GB ta
 3. **Permit→parcel caution:** link permits from the harvest request's target parcel
    evidence (`propertyFirstTarget`), not the parcel displayed on the permit page — portals
    sometimes display related/different parcels (caused a Lee repair job).
+4. **Permit contractor identity** — address-hash and BBB joins are not legal identity.
+   Follow `skills/use-oracle/reference/permit-evidence-preflight.md`: stamp
+   `companies.company_id` only after the identity baseline exists and the resolver accepts
+   a unique candidate. Do not write inferred licenses into raw
+   `permit_contacts.license_number`.
 
 ## Reconciliation gotchas (hard-won)
 

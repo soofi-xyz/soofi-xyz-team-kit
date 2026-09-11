@@ -163,7 +163,10 @@ branch/endpoint IDs). Do not copy expected IDs from the connection under test.
 
 ### Enrichment readiness gate
 
-Sunbiz, BBB, and places do not control permit completeness. If `enrichment.bbb.expected_count`
+BBB and places do not control permit-capture completeness. Identity-baseline readiness
+(Sunbiz legal entities plus official DBPR licensing) is a predecessor of permit harvest
+and of permit identity resolution; do not classify it as optional post-permit enrichment.
+If `enrichment.bbb.expected_count`
 equals `advertised_listing_count`, the catalog must also set `listing_page_cap` and
 `cap_acknowledged: true`. Advertised directory totals are not harvestable census counts.
 
@@ -249,8 +252,9 @@ Donphan queries succeed.
 counts, dashboard labels, or pilot success.
 
 Never set `oracle_dataset_coverage.expected_count` as if a source were complete unless these
-gates pass for that source. Enrichment gaps (Sunbiz, BBB, places) must not silently change
-core permit completeness.
+gates pass for that source. Reputation/places gaps (BBB, places) must not silently change
+core permit-capture completeness. Identity-baseline gaps (Sunbiz, DBPR) block automatic
+identity edges and must be reported as such.
 
 ## Publish fail-closed
 

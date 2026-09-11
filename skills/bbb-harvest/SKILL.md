@@ -128,7 +128,12 @@ and `incomplete_reason: http_403_source_block`.
 
 ### 3-Tier Multi-Source CRM Cross-Matching Cascade
 
-When matching BBB contractor profiles to municipal permit records or Sunbiz business entities, apply a strict 3-tier cascade:
+When matching BBB contractor profiles to municipal permit records or Sunbiz business
+entities, apply a strict 3-tier cascade. This cascade is reputation-profile matching
+only. It is not the permit identity resolver and must not stamp
+`permit_contacts.company_id` or write inferred licenses into raw
+`permit_contacts.license_number`.
+
 1. **Tier 1 — State License Number Match**: Match exact state license strings (e.g. `CCC1328456`, `CAC1815924`). Highest confidence (1.0).
 2. **Tier 2 — Standardized Phone Number Match**: Normalize 10-digit phone strings (strip punctuation and country code `+1`). High confidence (0.95).
 3. **Tier 3 — Unique Exact Normalized Business Name**: Normalize punctuation and legal
