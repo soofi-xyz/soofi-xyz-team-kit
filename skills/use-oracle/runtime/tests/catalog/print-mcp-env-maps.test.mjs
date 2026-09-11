@@ -80,12 +80,12 @@ describe("print-mcp-env-maps", () => {
     ).toThrow(/Duplicate countyKey "lee"/);
   });
 
-  it("matches the tracked bundled catalog keys (13 counties, no santa-clara)", async () => {
+  it("matches the tracked bundled catalog keys (15 counties, no santa-clara)", async () => {
     const catalog = JSON.parse(await readFile(trackedCatalogPath, "utf8"));
     const maps = mcpEnvMapsFromCatalog(catalog);
     const countyKeys = catalog.counties.map((county) => county.countyKey);
 
-    expect(countyKeys).toHaveLength(13);
+    expect(countyKeys).toHaveLength(15);
     expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toEqual(countyKeys);
     expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toEqual(countyKeys);
     expect(maps.PERMIT_QUERY_TABLE_MAP).toEqual({

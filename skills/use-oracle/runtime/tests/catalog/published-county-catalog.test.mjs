@@ -39,12 +39,12 @@ describe("published county catalog", () => {
     expect(DEFAULT_CATALOG_PATH).not.toContain("oracle-node");
   });
 
-  it("validates the tracked bundled catalog and contains exactly the thirteen locked counties", async () => {
+  it("validates the tracked bundled catalog and contains exactly the fifteen locked counties", async () => {
     const tracked = JSON.parse(await readFile(trackedCatalogPath, "utf8"));
 
     const result = validateCatalog(tracked);
 
-    expect(result.counties).toHaveLength(13);
+    expect(result.counties).toHaveLength(15);
     expect(result.counties.map((county) => county.countyKey)).toEqual([
       "broward",
       "chester",
@@ -54,7 +54,9 @@ describe("published county catalog", () => {
       "miami-dade",
       "montgomery",
       "orange",
+      "osceola",
       "palm-beach",
+      "pasco",
       "pinellas",
       "polk",
       "rock-island",
