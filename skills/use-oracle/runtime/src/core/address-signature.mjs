@@ -85,6 +85,23 @@ function uuidV5(name, namespace) {
 }
 
 /**
+ * Mint the property-location identity. The published situs contract always
+ * serializes an empty unit; owner-mailing units must never affect it.
+ *
+ * @param {{state: unknown, postalCode: unknown, street: unknown}} input
+ * @returns {AddressIdentity | null}
+ */
+export function mintSitusAddressIdentity(input) {
+  return mintAddressIdentity({
+    country: ADDRESS_SIGNATURE_DEFAULT_COUNTRY,
+    state: input.state,
+    postalCode: input.postalCode,
+    street: input.street,
+    unit: null,
+  });
+}
+
+/**
  * Build the canonical `address:v1` signature and derived ids.
  * Returns `null` when country, state, postal_code (ZIP5), or street is empty.
  * Does not mutate `input`.
