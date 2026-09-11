@@ -314,8 +314,9 @@ The MCP map makes donphan queryable; NEO's catalog UI is separate wiring in
 The schema is stable across counties, but **column coverage varies** — report NULL
 columns rather than implying full coverage:
 
-- **`hoa_flag` is a reserved placeholder NULL for EVERY county** — no HOA data is
-  ingested yet; the column exists only for schema stability.
+- **`hoa_flag` is Chapter 720 membership**, not the subdivision→Sunbiz HOA heuristic.
+  Query `hoa_name` / `hoa_cid` / `property_manager_name` / `property_manager_cid` after
+  `hoa-pm-enrich`. Until that enrich is published, those columns are NULL.
 - **Lee**: no acreage, no structure-material coverage (`lot_size_acre`,
   `exterior_wall_material`, `roof_covering_material` largely NULL).
 - **Palm Beach**: `lot_size_acre` ~0% but `lot_area_sqft` ~92% → acreage derived from

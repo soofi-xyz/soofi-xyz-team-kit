@@ -189,5 +189,11 @@ export function mapTransformedFilesToQueryTableRow({ parcelId, files, seedRow })
     has_bbb_contractor: false,
     has_pa_corp_tenant: false,
     hoa_flag: null,
+    hoa_cid: null,
+    hoa_name: null,
+    hoa_sunbiz_document_number: null,
+    property_manager_cid: null,
+    property_manager_name: null,
+    property_manager_sunbiz_document_number: null,
   };
 }

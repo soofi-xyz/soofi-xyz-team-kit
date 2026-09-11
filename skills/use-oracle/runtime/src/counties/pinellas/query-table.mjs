@@ -192,6 +192,12 @@ export function mapTransformedFilesToQueryTableRow({ strap, files, seedRow }) {
     has_sunbiz_tenant: false,
     has_bbb_contractor: false,
     hoa_flag: null,
+    hoa_cid: null,
+    hoa_name: null,
+    hoa_sunbiz_document_number: null,
+    property_manager_cid: null,
+    property_manager_name: null,
+    property_manager_sunbiz_document_number: null,
   };
 }
 
@@ -240,4 +246,10 @@ export const QUERY_TABLE_SCHEMA_FIELDS = Object.freeze({
   has_sunbiz_tenant: { type: "BOOLEAN", optional: true },
   has_bbb_contractor: { type: "BOOLEAN", optional: true },
   hoa_flag: { type: "BOOLEAN", optional: true },
+  hoa_cid: { type: "UTF8", optional: true },
+  hoa_name: { type: "UTF8", optional: true },
+  hoa_sunbiz_document_number: { type: "UTF8", optional: true },
+  property_manager_cid: { type: "UTF8", optional: true },
+  property_manager_name: { type: "UTF8", optional: true },
+  property_manager_sunbiz_document_number: { type: "UTF8", optional: true },
 });

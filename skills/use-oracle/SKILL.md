@@ -163,7 +163,7 @@ PR'd to `Counties-trasform-scripts/<county>/docs/` as discovery already requires
 | `county-seed-data` | Produce and stage the parcel seed CSV — only after readiness PASS |
 | `county-appraisal-onboarding` | Browser flow, per-county prepare queue, transform-script wiring |
 | `validate-county-transform` | Prove transforms extract 100% of available data across variability |
-| `sunbiz-corporate-ingest` | **Identity baseline, before permits.** Official Florida corporate registry: legal entities and `document_number`. Not a licensing source |
+| `sunbiz-corporate-ingest` | **Identity baseline, before permits.** Official Florida corporate registry: legal entities and `document_number`. Also the source for the HOA/PM heuristic in `reference/hoa-property-management.md` |
 | `dbpr-license-ingest` | **Identity baseline, before permits.** Official Florida DBPR adequacy gate and acquisition: licenses, qualifiers/persons, qualified-business relationships, status, and effective dates; load supported structures and record unsupported schema without inventing entities |
 | `county-permit-adapter` | Build the county permit-portal harvester (Accela template + generic path) — only after the identity baseline is loaded and reconciled |
 | `county-ingest-run` | Deploy/start the backpressure-aware seed feeder — only after readiness PASS and, for permits, after the identity baseline |
