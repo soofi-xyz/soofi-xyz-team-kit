@@ -152,10 +152,10 @@ describe("syncMcpJson against a synthetic mcp.json fixture", () => {
     expect(propertyFallbacks).not.toHaveProperty("duval");
     expect(propertyFallbacks).not.toHaveProperty("broward");
     expect(propertyFallbacks["duval-hoa-pm"]).toBe(
-      "QmfY6SpsH6PbPpTDrRzokxyG4YE58zz6ahUkDCnRrBTYvj",
+      "QmYMTp6D2WmJ3Vdwz33ZEVdeUMQ3BZiybrc31yEX1ULbdb",
     );
     expect(propertyFallbacks["broward-hoa-pm"]).toBe(
-      "QmY8bpBydPPzdTDnudPWePCyBNitasqTdL6CsvmUwXLUNQ",
+      "QmVYunjHppM4Bs8K5J5jgJc8kCZgWReqADhzQhnb4uFHuJ",
     );
     expect(propertyFallbacks["pinellas-hoa-pm"]).toBe(
       "QmdKWsbZMojX1qMfnMDoidyzkennybSmRQ9xN3LiUryGWh",

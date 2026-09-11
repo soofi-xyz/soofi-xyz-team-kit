@@ -58,6 +58,23 @@ county's existing bucket under the county-scoped `hoa-pm/` prefix. Register the 
 slice under the distinct MCP dataset key `<county>-hoa-pm`; it does not replace the
 official county key.
 
+For rows with a published `hoa_cid` or `property_manager_cid`, publish a second
+property JSON object containing those CID fields and replace only the overlay row's
+`property_cid` with the returned CID. Keep the original property object and official
+county query table unchanged. Unmatched overlay rows retain their original
+`property_cid`. Store the stamped pages under `<county>/hoa-pm/properties/` and move
+only `oracle-query-table-<county>-hoa-pm`:
+
+```bash
+node bin/elephant-county.mjs hoa-pm-property-publish \
+  --county duval \
+  --input-parquet <current-overlay.parquet> \
+  --dry-run
+```
+
+A live run requires an approval manifest that binds the exact source overlay bytes,
+plus a resumable receipt. Never add or change `hoa_flag` in this step.
+
 Publication remains human-approval gated. Plan the exact destination without network
 writes:
 
