@@ -94,6 +94,40 @@ node bin/elephant-county.mjs hoa-pm-enrich \
 `no_sunbiz_hoa`, `not_unique`, `no_agent_company`, `agent_not_in_sunbiz`. Do not invent
 an HOA from subdivision name alone.
 
+## Deterministic HOA-name normalization
+
+Apply these rules in order. Keep a unique **legacy** match unchanged (original tract-prefix
+and trailing 1–3 digit / UNIT|PHASE|SEC strip plus the original HOA-name markers). Use the
+expanded normalization only when the legacy matcher finds no company. If the legacy matcher
+finds more than one company, keep `not_unique` — do not pick a “better” normalized name.
+
+1. Fold case, punctuation, apostrophes, whitespace, and `&` / `AND`.
+2. Remove a leading 3–6 digit tract code from the subdivision.
+3. Canonicalize `PH` / `PHASE`, `SEC` / `SECTION`, leading-zero numbers, and word numbers
+   `ONE` through `TWENTY`.
+4. Remove trailing `UNIT`, `PHASE`, `SECTION`, `PARCEL`, `NBHD`, or `VLG` plus its
+   alphanumeric number; `REPLAT` / `PARTIAL REPLAT`; a bare trailing number or word
+   number; and a trailing subdivision `CONDOMINIUM` designator.
+5. On Sunbiz names, remove leading `THE`, trailing `INC` / `INCORPORATED`, and only these
+   explicit association suffixes: homeowners/homeowner's/homeowners', condominium,
+   property owners, community, or civic association; `ASSOCIATION`, `ASSOC`, `ASSN`,
+   `POA`, `COA`, or `HOA`.
+
+Compare the resulting bases exactly. Do not use edit distance, token scores, or another
+fuzzy fallback. Property-owner, community, and civic variants still require exactly one
+ACTIVE candidate.
+
+For statewide collisions, use principal-address county only when the evidence is explicit:
+accept one same-county candidate only when every alternative has an explicit conflicting
+county. Missing geography does not break a tie, so the result remains `not_unique`.
+
+Sunbiz can contain duplicate ACTIVE filings for one identical normalized legal name. When
+all otherwise-plausible rows have the same normalized legal name for the same subdivision,
+collapse them to one association. Retain the earliest `filedDate` when available; otherwise
+retain the lexicographically lower document number. This handles the two ACTIVE
+`VILLAGES OF WESTPORT HOMEOWNERS ASSOCIATION, INC.` filings deterministically while still
+failing closed for differently named plausible associations.
+
 ## DoD evidence (this pass)
 
 Observed **Fri Sep 11 2026, 1:35 PM PDT**. Official quarterly Sunbiz `cordata.zip`
