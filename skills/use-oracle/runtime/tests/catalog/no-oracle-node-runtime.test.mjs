@@ -13,6 +13,7 @@ import {
 
 const testDir = dirname(fileURLToPath(import.meta.url));
 const runtimeRoot = resolve(testDir, "../..");
+const repoRoot = resolve(runtimeRoot, "../../..");
 const catalogScriptsDir = resolve(runtimeRoot, "scripts/catalog");
 const catalogDataDir = resolve(runtimeRoot, "catalog");
 
@@ -28,11 +29,12 @@ async function loadCatalogLike(path) {
 }
 
 describe("catalog self-containment (no oracle-node at runtime)", () => {
-  it("rejects Pasco from the bundled catalog (locked decision: no Pasco)", async () => {
+  it("includes the reviewed Pasco and Osceola publications", async () => {
     const catalog = await loadCatalogLike(DEFAULT_CATALOG_PATH);
     const keys = catalog.counties.map((county) => county.countyKey);
 
-    expect(keys).not.toContain("pasco");
+    expect(keys).toContain("pasco");
+    expect(keys).toContain("osceola");
   });
 
   it("rejects a catalogized Santa Clara — it must stay overlay-only", async () => {
@@ -61,7 +63,7 @@ describe("catalog self-containment (no oracle-node at runtime)", () => {
   it("every default catalog-related path resolves inside this bundled runtime, never a sibling oracle-node checkout", () => {
     for (const path of [DEFAULT_CATALOG_PATH, DEFAULT_OVERLAY_PATH, DEFAULT_MCP_JSON_PATH]) {
       expect(path.toLowerCase()).not.toContain("oracle-node");
-      expect(path).toContain("soofi-xyz-team-kit");
+      expect(path.startsWith(repoRoot)).toBe(true);
     }
     expect(DEFAULT_CATALOG_PATH).toContain("skills/use-oracle/runtime/catalog");
     expect(DEFAULT_OVERLAY_PATH).toContain("skills/use-oracle/runtime/catalog");

@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0",
-  "generatedAt": "2026-09-08T18:02:22.201Z",
+  "generatedAt": "2026-09-11T20:43:01.812Z",
   "counties": [
     {
       "countyKey": "broward",
@@ -99,6 +99,18 @@
       "updatedAt": "2026-07-06T16:28:01.347Z"
     },
     {
+      "countyKey": "osceola",
+      "countyName": "Osceola",
+      "stateCode": "FL",
+      "countyFips": "12097",
+      "status": "published",
+      "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dj8lg4xvw7adam696smuk484r5fvb948ivl12xs8ao7ja1hyz5o",
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dltdk9j020t8avceyej6z2wrz0fm6nffw9jc1wgki6j2wboyl9c",
+      "permitQueryTableUrl": null,
+      "placesTableUrl": null,
+      "updatedAt": "2026-09-11T20:44:00.000Z"
+    },
+    {
       "countyKey": "palm-beach",
       "countyName": "Palm Beach",
       "stateCode": "FL",
@@ -109,6 +121,18 @@
       "permitQueryTableUrl": null,
       "placesTableUrl": null,
       "updatedAt": "2026-07-02T14:21:44.544Z"
+    },
+    {
+      "countyKey": "pasco",
+      "countyName": "Pasco",
+      "stateCode": "FL",
+      "countyFips": "12101",
+      "status": "published",
+      "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dlm72r495ei7507h3yl4tw4olszh2ppas8roxrbg2ccko84s8kv",
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5digt2el7njthtxpgk40887nhi81hwnlo9zpe19yrbbaml0uo2ad",
+      "permitQueryTableUrl": null,
+      "placesTableUrl": null,
+      "updatedAt": "2026-09-11T20:44:00.000Z"
     },
     {
       "countyKey": "pinellas",
