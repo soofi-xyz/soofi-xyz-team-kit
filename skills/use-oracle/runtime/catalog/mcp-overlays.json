@@ -144,35 +144,35 @@
     {
       "countyKey": "clay",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dh0kg04p42xp3ncl2jig9to5quyfaoe2zxn59v1kvpd9opx7vej",
-      "queryTableCid": "QmQGbMPG8sEh6HSD1GGKr9XmDKqJ6j7Kb1rFvVQUxgUFZ9",
+      "queryTableCid": "QmVwXNT3hZTRdDkjvzX6ogxonoyWTu3rXKzAswRht7dxxq",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
     {
       "countyKey": "hernando",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dkwvqnjz9nvbc7flec5mh45nbhbcag58xqcqdgyz29cnjkufejn",
-      "queryTableCid": "QmSMt24THSGY5F8SF5USj1ug8NLZbJ5YvmjnZJKvAquofL",
+      "queryTableCid": "QmbknHBvznSyY2NpCiCou5jn8PoXB4GRiacutW7DbxYBPt",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
     {
       "countyKey": "lake",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5di1mqi5em3e27fzl5dd5omxia9ygh6nvglwyvysgh7mf67sczee",
-      "queryTableCid": "QmaTa3bTXRAW6rpbExWoR2LtufkcsetJousHqechUzFVED",
+      "queryTableCid": "QmQnybGrASMTZiWWHcmusqerurLhvyToErGjSpMRTPi7yq",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
     {
       "countyKey": "manatee",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dgdkdaqjqcfbitxztes15d3xeijvoiw3c4qww2bn7y9r8156mrp",
-      "queryTableCid": "QmNveTnsUDWAmrm1PeppczU69TGdomRgFh6sdo18W7vWUu",
+      "queryTableCid": "QmNTcwqNYp2T69str98DvBR3sDUKehx1gYsNmguwfcWqRs",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
     {
       "countyKey": "marion",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5di75mio2v7vrp4nma0pymqa9wi9g4btxuelq321lzzy7rpvbb16",
-      "queryTableCid": "QmY9UiRzJaP42d1t2NikRcf9hCvKTeZXvTHiEtbHwVCf2v",
+      "queryTableCid": "QmbtzQS7vwcNHdNMfw36HyzaQV7HuDcUfkW1UtSxdkkc3z",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
@@ -192,14 +192,14 @@
     {
       "countyKey": "st-johns",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dkedxzhpjiq4ej66oec16qh4undjp1gqc1lc1f9sowbxmcauy15",
-      "queryTableCid": "QmQxLZfdsjmCacZsTmLeiqASTpfXL32AonLV8i7U1scZax",
+      "queryTableCid": "QmbyNPh7FWMfgQa7nMnH82qSzqbpoLybG3kTF6kVUc5L1q",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
     {
       "countyKey": "volusia",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dhnd4vohzvanyz8d1olfz0bnc0god0r8uqgt6bjk3akmaryj85e",
-      "queryTableCid": "QmbSJtwzoW2DC5cAZPjDzemZvJUZRSQ2mS8L9t4S5zd2dD",
+      "queryTableCid": "QmerPYqdVrqKY8x3wNDq6TtCWvFrZ54mPw2J8BLU7dfk6v",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
