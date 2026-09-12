@@ -213,17 +213,17 @@ destination:
 
 publication:
   status: published-and-donphan-verified
-  completed_at: "2026-09-08T14:35:57.784Z"
+  completed_at: "2026-09-12T15:18:46.000Z"
   bucket: elephant-oracle-query-table
   property_query_table_ipns_label: oracle-query-table-duval
   property_query_table_ipns_name: k51qzi5uqu5dle7swd06u9ebrgw375b5vhhhtiiz7un7udfsar0rci53x2w5y4
-  property_query_table_cid: QmXAyzo7S6k35cD5cKBHm4qXqAVo2QDKWMYkBZJ8soNe5z
+  property_query_table_cid: QmazNstZWjYu77HPbPLyvCzTC938rpfGLwyU7WKnvv6iE4
   permit_table_ipns_label: oracle-permit-table-duval
   permit_table_ipns_name: k51qzi5uqu5dll7nwe1o7s1htngeoxrou8k593xieuziw9521444vh3pd7v4y1
   permit_table_cid: QmTKvaWBmwaVGQheEAWSw59EXZqifPxNxaXx5AMpsSqM62
   coverage_ipns_label: oracle-dataset-coverage-duval
   coverage_ipns_name: k51qzi5uqu5dgqc52fnea1o42e27dr4os0mrdf5ixonuv8kdztdnxclflazf4w
-  coverage_cid: QmcVZjQuAivZoyWMpMdgRfcATQb3tujMNk5FVHvGVNVWDy
+  coverage_cid: QmeNDPAodn9hGk8Fgs6DDQYJ26ikw8aBGrC9HpWmod5RoM
   permit_coverage_cid: Qme3r6LCKSZZc5aCdEqW7RNcnsg5BntFLvP6wDGse38NxG
   privacy_approval_required: true
   exact_byte_approval_recorded: true
@@ -314,6 +314,6 @@ enrichment:
       bytes: 162542561
       sha256: 4227976393fe65a913b327e84e9f4c7223cab8be900aaa1c8279ce0b282efa1a
       archive_prefix: runs/duval-task8-2026q3-ddaa7c4d-r2/artifacts/bbb-property-linkage/private/
-    public_coverage_cid: QmcVZjQuAivZoyWMpMdgRfcATQb3tujMNk5FVHvGVNVWDy
+    public_coverage_cid: QmeNDPAodn9hGk8Fgs6DDQYJ26ikw8aBGrC9HpWmod5RoM
 
 approved_exceptions: []
