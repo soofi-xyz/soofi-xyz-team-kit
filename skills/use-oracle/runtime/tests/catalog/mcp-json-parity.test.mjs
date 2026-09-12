@@ -158,10 +158,10 @@ describe("syncMcpJson against a synthetic mcp.json fixture", () => {
       "QmVYunjHppM4Bs8K5J5jgJc8kCZgWReqADhzQhnb4uFHuJ",
     );
     expect(propertyFallbacks["pinellas-hoa-pm"]).toBe(
-      "QmdKWsbZMojX1qMfnMDoidyzkennybSmRQ9xN3LiUryGWh",
+      "Qmbg6Q343A9AiRgYgE7GN2HdHmeKYkZJcgzXwTW8sRPeFw",
     );
     expect(propertyFallbacks["osceola-hoa-pm"]).toBe(
-      "QmfAgj3PFCY6Ah8RCH9bueBnTzDETobS1494XrQhZry6kM",
+      "Qmey6wmj8Jkq2b9rhCAYzHkTf8miu7Bjnc8zxutDMassmz",
     );
     expect(propertyFallbacks.lee).toBe(
       "QmVZ28CinPN3JUyBBut9xXZNeN5842Ym8mf61AP7MuDtH3",

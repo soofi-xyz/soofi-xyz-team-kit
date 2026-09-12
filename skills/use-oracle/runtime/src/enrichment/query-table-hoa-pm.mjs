@@ -34,6 +34,7 @@ const PARQUET_COMPRESSION_NAMES = {
 };
 
 const REQUIRED_COLUMNS = {
+  property_cid: "UTF8",
   hoa_cid: "UTF8",
   hoa_name: "UTF8",
   hoa_sunbiz_document_number: "UTF8",
@@ -160,11 +161,32 @@ async function readQueryRows(parquetPath) {
 }
 
 export function hoaPmPropertyLinkKey(row) {
+  const parcel = hoaPmParcelReference(row);
   return JSON.stringify([
-    row.property_cid,
+    row.property_cid ?? null,
+    row.property_cid ? null : parcel.field,
+    row.property_cid ? null : parcel.value,
     row.hoa_cid ?? null,
     row.property_manager_cid ?? null,
   ]);
+}
+
+export function hoaPmParcelReference(row) {
+  for (const field of ["parcel_identifier", "parcel_id", "request_identifier"]) {
+    const value = row[field];
+    if (value != null && String(value).trim().length > 0) {
+      return { field, value: String(value) };
+    }
+  }
+  return { field: null, value: null };
+}
+
+function isHoaPmLinkedRow(row) {
+  return Boolean(
+    row.hoa_cid ||
+      row.property_manager_cid ||
+      row.hoa_pm_status === "matched",
+  );
 }
 
 async function readOfficialPropertyCids(parquetPath, parcelIdentifiers) {
@@ -190,28 +212,31 @@ async function readOfficialPropertyCids(parquetPath, parcelIdentifiers) {
 export async function readHoaPmPropertyLinks(
   parquetPath,
   officialParquetPath = null,
+  { allowThinOverlay = false } = {},
 ) {
   const rows = await readQueryRows(parquetPath);
   const missingParcels = rows
     .filter(
       (row) =>
-        (row.hoa_cid || row.property_manager_cid) &&
+        isHoaPmLinkedRow(row) &&
         !isIpfsCid(row.property_cid),
     )
-    .map((row) => row.parcel_identifier);
+    .map((row) => hoaPmParcelReference(row).value)
+    .filter(Boolean);
   const officialPropertyCids =
     missingParcels.length > 0 && officialParquetPath
       ? await readOfficialPropertyCids(officialParquetPath, missingParcels)
       : new Map();
   const links = new Map();
   for (const row of rows) {
-    if (!row.hoa_cid && !row.property_manager_cid) continue;
+    if (!isHoaPmLinkedRow(row)) continue;
+    const parcel = hoaPmParcelReference(row);
     const propertyCid = isIpfsCid(row.property_cid)
       ? row.property_cid
-      : officialPropertyCids.get(row.parcel_identifier);
-    if (!isIpfsCid(propertyCid)) {
+      : officialPropertyCids.get(parcel.value);
+    if (!isIpfsCid(propertyCid) && !allowThinOverlay) {
       throw new Error(
-        `Matched HOA/PM row ${row.parcel_identifier ?? "<unknown>"} has invalid property_cid`,
+        `Matched HOA/PM row ${parcel.value ?? "<unknown>"} has invalid property_cid`,
       );
     }
     for (const [field, value] of [
@@ -220,7 +245,7 @@ export async function readHoaPmPropertyLinks(
     ]) {
       if (value != null && !isIpfsCid(value)) {
         throw new Error(
-          `Matched HOA/PM row ${row.parcel_identifier ?? "<unknown>"} has invalid ${field}`,
+          `Matched HOA/PM row ${parcel.value ?? "<unknown>"} has invalid ${field}`,
         );
       }
     }
@@ -228,17 +253,31 @@ export async function readHoaPmPropertyLinks(
     const key = hoaPmPropertyLinkKey(linkedRow);
     links.set(key, {
       key,
-      parcelIdentifier: row.parcel_identifier ?? null,
-      propertyCid,
+      parcelField: parcel.field,
+      parcelIdentifier: parcel.value,
+      propertyCid: propertyCid ?? null,
       hoaCid: row.hoa_cid ?? null,
       propertyManagerCid: row.property_manager_cid ?? null,
+      hoaPmStatus: row.hoa_pm_status ?? null,
+      thinProperty:
+        propertyCid == null
+          ? Object.fromEntries(
+              [
+                ["county", row.county ?? row.county_name],
+                [parcel.field, parcel.value],
+                ["address_street", row.address_street],
+                ["address_city", row.address_city],
+                ["address_zip", row.address_zip],
+                ["primary_address", row.primary_address],
+                ["subdivision", row.subdivision],
+              ].filter(([field, value]) => field && value != null),
+            )
+          : null,
     });
   }
   return {
     rowCount: rows.length,
-    matchedRowCount: rows.filter(
-      (row) => row.hoa_cid || row.property_manager_cid,
-    ).length,
+    matchedRowCount: rows.filter(isHoaPmLinkedRow).length,
     links: [...links.values()],
   };
 }
@@ -413,14 +452,15 @@ export async function restampHoaPmPropertyCids({
   try {
     for (const row of rows) {
       const restamped = { ...row };
-      if (row.hoa_cid || row.property_manager_cid) {
+      if (isHoaPmLinkedRow(row)) {
         matchedRowCount += 1;
+        const parcel = hoaPmParcelReference(row);
         const published = publishedPropertyCidByParcel.get(
-          row.parcel_identifier,
+          parcel.value,
         );
         if (!isIpfsCid(published)) {
           throw new Error(
-            `Matched HOA/PM row ${row.parcel_identifier ?? "<unknown>"} has no published property CID`,
+            `Matched HOA/PM row ${parcel.value ?? "<unknown>"} has no published property CID`,
           );
         }
         restamped.property_cid = published;
