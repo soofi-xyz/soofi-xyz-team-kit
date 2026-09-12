@@ -20,6 +20,55 @@ When invoked:
    boundary, load `skills/unified-portal-smoke-testing/` and keep its
    feature-run, approval, development-run, and evidence sequence intact.
 
+# API deployment dependency and live-completion gate — CRITICAL
+
+Apply this gate whenever a pull request adds, changes, removes, or depends on
+an API endpoint, contract, handler, infrastructure stack, runtime API
+configuration, provider seam, persistence boundary, or deployment workflow.
+
+1. Before dependent preview tests begin, derive and record a dependency ledger
+   from the PR diff for every changed journey:
+   `frontend preview -> runtime endpoint -> backend app -> infrastructure stack
+   -> deployment workflow -> deployed ref/SHA and URL`.
+2. Treat Amplify as a frontend deployment only. Require successful deployment
+   evidence for every changed API at the exact PR head commit before qualifying
+   live tests run. Evidence must include the workflow run, dispatched ref/SHA,
+   deployment identity, API URL, and a method-correct route probe that does not
+   return an unexpected 404.
+3. Deploy feature API code only to an isolated stack whose identity is derived
+   from the PR or feature branch. Its functions, aliases, and runtime
+   configuration must not replace stable shared DEV resources. API Gateway may
+   be shared only through a PR/branch-specific stage or namespaced route and
+   integration that leaves stable DEV routes and integrations untouched;
+   otherwise provision an isolated gateway in the feature stack. If the
+   repository lacks this capability, add and verify it as part of delivery or
+   classify the deployment as `MUST-HAVE GAP`. Deploying feature code behind
+   the stable DEV route never qualifies as feature-branch evidence.
+4. Run every affected journey through the exact feature preview using normal
+   browser security and its actual configured API. Mocks, request interception,
+   CORS bridges, disabled web security, unit tests, and design tests are
+   diagnostic or supporting lanes; none can replace this qualifying result.
+5. Reconcile all required GitHub checks before handoff. Never declare a PR
+   complete, ready, working, or verified while a required deployment or live
+   check is absent, skipped, stale, failing, or unproven.
+
+Classify each required gate from execution evidence:
+
+- `PASS`: the required action completed successfully against the exact feature
+  commit and deployment.
+- `FAIL`: the action ran and behavior was wrong, including an unexpected 404.
+- `MUST-HAVE GAP`: a required deployment, route probe, or live test was never
+  attempted, was skipped/disabled, or lacks evidence.
+- `BLOCKED`: a safe, authorized action was attempted but external infrastructure
+  prevented completion; include its run URL, SHA, failing step, and error.
+- `NOT APPLICABLE`: the changed scope demonstrably does not require that gate.
+
+If any required gate is `FAIL`, `MUST-HAVE GAP`, or `BLOCKED`, keep the PR
+draft/incomplete and report the exact next action. For every applicable API
+change, a frontend preview plus green mocked tests is never sufficient without
+deployment evidence for the exact feature commit, a successful route probe, and
+a passing real consumer-to-API flow.
+
 # Inputs
 
 ## Delivery intent (resolve first)
@@ -145,7 +194,14 @@ Run these nine stages in order. Each stage has a stop condition. Do not advance 
 4. **Plan or scaffold.** Scaffold a new portal, or inspect the existing architecture and plan the minimum necessary change. Do not cross a missing Hoothoot query blocker.
 5. **Frontend.** Implement only when frontend is in scope; apply supplied design inputs and responsive tests when relevant. Load `skills/build-portals/rules/07-figma-visual-fidelity.md`. Match every Figma control type and visual property in the final page context, not only in an isolated component. Preserve the design's exact icon color, underline geometry, and action-to-button-variant mapping; embedding a section must not reassign its visual hierarchy.
 6. **Backend.** Implement only when backend is in scope; preserve existing API, auth, infrastructure, and error conventions. Wire only user-provided Hoothoot queries and do not alter their semantics. If a new route must attach to a shared `/api/v2` HTTP API, add `API_V2_HTTP_API_ID` to that API's existing deploy workflow the same way sibling APIs already do. Copy sibling `authorizationType` on that shared API; do not add a JWT authorizer there unless siblings already use one. Authorize in Lambda from `Authorization: Bearer` (Cognito ID token first, then a legacy session token / HS256 portal `authToken`). Return 401 for invalid tokens, 403 for unauthorized accounts, and 404 when the Persist account does not exist. Copy sibling CORS: `*` is not a literal origin. Opening an API URL in the address bar is not an auth test. For a failed-payment overlay, determine failure from the latest scheduled-installment status event across all plans, not money events; remaining installments are missing/SCHEDULED/RESCHEDULED only. Update Plan must open the existing builder without mutating the current plan until confirm creates a new plan ID.
-7. **Integrate or deploy.** Wire and deploy only requested surfaces with explicit environment authorization. Amplify preview is frontend only. Dispatch the existing API workflow on the feature branch (`workflow_dispatch`); do not merge to the integration branch to test. Do not create Lambda alias `live` when it already exists (`alias already exists`); use a new alias such as `provisioned`. **Upsert** shared HTTP API routes instead of `CfnRoute` CREATE; do not drop an old shared `CfnRoute` so CloudFormation deletes the physical GET. `signing method HS256 is invalid` means a JWT authorizer is still in front. Do not invent `DEV_*_BEARER_TOKEN` GitHub secrets; after deploy, mint HS256 from the secret already on the Lambda.
+   Feature verification may reuse a shared API Gateway only through a
+   PR/branch-specific stage or namespaced route owned by the feature stack. It
+   must not replace, retarget, or delete stable shared DEV routes. Create or
+   upsert only the feature-specific route and integration; never upsert a stable
+   DEV route to a feature deployment target. Treat `signing method HS256 is
+   invalid` as evidence that a shared Gateway JWT authorizer intercepted the
+   request, not as permission to retarget stable routing.
+7. **Integrate or deploy.** Wire and deploy only requested surfaces with explicit environment authorization. Amplify preview is frontend only. Dispatch the API workflow on the feature branch (`workflow_dispatch`) in an isolated preview mode whose stack and resource names derive from the PR or feature branch; do not deploy feature code over stable shared DEV and do not merge to the integration branch to test. If the existing workflow has no isolated mode, add it before qualifying feature tests. Do not create Lambda alias `live` when it already exists (`alias already exists`); use a feature-specific alias. Do not invent `DEV_*_BEARER_TOKEN` GitHub secrets; use approved preview credentials or secrets without exposing them.
 8. **Feature verification.** Create and commit executable integration tests from
    every supplied story scenario. Run them against the exact feature deployment:
    preserve a normal-security baseline, then run the same scenario suite in the
@@ -250,6 +306,10 @@ Missing local soak/BrowserStack/AWS credentials do not make a named acceptance c
 Before returning, confirm:
 
 - [ ] Delivery mode, change request, scopes, repository, base, and feature branch are resolved
+- [ ] Every changed journey has a dependency ledger from frontend preview through runtime endpoint, backend stack, deployment workflow, and deployed feature ref/SHA
+- [ ] Every changed API was deployed for the exact feature commit to an isolated PR/feature stack with an authorized workflow run and deployment identity; any shared gateway used a feature-specific stage/route and stable DEV routing was not mutated
+- [ ] Every required route passed a method-correct live probe; an unexpected 404 is `FAIL`, never evidence of a working preview
+- [ ] No required deployment or live check is absent, skipped, stale, failing, or unproven; otherwise the PR remains draft/incomplete with `MUST-HAVE GAP`, `FAIL`, or `BLOCKED`
 - [ ] No direct commits or deploys were made from the default branch
 - [ ] Existing architecture was preserved, or migration rationale is documented
 - [ ] Every Figma-driven control was verified on the final route for control type, icon/text/fill/border color, geometry, and state; embedding did not swap button variants or introduce inherited style drift
@@ -266,7 +326,7 @@ Before returning, confirm:
 - [ ] Shared `/api/v2` routes were attached in the existing deploy workflow when required
 - [ ] Shared `/api/v2` authorization matches siblings (no extra JWT authorizer; Bearer verified in Lambda; ID token preferred, legacy session token / HS256 portal `authToken` still accepted; 401 invalid, 403 unauthorized account, 404 missing Persist account)
 - [ ] Failed-payment overlay, when in scope, uses installment status events rather than money events; remaining installments are missing/SCHEDULED/RESCHEDULED; Update Plan does not mutate until confirm; live tests and 5-minute 200-only soaks are not skipped
-- [ ] Feature API live proof used `workflow_dispatch` on the feature branch; alias `live` was not recreated when it already existed; shared routes were upserted; tokens were minted from the deployed Lambda secret instead of inventing GitHub bearer secrets; missing Persist accounts return 404 not 502; `signing method HS256 is invalid` was treated as a gateway JWT miss
+- [ ] Feature API live proof used `workflow_dispatch` on the feature branch in isolated preview mode; stack/resources were PR- or branch-specific, stable shared DEV was not mutated, and the deployed SHA matched the PR head
 - [ ] CORS matches siblings (`*` is not a literal origin; trusted host suffixes if that is the repo pattern)
 - [ ] Every new or changed data/report query was supplied by the user from Hoothoot, wired as given, and contract-tested — never authored, copied, or repaired by Hoopa
 - [ ] No tenant-specific names, URLs, account IDs, or credentials in generic kit files
@@ -278,6 +338,8 @@ Return:
 - Delivery mode, repository URL, base branch, and feature branch
 - Pull-request URL and commit SHA
 - Change summary and affected scopes
+- API dependency ledger mapping each changed deployable to its feature workflow,
+  deployed ref/SHA, deployment identity, endpoint probe, and live consumer flow
 - Coverage summary and test run results
 - Scenario-to-test mapping and test-suite digest
 - Per-scenario feature and development evidence links, including branch, commit,
