@@ -147,6 +147,17 @@ describe("catalog self-containment (no oracle-node at runtime)", () => {
       "desoto",
       "collier",
       "columbia",
+      "baker-hoa-pm",
+      "bradford-hoa-pm",
+      "citrus-hoa-pm",
+      "columbia-hoa-pm",
+      "desoto-hoa-pm",
+      "highlands-hoa-pm",
+      "martin-hoa-pm",
+      "nassau-hoa-pm",
+      "putnam-hoa-pm",
+      "santa-rosa-hoa-pm",
+      "st-lucie-hoa-pm",
     ]);
   });
 

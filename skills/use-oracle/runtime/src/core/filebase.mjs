@@ -48,6 +48,13 @@ const approvalArtifactSchema = z
   })
   .strict();
 
+const optionalBundleApprovalArtifactSchema = z
+  .object({
+    bytes: z.number().int().nonnegative(),
+    sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  })
+  .strict();
+
 const filebaseApprovalSchema = z
   .object({
     schemaVersion: z.literal(FILEBASE_APPROVAL_SCHEMA_VERSION),
@@ -63,7 +70,7 @@ const filebaseApprovalSchema = z
       .object({
         queryTable: approvalArtifactSchema,
         coverage: approvalArtifactSchema,
-        hoaPmObjects: approvalArtifactSchema.optional(),
+        hoaPmObjects: optionalBundleApprovalArtifactSchema.optional(),
       })
       .strict(),
     approved: z.literal(true),
@@ -122,6 +129,7 @@ const permitFilebaseApprovalSchema = z
  * @property {NodeJS.ProcessEnv} [env] - Environment to read Filebase credentials from. Defaults to `process.env`.
  * @property {string} [endpoint] - Override the Filebase S3 endpoint (tests only).
  * @property {number} [objectConcurrency] - Bounded individual-object upload concurrency.
+ * @property {boolean} [skipIpns] - Upload immutable CID-addressed objects without creating/updating IPNS labels.
  */
 
 /**
@@ -541,26 +549,39 @@ async function publishResolvableHoaPmObjects({
     };
     await writePublicationReceipt(receiptPath, receipt);
   }
-  for (const [name, label, cid] of [
-    ["queryTable", artifacts.queryTableIpnsLabel, receipt.uploads.queryTable.cid],
-    ["coverage", artifacts.coverageIpnsLabel, receipt.uploads.coverage.cid],
-  ]) {
-    if (!receipt.names[name]) {
-      receipt.names[name] = await upsertFilebaseName(token, label, cid);
-      await writePublicationReceipt(receiptPath, receipt);
+  if (config.skipIpns !== true) {
+    for (const [name, label, cid] of [
+      ["queryTable", artifacts.queryTableIpnsLabel, receipt.uploads.queryTable.cid],
+      ["coverage", artifacts.coverageIpnsLabel, receipt.uploads.coverage.cid],
+    ]) {
+      if (!receipt.names[name]) {
+        receipt.names[name] = await upsertFilebaseName(token, label, cid);
+        await writePublicationReceipt(receiptPath, receipt);
+      }
     }
   }
-  receipt.status = "complete";
+  receipt.status = config.skipIpns === true ? "uploaded_without_ipns" : "complete";
   receipt.completedAt = new Date().toISOString();
   await writePublicationReceipt(receiptPath, receipt);
+  const queryTableUrl =
+    config.skipIpns === true
+      ? `${FILEBASE_GATEWAY}/ipfs/${receipt.uploads.queryTable.cid}`
+      : `${FILEBASE_GATEWAY}/ipns/${receipt.names.queryTable.network_key}`;
+  const coverageUrl =
+    config.skipIpns === true
+      ? `${FILEBASE_GATEWAY}/ipfs/${receipt.uploads.coverage.cid}`
+      : `${FILEBASE_GATEWAY}/ipns/${receipt.names.coverage.network_key}`;
   return {
     dryRun: false,
     queryTableCid: receipt.uploads.queryTable.cid,
     coverageCid: receipt.uploads.coverage.cid,
     hoaPmObjectsCid: receipt.uploads.hoaPmObjects.cid,
     objectCount: receipt.reconciliation.uniqueObjectCount,
-    queryTableIpns: `${FILEBASE_GATEWAY}/ipns/${receipt.names.queryTable.network_key}`,
-    coverageIpns: `${FILEBASE_GATEWAY}/ipns/${receipt.names.coverage.network_key}`,
+    queryTableUrl,
+    coverageUrl,
+    ...(config.skipIpns === true
+      ? {}
+      : { queryTableIpns: queryTableUrl, coverageIpns: coverageUrl }),
     receiptPath,
   };
 }
@@ -939,14 +960,39 @@ export async function publishFilebase(artifacts, config) {
           body: hoaPmObjectsBody,
           contentType: "application/x-ndjson",
         });
-  const queryName = await upsertFilebaseName(token, artifacts.queryTableIpnsLabel, queryTableCid);
-  const coverageName = await upsertFilebaseName(token, artifacts.coverageIpnsLabel, coverageCid);
+  const queryName =
+    config.skipIpns === true
+      ? null
+      : await upsertFilebaseName(
+          token,
+          artifacts.queryTableIpnsLabel,
+          queryTableCid,
+        );
+  const coverageName =
+    config.skipIpns === true
+      ? null
+      : await upsertFilebaseName(
+          token,
+          artifacts.coverageIpnsLabel,
+          coverageCid,
+        );
+  const queryTableUrl =
+    queryName === null
+      ? `${FILEBASE_GATEWAY}/ipfs/${queryTableCid}`
+      : `${FILEBASE_GATEWAY}/ipns/${queryName.network_key}`;
+  const coverageUrl =
+    coverageName === null
+      ? `${FILEBASE_GATEWAY}/ipfs/${coverageCid}`
+      : `${FILEBASE_GATEWAY}/ipns/${coverageName.network_key}`;
   return {
     dryRun: false,
     queryTableCid,
     coverageCid,
     ...(hoaPmObjectsCid === undefined ? {} : { hoaPmObjectsCid }),
-    queryTableIpns: `${FILEBASE_GATEWAY}/ipns/${queryName.network_key}`,
-    coverageIpns: `${FILEBASE_GATEWAY}/ipns/${coverageName.network_key}`,
+    queryTableUrl,
+    coverageUrl,
+    ...(queryName === null
+      ? {}
+      : { queryTableIpns: queryTableUrl, coverageIpns: coverageUrl }),
   };
 }
