@@ -118,6 +118,21 @@ key untouched.
 
 ## Command
 
+Build the statewide HOA/PM index from the complete expanded quarterly Sunbiz archive and
+the exact subdivision values present in the publication scope:
+
+```bash
+cd skills/use-oracle/runtime
+node bin/elephant-county.mjs hoa-pm-index \
+  --source-dir <expanded-cordata-dir> \
+  --subdivisions <json-array-of-subdivision-names> \
+  --quarter 2026Q3 \
+  --output <statewide-hoa-pm-index-dir>
+```
+
+The index scans the complete statewide archive twice: once for ACTIVE HOA candidates and
+once for their registered-agent companies. Do not substitute a ZIP-filtered county extract.
+
 ```bash
 cd skills/use-oracle/runtime
 node bin/elephant-county.mjs hoa-pm-enrich \

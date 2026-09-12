@@ -168,6 +168,39 @@ describe("Filebase credential + dry-run gating", () => {
     ).toThrow();
   });
 
+  it("accepts an empty reviewed HOA/PM object bundle", () => {
+    const parquetBody = Buffer.from("PAR1");
+    const coverageBody = Buffer.from("{}");
+    const objectsBody = Buffer.alloc(0);
+    const base = approvalFor(parquetBody, coverageBody);
+    const approval = {
+      ...base,
+      action:
+        "publish-query-table-coverage-and-resolvable-hoa-pm-objects",
+      county: HOA_PM_ARTIFACTS.county,
+      bucket: HOA_PM_ARTIFACTS.bucket,
+      queryTableIpnsLabel: HOA_PM_ARTIFACTS.queryTableIpnsLabel,
+      coverageIpnsLabel: HOA_PM_ARTIFACTS.coverageIpnsLabel,
+      artifacts: {
+        ...base.artifacts,
+        hoaPmObjects: {
+          bytes: 0,
+          sha256:
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        },
+      },
+    };
+    expect(
+      validateFilebaseApproval(
+        approval,
+        HOA_PM_ARTIFACTS,
+        parquetBody,
+        coverageBody,
+        objectsBody,
+      ),
+    ).toEqual(approval);
+  });
+
   it("fails closed on a live publish with no approval manifest, even with credentials present", async () => {
     await expect(
       publishFilebase(ARTIFACTS, {

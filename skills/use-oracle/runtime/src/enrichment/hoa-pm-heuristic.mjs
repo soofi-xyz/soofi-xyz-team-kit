@@ -255,6 +255,52 @@ function hoaCompanyIndex(companies) {
   return index;
 }
 
+export function createHoaSubdivisionMatcher(subdivisions) {
+  const legacyNames = [
+    ...new Set(
+      subdivisions.flatMap((subdivision) =>
+        legacySubdivisionMatchNames(subdivision),
+      ),
+    ),
+  ];
+  const legacyNamesByFirstToken = new Map();
+  for (const name of legacyNames) {
+    const firstToken = name.split(" ", 1)[0];
+    const names = legacyNamesByFirstToken.get(firstToken);
+    if (names) names.push(name);
+    else legacyNamesByFirstToken.set(firstToken, [name]);
+  }
+  const normalizedBases = new Set(
+    subdivisions
+      .flatMap((subdivision) => subdivisionMatchNames(subdivision))
+      .map((name) =>
+        withoutTrailingSubdivisionDesignator(
+          normalizeComparisonTokens(name),
+        ).join(" "),
+      )
+      .filter(Boolean),
+  );
+  return (company) => {
+    if (company.status && company.status !== "ACTIVE") return false;
+    const entityName = normalizeEntityName(company.entityName);
+    if (!entityName) return false;
+    const candidateLegacyNames = new Set(
+      entityName
+        .split(" ")
+        .flatMap((token) => legacyNamesByFirstToken.get(token) ?? []),
+    );
+    if (
+      [...candidateLegacyNames].some((name) => entityName.includes(name)) &&
+      (LEGACY_HOA_NAME_MARKERS.test(entityName) ||
+        candidateLegacyNames.has(entityName))
+    ) {
+      return true;
+    }
+    const base = associationBaseName(entityName);
+    return base !== null && normalizedBases.has(base);
+  };
+}
+
 export function findHoaCompanies(subdivision, companies, { countyKey } = {}) {
   const legacyNames = legacySubdivisionMatchNames(subdivision);
   if (legacyNames.length === 0) {
