@@ -205,8 +205,8 @@
     },
     {
       "countyKey": "sumter",
-      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmUgr96tXACpNopA5ECGm1qVFrPV8WqkarQeXAQRZdexUt",
-      "queryTableCid": "QmUgr96tXACpNopA5ECGm1qVFrPV8WqkarQeXAQRZdexUt",
+      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmYZSUciGPt6rBAWFXL3EQXsh7b1UkczpvFpkDtooGro1g",
+      "queryTableCid": "QmYZSUciGPt6rBAWFXL3EQXsh7b1UkczpvFpkDtooGro1g",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
@@ -275,8 +275,8 @@
     },
     {
       "countyKey": "brevard",
-      "queryTableUrl": "https://ipfs.filebase.io/ipfs/Qmb1JmNP1xx8m2wR8qYcawre65xCsdKqXyMwSPbDdyGdWP",
-      "queryTableCid": "Qmb1JmNP1xx8m2wR8qYcawre65xCsdKqXyMwSPbDdyGdWP",
+      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmdRUh1az8Q8ktYuHX5EqhysrjaEefKzej6ZWGLJeQLwAV",
+      "queryTableCid": "QmdRUh1az8Q8ktYuHX5EqhysrjaEefKzej6ZWGLJeQLwAV",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
