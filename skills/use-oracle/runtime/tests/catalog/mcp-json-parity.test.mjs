@@ -135,7 +135,7 @@ describe("syncMcpJson against a synthetic mcp.json fixture", () => {
 
     expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(84);
     expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP)).toHaveLength(5);
-    expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(47);
+    expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(49);
 
     const written = JSON.parse(await readFile(fixturePath, "utf8"));
     const env = written.mcpServers.elephant.env;
@@ -143,27 +143,29 @@ describe("syncMcpJson against a synthetic mcp.json fixture", () => {
     expect(JSON.parse(env.PROPERTY_QUERY_TABLE_MAP)).not.toHaveProperty("stale-county");
     expect(Object.keys(JSON.parse(env.PROPERTY_QUERY_TABLE_MAP))).toHaveLength(84);
     expect(Object.keys(JSON.parse(env.PERMIT_QUERY_TABLE_MAP))).toHaveLength(5);
-    expect(Object.keys(JSON.parse(env.DATASET_COVERAGE_MAP))).toHaveLength(47);
+    expect(Object.keys(JSON.parse(env.DATASET_COVERAGE_MAP))).toHaveLength(49);
     expect(env.PUBLISHED_COUNTY_CATALOG_URL).toBe(PUBLISHED_COUNTY_CATALOG_URL);
 
     const propertyFallbacks = JSON.parse(
       env.PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS,
     );
-    expect(propertyFallbacks).not.toHaveProperty("duval");
+    expect(propertyFallbacks.duval).toBe(
+      "QmazNstZWjYu77HPbPLyvCzTC938rpfGLwyU7WKnvv6iE4",
+    );
     expect(propertyFallbacks.broward).toBe(
-      "QmaPB7TFcT5uWPEiSzf5PSezfhcijdBeYqVmgKkpXt6Ftw",
+      "QmdD3f3NqgNRiFn4hpGqEwpNqw5tXK3FWW2QRoRBYddhX5",
     );
     expect(propertyFallbacks["duval-hoa-pm"]).toBe(
-      "QmYMTp6D2WmJ3Vdwz33ZEVdeUMQ3BZiybrc31yEX1ULbdb",
+      "QmWFVt1tBnMQtt1yJDzTEDAPn2m1TYa9GJYFCQ1NP1AFSc",
     );
     expect(propertyFallbacks["broward-hoa-pm"]).toBe(
-      "QmVYunjHppM4Bs8K5J5jgJc8kCZgWReqADhzQhnb4uFHuJ",
+      "QmQ14o8m9LVCk6Wgkk6fB7iCnjcGKHQo3TshtLGesPpYk8",
     );
     expect(propertyFallbacks["pinellas-hoa-pm"]).toBe(
-      "Qmbg6Q343A9AiRgYgE7GN2HdHmeKYkZJcgzXwTW8sRPeFw",
+      "Qmdjzv32wK2ejvEbpirQ6HMp6rEn5DDE6AnopHzbuHz1pq",
     );
     expect(propertyFallbacks["osceola-hoa-pm"]).toBe(
-      "Qmey6wmj8Jkq2b9rhCAYzHkTf8miu7Bjnc8zxutDMassmz",
+      "QmeMKWX4eCK3yiZypRBp9N7ns26hyH1KRz5EXcVWasE1aM",
     );
     expect(propertyFallbacks.lee).toBe(
       "QmVZ28CinPN3JUyBBut9xXZNeN5842Ym8mf61AP7MuDtH3",
@@ -302,7 +304,7 @@ describe("merge-mcp-env-maps", () => {
 
     expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(84);
     expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP)).toHaveLength(5);
-    expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(47);
+    expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(49);
     expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP).sort()).toEqual([
       "broward",
       "duval",
@@ -332,7 +334,7 @@ describe("merge-mcp-env-maps", () => {
 });
 
 describe("syncMcpJson against a copy of the real repo-root mcp.json", () => {
-  it("produces the locked 84/5/47 key counts and preserves the real launcher untouched", async () => {
+  it("produces the locked 84/5/49 key counts and preserves the real launcher untouched", async () => {
     const fixturePath = join(tmpDir, "mcp.json");
     const original = await readFile(repoRootMcpJsonPath, "utf8");
     await writeFile(fixturePath, original, "utf8");
@@ -346,7 +348,7 @@ describe("syncMcpJson against a copy of the real repo-root mcp.json", () => {
 
     expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(84);
     expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP)).toHaveLength(5);
-    expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(47);
+    expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(49);
     expect(maps.PROPERTY_QUERY_TABLE_MAP.clay).toBeDefined();
     expect(maps.PROPERTY_QUERY_TABLE_MAP.hernando).toBeDefined();
     expect(maps.PROPERTY_QUERY_TABLE_MAP.lake).toBeDefined();
@@ -477,18 +479,18 @@ describe("syncMcpJson against a copy of the real repo-root mcp.json", () => {
         written.mcpServers.elephant.env
           .DATASET_COVERAGE_CID_FALLBACK_MAP_ADDITIONS,
       ).duval,
-    ).toBe("QmcVZjQuAivZoyWMpMdgRfcATQb3tujMNk5FVHvGVNVWDy");
+    ).toBe("QmeNDPAodn9hGk8Fgs6DDQYJ26ikw8aBGrC9HpWmod5RoM");
     expect(
       JSON.parse(
         written.mcpServers.elephant.env
           .PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS,
       ).duval,
-    ).toBeUndefined();
+    ).toBe("QmazNstZWjYu77HPbPLyvCzTC938rpfGLwyU7WKnvv6iE4");
     expect(
       JSON.parse(
         written.mcpServers.elephant.env
           .PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS,
       ).broward,
-    ).toBe("QmaPB7TFcT5uWPEiSzf5PSezfhcijdBeYqVmgKkpXt6Ftw");
+    ).toBe("QmdD3f3NqgNRiFn4hpGqEwpNqw5tXK3FWW2QRoRBYddhX5");
   });
 });

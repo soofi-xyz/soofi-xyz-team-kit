@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0",
-  "generatedAt": "2026-09-12T01:37:58.212Z",
+  "generatedAt": "2026-09-12T15:18:46.000Z",
   "counties": [
     {
       "countyKey": "broward",
@@ -9,11 +9,11 @@
       "countyFips": "12011",
       "status": "published",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dibuhwyztmkjgvz94v3mkpgfreryxwb3d4neta5e7tsxebfi09s",
-      "queryTableCid": "QmaPB7TFcT5uWPEiSzf5PSezfhcijdBeYqVmgKkpXt6Ftw",
+      "queryTableCid": "QmdD3f3NqgNRiFn4hpGqEwpNqw5tXK3FWW2QRoRBYddhX5",
       "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dhx6yqczp6f9na3xa9g1iiizxtquer62x9wavh8gpbng524vrbp",
       "permitQueryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dhns9u4o0lot4w4808yi4gdsyo5qx136lgmrplmgqdhah5qj7lg",
       "placesTableUrl": null,
-      "updatedAt": "2026-09-12T01:33:38.000Z"
+      "updatedAt": "2026-09-12T15:18:46.000Z"
     },
     {
       "countyKey": "chester",
@@ -35,11 +35,11 @@
       "countyFips": "12031",
       "status": "published",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dle7swd06u9ebrgw375b5vhhhtiiz7un7udfsar0rci53x2w5y4",
-      "queryTableCid": null,
+      "queryTableCid": "QmazNstZWjYu77HPbPLyvCzTC938rpfGLwyU7WKnvv6iE4",
       "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dgqc52fnea1o42e27dr4os0mrdf5ixonuv8kdztdnxclflazf4w",
       "permitQueryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dll7nwe1o7s1htngeoxrou8k593xieuziw9521444vh3pd7v4y1",
       "placesTableUrl": null,
-      "updatedAt": "2026-09-08T14:12:04.353Z"
+      "updatedAt": "2026-09-12T15:18:46.000Z"
     },
     {
       "countyKey": "hillsborough",
@@ -48,11 +48,11 @@
       "countyFips": "12057",
       "status": "published",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5diqz0l68gfi22qk0w8aqhsm7pcgje535uz8vhu8p37ynm2po0fh",
-      "queryTableCid": "Qmb3ezdtVFg9kgjyeiNWGVc5W2kTqx6YwcJnjaNJGESeTM",
+      "queryTableCid": "QmaNScYyp7gEcNQPnkDqLjkZyb2yHFBgpnC8pFcAva7buR",
       "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5di5jghjwbpumnr2vt1crmaycqmtx673kw8pqp8dymecuig5x8jb/",
       "permitQueryTableUrl": null,
       "placesTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dk4d5kacjn1b0argjmxmvele89gcnxyz8yjflh6gsx6w3a4o2wo/hillsborough/places-table.parquet",
-      "updatedAt": "2026-08-30T00:25:00.000Z"
+      "updatedAt": "2026-09-12T14:38:00.000Z"
     },
     {
       "countyKey": "lee",
@@ -100,11 +100,11 @@
       "countyFips": "12095",
       "status": "published",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dhgte20ho86rzg5b7h0ght3a2js5wz0t55i96aaf1d12wpl8efn",
-      "queryTableCid": "QmUGAmsUDNcQKNtqsqv53xZ7P9gH4H36hmTyNG2EDkTGDj",
+      "queryTableCid": "QmNPLvGi8u9k3JFmR55QfQ4k1athFxcBrBDrsASij6Tipt",
       "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dj8n2f8nowh8kts53rvpr62zfj0mz9izc11rfzv56q7m4161lg7",
       "permitQueryTableUrl": null,
       "placesTableUrl": null,
-      "updatedAt": "2026-09-12T01:33:38.000Z"
+      "updatedAt": "2026-09-12T14:47:00.000Z"
     },
     {
       "countyKey": "osceola",
@@ -113,11 +113,11 @@
       "countyFips": "12097",
       "status": "published",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dj8lg4xvw7adam696smuk484r5fvb948ivl12xs8ao7ja1hyz5o",
-      "queryTableCid": "QmRNtsipJBPwQVQ9J3cLYvxj6eJEFiQnxQjvsP8gE6Gg8M",
+      "queryTableCid": "QmQMoMkBStLDGid7rwqGUZovcfwSt3cYAWUQyWwZu4k4gE",
       "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dltdk9j020t8avceyej6z2wrz0fm6nffw9jc1wgki6j2wboyl9c",
       "permitQueryTableUrl": null,
       "placesTableUrl": null,
-      "updatedAt": "2026-09-12T01:33:38.000Z"
+      "updatedAt": "2026-09-12T14:23:00.000Z"
     },
     {
       "countyKey": "palm-beach",
@@ -126,11 +126,11 @@
       "countyFips": "12099",
       "status": "published",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dlu7hx158su5palzzxdbl6zcm8ojh7645bxisxs0cf0s158h6h3",
-      "queryTableCid": "QmQbsjhNhrr8jDEXMNgrQWN4zmdrR3q4X5NUdX9U7C1G1z",
+      "queryTableCid": "QmQ1gzMkF7Af3S6DpYKt17LDxsjd8jApN8snNTFxRVfSTg",
       "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5djwga4mcd8nx1gbwy4o9rks3gkoe1u5py5wi9tieea7h44nh4g2",
       "permitQueryTableUrl": null,
       "placesTableUrl": null,
-      "updatedAt": "2026-09-12T01:33:38.000Z"
+      "updatedAt": "2026-09-12T15:18:46.000Z"
     },
     {
       "countyKey": "pasco",
@@ -139,11 +139,11 @@
       "countyFips": "12101",
       "status": "published",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dlm72r495ei7507h3yl4tw4olszh2ppas8roxrbg2ccko84s8kv",
-      "queryTableCid": "Qmez8VVwV8dZPgZaeajBktNZpWVGZKepmX3BtKEVxHu66C",
+      "queryTableCid": "QmPxigjpuUN3mn5HivjDmo2eWSU13DVqomgf4E4pTEU9Fm",
       "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5digt2el7njthtxpgk40887nhi81hwnlo9zpe19yrbbaml0uo2ad",
       "permitQueryTableUrl": null,
       "placesTableUrl": null,
-      "updatedAt": "2026-09-12T01:33:38.000Z"
+      "updatedAt": "2026-09-12T14:40:00.000Z"
     },
     {
       "countyKey": "pinellas",
@@ -152,11 +152,11 @@
       "countyFips": "12103",
       "status": "published",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dhmo3zv6xvidksgvsqkfer3nw1s4v7bcbafpl66btpyab3zv9ir",
-      "queryTableCid": "QmQzELT58jEb3XzTqE4hTays1nJ96LgFazrcL9NefpeZu7",
+      "queryTableCid": "QmbmJy9wczN99qQPqV7XQGb4KfCTSUJA6B4ArtdssRN3Mo",
       "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5djrzm8n599i98ey7rpmwpbphgk8tvo5d6zjkfeqcmbrg7lh03xl",
       "permitQueryTableUrl": null,
       "placesTableUrl": null,
-      "updatedAt": "2026-09-12T01:33:38.000Z"
+      "updatedAt": "2026-09-12T14:23:00.000Z"
     },
     {
       "countyKey": "polk",
