@@ -103,7 +103,7 @@ describe("published county catalog", () => {
       status: "published",
       permitQueryTableUrl: null,
       placesTableUrl: null,
-      updatedAt: "2026-09-01T14:16:20.247Z",
+      updatedAt: "2026-09-12T01:33:38.000Z",
     });
     expect(seminole.queryTableUrl).toContain(
       "k51qzi5uqu5di6kqptmkfaoq7yxc7z04spm1n0gbrc26toi2eah1b66cfrqfwp",

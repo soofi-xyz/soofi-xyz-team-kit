@@ -133,7 +133,7 @@ describe("syncMcpJson against a synthetic mcp.json fixture", () => {
       overlayPath,
     });
 
-    expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(59);
+    expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(73);
     expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP)).toHaveLength(5);
     expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(25);
 
@@ -141,7 +141,7 @@ describe("syncMcpJson against a synthetic mcp.json fixture", () => {
     const env = written.mcpServers.elephant.env;
 
     expect(JSON.parse(env.PROPERTY_QUERY_TABLE_MAP)).not.toHaveProperty("stale-county");
-    expect(Object.keys(JSON.parse(env.PROPERTY_QUERY_TABLE_MAP))).toHaveLength(59);
+    expect(Object.keys(JSON.parse(env.PROPERTY_QUERY_TABLE_MAP))).toHaveLength(73);
     expect(Object.keys(JSON.parse(env.PERMIT_QUERY_TABLE_MAP))).toHaveLength(5);
     expect(Object.keys(JSON.parse(env.DATASET_COVERAGE_MAP))).toHaveLength(25);
     expect(env.PUBLISHED_COUNTY_CATALOG_URL).toBe(PUBLISHED_COUNTY_CATALOG_URL);
@@ -150,7 +150,9 @@ describe("syncMcpJson against a synthetic mcp.json fixture", () => {
       env.PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS,
     );
     expect(propertyFallbacks).not.toHaveProperty("duval");
-    expect(propertyFallbacks).not.toHaveProperty("broward");
+    expect(propertyFallbacks.broward).toBe(
+      "QmaPB7TFcT5uWPEiSzf5PSezfhcijdBeYqVmgKkpXt6Ftw",
+    );
     expect(propertyFallbacks["duval-hoa-pm"]).toBe(
       "QmYMTp6D2WmJ3Vdwz33ZEVdeUMQ3BZiybrc31yEX1ULbdb",
     );
@@ -298,7 +300,7 @@ describe("merge-mcp-env-maps", () => {
   it("buildMergedMcpEnvMaps against the tracked catalog + overlay matches the locked key counts", async () => {
     const maps = await buildMergedMcpEnvMaps({ catalogPath, overlayPath });
 
-    expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(59);
+    expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(73);
     expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP)).toHaveLength(5);
     expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(25);
     expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP).sort()).toEqual([
@@ -339,7 +341,7 @@ describe("syncMcpJson against a copy of the real repo-root mcp.json", () => {
       overlayPath,
     });
 
-    expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(59);
+    expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(73);
     expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP)).toHaveLength(5);
     expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(25);
     expect(maps.PROPERTY_QUERY_TABLE_MAP.clay).toBeDefined();
@@ -383,6 +385,20 @@ describe("syncMcpJson against a copy of the real repo-root mcp.json", () => {
       "hardee",
       "hendry",
       "monroe",
+      "nassau",
+      "st-lucie",
+      "charlotte",
+      "baker",
+      "martin",
+      "highlands",
+      "bradford",
+      "citrus",
+      "putnam",
+      "santa-rosa",
+      "escambia",
+      "desoto",
+      "collier",
+      "columbia",
     ];
     for (const county of csvParcelOverlays) {
       expect(maps.PROPERTY_QUERY_TABLE_MAP[county]).toMatch(
@@ -395,10 +411,10 @@ describe("syncMcpJson against a copy of the real repo-root mcp.json", () => {
       expect(maps.PERMIT_QUERY_TABLE_MAP).not.toHaveProperty(county);
     }
     expect(maps.PROPERTY_QUERY_TABLE_MAP.sumter).toBe(
-      "https://ipfs.filebase.io/ipfs/QmYZSUciGPt6rBAWFXL3EQXsh7b1UkczpvFpkDtooGro1g",
+      "https://ipfs.filebase.io/ipfs/Qmcgq1Z3fkAHs3Ha71dAKb5XH1gSzUD95MJY27saRvD4DS",
     );
     expect(maps.PROPERTY_QUERY_TABLE_MAP.brevard).toBe(
-      "https://ipfs.filebase.io/ipfs/QmdRUh1az8Q8ktYuHX5EqhysrjaEefKzej6ZWGLJeQLwAV",
+      "https://ipfs.filebase.io/ipfs/QmSvH2teBD5LTiLMuQZEeAMs1UJ3T7QjqLuEAkyWqafyH7",
     );
     expect(maps.PROPERTY_QUERY_TABLE_MAP.duval).toBeDefined();
     expect(maps.DATASET_COVERAGE_MAP.duval).toBeDefined();
@@ -451,6 +467,6 @@ describe("syncMcpJson against a copy of the real repo-root mcp.json", () => {
         written.mcpServers.elephant.env
           .PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS,
       ).broward,
-    ).toBeUndefined();
+    ).toBe("QmaPB7TFcT5uWPEiSzf5PSezfhcijdBeYqVmgKkpXt6Ftw");
   });
 });

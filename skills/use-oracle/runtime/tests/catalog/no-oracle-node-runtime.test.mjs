@@ -64,6 +64,20 @@ describe("catalog self-containment (no oracle-node at runtime)", () => {
       "hardee",
       "hendry",
       "monroe",
+      "nassau",
+      "st-lucie",
+      "charlotte",
+      "baker",
+      "martin",
+      "highlands",
+      "bradford",
+      "citrus",
+      "putnam",
+      "santa-rosa",
+      "escambia",
+      "desoto",
+      "collier",
+      "columbia",
     ]) {
       expect(keys).not.toContain(county);
     }
@@ -119,6 +133,20 @@ describe("catalog self-containment (no oracle-node at runtime)", () => {
       "hardee",
       "hendry",
       "monroe",
+      "nassau",
+      "st-lucie",
+      "charlotte",
+      "baker",
+      "martin",
+      "highlands",
+      "bradford",
+      "citrus",
+      "putnam",
+      "santa-rosa",
+      "escambia",
+      "desoto",
+      "collier",
+      "columbia",
     ]);
   });
 
