@@ -135,7 +135,7 @@ describe("syncMcpJson against a synthetic mcp.json fixture", () => {
 
     expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(84);
     expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP)).toHaveLength(5);
-    expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(51);
+    expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(52);
 
     const written = JSON.parse(await readFile(fixturePath, "utf8"));
     const env = written.mcpServers.elephant.env;
@@ -143,7 +143,7 @@ describe("syncMcpJson against a synthetic mcp.json fixture", () => {
     expect(JSON.parse(env.PROPERTY_QUERY_TABLE_MAP)).not.toHaveProperty("stale-county");
     expect(Object.keys(JSON.parse(env.PROPERTY_QUERY_TABLE_MAP))).toHaveLength(84);
     expect(Object.keys(JSON.parse(env.PERMIT_QUERY_TABLE_MAP))).toHaveLength(5);
-    expect(Object.keys(JSON.parse(env.DATASET_COVERAGE_MAP))).toHaveLength(51);
+    expect(Object.keys(JSON.parse(env.DATASET_COVERAGE_MAP))).toHaveLength(52);
     expect(env.PUBLISHED_COUNTY_CATALOG_URL).toBe(PUBLISHED_COUNTY_CATALOG_URL);
 
     const propertyFallbacks = JSON.parse(
@@ -168,7 +168,7 @@ describe("syncMcpJson against a synthetic mcp.json fixture", () => {
       "QmeMKWX4eCK3yiZypRBp9N7ns26hyH1KRz5EXcVWasE1aM",
     );
     expect(propertyFallbacks.lee).toBe(
-      "QmVZ28CinPN3JUyBBut9xXZNeN5842Ym8mf61AP7MuDtH3",
+      "QmXUhFPnWxwywQaksFW1ikSAoMCgmjDrHfZvHPnCRuFtZh",
     );
     // Preserved untouched.
     expect(env.PERMIT_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS).toBe(
@@ -304,7 +304,7 @@ describe("merge-mcp-env-maps", () => {
 
     expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(84);
     expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP)).toHaveLength(5);
-    expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(51);
+    expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(52);
     expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP).sort()).toEqual([
       "broward",
       "duval",
@@ -334,7 +334,7 @@ describe("merge-mcp-env-maps", () => {
 });
 
 describe("syncMcpJson against a copy of the real repo-root mcp.json", () => {
-  it("produces the locked 84/5/51 key counts and preserves the real launcher untouched", async () => {
+  it("produces the locked 84/5/52 key counts and preserves the real launcher untouched", async () => {
     const fixturePath = join(tmpDir, "mcp.json");
     const original = await readFile(repoRootMcpJsonPath, "utf8");
     await writeFile(fixturePath, original, "utf8");
@@ -348,7 +348,7 @@ describe("syncMcpJson against a copy of the real repo-root mcp.json", () => {
 
     expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(84);
     expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP)).toHaveLength(5);
-    expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(51);
+    expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(52);
     expect(maps.PROPERTY_QUERY_TABLE_MAP.clay).toBeDefined();
     expect(maps.PROPERTY_QUERY_TABLE_MAP.hernando).toBeDefined();
     expect(maps.PROPERTY_QUERY_TABLE_MAP.lake).toBeDefined();

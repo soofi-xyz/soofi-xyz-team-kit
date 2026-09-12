@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0",
-  "generatedAt": "2026-09-12T15:18:46.000Z",
+  "generatedAt": "2026-09-12T15:39:00.000Z",
   "counties": [
     {
       "countyKey": "broward",
@@ -61,11 +61,11 @@
       "countyFips": "12071",
       "status": "published",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5djd4ohcf3qm87dhlt0e270xw8ejhkyia62edr76uj0u05hrf7m5",
-      "queryTableCid": "QmVZ28CinPN3JUyBBut9xXZNeN5842Ym8mf61AP7MuDtH3",
+      "queryTableCid": "QmXUhFPnWxwywQaksFW1ikSAoMCgmjDrHfZvHPnCRuFtZh",
       "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dimw0elyh4agbtqe7v2fzp0jcd7b1bcu8kxs0hml7yu1no0z0vd",
       "permitQueryTableUrl": null,
       "placesTableUrl": null,
-      "updatedAt": "2026-07-10T09:18:04.350Z"
+      "updatedAt": "2026-09-12T15:39:00.000Z"
     },
     {
       "countyKey": "miami-dade",

@@ -25,9 +25,9 @@
     {
       "countyKey": "lee-hoa-pm",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dko6l4jajqqfi7pm8k7df33w6c8prsvqup7edm91a1486ukswk4",
-      "queryTableCid": "QmWHAWGnPCo5D2kMnVnTeVcafoS34WGAKd7TNny9HpvFcN",
+      "queryTableCid": "QmeJrWHFixTf3tYY1Q2WJkvN2KBtbC72NVkkorj9hierH3",
       "permitQueryTableUrl": null,
-      "datasetCoverageUrl": null
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dkflq4utl1c1mwfqnk8hkm4e8mr5g23fmenurpno8xzdxmu5cyc"
     },
     {
       "countyKey": "miami-dade-hoa-pm",
