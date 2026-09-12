@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0",
-  "generatedAt": "2026-09-12T15:47:00.000Z",
+  "generatedAt": "2026-09-12T15:55:56.000Z",
   "counties": [
     {
       "countyKey": "broward",
@@ -165,11 +165,11 @@
       "countyFips": "12105",
       "status": "published",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dj7acu8xg9ugfk670m8b185q4h7pz2gp8cv3mos15ftb4yz6w7o",
-      "queryTableCid": "QmZtEfJkBkofqU378jCUGQCqYVCSpcdQjJByd3ZA5rqYHJ",
+      "queryTableCid": "QmV7nzNj2EkFjtcjzJyA1cyp5nEwrDd2fGUPBdgmNsTdBS",
       "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5diaoycedqekfs0osktwx8py1h8s7h0gspga18rksi3kumrs52nq/",
       "permitQueryTableUrl": null,
       "placesTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5di1ej4dfw5658dz4log0cu9ussp413xgcc5q6ry4datziq5vi63/polk/places-table.parquet",
-      "updatedAt": "2026-08-31T13:29:48.000Z"
+      "updatedAt": "2026-09-12T15:55:56.000Z"
     },
     {
       "countyKey": "rock-island",
