@@ -150,13 +150,13 @@ describe("syncMcpJson against a synthetic mcp.json fixture", () => {
       env.PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS,
     );
     expect(propertyFallbacks.duval).toBe(
-      "QmazNstZWjYu77HPbPLyvCzTC938rpfGLwyU7WKnvv6iE4",
+      "QmVBXXV3UKuCHE7QCTzT3o6ULaFj7XJL1f1Tzrk8DsLsvD",
     );
     expect(propertyFallbacks.broward).toBe(
       "QmdD3f3NqgNRiFn4hpGqEwpNqw5tXK3FWW2QRoRBYddhX5",
     );
     expect(propertyFallbacks["duval-hoa-pm"]).toBe(
-      "QmWFVt1tBnMQtt1yJDzTEDAPn2m1TYa9GJYFCQ1NP1AFSc",
+      "QmVrF1SNmn83uke67Qj1msggLt1cGBBwogXQCAJtZaFQUD",
     );
     expect(propertyFallbacks["broward-hoa-pm"]).toBe(
       "QmQ14o8m9LVCk6Wgkk6fB7iCnjcGKHQo3TshtLGesPpYk8",
@@ -479,13 +479,13 @@ describe("syncMcpJson against a copy of the real repo-root mcp.json", () => {
         written.mcpServers.elephant.env
           .DATASET_COVERAGE_CID_FALLBACK_MAP_ADDITIONS,
       ).duval,
-    ).toBe("QmeNDPAodn9hGk8Fgs6DDQYJ26ikw8aBGrC9HpWmod5RoM");
+    ).toBe("QmXKwxHyj9c8JmqH5G1PZQQwFT4CvbmCkM5EZXPdU4pjGs");
     expect(
       JSON.parse(
         written.mcpServers.elephant.env
           .PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS,
       ).duval,
-    ).toBe("QmazNstZWjYu77HPbPLyvCzTC938rpfGLwyU7WKnvv6iE4");
+    ).toBe("QmVBXXV3UKuCHE7QCTzT3o6ULaFj7XJL1f1Tzrk8DsLsvD");
     expect(
       JSON.parse(
         written.mcpServers.elephant.env
