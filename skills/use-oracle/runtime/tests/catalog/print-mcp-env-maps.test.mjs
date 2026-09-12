@@ -47,6 +47,32 @@ describe("print-mcp-env-maps", () => {
     });
   });
 
+  it("emits CID fallbacks only for IPNS query-table routes", () => {
+    const maps = mcpEnvMapsFromCatalog({
+      counties: [
+        {
+          countyKey: "clay",
+          queryTableUrl:
+            "https://ipfs.filebase.io/ipns/k51qzi5uqu5dh0kg04p42xp3ncl2jig9to5quyfaoe2zxn59v1kvpd9opx7vej",
+          queryTableCid: "QmYFhNUZSUGMAR3dRgQ21qqaMnQtH7jPPE1YfdJxpg3g5F",
+        },
+        {
+          countyKey: "sumter",
+          queryTableUrl:
+            "https://ipfs.filebase.io/ipfs/QmYZSUciGPt6rBAWFXL3EQXsh7b1UkczpvFpkDtooGro1g",
+          queryTableCid: "QmYZSUciGPt6rBAWFXL3EQXsh7b1UkczpvFpkDtooGro1g",
+        },
+      ],
+    });
+
+    expect(maps.PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS).toEqual({
+      clay: "QmYFhNUZSUGMAR3dRgQ21qqaMnQtH7jPPE1YfdJxpg3g5F",
+    });
+    expect(maps.PROPERTY_QUERY_TABLE_MAP.sumter).toBe(
+      "https://ipfs.filebase.io/ipfs/QmYZSUciGPt6rBAWFXL3EQXsh7b1UkczpvFpkDtooGro1g",
+    );
+  });
+
   it("stringifies maps as JSON-inside-JSON for MCP env", () => {
     const encoded = stringifyMcpEnvMaps({
       PROPERTY_QUERY_TABLE_MAP: { lee: "https://example.com/lee.parquet" },

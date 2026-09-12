@@ -388,9 +388,18 @@ describe("syncMcpJson against a copy of the real repo-root mcp.json", () => {
       expect(maps.PROPERTY_QUERY_TABLE_MAP[county]).toMatch(
         /^https:\/\/ipfs\.filebase\.io\/ipfs\/Qm/,
       );
+      expect(maps.PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS).not.toHaveProperty(
+        county,
+      );
       expect(maps.DATASET_COVERAGE_MAP).not.toHaveProperty(county);
       expect(maps.PERMIT_QUERY_TABLE_MAP).not.toHaveProperty(county);
     }
+    expect(maps.PROPERTY_QUERY_TABLE_MAP.sumter).toBe(
+      "https://ipfs.filebase.io/ipfs/QmYZSUciGPt6rBAWFXL3EQXsh7b1UkczpvFpkDtooGro1g",
+    );
+    expect(maps.PROPERTY_QUERY_TABLE_MAP.brevard).toBe(
+      "https://ipfs.filebase.io/ipfs/QmdRUh1az8Q8ktYuHX5EqhysrjaEefKzej6ZWGLJeQLwAV",
+    );
     expect(maps.PROPERTY_QUERY_TABLE_MAP.duval).toBeDefined();
     expect(maps.DATASET_COVERAGE_MAP.duval).toBeDefined();
     expect(maps.PERMIT_QUERY_TABLE_MAP.duval).toBeDefined();

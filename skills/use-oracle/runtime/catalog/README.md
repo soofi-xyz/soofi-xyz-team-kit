@@ -65,6 +65,8 @@ into `PROPERTY_QUERY_TABLE_MAP`, `PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITION
 repo-root `mcp.json`'s `mcpServers.elephant.env`, alongside a
 `PUBLISHED_COUNTY_CATALOG_URL` pointing at this file's raw GitHub URL. It preserves every other
 env key (`ORACLE_OPEN_DATA_*`, `ORACLE_GEO_INDEX_IPNS`) and the bash/npx MCP launcher untouched.
+CID fallbacks are emitted only when `queryTableUrl` is an IPNS route; immutable `/ipfs/<cid>`
+overlay URLs stay in `PROPERTY_QUERY_TABLE_MAP` alone so elephant-mcp will accept them.
 
 ```bash
 npm run catalog:sync-mcp-json --prefix skills/use-oracle/runtime

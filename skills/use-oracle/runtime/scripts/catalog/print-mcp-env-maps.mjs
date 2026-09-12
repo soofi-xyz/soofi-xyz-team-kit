@@ -58,10 +58,42 @@ export function mcpEnvMapsFromCatalog(catalog) {
     return Object.fromEntries(entries);
   }
 
+  /**
+   * CID fallbacks are only valid on IPNS query-table routes. elephant-mcp rejects a
+   * fallback when the base URL is already `/ipfs/<cid>`.
+   *
+   * @returns {Record<string, string>}
+   */
+  function cidFallbacksForIpnsRoutes() {
+    const entries = counties
+      .filter((county) => {
+        const url = county.queryTableUrl;
+        const cid = county.queryTableCid;
+        return (
+          typeof county.countyKey === "string" &&
+          typeof cid === "string" &&
+          cid.length > 0 &&
+          typeof url === "string" &&
+          url.includes("/ipns/")
+        );
+      })
+      .map((county) => [county.countyKey, county.queryTableCid]);
+    const seen = new Set();
+    for (const [countyKey] of entries) {
+      if (seen.has(countyKey)) {
+        throw new Error(
+          `Duplicate countyKey "${countyKey}" while building queryTableCid`,
+        );
+      }
+      seen.add(countyKey);
+    }
+    return Object.fromEntries(entries);
+  }
+
   return {
     PROPERTY_QUERY_TABLE_MAP: mapField("queryTableUrl"),
     PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS:
-      mapField("queryTableCid"),
+      cidFallbacksForIpnsRoutes(),
     PERMIT_QUERY_TABLE_MAP: mapField("permitQueryTableUrl"),
     DATASET_COVERAGE_MAP: mapField("datasetCoverageUrl"),
   };
