@@ -205,8 +205,8 @@
     },
     {
       "countyKey": "sumter",
-      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmNm5F88bxft6xXpeCbf1Rp5SCTMqcxcybthjX8bbb4bYo",
-      "queryTableCid": "QmNm5F88bxft6xXpeCbf1Rp5SCTMqcxcybthjX8bbb4bYo",
+      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmUgr96tXACpNopA5ECGm1qVFrPV8WqkarQeXAQRZdexUt",
+      "queryTableCid": "QmUgr96tXACpNopA5ECGm1qVFrPV8WqkarQeXAQRZdexUt",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
@@ -219,92 +219,92 @@
     },
     {
       "countyKey": "okaloosa",
-      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmTusH3yjJumRZFWfC2WyhU3Ka4JZqmYPo6EtEjxRoLF4J",
-      "queryTableCid": "QmTusH3yjJumRZFWfC2WyhU3Ka4JZqmYPo6EtEjxRoLF4J",
+      "queryTableUrl": "https://ipfs.filebase.io/ipfs/Qmc2GMKNKrpQGVGd2bFAtWrdSbBczBtSsL1HKtXNyUpej4",
+      "queryTableCid": "Qmc2GMKNKrpQGVGd2bFAtWrdSbBczBtSsL1HKtXNyUpej4",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
     {
       "countyKey": "bay",
-      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmeLLKdPqHqQY3u8y6hMwpmvjh79c4dSTwWa1PKobGwh2S",
-      "queryTableCid": "QmeLLKdPqHqQY3u8y6hMwpmvjh79c4dSTwWa1PKobGwh2S",
+      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmUryQVemWZuCr7HgTVKxU7wdNAYQZiujGfpyQyrN6Nhj9",
+      "queryTableCid": "QmUryQVemWZuCr7HgTVKxU7wdNAYQZiujGfpyQyrN6Nhj9",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
     {
       "countyKey": "walton",
-      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmZD8GuMyM5g7TdVhewf2awGSzndm1oE6822vDab6kjTrK",
-      "queryTableCid": "QmZD8GuMyM5g7TdVhewf2awGSzndm1oE6822vDab6kjTrK",
+      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmSdcRF11RRvoFVnKLiKGcMYDgJrfSGK9BayrRM9M8VXEE",
+      "queryTableCid": "QmSdcRF11RRvoFVnKLiKGcMYDgJrfSGK9BayrRM9M8VXEE",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
     {
       "countyKey": "holmes",
-      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmYXP9aay3ifridXEiXAju7QHakNcpxY7xw8QTczzCiqNc",
-      "queryTableCid": "QmYXP9aay3ifridXEiXAju7QHakNcpxY7xw8QTczzCiqNc",
+      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmTGWHz4vWs5ES69DMSSV9CTMU6NsYUcTFjaMu8UHV3pCq",
+      "queryTableCid": "QmTGWHz4vWs5ES69DMSSV9CTMU6NsYUcTFjaMu8UHV3pCq",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
     {
       "countyKey": "jackson",
-      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmYVdJaDDwWJsPxJx5jDXJucb3CgyHscA9wHbYxbRXpNM2",
-      "queryTableCid": "QmYVdJaDDwWJsPxJx5jDXJucb3CgyHscA9wHbYxbRXpNM2",
+      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmQA7ViH5bk563C4Wh3n6HizKumy855wtujbbkjoseeh6D",
+      "queryTableCid": "QmQA7ViH5bk563C4Wh3n6HizKumy855wtujbbkjoseeh6D",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
     {
       "countyKey": "leon",
-      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmTXFwqhoDMD2bPUXvxKZKxvRtdpvoitAZXayRzawCimVF",
-      "queryTableCid": "QmTXFwqhoDMD2bPUXvxKZKxvRtdpvoitAZXayRzawCimVF",
+      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmaFk2KzMTxjPoGT5k7Yh3e2tuecqmL83Bubg9VAzL8XDR",
+      "queryTableCid": "QmaFk2KzMTxjPoGT5k7Yh3e2tuecqmL83Bubg9VAzL8XDR",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
     {
       "countyKey": "levy",
-      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmaRd9bT8tgADEZn76qgAvFryAVEwinjqkguMhJ7aDxNAb",
-      "queryTableCid": "QmaRd9bT8tgADEZn76qgAvFryAVEwinjqkguMhJ7aDxNAb",
+      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmfJWBH2S9fvNvYStg81nfMHR1x4BtvT54xiZbeb6y7cX1",
+      "queryTableCid": "QmfJWBH2S9fvNvYStg81nfMHR1x4BtvT54xiZbeb6y7cX1",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
     {
       "countyKey": "flagler",
-      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmXXP1eL38CpuepxzEXBtBUMfhYsF1jShUsE1NLGZAhDrD",
-      "queryTableCid": "QmXXP1eL38CpuepxzEXBtBUMfhYsF1jShUsE1NLGZAhDrD",
+      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmaZNJUhoDtXztgVbL4jnii4M5BcDokkHVp3EN1JR7SmWy",
+      "queryTableCid": "QmaZNJUhoDtXztgVbL4jnii4M5BcDokkHVp3EN1JR7SmWy",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
     {
       "countyKey": "brevard",
-      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmYi57n1AXLzdDSewcgh8jV1mYCVzynPUSbd3q7HVE14H4",
-      "queryTableCid": "QmYi57n1AXLzdDSewcgh8jV1mYCVzynPUSbd3q7HVE14H4",
+      "queryTableUrl": "https://ipfs.filebase.io/ipfs/Qmb1JmNP1xx8m2wR8qYcawre65xCsdKqXyMwSPbDdyGdWP",
+      "queryTableCid": "Qmb1JmNP1xx8m2wR8qYcawre65xCsdKqXyMwSPbDdyGdWP",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
     {
       "countyKey": "indian-river",
-      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmcUxorqL7ToXzkxFXvzWmhPJYXiiyCWAkF8gLXL22271T",
-      "queryTableCid": "QmcUxorqL7ToXzkxFXvzWmhPJYXiiyCWAkF8gLXL22271T",
+      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmSPKXHDSKybjocRzEVcyXNbitprwpSLvyJDmVvwWQS9hf",
+      "queryTableCid": "QmSPKXHDSKybjocRzEVcyXNbitprwpSLvyJDmVvwWQS9hf",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
     {
       "countyKey": "hardee",
-      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmQeYZRiuyJtPgjAhTQaAMWqiHnZB5K9jpkJgMY98G1KQp",
-      "queryTableCid": "QmQeYZRiuyJtPgjAhTQaAMWqiHnZB5K9jpkJgMY98G1KQp",
+      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmNobKezsZ6ZBp2S1eDrB6oDpKeQAwbynT6GDxBETnE7E7",
+      "queryTableCid": "QmNobKezsZ6ZBp2S1eDrB6oDpKeQAwbynT6GDxBETnE7E7",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
     {
       "countyKey": "hendry",
-      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmNQXZLRhg7G9JeEVRWWgafhsdbPyLRcwoemLFxxcPcDn5",
-      "queryTableCid": "QmNQXZLRhg7G9JeEVRWWgafhsdbPyLRcwoemLFxxcPcDn5",
+      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmQ9K9ftAkrNjTiSEyEiZgqE8ZzxmnfJyn78i5yozHMNaQ",
+      "queryTableCid": "QmQ9K9ftAkrNjTiSEyEiZgqE8ZzxmnfJyn78i5yozHMNaQ",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
     {
       "countyKey": "monroe",
-      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmSndoeaUDULv83ef5sRGMCRFCAVhQhyjJUJnEBVeeEgFZ",
-      "queryTableCid": "QmSndoeaUDULv83ef5sRGMCRFCAVhQhyjJUJnEBVeeEgFZ",
+      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmZpdagdEKbsyQnAZt2DYfpbbdhGkfJsfJkfL4diagBv3y",
+      "queryTableCid": "QmZpdagdEKbsyQnAZt2DYfpbbdhGkfJsfJkfL4diagBv3y",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     }
