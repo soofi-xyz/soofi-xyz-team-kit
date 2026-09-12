@@ -39,9 +39,9 @@
     {
       "countyKey": "orange-hoa-pm",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5div4mt8yg2utwy1n8iytxxiagvqvgh1ctftyehygk20nnb11yfq",
-      "queryTableCid": "QmZWkDeg7AweVTUE3amsHNf5sj4ccdYPsbvFpXta1Ucmcq",
+      "queryTableCid": "QmcqYSHM8h5bHNPX3nMKx1gMsGoYD3947MFnXteqWcZR4K",
       "permitQueryTableUrl": null,
-      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmUZivN68ZmG1XS88HcDwQ5hQTJ292hJbJ9MoLHFyPyDT4"
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dkeu5mpwkdlsh0ya60vlalpo9i9x60eg9g31jvafy9c9gd79gh0"
     },
     {
       "countyKey": "osceola-hoa-pm",

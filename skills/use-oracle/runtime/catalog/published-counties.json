@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0",
-  "generatedAt": "2026-09-12T15:39:00.000Z",
+  "generatedAt": "2026-09-12T15:47:00.000Z",
   "counties": [
     {
       "countyKey": "broward",
@@ -100,11 +100,11 @@
       "countyFips": "12095",
       "status": "published",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dhgte20ho86rzg5b7h0ght3a2js5wz0t55i96aaf1d12wpl8efn",
-      "queryTableCid": "QmNPLvGi8u9k3JFmR55QfQ4k1athFxcBrBDrsASij6Tipt",
+      "queryTableCid": "QmXeTNghbbo5hd1FgqeXPoCJDxtp6pkygJS12t6krnCFFa",
       "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dj8n2f8nowh8kts53rvpr62zfj0mz9izc11rfzv56q7m4161lg7",
       "permitQueryTableUrl": null,
       "placesTableUrl": null,
-      "updatedAt": "2026-09-12T14:47:00.000Z"
+      "updatedAt": "2026-09-12T15:47:00.000Z"
     },
     {
       "countyKey": "osceola",
