@@ -75,6 +75,27 @@ node bin/elephant-county.mjs hoa-pm-property-publish \
 A live run requires an approval manifest that binds the exact source overlay bytes,
 plus a resumable receipt. Never add or change `hoa_flag` in this step.
 
+When a county has no official `property_cid`, use the explicit `--thin-overlay`
+shortcut. It creates one minimal JSON object per linked overlay row from only the
+overlay's county, native parcel-identifier column, available property-address fields,
+subdivision, `hoa_cid`, `property_manager_cid`, and `hoa_pm_status`. It does not copy
+owners, values, permits, sales, taxes, or `hoa_flag`, and it does not represent the
+result as the county's canonical property object:
+
+```bash
+node bin/elephant-county.mjs hoa-pm-property-publish \
+  --county seminole \
+  --input-parquet <current-overlay.parquet> \
+  --thin-overlay \
+  --dry-run
+```
+
+The thin shortcut requires its own exact-byte approval action,
+`publish-thin-overlay-property-pages-and-overlay-query-table`. It retains the same
+`<county>/hoa-pm/properties/` object prefix, `<county>/hoa-pm/query-table.parquet`
+table key, and `oracle-query-table-<county>-hoa-pm` label. Never combine
+`--thin-overlay` with `--official-parquet`.
+
 Publication remains human-approval gated. Plan the exact destination without network
 writes:
 

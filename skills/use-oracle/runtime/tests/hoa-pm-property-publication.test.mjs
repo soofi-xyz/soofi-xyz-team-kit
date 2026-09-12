@@ -6,6 +6,7 @@ import {
   HOA_PM_PROPERTY_APPROVAL_SCHEMA_VERSION,
   publishHoaPmPropertyPages,
   stampHoaPmPropertyJson,
+  thinHoaPmPropertyJson,
   validateHoaPmPropertyApproval,
 } from "../src/core/hoa-pm-property-publication.mjs";
 
@@ -37,6 +38,33 @@ describe("HOA/PM stamped property publication", () => {
         "QmREJtrGduU39HnSfZC5iuFvTE1ptRX8Zg35dSwVQWqRfT",
     });
     expect(stamped).not.toHaveProperty("hoa_flag");
+  });
+
+  it("builds a minimal overlay-only property without hoa_flag", () => {
+    const thin = JSON.parse(
+      thinHoaPmPropertyJson("seminole", {
+        thinProperty: {
+          parcel_id: "07212951500000780",
+          primary_address: "2738 BRANDON CIR APOPKA FL 32703",
+          subdivision: "Wekiva Reserve Unit 2",
+        },
+        hoaCid: "QmaWHP5byMjdLC8p3u5Hw8WGDKquqbNkJDNPKUffcpFQky",
+        propertyManagerCid:
+          "QmbrPQ845DJXaknfS9wjxSeSvyvyDQnFZnNfCSeheo3wer",
+        hoaPmStatus: "matched",
+      }).toString("utf8"),
+    );
+    expect(thin).toEqual({
+      county: "seminole",
+      parcel_id: "07212951500000780",
+      primary_address: "2738 BRANDON CIR APOPKA FL 32703",
+      subdivision: "Wekiva Reserve Unit 2",
+      hoa_cid: "QmaWHP5byMjdLC8p3u5Hw8WGDKquqbNkJDNPKUffcpFQky",
+      property_manager_cid:
+        "QmbrPQ845DJXaknfS9wjxSeSvyvyDQnFZnNfCSeheo3wer",
+      hoa_pm_status: "matched",
+    });
+    expect(thin).not.toHaveProperty("hoa_flag");
   });
 
   it("binds approval to the overlay label and exact source table", () => {
@@ -81,6 +109,21 @@ describe("HOA/PM stamped property publication", () => {
       propertyObjectPrefix: "duval/hoa-pm/properties/",
       approvalAction:
         "publish-stamped-property-pages-and-overlay-query-table",
+    });
+  });
+
+  it("dry-runs thin pages with a distinct approval action", async () => {
+    await expect(
+      publishHoaPmPropertyPages(artifacts, {
+        dryRun: true,
+        thinOverlay: true,
+        env: {},
+      }),
+    ).resolves.toMatchObject({
+      queryTableKey: "duval/hoa-pm/query-table.parquet",
+      propertyObjectPrefix: "duval/hoa-pm/properties/",
+      approvalAction:
+        "publish-thin-overlay-property-pages-and-overlay-query-table",
     });
   });
 });

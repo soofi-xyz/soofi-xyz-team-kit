@@ -528,7 +528,7 @@ async function runHoaPmPublishCommand(argv) {
 }
 
 async function runHoaPmPropertyPublishCommand(argv) {
-  const flags = parseFlags(argv, ["dry-run"]);
+  const flags = parseFlags(argv, ["dry-run", "thin-overlay"]);
   const countyKey = requireStringFlag(flags, "county");
   const publication = requireQueryTablePublication(countyKey);
   if (typeof flags["env-file"] === "string") {
@@ -551,6 +551,7 @@ async function runHoaPmPropertyPublishCommand(argv) {
         typeof flags.approve === "string" ? flags.approve : null,
       receiptPath:
         typeof flags.receipt === "string" ? flags.receipt : null,
+      thinOverlay: flags["thin-overlay"] === true,
       env: process.env,
     },
   );
@@ -1108,7 +1109,7 @@ async function main() {
       "  hoa-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --records <hoa-memberships.jsonl> --source-manifest <json> --output-dir <dir>\n" +
       "  hoa-pm-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --sunbiz-extract <dir> --output-dir <dir>\n" +
       "  hoa-pm-publish --county <published-or-overlay-county-key> --input <enriched-dir> [--query-table-only] [--dry-run] [--approve <manifest> --receipt <json>]\n" +
-      "  hoa-pm-property-publish --county <published-county-key> --input-parquet <overlay.parquet> [--official-parquet <official.parquet>] [--dry-run] [--approve <manifest> --receipt <json> --env-file <dotenv>]\n" +
+      "  hoa-pm-property-publish --county <published-county-key> --input-parquet <overlay.parquet> [--official-parquet <official.parquet> | --thin-overlay] [--dry-run] [--approve <manifest> --receipt <json> --env-file <dotenv>]\n" +
       "  bbb-harvest --county <profile-key> --category <reviewed-key> --job-id <id> --max-pages N --max-profiles N --max-requests N --max-duration-minutes N --output <dir>\n" +
       "  bbb-reconcile --county <profile-key> --harvest-root <category-dirs-root> --input-coverage <json> --output-dir <dir>\n" +
       "  bbb-link --county duval --input-parquet <query-table.parquet> --input-coverage <dataset-coverage.json> --bbb-profiles <bbb-profiles.jsonl> --bbb-reconciliation-manifest <json> --permit-source <jaxepics-bid-map.jsonl.gz> --permit-artifact-manifest <json> --output-dir <dir>\n" +
