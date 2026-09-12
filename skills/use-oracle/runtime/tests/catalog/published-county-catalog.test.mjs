@@ -78,7 +78,7 @@ describe("published county catalog", () => {
       status: "published",
       queryTableUrl:
         "https://ipfs.filebase.io/ipns/k51qzi5uqu5dle7swd06u9ebrgw375b5vhhhtiiz7un7udfsar0rci53x2w5y4",
-      queryTableCid: "QmazNstZWjYu77HPbPLyvCzTC938rpfGLwyU7WKnvv6iE4",
+      queryTableCid: "QmVBXXV3UKuCHE7QCTzT3o6ULaFj7XJL1f1Tzrk8DsLsvD",
       datasetCoverageUrl:
         "https://ipfs.filebase.io/ipns/k51qzi5uqu5dgqc52fnea1o42e27dr4os0mrdf5ixonuv8kdztdnxclflazf4w",
       permitQueryTableUrl:
