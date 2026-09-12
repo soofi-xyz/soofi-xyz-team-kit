@@ -18,7 +18,7 @@
     {
       "countyKey": "hillsborough-hoa-pm",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dk0vrq2nzaa9bxuarqgqd8ayqzs4yk36n3k02exgjr4y8hnyzli",
-      "queryTableCid": "QmWBLd4wojRRi8eJv13S6GTouK21CLJHvAYMSXbBF9Avev",
+      "queryTableCid": "QmZtf5rR33XXaJPR7ArhjJED11d7uTgqL1KYPeMwubdb8m",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dl9vkvyn9lv5dvhtv62bb7l2v3ze7k76qnlwvvdrzal5cp40pwa"
     },
@@ -32,7 +32,7 @@
     {
       "countyKey": "miami-dade-hoa-pm",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dknbly4i90rdjsl2v74sfrbfctux1a844t3ttqgnz5et0yn16yr",
-      "queryTableCid": "QmbRv94x9ZNd1SmbcGAxSzoRx3k17C6wurvixG6Do3cDdv",
+      "queryTableCid": "QmcbuLKZKoQmgeMnL38qySa8kwBS5jpQ3iJGoqfRmGe8HH",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dlxy585bspcf9vqv8rs1527gljqehiqrhngavwvo4f2s3xe7ome"
     },
@@ -46,7 +46,7 @@
     {
       "countyKey": "osceola-hoa-pm",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5diai4v9hf3dt30gloyidgg7zkhagdji8ljs335t69cxnysgv1ko",
-      "queryTableCid": "QmfAgj3PFCY6Ah8RCH9bueBnTzDETobS1494XrQhZry6kM",
+      "queryTableCid": "Qmey6wmj8Jkq2b9rhCAYzHkTf8miu7Bjnc8zxutDMassmz",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dhwb5buuagkdi5z9werhlvs02mx3g7a2lc3tt0zxm1rxo41ccwr"
     },
@@ -67,7 +67,7 @@
     {
       "countyKey": "pinellas-hoa-pm",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dhunnyikvu2hwwun14cvyalavouxrfo953skk64u3dfbfm7xk8n",
-      "queryTableCid": "QmdKWsbZMojX1qMfnMDoidyzkennybSmRQ9xN3LiUryGWh",
+      "queryTableCid": "Qmbg6Q343A9AiRgYgE7GN2HdHmeKYkZJcgzXwTW8sRPeFw",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dlw7tr5c9f3d0uel1kue0eubbqwudytzismje9iw8vm233sfbnl"
     },
@@ -81,7 +81,7 @@
     {
       "countyKey": "seminole-hoa-pm",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dhsksg7e2me2zhso3phdi1lvmcup6ypiywjtnatw21yxzk3d3md",
-      "queryTableCid": "QmUhNLQZN8zCrr5ZcGXS3H8HLjgDd8EKwoALXm6QB4yyRu",
+      "queryTableCid": "QmbYKXD7J8se3EGxKE9MG7ZHmvEnVE6Wu5EFhuuvhTGtbw",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dhmrab4ojlb400jf7g875wkpu0t52f8fj8kexzrjg1kolxttew9"
     },
@@ -137,7 +137,7 @@
     {
       "countyKey": "volusia-hoa-pm",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dj1fupzznn64e3u1b4um3rrk2ua794mk92n34v0q0rzorya12yv",
-      "queryTableCid": "QmfSPkEXqQxn5EYtpCjMQPmw7wHxb5S7iACYmJuAZRSr6h",
+      "queryTableCid": "QmbQBvmNxo5eV141DbhzqLyxwb2vCEqe2DzYmT6fQv3SRS",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },

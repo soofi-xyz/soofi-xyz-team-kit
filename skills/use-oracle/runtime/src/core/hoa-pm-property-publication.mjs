@@ -25,9 +25,10 @@ export const HOA_PM_PROPERTY_APPROVAL_SCHEMA_VERSION =
 const approvalSchema = z
   .object({
     schemaVersion: z.literal(HOA_PM_PROPERTY_APPROVAL_SCHEMA_VERSION),
-    action: z.literal(
+    action: z.enum([
       "publish-stamped-property-pages-and-overlay-query-table",
-    ),
+      "publish-thin-overlay-property-pages-and-overlay-query-table",
+    ]),
     county: z.string().min(1),
     bucket: z.literal("elephant-oracle-query-table"),
     queryTableIpnsLabel: z.string().min(1),
@@ -67,7 +68,7 @@ function queryTableKey(county) {
 
 function propertyObjectKey(county, link) {
   const suffix = createHash("sha256").update(link.key).digest("hex").slice(0, 16);
-  return `${county}/hoa-pm/properties/${link.propertyCid}-${suffix}.json`;
+  return `${county}/hoa-pm/properties/${link.propertyCid ?? "thin"}-${suffix}.json`;
 }
 
 async function writeReceipt(filePath, receipt) {
@@ -93,11 +94,25 @@ export function stampHoaPmPropertyJson(body, link) {
   return Buffer.from(JSON.stringify(stamped), "utf8");
 }
 
+export function thinHoaPmPropertyJson(county, link) {
+  const property = {
+    ...link.thinProperty,
+    county: link.thinProperty?.county ?? county,
+    ...(link.hoaCid ? { hoa_cid: link.hoaCid } : {}),
+    ...(link.propertyManagerCid
+      ? { property_manager_cid: link.propertyManagerCid }
+      : {}),
+    hoa_pm_status: link.hoaPmStatus,
+  };
+  return Buffer.from(JSON.stringify(property), "utf8");
+}
+
 export function validateHoaPmPropertyApproval(
   value,
   { county, bucket, queryTableIpnsLabel },
   sourceBody,
   officialBody = null,
+  { thinOverlay = false } = {},
 ) {
   const approval = approvalSchema.parse(value);
   const expectedLabel = requiredOverlayLabel(county);
@@ -110,6 +125,9 @@ export function validateHoaPmPropertyApproval(
     );
   }
   const expected = {
+    action: thinOverlay
+      ? "publish-thin-overlay-property-pages-and-overlay-query-table"
+      : "publish-stamped-property-pages-and-overlay-query-table",
     county,
     bucket,
     queryTableIpnsLabel,
@@ -118,7 +136,12 @@ export function validateHoaPmPropertyApproval(
       ? { sourceOfficialQueryTable: integrity(officialBody) }
       : {}),
   };
-  for (const field of ["county", "bucket", "queryTableIpnsLabel"]) {
+  for (const field of [
+    "action",
+    "county",
+    "bucket",
+    "queryTableIpnsLabel",
+  ]) {
     if (approval[field] !== expected[field]) {
       throw new Error(`HOA/PM property approval ${field} does not match`);
     }
@@ -151,30 +174,35 @@ async function publishLinkBatch({
 }) {
   return Promise.all(
     batch.map(async (link) => {
-      let response;
-      for (let attempt = 0; attempt < 6; attempt += 1) {
-        response = await fetchImpl(
-          `${FILEBASE_GATEWAY}/ipfs/${link.propertyCid}`,
+      let body;
+      if (link.propertyCid) {
+        let response;
+        for (let attempt = 0; attempt < 6; attempt += 1) {
+          response = await fetchImpl(
+            `${FILEBASE_GATEWAY}/ipfs/${link.propertyCid}`,
+          );
+          if (response.ok) break;
+          if (response.status !== 429 && response.status < 500) break;
+          const retryAfterHeader = response.headers.get("retry-after");
+          const retryAfter =
+            retryAfterHeader === null ? Number.NaN : Number(retryAfterHeader);
+          const delayMs = Number.isFinite(retryAfter) && retryAfter > 0
+            ? retryAfter * 1_000
+            : 500 * 2 ** attempt;
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+        if (!response?.ok) {
+          throw new Error(
+            `Property fetch failed for ${link.propertyCid}: ${response?.status ?? "no response"}`,
+          );
+        }
+        body = stampHoaPmPropertyJson(
+          Buffer.from(await response.arrayBuffer()),
+          link,
         );
-        if (response.ok) break;
-        if (response.status !== 429 && response.status < 500) break;
-        const retryAfterHeader = response.headers.get("retry-after");
-        const retryAfter =
-          retryAfterHeader === null ? Number.NaN : Number(retryAfterHeader);
-        const delayMs = Number.isFinite(retryAfter) && retryAfter > 0
-          ? retryAfter * 1_000
-          : 500 * 2 ** attempt;
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      } else {
+        body = thinHoaPmPropertyJson(county, link);
       }
-      if (!response?.ok) {
-        throw new Error(
-          `Property fetch failed for ${link.propertyCid}: ${response?.status ?? "no response"}`,
-        );
-      }
-      const body = stampHoaPmPropertyJson(
-        Buffer.from(await response.arrayBuffer()),
-        link,
-      );
       const objectKey = propertyObjectKey(county, link);
       const cid = await uploadFilebaseObject({
         client,
@@ -193,6 +221,9 @@ async function publishLinkBatch({
 
 export async function publishHoaPmPropertyPages(artifacts, config) {
   const expectedLabel = requiredOverlayLabel(artifacts.county);
+  if (config.thinOverlay === true && artifacts.officialParquetPath) {
+    throw new Error("--thin-overlay cannot be combined with --official-parquet");
+  }
   if (
     artifacts.bucket !== "elephant-oracle-query-table" ||
     artifacts.queryTableIpnsLabel !== expectedLabel
@@ -208,8 +239,9 @@ export async function publishHoaPmPropertyPages(artifacts, config) {
       queryTableKey: queryTableKey(artifacts.county),
       queryTableIpnsLabel: artifacts.queryTableIpnsLabel,
       propertyObjectPrefix: `${artifacts.county}/hoa-pm/properties/`,
-      approvalAction:
-        "publish-stamped-property-pages-and-overlay-query-table",
+      approvalAction: config.thinOverlay
+        ? "publish-thin-overlay-property-pages-and-overlay-query-table"
+        : "publish-stamped-property-pages-and-overlay-query-table",
     };
   }
   if (!config.approvalManifestPath || !config.receiptPath) {
@@ -232,6 +264,7 @@ export async function publishHoaPmPropertyPages(artifacts, config) {
     artifacts,
     sourceBody,
     officialBody,
+    { thinOverlay: config.thinOverlay === true },
   );
   const sourceQueryTable = integrity(sourceBody);
   const sourceOfficialQueryTable = officialBody
@@ -247,6 +280,7 @@ export async function publishHoaPmPropertyPages(artifacts, config) {
     approvedAt: approval.approvedAt,
     sourceQueryTable,
     sourceOfficialQueryTable,
+    ...(config.thinOverlay === true ? { thinOverlay: true } : {}),
     properties: {},
     upload: null,
     name: null,
@@ -259,7 +293,8 @@ export async function publishHoaPmPropertyPages(artifacts, config) {
       JSON.stringify(existing.sourceQueryTable) !==
         JSON.stringify(sourceQueryTable) ||
       JSON.stringify(existing.sourceOfficialQueryTable ?? null) !==
-        JSON.stringify(sourceOfficialQueryTable)
+        JSON.stringify(sourceOfficialQueryTable) ||
+      (existing.thinOverlay === true) !== (receipt.thinOverlay === true)
     ) {
       throw new Error("Existing HOA/PM property receipt is incompatible");
     }
@@ -282,6 +317,7 @@ export async function publishHoaPmPropertyPages(artifacts, config) {
   const summary = await readHoaPmPropertyLinks(
     artifacts.parquetPath,
     artifacts.officialParquetPath ?? null,
+    { allowThinOverlay: config.thinOverlay === true },
   );
   const pending = summary.links.filter((link) => !receipt.properties[link.key]);
   const batchSize = config.objectConcurrency ?? 4;
@@ -296,6 +332,7 @@ export async function publishHoaPmPropertyPages(artifacts, config) {
     for (const result of published) {
       receipt.properties[result.key] = {
         originalPropertyCid: result.propertyCid,
+        thinOverlay: result.propertyCid == null,
         cid: result.cid,
         key: result.objectKey,
         parcelIdentifier: result.parcelIdentifier,
