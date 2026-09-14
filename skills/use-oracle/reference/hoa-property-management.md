@@ -246,11 +246,15 @@ overlay label.
 Whenever the base county or identity query table gains or fills `subdivision`, sync the
 existing `<county>-hoa-pm` overlay before enriching it. Never treat an overlay
 `no_subdivision` result as permanent when the official table has non-empty subdivision
-text. Copy only official text into blank overlay rows; preserve filled overlay values and
-`hoa_flag`.
+text. Copy only official text into blank overlay rows. Fill a missing `elephant_token`
+from the matching official row or the bounded CSV's canonical token. Match UUID identity
+through `elephant_uuid` or `property_id`, preserve filled overlay values and `hoa_flag`,
+and add the optional UTF-8 `elephant_token` column when the thin overlay lacks it.
 
 Use `--parcel-csv` to add official rows that belong to the bounded parcel slice but are
-missing from the overlay. Keep all outputs outside git. Run this exact order:
+missing from the overlay. Without `--official-parquet`, CSV data may only fill tokens on
+unambiguous existing overlay rows; it must not add rows or supply subdivision names. Keep
+all outputs outside git. Run this exact order:
 
 Build the statewide HOA/PM index from the complete expanded quarterly Sunbiz archive and
 the exact subdivision values present in the publication scope:

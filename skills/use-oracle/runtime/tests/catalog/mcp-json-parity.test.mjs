@@ -156,16 +156,16 @@ describe("syncMcpJson against a synthetic mcp.json fixture", () => {
       "QmdD3f3NqgNRiFn4hpGqEwpNqw5tXK3FWW2QRoRBYddhX5",
     );
     expect(propertyFallbacks["duval-hoa-pm"]).toBe(
-      "QmUixViGsQnFi98PmzN5oneqh92Y7tMzaRHweLumUstm1Y",
+      "Qmb1q2fcGwaVQZ2w4Pj2k1fBvuPFZwGYjgB2eFDZWFMspd",
     );
     expect(propertyFallbacks["broward-hoa-pm"]).toBe(
-      "QmTPFUNDVusHSh2kSC8M6cKWPRQc4bk3Wk7HuNuKHRpa1n",
+      "QmcULNvgH6Dpj8iRkU5TKsaRKBH95NxqNaM6csttvKGR5N",
     );
     expect(propertyFallbacks["pinellas-hoa-pm"]).toBe(
-      "QmYqyddFNMsH6wkr28rQCp4tLeQ76gjXLvEJngZRKVZvg9",
+      "QmasVTHoRNpS1j9RdAciiSM9CEh1fBLbZ4wpXqyekRzMvC",
     );
     expect(propertyFallbacks["osceola-hoa-pm"]).toBe(
-      "QmcXznqMAXo4MySt2daA9AppJtDztLjM8SiCHXQ9gZSiXC",
+      "QmbXWYcfFZCWTL7qX5isx2xt4YVqaJ5XvpRnsNmPRjWGWg",
     );
     expect(propertyFallbacks.lee).toBe(
       "QmXUhFPnWxwywQaksFW1ikSAoMCgmjDrHfZvHPnCRuFtZh",
@@ -418,13 +418,23 @@ describe("syncMcpJson against a copy of the real repo-root mcp.json", () => {
       "santa-rosa",
       "st-lucie",
     ]);
+    const csvParcelIpnsOverlays = new Set(["baker"]);
     for (const county of csvParcelOverlays) {
-      expect(maps.PROPERTY_QUERY_TABLE_MAP[county]).toMatch(
-        /^https:\/\/ipfs\.filebase\.io\/ipfs\/Qm/,
-      );
-      expect(maps.PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS).not.toHaveProperty(
-        county,
-      );
+      if (csvParcelIpnsOverlays.has(county)) {
+        expect(maps.PROPERTY_QUERY_TABLE_MAP[county]).toMatch(
+          /^https:\/\/ipfs\.filebase\.io\/ipns\/k51/,
+        );
+        expect(
+          maps.PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS[county],
+        ).toMatch(/^Qm/);
+      } else {
+        expect(maps.PROPERTY_QUERY_TABLE_MAP[county]).toMatch(
+          /^https:\/\/ipfs\.filebase\.io\/ipfs\/Qm/,
+        );
+        expect(
+          maps.PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS,
+        ).not.toHaveProperty(county);
+      }
       if (csvParcelOverlaysWithCoverage.has(county)) {
         expect(maps.DATASET_COVERAGE_MAP[county]).toMatch(
           /^https:\/\/ipfs\.filebase\.io\/ipfs\/Qm/,
@@ -452,6 +462,18 @@ describe("syncMcpJson against a copy of the real repo-root mcp.json", () => {
           /^Qm/,
         );
       }
+    }
+    for (const key of [
+      "nassau-hoa-pm",
+      "citrus-hoa-pm",
+      "alachua-hoa-pm",
+    ]) {
+      expect(maps.PROPERTY_QUERY_TABLE_MAP[key]).toMatch(
+        /^https:\/\/ipfs\.filebase\.io\/ipns\/k51/,
+      );
+      expect(
+        maps.PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS[key],
+      ).toMatch(/^Qm/);
     }
     expect(maps.PROPERTY_QUERY_TABLE_MAP.sumter).toBe(
       "https://ipfs.filebase.io/ipfs/Qmcgq1Z3fkAHs3Ha71dAKb5XH1gSzUD95MJY27saRvD4DS",
