@@ -11,7 +11,7 @@
     {
       "countyKey": "duval-hoa-pm",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dlz8wfk5f0e8fypn8vc58u5kes2a4cdauo4469anq03x9vx1i6y",
-      "queryTableCid": "QmNvBgKuT4sqM7bZBhR4ynSReaSpq7Z69yfXhJhBAUtsn7",
+      "queryTableCid": "QmZegxRf5Xxixw2JouuD9uKf2m47dFDB8UhdtiD47bjPPu",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dl0ebjpm9jzpc82um8ocoi4y7w4bmdnv8d3p0qlalqtyliwrqyu"
     },
@@ -88,49 +88,49 @@
     {
       "countyKey": "clay-hoa-pm",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dmfd4ib2gy6fvls60a6s6dfb0k1lldt45f0115uadcoouokg3m1",
-      "queryTableCid": "QmSeCz9L2AnjzHqLAU8MmWD87ui2VbgpXU9WamEjabGqyG",
+      "queryTableCid": "QmQA9BjeBTiQGRNEQiHH9AVZGKpReCFrb6z1jWimYRejLy",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dlt9yazd4vz0fxymeni39jp8mamk1vrh11ehww6x3hahqz5mt0v"
     },
     {
       "countyKey": "hernando-hoa-pm",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dkkxdq1fmcj9thdelwkxu038qce24t81uy58cj8upwcbgpiebms",
-      "queryTableCid": "QmNwn5fuSfemLxJbrCQRRvPZVdzWvL7m9VipQNUtDrukyp",
+      "queryTableCid": "QmQyrLVVT1jrpBLZoCPWMFAZE3on7xJ2XQzPXk1tanhEUd",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
     {
       "countyKey": "lake-hoa-pm",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5di42xdjty2xz1iqo34k2sx0jnxhago5eumfgql1s20kqw0xtvtl",
-      "queryTableCid": "QmVpbACaBAgNHHcfKafniDMusn9WuyrL4Pph8uGPynmEyY",
+      "queryTableCid": "QmbprQdykZcavAGtcVAcNaWv5FXeCtYxaz6c7xT7PwDbz5",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
     {
       "countyKey": "manatee-hoa-pm",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dkf7aqh9v7lyvh95jme4zrowfprfg0n16z4oja0ta8ipe72aypp",
-      "queryTableCid": "QmNeUGc188bHduFCQAGVJCoQtpP6obpED7UrboQY6YYR3L",
+      "queryTableCid": "QmV4L9YThEHEwLwjDFnycHx9HXuZRo52NVh68j2GRrgDsy",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": null
     },
     {
       "countyKey": "marion-hoa-pm",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dk3p2c6ay4q0xncklqoql45xw00gk6h07s801a78wp55x0b15oy",
-      "queryTableCid": "QmXMuX41V9u3HbeHCP1LwLbReyu75W2mQBmHeeqmd2DQYd",
+      "queryTableCid": "QmZH1rti1rqU4QXwCLFyjBtZF8P5QuKjbWgBHm5AkiW56U",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmWNjjZYDdZg5gzPEKZtVwhCVXsje3PFFjpnawe1abaTYe"
     },
     {
       "countyKey": "sarasota-hoa-pm",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dk4k2ou4o9aqlsptj8j0q656htdyz9xf3x8ylpnfjhes53nowuu",
-      "queryTableCid": "QmNXew2v3ruBcLA9GVD5cE23nHRBSr8ZCy8cWtqxeW4CgB",
+      "queryTableCid": "QmULVref4SMqXF4df4gdRR8QxqhksoRXATxURyHbY8Q8cz",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmRFHfhseBT5GjHq4MjErahHgGBRUk7VpVXzQzABakmVo7"
     },
     {
       "countyKey": "st-johns-hoa-pm",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dgsh4004w62payc64u3bwxbz7r0y3xadkvgschvp6hlqml23dri",
-      "queryTableCid": "QmPYQ7zMmuDTM5vinP9qdHTiEHqBj9McVnJv9ocV3PGCUB",
+      "queryTableCid": "QmfP8e56qBprKjkXWeozuToEndtHt1eU1xztACe2kpAYRe",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmYNaWDfjnq7kFPfTTSkP8DbutSSyBoZcnrombJum7bnYr"
     },
