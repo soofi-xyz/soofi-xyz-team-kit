@@ -391,7 +391,8 @@ stay without the column until they export it; those slices still unique-match CT
 Apply these rules in order. Keep a unique **legacy** match unchanged (original tract-prefix
 and trailing 1–3 digit / UNIT|PHASE|SEC strip plus the original HOA-name markers). Use the
 expanded normalization only when the legacy matcher finds no company. If the legacy matcher
-finds more than one company, keep `not_unique` — do not pick a “better” normalized name.
+finds more than one company, apply the fail-closed disambiguation ladder below. Do not pick
+a “better” normalized name.
 A community name extracted from legal text is an expanded exact-base candidate only — never
 a legacy substring needle.
 
@@ -435,9 +436,28 @@ unique `CONDOMINIUM ASSOCIATION` unless the subdivision text itself contains `CO
 or `CONDOMINIUM`. Clean community-name subdivisions may still match a unique condo
 association. Fail closed if the extract is empty or not unique.
 
-For statewide collisions, use principal-address county only when the evidence is explicit:
-accept one same-county candidate only when every alternative has an explicit conflicting
-county. Missing geography does not break a tie, so the result remains `not_unique`.
+For two or more otherwise-plausible Sunbiz candidates, apply this ladder in order and stamp
+only when exactly one candidate remains:
+
+1. Collapse candidates onto one ACTIVE successor only when exact `corevent` rename,
+   conversion, or merger evidence maps every applicable name to that one document number.
+2. Prefer Florida not-for-profit or other explicit non-profit filing types over for-profit
+   entities. Skip this step when filing type is missing.
+3. Prefer an exact legal-name role containing `HOMEOWNERS`, `PROPERTY OWNERS`,
+   `CONDOMINIUM`, `COOPERATIVE`, or `COMMUNITY ASSOCIATION`. Do not use edit distance,
+   token similarity, substring ranking, or a “closest” name.
+4. Use principal or mailing city/county only when exactly one candidate matches the
+   parcel's explicit city/county and every alternative has explicit conflicting geography.
+   Missing geography does not break a tie. Do not use a statewide Florida match.
+5. Use one existing CTMH or clerk-declaration Sunbiz document number on the row only when
+   it identifies exactly one surviving candidate. Treat conflicting ladder evidence as
+   unresolved.
+6. Keep `not_unique` when two or more candidates remain.
+
+Reject person records, registered-agent designations, attorneys, law firms, and legal
+services before applying the ladder. Never stamp them as an HOA. Preserve all source
+candidates and the terminal status; do not ask a human to choose and do not invent an
+entity.
 
 Sunbiz can contain duplicate ACTIVE filings for one identical normalized legal name. When
 all otherwise-plausible rows have the same normalized legal name for the same subdivision,
