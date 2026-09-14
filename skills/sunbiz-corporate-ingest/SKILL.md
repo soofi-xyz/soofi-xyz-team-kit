@@ -88,7 +88,13 @@ an already-established CTMH association or corporate registered-agent name to ex
 one ACTIVE Sunbiz document number. If no event target exists, use an exact ACTIVE
 fictitious-name registration only when its current corporate owner resolves to exactly
 one ACTIVE document number. Never fuzzy-match, ZIP-filter, promote a person owner/agent,
-or treat a fictitious-name registration alone as an HOA. Follow
+or treat a fictitious-name registration alone as an HOA.
+
+Humans find associations the matcher misses because they search Sunbiz interactively.
+Do not imitate that: strip plat-book/page and trailing `LOT` (Orange parser) before
+lookup, do not invent HOA/POA/Community Association suffixes, run the disambiguation
+ladder on multiple ACTIVE hits and keep `not_unique` when two remain, and never stamp
+a person or lawyer as the HOA. Follow
 `skills/use-oracle/reference/hoa-property-management.md`.
 
 ## 3. Transform to lexicon

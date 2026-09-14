@@ -47,6 +47,10 @@ stage map, and publish/coverage rules.
    its property query table, including cryptographic approval and immutable readback.
 12. [`../county-readiness-preflight/SKILL.md`](../county-readiness-preflight/SKILL.md) — the
    deterministic validator. `onboard-county` must run it before seed, pilot, or full ingest.
+13. [`reference/hoa-property-management.md`](./reference/hoa-property-management.md) — HOA/PM
+   overlay: humans search Sunbiz; agents run one fail-closed lookup (Orange legal-strip,
+   no invented suffixes, disambiguation ladder, parcel-linked clerk only, keep filled
+   `hoa_cid` on rematch miss).
 
 ## Choose the stack first
 
