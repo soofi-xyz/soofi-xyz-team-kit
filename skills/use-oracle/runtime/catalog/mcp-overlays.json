@@ -478,10 +478,10 @@
     },
     {
       "countyKey": "st-lucie-hoa-pm",
-      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmeRaXRep3BHQ1anJRZGoCgF7imGUekoDGzaHZyAqZ15Vu",
-      "queryTableCid": "QmeRaXRep3BHQ1anJRZGoCgF7imGUekoDGzaHZyAqZ15Vu",
+      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmcpKSsL4bN3SxCu9CP9n88TVBa36k9ggvYypX9s6VXVZX",
+      "queryTableCid": "QmcpKSsL4bN3SxCu9CP9n88TVBa36k9ggvYypX9s6VXVZX",
       "permitQueryTableUrl": null,
-      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/Qmf5uSxNDbgMG7XkZcNhwB9feVNxxTUgVJH3Jio3iC3Yaj"
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmVL6PqYWfMX2SBooh5SuWsUNvYQZ1aAa7tRT1SE72EUDW"
     },
     {
       "countyKey": "alachua-hoa-pm",
