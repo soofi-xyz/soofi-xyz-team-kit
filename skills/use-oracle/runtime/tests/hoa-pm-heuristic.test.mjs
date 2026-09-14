@@ -8,7 +8,10 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { toParquetRecord, writeQueryTableParquet } from "../src/core/query-table.mjs";
 import {
+  extractCommunityNameFromSubdivision,
   findHoaCompanies,
+  homeownersAssociationType,
+  normalizeOwnershipEstateType,
   findPropertyManagementCompany,
   resolveHoaAndPropertyManagement,
   stampPropertyCids,
@@ -250,6 +253,131 @@ describe("hoa-pm heuristic", () => {
     expect(result.status).toBe("no_sunbiz_hoa");
   });
 
+  it.each([
+    ["LOT 25 HIBERNIA FOREST UNIT 2", "HIBERNIA FOREST"],
+    ["LOT 15 BLK 5 MAGNOLIA TERRACE", "MAGNOLIA TERRACE"],
+    ["WEKIVA 8/38 LOT 57", "WEKIVA"],
+    ["22/1-5 CYPRESS LAKES PHASE 1", "CYPRESS LAKES"],
+    ["5-29 VERMONT HEIGHTS LOT 4", "VERMONT HEIGHTS"],
+    ["LOT 82 SANDS POINTE S/D PB 3 P", "SANDS POINTE"],
+    ["ARBOR GREENS PHASE 1 UNIT 1 PB 25", "ARBOR GREENS"],
+    ["LOT 8 BLK 8 LABEUNA ESTATES", "LABEUNA ESTATES"],
+    ["000017 ACRES LOT 41 TIMBERLANE", "TIMBERLANE"],
+    ["000017 AC LOT 8 LEANING OAKS", "LEANING OAKS"],
+    ["00005 ORANGE BLOSSOM PARK", "ORANGE BLOSSOM PARK"],
+  ])("extracts a community name from legal subdivision text: %s", (subdivision, expected) => {
+    expect(extractCommunityNameFromSubdivision(subdivision)).toBe(expected);
+  });
+
+  it("does not extract a community name from section-township-range or metes text", () => {
+    expect(extractCommunityNameFromSubdivision("SEC 28 TWP 17 RGE 23")).toBeNull();
+    expect(extractCommunityNameFromSubdivision("COM NE COR RUN W 1980 FT S 150")).toBeNull();
+    expect(extractCommunityNameFromSubdivision("000020 ACRES LOT D BEING PART")).toBeNull();
+  });
+
+  it("matches an HOA from a lot-block legal description", () => {
+    const result = findHoaCompanies("LOT 25 HIBERNIA FOREST UNIT 2", [
+      {
+        ...hoaCompany,
+        documentNumber: "N888888",
+        entityName: "HIBERNIA FOREST HOMEOWNERS ASSOCIATION, INC.",
+      },
+    ]);
+    expect(result.status).toBe("matched");
+    expect(result.matches[0].documentNumber).toBe("N888888");
+  });
+
+  it("matches a unique single-token plat extracted from book/page/lot text", () => {
+    const result = findHoaCompanies("WEKIVA 8/38 LOT 57", [
+      {
+        ...hoaCompany,
+        documentNumber: "N777777",
+        entityName: "WEKIVA HOMEOWNERS ASSOCIATION, INC.",
+      },
+    ]);
+    expect(result.status).toBe("matched");
+    expect(result.matches[0].documentNumber).toBe("N777777");
+  });
+
+  it("does not match a unique condo association from non-condo plat text", () => {
+    const result = findHoaCompanies("LOT 47 INDIGO UNIT 8 PUD MB 42", [
+      {
+        ...hoaCompany,
+        documentNumber: "N666666",
+        entityName: "INDIGO CONDOMINIUM ASSOCIATION, INC.",
+      },
+    ]);
+    expect(result.status).toBe("no_sunbiz_hoa");
+  });
+
+  it("matches a unique condo association when the legal text says condo", () => {
+    const result = findHoaCompanies("INDIGO CONDO UNIT 8", [
+      {
+        ...hoaCompany,
+        documentNumber: "N666666",
+        entityName: "INDIGO CONDOMINIUM ASSOCIATION, INC.",
+      },
+    ]);
+    expect(result.status).toBe("matched");
+    expect(result.matches[0].documentNumber).toBe("N666666");
+  });
+
+  it("gates Sunbiz candidates with ownership_estate_type before name matching", () => {
+    expect(normalizeOwnershipEstateType("fee simple")).toBe("FeeSimple");
+    expect(normalizeOwnershipEstateType("condo")).toBe("Condominium");
+    expect(normalizeOwnershipEstateType("SubsurfaceRights")).toBeNull();
+    const condo = {
+      ...hoaCompany,
+      documentNumber: "N666666",
+      entityName: "INDIGO CONDOMINIUM ASSOCIATION, INC.",
+    };
+    const hoa = {
+      ...hoaCompany,
+      documentNumber: "N777777",
+      entityName: "INDIGO HOMEOWNERS ASSOCIATION, INC.",
+    };
+    expect(
+      findHoaCompanies("LOT 47 INDIGO UNIT 8 PUD MB 42", [condo], {
+        ownershipEstateType: "Condominium",
+      }).status,
+    ).toBe("matched");
+    expect(
+      findHoaCompanies("Example Subdivision", [hoaCompany], {
+        ownershipEstateType: "Condominium",
+      }).status,
+    ).toBe("no_sunbiz_hoa");
+    for (const estate of ["FeeSimple", "Leasehold"]) {
+      expect(
+        findHoaCompanies("LOT 47 INDIGO UNIT 8 PUD MB 42", [condo], {
+          ownershipEstateType: estate,
+        }).status,
+      ).toBe("no_sunbiz_hoa");
+      expect(
+        findHoaCompanies("Example Subdivision", [hoaCompany], {
+          ownershipEstateType: estate,
+        }).status,
+      ).toBe("matched");
+    }
+    expect(
+      resolveHoaAndPropertyManagement({
+        subdivision: "LOT 47 INDIGO UNIT 8 PUD MB 42",
+        companies: [condo],
+        ownershipEstateType: "Condominium",
+      }).source,
+    ).toBe("sunbiz");
+    expect(
+      findHoaCompanies("LOT 47 INDIGO UNIT 8 PUD MB 42", [condo]).status,
+    ).toBe("no_sunbiz_hoa");
+    expect(
+      findHoaCompanies("INDIGO CONDO UNIT 8", [condo]).status,
+    ).toBe("matched");
+    expect(homeownersAssociationType(condo, "Condominium")).toBe("Condominium");
+    expect(homeownersAssociationType(hoa, "FeeSimple")).toBe("Homeowners");
+    expect(homeownersAssociationType(hoa, "Cooperative")).toBe("Cooperative");
+    expect(homeownersAssociationType(hoa, "Timeshare")).toBe("Timeshare");
+    expect(homeownersAssociationType(hoa, null)).toBe("Homeowners");
+  });
+
   it("rejects an INACTIVE Sunbiz association", () => {
     const result = findHoaCompanies("Example Subdivision", [
       { ...hoaCompany, status: "INACTIVE" },
@@ -273,6 +401,28 @@ describe("hoa-pm heuristic", () => {
     const result = findPropertyManagementCompany(hoaCompany, [hoaCompany, managerCompany]);
     expect(result.status).toBe("matched");
     expect(result.matches[0].documentNumber).toBe("L654321");
+  });
+
+  it("looks up the registered-agent company in the full ACTIVE Sunbiz pool", () => {
+    const onlyHoaIndex = [hoaCompany];
+    const fullActive = [hoaCompany, managerCompany];
+    expect(findPropertyManagementCompany(hoaCompany, onlyHoaIndex).status).toBe(
+      "agent_not_in_sunbiz",
+    );
+    const resolution = resolveHoaAndPropertyManagement({
+      subdivision: "Example Subdivision",
+      companies: onlyHoaIndex,
+      pmCompanies: fullActive,
+    });
+    expect(resolution.status).toBe("matched");
+    expect(resolution.propertyManagement.sunbiz_document_number).toBe("L654321");
+    const personAgent = resolveHoaAndPropertyManagement({
+      subdivision: "Example Subdivision",
+      companies: [{ ...hoaCompany, registeredAgent: { name: "JANE DOE", type: "P" } }],
+      pmCompanies: fullActive,
+    });
+    expect(personAgent.status).toBe("no_agent_company");
+    expect(personAgent.propertyManagement).toBeNull();
   });
 
   it("reports when the agent company is not in Sunbiz", () => {
@@ -304,6 +454,7 @@ describe("hoa-pm heuristic", () => {
 
     const stamped = stampPropertyCids({ parcel_identifier: "1605480000" }, resolution);
     expect(stamped.hoa_cid).toBe(resolution.hoa.cid);
+    expect(stamped.homeowners_association_type).toBe("Homeowners");
     expect(stamped.property_manager_cid).toBe(resolution.propertyManagement.cid);
     expect(stamped.hoa_sunbiz_document_number).toBe("N123456");
     expect(stamped.property_manager_sunbiz_document_number).toBe("L654321");
@@ -430,6 +581,98 @@ describe("hoa-pm query-table enrich", () => {
       expect(rows.map((row) => row.hoa_pm_status)).toEqual([
         "matched",
         "no_sunbiz_hoa",
+      ]);
+      expect(rows[0].homeowners_association_type).toBe("Homeowners");
+      expect(rows[1].homeowners_association_type).toBeNull();
+    } finally {
+      await reader.close();
+    }
+  });
+
+  it("skips CTMH for FeeSimple and still caches separately per estate", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "hoa-pm-estate-"));
+    temporaryDirectories.push(directory);
+    const inputParquet = path.join(directory, "input.parquet");
+    const inputCoverage = path.join(directory, "input-coverage.json");
+    const outputParquet = path.join(directory, "output", "query-table.parquet");
+    const condo = {
+      ...hoaCompany,
+      documentNumber: "N666666",
+      entityName: "EXAMPLE SUBDIVISION CONDOMINIUM ASSOCIATION INC",
+    };
+    const ctmhRecords = {
+      condominium: [
+        {
+          kind: "condominium",
+          projectNumber: "PRCACHE1",
+          fileNumber: "1",
+          name: "EXAMPLE SUBDIVISION CONDOMINIUM",
+          county: "Pinellas",
+          managingEntityNumber: "MA1",
+          managingEntityName: "EXAMPLE SUBDIVISION CONDOMINIUM ASSOCIATION INC",
+          matchKeys: new Set(["EXAMPLE SUBDIVISION", "EXAMPLE SUBDIVISION CONDOMINIUM"]),
+        },
+      ],
+      cooperative: [],
+      timeshare: [],
+    };
+    await writeQueryTableParquet({
+      parquetPath: inputParquet,
+      schemaFields: {
+        ...portableInputSchema,
+        ownership_estate_type: { type: "UTF8", optional: true },
+      },
+      rows: [
+        {
+          property_id: "property-condo",
+          parcel_identifier: "1",
+          subdivision: "Example Subdivision",
+          ownership_estate_type: "Condominium",
+        },
+        {
+          property_id: "property-fee",
+          parcel_identifier: "2",
+          subdivision: "Example Subdivision",
+          ownership_estate_type: "FeeSimple",
+        },
+      ],
+    });
+    await writeFile(
+      inputCoverage,
+      `${JSON.stringify({ county: "pinellas", datasets: [] })}\n`,
+    );
+
+    await enrichQueryTableWithHoaPm({
+      countyKey: "pinellas",
+      inputParquet,
+      inputCoverage,
+      companies: [condo, hoaCompany, managerCompany],
+      ctmhRecords,
+      outputParquet,
+      outputCoverage: path.join(directory, "output", "dataset-coverage.json"),
+      manifestPath: path.join(directory, "output", "manifest.json"),
+    });
+
+    const reader = await ParquetReader.openFile(outputParquet);
+    try {
+      const cursor = reader.getCursor();
+      const rows = [];
+      let row = await cursor.next();
+      while (row) {
+        rows.push(row);
+        row = await cursor.next();
+      }
+      expect(rows.map((row) => row.homeowners_association_type)).toEqual([
+        "Condominium",
+        "Homeowners",
+      ]);
+      expect(rows.map((row) => row.hoa_sunbiz_document_number)).toEqual([
+        "N666666",
+        "N123456",
+      ]);
+      expect(rows.map((row) => row.hoa_ctmh_project_number)).toEqual([
+        "PRCACHE1",
+        null,
       ]);
     } finally {
       await reader.close();

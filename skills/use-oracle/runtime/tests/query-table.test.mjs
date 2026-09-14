@@ -100,6 +100,7 @@ describe("Pinellas query-table row mapping (Gate B fixture)", () => {
     expect(QUERY_TABLE_IPNS_LABEL).toBe("oracle-query-table-pinellas");
     expect(COVERAGE_IPNS_LABEL).toBe("oracle-dataset-coverage-pinellas");
     expect(Object.keys(QUERY_TABLE_SCHEMA_FIELDS)).toContain("property_id");
+    expect(Object.keys(QUERY_TABLE_SCHEMA_FIELDS)).toContain("ownership_estate_type");
   });
 
   it("maps the transformed Gate B fixture zip into the expected query-table row", async () => {

@@ -19,6 +19,7 @@
   "roof_covering_material": "3-Tab Asphalt Shingle",
   "property_type": "Building",
   "property_usage_type": "Residential",
+  "ownership_estate_type": "FeeSimple",
   "built_year": 1985,
   "livable_floor_area": 1450,
   "total_area": 1850,
