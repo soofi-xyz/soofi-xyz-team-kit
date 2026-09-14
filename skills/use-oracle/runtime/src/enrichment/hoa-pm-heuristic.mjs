@@ -6,6 +6,7 @@ import {
   ctmhSourceRequest,
   probeCtmhAssociations,
 } from "./ctmh-condo.mjs";
+import { findActiveCompanyBySunbizAlias } from "./sunbiz-aliases.mjs";
 
 const HOA_NAME_MARKERS =
   /\b(HOMEOWNERS?(?:\s+S)?\s+(?:ASSOCIATION|ASSOC|ASSN)|CONDOMINIUM\s+ASSOCIATION|PROPERTY\s+OWNERS?\s+(?:ASSOCIATION|ASSOC|ASSN)|COMMUNITY\s+(?:ASSOCIATION|ASSOC|ASSN)|CIVIC\s+(?:ASSOCIATION|ASSOC|ASSN)|ASSOCIATION|ASSOC|ASSN|POA|COA|HOA)\b/;
@@ -72,7 +73,7 @@ const ASSOCIATION_SUFFIX_PATTERNS = [
   ["HOA"],
 ];
 
-export const HOA_PM_SCHEMA_VERSION = "elephant.hoa-pm-heuristic.v7";
+export const HOA_PM_SCHEMA_VERSION = "elephant.hoa-pm-heuristic.v8";
 
 export function normalizeEntityName(value) {
   return String(value ?? "")
@@ -671,7 +672,7 @@ export function findPropertyManagementCompany(hoaCompany, companies) {
   const unique = uniqueByDocument(matches);
   if (unique.length === 0) return { status: "agent_not_in_sunbiz", matches: [] };
   if (unique.length > 1) return { status: "not_unique", matches: unique };
-  return { status: "matched", matches: unique };
+  return { status: "matched", matches: unique, method: "sunbiz_legal_name" };
 }
 
 function sunbizCompanyObject(company, dataGroup) {
@@ -728,15 +729,56 @@ function hoaObject({
   return { ...payload, cid: objectCid(payload) };
 }
 
-function resolveCtmhPropertyManagement(record, companies, hoaCompany) {
+function findPropertyManagementCompanyWithAliases(
+  hoaCompany,
+  companies,
+  sunbizAliases,
+) {
+  const direct = findPropertyManagementCompany(hoaCompany, companies);
+  if (direct.status !== "agent_not_in_sunbiz" || !sunbizAliases) return direct;
+  const agentName = registeredAgentCompanyName(hoaCompany);
+  const aliasSearch = findActiveCompanyBySunbizAlias(agentName, companies, sunbizAliases, {
+    excludedDocumentNumber: hoaCompany.documentNumber,
+  });
+  return aliasSearch.status === "no_match" ? direct : aliasSearch;
+}
+
+function resolveCtmhPropertyManagement(
+  record,
+  companies,
+  hoaCompany,
+  sunbizAliases,
+) {
   if (hoaCompany?.documentNumber) {
-    const raSearch = findPropertyManagementCompany(hoaCompany, companies);
+    const raSearch = findPropertyManagementCompanyWithAliases(
+      hoaCompany,
+      companies,
+      sunbizAliases,
+    );
     if (raSearch.status === "matched") return raSearch;
     const managerSearch = findCtmhManagingEntityCompany(record, companies, hoaCompany);
     if (managerSearch.status === "matched") return managerSearch;
+    if (managerSearch.status === "agent_not_in_sunbiz" && sunbizAliases) {
+      const aliasSearch = findActiveCompanyBySunbizAlias(
+        record.managingEntityName,
+        companies,
+        sunbizAliases,
+        { excludedDocumentNumber: hoaCompany.documentNumber },
+      );
+      if (aliasSearch.status !== "no_match") return aliasSearch;
+    }
     return raSearch;
   }
-  return findCtmhManagingEntityCompany(record, companies, hoaCompany);
+  const managerSearch = findCtmhManagingEntityCompany(record, companies, hoaCompany);
+  if (managerSearch.status !== "agent_not_in_sunbiz" || !sunbizAliases) {
+    return managerSearch;
+  }
+  const aliasSearch = findActiveCompanyBySunbizAlias(
+    record.managingEntityName,
+    companies,
+    sunbizAliases,
+  );
+  return aliasSearch.status === "no_match" ? managerSearch : aliasSearch;
 }
 
 export function resolveHoaAndPropertyManagement({
@@ -746,6 +788,7 @@ export function resolveHoaAndPropertyManagement({
   countyKey,
   ownershipEstateType,
   ctmhRecords = null,
+  sunbizAliases = null,
 }) {
   const estate = normalizeOwnershipEstateType(ownershipEstateType);
   const pmPool = pmCompanies ?? companies;
@@ -771,12 +814,60 @@ export function resolveHoaAndPropertyManagement({
 
   if (hoaSearch.source === "ctmh") {
     const ctmhRecord = hoaSearch.matches[0];
-    const sunbizJoin = joinCtmhToSunbiz(ctmhRecord, companies);
+    let sunbizJoin = joinCtmhToSunbiz(ctmhRecord, companies);
+    if (sunbizJoin.status === "ctmh_not_in_sunbiz" && sunbizAliases) {
+      const aliasNames = [
+        ctmhRecord.managingEntityName,
+        ctmhRecord.name,
+      ].filter(Boolean);
+      const aliasMatches = [];
+      let aliasMethod = null;
+      for (const aliasName of aliasNames) {
+        const aliasSearch = findActiveCompanyBySunbizAlias(
+          aliasName,
+          companies,
+          sunbizAliases,
+        );
+        if (aliasSearch.status === "not_unique") {
+          sunbizJoin = {
+            status: "sunbiz_not_unique",
+            matches: aliasSearch.matches,
+            method: aliasSearch.method,
+          };
+          break;
+        }
+        if (aliasSearch.status === "matched") {
+          aliasMatches.push(...aliasSearch.matches);
+          aliasMethod ??= aliasSearch.method;
+        }
+      }
+      if (sunbizJoin.status === "ctmh_not_in_sunbiz") {
+        const uniqueAliases = uniqueByDocument(aliasMatches);
+        if (uniqueAliases.length === 1) {
+          sunbizJoin = {
+            status: "matched",
+            matches: uniqueAliases,
+            method: aliasMethod,
+          };
+        } else if (uniqueAliases.length > 1) {
+          sunbizJoin = {
+            status: "sunbiz_not_unique",
+            matches: uniqueAliases,
+            method: aliasMethod,
+          };
+        }
+      }
+    }
     const hoaCompany = sunbizJoin.status === "matched" ? sunbizJoin.matches[0] : null;
     const hoaCompanyObject = hoaCompany
       ? sunbizCompanyObject(hoaCompany, "HOA_")
       : ctmhCompanyObject(ctmhRecord, "HOA_");
-    const pmSearch = resolveCtmhPropertyManagement(ctmhRecord, pmPool, hoaCompany);
+    const pmSearch = resolveCtmhPropertyManagement(
+      ctmhRecord,
+      pmPool,
+      hoaCompany,
+      sunbizAliases,
+    );
     const propertyManagementCompany =
       pmSearch.status === "matched" ? pmSearch.matches[0] : null;
     const propertyManagement =
@@ -805,13 +896,22 @@ export function resolveHoaAndPropertyManagement({
       propertyManagementCompany,
       source: "ctmh",
       sunbizJoinStatus: sunbizJoin.status,
+      sunbizJoinMethod:
+        sunbizJoin.status === "matched"
+          ? sunbizJoin.method ?? "sunbiz_legal_name"
+          : null,
+      propertyManagementMatchMethod: pmSearch.method ?? null,
       ctmhStatus,
     };
   }
 
   const hoaCompany = hoaSearch.matches[0];
   const hoaCompanyObject = sunbizCompanyObject(hoaCompany, "HOA_");
-  const pmSearch = findPropertyManagementCompany(hoaCompany, pmPool);
+  const pmSearch = findPropertyManagementCompanyWithAliases(
+    hoaCompany,
+    pmPool,
+    sunbizAliases,
+  );
   const propertyManagementCompany =
     pmSearch.status === "matched" ? pmSearch.matches[0] : null;
   const propertyManagement =
@@ -839,6 +939,8 @@ export function resolveHoaAndPropertyManagement({
     propertyManagementCompany,
     source: "sunbiz",
     sunbizJoinStatus: null,
+    sunbizJoinMethod: null,
+    propertyManagementMatchMethod: pmSearch.method ?? null,
     ctmhStatus,
   };
 }
