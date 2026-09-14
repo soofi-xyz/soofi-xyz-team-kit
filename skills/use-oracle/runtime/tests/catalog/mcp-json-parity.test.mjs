@@ -133,17 +133,17 @@ describe("syncMcpJson against a synthetic mcp.json fixture", () => {
       overlayPath,
     });
 
-    expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(84);
+    expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(102);
     expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP)).toHaveLength(5);
-    expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(55);
+    expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(77);
 
     const written = JSON.parse(await readFile(fixturePath, "utf8"));
     const env = written.mcpServers.elephant.env;
 
     expect(JSON.parse(env.PROPERTY_QUERY_TABLE_MAP)).not.toHaveProperty("stale-county");
-    expect(Object.keys(JSON.parse(env.PROPERTY_QUERY_TABLE_MAP))).toHaveLength(84);
+    expect(Object.keys(JSON.parse(env.PROPERTY_QUERY_TABLE_MAP))).toHaveLength(102);
     expect(Object.keys(JSON.parse(env.PERMIT_QUERY_TABLE_MAP))).toHaveLength(5);
-    expect(Object.keys(JSON.parse(env.DATASET_COVERAGE_MAP))).toHaveLength(55);
+    expect(Object.keys(JSON.parse(env.DATASET_COVERAGE_MAP))).toHaveLength(77);
     expect(env.PUBLISHED_COUNTY_CATALOG_URL).toBe(PUBLISHED_COUNTY_CATALOG_URL);
 
     const propertyFallbacks = JSON.parse(
@@ -302,9 +302,9 @@ describe("merge-mcp-env-maps", () => {
   it("buildMergedMcpEnvMaps against the tracked catalog + overlay matches the locked key counts", async () => {
     const maps = await buildMergedMcpEnvMaps({ catalogPath, overlayPath });
 
-    expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(84);
+    expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(102);
     expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP)).toHaveLength(5);
-    expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(55);
+    expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(77);
     expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP).sort()).toEqual([
       "broward",
       "duval",
@@ -334,7 +334,7 @@ describe("merge-mcp-env-maps", () => {
 });
 
 describe("syncMcpJson against a copy of the real repo-root mcp.json", () => {
-  it("produces the locked 84/5/55 key counts and preserves the real launcher untouched", async () => {
+  it("produces the locked 102/5/77 key counts and preserves the real launcher untouched", async () => {
     const fixturePath = join(tmpDir, "mcp.json");
     const original = await readFile(repoRootMcpJsonPath, "utf8");
     await writeFile(fixturePath, original, "utf8");
@@ -346,9 +346,9 @@ describe("syncMcpJson against a copy of the real repo-root mcp.json", () => {
       overlayPath,
     });
 
-    expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(84);
+    expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(102);
     expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP)).toHaveLength(5);
-    expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(55);
+    expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(77);
     expect(maps.PROPERTY_QUERY_TABLE_MAP.clay).toBeDefined();
     expect(maps.PROPERTY_QUERY_TABLE_MAP.hernando).toBeDefined();
     expect(maps.PROPERTY_QUERY_TABLE_MAP.lake).toBeDefined();
@@ -433,6 +433,25 @@ describe("syncMcpJson against a copy of the real repo-root mcp.json", () => {
         expect(maps.DATASET_COVERAGE_MAP).not.toHaveProperty(county);
       }
       expect(maps.PERMIT_QUERY_TABLE_MAP).not.toHaveProperty(county);
+    }
+    const hoaPmKeys = Object.keys(maps.PROPERTY_QUERY_TABLE_MAP).filter((key) =>
+      key.endsWith("-hoa-pm"),
+    );
+    expect(hoaPmKeys).toHaveLength(49);
+    for (const key of hoaPmKeys) {
+      expect(maps.PROPERTY_QUERY_TABLE_MAP[key]).toMatch(
+        /^https:\/\/ipfs\.filebase\.io\/(ipns|ipfs)\//,
+      );
+      expect(maps.DATASET_COVERAGE_MAP[key]).toBeDefined();
+      if (maps.PROPERTY_QUERY_TABLE_MAP[key].includes("/ipfs/")) {
+        expect(maps.PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS).not.toHaveProperty(
+          key,
+        );
+      } else {
+        expect(maps.PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS[key]).toMatch(
+          /^Qm/,
+        );
+      }
     }
     expect(maps.PROPERTY_QUERY_TABLE_MAP.sumter).toBe(
       "https://ipfs.filebase.io/ipfs/Qmcgq1Z3fkAHs3Ha71dAKb5XH1gSzUD95MJY27saRvD4DS",
