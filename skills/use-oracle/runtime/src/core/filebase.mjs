@@ -27,6 +27,13 @@ import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { z } from "zod";
 import { resolveFilebasePublicationKeys } from "./hoa-pm-publication-keys.mjs";
 import {
+  assertOverlayIpnsNotRewind,
+  assertOverlayOnlyIpnsLabels,
+  assertThisRunReceiptCid,
+  filebaseNameUpdatedAt,
+  isHoaPmOverlayIpnsLabel,
+} from "./hoa-pm-overlay-publisher.mjs";
+import {
   hoaPmPublicationLayers,
   isIpfsCid,
   parseHoaPmObjects,
@@ -394,6 +401,26 @@ function hoaPmObjectKey(county, object) {
   return `${county}/hoa-pm/objects/${group}/${type}/${object.cid.slice("sha256:".length)}.json`;
 }
 
+function overlayFilebaseNameOptions(artifacts, cid, approval, config) {
+  const overlay =
+    isHoaPmOverlayIpnsLabel(artifacts.queryTableIpnsLabel) ||
+    isHoaPmOverlayIpnsLabel(artifacts.coverageIpnsLabel);
+  if (overlay) {
+    assertOverlayOnlyIpnsLabels(artifacts);
+  }
+  return {
+    createIfMissing: overlay ? false : config.moveExistingIpnsOnly !== true,
+    ...(overlay
+      ? {
+          overlayPreMove: {
+            thisRunCid: cid,
+            thisReceiptApprovedAt: approval?.approvedAt,
+          },
+        }
+      : {}),
+  };
+}
+
 async function publishResolvableHoaPmObjects({
   artifacts,
   config,
@@ -550,7 +577,6 @@ async function publishResolvableHoaPmObjects({
     };
     await writePublicationReceipt(receiptPath, receipt);
   }
-  const nameOptions = { createIfMissing: config.moveExistingIpnsOnly !== true };
   if (config.skipIpns !== true) {
     for (const [name, label, cid] of [
       ["queryTable", artifacts.queryTableIpnsLabel, receipt.uploads.queryTable.cid],
@@ -562,7 +588,7 @@ async function publishResolvableHoaPmObjects({
           label,
           cid,
           fetch,
-          nameOptions,
+          overlayFilebaseNameOptions(artifacts, cid, approval, config),
         );
         await writePublicationReceipt(receiptPath, receipt);
       }
@@ -768,8 +794,12 @@ export async function publishPermitFilebase(artifacts, config) {
  * @param {string} cid - Target CID.
  * @param {(input: string | URL | Request, init?: RequestInit) => Promise<Response>} [fetchImpl]
  *   Fetch implementation. Defaults to global fetch.
- * @param {{ createIfMissing?: boolean }} [options] - When createIfMissing is false,
- *   skip POST for a missing label (Filebase name-quota).
+ * @param {{
+ *   createIfMissing?: boolean,
+ *   overlayPreMove?: { thisRunCid: string, thisReceiptApprovedAt?: string },
+ * }} [options] - When createIfMissing is false, skip POST for a missing label
+ *   (Filebase name-quota). Overlay pre-move checks refuse official names,
+ *   replay CIDs, and last-write-wins rewinds.
  * @returns {Promise<{ label: string, network_key: string, cid: string } | { skipped: true, label: string, cid: string, reason: string }>}
  *   Updated name record, or a skip receipt when the label does not exist.
  */
@@ -780,6 +810,14 @@ export async function upsertFilebaseName(
   fetchImpl = fetch,
   options = {},
 ) {
+  if (options.overlayPreMove) {
+    assertOverlayOnlyIpnsLabels({ queryTableIpnsLabel: label });
+    assertThisRunReceiptCid({
+      label,
+      targetCid: cid,
+      thisRunCid: options.overlayPreMove.thisRunCid,
+    });
+  }
   const listResponse = await fetchImpl(FILEBASE_NAMES_API, {
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
   });
@@ -791,6 +829,18 @@ export async function upsertFilebaseName(
   const existing = parsed.find(
     (entry) => typeof entry === "object" && entry !== null && "label" in entry && entry.label === label,
   );
+  if (options.overlayPreMove && existing && "cid" in existing) {
+    assertOverlayIpnsNotRewind({
+      label,
+      liveCid: typeof existing.cid === "string" ? existing.cid : undefined,
+      targetCid: cid,
+      thisReceiptApprovedAt: options.overlayPreMove.thisReceiptApprovedAt,
+      liveUpdatedAt: filebaseNameUpdatedAt(existing),
+    });
+    if (existing.cid === cid) {
+      return existing;
+    }
+  }
   if (existing === undefined && options.createIfMissing === false) {
     return {
       skipped: true,
@@ -915,6 +965,12 @@ export async function updateExistingFilebaseName(
 export async function publishFilebase(artifacts, config) {
   const env = config.env ?? process.env;
   const objectKeys = resolveFilebasePublicationKeys(artifacts);
+  if (
+    isHoaPmOverlayIpnsLabel(artifacts.queryTableIpnsLabel) ||
+    isHoaPmOverlayIpnsLabel(artifacts.coverageIpnsLabel)
+  ) {
+    assertOverlayOnlyIpnsLabels(artifacts);
+  }
 
   if (config.dryRun === true) {
     const overlayLabels =
@@ -1019,7 +1075,6 @@ export async function publishFilebase(artifacts, config) {
           body: hoaPmObjectsBody,
           contentType: "application/x-ndjson",
         });
-  const nameOptions = { createIfMissing: config.moveExistingIpnsOnly !== true };
   const queryName =
     config.skipIpns === true
       ? { skipped: true, reason: "skip_ipns", cid: queryTableCid }
@@ -1028,7 +1083,12 @@ export async function publishFilebase(artifacts, config) {
           artifacts.queryTableIpnsLabel,
           queryTableCid,
           fetch,
-          nameOptions,
+          overlayFilebaseNameOptions(
+            artifacts,
+            queryTableCid,
+            approval,
+            config,
+          ),
         );
   const coverageName =
     config.skipIpns === true
@@ -1038,7 +1098,12 @@ export async function publishFilebase(artifacts, config) {
           artifacts.coverageIpnsLabel,
           coverageCid,
           fetch,
-          nameOptions,
+          overlayFilebaseNameOptions(
+            artifacts,
+            coverageCid,
+            approval,
+            config,
+          ),
         );
   const queryPointer = filebaseNamePointer(queryName, queryTableCid);
   const coveragePointer = filebaseNamePointer(coverageName, coverageCid);

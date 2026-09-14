@@ -64,6 +64,27 @@ publication. Never update `oracle-query-table-<county>` or
 `oracle-dataset-coverage-<county>` from this bounded enrichment path: those official
 labels remain reserved for the full county publication.
 
+## Overlay IPNS publisher
+
+Run **one overlay publisher**. Before `hoa-pm-overlay-sync`, a live `hoa-pm-publish`,
+or a live `hoa-pm-property-publish`, refuse if another overlay publish/sync process
+is running (stale shell, leftover agent, or parallel Oracle). The CLI holds a
+single lockfile for that work.
+
+**Never rewind.** Before moving `oracle-query-table-<county>-hoa-pm` or
+`oracle-dataset-coverage-<county>-hoa-pm`, resolve the current live target CID.
+If that name already points at a newer approved receipt than this process is
+applying, **abort**. Do not last-write-wins: that rewound Duval overlay labels
+to prior CIDs after an approved publish.
+
+**This run’s receipt only.** Apply only the byte-bound CID this process just
+produced from the approved artifact bytes. Do not replay an older publish command
+or CID list from a previous chat or shell.
+
+**Overlay-only.** Never move official `oracle-query-table-<county>` or
+`oracle-dataset-coverage-<county>`. At Filebase 100/100 names, move existing
+overlay names only; do not create new IPNS names.
+
 The HOA/PM object bundle is CID-linked from the enriched query table and shares the
 county's existing bucket under the county-scoped `hoa-pm/` prefix. Register the query
 slice under the distinct MCP dataset key `<county>-hoa-pm`; it does not replace the
@@ -182,7 +203,8 @@ node bin/elephant-county.mjs hoa-pm-publish \
 
 Stop after the dry run. Never write `<county>/query-table.parquet`, move the official
 `oracle-query-table-<county>` IPNS name, or remove `--dry-run` without the separate durable
-human approval.
+human approval. Live overlay IPNS moves stay overlay-only, one publisher, this run’s
+receipt CID, and abort rather than rewind a newer live pointer.
 
 `hoa_pm_status` is Donphan's miss channel. Misses stay explicit: `no_subdivision`,
 `no_sunbiz_hoa`, `no_ctmh_condo`, `no_ctmh_coop`, `no_ctmh_timeshare`, `not_unique`,

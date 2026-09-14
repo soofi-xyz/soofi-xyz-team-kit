@@ -226,7 +226,10 @@ for `<county>-hoa-pm` in `runtime/catalog/mcp-overlays.json`. If it exists, run 
 mandatory `hoa-pm-overlay-sync` → `hoa-pm-enrich` → `hoa-pm-publish --query-table-only
 --dry-run` sequence in `use-oracle/reference/hoa-property-management.md`. Keep the overlay
 under `<county>/hoa-pm/`; never overwrite the official county object key or move the
-official county IPNS name.
+official county IPNS name. Overlay IPNS moves (`oracle-query-table-<county>-hoa-pm` and
+overlay coverage names) require one overlay publisher, never rewind a newer live CID,
+apply only this run’s byte-bound receipt CID, and at Filebase 100/100 move existing
+overlay names only — do not create new IPNS names.
 
 Uploads the **single** parquet to `query-tables/<county>/query-table.parquet` in the
 Filebase bucket, upserts the IPNS label `oracle-query-table-<county>`, re-points it at
