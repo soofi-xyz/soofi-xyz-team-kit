@@ -537,7 +537,10 @@ async function runHoaPmOverlaySyncCommand(argv) {
       syncHoaPmOverlay({
         county,
         overlayParquet: requireStringFlag(flags, "overlay-parquet"),
-        officialParquet: requireStringFlag(flags, "official-parquet"),
+        officialParquet:
+          typeof flags["official-parquet"] === "string"
+            ? flags["official-parquet"]
+            : null,
         outputDir: requireStringFlag(flags, "output-dir"),
         parcelCsv:
           typeof flags["parcel-csv"] === "string" ? flags["parcel-csv"] : null,
@@ -1187,7 +1190,7 @@ async function main() {
       "  avm-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --records <avm-records.jsonl> --source-manifest <json> --output-dir <dir>\n" +
       "  hoa-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --records <hoa-memberships.jsonl> --source-manifest <json> --output-dir <dir>\n" +
       "  hoa-pm-index --source-dir <expanded-cordata-dir> --subdivisions <json-array> --quarter <YYYYQn> --output <dir>\n" +
-      "  hoa-pm-overlay-sync --county <key> --overlay-parquet <overlay.parquet> --official-parquet <official.parquet> --output-dir <dir> [--parcel-csv <csv>]\n" +
+      "  hoa-pm-overlay-sync --county <key> --overlay-parquet <overlay.parquet> --output-dir <dir> [--official-parquet <official.parquet>] [--parcel-csv <csv>]\n" +
       "  hoa-pm-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --sunbiz-extract <dir> [--sunbiz-pm-extract <dir>] [--ctmh-extract <dir>] [--sunbiz-events-extract <expanded-corevent-dir>] [--sunbiz-fictitious-extract <expanded-ficdata-and-ficevt-dir>] [--clerk-records <recorded-community-names.jsonl> --clerk-source-manifest <json>] --output-dir <dir>\n" +
       "  hoa-pm-publish --county <published-or-overlay-county-key> --input <enriched-dir> [--query-table-only] [--move-existing-ipns-only] [--dry-run] [--approve <manifest> --receipt <json> --env-file <dotenv>]\n" +
       "    Overlay IPNS moves abort if another overlay publish/sync process holds the lock, if the live name already points at a newer approved receipt, or if the CID is not this run's byte-bound receipt. Overlay-only: never move oracle-query-table-<county>. At Filebase 100/100, move existing overlay names only.\n" +

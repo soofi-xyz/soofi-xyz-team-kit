@@ -33,11 +33,11 @@ afterEach(async () => {
   );
 });
 
-async function writeFixture(name, rows) {
+async function writeFixture(name, rows, fields = schemaFields) {
   const directory = await mkdtemp(path.join(tmpdir(), "hoa-pm-overlay-sync-"));
   temporaryDirectories.push(directory);
   const parquetPath = path.join(directory, `${name}.parquet`);
-  await writeQueryTableParquet({ parquetPath, schemaFields, rows });
+  await writeQueryTableParquet({ parquetPath, schemaFields: fields, rows });
   return { directory, parquetPath };
 }
 
@@ -167,6 +167,85 @@ describe("HOA/PM overlay subdivision sync", () => {
     expect((await readRows(result.outputParquet)).map((row) => row.subdivision)).toEqual([
       "BY UUID",
       "BY PARCEL",
+    ]);
+  });
+
+  it("treats property_id as UUID identity and fills the official token", async () => {
+    const overlay = await writeFixture("overlay", [
+      { property_id: "UUID-1", subdivision: null },
+    ], {
+      property_id: { type: "UTF8", optional: true },
+      subdivision: { type: "UTF8", optional: true },
+    });
+    const official = await writeFixture("official", [
+      {
+        property_id: "uuid-1",
+        elephant_token: `address:v1:${HASH_A}`,
+        subdivision: "OFFICIAL",
+      },
+    ], {
+      property_id: { type: "UTF8", optional: true },
+      elephant_token: { type: "UTF8", optional: true },
+      subdivision: { type: "UTF8", optional: true },
+    });
+
+    const result = await syncHoaPmOverlay({
+      county: "flagler",
+      overlayParquet: overlay.parquetPath,
+      officialParquet: official.parquetPath,
+      outputDir: path.join(overlay.directory, "output"),
+    });
+
+    expect(result).toMatchObject({
+      officialMatched: 1,
+      subdivisionFilled: 1,
+      tokenFilled: 1,
+      tokenFilledFromOfficial: 1,
+      tokenFilledFromCsv: 0,
+      stillMissingToken: 0,
+    });
+    expect(await readRows(result.outputParquet)).toEqual([
+      expect.objectContaining({
+        property_id: "UUID-1",
+        elephant_token: HASH_A,
+        subdivision: "OFFICIAL",
+      }),
+    ]);
+  });
+
+  it("adds the token schema and fills by property_id from CSV without an official table", async () => {
+    const overlay = await writeFixture("overlay", [
+      { property_id: "UUID-1", subdivision: null },
+      { property_id: "UUID-2", subdivision: null },
+    ], {
+      property_id: { type: "UTF8", optional: true },
+      subdivision: { type: "UTF8", optional: true },
+    });
+    const parcelCsv = path.join(overlay.directory, "parcels.csv");
+    await writeFile(
+      parcelCsv,
+      `property_id,elephant_token\nuuid-1,address:v1:${HASH_A}\n`,
+    );
+
+    const result = await syncHoaPmOverlay({
+      county: "flagler",
+      overlayParquet: overlay.parquetPath,
+      outputDir: path.join(overlay.directory, "output"),
+      parcelCsv,
+    });
+
+    expect(result).toMatchObject({
+      officialMatched: 0,
+      subdivisionFilled: 0,
+      tokenFilled: 1,
+      tokenFilledFromOfficial: 0,
+      tokenFilledFromCsv: 1,
+      stillMissingToken: 1,
+      rowsAdded: 0,
+    });
+    expect(await readRows(result.outputParquet)).toEqual([
+      expect.objectContaining({ property_id: "UUID-1", elephant_token: HASH_A }),
+      expect.objectContaining({ property_id: "UUID-2" }),
     ]);
   });
 });

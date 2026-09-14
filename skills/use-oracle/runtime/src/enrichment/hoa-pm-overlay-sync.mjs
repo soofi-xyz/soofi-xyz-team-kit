@@ -29,8 +29,13 @@ const PARQUET_COMPRESSION_NAMES = {
   6: "ZSTD",
 };
 
-const CSV_TOKEN_FIELDS = ["elephant_token", "token", "address_token"];
-const CSV_UUID_FIELDS = ["elephant_uuid", "uuid"];
+const CSV_TOKEN_FIELDS = [
+  "elephant_token",
+  "canonical_token",
+  "token",
+  "address_token",
+];
+const CSV_UUID_FIELDS = ["elephant_uuid", "property_id", "uuid"];
 const CSV_PARCEL_FIELDS = [
   "parcel_identifier",
   "parcel_id",
@@ -62,7 +67,7 @@ function canonicalParcel(value) {
 function rowIdentity(row) {
   return {
     token: canonicalElephantToken(row.elephant_token),
-    uuid: canonicalUuid(row.elephant_uuid),
+    uuid: canonicalUuid(row.elephant_uuid ?? row.property_id),
     parcel: canonicalParcel(
       row.parcel_identifier ?? row.parcel_id ?? row.request_identifier,
     ),
@@ -160,6 +165,21 @@ function collectCsvIdentity(rows) {
   return identity;
 }
 
+function buildIdentityIndexes(rows) {
+  const indexes = {
+    tokens: new Map(),
+    uuids: new Map(),
+    parcels: new Map(),
+  };
+  for (const row of rows) {
+    const identity = rowIdentity(row);
+    addUnique(indexes.tokens, identity.token, row);
+    addUnique(indexes.uuids, identity.uuid, row);
+    addUnique(indexes.parcels, identity.parcel, row);
+  }
+  return indexes;
+}
+
 function intersects(identity, sets) {
   return Boolean(
     (identity.token && sets.tokens.has(identity.token)) ||
@@ -168,7 +188,7 @@ function intersects(identity, sets) {
   );
 }
 
-function officialMatch(identity, indexes) {
+function identityMatch(identity, indexes) {
   if (identity.token && indexes.tokens.has(identity.token)) {
     return indexes.tokens.get(identity.token);
   }
@@ -194,7 +214,7 @@ function projectAddedRow(official, overlayFields) {
 export async function syncHoaPmOverlay({
   county,
   overlayParquet,
-  officialParquet,
+  officialParquet = null,
   outputDir,
   parcelCsv = null,
 }) {
@@ -206,53 +226,87 @@ export async function syncHoaPmOverlay({
     uuids: new Set(overlayIdentities.map((value) => value.uuid).filter(Boolean)),
     parcels: new Set(overlayIdentities.map((value) => value.parcel).filter(Boolean)),
   };
+  const csvRows = parcelCsv
+    ? parseCsvRecords(await readFile(parcelCsv, "utf8"))
+    : [];
   const csvIdentity = parcelCsv
-    ? collectCsvIdentity(parseCsvRecords(await readFile(parcelCsv, "utf8")))
+    ? collectCsvIdentity(csvRows)
     : { tokens: new Set(), uuids: new Set(), parcels: new Set() };
+  const csvIndexes = buildIdentityIndexes(csvRows);
   const officialIndexes = {
     tokens: new Map(),
     uuids: new Map(),
     parcels: new Map(),
   };
   const selectedOfficialRows = [];
-  const officialReader = await ParquetReader.openFile(officialParquet);
-  try {
-    const cursor = officialReader.getCursor();
-    for (let row = await cursor.next(); row; row = await cursor.next()) {
-      const identity = rowIdentity(row);
-      if (identity.token && overlayIdentitySets.tokens.has(identity.token)) {
-        addUnique(officialIndexes.tokens, identity.token, row);
+  let officialInspection = null;
+  if (officialParquet) {
+    officialInspection = await inspectParquet(officialParquet);
+    const officialReader = await ParquetReader.openFile(officialParquet);
+    try {
+      const cursor = officialReader.getCursor();
+      for (let row = await cursor.next(); row; row = await cursor.next()) {
+        const identity = rowIdentity(row);
+        if (identity.token && overlayIdentitySets.tokens.has(identity.token)) {
+          addUnique(officialIndexes.tokens, identity.token, row);
+        }
+        if (identity.uuid && overlayIdentitySets.uuids.has(identity.uuid)) {
+          addUnique(officialIndexes.uuids, identity.uuid, row);
+        }
+        if (identity.parcel && overlayIdentitySets.parcels.has(identity.parcel)) {
+          addUnique(officialIndexes.parcels, identity.parcel, row);
+        }
+        if (parcelCsv && intersects(identity, csvIdentity)) {
+          selectedOfficialRows.push({ row, identity });
+        }
       }
-      if (identity.uuid && overlayIdentitySets.uuids.has(identity.uuid)) {
-        addUnique(officialIndexes.uuids, identity.uuid, row);
-      }
-      if (identity.parcel && overlayIdentitySets.parcels.has(identity.parcel)) {
-        addUnique(officialIndexes.parcels, identity.parcel, row);
-      }
-      if (parcelCsv && intersects(identity, csvIdentity)) {
-        selectedOfficialRows.push({ row, identity });
-      }
+    } finally {
+      await officialReader.close();
     }
-  } finally {
-    await officialReader.close();
   }
 
   let officialMatched = 0;
   let subdivisionFilled = 0;
+  let tokenFilled = 0;
+  let tokenFilledFromOfficial = 0;
+  let tokenFilledFromCsv = 0;
   const outputRows = overlayRows.map((overlayRow, index) => {
-    const official = officialMatch(overlayIdentities[index], officialIndexes);
-    if (official === undefined || official === null) return { ...overlayRow };
-    officialMatched += 1;
-    if (!nonBlank(overlayRow.subdivision) && nonBlank(official.subdivision)) {
+    const official = identityMatch(overlayIdentities[index], officialIndexes);
+    const csv = identityMatch(overlayIdentities[index], csvIndexes);
+    const outputRow = { ...overlayRow };
+    if (official !== undefined && official !== null) officialMatched += 1;
+    if (!nonBlank(overlayRow.subdivision) && nonBlank(official?.subdivision)) {
       subdivisionFilled += 1;
-      return { ...overlayRow, subdivision: String(official.subdivision).trim() };
+      outputRow.subdivision = String(official.subdivision).trim();
     }
-    return { ...overlayRow };
+    if (!canonicalElephantToken(overlayRow.elephant_token)) {
+      const officialToken = canonicalElephantToken(official?.elephant_token);
+      const csvToken = CSV_TOKEN_FIELDS
+        .map((field) => canonicalElephantToken(csv?.[field]))
+        .find(Boolean);
+      const token = officialToken ?? csvToken;
+      if (token) {
+        outputRow.elephant_token = token;
+        tokenFilled += 1;
+        if (officialToken) tokenFilledFromOfficial += 1;
+        else tokenFilledFromCsv += 1;
+      }
+    }
+    return outputRow;
   });
 
   let rowsAdded = 0;
   const addedKeys = new Set();
-  const overlayFields = Object.keys(overlayInspection.schemaFields);
+  const outputSchemaFields = structuredClone(overlayInspection.schemaFields);
+  const tokenAvailable =
+    Boolean(officialInspection?.schemaFields.elephant_token) ||
+    csvRows.some((row) =>
+      CSV_TOKEN_FIELDS.some((field) => canonicalElephantToken(row[field])),
+    );
+  if (!outputSchemaFields.elephant_token && tokenAvailable) {
+    outputSchemaFields.elephant_token = { type: "UTF8", optional: true };
+  }
+  const overlayFields = Object.keys(outputSchemaFields);
   for (const candidate of selectedOfficialRows) {
     if (intersects(candidate.identity, overlayIdentitySets)) continue;
     const key =
@@ -266,10 +320,13 @@ export async function syncHoaPmOverlay({
   }
 
   const stillEmpty = outputRows.filter((row) => !nonBlank(row.subdivision)).length;
+  const stillMissingToken = outputRows.filter(
+    (row) => !canonicalElephantToken(row.elephant_token),
+  ).length;
   await mkdir(outputDir, { recursive: true });
   const outputParquet = path.join(outputDir, "query-table.parquet");
   const writer = await ParquetWriter.openFile(
-    new ParquetSchema(structuredClone(overlayInspection.schemaFields)),
+    new ParquetSchema(outputSchemaFields),
     outputParquet,
   );
   try {
@@ -283,11 +340,15 @@ export async function syncHoaPmOverlay({
     overlayIn: overlayRows.length,
     officialMatched,
     subdivisionFilled,
+    tokenFilled,
+    tokenFilledFromOfficial,
+    tokenFilledFromCsv,
     rowsAdded,
     stillEmpty,
+    stillMissingToken,
     outputRows: outputRows.length,
     overlayParquetSha256: await sha256File(overlayParquet),
-    officialParquetSha256: await sha256File(officialParquet),
+    officialParquetSha256: officialParquet ? await sha256File(officialParquet) : null,
     parcelCsvSha256: parcelCsv ? await sha256File(parcelCsv) : null,
     outputParquetSha256: await sha256File(outputParquet),
   };
