@@ -479,11 +479,15 @@ async function runHoaPmEnrichCommand(argv) {
   const flags = parseFlags(argv);
   const countyKey = requireStringFlag(flags, "county");
   const outputDir = requireStringFlag(flags, "output-dir");
+  const ctmhExtract = flags["ctmh-extract"] ?? flags["ctmh-condo"];
   const summary = await enrichQueryTableWithHoaPm({
     countyKey,
     inputParquet: requireStringFlag(flags, "input-parquet"),
     inputCoverage: requireStringFlag(flags, "input-coverage"),
     sunbizExtractDir: requireStringFlag(flags, "sunbiz-extract"),
+    sunbizPmExtractDir:
+      typeof flags["sunbiz-pm-extract"] === "string" ? flags["sunbiz-pm-extract"] : null,
+    ctmhExtractDir: typeof ctmhExtract === "string" ? ctmhExtract : null,
     outputParquet: path.join(outputDir, "query-table.parquet"),
     outputCoverage: path.join(outputDir, "dataset-coverage.json"),
     objectsDir: path.join(outputDir, "objects"),
@@ -1121,7 +1125,7 @@ async function main() {
       "  avm-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --records <avm-records.jsonl> --source-manifest <json> --output-dir <dir>\n" +
       "  hoa-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --records <hoa-memberships.jsonl> --source-manifest <json> --output-dir <dir>\n" +
       "  hoa-pm-index --source-dir <expanded-cordata-dir> --subdivisions <json-array> --quarter <YYYYQn> --output <dir>\n" +
-      "  hoa-pm-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --sunbiz-extract <dir> --output-dir <dir>\n" +
+      "  hoa-pm-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --sunbiz-extract <dir> [--sunbiz-pm-extract <dir>] [--ctmh-extract <dir>] --output-dir <dir>\n" +
       "  hoa-pm-publish --county <published-or-overlay-county-key> --input <enriched-dir> [--query-table-only] [--dry-run] [--approve <manifest> --receipt <json>]\n" +
       "  hoa-pm-property-publish --county <published-county-key> --input-parquet <overlay.parquet> [--official-parquet <official.parquet> | --thin-overlay] [--dry-run] [--approve <manifest> --receipt <json> --env-file <dotenv>]\n" +
       "  bbb-harvest --county <profile-key> --category <reviewed-key> --job-id <id> --max-pages N --max-profiles N --max-requests N --max-duration-minutes N --output <dir>\n" +

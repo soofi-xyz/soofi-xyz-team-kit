@@ -9,6 +9,7 @@ import { ParquetSchema, ParquetWriter } from "@dsnp/parquetjs";
 
 import { toParquetRecord } from "../core/query-table.mjs";
 import { isIpfsCid } from "./hoa-pm-object-publication.mjs";
+import { emptyCtmhRecords, loadCtmhExtract } from "./ctmh-condo.mjs";
 import { resolveHoaAndPropertyManagement, stampPropertyCids } from "./hoa-pm-heuristic.mjs";
 
 const require = createRequire(import.meta.url);
@@ -37,7 +38,9 @@ const REQUIRED_COLUMNS = {
   property_cid: "UTF8",
   hoa_cid: "UTF8",
   hoa_name: "UTF8",
+  homeowners_association_type: "UTF8",
   hoa_sunbiz_document_number: "UTF8",
+  hoa_ctmh_project_number: "UTF8",
   property_manager_cid: "UTF8",
   property_manager_name: "UTF8",
   property_manager_sunbiz_document_number: "UTF8",
@@ -289,6 +292,10 @@ export async function enrichQueryTableWithHoaPm({
   inputCoverage,
   sunbizExtractDir,
   companies = null,
+  pmCompanies = null,
+  sunbizPmExtractDir = null,
+  ctmhExtractDir = null,
+  ctmhRecords = null,
   outputParquet,
   outputCoverage,
   objectsDir,
@@ -302,21 +309,73 @@ export async function enrichQueryTableWithHoaPm({
   );
   const sunbizCompanies =
     companies ?? (await loadSunbizCompanies(sunbizExtractDir));
+  const loadedPmCompanies =
+    pmCompanies ??
+    (sunbizPmExtractDir ? await loadSunbizCompanies(sunbizPmExtractDir) : null);
+  const pmPool = loadedPmCompanies
+    ? [...sunbizCompanies, ...loadedPmCompanies]
+    : null;
+  const loadedCtmh =
+    ctmhRecords ??
+    (ctmhExtractDir ? await loadCtmhExtract(ctmhExtractDir) : emptyCtmhRecords());
   const rows = await readQueryRows(inputParquet);
   const objects = [];
   const stamped = [];
   const statusCounts = {};
+  const joinCounts = {
+    ctmh_hoa: 0,
+    ctmh_sunbiz_joined: 0,
+    ctmh_only: 0,
+    sunbiz_only: 0,
+    ctmh_eligible: 0,
+    ctmh_unique: 0,
+    ctmh_not_unique: 0,
+    ctmh_miss: 0,
+    ctmh_hoa_fee_simple: 0,
+    ctmh_hoa_leasehold: 0,
+    ctmh_hoa_missing_estate: 0,
+    ctmh_hoa_condominium: 0,
+    ctmh_hoa_cooperative: 0,
+    ctmh_hoa_timeshare: 0,
+  };
   const resolutionBySubdivision = new Map();
   for (const row of rows) {
-    const cacheKey = `${row.subdivision ?? ""}`;
+    const cacheKey = `${row.subdivision ?? ""}\0${row.ownership_estate_type ?? ""}`;
     let resolution = resolutionBySubdivision.get(cacheKey);
     if (!resolution) {
       resolution = resolveHoaAndPropertyManagement({
         subdivision: row.subdivision,
         companies: sunbizCompanies,
+        pmCompanies: pmPool,
         countyKey,
+        ownershipEstateType: row.ownership_estate_type,
+        ctmhRecords: loadedCtmh,
       });
       resolutionBySubdivision.set(cacheKey, resolution);
+    }
+    joinCounts.ctmh_eligible += 1;
+    if (resolution.ctmhStatus === "matched") joinCounts.ctmh_unique += 1;
+    else if (resolution.ctmhStatus === "not_unique") joinCounts.ctmh_not_unique += 1;
+    else if (resolution.ctmhStatus) joinCounts.ctmh_miss += 1;
+    if (resolution.hoa) {
+      if (resolution.source === "ctmh") {
+        joinCounts.ctmh_hoa += 1;
+        if (resolution.sunbizJoinStatus === "matched") joinCounts.ctmh_sunbiz_joined += 1;
+        else joinCounts.ctmh_only += 1;
+        const estate = String(row.ownership_estate_type ?? "")
+          .replace(/\s+/g, "")
+          .toLowerCase();
+        if (estate === "feesimple") joinCounts.ctmh_hoa_fee_simple += 1;
+        else if (estate === "leasehold") joinCounts.ctmh_hoa_leasehold += 1;
+        else if (estate === "condominium" || estate === "condo") {
+          joinCounts.ctmh_hoa_condominium += 1;
+        } else if (estate === "cooperative" || estate === "coop") {
+          joinCounts.ctmh_hoa_cooperative += 1;
+        } else if (estate === "timeshare") joinCounts.ctmh_hoa_timeshare += 1;
+        else joinCounts.ctmh_hoa_missing_estate += 1;
+      } else {
+        joinCounts.sunbiz_only += 1;
+      }
     }
     statusCounts[resolution.status] = (statusCounts[resolution.status] ?? 0) + 1;
     if (resolution.hoa) objects.push(resolution.hoa);
@@ -353,6 +412,7 @@ export async function enrichQueryTableWithHoaPm({
     matched_hoa_count: stamped.filter((row) => row.hoa_cid).length,
     matched_pm_count: stamped.filter((row) => row.property_manager_cid).length,
     status_counts: statusCounts,
+    ctmh_join_counts: joinCounts,
   };
   const nextCoverage = {
     ...coverage,
@@ -371,6 +431,7 @@ export async function enrichQueryTableWithHoaPm({
     propertyCount: rows.length,
     objectCount: objects.length,
     statusCounts,
+    ctmhJoinCounts: joinCounts,
   };
   await mkdir(path.dirname(manifestPath), { recursive: true });
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
