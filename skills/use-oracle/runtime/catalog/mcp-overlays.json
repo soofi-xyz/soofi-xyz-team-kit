@@ -123,16 +123,16 @@
     {
       "countyKey": "sarasota-hoa-pm",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dk4k2ou4o9aqlsptj8j0q656htdyz9xf3x8ylpnfjhes53nowuu",
-      "queryTableCid": "QmXCmjZAJoTLKS2hTeA92FQozQmvJTimk7q6tW7ZsfhtE8",
+      "queryTableCid": "QmeftLpgM1rodvEG6wYfi8WJBWitnHnBJSLkKooNCqnq9t",
       "permitQueryTableUrl": null,
-      "datasetCoverageUrl": null
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmbLFAoxantagk48UiGgh2YVh7eJAkmwgBNgSwGBmbykKi"
     },
     {
       "countyKey": "st-johns-hoa-pm",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dgsh4004w62payc64u3bwxbz7r0y3xadkvgschvp6hlqml23dri",
-      "queryTableCid": "QmWjE3hq6sLnEpFa4oyfeYHgmZm8UdCVzxZa6Hp2m37fiG",
+      "queryTableCid": "QmXHgBJryHUoFA2WyW17ui5q5vgKRNLB2qcESWC8un6Bps",
       "permitQueryTableUrl": null,
-      "datasetCoverageUrl": null
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmWfV38tEwSLnKXh3HsCyQVp2nxBfrsU6WdwqQLxZsnp7d"
     },
     {
       "countyKey": "volusia-hoa-pm",
