@@ -156,7 +156,7 @@ describe("syncMcpJson against a synthetic mcp.json fixture", () => {
       "QmdD3f3NqgNRiFn4hpGqEwpNqw5tXK3FWW2QRoRBYddhX5",
     );
     expect(propertyFallbacks["duval-hoa-pm"]).toBe(
-      "QmbDU9nAAkkKMTdCuYjMsd1sa3y9Y2vb5jLF9xUU4tU9E6",
+      "QmZYdhzVj7tkroiG4kGt4Vfqpt6dkTnoLj45AfZmEThNFx",
     );
     expect(propertyFallbacks["broward-hoa-pm"]).toBe(
       "QmQ14o8m9LVCk6Wgkk6fB7iCnjcGKHQo3TshtLGesPpYk8",
