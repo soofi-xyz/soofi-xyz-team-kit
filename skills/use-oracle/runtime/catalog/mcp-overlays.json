@@ -415,10 +415,10 @@
     },
     {
       "countyKey": "bradford-hoa-pm",
-      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmS75nFndqvUcHBGTe8AFQs2STxnM2vfZWBcdSNS8hZg7U",
-      "queryTableCid": "QmS75nFndqvUcHBGTe8AFQs2STxnM2vfZWBcdSNS8hZg7U",
+      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmSxuprpEJxrttmPxPPH8oC7e513hF7MPHYKcYsVnx9JbE",
+      "queryTableCid": "QmSxuprpEJxrttmPxPPH8oC7e513hF7MPHYKcYsVnx9JbE",
       "permitQueryTableUrl": null,
-      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmeKA5dD61SL231B6Vubew6hgWu9DGQNnvDVoixAqZUh6d"
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/Qma1MQnomSSpZg8LWkWwyrd9mbBa3bmuWdoY81rsayyEzR"
     },
     {
       "countyKey": "citrus-hoa-pm",
@@ -429,24 +429,24 @@
     },
     {
       "countyKey": "columbia-hoa-pm",
-      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmUxBAHyzhTwmV1Add3m7WSAg8kBCo7xtFpEqozxxBh1BT",
-      "queryTableCid": "QmUxBAHyzhTwmV1Add3m7WSAg8kBCo7xtFpEqozxxBh1BT",
+      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmZbKsqoMcqPQkkcDh3uGA5T7mC9YJzVovSp1nguZtrneT",
+      "queryTableCid": "QmZbKsqoMcqPQkkcDh3uGA5T7mC9YJzVovSp1nguZtrneT",
       "permitQueryTableUrl": null,
-      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmXokfKzkAE6LHej7yads1pAiy4RrhBZXosEL7WytUDvHr"
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmcXmLE2g7BvW1qiv3VvtMMzoBxEqiwJyFMouUjgzoTj7x"
     },
     {
       "countyKey": "desoto-hoa-pm",
-      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmXhvSdcdBPGwpVSMstWCPHGA63jtPQHabBWxxr9djs9GG",
-      "queryTableCid": "QmXhvSdcdBPGwpVSMstWCPHGA63jtPQHabBWxxr9djs9GG",
+      "queryTableUrl": "https://ipfs.filebase.io/ipfs/Qme5nnkHAojdPWq8KsN74icuFTTTijo1awVERtofd7d7bv",
+      "queryTableCid": "Qme5nnkHAojdPWq8KsN74icuFTTTijo1awVERtofd7d7bv",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmQXW1NBr1dF5G96uugam3Xb6tG1rRKuPWz1fz11e1PGUp"
     },
     {
       "countyKey": "highlands-hoa-pm",
-      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmQfbGJxLuJ9AS2xbCY2jRJJFoMQ3XdAd1M8VCGvtJcg1R",
-      "queryTableCid": "QmQfbGJxLuJ9AS2xbCY2jRJJFoMQ3XdAd1M8VCGvtJcg1R",
+      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmWk53cRd1rsweESubQW2oNW4dL5UJqU6W6y7ZxLsH1NbN",
+      "queryTableCid": "QmWk53cRd1rsweESubQW2oNW4dL5UJqU6W6y7ZxLsH1NbN",
       "permitQueryTableUrl": null,
-      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmU2tounDGAv2khMmr7MoGJ75RCDqiZ17kH8dse2SFMWjf"
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmcuvrnvLWpFC92PQfamxodPdy2ZctUKM9CkEr4fuMB9QP"
     },
     {
       "countyKey": "martin-hoa-pm",
@@ -464,17 +464,17 @@
     },
     {
       "countyKey": "putnam-hoa-pm",
-      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmaNS6cyMMGQ7JQtHFXrSJ6h7Den3A8gkAypP8C1GGJEgD",
-      "queryTableCid": "QmaNS6cyMMGQ7JQtHFXrSJ6h7Den3A8gkAypP8C1GGJEgD",
+      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmQxmjyvfUCxzgRXv6Cq5cF85zWFMLfz6xyr4kKqhUHzeY",
+      "queryTableCid": "QmQxmjyvfUCxzgRXv6Cq5cF85zWFMLfz6xyr4kKqhUHzeY",
       "permitQueryTableUrl": null,
       "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmUdLyyv1kJXECskBpWVjrH43kqNKeiwHknUR9PbBPv6Cs"
     },
     {
       "countyKey": "santa-rosa-hoa-pm",
-      "queryTableUrl": "https://ipfs.filebase.io/ipfs/Qmahj5UZT4ieCB7uKb6qDVanJmg594wWBUxCyarzeFDAL5",
-      "queryTableCid": "Qmahj5UZT4ieCB7uKb6qDVanJmg594wWBUxCyarzeFDAL5",
+      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmTkL8fVgJU2VkVAAEtVVxCDhZgaHY2kf1PL2FZxhwusHs",
+      "queryTableCid": "QmTkL8fVgJU2VkVAAEtVVxCDhZgaHY2kf1PL2FZxhwusHs",
       "permitQueryTableUrl": null,
-      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmVAe8WNm98GiZYSEfxotcZ7oLug6LZSXorUT9aFWfiyyf"
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmacMT38q7KCgAvmq4zpSVeumbhNakjk2YwzYWqq2mQtQL"
     },
     {
       "countyKey": "st-lucie-hoa-pm",
