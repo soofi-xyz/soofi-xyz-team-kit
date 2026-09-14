@@ -145,7 +145,10 @@ export async function loadSunbizCompanies(sunbizExtractDir) {
         entityName: entity.entityName,
         status: entity.status,
         filedDate: entity.filedDate ?? null,
+        filingTypeCode: entity.filingTypeCode ?? null,
+        filingType: entity.filingType ?? null,
         principalAddress: entity.principalAddress ?? null,
+        mailingAddress: entity.mailingAddress ?? null,
         registeredAgent: entity.registeredAgent ?? null,
       });
     }
@@ -388,6 +391,9 @@ export async function enrichQueryTableWithHoaPm({
     const cacheKey = [
       row.subdivision ?? "",
       row.ownership_estate_type ?? "",
+      row.address_city ?? row.city ?? "",
+      row.county_name ?? row.county ?? countyKey,
+      row.hoa_sunbiz_document_number ?? "",
       clerkEvidence.status,
       clerkEvidence.evidence?.normalizedName ?? "",
       clerkEvidence.evidence?.sourceProfileId ?? "",
@@ -402,6 +408,13 @@ export async function enrichQueryTableWithHoaPm({
         ownershipEstateType: row.ownership_estate_type,
         ctmhRecords: loadedCtmh,
         sunbizAliases: loadedSunbizAliases,
+        parcelCity: row.address_city ?? row.city ?? null,
+        parcelCounty: row.county_name ?? row.county ?? countyKey,
+        officialDocumentNumbers: [
+          row.hoa_sunbiz_document_number,
+          row.ctmh_sunbiz_document_number,
+          row.clerk_declaration_sunbiz_document_number,
+        ],
         recordedCommunityEvidence: clerkEvidence.evidence,
         recordedCommunityEvidenceStatus: clerkEvidence.status,
       });

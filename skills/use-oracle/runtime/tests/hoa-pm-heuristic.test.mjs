@@ -200,6 +200,118 @@ describe("hoa-pm heuristic", () => {
     expect(result.status).toBe("not_unique");
   });
 
+  it("prefers the one nonprofit HOA over an ACTIVE LLC developer", () => {
+    const result = findHoaCompanies("Oak Grove", [
+      {
+        ...hoaCompany,
+        documentNumber: "N24000000001",
+        entityName: "OAK GROVE HOMEOWNERS ASSOCIATION, INC.",
+        filingTypeCode: "DOMNP",
+        filingType: "Domestic Non-Profit",
+      },
+      {
+        ...hoaCompany,
+        documentNumber: "L24000000002",
+        entityName: "OAK GROVE",
+        filingTypeCode: "FLAL",
+        filingType: "Florida Limited Liability Company",
+      },
+    ]);
+    expect(result.status).toBe("matched");
+    expect(result.matches[0].documentNumber).toBe("N24000000001");
+  });
+
+  it("collapses two event names onto one ACTIVE Sunbiz successor", () => {
+    const survivor = {
+      ...hoaCompany,
+      documentNumber: "N24000000003",
+      entityName: "OAK GROVE COMMUNITY ASSOCIATION, INC.",
+      filingTypeCode: "DOMNP",
+    };
+    const priorName = {
+      ...hoaCompany,
+      documentNumber: "N24000000002",
+      entityName: "OAK GROVE HOMEOWNERS ASSOCIATION, INC.",
+      filingTypeCode: "DOMNP",
+    };
+    const result = findHoaCompanies("Oak Grove", [priorName, survivor], {
+      sunbizAliases: {
+        corporateEvents: new Map([
+          [
+            "OAK GROVE HOMEOWNERS ASSOCIATION INC",
+            new Set([survivor.documentNumber]),
+          ],
+        ]),
+      },
+    });
+    expect(result.status).toBe("matched");
+    expect(result.matches[0].documentNumber).toBe(survivor.documentNumber);
+  });
+
+  it("uses parcel city only when it uniquely separates two HOAs", () => {
+    const fortMyers = {
+      ...hoaCompany,
+      documentNumber: "N24000000004",
+      entityName: "OAK GROVE HOMEOWNERS ASSOCIATION, INC.",
+      filingTypeCode: "DOMNP",
+      principalAddress: { city: "Fort Myers" },
+    };
+    const naples = {
+      ...hoaCompany,
+      documentNumber: "N24000000005",
+      entityName: "OAK GROVE COMMUNITY ASSOCIATION, INC.",
+      filingTypeCode: "DOMNP",
+      mailingAddress: { city: "Naples" },
+    };
+    const matched = findHoaCompanies("Oak Grove", [fortMyers, naples], {
+      parcelCity: "Fort Myers",
+      parcelCounty: "Lee",
+    });
+    expect(matched.status).toBe("matched");
+    expect(matched.matches[0].documentNumber).toBe(fortMyers.documentNumber);
+    expect(
+      findHoaCompanies("Oak Grove", [fortMyers, naples], {
+        parcelCounty: "Lee",
+      }).status,
+    ).toBe("not_unique");
+  });
+
+  it("uses one existing official document number and rejects people or lawyers", () => {
+    const first = {
+      ...hoaCompany,
+      documentNumber: "N24000000006",
+      entityName: "OAK GROVE HOMEOWNERS ASSOCIATION, INC.",
+      filingTypeCode: "DOMNP",
+    };
+    const second = {
+      ...hoaCompany,
+      documentNumber: "N24000000007",
+      entityName: "OAK GROVE COMMUNITY ASSOCIATION, INC.",
+      filingTypeCode: "DOMNP",
+    };
+    const documented = findHoaCompanies("Oak Grove", [first, second], {
+      officialDocumentNumbers: [second.documentNumber],
+    });
+    expect(documented.status).toBe("matched");
+    expect(documented.matches[0].documentNumber).toBe(second.documentNumber);
+    expect(
+      findHoaCompanies("Oak Grove", [
+        {
+          ...hoaCompany,
+          documentNumber: "A24000000001",
+          entityName: "OAK GROVE",
+          filingTypeCode: "AGENT",
+          entityKind: "PERSON",
+        },
+        {
+          ...hoaCompany,
+          documentNumber: "L24000000008",
+          entityName: "OAK GROVE LAW OFFICES, P.A.",
+        },
+      ]).status,
+    ).toBe("no_sunbiz_hoa");
+  });
+
   it("keeps a unique legacy match even when a different normalized candidate exists", () => {
     const result = findHoaCompanies("FOO BAR UNIT 3A", [
       {
