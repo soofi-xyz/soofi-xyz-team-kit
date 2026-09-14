@@ -22,6 +22,11 @@ the Duval Clerk Official Records/Public Records department. A confirmation
 that no responsive parcel-level dataset exists is valid blocker evidence; do
 not replace it with subdivision-name inference.
 
+The public Official Records index at `https://or.duvalclerk.com/` is not a
+parcel-linked plat/declaration harvest: it has no RE/folio search and no
+structured `plat_name` / `declaration_name` column. Ask the clerk for a
+machine-readable extract keyed by RE number; do not scrape party names.
+
 Request routes:
 
 - Duval Clerk Public Records Department: 904-255-1828, Room 2338

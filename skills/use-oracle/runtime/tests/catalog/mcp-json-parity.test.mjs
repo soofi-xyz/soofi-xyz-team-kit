@@ -156,16 +156,16 @@ describe("syncMcpJson against a synthetic mcp.json fixture", () => {
       "QmdD3f3NqgNRiFn4hpGqEwpNqw5tXK3FWW2QRoRBYddhX5",
     );
     expect(propertyFallbacks["duval-hoa-pm"]).toBe(
-      "QmNvBgKuT4sqM7bZBhR4ynSReaSpq7Z69yfXhJhBAUtsn7",
+      "QmUixViGsQnFi98PmzN5oneqh92Y7tMzaRHweLumUstm1Y",
     );
     expect(propertyFallbacks["broward-hoa-pm"]).toBe(
-      "QmSsCsfSCMSvYz7HoySuS5oqp55DWSDg6DGXUhukSWqexb",
+      "QmTPFUNDVusHSh2kSC8M6cKWPRQc4bk3Wk7HuNuKHRpa1n",
     );
     expect(propertyFallbacks["pinellas-hoa-pm"]).toBe(
-      "QmVz8KLL285dVaHHSD1tcFmq2bkatnP8hys3ZAk45p78ND",
+      "QmYqyddFNMsH6wkr28rQCp4tLeQ76gjXLvEJngZRKVZvg9",
     );
     expect(propertyFallbacks["osceola-hoa-pm"]).toBe(
-      "QmSkQ5sioAUEz8hfjoV1FKCmnfhKS9X7BQMRxbwivLyv1V",
+      "QmcXznqMAXo4MySt2daA9AppJtDztLjM8SiCHXQ9gZSiXC",
     );
     expect(propertyFallbacks.lee).toBe(
       "QmXUhFPnWxwywQaksFW1ikSAoMCgmjDrHfZvHPnCRuFtZh",

@@ -24,6 +24,10 @@ import {
   publishPermitFilebase,
 } from "../src/core/filebase.mjs";
 import { publishHoaPmPropertyPages } from "../src/core/hoa-pm-property-publication.mjs";
+import {
+  assertOverlayOnlyIpnsLabels,
+  withOverlayPublisherLock,
+} from "../src/core/hoa-pm-overlay-publisher.mjs";
 import { requireQueryTablePublication } from "../src/core/query-table-publication.mjs";
 import { runReplay } from "../src/core/replay.mjs";
 import {
@@ -497,6 +501,14 @@ async function runHoaPmEnrichCommand(argv) {
       typeof flags["sunbiz-fictitious-extract"] === "string"
         ? flags["sunbiz-fictitious-extract"]
         : null,
+    clerkRecordsPath:
+      typeof flags["clerk-records"] === "string"
+        ? flags["clerk-records"]
+        : null,
+    clerkSourceManifestPath:
+      typeof flags["clerk-source-manifest"] === "string"
+        ? flags["clerk-source-manifest"]
+        : null,
     outputParquet: path.join(outputDir, "query-table.parquet"),
     outputCoverage: path.join(outputDir, "dataset-coverage.json"),
     objectsDir: path.join(outputDir, "objects"),
@@ -518,14 +530,19 @@ async function runHoaPmIndexCommand(argv) {
 
 async function runHoaPmOverlaySyncCommand(argv) {
   const flags = parseFlags(argv);
-  const summary = await syncHoaPmOverlay({
-    county: requireStringFlag(flags, "county"),
-    overlayParquet: requireStringFlag(flags, "overlay-parquet"),
-    officialParquet: requireStringFlag(flags, "official-parquet"),
-    outputDir: requireStringFlag(flags, "output-dir"),
-    parcelCsv:
-      typeof flags["parcel-csv"] === "string" ? flags["parcel-csv"] : null,
-  });
+  const county = requireStringFlag(flags, "county");
+  const summary = await withOverlayPublisherLock(
+    { county, command: "hoa-pm-overlay-sync" },
+    () =>
+      syncHoaPmOverlay({
+        county,
+        overlayParquet: requireStringFlag(flags, "overlay-parquet"),
+        officialParquet: requireStringFlag(flags, "official-parquet"),
+        outputDir: requireStringFlag(flags, "output-dir"),
+        parcelCsv:
+          typeof flags["parcel-csv"] === "string" ? flags["parcel-csv"] : null,
+      }),
+  );
   console.log(JSON.stringify({ event: "hoa_pm_overlay_sync_complete", summary }, null, 2));
 }
 
@@ -542,34 +559,41 @@ async function runHoaPmPublishCommand(argv) {
   }
   const publication = requireQueryTablePublication(countyKey);
   const datasetKey = `${countyKey}-hoa-pm`;
-  const result = await publishFilebase(
-    {
-      county: countyKey,
-      parquetPath: path.join(inputDir, "query-table.parquet"),
-      coveragePath: path.join(inputDir, "dataset-coverage.json"),
-      ...(flags["query-table-only"] === true
-        ? {}
-        : {
-            hoaPmObjectsPath: path.join(
-              inputDir,
-              "objects",
-              "hoa-pm-objects.jsonl",
-            ),
-          }),
-      bucket: publication.bucket,
-      queryTableIpnsLabel: `oracle-query-table-${datasetKey}`,
-      coverageIpnsLabel: `oracle-dataset-coverage-${datasetKey}`,
-    },
-    {
+  const artifacts = {
+    county: countyKey,
+    parquetPath: path.join(inputDir, "query-table.parquet"),
+    coveragePath: path.join(inputDir, "dataset-coverage.json"),
+    ...(flags["query-table-only"] === true
+      ? {}
+      : {
+          hoaPmObjectsPath: path.join(
+            inputDir,
+            "objects",
+            "hoa-pm-objects.jsonl",
+          ),
+        }),
+    bucket: publication.bucket,
+    queryTableIpnsLabel: `oracle-query-table-${datasetKey}`,
+    coverageIpnsLabel: `oracle-dataset-coverage-${datasetKey}`,
+  };
+  assertOverlayOnlyIpnsLabels(artifacts);
+  const publish = () =>
+    publishFilebase(artifacts, {
       dryRun: flags["dry-run"] === true,
-      moveExistingIpnsOnly: flags["move-existing-ipns-only"] === true,
+      moveExistingIpnsOnly: true,
       approvalManifestPath:
         typeof flags.approve === "string" ? flags.approve : null,
       receiptPath:
         typeof flags.receipt === "string" ? flags.receipt : null,
       env: process.env,
-    },
-  );
+    });
+  const result =
+    flags["dry-run"] === true
+      ? await publish()
+      : await withOverlayPublisherLock(
+          { county: countyKey, command: "hoa-pm-publish" },
+          publish,
+        );
   console.log(JSON.stringify({ event: "hoa_pm_publish_complete", result }, null, 2));
 }
 
@@ -580,18 +604,19 @@ async function runHoaPmPropertyPublishCommand(argv) {
   if (typeof flags["env-file"] === "string") {
     await loadEnvFile(flags["env-file"], process.env);
   }
-  const result = await publishHoaPmPropertyPages(
-    {
-      county: countyKey,
-      parquetPath: requireStringFlag(flags, "input-parquet"),
-      officialParquetPath:
-        typeof flags["official-parquet"] === "string"
-          ? flags["official-parquet"]
-          : null,
-      bucket: publication.bucket,
-      queryTableIpnsLabel: `oracle-query-table-${countyKey}-hoa-pm`,
-    },
-    {
+  const artifacts = {
+    county: countyKey,
+    parquetPath: requireStringFlag(flags, "input-parquet"),
+    officialParquetPath:
+      typeof flags["official-parquet"] === "string"
+        ? flags["official-parquet"]
+        : null,
+    bucket: publication.bucket,
+    queryTableIpnsLabel: `oracle-query-table-${countyKey}-hoa-pm`,
+  };
+  assertOverlayOnlyIpnsLabels(artifacts);
+  const publish = () =>
+    publishHoaPmPropertyPages(artifacts, {
       dryRun: flags["dry-run"] === true,
       approvalManifestPath:
         typeof flags.approve === "string" ? flags.approve : null,
@@ -599,8 +624,14 @@ async function runHoaPmPropertyPublishCommand(argv) {
         typeof flags.receipt === "string" ? flags.receipt : null,
       thinOverlay: flags["thin-overlay"] === true,
       env: process.env,
-    },
-  );
+    });
+  const result =
+    flags["dry-run"] === true
+      ? await publish()
+      : await withOverlayPublisherLock(
+          { county: countyKey, command: "hoa-pm-property-publish" },
+          publish,
+        );
   console.log(
     JSON.stringify({ event: "hoa_pm_property_publish_complete", result }, null, 2),
   );
@@ -1157,8 +1188,9 @@ async function main() {
       "  hoa-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --records <hoa-memberships.jsonl> --source-manifest <json> --output-dir <dir>\n" +
       "  hoa-pm-index --source-dir <expanded-cordata-dir> --subdivisions <json-array> --quarter <YYYYQn> --output <dir>\n" +
       "  hoa-pm-overlay-sync --county <key> --overlay-parquet <overlay.parquet> --official-parquet <official.parquet> --output-dir <dir> [--parcel-csv <csv>]\n" +
-      "  hoa-pm-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --sunbiz-extract <dir> [--sunbiz-pm-extract <dir>] [--ctmh-extract <dir>] [--sunbiz-events-extract <expanded-corevent-dir>] [--sunbiz-fictitious-extract <expanded-ficdata-and-ficevt-dir>] --output-dir <dir>\n" +
+      "  hoa-pm-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --sunbiz-extract <dir> [--sunbiz-pm-extract <dir>] [--ctmh-extract <dir>] [--sunbiz-events-extract <expanded-corevent-dir>] [--sunbiz-fictitious-extract <expanded-ficdata-and-ficevt-dir>] [--clerk-records <recorded-community-names.jsonl> --clerk-source-manifest <json>] --output-dir <dir>\n" +
       "  hoa-pm-publish --county <published-or-overlay-county-key> --input <enriched-dir> [--query-table-only] [--move-existing-ipns-only] [--dry-run] [--approve <manifest> --receipt <json> --env-file <dotenv>]\n" +
+      "    Overlay IPNS moves abort if another overlay publish/sync process holds the lock, if the live name already points at a newer approved receipt, or if the CID is not this run's byte-bound receipt. Overlay-only: never move oracle-query-table-<county>. At Filebase 100/100, move existing overlay names only.\n" +
       "  hoa-pm-property-publish --county <published-county-key> --input-parquet <overlay.parquet> [--official-parquet <official.parquet> | --thin-overlay] [--dry-run] [--approve <manifest> --receipt <json> --env-file <dotenv>]\n" +
       "  bbb-harvest --county <profile-key> --category <reviewed-key> --job-id <id> --max-pages N --max-profiles N --max-requests N --max-duration-minutes N --output <dir>\n" +
       "  bbb-reconcile --county <profile-key> --harvest-root <category-dirs-root> --input-coverage <json> --output-dir <dir>\n" +

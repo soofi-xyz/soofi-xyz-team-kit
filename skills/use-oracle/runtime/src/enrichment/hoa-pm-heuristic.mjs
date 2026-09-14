@@ -73,7 +73,7 @@ const ASSOCIATION_SUFFIX_PATTERNS = [
   ["HOA"],
 ];
 
-export const HOA_PM_SCHEMA_VERSION = "elephant.hoa-pm-heuristic.v8";
+export const HOA_PM_SCHEMA_VERSION = "elephant.hoa-pm-heuristic.v9";
 
 export function normalizeEntityName(value) {
   return String(value ?? "")
@@ -309,6 +309,11 @@ function stripTrailingLegalSuffixes(tokens) {
       changed = true;
       continue;
     }
+    if (last === "LOT" || last === "LOTS") {
+      stripped.pop();
+      changed = true;
+      continue;
+    }
     if (stripped.length >= 2 && (stripped.at(-2) === "LOT" || stripped.at(-2) === "LOTS") && isNumericToken(last)) {
       stripped.pop();
       stripped.pop();
@@ -363,6 +368,21 @@ export function extractCommunityNameFromSubdivision(subdivision) {
   if (!isViableCommunityName(withoutUnit)) return null;
   const extracted = withoutUnit.join(" ");
   return extracted === normalized ? null : extracted;
+}
+
+export function subdivisionLooksLikeLegalDescription(subdivision) {
+  const preprocessed = preprocessLegalSubdivision(subdivision);
+  const normalized = normalizeEntityName(preprocessed);
+  if (!normalized) return false;
+  const tokens = normalizeComparisonTokens(preprocessed);
+  return (
+    isSectionTownshipRange(tokens, normalized) ||
+    isUnparseableLegal(normalized) ||
+    /\b(LOT|LOTS|BLK|BLOCK|PB|PG|PGS|MB|OR|REC|BOOK|PAGE|PAGES)\b/.test(
+      normalized,
+    ) ||
+    /^\d+(?:\s+\d+){1,2}\s+[A-Z]/.test(normalized)
+  );
 }
 
 function endsWithTokens(tokens, suffix) {
@@ -629,6 +649,50 @@ export function findHoaCompanies(subdivision, companies, { countyKey, ownershipE
   return { status: "matched", matches: unique, source: "sunbiz" };
 }
 
+export function findHoaCompaniesByRecordedName(
+  recordedName,
+  companies,
+  { countyKey, ownershipEstateType } = {},
+) {
+  const estate = normalizeOwnershipEstateType(ownershipEstateType);
+  const recordedBase =
+    associationBaseName(recordedName) ??
+    normalizeComparisonTokens(recordedName).join(" ");
+  if (!recordedBase) {
+    return {
+      status: "clerk_recorded_name_not_in_sunbiz",
+      matches: [],
+      source: "clerk_official_records",
+    };
+  }
+  const matches = companies.filter((company) => {
+    if (company.status && company.status !== "ACTIVE") return false;
+    if (!companyAllowedForEstate(company, estate)) return false;
+    if (!hasHoaNameMarker(company.entityName)) return false;
+    return associationBaseName(company.entityName) === recordedBase;
+  });
+  const unique = resolveCandidateSet(matches, countyKey);
+  if (unique.length === 0) {
+    return {
+      status: "clerk_recorded_name_not_in_sunbiz",
+      matches: [],
+      source: "clerk_official_records",
+    };
+  }
+  if (unique.length > 1) {
+    return {
+      status: "clerk_sunbiz_not_unique",
+      matches: unique,
+      source: "clerk_official_records",
+    };
+  }
+  return {
+    status: "matched",
+    matches: unique,
+    source: "clerk_official_records",
+  };
+}
+
 export function searchHoaAssociation(
   subdivision,
   { companies = [], ctmhRecords = null, countyKey, ownershipEstateType } = {},
@@ -713,6 +777,7 @@ function hoaObject({
   propertyManagerCid,
   request,
   requestIdentifier,
+  discoveryEvidence = null,
 }) {
   const payload = {
     data_group: "HOA_",
@@ -725,6 +790,12 @@ function hoaObject({
     property_manager_cid: propertyManagerCid,
     source_http_request: request,
     request_identifier: requestIdentifier,
+    ...(discoveryEvidence
+      ? {
+          hoa_discovery_source: "clerk_official_records",
+          clerk_recorded_name_evidence: discoveryEvidence,
+        }
+      : {}),
   };
   return { ...payload, cid: objectCid(payload) };
 }
@@ -789,15 +860,59 @@ export function resolveHoaAndPropertyManagement({
   ownershipEstateType,
   ctmhRecords = null,
   sunbizAliases = null,
+  recordedCommunityEvidence = null,
+  recordedCommunityEvidenceStatus = "no_record",
 }) {
   const estate = normalizeOwnershipEstateType(ownershipEstateType);
   const pmPool = pmCompanies ?? companies;
-  const hoaSearch = searchHoaAssociation(subdivision, {
+  let hoaSearch = searchHoaAssociation(subdivision, {
     companies,
     ctmhRecords,
     countyKey,
     ownershipEstateType,
   });
+  const clerkFallbackEligible =
+    ["no_subdivision", "no_sunbiz_hoa"].includes(hoaSearch.status) ||
+    subdivisionLooksLikeLegalDescription(subdivision);
+  if (
+    clerkFallbackEligible &&
+    recordedCommunityEvidenceStatus === "not_unique"
+  ) {
+    hoaSearch = {
+      status: "clerk_recorded_name_not_unique",
+      matches: [],
+      source: "clerk_official_records",
+      ctmhStatus: hoaSearch.ctmhStatus,
+    };
+  } else if (
+    clerkFallbackEligible &&
+    recordedCommunityEvidenceStatus === "matched" &&
+    recordedCommunityEvidence
+  ) {
+    const appraisalSearch = hoaSearch;
+    const recordedNameSearch = findHoaCompaniesByRecordedName(
+      recordedCommunityEvidence.recordedName,
+      companies,
+      { countyKey, ownershipEstateType: estate },
+    );
+    const conflictsWithAppraisal =
+      appraisalSearch.status === "matched" &&
+      recordedNameSearch.status === "matched" &&
+      appraisalSearch.matches[0]?.documentNumber !==
+        recordedNameSearch.matches[0]?.documentNumber;
+    hoaSearch = conflictsWithAppraisal
+      ? {
+          status: "clerk_appraisal_conflicting",
+          matches: [],
+          source: "clerk_official_records",
+          ctmhStatus: appraisalSearch.ctmhStatus,
+        }
+      : {
+          ...recordedNameSearch,
+          ctmhStatus: appraisalSearch.ctmhStatus,
+          recordedCommunityEvidence,
+        };
+  }
   const ctmhStatus = hoaSearch.ctmhStatus ?? (hoaSearch.source === "ctmh" ? hoaSearch.status : null);
   if (hoaSearch.status !== "matched") {
     return {
@@ -925,11 +1040,21 @@ export function resolveHoaAndPropertyManagement({
     ctmhProjectNumber: null,
     companyCid: hoaCompanyObject.cid,
     propertyManagerCid: propertyManagement?.cid ?? null,
-    request: {
-      method: "GET",
-      url: "https://dos.fl.gov/sunbiz/other-services/data-downloads/",
-    },
-    requestIdentifier: `sunbiz:${hoaCompany.documentNumber}:homeowners_association`,
+    request:
+      hoaSearch.source === "clerk_official_records"
+        ? {
+            method: "GET",
+            url: hoaSearch.recordedCommunityEvidence.sourceUrl,
+          }
+        : {
+            method: "GET",
+            url: "https://dos.fl.gov/sunbiz/other-services/data-downloads/",
+          },
+    requestIdentifier:
+      hoaSearch.source === "clerk_official_records"
+        ? `clerk:${hoaSearch.recordedCommunityEvidence.sourceProfileId}:${hoaCompany.documentNumber}:homeowners_association`
+        : `sunbiz:${hoaCompany.documentNumber}:homeowners_association`,
+    discoveryEvidence: hoaSearch.recordedCommunityEvidence ?? null,
   });
   return {
     status: pmSearch.status,
@@ -937,7 +1062,7 @@ export function resolveHoaAndPropertyManagement({
     hoaCompany: hoaCompanyObject,
     propertyManagement,
     propertyManagementCompany,
-    source: "sunbiz",
+    source: hoaSearch.source,
     sunbizJoinStatus: null,
     sunbizJoinMethod: null,
     propertyManagementMatchMethod: pmSearch.method ?? null,
@@ -946,17 +1071,50 @@ export function resolveHoaAndPropertyManagement({
 }
 
 export function stampPropertyCids(property, resolution) {
+  const priorHoaFilled = [
+    property.hoa_cid,
+    property.hoa_name,
+    property.hoa_sunbiz_document_number,
+    property.hoa_ctmh_project_number,
+  ].some((value) => value != null && String(value).trim() !== "");
+  const priorPmFilled = [
+    property.property_manager_cid,
+    property.property_manager_name,
+    property.property_manager_sunbiz_document_number,
+  ].some((value) => value != null && String(value).trim() !== "");
+  const preserveHoa = resolution.hoa == null && priorHoaFilled;
+  const preservePm = resolution.propertyManagement == null && priorPmFilled;
+  const preservedSuffix =
+    preserveHoa && preservePm
+      ? "_prior_hoa_pm_preserved"
+      : preserveHoa
+        ? "_prior_hoa_preserved"
+        : preservePm
+          ? "_prior_pm_preserved"
+          : "";
   return {
     ...property,
-    hoa_cid: resolution.hoa?.cid ?? null,
-    hoa_name: resolution.hoa?.homeowners_association_name ?? null,
-    homeowners_association_type: resolution.hoa?.homeowners_association_type ?? null,
-    hoa_sunbiz_document_number: resolution.hoa?.sunbiz_document_number ?? null,
-    hoa_ctmh_project_number: resolution.hoa?.ctmh_project_number ?? null,
-    property_manager_cid: resolution.propertyManagement?.cid ?? null,
-    property_manager_name: resolution.propertyManagement?.name ?? null,
+    hoa_cid: preserveHoa ? property.hoa_cid ?? null : resolution.hoa?.cid ?? null,
+    hoa_name: preserveHoa ? property.hoa_name ?? null : resolution.hoa?.homeowners_association_name ?? null,
+    homeowners_association_type: preserveHoa
+      ? property.homeowners_association_type ?? null
+      : resolution.hoa?.homeowners_association_type ?? null,
+    hoa_sunbiz_document_number: preserveHoa
+      ? property.hoa_sunbiz_document_number ?? null
+      : resolution.hoa?.sunbiz_document_number ?? null,
+    hoa_ctmh_project_number: preserveHoa
+      ? property.hoa_ctmh_project_number ?? null
+      : resolution.hoa?.ctmh_project_number ?? null,
+    property_manager_cid: preservePm
+      ? property.property_manager_cid ?? null
+      : resolution.propertyManagement?.cid ?? null,
+    property_manager_name: preservePm
+      ? property.property_manager_name ?? null
+      : resolution.propertyManagement?.name ?? null,
     property_manager_sunbiz_document_number:
-      resolution.propertyManagement?.sunbiz_document_number ?? null,
-    hoa_pm_status: resolution.status,
+      preservePm
+        ? property.property_manager_sunbiz_document_number ?? null
+        : resolution.propertyManagement?.sunbiz_document_number ?? null,
+    hoa_pm_status: `${resolution.status}${preservedSuffix}`,
   };
 }

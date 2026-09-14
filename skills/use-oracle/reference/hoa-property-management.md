@@ -64,6 +64,27 @@ publication. Never update `oracle-query-table-<county>` or
 `oracle-dataset-coverage-<county>` from this bounded enrichment path: those official
 labels remain reserved for the full county publication.
 
+## Overlay IPNS publisher
+
+Run **one overlay publisher**. Before `hoa-pm-overlay-sync`, a live `hoa-pm-publish`,
+or a live `hoa-pm-property-publish`, refuse if another overlay publish/sync process
+is running (stale shell, leftover agent, or parallel Oracle). The CLI holds a
+single lockfile for that work.
+
+**Never rewind.** Before moving `oracle-query-table-<county>-hoa-pm` or
+`oracle-dataset-coverage-<county>-hoa-pm`, resolve the current live target CID.
+If that name already points at a newer approved receipt than this process is
+applying, **abort**. Do not last-write-wins: that rewound Duval overlay labels
+to prior CIDs after an approved publish.
+
+**This run’s receipt only.** Apply only the byte-bound CID this process just
+produced from the approved artifact bytes. Do not replay an older publish command
+or CID list from a previous chat or shell.
+
+**Overlay-only.** Never move official `oracle-query-table-<county>` or
+`oracle-dataset-coverage-<county>`. At Filebase 100/100 names, move existing
+overlay names only; do not create new IPNS names.
+
 The HOA/PM object bundle is CID-linked from the enriched query table and shares the
 county's existing bucket under the county-scoped `hoa-pm/` prefix. Register the query
 slice under the distinct MCP dataset key `<county>-hoa-pm`; it does not replace the
@@ -127,6 +148,61 @@ approval for changed bytes. Use `--query-table-only` when another workflow owns
 `objects.jsonl`; it publishes only the query table and coverage and leaves the object
 key untouched.
 
+## Clerk plat / official-records fallback
+
+Use appraisal `subdivision` first when it is a clean community name. Use a clerk/official
+records (OR) recorded plat or declaration name only when appraisal `subdivision` is empty,
+is legal-description text, or produces no ACTIVE Sunbiz HOA. Do not use the fallback to
+break an ambiguity from a clean appraisal community name.
+
+The fallback is fail-closed:
+
+- Link the official-record row to the property by the exact county parcel identifier.
+- Accept only a structured `plat_name` from a plat or `declaration_name` from a
+  declaration. Grantor, grantee, attorney, preparer, return-to, owner, trustee, and other
+  party names are never HOA names.
+- Require exactly one normalized recorded name per parcel. Different plat/declaration
+  names remain `clerk_recorded_name_not_unique`.
+- Compare that recorded name only to exact association bases from ACTIVE statewide
+  Sunbiz companies. Do not use substring, edit distance, token score, address, officer,
+  registered-agent person, or ZIP proximity.
+- Stamp only one surviving ACTIVE Sunbiz document number. Zero candidates remain
+  `clerk_recorded_name_not_in_sunbiz`; multiple candidates remain
+  `clerk_sunbiz_not_unique`. If a parsed legal description and clerk name uniquely resolve
+  to different Sunbiz documents, keep `clerk_appraisal_conflicting` and stamp neither.
+  Never invent a company or treat a person as the HOA.
+
+No clerk/OR harvester or clerk extract is bundled. The bounded Duval probe of
+`https://or.duvalclerk.com/` (2026-09-14) reached the public index (HTTP 200, disclaimer
+accepted, no CAPTCHA) but found no parcel/RE/folio search and no `parcel_identifier`,
+`plat_name`, or `declaration_name` result column. Grantor/grantee names and legal-
+description text are not HOA names. Until a custodian extract supplies exact parcel-
+linked plat or declaration names, keep a reviewed empty JSONL (`recordCount` 0) and do
+not invent clerk rows. Other overlay counties stay out of clerk harvest unless a public
+or local clerk source is already specified.
+
+When a reviewed extract exists, retain the exact instrument number/reference, write
+`elephant.clerk-recorded-community-names.v1` outside git, then run:
+
+```bash
+cd skills/use-oracle/runtime
+node bin/elephant-county.mjs hoa-pm-enrich \
+  --county duval \
+  --input-parquet <bounded-duval-query-table.parquet> \
+  --input-coverage <bounded-duval-coverage.json> \
+  --sunbiz-extract <statewide-active-sunbiz-dir> \
+  --clerk-records <duval-recorded-community-names.jsonl> \
+  --clerk-source-manifest <duval-clerk-source-manifest.json> \
+  --output-dir <local-output-dir>
+```
+
+Each JSONL row requires `parcel_identifier`, `recorded_name`, `instrument_type`
+(`plat` or `declaration`), matching `name_kind` (`plat_name` or
+`declaration_name`), `instrument_number`, and `evidence_reference`. The manifest binds
+county, official source URL, exact record count, and SHA-256. Stop after local
+enrichment/tests in this workflow; do not run `hoa-pm-publish` or move any Filebase/IPNS
+overlay label.
+
 ## Mandatory subdivision reconciliation
 
 Whenever the base county or identity query table gains or fills `subdivision`, sync the
@@ -182,12 +258,22 @@ node bin/elephant-county.mjs hoa-pm-publish \
 
 Stop after the dry run. Never write `<county>/query-table.parquet`, move the official
 `oracle-query-table-<county>` IPNS name, or remove `--dry-run` without the separate durable
-human approval.
+human approval. Live overlay IPNS moves stay overlay-only, one publisher, this run’s
+receipt CID, and abort rather than rewind a newer live pointer.
 
 `hoa_pm_status` is Donphan's miss channel. Misses stay explicit: `no_subdivision`,
 `no_sunbiz_hoa`, `no_ctmh_condo`, `no_ctmh_coop`, `no_ctmh_timeshare`, `not_unique`,
 `ctmh_not_in_sunbiz`, `sunbiz_not_unique`, `no_agent_company`, `agent_not_in_sunbiz`.
 Do not invent an HOA from subdivision name alone.
+
+Do not clear a filled overlay HOA or property manager when a later subdivision rematch
+misses. This includes Orange legal-description values in `LOT` / plat-book form. Preserve
+the prior HOA fields as one group when the new resolution has no HOA, and preserve prior
+property-manager fields as one group when the new resolution has no manager. Append
+`_prior_hoa_preserved`, `_prior_pm_preserved`, or `_prior_hoa_pm_preserved` to the new miss
+status so the retained stamp is explicit. When a new unique eligible HOA or manager is
+resolved, replace the prior corresponding stamp. Keep null fields null when there is no
+prior stamp to preserve.
 
 ## DBPR CTMH condo identity
 
@@ -335,6 +421,11 @@ extract a community token by stripping only these deterministic legal wrappers:
 - `S/D` / `SUBD` → `SUBDIVISION`
 - trailing plat-book/page/`MB`/`OR`/`REC` cites, trailing `LOT` + number, and a bare
   trailing `PHASE`/`UNIT`/`SUBDIVISION`/`CONDO`/`CONDOMINIUM`
+
+Strip a bare trailing `LOT` after its preceding plat book/page pair. For example, lookup
+`LAKE PLEASANT COVE 68/143 LOT` as `LAKE PLEASANT COVE`, and lookup
+`ERROL ESTATE UNIT 7 8/133 LOT` as `ERROL ESTATE`. Continue to require exactly one ACTIVE
+Sunbiz association after normalization.
 
 Do not extract from section-township-range (`SEC`/`TWP`/`RGE`), metes-and-bounds
 (`COM`…`FT`), acreage “being part of” lines, or “recorded without legal” notes. A

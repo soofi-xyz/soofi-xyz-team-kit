@@ -13,6 +13,7 @@ import {
   uploadFilebaseObject,
   upsertFilebaseName,
 } from "./filebase.mjs";
+import { assertOverlayOnlyIpnsLabels } from "./hoa-pm-overlay-publisher.mjs";
 import { isIpfsCid } from "../enrichment/hoa-pm-object-publication.mjs";
 import {
   readHoaPmPropertyLinks,
@@ -378,10 +379,19 @@ export async function publishHoaPmPropertyPages(artifacts, config) {
     await writeReceipt(config.receiptPath, receipt);
   }
   if (!receipt.name) {
+    assertOverlayOnlyIpnsLabels(artifacts);
     receipt.name = await upsertFilebaseName(
       env.FILEBASE_API_TOKEN.trim(),
       artifacts.queryTableIpnsLabel,
       receipt.upload.cid,
+      config.fetchImpl ?? fetch,
+      {
+        createIfMissing: false,
+        overlayPreMove: {
+          thisRunCid: receipt.upload.cid,
+          thisReceiptApprovedAt: approval.approvedAt,
+        },
+      },
     );
   }
   receipt.status = "complete";
