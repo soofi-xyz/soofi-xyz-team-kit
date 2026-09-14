@@ -142,7 +142,10 @@ historical boundary, or decision window changes.
 
 Estimate primary roof age from the property's built/home year plus accepted roofing
 permits. Keep this rule county-neutral; put source vocabulary and status mappings in the
-county/source profile.
+county/source profile. Execute the policy through
+`skills/use-oracle/runtime/src/roof-age/estimator.ts`; transforms and loaders provide
+profile-owned source terms and evidence-state inputs, while the estimator owns precedence,
+date rejection, deterministic tie-breaking, and the versioned output contract.
 
 1. Classify work only from explicit source text retained in detail/scope evidence.
    Require a profile-tested class of `primary_roof_replacement`,
@@ -166,7 +169,8 @@ historical coverage does **not** make an otherwise valid roof-age estimate ineli
 it lowers certainty through an explicit coverage caveat because an unobserved later
 replacement may exist. Do not use partial history to assert that no replacement
 occurred, and do not upgrade low/medium confidence because a portal returned no later
-permit.
+permit. Treat estimator confidence as confidence in the accepted anchor, not certification
+of physical condition or proof of longitudinal absence.
 
 ### Corporate and license attribution
 

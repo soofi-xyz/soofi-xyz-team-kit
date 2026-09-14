@@ -26,7 +26,12 @@ old-roof contractor-expansion query. The policy is county-neutral.
 
 ## Roof-age estimator
 
-For each parcel, use the latest valid accepted anchor:
+Use the reusable county-neutral implementation at
+`skills/use-oracle/runtime/src/roof-age/estimator.ts`. For each parcel, pass the frozen
+source profile, explicit field evidence states, property built/home-year evidence,
+permit lifecycle evidence, the requested as-of date, and historical-coverage state.
+The runtime maps exact source vocabulary through the profile, then uses the latest valid
+accepted anchor:
 
 - **High:** completed primary-roof replacement/reroof completion or close date.
 - **Medium:** completed new-construction completion or close date, with no later accepted
@@ -37,6 +42,27 @@ Open replacement permits do not reset age. Repairs, coatings, gazebos, awnings, 
 accessory roofs do not reset primary roof age. Never synthesize dates; never use
 quarantined or impossible dates. Partial historical coverage is a confidence caveat
 because an unobserved later replacement may exist; it is not automatic ineligibility.
+
+County/source profiles own exact status and work mappings. Emit source field/value pairs,
+completion and close date evidence states, a source-profile-selected chronology start,
+and built/home-year provenance from transform/load boundaries. Do not classify with
+product-query regex. Unmapped or contradictory terms become `needs_review`.
+
+The versioned output contract (`elephant.roof-age-estimate.v1`) returns:
+
+- `anchor`: either a permit terminal date with source system, source record, and chosen
+  date field; a property built year with source field provenance; or `null`;
+- `asOfDate` and integer `estimatedAgeYears` (whole elapsed years for dated permit
+  anchors; calendar-year precision for built-year fallback);
+- anchor confidence, accepted work classification, and eligibility/reason;
+- historical-coverage state and sorted caveat codes; partial, unknown, capped, blocked,
+  predecessor, archive, or unreconciled history never becomes proof of permit absence;
+- per-permit terminal outcome counts and deterministic policy/profile version metadata
+  with the canonical profile SHA-256.
+
+`high`, `medium`, and `low` describe the accepted evidence anchor. They do not certify
+physical roof condition, prove that no later replacement occurred, or override incomplete
+historical coverage.
 
 ## Product-query contract
 
