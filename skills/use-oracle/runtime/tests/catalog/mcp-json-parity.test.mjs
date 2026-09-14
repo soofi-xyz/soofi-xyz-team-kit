@@ -155,18 +155,10 @@ describe("syncMcpJson against a synthetic mcp.json fixture", () => {
     expect(propertyFallbacks.broward).toBe(
       "QmdD3f3NqgNRiFn4hpGqEwpNqw5tXK3FWW2QRoRBYddhX5",
     );
-    expect(propertyFallbacks["duval-hoa-pm"]).toBe(
-      "QmNvBgKuT4sqM7bZBhR4ynSReaSpq7Z69yfXhJhBAUtsn7",
-    );
-    expect(propertyFallbacks["broward-hoa-pm"]).toBe(
-      "QmSsCsfSCMSvYz7HoySuS5oqp55DWSDg6DGXUhukSWqexb",
-    );
-    expect(propertyFallbacks["pinellas-hoa-pm"]).toBe(
-      "QmVz8KLL285dVaHHSD1tcFmq2bkatnP8hys3ZAk45p78ND",
-    );
-    expect(propertyFallbacks["osceola-hoa-pm"]).toBe(
-      "QmSkQ5sioAUEz8hfjoV1FKCmnfhKS9X7BQMRxbwivLyv1V",
-    );
+    expect(propertyFallbacks).not.toHaveProperty("duval-hoa-pm");
+    expect(propertyFallbacks).not.toHaveProperty("broward-hoa-pm");
+    expect(propertyFallbacks).not.toHaveProperty("pinellas-hoa-pm");
+    expect(propertyFallbacks).not.toHaveProperty("osceola-hoa-pm");
     expect(propertyFallbacks.lee).toBe(
       "QmXUhFPnWxwywQaksFW1ikSAoMCgmjDrHfZvHPnCRuFtZh",
     );
@@ -439,19 +431,20 @@ describe("syncMcpJson against a copy of the real repo-root mcp.json", () => {
     );
     expect(hoaPmKeys).toHaveLength(49);
     for (const key of hoaPmKeys) {
-      expect(maps.PROPERTY_QUERY_TABLE_MAP[key]).toMatch(
-        /^https:\/\/ipfs\.filebase\.io\/(ipns|ipfs)\//,
+      expect(maps.PROPERTY_QUERY_TABLE_MAP[key]).toBe(
+        `https://ipfs.filebase.io/ipfs/${
+          JSON.parse(
+            await readFile(
+              overlayPath,
+              "utf8",
+            ),
+          ).counties.find((county) => county.countyKey === key).queryTableCid
+        }`,
       );
       expect(maps.DATASET_COVERAGE_MAP[key]).toBeDefined();
-      if (maps.PROPERTY_QUERY_TABLE_MAP[key].includes("/ipfs/")) {
-        expect(maps.PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS).not.toHaveProperty(
-          key,
-        );
-      } else {
-        expect(maps.PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS[key]).toMatch(
-          /^Qm/,
-        );
-      }
+      expect(maps.PROPERTY_QUERY_TABLE_CID_FALLBACK_MAP_ADDITIONS).not.toHaveProperty(
+        key,
+      );
     }
     expect(maps.PROPERTY_QUERY_TABLE_MAP.sumter).toBe(
       "https://ipfs.filebase.io/ipfs/Qmcgq1Z3fkAHs3Ha71dAKb5XH1gSzUD95MJY27saRvD4DS",
