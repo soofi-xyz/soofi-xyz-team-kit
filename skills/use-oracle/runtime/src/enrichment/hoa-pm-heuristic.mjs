@@ -10,6 +10,11 @@ import { findActiveCompanyBySunbizAlias } from "./sunbiz-aliases.mjs";
 
 const HOA_NAME_MARKERS =
   /\b(HOMEOWNERS?(?:\s+S)?\s+(?:ASSOCIATION|ASSOC|ASSN)|CONDOMINIUM\s+ASSOCIATION|PROPERTY\s+OWNERS?\s+(?:ASSOCIATION|ASSOC|ASSN)|COMMUNITY\s+(?:ASSOCIATION|ASSOC|ASSN)|CIVIC\s+(?:ASSOCIATION|ASSOC|ASSN)|ASSOCIATION|ASSOC|ASSN|POA|COA|HOA)\b/;
+const HOA_ROLE_NAME_PATTERN =
+  /\b(HOMEOWNERS?|PROPERTY\s+OWNERS?|CONDOMINIUM|COOPERATIVE|COMMUNITY\s+ASSOCIATION)\b/;
+const LAWYER_NAME_PATTERN =
+  /\b(ATTORNEYS?|LAW\s+FIRM|LAW\s+OFFICES?|LEGAL\s+SERVICES)\b/;
+const NONPROFIT_FILING_CODES = new Set(["DOMNP", "FORNP", "NPREG"]);
 
 const WORD_NUMBERS = new Map([
   ["ONE", "1"],
@@ -73,7 +78,7 @@ const ASSOCIATION_SUFFIX_PATTERNS = [
   ["HOA"],
 ];
 
-export const HOA_PM_SCHEMA_VERSION = "elephant.hoa-pm-heuristic.v9";
+export const HOA_PM_SCHEMA_VERSION = "elephant.hoa-pm-heuristic.v10";
 
 export function normalizeEntityName(value) {
   return String(value ?? "")
@@ -432,12 +437,31 @@ function normalizedCounty(value) {
     .trim();
 }
 
-function companyCounty(company) {
-  return normalizedCounty(
-    company.principalAddress?.county ??
-      company.principalCounty ??
-      company.county ??
-      "",
+function companyCities(company) {
+  return new Set(
+    [
+      company.principalAddress?.city,
+      company.mailingAddress?.city,
+      company.principalCity,
+      company.mailingCity,
+      company.city,
+    ]
+      .map(normalizeEntityName)
+      .filter(Boolean),
+  );
+}
+
+function companyCounties(company) {
+  return new Set(
+    [
+      company.principalAddress?.county,
+      company.mailingAddress?.county,
+      company.principalCounty,
+      company.mailingCounty,
+      company.county,
+    ]
+      .map(normalizedCounty)
+      .filter(Boolean),
   );
 }
 
@@ -465,14 +489,121 @@ function collapseDuplicateLegalNames(matches) {
   return [...byLegalName.values()];
 }
 
-function resolveCandidateSet(matches, countyKey) {
-  const unique = collapseDuplicateLegalNames(uniqueByDocument(matches));
-  if (unique.length <= 1) return unique;
-  const parcelCounty = normalizedCounty(countyKey);
-  if (!parcelCounty) return unique;
-  const sameCounty = unique.filter((company) => companyCounty(company) === parcelCounty);
-  const unknownCounty = unique.filter((company) => !companyCounty(company));
-  return sameCounty.length === 1 && unknownCounty.length === 0 ? sameCounty : unique;
+function isDisallowedHoaEntity(company) {
+  const kind = normalizeEntityName(
+    company.entityKind ?? company.entityType ?? company.partyType ?? "",
+  );
+  const filingCode = normalizeEntityName(company.filingTypeCode);
+  const name = normalizeEntityName(company.entityName);
+  return (
+    ["PERSON", "INDIVIDUAL", "REGISTERED AGENT"].includes(kind) ||
+    filingCode === "AGENT" ||
+    LAWYER_NAME_PATTERN.test(name)
+  );
+}
+
+function isNonprofitCompany(company) {
+  const filingCode = normalizeEntityName(company.filingTypeCode);
+  const filingType = normalizeEntityName(company.filingType);
+  return (
+    NONPROFIT_FILING_CODES.has(filingCode) ||
+    /\b(NON ?PROFIT|NOT FOR PROFIT)\b/.test(filingType)
+  );
+}
+
+function collapseSuccessorChains(matches, companies, sunbizAliases) {
+  const events = sunbizAliases?.corporateEvents;
+  if (!(events instanceof Map) || events.size === 0) return matches;
+  const activeByDocument = new Map(
+    companies
+      .filter((company) => !company.status || company.status === "ACTIVE")
+      .filter((company) => company.documentNumber)
+      .map((company) => [company.documentNumber, company]),
+  );
+  return uniqueByDocument(
+    matches.map((company) => {
+      const targets = events.get(normalizeEntityName(company.entityName));
+      if (!(targets instanceof Set) || targets.size !== 1) return company;
+      return activeByDocument.get([...targets][0]) ?? company;
+    }),
+  );
+}
+
+function filterByGeography(matches, parcelCity, parcelCounty) {
+  const city = normalizeEntityName(parcelCity);
+  const county = normalizedCounty(parcelCounty);
+  if (!city && !county) return matches;
+  const evidence = matches.map((company) => {
+    const cities = companyCities(company);
+    const counties = companyCounties(company);
+    const comparable = (city && cities.size > 0) || (county && counties.size > 0);
+    const matched = (city && cities.has(city)) || (county && counties.has(county));
+    return { company, comparable: Boolean(comparable), matched: Boolean(matched) };
+  });
+  const matched = evidence.filter((entry) => entry.matched);
+  const alternativesConflict = evidence
+    .filter((entry) => !entry.matched)
+    .every((entry) => entry.comparable);
+  return matched.length === 1 && alternativesConflict
+    ? [matched[0].company]
+    : matches;
+}
+
+function normalizeOfficialDocumentNumbers(values) {
+  return [
+    ...new Set(
+      (Array.isArray(values) ? values : [values])
+        .map((value) => String(value ?? "").trim())
+        .filter(Boolean),
+    ),
+  ];
+}
+
+function resolveCandidateSet(
+  matches,
+  companies,
+  {
+    sunbizAliases = null,
+    parcelCity = null,
+    parcelCounty = null,
+    officialDocumentNumbers = [],
+  } = {},
+) {
+  const original = collapseDuplicateLegalNames(
+    uniqueByDocument(matches).filter((company) => !isDisallowedHoaEntity(company)),
+  );
+  let remaining = collapseSuccessorChains(original, companies, sunbizAliases);
+  if (remaining.length > 1) {
+    const nonprofit = remaining.filter(isNonprofitCompany);
+    if (nonprofit.length > 0) remaining = nonprofit;
+  }
+  if (remaining.length > 1) {
+    const associationRole = remaining.filter((company) =>
+      HOA_ROLE_NAME_PATTERN.test(normalizeEntityName(company.entityName)),
+    );
+    if (associationRole.length > 0) remaining = associationRole;
+  }
+  if (remaining.length > 1) {
+    remaining = filterByGeography(remaining, parcelCity, parcelCounty);
+  }
+  const officialDocuments = normalizeOfficialDocumentNumbers(
+    officialDocumentNumbers,
+  );
+  if (officialDocuments.length === 1 && original.length > 1) {
+    const documented = original.filter(
+      (company) => company.documentNumber === officialDocuments[0],
+    );
+    if (documented.length === 1) {
+      if (
+        remaining.length === 1 &&
+        remaining[0].documentNumber !== documented[0].documentNumber
+      ) {
+        return original;
+      }
+      remaining = documented;
+    }
+  }
+  return remaining;
 }
 
 const hoaIndexCache = new WeakMap();
@@ -587,7 +718,18 @@ export function homeownersAssociationType(company, estate, ctmhKind) {
   return "Homeowners";
 }
 
-export function findHoaCompanies(subdivision, companies, { countyKey, ownershipEstateType } = {}) {
+export function findHoaCompanies(
+  subdivision,
+  companies,
+  {
+    countyKey,
+    ownershipEstateType,
+    sunbizAliases,
+    parcelCity,
+    parcelCounty,
+    officialDocumentNumbers,
+  } = {},
+) {
   const legacyNames = legacySubdivisionMatchNames(subdivision);
   if (legacyNames.length === 0) {
     return { status: "no_subdivision", matches: [], source: "sunbiz" };
@@ -604,7 +746,12 @@ export function findHoaCompanies(subdivision, companies, { countyKey, ownershipE
     }
   }
   const legacyUnique = rejectCondoUnlessSourceSaysCondo(
-    resolveCandidateSet(legacyMatches, countyKey),
+    resolveCandidateSet(legacyMatches, companies, {
+      sunbizAliases,
+      parcelCity,
+      parcelCounty: parcelCounty ?? countyKey,
+      officialDocumentNumbers,
+    }),
     subdivision,
     extracted,
     estate,
@@ -639,7 +786,12 @@ export function findHoaCompanies(subdivision, companies, { countyKey, ownershipE
     }
   }
   const unique = rejectCondoUnlessSourceSaysCondo(
-    resolveCandidateSet(normalizedMatches, countyKey),
+    resolveCandidateSet(normalizedMatches, companies, {
+      sunbizAliases,
+      parcelCity,
+      parcelCounty: parcelCounty ?? countyKey,
+      officialDocumentNumbers,
+    }),
     subdivision,
     extracted,
     estate,
@@ -652,7 +804,14 @@ export function findHoaCompanies(subdivision, companies, { countyKey, ownershipE
 export function findHoaCompaniesByRecordedName(
   recordedName,
   companies,
-  { countyKey, ownershipEstateType } = {},
+  {
+    countyKey,
+    ownershipEstateType,
+    sunbizAliases,
+    parcelCity,
+    parcelCounty,
+    officialDocumentNumbers,
+  } = {},
 ) {
   const estate = normalizeOwnershipEstateType(ownershipEstateType);
   const recordedBase =
@@ -671,7 +830,12 @@ export function findHoaCompaniesByRecordedName(
     if (!hasHoaNameMarker(company.entityName)) return false;
     return associationBaseName(company.entityName) === recordedBase;
   });
-  const unique = resolveCandidateSet(matches, countyKey);
+  const unique = resolveCandidateSet(matches, companies, {
+    sunbizAliases,
+    parcelCity,
+    parcelCounty: parcelCounty ?? countyKey,
+    officialDocumentNumbers,
+  });
   if (unique.length === 0) {
     return {
       status: "clerk_recorded_name_not_in_sunbiz",
@@ -695,7 +859,16 @@ export function findHoaCompaniesByRecordedName(
 
 export function searchHoaAssociation(
   subdivision,
-  { companies = [], ctmhRecords = null, countyKey, ownershipEstateType } = {},
+  {
+    companies = [],
+    ctmhRecords = null,
+    countyKey,
+    ownershipEstateType,
+    sunbizAliases,
+    parcelCity,
+    parcelCounty,
+    officialDocumentNumbers,
+  } = {},
 ) {
   const estate = normalizeOwnershipEstateType(ownershipEstateType);
   const ctmhSearch = probeCtmhAssociations(subdivision, ctmhRecords, {
@@ -706,8 +879,11 @@ export function searchHoaAssociation(
     return { ...ctmhSearch, ctmhStatus: "matched" };
   }
   const sunbiz = findHoaCompanies(subdivision, companies, {
-    countyKey,
     ownershipEstateType: estate,
+    sunbizAliases,
+    parcelCity,
+    parcelCounty: parcelCounty ?? countyKey,
+    officialDocumentNumbers,
   });
   return { ...sunbiz, ctmhStatus: ctmhSearch.status };
 }
@@ -860,6 +1036,9 @@ export function resolveHoaAndPropertyManagement({
   ownershipEstateType,
   ctmhRecords = null,
   sunbizAliases = null,
+  parcelCity = null,
+  parcelCounty = null,
+  officialDocumentNumbers = [],
   recordedCommunityEvidence = null,
   recordedCommunityEvidenceStatus = "no_record",
 }) {
@@ -870,6 +1049,10 @@ export function resolveHoaAndPropertyManagement({
     ctmhRecords,
     countyKey,
     ownershipEstateType,
+    sunbizAliases,
+    parcelCity,
+    parcelCounty: parcelCounty ?? countyKey,
+    officialDocumentNumbers,
   });
   const clerkFallbackEligible =
     ["no_subdivision", "no_sunbiz_hoa"].includes(hoaSearch.status) ||
@@ -893,7 +1076,13 @@ export function resolveHoaAndPropertyManagement({
     const recordedNameSearch = findHoaCompaniesByRecordedName(
       recordedCommunityEvidence.recordedName,
       companies,
-      { countyKey, ownershipEstateType: estate },
+      {
+        ownershipEstateType: estate,
+        sunbizAliases,
+        parcelCity,
+        parcelCounty: parcelCounty ?? countyKey,
+        officialDocumentNumbers,
+      },
     );
     const conflictsWithAppraisal =
       appraisalSearch.status === "matched" &&
