@@ -87,13 +87,13 @@ When invoked:
      `hoa_pm_status` when those columns exist. Use `hoa_pm_status` to explain misses:
      `no_subdivision`, `no_sunbiz_hoa`, `not_unique`, `no_agent_company`, or
      `agent_not_in_sunbiz`. A NULL CID means no unique Sunbiz HOA/PM hit, not "no HOA
-     in the county." Clay, Hernando, Lake, Manatee, Marion, and Sarasota currently return
-     `no_subdivision` for every HOA/PM slice row; St. Johns does too. Volusia has 18
-     full HOA+PM matches. These are targeted seed subsets, not full county rolls —
-     report the slice count, never county-wide inventory. Check
-     `getPropertyQuerySchema` or
-     `SELECT count(col)` and say "not available for this county" instead of inventing. On Lee,
-     owner / city / value / count questions work.
+     in the county." Treat Clay through St. Johns `no_subdivision` as a stale HOA/PM
+     overlay gap, not a county fact. If the official/identity table has subdivision text,
+     tell Oracle to run `hoa-pm-overlay-sync`; do not report subdivision as unavailable.
+     These are targeted seed subsets, not full county rolls — report the slice count,
+     never county-wide inventory. Check `getPropertyQuerySchema` or `SELECT count(col)`
+     before describing current availability. On Lee, owner / city / value / count
+     questions work.
 5. Hand off when appropriate:
    - Overture place rows/counts/groups available through `queryPlaces` → use the MCP directly;
      never fetch its IPFS parquet/index/notice or query Neon from Donphan.

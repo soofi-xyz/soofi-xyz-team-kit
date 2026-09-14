@@ -123,7 +123,16 @@ approval for changed bytes. Use `--query-table-only` when another workflow owns
 `objects.jsonl`; it publishes only the query table and coverage and leaves the object
 key untouched.
 
-## Command
+## Mandatory subdivision reconciliation
+
+Whenever the base county or identity query table gains or fills `subdivision`, sync the
+existing `<county>-hoa-pm` overlay before enriching it. Never treat an overlay
+`no_subdivision` result as permanent when the official table has non-empty subdivision
+text. Copy only official text into blank overlay rows; preserve filled overlay values and
+`hoa_flag`.
+
+Use `--parcel-csv` to add official rows that belong to the bounded parcel slice but are
+missing from the overlay. Keep all outputs outside git. Run this exact order:
 
 Build the statewide HOA/PM index from the complete expanded quarterly Sunbiz archive and
 the exact subdivision values present in the publication scope:
@@ -142,15 +151,32 @@ once for their registered-agent companies. Do not substitute a ZIP-filtered coun
 
 ```bash
 cd skills/use-oracle/runtime
+node bin/elephant-county.mjs hoa-pm-overlay-sync \
+  --county <county> \
+  --overlay-parquet <current-hoa-pm-query-table.parquet> \
+  --official-parquet <official-or-identity-query-table.parquet> \
+  --parcel-csv <bounded-parcel.csv> \
+  --output-dir <sync-dir>
+
 node bin/elephant-county.mjs hoa-pm-enrich \
-  --county duval \
-  --input-parquet <query-table.parquet> \
-  --input-coverage <dataset-coverage.json> \
+  --county <county> \
+  --input-parquet <sync-dir>/query-table.parquet \
+  --input-coverage <current-hoa-pm-dataset-coverage.json> \
   --sunbiz-extract <sunbiz-extract-dir> \
   [--sunbiz-pm-extract <full-active-sunbiz-dir>] \
   --ctmh-extract <ctmh-extract-dir> \
   --output-dir <output-dir>
+
+node bin/elephant-county.mjs hoa-pm-publish \
+  --county <county> \
+  --input <output-dir> \
+  --query-table-only \
+  --dry-run
 ```
+
+Stop after the dry run. Never write `<county>/query-table.parquet`, move the official
+`oracle-query-table-<county>` IPNS name, or remove `--dry-run` without the separate durable
+human approval.
 
 `hoa_pm_status` is Donphan's miss channel. Misses stay explicit: `no_subdivision`,
 `no_sunbiz_hoa`, `no_ctmh_condo`, `no_ctmh_coop`, `no_ctmh_timeshare`, `not_unique`,
