@@ -9,6 +9,7 @@ import {
   fillDerivedFilebaseToken,
   loadEnvFile,
   publishFilebase,
+  upsertFilebaseName,
   validateFilebaseApproval,
 } from "../src/core/filebase.mjs";
 
@@ -232,5 +233,32 @@ describe("Filebase credential + dry-run gating", () => {
         env: { S3_ACCESS_KEY_ID: "id", S3_SECRET_ACCESS_KEY: "secret", FILEBASE_API_TOKEN: "token" },
       }),
     ).rejects.toThrow(/requires an approval manifest/);
+  });
+
+  it("skips creating a missing IPNS label when createIfMissing is false", async () => {
+    const calls = [];
+    const fetchImpl = async (url, init = {}) => {
+      calls.push({ url: String(url), method: init.method ?? "GET" });
+      return {
+        ok: true,
+        json: async () => [{ label: "oracle-query-table-duval-hoa-pm", network_key: "k51existing" }],
+      };
+    };
+    const skipped = await upsertFilebaseName(
+      "token",
+      "oracle-dataset-coverage-marion-hoa-pm",
+      "QmCoverage",
+      fetchImpl,
+      { createIfMissing: false },
+    );
+    expect(skipped).toEqual({
+      skipped: true,
+      label: "oracle-dataset-coverage-marion-hoa-pm",
+      cid: "QmCoverage",
+      reason: "ipns_label_missing",
+    });
+    expect(calls).toEqual([
+      { url: "https://api.filebase.io/v1/names", method: "GET" },
+    ]);
   });
 });

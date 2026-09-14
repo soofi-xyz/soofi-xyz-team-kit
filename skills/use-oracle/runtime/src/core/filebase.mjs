@@ -124,6 +124,7 @@ const permitFilebaseApprovalSchema = z
 /**
  * @typedef {object} PublishFilebaseConfig
  * @property {boolean} dryRun - When true, never touches the network; reports intended labels/bucket only.
+ * @property {boolean} [moveExistingIpnsOnly] - When true, update existing IPNS labels and skip creating new names.
  * @property {string | null} [approvalManifestPath] - Path to a human-signed approval manifest, required for a live publish.
  * @property {string | null} [receiptPath] - Resumable receipt path, required for live HOA/PM object publication.
  * @property {NodeJS.ProcessEnv} [env] - Environment to read Filebase credentials from. Defaults to `process.env`.
@@ -549,13 +550,20 @@ async function publishResolvableHoaPmObjects({
     };
     await writePublicationReceipt(receiptPath, receipt);
   }
+  const nameOptions = { createIfMissing: config.moveExistingIpnsOnly !== true };
   if (config.skipIpns !== true) {
     for (const [name, label, cid] of [
       ["queryTable", artifacts.queryTableIpnsLabel, receipt.uploads.queryTable.cid],
       ["coverage", artifacts.coverageIpnsLabel, receipt.uploads.coverage.cid],
     ]) {
       if (!receipt.names[name]) {
-        receipt.names[name] = await upsertFilebaseName(token, label, cid);
+        receipt.names[name] = await upsertFilebaseName(
+          token,
+          label,
+          cid,
+          fetch,
+          nameOptions,
+        );
         await writePublicationReceipt(receiptPath, receipt);
       }
     }
@@ -563,14 +571,30 @@ async function publishResolvableHoaPmObjects({
   receipt.status = config.skipIpns === true ? "uploaded_without_ipns" : "complete";
   receipt.completedAt = new Date().toISOString();
   await writePublicationReceipt(receiptPath, receipt);
+  const queryPointer = filebaseNamePointer(
+    receipt.names.queryTable ?? {
+      skipped: true,
+      reason: "skip_ipns",
+      cid: receipt.uploads.queryTable.cid,
+    },
+    receipt.uploads.queryTable.cid,
+  );
+  const coveragePointer = filebaseNamePointer(
+    receipt.names.coverage ?? {
+      skipped: true,
+      reason: "skip_ipns",
+      cid: receipt.uploads.coverage.cid,
+    },
+    receipt.uploads.coverage.cid,
+  );
   const queryTableUrl =
-    config.skipIpns === true
+    config.skipIpns === true || !queryPointer.moved
       ? `${FILEBASE_GATEWAY}/ipfs/${receipt.uploads.queryTable.cid}`
-      : `${FILEBASE_GATEWAY}/ipns/${receipt.names.queryTable.network_key}`;
+      : queryPointer.ipns;
   const coverageUrl =
-    config.skipIpns === true
+    config.skipIpns === true || !coveragePointer.moved
       ? `${FILEBASE_GATEWAY}/ipfs/${receipt.uploads.coverage.cid}`
-      : `${FILEBASE_GATEWAY}/ipns/${receipt.names.coverage.network_key}`;
+      : coveragePointer.ipns;
   return {
     dryRun: false,
     queryTableCid: receipt.uploads.queryTable.cid,
@@ -579,9 +603,13 @@ async function publishResolvableHoaPmObjects({
     objectCount: receipt.reconciliation.uniqueObjectCount,
     queryTableUrl,
     coverageUrl,
-    ...(config.skipIpns === true
+    queryTableIpns: queryTableUrl,
+    coverageIpns: coverageUrl,
+    queryTableIpnsMoved: config.skipIpns !== true && queryPointer.moved,
+    coverageIpnsMoved: config.skipIpns !== true && coveragePointer.moved,
+    ...(coveragePointer.moved || config.skipIpns === true
       ? {}
-      : { queryTableIpns: queryTableUrl, coverageIpns: coverageUrl }),
+      : { coverageIpnsSkipReason: coveragePointer.skipReason }),
     receiptPath,
   };
 }
@@ -740,9 +768,18 @@ export async function publishPermitFilebase(artifacts, config) {
  * @param {string} cid - Target CID.
  * @param {(input: string | URL | Request, init?: RequestInit) => Promise<Response>} [fetchImpl]
  *   Fetch implementation. Defaults to global fetch.
- * @returns {Promise<{ label: string, network_key: string, cid: string }>} Updated name record.
+ * @param {{ createIfMissing?: boolean }} [options] - When createIfMissing is false,
+ *   skip POST for a missing label (Filebase name-quota).
+ * @returns {Promise<{ label: string, network_key: string, cid: string } | { skipped: true, label: string, cid: string, reason: string }>}
+ *   Updated name record, or a skip receipt when the label does not exist.
  */
-export async function upsertFilebaseName(token, label, cid, fetchImpl = fetch) {
+export async function upsertFilebaseName(
+  token,
+  label,
+  cid,
+  fetchImpl = fetch,
+  options = {},
+) {
   const listResponse = await fetchImpl(FILEBASE_NAMES_API, {
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
   });
@@ -754,6 +791,14 @@ export async function upsertFilebaseName(token, label, cid, fetchImpl = fetch) {
   const existing = parsed.find(
     (entry) => typeof entry === "object" && entry !== null && "label" in entry && entry.label === label,
   );
+  if (existing === undefined && options.createIfMissing === false) {
+    return {
+      skipped: true,
+      label,
+      cid,
+      reason: "ipns_label_missing",
+    };
+  }
   const response =
     existing === undefined
       ? await fetchImpl(FILEBASE_NAMES_API, {
@@ -770,6 +815,20 @@ export async function upsertFilebaseName(token, label, cid, fetchImpl = fetch) {
     throw new Error(`Filebase IPNS upsert failed for ${label}: ${response.status}`);
   }
   return await response.json();
+}
+
+function filebaseNamePointer(nameRecord, cid) {
+  if (!nameRecord || nameRecord.skipped) {
+    return {
+      ipns: `${FILEBASE_GATEWAY}/ipfs/${cid}`,
+      moved: false,
+      skipReason: nameRecord?.reason ?? "ipns_label_missing",
+    };
+  }
+  return {
+    ipns: `${FILEBASE_GATEWAY}/ipns/${nameRecord.network_key}`,
+    moved: true,
+  };
 }
 
 /**
@@ -960,39 +1019,42 @@ export async function publishFilebase(artifacts, config) {
           body: hoaPmObjectsBody,
           contentType: "application/x-ndjson",
         });
+  const nameOptions = { createIfMissing: config.moveExistingIpnsOnly !== true };
   const queryName =
     config.skipIpns === true
-      ? null
+      ? { skipped: true, reason: "skip_ipns", cid: queryTableCid }
       : await upsertFilebaseName(
           token,
           artifacts.queryTableIpnsLabel,
           queryTableCid,
+          fetch,
+          nameOptions,
         );
   const coverageName =
     config.skipIpns === true
-      ? null
+      ? { skipped: true, reason: "skip_ipns", cid: coverageCid }
       : await upsertFilebaseName(
           token,
           artifacts.coverageIpnsLabel,
           coverageCid,
+          fetch,
+          nameOptions,
         );
-  const queryTableUrl =
-    queryName === null
-      ? `${FILEBASE_GATEWAY}/ipfs/${queryTableCid}`
-      : `${FILEBASE_GATEWAY}/ipns/${queryName.network_key}`;
-  const coverageUrl =
-    coverageName === null
-      ? `${FILEBASE_GATEWAY}/ipfs/${coverageCid}`
-      : `${FILEBASE_GATEWAY}/ipns/${coverageName.network_key}`;
+  const queryPointer = filebaseNamePointer(queryName, queryTableCid);
+  const coveragePointer = filebaseNamePointer(coverageName, coverageCid);
   return {
     dryRun: false,
     queryTableCid,
     coverageCid,
     ...(hoaPmObjectsCid === undefined ? {} : { hoaPmObjectsCid }),
-    queryTableUrl,
-    coverageUrl,
-    ...(queryName === null
+    queryTableUrl: queryPointer.ipns,
+    coverageUrl: coveragePointer.ipns,
+    queryTableIpns: queryPointer.ipns,
+    coverageIpns: coveragePointer.ipns,
+    queryTableIpnsMoved: config.skipIpns !== true && queryPointer.moved,
+    coverageIpnsMoved: config.skipIpns !== true && coveragePointer.moved,
+    ...(coveragePointer.moved || config.skipIpns === true
       ? {}
-      : { queryTableIpns: queryTableUrl, coverageIpns: coverageUrl }),
+      : { coverageIpnsSkipReason: coveragePointer.skipReason }),
   };
 }

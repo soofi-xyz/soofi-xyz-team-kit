@@ -106,10 +106,11 @@ consolidated JSON.
    `hoa_cid` / `property_manager_cid` may be populated. Identity columns are NULL
    until a republish includes them. The new slices have 705 Clay, 167 Hernando,
    770 Lake, 234 Manatee, 214 Marion, 315 Sarasota, 234 St. Johns, and 784 Volusia
-   rows. Clay through St. Johns currently have no full HOA+PM match because every
-   row lacks `subdivision`; Volusia has 18 full matches. Confirm with
-   `getPropertyQuerySchema` / `SELECT count(col)` and say "not available for this county"
-   rather than inventing.
+   rows. Treat Clay through St. Johns `no_subdivision` results as a stale HOA/PM overlay
+   gap, not a county fact. When the base official/identity table has subdivision text,
+   tell Oracle to run `hoa-pm-overlay-sync`; do not report subdivision as unavailable.
+   Confirm current fields with `getPropertyQuerySchema` / `SELECT count(col)` and keep
+   unresolved HOA/PM matches explicit rather than inventing them.
 2. **Dataset context** — `getOracleDatasetInfo` → county, `propertyCount`, freshness timestamps
 3. **Geo-scoped questions** — `findPropertiesInArea` with `county` plus bbox or polygon →
    parcel/property IDs in area → `getOracleProperty` with `county` on candidates. Omitting

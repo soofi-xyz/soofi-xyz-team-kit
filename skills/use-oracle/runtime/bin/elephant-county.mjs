@@ -44,6 +44,7 @@ import { enrichQueryTableWithSunbiz } from "../src/enrichment/query-table-sunbiz
 import { enrichQueryTableWithHoa } from "../src/enrichment/query-table-hoa.mjs";
 import { enrichQueryTableWithHoaPm } from "../src/enrichment/query-table-hoa-pm.mjs";
 import { buildHoaPmSunbizIndex } from "../src/enrichment/hoa-pm-sunbiz-index.mjs";
+import { syncHoaPmOverlay } from "../src/enrichment/hoa-pm-overlay-sync.mjs";
 import { enrichQueryTableWithAvm } from "../src/enrichment/query-table-avm.mjs";
 import { harvestBbbCategory } from "../src/enrichment/bbb.mjs";
 import { reconcileBbbHarvests } from "../src/enrichment/bbb-reconcile.mjs";
@@ -507,10 +508,30 @@ async function runHoaPmIndexCommand(argv) {
   console.log(JSON.stringify({ event: "hoa_pm_index_complete", summary }, null, 2));
 }
 
+async function runHoaPmOverlaySyncCommand(argv) {
+  const flags = parseFlags(argv);
+  const summary = await syncHoaPmOverlay({
+    county: requireStringFlag(flags, "county"),
+    overlayParquet: requireStringFlag(flags, "overlay-parquet"),
+    officialParquet: requireStringFlag(flags, "official-parquet"),
+    outputDir: requireStringFlag(flags, "output-dir"),
+    parcelCsv:
+      typeof flags["parcel-csv"] === "string" ? flags["parcel-csv"] : null,
+  });
+  console.log(JSON.stringify({ event: "hoa_pm_overlay_sync_complete", summary }, null, 2));
+}
+
 async function runHoaPmPublishCommand(argv) {
-  const flags = parseFlags(argv, ["dry-run", "query-table-only"]);
+  const flags = parseFlags(argv, [
+    "dry-run",
+    "query-table-only",
+    "move-existing-ipns-only",
+  ]);
   const countyKey = requireStringFlag(flags, "county");
   const inputDir = requireStringFlag(flags, "input");
+  if (typeof flags["env-file"] === "string") {
+    await loadEnvFile(flags["env-file"], process.env);
+  }
   const publication = requireQueryTablePublication(countyKey);
   const datasetKey = `${countyKey}-hoa-pm`;
   const result = await publishFilebase(
@@ -533,6 +554,7 @@ async function runHoaPmPublishCommand(argv) {
     },
     {
       dryRun: flags["dry-run"] === true,
+      moveExistingIpnsOnly: flags["move-existing-ipns-only"] === true,
       approvalManifestPath:
         typeof flags.approve === "string" ? flags.approve : null,
       receiptPath:
@@ -1080,6 +1102,7 @@ async function main() {
   if (command === "sunbiz-enrich") return runSunbizEnrichCommand(rest);
   if (command === "hoa-enrich") return runHoaEnrichCommand(rest);
   if (command === "hoa-pm-index") return runHoaPmIndexCommand(rest);
+  if (command === "hoa-pm-overlay-sync") return runHoaPmOverlaySyncCommand(rest);
   if (command === "hoa-pm-enrich") return runHoaPmEnrichCommand(rest);
   if (command === "hoa-pm-publish") return runHoaPmPublishCommand(rest);
   if (command === "hoa-pm-property-publish") {
@@ -1110,7 +1133,7 @@ async function main() {
     return runPermitPublishCommand(rest);
   }
   console.error(
-    "Usage: elephant-county <ingest|export|publish|export-coverage|sign-coverage-approval|publish-coverage|replay|sunbiz-prepare|sunbiz-filter|sunbiz-transform|sunbiz-enrich|avm-enrich|hoa-enrich|hoa-pm-index|hoa-pm-enrich|hoa-pm-publish|hoa-pm-property-publish|bbb-harvest|bbb-reconcile|bbb-link|enrichment-finalize|permit-probe|permit-bounded-harvest|permit-resume|permit-reconcile|permit-export|permit-bulk-export|permit-publish> [...flags]\n" +
+    "Usage: elephant-county <ingest|export|publish|export-coverage|sign-coverage-approval|publish-coverage|replay|sunbiz-prepare|sunbiz-filter|sunbiz-transform|sunbiz-enrich|avm-enrich|hoa-enrich|hoa-pm-index|hoa-pm-overlay-sync|hoa-pm-enrich|hoa-pm-publish|hoa-pm-property-publish|bbb-harvest|bbb-reconcile|bbb-link|enrichment-finalize|permit-probe|permit-bounded-harvest|permit-resume|permit-reconcile|permit-export|permit-bulk-export|permit-publish> [...flags]\n" +
       "  ingest  --county <key> --seed <csv> --html-dir <dir> [--skip-validate] [--live-fetch] [--allow-empty] --output <run-dir>\n" +
       "  export  --county <key> --seed <csv> --run <run-dir> --output <publish-dir> [--allow-empty]\n" +
       "  publish --county <key> --input <publish-dir> [--dry-run] [--approve <manifest>]\n" +
@@ -1125,8 +1148,9 @@ async function main() {
       "  avm-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --records <avm-records.jsonl> --source-manifest <json> --output-dir <dir>\n" +
       "  hoa-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --records <hoa-memberships.jsonl> --source-manifest <json> --output-dir <dir>\n" +
       "  hoa-pm-index --source-dir <expanded-cordata-dir> --subdivisions <json-array> --quarter <YYYYQn> --output <dir>\n" +
+      "  hoa-pm-overlay-sync --county <key> --overlay-parquet <overlay.parquet> --official-parquet <official.parquet> --output-dir <dir> [--parcel-csv <csv>]\n" +
       "  hoa-pm-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --sunbiz-extract <dir> [--sunbiz-pm-extract <dir>] [--ctmh-extract <dir>] --output-dir <dir>\n" +
-      "  hoa-pm-publish --county <published-or-overlay-county-key> --input <enriched-dir> [--query-table-only] [--dry-run] [--approve <manifest> --receipt <json>]\n" +
+      "  hoa-pm-publish --county <published-or-overlay-county-key> --input <enriched-dir> [--query-table-only] [--move-existing-ipns-only] [--dry-run] [--approve <manifest> --receipt <json> --env-file <dotenv>]\n" +
       "  hoa-pm-property-publish --county <published-county-key> --input-parquet <overlay.parquet> [--official-parquet <official.parquet> | --thin-overlay] [--dry-run] [--approve <manifest> --receipt <json> --env-file <dotenv>]\n" +
       "  bbb-harvest --county <profile-key> --category <reviewed-key> --job-id <id> --max-pages N --max-profiles N --max-requests N --max-duration-minutes N --output <dir>\n" +
       "  bbb-reconcile --county <profile-key> --harvest-root <category-dirs-root> --input-coverage <json> --output-dir <dir>\n" +
@@ -1169,6 +1193,7 @@ export {
   runSunbizEnrichCommand,
   runHoaEnrichCommand,
   runHoaPmIndexCommand,
+  runHoaPmOverlaySyncCommand,
   runHoaPmEnrichCommand,
   runHoaPmPublishCommand,
   runHoaPmPropertyPublishCommand,

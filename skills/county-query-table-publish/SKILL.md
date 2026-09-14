@@ -221,6 +221,13 @@ exclusively through the `Publish` object's `tick` after the durable approval; us
 manual command only when the services process is down, and only after independently
 confirming the county's approval state in the Restate UI.
 
+After any county query-table publish that adds or fills `subdivision`, immediately check
+for `<county>-hoa-pm` in `runtime/catalog/mcp-overlays.json`. If it exists, run the
+mandatory `hoa-pm-overlay-sync` → `hoa-pm-enrich` → `hoa-pm-publish --query-table-only
+--dry-run` sequence in `use-oracle/reference/hoa-property-management.md`. Keep the overlay
+under `<county>/hoa-pm/`; never overwrite the official county object key or move the
+official county IPNS name.
+
 Uploads the **single** parquet to `query-tables/<county>/query-table.parquet` in the
 Filebase bucket, upserts the IPNS label `oracle-query-table-<county>`, re-points it at
 the new CID, and prints the object CID, the resolvable **`network_key`** (`k51…`), the
