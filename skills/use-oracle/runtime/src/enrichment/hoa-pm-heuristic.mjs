@@ -73,7 +73,7 @@ const ASSOCIATION_SUFFIX_PATTERNS = [
   ["HOA"],
 ];
 
-export const HOA_PM_SCHEMA_VERSION = "elephant.hoa-pm-heuristic.v8";
+export const HOA_PM_SCHEMA_VERSION = "elephant.hoa-pm-heuristic.v9";
 
 export function normalizeEntityName(value) {
   return String(value ?? "")
@@ -305,6 +305,11 @@ function stripTrailingLegalSuffixes(tokens) {
       continue;
     }
     if (last === "PHASE" || last === "UNIT" || last === "SECTION") {
+      stripped.pop();
+      changed = true;
+      continue;
+    }
+    if (last === "LOT" || last === "LOTS") {
       stripped.pop();
       changed = true;
       continue;
@@ -946,17 +951,50 @@ export function resolveHoaAndPropertyManagement({
 }
 
 export function stampPropertyCids(property, resolution) {
+  const priorHoaFilled = [
+    property.hoa_cid,
+    property.hoa_name,
+    property.hoa_sunbiz_document_number,
+    property.hoa_ctmh_project_number,
+  ].some((value) => value != null && String(value).trim() !== "");
+  const priorPmFilled = [
+    property.property_manager_cid,
+    property.property_manager_name,
+    property.property_manager_sunbiz_document_number,
+  ].some((value) => value != null && String(value).trim() !== "");
+  const preserveHoa = resolution.hoa == null && priorHoaFilled;
+  const preservePm = resolution.propertyManagement == null && priorPmFilled;
+  const preservedSuffix =
+    preserveHoa && preservePm
+      ? "_prior_hoa_pm_preserved"
+      : preserveHoa
+        ? "_prior_hoa_preserved"
+        : preservePm
+          ? "_prior_pm_preserved"
+          : "";
   return {
     ...property,
-    hoa_cid: resolution.hoa?.cid ?? null,
-    hoa_name: resolution.hoa?.homeowners_association_name ?? null,
-    homeowners_association_type: resolution.hoa?.homeowners_association_type ?? null,
-    hoa_sunbiz_document_number: resolution.hoa?.sunbiz_document_number ?? null,
-    hoa_ctmh_project_number: resolution.hoa?.ctmh_project_number ?? null,
-    property_manager_cid: resolution.propertyManagement?.cid ?? null,
-    property_manager_name: resolution.propertyManagement?.name ?? null,
+    hoa_cid: preserveHoa ? property.hoa_cid ?? null : resolution.hoa?.cid ?? null,
+    hoa_name: preserveHoa ? property.hoa_name ?? null : resolution.hoa?.homeowners_association_name ?? null,
+    homeowners_association_type: preserveHoa
+      ? property.homeowners_association_type ?? null
+      : resolution.hoa?.homeowners_association_type ?? null,
+    hoa_sunbiz_document_number: preserveHoa
+      ? property.hoa_sunbiz_document_number ?? null
+      : resolution.hoa?.sunbiz_document_number ?? null,
+    hoa_ctmh_project_number: preserveHoa
+      ? property.hoa_ctmh_project_number ?? null
+      : resolution.hoa?.ctmh_project_number ?? null,
+    property_manager_cid: preservePm
+      ? property.property_manager_cid ?? null
+      : resolution.propertyManagement?.cid ?? null,
+    property_manager_name: preservePm
+      ? property.property_manager_name ?? null
+      : resolution.propertyManagement?.name ?? null,
     property_manager_sunbiz_document_number:
-      resolution.propertyManagement?.sunbiz_document_number ?? null,
-    hoa_pm_status: resolution.status,
+      preservePm
+        ? property.property_manager_sunbiz_document_number ?? null
+        : resolution.propertyManagement?.sunbiz_document_number ?? null,
+    hoa_pm_status: `${resolution.status}${preservedSuffix}`,
   };
 }

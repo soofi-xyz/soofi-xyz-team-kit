@@ -391,11 +391,13 @@ export async function enrichQueryTableWithHoaPm({
         joinCounts.sunbiz_only += 1;
       }
     }
-    statusCounts[resolution.status] = (statusCounts[resolution.status] ?? 0) + 1;
     if (resolution.hoa) objects.push(resolution.hoa);
     if (resolution.hoaCompany) objects.push(resolution.hoaCompany);
     if (resolution.propertyManagement) objects.push(resolution.propertyManagement);
-    stamped.push(stampPropertyCids(row, resolution));
+    const stampedRow = stampPropertyCids(row, resolution);
+    statusCounts[stampedRow.hoa_pm_status] =
+      (statusCounts[stampedRow.hoa_pm_status] ?? 0) + 1;
+    stamped.push(stampedRow);
   }
 
   await mkdir(path.dirname(outputParquet), { recursive: true });

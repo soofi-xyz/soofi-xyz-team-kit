@@ -211,6 +211,15 @@ receipt CID, and abort rather than rewind a newer live pointer.
 `ctmh_not_in_sunbiz`, `sunbiz_not_unique`, `no_agent_company`, `agent_not_in_sunbiz`.
 Do not invent an HOA from subdivision name alone.
 
+Do not clear a filled overlay HOA or property manager when a later subdivision rematch
+misses. This includes Orange legal-description values in `LOT` / plat-book form. Preserve
+the prior HOA fields as one group when the new resolution has no HOA, and preserve prior
+property-manager fields as one group when the new resolution has no manager. Append
+`_prior_hoa_preserved`, `_prior_pm_preserved`, or `_prior_hoa_pm_preserved` to the new miss
+status so the retained stamp is explicit. When a new unique eligible HOA or manager is
+resolved, replace the prior corresponding stamp. Keep null fields null when there is no
+prior stamp to preserve.
+
 ## DBPR CTMH condo identity
 
 Condo associations come from the official Florida DBPR CTMH public-records page, not
@@ -357,6 +366,11 @@ extract a community token by stripping only these deterministic legal wrappers:
 - `S/D` / `SUBD` → `SUBDIVISION`
 - trailing plat-book/page/`MB`/`OR`/`REC` cites, trailing `LOT` + number, and a bare
   trailing `PHASE`/`UNIT`/`SUBDIVISION`/`CONDO`/`CONDOMINIUM`
+
+Strip a bare trailing `LOT` after its preceding plat book/page pair. For example, lookup
+`LAKE PLEASANT COVE 68/143 LOT` as `LAKE PLEASANT COVE`, and lookup
+`ERROL ESTATE UNIT 7 8/133 LOT` as `ERROL ESTATE`. Continue to require exactly one ACTIVE
+Sunbiz association after normalization.
 
 Do not extract from section-township-range (`SEC`/`TWP`/`RGE`), metes-and-bounds
 (`COM`…`FT`), acreage “being part of” lines, or “recorded without legal” notes. A

@@ -265,6 +265,8 @@ describe("hoa-pm heuristic", () => {
     ["000017 ACRES LOT 41 TIMBERLANE", "TIMBERLANE"],
     ["000017 AC LOT 8 LEANING OAKS", "LEANING OAKS"],
     ["00005 ORANGE BLOSSOM PARK", "ORANGE BLOSSOM PARK"],
+    ["LAKE PLEASANT COVE 68/143 LOT", "LAKE PLEASANT COVE"],
+    ["ERROL ESTATE UNIT 7 8/133 LOT", "ERROL ESTATE"],
   ])("extracts a community name from legal subdivision text: %s", (subdivision, expected) => {
     expect(extractCommunityNameFromSubdivision(subdivision)).toBe(expected);
   });
@@ -285,6 +287,27 @@ describe("hoa-pm heuristic", () => {
     ]);
     expect(result.status).toBe("matched");
     expect(result.matches[0].documentNumber).toBe("N888888");
+  });
+
+  it.each([
+    ["LAKE PLEASANT COVE 68/143 LOT", "LAKE PLEASANT COVE"],
+    ["ERROL ESTATE UNIT 7 8/133 LOT", "ERROL ESTATE"],
+  ])("matches only the unique ACTIVE HOA for Orange plat text: %s", (subdivision, community) => {
+    const result = findHoaCompanies(subdivision, [
+      {
+        ...hoaCompany,
+        documentNumber: "N800001",
+        entityName: `${community} HOMEOWNERS ASSOCIATION, INC.`,
+      },
+      {
+        ...hoaCompany,
+        documentNumber: "N800002",
+        entityName: `${community} PROPERTY OWNERS ASSOCIATION, INC.`,
+        status: "INACTIVE",
+      },
+    ]);
+    expect(result.status).toBe("matched");
+    expect(result.matches[0].documentNumber).toBe("N800001");
   });
 
   it("matches a unique single-token plat extracted from book/page/lot text", () => {
@@ -442,6 +465,44 @@ describe("hoa-pm heuristic", () => {
     ).toBe("no_agent_company");
   });
 
+  it("preserves filled HOA and PM stamps when a rematch misses", () => {
+    const prior = {
+      parcel_identifier: "1605480000",
+      hoa_cid: "bafy-prior-hoa",
+      hoa_name: "PRIOR HOMEOWNERS ASSOCIATION, INC.",
+      homeowners_association_type: "Homeowners",
+      hoa_sunbiz_document_number: "N000001",
+      hoa_ctmh_project_number: "PRIOR001",
+      property_manager_cid: "bafy-prior-pm",
+      property_manager_name: "PRIOR PROPERTY MANAGEMENT LLC",
+      property_manager_sunbiz_document_number: "L000001",
+    };
+    const resolution = resolveHoaAndPropertyManagement({
+      subdivision: "LOT 82 UNKNOWN SUBDIVISION PB 3 P",
+      companies: [hoaCompany, managerCompany],
+    });
+    expect(resolution.status).toBe("no_sunbiz_hoa");
+
+    const stamped = stampPropertyCids(prior, resolution);
+    expect(stamped).toMatchObject(prior);
+    expect(stamped.hoa_pm_status).toBe(
+      "no_sunbiz_hoa_prior_hoa_pm_preserved",
+    );
+  });
+
+  it("keeps null stamps on a miss when no prior stamp exists", () => {
+    const resolution = resolveHoaAndPropertyManagement({
+      subdivision: "LOT 82 UNKNOWN SUBDIVISION PB 3 P",
+      companies: [hoaCompany, managerCompany],
+    });
+    const stamped = stampPropertyCids({ parcel_identifier: "1605480000" }, resolution);
+    expect(stamped.hoa_cid).toBeNull();
+    expect(stamped.hoa_name).toBeNull();
+    expect(stamped.hoa_sunbiz_document_number).toBeNull();
+    expect(stamped.property_manager_cid).toBeNull();
+    expect(stamped.hoa_pm_status).toBe("no_sunbiz_hoa");
+  });
+
   it("stamps HOA and PM CIDs on the property object", () => {
     const resolution = resolveHoaAndPropertyManagement({
       subdivision: "Example Subdivision",
@@ -452,10 +513,23 @@ describe("hoa-pm heuristic", () => {
     expect(resolution.propertyManagement.cid).toMatch(/^sha256:[a-f0-9]{64}$/);
     expect(resolution.hoa.property_manager_cid).toBe(resolution.propertyManagement.cid);
 
-    const stamped = stampPropertyCids({ parcel_identifier: "1605480000" }, resolution);
+    const stamped = stampPropertyCids(
+      {
+        parcel_identifier: "1605480000",
+        hoa_cid: "bafy-old-hoa",
+        hoa_name: "OLD ASSOCIATION",
+        hoa_sunbiz_document_number: "N000001",
+        property_manager_cid: "bafy-old-pm",
+        property_manager_name: "OLD MANAGER",
+        property_manager_sunbiz_document_number: "L000001",
+      },
+      resolution,
+    );
     expect(stamped.hoa_cid).toBe(resolution.hoa.cid);
+    expect(stamped.hoa_name).toBe(resolution.hoa.homeowners_association_name);
     expect(stamped.homeowners_association_type).toBe("Homeowners");
     expect(stamped.property_manager_cid).toBe(resolution.propertyManagement.cid);
+    expect(stamped.property_manager_name).toBe(resolution.propertyManagement.name);
     expect(stamped.hoa_sunbiz_document_number).toBe("N123456");
     expect(stamped.property_manager_sunbiz_document_number).toBe("L654321");
     expect(stamped.hoa_pm_status).toBe("matched");
