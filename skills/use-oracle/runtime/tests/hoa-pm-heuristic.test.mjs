@@ -10,6 +10,7 @@ import { toParquetRecord, writeQueryTableParquet } from "../src/core/query-table
 import {
   extractCommunityNameFromSubdivision,
   findHoaCompanies,
+  findHoaCompaniesByRecordedName,
   homeownersAssociationType,
   normalizeOwnershipEstateType,
   findPropertyManagementCompany,
@@ -251,6 +252,91 @@ describe("hoa-pm heuristic", () => {
   it("does not invent an HOA from subdivision name alone", () => {
     const result = findHoaCompanies("Example Subdivision", [managerCompany]);
     expect(result.status).toBe("no_sunbiz_hoa");
+  });
+
+  it("uses one exact clerk-recorded name only after appraisal misses", () => {
+    const evidence = {
+      recordedName: "Example Subdivision",
+      normalizedName: "EXAMPLE SUBDIVISION",
+      sourceProfileId: "duval-official-records-pilot-v1",
+      sourceUrl: "https://or.duvalclerk.com/",
+      instruments: [
+        {
+          instrumentType: "plat",
+          instrumentNumber: "2026123456",
+          evidenceReference: "duval-or:2026123456",
+        },
+      ],
+    };
+    const exact = findHoaCompaniesByRecordedName(
+      evidence.recordedName,
+      [hoaCompany],
+    );
+    expect(exact.status).toBe("matched");
+    expect(
+      findHoaCompaniesByRecordedName("Example Subdivisio", [hoaCompany])
+        .status,
+    ).toBe("clerk_recorded_name_not_in_sunbiz");
+
+    const resolution = resolveHoaAndPropertyManagement({
+      subdivision: null,
+      companies: [hoaCompany, managerCompany],
+      recordedCommunityEvidence: evidence,
+      recordedCommunityEvidenceStatus: "matched",
+    });
+    expect(resolution.source).toBe("clerk_official_records");
+    expect(resolution.hoa.sunbiz_document_number).toBe("N123456");
+    expect(resolution.hoa.hoa_discovery_source).toBe(
+      "clerk_official_records",
+    );
+  });
+
+  it("fails closed on ambiguous clerk names or Sunbiz companies", () => {
+    const ambiguousEvidence = resolveHoaAndPropertyManagement({
+      subdivision: null,
+      companies: [hoaCompany],
+      recordedCommunityEvidenceStatus: "not_unique",
+    });
+    expect(ambiguousEvidence.status).toBe(
+      "clerk_recorded_name_not_unique",
+    );
+    expect(ambiguousEvidence.hoa).toBeNull();
+
+    const duplicate = findHoaCompaniesByRecordedName(
+      "Example Subdivision",
+      [
+        hoaCompany,
+        {
+          ...hoaCompany,
+          documentNumber: "N999999",
+          entityName:
+            "EXAMPLE SUBDIVISION COMMUNITY ASSOCIATION INC",
+        },
+      ],
+    );
+    expect(duplicate.status).toBe("clerk_sunbiz_not_unique");
+  });
+
+  it("fails closed when parsed legal text and clerk evidence disagree", () => {
+    const legalHoa = {
+      ...hoaCompany,
+      documentNumber: "N888888",
+      entityName: "HIBERNIA FOREST HOMEOWNERS ASSOCIATION, INC.",
+    };
+    const result = resolveHoaAndPropertyManagement({
+      subdivision: "LOT 25 HIBERNIA FOREST UNIT 2",
+      companies: [legalHoa, hoaCompany],
+      recordedCommunityEvidenceStatus: "matched",
+      recordedCommunityEvidence: {
+        recordedName: "Example Subdivision",
+        normalizedName: "EXAMPLE SUBDIVISION",
+        sourceProfileId: "duval-official-records-pilot-v1",
+        sourceUrl: "https://or.duvalclerk.com/",
+        instruments: [],
+      },
+    });
+    expect(result.status).toBe("clerk_appraisal_conflicting");
+    expect(result.hoa).toBeNull();
   });
 
   it.each([
@@ -537,6 +623,88 @@ describe("hoa-pm heuristic", () => {
 });
 
 describe("hoa-pm query-table enrich", () => {
+  it("applies a clerk-recorded name to an exact parcel fallback", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "hoa-pm-clerk-"));
+    temporaryDirectories.push(directory);
+    const inputParquet = path.join(directory, "input.parquet");
+    const inputCoverage = path.join(directory, "input-coverage.json");
+    const outputParquet = path.join(directory, "output", "query-table.parquet");
+    await writeQueryTableParquet({
+      parquetPath: inputParquet,
+      schemaFields: portableInputSchema,
+      rows: [
+        {
+          property_id: "property-1",
+          parcel_identifier: "164634-0000",
+          subdivision: null,
+        },
+      ],
+    });
+    await writeFile(
+      inputCoverage,
+      `${JSON.stringify({ county: "duval", datasets: [] })}\n`,
+    );
+    const clerkRecord = {
+      recordedName: "Example Subdivision",
+      normalizedName: "EXAMPLE SUBDIVISION",
+      sourceProfileId: "duval-official-records-pilot-v1",
+      sourceUrl: "https://or.duvalclerk.com/",
+      instruments: [
+        {
+          instrumentType: "plat",
+          instrumentNumber: "2026123456",
+          evidenceReference: "duval-or:2026123456",
+        },
+      ],
+    };
+    const summary = await enrichQueryTableWithHoaPm({
+      countyKey: "duval",
+      inputParquet,
+      inputCoverage,
+      companies: [hoaCompany, managerCompany],
+      clerkOfficialRecords: {
+        byParcel: new Map([
+          [
+            "164634-0000",
+            [
+              {
+                parcelIdentifier: "164634-0000",
+                ...clerkRecord,
+                instrumentType: "plat",
+                nameKind: "plat_name",
+                instrumentNumber: "2026123456",
+                evidenceReference: "duval-or:2026123456",
+              },
+            ],
+          ],
+        ]),
+        summary: {
+          sourceProfileId: "duval-official-records-pilot-v1",
+          extractId: "duval-bounded-pilot-1",
+          recordCount: 1,
+          parcelCount: 1,
+        },
+      },
+      outputParquet,
+      outputCoverage: path.join(directory, "output", "dataset-coverage.json"),
+      manifestPath: path.join(directory, "output", "manifest.json"),
+    });
+    expect(summary.clerkOfficialRecords).toMatchObject({
+      recordCount: 1,
+      parcelCount: 1,
+    });
+    const reader = await ParquetReader.openFile(outputParquet);
+    try {
+      expect(await reader.getCursor().next()).toMatchObject({
+        hoa_name: hoaCompany.entityName,
+        hoa_sunbiz_document_number: "N123456",
+        hoa_pm_status: "matched",
+      });
+    } finally {
+      await reader.close();
+    }
+  });
+
   it("reads ZSTD input and preserves ZSTD output compression", async () => {
     const directory = await mkdtemp(path.join(tmpdir(), "hoa-pm-zstd-"));
     temporaryDirectories.push(directory);

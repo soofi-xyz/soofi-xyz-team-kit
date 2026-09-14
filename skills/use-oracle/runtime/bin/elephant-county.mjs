@@ -501,6 +501,14 @@ async function runHoaPmEnrichCommand(argv) {
       typeof flags["sunbiz-fictitious-extract"] === "string"
         ? flags["sunbiz-fictitious-extract"]
         : null,
+    clerkRecordsPath:
+      typeof flags["clerk-records"] === "string"
+        ? flags["clerk-records"]
+        : null,
+    clerkSourceManifestPath:
+      typeof flags["clerk-source-manifest"] === "string"
+        ? flags["clerk-source-manifest"]
+        : null,
     outputParquet: path.join(outputDir, "query-table.parquet"),
     outputCoverage: path.join(outputDir, "dataset-coverage.json"),
     objectsDir: path.join(outputDir, "objects"),
@@ -1180,7 +1188,7 @@ async function main() {
       "  hoa-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --records <hoa-memberships.jsonl> --source-manifest <json> --output-dir <dir>\n" +
       "  hoa-pm-index --source-dir <expanded-cordata-dir> --subdivisions <json-array> --quarter <YYYYQn> --output <dir>\n" +
       "  hoa-pm-overlay-sync --county <key> --overlay-parquet <overlay.parquet> --official-parquet <official.parquet> --output-dir <dir> [--parcel-csv <csv>]\n" +
-      "  hoa-pm-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --sunbiz-extract <dir> [--sunbiz-pm-extract <dir>] [--ctmh-extract <dir>] [--sunbiz-events-extract <expanded-corevent-dir>] [--sunbiz-fictitious-extract <expanded-ficdata-and-ficevt-dir>] --output-dir <dir>\n" +
+      "  hoa-pm-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --sunbiz-extract <dir> [--sunbiz-pm-extract <dir>] [--ctmh-extract <dir>] [--sunbiz-events-extract <expanded-corevent-dir>] [--sunbiz-fictitious-extract <expanded-ficdata-and-ficevt-dir>] [--clerk-records <recorded-community-names.jsonl> --clerk-source-manifest <json>] --output-dir <dir>\n" +
       "  hoa-pm-publish --county <published-or-overlay-county-key> --input <enriched-dir> [--query-table-only] [--move-existing-ipns-only] [--dry-run] [--approve <manifest> --receipt <json> --env-file <dotenv>]\n" +
       "    Overlay IPNS moves abort if another overlay publish/sync process holds the lock, if the live name already points at a newer approved receipt, or if the CID is not this run's byte-bound receipt. Overlay-only: never move oracle-query-table-<county>. At Filebase 100/100, move existing overlay names only.\n" +
       "  hoa-pm-property-publish --county <published-county-key> --input-parquet <overlay.parquet> [--official-parquet <official.parquet> | --thin-overlay] [--dry-run] [--approve <manifest> --receipt <json> --env-file <dotenv>]\n" +
