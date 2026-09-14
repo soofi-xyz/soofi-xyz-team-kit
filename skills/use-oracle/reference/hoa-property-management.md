@@ -172,10 +172,17 @@ The fallback is fail-closed:
   to different Sunbiz documents, keep `clerk_appraisal_conflicting` and stamp neither.
   Never invent a company or treat a person as the HOA.
 
-No clerk/OR harvester or clerk extract is bundled. For the bounded Duval pilot, use the
-Duval Clerk Official Records index at `https://or.duvalclerk.com/` (online records since
-1988) and retain the exact instrument number/reference. Prepare a reviewed local JSONL
-extract plus `elephant.clerk-recorded-community-names.v1` manifest outside git, then run:
+No clerk/OR harvester or clerk extract is bundled. The bounded Duval probe of
+`https://or.duvalclerk.com/` (2026-09-14) reached the public index (HTTP 200, disclaimer
+accepted, no CAPTCHA) but found no parcel/RE/folio search and no `parcel_identifier`,
+`plat_name`, or `declaration_name` result column. Grantor/grantee names and legal-
+description text are not HOA names. Until a custodian extract supplies exact parcel-
+linked plat or declaration names, keep a reviewed empty JSONL (`recordCount` 0) and do
+not invent clerk rows. Other overlay counties stay out of clerk harvest unless a public
+or local clerk source is already specified.
+
+When a reviewed extract exists, retain the exact instrument number/reference, write
+`elephant.clerk-recorded-community-names.v1` outside git, then run:
 
 ```bash
 cd skills/use-oracle/runtime
