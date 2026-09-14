@@ -148,6 +148,54 @@ approval for changed bytes. Use `--query-table-only` when another workflow owns
 `objects.jsonl`; it publishes only the query table and coverage and leaves the object
 key untouched.
 
+## Clerk plat / official-records fallback
+
+Use appraisal `subdivision` first when it is a clean community name. Use a clerk/official
+records (OR) recorded plat or declaration name only when appraisal `subdivision` is empty,
+is legal-description text, or produces no ACTIVE Sunbiz HOA. Do not use the fallback to
+break an ambiguity from a clean appraisal community name.
+
+The fallback is fail-closed:
+
+- Link the official-record row to the property by the exact county parcel identifier.
+- Accept only a structured `plat_name` from a plat or `declaration_name` from a
+  declaration. Grantor, grantee, attorney, preparer, return-to, owner, trustee, and other
+  party names are never HOA names.
+- Require exactly one normalized recorded name per parcel. Different plat/declaration
+  names remain `clerk_recorded_name_not_unique`.
+- Compare that recorded name only to exact association bases from ACTIVE statewide
+  Sunbiz companies. Do not use substring, edit distance, token score, address, officer,
+  registered-agent person, or ZIP proximity.
+- Stamp only one surviving ACTIVE Sunbiz document number. Zero candidates remain
+  `clerk_recorded_name_not_in_sunbiz`; multiple candidates remain
+  `clerk_sunbiz_not_unique`. If a parsed legal description and clerk name uniquely resolve
+  to different Sunbiz documents, keep `clerk_appraisal_conflicting` and stamp neither.
+  Never invent a company or treat a person as the HOA.
+
+No clerk/OR harvester or clerk extract is bundled. For the bounded Duval pilot, use the
+Duval Clerk Official Records index at `https://or.duvalclerk.com/` (online records since
+1988) and retain the exact instrument number/reference. Prepare a reviewed local JSONL
+extract plus `elephant.clerk-recorded-community-names.v1` manifest outside git, then run:
+
+```bash
+cd skills/use-oracle/runtime
+node bin/elephant-county.mjs hoa-pm-enrich \
+  --county duval \
+  --input-parquet <bounded-duval-query-table.parquet> \
+  --input-coverage <bounded-duval-coverage.json> \
+  --sunbiz-extract <statewide-active-sunbiz-dir> \
+  --clerk-records <duval-recorded-community-names.jsonl> \
+  --clerk-source-manifest <duval-clerk-source-manifest.json> \
+  --output-dir <local-output-dir>
+```
+
+Each JSONL row requires `parcel_identifier`, `recorded_name`, `instrument_type`
+(`plat` or `declaration`), matching `name_kind` (`plat_name` or
+`declaration_name`), `instrument_number`, and `evidence_reference`. The manifest binds
+county, official source URL, exact record count, and SHA-256. Stop after local
+enrichment/tests in this workflow; do not run `hoa-pm-publish` or move any Filebase/IPNS
+overlay label.
+
 ## Mandatory subdivision reconciliation
 
 Whenever the base county or identity query table gains or fills `subdivision`, sync the

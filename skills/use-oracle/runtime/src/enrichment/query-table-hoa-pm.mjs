@@ -8,6 +8,11 @@ import { zstdCompressSync, zstdDecompressSync } from "node:zlib";
 import { ParquetSchema, ParquetWriter } from "@dsnp/parquetjs";
 
 import { toParquetRecord } from "../core/query-table.mjs";
+import {
+  emptyClerkOfficialRecords,
+  loadClerkOfficialRecords,
+  recordedCommunityEvidenceForParcel,
+} from "./clerk-official-records.mjs";
 import { isIpfsCid } from "./hoa-pm-object-publication.mjs";
 import { emptyCtmhRecords, loadCtmhExtract } from "./ctmh-condo.mjs";
 import { resolveHoaAndPropertyManagement, stampPropertyCids } from "./hoa-pm-heuristic.mjs";
@@ -300,6 +305,9 @@ export async function enrichQueryTableWithHoaPm({
   sunbizEventsExtractDir = null,
   sunbizFictitiousExtractDir = null,
   sunbizAliases = null,
+  clerkRecordsPath = null,
+  clerkSourceManifestPath = null,
+  clerkOfficialRecords = null,
   outputParquet,
   outputCoverage,
   objectsDir,
@@ -331,10 +339,29 @@ export async function enrichQueryTableWithHoaPm({
           fictitiousNamesDir: sunbizFictitiousExtractDir,
         })
       : null);
+  if (
+    (clerkRecordsPath === null) !==
+    (clerkSourceManifestPath === null)
+  ) {
+    throw new Error(
+      "HOA/PM clerk fallback requires both clerk records and source manifest",
+    );
+  }
+  const loadedClerkRecords =
+    clerkOfficialRecords ??
+    (clerkRecordsPath
+      ? await loadClerkOfficialRecords({
+          countyKey,
+          recordsPath: clerkRecordsPath,
+          sourceManifestPath: clerkSourceManifestPath,
+        })
+      : emptyClerkOfficialRecords());
   const rows = await readQueryRows(inputParquet);
   const objects = [];
   const stamped = [];
   const statusCounts = {};
+  const sourceCounts = {};
+  let clerkMatchedHoaCount = 0;
   const joinCounts = {
     ctmh_hoa: 0,
     ctmh_sunbiz_joined: 0,
@@ -353,7 +380,17 @@ export async function enrichQueryTableWithHoaPm({
   };
   const resolutionBySubdivision = new Map();
   for (const row of rows) {
-    const cacheKey = `${row.subdivision ?? ""}\0${row.ownership_estate_type ?? ""}`;
+    const clerkEvidence = recordedCommunityEvidenceForParcel(
+      loadedClerkRecords,
+      row.parcel_identifier,
+    );
+    const cacheKey = [
+      row.subdivision ?? "",
+      row.ownership_estate_type ?? "",
+      clerkEvidence.status,
+      clerkEvidence.evidence?.normalizedName ?? "",
+      clerkEvidence.evidence?.sourceProfileId ?? "",
+    ].join("\0");
     let resolution = resolutionBySubdivision.get(cacheKey);
     if (!resolution) {
       resolution = resolveHoaAndPropertyManagement({
@@ -364,6 +401,8 @@ export async function enrichQueryTableWithHoaPm({
         ownershipEstateType: row.ownership_estate_type,
         ctmhRecords: loadedCtmh,
         sunbizAliases: loadedSunbizAliases,
+        recordedCommunityEvidence: clerkEvidence.evidence,
+        recordedCommunityEvidenceStatus: clerkEvidence.status,
       });
       resolutionBySubdivision.set(cacheKey, resolution);
     }
@@ -392,6 +431,11 @@ export async function enrichQueryTableWithHoaPm({
       }
     }
     statusCounts[resolution.status] = (statusCounts[resolution.status] ?? 0) + 1;
+    sourceCounts[resolution.source ?? "none"] =
+      (sourceCounts[resolution.source ?? "none"] ?? 0) + 1;
+    if (resolution.source === "clerk_official_records" && resolution.hoa) {
+      clerkMatchedHoaCount += 1;
+    }
     if (resolution.hoa) objects.push(resolution.hoa);
     if (resolution.hoaCompany) objects.push(resolution.hoaCompany);
     if (resolution.propertyManagement) objects.push(resolution.propertyManagement);
@@ -427,6 +471,16 @@ export async function enrichQueryTableWithHoaPm({
     matched_pm_count: stamped.filter((row) => row.property_manager_cid).length,
     status_counts: statusCounts,
     ctmh_join_counts: joinCounts,
+    clerk_official_records: {
+      ...loadedClerkRecords.summary,
+      fallback_attempt_count: sourceCounts.clerk_official_records ?? 0,
+      matched_hoa_count: clerkMatchedHoaCount,
+      status_counts: Object.fromEntries(
+        Object.entries(statusCounts).filter(([status]) =>
+          status.startsWith("clerk_"),
+        ),
+      ),
+    },
   };
   const nextCoverage = {
     ...coverage,
@@ -447,6 +501,14 @@ export async function enrichQueryTableWithHoaPm({
     statusCounts,
     ctmhJoinCounts: joinCounts,
     sunbizAliasInputs: loadedSunbizAliases?.summary ?? null,
+    clerkOfficialRecords: {
+      ...loadedClerkRecords.summary,
+      statusCounts: Object.fromEntries(
+        Object.entries(statusCounts).filter(([status]) =>
+          status.startsWith("clerk_"),
+        ),
+      ),
+    },
   };
   await mkdir(path.dirname(manifestPath), { recursive: true });
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
