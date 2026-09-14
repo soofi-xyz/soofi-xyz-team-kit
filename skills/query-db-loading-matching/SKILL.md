@@ -330,7 +330,9 @@ After edge reconciliation and the index gate, follow
 2. traverse `permit_contacts.company_id` or unanimous
    `property_improvements.contractor_company_id`;
 3. select other permits for those exact company UUIDs;
-4. calculate old-roof candidates from the county-neutral roof-age estimator.
+4. calculate old-roof candidates with
+   `skills/use-oracle/runtime/src/roof-age/estimator.ts`, passing the frozen
+   source-profile mappings and permit evidence states rather than reclassifying SQL text.
 
 Regex/name/license-text searches are discovery inputs for unresolved repair candidates,
 never resolved product rows. Return accepted classifier IDs/version, resolver
