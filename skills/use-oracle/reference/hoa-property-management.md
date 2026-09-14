@@ -6,15 +6,19 @@ or when estate is missing, the matcher tries a fail-closed unique match on the
 matching official Florida DBPR CTMH mailing list — never a union of condo + coop +
 timeshare. FeeSimple and Leasehold skip CTMH and use the Sunbiz HOA path only. A
 unique CTMH hit rematches to a unique ACTIVE Sunbiz company for the corporate record
-and registered-agent property manager. When CTMH misses or is not unique, the existing
+and registered-agent property manager. After direct ACTIVE legal-name matching, resolve
+an established CTMH association or corporate registered-agent name through statewide
+Sunbiz corporate events, then statewide fictitious names, only when the bridge ends at
+one ACTIVE corporate document number. When CTMH misses or is not unique, the existing
 Sunbiz HOA path still looks up a unique Florida Sunbiz company for that subdivision,
-then reads the HOA company's registered-agent / communication company and looks that
-company up in **all ACTIVE Sunbiz companies**, not only the HOA-marker index.
+then reads the HOA company's registered-agent / communication company and resolves that
+company against **all ACTIVE Sunbiz companies**, not only the HOA-marker index.
 Estate type still filters Sunbiz condo vs homeowners candidates.
 
-Use the statewide Sunbiz company dataset. Do not use the ZIP-filtered county extract
-produced by `sunbiz-filter` / `sunbiz-enrich`, because an HOA or manager can be registered
-outside the property's county.
+Use statewide `cordata.zip`, `corevent.zip`, `ficdata.zip`, and `ficevt.zip` extracts.
+Never use the ZIP-filtered county extract produced by `sunbiz-filter` / `sunbiz-enrich`,
+because an HOA, successor, fictitious-name owner, or manager can be registered outside
+the property's county.
 
 This does **not** set `hoa_flag` (Chapter 720 membership stays on `hoa-enrich`).
 
@@ -165,6 +169,8 @@ node bin/elephant-county.mjs hoa-pm-enrich \
   --sunbiz-extract <sunbiz-extract-dir> \
   [--sunbiz-pm-extract <full-active-sunbiz-dir>] \
   --ctmh-extract <ctmh-extract-dir> \
+  [--sunbiz-events-extract <expanded-corevent-dir>] \
+  [--sunbiz-fictitious-extract <expanded-ficdata-and-ficevt-dir>] \
   --output-dir <output-dir>
 
 node bin/elephant-county.mjs hoa-pm-publish \
@@ -237,7 +243,37 @@ entity is the association itself, it is not stamped as PM.
 
 For rows that already have an HOA (CTMH or Sunbiz), look up a company registered
 agent by exact legal name in the full ACTIVE Sunbiz company set — not only the
-HOA-marker index. Person agents stay `no_agent_company`. Do not invent PMs.
+HOA-marker index. If that exact lookup misses, apply the event and fictitious-name
+bridges below in order. Person agents stay `no_agent_company`. Do not invent PMs.
+
+## Sunbiz corporate-event and fictitious-name bridges
+
+Use the official statewide quarterly files from the Florida Division of Corporations:
+`corevent.zip` under `doc/quarterly/cor`, then `ficdata.zip` and `ficevt.zip` under
+`doc/quarterly/fic`. Expand them outside git. Use archives already present on the
+operator's disk; do not automatically download these large files. Never commit an
+archive or expanded record.
+
+Apply these bridges only after CTMH or an ACTIVE Sunbiz HOA has established the
+association or supplied a corporate registered-agent name. Never use a corporate event
+or fictitious-name registration by itself to invent an HOA.
+
+1. Match the established name exactly after punctuation/case folding against
+   `COR_EVENT_COR_NAME`.
+2. Accept only name-change, cross-reference-name-change, conversion, or merger rows.
+   Resolve `COR_EVENT_DOC_NUMBER` and `COR_EVENT_CONS_MER_NUMBER` against the complete
+   ACTIVE `cordata` company set. Accept exactly one ACTIVE document number.
+3. If the event bridge has no candidate, match the same established name exactly against
+   an ACTIVE `ficdata` fictitious-name registration. Read `ficevt` as the registration's
+   event-history companion. Accept exactly one current owner with owner format `C` and
+   an owner charter/document number that resolves to one ACTIVE `cordata` company.
+4. Fail closed on zero or multiple event targets, multiple ACTIVE registrations,
+   multiple ACTIVE corporate owners, `more than ten owners`, missing owner document
+   numbers, expired/cancelled registrations, or malformed fixed-width rows.
+
+Never fuzzy-match names. Never use address, officer, registered-agent person, FEI, or
+ZIP proximity to break a tie. Never treat a person owner or person registered agent as a
+property manager. Never ZIP-filter any of these statewide identity files.
 
 ## Ownership-estate gate
 

@@ -11,6 +11,7 @@ import { toParquetRecord } from "../core/query-table.mjs";
 import { isIpfsCid } from "./hoa-pm-object-publication.mjs";
 import { emptyCtmhRecords, loadCtmhExtract } from "./ctmh-condo.mjs";
 import { resolveHoaAndPropertyManagement, stampPropertyCids } from "./hoa-pm-heuristic.mjs";
+import { loadSunbizAliasIndex } from "./sunbiz-aliases.mjs";
 
 const require = createRequire(import.meta.url);
 const { ParquetReader } = require("@dsnp/parquetjs");
@@ -296,6 +297,9 @@ export async function enrichQueryTableWithHoaPm({
   sunbizPmExtractDir = null,
   ctmhExtractDir = null,
   ctmhRecords = null,
+  sunbizEventsExtractDir = null,
+  sunbizFictitiousExtractDir = null,
+  sunbizAliases = null,
   outputParquet,
   outputCoverage,
   objectsDir,
@@ -318,6 +322,15 @@ export async function enrichQueryTableWithHoaPm({
   const loadedCtmh =
     ctmhRecords ??
     (ctmhExtractDir ? await loadCtmhExtract(ctmhExtractDir) : emptyCtmhRecords());
+  const loadedSunbizAliases =
+    sunbizAliases ??
+    (sunbizEventsExtractDir || sunbizFictitiousExtractDir
+      ? await loadSunbizAliasIndex({
+          companies: pmPool ?? sunbizCompanies,
+          corporateEventsDir: sunbizEventsExtractDir,
+          fictitiousNamesDir: sunbizFictitiousExtractDir,
+        })
+      : null);
   const rows = await readQueryRows(inputParquet);
   const objects = [];
   const stamped = [];
@@ -350,6 +363,7 @@ export async function enrichQueryTableWithHoaPm({
         countyKey,
         ownershipEstateType: row.ownership_estate_type,
         ctmhRecords: loadedCtmh,
+        sunbizAliases: loadedSunbizAliases,
       });
       resolutionBySubdivision.set(cacheKey, resolution);
     }
@@ -432,6 +446,7 @@ export async function enrichQueryTableWithHoaPm({
     objectCount: objects.length,
     statusCounts,
     ctmhJoinCounts: joinCounts,
+    sunbizAliasInputs: loadedSunbizAliases?.summary ?? null,
   };
   await mkdir(path.dirname(manifestPath), { recursive: true });
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
