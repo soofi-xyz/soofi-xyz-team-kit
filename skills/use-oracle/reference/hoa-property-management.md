@@ -22,6 +22,44 @@ the property's county.
 
 This does **not** set `hoa_flag` (Chapter 720 membership stays on `hoa-enrich`).
 
+## Human search vs fail-closed lookup
+
+Humans find associations the matcher misses because they search Sunbiz interactively:
+they try suffixes, browse hits, and pick a favorite. Operators and agents must not
+imitate that. Run **one** fail-closed lookup against statewide ACTIVE extracts.
+
+1. **Strip legal-description noise before Sunbiz.** Use the Orange legal-wrapper
+   parser: drop plat book/page cites and a trailing `LOT` (for example look up
+   `LAKE PLEASANT COVE 68/143 LOT` as `LAKE PLEASANT COVE`). Do not send the raw
+   legal string as the company name.
+2. **Do not invent suffixes.** Do not append `HOA`, `POA`, `Community Association`,
+   `Homeowners Association`, or similar text to a subdivision in order to force a
+   hit. Match only names that already exist on ACTIVE Sunbiz or CTMH records.
+3. **Multiple ACTIVE hits: run the disambiguation ladder.** Apply successor events,
+   nonprofit vs developer filing type, HOA-style legal name, explicit city/county,
+   then an existing CTMH or clerk document on the row. If two or more candidates
+   remain, set `not_unique`. Do not pick a favorite.
+4. **Events and DBA only after a usable name.** Apply `corevent` / `ficdata` /
+   `ficevt` only after CTMH or an ACTIVE Sunbiz HOA (or a corporate registered-agent
+   name) is already established. Do not invent an HOA from events or a fictitious
+   name alone.
+5. **Clerk plat/declaration requires a parcel-linked harvest.** Stamp only a
+   structured `plat_name` or `declaration_name` tied to the exact parcel identifier.
+   Duval's public official-records site (`https://or.duvalclerk.com/`) has no
+   parcel/RE/folio search — do not name-only scrape grantor/grantee or legal text.
+   Keep an empty reviewed JSONL until a custodian extract supplies parcel-linked
+   names.
+6. **Never stamp a person or lawyer as the HOA.** Reject person records,
+   registered-agent designations, attorneys, law firms, and legal services. Do not
+   treat a person registered agent as the association or as a property manager.
+7. **Do not null a filled `hoa_cid` on rematch miss.** When a later subdivision
+   rematch has no HOA, keep the prior HOA stamp and append `_prior_hoa_preserved`
+   (and the matching PM preserve suffix when the manager also misses). Replace a
+   stamp only when a new unique eligible HOA or manager resolves.
+
+Detail for each rule lives in the sections below. Do not improvise a second lookup
+path or a human-choice prompt.
+
 ## Objects and CID stamps
 
 Relationships are CID fields on the referencing object, not graph edges.
