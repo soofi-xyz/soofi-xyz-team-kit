@@ -36,6 +36,7 @@ import {
   mapTransformedFilesToQueryTableRow,
   COUNTY_KEY,
   COUNTY_NAME,
+  SOURCE_SYSTEM,
 } from "./query-table.mjs";
 import { duvalEnrichmentProfile } from "./enrichment-profile.mjs";
 import { buildSeed as buildDuvalSeedFiles, COJ_DETAIL_URL, toCojDetailUrl, toCanonicalReDisplay, toText } from "./seed.mjs";
@@ -310,6 +311,7 @@ async function zipDataDirectory(dataDir, zipPath) {
  * @property {string} outputDir - Run directory; one `<parcel_id>/` subdirectory is created per parcel.
  * @property {boolean} [liveFetch] - When true, fetch missing HTML from COJ. Defaults to false (fail closed).
  * @property {string} [jobId] - Retry-ledger job id (see `core/run-state.mjs`). Defaults to {@link DEFAULT_JOB_ID}.
+ * @property {string} [asOfDate] - Roof-age calculation date. Defaults to the current UTC date.
  */
 
 /**
@@ -339,7 +341,14 @@ async function zipDataDirectory(dataDir, zipPath) {
  * @returns {Promise<{ county: string, outputDir: string, jobId: string, results: ParcelTransformResult[], reconciled: import("./validate.mjs").ManifestReconciliation }>}
  *   Run manifest, also written to `<outputDir>/manifest.json`.
  */
-export async function captureAndTransform({ seedRows, htmlDir, outputDir, liveFetch = false, jobId = DEFAULT_JOB_ID }) {
+export async function captureAndTransform({
+  seedRows,
+  htmlDir,
+  outputDir,
+  liveFetch = false,
+  jobId = DEFAULT_JOB_ID,
+  asOfDate = new Date().toISOString().slice(0, 10),
+}) {
   await mkdir(outputDir, { recursive: true });
   /** @type {ParcelTransformResult[]} */
   const results = [];
@@ -379,6 +388,7 @@ export async function captureAndTransform({ seedRows, htmlDir, outputDir, liveFe
         scriptNames: TRANSFORM_SCRIPTS,
         workDir: parcelDir,
         resultFile: "data/property.json",
+        roofAge: { sourceSystem: SOURCE_SYSTEM, asOfDate },
       });
 
       const address = JSON.parse(await readFile(path.join(dataDir, "address.json"), "utf8"));
@@ -422,7 +432,7 @@ export async function captureAndTransform({ seedRows, htmlDir, outputDir, liveFe
     permanentFailure: results.filter((row) => row.classification === "permanent_failure").length,
     retryableFailure: results.filter((row) => row.classification === "retryable_failure").length,
   };
-  const manifest = { county: COUNTY_KEY, outputDir, jobId, results, reconciled };
+  const manifest = { county: COUNTY_KEY, outputDir, jobId, asOfDate, results, reconciled };
   await writeFile(path.join(outputDir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
   return manifest;
 }

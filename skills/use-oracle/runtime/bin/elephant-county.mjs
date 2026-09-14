@@ -157,7 +157,7 @@ async function readSeedRows(seedPath) {
 }
 
 /**
- * `elephant-county ingest --county <key> --seed <csv> --html-dir <dir> [--skip-validate] [--live-fetch] [--allow-empty] --output <run-dir>`
+ * `elephant-county ingest --county <key> --seed <csv> --html-dir <dir> [--as-of-date YYYY-MM-DD] [--skip-validate] [--live-fetch] [--allow-empty] --output <run-dir>`
  *
  * Fails closed on live fetch: a missing local HTML file is an error unless
  * `--live-fetch` is explicitly supplied (Global Constraint). Also fails
@@ -177,6 +177,10 @@ async function runIngest(argv) {
     htmlDir: String(flags["html-dir"]),
     outputDir: String(flags.output),
     liveFetch: flags["live-fetch"] === true,
+    asOfDate:
+      typeof flags["as-of-date"] === "string"
+        ? flags["as-of-date"]
+        : new Date().toISOString().slice(0, 10),
   });
   if (flags["skip-validate"] !== true) {
     const validation = await adapter.validateRun(manifest, { allowEmpty: flags["allow-empty"] === true });

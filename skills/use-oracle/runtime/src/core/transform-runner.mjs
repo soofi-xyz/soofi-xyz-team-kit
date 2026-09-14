@@ -20,6 +20,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
+import { applyRoofAgeToTransformedData } from "../roof-age/integration.ts";
 
 const require = createRequire(import.meta.url);
 
@@ -29,6 +30,7 @@ const require = createRequire(import.meta.url);
  * @property {readonly string[]} scriptNames - Script filenames, executed in this order.
  * @property {string} workDir - Absolute directory with `input.html` + seed JSON already written.
  * @property {string} [resultFile] - Path (relative to `workDir`) read back as the return value. Defaults to `data/property.json`.
+ * @property {{ sourceSystem: string, asOfDate: string }} [roofAge] - Optional canonical roof-age enrichment.
  */
 
 /**
@@ -70,7 +72,13 @@ function forgetScript(scriptPath) {
  * @param {RunCountyTransformOptions} options - Scripts, working directory, and result file.
  * @returns {RunCountyTransformResult} Parsed result JSON plus the data directory path.
  */
-export function runCountyTransform({ scriptsDir, scriptNames, workDir, resultFile = "data/property.json" }) {
+export function runCountyTransform({
+  scriptsDir,
+  scriptNames,
+  workDir,
+  resultFile = "data/property.json",
+  roofAge,
+}) {
   const previousCwd = process.cwd();
   const previousExit = process.exit;
   const previousLog = console.log;
@@ -86,6 +94,13 @@ export function runCountyTransform({ scriptsDir, scriptNames, workDir, resultFil
     const resultPath = path.join(workDir, resultFile);
     if (!fs.existsSync(resultPath)) {
       throw new Error(`County transform did not write ${resultFile}`);
+    }
+    if (roofAge) {
+      applyRoofAgeToTransformedData({
+        dataDir: path.join(workDir, path.dirname(resultFile)),
+        sourceSystem: roofAge.sourceSystem,
+        asOfDate: roofAge.asOfDate,
+      });
     }
     return {
       result: JSON.parse(fs.readFileSync(resultPath, "utf8")),

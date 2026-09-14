@@ -14,19 +14,20 @@ function parseOptions(argv) {
     if (!flag?.startsWith("--") || !value || value.startsWith("--")) {
       throw new Error(`Missing value for ${flag ?? "argument"}`);
     }
-    if (!["--input", "--database-url-env"].includes(flag)) {
+    if (!["--input", "--database-url-env", "--as-of-date"].includes(flag)) {
       throw new Error(`Unknown option ${flag}`);
     }
     options.set(flag, value);
   }
   const inputDir = options.get("--input");
   const databaseUrlEnvironment = options.get("--database-url-env");
-  if (!inputDir || !databaseUrlEnvironment) {
+  const asOfDate = options.get("--as-of-date");
+  if (!inputDir || !databaseUrlEnvironment || !asOfDate) {
     throw new Error(
-      "Usage: load-tyler-private-db.mjs --input <directory> --database-url-env <name>",
+      "Usage: load-tyler-private-db.mjs --input <directory> --database-url-env <name> --as-of-date YYYY-MM-DD",
     );
   }
-  return { inputDir, databaseUrlEnvironment };
+  return { inputDir, databaseUrlEnvironment, asOfDate };
 }
 
 async function main() {
@@ -41,7 +42,11 @@ async function main() {
   await client.connect();
   try {
     const store = createPostgresTylerPrivateStore(client);
-    const loaded = await loadTylerPrivateDatabase({ bundle, store });
+    const loaded = await loadTylerPrivateDatabase({
+      bundle,
+      store,
+      asOfDate: options.asOfDate,
+    });
     const readBack = await verifyTylerPrivateLoad({ bundle, store });
     process.stdout.write(
       `${JSON.stringify({

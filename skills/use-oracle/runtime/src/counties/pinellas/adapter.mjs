@@ -32,6 +32,7 @@ import {
   COVERAGE_IPNS_LABEL,
   COUNTY_KEY,
   COUNTY_NAME,
+  SOURCE_SYSTEM,
 } from "./query-table.mjs";
 import { buildSeed as buildPinellasSeedFiles, PRINT_URL } from "./seed.mjs";
 
@@ -208,6 +209,7 @@ async function zipDataDirectory(dataDir, zipPath) {
  * @property {string} htmlDir - Directory of `<strap>.html` fixture/cache files.
  * @property {string} outputDir - Run directory; one `<strap>/` subdirectory is created per parcel.
  * @property {boolean} [liveFetch] - When true, fetch missing HTML from PCPAO. Defaults to false (fail closed).
+ * @property {string} [asOfDate] - Roof-age calculation date. Defaults to the current UTC date.
  */
 
 /**
@@ -231,7 +233,13 @@ async function zipDataDirectory(dataDir, zipPath) {
  * @returns {Promise<{ county: string, outputDir: string, results: ParcelTransformResult[] }>}
  *   Run manifest, also written to `<outputDir>/manifest.json`.
  */
-export async function captureAndTransform({ seedRows, htmlDir, outputDir, liveFetch = false }) {
+export async function captureAndTransform({
+  seedRows,
+  htmlDir,
+  outputDir,
+  liveFetch = false,
+  asOfDate = new Date().toISOString().slice(0, 10),
+}) {
   await mkdir(outputDir, { recursive: true });
   /** @type {ParcelTransformResult[]} */
   const results = [];
@@ -270,6 +278,7 @@ export async function captureAndTransform({ seedRows, htmlDir, outputDir, liveFe
         scriptNames: ALL_TRANSFORM_SCRIPTS,
         workDir: parcelDir,
         resultFile: "data/property.json",
+        roofAge: { sourceSystem: SOURCE_SYSTEM, asOfDate },
       });
 
       await zipDataDirectory(dataDir, path.join(parcelDir, "transformed.zip"));
@@ -289,7 +298,7 @@ export async function captureAndTransform({ seedRows, htmlDir, outputDir, liveFe
       });
     }
   }
-  const manifest = { county: COUNTY_KEY, outputDir, results };
+  const manifest = { county: COUNTY_KEY, outputDir, asOfDate, results };
   await writeFile(path.join(outputDir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
   return manifest;
 }
