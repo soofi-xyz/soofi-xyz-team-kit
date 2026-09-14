@@ -478,10 +478,10 @@
     },
     {
       "countyKey": "st-lucie-hoa-pm",
-      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmcpKSsL4bN3SxCu9CP9n88TVBa36k9ggvYypX9s6VXVZX",
-      "queryTableCid": "QmcpKSsL4bN3SxCu9CP9n88TVBa36k9ggvYypX9s6VXVZX",
+      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmfVjjx9mLt8rL4VN5WgSKoEpMio3qc2tc9NQjAzA8Tmnu",
+      "queryTableCid": "QmfVjjx9mLt8rL4VN5WgSKoEpMio3qc2tc9NQjAzA8Tmnu",
       "permitQueryTableUrl": null,
-      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmVL6PqYWfMX2SBooh5SuWsUNvYQZ1aAa7tRT1SE72EUDW"
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmRB4tpfVyPafszvURe44YjQkunRfbGcj1mc5cFBZbfJJr"
     },
     {
       "countyKey": "alachua-hoa-pm",
@@ -527,10 +527,10 @@
     },
     {
       "countyKey": "flagler-hoa-pm",
-      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmQoaawJHDuagqAv9vVnp6xWZ2bn1RayuCC1Vm2jqDPyu2",
-      "queryTableCid": "QmQoaawJHDuagqAv9vVnp6xWZ2bn1RayuCC1Vm2jqDPyu2",
+      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmYSN1B5wxo4fxLj3LdVfF33sA3owEa7Lm9t4wsCtyZRFN",
+      "queryTableCid": "QmYSN1B5wxo4fxLj3LdVfF33sA3owEa7Lm9t4wsCtyZRFN",
       "permitQueryTableUrl": null,
-      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmWRzUnbV31wKPtKCEj4m9k1vdiMa7RSCGZD6mmhABAYAn"
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmYw23KtxUJBAt4Cxe7ap7BnS7h6YeajASgWP4w7K8x5fN"
     },
     {
       "countyKey": "hardee-hoa-pm",
