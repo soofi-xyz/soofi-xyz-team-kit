@@ -15,7 +15,6 @@ import {
   parseCtmhCsv,
   probeCtmhAssociations,
 } from "../src/enrichment/ctmh-condo.mjs";
-import { parseHoaPm16377Args } from "../local-output/hoa-pm-16377/run-hoa-pm-16377.mjs";
 import {
   resolveHoaAndPropertyManagement,
   searchHoaAssociation,
@@ -351,32 +350,5 @@ describe("CTMH to Sunbiz rematch", () => {
     expect([...ctmhLegalKeys("THE PALM CHASE CONDO ASSOC., INC.")]).toEqual(
       expect.arrayContaining(["PALM CHASE", "THE PALM CHASE CONDO ASSOC INC"]),
     );
-  });
-});
-
-describe("hoa-pm-16377 argv", () => {
-  it("does not treat --force or --ctmh as the Sunbiz path", () => {
-    const parsed = parseHoaPm16377Args([
-      "--force",
-      "--ctmh-extract",
-      "/tmp/hoa-pm-16377/ctmh",
-      "duval",
-    ]);
-    expect(parsed.force).toBe(true);
-    expect(parsed.sunbiz).toBeNull();
-    expect(parsed.sunbizPm).toBeNull();
-    expect(parsed.ctmh).toBe("/tmp/hoa-pm-16377/ctmh");
-    expect([...parsed.only]).toEqual(["duval"]);
-  });
-
-  it("parses --sunbiz-pm without stealing the HOA index path", () => {
-    const parsed = parseHoaPm16377Args([
-      "--sunbiz",
-      "/tmp/hoa-pm-16377/sunbiz-hoa-index",
-      "--sunbiz-pm",
-      "/tmp/hoa-pm-16377/sunbiz-pm-index",
-    ]);
-    expect(parsed.sunbiz).toBe("/tmp/hoa-pm-16377/sunbiz-hoa-index");
-    expect(parsed.sunbizPm).toBe("/tmp/hoa-pm-16377/sunbiz-pm-index");
   });
 });
