@@ -51,6 +51,9 @@ const REQUIRED_COLUMNS = {
   property_manager_name: "UTF8",
   property_manager_sunbiz_document_number: "UTF8",
   hoa_pm_status: "UTF8",
+  homeowners_association_amount: "DOUBLE",
+  homeowners_association_fee_frequency: "UTF8",
+  homeowners_association_year: "INT32",
 };
 
 async function sha256File(filePath) {
@@ -282,6 +285,12 @@ export async function readHoaPmPropertyLinks(
                 ["address_zip", row.address_zip],
                 ["primary_address", row.primary_address],
                 ["subdivision", row.subdivision],
+                ["homeowners_association_amount", row.homeowners_association_amount],
+                [
+                  "homeowners_association_fee_frequency",
+                  row.homeowners_association_fee_frequency,
+                ],
+                ["homeowners_association_year", row.homeowners_association_year],
               ].filter(([field, value]) => field && value != null),
             )
           : null,

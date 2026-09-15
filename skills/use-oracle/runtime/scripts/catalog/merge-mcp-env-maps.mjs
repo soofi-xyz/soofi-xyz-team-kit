@@ -22,6 +22,7 @@ import { mcpEnvMapsFromCatalog, stringifyMcpEnvMaps } from "./print-mcp-env-maps
  * @property {string | null} [queryTableCid]
  * @property {string | null} [permitQueryTableUrl]
  * @property {string | null} [datasetCoverageUrl]
+ * @property {string | null} [detailJsonUrl] Optional nested detail artifact; not an MCP map.
  */
 
 /**
