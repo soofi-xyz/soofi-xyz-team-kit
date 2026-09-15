@@ -15,6 +15,7 @@
 import { createHash } from "node:crypto";
 import { mintSitusAddressIdentity } from "../../core/address-signature.mjs";
 import { parseUnnormalizedAddress, toInteger, toNumber, toText } from "../../core/query-table.mjs";
+import { roofAgeQueryFields } from "../../roof-age/integration.ts";
 
 export const SOURCE_SYSTEM = "duval_appraiser";
 export const COUNTY_KEY = "duval";
@@ -165,6 +166,7 @@ export function mapTransformedFilesToQueryTableRow({ parcelId, files, seedRow })
     lot_area_sqft: lotAreaSqft,
     exterior_wall_material: toText(structure.exterior_wall_material_primary),
     roof_covering_material: toText(structure.roof_covering_material),
+    ...roofAgeQueryFields(structure),
     property_type: toText(property.property_type),
     property_usage_type: toText(property.property_usage_type),
     built_year: toInteger(property.property_structure_built_year),

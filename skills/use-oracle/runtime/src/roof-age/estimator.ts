@@ -6,7 +6,10 @@ export const ROOF_AGE_ESTIMATE_SCHEMA_VERSION =
   "elephant.roof-age-estimate.v1";
 export const ROOF_AGE_POLICY_VERSION = "oracle.roof-age-policy.v1";
 
-const SOURCE_KEY_PATTERN = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
+// Source-system values are existing Query DB provenance, not county slugs.
+// Permit adapters legitimately emit names such as "JaxEPICS" and
+// "BS&A Online"; reject control characters but preserve the exact source.
+const SOURCE_KEY_PATTERN = /^[^\u0000-\u001f\u007f]+$/;
 const PROFILE_VERSION_PATTERN = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
 const FIELD_KEY_PATTERN = /^[A-Za-z][A-Za-z0-9_.-]*$/;
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
