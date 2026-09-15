@@ -13,6 +13,7 @@ This skill is intentionally thin. Use it as a loader for [`reference/PRD.md`](./
 1. Read [`reference/PRD.md`](./reference/PRD.md) before planning or coding.
 2. Read [`../apply-engineering-guidelines/SKILL.md`](../apply-engineering-guidelines/SKILL.md) for Golden Path constraints.
 3. Read lexicon, Rules, Persist, Translate, and metrics skills whenever Lexicon work touches graph ontology changes, ruleset artifacts, validation contracts, mapping artifacts, or CloudWatch metric registration.
+4. Read [`build-transform-product`](../build-transform-product/SKILL.md) when changing Transform's registered language schemas, directional SQL mappings or generic catalog publication. Keep configuration authoring/publication here and coordinate Python/PySpark execution with `kecleon`; use its explicit graph ID/endpoint bindings for graph mappings.
 
 ## Use With Plugin Agents
 

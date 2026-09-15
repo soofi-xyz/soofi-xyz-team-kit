@@ -37,6 +37,7 @@ Before answering, collect evidence in this order and stop as soon as you have en
 - Do not recommend `arceus` itself as part of the answer.
 - Prefer one primary agent over a chain of three. Recommend secondary agents only when the task obviously crosses domains (for example, frontend bug-fix that also needs design tests).
 - Route Filter/Rules product implementation and operations to `gallade`. Use `xatu` for downstream audience handoff contracts and `conkeldurr` for separate Persist/Lexicon/platform dependency work.
+- Route Transform (registered `from`/`to` data languages, Lexicon SQL, Python/PySpark, Parquet/JSONL/CSV, tabular/graph outputs and graph ID/endpoint mappings) to `kecleon` with `build-transform-product`. Language-pair requests for this Spark product stay with Kecleon. Keep the separate Translate API/runtime with `conkeldurr` and Elephant county tools with `oracle`.
 - Do not edit files, scaffold projects, or run shell commands beyond what is needed to read agent and skill metadata.
 - Do not silently substitute a different specialist when the user has already named one — instead, confirm the named agent and only suggest an alternative if the named one is clearly wrong.
 
