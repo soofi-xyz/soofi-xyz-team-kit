@@ -854,6 +854,13 @@ describe("hoa-pm query-table enrich", () => {
     expect((await stat(inputParquet)).size).toBeLessThan(512 * 1024);
     const reader = await ParquetReader.openFile(outputParquet);
     try {
+      expect(Object.keys(reader.schema.fields)).toEqual(
+        expect.arrayContaining([
+          "homeowners_association_amount",
+          "homeowners_association_fee_frequency",
+          "homeowners_association_year",
+        ]),
+      );
       expect(
         new Set(
           reader.metadata.row_groups.flatMap((rowGroup) =>
