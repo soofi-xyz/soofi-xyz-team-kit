@@ -350,7 +350,7 @@ Rule definition:
 
 The `.gremlin` file stores the executable query text. The optional `.sql` file stores source-system explanation or extraction logic. Markdown notes under `rulesets/docs/` remain source documentation and are not part of the deployable ruleset prefix.
 
-Rules currently consumes the catalog item with `id = "phone"` unless explicit `rule_s3_uris` are supplied. SMS rules are published by Lexicon but not automatically used by Rules until a consumer explicitly selects them.
+The existing Filter adapter selects the default `phone` catalog item only when rule context is absent. Context can select multiple matching manifests; explicit `rule_s3_uris` bypass catalog selection. Follow the [current Rules selection contract](../../build-rules-product/reference/implementation/rules-and-queries.md#selection-semantics) for precedence, matching and compatibility.
 
 ### 3.4 CloudWatch metric registry
 
@@ -423,7 +423,7 @@ Candidate validation uses `candidate_lexicon_s3_uri`. Persist accepts candidate 
 
 ### 4.2 Rules
 
-Rules consumes `/lexicon/rulesets-uri`. When workflow input omits `rule_s3_uris`, Rules reads `<rulesets-uri>/index.json`, selects the `phone` catalog item, loads that manifest, sorts rule entries by `order`, and fetches each rule definition and `.gremlin` query.
+Rules consumes `/lexicon/rulesets-uri`. The existing Filter adapter reads the catalog and resolves manifests through its [Rules selection contract](../../build-rules-product/reference/implementation/rules-and-queries.md#selection-semantics), including default selection, context matching, explicit artifact precedence and shared-rule conflict handling. Keep runtime selection semantics in that reference rather than duplicating them here.
 
 Rules never writes back to Lexicon, never mutates ruleset objects, and never reads rules from GitHub at runtime. Explicit `rule_s3_uris` must still point at prefixes containing exactly one rule JSON definition and one `.gremlin` query.
 

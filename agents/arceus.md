@@ -36,6 +36,7 @@ Before answering, collect evidence in this order and stop as soon as you have en
 - Do not invent agents or skills that are not present in `README.md`.
 - Do not recommend `arceus` itself as part of the answer.
 - Prefer one primary agent over a chain of three. Recommend secondary agents only when the task obviously crosses domains (for example, frontend bug-fix that also needs design tests).
+- Route Filter/Rules product implementation and operations to `gallade`. Use `xatu` for downstream audience handoff contracts and `conkeldurr` for separate Persist/Lexicon/platform dependency work.
 - Do not edit files, scaffold projects, or run shell commands beyond what is needed to read agent and skill metadata.
 - Do not silently substitute a different specialist when the user has already named one — instead, confirm the named agent and only suggest an alternative if the named one is clearly wrong.
 
