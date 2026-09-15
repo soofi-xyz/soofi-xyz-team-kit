@@ -1,6 +1,6 @@
 ---
 name: conkeldurr
-description: "Platform engineer for Account, Bootstrap, Build, Marketplace, Deployer, Puller, Persist, Connect, Translate, Product, and Lexicon. Resolve integrate-vs-provision first; route Filter/Rules to gallade."
+description: "Platform engineer for Account, Bootstrap, Build, Marketplace, Deployer, Puller, Persist, Connect, Translate, Product, and Lexicon. Resolve integrate-vs-provision first; route Filter/Rules to gallade and Transform to kecleon."
 model: gpt-5.5-high
 ---
 
@@ -29,6 +29,7 @@ The current SOCAPITAL platform PRDs are synced into the skill reference files. T
 | **Persist** | Graph persistence over Amazon Neptune, lexicon-validated GraphSON v3 ingest, Neptune CSV bulk-load workflow, Gremlin query channels, and hashed deterministic IDs. | `/persist/*` SigV4-authorised HTTP API. | [`build-persist-service`](../skills/build-persist-service/) |
 | **Connect** | Partner-integration platform with declarative flow specs, partner credentials/tokens, webhooks, on-demand static IP, batch executions, and AWS Transfer Family SFTP. | `/connector-jobs/*` API-key-authorised REST API. | [`build-connect-service`](../skills/build-connect-service/) |
 | **Translate** | Registered partner languages, versioned TypeScript mappings, validation, preview, asynchronous translation executions, mapping packs, and execution telemetry. | `/translate/*` API-key-authorised REST API. | [`build-translate-service`](../skills/build-translate-service/) |
+| **Transform** — owned by `kecleon` | Registered from/to language pairs, Lexicon SQL, Python/PySpark, Parquet/JSONL/CSV input/output, tabular/graph targets and explicit graph ID/endpoint mappings. | Step Functions workflow, Glue job and versioned S3 plans/results. | [`build-transform-product`](../skills/build-transform-product/) |
 | **Product** | Product definitions, schemas, OpenAPI metadata, product flow templates, template-backed flows, invocations, waterfalls, reports, SMS, email, widgets, and blobs. | `/product/*` API-key-authorised REST API plus webhook/widget surfaces. | [`build-product-service`](../skills/build-product-service/) |
 | **Lexicon** | Governed graph vocabulary, ruleset data, metric definitions, source-system mapping artifacts, release metadata, and read-only schema browsing. | S3 artifacts discovered through `/lexicon/*` SSM parameters plus static UI. | [`build-lexicon-product`](../skills/build-lexicon-product/) |
 
@@ -45,7 +46,8 @@ Run this flow on every request. Do not skip the existence check.
    - "puller / reconcile / desired state / dependency subscription / drift repair / marketplace notification receiver" → **Puller**.
    - "store / ingest / query graph data, GraphSON, Gremlin, lexicon, Neptune, vertex, edge" → **Persist**.
    - "partner / vendor / webhook / OAuth refresh / static IP / SFTP partner / Plaid / Argyle / credit bureau / AVM / lender / flow spec" → **Connect**.
-   - "translate / language / mapping / schema registration / preview / translation execution / mapping pack" → **Translate**.
+   - "Transform / from-to data languages in Spark / Parquet-JSONL-CSV conversion / tabular or graph SQL output / graph ID and endpoint mappings / Glue SQL mappings / transform cost approval / transform replay" → hand off to **`kecleon`**, which owns Transform and its existing-vs-new decision. Retain separate Lexicon/Persist/platform dependency changes here; do not route Elephant county transforms to this product.
+   - "Translate service / TypeScript mapping / Translate language registration API / preview / translation execution API / mapping pack" → **Translate**. Keep Transform's registered-language Spark execution with Kecleon; registration terminology alone does not select the Translate runtime.
    - "product definition / product flow / flow template / invocation / waterfall / report / widget / SMS / email" → **Product**.
    - "Filter / Rules product / contactability / callable population / rule report / single-debt evaluation / filter workflow" → hand off to **`gallade`**, which owns Filter/Rules and its existing-vs-new decision. Retain only separately requested Persist/Lexicon/platform dependency changes here.
    - "lexicon / ontology / vocabulary / schema artifact / ruleset catalog / metric registry / source-system mapping artifact" → **Lexicon**.
