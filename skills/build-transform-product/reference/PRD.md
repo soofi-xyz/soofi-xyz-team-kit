@@ -11,6 +11,12 @@ revision, installed capabilities and caller contracts before modifying a service
 Do not infer deployment support from this document or depend on a particular
 company, source system or language pair.
 
+For a new product, follow [the from-scratch path](from-scratch.md) to write code
+in the target repository. Use the [machine-readable contracts](contracts-and-defaults.md),
+[worked examples](worked-example.md) and acceptance criteria as specifications.
+Keep the shared engineering, Lexicon and requested Persist skills. Discover
+existing contracts before integrating these requirements into an existing product.
+
 ## 1. Required architecture
 
 ```text
@@ -27,8 +33,8 @@ Request: from + to + named inputs/formats + output shape/format
 
 Use Python, `GlueContext`, DataFrames and `spark.sql()` for distributed data
 processing. Use boto3 for configuration and small metadata objects. Use
-TypeScript for Zod contracts, resolver/cost/reporting Lambdas, Step Functions
-and CDK. Keep joins, projections and language-specific logic in Lexicon SQL.
+TypeScript for JSON Schema validation, resolver/cost/reporting Lambdas,
+Step Functions and CDK. Keep joins, projections and language-specific logic in Lexicon SQL.
 Adding a compatible language pair must require registration/configuration,
 not an engine code branch named after either language.
 
@@ -48,13 +54,13 @@ Implement this versioned request shape (`contractVersion: 2`):
   "inputs": [
     {
       "table": "customers",
-      "s3Uri": "s3://source-bucket/export/customers/",
+      "s3Uri": "s3://transform-local/source/customers.csv",
       "format": "csv",
       "options": { "header": true }
     }
   ],
   "output": {
-    "s3Prefix": "s3://target-bucket/runs",
+    "s3Prefix": "s3://transform-local/results/demo",
     "shape": "tabular",
     "format": "parquet"
   },
@@ -116,7 +122,8 @@ mutable prefix.
 
 Follow [formats-and-execution.md](formats-and-execution.md):
 
-1. Parse `--EXECUTION_PLAN_S3_URI` and `--EXECUTION_ID`, initialize Glue/Spark,
+1. Parse the plan URI/digest, execution ID and contract URI/digest arguments
+   specified in the build guide; initialize Glue/Spark,
    read the pinned plan, and verify the supported plan version and digests.
 2. Load each named input with its declared reader/schema; validate source rows
    and register the manifest's explicit Spark view name.
@@ -136,17 +143,17 @@ serialization inside the selected graph profile.
 
 ## 5. TypeScript workflow and implementation layout
 
-Use these module responsibilities as a blueprint; map them to an existing checkout
-before editing.
+Implement this layout in a new product; map the same responsibilities to an
+existing checkout before editing.
 
-| Suggested module | Implement/change |
+| Target module to create | Responsibility |
 | --- | --- |
-| `src/shared/contracts.ts` | Versioned requests, resolved-plan schema, dataset manifest and generic metrics schemas |
-| `src/lambdas/resolve-plan/index.ts` | Validate request, resolve registered pair and compatible formats, bind inputs, pin configuration and write execution plan |
-| `src/lambdas/cost-estimator/index.ts` | Size the resolved object manifest across Parquet, JSONL and CSV; retain format/compression context in estimates |
-| `glue_scripts/transform_with_sql_mappings.py` | Version dispatch plus generic readers, typed validation, configured queries, named dataset writers and isolated graph adapter |
-| `src/lambdas/report-metrics/index.ts` | Read dataset manifests and emit per-dataset input/output counts, bytes and modeled costs |
-| `lib/transform-pipeline-stack.ts` | Add version/validation/resolution stages, resolver IAM, plan storage/read grants and v2 Glue arguments; wire generic reporting and callback validation |
+| `src/contracts.ts`, `schemas/contracts.schema.json` | Versioned requests, resolved plans, dataset manifests, costs, approval and failure contracts |
+| `src/control.ts`, `src/store.ts` | Resolve registrations, enforce scopes, snapshot inputs, estimate cost, pin plans and verify results |
+| `glue_scripts/transform_worker.py` | Shared Glue/local readers, typed validation, configured queries, graph checks and dataset writers |
+| `src/handler.ts` | Resolution, approval, reporting and failure Lambda entry points with shared observability integrations |
+| `lib/transform-stack.ts` | Workflow transitions, scoped IAM, plan storage, Glue arguments, approval queue and failure alarms |
+| `src/cli.ts`, `src/fixtures.ts`, `tests/` | Local commands, complete publication examples and executable verification |
 | Lexicon source/publication | Publish language/schema references, pair manifests, SQL assets and generic catalog pointer |
 
 Use TypeScript CDK/Step Functions with a Python/PySpark Glue job. Discover the
@@ -169,10 +176,12 @@ paths instead of assuming that layout for every run. Preserve a target schema
 artifact per dataset, including for CSV. Empty valid tables still have schema
 and zero-row manifest entries.
 
-Write `_metadata.json` with `contractVersion: 2`, execution identity, concrete
-from/to versions and schema digests, mapping/SQL digests, input artifact identity,
-input/output formats, shape/profile, per-dataset paths/row counts/byte counts,
-validation results and timing. Do not embed source records in operational logs.
+Write `_metadata.json` using the exact `Result` definition in the contract
+schema. Include its pinned plan URI/digest; that plan supplies schema/SQL/input
+identities, formats, profile and creation time without inventing extra result
+fields. Include per-dataset counts/schema paths and `finishedAt`. Publish only
+after all validation succeeds; write detailed timings/diagnostics in separate
+run audit objects. Keep source records out of operational logs.
 
 Return `status`, `executionId`, `from`, `to`, resolved mapping identity,
 `outputManifestS3Uri`, a dataset summary and modeled costs. Metadata presence is
@@ -194,3 +203,5 @@ mixed-format joins and ordinary tabular output. Verify graph vertex/edge binding
 exact endpoint identity, a separate reverse mapping and unknown/disabled/ambiguous
 pair failures. A new compatible pair must work through registration alone.
 Report implementation/deployment gaps as evidence, not product restrictions.
+Use [AWS workflow](aws-workflow.md) for explicit baseline limits and recovery
+behavior. Local tests and synthesis do not establish live deployment status.

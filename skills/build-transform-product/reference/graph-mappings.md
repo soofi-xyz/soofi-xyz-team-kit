@@ -4,6 +4,8 @@ Use this contract for a mapping whose registered target has `shape: graph`.
 Keep the normal language/mapping envelope from
 [languages-and-mappings.md](languages-and-mappings.md). Add an explicit `graph`
 block to each graph output. For tabular targets omit that block entirely.
+For machine-readable registration shapes and baseline profile limits,
+read [contracts and defaults](contracts-and-defaults.md).
 
 ## 1. Required output bindings
 
@@ -163,10 +165,11 @@ Apply Transform's graph-contract requirements before publishing success:
 3. Compare every `from` value to its referenced vertex dataset's ID column and
    every `to` value to its target's ID column. Use distributed left-anti joins
    to find unresolved endpoints; do not collect the entire ID population.
-4. For an explicitly registered partial export, allow endpoints supplied by a
-   pinned reference-ID dataset or verified consumer snapshot. Record that scope
-   and evidence in the plan. Never skip reference validation merely because a
-   run omits vertex output.
+4. Require the referenced vertex outputs in the baseline complete-export
+   contract. A future partial-export extension must register and pin a reference-ID
+   dataset or verified consumer snapshot, add its plan schema and acceptance
+   checks, then validate membership against that scope. Never skip validation
+   merely because a run omits vertex output.
 5. Require declared labels and property types to match the target graph schema.
    If SQL also returns `~label`, validate every value against `graph.label` rather
    than silently overwriting inconsistent labels.

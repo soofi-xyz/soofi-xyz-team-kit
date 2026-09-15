@@ -5,6 +5,10 @@ catalog and publication surfaces before adding resources. Treat the paths below
 as a reference layout, not proof of an existing deployment. Keep [the PRD](PRD.md)
 authoritative for execution inputs.
 
+Use [the contract definitions](contracts-and-defaults.md) for exact field names,
+required fields and baseline defaults. Follow [the worked example](worked-example.md)
+for complete schemas, SQL, manifests and a catalog with real content digests.
+
 ## 1. Language registration
 
 Register a named, versioned data contract with ownership/scope, status,
@@ -15,8 +19,8 @@ JSONL or CSV. Do not register `crm-csv` and `crm-parquet` solely to express enco
 Publish schema artifacts and deterministic Spark `StructType` representations
 for each dataset. Keep logical constraints such as required fields, nullability,
 enums, decimal precision/scale and date/time semantics with the schema. Define
-nested structs/arrays/maps where the language needs them; validate that the
-chosen physical serializer can represent them.
+nested structs/arrays where needed; this baseline requires a versioned extension
+before accepting maps. Validate serializer compatibility.
 
 Use this concrete registration artifact shape (example names/URIs):
 
@@ -42,8 +46,9 @@ Store logical validation constraints in the schema artifact and a Spark
 `StructType` JSON representation in the Spark artifact. Validate their agreement
 at registration; reject unsupported schema constructs rather than silently
 dropping them. Catalog entries pin each language/mapping manifest URI and digest;
-language entries may declare one enabled `currentVersion`. Graph registrations
-add the dataset roles/IDs/endpoints described in section 4. Public v2 requests
+allow at most one enabled `current: true` entry per language, and require one
+when a request omits its version. Graph registrations add the dataset roles/IDs
+and endpoints described in section 4. Public v2 requests
 select these registrations; they do not register schemas as a side effect.
 
 For externally registered languages, retain their authoritative name/version,
@@ -131,8 +136,8 @@ validated `target_<dataset>` view only when a dependent query declares it.
 
 For multiple SQL fragments targeting one table, declare them as one output's
 ordered `queries` list instead of `queryS3Uri`/`querySha256`; require exactly one
-form. Each list entry has a URI and digest. Validate all fragment schemas against
-the same target before `unionByName`. Do not union unrelated datasets just
+form. Each list entry has `queryS3Uri` and `querySha256`. Validate all fragment
+schemas against the same target before `unionByName`. Do not union unrelated datasets just
 because their files live in the same folder.
 
 Use SQL SELECT/CTE result queries; reject DDL/DML, arbitrary multi-statement SQL

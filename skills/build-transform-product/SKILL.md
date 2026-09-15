@@ -12,6 +12,12 @@ source system, fixed language pair or local checkout path.
 
 ## Required reading
 
+For a new product, start with [the from-scratch build path](reference/from-scratch.md).
+Create the product code and tests in the target repository using the module
+contracts and build sequence. This skill contains instructions, declarative
+contracts and examples only. Keep the shared skills below and use the specified
+defaults for routine choices.
+
 1. Read [the implementation PRD](reference/PRD.md) before planning/coding.
 2. Read [language and mapping registration](reference/languages-and-mappings.md)
    for schema/manifests, exact pair resolution and Lexicon publication.
@@ -23,6 +29,11 @@ source system, fixed language pair or local checkout path.
    Python/PySpark for data, TypeScript for Lambdas/contracts/CDK.
 6. Use [operations and verification](reference/operations-and-verification.md)
    for discovery, execution, migration and acceptance tests.
+7. Use [contracts and defaults](reference/contracts-and-defaults.md)
+   for the canonical schemas and [AWS workflow](reference/aws-workflow.md) for
+   exact transitions, permissions, costs, callbacks and recovery. Use the
+   [worked example](reference/worked-example.md) for concrete artifacts and
+   expected values when implementing acceptance tests.
 
 ## Implementation rules
 
@@ -55,3 +66,6 @@ graph loading. Keep their deployment details outside this general product spec.
 Return the resolved pair/mapping, schemas/formats, graph role bindings when
 applicable, implementation/migration changes, publication/deployment status and
 verification evidence. Mark unsupported deployment capabilities explicitly.
+For from-scratch work, include the actual toolchain, acceptance evidence and
+synthesis result. Continue through the build and checks; a prose specification
+alone is not completion. Require live evidence before claiming AWS readiness.

@@ -1,0 +1,30 @@
+{
+  "contractVersion": 2,
+  "id": "crm-to-warehouse",
+  "version": "1.0.0",
+  "status": "ENABLED",
+  "engine": "spark-sql",
+  "from": {
+    "name": "crm",
+    "version": "1.0.0"
+  },
+  "to": {
+    "name": "warehouse",
+    "version": "2.0.0"
+  },
+  "inputs": [
+    {
+      "table": "customers",
+      "view": "source_customers",
+      "required": true
+    }
+  ],
+  "outputs": [
+    {
+      "dataset": "accounts",
+      "dependsOn": [],
+      "queryS3Uri": "s3://transform-local/config/accounts.sql",
+      "querySha256": "8417d426b6a6b64320a236b6e28e64278b6c5a9a8526a54f668530b57b05de12"
+    }
+  ]
+}

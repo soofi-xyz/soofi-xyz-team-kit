@@ -51,6 +51,10 @@ small metadata with boto3; keep dataset reads/joins/writes distributed.
 
 1. Resolve each input table to its registered Spark schema, read it with the
    format adapter and validate it. Register the explicit manifest view name.
+   For a graph source, validate registered IDs/endpoints before executing SQL.
+   Require each referenced vertex dataset among the named inputs for the
+   baseline complete graph scope; do not skip source graph integrity when the
+   requested target is tabular.
 2. Verify SQL object digests. Run each registered query with `spark.sql(sql)` in
    dependency order. Do not execute Translate TypeScript bundles in this engine.
 3. Compare columns/types and validate rows against the registered target dataset.

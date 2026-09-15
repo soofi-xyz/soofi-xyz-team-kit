@@ -4,6 +4,10 @@ Use [PRD.md](PRD.md) as the product contract. Discover the target checkout,
 deployment and supported request versions before operating a service. Keep
 project-specific observations in the task's evidence, outside this reusable spec.
 
+For a new product, execute [from-scratch.md](from-scratch.md) and preserve its
+acceptance evidence. Use [aws-workflow.md](aws-workflow.md) for the required
+state transitions, permissions, pricing model, deployment and recovery commands.
+
 ## 1. Discover and prepare
 
 1. Confirm repository/revision, instructions, request schemas, stack, active job
@@ -15,7 +19,7 @@ project-specific observations in the task's evidence, outside this reusable spec
    Validate named input bindings, schemas and format/shape/profile compatibility.
 4. For graph mappings, inspect `graph` blocks and the actual SQL ID/endpoint
    expressions. Follow [graph-mappings.md](graph-mappings.md), including exact
-   endpoint matches and any explicitly registered reference-ID snapshot.
+   endpoint matches and complete-export vertex membership.
 5. Pin schema/SQL/configuration digests and source artifacts into an execution
    plan. Verify S3/KMS access and output scope. Submit with a fresh execution name
    and run prefix only within the existing authorization.
@@ -59,9 +63,10 @@ and prior run evidence intact.
 
 ## 4. Implementation checks
 
-Use the target repository's declared setup, typecheck, lint, test and CDK synthesis
-commands. Keep TypeScript tests for resolution/contracts/workflow wiring and real
-Spark fixtures for SQL/readers/writers/graph validation. Select a Spark runtime
+Implement the command interface in the from-scratch guide for a new product.
+For an existing service, use its declared setup, typecheck, lint, test and CDK
+synthesis commands. Keep TypeScript tests for resolution/contracts/workflow
+wiring and real Spark fixtures for SQL/readers/writers/graph validation. Select a Spark runtime
 compatible with the configured Glue version. Do not assume unit tests execute
 Spark or that any specific toolchain version is already installed.
 
