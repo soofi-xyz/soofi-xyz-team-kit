@@ -101,10 +101,10 @@
       "status": "published",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dhgte20ho86rzg5b7h0ght3a2js5wz0t55i96aaf1d12wpl8efn",
       "queryTableCid": "QmXeTNghbbo5hd1FgqeXPoCJDxtp6pkygJS12t6krnCFFa",
-      "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dj8n2f8nowh8kts53rvpr62zfj0mz9izc11rfzv56q7m4161lg7",
-      "permitQueryTableUrl": null,
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmQWSujvgM1UWyu9rLDbL7RZrPQDr3EY6kfM8DY4tY1A1i",
+      "permitQueryTableUrl": "https://ipfs.filebase.io/ipfs/QmQpnEz34qsGX57KxS2EaFnw1J8J98812y7vXArbvAidk4",
       "placesTableUrl": null,
-      "updatedAt": "2026-09-12T15:47:00.000Z"
+      "updatedAt": "2026-09-16T14:35:31.390Z"
     },
     {
       "countyKey": "osceola",
