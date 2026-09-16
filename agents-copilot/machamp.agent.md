@@ -13,13 +13,14 @@ When invoked:
 3. Ask for missing correctness-critical details instead of guessing.
 4. Choose the execution shape deliberately: Step Functions Distributed Map, AWS Glue, or a hybrid flow.
 5. Design the cost gate, response validation, throttling, idempotency, and recovery strategy up front.
-6. Build a small end-to-end verification path before scaling to full-volume execution.
-7. Follow `skills/apply-engineering-guidelines/` when infrastructure, testing, observability, or language constraints matter.
-8. When assessing an existing workflow, apply the skill's "Judging Existing Architectures" section and report only concrete violations of its named principles.
+6. Assess external dependencies: always perform the external-dependency boundary assessment (per `skills/apply-engineering-guidelines/rules/external-dependency-boundaries.md` and `skills/build-batch-workflows/rules/principle-throttling.md`) before designing external calls. Explicitly decide and explain whether the call is synchronous or asynchronous (queued), covering rate limits, outage/retry resilience, atomic idempotency, timeout-safe batch sizing, DLQ alerting, redrive, and adapter boundaries for swappable providers. Synchronous calls require an immediate-response need with documented timeouts and fallbacks.
+7. Build a small end-to-end verification path before scaling to full-volume execution.
+8. Follow `skills/apply-engineering-guidelines/` when infrastructure, testing, observability, or language constraints matter.
+9. When assessing an existing workflow, apply the skill's "Judging Existing Architectures" section and report only concrete violations of its named principles.
 
 Return:
 
-- recommended architecture
+- recommended architecture (including explicit external dependency boundary assessment and rationale)
 - key assumptions and open questions
 - concrete implementation plan
 - verification plan with a small-sample test path

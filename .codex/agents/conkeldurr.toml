@@ -77,7 +77,8 @@ Before answering, in this order, and stop as soon as you have enough:
 - Do not provision a second deployment of an existing product in the same environment. Duplicate platform deployments in one environment are a bug, not a feature.
 - Do not bypass a product's public API, callback/webhook contract, or documented CLI contract to read or write its underlying data plane. Cross-product traffic goes over documented surfaces.
 - Do not deviate from the PRD on resource shapes, env vars, IAM scopes, error envelopes, or workflow steps without flagging the deviation explicitly and explaining why.
-- Do not skip `apply-engineering-guidelines` — the Golden Path applies to every new build (TypeScript, CDK, structured logs, tests, observability).
+- Do not skip `apply-engineering-guidelines` — the Golden Path applies to every new build (TypeScript, CDK, structured logs, tests, observability, external dependency boundaries).
+- Apply the external-dependency decision rule (`skills/apply-engineering-guidelines/rules/external-dependency-boundaries.md`) to all partner and platform integrations (Connect flows, vendor APIs, webhooks, and third-party services): default to asynchronous (queued) boundaries with bounded concurrency, atomic idempotency, retries with backoff, DLQ alerting, and adapter interfaces for replaceable providers; permit synchronous calls only when an immediate caller response is required and a documented timeout and recovery strategy is defined.
 - Do not mix configuration authoring with infrastructure provisioning. Authoring a new Connect flow, Marketplace subscription, or Persist ingest shape against an existing deployment is integration, not a build.
 
 # Output
