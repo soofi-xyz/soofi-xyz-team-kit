@@ -611,11 +611,11 @@
     },
     {
       "countyKey": "florida-hoa-pm-combined",
-      "queryTableUrl": "https://ipfs.filebase.io/ipfs/Qmcb5xRy8WjU7L4sm6WCrCHq9tci2UcoxQ5nYvSq8VYMTv",
-      "queryTableCid": "Qmcb5xRy8WjU7L4sm6WCrCHq9tci2UcoxQ5nYvSq8VYMTv",
+      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmaoFNP9xU375EqLa4PQ3tZ7CFRak9iVdZfdqTr9yBhvy8",
+      "queryTableCid": "QmaoFNP9xU375EqLa4PQ3tZ7CFRak9iVdZfdqTr9yBhvy8",
       "permitQueryTableUrl": null,
-      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmV9nwgkRPkKaZc39CY6rvCRgQgK361t6hyubVCEVXNf6Y",
-      "detailJsonUrl": "https://ipfs.filebase.io/ipfs/QmUjY1jfg3fvzEXKEjK6P6vnoix6XQn22EF9EsKYZDp6VA"
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmW5vAwrQoTDBRSz5JHDcz5m3uTSh2MJxq2Pbn6HxVv1JL",
+      "detailJsonUrl": "https://ipfs.filebase.io/ipfs/QmQ272WxuZ1jF3s8Q5EWRntafnAyS6hBFFCBLd6VdU1u8m"
     }
   ]
 }

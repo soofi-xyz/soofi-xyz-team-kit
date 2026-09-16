@@ -318,10 +318,10 @@ describe("merge-mcp-env-maps", () => {
     expect(maps.PROPERTY_QUERY_TABLE_MAP["osceola-hoa-pm"]).toBeDefined();
     expect(maps.PROPERTY_QUERY_TABLE_MAP["nassau-hoa-pm"]).toBeDefined();
     expect(maps.PROPERTY_QUERY_TABLE_MAP["florida-hoa-pm-combined"]).toBe(
-      "https://ipfs.filebase.io/ipfs/Qmcb5xRy8WjU7L4sm6WCrCHq9tci2UcoxQ5nYvSq8VYMTv",
+      "https://ipfs.filebase.io/ipfs/QmaoFNP9xU375EqLa4PQ3tZ7CFRak9iVdZfdqTr9yBhvy8",
     );
     expect(maps.DATASET_COVERAGE_MAP["florida-hoa-pm-combined"]).toBe(
-      "https://ipfs.filebase.io/ipfs/QmV9nwgkRPkKaZc39CY6rvCRgQgK361t6hyubVCEVXNf6Y",
+      "https://ipfs.filebase.io/ipfs/QmW5vAwrQoTDBRSz5JHDcz5m3uTSh2MJxq2Pbn6HxVv1JL",
     );
     expect(maps.PERMIT_QUERY_TABLE_MAP.hillsborough).toBe(
       "https://ipfs.filebase.io/ipfs/Qma8ZVe9jn8z96uXHYQvgayeuywscNc4U77FWZrBVTXejB",
