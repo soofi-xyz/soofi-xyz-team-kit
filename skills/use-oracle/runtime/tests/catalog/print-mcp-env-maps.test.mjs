@@ -129,6 +129,10 @@ describe("print-mcp-env-maps", () => {
         .permitQueryTableUrl,
       orange: catalog.counties.find((c) => c.countyKey === "orange")
         .permitQueryTableUrl,
+      osceola: catalog.counties.find((c) => c.countyKey === "osceola")
+        .permitQueryTableUrl,
+      pinellas: catalog.counties.find((c) => c.countyKey === "pinellas")
+        .permitQueryTableUrl,
       "rock-island": catalog.counties.find((c) => c.countyKey === "rock-island")
         .permitQueryTableUrl,
       seminole: catalog.counties.find((c) => c.countyKey === "seminole")
