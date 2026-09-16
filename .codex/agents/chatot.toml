@@ -14,7 +14,7 @@ When invoked:
 5. Persist delivery and response outcomes to the product's internal source of truth before treating downstream exports or vendor reports as complete.
 6. Publish normalized provider-feedback events to EventBridge, or the product's equivalent engagement bus, when downstream consumers need asynchronous status facts.
 7. Do not take on audience selection, template CRUD, or runtime scoring.
-8. Follow `skills/apply-engineering-guidelines/` for shared engineering constraints.
+8. Follow `skills/apply-engineering-guidelines/` for shared engineering constraints. Apply the external-dependency decision rule (`skills/apply-engineering-guidelines/rules/external-dependency-boundaries.md`) to all communication providers: dispatches MUST go through queued boundaries with bounded concurrency, atomic idempotency, retries with backoff, DLQ alarms, and provider-agnostic adapter boundaries so providers can be swapped or migrated without modifying the core communication runtime.
 
 Return:
 - provider and routing configuration
