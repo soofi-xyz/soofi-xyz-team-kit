@@ -49,10 +49,10 @@
       "status": "published",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5diqz0l68gfi22qk0w8aqhsm7pcgje535uz8vhu8p37ynm2po0fh",
       "queryTableCid": "QmaNScYyp7gEcNQPnkDqLjkZyb2yHFBgpnC8pFcAva7buR",
-      "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5di5jghjwbpumnr2vt1crmaycqmtx673kw8pqp8dymecuig5x8jb/",
-      "permitQueryTableUrl": null,
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmXH9dKGbgrWBFzq4Hztc1HrNrvfaceXTJPKby7hRG4syF",
+      "permitQueryTableUrl": "https://ipfs.filebase.io/ipfs/Qma8ZVe9jn8z96uXHYQvgayeuywscNc4U77FWZrBVTXejB",
       "placesTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dk4d5kacjn1b0argjmxmvele89gcnxyz8yjflh6gsx6w3a4o2wo/hillsborough/places-table.parquet",
-      "updatedAt": "2026-09-12T14:38:00.000Z"
+      "updatedAt": "2026-09-16T13:41:41.681Z"
     },
     {
       "countyKey": "lee",
@@ -75,10 +75,10 @@
       "status": "published",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dgqktver4htb060qxfnaytjhybcxlfkp22vtgygbx2lb4t1h1xs",
       "queryTableCid": "QmTdx2rn9CV6eXR7UXTm8ae1iF1UmMcRLsedPaUAphGM5x",
-      "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5djj45hvhz6z2dnsdg6pkgucds99t0f78d5gmwu19bfv8o9tygno",
-      "permitQueryTableUrl": null,
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmVskHsRFrNX8ezBzN7ouZJR7LzpQTURCMiqwLt4QwzXuJ",
+      "permitQueryTableUrl": "https://ipfs.filebase.io/ipfs/QmW6AgL97FnrscDnqss4CcQxf91NtD48ggSazAtNYa9rym",
       "placesTableUrl": null,
-      "updatedAt": "2026-07-07T09:58:45.095Z"
+      "updatedAt": "2026-09-16T13:41:41.681Z"
     },
     {
       "countyKey": "montgomery",

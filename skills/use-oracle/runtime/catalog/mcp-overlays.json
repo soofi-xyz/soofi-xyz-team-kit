@@ -200,8 +200,8 @@
       "countyKey": "volusia",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dhnd4vohzvanyz8d1olfz0bnc0god0r8uqgt6bjk3akmaryj85e",
       "queryTableCid": "QmerPYqdVrqKY8x3wNDq6TtCWvFrZ54mPw2J8BLU7dfk6v",
-      "permitQueryTableUrl": null,
-      "datasetCoverageUrl": null
+      "permitQueryTableUrl": "https://ipfs.filebase.io/ipfs/QmYsr9WbS6C57aQugbvs5Uy2cTKf7AuJ5oiZECv8VhLvsH",
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmPvY4QEntBQX88T2Uz1rCrSMGrwQQhaEovNZsXnJEkMq7"
     },
     {
       "countyKey": "sumter",
@@ -611,11 +611,11 @@
     },
     {
       "countyKey": "florida-hoa-pm-combined",
-      "queryTableUrl": "https://ipfs.filebase.io/ipfs/QmSctUJEbFb7ri4z5h9zsJ3yfJ64C1LtVij4HKsHfYzrPt",
-      "queryTableCid": "QmSctUJEbFb7ri4z5h9zsJ3yfJ64C1LtVij4HKsHfYzrPt",
+      "queryTableUrl": "https://ipfs.filebase.io/ipfs/Qmcb5xRy8WjU7L4sm6WCrCHq9tci2UcoxQ5nYvSq8VYMTv",
+      "queryTableCid": "Qmcb5xRy8WjU7L4sm6WCrCHq9tci2UcoxQ5nYvSq8VYMTv",
       "permitQueryTableUrl": null,
-      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmPQH2BBoKmR4twBDnFqZSKJ6MDdNC6nApkWnA27wjaPy3",
-      "detailJsonUrl": "https://ipfs.filebase.io/ipfs/QmVpaTKDdWRj2r1BwLnghVAAUmFPYUUYQWBehrr8bJbTUb"
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmV9nwgkRPkKaZc39CY6rvCRgQgK361t6hyubVCEVXNf6Y",
+      "detailJsonUrl": "https://ipfs.filebase.io/ipfs/QmUjY1jfg3fvzEXKEjK6P6vnoix6XQn22EF9EsKYZDp6VA"
     }
   ]
 }

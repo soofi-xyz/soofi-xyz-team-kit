@@ -119,6 +119,12 @@ describe("print-mcp-env-maps", () => {
         .permitQueryTableUrl,
       duval: catalog.counties.find((c) => c.countyKey === "duval")
         .permitQueryTableUrl,
+      hillsborough: catalog.counties.find(
+        (c) => c.countyKey === "hillsborough",
+      ).permitQueryTableUrl,
+      "miami-dade": catalog.counties.find(
+        (c) => c.countyKey === "miami-dade",
+      ).permitQueryTableUrl,
       montgomery: catalog.counties.find((c) => c.countyKey === "montgomery")
         .permitQueryTableUrl,
       "rock-island": catalog.counties.find((c) => c.countyKey === "rock-island")
