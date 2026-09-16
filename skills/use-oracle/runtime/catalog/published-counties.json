@@ -192,10 +192,10 @@
       "status": "published",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5di6kqptmkfaoq7yxc7z04spm1n0gbrc26toi2eah1b66cfrqfwp",
       "queryTableCid": "QmeyxdzU6sGkTV26qzUxmAmhnuuF54ZpNJu5HM4YAa3sTQ",
-      "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dmawnn59hx0z87i36xk60os0vur3m05p8u2ial89cn2oay7o9oz",
-      "permitQueryTableUrl": null,
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmaHzHdYaLrQTSUR22eVy9FwUqSefkuX5LEoZD99u1V9dF",
+      "permitQueryTableUrl": "https://ipfs.filebase.io/ipfs/QmdnuzpzyH8JpfB2pxtyRtuJiGSBJ5nsmqceW3tnknReJm",
       "placesTableUrl": null,
-      "updatedAt": "2026-09-12T01:33:38.000Z"
+      "updatedAt": "2026-09-16T15:25:54.484Z"
     }
   ]
 }

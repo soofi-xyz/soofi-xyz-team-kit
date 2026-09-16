@@ -131,6 +131,8 @@ describe("print-mcp-env-maps", () => {
         .permitQueryTableUrl,
       "rock-island": catalog.counties.find((c) => c.countyKey === "rock-island")
         .permitQueryTableUrl,
+      seminole: catalog.counties.find((c) => c.countyKey === "seminole")
+        .permitQueryTableUrl,
     });
     expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP)).not.toContain("santa-clara");
     expect(maps.PERMIT_QUERY_TABLE_MAP.duval).toBe(

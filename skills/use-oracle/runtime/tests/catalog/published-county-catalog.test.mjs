@@ -101,15 +101,16 @@ describe("published county catalog", () => {
       stateCode: "FL",
       countyFips: "12117",
       status: "published",
-      permitQueryTableUrl: null,
+      permitQueryTableUrl:
+        "https://ipfs.filebase.io/ipfs/QmdnuzpzyH8JpfB2pxtyRtuJiGSBJ5nsmqceW3tnknReJm",
       placesTableUrl: null,
-      updatedAt: "2026-09-12T01:33:38.000Z",
+      updatedAt: "2026-09-16T15:25:54.484Z",
     });
     expect(seminole.queryTableUrl).toContain(
       "k51qzi5uqu5di6kqptmkfaoq7yxc7z04spm1n0gbrc26toi2eah1b66cfrqfwp",
     );
-    expect(seminole.datasetCoverageUrl).toContain(
-      "k51qzi5uqu5dmawnn59hx0z87i36xk60os0vur3m05p8u2ial89cn2oay7o9oz",
+    expect(seminole.datasetCoverageUrl).toBe(
+      "https://ipfs.filebase.io/ipfs/QmaHzHdYaLrQTSUR22eVy9FwUqSefkuX5LEoZD99u1V9dF",
     );
   });
 
