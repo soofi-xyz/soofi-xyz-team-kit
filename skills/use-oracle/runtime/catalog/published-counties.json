@@ -62,10 +62,10 @@
       "status": "published",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5djd4ohcf3qm87dhlt0e270xw8ejhkyia62edr76uj0u05hrf7m5",
       "queryTableCid": "QmXUhFPnWxwywQaksFW1ikSAoMCgmjDrHfZvHPnCRuFtZh",
-      "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dimw0elyh4agbtqe7v2fzp0jcd7b1bcu8kxs0hml7yu1no0z0vd",
-      "permitQueryTableUrl": null,
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmTcqf5RKg4MjgfQKqfExbWspBvbzp7Qy6unhn8sasc3A8",
+      "permitQueryTableUrl": "https://ipfs.filebase.io/ipfs/QmUDW1rVqKN75zGBjGdg3ZY8KbY1JFQSxWGtZX9PmW2bt9",
       "placesTableUrl": null,
-      "updatedAt": "2026-09-12T15:39:00.000Z"
+      "updatedAt": "2026-09-16T18:28:52.486Z"
     },
     {
       "countyKey": "miami-dade",
@@ -140,10 +140,10 @@
       "status": "published",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dlm72r495ei7507h3yl4tw4olszh2ppas8roxrbg2ccko84s8kv",
       "queryTableCid": "QmPxigjpuUN3mn5HivjDmo2eWSU13DVqomgf4E4pTEU9Fm",
-      "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5digt2el7njthtxpgk40887nhi81hwnlo9zpe19yrbbaml0uo2ad",
-      "permitQueryTableUrl": null,
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmQqSUhfYDHzFGbhzD8FT7omVHbFKaFC5QmbCLov31YJJK",
+      "permitQueryTableUrl": "https://ipfs.filebase.io/ipfs/QmQEDGf3em7KEvnKjGjVWYQ7z6R4xiwiQmvARJuiSc9jb6",
       "placesTableUrl": null,
-      "updatedAt": "2026-09-12T14:40:00.000Z"
+      "updatedAt": "2026-09-16T18:28:51.550Z"
     },
     {
       "countyKey": "pinellas",
@@ -166,10 +166,10 @@
       "status": "published",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dj7acu8xg9ugfk670m8b185q4h7pz2gp8cv3mos15ftb4yz6w7o",
       "queryTableCid": "QmV7nzNj2EkFjtcjzJyA1cyp5nEwrDd2fGUPBdgmNsTdBS",
-      "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5diaoycedqekfs0osktwx8py1h8s7h0gspga18rksi3kumrs52nq/",
-      "permitQueryTableUrl": null,
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmTdoimrUQtAsf2a5VVDjadRLmSp8MFiMZtKUMXEU62Yzf",
+      "permitQueryTableUrl": "https://ipfs.filebase.io/ipfs/QmWP3ZStJsHBDkGaGim9tx8Kz2GLmLDiFkXddHvTRMMSmc",
       "placesTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5di1ej4dfw5658dz4log0cu9ussp413xgcc5q6ry4datziq5vi63/polk/places-table.parquet",
-      "updatedAt": "2026-09-12T15:55:56.000Z"
+      "updatedAt": "2026-09-16T18:28:50.950Z"
     },
     {
       "countyKey": "rock-island",

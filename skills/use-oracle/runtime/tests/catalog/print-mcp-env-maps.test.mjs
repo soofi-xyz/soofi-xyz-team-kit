@@ -122,6 +122,8 @@ describe("print-mcp-env-maps", () => {
       hillsborough: catalog.counties.find(
         (c) => c.countyKey === "hillsborough",
       ).permitQueryTableUrl,
+      lee: catalog.counties.find((c) => c.countyKey === "lee")
+        .permitQueryTableUrl,
       "miami-dade": catalog.counties.find(
         (c) => c.countyKey === "miami-dade",
       ).permitQueryTableUrl,
@@ -131,7 +133,11 @@ describe("print-mcp-env-maps", () => {
         .permitQueryTableUrl,
       osceola: catalog.counties.find((c) => c.countyKey === "osceola")
         .permitQueryTableUrl,
+      pasco: catalog.counties.find((c) => c.countyKey === "pasco")
+        .permitQueryTableUrl,
       pinellas: catalog.counties.find((c) => c.countyKey === "pinellas")
+        .permitQueryTableUrl,
+      polk: catalog.counties.find((c) => c.countyKey === "polk")
         .permitQueryTableUrl,
       "rock-island": catalog.counties.find((c) => c.countyKey === "rock-island")
         .permitQueryTableUrl,
