@@ -1,4 +1,7 @@
 import { createHash } from "node:crypto";
+import { reconcileRoofAgeBatch } from "../roof-age/integration.ts";
+import { productionRoofAgeProfile } from "../roof-age/production-profile.ts";
+import { createPostgresRoofAgeStore } from "../roof-age/postgres-store.mjs";
 
 const REQUIRED_COLUMNS = Object.freeze({
   properties: Object.freeze({
@@ -20,6 +23,7 @@ const REQUIRED_COLUMNS = Object.freeze({
     application_received_date: "date",
     permit_issue_date: "date",
     permit_close_date: "date",
+    completion_date: "date",
     fee: "numeric",
     estimated_job_value: "numeric",
     schema_version: "text",
@@ -121,7 +125,7 @@ export const PRIVATE_LOAD_SQL = Object.freeze({
       property_id, parcel_id, contractor_company_id, request_identifier,
       permit_number, improvement_type, improvement_status,
       improvement_action, application_received_date, permit_issue_date,
-      permit_close_date, fee, estimated_job_value, schema_version, source,
+      permit_close_date, completion_date, fee, estimated_job_value, schema_version, source,
       source_url, record_type, source_status, record_status, opened_date,
       expiration_date, work_location, parcel_identifier,
       property_match_method, property_match_confidence, description,
@@ -129,8 +133,8 @@ export const PRIVATE_LOAD_SQL = Object.freeze({
       source_record_hash, source_artifact_uri
     ) VALUES (
       $1,$2,NULL,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,
-      $17,$18,$19,$20,$21,$22,'exact_folio','exact',$23,$24::jsonb,
-      $25::jsonb,$26,$27,$28,$29
+      $17,$18,$19,$20,$21,$22,$23,'exact_folio','exact',$24,$25::jsonb,
+      $26::jsonb,$27,$28,$29,$30
     )
     ON CONFLICT (source_system, source_record_key) DO UPDATE SET
       property_id=EXCLUDED.property_id,
@@ -143,6 +147,7 @@ export const PRIVATE_LOAD_SQL = Object.freeze({
       application_received_date=EXCLUDED.application_received_date,
       permit_issue_date=EXCLUDED.permit_issue_date,
       permit_close_date=EXCLUDED.permit_close_date,
+      completion_date=EXCLUDED.completion_date,
       fee=EXCLUDED.fee,
       estimated_job_value=EXCLUDED.estimated_job_value,
       schema_version=EXCLUDED.schema_version,
@@ -390,7 +395,15 @@ export async function loadTylerPrivateDatabase({
   bundle,
   store,
   expectedScope,
+  asOfDate,
+  historicalCoverage = {
+    state: "unknown",
+    caveats: ["history_unknown"],
+  },
 }) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(asOfDate ?? "")) {
+    throw new Error("Permit database load requires an explicit roof-age asOfDate");
+  }
   if (expectedScope) {
     assertPrivatePermitBundle(bundle, expectedScope);
   } else {
@@ -469,11 +482,28 @@ export async function loadTylerPrivateDatabase({
       await store.upsertContact(contact, parentId);
     }
     const readBack = await verifyTylerPrivateLoad({ bundle, store });
+    const roofAgeRecords = await store.readRoofAgeRecords({
+      propertyIds: [...parents.values()].map((parent) => parent.propertyId),
+      limit: parents.size,
+      forUpdate: true,
+    });
+    const roofAgeReconciliation = reconcileRoofAgeBatch(roofAgeRecords, {
+      asOfDate,
+      historicalCoverage,
+      profile: productionRoofAgeProfile,
+    });
+    const roofAgeRowsWritten = await store.writeRoofAgeUpdates(
+      roofAgeReconciliation.plans,
+    );
     await store.commit();
     transactionStarted = false;
     return {
       ...readBack,
       linkedPropertyCount: parents.size,
+      roofAge: {
+        ...roofAgeReconciliation.summary,
+        rowsWritten: roofAgeRowsWritten,
+      },
     };
   } catch (error) {
     if (transactionStarted) await store.rollback();
@@ -520,6 +550,7 @@ function filterIdentityRows(rows, identities) {
 }
 
 export function createPostgresTylerPrivateStore(client) {
+  const roofAgeStore = createPostgresRoofAgeStore(client);
   async function queryIdentityRows(tableName, columns, identities) {
     if (identities.length === 0) return [];
     const sourceSystems = [
@@ -545,10 +576,12 @@ export function createPostgresTylerPrivateStore(client) {
   }
 
   return {
+    ...roofAgeStore,
     begin: () => client.query("BEGIN"),
     commit: () => client.query("COMMIT"),
     rollback: () => client.query("ROLLBACK"),
     async validateSchema() {
+      await roofAgeStore.validateSchema();
       const tableNames = Object.keys(REQUIRED_COLUMNS);
       const columnsResult = await client.query(
         `/* tyler-private:validate-columns */
@@ -679,6 +712,7 @@ export function createPostgresTylerPrivateStore(client) {
         record.application_received_date,
         record.permit_issue_date,
         record.permit_close_date,
+        record.completion_date,
         record.fee,
         record.estimated_job_value,
         record.schemaVersion,

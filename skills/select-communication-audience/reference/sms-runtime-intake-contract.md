@@ -15,6 +15,48 @@ The runtime should not recreate hard suppressions for:
 
 If those rows still appear in runtime input, fix `filter` instead of duplicating the logic downstream.
 
+## Invoke the correct Filter rules
+
+Use `gallade` for Filter/Rules changes and operations. Read the
+[batch contract](../../build-rules-product/reference/implementation/batch-contract.md) and
+[rule selection contract](../../build-rules-product/reference/implementation/rules-and-queries.md).
+
+Keep the two decisions separate:
+
+- `candidate_scopes: ["phone"]` selects phone candidates used by SMS.
+- `rule_context` selects the SMS rules from the actual active Lexicon catalog.
+  Omitting context selects the default `phone` ruleset; phone candidates alone
+  do not select SMS suppression rules.
+
+Resolve required consumer/campaign/lane context values from the target catalog
+and register a stable `rule_context.consumer` with the capacity controller. Use
+this illustrative shape only after replacing the example consumer and verifying
+the catalog's channel value:
+
+```json
+{
+  "input_s3_uri": "s3://tenant-input/sms/",
+  "rule_context": { "consumer": "example-sms-consumer", "channel": "SMS" },
+  "candidate_scopes": ["phone"],
+  "save_rules_reports": true
+}
+```
+
+Use report mode to establish suppression evidence: default filter-mode counts
+combine excluded and graph-missing input debts and omit per-rule explanations.
+An explicit `rule_s3_uris` subset bypasses catalog selection; context does not
+automatically add SMS suppressions to that subset. Verify its actual rule content.
+
+For email handoffs, select email rules and `candidate_scopes: ["email"]`, preserving
+`eligible_email_candidates` metadata. Selecting both `phone` and `email` uses AND
+semantics. Run separate executions for an email OR SMS audience, then define the
+downstream union/deduplication policy explicitly.
+
+Keep `run_eligibility_ingest` unset/false for SMS, email and campaign runs. It is
+reserved for the intended daily phone-call eligibility producer. Verify live
+Lexicon suppression cases before declaring any channel ready; this schema alone
+does not establish deployed rule coverage.
+
 ## Runtime Entrypoint
 
 The current SMS runtime should accept:
@@ -34,6 +76,10 @@ Required debt fields:
 - `phone_numbers`
 
 Common optional debt fields:
+
+Treat these as downstream-compatible optional fields. Verify what the current
+Filter projection actually supplies before requiring them; do not promise that
+all communication-history fields are emitted by Filter.
 
 - `first_name`
 - `last_name`

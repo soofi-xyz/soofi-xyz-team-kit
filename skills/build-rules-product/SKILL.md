@@ -1,33 +1,48 @@
 ---
 name: build-rules-product
-description: "Implementing or changing the Rules product from its PRD — batch decisioning, rule contracts, population outputs, audit reports, metrics. Read reference/PRD.md first."
+description: "Designing, integrating, or operating a generic Rule Filter product — entity-selection queries, predicates, candidates, projections, batch/direct evaluation, snapshots, reports, and capacity."
 disable-model-invocation: true
 ---
 
 # Build Rules Product
 
-This skill is intentionally thin. Use it as a loader for [`reference/PRD.md`](./reference/PRD.md), not as a requirements copy.
+Use `gallade` as the Rule Filter owner. Require a query selecting the entities to
+evaluate, then apply governed rule artifacts and return passing entities with
+requested metadata. Use Debt only as an example. Keep specific business-rule
+definitions, counts and campaign policies outside these generic references.
 
-## Required Reading
+Start with [the product index](reference/PRD.md). Preserve this skill path for
+existing callers; load implementation references only when the actual service's
+contracts or code are relevant.
 
-1. Read [`reference/PRD.md`](./reference/PRD.md) before planning or coding.
-2. Read [`../apply-engineering-guidelines/SKILL.md`](../apply-engineering-guidelines/SKILL.md) for Golden Path constraints.
-3. Read Persist, lexicon, batch workflow, and metrics skills whenever Rules work touches graph-read contracts, ruleset definitions, Glue preparation, output datasets, or CloudWatch metric registration.
+## Reference map
 
-## Use With Plugin Agents
+| Task | Read |
+| --- | --- |
+| Generic purpose, ownership, reuse and routing | [Product and boundaries](reference/product-and-boundaries.md) |
+| Required population query, identities, bindings and input provenance | [Entity selection](reference/entity-selection.md) |
+| Predicate scopes, ruleset composition, compiler and time | [Rules and queries](reference/rules-and-queries.md) |
+| Source mappings, relationships, immutable facts and versions | [Graph model](reference/graph-model.md) |
+| Batch input/output, projection and counts | [Batch contract](reference/batch-contract.md) |
+| Direct evaluation and cache/latency semantics | [Single entity](reference/single-entity.md) |
+| Materialization, refresh, readiness and leases | [Entity universe](reference/entity-universe.md) |
+| Architecture, admission, retries, writeback and deployment | [Execution and operations](reference/execution-and-operations.md) |
+| Query optimization, measured timing and solver handoff | [Performance and consumers](reference/performance-and-consumers.md) |
+| Worked report example, tests and completion evidence | [Verification](reference/verification.md) |
+| Existing Debt adapter: exact payloads, SSM, runtime and constraints | [Implementation index](reference/implementation/PRD.md) |
+| Existing service's remaining work, including generic entity selection | [Implementation gaps](reference/implementation/known-gaps.md) |
 
-- Use `conkeldurr` first for platform product classification, existing-deployment checks, and build-vs-integrate decisions.
-- Use `machamp` for Step Functions, Glue Python Shell preparation jobs, batch processing, cost gates, throttling, idempotency, and workflow verification.
-- Use `porygon` when Rules work changes metric definitions, reconciliation, or dashboard-facing output semantics.
-- Use `regigigas` only when Rules must be packaged, released, subscribed, or deployed through the marketplace ecosystem.
+## Working rules
 
-## Implementation Rules
-
-- Treat the PRD as the single source of truth for workflow inputs, rule contracts, Persist query contracts, output artifact shapes, resource shapes, IAM scopes, env vars, metrics, error tags, and verification.
-- Do not implement from this `SKILL.md` alone.
-- For an existing Rules deployment, integrate through the PRD's Step Functions and S3 output contracts instead of provisioning a duplicate product.
-- If any old skill or rule file conflicts with the PRD, the PRD wins; update stale guidance instead of layering compatibility shims.
-
-## Expected Output
-
-Return the product fit, existing-vs-new deployment verdict, PRD sections used, files/stacks/contracts to change, companion agents/skills loaded, and the PRD verification path.
+1. Separate generic product requirements from deployed capabilities. The current
+   Filter service is Debt-rooted; it does not accept arbitrary entity selectors.
+2. Define selection, evaluation and projection separately. Require selector
+   identity even for reused materializations; preserve legacy inputs during migration.
+3. Pin source/model/artifact versions and environment before changing behavior.
+   Keep unknown source facts or partial execution distinct from failed predicates.
+4. Follow [engineering guidelines](../apply-engineering-guidelines/SKILL.md) for
+   implementation. Reuse discovered infrastructure and public data interfaces.
+5. Use Xatu/Oranguru for communication handoffs, Abra for solvers, Machamp for
+   workflows, Porygon for metrics, Conkeldurr for Persist/Lexicon changes and
+   Regigigas for distribution. Link their existing contracts rather than copying
+   consumer-specific behavior into this product.

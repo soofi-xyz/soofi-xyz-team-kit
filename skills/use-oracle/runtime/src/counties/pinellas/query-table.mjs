@@ -20,6 +20,10 @@
 import { createHash } from "node:crypto";
 import { mintSitusAddressIdentity } from "../../core/address-signature.mjs";
 import { parseUnnormalizedAddress, toInteger, toNumber, toText } from "../../core/query-table.mjs";
+import {
+  ROOF_AGE_QUERY_TABLE_SCHEMA_FIELDS,
+  roofAgeQueryFields,
+} from "../../roof-age/integration.ts";
 
 export const SOURCE_SYSTEM = "pinellas_appraiser";
 export const COUNTY_KEY = "pinellas";
@@ -169,8 +173,10 @@ export function mapTransformedFilesToQueryTableRow({ strap, files, seedRow }) {
     lot_area_sqft: lotAreaSqft,
     exterior_wall_material: toText(structure.exterior_wall_material_primary) ?? toText(structure.exterior_wall_material),
     roof_covering_material: toText(structure.roof_covering_material),
+    ...roofAgeQueryFields(structure),
     property_type: toText(property.property_type),
     property_usage_type: toText(property.property_usage_type),
+    ownership_estate_type: toText(property.ownership_estate_type),
     built_year: toInteger(property.property_structure_built_year) ?? toInteger(buildingLayout.built_year),
     livable_floor_area: toNumber(property.livable_floor_area) ?? toNumber(buildingLayout.livable_area_sq_ft),
     total_area: toNumber(property.total_area) ?? toNumber(buildingLayout.total_area_sq_ft),
@@ -224,8 +230,10 @@ export const QUERY_TABLE_SCHEMA_FIELDS = Object.freeze({
   lot_area_sqft: { type: "DOUBLE", optional: true },
   exterior_wall_material: { type: "UTF8", optional: true },
   roof_covering_material: { type: "UTF8", optional: true },
+  ...ROOF_AGE_QUERY_TABLE_SCHEMA_FIELDS,
   property_type: { type: "UTF8", optional: true },
   property_usage_type: { type: "UTF8", optional: true },
+  ownership_estate_type: { type: "UTF8", optional: true },
   built_year: { type: "INT64", optional: true },
   livable_floor_area: { type: "DOUBLE", optional: true },
   total_area: { type: "DOUBLE", optional: true },

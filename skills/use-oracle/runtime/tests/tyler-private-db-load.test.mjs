@@ -150,6 +150,23 @@ function sampleBundle() {
       sourcePayload: {},
     })),
   ];
+  for (const permit of permits) {
+    Object.assign(permit, {
+      improvement_type: "Mechanical",
+      improvement_status: "Issued",
+      improvement_action: null,
+      application_received_date: "2023-01-01",
+      permit_issue_date: "2023-01-10",
+      permit_close_date: null,
+      completion_date: null,
+      sourcePayload: {},
+    });
+  }
+  Object.assign(permits[0], {
+    improvement_type: "Roof Upgrade",
+    improvement_status: "Complete",
+    permit_close_date: "2023-11-01",
+  });
   return {
     manifest: { countyKey: "broward", permitCount: 6 },
     permits,
@@ -181,6 +198,34 @@ class MemoryStore {
         },
       ],
     ]);
+    this.structures = new Map([
+      [
+        "property-a",
+        {
+          propertyId: "property-a",
+          structureId: "structure-a",
+          sourceSystem: "broward_appraiser",
+          sourceRecordId: "parcel-a",
+          builtYear: 2000,
+          roofDate: null,
+          roofAgeYears: null,
+          sourcePayload: {},
+        },
+      ],
+      [
+        "property-b",
+        {
+          propertyId: "property-b",
+          structureId: "structure-b",
+          sourceSystem: "broward_appraiser",
+          sourceRecordId: "parcel-b",
+          builtYear: 1990,
+          roofDate: null,
+          roofAgeYears: null,
+          sourcePayload: {},
+        },
+      ],
+    ]);
     this.commits = 0;
     this.rollbacks = 0;
   }
@@ -189,6 +234,7 @@ class MemoryStore {
     this.snapshot = {
       permits: new Map(this.permits),
       contacts: new Map(this.contacts),
+      structures: structuredClone(this.structures),
     };
   }
 
@@ -201,6 +247,7 @@ class MemoryStore {
     this.rollbacks += 1;
     this.permits = this.snapshot.permits;
     this.contacts = this.snapshot.contacts;
+    this.structures = this.snapshot.structures;
     this.snapshot = null;
   }
 
@@ -241,6 +288,7 @@ class MemoryStore {
       sourceSystem: record.source_system,
       sourceRecordKey: record.sourceRecordId,
       contractorCompanyId: existing?.contractorCompanyId ?? null,
+      record: structuredClone(record),
     };
     this.permits.set(key, row);
     return row;
@@ -286,16 +334,57 @@ class MemoryStore {
   readContacts(identities) {
     return this.findContacts(identities);
   }
+
+  async readRoofAgeRecords({ propertyIds }) {
+    return propertyIds.map((propertyId) => ({
+      ...structuredClone(this.structures.get(propertyId)),
+      permits: [...this.permits.values()]
+        .filter((permit) => permit.propertyId === propertyId)
+        .map((permit) => ({
+          sourceSystem: permit.sourceSystem,
+          sourceRecordId: permit.sourceRecordKey,
+          improvementStatus: permit.record.improvement_status,
+          improvementType: permit.record.improvement_type,
+          completionDate: permit.record.completion_date,
+          closeDate: permit.record.permit_close_date,
+          applicationDate: permit.record.application_received_date,
+          issueDate: permit.record.permit_issue_date,
+          sourcePayload: permit.record.sourcePayload,
+        })),
+    }));
+  }
+
+  async writeRoofAgeUpdates(plans) {
+    let updated = 0;
+    for (const plan of plans) {
+      if (!plan.changed) continue;
+      const structure = this.structures.get(plan.propertyId);
+      structure.roofDate = plan.after.roofDate;
+      structure.roofAgeYears = plan.after.roofAgeYears;
+      structure.sourcePayload.roof_age_lineage = plan.after.lineage;
+      updated += 1;
+    }
+    return updated;
+  }
 }
 
 describe("Tyler private database loader", () => {
   it("loads every permit and contact and reruns idempotently", async () => {
     const bundle = sampleBundle();
     const store = new MemoryStore();
-    expect(await loadTylerPrivateDatabase({ bundle, store })).toEqual({
+    expect(await loadTylerPrivateDatabase({
+      bundle,
+      store,
+      asOfDate: "2026-09-14",
+    })).toMatchObject({
       permitCount: 6,
       contractorCount: 7,
       linkedPropertyCount: 2,
+      roofAge: {
+        permitUpdatedValues: 1,
+        constructionYearDefaults: 1,
+        rowsWritten: 2,
+      },
     });
     expect(store.permits.size).toBe(6);
     expect(store.contacts.size).toBe(7);
@@ -312,10 +401,15 @@ describe("Tyler private database loader", () => {
         (row) => row.companyId === null,
       ),
     ).toBe(true);
-    expect(await loadTylerPrivateDatabase({ bundle, store })).toEqual({
+    expect(await loadTylerPrivateDatabase({
+      bundle,
+      store,
+      asOfDate: "2026-09-14",
+    })).toMatchObject({
       permitCount: 6,
       contractorCount: 7,
       linkedPropertyCount: 2,
+      roofAge: { rowsWritten: 0 },
     });
     expect(store.permits.size).toBe(6);
     expect(store.contacts.size).toBe(7);
@@ -332,7 +426,11 @@ describe("Tyler private database loader", () => {
       new MemoryStore({ omitParent: "494026050080" }),
     ]) {
       await expect(
-        loadTylerPrivateDatabase({ bundle, store }),
+        loadTylerPrivateDatabase({
+          bundle,
+          store,
+          asOfDate: "2026-09-14",
+        }),
       ).rejects.toThrow(/schema mismatch|No complete Broward appraisal parent/);
       expect(store.permits.size).toBe(0);
       expect(store.contacts.size).toBe(0);
@@ -417,7 +515,7 @@ describe("Tyler private database loader", () => {
       },
     });
     await expect(store.validateSchema()).rejects.toThrow(
-      /Target schema mismatch/,
+      /target schema is missing|Target schema mismatch/i,
     );
     expect(calls[0].sql).toMatch(/information_schema\.columns/);
   });

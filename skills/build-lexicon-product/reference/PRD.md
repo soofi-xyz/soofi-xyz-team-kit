@@ -350,7 +350,7 @@ Rule definition:
 
 The `.gremlin` file stores the executable query text. The optional `.sql` file stores source-system explanation or extraction logic. Markdown notes under `rulesets/docs/` remain source documentation and are not part of the deployable ruleset prefix.
 
-Rules currently consumes the catalog item with `id = "phone"` unless explicit `rule_s3_uris` are supplied. SMS rules are published by Lexicon but not automatically used by Rules until a consumer explicitly selects them.
+The existing Filter adapter selects the default `phone` catalog item only when rule context is absent. Context can select multiple matching manifests; explicit `rule_s3_uris` bypass catalog selection. Follow the [current Rules selection contract](../../build-rules-product/reference/implementation/rules-and-queries.md#selection-semantics) for precedence, matching and compatibility.
 
 ### 3.4 CloudWatch metric registry
 
@@ -378,7 +378,32 @@ interprose/
     `-- debt_status_changed.sql
 ```
 
-Transform SQL files are explanatory and reusable source assets. They are not executed by Lexicon; data pipelines or Translate-owned jobs decide when and how to execute them.
+Publish SQL files as executable configuration consumed by Transform.
+Lexicon owns their source, vocabulary and S3 publication; Transform resolves
+the registered mapping, reads the SQL objects and executes them with
+`spark.sql()` against typed temp views in its Python/PySpark Glue job.
+Keep source joins, predicates, identifier expressions and typed projections in
+the SQL artifacts. Coordinate generic execution-engine changes with `kecleon`
+using the [Transform implementation PRD](../../build-transform-product/reference/PRD.md).
+Lexicon itself does not execute these queries; preserve any separately verified
+consumers of the same artifacts.
+
+#### Generic Transform registration (target extension)
+
+Extend configuration publication for Transform's explicit `from`/`to` contract:
+publish named/versioned language schema references and enabled directional
+`spark-sql` mapping manifests for arbitrary registered pairs. Keep language
+identity independent of Parquet/JSONL/CSV encoding and tabular/graph serialization.
+Lexicon owns configuration; it is not the required target language of every pair.
+
+Use the [Transform registration contract](../../build-transform-product/reference/languages-and-mappings.md)
+for schemas, SQL bindings, version/digest validation and the proposed
+`/lexicon/transform-catalog-uri` publication. This generic pointer/catalog is a
+new requirement, not one of the verified existing SSM parameters. Reuse external
+language identities through their public registry interfaces. Retain existing
+published artifacts for compatible consumers while publishing the new catalog.
+For graph targets use the explicit [graph mapping format](../../build-transform-product/reference/graph-mappings.md)
+to bind vertex IDs, edge IDs/endpoints, labels and properties.
 
 ### 3.6 Release metadata
 
@@ -423,7 +448,7 @@ Candidate validation uses `candidate_lexicon_s3_uri`. Persist accepts candidate 
 
 ### 4.2 Rules
 
-Rules consumes `/lexicon/rulesets-uri`. When workflow input omits `rule_s3_uris`, Rules reads `<rulesets-uri>/index.json`, selects the `phone` catalog item, loads that manifest, sorts rule entries by `order`, and fetches each rule definition and `.gremlin` query.
+Rules consumes `/lexicon/rulesets-uri`. The existing Filter adapter reads the catalog and resolves manifests through its [Rules selection contract](../../build-rules-product/reference/implementation/rules-and-queries.md#selection-semantics), including default selection, context matching, explicit artifact precedence and shared-rule conflict handling. Keep runtime selection semantics in that reference rather than duplicating them here.
 
 Rules never writes back to Lexicon, never mutates ruleset objects, and never reads rules from GitHub at runtime. Explicit `rule_s3_uris` must still point at prefixes containing exactly one rule JSON definition and one `.gremlin` query.
 

@@ -1,15 +1,64 @@
 # HOA and property-management heuristic
 
 Oracle resolves HOA and property management for published query-table rows by reading
-subdivision, looking up a unique Florida Sunbiz company for that subdivision, then
-reading the HOA company's registered-agent / communication company and looking that
-company up in Sunbiz.
+subdivision. When `ownership_estate_type` is Condominium, Cooperative, or Timeshare,
+or when estate is missing, the matcher tries a fail-closed unique match on the
+matching official Florida DBPR CTMH mailing list — never a union of condo + coop +
+timeshare. FeeSimple and Leasehold skip CTMH and use the Sunbiz HOA path only. A
+unique CTMH hit rematches to a unique ACTIVE Sunbiz company for the corporate record
+and registered-agent property manager. After direct ACTIVE legal-name matching, resolve
+an established CTMH association or corporate registered-agent name through statewide
+Sunbiz corporate events, then statewide fictitious names, only when the bridge ends at
+one ACTIVE corporate document number. When CTMH misses or is not unique, the existing
+Sunbiz HOA path still looks up a unique Florida Sunbiz company for that subdivision,
+then reads the HOA company's registered-agent / communication company and resolves that
+company against **all ACTIVE Sunbiz companies**, not only the HOA-marker index.
+Estate type still filters Sunbiz condo vs homeowners candidates.
 
-Use the statewide Sunbiz company dataset. Do not use the ZIP-filtered county extract
-produced by `sunbiz-filter` / `sunbiz-enrich`, because an HOA or manager can be registered
-outside the property's county.
+Use statewide `cordata.zip`, `corevent.zip`, `ficdata.zip`, and `ficevt.zip` extracts.
+Never use the ZIP-filtered county extract produced by `sunbiz-filter` / `sunbiz-enrich`,
+because an HOA, successor, fictitious-name owner, or manager can be registered outside
+the property's county.
 
 This does **not** set `hoa_flag` (Chapter 720 membership stays on `hoa-enrich`).
+
+## Human search vs fail-closed lookup
+
+Humans find associations the matcher misses because they search Sunbiz interactively:
+they try suffixes, browse hits, and pick a favorite. Operators and agents must not
+imitate that. Run **one** fail-closed lookup against statewide ACTIVE extracts.
+
+1. **Strip legal-description noise before Sunbiz.** Use the Orange legal-wrapper
+   parser: drop plat book/page cites and a trailing `LOT` (for example look up
+   `LAKE PLEASANT COVE 68/143 LOT` as `LAKE PLEASANT COVE`). Do not send the raw
+   legal string as the company name.
+2. **Do not invent suffixes.** Do not append `HOA`, `POA`, `Community Association`,
+   `Homeowners Association`, or similar text to a subdivision in order to force a
+   hit. Match only names that already exist on ACTIVE Sunbiz or CTMH records.
+3. **Multiple ACTIVE hits: run the disambiguation ladder.** Apply successor events,
+   nonprofit vs developer filing type, HOA-style legal name, explicit city/county,
+   then an existing CTMH or clerk document on the row. If two or more candidates
+   remain, set `not_unique`. Do not pick a favorite.
+4. **Events and DBA only after a usable name.** Apply `corevent` / `ficdata` /
+   `ficevt` only after CTMH or an ACTIVE Sunbiz HOA (or a corporate registered-agent
+   name) is already established. Do not invent an HOA from events or a fictitious
+   name alone.
+5. **Clerk plat/declaration requires a parcel-linked harvest.** Stamp only a
+   structured `plat_name` or `declaration_name` tied to the exact parcel identifier.
+   Duval's public official-records site (`https://or.duvalclerk.com/`) has no
+   parcel/RE/folio search — do not name-only scrape grantor/grantee or legal text.
+   Keep an empty reviewed JSONL until a custodian extract supplies parcel-linked
+   names.
+6. **Never stamp a person or lawyer as the HOA.** Reject person records,
+   registered-agent designations, attorneys, law firms, and legal services. Do not
+   treat a person registered agent as the association or as a property manager.
+7. **Do not null a filled `hoa_cid` on rematch miss.** When a later subdivision
+   rematch has no HOA, keep the prior HOA stamp and append `_prior_hoa_preserved`
+   (and the matching PM preserve suffix when the manager also misses). Replace a
+   stamp only when a new unique eligible HOA or manager resolves.
+
+Detail for each rule lives in the sections below. Do not improvise a second lookup
+path or a human-choice prompt.
 
 ## Objects and CID stamps
 
@@ -52,6 +101,27 @@ HOA/PM labels from that base county key. Permit profiles do not control HOA/PM
 publication. Never update `oracle-query-table-<county>` or
 `oracle-dataset-coverage-<county>` from this bounded enrichment path: those official
 labels remain reserved for the full county publication.
+
+## Overlay IPNS publisher
+
+Run **one overlay publisher**. Before `hoa-pm-overlay-sync`, a live `hoa-pm-publish`,
+or a live `hoa-pm-property-publish`, refuse if another overlay publish/sync process
+is running (stale shell, leftover agent, or parallel Oracle). The CLI holds a
+single lockfile for that work.
+
+**Never rewind.** Before moving `oracle-query-table-<county>-hoa-pm` or
+`oracle-dataset-coverage-<county>-hoa-pm`, resolve the current live target CID.
+If that name already points at a newer approved receipt than this process is
+applying, **abort**. Do not last-write-wins: that rewound Duval overlay labels
+to prior CIDs after an approved publish.
+
+**This run’s receipt only.** Apply only the byte-bound CID this process just
+produced from the approved artifact bytes. Do not replay an older publish command
+or CID list from a previous chat or shell.
+
+**Overlay-only.** Never move official `oracle-query-table-<county>` or
+`oracle-dataset-coverage-<county>`. At Filebase 100/100 names, move existing
+overlay names only; do not create new IPNS names.
 
 The HOA/PM object bundle is CID-linked from the enriched query table and shares the
 county's existing bucket under the county-scoped `hoa-pm/` prefix. Register the query
@@ -116,7 +186,75 @@ approval for changed bytes. Use `--query-table-only` when another workflow owns
 `objects.jsonl`; it publishes only the query table and coverage and leaves the object
 key untouched.
 
-## Command
+## Clerk plat / official-records fallback
+
+Use appraisal `subdivision` first when it is a clean community name. Use a clerk/official
+records (OR) recorded plat or declaration name only when appraisal `subdivision` is empty,
+is legal-description text, or produces no ACTIVE Sunbiz HOA. Do not use the fallback to
+break an ambiguity from a clean appraisal community name.
+
+The fallback is fail-closed:
+
+- Link the official-record row to the property by the exact county parcel identifier.
+- Accept only a structured `plat_name` from a plat or `declaration_name` from a
+  declaration. Grantor, grantee, attorney, preparer, return-to, owner, trustee, and other
+  party names are never HOA names.
+- Require exactly one normalized recorded name per parcel. Different plat/declaration
+  names remain `clerk_recorded_name_not_unique`.
+- Compare that recorded name only to exact association bases from ACTIVE statewide
+  Sunbiz companies. Do not use substring, edit distance, token score, address, officer,
+  registered-agent person, or ZIP proximity.
+- Stamp only one surviving ACTIVE Sunbiz document number. Zero candidates remain
+  `clerk_recorded_name_not_in_sunbiz`; multiple candidates remain
+  `clerk_sunbiz_not_unique`. If a parsed legal description and clerk name uniquely resolve
+  to different Sunbiz documents, keep `clerk_appraisal_conflicting` and stamp neither.
+  Never invent a company or treat a person as the HOA.
+
+No clerk/OR harvester or clerk extract is bundled. The bounded Duval probe of
+`https://or.duvalclerk.com/` (2026-09-14) reached the public index (HTTP 200, disclaimer
+accepted, no CAPTCHA) but found no parcel/RE/folio search and no `parcel_identifier`,
+`plat_name`, or `declaration_name` result column. Grantor/grantee names and legal-
+description text are not HOA names. Until a custodian extract supplies exact parcel-
+linked plat or declaration names, keep a reviewed empty JSONL (`recordCount` 0) and do
+not invent clerk rows. Other overlay counties stay out of clerk harvest unless a public
+or local clerk source is already specified.
+
+When a reviewed extract exists, retain the exact instrument number/reference, write
+`elephant.clerk-recorded-community-names.v1` outside git, then run:
+
+```bash
+cd skills/use-oracle/runtime
+node bin/elephant-county.mjs hoa-pm-enrich \
+  --county duval \
+  --input-parquet <bounded-duval-query-table.parquet> \
+  --input-coverage <bounded-duval-coverage.json> \
+  --sunbiz-extract <statewide-active-sunbiz-dir> \
+  --clerk-records <duval-recorded-community-names.jsonl> \
+  --clerk-source-manifest <duval-clerk-source-manifest.json> \
+  --output-dir <local-output-dir>
+```
+
+Each JSONL row requires `parcel_identifier`, `recorded_name`, `instrument_type`
+(`plat` or `declaration`), matching `name_kind` (`plat_name` or
+`declaration_name`), `instrument_number`, and `evidence_reference`. The manifest binds
+county, official source URL, exact record count, and SHA-256. Stop after local
+enrichment/tests in this workflow; do not run `hoa-pm-publish` or move any Filebase/IPNS
+overlay label.
+
+## Mandatory subdivision reconciliation
+
+Whenever the base county or identity query table gains or fills `subdivision`, sync the
+existing `<county>-hoa-pm` overlay before enriching it. Never treat an overlay
+`no_subdivision` result as permanent when the official table has non-empty subdivision
+text. Copy only official text into blank overlay rows. Fill a missing `elephant_token`
+from the matching official row or the bounded CSV's canonical token. Match UUID identity
+through `elephant_uuid` or `property_id`, preserve filled overlay values and `hoa_flag`,
+and add the optional UTF-8 `elephant_token` column when the thin overlay lacks it.
+
+Use `--parcel-csv` to add official rows that belong to the bounded parcel slice but are
+missing from the overlay. Without `--official-parquet`, CSV data may only fill tokens on
+unambiguous existing overlay rows; it must not add rows or supply subdivision names. Keep
+all outputs outside git. Run this exact order:
 
 Build the statewide HOA/PM index from the complete expanded quarterly Sunbiz archive and
 the exact subdivision values present in the publication scope:
@@ -135,24 +273,170 @@ once for their registered-agent companies. Do not substitute a ZIP-filtered coun
 
 ```bash
 cd skills/use-oracle/runtime
+node bin/elephant-county.mjs hoa-pm-overlay-sync \
+  --county <county> \
+  --overlay-parquet <current-hoa-pm-query-table.parquet> \
+  --official-parquet <official-or-identity-query-table.parquet> \
+  --parcel-csv <bounded-parcel.csv> \
+  --output-dir <sync-dir>
+
 node bin/elephant-county.mjs hoa-pm-enrich \
-  --county duval \
-  --input-parquet <query-table.parquet> \
-  --input-coverage <dataset-coverage.json> \
+  --county <county> \
+  --input-parquet <sync-dir>/query-table.parquet \
+  --input-coverage <current-hoa-pm-dataset-coverage.json> \
   --sunbiz-extract <sunbiz-extract-dir> \
+  [--sunbiz-pm-extract <full-active-sunbiz-dir>] \
+  --ctmh-extract <ctmh-extract-dir> \
+  [--sunbiz-events-extract <expanded-corevent-dir>] \
+  [--sunbiz-fictitious-extract <expanded-ficdata-and-ficevt-dir>] \
   --output-dir <output-dir>
+
+node bin/elephant-county.mjs hoa-pm-publish \
+  --county <county> \
+  --input <output-dir> \
+  --query-table-only \
+  --dry-run
 ```
 
+Stop after the dry run. Never write `<county>/query-table.parquet`, move the official
+`oracle-query-table-<county>` IPNS name, or remove `--dry-run` without the separate durable
+human approval. Live overlay IPNS moves stay overlay-only, one publisher, this run’s
+receipt CID, and abort rather than rewind a newer live pointer.
+
 `hoa_pm_status` is Donphan's miss channel. Misses stay explicit: `no_subdivision`,
-`no_sunbiz_hoa`, `not_unique`, `no_agent_company`, `agent_not_in_sunbiz`. Do not invent
-an HOA from subdivision name alone.
+`no_sunbiz_hoa`, `no_ctmh_condo`, `no_ctmh_coop`, `no_ctmh_timeshare`, `not_unique`,
+`ctmh_not_in_sunbiz`, `sunbiz_not_unique`, `no_agent_company`, `agent_not_in_sunbiz`.
+Do not invent an HOA from subdivision name alone.
+
+Do not clear a filled overlay HOA or property manager when a later subdivision rematch
+misses. This includes Orange legal-description values in `LOT` / plat-book form. Preserve
+the prior HOA fields as one group when the new resolution has no HOA, and preserve prior
+property-manager fields as one group when the new resolution has no manager. Append
+`_prior_hoa_preserved`, `_prior_pm_preserved`, or `_prior_hoa_pm_preserved` to the new miss
+status so the retained stamp is explicit. When a new unique eligible HOA or manager is
+resolved, replace the prior corresponding stamp. Keep null fields null when there is no
+prior stamp to preserve.
+
+## DBPR CTMH condo identity
+
+Condo associations come from the official Florida DBPR CTMH public-records page, not
+from Sunbiz companies named `CONDOMINIUM ASSOCIATION`:
+
+https://www2.myfloridalicense.com/condos-timeshares-mobile-homes/public-records/#1506105905579-f9864587-f7ca
+
+Official extracts (quote/comma CSV with a header row; refreshed 2026-09-05):
+
+| File | URL | Bytes | SHA-256 | Data rows |
+| --- | --- | ---: | --- | ---: |
+| `Condo_NF.csv` | `https://www2.myfloridalicense.com/sto/file_download/extracts/Condo_NF.csv` | 558134 | `e4cb66d64fa427b007587135b9855e4e3ee9ccd6e19dcde23fc4844eea9796ee` | 2142 |
+| `condo_CE.csv` | `https://www2.myfloridalicense.com/sto/file_download/extracts/condo_CE.csv` | 856903 | `d70f3fedba265b14d8c3fa80819ae2835240a9786623723aff5b8c1d3f29eb33` | 3311 |
+| `Condo_CW.csv` | `https://www2.myfloridalicense.com/sto/file_download/extracts/Condo_CW.csv` | 2439800 | `3254e5dc51db17367f810556fc548385ba3e402d970ca4c351b77e67bcb9a233` | 9344 |
+| `Condo_MD.csv` | `https://www2.myfloridalicense.com/sto/file_download/extracts/Condo_MD.csv` | 1434926 | `da5f3914a68efa1350c46c5039c29dad0708fd99caa9811fb278703bf59b2811` | 5820 |
+| `condo_PB.csv` | `https://www2.myfloridalicense.com/sto/file_download/extracts/condo_PB.csv` | 1941692 | `7deb1ceb5a718a55bf62843d0b519da0065f34ef3eabb9480fd5a5af163bc1f3` | 7352 |
+| `coopmailing.csv` | `https://www2.myfloridalicense.com/sto/file_download/extracts/coopmailing.csv` | 191918 | `4bdf1aaf8f127f6cc8f99b7fd5cc99da9fb05f39c51c41dbd062cc3e49a31e1f` | 760 |
+| `tsmailing.csv` | `https://www2.myfloridalicense.com/sto/file_download/extracts/tsmailing.csv` | 190928 | `d79b2a76192724b7dfe152730f2eaded161160848dd3f3b337edf64a76c1c5a2` | 729 |
+| `multitsmailing.csv` | `https://www2.myfloridalicense.com/sto/file_download/extracts/multitsmailing.csv` | 9985 | `340cb4b8631c879bdda37b10e8e383733bf40990e550adebf132db2226ea1434` | 41 |
+
+The same public-records page also publishes conversion, notice-of-intended-conversion,
+mobile-home park, yacht-broker, payment-history, and summary extracts. Do not index
+those for HOA identity: `condo_conv.csv` is a 100% subset of the regional condo
+mailing lists; `noic.csv` names developers, not managing entities; `mhmailing.csv`
+names parks and owners, not associations; payment-history and summary reports do
+not uniquely identify an association the same way.
+
+Condo columns: `Project Number`, `File Number`, `Condo Name`, `County`,
+`Street City State Zip`, `Units`, `Recorded Date`, `Primary Status`,
+`Secondary Status`, `Managing Entity Number`, `Managing Entity Name`, plus managing-entity
+address fields. Unique match is fail-closed on the intersection of subdivision /
+legal-text community keys with `Condo Name` and `Managing Entity Name`, scoped to
+**that parcel’s county**. Multiple buildings that share one managing-entity number
+collapse to one association. A CTMH row with no county cannot match a parcel whose
+county is known and cannot break a tie. A statewide-unique hit in a different county
+is a miss, not a steal. Two in-county hits stay `not_unique`. Never
+fuzzy / edit-distance.
+
+CTMH is the **identity** source for condos. Sunbiz is the **corporate / PM** source
+for that same entity. Join fail-closed: exactly one ACTIVE Sunbiz company whose full
+normalized legal name or association base equals the CTMH managing-entity / project
+name (THE/INC stripped; `CONDOMINIUM ASSOCIATION` / `CONDO ASSOC` suffix stripped).
+Prefer HOA/condo-marker companies when more than one name matches. A unique join
+stamps `hoa_sunbiz_document_number` and then runs the existing registered-agent
+**company** → PM lookup. If CTMH is unique but Sunbiz is 0 or >1, **keep the CTMH
+HOA**, leave `hoa_sunbiz_document_number` null, and set `ctmh_not_in_sunbiz` or
+`sunbiz_not_unique`. Do not invent a document number from the CTMH project number.
+
+`Managing Entity Name` can fill PM when it uniquely matches a **different** ACTIVE
+Sunbiz company (typical when the registered agent is a person). If the managing
+entity is the association itself, it is not stamped as PM.
+
+For rows that already have an HOA (CTMH or Sunbiz), look up a company registered
+agent by exact legal name in the full ACTIVE Sunbiz company set — not only the
+HOA-marker index. If that exact lookup misses, apply the event and fictitious-name
+bridges below in order. Person agents stay `no_agent_company`. Do not invent PMs.
+
+## Sunbiz corporate-event and fictitious-name bridges
+
+Use the official statewide quarterly files from the Florida Division of Corporations:
+`corevent.zip` under `doc/quarterly/cor`, then `ficdata.zip` and `ficevt.zip` under
+`doc/quarterly/fic`. Expand them outside git. Use archives already present on the
+operator's disk; do not automatically download these large files. Never commit an
+archive or expanded record.
+
+Apply these bridges only after CTMH or an ACTIVE Sunbiz HOA has established the
+association or supplied a corporate registered-agent name. Never use a corporate event
+or fictitious-name registration by itself to invent an HOA.
+
+1. Match the established name exactly after punctuation/case folding against
+   `COR_EVENT_COR_NAME`.
+2. Accept only name-change, cross-reference-name-change, conversion, or merger rows.
+   Resolve `COR_EVENT_DOC_NUMBER` and `COR_EVENT_CONS_MER_NUMBER` against the complete
+   ACTIVE `cordata` company set. Accept exactly one ACTIVE document number.
+3. If the event bridge has no candidate, match the same established name exactly against
+   an ACTIVE `ficdata` fictitious-name registration. Read `ficevt` as the registration's
+   event-history companion. Accept exactly one current owner with owner format `C` and
+   an owner charter/document number that resolves to one ACTIVE `cordata` company.
+4. Fail closed on zero or multiple event targets, multiple ACTIVE registrations,
+   multiple ACTIVE corporate owners, `more than ten owners`, missing owner document
+   numbers, expired/cancelled registrations, or malformed fixed-width rows.
+
+Never fuzzy-match names. Never use address, officer, registered-agent person, FEI, or
+ZIP proximity to break a tie. Never treat a person owner or person registered agent as a
+property manager. Never ZIP-filter any of these statewide identity files.
+
+## Ownership-estate gate
+
+`ownership_estate_type` filters both the CTMH mailing pool and Sunbiz HOA
+candidates. Do not infer estate type from `property_usage_type`, DOR codes, or the
+subdivision string. Do not union condo + coop + timeshare into one pool.
+
+Do not index payment-history, NOIC, yacht, mobile-home, or summary reports.
+Conversion extracts remain optional; they are a 100% subset of the five condo files
+and must collapse to one association when the project number repeats.
+
+| `ownership_estate_type` | Candidate pool |
+| --- | --- |
+| `Condominium` | The five regional condo CSVs only (`Condo_NF`, `condo_CE`, `Condo_CW`, `Condo_MD`, `condo_PB`). |
+| `Cooperative` | `coopmailing.csv` only. |
+| `Timeshare` | `tsmailing.csv` + `multitsmailing.csv` only. |
+| `FeeSimple`, `Leasehold` | No CTMH. Sunbiz HOA path only. |
+| missing / unknown | Unique **condo** first; if no unique hit, unique **coop**; if none, unique **timeshare**. A condo `not_unique` does not fall through. Then rematch a unique association to Sunbiz. If every CTMH pool misses, existing Sunbiz HOA path (estate still filters Sunbiz `CONDOMINIUM ASSOCIATION` vs homeowners-marker companies, including the legal-text condo collision filter). |
+
+Stamp `homeowners_association_type` on the HOA object and overlay row: `Condominium`
+when the estate, CTMH kind, or matched company is a condominium association,
+otherwise `Homeowners` (or `Cooperative` / `Timeshare` when that is the estate or
+CTMH kind). Missing estate does not guess condo from DOR codes. Pinellas already
+maps estate type in the transform and exports it on the query table. Other counties
+stay without the column until they export it; those slices still unique-match CTMH.
 
 ## Deterministic HOA-name normalization
 
 Apply these rules in order. Keep a unique **legacy** match unchanged (original tract-prefix
 and trailing 1–3 digit / UNIT|PHASE|SEC strip plus the original HOA-name markers). Use the
 expanded normalization only when the legacy matcher finds no company. If the legacy matcher
-finds more than one company, keep `not_unique` — do not pick a “better” normalized name.
+finds more than one company, apply the fail-closed disambiguation ladder below. Do not pick
+a “better” normalized name.
+A community name extracted from legal text is an expanded exact-base candidate only — never
+a legacy substring needle.
 
 1. Fold case, punctuation, apostrophes, whitespace, and `&` / `AND`.
 2. Remove a leading 3–6 digit tract code from the subdivision.
@@ -165,14 +449,57 @@ finds more than one company, keep `not_unique` — do not pick a “better” no
    explicit association suffixes: homeowners/homeowner's/homeowners', condominium,
    property owners, community, or civic association; `ASSOCIATION`, `ASSOC`, `ASSN`,
    `POA`, `COA`, or `HOA`.
+6. When `subdivision` is still a parcel legal description, extract a community token
+   (below) and compare it as an exact association base.
 
 Compare the resulting bases exactly. Do not use edit distance, token scores, or another
 fuzzy fallback. Property-owner, community, and civic variants still require exactly one
 ACTIVE candidate.
 
-For statewide collisions, use principal-address county only when the evidence is explicit:
-accept one same-county candidate only when every alternative has an explicit conflicting
-county. Missing geography does not break a tie, so the result remains `not_unique`.
+When `subdivision` is a parcel legal description rather than a community name, first
+extract a community token by stripping only these deterministic legal wrappers:
+
+- leading `LOT`/`LOTS` + numbers, `BLK`/`BLOCK` + id, book/page number pairs, and
+  aliquot heads (`E 1/2 OF`, `ALL OF`)
+- `S/D` / `SUBD` → `SUBDIVISION`
+- trailing plat-book/page/`MB`/`OR`/`REC` cites, trailing `LOT` + number, and a bare
+  trailing `PHASE`/`UNIT`/`SUBDIVISION`/`CONDO`/`CONDOMINIUM`
+
+Strip a bare trailing `LOT` after its preceding plat book/page pair. For example, lookup
+`LAKE PLEASANT COVE 68/143 LOT` as `LAKE PLEASANT COVE`, and lookup
+`ERROL ESTATE UNIT 7 8/133 LOT` as `ERROL ESTATE`. Continue to require exactly one ACTIVE
+Sunbiz association after normalization.
+
+Do not extract from section-township-range (`SEC`/`TWP`/`RGE`), metes-and-bounds
+(`COM`…`FT`), acreage “being part of” lines, or “recorded without legal” notes. A
+single-token extract must be at least 5 letters and is matched by exact association
+base only — never as a Sunbiz substring. An extracted legal token may not bind to a
+unique `CONDOMINIUM ASSOCIATION` unless the subdivision text itself contains `CONDO`
+or `CONDOMINIUM`. Clean community-name subdivisions may still match a unique condo
+association. Fail closed if the extract is empty or not unique.
+
+For two or more otherwise-plausible Sunbiz candidates, apply this ladder in order and stamp
+only when exactly one candidate remains:
+
+1. Collapse candidates onto one ACTIVE successor only when exact `corevent` rename,
+   conversion, or merger evidence maps every applicable name to that one document number.
+2. Prefer Florida not-for-profit or other explicit non-profit filing types over for-profit
+   entities. Skip this step when filing type is missing.
+3. Prefer an exact legal-name role containing `HOMEOWNERS`, `PROPERTY OWNERS`,
+   `CONDOMINIUM`, `COOPERATIVE`, or `COMMUNITY ASSOCIATION`. Do not use edit distance,
+   token similarity, substring ranking, or a “closest” name.
+4. Use principal or mailing city/county only when exactly one candidate matches the
+   parcel's explicit city/county and every alternative has explicit conflicting geography.
+   Missing geography does not break a tie. Do not use a statewide Florida match.
+5. Use one existing CTMH or clerk-declaration Sunbiz document number on the row only when
+   it identifies exactly one surviving candidate. Treat conflicting ladder evidence as
+   unresolved.
+6. Keep `not_unique` when two or more candidates remain.
+
+Reject person records, registered-agent designations, attorneys, law firms, and legal
+services before applying the ladder. Never stamp them as an HOA. Preserve all source
+candidates and the terminal status; do not ask a human to choose and do not invent an
+entity.
 
 Sunbiz can contain duplicate ACTIVE filings for one identical normalized legal name. When
 all otherwise-plausible rows have the same normalized legal name for the same subdivision,

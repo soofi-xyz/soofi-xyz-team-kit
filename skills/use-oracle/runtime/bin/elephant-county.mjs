@@ -24,6 +24,10 @@ import {
   publishPermitFilebase,
 } from "../src/core/filebase.mjs";
 import { publishHoaPmPropertyPages } from "../src/core/hoa-pm-property-publication.mjs";
+import {
+  assertOverlayOnlyIpnsLabels,
+  withOverlayPublisherLock,
+} from "../src/core/hoa-pm-overlay-publisher.mjs";
 import { requireQueryTablePublication } from "../src/core/query-table-publication.mjs";
 import { runReplay } from "../src/core/replay.mjs";
 import {
@@ -44,6 +48,7 @@ import { enrichQueryTableWithSunbiz } from "../src/enrichment/query-table-sunbiz
 import { enrichQueryTableWithHoa } from "../src/enrichment/query-table-hoa.mjs";
 import { enrichQueryTableWithHoaPm } from "../src/enrichment/query-table-hoa-pm.mjs";
 import { buildHoaPmSunbizIndex } from "../src/enrichment/hoa-pm-sunbiz-index.mjs";
+import { syncHoaPmOverlay } from "../src/enrichment/hoa-pm-overlay-sync.mjs";
 import { enrichQueryTableWithAvm } from "../src/enrichment/query-table-avm.mjs";
 import { harvestBbbCategory } from "../src/enrichment/bbb.mjs";
 import { reconcileBbbHarvests } from "../src/enrichment/bbb-reconcile.mjs";
@@ -152,7 +157,7 @@ async function readSeedRows(seedPath) {
 }
 
 /**
- * `elephant-county ingest --county <key> --seed <csv> --html-dir <dir> [--skip-validate] [--live-fetch] [--allow-empty] --output <run-dir>`
+ * `elephant-county ingest --county <key> --seed <csv> --html-dir <dir> [--as-of-date YYYY-MM-DD] [--skip-validate] [--live-fetch] [--allow-empty] --output <run-dir>`
  *
  * Fails closed on live fetch: a missing local HTML file is an error unless
  * `--live-fetch` is explicitly supplied (Global Constraint). Also fails
@@ -172,6 +177,10 @@ async function runIngest(argv) {
     htmlDir: String(flags["html-dir"]),
     outputDir: String(flags.output),
     liveFetch: flags["live-fetch"] === true,
+    asOfDate:
+      typeof flags["as-of-date"] === "string"
+        ? flags["as-of-date"]
+        : new Date().toISOString().slice(0, 10),
   });
   if (flags["skip-validate"] !== true) {
     const validation = await adapter.validateRun(manifest, { allowEmpty: flags["allow-empty"] === true });
@@ -479,11 +488,31 @@ async function runHoaPmEnrichCommand(argv) {
   const flags = parseFlags(argv);
   const countyKey = requireStringFlag(flags, "county");
   const outputDir = requireStringFlag(flags, "output-dir");
+  const ctmhExtract = flags["ctmh-extract"] ?? flags["ctmh-condo"];
   const summary = await enrichQueryTableWithHoaPm({
     countyKey,
     inputParquet: requireStringFlag(flags, "input-parquet"),
     inputCoverage: requireStringFlag(flags, "input-coverage"),
     sunbizExtractDir: requireStringFlag(flags, "sunbiz-extract"),
+    sunbizPmExtractDir:
+      typeof flags["sunbiz-pm-extract"] === "string" ? flags["sunbiz-pm-extract"] : null,
+    ctmhExtractDir: typeof ctmhExtract === "string" ? ctmhExtract : null,
+    sunbizEventsExtractDir:
+      typeof flags["sunbiz-events-extract"] === "string"
+        ? flags["sunbiz-events-extract"]
+        : null,
+    sunbizFictitiousExtractDir:
+      typeof flags["sunbiz-fictitious-extract"] === "string"
+        ? flags["sunbiz-fictitious-extract"]
+        : null,
+    clerkRecordsPath:
+      typeof flags["clerk-records"] === "string"
+        ? flags["clerk-records"]
+        : null,
+    clerkSourceManifestPath:
+      typeof flags["clerk-source-manifest"] === "string"
+        ? flags["clerk-source-manifest"]
+        : null,
     outputParquet: path.join(outputDir, "query-table.parquet"),
     outputCoverage: path.join(outputDir, "dataset-coverage.json"),
     objectsDir: path.join(outputDir, "objects"),
@@ -503,39 +532,75 @@ async function runHoaPmIndexCommand(argv) {
   console.log(JSON.stringify({ event: "hoa_pm_index_complete", summary }, null, 2));
 }
 
+async function runHoaPmOverlaySyncCommand(argv) {
+  const flags = parseFlags(argv);
+  const county = requireStringFlag(flags, "county");
+  const summary = await withOverlayPublisherLock(
+    { county, command: "hoa-pm-overlay-sync" },
+    () =>
+      syncHoaPmOverlay({
+        county,
+        overlayParquet: requireStringFlag(flags, "overlay-parquet"),
+        officialParquet:
+          typeof flags["official-parquet"] === "string"
+            ? flags["official-parquet"]
+            : null,
+        outputDir: requireStringFlag(flags, "output-dir"),
+        parcelCsv:
+          typeof flags["parcel-csv"] === "string" ? flags["parcel-csv"] : null,
+      }),
+  );
+  console.log(JSON.stringify({ event: "hoa_pm_overlay_sync_complete", summary }, null, 2));
+}
+
 async function runHoaPmPublishCommand(argv) {
-  const flags = parseFlags(argv, ["dry-run", "query-table-only"]);
+  const flags = parseFlags(argv, [
+    "dry-run",
+    "query-table-only",
+    "move-existing-ipns-only",
+  ]);
   const countyKey = requireStringFlag(flags, "county");
   const inputDir = requireStringFlag(flags, "input");
+  if (typeof flags["env-file"] === "string") {
+    await loadEnvFile(flags["env-file"], process.env);
+  }
   const publication = requireQueryTablePublication(countyKey);
   const datasetKey = `${countyKey}-hoa-pm`;
-  const result = await publishFilebase(
-    {
-      county: countyKey,
-      parquetPath: path.join(inputDir, "query-table.parquet"),
-      coveragePath: path.join(inputDir, "dataset-coverage.json"),
-      ...(flags["query-table-only"] === true
-        ? {}
-        : {
-            hoaPmObjectsPath: path.join(
-              inputDir,
-              "objects",
-              "hoa-pm-objects.jsonl",
-            ),
-          }),
-      bucket: publication.bucket,
-      queryTableIpnsLabel: `oracle-query-table-${datasetKey}`,
-      coverageIpnsLabel: `oracle-dataset-coverage-${datasetKey}`,
-    },
-    {
+  const artifacts = {
+    county: countyKey,
+    parquetPath: path.join(inputDir, "query-table.parquet"),
+    coveragePath: path.join(inputDir, "dataset-coverage.json"),
+    ...(flags["query-table-only"] === true
+      ? {}
+      : {
+          hoaPmObjectsPath: path.join(
+            inputDir,
+            "objects",
+            "hoa-pm-objects.jsonl",
+          ),
+        }),
+    bucket: publication.bucket,
+    queryTableIpnsLabel: `oracle-query-table-${datasetKey}`,
+    coverageIpnsLabel: `oracle-dataset-coverage-${datasetKey}`,
+  };
+  assertOverlayOnlyIpnsLabels(artifacts);
+  const publish = () =>
+    publishFilebase(artifacts, {
       dryRun: flags["dry-run"] === true,
+      moveExistingIpnsOnly: true,
       approvalManifestPath:
         typeof flags.approve === "string" ? flags.approve : null,
       receiptPath:
         typeof flags.receipt === "string" ? flags.receipt : null,
       env: process.env,
-    },
-  );
+    });
+  const result =
+    flags["dry-run"] === true
+      ? await publish()
+      : await withOverlayPublisherLock(
+          { county: countyKey, command: "hoa-pm-publish" },
+          publish,
+        );
   console.log(JSON.stringify({ event: "hoa_pm_publish_complete", result }, null, 2));
 }
 
@@ -546,18 +611,19 @@ async function runHoaPmPropertyPublishCommand(argv) {
   if (typeof flags["env-file"] === "string") {
     await loadEnvFile(flags["env-file"], process.env);
   }
-  const result = await publishHoaPmPropertyPages(
-    {
-      county: countyKey,
-      parquetPath: requireStringFlag(flags, "input-parquet"),
-      officialParquetPath:
-        typeof flags["official-parquet"] === "string"
-          ? flags["official-parquet"]
-          : null,
-      bucket: publication.bucket,
-      queryTableIpnsLabel: `oracle-query-table-${countyKey}-hoa-pm`,
-    },
-    {
+  const artifacts = {
+    county: countyKey,
+    parquetPath: requireStringFlag(flags, "input-parquet"),
+    officialParquetPath:
+      typeof flags["official-parquet"] === "string"
+        ? flags["official-parquet"]
+        : null,
+    bucket: publication.bucket,
+    queryTableIpnsLabel: `oracle-query-table-${countyKey}-hoa-pm`,
+  };
+  assertOverlayOnlyIpnsLabels(artifacts);
+  const publish = () =>
+    publishHoaPmPropertyPages(artifacts, {
       dryRun: flags["dry-run"] === true,
       approvalManifestPath:
         typeof flags.approve === "string" ? flags.approve : null,
@@ -565,8 +631,14 @@ async function runHoaPmPropertyPublishCommand(argv) {
         typeof flags.receipt === "string" ? flags.receipt : null,
       thinOverlay: flags["thin-overlay"] === true,
       env: process.env,
-    },
-  );
+    });
+  const result =
+    flags["dry-run"] === true
+      ? await publish()
+      : await withOverlayPublisherLock(
+          { county: countyKey, command: "hoa-pm-property-publish" },
+          publish,
+        );
   console.log(
     JSON.stringify({ event: "hoa_pm_property_publish_complete", result }, null, 2),
   );
@@ -1076,6 +1148,7 @@ async function main() {
   if (command === "sunbiz-enrich") return runSunbizEnrichCommand(rest);
   if (command === "hoa-enrich") return runHoaEnrichCommand(rest);
   if (command === "hoa-pm-index") return runHoaPmIndexCommand(rest);
+  if (command === "hoa-pm-overlay-sync") return runHoaPmOverlaySyncCommand(rest);
   if (command === "hoa-pm-enrich") return runHoaPmEnrichCommand(rest);
   if (command === "hoa-pm-publish") return runHoaPmPublishCommand(rest);
   if (command === "hoa-pm-property-publish") {
@@ -1106,7 +1179,7 @@ async function main() {
     return runPermitPublishCommand(rest);
   }
   console.error(
-    "Usage: elephant-county <ingest|export|publish|export-coverage|sign-coverage-approval|publish-coverage|replay|sunbiz-prepare|sunbiz-filter|sunbiz-transform|sunbiz-enrich|avm-enrich|hoa-enrich|hoa-pm-index|hoa-pm-enrich|hoa-pm-publish|hoa-pm-property-publish|bbb-harvest|bbb-reconcile|bbb-link|enrichment-finalize|permit-probe|permit-bounded-harvest|permit-resume|permit-reconcile|permit-export|permit-bulk-export|permit-publish> [...flags]\n" +
+    "Usage: elephant-county <ingest|export|publish|export-coverage|sign-coverage-approval|publish-coverage|replay|sunbiz-prepare|sunbiz-filter|sunbiz-transform|sunbiz-enrich|avm-enrich|hoa-enrich|hoa-pm-index|hoa-pm-overlay-sync|hoa-pm-enrich|hoa-pm-publish|hoa-pm-property-publish|bbb-harvest|bbb-reconcile|bbb-link|enrichment-finalize|permit-probe|permit-bounded-harvest|permit-resume|permit-reconcile|permit-export|permit-bulk-export|permit-publish> [...flags]\n" +
       "  ingest  --county <key> --seed <csv> --html-dir <dir> [--skip-validate] [--live-fetch] [--allow-empty] --output <run-dir>\n" +
       "  export  --county <key> --seed <csv> --run <run-dir> --output <publish-dir> [--allow-empty]\n" +
       "  publish --county <key> --input <publish-dir> [--dry-run] [--approve <manifest>]\n" +
@@ -1121,8 +1194,10 @@ async function main() {
       "  avm-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --records <avm-records.jsonl> --source-manifest <json> --output-dir <dir>\n" +
       "  hoa-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --records <hoa-memberships.jsonl> --source-manifest <json> --output-dir <dir>\n" +
       "  hoa-pm-index --source-dir <expanded-cordata-dir> --subdivisions <json-array> --quarter <YYYYQn> --output <dir>\n" +
-      "  hoa-pm-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --sunbiz-extract <dir> --output-dir <dir>\n" +
-      "  hoa-pm-publish --county <published-or-overlay-county-key> --input <enriched-dir> [--query-table-only] [--dry-run] [--approve <manifest> --receipt <json>]\n" +
+      "  hoa-pm-overlay-sync --county <key> --overlay-parquet <overlay.parquet> --output-dir <dir> [--official-parquet <official.parquet>] [--parcel-csv <csv>]\n" +
+      "  hoa-pm-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --sunbiz-extract <dir> [--sunbiz-pm-extract <dir>] [--ctmh-extract <dir>] [--sunbiz-events-extract <expanded-corevent-dir>] [--sunbiz-fictitious-extract <expanded-ficdata-and-ficevt-dir>] [--clerk-records <recorded-community-names.jsonl> --clerk-source-manifest <json>] --output-dir <dir>\n" +
+      "  hoa-pm-publish --county <published-or-overlay-county-key> --input <enriched-dir> [--query-table-only] [--move-existing-ipns-only] [--dry-run] [--approve <manifest> --receipt <json> --env-file <dotenv>]\n" +
+      "    Overlay IPNS moves abort if another overlay publish/sync process holds the lock, if the live name already points at a newer approved receipt, or if the CID is not this run's byte-bound receipt. Overlay-only: never move oracle-query-table-<county>. At Filebase 100/100, move existing overlay names only.\n" +
       "  hoa-pm-property-publish --county <published-county-key> --input-parquet <overlay.parquet> [--official-parquet <official.parquet> | --thin-overlay] [--dry-run] [--approve <manifest> --receipt <json> --env-file <dotenv>]\n" +
       "  bbb-harvest --county <profile-key> --category <reviewed-key> --job-id <id> --max-pages N --max-profiles N --max-requests N --max-duration-minutes N --output <dir>\n" +
       "  bbb-reconcile --county <profile-key> --harvest-root <category-dirs-root> --input-coverage <json> --output-dir <dir>\n" +
@@ -1165,6 +1240,7 @@ export {
   runSunbizEnrichCommand,
   runHoaEnrichCommand,
   runHoaPmIndexCommand,
+  runHoaPmOverlaySyncCommand,
   runHoaPmEnrichCommand,
   runHoaPmPublishCommand,
   runHoaPmPropertyPublishCommand,

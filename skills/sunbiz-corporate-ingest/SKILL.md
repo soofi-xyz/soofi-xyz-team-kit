@@ -16,10 +16,14 @@ named in the county profile; do not run Sunbiz or DBPR for another state. County
 comes from the validated county profile under
 `skills/use-oracle/runtime/src/counties/`; do not pass an ad hoc production ZIP list.
 
-## 1. Acquire the bulk file
+## 1. Acquire the bulk files
 
 - Source: Sunbiz Data Access Portal, quarterly corporate file `doc > quarterly > cor >
   cordata.zip` (~1.7 GB; expands to ~18 GB — check free disk first).
+- For HOA/PM successor and DBA resolution, also acquire `doc > quarterly > cor >
+  corevent.zip` and `doc > quarterly > fic > ficdata.zip` plus `ficevt.zip`.
+- Reuse archives already present on the operator's disk. Do not automatically download
+  these large archives, and never commit ZIPs or expanded fixed-width files.
 - The host is Cloudflare-challenged: plain `curl` fails; use a real browser (headless
   Chromium works, manual browser is fine).
 - **Deflate64 pitfall**: `cordata.zip` uses ZIP method 9, which streaming unzip libraries
@@ -63,6 +67,36 @@ local commands.
 
 Scale reference (Lee): 12.6M records scanned, ~379k matched, ~80 chunks.
 
+For the optional HOA/PM resolver, expand the three companion archives outside git and
+pass their statewide directories:
+
+```bash
+node bin/elephant-county.mjs hoa-pm-enrich \
+  --county duval \
+  --input-parquet <query-table.parquet> \
+  --input-coverage <dataset-coverage.json> \
+  --sunbiz-extract <statewide-hoa-index-dir> \
+  --sunbiz-pm-extract <full-active-sunbiz-dir> \
+  --ctmh-extract <ctmh-extract-dir> \
+  --sunbiz-events-extract <expanded-corevent-dir> \
+  --sunbiz-fictitious-extract <expanded-ficdata-and-ficevt-dir> \
+  --output-dir <enriched-dir>
+```
+
+Keep `corevent`, `ficdata`, and `ficevt` statewide. Use corporate events only to bridge
+an already-established CTMH association or corporate registered-agent name to exactly
+one ACTIVE Sunbiz document number. If no event target exists, use an exact ACTIVE
+fictitious-name registration only when its current corporate owner resolves to exactly
+one ACTIVE document number. Never fuzzy-match, ZIP-filter, promote a person owner/agent,
+or treat a fictitious-name registration alone as an HOA.
+
+Humans find associations the matcher misses because they search Sunbiz interactively.
+Do not imitate that: strip plat-book/page and trailing `LOT` (Orange parser) before
+lookup, do not invent HOA/POA/Community Association suffixes, run the disambiguation
+ladder on multiple ACTIVE hits and keep `not_unique` when two remain, and never stamp
+a person or lawyer as the HOA. Follow
+`skills/use-oracle/reference/hoa-property-management.md`.
+
 ## 3. Transform to lexicon
 
 The transform step maps matched records to `business-registration-v1`: emits
@@ -84,7 +118,8 @@ qualification), not this address match.
 
 ## Known gaps (do not silently fix)
 
-- `corevent.zip` (filing-history events) is not ingested — separate scope.
+- Corporate-event and fictitious-name files are optional HOA/PM resolver inputs; they are
+  not transformed into general query-DB event entities.
 - `party_type_code` decoding is incomplete; officers are not normalized to person/company.
 - The HOA/PM heuristic (`hoa-pm-enrich`) uses registered-agent **company** name, not officer rows.
 - Unmapped fields are intentionally preserved in the output for future lexicon expansion.

@@ -1,0 +1,30 @@
+[
+  {
+    "account_id": "001",
+    "account_name": "Ada, \"A\"",
+    "balance": 12.3,
+    "active": true,
+    "created_on": "2024-01-02"
+  },
+  {
+    "account_id": "002",
+    "account_name": null,
+    "balance": -4.25,
+    "active": false,
+    "created_on": "2024-02-29"
+  },
+  {
+    "account_id": "003",
+    "account_name": "",
+    "balance": 0,
+    "active": true,
+    "created_on": "2024-03-01"
+  },
+  {
+    "account_id": "004",
+    "account_name": "Zoë\nZ",
+    "balance": 100.01,
+    "active": false,
+    "created_on": "2024-04-01"
+  }
+]

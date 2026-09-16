@@ -22,6 +22,7 @@ function parseOptions(argv) {
         "--source-system",
         "--parcel",
         "--permits",
+        "--as-of-date",
       ].includes(flag)
     ) {
       throw new Error(`Unknown option ${flag}`);
@@ -35,10 +36,11 @@ function parseOptions(argv) {
     "--source-system",
     "--parcel",
     "--permits",
+    "--as-of-date",
   ];
   if (required.some((flag) => !options.get(flag))) {
     throw new Error(
-      "Usage: load-permit-private-db.mjs --input <directory> --database-url-env <name> --county <key> --source-system <key> --parcel <identifier> --permits <comma-separated exact permit numbers>",
+      "Usage: load-permit-private-db.mjs --input <directory> --database-url-env <name> --county <key> --source-system <key> --parcel <identifier> --permits <comma-separated exact permit numbers> --as-of-date YYYY-MM-DD",
     );
   }
   const permitNumbers = options
@@ -52,6 +54,7 @@ function parseOptions(argv) {
   return {
     inputDir: options.get("--input"),
     databaseUrlEnvironment: options.get("--database-url-env"),
+    asOfDate: options.get("--as-of-date"),
     expectedScope: {
       countyKey: options.get("--county"),
       sourceSystem: options.get("--source-system"),
@@ -77,6 +80,7 @@ async function main() {
       bundle,
       store,
       expectedScope: options.expectedScope,
+      asOfDate: options.asOfDate,
     });
     const readBack = await verifyTylerPrivateLoad({ bundle, store });
     process.stdout.write(

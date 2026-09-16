@@ -26,6 +26,10 @@ Use `Xatu` to define:
 - what identifiers and evidence must travel with each eligible record
 
 For the current SMS service, load `reference/sms-runtime-intake-contract.md`.
+Use `gallade` for Filter/Rules implementation and operations. Read its
+[batch contract](../build-rules-product/reference/implementation/batch-contract.md) when defining
+rule selection, phone/email candidates, or upstream evidence; keep downstream
+intake and suppression acceptance criteria with `xatu`.
 
 ## Boundaries
 

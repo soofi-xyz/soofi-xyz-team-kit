@@ -1,4 +1,5 @@
 import { validateEnrichmentProfile } from "../enrichment-profile.mjs";
+import { ROOF_AGE_QUERY_TABLE_SCHEMA_FIELDS } from "../../roof-age/integration.ts";
 
 export const duvalEnrichmentProfile = validateEnrichmentProfile({
   countyKey: "duval",
@@ -48,6 +49,7 @@ export const duvalEnrichmentProfile = validateEnrichmentProfile({
       lot_area_sqft: { type: "DOUBLE", optional: true },
       exterior_wall_material: { type: "UTF8", optional: true },
       roof_covering_material: { type: "UTF8", optional: true },
+      ...ROOF_AGE_QUERY_TABLE_SCHEMA_FIELDS,
       property_type: { type: "UTF8", optional: true },
       property_usage_type: { type: "UTF8", optional: true },
       built_year: { type: "INT64", optional: true },

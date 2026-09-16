@@ -325,12 +325,21 @@ foreign key alone; PostgreSQL does not automatically index referencing columns.
 After edge reconciliation and the index gate, follow
 `skills/use-oracle/reference/roof-age-and-identity-reingest.md`:
 
+The bundled private permit loader runs the shared roof-age reconciliation in the same
+transaction after permit/contact upserts. For existing rows, run
+`npm run roof-age:audit --prefix skills/use-oracle/runtime -- ...` first; it is read-only
+unless `--apply` is explicit. The reconciler updates `structures.roof_date`,
+`structures.roof_age_years`, and queryable
+`structures.source_payload->'roof_age_lineage'` using stable property/permit keys.
+
 1. select parcels and only roofing permits accepted by the frozen explicit-text work
    classifier;
 2. traverse `permit_contacts.company_id` or unanimous
    `property_improvements.contractor_company_id`;
 3. select other permits for those exact company UUIDs;
-4. calculate old-roof candidates from the county-neutral roof-age estimator.
+4. calculate old-roof candidates with
+   `skills/use-oracle/runtime/src/roof-age/estimator.ts`, passing the frozen
+   source-profile mappings and permit evidence states rather than reclassifying SQL text.
 
 Regex/name/license-text searches are discovery inputs for unresolved repair candidates,
 never resolved product rows. Return accepted classifier IDs/version, resolver

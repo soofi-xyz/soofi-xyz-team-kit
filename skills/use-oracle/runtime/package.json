@@ -1,8 +1,8 @@
 {
   "name": "@soofi-xyz-team-kit/oracle-runtime",
-  "version": "0.7.0",
+  "version": "0.9.0",
   "private": true,
-  "description": "Self-contained Elephant county-ingestion, enrichment, and coverage-only repair runtime bundled with the soofi-xyz-team-kit plugin. Includes canonical Broward permit routing and bounded backfill planning.",
+  "description": "Self-contained Elephant county-ingestion, enrichment, coverage-only repair, and county-neutral roof-age estimation runtime bundled with the soofi-xyz-team-kit plugin.",
   "type": "module",
   "engines": {
     "node": ">=22.18.0"
@@ -11,13 +11,18 @@
     "elephant-county": "bin/elephant-county.mjs",
     "permit-backfill": "bin/permit-backfill.mjs",
     "permit-source-coverage": "bin/permit-source-coverage.mjs",
-    "probe-broward-permits": "bin/probe-broward-permits.mjs"
+    "probe-broward-permits": "bin/probe-broward-permits.mjs",
+    "roof-age-backfill": "bin/roof-age-backfill.mjs"
   },
   "scripts": {
     "test": "vitest run && npm run test:transforms",
     "test:watch": "vitest",
     "test:transforms": "node scripts/run-transform-tests.mjs",
     "test:catalog": "vitest run tests/catalog",
+    "test:roof-age": "vitest run tests/roof-age-*.test.ts",
+    "roof-age:typecheck": "tsc -p tsconfig.roof-age.json",
+    "roof-age:audit": "node bin/roof-age-backfill.mjs",
+    "roof-age:backfill": "node bin/roof-age-backfill.mjs",
     "permits:backfill": "node bin/permit-backfill.mjs",
     "permits:backfill-plan": "node bin/permit-backfill.mjs",
     "permits:coverage": "node bin/permit-source-coverage.mjs",

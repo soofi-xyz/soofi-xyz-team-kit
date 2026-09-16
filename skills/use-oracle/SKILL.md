@@ -32,8 +32,8 @@ stage map, and publish/coverage rules.
    detail repair, permit-to-company/license resolution, supported edge vocabulary, gap
    ledger, and acceptance rules for permit-backed conclusions
 7. [`reference/roof-age-and-identity-reingest.md`](./reference/roof-age-and-identity-reingest.md) —
-   the operator's county re-ingest checklist, roof-age estimator, identity-edge backfill,
-   index gate, and product-query rerun.
+   the operator's county re-ingest checklist, executable county-neutral roof-age estimator
+   contract, identity-edge backfill, index gate, and product-query rerun.
 8. [`reference/request-routing.md`](./reference/request-routing.md) — name **who** receives
    a records or API request; catalog `records_request` fields
 9. [`reference/source-provenance.md`](./reference/source-provenance.md) — upstream SHAs and
@@ -47,6 +47,10 @@ stage map, and publish/coverage rules.
    its property query table, including cryptographic approval and immutable readback.
 12. [`../county-readiness-preflight/SKILL.md`](../county-readiness-preflight/SKILL.md) — the
    deterministic validator. `onboard-county` must run it before seed, pilot, or full ingest.
+13. [`reference/hoa-property-management.md`](./reference/hoa-property-management.md) — HOA/PM
+   overlay: humans search Sunbiz; agents run one fail-closed lookup (Orange legal-strip,
+   no invented suffixes, disambiguation ladder, parcel-linked clerk only, keep filled
+   `hoa_cid` on rematch miss).
 
 ## Choose the stack first
 

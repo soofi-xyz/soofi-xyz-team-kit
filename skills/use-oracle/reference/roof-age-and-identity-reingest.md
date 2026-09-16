@@ -26,7 +26,13 @@ old-roof contractor-expansion query. The policy is county-neutral.
 
 ## Roof-age estimator
 
-For each parcel, use the latest valid accepted anchor:
+Use the reusable county-neutral implementation at
+`skills/use-oracle/runtime/src/roof-age/{estimator,integration}.ts`. For each parcel,
+pass the frozen source profile, explicit parcel values, property built/home-year
+evidence, permit lifecycle evidence, the requested as-of date, and
+historical-coverage state.
+The runtime maps exact source vocabulary through the profile, then uses the latest valid
+accepted anchor:
 
 - **High:** completed primary-roof replacement/reroof completion or close date.
 - **Medium:** completed new-construction completion or close date, with no later accepted
@@ -37,6 +43,73 @@ Open replacement permits do not reset age. Repairs, coatings, gazebos, awnings, 
 accessory roofs do not reset primary roof age. Never synthesize dates; never use
 quarantined or impossible dates. Partial historical coverage is a confidence caveat
 because an unobserved later replacement may exist; it is not automatic ineligibility.
+
+County/source profiles own exact status and work mappings. Emit source field/value pairs,
+completion and close date evidence states, a source-profile-selected chronology start,
+and built/home-year provenance from transform/load boundaries. Do not classify with
+product-query regex. Unmapped or contradictory terms become `needs_review`.
+
+The versioned output contract (`elephant.roof-age-estimate.v1`) returns:
+
+- `anchor`: either a permit terminal date with source system, source record, and chosen
+  date field; a property built year with source field provenance; or `null`;
+- `asOfDate` and integer `estimatedAgeYears` (whole elapsed years for dated permit
+  anchors; calendar-year precision for built-year fallback);
+- anchor confidence, accepted work classification, and eligibility/reason;
+- historical-coverage state and sorted caveat codes; partial, unknown, capped, blocked,
+  predecessor, archive, or unreconciled history never becomes proof of permit absence;
+- per-permit terminal outcome counts and deterministic policy/profile version metadata
+  with the canonical profile SHA-256.
+
+`high`, `medium`, and `low` describe the accepted evidence anchor. They do not certify
+physical roof condition, prove that no later replacement occurred, or override incomplete
+historical coverage.
+
+The shared production integration is
+`runtime/src/roof-age/integration.ts`. Appraisal transforms call it through
+`runtime/src/core/transform-runner.mjs`; permit database loads run the same reconciler
+inside the permit load transaction. Preserve explicit parcel `roof_date` and
+`roof_age_years`. Never create a date from age alone. A built-year default writes the
+four-digit year to the legacy text `roof_date` column and records
+`roofDatePrecision: "year"`; it does not claim January 1 or any exact date.
+
+Lineage is queryable at `structures.source_payload->'roof_age_lineage'` and is flattened
+into county query tables as `roof_age_*` columns. It records source category, date
+precision, confidence, policy/profile versions and digest, selected permit source/id,
+coverage state/caveats, as-of date, and eligibility reason.
+
+## Audit and backfill
+
+Require Node 22.18+, installed bundled dependencies, the reflected Query DB schema, and
+an explicit environment-variable **name** containing a PostgreSQL URL. Do not print the
+URL. AWS and Filebase credentials are not required for a database-only audit.
+
+Run a bounded read-only audit first; dry-run is the default:
+
+```bash
+npm run roof-age:audit --prefix skills/use-oracle/runtime -- \
+  --state FL --county Broward --as-of-date YYYY-MM-DD \
+  --database-url-env DATABASE_URL --limit 25 --offset 0 \
+  --coverage-state unknown --coverage-caveats history_unknown \
+  --report /private/checkpoints/broward-roof-age-audit.json
+```
+
+Review scope totals, missing before/after, explicit values, untouched construction-year
+defaults, accepted permit updates, stale defaults superseded, blocked rows, incomplete
+history, and projected updates. Apply only after separate database-write approval:
+
+```bash
+npm run roof-age:backfill --prefix skills/use-oracle/runtime -- \
+  --state FL --county Broward --as-of-date YYYY-MM-DD \
+  --database-url-env DATABASE_URL --limit 25 --offset 0 \
+  --coverage-state partial \
+  --coverage-caveats partial_history,predecessor_gap \
+  --report /private/checkpoints/broward-roof-age-apply.json --apply
+```
+
+Repeat the same bounded batch and as-of date to prove `rowsWritten: 0` before widening
+scope. Keep reports and database URLs outside Git. Unknown or partial permit history
+remains a caveat; a dry-run never writes property rows.
 
 ## Product-query contract
 

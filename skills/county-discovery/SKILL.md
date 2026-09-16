@@ -35,6 +35,14 @@ Write findings to `skills/use-oracle/runtime/docs/<county>-county-findings.md`. 
    URL, bulk-download availability, and whether the operator wants it in scope. Lee
    shipped with two beyond appraisal+permits (Sunbiz, BBB); treat that as the baseline to
    offer, not the ceiling.
+   For HOA discovery, record whether the clerk/official-records index exposes a structured
+   plat or declaration name linked to the exact parcel identifier. Use appraisal
+   `subdivision` first when it is a clean community name; use clerk/OR only when that field
+   is empty, legal-description text, or has no ACTIVE Sunbiz result. Never use
+   grantor/grantee, attorney, preparer, owner, trustee, or another party as the HOA.
+   Require one recorded name and one exact ACTIVE Sunbiz company; otherwise leave the
+   property unstamped. Do not fuzzy-match or infer a statewide harvest from a bounded
+   probe. Follow `use-oracle/reference/hoa-property-management.md`.
 7. **Source feasibility** — for every source that needs scraping/downloading, record the
    total record/page/request estimate, probe timings, safe concurrency, failure rate,
    estimated full-download time, and recommended mode: bulk artifact download, query-DB

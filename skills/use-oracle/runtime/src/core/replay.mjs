@@ -15,6 +15,8 @@ import path from "node:path";
 import { parseCsvRecords } from "./csv.mjs";
 import { publishFilebase } from "./filebase.mjs";
 
+export const FIXTURE_REPLAY_AS_OF_DATE = "2026-09-14";
+
 /**
  * @typedef {object} CountyAdapter
  * @property {string} key - County key (e.g. `pinellas`).
@@ -113,6 +115,7 @@ export async function runReplay({ adapter, fixtureDir, outputDir, skipValidate =
     htmlDir,
     outputDir: ingestDir,
     liveFetch: false,
+    asOfDate: FIXTURE_REPLAY_AS_OF_DATE,
   });
 
   let validation = null;
