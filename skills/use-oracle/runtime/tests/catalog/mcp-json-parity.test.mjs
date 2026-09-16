@@ -134,7 +134,7 @@ describe("syncMcpJson against a synthetic mcp.json fixture", () => {
     });
 
     expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(103);
-    expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP)).toHaveLength(8);
+    expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP)).toHaveLength(9);
     expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(79);
 
     const written = JSON.parse(await readFile(fixturePath, "utf8"));
@@ -142,7 +142,7 @@ describe("syncMcpJson against a synthetic mcp.json fixture", () => {
 
     expect(JSON.parse(env.PROPERTY_QUERY_TABLE_MAP)).not.toHaveProperty("stale-county");
     expect(Object.keys(JSON.parse(env.PROPERTY_QUERY_TABLE_MAP))).toHaveLength(103);
-    expect(Object.keys(JSON.parse(env.PERMIT_QUERY_TABLE_MAP))).toHaveLength(8);
+    expect(Object.keys(JSON.parse(env.PERMIT_QUERY_TABLE_MAP))).toHaveLength(9);
     expect(Object.keys(JSON.parse(env.DATASET_COVERAGE_MAP))).toHaveLength(79);
     expect(env.PUBLISHED_COUNTY_CATALOG_URL).toBe(PUBLISHED_COUNTY_CATALOG_URL);
 
@@ -299,10 +299,11 @@ describe("merge-mcp-env-maps", () => {
     const maps = await buildMergedMcpEnvMaps({ catalogPath, overlayPath });
 
     expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(103);
-    expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP)).toHaveLength(8);
+    expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP)).toHaveLength(9);
     expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(79);
     expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP).sort()).toEqual([
       "broward",
+      "clay",
       "duval",
       "hillsborough",
       "miami-dade",
@@ -332,6 +333,9 @@ describe("merge-mcp-env-maps", () => {
     expect(maps.PERMIT_QUERY_TABLE_MAP.volusia).toBe(
       "https://ipfs.filebase.io/ipfs/QmYsr9WbS6C57aQugbvs5Uy2cTKf7AuJ5oiZECv8VhLvsH",
     );
+    expect(maps.PERMIT_QUERY_TABLE_MAP.clay).toBe(
+      "https://ipfs.filebase.io/ipfs/QmfPu5RywZk5Qz69bEmNtvE6aGzVApzLRSVqyUkWGVHTWf",
+    );
     expect(maps.DATASET_COVERAGE_MAP.nassau).toBeDefined();
     expect(maps.DATASET_COVERAGE_MAP["nassau-hoa-pm"]).toBeDefined();
     expect(maps.DATASET_COVERAGE_MAP.duval).toBeDefined();
@@ -348,7 +352,7 @@ describe("merge-mcp-env-maps", () => {
 });
 
 describe("syncMcpJson against a copy of the real repo-root mcp.json", () => {
-  it("produces the locked 103/8/79 key counts and preserves the real launcher untouched", async () => {
+  it("produces the locked 103/9/79 key counts and preserves the real launcher untouched", async () => {
     const fixturePath = join(tmpDir, "mcp.json");
     const original = await readFile(repoRootMcpJsonPath, "utf8");
     await writeFile(fixturePath, original, "utf8");
@@ -361,7 +365,7 @@ describe("syncMcpJson against a copy of the real repo-root mcp.json", () => {
     });
 
     expect(Object.keys(maps.PROPERTY_QUERY_TABLE_MAP)).toHaveLength(103);
-    expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP)).toHaveLength(8);
+    expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP)).toHaveLength(9);
     expect(Object.keys(maps.DATASET_COVERAGE_MAP)).toHaveLength(79);
     expect(maps.PROPERTY_QUERY_TABLE_MAP.clay).toBeDefined();
     expect(maps.PROPERTY_QUERY_TABLE_MAP.hernando).toBeDefined();
