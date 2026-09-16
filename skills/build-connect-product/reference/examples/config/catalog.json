@@ -1,0 +1,16 @@
+{
+  "contractVersion": 1,
+  "revision": "example-1",
+  "sources": [
+    {
+      "source": {
+        "id": "crm",
+        "version": "1.0.0"
+      },
+      "artifact": {
+        "s3Uri": "s3://connect-local/config/source.json",
+        "sha256": "857f583d3796021424d0e194af5506300118d93ee5bc02e66fd4ec5ccceb6ba2"
+      }
+    }
+  ]
+}
