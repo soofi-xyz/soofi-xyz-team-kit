@@ -1,0 +1,22 @@
+{
+  "contractVersion": 2,
+  "from": "crm",
+  "fromVersion": "1.0.0",
+  "to": "warehouse",
+  "toVersion": "2.0.0",
+  "mappingId": "crm-to-warehouse",
+  "mappingVersion": "1.0.0",
+  "inputs": [
+    {
+      "table": "customers",
+      "s3Uri": "s3://transform-local/source/customers.jsonl",
+      "format": "jsonl"
+    }
+  ],
+  "output": {
+    "s3Prefix": "s3://transform-local/results/demo",
+    "shape": "tabular",
+    "format": "parquet"
+  },
+  "costCeilingUsd": 10
+}

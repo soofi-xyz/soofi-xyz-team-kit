@@ -1,0 +1,18 @@
+{
+  "name": "crm",
+  "version": "1.0.0",
+  "status": "ENABLED",
+  "shape": "tabular",
+  "owner": {
+    "company": "example",
+    "product": "crm"
+  },
+  "datasets": {
+    "customers": {
+      "schemaS3Uri": "s3://transform-local/config/customers.schema.json",
+      "schemaDigest": "90d2feb4107d9f1e9f2452c3ab565e2b0824f7b835e9e3d7576d6f76dec22b0d",
+      "sparkSchemaS3Uri": "s3://transform-local/config/customers.spark.json",
+      "sparkSchemaDigest": "c63b5fa8273a60a1cd494562441f3bedd0676c5a70d9184a44abd1da7c14095d"
+    }
+  }
+}
