@@ -16,6 +16,7 @@ Follow these standards when building or refactoring any service in this ecosyste
 | LLM interactions | **[Vercel AI SDK](https://ai-sdk.dev/) (`ai`)** — strict TypeScript, no direct provider SDKs |
 | Cloud | **AWS** (primary region: `us-east-2`) |
 | Infrastructure as Code | **CDK** (`cdk deploy`) — **MANDATORY, no alternatives permitted** |
+| External dependency boundaries | **Default to Queued (Async)** for rate limits, retries, side effects, or vendor migration; **Sync** only with immediate-response need and documented timeout/recovery |
 | Testing | **Vitest / Pytest** + CI in GitHub Actions |
 | Formatting & linting | **Prettier + ESLint** (TS) · **Ruff** (Python) |
 | Type checking | **tsc** (TS) · **basedpyright** (Python) |
@@ -29,6 +30,7 @@ Follow these standards when building or refactoring any service in this ecosyste
 | --- | --- | --- | --- |
 | 1 | Tech Stack & Languages | `stack-` | CRITICAL |
 | 2 | Cloud & Infrastructure | `cloud-` | CRITICAL |
+| 2 | External Dependencies & Boundaries | `external-` | CRITICAL |
 | 3 | Testing & Quality | `testing-` | HIGH |
 | 4 | Observability | `observability-` | HIGH |
 
@@ -44,11 +46,15 @@ Follow these standards when building or refactoring any service in this ecosyste
 
 - `cloud-aws-primary` — AWS-first with `us-east-2`, **CDK is the only permitted IaC tool**, cost tagging
 
-### 3. Testing & Quality (HIGH)
+### 3. External Dependencies & Boundaries (CRITICAL)
+
+- `external-dependency-boundaries` — Default to asynchronous (queued) boundaries for external dependencies whenever rate limits, retry resilience, side effects/idempotency, or vendor migration apply; synchronous calls require an immediate-response need and documented timeout and recovery strategy.
+
+### 4. Testing & Quality (HIGH)
 
 - `testing-strategy` — Testing pyramid, tooling standards, mock guidance
 
-### 4. Observability (HIGH)
+### 5. Observability (HIGH)
 
 - `observability-logging-tracing` — Powertools Logger/Tracer/Metrics on every Lambda, structured JSON logs, X-Ray tracing
 - `observability-metrics` — Business-level metrics per service: items processed, items failed, duration
@@ -64,6 +70,7 @@ rules/stack-typescript-for-apis.md
 rules/stack-python-for-data.md
 rules/stack-ai-sdk-for-llm.md
 rules/cloud-aws-primary.md
+rules/external-dependency-boundaries.md
 rules/testing-strategy.md
 rules/observability-logging-tracing.md
 rules/observability-metrics.md
@@ -78,11 +85,12 @@ When building or refactoring a service:
 1. **Default to TypeScript** for all workloads — APIs, Lambdas, batch, Step Functions, etc.
 2. **Use Python only for PySpark + AWS Glue jobs.** For any other workload, use TypeScript.
 3. **Set up infrastructure** per `cloud-aws-primary` — CDK in the same language as the service.
-4. **Configure CI/CD** per `testing-strategy` — formatter, linter, type checker, tests in GitHub Actions.
-5. **Add observability** per `observability-logging-tracing` — Powertools Logger, Tracer, Metrics on every Lambda.
-6. **Emit business metrics** per `observability-metrics` — items processed/failed, duration.
-7. **Wire critical-failure alerting** per `observability-pagerduty-alerting` — page on-call via PagerDuty for every terminal/critical failure so nothing fails silently.
-8. **Add self-resolving DLQ monitoring** per `observability-dlq-alarms` — attach one stateful CloudWatch alarm per DLQ that fans out to channels (email/chat/PagerDuty) when the DLQ is non-empty and clears itself on drain. This works together with PagerDuty alerting: the alarm owns the lifecycle and PagerDuty is one subscriber that auto-resolves.
+4. **Enforce external dependency boundaries** per `external-dependency-boundaries` — queue external calls facing rate limits, outages, retries, side effects, or vendor migrations; limit sync calls to immediate-response needs with documented timeouts and fallbacks.
+5. **Configure CI/CD** per `testing-strategy` — formatter, linter, type checker, tests in GitHub Actions.
+6. **Add observability** per `observability-logging-tracing` — Powertools Logger, Tracer, Metrics on every Lambda.
+7. **Emit business metrics** per `observability-metrics` — items processed/failed, duration.
+8. **Wire critical-failure alerting** per `observability-pagerduty-alerting` — page on-call via PagerDuty for every terminal/critical failure so nothing fails silently.
+9. **Add self-resolving DLQ monitoring** per `observability-dlq-alarms` — attach one stateful CloudWatch alarm per DLQ that fans out to channels (email/chat/PagerDuty) when the DLQ is non-empty and clears itself on drain. This works together with PagerDuty alerting: the alarm owns the lifecycle and PagerDuty is one subscriber that auto-resolves.
 
 ## Non-Negotiables
 
@@ -95,3 +103,4 @@ These are hard constraints that MUST NOT be violated without VP-level approval:
 5. **No secrets in logs.** Never log passwords, tokens, secrets, or PII.
 6. **Every metric registered in [Lexicon](https://github.com/Spring-Oaks-Capital-LLC/lexicon)** (`cloudwatch-metrics.json`) **and displayed on [Main Dashboard](https://github.com/Spring-Oaks-Capital-LLC/main-dashboard).** No metric may exist in code without both.
 7. **Every service and workflow MUST page on-call via PagerDuty for critical failures.** Critical production issues MUST NEVER fail silently. Any service/workflow capable of a terminal or critical failure MUST trigger a PagerDuty alert on that path (see `observability-pagerduty-alerting` and the SOCAPITAL `integrating-pagerduty` skill). Swallowing a critical failure with a log-only handler is FORBIDDEN.
+8. **External dependency calls MUST default to queued (asynchronous) boundaries.** Direct synchronous calls to external third-party/partner APIs are forbidden unless there is an immediate interactive response need, bounded volume, and a documented timeout and recovery strategy. Queued boundaries MUST enforce bounded consumer concurrency, atomic idempotency, exponential backoff, DLQ alarms, and adapter abstraction for swappable providers.

@@ -378,7 +378,32 @@ interprose/
     `-- debt_status_changed.sql
 ```
 
-Transform SQL files are explanatory and reusable source assets. They are not executed by Lexicon; data pipelines or Translate-owned jobs decide when and how to execute them.
+Publish SQL files as executable configuration consumed by Transform.
+Lexicon owns their source, vocabulary and S3 publication; Transform resolves
+the registered mapping, reads the SQL objects and executes them with
+`spark.sql()` against typed temp views in its Python/PySpark Glue job.
+Keep source joins, predicates, identifier expressions and typed projections in
+the SQL artifacts. Coordinate generic execution-engine changes with `kecleon`
+using the [Transform implementation PRD](../../build-transform-product/reference/PRD.md).
+Lexicon itself does not execute these queries; preserve any separately verified
+consumers of the same artifacts.
+
+#### Generic Transform registration (target extension)
+
+Extend configuration publication for Transform's explicit `from`/`to` contract:
+publish named/versioned language schema references and enabled directional
+`spark-sql` mapping manifests for arbitrary registered pairs. Keep language
+identity independent of Parquet/JSONL/CSV encoding and tabular/graph serialization.
+Lexicon owns configuration; it is not the required target language of every pair.
+
+Use the [Transform registration contract](../../build-transform-product/reference/languages-and-mappings.md)
+for schemas, SQL bindings, version/digest validation and the proposed
+`/lexicon/transform-catalog-uri` publication. This generic pointer/catalog is a
+new requirement, not one of the verified existing SSM parameters. Reuse external
+language identities through their public registry interfaces. Retain existing
+published artifacts for compatible consumers while publishing the new catalog.
+For graph targets use the explicit [graph mapping format](../../build-transform-product/reference/graph-mappings.md)
+to bind vertex IDs, edge IDs/endpoints, labels and properties.
 
 ### 3.6 Release metadata
 
