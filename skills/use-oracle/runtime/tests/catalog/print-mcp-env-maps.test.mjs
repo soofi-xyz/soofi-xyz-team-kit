@@ -119,9 +119,19 @@ describe("print-mcp-env-maps", () => {
         .permitQueryTableUrl,
       duval: catalog.counties.find((c) => c.countyKey === "duval")
         .permitQueryTableUrl,
+      hillsborough: catalog.counties.find(
+        (c) => c.countyKey === "hillsborough",
+      ).permitQueryTableUrl,
+      "miami-dade": catalog.counties.find(
+        (c) => c.countyKey === "miami-dade",
+      ).permitQueryTableUrl,
       montgomery: catalog.counties.find((c) => c.countyKey === "montgomery")
         .permitQueryTableUrl,
+      orange: catalog.counties.find((c) => c.countyKey === "orange")
+        .permitQueryTableUrl,
       "rock-island": catalog.counties.find((c) => c.countyKey === "rock-island")
+        .permitQueryTableUrl,
+      seminole: catalog.counties.find((c) => c.countyKey === "seminole")
         .permitQueryTableUrl,
     });
     expect(Object.keys(maps.PERMIT_QUERY_TABLE_MAP)).not.toContain("santa-clara");

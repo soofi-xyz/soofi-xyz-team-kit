@@ -176,6 +176,7 @@ describe("catalog self-containment (no oracle-node at runtime)", () => {
       "okaloosa-hoa-pm",
       "sumter-hoa-pm",
       "walton-hoa-pm",
+      "florida-hoa-pm-combined",
     ]);
   });
 

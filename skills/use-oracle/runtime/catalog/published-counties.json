@@ -49,10 +49,10 @@
       "status": "published",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5diqz0l68gfi22qk0w8aqhsm7pcgje535uz8vhu8p37ynm2po0fh",
       "queryTableCid": "QmaNScYyp7gEcNQPnkDqLjkZyb2yHFBgpnC8pFcAva7buR",
-      "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5di5jghjwbpumnr2vt1crmaycqmtx673kw8pqp8dymecuig5x8jb/",
-      "permitQueryTableUrl": null,
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmXH9dKGbgrWBFzq4Hztc1HrNrvfaceXTJPKby7hRG4syF",
+      "permitQueryTableUrl": "https://ipfs.filebase.io/ipfs/Qma8ZVe9jn8z96uXHYQvgayeuywscNc4U77FWZrBVTXejB",
       "placesTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dk4d5kacjn1b0argjmxmvele89gcnxyz8yjflh6gsx6w3a4o2wo/hillsborough/places-table.parquet",
-      "updatedAt": "2026-09-12T14:38:00.000Z"
+      "updatedAt": "2026-09-16T13:41:41.681Z"
     },
     {
       "countyKey": "lee",
@@ -75,10 +75,10 @@
       "status": "published",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dgqktver4htb060qxfnaytjhybcxlfkp22vtgygbx2lb4t1h1xs",
       "queryTableCid": "QmTdx2rn9CV6eXR7UXTm8ae1iF1UmMcRLsedPaUAphGM5x",
-      "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5djj45hvhz6z2dnsdg6pkgucds99t0f78d5gmwu19bfv8o9tygno",
-      "permitQueryTableUrl": null,
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmVskHsRFrNX8ezBzN7ouZJR7LzpQTURCMiqwLt4QwzXuJ",
+      "permitQueryTableUrl": "https://ipfs.filebase.io/ipfs/QmW6AgL97FnrscDnqss4CcQxf91NtD48ggSazAtNYa9rym",
       "placesTableUrl": null,
-      "updatedAt": "2026-07-07T09:58:45.095Z"
+      "updatedAt": "2026-09-16T13:41:41.681Z"
     },
     {
       "countyKey": "montgomery",
@@ -101,10 +101,10 @@
       "status": "published",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dhgte20ho86rzg5b7h0ght3a2js5wz0t55i96aaf1d12wpl8efn",
       "queryTableCid": "QmXeTNghbbo5hd1FgqeXPoCJDxtp6pkygJS12t6krnCFFa",
-      "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dj8n2f8nowh8kts53rvpr62zfj0mz9izc11rfzv56q7m4161lg7",
-      "permitQueryTableUrl": null,
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmQWSujvgM1UWyu9rLDbL7RZrPQDr3EY6kfM8DY4tY1A1i",
+      "permitQueryTableUrl": "https://ipfs.filebase.io/ipfs/QmQpnEz34qsGX57KxS2EaFnw1J8J98812y7vXArbvAidk4",
       "placesTableUrl": null,
-      "updatedAt": "2026-09-12T15:47:00.000Z"
+      "updatedAt": "2026-09-16T14:35:31.390Z"
     },
     {
       "countyKey": "osceola",
@@ -192,10 +192,10 @@
       "status": "published",
       "queryTableUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5di6kqptmkfaoq7yxc7z04spm1n0gbrc26toi2eah1b66cfrqfwp",
       "queryTableCid": "QmeyxdzU6sGkTV26qzUxmAmhnuuF54ZpNJu5HM4YAa3sTQ",
-      "datasetCoverageUrl": "https://ipfs.filebase.io/ipns/k51qzi5uqu5dmawnn59hx0z87i36xk60os0vur3m05p8u2ial89cn2oay7o9oz",
-      "permitQueryTableUrl": null,
+      "datasetCoverageUrl": "https://ipfs.filebase.io/ipfs/QmaHzHdYaLrQTSUR22eVy9FwUqSefkuX5LEoZD99u1V9dF",
+      "permitQueryTableUrl": "https://ipfs.filebase.io/ipfs/QmdnuzpzyH8JpfB2pxtyRtuJiGSBJ5nsmqceW3tnknReJm",
       "placesTableUrl": null,
-      "updatedAt": "2026-09-12T01:33:38.000Z"
+      "updatedAt": "2026-09-16T15:25:54.484Z"
     }
   ]
 }
