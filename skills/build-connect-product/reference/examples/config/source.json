@@ -1,0 +1,240 @@
+{
+  "contractVersion": 1,
+  "source": {
+    "id": "crm",
+    "version": "1.0.0"
+  },
+  "enabled": true,
+  "adapter": "postgres-jdbc",
+  "sourceLanguage": {
+    "id": "crm",
+    "version": "1.0.0"
+  },
+  "connection": {
+    "glueConnectionName": "connect-crm-dev",
+    "credentialsSecretArn": "arn:aws:secretsmanager:us-east-2:000000000000:secret:connect/crm/example",
+    "database": "example"
+  },
+  "entity": {
+    "type": "record",
+    "rootTable": "records",
+    "idColumn": "record_id",
+    "related": {
+      "column": "primary_record_id",
+      "direction": "outgoing",
+      "hops": 1
+    }
+  },
+  "tables": {
+    "records": {
+      "enabled": true,
+      "source": {
+        "relation": {
+          "schema": "source",
+          "table": "records"
+        }
+      },
+      "sparkSchema": {
+        "s3Uri": "s3://connect-local/config/records.spark.json",
+        "sha256": "f41e2f5f348d75bd1a0282471e8d6f1f2b96eee809ff10c6b2dd45c273267f38"
+      },
+      "recordKey": [
+        "record_id"
+      ],
+      "entityLink": {
+        "kind": "direct",
+        "column": "record_id"
+      },
+      "operationalColumns": [
+        "updated_at",
+        "primary_record_id",
+        "status"
+      ],
+      "dropColumns": [],
+      "read": {
+        "mode": "full"
+      },
+      "output": {
+        "mode": "current_entity_bundle"
+      },
+      "outputSparkSchema": {
+        "s3Uri": "s3://connect-local/config/records.output.spark.json",
+        "sha256": "86c83f3935102289c37521a7733fa927de6aa64a665672bf43d84426491ea50b"
+      }
+    },
+    "contacts": {
+      "enabled": true,
+      "source": {
+        "relation": {
+          "schema": "source",
+          "table": "contacts"
+        }
+      },
+      "sparkSchema": {
+        "s3Uri": "s3://connect-local/config/contacts.spark.json",
+        "sha256": "0b8f57b7e0b4bac18b72df03c699c85303264715ad4dac066250c2bfcfb30308"
+      },
+      "recordKey": [
+        "contact_id"
+      ],
+      "entityLink": {
+        "kind": "direct",
+        "column": "record_id"
+      },
+      "operationalColumns": [
+        "updated_at"
+      ],
+      "dropColumns": [],
+      "read": {
+        "mode": "timestamp_window",
+        "cursorColumn": "updated_at",
+        "lookbackSeconds": 0
+      },
+      "output": {
+        "mode": "current_entity_bundle"
+      },
+      "outputSparkSchema": {
+        "s3Uri": "s3://connect-local/config/contacts.spark.json",
+        "sha256": "0b8f57b7e0b4bac18b72df03c699c85303264715ad4dac066250c2bfcfb30308"
+      }
+    },
+    "organizations": {
+      "enabled": true,
+      "source": {
+        "relation": {
+          "schema": "source",
+          "table": "organizations"
+        }
+      },
+      "sparkSchema": {
+        "s3Uri": "s3://connect-local/config/organizations.spark.json",
+        "sha256": "4107136fc40b64e93e75e7660b4dfc27bbf2f060145f64c8324f6b3383e873a3"
+      },
+      "recordKey": [
+        "organization_id"
+      ],
+      "entityLink": {
+        "kind": "bridge",
+        "sourceColumn": "organization_id",
+        "bridgeTable": "assignments",
+        "bridgeSourceColumn": "organization_id",
+        "bridgeEntityColumn": "record_id"
+      },
+      "operationalColumns": [
+        "organization_id"
+      ],
+      "dropColumns": [],
+      "read": {
+        "mode": "full"
+      },
+      "output": {
+        "mode": "current_entity_bundle"
+      },
+      "outputSparkSchema": {
+        "s3Uri": "s3://connect-local/config/organizations.spark.json",
+        "sha256": "4107136fc40b64e93e75e7660b4dfc27bbf2f060145f64c8324f6b3383e873a3"
+      }
+    },
+    "assignments": {
+      "enabled": true,
+      "source": {
+        "relation": {
+          "schema": "source",
+          "table": "assignments"
+        }
+      },
+      "sparkSchema": {
+        "s3Uri": "s3://connect-local/config/assignments.spark.json",
+        "sha256": "52c280d102a9e9d7724423ef23626a437c2f34cbad979caee3a9a8823e40c944"
+      },
+      "recordKey": [
+        "assignment_id"
+      ],
+      "entityLink": {
+        "kind": "direct",
+        "column": "record_id"
+      },
+      "operationalColumns": [
+        "organization_id"
+      ],
+      "dropColumns": [],
+      "read": {
+        "mode": "full"
+      },
+      "output": {
+        "mode": "current_entity_bundle"
+      },
+      "outputSparkSchema": {
+        "s3Uri": "s3://connect-local/config/assignments.spark.json",
+        "sha256": "52c280d102a9e9d7724423ef23626a437c2f34cbad979caee3a9a8823e40c944"
+      }
+    },
+    "events": {
+      "enabled": true,
+      "source": {
+        "relation": {
+          "schema": "source",
+          "table": "events"
+        }
+      },
+      "sparkSchema": {
+        "s3Uri": "s3://connect-local/config/events.spark.json",
+        "sha256": "091379e554745565fcf442277d708c888f78eca35e3697a14d7bae2297a9a99f"
+      },
+      "recordKey": [
+        "event_id"
+      ],
+      "entityLink": {
+        "kind": "direct",
+        "column": "record_id"
+      },
+      "operationalColumns": [
+        "updated_at"
+      ],
+      "dropColumns": [],
+      "read": {
+        "mode": "timestamp_window",
+        "cursorColumn": "updated_at",
+        "lookbackSeconds": 0
+      },
+      "output": {
+        "mode": "loaded_window"
+      },
+      "outputSparkSchema": {
+        "s3Uri": "s3://connect-local/config/events.spark.json",
+        "sha256": "091379e554745565fcf442277d708c888f78eca35e3697a14d7bae2297a9a99f"
+      }
+    }
+  },
+  "projection": {
+    "s3Uri": "s3://connect-local/config/projection.json",
+    "sha256": "68da5c86f513beccd493396ac849acd6c6c72f5d1b0c674209a93183bfa147b0"
+  },
+  "dependencies": {
+    "s3Uri": "s3://connect-local/config/dependencies.json",
+    "sha256": "c5887310f8707d8005d44e70203758f9e33a727957690788014e75fd7f9d156f"
+  },
+  "observations": [
+    {
+      "id": "record_status",
+      "enabled": true,
+      "table": "records",
+      "mode": "transition",
+      "canonicalQuery": {
+        "s3Uri": "s3://connect-local/config/record-status.sql",
+        "sha256": "a615dc395333840e9fcf3f6098b935c678aa805bbd88370dfb724d4f0761f62d"
+      },
+      "sourceColumns": [
+        "record_id",
+        "status"
+      ],
+      "outputColumn": "_connect_status_observed_at",
+      "timestampSource": "execution",
+      "initialMode": "seed"
+    }
+  ],
+  "delivery": {
+    "boundary": "after_consumer",
+    "consumerId": "warehouse"
+  }
+}

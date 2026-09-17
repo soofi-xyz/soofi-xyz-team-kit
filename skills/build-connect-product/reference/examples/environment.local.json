@@ -1,0 +1,34 @@
+{
+  "contractVersion": 1,
+  "stage": "dev",
+  "accountId": "000000000000",
+  "region": "us-east-2",
+  "mode": "local",
+  "catalogS3Uri": "s3://connect-local/config/catalog.json",
+  "dataBucket": "connect-local",
+  "configurationPrefixes": [
+    "s3://connect-local/config/"
+  ],
+  "localObjectRoot": ".local/objects",
+  "runtime": {
+    "glueVersion": "5.0",
+    "workerType": "G.2X",
+    "workers": 2,
+    "timeoutMinutes": 60,
+    "maxJdbcConnections": 4,
+    "hydrationChunkSize": 5000,
+    "maxSampleEntities": 50000,
+    "maxPlanBytes": 4194304
+  },
+  "cost": {
+    "dpuHourUsd": 0.44,
+    "priceAsOf": "2026-01-01",
+    "maximumRunUsd": 10
+  },
+  "activation": {
+    "ingestionEnabled": true,
+    "samplesEnabled": true,
+    "snapshotRefreshEnabled": true,
+    "snapshotMaintenanceEnabled": false
+  }
+}
