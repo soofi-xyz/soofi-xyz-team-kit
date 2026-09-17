@@ -24,6 +24,7 @@ contracts or code are relevant.
 | Predicate scopes, ruleset composition, compiler and time | [Rules and queries](reference/rules-and-queries.md) |
 | Source mappings, relationships, immutable facts and versions | [Graph model](reference/graph-model.md) |
 | Batch input/output, projection and counts | [Batch contract](reference/batch-contract.md) |
+| Durable record-level outcomes, rule attribution, Event → Queue delivery and traceability | [Outcome persistence](reference/outcome-persistence.md) |
 | Direct evaluation and cache/latency semantics | [Single entity](reference/single-entity.md) |
 | Materialization, refresh, readiness and leases | [Entity universe](reference/entity-universe.md) |
 | Architecture, admission, retries, writeback and deployment | [Execution and operations](reference/execution-and-operations.md) |
@@ -40,9 +41,13 @@ contracts or code are relevant.
    identity even for reused materializations; preserve legacy inputs during migration.
 3. Pin source/model/artifact versions and environment before changing behavior.
    Keep unknown source facts or partial execution distinct from failed predicates.
-4. Follow [engineering guidelines](../apply-engineering-guidelines/SKILL.md) for
+4. Require durable, immutable outcomes for every evaluated record. Use the
+   Event → Queue persistence contract, preserve filtering-rule attribution, keep
+   persistence completion separate from evaluation completion, and verify no
+   Filter-phase regression beyond a predeclared measurement tolerance.
+5. Follow [engineering guidelines](../apply-engineering-guidelines/SKILL.md) for
    implementation. Reuse discovered infrastructure and public data interfaces.
-5. Use Xatu/Oranguru for communication handoffs, Abra for solvers, Machamp for
+6. Use Xatu/Oranguru for communication handoffs, Abra for solvers, Machamp for
    workflows, Porygon for metrics, Conkeldurr for Persist/Lexicon changes and
    Regigigas for distribution. Link their existing contracts rather than copying
    consumer-specific behavior into this product.

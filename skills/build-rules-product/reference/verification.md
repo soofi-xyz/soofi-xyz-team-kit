@@ -13,8 +13,12 @@
 5. Reconcile selected IDs, result artifacts, detailed reports and aggregate counts.
    Check missing data, partition failures and unfinished work before claiming a
    complete result. Distinguish unavailable explanations from measured zeros.
-6. If publication is enabled, await its independent outcome, read the expected
-   facts through the public data interface, and verify idempotent replay.
+6. Await outcome persistence independently, then read subjects spanning the
+   implementation's defined decision values through the supported data
+   interface. Verify a subject filtered out by rule logic traces to its exact
+   filtering rule artifact/version and verify idempotent event replay.
+7. If optional publication is enabled, await its independent outcome, read the
+   expected facts through the public data interface, and verify idempotent replay.
 
 ## Worked example with abstract predicates
 
@@ -56,7 +60,8 @@ interpretation before introducing any consumer-owned policy artifacts.
 | Time/cache | Pinned evaluation instant, timezone boundaries, artifact invalidation, changed facts and documented snapshot-isolation limits |
 | Population cache | Source/selector advancement, expired or incomplete materialization, concurrent generation, lease loss and runtime activation/rollback |
 | Execution | Saturation, admission/cleanup, retry/redrive capacity, partial partitions, idempotent aggregation and independent publication failure |
-| Performance | Comparable phase timings, data size/fan-out, query identity, source plans, cache state, load and decision-equivalence results |
+| Outcome persistence | Durable outcomes across configured decision values, filtering-rule attribution/version, source-unavailable/execution-failure distinction, queue retry/DLQ/redrive and manifest-to-store correlation |
+| Performance | Comparable before/after Filter phase timings, data size/fan-out, query identity, source plans, cache state, load and decision-equivalence results; separate asynchronous persistence timing |
 | Consumers | Output schema/nullability, freshness/completeness handling, publication identity and downstream ownership |
 
 Use tests tied to observable decisions and failure handling. A generic contract

@@ -18,6 +18,7 @@ when invoking the existing service.
 | Report mode | Decision-only filtering or complete per-predicate evidence |
 | Execution policy | Bounded partitions, admission, retry and partial-result policy |
 | Publication | Explicit optional output-consumer contract; default to producing result artifacts |
+| Outcome persistence | Required immutable per-record outcomes, effective rule attribution, versioned manifest and asynchronous Event → Queue delivery contract |
 
 Reject invalid selection, incompatible scopes or unresolved rule artifacts before
 costly population evaluation. Partition normalized unique IDs and preserve run
@@ -51,6 +52,11 @@ data shape. An ID-only CSV and richer JSON can be separate explicit projections.
 Keep returned artifact URIs authoritative; consumers must not reconstruct storage
 keys. Carry output-schema version, result completeness and freshness evidence to
 the consumer. An accepted result is not proof of a downstream action.
+
+Every evaluated entity or candidate must also have a durable outcome that can be
+traced to its effective rule artifacts. Keep the outcome-record contract,
+asynchronous delivery status and replay semantics separate from the result
+projection; see [outcome persistence](outcome-persistence.md).
 
 ## Counts and report interpretation
 
