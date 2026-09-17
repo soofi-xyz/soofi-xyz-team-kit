@@ -12,7 +12,7 @@ Spark worker. Examples describe the new contract, not deployed Stage inputs.
 | --- | --- | --- |
 | `Environment` | operator → resolver/CDK/local CLI | Account/region, configuration scope, storage, runtime and bounded cost |
 | `SourceCatalog` / `SourceDefinition` | Lexicon → resolver | Exact enabled source/version, credential references, language, tables and delivery boundary |
-| `Table` / `SourceRead` / `EntityLink` | source owner → adapter | Source/output schemas, physical relation/query, identity, entity association, extraction and output policy |
+| `Table` / `SourceRead` / `EntityLink` | source owner → adapter | Source/output schemas, physical relation/query/object, identity, entity association, extraction and output policy |
 | `Projection` / `Dependencies` | mapping release → resolver/worker | Same-release business fields and materialized dependency closure |
 | `ObservationPolicy` | policy release → worker | Canonical-value query, required source fields, output-only timestamp semantics |
 | `Request` / `Scope` | caller → workflow | Source/version, run mode, selected tables/entities/windows and optional sample override |
@@ -34,6 +34,27 @@ keys before parsing either boundary; do not let different parsers select differe
 values. Persist canonical acknowledgement bytes and their digest as the receipt's
 artifact. See the [acknowledgement protocol](checkpoints-and-observations.md).
 
+## Adapters
+
+`SourceDefinition.adapter` is a discriminator. An adapter owns only how typed
+rows reach Spark; everything after `readTyped` (hashing, deltas, links,
+hydration, observations, checkpoints, snapshots) is adapter-agnostic and must
+not branch on the adapter ID. A use case is a registration plus a mapping
+release, never new Python.
+
+| Adapter | `connection` | `Table.source` | Read modes | Cursor | `readConsistency` | Entity context |
+| --- | --- | --- | --- | --- | --- | --- |
+| `postgres-jdbc` | `JdbcConnection`: Glue connection, secret ARN, database | `relation` or reviewed `query` | `full`, `timestamp_window`, `append_window` | registered column value | `read_committed_materialized` | pushed key predicate |
+| `s3-file` | `S3FileConnection`: bucket, prefix, `parquet`/`csv`/`xlsx`, reader options, row/byte ceiling | `object` key plus `sheet` for `xlsx` | `full` only | object SHA-256 recorded in `TablePlan.sourceObject` | `single_object_snapshot` | filter over the materialized read |
+
+Add an adapter only with: one `connection` subschema and a conditional branch in
+`SourceDefinition`, a `Table.source` locator, its allowed read modes and cursor
+type, one `readConsistency` value, a `describeConsistency` statement, a reader
+module implementing `validate`, `planRead`, `readTyped`, `readEntityContext`,
+`describeConsistency`, and a green run of the shared
+[adapter conformance gate](verification.md#adapter-conformance). Reject any
+adapter that is not registered in this table.
+
 ## Complete configuration example
 
 Read these together:
@@ -44,7 +65,12 @@ Read these together:
 - the source definition's five Spark schema artifacts and
   [canonical status query](examples/config/record-status.sql);
 - [baseline request](examples/baseline-request.json), [delta request](examples/delta-request.json)
-  and [two-run fixture](examples/primary-case.json).
+  and [two-run fixture](examples/primary-case.json);
+- the second registration [source-file.json](examples/config/source-file.json), an
+  `s3-file` workbook with `sellers` and `agreements` sheets, its
+  [projection](examples/config/projection-file.json),
+  [dependencies](examples/config/dependencies-file.json) and
+  [baseline request](examples/baseline-request-file.json). The catalog lists both.
 
 Every reference in the example catalog/source definition has the actual digest
 of the supplied bytes. The example secret ARN/account/connection and price are
@@ -57,8 +83,9 @@ last through Lexicon. Do not copy local fixture credentials into a live source.
 ## Registration semantic validation
 
 1. Require one catalog entry for each `(source.id, source.version)`; reject
-   duplicates, disabled registrations, unknown adapters and mismatched artifact
-   identities. Requests select concrete versions; no implicit latest version.
+   duplicates, disabled registrations, unknown adapters, a `connection` or
+   `Table.source` shape that does not belong to the declared adapter, and
+   mismatched artifact identities. Requests select concrete versions; no implicit latest version.
 2. Require nonempty enabled tables, a full-read root table and a nonnull unique
    entity ID. Resolve every direct link and bridge field against registered Spark
    schemas. A bridge must be an enabled full-current-state table in the same
@@ -105,6 +132,11 @@ last through Lexicon. Do not copy local fixture credentials into a live source.
 9. Require a configured consumer ID for `after_consumer`; require null for
    `after_extract`. Only an authorized configuration release may change this
    boundary; execution input cannot downgrade it.
+10. For `s3-file`, require every table to use `read.mode: full` and
+    `current_entity_bundle`, no `predicate`/`partition`, an object key under the
+    registered prefix, and for `xlsx` a sheet name of at most 31 characters. The
+    object's header row must equal the registered Spark schema column names in
+    order. Tables that share one object key read the same pinned object version.
 
 ## Request and plan semantics
 

@@ -238,6 +238,34 @@
             "query"
           ],
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "object": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^[^?#]+$"
+                },
+                "sheet": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 31
+                }
+              },
+              "required": [
+                "key"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "object"
+          ],
+          "additionalProperties": false
         }
       ]
     },
@@ -481,33 +509,13 @@
           "type": "boolean"
         },
         "adapter": {
-          "const": "postgres-jdbc"
+          "enum": [
+            "postgres-jdbc",
+            "s3-file"
+          ]
         },
         "sourceLanguage": {
           "$ref": "#/$defs/SourceIdentity"
-        },
-        "connection": {
-          "type": "object",
-          "properties": {
-            "glueConnectionName": {
-              "type": "string",
-              "minLength": 1
-            },
-            "credentialsSecretArn": {
-              "type": "string",
-              "pattern": "^arn:[a-z-]+:secretsmanager:"
-            },
-            "database": {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_]{0,63}$"
-            }
-          },
-          "required": [
-            "glueConnectionName",
-            "credentialsSecretArn",
-            "database"
-          ],
-          "additionalProperties": false
         },
         "entity": {
           "type": "object",
@@ -611,6 +619,16 @@
             "consumerId"
           ],
           "additionalProperties": false
+        },
+        "connection": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JdbcConnection"
+            },
+            {
+              "$ref": "#/$defs/S3FileConnection"
+            }
+          ]
         }
       },
       "required": [
@@ -627,7 +645,93 @@
         "observations",
         "delivery"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "adapter": {
+                "const": "postgres-jdbc"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "connection": {
+                "$ref": "#/$defs/JdbcConnection"
+              },
+              "tables": {
+                "additionalProperties": {
+                  "properties": {
+                    "source": {
+                      "not": {
+                        "required": [
+                          "object"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "adapter": {
+                "const": "s3-file"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "connection": {
+                "$ref": "#/$defs/S3FileConnection"
+              },
+              "tables": {
+                "additionalProperties": {
+                  "properties": {
+                    "source": {
+                      "required": [
+                        "object"
+                      ]
+                    },
+                    "read": {
+                      "properties": {
+                        "mode": {
+                          "const": "full"
+                        }
+                      }
+                    },
+                    "output": {
+                      "properties": {
+                        "mode": {
+                          "const": "current_entity_bundle"
+                        }
+                      }
+                    }
+                  },
+                  "not": {
+                    "anyOf": [
+                      {
+                        "required": [
+                          "predicate"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "partition"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
     },
     "Projection": {
       "type": "object",
@@ -1151,6 +1255,46 @@
         },
         "outputSparkSchema": {
           "$ref": "#/$defs/Artifact"
+        },
+        "sourceObject": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "s3Uri": {
+                  "type": "string",
+                  "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "etag": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sizeBytes": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "lastModified": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "s3Uri",
+                "sha256",
+                "etag",
+                "sizeBytes",
+                "lastModified"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -1162,7 +1306,8 @@
         "upperBound",
         "completeRead",
         "outputMode",
-        "outputSparkSchema"
+        "outputSparkSchema",
+        "sourceObject"
       ],
       "additionalProperties": false
     },
@@ -1234,7 +1379,8 @@
         "readConsistency": {
           "enum": [
             "read_committed_materialized",
-            "transaction_snapshot"
+            "transaction_snapshot",
+            "single_object_snapshot"
           ]
         },
         "runtime": {
@@ -1529,7 +1675,8 @@
         "readConsistency": {
           "enum": [
             "read_committed_materialized",
-            "transaction_snapshot"
+            "transaction_snapshot",
+            "single_object_snapshot"
           ]
         },
         "datasets": {
@@ -1863,6 +2010,77 @@
         "retryable",
         "partialArtifacts",
         "finishedAt"
+      ],
+      "additionalProperties": false
+    },
+    "JdbcConnection": {
+      "type": "object",
+      "properties": {
+        "glueConnectionName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "credentialsSecretArn": {
+          "type": "string",
+          "pattern": "^arn:[a-z-]+:secretsmanager:"
+        },
+        "database": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$"
+        }
+      },
+      "required": [
+        "glueConnectionName",
+        "credentialsSecretArn",
+        "database"
+      ],
+      "additionalProperties": false
+    },
+    "S3FileConnection": {
+      "type": "object",
+      "properties": {
+        "bucket": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$"
+        },
+        "prefix": {
+          "type": "string",
+          "pattern": "^([^?#]*/)?$"
+        },
+        "format": {
+          "enum": [
+            "parquet",
+            "csv",
+            "xlsx"
+          ]
+        },
+        "options": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[a-zA-Z][a-zA-Z0-9]{0,63}$"
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "maxRows": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1048576
+        },
+        "maxBytes": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "bucket",
+        "prefix",
+        "format",
+        "options",
+        "maxRows",
+        "maxBytes"
       ],
       "additionalProperties": false
     }

@@ -38,10 +38,11 @@ this ingestion contract does not redefine `/connector-jobs` routes. A transport
 adapter may eventually supply the same typed datasets, but registration must
 advertise only capabilities actually implemented and tested.
 
-## 2. First required adapter and extension point
+## 2. Adapters and extension point
 
-Implement `postgres-jdbc` first. Read through registered relations or reviewed,
-digest-pinned read-only SQL views; use Secrets Manager references and private
+Implement `postgres-jdbc` first and `s3-file` second; see the
+[adapter registry](contracts.md#adapters). `postgres-jdbc` reads through
+registered relations or reviewed, digest-pinned read-only SQL views; use Secrets Manager references and private
 network access. Require a stable record identity, logical schema and an explicit
 entity-link rule for every table. Support direct links and a current-state bridge;
 express more complex joins as reviewed source-view artifacts with declared
@@ -51,9 +52,12 @@ downstream target-language transformation.
 Implement an adapter boundary with `validate`, `planRead`, `readTyped`,
 `readEntityContext` and `describeConsistency` responsibilities. Add another
 adapter only with its identity, pagination/watermark, schema, credential,
-consistency and conformance tests. Reject unsupported adapters. Use materialized
-files for local fixtures and bounded samples; do not market that test facility as
-a production API/SFTP connector.
+consistency and conformance tests. Reject unsupported adapters.
+
+`s3-file` reads one pinned object per table (Parquet, CSV or one Excel sheet) from a registered bucket/prefix, uses the object
+digest as its cursor and supports full reads only; it is also the local fixture
+reader. It does not fetch files from partners; that is Connect service or an
+operator upload.
 
 Keep typed Parquet as the required staging/output encoding for the primary
 workflow, including schema-correct empty tables. Use Transform when callers need

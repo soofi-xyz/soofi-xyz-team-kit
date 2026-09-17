@@ -101,6 +101,23 @@ Use a real PostgreSQL test database for JDBC projection/predicate/linkage tests,
 with an isolated synthetic schema and source-query evidence. File-backed Spark
 fixtures alone cannot certify JDBC pushdown, snapshot consistency or credentials.
 
+## Adapter conformance
+
+Run the primary two-run case through every registered adapter and require
+identical changed keys, affected entities, output keys, index counts and
+observation counts. For `postgres-jdbc` load `before`/`after` into the test
+database; for `s3-file` materialize them as one `parquet`, `csv` and `xlsx`
+object set per instant (two sheets or files per table set as registered) and
+replace the `events` window with a full read, since file adapters have no
+cursor column. A new adapter passes this gate before any other claim.
+
+Also for `s3-file`: unchanged object digest yields a complete zero-change run
+that still advances the generation; an object changed between plan and read
+fails with `ConfigurationDigestMismatch`; a header that differs from the
+registered columns, a merged-cell sheet, an extra header row or an object above
+`maxRows`/`maxBytes` fails before any output; `timestamp_window`, `predicate`
+or `partition` on an `s3-file` table is rejected at registration.
+
 ## 3. Observation and checkpoint cases
 
 - Unrelated row update and fan-out-only presence create no transition observation.

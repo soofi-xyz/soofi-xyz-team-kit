@@ -1,6 +1,6 @@
 ---
 name: build-connect-product
-description: "Build the Connect ingestion product from Stage-derived behavior: JDBC/PySpark extraction, registered source contracts, entity delta bundles, dependency hydration, downstream-gated checkpoints, sampling and Iceberg snapshots. Use for source-to-Transform delivery, not the separate partner API/webhook flow compiler."
+description: "Build the Connect ingestion product from Stage-derived behavior: registered adapters (PostgreSQL JDBC, S3 Parquet/CSV/Excel objects) into PySpark, registered source contracts, entity delta bundles, dependency hydration, downstream-gated checkpoints, sampling and Iceberg snapshots. Use for source-to-Transform delivery, not the separate partner API/webhook flow compiler."
 ---
 
 # Build Connect Product
@@ -8,7 +8,8 @@ description: "Build the Connect ingestion product from Stage-derived behavior: J
 Use `lapras` for Connect ingestion. Make the database extraction/delta workflow
 its primary, fully specified use case. Generalize source tables, entity links,
 projections and policies through registration; do not hardcode a source system
-or business domain. Implement product code in the user's target repository.
+or business domain. An adapter is code, a use case is a registration: adding a
+second database or a new spreadsheet is a configuration release, not Python. Implement product code in the user's target repository.
 This skill contains instructions, contracts and examples only.
 
 ## Read by task
@@ -18,7 +19,8 @@ This skill contains instructions, contracts and examples only.
    and [machine contracts](reference/contracts.md). Use the defaults instead of
    asking the user to choose routine libraries or module layouts.
 3. For source reads, deltas or missing related records, read
-   [extraction and hydration](reference/extraction-and-hydration.md).
+   [extraction and hydration](reference/extraction-and-hydration.md). For a new
+   source type, read the [adapter registry](reference/contracts.md#adapters) first.
 4. For replay, lost updates, observed changes or downstream delivery, read
    [checkpoints and observations](reference/checkpoints-and-observations.md).
 5. For current-state copies, historical context or bounded trials, read
