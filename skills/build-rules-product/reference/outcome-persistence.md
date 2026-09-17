@@ -22,8 +22,8 @@ contain:
 
 Do not overwrite an entity, candidate or source mapping to add a rule “stamp.”
 Represent the stamp as an immutable outcome/fact linked by stable identifiers.
-When several predicates contribute to a rejection, preserve every applicable
-failing rule rather than inventing one primary rule.
+An input can have one or many applicable failing rules. Persist the full set of
+failing rule identifiers for that input; do not invent a primary rule.
 
 Expose a supported read path that can trace a subject outcome to its run,
 effective ruleset and filtering rule artifact. Store sensitive evidence only in
