@@ -1,0 +1,8 @@
+{
+  "contractVersion": 1,
+  "source": {
+    "id": "crm",
+    "version": "1.0.0"
+  },
+  "mode": "delta"
+}

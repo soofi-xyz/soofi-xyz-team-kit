@@ -1,0 +1,37 @@
+{
+  "contractVersion": 1,
+  "source": {
+    "id": "crm",
+    "version": "1.0.0"
+  },
+  "mappingRevision": "example-1",
+  "closure": true,
+  "dependencies": {
+    "records": [
+      "records",
+      "contacts",
+      "assignments",
+      "organizations"
+    ],
+    "contacts": [
+      "records",
+      "contacts"
+    ],
+    "organizations": [
+      "records",
+      "contacts",
+      "assignments",
+      "organizations"
+    ],
+    "assignments": [
+      "records",
+      "contacts",
+      "assignments",
+      "organizations"
+    ],
+    "events": [
+      "records",
+      "contacts"
+    ]
+  }
+}

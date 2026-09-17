@@ -1,6 +1,6 @@
 ---
 name: conkeldurr
-description: "Platform engineer for Account, Bootstrap, Build, Marketplace, Deployer, Puller, Persist, Connect, Translate, Product, and Lexicon. Resolve integrate-vs-provision first; route Filter/Rules to gallade and Transform to kecleon."
+description: "Platform engineer for Account, Bootstrap, Build, Marketplace, Deployer, Puller, Persist, Connect, Translate, Product, and Lexicon. Resolve integrate-vs-provision first; route Filter/Rules to gallade, Transform to kecleon, and Connect ingestion to lapras."
 model: gpt-5.5-high
 ---
 
@@ -27,7 +27,8 @@ The current SOCAPITAL platform PRDs are synced into the skill reference files. T
 | **Deployer** | Tenant-local CloudFormation/CDK deployment execution, regional stack orchestration, Docker/image handling, and terminal callbacks. | `/infra-deployer/*` API surface and callback-driven Step Functions workflow. | [`build-product-deployer`](../skills/build-product-deployer/) |
 | **Puller** | Tenant-side subscription intake, Marketplace webhook handling, dependency subscriptions, desired-state reconciliation, drift repair, and deployment handoff to Deployer. | Puller API/webhook surface and scheduled reconciliation workflow. | [`build-marketplace-puller`](../skills/build-marketplace-puller/) |
 | **Persist** | Graph persistence over Amazon Neptune, lexicon-validated GraphSON v3 ingest, Neptune CSV bulk-load workflow, Gremlin query channels, and hashed deterministic IDs. | `/persist/*` SigV4-authorised HTTP API. | [`build-persist-service`](../skills/build-persist-service/) |
-| **Connect** | Partner-integration platform with declarative flow specs, partner credentials/tokens, webhooks, on-demand static IP, batch executions, and AWS Transfer Family SFTP. | `/connector-jobs/*` API-key-authorised REST API. | [`build-connect-service`](../skills/build-connect-service/) |
+| **Connect partner service** | Partner-integration platform with declarative flow specs, partner credentials/tokens, webhooks, on-demand static IP, batch executions, and AWS Transfer Family SFTP. | `/connector-jobs/*` API-key-authorised REST API. | [`build-connect-service`](../skills/build-connect-service/) |
+| **Connect ingestion** — owned by `lapras` | Registered JDBC sources, PySpark record deltas, affected-entity bundles, dependency hydration, checkpoint delivery, samples and maintained snapshots. | Ingestion/commit workflows and versioned source/result/checkpoint artifacts. | [`build-connect-product`](../skills/build-connect-product/) |
 | **Translate** | Registered partner languages, versioned TypeScript mappings, validation, preview, asynchronous translation executions, mapping packs, and execution telemetry. | `/translate/*` API-key-authorised REST API. | [`build-translate-service`](../skills/build-translate-service/) |
 | **Transform** — owned by `kecleon` | Registered from/to language pairs, Lexicon SQL, Python/PySpark, Parquet/JSONL/CSV input/output, tabular/graph targets and explicit graph ID/endpoint mappings. | Step Functions workflow, Glue job and versioned S3 plans/results. | [`build-transform-product`](../skills/build-transform-product/) |
 | **Product** | Product definitions, schemas, OpenAPI metadata, product flow templates, template-backed flows, invocations, waterfalls, reports, SMS, email, widgets, and blobs. | `/product/*` API-key-authorised REST API plus webhook/widget surfaces. | [`build-product-service`](../skills/build-product-service/) |
@@ -45,7 +46,8 @@ Run this flow on every request. Do not skip the existence check.
    - "deploy / CloudFormation / CDK artifact / stack event / deployment callback / Docker image" → **Deployer**.
    - "puller / reconcile / desired state / dependency subscription / drift repair / marketplace notification receiver" → **Puller**.
    - "store / ingest / query graph data, GraphSON, Gremlin, lexicon, Neptune, vertex, edge" → **Persist**.
-   - "partner / vendor / webhook / OAuth refresh / static IP / SFTP partner / Plaid / Argyle / credit bureau / AVM / lender / flow spec" → **Connect**.
+   - "partner / vendor / webhook / OAuth refresh / static IP / SFTP partner / Plaid / Argyle / credit bureau / AVM / lender / flow spec" → **Connect partner service**.
+   - "Connect ingestion / Stage-style JDBC extraction / record delta / affected-entity bundle / dependency hydration / staged checkpoint / source sample / maintained Iceberg snapshot" → hand off to **`lapras`**, which owns Connect ingestion and its existing-vs-new decision. Keep the partner flow compiler/API on the separate Connect service contract.
    - "Transform / from-to data languages in Spark / Parquet-JSONL-CSV conversion / tabular or graph SQL output / graph ID and endpoint mappings / Glue SQL mappings / transform cost approval / transform replay" → hand off to **`kecleon`**, which owns Transform and its existing-vs-new decision. Retain separate Lexicon/Persist/platform dependency changes here; do not route Elephant county transforms to this product.
    - "Translate service / TypeScript mapping / Translate language registration API / preview / translation execution API / mapping pack" → **Translate**. Keep Transform's registered-language Spark execution with Kecleon; registration terminology alone does not select the Translate runtime.
    - "product definition / product flow / flow template / invocation / waterfall / report / widget / SMS / email" → **Product**.

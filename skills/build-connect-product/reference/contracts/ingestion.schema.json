@@ -1,0 +1,1870 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:connect:ingestion:contracts:1",
+  "title": "Connect ingestion contracts",
+  "$defs": {
+    "Artifact": {
+      "type": "object",
+      "properties": {
+        "s3Uri": {
+          "type": "string",
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "s3Uri",
+        "sha256"
+      ],
+      "additionalProperties": false
+    },
+    "SourceIdentity": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        }
+      },
+      "required": [
+        "id",
+        "version"
+      ],
+      "additionalProperties": false
+    },
+    "SourceCatalog": {
+      "type": "object",
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "source": {
+                "$ref": "#/$defs/SourceIdentity"
+              },
+              "artifact": {
+                "$ref": "#/$defs/Artifact"
+              }
+            },
+            "required": [
+              "source",
+              "artifact"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "contractVersion",
+        "revision",
+        "sources"
+      ],
+      "additionalProperties": false
+    },
+    "SourceRead": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "enum": [
+            "full",
+            "timestamp_window",
+            "append_window"
+          ]
+        },
+        "cursorColumn": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$"
+        },
+        "lookbackSeconds": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "enum": [
+                  "timestamp_window",
+                  "append_window"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "cursorColumn"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "full"
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "cursorColumn"
+                  ]
+                },
+                {
+                  "required": [
+                    "lookbackSeconds"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "EntityLink": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "direct"
+            },
+            "column": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,63}$"
+            }
+          },
+          "required": [
+            "kind",
+            "column"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "bridge"
+            },
+            "sourceColumn": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,63}$"
+            },
+            "bridgeTable": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,63}$"
+            },
+            "bridgeSourceColumn": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,63}$"
+            },
+            "bridgeEntityColumn": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,63}$"
+            }
+          },
+          "required": [
+            "kind",
+            "sourceColumn",
+            "bridgeTable",
+            "bridgeSourceColumn",
+            "bridgeEntityColumn"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "SourceLocation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "relation": {
+              "type": "object",
+              "properties": {
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_]{0,63}$"
+                },
+                "table": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_]{0,63}$"
+                }
+              },
+              "required": [
+                "schema",
+                "table"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "relation"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "query": {
+              "$ref": "#/$defs/Artifact"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Table": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "source": {
+          "$ref": "#/$defs/SourceLocation"
+        },
+        "sparkSchema": {
+          "$ref": "#/$defs/Artifact"
+        },
+        "recordKey": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "entityLink": {
+          "$ref": "#/$defs/EntityLink"
+        },
+        "operationalColumns": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "dropColumns": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "predicate": {
+          "$ref": "#/$defs/Artifact"
+        },
+        "read": {
+          "$ref": "#/$defs/SourceRead"
+        },
+        "output": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "enum": [
+                "current_entity_bundle",
+                "loaded_window",
+                "latest_context"
+              ]
+            },
+            "contextQuery": {
+              "$ref": "#/$defs/Artifact"
+            },
+            "maxRowsPerEntity": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "jdbcContextQuery": {
+              "$ref": "#/$defs/Artifact"
+            }
+          },
+          "required": [
+            "mode"
+          ],
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "mode": {
+                    "const": "latest_context"
+                  }
+                }
+              },
+              "then": {
+                "required": [
+                  "contextQuery",
+                  "maxRowsPerEntity",
+                  "jdbcContextQuery"
+                ]
+              }
+            }
+          ]
+        },
+        "partition": {
+          "type": "object",
+          "properties": {
+            "column": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,63}$"
+            },
+            "count": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 64
+            }
+          },
+          "required": [
+            "column",
+            "count"
+          ],
+          "additionalProperties": false
+        },
+        "outputSparkSchema": {
+          "$ref": "#/$defs/Artifact"
+        }
+      },
+      "required": [
+        "enabled",
+        "source",
+        "sparkSchema",
+        "recordKey",
+        "entityLink",
+        "operationalColumns",
+        "dropColumns",
+        "read",
+        "output",
+        "outputSparkSchema"
+      ],
+      "additionalProperties": false
+    },
+    "ObservationPolicy": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "table": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$"
+        },
+        "mode": {
+          "enum": [
+            "transition",
+            "retained"
+          ]
+        },
+        "canonicalQuery": {
+          "$ref": "#/$defs/Artifact"
+        },
+        "sourceColumns": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "outputColumn": {
+          "type": "string",
+          "pattern": "^_connect_[a-z0-9_]+$"
+        },
+        "timestampSource": {
+          "enum": [
+            "execution",
+            "source"
+          ]
+        },
+        "sourceTimestampColumn": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$"
+        },
+        "initialMode": {
+          "enum": [
+            "seed",
+            "emit"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "enabled",
+        "table",
+        "mode",
+        "canonicalQuery",
+        "sourceColumns",
+        "outputColumn",
+        "timestampSource",
+        "initialMode"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "timestampSource": {
+                "const": "source"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "sourceTimestampColumn"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "transition"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "timestampSource": {
+                "const": "execution"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "SourceDefinition": {
+      "type": "object",
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "source": {
+          "$ref": "#/$defs/SourceIdentity"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "adapter": {
+          "const": "postgres-jdbc"
+        },
+        "sourceLanguage": {
+          "$ref": "#/$defs/SourceIdentity"
+        },
+        "connection": {
+          "type": "object",
+          "properties": {
+            "glueConnectionName": {
+              "type": "string",
+              "minLength": 1
+            },
+            "credentialsSecretArn": {
+              "type": "string",
+              "pattern": "^arn:[a-z-]+:secretsmanager:"
+            },
+            "database": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,63}$"
+            }
+          },
+          "required": [
+            "glueConnectionName",
+            "credentialsSecretArn",
+            "database"
+          ],
+          "additionalProperties": false
+        },
+        "entity": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            "rootTable": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,63}$"
+            },
+            "idColumn": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,63}$"
+            },
+            "related": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "column": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9_]{0,63}$"
+                    },
+                    "direction": {
+                      "const": "outgoing"
+                    },
+                    "hops": {
+                      "const": 1
+                    }
+                  },
+                  "required": [
+                    "column",
+                    "direction",
+                    "hops"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "rootTable",
+            "idColumn",
+            "related"
+          ],
+          "additionalProperties": false
+        },
+        "tables": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/Table"
+          },
+          "minProperties": 1
+        },
+        "projection": {
+          "$ref": "#/$defs/Artifact"
+        },
+        "dependencies": {
+          "$ref": "#/$defs/Artifact"
+        },
+        "observations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ObservationPolicy"
+          },
+          "minItems": 0
+        },
+        "delivery": {
+          "type": "object",
+          "properties": {
+            "boundary": {
+              "enum": [
+                "after_consumer",
+                "after_extract"
+              ]
+            },
+            "consumerId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "boundary",
+            "consumerId"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "contractVersion",
+        "source",
+        "enabled",
+        "adapter",
+        "sourceLanguage",
+        "connection",
+        "entity",
+        "tables",
+        "projection",
+        "dependencies",
+        "observations",
+        "delivery"
+      ],
+      "additionalProperties": false
+    },
+    "Projection": {
+      "type": "object",
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "source": {
+          "$ref": "#/$defs/SourceIdentity"
+        },
+        "mappingRevision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tables": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+          },
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,63}$"
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          }
+        }
+      },
+      "required": [
+        "contractVersion",
+        "source",
+        "mappingRevision",
+        "tables"
+      ],
+      "additionalProperties": false
+    },
+    "Dependencies": {
+      "type": "object",
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "source": {
+          "$ref": "#/$defs/SourceIdentity"
+        },
+        "mappingRevision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "closure": {
+          "const": true
+        },
+        "dependencies": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+          },
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,63}$"
+            },
+            "minItems": 0,
+            "uniqueItems": true
+          }
+        }
+      },
+      "required": [
+        "contractVersion",
+        "source",
+        "mappingRevision",
+        "closure",
+        "dependencies"
+      ],
+      "additionalProperties": false
+    },
+    "Scope": {
+      "type": "object",
+      "properties": {
+        "entityIds": {
+          "$ref": "#/$defs/Artifact"
+        },
+        "entityLimit": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "dateWindows": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "column": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]{0,63}$"
+              },
+              "fromInclusive": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "toExclusive": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "column",
+              "fromInclusive",
+              "toExclusive"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "Request": {
+      "type": "object",
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "source": {
+          "$ref": "#/$defs/SourceIdentity"
+        },
+        "mode": {
+          "enum": [
+            "delta",
+            "baseline",
+            "tables",
+            "backfill",
+            "sample"
+          ]
+        },
+        "tables": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "projectionOverride": {
+          "$ref": "#/$defs/Artifact"
+        },
+        "sample": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "enum": [
+                "materialized",
+                "jdbc"
+              ]
+            },
+            "fromResult": {
+              "$ref": "#/$defs/Artifact"
+            }
+          },
+          "required": [
+            "source"
+          ],
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "source": {
+                    "const": "materialized"
+                  }
+                }
+              },
+              "then": {
+                "required": [
+                  "fromResult"
+                ]
+              }
+            }
+          ]
+        },
+        "authoritativeInitialObservations": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "source",
+        "mode"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "tables"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "tables"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "sample"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "scope",
+              "sample"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "sample"
+            ]
+          },
+          "then": {
+            "properties": {
+              "mode": {
+                "const": "sample"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "projectionOverride"
+            ]
+          },
+          "then": {
+            "properties": {
+              "mode": {
+                "const": "sample"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "backfill"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "scope"
+            ]
+          }
+        }
+      ]
+    },
+    "Environment": {
+      "type": "object",
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "stage": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "accountId": {
+          "type": "string",
+          "pattern": "^[0-9]{12}$"
+        },
+        "region": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mode": {
+          "enum": [
+            "local",
+            "aws"
+          ]
+        },
+        "catalogS3Uri": {
+          "type": "string",
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+        },
+        "dataBucket": {
+          "type": "string",
+          "minLength": 1
+        },
+        "configurationPrefixes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+          },
+          "minItems": 1
+        },
+        "localObjectRoot": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runtime": {
+          "type": "object",
+          "properties": {
+            "glueVersion": {
+              "const": "5.0"
+            },
+            "workerType": {
+              "const": "G.2X"
+            },
+            "workers": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 100
+            },
+            "timeoutMinutes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "maxJdbcConnections": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "hydrationChunkSize": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "maxSampleEntities": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "maxPlanBytes": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "glueVersion",
+            "workerType",
+            "workers",
+            "timeoutMinutes",
+            "maxJdbcConnections",
+            "hydrationChunkSize",
+            "maxSampleEntities",
+            "maxPlanBytes"
+          ],
+          "additionalProperties": false
+        },
+        "cost": {
+          "type": "object",
+          "properties": {
+            "dpuHourUsd": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "priceAsOf": {
+              "type": "string",
+              "format": "date"
+            },
+            "maximumRunUsd": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "required": [
+            "dpuHourUsd",
+            "priceAsOf",
+            "maximumRunUsd"
+          ],
+          "additionalProperties": false
+        },
+        "metricsNamespace": {
+          "type": "string",
+          "minLength": 1
+        },
+        "criticalAlarmTopicArn": {
+          "type": "string",
+          "minLength": 1
+        },
+        "activation": {
+          "type": "object",
+          "properties": {
+            "ingestionEnabled": {
+              "type": "boolean"
+            },
+            "samplesEnabled": {
+              "type": "boolean"
+            },
+            "snapshotRefreshEnabled": {
+              "type": "boolean"
+            },
+            "snapshotMaintenanceEnabled": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "ingestionEnabled",
+            "samplesEnabled",
+            "snapshotRefreshEnabled",
+            "snapshotMaintenanceEnabled"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "contractVersion",
+        "stage",
+        "accountId",
+        "region",
+        "mode",
+        "catalogS3Uri",
+        "dataBucket",
+        "configurationPrefixes",
+        "localObjectRoot",
+        "runtime",
+        "cost",
+        "activation"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "aws"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "metricsNamespace",
+              "criticalAlarmTopicArn"
+            ],
+            "properties": {
+              "accountId": {
+                "not": {
+                  "const": "000000000000"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "TablePlan": {
+      "type": "object",
+      "properties": {
+        "table": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$"
+        },
+        "sparkSchema": {
+          "$ref": "#/$defs/Artifact"
+        },
+        "selectColumns": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "readMode": {
+          "enum": [
+            "full",
+            "timestamp_window",
+            "append_window"
+          ]
+        },
+        "lowerBound": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "upperBound": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "completeRead": {
+          "type": "boolean"
+        },
+        "outputMode": {
+          "enum": [
+            "current_entity_bundle",
+            "loaded_window",
+            "latest_context"
+          ]
+        },
+        "outputSparkSchema": {
+          "$ref": "#/$defs/Artifact"
+        }
+      },
+      "required": [
+        "table",
+        "sparkSchema",
+        "selectColumns",
+        "readMode",
+        "lowerBound",
+        "upperBound",
+        "completeRead",
+        "outputMode",
+        "outputSparkSchema"
+      ],
+      "additionalProperties": false
+    },
+    "Plan": {
+      "type": "object",
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "executionId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "observedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "request": {
+          "$ref": "#/$defs/Request"
+        },
+        "requestSha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "sourceDefinition": {
+          "$ref": "#/$defs/Artifact"
+        },
+        "projection": {
+          "$ref": "#/$defs/Artifact"
+        },
+        "dependencies": {
+          "$ref": "#/$defs/Artifact"
+        },
+        "previousCheckpoint": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Artifact"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "leaseId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tables": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TablePlan"
+          },
+          "minItems": 1
+        },
+        "outputRoot": {
+          "type": "string",
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+        },
+        "checkpointEligible": {
+          "type": "boolean"
+        },
+        "readConsistency": {
+          "enum": [
+            "read_committed_materialized",
+            "transaction_snapshot"
+          ]
+        },
+        "runtime": {
+          "$ref": "#/$defs/Environment"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "executionId",
+        "observedAt",
+        "request",
+        "requestSha256",
+        "sourceDefinition",
+        "projection",
+        "dependencies",
+        "previousCheckpoint",
+        "leaseId",
+        "tables",
+        "outputRoot",
+        "checkpointEligible",
+        "readConsistency",
+        "runtime"
+      ],
+      "additionalProperties": false
+    },
+    "Dataset": {
+      "type": "object",
+      "properties": {
+        "table": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$"
+        },
+        "s3Prefix": {
+          "type": "string",
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+        },
+        "sparkSchema": {
+          "$ref": "#/$defs/Artifact"
+        },
+        "rowCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fileCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "byteCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "changedRecordCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "hydratedRowCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "completeness": {
+          "enum": [
+            "full_source",
+            "entity_bundle",
+            "loaded_window",
+            "latest_context",
+            "sample"
+          ]
+        }
+      },
+      "required": [
+        "table",
+        "s3Prefix",
+        "sparkSchema",
+        "rowCount",
+        "fileCount",
+        "byteCount",
+        "changedRecordCount",
+        "hydratedRowCount",
+        "completeness"
+      ],
+      "additionalProperties": false
+    },
+    "StateDataset": {
+      "type": "object",
+      "properties": {
+        "s3Prefix": {
+          "type": "string",
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+        },
+        "filesManifest": {
+          "$ref": "#/$defs/Artifact"
+        },
+        "rowCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "s3Prefix",
+        "filesManifest",
+        "rowCount"
+      ],
+      "additionalProperties": false
+    },
+    "FileManifest": {
+      "type": "object",
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "s3Uri": {
+                "type": "string",
+                "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+              },
+              "sizeBytes": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            },
+            "required": [
+              "s3Uri",
+              "sizeBytes",
+              "sha256"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "contractVersion",
+        "files"
+      ],
+      "additionalProperties": false
+    },
+    "TableCoverage": {
+      "type": "object",
+      "properties": {
+        "initialized": {
+          "const": true
+        },
+        "hashContract": {
+          "const": "spark-json-v1"
+        },
+        "projectionSha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "sparkSchemaSha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "recordCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lastReadComplete": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "initialized",
+        "hashContract",
+        "projectionSha256",
+        "sparkSchemaSha256",
+        "recordCount",
+        "cursor",
+        "lastReadComplete"
+      ],
+      "additionalProperties": false
+    },
+    "Checkpoint": {
+      "type": "object",
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "generationId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "source": {
+          "$ref": "#/$defs/SourceIdentity"
+        },
+        "executionId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "observedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "previousGenerationId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "configurationSha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "recordIndex": {
+          "$ref": "#/$defs/StateDataset"
+        },
+        "trackedState": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/StateDataset"
+          }
+        },
+        "coverage": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/TableCoverage"
+          }
+        }
+      },
+      "required": [
+        "contractVersion",
+        "generationId",
+        "source",
+        "executionId",
+        "observedAt",
+        "previousGenerationId",
+        "configurationSha256",
+        "recordIndex",
+        "trackedState",
+        "coverage"
+      ],
+      "additionalProperties": false
+    },
+    "Result": {
+      "type": "object",
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "status": {
+          "const": "EXTRACTED"
+        },
+        "executionId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "observedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "source": {
+          "$ref": "#/$defs/SourceIdentity"
+        },
+        "sourceLanguage": {
+          "$ref": "#/$defs/SourceIdentity"
+        },
+        "plan": {
+          "$ref": "#/$defs/Artifact"
+        },
+        "readConsistency": {
+          "enum": [
+            "read_committed_materialized",
+            "transaction_snapshot"
+          ]
+        },
+        "datasets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Dataset"
+          },
+          "minItems": 1
+        },
+        "directImpactedEntityCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expandedImpactedEntityCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "changedRecordCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "checkpointEligible": {
+          "type": "boolean"
+        },
+        "checkpointCandidate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Artifact"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "observationModes": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          },
+          "additionalProperties": {
+            "enum": [
+              "bootstrap",
+              "delta",
+              "authoritative",
+              "suppressed",
+              "retained",
+              "sample_authoritative"
+            ]
+          }
+        },
+        "modeledJobCostUsd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "finishedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "status",
+        "executionId",
+        "observedAt",
+        "source",
+        "sourceLanguage",
+        "plan",
+        "readConsistency",
+        "datasets",
+        "directImpactedEntityCount",
+        "expandedImpactedEntityCount",
+        "changedRecordCount",
+        "checkpointEligible",
+        "checkpointCandidate",
+        "observationModes",
+        "modeledJobCostUsd",
+        "finishedAt"
+      ],
+      "additionalProperties": false
+    },
+    "Acknowledgement": {
+      "type": "object",
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "executionId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "source": {
+          "$ref": "#/$defs/SourceIdentity"
+        },
+        "result": {
+          "$ref": "#/$defs/Artifact"
+        },
+        "consumerId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "consumerExecutionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "const": "SUCCEEDED"
+        },
+        "evidence": {
+          "$ref": "#/$defs/Artifact"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "executionId",
+        "source",
+        "result",
+        "consumerId",
+        "consumerExecutionId",
+        "status",
+        "evidence"
+      ],
+      "additionalProperties": false
+    },
+    "Commit": {
+      "type": "object",
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "status": {
+          "const": "COMMITTED"
+        },
+        "source": {
+          "$ref": "#/$defs/SourceIdentity"
+        },
+        "executionId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "generation": {
+          "$ref": "#/$defs/Artifact"
+        },
+        "previousGenerationId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "acknowledgement": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Artifact"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "committedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "status",
+        "source",
+        "executionId",
+        "generation",
+        "previousGenerationId",
+        "acknowledgement",
+        "committedAt"
+      ],
+      "additionalProperties": false
+    },
+    "SnapshotReceipt": {
+      "type": "object",
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "status": {
+          "const": "APPLIED"
+        },
+        "source": {
+          "$ref": "#/$defs/SourceIdentity"
+        },
+        "executionId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "result": {
+          "$ref": "#/$defs/Artifact"
+        },
+        "mode": {
+          "enum": [
+            "baseline",
+            "merge"
+          ]
+        },
+        "appliedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tables": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "snapshotId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "contextContract": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "contextCompleteSince": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "maximumAppendKey": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "snapshotId",
+              "contextContract",
+              "contextCompleteSince",
+              "maximumAppendKey"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "contractVersion",
+        "status",
+        "source",
+        "executionId",
+        "result",
+        "mode",
+        "appliedAt",
+        "tables"
+      ],
+      "additionalProperties": false
+    },
+    "Failure": {
+      "type": "object",
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "executionId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "phase": {
+          "enum": [
+            "RESOLVE",
+            "EXTRACT",
+            "HYDRATE",
+            "WRITE",
+            "DELIVER",
+            "COMMIT",
+            "SNAPSHOT"
+          ]
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "partialArtifacts": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+          },
+          "minItems": 0
+        },
+        "finishedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "executionId",
+        "phase",
+        "code",
+        "message",
+        "retryable",
+        "partialArtifacts",
+        "finishedAt"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
