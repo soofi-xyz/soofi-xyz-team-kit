@@ -60,7 +60,7 @@ interpretation before introducing any consumer-owned policy artifacts.
 | Time/cache | Pinned evaluation instant, timezone boundaries, artifact invalidation, changed facts and documented snapshot-isolation limits |
 | Population cache | Source/selector advancement, expired or incomplete materialization, concurrent generation, lease loss and runtime activation/rollback |
 | Execution | Saturation, admission/cleanup, retry/redrive capacity, partial partitions, idempotent aggregation and independent publication failure |
-| Outcome persistence | Durable outcomes across configured decision values, filtering-rule attribution/version, source-unavailable/execution-failure distinction, queue retry/DLQ/replay and manifest-to-store reconciliation |
+| Outcome persistence | Durable outcomes across configured decision values, filtering-rule attribution/version, source-unavailable/execution-failure distinction, queue retry/DLQ/redrive and manifest-to-store correlation |
 | Performance | Comparable before/after Filter phase timings, data size/fan-out, query identity, source plans, cache state, load and decision-equivalence results; separate asynchronous persistence timing |
 | Consumers | Output schema/nullability, freshness/completeness handling, publication identity and downstream ownership |
 

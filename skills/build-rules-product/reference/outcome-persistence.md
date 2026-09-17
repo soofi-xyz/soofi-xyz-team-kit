@@ -29,20 +29,20 @@ Expose a supported read path that can trace a subject outcome to its run,
 effective ruleset and filtering rule artifact. Store sensitive evidence only in
 authorized artifacts; do not place it in logs or unbounded metric dimensions.
 
-## Delivery and recovery
+## Fire-and-forget delivery
 
 Keep Filter evaluation and outcome persistence separate:
 
 1. Write the immutable result artifact and a versioned outcome manifest.
-2. Reliably emit an `outcomes-ready` event that identifies that manifest.
+2. Fire-and-forget an `outcomes-ready` event that identifies that manifest.
 3. Route the event through the approved Event → Queue path.
 4. Have a bounded queue worker persist outcomes in batches through the supported
    persistence interface.
 
-Make dispatch recoverable: use an outbox or equivalent reconciled dispatch state,
-not fire-and-forget delivery. Make worker writes idempotent across duplicate
-events, retries and replays. Alarm on delivery failures, use bounded retries,
-send exhausted messages to a DLQ and provide a reconciler/redrive path.
+The Filter producer must not wait for queue admission or persistence completion,
+and it does not keep an outbox or dispatch-reconciliation state. Make worker
+writes idempotent across duplicate events, retries and redrives. The downstream
+queue and worker own retry, DLQ and redrive handling.
 
 Return evaluation status separately from outcome-persistence status. A successful
 Filter evaluation does not prove persistence has finished. Report planned,
@@ -69,4 +69,4 @@ Verify at least:
    attribution.
 4. Duplicate event delivery and replay do not duplicate logical outcomes.
 5. Queue, worker and DLQ failures remain observable and recover through the
-   documented path.
+   documented downstream path.

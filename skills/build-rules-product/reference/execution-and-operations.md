@@ -37,16 +37,16 @@ reacquisition gap; account for it when operating that service.
 Persist the result of every record-level evaluation, including the rule
 identifier(s) that filtered out a subject. Use the
 [outcome-persistence contract](outcome-persistence.md): produce a versioned
-outcome manifest, reliably send its event through the approved Event → Queue
+outcome manifest, fire-and-forget its event through the approved Event → Queue
 path and idempotently persist outcomes asynchronously. Keep source facts
-immutable and do not introduce synchronous per-record persistence into the
-Filter evaluation path.
+immutable, do not wait for queue or persistence completion, and do not introduce
+synchronous per-record persistence into the Filter evaluation path.
 
 Expose evaluation and persistence as separate statuses. Track planned, queued,
-persisted, duplicate, failed and DLQ outcomes; reconcile a completed Filter run
-against its persisted outcomes and provide replay/redrive for incomplete
-delivery. The persistence worker must be independently observable and recover
-without re-running an otherwise valid Filter evaluation.
+persisted, duplicate, failed and DLQ outcomes. The queue and persistence worker
+own retry, redrive and recovery without re-running an otherwise valid Filter
+evaluation; the Filter producer does not maintain an outbox or reconcile
+dispatch state.
 
 Default to producing result artifacts. Enable durable result publication only
 through an explicit, compatible consumer contract. Define which entities or
