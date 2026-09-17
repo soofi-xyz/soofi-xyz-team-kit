@@ -167,42 +167,7 @@
         }
       ]
     },
-    "DatasetSchema": {
-      "type": "object",
-      "properties": {
-        "schemaS3Uri": {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
-        },
-        "schemaDigest": {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "^[a-f0-9]{64}$"
-        },
-        "sparkSchemaS3Uri": {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
-        },
-        "sparkSchemaDigest": {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "^[a-f0-9]{64}$"
-        },
-        "graph": {
-          "$ref": "#/$defs/Graph"
-        }
-      },
-      "required": [
-        "schemaS3Uri",
-        "schemaDigest",
-        "sparkSchemaS3Uri",
-        "sparkSchemaDigest"
-      ],
-      "additionalProperties": false
-    },
-    "Language": {
+    "LanguageRegistration": {
       "type": "object",
       "properties": {
         "name": {
@@ -214,6 +179,9 @@
           "type": "string",
           "minLength": 1,
           "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "current": {
+          "type": "boolean"
         },
         "status": {
           "enum": [
@@ -227,46 +195,25 @@
             "graph"
           ]
         },
-        "owner": {
-          "type": "object",
-          "properties": {
-            "company": {
-              "type": "string",
-              "minLength": 1,
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            },
-            "product": {
-              "type": "string",
-              "minLength": 1,
-              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-            }
-          },
-          "required": [
-            "company",
-            "product"
-          ],
-          "additionalProperties": false
+        "s3Uri": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
         },
-        "datasets": {
-          "type": "object",
-          "minProperties": 1,
-          "propertyNames": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-          },
-          "additionalProperties": {
-            "$ref": "#/$defs/DatasetSchema"
-          }
+        "sha256": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-f0-9]{64}$"
         }
       },
       "required": [
         "name",
         "version",
+        "current",
         "status",
         "shape",
-        "owner",
-        "datasets"
+        "s3Uri",
+        "sha256"
       ],
       "additionalProperties": false
     },
@@ -414,16 +361,36 @@
               },
               "required": {
                 "type": "boolean"
+              },
+              "format": {
+                "enum": [
+                  "parquet",
+                  "jsonl",
+                  "csv",
+                  "xlsx"
+                ]
+              },
+              "sheet": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 31
+              },
+              "options": {
+                "$ref": "#/$defs/Options"
               }
             },
             "required": [
               "table",
               "view",
-              "required"
+              "required",
+              "format"
             ],
             "additionalProperties": false
           },
           "minItems": 1
+        },
+        "output": {
+          "$ref": "#/$defs/Output"
         },
         "outputs": {
           "type": "array",
@@ -442,6 +409,7 @@
         "from",
         "to",
         "inputs",
+        "output",
         "outputs"
       ],
       "additionalProperties": false
@@ -459,40 +427,7 @@
         "languages": {
           "type": "array",
           "items": {
-            "type": "object",
-            "properties": {
-              "name": {
-                "type": "string",
-                "minLength": 1,
-                "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-              },
-              "version": {
-                "type": "string",
-                "minLength": 1,
-                "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
-              },
-              "current": {
-                "type": "boolean"
-              },
-              "s3Uri": {
-                "type": "string",
-                "minLength": 1,
-                "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
-              },
-              "sha256": {
-                "type": "string",
-                "minLength": 1,
-                "pattern": "^[a-f0-9]{64}$"
-              }
-            },
-            "required": [
-              "name",
-              "version",
-              "current",
-              "s3Uri",
-              "sha256"
-            ],
-            "additionalProperties": false
+            "$ref": "#/$defs/LanguageRegistration"
           },
           "minItems": 1
         },
@@ -607,33 +542,17 @@
           "type": "string",
           "minLength": 1,
           "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
-        },
-        "format": {
-          "enum": [
-            "parquet",
-            "jsonl",
-            "csv"
-          ]
-        },
-        "options": {
-          "$ref": "#/$defs/Options"
         }
       },
       "required": [
         "table",
-        "s3Uri",
-        "format"
+        "s3Uri"
       ],
       "additionalProperties": false
     },
     "Output": {
       "type": "object",
       "properties": {
-        "s3Prefix": {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
-        },
         "shape": {
           "enum": [
             "tabular",
@@ -644,7 +563,8 @@
           "enum": [
             "parquet",
             "jsonl",
-            "csv"
+            "csv",
+            "xlsx"
           ]
         },
         "profile": {
@@ -655,7 +575,6 @@
         }
       },
       "required": [
-        "s3Prefix",
         "shape",
         "format"
       ],
@@ -680,6 +599,20 @@
         }
       ]
     },
+    "OutputLocation": {
+      "type": "object",
+      "properties": {
+        "s3Prefix": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+        }
+      },
+      "required": [
+        "s3Prefix"
+      ],
+      "additionalProperties": false
+    },
     "Request": {
       "type": "object",
       "properties": {
@@ -691,30 +624,10 @@
           "minLength": 1,
           "pattern": "^[a-z][a-z0-9_-]{0,63}$"
         },
-        "fromVersion": {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
-        },
         "to": {
           "type": "string",
           "minLength": 1,
           "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-        },
-        "toVersion": {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
-        },
-        "mappingId": {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
-        },
-        "mappingVersion": {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
         },
         "inputs": {
           "type": "array",
@@ -724,7 +637,7 @@
           "minItems": 1
         },
         "output": {
-          "$ref": "#/$defs/Output"
+          "$ref": "#/$defs/OutputLocation"
         },
         "costCeilingUsd": {
           "type": "number",
@@ -738,12 +651,7 @@
         "inputs",
         "output"
       ],
-      "additionalProperties": false,
-      "dependentRequired": {
-        "mappingVersion": [
-          "mappingId"
-        ]
-      }
+      "additionalProperties": false
     },
     "Workers": {
       "type": "object",
@@ -1024,7 +932,8 @@
           "enum": [
             "parquet",
             "jsonl",
-            "csv"
+            "csv",
+            "xlsx"
           ]
         },
         "options": {
@@ -1036,6 +945,11 @@
             "$ref": "#/$defs/PinnedInputObject"
           },
           "minItems": 0
+        },
+        "sheet": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 31
         }
       },
       "required": [
@@ -1084,6 +998,62 @@
       ],
       "additionalProperties": false
     },
+    "ResolvedOutput": {
+      "type": "object",
+      "properties": {
+        "s3Prefix": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+        },
+        "shape": {
+          "enum": [
+            "tabular",
+            "graph"
+          ]
+        },
+        "format": {
+          "enum": [
+            "parquet",
+            "jsonl",
+            "csv",
+            "xlsx"
+          ]
+        },
+        "profile": {
+          "const": "neptune"
+        },
+        "options": {
+          "$ref": "#/$defs/Options"
+        }
+      },
+      "required": [
+        "s3Prefix",
+        "shape",
+        "format",
+        "options"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "profile"
+            ]
+          },
+          "then": {
+            "properties": {
+              "shape": {
+                "const": "graph"
+              },
+              "format": {
+                "const": "csv"
+              }
+            }
+          }
+        }
+      ]
+    },
     "Plan": {
       "type": "object",
       "properties": {
@@ -1114,10 +1084,10 @@
           "$ref": "#/$defs/LanguageIdentity"
         },
         "sourceLanguage": {
-          "$ref": "#/$defs/Language"
+          "$ref": "#/$defs/LanguageRegistration"
         },
         "targetLanguage": {
-          "$ref": "#/$defs/Language"
+          "$ref": "#/$defs/LanguageRegistration"
         },
         "mapping": {
           "$ref": "#/$defs/Mapping"
@@ -1130,7 +1100,7 @@
           "minItems": 1
         },
         "output": {
-          "$ref": "#/$defs/Output"
+          "$ref": "#/$defs/ResolvedOutput"
         },
         "timezone": {
           "const": "UTC"
@@ -1308,7 +1278,8 @@
           "enum": [
             "parquet",
             "jsonl",
-            "csv"
+            "csv",
+            "xlsx"
           ]
         },
         "shape": {

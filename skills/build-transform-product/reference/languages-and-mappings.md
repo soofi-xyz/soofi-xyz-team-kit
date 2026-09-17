@@ -7,87 +7,96 @@ authoritative for execution inputs.
 
 Use [the contract definitions](contracts-and-defaults.md) for exact field names,
 required fields and baseline defaults. Follow [the worked example](worked-example.md)
-for complete schemas, SQL, manifests and a catalog with real content digests.
+for complete definitions, SQL, manifests and a catalog with real content digests.
 
 ## 1. Language registration
 
-Register a named, versioned data contract with ownership/scope, status,
-`shape: tabular | graph`, named dataset schemas and their content digests.
-Use the same language identity regardless of whether records arrive as Parquet,
-JSONL or CSV. Do not register `crm-csv` and `crm-parquet` solely to express encoding.
+A language is a Lexicon language definition: the same `vertices` / `edges` /
+`common_patterns` document Lexicon already publishes for `lexicon`, `interprose`
+and every other registered vocabulary. **The language definition is the schema.**
+Transform publishes no parallel JSON Schema, Spark `StructType` or per-dataset
+schema artifact; doing so duplicates Lexicon and drifts.
 
-Publish schema artifacts and deterministic Spark `StructType` representations
-for each dataset. Keep logical constraints such as required fields, nullability,
-enums, decimal precision/scale and date/time semantics with the schema. Define
-nested structs/arrays where needed; this baseline requires a versioned extension
-before accepting maps. Validate serializer compatibility.
+Every language on either side of a mapping must be registered in Lexicon. There
+is no external or private registry path: if a vendor format is not yet a Lexicon
+language, register it there first, then map to or from it.
 
-Use this concrete registration artifact shape (example names/URIs):
+Register a language in the Transform catalog with a name, version, `current`
+flag, status, `shape: tabular | graph` and the immutable definition artifact:
 
 ```json
 {
   "name": "crm",
   "version": "1.0.0",
+  "current": true,
   "status": "ENABLED",
   "shape": "tabular",
-  "owner": { "company": "example", "product": "crm" },
-  "datasets": {
-    "customers": {
-      "schemaS3Uri": "s3://configuration-bucket/languages/crm/1.0.0/customers.schema.json",
-      "schemaDigest": "<sha256-of-schema-bytes>",
-      "sparkSchemaS3Uri": "s3://configuration-bucket/languages/crm/1.0.0/customers.spark.json",
-      "sparkSchemaDigest": "<sha256-of-spark-schema-bytes>"
-    }
-  }
+  "s3Uri": "s3://configuration-bucket/languages/crm/1.0.0/crm.json",
+  "sha256": "<sha256-of-definition-bytes>"
 }
 ```
 
-Store logical validation constraints in the schema artifact and a Spark
-`StructType` JSON representation in the Spark artifact. Validate their agreement
-at registration; reject unsupported schema constructs rather than silently
-dropping them. Catalog entries pin each language/mapping manifest URI and digest;
-allow at most one enabled `current: true` entry per language, and require one
-when a request omits its version. Graph registrations add the dataset roles/IDs
-and endpoints described in section 4. Public v2 requests
-select these registrations; they do not register schemas as a side effect.
+Derive datasets and columns from the definition, never from a second file:
 
-For externally registered languages, retain their authoritative name/version,
-owner and schema digest. Read/import through the registry's documented public
-interface and publish the Transform-compatible schema binding in Lexicon. Do
-not access Translate's internal tables or reinterpret its TypeScript mapping
-bundles as SQL. Its documented JSON registration format describes schema
-registration and does not prohibit CSV/Parquet encodings in Transform.
+| Definition element | Transform meaning |
+| --- | --- |
+| `vertices[].type` (and `edges[].type` for graph languages) | Dataset name; the set of tables a mapping may bind or produce |
+| `properties` key order | Column order for CSV/Excel output; artifacts are byte-immutable so this order is stable |
+| Vertex-level `required` / edge property `required: true` | Non-nullable Spark column; must be present in every record |
+| Property not listed as required | Nullable Spark column; an omitted JSONL field materializes as null |
+| `type`, `format`, `enum`, `pattern`, `minLength`, `items` | Logical validation constraints applied to source rows and query results |
+
+Map Lexicon property types to Spark deterministically:
+
+| Lexicon `type` (+ `format`) | Spark read type | Accepted result column types |
+| --- | --- | --- |
+| `string` | `StringType` | string |
+| `string` + `format: date` | `DateType` | date |
+| `string` + `format: date-time` | `TimestampType` (UTC) | timestamp |
+| `integer` | `LongType` | byte, short, integer, long |
+| `number` | `DecimalType(38, 18)` | decimal, float, double |
+| `boolean` | `BooleanType` | boolean |
+| `array` | `ArrayType(<items>)` | array with an accepted element type |
+
+Reject any other property type or unsupported keyword at catalog publication
+rather than ignoring it. SQL controls narrowing (for example `CAST(... AS
+DECIMAL(18, 2))`); CSV and Excel outputs reject nested target fields.
+
+Language registration must fail on duplicate identities with different content,
+invalid definitions, invalid graph metadata or missing artifact digests. Allow at
+most one enabled `current: true` entry per language; a request never names a
+version, so exactly one current enabled entry must exist for each language in the
+pair. Do not register `crm-csv` and `crm-parquet` solely to express encoding;
+encoding belongs to the mapping.
 
 Suggested reviewed source layout, to be implemented in Lexicon:
 
 ```text
 src/transform/
 ├── catalog.json
-├── languages/<language>/<version>/
-│   ├── language.json
-│   └── schemas/<dataset>.json
+├── languages/<language>/<version>/<language>.json
 └── mappings/<mapping-id>/<version>/
     ├── manifest.json
     ├── queries/<output>.sql
     └── fixtures/
 ```
 
-Publish immutable versioned manifests/schema/SQL objects and a catalog with
-language/current-version indexes and mapping references. Discover its S3 URI
-through the proposed `/lexicon/transform-catalog-uri` parameter. Give the
-Transform resolver and Glue job scoped read permissions. Preserve discovered
+Name the prefix `mappings/`, not `rules/` or `mapping-rules/`: Lexicon already
+publishes filter rules and rulesets, and a second "rules" concept confuses
+authors and consumers. Publish immutable versioned manifests and SQL objects and
+a catalog with language/current-version indexes and mapping references. Discover
+its S3 URI through the proposed `/lexicon/transform-catalog-uri` parameter. Give
+the Transform resolver and Glue job scoped read permissions. Preserve discovered
 consumer contracts when changing an existing publication surface.
-
-Language registration must fail on duplicate identities with different content,
-invalid/unsupported schemas, invalid graph metadata or missing artifact digests.
-Respect the registry's ownership and reserved-name policy without embedding a
-fixed list of source systems in Transform. Every compatible enabled registration
-can be a source or target; do not require either endpoint to be reserved.
 
 ## 2. Mapping manifest
 
 Register an immutable mapping for an exact direction and language-version pair.
-Use an explicit engine, named input bindings and target output definitions:
+The mapping owns everything about encoding and shape: each input's format and
+reader options, and the output shape, format, profile and writer options. A
+request supplies only S3 locations. A different delimiter, header policy or
+output format is a **new mapping**, not a request parameter; there is no case
+for running the same SQL with different serializer settings.
 
 ```json
 {
@@ -99,8 +108,9 @@ Use an explicit engine, named input bindings and target output definitions:
   "from": { "name": "crm", "version": "1.0.0" },
   "to": { "name": "warehouse", "version": "2.0.0" },
   "inputs": [
-    { "table": "customers", "view": "source_customers", "required": true }
+    { "table": "customers", "view": "source_customers", "required": true, "format": "jsonl" }
   ],
+  "output": { "shape": "tabular", "format": "parquet" },
   "outputs": [
     {
       "dataset": "accounts",
@@ -112,8 +122,10 @@ Use an explicit engine, named input bindings and target output definitions:
 }
 ```
 
-Bind `customers` to the registered source dataset schema and `accounts` to the
-registered target dataset schema. The illustrative query can be:
+`inputs[].table` must be a dataset of the source language definition and
+`outputs[].dataset` a dataset of the target definition. An `xlsx` input names
+its `sheet` (default: the table name); several inputs may bind different sheets
+of one workbook. The illustrative query can be:
 
 ```sql
 SELECT
@@ -124,21 +136,23 @@ FROM source_customers c
 ```
 
 The query returns a typed table. It needs no `~id`, `~label`, `vertices/` or
-`edges/` path segment. Output identity and schema come from the manifest and
-target registration, not the SQL filename.
+`edges/` path segment. Output identity and columns come from the manifest and the
+target language definition, not the SQL filename.
 
 Validate mappings at publication: both enabled language versions exist; input
-bindings and output datasets exist; views/paths are safe and unique; schemas are
-compatible; SQL digests match; dependencies form an acyclic graph; fixtures pass.
-Use stable view names from the manifest (e.g. `source_customers` and
-`target_accounts`) with disjoint namespaces. Expose an earlier output as its
-validated `target_<dataset>` view only when a dependent query declares it.
+tables and output datasets exist in their definitions; views/paths are safe and
+unique; formats and options pass the serializer allowlists; `output.profile` is
+compatible with the target shape; SQL digests match; dependencies form an acyclic
+graph; fixtures pass. Use stable view names from the manifest (e.g.
+`source_customers` and `target_accounts`) with disjoint namespaces. Expose an
+earlier output as its validated `target_<dataset>` view only when a dependent
+query declares it.
 
 For multiple SQL fragments targeting one table, declare them as one output's
 ordered `queries` list instead of `queryS3Uri`/`querySha256`; require exactly one
 form. Each list entry has `queryS3Uri` and `querySha256`. Validate all fragment
-schemas against the same target before `unionByName`. Do not union unrelated datasets just
-because their files live in the same folder.
+columns against the same target before `unionByName`. Do not union unrelated
+datasets just because their files live in the same folder.
 
 Use SQL SELECT/CTE result queries; reject DDL/DML, arbitrary multi-statement SQL
 and unsupported execution engines during publication/validation. Do not accept
@@ -147,22 +161,25 @@ in Python and language-specific transformation expressions in registered SQL.
 
 ## 3. Resolution rules
 
-1. Read the requested `from`/`to` registrations. Resolve omitted versions only
-   through each language's unambiguous enabled current-version pointer.
-2. Match direction, concrete versions, scope and engine. If an explicit mapping
-   ID/version is supplied, verify it matches those languages and versions.
-3. Without an explicit mapping, require exactly one enabled compatible mapping.
-   Reject zero matches and ambiguity. Never choose the first catalog entry.
-4. Validate named input bindings, required source tables, target shape and
-   serializer/profile compatibility before starting Glue.
-5. Pin catalog revision, schemas, mapping and SQL content identities in the
-   execution plan. Record concrete versions in the result; do not re-resolve
-   “current” after waiting for approval.
+1. Read the `from` and `to` language names from the request. Resolve each to its
+   single enabled `current: true` registration; fail on none or several.
+2. Require exactly one enabled mapping whose `from`/`to` match those concrete
+   language versions and engine. Reject zero matches and ambiguity. Never choose
+   the first catalog entry. Requests carry no mapping ID or version; if two
+   enabled mappings exist for a pair, publication is wrong, not the request.
+3. Bind each request input to a mapping input by `table`; fail unknown, duplicate
+   or missing required tables. Take format, sheet and reader options from the
+   mapping. Take shape, format, profile and writer options from `mapping.output`.
+4. Validate the bound tables and the target datasets against their language
+   definitions and serializer/profile compatibility before starting Glue.
+5. Pin catalog revision, definition digests, mapping and SQL content identities
+   in the execution plan. Record concrete versions in the result; do not
+   re-resolve "current" after waiting for approval.
 
 Use distinct failures such as `LanguageNotRegistered`, `LanguageDisabled`,
-`LanguageVersionNotFound`, `MappingNotRegistered`, `MappingAmbiguous`,
-`MappingLanguageMismatch`, `UnsupportedFormat` and `SchemaMismatch`. These are
-product error tags; version any changes to an existing deployment's envelope.
+`LanguageAmbiguous`, `MappingNotRegistered`, `MappingAmbiguous`,
+`UnsupportedFormat` and `SchemaMismatch`. These are product error tags; version
+any changes to an existing deployment's envelope.
 
 A reverse mapping is a separate registration. Missing A → B must not trigger
 A → Lexicon → B automatically. Keep composed transformations outside direct
@@ -170,16 +187,18 @@ pair resolution until a separately registered composition contract exists.
 
 ## 4. Tabular and graph targets
 
-For tabular languages, register ordinary tables and preserve their columns and
-types. Permit multiple unrelated output tables in one target language.
+For tabular languages, every `vertices[].type` is an ordinary table; preserve its
+columns and types. Permit multiple unrelated output tables in one target language.
 
 For graph languages, follow [the graph mapping contract](graph-mappings.md).
 Define each output's `graph` block with `kind`, `label`, `idColumn`, property
-bindings and edge `from`/`to` bindings. Require stable identities and validate
+bindings and edge `from`/`to` bindings. The Lexicon definition's `edges[].from`
+and `edges[].to` name the vertex datasets an edge may reference; the mapping's
+endpoint bindings must agree with them. Require stable identities and validate
 endpoints against the referenced vertex datasets. SQL may return canonical
 `~id`, `~from` and `~to` aliases directly; otherwise bind the chosen column names
-explicitly. Reject disagreement with the registered target schema.
+explicitly. Reject disagreement with the target definition.
 
-Serialize declared graph fields as named datasets in Parquet/JSONL/CSV by default.
-Only `output.profile: neptune` adapts role bindings to its CSV headers/layout.
-Reject graph metadata on tabular mapping outputs.
+Serialize declared graph fields as named datasets in Parquet/JSONL/CSV/Excel by
+default. Only `output.profile: neptune` adapts role bindings to its CSV
+headers/layout. Reject graph metadata on tabular mapping outputs.

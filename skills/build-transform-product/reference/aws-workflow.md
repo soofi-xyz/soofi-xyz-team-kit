@@ -72,7 +72,7 @@ permissions. Keep credentials in the SDK/CLI provider chain. Review generated IA
 with `cdk diff`; the synchronous Glue integration may require service-specific
 wildcard permissions as described by AWS. Do not replace all IAM with `*` grants.
 
-A catalog and all schema/SQL artifacts it references must be inside the configured
+A catalog and all definition/SQL artifacts it references must be inside the configured
 Lexicon publication prefix for the baseline IAM policy. Different publication
 locations require explicit reviewed prefix grants, not unrestricted bucket access.
 Deployments using customer-managed KMS keys must add the matching decrypt/encrypt

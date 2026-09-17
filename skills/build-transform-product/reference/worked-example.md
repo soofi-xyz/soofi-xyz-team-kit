@@ -8,18 +8,17 @@ bundled. Read the [build sequence](from-scratch.md) and
 ## 1. Complete tabular publication
 
 Start with [the example request](examples/tabular/request.json) and
-[local environment](examples/environment.local.json). The request explicitly
-selects `crm@1.0.0 → warehouse@2.0.0` through `crm-to-warehouse@1.0.0`, reads one
-JSONL table and writes typed Parquet. These names are registrations, not built-ins.
+[local environment](examples/environment.local.json). The request names
+`crm → warehouse` and one input location; the catalog resolves that to
+`crm@1.0.0 → warehouse@2.0.0` through `crm-to-warehouse@1.0.0`, which declares a
+JSONL input and typed Parquet output. These names are registrations, not built-ins.
 
 | Artifact | Meaning |
 | --- | --- |
-| [catalog.json](examples/tabular/config/catalog.json) | Current-version flags and immutable language/mapping references |
-| [crm.language.json](examples/tabular/config/crm.language.json) | Source `customers` dataset and exact schema references |
-| [warehouse.language.json](examples/tabular/config/warehouse.language.json) | Target `accounts` dataset and exact schema references |
-| [customers.schema.json](examples/tabular/config/customers.schema.json), [customers.spark.json](examples/tabular/config/customers.spark.json) | Logical source constraints and Spark column order/types |
-| [accounts.schema.json](examples/tabular/config/accounts.schema.json), [accounts.spark.json](examples/tabular/config/accounts.spark.json) | Logical target constraints and Spark column order/types |
-| [crm-to-warehouse.mapping.json](examples/tabular/config/crm-to-warehouse.mapping.json) | Direction, source view, target dataset and SQL byte digest |
+| [catalog.json](examples/tabular/config/catalog.json) | Language registrations (status, shape, current flag, definition digest) and immutable mapping references |
+| [crm.json](examples/tabular/config/crm.json) | Lexicon language definition for the source; its `customers` vertex is the dataset and schema |
+| [warehouse.json](examples/tabular/config/warehouse.json) | Lexicon language definition for the target; its `accounts` vertex is the dataset and schema |
+| [crm-to-warehouse.mapping.json](examples/tabular/config/crm-to-warehouse.mapping.json) | Direction, source view and format, output shape/format, target dataset and SQL byte digest |
 | [accounts.sql](examples/tabular/config/accounts.sql) | Typed SELECT projection; no graph fields |
 | [customers.jsonl](examples/tabular/customers.jsonl) | Four synthetic input records |
 | [expected-accounts.json](examples/tabular/expected-accounts.json) | Expected decoded output values |
@@ -32,8 +31,8 @@ under `<localObjectRoot>/transform-local/config/` and the source JSONL under
 Translate URI bucket/key components under that root with traversal checks.
 
 Implement a fixture publisher that substitutes approved bucket/prefix identities
-when needed and recalculates references in dependency order: logical/Spark
-schemas and SQL → language/mapping manifests → catalog. Publish immutable
+when needed and recalculates references in dependency order: definitions and
+SQL → mapping manifest → catalog. Publish immutable
 artifacts before replacing the catalog pointer. Local fixture materialization
 must never publish to AWS; use Lexicon's shared flow for actual configuration.
 
@@ -45,7 +44,8 @@ Implement JSONL → resolver → real Spark SQL → Parquet → reporter first. 
 - Exactly one output dataset, `accounts`, with four rows. Its path is
   `s3://transform-local/results/demo/example-001/tables/accounts/`.
 - Column order/types are `account_id:string`, `account_name:string(nullable)`,
-  `balance:decimal(18,2)`, `active:boolean`, `created_on:date`.
+  `balance:decimal(18,2)`, `active:boolean`, `created_on:date`, derived from the
+  `accounts` vertex in `warehouse.json` and the SQL `CAST`.
 - Sort only the small decoded test result by `account_id` before comparison;
   distributed output order is not part of the product contract.
 - IDs retain leading zeros. Account `002` has a null name and account `003` has
@@ -53,19 +53,22 @@ Implement JSONL → resolver → real Spark SQL → Parquet → reporter first. 
   Unicode and the embedded newline. Compare balances as exact decimals, including
   12.30 and -4.25, not binary floats. Preserve the leap date 2024-02-29.
 - The successful `Result` points to a byte-verified immutable plan. That plan
-  embeds the selected language/mapping versions, verified schema/query digests,
+  embeds the selected language/mapping versions, verified definition/query digests,
   snapshot input objects and effective options. The manifest has one dataset
   entry with rowCount 4 and actual file/byte counts; do not assert one part file.
 - No graph fields, `vertices/`, `edges/` or Persist dependency appear.
 
 ## 3. Expand without changing the engine
 
-Generate CSV and Parquet forms of the same source rows using the registered
+Generate CSV, Parquet and Excel forms of the same source rows using the derived
 Spark types. For CSV, use quoted empty string, literal `\N` for null and quoted
-logical records for commas/quotes/newlines. Run all **nine** input/output pairs
-from `{parquet, jsonl, csv} × {parquet, jsonl, csv}`. Reread each result with its
-registered schema and effective reader settings and apply the same assertions.
-Use a fresh execution ID/output prefix for each case.
+logical records for commas/quotes/newlines. For Excel, put the rows on a sheet
+named `customers`. Because formats live in the mapping, register one mapping per
+pair: run all **sixteen** input/output pairs from
+`{parquet, jsonl, csv, xlsx} × {parquet, jsonl, csv, xlsx}`. Reread each result
+with its derived schema and effective reader settings and apply the same
+assertions. Use a fresh execution ID/output prefix for each case. Add one Excel
+workbook holding `customers` and `tiers` on two sheets and bind both inputs to it.
 
 Register `warehouse-to-crm@1.0.0` separately with source `warehouse@2.0.0`, target
 `crm@1.0.0`, required `accounts` as `source_accounts`, and this query:
@@ -91,7 +94,8 @@ For mixed-input joins, register `customers` and `tiers` source tables plus an
 with tiers in Parquet. Define tiers as `(customer_code:string, tier:string)` with
 rows `001/gold` and `002/silver`; use a left join on `customer_code`. Assert four
 output rows, gold/silver for the first two and null tiers for 003/004. Register
-`tier` as nullable. Do not infer the additional dataset schema at execution time.
+`tier` as not required (nullable) in the definition. Do not infer the additional
+dataset schema at execution time.
 
 Add two unrelated output datasets and verify they remain separate. Add two
 ordered query fragments targeting a single dataset, with disjoint key ranges,
@@ -132,7 +136,10 @@ tabular result. Do not limit graph shape to target-only registrations.
 ## 5. Failure and infrastructure gates
 
 Implement explicit negative tests for unknown/disabled/ambiguous registrations,
-version mismatch, modified SQL/schema bytes, duplicate JSON keys, unknown fields,
+version mismatch, modified SQL/definition bytes, duplicate JSON keys, unknown
+fields (including a request that still carries versions, mapping IDs, formats
+or options), an Excel sheet missing from a workbook, an Excel dataset above the
+ceiling,
 invalid required/null values, CSV header/width/null-marker collisions, decimal
 precision overflow, malformed dates, nested CSV output, output-scope denial and
 input object limits. Check the error phase and the absence of paid execution or
