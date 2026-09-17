@@ -5,13 +5,16 @@ reader/writer behavior independent of registered language names.
 
 ## 1. Readers
 
-Dispatch on each input's explicit `format`, not its extension or language:
+Dispatch on the `format` the mapping declares for each input, not its extension,
+language or anything in the request. The "registered schema" below is always the
+`StructType` derived from the Lexicon language definition:
 
 | Format | Reader | Schema and record semantics |
 | --- | --- | --- |
 | `parquet` | `spark.read.parquet(...)` | Compare embedded schema with the registered dataset schema; reject incompatible evolution/coercion |
 | `jsonl` | Schema-bound `spark.read.json(...)` | UTF-8, one object per line, `multiLine=false`; use registered types |
 | `csv` | Schema-bound `spark.read.csv(...)` | Explicit header/delimiter/quote/escape/null/date options and registered column types |
+| `xlsx` | Driver-side `pandas.read_excel(..., sheet_name=<sheet>, dtype=str)` → `spark.createDataFrame` | One sheet per dataset (`sheet` defaults to the table name); header row must equal the registered columns; cast with the registered types; reject above the configured row/byte ceiling |
 
 For JSONL use `mode=FAILFAST`; this rejects parse failures but is not complete
 schema validation. Verify required fields, nullability, enums, numeric ranges
@@ -32,8 +35,9 @@ These APIs/options are documented in Apache Spark's [CSV reference](https://spar
 and [JSON reference](https://dlcdn.apache.org/spark/docs/3.4.3/sql-data-sources-json.html).
 Verify behavior with the actual Glue/Spark version used by the target deployment.
 
-Allow reader options from a typed allowlist; reject arbitrary Spark settings.
-Pin timezone and date/timestamp parsing rules in the resolved plan. Treat input
+Allow reader options from a typed allowlist at mapping publication; reject
+arbitrary Spark settings. Pin timezone and date/timestamp parsing rules in the
+resolved plan. Treat input
 locations as dataset files or prefixes and enumerate only objects for that named
 dataset/encoding. Exclude metadata and unrelated files. Do not count only
 `.parquet` objects during admission.
@@ -75,21 +79,27 @@ simultaneously or that 200 write partitions fits every table.
 
 ## 3. Writers
 
-Write one directory per logical target dataset. Output format is independent
-of each source format; support all nine combinations of the three encodings.
+Write one directory per logical target dataset in the format the mapping's
+`output` declares. Output format is independent of each source format; support
+all sixteen combinations of the four encodings.
 
 | Format | Writer | Required result |
 | --- | --- | --- |
 | `parquet` | `df.write.parquet(path)` | Preserve native schema/types; default compression `snappy` |
 | `jsonl` | `df.write.option("ignoreNullFields", "false").json(path)` | One JSON object per line with registered field names and explicit null semantics |
 | `csv` | `df.write.options(...).csv(path)` | Registered column order and configured header/quote/null/date semantics; publish a schema sidecar |
+| `xlsx` | Driver-side `df.toPandas().to_excel(<path>/<dataset>.xlsx, sheet_name=<dataset>, index=False)` | One workbook per dataset with one sheet; registered column order; dates/decimals as typed cells; reject above the configured row ceiling and never above 1,048,576 rows |
+
+Excel is the one deliberate driver-side path. Keep it bounded by the environment
+ceiling and count its collection in capacity estimates; do not let it become a
+general escape hatch for other formats.
 
 Use UTC/registered timezone consistently for timestamps and define decimal
 representation through the target schema. Do not stringify all DataFrame values
 for Parquet/JSONL. JSONL's line-oriented reader and configurable null-field
 writer behavior are described in the [Spark JSON reference](https://dlcdn.apache.org/spark/docs/3.4.3/sql-data-sources-json.html).
 
-CSV output must have scalar fields. If a target has nested values, require SQL
+CSV and Excel output must have scalar fields. If a target has nested values, require SQL
 to project/flatten them into a compatible target schema or explicitly declare a
 JSON-string field and encode it in SQL. Otherwise reject CSV as incompatible;
 do not silently flatten or discard structure. Configure CSV quoting/escaping
@@ -117,6 +127,6 @@ the SQL engine and tabular path stay typed. Use the exact manifest bindings and
 Spark SQL examples in [graph-mappings.md](graph-mappings.md); never generate
 random edge IDs or rebuild endpoint IDs independently of their vertex mapping.
 
-Test graph output separately from tabular CSV: selecting `format: csv` alone
-must never activate Neptune rules. Verify Persist loading/readback separately
+Test graph output separately from tabular CSV: a mapping output with
+`format: csv` alone must never activate Neptune rules. Verify Persist loading/readback separately
 when requested by the consumer.
