@@ -11,6 +11,16 @@
         "s3Uri": "s3://connect-local/config/source.json",
         "sha256": "857f583d3796021424d0e194af5506300118d93ee5bc02e66fd4ec5ccceb6ba2"
       }
+    },
+    {
+      "source": {
+        "id": "sheet",
+        "version": "1.0.0"
+      },
+      "artifact": {
+        "s3Uri": "s3://connect-local/config/source-file.json",
+        "sha256": "cae821e69ee21429b1692c69e6990bf94d37c6b52ebd8e5f71b829f79e8a58f1"
+      }
     }
   ]
 }

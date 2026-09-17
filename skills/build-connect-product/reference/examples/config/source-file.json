@@ -1,0 +1,106 @@
+{
+  "contractVersion": 1,
+  "source": {
+    "id": "sheet",
+    "version": "1.0.0"
+  },
+  "enabled": true,
+  "adapter": "s3-file",
+  "sourceLanguage": {
+    "id": "sheet",
+    "version": "1.0.0"
+  },
+  "connection": {
+    "bucket": "connect-local",
+    "prefix": "landing/sheet/",
+    "format": "xlsx",
+    "options": {},
+    "maxRows": 200000,
+    "maxBytes": 52428800
+  },
+  "entity": {
+    "type": "seller",
+    "rootTable": "sellers",
+    "idColumn": "seller_id",
+    "related": null
+  },
+  "tables": {
+    "sellers": {
+      "enabled": true,
+      "source": {
+        "object": {
+          "key": "inventory.xlsx",
+          "sheet": "sellers"
+        }
+      },
+      "sparkSchema": {
+        "s3Uri": "s3://connect-local/config/sellers.spark.json",
+        "sha256": "cee4fdf489e0c52824ffe0d84573a7ee32391ac4fa897428216162a7d133e55f"
+      },
+      "recordKey": [
+        "seller_id"
+      ],
+      "entityLink": {
+        "kind": "direct",
+        "column": "seller_id"
+      },
+      "operationalColumns": [],
+      "dropColumns": [],
+      "read": {
+        "mode": "full"
+      },
+      "output": {
+        "mode": "current_entity_bundle"
+      },
+      "outputSparkSchema": {
+        "s3Uri": "s3://connect-local/config/sellers.spark.json",
+        "sha256": "cee4fdf489e0c52824ffe0d84573a7ee32391ac4fa897428216162a7d133e55f"
+      }
+    },
+    "agreements": {
+      "enabled": true,
+      "source": {
+        "object": {
+          "key": "inventory.xlsx",
+          "sheet": "agreements"
+        }
+      },
+      "sparkSchema": {
+        "s3Uri": "s3://connect-local/config/agreements.spark.json",
+        "sha256": "a50770712746cdae5614f5ef1cdc9b57e4ce23186b423ec886c7a96ef3882390"
+      },
+      "recordKey": [
+        "agreement_id"
+      ],
+      "entityLink": {
+        "kind": "direct",
+        "column": "seller_id"
+      },
+      "operationalColumns": [],
+      "dropColumns": [],
+      "read": {
+        "mode": "full"
+      },
+      "output": {
+        "mode": "current_entity_bundle"
+      },
+      "outputSparkSchema": {
+        "s3Uri": "s3://connect-local/config/agreements.spark.json",
+        "sha256": "a50770712746cdae5614f5ef1cdc9b57e4ce23186b423ec886c7a96ef3882390"
+      }
+    }
+  },
+  "projection": {
+    "s3Uri": "s3://connect-local/config/projection-file.json",
+    "sha256": "6caa6d596cbbc00c2694d04269e77db0db8ad9d2e50bf37b3ba21be4a8977b93"
+  },
+  "dependencies": {
+    "s3Uri": "s3://connect-local/config/dependencies-file.json",
+    "sha256": "344eda81f18fe78711878023ed9b18bac69e7e6bc9bbbd9538f127319efa3c1f"
+  },
+  "observations": [],
+  "delivery": {
+    "boundary": "after_consumer",
+    "consumerId": "warehouse"
+  }
+}

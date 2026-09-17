@@ -50,6 +50,32 @@ rows. Put scope filters in SQL itself. See [Spark JDBC](https://spark.apache.org
 Probe bounds with the same restrictions; never remove expensive predicates just
 to estimate partitions. Avoid unconditional broadcasts when entity sets grow.
 
+### `s3-file` reads
+
+Resolve each table's object under the registered bucket/prefix once in
+`planRead`: record `s3Uri`, ETag, size, last-modified and the SHA-256 of the
+downloaded bytes in `TablePlan.sourceObject`, and reject an object above the
+registered `maxBytes`. Read the exact pinned version (version ID or ETag match);
+a changed object between plan and read is `ConfigurationDigestMismatch`, not a
+silent re-read. The object digest is the table cursor: an unchanged digest is a
+complete read with zero changed rows, never a skipped table.
+
+Read `parquet` and `csv` through the schema-bound Spark readers with the
+registered options. Read `xlsx` on the driver with
+`pandas.read_excel(..., sheet_name=<sheet>, dtype=str)`, one sheet per table,
+then `spark.createDataFrame` and cast to the registered types; this is the same
+bounded rule as Transform's Excel adapter. Enforce `maxRows`, require the header
+row to equal the registered columns in order, reject merged cells, extra
+header rows and unregistered columns, and treat blank cells as null. Do not
+infer types from cell formats.
+
+`readEntityContext` filters the already materialized table by entity key; there
+is no source-side predicate. `describeConsistency` returns
+`single_object_snapshot`: every table read from one object is mutually consistent,
+tables from different objects are not. Acquiring the object from a partner
+system (SFTP, HTTP, manual upload) belongs to Connect service or an operator
+step, not to this adapter.
+
 ## 2. Materialize and validate
 
 Apply the registered projection plus operational columns, drop explicitly
