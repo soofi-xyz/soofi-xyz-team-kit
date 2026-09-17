@@ -15,12 +15,13 @@ state transitions, permissions, pricing model, deployment and recovery commands.
 2. For AWS work, reuse the verified selected profile, represented in examples
    as `AWS_PROFILE=<selected-profile>`. Check account/environment/region explicitly.
    Discover state-machine, catalog, bucket and queue pointers from actual outputs.
-3. Resolve enabled source/target versions and the directional SQL mapping.
-   Validate named input bindings, schemas and format/shape/profile compatibility.
+3. Resolve the current enabled source/target registrations and the single
+   directional SQL mapping. Validate named input bindings against the language
+   definitions and the mapping's format/shape/profile compatibility.
 4. For graph mappings, inspect `graph` blocks and the actual SQL ID/endpoint
    expressions. Follow [graph-mappings.md](graph-mappings.md), including exact
    endpoint matches and complete-export vertex membership.
-5. Pin schema/SQL/configuration digests and source artifacts into an execution
+5. Pin definition/SQL/configuration digests and source artifacts into an execution
    plan. Verify S3/KMS access and output scope. Submit with a fresh execution name
    and run prefix only within the existing authorization.
 
@@ -31,7 +32,7 @@ flow. A local SQL edit is not a published configuration release.
 
 ## 2. Admission, execution and recovery
 
-Size exactly the selected objects across Parquet, JSONL and CSV. Model compressed
+Size exactly the selected objects across Parquet, JSONL, CSV and Excel. Model compressed
 bytes versus processing expansion and query complexity when calibrating costs.
 Preserve the effective ceiling and estimation assumptions. Validate configuration
 before a possible approval wait, then execute the pinned plan without refreshing
@@ -56,7 +57,7 @@ unsupported versions before workflow states can discard fields. Add compatibilit
 adapters only for discovered requirements; never fall back to a default pair
 when `from`, `to` or a mapping cannot be resolved.
 
-Publish required catalog/schema versions before activating their consumers.
+Publish required catalog/definition versions before activating their consumers.
 Verify the deployed script and state-machine definition after activation. Retain
 compatible configuration/deployment revisions for rollback; keep stateful data
 and prior run evidence intact.
@@ -80,8 +81,9 @@ decoded values/schema and graph identities, not only generated object paths.
 
 | Scenario | Required proof |
 | --- | --- |
-| Nine format combinations | Every Parquet/JSONL/CSV input converts to each output encoding |
-| Mixed-format joins | CSV and JSONL/Parquet tables can feed one registered SQL mapping |
+| Sixteen format combinations | Every Parquet/JSONL/CSV/Excel input converts to each output encoding through its own mapping |
+| Mixed-format joins | CSV, JSONL/Parquet and Excel-sheet tables can feed one registered SQL mapping |
+| Excel sheets | Each sheet binds to one dataset; a missing sheet or an over-ceiling dataset fails before success |
 | Multiple outputs | Preserve separate target datasets and types; combine only declared same-table fragments |
 | Tabular output | No invented graph fields, IDs, labels or graph-store dependency |
 | Schema fidelity | Preserve null/empty strings, numeric precision, dates, Unicode and allowed nested types |
@@ -93,11 +95,11 @@ decoded values/schema and graph identities, not only generated object paths.
 | Graph properties | Check labels, typed property bindings, reserved-header collisions and repeatable edge IDs |
 | Graph profile | Only the explicit profile applies Neptune headers/layout; ordinary CSV remains ordinary CSV |
 | Replay | Alias changes do not alter pinned plans; partial writes cannot publish success |
-| Compatibility | Supported callers keep their documented contract; invalid new requests never silently downgrade |
+| Compatibility | Legacy callers are served through the explicit `contractVersion` adapter; a request carrying versions, mapping IDs, formats or options is rejected, never silently downgraded |
 
 ## 6. Completion evidence
 
-Return concrete language/mapping/schema versions and digests, input identity and
+Return concrete language/mapping versions and definition digests, input identity and
 formats, graph role/reference bindings when relevant, output shape/profile/format,
 per-dataset paths/counts, validation outcomes, workflow/Glue IDs and deployment
 revision. Distinguish requirements, code, local fixtures and live evidence.

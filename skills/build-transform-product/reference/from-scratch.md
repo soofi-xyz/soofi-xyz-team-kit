@@ -26,7 +26,7 @@ Read these existing shared skills; keep them shared:
 | Dependency | Apply it to | Environment boundary |
 | --- | --- | --- |
 | [Engineering](../../apply-engineering-guidelines/SKILL.md) | TypeScript services/CDK, Python Spark jobs, quality checks, Powertools, metrics and critical/DLQ alerts | Resolve account, region, registered metrics and alert receiver from the selected environment |
-| [Lexicon](../../build-lexicon-product/SKILL.md) | Governed schemas, SQL publication, immutable versions and catalog discovery | Reuse its discovered publication flow and S3/SSM outputs |
+| [Lexicon](../../build-lexicon-product/SKILL.md) | Language definitions (the schema), SQL publication, immutable versions and catalog discovery | Reuse its discovered publication flow and S3/SSM outputs |
 | [Persist](../../build-persist-service/SKILL.md) | Requested graph loading and consumer readback | Load only when delivery to a graph store is part of the task |
 
 Read the shared rule files needed for the operation. Treat reference deployment
@@ -70,7 +70,7 @@ responsibilities to its modules before editing.
 | --- | --- | --- |
 | 1. `schemas/contracts.schema.json`, `src/contracts.ts` | Named-schema validation, typed boundary objects, artifact SHA-256, canonical request digest and semantic validation | Accept the worked example; reject unknown fields and invalid combinations in both runtimes |
 | 2. `src/store.ts` | Local object-store adapter and scoped S3 adapter; bounded reads/listing, immutable writes, conditional snapshot copies | Local and S3 contract tests prove missing-object, overflow, conflict and digest errors |
-| 3. `src/fixtures.ts`, `tests/fixtures/` | Materialize the declarative example; produce all source encodings from registered types; publish fixtures locally | Real-byte digests match catalog, languages, schema and SQL references |
+| 3. `src/fixtures.ts`, `tests/fixtures/` | Materialize the declarative example; produce all source encodings from the definition-derived types; publish fixtures locally | Real-byte digests match catalog, language definitions and SQL references |
 | 4. `src/control.ts` | Exact pair resolution, semantic validation, cost admission, input snapshots, immutable plans and result verification | Direction/ambiguity/alias-change/scope/replay tests pass without calling Glue |
 | 5. `glue_scripts/transform_worker.py` | Local Spark/Glue entry points, readers, SQL DAG, distributed validation, graph adapters and writers | CSV → SQL → typed Parquet → readback passes with actual Spark |
 | 6. `src/cli.ts`, `tests/acceptance.ts` | Local commands invoking the same resolver/worker/reporter as AWS; full acceptance matrix | All format, graph, reverse and failure cases pass |

@@ -97,8 +97,8 @@ URIs/digests are placeholders to replace during publication:
 }
 ```
 
-Validate each binding against the registered target schema. `properties[].type`
-must agree with that schema; the mapping cannot override a registered type.
+Validate each binding against the target language definition. `properties[].type`
+must agree with the definition's property type; the mapping cannot override it.
 Reject duplicate property names, missing bound columns, reserved-header collisions
 and bindings to an edge dataset as though it were a vertex dataset. The `graph`
 block is mapping configuration, not per-record input or caller-provided SQL.
@@ -180,7 +180,7 @@ validation contract.
 
 ## 5. Serialize the explicit graph profile
 
-For `output.shape: graph`, `output.format: csv`, `output.profile: neptune`:
+For a mapping whose `output` is `shape: graph`, `format: csv`, `profile: neptune`:
 
 - Rename each bound identity/endpoint column to its system header.
 - Emit `~label` from the validated manifest label.

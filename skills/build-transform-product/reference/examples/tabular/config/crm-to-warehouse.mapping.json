@@ -16,9 +16,14 @@
     {
       "table": "customers",
       "view": "source_customers",
-      "required": true
+      "required": true,
+      "format": "jsonl"
     }
   ],
+  "output": {
+    "shape": "tabular",
+    "format": "parquet"
+  },
   "outputs": [
     {
       "dataset": "accounts",
