@@ -32,7 +32,21 @@ claim that a controller accounts for native redrive unless verified. The
 [existing controller](implementation/capacity-operations.md) has a documented
 reacquisition gap; account for it when operating that service.
 
-## Optional result publication
+## Required outcome persistence and optional result publication
+
+Persist the result of every record-level evaluation, including the rule
+identifier(s) that filtered out a subject. Use the
+[outcome-persistence contract](outcome-persistence.md): produce a versioned
+outcome manifest, reliably send its event through the approved Event → Queue
+path and idempotently persist outcomes asynchronously. Keep source facts
+immutable and do not introduce synchronous per-record persistence into the
+Filter evaluation path.
+
+Expose evaluation and persistence as separate statuses. Track planned, queued,
+persisted, duplicate, failed and DLQ outcomes; reconcile a completed Filter run
+against its persisted outcomes and provide replay/redrive for incomplete
+delivery. The persistence worker must be independently observable and recover
+without re-running an otherwise valid Filter evaluation.
 
 Default to producing result artifacts. Enable durable result publication only
 through an explicit, compatible consumer contract. Define which entities or
@@ -67,8 +81,12 @@ existing discovery, stateful resources and caller contracts during migration.
 Use reviewed CDK/CI changes and runtime activation/rollback controls. See
 [implementation packaging requirements](implementation/marketplace-and-migration.md).
 
-Measure stage durations, queue age/depth, active load, selection/evaluation counts,
-errors, retries, cache behavior and publication outcomes. Carry entity/adapter and
-artifact versions in bounded run metadata; avoid high-cardinality IDs as metric
-dimensions. Coordinate shared metric definitions with Porygon. Keep sensitive
-entity data in authorized artifacts rather than logs or generic documentation.
+Measure Filter phase durations separately from outcome-persistence queue age,
+worker duration, active load, selection/evaluation counts, errors, retries,
+cache behavior and publication outcomes. Benchmark equivalent runs before and
+after adding outcome persistence; define the no-regression threshold before
+testing and do not release a Filter-phase regression beyond its measurement
+tolerance. Carry entity/adapter and artifact versions in bounded run metadata;
+avoid high-cardinality IDs as metric dimensions. Coordinate shared metric
+definitions with Porygon. Keep sensitive entity data in authorized artifacts
+rather than logs or generic documentation.
