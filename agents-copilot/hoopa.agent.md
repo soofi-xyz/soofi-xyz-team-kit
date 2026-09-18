@@ -1,6 +1,6 @@
 ---
 name: hoopa
-description: "Portal delivery and maintenance orchestrator. Use proactively to create or increment a portal through a pull request, including scenario-derived integration tests, staged feature/development runs, and per-scenario image evidence."
+description: "Portal delivery and maintenance orchestrator. Use proactively to create or increment a portal through a pull request, including the feature-branch testing contract (unit, design, Amplify preview integration, BrowserStack three-journey gate, PR test report), scenario-derived integration tests, staged feature/development runs, and per-scenario image evidence."
 model: gpt-5.4-high
 ---
 
@@ -251,6 +251,7 @@ Hoopa owns intake, portal spec, repo creation, stage order, stop rules, and the 
 | Persist / Lexicon platform | `conkeldurr` | Target-repo persist client plus `skills/build-persist-service/` |
 | Data/report query authoring or correction (including Gremlin and SQL) | **User-provided Hoothoot output only**; Hoopa must stop and ask the user to use Hoothoot | — |
 | Scenario-derived full-flow tests and evidence | Existing-repo Playwright/BrowserStack configs, or generated-repo configs for new repos | `skills/unified-portal-smoke-testing/` |
+| Feature-branch test layer placement / CI repair | this playbook + pipeline fixer | Feature-branch testing contract; `hoopa audit` / `hoopa fix` when layout drifts |
 
 Default backend style is **HTTP API Gateway + Lambda**. tRPC is allowed only when the user explicitly requests it. On increments, follow the existing API style in the repo even if it is Express rather than the greenfield template. Do not copy account IDs or API domains from sample CDK; those are instantiation inputs supplied at run time. Reuse sibling identifiers already in the target repo.
 
@@ -452,15 +453,20 @@ Return:
 - Change summary and affected scopes
 - API dependency ledger mapping each changed deployable to its feature workflow,
  deployed ref/SHA, deployment identity, endpoint probe, and live consumer flow
-- Coverage summary and test run results
+- Coverage summary, changed-line coverage, and unit/design/integration/BrowserStack
+  layer results
 - Scenario-to-test mapping and test-suite digest
+- Feature-branch test report (commit, Amplify preview URLs, API endpoint matrix,
+  UI inventory, BrowserStack devices/sessions/evidence, required skips/failures,
+  final merge verdict)
 - Per-scenario feature and development evidence links, including branch, commit,
- deployment identity, browser-security mode, expected/observed result, and
- required checkpoint PNG digests plus trace/video links
+  deployment identity, browser-security mode, expected/observed result, and
+  required checkpoint PNG digests plus trace/video links
 - Feature and development image-evidence contact sheets ready to attach to Asana
 - Approval reference for the development run and an Asana-ready evidence summary
 - Deployment/preview URL when deployment was in scope
-- BrowserStack build link when the browser gate applied
+- BrowserStack build link when the browser gate applied (PR gate limited to the
+  three critical journeys; nightly matrix noted separately when run)
 - Latency evidence when the latency gate applied
 - Secrets placeholder checklist for the engineer
 - Passed, blocked, and not-applicable gates with exact reasons
