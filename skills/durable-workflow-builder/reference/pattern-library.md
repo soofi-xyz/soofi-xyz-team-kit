@@ -92,7 +92,7 @@ tombstone the Loader reconciles into a DB deletion or status downgrade; a later 
 that validates clears BOTH stale markers. Test all four transitions
 (`ok→invalid`, `ok→dead`, `invalid→ok`, `dead→ok`). Origin: a branch
 of the old pipeline skipped validation and unvalidated data reached the DB. See
-`validate-county-transform`.
+`build-county-transform`.
 
 **8. Single-writer per county (Virtual Object).** Parallel bulk merges into DB parent
 tables deadlock. Route ALL bulk loads for a county through `Loader.load` (object keyed by

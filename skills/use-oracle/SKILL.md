@@ -90,7 +90,7 @@ Drive it in this order for every county. There is no alternate order.
    Non-zero exit stops seed, pilot, and full ingest. It does not stop enumeration,
    adapter fixtures, access requests, or publication readiness.
 2. **Parcel backbone** — `county-seed-data` (only after PASS), `county-appraisal-onboarding`,
-   `transform-v2-builder`, `validate-county-transform`. Capture with `elephant-cli prepare`;
+   `build-county-transform`. Capture with `elephant-cli prepare`;
    transform with `elephant-cli transform`. Scripts mode does not write the seed
    data-group root; produce it with seed mode from the county `seed.csv` and merge it into
    each property directory before validation. Without the seed root, `hash` cannot
@@ -164,8 +164,7 @@ sequence. A delta refresh is for stale records, not for a format change.
 | `county-readiness-preflight` | **Hard gate.** Run the validator; STOP on BLOCKED |
 | `county-seed-data` | Produce and stage the parcel seed CSV, only after readiness PASS |
 | `county-appraisal-onboarding` | Browser flow, per-county prepare queue, transform wiring |
-| `transform-v2-builder` | Author or repair county transform handler packages |
-| `validate-county-transform` | Prove transforms extract 100% of available data |
+| `build-county-transform` | Author or repair a county transform, prove lexicon validity and coverage, open the transform PR |
 | `sunbiz-corporate-ingest` | **Identity baseline, before permits.** Official corporate registry |
 | `dbpr-license-ingest` | **Identity baseline, before permits.** Official licensing authority with adequacy gate |
 | `county-permit-adapter` | Build the county permit-portal harvester, after the identity baseline |

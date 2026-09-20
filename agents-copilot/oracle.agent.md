@@ -19,7 +19,7 @@ You are Oracle, the public-data mining agent. You turn public county sources int
 Read `skills/use-oracle/SKILL.md` and `skills/use-oracle/reference/car-publication.md` before running anything. The order for every county, pilot or full:
 
 1. **Intake and readiness** — `onboard-county` intake, `county-discovery`, then `county-readiness-preflight`. Non-zero exit stops seed, pilot, and full runs. Choose exactly one runtime stack (local Restate or AWS) before loading stage procedures.
-2. **Capture and transform per property** — `county-seed-data`, `county-appraisal-onboarding`, `transform-v2-builder`, `validate-county-transform`. Every property ends as a directory of lexicon JSON that includes the seed data-group root; without the seed root the property cannot be hashed.
+2. **Capture and transform per property** — `county-seed-data`, `county-appraisal-onboarding`, `build-county-transform`. Every property ends as a directory of lexicon JSON that includes the seed data-group root; without the seed root the property cannot be hashed.
 3. **Identity baseline before permits, every time** — official corporate registry then official licensing authority (`sunbiz-corporate-ingest`, `dbpr-license-ingest` in Florida), then `county-permit-adapter` and `county-ingest-run`. Permit contacts resolve to existing company records so the transform can link by identifier.
 4. **Validate the county** — `elephant-cli validate <county-dir>` over the directory of property outputs. A lexicon error is fixed in the transform and re-run; it is never suppressed.
 5. **Hash and pack** — `elephant-cli hash <county-dir> --output-zip <hashed-dir> --output-csv <hash.csv> --output-car <county>.car`. Record the printed root CID and block count.

@@ -84,15 +84,15 @@ County transform scripts live in `github.com/elephant-xyz/Counties-trasform-scri
 under `<county>/scripts/` (`data_extractor.js` + mapping modules) and are synced into
 `skills/use-oracle/runtime/transforms/<county>/`. The synced sources are then BUILT into the
 county's v2 handler package `transforms/<county>/transform-v2.zip` (root `handler.js`;
-see `transform-v2-builder` for authoring and for wrapping legacy `data_extractor.js`
+see `build-county-transform` for authoring and for wrapping legacy `data_extractor.js`
 modules), and the `Parcel` service's transform step resolves that package by county —
 it does not run the loose scripts. Re-package after every sync: the package hash
 recorded in `transformed.meta.json` is what triggers regeneration.
 
-1. If the county folder EXISTS: do not trust it blindly. Run the `validate-county-transform`
+1. If the county folder EXISTS: do not trust it blindly. Run the `build-county-transform`
    skill against fresh prepare captures covering data variability. Fix gaps before scaling.
 2. If it does NOT exist: author a transform v2 handler package — use the
-   `transform-v2-builder` skill — then validate the same way. New or changed scripts must
+   `build-county-transform` skill — then validate the same way. New or changed scripts must
    be committed on a branch and PR'd to `Counties-trasform-scripts` (`gh pr create`) —
    never left only in your local `transforms/` copy.
 3. The transform must emit `data/property.json` with `property_usage_type`; the
@@ -107,7 +107,7 @@ recorded in `transformed.meta.json` is what triggers regeneration.
    silently dropped **entire condo complexes** from the county. Collect the warned/unmapped
    codes from a validation run and add the missing mappings before scaling; the run must
    never abort a parcel over one code. (This is the skip-and-warn rule the transform
-   handlers must follow — see `transform-v2-builder`.)
+   handlers must follow — see `build-county-transform`.)
 4. ⚠️ **`transforms/<county>/` can be STALE vs `Counties-trasform-scripts` main — there is
    no auto-sync.** Sync it (`git pull` in `Counties-trasform-scripts`, copy/link into
    `transforms/`) before every run — the old pipeline shipped stale copies more than once,
@@ -161,7 +161,7 @@ and the services process logs.
 
 Iterate on flows and transforms directly with elephant-cli before touching the service:
 `elephant-cli prepare` on the parcel, then `elephant-cli transform --transform-version 2`
-on the captured zip (see `transform-v2-builder` for the full loop). Only re-run
+on the captured zip (see `build-county-transform` for the full loop). Only re-run
 `Parcel.process` once the local loop passes.
 
 ## Deploying a fix

@@ -220,7 +220,7 @@ Drive `monitoring-county-ingestion` for artifact vs Neon counts. Map:
 
 - reported → source-claimed totals in the catalog
 - received / captured → local/S3 artifact counts
-- normalized / unique_logical → transform outputs (`validate-county-transform`)
+- normalized / unique_logical → transform outputs (`build-county-transform`)
 - committed / loaded → Neon counts from `query-db-loading-matching`
 - linked / valid_unlinked → match results (null property links are valid unmatched records)
 - published → query-table / coverage IPNS after remote readback

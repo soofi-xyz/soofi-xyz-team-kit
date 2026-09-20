@@ -140,7 +140,7 @@ When deep permit enrichment exceeds local single-IP bandwidth (e.g. 500k+ permit
 3. **Detail capture** — per permit: raw HTML + extracted JSON (status, dates, work
    location, description, contractors, inspections, fees, related records). Extract
    everything visible; fields without a lexicon home stay in the payload (see
-   `validate-county-transform` class-(c) policy).
+   `build-county-transform` class-(c) policy).
    - Preserve opened/application, issue, final-inspection, completion, and close dates as
      separate fields with source labels. Never synthesize a missing date.
    - Retain explicit source text used to classify primary-roof replacement/reroof, new
