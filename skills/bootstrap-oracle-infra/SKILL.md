@@ -99,7 +99,7 @@ npm init -y
 Deps: `npm i @restatedev/restate-sdk postgres csv-parse p-limit dotenv tsx typescript
 @types/node` plus
 `@elephant-xyz/cli` pinned from GitHub — npm publishing has been unreliable — via
-`npm i github:elephant-xyz/elephant-cli#<tag-or-commit>` (check the repo's releases
+`npm i github:elephant-xyz/elephant-cli#main` (the release workflow is failing, so `main` is the source of the latest CLI; check the repo
 for the latest tested tag and record the chosen ref in the project README; the npm
 registry `@elephant-xyz/cli@<version>` is the fallback when publishing works), and
 `npm i -D vitest`. Add `"dev": "tsx watch services/app.ts"`,

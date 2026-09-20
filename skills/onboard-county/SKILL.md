@@ -68,6 +68,9 @@ supports it):
    Filebase credentials exist, and do the two per-county bucket/IPNS labels exist or need
    creating (`county-open-data-publish` / `county-query-table-publish`)? Where will the
    MCP be deployed (`deploy-open-data-mcp`)?
+   Which node receives the county archive — a local kubo daemon (default) or a hosted
+   Kubo RPC endpoint such as Filebase (`--api https://rpc.filebase.io` with the three
+   `FILEBASE_*` variables)?
 
 Restate the answers as a short written plan (stages, county key, job-id prefix, sources),
 then execute it end-to-end autonomously. Do NOT pause for per-stage approvals or
@@ -166,7 +169,7 @@ Track progress in the county's findings doc (PR'd to `Counties-trasform-scripts`
     - **Postgres Bulk Loader** (`run-<county>-appraisal-bulk-load.ts`): unlogged staging tables, post-COPY
       indexing, and CTE predicate pushdown.
 
-Stages 14–16 are conditional — run them only **when publishing is in scope** (the
+Stages 14–17 are conditional — run them only **when publishing is in scope** (the
 intake's publish-scope answer). When publishing is excluded, the run completes here,
 after query-DB reconciliation and the artifact/code handoff.
 
@@ -184,6 +187,19 @@ after query-DB reconciliation and the artifact/code handoff.
 16. **Serve via MCP → NEO** *(when publishing is in scope)* — `deploy-open-data-mcp`: add the county's IPNS name to the
     MCP's `ORACLE_OPEN_DATA_IPNS_MAP`, restart the local MCP (or redeploy the hosted
     MCP) after changing environment variables, confirm NEO renders the county.
+
+17. **Validate, pack, and publish the county archive** *(when publishing is in scope)* —
+    follow `skills/use-oracle/reference/car-publication.md` exactly:
+    `elephant-cli validate <county-dir>` over the directory of per-property lexicon
+    outputs (each with its seed data-group root) until it reports no data rows;
+    `elephant-cli hash <county-dir> --output-zip <hashed-dir> --output-csv <hash.csv>
+    --output-car <county>.car` and record the printed root CID and block count;
+    `elephant-cli validate <county>.car` with all six checks clean;
+    `elephant-cli upload <county>.car --output-json <summary.json>` to the chosen node,
+    which succeeds only after the root reads back from the gateway with matching bytes.
+    Hand back the root CID and the summary. This stage adds to stages 14 to 16; it does
+    not replace them. Registry registration and replacing the IPNS path are separate
+    stories.
 
 ## Persist artifacts — commit + PR, nothing lives only on disk
 
