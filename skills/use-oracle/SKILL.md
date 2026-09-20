@@ -21,9 +21,13 @@ county looks like, the stack choice, the pipeline, the CLI requirements, and the
 4. `elephant-cli validate <county>.car` passed all six checks.
 5. `elephant-cli upload <county>.car` read the root back from the gateway.
 6. The run evidence lists the root CID, block count, CLI commit, manifest URL, and node.
+7. When publishing is in scope, the existing query-table, coverage, IPNS, and MCP
+   publication ran exactly as its skills describe. The archive is an additional output
+   today, not a replacement.
 
-Registry registration, IPNS names, MCP wiring, and per-table Parquet indexes are out of
-scope for this milestone. Hand back the root CID; do not improvise those steps.
+Registry registration, replacing the IPNS and query-table path, and per-table Parquet
+indexes are out of scope for this milestone. Hand back the root CID; do not improvise
+those steps.
 
 ## Always read
 
@@ -44,12 +48,20 @@ scope for this milestone. Hand back the root CID; do not improvise those steps.
    runtime install, offline replay, bounded pilot, clean-room gate
 8. [`../county-readiness-preflight/SKILL.md`](../county-readiness-preflight/SKILL.md) —
    the deterministic validator; run it before seed, pilot, or full ingest
+9. [`reference/durable-orchestration.md`](./reference/durable-orchestration.md) — core
+   principles, adapter vs inventory status, required status report, human-required actions
+10. [`reference/continuous-ingestion.md`](./reference/continuous-ingestion.md) —
+   autonomous stage advancement, durable handoffs, worker recovery, immutable republish
+11. [`reference/continuous-safe-optimization.md`](./reference/continuous-safe-optimization.md) —
+   measured bottlenecks, bounded experiments, automatic rollback
+12. [`reference/roof-age-and-identity-reingest.md`](./reference/roof-age-and-identity-reingest.md) —
+   county re-ingest checklist, roof-age estimator, identity-edge backfill
+13. [`reference/coverage-only-publication.md`](./reference/coverage-only-publication.md) —
+   repair of a county's coverage pointer without touching its query table
 
-The older references on durable orchestration, continuous ingestion, safe optimization,
-coverage-only publication, and roof-age re-ingest still describe the capture runtime and
-the query-DB working store. Their publication sections (Publish objects, approve handlers,
-per-county IPNS labels, coverage pointers, MCP maps) are superseded by
-`car-publication.md` and must not be followed.
+References 9 through 13 describe the capture runtime, the query-DB working store, and the
+existing query-table, coverage, and IPNS publication. That publication keeps running as
+written; `car-publication.md` adds the archive alongside it.
 
 ## Choose the stack first
 
@@ -100,14 +112,18 @@ Drive it in this order for every county. There is no alternate order.
    --output-csv <hash.csv> --output-car <county>.car`. Record the root CID and block count.
 8. **Validate the archive** — `elephant-cli validate <county>.car --output-csv <car-errors.csv>`.
    Integrity, root, index, graph, lexicon, orphans: all zero.
-9. **Publish** — `elephant-cli upload <county>.car --output-json <summary.json>`; local kubo
-   by default, hosted node with `--api` and a token. Success means the gateway served the
-   root with matching bytes.
-10. **Report** with the status report in `agents/oracle.md`.
+9. **Publish the archive** — `elephant-cli upload <county>.car --output-json <summary.json>`;
+   local kubo by default, hosted node with `--api` and a token. Success means the gateway
+   served the root with matching bytes.
+10. **Existing publication, when in scope** — `county-query-table-publish`,
+    `county-open-data-publish`, coverage, and `deploy-open-data-mcp` exactly as their
+    skills describe: the `Publish` object dry-runs until a human approves, per-county
+    IPNS labels, catalog-driven MCP maps, Donphan smoke. Unchanged in this milestone.
+11. **Report** with the status report in `agents/oracle.md`.
 
 The query DB (`query-db-loading-matching`, `use-elephant-query-db`) remains the working
-store for reconciliation, identity edges, and product queries. Nothing published is
-exported from it.
+store for reconciliation, identity edges, product queries, and the existing query-table
+and coverage exports. The archive is never exported from it.
 
 ## Property-list runs
 
@@ -124,10 +140,11 @@ sequence. A delta refresh is for stale records, not for a format change.
 
 ## CLI requirements
 
-- Install the Elephant CLI from a GitHub commit that includes batch input,
-  `--output-car`, CAR upload, and CAR validation, and record the commit in the run
-  evidence. The npm release workflow is currently failing, so `@elephant-xyz/cli@latest`
-  lags.
+- Install the Elephant CLI from GitHub `main`, not from npm:
+  `npm i github:elephant-xyz/elephant-cli#main` (or `npx --package=github:elephant-xyz/elephant-cli#main elephant-cli`).
+  The npm release workflow is currently failing, so `@elephant-xyz/cli@latest` lacks
+  batch input, `--output-car`, CAR upload, and CAR validation. Record the installed
+  commit (`npm ls @elephant-xyz/cli` shows it) in the run evidence.
 - The CLI must reach the lexicon manifest at `https://lexicon.elephant.xyz/api/manifest`
   and fetch schemas through a gateway that serves them. Defaults are Filebase's public
   gateway, then Pinata's, then the public gateways; override with
@@ -160,10 +177,10 @@ sequence. A delta refresh is for stale records, not for a format change.
 | `query-db-loading-matching` | Load artifacts into the working store; cross-match by parcel and address |
 | `use-elephant-query-db` | Read the working store |
 | `durable-workflow-builder` | Author capture workflows and handlers |
-
-`county-open-data-publish`, `county-query-table-publish`, `deploy-open-data-mcp`, and
-`use-elephant-mcp` describe the previous publication model. Oracle does not drive them
-for publication in this milestone.
+| `county-open-data-publish` | Existing publication: consolidated property JSON to Filebase/IPFS behind the county's IPNS name |
+| `county-query-table-publish` | Existing publication: query-table Parquet export, validation gate, IPNS, MCP wiring |
+| `deploy-open-data-mcp` | Existing publication: self-host the open-data MCP server |
+| `use-elephant-mcp` | Read published counties through the MCP |
 
 ## Rules
 
@@ -173,8 +190,8 @@ for publication in this milestone.
 - Never skip `validate-county-readiness.py` before seed, pilot, or full ingest.
 - Identity baseline first, permits second, every time.
 - Validate before hash, hash before publish, read back before reporting success.
-- Every published block comes from `elephant-cli hash`; nothing is exported from the
-  query DB for publication.
+- Every archive block comes from `elephant-cli hash`; the archive is never exported from
+  the query DB. The existing query-table and coverage exports continue unchanged.
 - Data-record CIDs are dag-json, schema CIDs are raw; compare digests, not strings.
 - Never solve, bypass, OCR, or evade CAPTCHA. Preserve valid unmatched records.
 - Runtime secrets apply at process start; restart a job after adding keys.
@@ -185,7 +202,8 @@ for publication in this milestone.
 
 **In:** discover and capture county sources; transform to lexicon; identity baseline
 then permits; validate; pack one archive per county run; publish it to a local or
-hosted IPFS node with root readback; property-list re-mining; re-mining of legacy data.
+hosted IPFS node with root readback; property-list re-mining; re-mining of legacy data;
+the existing query-table, coverage, IPNS, and MCP publication, unchanged.
 
-**Out:** registry registration, IPNS names, MCP wiring, per-table Parquet indexes,
-on-chain submission, and Elephant.xyz UI changes.
+**Out:** registry registration, replacing the IPNS and query-table path, per-table
+Parquet indexes, on-chain submission, and Elephant.xyz UI changes.

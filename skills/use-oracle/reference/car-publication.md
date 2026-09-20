@@ -72,10 +72,11 @@ gateway serves the root block with bytes that hash to its CID. Keep `upload-summ
 
 ## CLI requirements
 
-- Use the Elephant CLI at a commit that includes batch input, `--output-car`, CAR upload,
-  and CAR validation (PRs 244 through 248). Until the npm release workflow is repaired,
-  install from GitHub: `npm i github:elephant-xyz/elephant-cli#<commit>` and record the
-  commit in the run evidence.
+- Install the Elephant CLI from GitHub `main`: `npm i github:elephant-xyz/elephant-cli#main`
+  (or run it with `npx --package=github:elephant-xyz/elephant-cli#main elephant-cli`).
+  The npm release workflow is failing, so the registry package lacks batch input,
+  `--output-car`, CAR upload, and CAR validation (PRs 244 through 248). Record the
+  installed commit in the run evidence.
 - The CLI reads the lexicon manifest from `https://lexicon.elephant.xyz/api/manifest`
   (`ELEPHANT_SCHEMA_MANIFEST_URL` overrides) and fetches schemas from
   `https://ipfs.filebase.io` first, then Pinata's gateway, then the public gateways
@@ -105,7 +106,9 @@ merge counties into one archive; the index is a county index.
 
 - The county index does not yet record the county key or the lexicon manifest CID. Record
   both in the run evidence until the CLI carries them.
-- Registry registration, IPNS names, MCP wiring, and per-table Parquet indexes are separate
-  stories. Hand back the root CID; do not improvise those steps.
+- The existing query-table, coverage, IPNS, and MCP publication keeps running as its skills
+  describe; the archive is an additional output today. Registry registration, replacing
+  that path, and per-table Parquet indexes are separate stories. Hand back the root CID;
+  do not improvise those steps.
 - A raw IPFS node cannot discover inner blocks from the network. Consumers that need that
   must pin the archive on a node they control.

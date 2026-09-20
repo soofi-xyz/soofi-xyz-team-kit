@@ -64,11 +64,13 @@ supports it):
    this county? (Check `Counties-trasform-scripts` and the `skills/use-oracle/runtime`
    `transforms/`/`flows/`/`docs/` dirs, then confirm findings with the operator before
    redoing work.)
-10. **Publish scope** — is publication in scope for this county? If yes: which node
-   receives the county archive — a local kubo daemon (default) or a hosted Kubo RPC
-   endpoint such as Filebase (`--api https://rpc.filebase.io` with the three `FILEBASE_*`
-   variables)? Registry entries, IPNS names, and MCP wiring are separate stories and are
-   not part of this run.
+10. **Publish/serve scope** — is public publishing in scope for this county? If yes: do
+   Filebase credentials exist, and do the two per-county bucket/IPNS labels exist or need
+   creating (`county-open-data-publish` / `county-query-table-publish`)? Where will the
+   MCP be deployed (`deploy-open-data-mcp`)?
+   Which node receives the county archive — a local kubo daemon (default) or a hosted
+   Kubo RPC endpoint such as Filebase (`--api https://rpc.filebase.io` with the three
+   `FILEBASE_*` variables)?
 
 Restate the answers as a short written plan (stages, county key, job-id prefix, sources),
 then execute it end-to-end autonomously. Do NOT pause for per-stage approvals or
@@ -167,12 +169,26 @@ Track progress in the county's findings doc (PR'd to `Counties-trasform-scripts`
     - **Postgres Bulk Loader** (`run-<county>-appraisal-bulk-load.ts`): unlogged staging tables, post-COPY
       indexing, and CTE predicate pushdown.
 
-Stage 14 is conditional — run it only **when publishing is in scope** (the intake's
-publish-scope answer). When publishing is excluded, the run completes here, after
-query-DB reconciliation and the artifact/code handoff. The query DB is a working store;
-nothing published is exported from it.
+Stages 14–17 are conditional — run them only **when publishing is in scope** (the
+intake's publish-scope answer). When publishing is excluded, the run completes here,
+after query-DB reconciliation and the artifact/code handoff.
 
-14. **Validate, pack, and publish the county archive** *(when publishing is in scope)* —
+14. **Publish open data** *(when publishing is in scope)* — `county-open-data-publish`: export the reconciled county →
+    1-file-per-property + sharded index → the county's OWN Filebase bucket → re-point its
+    IPNS name. PII publish is gated: the loop dry-runs until a human POSTs the approve
+    handler on the county's `Publish` object
+    (`curl localhost:8080/restate/call/Publish/<county>/approve --json '{}'`).
+    Verify published index CID == export index CID and correct `propertyCount` before
+    declaring done.
+15. **Index & publish query table** *(when publishing is in scope)* — `county-query-table-publish`: export the flat
+    per-property query-table Parquet, pass the validation GATE (parquet rows == distinct
+    folio, 0 dup/null folios), publish to the county's OWN IPNS (configure `SET unsafe_disable_etag_checks = true;`
+    for DuckDB HTTPFS range read compatibility), wire the MCP's `PROPERTY_QUERY_TABLE_MAP`.
+16. **Serve via MCP → NEO** *(when publishing is in scope)* — `deploy-open-data-mcp`: add the county's IPNS name to the
+    MCP's `ORACLE_OPEN_DATA_IPNS_MAP`, restart the local MCP (or redeploy the hosted
+    MCP) after changing environment variables, confirm NEO renders the county.
+
+17. **Validate, pack, and publish the county archive** *(when publishing is in scope)* —
     follow `skills/use-oracle/reference/car-publication.md` exactly:
     `elephant-cli validate <county-dir>` over the directory of per-property lexicon
     outputs (each with its seed data-group root) until it reports no data rows;
@@ -181,8 +197,9 @@ nothing published is exported from it.
     `elephant-cli validate <county>.car` with all six checks clean;
     `elephant-cli upload <county>.car --output-json <summary.json>` to the chosen node,
     which succeeds only after the root reads back from the gateway with matching bytes.
-    Hand back the root CID and the summary. Do not register it, publish an IPNS name, or
-    wire an MCP; those are separate stories.
+    Hand back the root CID and the summary. This stage adds to stages 14 to 16; it does
+    not replace them. Registry registration and replacing the IPNS path are separate
+    stories.
 
 ## Persist artifacts — commit + PR, nothing lives only on disk
 
