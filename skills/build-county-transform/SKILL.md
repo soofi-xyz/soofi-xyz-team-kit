@@ -60,6 +60,10 @@ county passed.
 7. **Hash a sample.** `elephant-cli hash <samples-dir> --output-zip ./hashed
    --output-csv hash.csv --output-car sample.car` then `elephant-cli validate sample.car`.
    This is the first time the seed root, links, and codecs are exercised together.
+   Then `elephant-cli export-tables sample.car --output ./sample-tables` and confirm
+   every entity class and relationship type the transform emits appears as its own
+   table with the expected row count. A missing or unexpected table is a transform
+   bug, not a CLI setting.
 8. **Open the pull request** with the checklist below.
 
 ## Provenance: `source_http_request`

@@ -195,11 +195,16 @@ after query-DB reconciliation and the artifact/code handoff.
     `elephant-cli hash <county-dir> --output-zip <hashed-dir> --output-csv <hash.csv>
     --output-car <county>.car` and record the printed root CID and block count;
     `elephant-cli validate <county>.car` with all six checks clean;
+    `elephant-cli export-tables <county>.car --output <tables-dir> --output-json
+    <tables-export.json>` and record the printed table count, part count, and tables root;
     `elephant-cli upload <county>.car --output-json <summary.json>` to the chosen node,
-    which succeeds only after the root reads back from the gateway with matching bytes.
-    Hand back the root CID and the summary. This stage adds to stages 14 to 16; it does
-    not replace them. Registry registration and replacing the IPNS path are separate
-    stories.
+    which succeeds only after the root reads back from the gateway with matching bytes;
+    then `elephant-cli upload <tables-dir> --output-json <tables-summary.json>` to the
+    same node, which succeeds only after every part's CID matches the tables index and
+    the tables root reads back. Hand back the root CID, the tables root, and both
+    summaries. The per-class tables come only from `export-tables`; never hand-build
+    them. This stage adds to stages 14 to 16; it does not replace them. Registry
+    registration and replacing the IPNS path are separate stories.
 
 ## Persist artifacts — commit + PR, nothing lives only on disk
 

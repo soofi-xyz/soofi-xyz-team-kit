@@ -26,17 +26,30 @@ elephant-cli hash ./county-outputs \
 # 3. Prove the archive: integrity, root, index, graph, lexicon, orphans.
 elephant-cli validate county.car --output-csv car-errors.csv
 
-# 4a. Publish to a local kubo daemon (API 127.0.0.1:5001, gateway 127.0.0.1:8080).
-elephant-cli upload county.car --output-json upload-summary.json
+# 4. Derive the per-class tables from the validated archive.
+elephant-cli export-tables county.car --output ./county-tables \
+  --part-size 1g --output-json tables-export.json
+#    prints: Tables written: ./county-tables (<n> tables, <n> parts, root <tables cid>)
 
-# 4b. Publish to Filebase through its Kubo RPC endpoint.
+# 5a. Publish to a local kubo daemon (API 127.0.0.1:5001, gateway 127.0.0.1:8080).
+elephant-cli upload county.car --output-json upload-summary.json
+elephant-cli upload ./county-tables --output-json tables-summary.json
+
+# 5b. Publish to Filebase through its Kubo RPC endpoint.
 export FILEBASE_ACCESS_KEY=... FILEBASE_SECRET_KEY=... FILEBASE_BUCKET=...
 elephant-cli upload county.car --api https://rpc.filebase.io --output-json upload-summary.json
+elephant-cli upload ./county-tables --api https://rpc.filebase.io --output-json tables-summary.json
 ```
 
-`upload` succeeds only after the node reports the same root the archive declares and the
-gateway serves the root block with bytes that hash to its CID. Keep `upload-summary.json`
-(api, root, blocks, gateway URL, timestamp) with the run.
+`upload county.car` succeeds only after the node reports the same root the archive declares
+and the gateway serves the root block with bytes that hash to its CID. Keep
+`upload-summary.json` (api, root, blocks, gateway URL, timestamp) with the run.
+
+`upload <tables-dir>` adds every part to the node, requires the node's CID for each part to
+equal the one recorded in the tables index, imports `tables.car`, reads the tables root back
+from the gateway, and writes the same summary shape (api, tables root, county root, parts,
+gateway URL) to `tables-summary.json`. It takes the same `--api` and token options as the
+CAR upload.
 
 ## What the archive looks like
 
@@ -49,6 +62,26 @@ gateway serves the root block with bytes that hash to its CID. Keep `upload-summ
   dag-json codec (`baguqeera…`); the lexicon's schema CIDs stay raw (`bafkrei…`). Same
   input yields byte-identical archives: blocks are written in property order, then CID order.
 - **Not included**: HTML captures and images. They stay in the hashed ZIPs.
+
+## What the tables directory looks like
+
+`export-tables` reads a validated archive and writes the derived per-class index next to it.
+The archive stays canonical; the tables are a convenience for consumers who want one class
+at a time. **Only this command produces them.** Never hand-build, patch, or export a
+per-class table from the query DB or from the hashed ZIPs.
+
+- **One table per lexicon class present** (`<tables-dir>/property/part-00000.parquet`, ...),
+  one per relationship type, and a `properties` table from the county index.
+- **Parts**: each table is split into parts of at most the `--part-size` cap (1 GB by
+  default). Consumers range-read parts over the gateway.
+- **Columns**: the class schema at the manifest version the archive used, plus `cid`,
+  `property_cid`, `data_group_cid`, and `request_identifier`. Nested values are JSON
+  strings. The CLI owns this layout; do not restate or extend it elsewhere.
+- **Tables root**: `<tables-dir>/tables.car` is a tiny archive whose single root is a
+  `CountyTables` index block. It links every part by content identifier and records the
+  county root, the part-size cap, and per-table row counts.
+- **Deterministic**: the same archive in yields byte-identical parts and the same tables
+  root out. A different tables root for the same county root means the input changed.
 
 ## Facts the design depends on
 
@@ -75,7 +108,7 @@ gateway serves the root block with bytes that hash to its CID. Keep `upload-summ
 - Install the Elephant CLI from GitHub `main`: `npm i github:elephant-xyz/elephant-cli#main`
   (or run it with `npx --package=github:elephant-xyz/elephant-cli#main elephant-cli`).
   The npm release workflow is failing, so the registry package lacks batch input,
-  `--output-car`, CAR upload, and CAR validation (PRs 244 through 248). Record the
+  `--output-car`, CAR upload, CAR validation (PRs 244 through 248), and `export-tables`. Record the
   installed commit in the run evidence.
 - The CLI reads the lexicon manifest from `https://lexicon.elephant.xyz/api/manifest`
   (`ELEPHANT_SCHEMA_MANIFEST_URL` overrides) and fetches schemas from
@@ -93,22 +126,25 @@ gateway serves the root block with bytes that hash to its CID. Keep `upload-summ
 - `county-hash.csv` and the printed `CAR written` line
 - `car-errors.csv` empty, and the six per-check counts from the summary
 - `upload-summary.json`, plus the gateway URL that served the root
+- the printed `Tables written` line, `tables-export.json`, and the tables root
+- `tables-summary.json` from `upload <tables-dir>`, plus the gateway URL that served the
+  tables root
 - the CLI commit and the manifest URL used
 
 ## Property-list runs
 
 For a supplied list of properties across counties (for example the Open Door set): split the
 list by county, build one `seed.csv` per county, run capture and transform for those rows
-only, then steps 1 through 4 per county. Each county yields its own archive and root. Do not
-merge counties into one archive; the index is a county index.
+only, then steps 1 through 5 per county. Each county yields its own archive, root, and
+tables root. Do not merge counties into one archive; the index is a county index.
 
 ## Known limits and out of scope
 
 - The county index does not yet record the county key or the lexicon manifest CID. Record
   both in the run evidence until the CLI carries them.
 - The existing query-table, coverage, IPNS, and MCP publication keeps running as its skills
-  describe; the archive is an additional output today. Registry registration, replacing
-  that path, and per-table Parquet indexes are separate stories. Hand back the root CID;
-  do not improvise those steps.
+  describe; the archive and its tables are additional outputs today. Registry
+  registration and replacing that path are separate stories. Hand back the root CID and
+  the tables root; do not improvise those steps.
 - A raw IPFS node cannot discover inner blocks from the network. Consumers that need that
   must pin the archive on a node they control.

@@ -19,15 +19,19 @@ county looks like, the stack choice, the pipeline, the CLI requirements, and the
 3. `elephant-cli hash --output-car` produced one archive whose single root is the county
    index, plus the hash CSV mapping every property to its data-group roots.
 4. `elephant-cli validate <county>.car` passed all six checks.
-5. `elephant-cli upload <county>.car` read the root back from the gateway.
-6. The run evidence lists the root CID, block count, CLI commit, manifest URL, and node.
-7. When publishing is in scope, the existing query-table, coverage, IPNS, and MCP
-   publication ran exactly as its skills describe. The archive is an additional output
-   today, not a replacement.
+5. `elephant-cli export-tables <county>.car` wrote the per-class tables directory and its
+   `tables.car`, whose single root is the `CountyTables` index. Only this command produces
+   those tables; never hand-build them.
+6. `elephant-cli upload <county>.car` read the root back from the gateway, and
+   `elephant-cli upload <tables-dir>` read the tables root back the same way.
+7. The run evidence lists the root CID, block count, tables root, table and part counts,
+   CLI commit, manifest URL, and node.
+8. When publishing is in scope, the existing query-table, coverage, IPNS, and MCP
+   publication ran exactly as its skills describe. The archive and its tables are
+   additional outputs today, not a replacement.
 
-Registry registration, replacing the IPNS and query-table path, and per-table Parquet
-indexes are out of scope for this milestone. Hand back the root CID; do not improvise
-those steps.
+Registry registration and replacing the IPNS and query-table path are out of scope for
+this milestone. Hand back the root CID and the tables root; do not improvise those steps.
 
 ## Always read
 
@@ -112,14 +116,20 @@ Drive it in this order for every county. There is no alternate order.
    --output-csv <hash.csv> --output-car <county>.car`. Record the root CID and block count.
 8. **Validate the archive** — `elephant-cli validate <county>.car --output-csv <car-errors.csv>`.
    Integrity, root, index, graph, lexicon, orphans: all zero.
-9. **Publish the archive** — `elephant-cli upload <county>.car --output-json <summary.json>`;
-   local kubo by default, hosted node with `--api` and a token. Success means the gateway
-   served the root with matching bytes.
-10. **Existing publication, when in scope** — `county-query-table-publish`,
+9. **Export the tables** — `elephant-cli export-tables <county>.car --output <tables-dir>
+   --output-json <tables-export.json>`. Record the printed table count, part count, and
+   tables root. This is the only source of per-class tables.
+10. **Publish the archive** — `elephant-cli upload <county>.car --output-json <summary.json>`;
+    local kubo by default, hosted node with `--api` and a token. Success means the gateway
+    served the root with matching bytes.
+11. **Publish the tables** — `elephant-cli upload <tables-dir> --output-json
+    <tables-summary.json>` to the same node with the same options. Success means every
+    part's CID matched the index and the gateway served the tables root.
+12. **Existing publication, when in scope** — `county-query-table-publish`,
     `county-open-data-publish`, coverage, and `deploy-open-data-mcp` exactly as their
     skills describe: the `Publish` object dry-runs until a human approves, per-county
     IPNS labels, catalog-driven MCP maps, Donphan smoke. Unchanged in this milestone.
-11. **Report** with the status report in `agents/oracle.md`.
+13. **Report** with the status report in `agents/oracle.md`.
 
 The query DB (`query-db-loading-matching`, `use-elephant-query-db`) remains the working
 store for reconciliation, identity edges, product queries, and the existing query-table
@@ -129,13 +139,13 @@ and coverage exports. The archive is never exported from it.
 
 When the input is a list of properties rather than a county (for example a partner's
 set spanning many counties): split the list by county, build one `seed.csv` per county
-with only those rows, run steps 2 through 9 per county, and return one root CID per
-county. Never merge counties into one archive.
+with only those rows, run steps 2 through 11 per county, and return one root CID and one
+tables root per county. Never merge counties into one archive.
 
 ## Re-mining legacy data
 
 Records mined before the lexicon format lack provenance and cannot be converted. Re-mine
-them: capture and transform again, then the same validate, hash, validate, upload
+them: capture and transform again, then the same validate, hash, validate, export, upload
 sequence. A delta refresh is for stale records, not for a format change.
 
 ## CLI requirements
@@ -143,7 +153,7 @@ sequence. A delta refresh is for stale records, not for a format change.
 - Install the Elephant CLI from GitHub `main`, not from npm:
   `npm i github:elephant-xyz/elephant-cli#main` (or `npx --package=github:elephant-xyz/elephant-cli#main elephant-cli`).
   The npm release workflow is currently failing, so `@elephant-xyz/cli@latest` lacks
-  batch input, `--output-car`, CAR upload, and CAR validation. Record the installed
+  batch input, `--output-car`, CAR upload, CAR validation, and `export-tables`. Record the installed
   commit (`npm ls @elephant-xyz/cli` shows it) in the run evidence.
 - The CLI must reach the lexicon manifest at `https://lexicon.elephant.xyz/api/manifest`
   and fetch schemas through a gateway that serves them. Defaults are Filebase's public
@@ -190,7 +200,8 @@ sequence. A delta refresh is for stale records, not for a format change.
 - Identity baseline first, permits second, every time.
 - Validate before hash, hash before publish, read back before reporting success.
 - Every archive block comes from `elephant-cli hash`; the archive is never exported from
-  the query DB. The existing query-table and coverage exports continue unchanged.
+  the query DB. Every per-class table comes from `elephant-cli export-tables`; never
+  hand-build one. The existing query-table and coverage exports continue unchanged.
 - Data-record CIDs are dag-json, schema CIDs are raw; compare digests, not strings.
 - Never solve, bypass, OCR, or evade CAPTCHA. Preserve valid unmatched records.
 - Runtime secrets apply at process start; restart a job after adding keys.
@@ -201,8 +212,9 @@ sequence. A delta refresh is for stale records, not for a format change.
 
 **In:** discover and capture county sources; transform to lexicon; identity baseline
 then permits; validate; pack one archive per county run; publish it to a local or
-hosted IPFS node with root readback; property-list re-mining; re-mining of legacy data;
-the existing query-table, coverage, IPNS, and MCP publication, unchanged.
+hosted IPFS node with root readback; export the per-class tables from that archive with
+the CLI and publish them with tables-root readback; property-list re-mining; re-mining of
+legacy data; the existing query-table, coverage, IPNS, and MCP publication, unchanged.
 
-**Out:** registry registration, replacing the IPNS and query-table path, per-table
-Parquet indexes, on-chain submission, and Elephant.xyz UI changes.
+**Out:** registry registration, replacing the existing query-table, coverage, IPNS, and
+MCP publication, on-chain submission, and Elephant.xyz UI changes.
