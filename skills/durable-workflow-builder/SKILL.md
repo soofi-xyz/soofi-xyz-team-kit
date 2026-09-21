@@ -273,7 +273,7 @@ safeKeyPart(s: string): string         // fs-safe; collision-safe (suffix a shor
 capture(p, dest: string): Promise<boolean>   // elephant-cli prepare / browser flow; false = gone
 transform(req: { county: string; src: string; dest: string }): Promise<void>
   // resolves the county's v2 handler package transforms/<county>/transform-v2.zip (root
-  // handler.js — built per transform-v2-builder from Counties-trasform-scripts sources);
+  // handler.js — built per build-county-transform from Counties-trasform-scripts sources);
   // writes transformed.meta.json (capture hash + package hash/version); skips iff BOTH match.
   // REMOVES ready.json before regenerating — a replacement is never loadable until revalidated
 validate(path: string): Promise<{ valid: boolean; errors?: unknown }>  // elephant-cli validate

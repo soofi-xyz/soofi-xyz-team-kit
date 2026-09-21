@@ -110,9 +110,9 @@ Track progress in the county's findings doc (PR'd to `Counties-trasform-scripts`
    transform scripts (reuse from Counties-trasform-scripts when present), eligibility
    usage-type mapping. Single-parcel smoke test through the workflow. Service changes:
    see `durable-workflow-builder`.
-5. **Transform validation** — `validate-county-transform`: 10-20 diverse parcels; prove
+5. **Transform validation** — `build-county-transform`: 10-20 diverse parcels; prove
    100% field coverage vs raw captures; log lexicon gaps. Gate: do not scale before this
-   passes. (Authoring new handlers: `transform-v2-builder`.)
+   passes. (Authoring or repairing transforms in any mode: `build-county-transform`.)
 6. **Identity baseline FIRST** — after the seed/appraisal backbone, pre-populate official
    companies before any permit harvest.
    Drive the official corporate registry, then the official contractor-licensing

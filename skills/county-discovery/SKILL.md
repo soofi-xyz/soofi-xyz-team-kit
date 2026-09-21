@@ -139,7 +139,7 @@ For every page type (search results, detail page, each tab):
    headers/params, which artifacts need a real browser vs a modified plain request, and
    the performance/concurrency measurements that support or reject full ingestion.
 
-This inventory feeds `validate-county-transform` — fields missed here become silent
+This inventory feeds `build-county-transform` — fields missed here become silent
 coverage gaps later.
 
 ## Permit-source discovery (fragmented jurisdictions)

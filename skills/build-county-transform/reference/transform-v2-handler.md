@@ -1,13 +1,15 @@
 ---
-name: transform-v2-builder
-description: "Help Elephant CLI users build, run, and debug transform v2 handler packages. Use when authoring or repairing county `handler.js` transform packages, using `elephant-cli transform --transform-version 2`, inspecting Browser Flow v2 captures, packaging `--transform-zip`, writing `writeJson`/`writeRelationship` calls, or validating transformed output."
-metadata: {"author":"elephant-xyz"}
+title: Transform v2 handler package
+impact: high
+tags: [transform, elephant-cli, handler]
 ---
-# Transform v2 Builder
+
+# Transform v2 handler package
+
 
 ## When To Use
 
-Use this skill when helping a CLI user create, run, or debug an Elephant transform v2 handler package for a prepared county data ZIP.
+Use this reference when the transform is an Elephant CLI v2 handler package for a Browser Flow v2 prepared ZIP.
 
 Do not treat this as a CLI development workflow. Do not inspect or modify Elephant CLI source code unless the user explicitly asks to change the CLI itself. Focus on the user's transform package, prepared ZIP, command invocation, output ZIP, validation errors, and repair loop.
 
@@ -136,17 +138,6 @@ elephant-cli validate transformed-data.zip
 
 When repairing a handler, change the smallest amount of handler code needed to address the observed transform or validation failure.
 
-## High-Throughput Batch Execution: Warm Worker Pools
-
-When running transforms across a full county (100k–500k+ parcels), executing `elephant-cli transform` in separate child processes per parcel is inefficient. Spawning fresh Node.js processes per parcel incurs heavy V8 startup and module compilation overhead.
-
-**Warm Worker Pool Implementation Guide**:
-- Create a persistent worker (`transform-worker.cjs`) that requires Cheerio and transform modules once on initialization.
-- Maintain an in-memory worker pool (`child_process.fork()`) with concurrency equal to the number of available CPU cores.
-- Communicate via IPC messages: send `{ parcelDir }` and await `{ success, error, stats }`.
-- Read inputs directly from `prepared_site.zip` using in-memory zip handlers (`AdmZip`) rather than unzipping to disk.
-- Result: Increases parcel transform speed from ~2-5 parcels/sec to **30-60+ parcels/sec** while drastically reducing memory churn and thermal throttling.
-
 ## Output Expectations
 
 Transform v2 writes an output ZIP containing `data/`:
@@ -176,7 +167,7 @@ CONTINUE the parcel — never throw/abort the parcel over one unmapped code. A t
 aborts the WHOLE parcel, and because one code often covers a whole property class,
 aborting once silently dropped entire condo classes from a county. Inventory the
 unmapped codes across a sample run and add the missing mappings before scaling.
-(This is the rule `county-appraisal-onboarding` cross-references.)
+
 
 - Address composition: never prepend `streetNumber` to a `propertyAddress` that already
   includes it — the old pipeline produced `"5034 5034 LOYOLA LN"`. Regression-check a
@@ -192,9 +183,3 @@ unmapped codes across a sample run and add the missing mappings before scaling.
 - `Relationship type ... is not valid`: `type` is not a relationship key in the selected data-group schema.
 - `--scripts-zip cannot be used with transform v2`: v1 and v2 package contracts were mixed.
 
-## User-Safe Defaults
-
-- Prefer `County` data group unless the user specifies another `--data-group`.
-- Preserve handler-provided `source_http_request` when it describes a more specific capture URL.
-- Keep handler code explicit and readable; avoid generic scraping frameworks unless the user needs them.
-- If the issue appears to be a CLI bug rather than a handler/package problem, stop and explain the suspected CLI issue before changing any CLI source.
