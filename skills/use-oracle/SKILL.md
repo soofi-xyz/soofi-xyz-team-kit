@@ -127,10 +127,13 @@ directory, where every property carries the group's root and the seed root.
    <tables-dir> --output-json <tables-export.json>`. Record the printed table count, part
    count, and tables root. This is the only source of per-class tables.
 10. **Upload the archive** — `elephant-cli upload <county>-<group>.car --output-json
-    <summary.json>`. For registration, upload to a Filebase account (`--api
-    https://rpc.filebase.io` with the three `FILEBASE_*` variables): Atlas fetches from
-    `https://ipfs.filebase.io` only. A local kubo upload is for development and validation
-    and cannot be registered. Success means the gateway served the root with matching bytes.
+    <summary.json>`. Upload to any IPFS pinning provider, or to a node that stays online
+    and publicly reachable until the Atlas merge; Atlas fetches the archive by its root
+    from public gateways and copies it onto the org account on merge. Filebase through
+    `--api https://rpc.filebase.io` is the worked example because `upload` already targets
+    it. A local kubo is for development and validation; one behind NAT that goes offline
+    before the merge cannot be registered. Success means the gateway served the root with
+    matching bytes.
 11. **Upload the tables** — `elephant-cli upload <tables-dir> --output-json
     <tables-summary.json>` to the same node with the same options. Success means every
     part's CID matched the index and the gateway served the tables root.
@@ -230,7 +233,7 @@ register sequence per group. A delta refresh is for stale records, not for a for
 
 **In:** discover and capture county sources; transform to lexicon; identity baseline
 then permits; validate; pack one archive per county per data group; upload it to a
-Filebase account with root readback (local kubo for development only); export the per-class tables from each archive with
+pinning provider or a publicly reachable node with root readback (local kubo for development); export the per-class tables from each archive with
 the CLI and upload them with tables-root readback; register every group on the county's
 Atlas page through a merged pull request; property-list re-mining; re-mining of legacy
 data; the existing query-table, coverage, IPNS, and MCP publication, unchanged.

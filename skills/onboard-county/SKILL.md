@@ -68,9 +68,11 @@ supports it):
    Filebase credentials exist, and do the two per-county bucket/IPNS labels exist or need
    creating (`county-open-data-publish` / `county-query-table-publish`)? Where will the
    MCP be deployed (`deploy-open-data-mcp`)?
-   Which Filebase account receives the county archives (`--api https://rpc.filebase.io`
-   with the three `FILEBASE_*` variables)? Atlas only registers roots served by
-   `https://ipfs.filebase.io`; a local kubo daemon is for development and validation only.
+   Which node receives the county archives: any IPFS pinning provider (Filebase through
+   `--api https://rpc.filebase.io` with the three `FILEBASE_*` variables is the worked
+   example), or a node that stays online and publicly reachable until the Atlas merge?
+   A local kubo daemon is for development and validation; one behind NAT that goes
+   offline before the merge cannot be registered.
 
 Restate the answers as a short written plan (stages, county key, job-id prefix, sources),
 then execute it end-to-end autonomously. Do NOT pause for per-stage approvals or
@@ -200,8 +202,10 @@ after query-DB reconciliation and the artifact/code handoff.
     `elephant-cli validate <county>-<group>.car` with all six checks clean;
     `elephant-cli export-tables <county>-<group>.car --output <tables-dir> --output-json
     <tables-export.json>` and record the printed table count, part count, and tables root;
-    `elephant-cli upload <county>-<group>.car --output-json <summary.json>` to a Filebase
-    account (a local kubo upload cannot be registered), which succeeds only after the root reads back from the gateway with matching
+    `elephant-cli upload <county>-<group>.car --output-json <summary.json>` to an IPFS
+    pinning provider or a node that stays publicly reachable until the Atlas merge (Atlas
+    fetches by root from public gateways and copies onto the org account on merge; a local
+    kubo behind NAT that goes offline first cannot be registered), which succeeds only after the root reads back from the gateway with matching
     bytes; then `elephant-cli upload <tables-dir> --output-json <tables-summary.json>` to
     the same node, which succeeds only after every part's CID matches the tables index and
     the tables root reads back. The per-class tables come only from `export-tables`;

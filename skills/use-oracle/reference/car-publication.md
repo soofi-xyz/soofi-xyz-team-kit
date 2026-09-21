@@ -46,12 +46,13 @@ elephant-cli export-tables $county-$group.car --output ./$county-$group-tables \
   --part-size 1g --output-json $county-$group-tables-export.json
 #    prints: Tables written: ./lee-county-tables (<n> tables, <n> parts, root <tables cid>)
 
-# 5a. Development and validation only: a local kubo daemon (API 127.0.0.1:5001,
-#     gateway 127.0.0.1:8080). Proves the upload path; the result cannot be registered.
+# 5a. Development and validation: a local kubo daemon (API 127.0.0.1:5001,
+#     gateway 127.0.0.1:8080). Registrable only if it stays online and publicly
+#     reachable until the Atlas merge.
 elephant-cli upload $county-$group.car --output-json $county-$group-upload.json
 elephant-cli upload ./$county-$group-tables --output-json $county-$group-tables-upload.json
 
-# 5b. For registration: a Filebase account through its Kubo RPC endpoint.
+# 5b. Worked example for registration: a pinning provider, here Filebase over Kubo RPC.
 export FILEBASE_ACCESS_KEY=... FILEBASE_SECRET_KEY=... FILEBASE_BUCKET=...
 elephant-cli upload $county-$group.car --api https://rpc.filebase.io --output-json $county-$group-upload.json
 elephant-cli upload ./$county-$group-tables --api https://rpc.filebase.io --output-json $county-$group-tables-upload.json
@@ -66,10 +67,12 @@ equal the one recorded in the tables index, imports `tables.car`, reads the tabl
 from the gateway, and writes the same summary shape (api, tables root, county root, parts,
 gateway URL). It takes the same `--api` and token options as the CAR upload.
 
-At review and merge time the archive and tables roots must be served by
-`https://ipfs.filebase.io`, which in practice means they were uploaded to a Filebase
-account (any account; the org copies them on merge). A local kubo upload is for
-development and validation only; it cannot be registered.
+At review and at merge the archive and tables roots must be retrievable from the IPFS
+network by root CID. Upload to any IPFS pinning provider, or to a node that stays online
+and publicly reachable until the Atlas merge; Atlas fetches the archive by its root from
+public gateways and copies it onto the org account on merge. Filebase through
+`--api https://rpc.filebase.io` is the worked example because `upload` already targets it.
+A local kubo behind NAT that goes offline before the merge cannot be registered.
 
 ## What each archive looks like
 
@@ -201,12 +204,14 @@ or `index.json` on `main`.
   The per-file cost that broke the earlier Pinata setup does not apply.
 - **Validation is offline.** `validate <county>-<group>.car` resolves every link from inside
   the archive; a missing block is an error, never a network fetch.
-- **Atlas fetches from `https://ipfs.filebase.io` only.** Both the `validate` check and
-  the merge-time transfer read the roots, shard 0, a property, and a table part from that
-  gateway, and it only reliably serves content pinned on a Filebase account: inner blocks
-  of a random node are not discoverable. Upload to a Filebase account (any account; the
-  org copies on merge) before opening the PR. A local kubo upload is for development and
-  validation only; it cannot be registered.
+- **Atlas fetches by root CID from public gateways.** An archive pinned on a provider is
+  retrievable in full by its root from every major public gateway and from a cold IPFS
+  node within seconds; both the `validate` check and the merge-time transfer rely on
+  that. Upload to any IPFS pinning provider, or to a node that stays online and publicly
+  reachable until the Atlas merge; Atlas copies the archive onto the org account on
+  merge. Filebase through `--api https://rpc.filebase.io` is the worked example because
+  `upload` already targets it. A local kubo behind NAT that goes offline before the merge
+  cannot be registered.
 
 ## CLI requirements
 
