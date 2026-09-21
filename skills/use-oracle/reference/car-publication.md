@@ -26,7 +26,8 @@ that group's data-group root. Children whose names start with `.` or `__` are sk
 duplicate names abort the run. Repeat the whole sequence for every group the county has.
 
 ```bash
-county=lee; group=county   # then property_improvement, hoa, corporate_registry, places ...
+county=lee; state=FL; fips=12071; group=county   # then property_improvement, hoa, ...
+git clone git@github.com:elephant-xyz/atlas.git ./atlas   # once per county; the page lives here
 
 # 1. Every property validates against the lexicon. Fix transforms until this is clean.
 elephant-cli validate ./$group-outputs --output-csv $county-$group-errors.csv
@@ -41,10 +42,13 @@ elephant-cli hash ./$group-outputs \
 # 3. Prove the archive: integrity, root, index, graph, lexicon, orphans.
 elephant-cli validate $county-$group.car --output-csv $county-$group-car-errors.csv
 
-# 4. Derive the per-class tables from the validated archive.
+# 4. Derive the per-class tables from the validated archive and write this group's
+#    Atlas page entry (group key and schema CID come from the archive itself).
 elephant-cli export-tables $county-$group.car --output ./$county-$group-tables \
-  --part-size 1g --output-json $county-$group-tables-export.json
+  --part-size 1g --output-json $county-$group-tables-export.json \
+  --atlas-page ./atlas/counties/$state/$county.json --county $county --state $state --fips $fips
 #    prints: Tables written: ./lee-county-tables (<n> tables, <n> parts, root <tables cid>)
+#            Atlas page written: ./atlas/counties/FL/lee.json group county
 
 # 5a. Development and validation: a local kubo daemon (API 127.0.0.1:5001,
 #     gateway 127.0.0.1:8080). Registrable only if it stays online and publicly
@@ -128,22 +132,24 @@ today). It holds **one JSON page per county** at `counties/<STATE>/<county>.json
 ```
 
 A group entry holds exactly three CIDs: `cid` is the archive root printed by `hash`,
-`tables` the root printed by `export-tables`, `schema` the data-group schema CID for that
-group (the `dataGroupCid` column in `<county>-<group>-hash.csv` for that group's rows, or
-the manifest entry for the group label). Withdraw a group by removing its key; supersede a
-group by changing its CIDs. The page carries no history, no evidence, and no counts.
-
-There is no entry generator in the CLI yet: write the page by hand from the three printed
-values and the hash CSV. A generator is the planned replacement for this step.
+`tables` the root printed by `export-tables`, `schema` the data-group schema CID of that
+archive. `export-tables --atlas-page` writes the entry (step 4 above): it reads the
+archive's data-group map, drops Seed, requires exactly one remaining schema, and uses its
+snake_cased title as the group key (`County` → `county`, `Property Improvement` →
+`property_improvement`). `--county`, `--state`, and `--fips` are required for a new page and
+must match an existing one. Other groups on the page are kept and keys are sorted, so
+running the sequence once per group builds the whole page. Supersede a group by exporting
+its new archive over the same page. Withdraw a group by removing its key by hand; that is
+the only hand edit the page ever gets. The page carries no history, no evidence, and no
+counts.
 
 ### Open the pull request
 
 One PR per publication, touching exactly that county's page:
 
 ```bash
-git clone git@github.com:elephant-xyz/atlas.git && cd atlas
-git checkout -b publish/fl-lee
-mkdir -p counties/FL && $EDITOR counties/FL/lee.json   # add or update the group entries
+cd ./atlas && git checkout -b publish/fl-lee
+git diff                      # only counties/FL/lee.json, written by export-tables
 git add counties/FL/lee.json
 git commit -m "Publish FL lee county"
 git push -u origin publish/fl-lee
@@ -218,7 +224,7 @@ or `index.json` on `main`.
 - Install the Elephant CLI from GitHub `main`: `npm i github:elephant-xyz/elephant-cli#main`
   (or run it with `npx --package=github:elephant-xyz/elephant-cli#main elephant-cli`).
   The npm release workflow is failing, so the registry package lacks batch input,
-  `--output-car`, CAR upload, CAR validation (PRs 244 through 248), and `export-tables`. Record the
+  `--output-car`, CAR upload, CAR validation, `export-tables`, and its `--atlas-page` option (PRs 244 through 250). Record the
   installed commit in the run evidence.
 - The CLI reads the lexicon manifest from `https://lexicon.elephant.xyz/api/manifest`
   (`ELEPHANT_SCHEMA_MANIFEST_URL` overrides) and fetches schemas from
@@ -256,7 +262,6 @@ counties into one archive; the index is a county index.
 
 - The county index does not yet record the county key or the lexicon manifest CID. Record
   both in the run evidence until the CLI carries them.
-- The Atlas page is written by hand until the CLI ships an entry generator.
 - The existing query-table, coverage, per-county IPNS, and MCP publication keeps running as
   its skills describe; it is a separate path. Replacing it is out of scope.
 - A raw IPFS node cannot discover inner blocks from the network. Consumers that need that

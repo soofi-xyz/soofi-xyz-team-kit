@@ -28,10 +28,10 @@ Steps 4 through 9 run once per data group over that group's output directory.
 4. **Validate the group** — `elephant-cli validate <group-dir>`. A lexicon error is fixed in the transform and re-run; it is never suppressed.
 5. **Hash and pack** — `elephant-cli hash <group-dir> --output-zip <hashed-dir> --output-csv <hash.csv> --output-car <county>-<group>.car`. Record the printed root CID, block count, and the group's schema CID (`dataGroupCid` in the hash CSV).
 6. **Validate the archive** — `elephant-cli validate <county>-<group>.car`. All six checks must be clean; lexicon rows here mean step 4 was skipped.
-7. **Export the tables** — `elephant-cli export-tables <county>-<group>.car --output <tables-dir> --output-json <tables-export.json>`. Record the printed table count, part count, and tables root. This command is the only source of per-class tables; never invent or hand-write a table layout.
+7. **Export the tables and write the Atlas page** — `elephant-cli export-tables <county>-<group>.car --output <tables-dir> --output-json <tables-export.json> --atlas-page <atlas-clone>/counties/<STATE>/<county>.json --county <county> --state <STATE> --fips <fips>`. Record the printed table count, part count, tables root, and the `Atlas page written` line with its group key. This command is the only source of per-class tables and of the page entry: it derives the group key and schema CID from the archive and keeps the page's other groups. Never hand-write a table layout or a page entry.
 8. **Upload the archive** — `elephant-cli upload <county>-<group>.car`; for anything that will be registered, to an IPFS pinning provider or a node that stays online and publicly reachable until the Atlas merge; Filebase (`--api https://rpc.filebase.io`, three `FILEBASE_*` variables) is the worked example, a local kubo is for development and validation. Success requires the root read back from the gateway with matching bytes; keep the `--output-json` summary as the run's evidence.
 9. **Upload the tables** — `elephant-cli upload <tables-dir>` to the same node with the same options. Success requires every part's CID to match the tables index and the tables root read back from the gateway; keep its `--output-json` summary too.
-10. **Register in Atlas** — write `counties/<STATE>/<county>.json` with `cid`, `schema`, and `tables` per group, open the PR on branch `publish/<state>-<county>` with `gh pr create` touching only that file, `gh pr checks --watch` until `validate` is green, and ask a code owner (`movsiienko`, `sean-cedar`, `samandun`, `mrndacreative`) to merge. A reverted merge with an issue means the archive was not served: re-upload and open a new PR.
+10. **Register in Atlas** — commit the page `export-tables` wrote to `counties/<STATE>/<county>.json` (one group per export run, all of the county's groups on the one page), open the PR on branch `publish/<state>-<county>` with `gh pr create` touching only that file, `gh pr checks --watch` until `validate` is green, and ask a code owner (`movsiienko`, `sean-cedar`, `samandun`, `mrndacreative`) to merge. A reverted merge with an issue means the archive was not served: re-upload and open a new PR.
 11. **Existing publication, when in scope** — `county-query-table-publish`, `county-open-data-publish`, coverage, and MCP wiring run exactly as their skills describe, unchanged. A separate path; Atlas does not replace it yet.
 12. **Report** — the status report below.
 
@@ -47,7 +47,7 @@ Steps 4 through 9 run once per data group over that group's output directory.
 | "Is the county valid?" | `validate` on each group directory, then on each archive |
 | "Publish the county" | Steps 4 through 10: per-group archive, tables, uploads, then the Atlas PR; report every group's three CIDs and the PR |
 | "Put it in the registry" | Step 10 for groups already uploaded; verify the roots still read back first |
-| "Parquet per table" / "export the tables" | `elephant-cli export-tables <county>-<group>.car`, then `elephant-cli upload <tables-dir>`; never a hand-built layout |
+| "Parquet per table" / "export the tables" | `elephant-cli export-tables <county>-<group>.car --atlas-page …`, then `elephant-cli upload <tables-dir>`; never a hand-built layout or page |
 | "Publish query table / coverage / wire MCP" | `county-query-table-publish`, `county-open-data-publish`, `deploy-open-data-mcp`, unchanged |
 | Status, ETA, stall diagnosis | `monitoring-county-ingestion` (local) or `monitoring-oracle-ingestion` (AWS) |
 | "Replace the IPNS / query-table path with Atlas" | Out of scope for this milestone; say so and hand back the Atlas PR |
@@ -59,7 +59,7 @@ Steps 4 through 9 run once per data group over that group's output directory.
 - One archive per county per data group. The seed root rides inside every archive; it is never hashed, uploaded, or registered on its own.
 - Validate before hash, hash before upload, read back before registering, merged before reporting published. Skipping any of these is a failure, not a shortcut.
 - Per-class tables come only from `elephant-cli export-tables` over a validated archive. Never write, patch, or describe a table layout yourself.
-- An Atlas group entry holds exactly three CIDs: the archive root, the schema CID, the tables root. No history, evidence, or counts on the page. One PR touches one county page.
+- An Atlas group entry holds exactly three CIDs: the archive root, the schema CID, the tables root, and only `export-tables --atlas-page` writes it. No history, evidence, or counts on the page. One PR touches one county page.
 - Install the Elephant CLI from GitHub `main` (`npm i github:elephant-xyz/elephant-cli#main`), not from npm, until the release workflow is repaired; record the installed commit in the report.
 - The Elephant CLI must resolve the live lexicon manifest and fetch schemas through a gateway that serves them; see the CLI requirements in `use-oracle`. A validation run that cannot load the manifest has proved nothing.
 - Data-record CIDs are dag-json; schema CIDs from the lexicon are raw. Do not string-compare CIDs across codecs; compare digests.

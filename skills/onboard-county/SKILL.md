@@ -201,7 +201,9 @@ after query-DB reconciliation and the artifact/code handoff.
     the group's schema CID (`dataGroupCid` in the hash CSV);
     `elephant-cli validate <county>-<group>.car` with all six checks clean;
     `elephant-cli export-tables <county>-<group>.car --output <tables-dir> --output-json
-    <tables-export.json>` and record the printed table count, part count, and tables root;
+    <tables-export.json> --atlas-page <atlas-clone>/counties/<STATE>/<county>.json
+    --county <county> --state <STATE> --fips <fips>` and record the printed table count,
+    part count, tables root, and the `Atlas page written` line;
     `elephant-cli upload <county>-<group>.car --output-json <summary.json>` to an IPFS
     pinning provider or a node that stays publicly reachable until the Atlas merge (Atlas
     fetches by root from public gateways and copies onto the org account on merge; a local
@@ -210,8 +212,9 @@ after query-DB reconciliation and the artifact/code handoff.
     the same node, which succeeds only after every part's CID matches the tables index and
     the tables root reads back. The per-class tables come only from `export-tables`;
     never hand-build them. Seed is never a group of its own.
-    **Final step: register in Atlas.** Write `counties/<STATE>/<county>.json` in
-    `elephant-xyz/atlas` by hand with `cid`, `schema`, and `tables` per group, open the PR
+    **Final step: register in Atlas.** Commit the page `export-tables` wrote to
+    `counties/<STATE>/<county>.json` in the `elephant-xyz/atlas` clone (never edit it by
+    hand; each group's export adds its entry and keeps the others), open the PR
     on branch `publish/<state>-<county>` with `gh pr create` touching only that file, wait
     for the `validate` check, and ask a code owner to merge. A reverted merge means the
     archive was not served: re-upload and open a new PR. Hand back every group's three

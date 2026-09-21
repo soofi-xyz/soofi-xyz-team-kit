@@ -123,9 +123,13 @@ directory, where every property carries the group's root and the seed root.
    count, and the group's schema CID (`dataGroupCid` in the hash CSV).
 8. **Validate the archive** — `elephant-cli validate <county>-<group>.car --output-csv
    <car-errors.csv>`. Integrity, root, index, graph, lexicon, orphans: all zero.
-9. **Export the tables** — `elephant-cli export-tables <county>-<group>.car --output
-   <tables-dir> --output-json <tables-export.json>`. Record the printed table count, part
-   count, and tables root. This is the only source of per-class tables.
+9. **Export the tables and write the Atlas page** — `elephant-cli export-tables
+   <county>-<group>.car --output <tables-dir> --output-json <tables-export.json>
+   --atlas-page <atlas-clone>/counties/<STATE>/<county>.json --county <county> --state
+   <STATE> --fips <fips>`. Record the printed table count, part count, tables root, and
+   the `Atlas page written` line. This is the only source of per-class tables and of the
+   page entry: the group key and schema CID come from the archive, other groups on the
+   page are kept, and the county metadata must match an existing page.
 10. **Upload the archive** — `elephant-cli upload <county>-<group>.car --output-json
     <summary.json>`. Upload to any IPFS pinning provider, or to a node that stays online
     and publicly reachable until the Atlas merge; Atlas fetches the archive by its root
@@ -137,9 +141,9 @@ directory, where every property carries the group's root and the seed root.
 11. **Upload the tables** — `elephant-cli upload <tables-dir> --output-json
     <tables-summary.json>` to the same node with the same options. Success means every
     part's CID matched the index and the gateway served the tables root.
-12. **Register in Atlas** — write or update `counties/<STATE>/<county>.json` by hand with
-    `cid`, `schema`, and `tables` per group (no generator exists yet), open the PR on
-    branch `publish/<state>-<county>` with `gh pr create`, wait for the `validate` check,
+12. **Register in Atlas** — commit the page `export-tables` wrote in the Atlas clone
+    (never edit it by hand), open the PR on branch `publish/<state>-<county>` with
+    `gh pr create` touching only that file, wait for the `validate` check,
     and ask a code owner to merge. A reverted merge means the archive was not served:
     re-upload and open a new PR. Exact flow in `car-publication.md`.
 13. **Existing publication, when in scope** — `county-query-table-publish`,
@@ -221,7 +225,8 @@ register sequence per group. A delta refresh is for stale records, not for a for
 - One archive per county per data group; the seed root rides inside every archive and is
   never a group of its own. Every archive block comes from `elephant-cli hash`; the
   archive is never exported from the query DB. Every per-class table comes from
-  `elephant-cli export-tables`; never hand-build one. An Atlas group entry holds exactly
+  `elephant-cli export-tables`, and the Atlas page only from its `--atlas-page` option;
+  never hand-build either. An Atlas group entry holds exactly
   three CIDs. The existing query-table and coverage exports continue unchanged.
 - Data-record CIDs are dag-json, schema CIDs are raw; compare digests, not strings.
 - Never solve, bypass, OCR, or evade CAPTCHA. Preserve valid unmatched records.
