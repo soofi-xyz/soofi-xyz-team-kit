@@ -188,23 +188,31 @@ after query-DB reconciliation and the artifact/code handoff.
     MCP's `ORACLE_OPEN_DATA_IPNS_MAP`, restart the local MCP (or redeploy the hosted
     MCP) after changing environment variables, confirm NEO renders the county.
 
-17. **Validate, pack, and publish the county archive** *(when publishing is in scope)* —
-    follow `skills/use-oracle/reference/car-publication.md` exactly:
-    `elephant-cli validate <county-dir>` over the directory of per-property lexicon
-    outputs (each with its seed data-group root) until it reports no data rows;
-    `elephant-cli hash <county-dir> --output-zip <hashed-dir> --output-csv <hash.csv>
-    --output-car <county>.car` and record the printed root CID and block count;
-    `elephant-cli validate <county>.car` with all six checks clean;
-    `elephant-cli export-tables <county>.car --output <tables-dir> --output-json
+17. **Validate, pack, upload, and register the county archives** *(when publishing is in scope)* —
+    follow `skills/use-oracle/reference/car-publication.md` exactly. Run this sequence
+    **once per data group** (`county`, `property_improvement`, `hoa`, `corporate_registry`,
+    `places`, whichever the county produced) over that group's output directory, where
+    every property carries the group's data-group root plus the seed data-group root:
+    `elephant-cli validate <group-dir>` until it reports no data rows;
+    `elephant-cli hash <group-dir> --output-zip <hashed-dir> --output-csv <hash.csv>
+    --output-car <county>-<group>.car` and record the printed root CID, block count, and
+    the group's schema CID (`dataGroupCid` in the hash CSV);
+    `elephant-cli validate <county>-<group>.car` with all six checks clean;
+    `elephant-cli export-tables <county>-<group>.car --output <tables-dir> --output-json
     <tables-export.json>` and record the printed table count, part count, and tables root;
-    `elephant-cli upload <county>.car --output-json <summary.json>` to the chosen node,
-    which succeeds only after the root reads back from the gateway with matching bytes;
-    then `elephant-cli upload <tables-dir> --output-json <tables-summary.json>` to the
-    same node, which succeeds only after every part's CID matches the tables index and
-    the tables root reads back. Hand back the root CID, the tables root, and both
-    summaries. The per-class tables come only from `export-tables`; never hand-build
-    them. This stage adds to stages 14 to 16; it does not replace them. Registry
-    registration and replacing the IPNS path are separate stories.
+    `elephant-cli upload <county>-<group>.car --output-json <summary.json>` to the chosen
+    node, which succeeds only after the root reads back from the gateway with matching
+    bytes; then `elephant-cli upload <tables-dir> --output-json <tables-summary.json>` to
+    the same node, which succeeds only after every part's CID matches the tables index and
+    the tables root reads back. The per-class tables come only from `export-tables`;
+    never hand-build them. Seed is never a group of its own.
+    **Final step: register in Atlas.** Write `counties/<STATE>/<county>.json` in
+    `elephant-xyz/atlas` by hand with `cid`, `schema`, and `tables` per group, open the PR
+    on branch `publish/<state>-<county>` with `gh pr create` touching only that file, wait
+    for the `validate` check, and ask a code owner to merge. A reverted merge means the
+    archive was not served: re-upload and open a new PR. Hand back every group's three
+    CIDs, both summaries per group, and the PR URL with its merge state. This stage adds to
+    stages 14 to 16; it does not replace them.
 
 ## Persist artifacts — commit + PR, nothing lives only on disk
 
