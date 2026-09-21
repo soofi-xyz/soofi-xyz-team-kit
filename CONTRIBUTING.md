@@ -1,6 +1,6 @@
 # Contributing
 
-This repo is a dual [Cursor plugin](https://cursor.com/docs/plugins) and [GitHub Copilot CLI plugin](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/plugins-creating).
+This repo is a [Cursor plugin](https://cursor.com/docs/plugins), [GitHub Copilot CLI plugin](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/plugins-creating), OpenAI Codex plugin, and [Claude Code plugin](https://code.claude.com/docs/en/plugins).
 
 All development conventions, repository layout notes, local validation commands, and release checklist items live in [`AGENTS.md`](./AGENTS.md). Read that file before changing agents, skills, manifests, marketplace metadata, or docs.
 

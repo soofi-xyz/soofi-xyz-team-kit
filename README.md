@@ -1,6 +1,6 @@
 # soofi-xyz plugin kit
 
-A [Cursor plugin](https://cursor.com/docs/plugins), [GitHub Copilot CLI plugin](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/plugins-creating), and OpenAI Codex plugin packaging company-wide project subagents and skills for AI-assisted development.
+A [Cursor plugin](https://cursor.com/docs/plugins), [GitHub Copilot CLI plugin](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/plugins-creating), OpenAI Codex plugin, and [Claude Code plugin](https://code.claude.com/docs/en/plugins) packaging company-wide project subagents and skills for AI-assisted development.
 
 ## Install
 
@@ -48,6 +48,17 @@ codex plugin add soofi-xyz-team-kit@soofi-xyz-team-kit
 
 The Codex plugin packages the skills in `skills/`. Project-scoped Codex custom agents are materialized in `.codex/agents/` when you work in this repository.
 
+### Claude Code
+
+Add the repo as a marketplace, then install the plugin from it (works from the CLI or as `/plugin ...` inside a session):
+
+```bash
+claude plugin marketplace add soofi-xyz/cursor-plugin
+claude plugin install soofi-xyz-team-kit@soofi-xyz
+```
+
+The plugin registers every agent as `soofi-xyz-team-kit:<agent>`, every skill as `/soofi-xyz-team-kit:<skill>`, and the bundled **`elephant`** MCP server from `mcp.json`. Agents are loaded from `agents-claude/`, a generated copy of `agents/` with the Cursor model ids removed so each agent inherits your session model. To enable it for a whole team, add the marketplace under `extraKnownMarketplaces` and `soofi-xyz-team-kit@soofi-xyz` under `enabledPlugins` in the repo's `.claude/settings.json`.
+
 ## Update Or Remove
 
 ### Cursor
@@ -89,6 +100,21 @@ Remove the installed Codex plugin by name:
 codex plugin remove soofi-xyz-team-kit
 ```
 
+### Claude Code
+
+Refresh the marketplace catalog, then update the plugin. Claude Code only picks up a new release when the manifest `version` changes:
+
+```bash
+claude plugin marketplace update soofi-xyz
+claude plugin update soofi-xyz-team-kit@soofi-xyz
+```
+
+Uninstall the plugin by name:
+
+```bash
+claude plugin uninstall soofi-xyz-team-kit@soofi-xyz
+```
+
 ## Quick start
 
 When in doubt, **start with [`arceus`](./agents/arceus.md)** — the master router. Arceus reads this README, the agent definitions, and the skill metadata, then tells you which specialist(s) and skill(s) to use for your task. It does not perform the work itself; it hands you a copy-pasteable invocation hint for the right agent.
@@ -113,9 +139,15 @@ In Codex, start a new thread from this repository and ask Codex to spawn the `ar
 Spawn the arceus custom agent to recommend the right specialist for migrating an SMS template inventory.
 ```
 
+In Claude Code, ask for the namespaced subagent:
+
+```text
+Use the soofi-xyz-team-kit:arceus subagent to recommend the right specialist for migrating an SMS template inventory.
+```
+
 Cursor's Agent can also delegate to `arceus` automatically at the start of a task when no specific specialist has been named — so simply describing your task in plain English usually triggers the right routing.
 
-If you already know which specialist you need, skip the router and call them directly — for example `/sylveon` in Cursor, `soofi-xyz-team-kit:sylveon` in Copilot, or "spawn the `sylveon` custom agent" in Codex for Figma-to-code work. The full roster, with triggers and descriptions, lives in the [Agents](#agents) and [Skills](#skills) tables below.
+If you already know which specialist you need, skip the router and call them directly — for example `/sylveon` in Cursor, `soofi-xyz-team-kit:sylveon` in Copilot or Claude Code, or "spawn the `sylveon` custom agent" in Codex for Figma-to-code work. The full roster, with triggers and descriptions, lives in the [Agents](#agents) and [Skills](#skills) tables below.
 
 ## Agents
 

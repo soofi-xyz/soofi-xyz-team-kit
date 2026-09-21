@@ -1,6 +1,6 @@
-# Cursor, Copilot, And Codex Plugin — Agent Guidance
+# Cursor, Copilot, Codex, And Claude Code Plugin — Agent Guidance
 
-This repository is a [Cursor plugin](https://cursor.com/docs/plugins), [GitHub Copilot CLI plugin](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/plugins-creating), and OpenAI Codex plugin that ships subagents and agent skills.
+This repository is a [Cursor plugin](https://cursor.com/docs/plugins), [GitHub Copilot CLI plugin](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/plugins-creating), OpenAI Codex plugin, and [Claude Code plugin](https://code.claude.com/docs/en/plugins) that ships subagents and agent skills.
 
 Follow these conventions whenever you touch files in this repo.
 
@@ -11,18 +11,20 @@ Follow these conventions whenever you touch files in this repo.
 - Copilot manifest MUST exist at `plugin.json`.
 - Codex repo marketplace manifest MUST exist at `.agents/plugins/marketplace.json`.
 - Copilot marketplace manifest MUST exist at `.github/plugin/marketplace.json`.
+- Claude Code manifest MUST exist at `.claude-plugin/plugin.json` and its marketplace manifest at `.claude-plugin/marketplace.json`. Root `plugin.json` is Copilot-only; Claude Code never reads it, and Copilot checks its own locations before falling back to `.claude-plugin/`.
 - `name` MUST be lowercase kebab-case and match the intended plugin identifier.
-- Bump `version` (semver) in all plugin manifests and the Copilot marketplace entry whenever you ship a meaningful change.
+- Bump `version` (semver) in all plugin manifests and the Copilot and Claude Code marketplace entries whenever you ship a meaningful change. Claude Code users only receive an update when the version string changes.
 
 ## Agents (`agents/*.md`)
 
 - One agent per file. Filename SHOULD match the agent `name`.
 - Frontmatter MUST have `name` (kebab-case) and `description` (what + when to trigger).
 - Keep the body imperative ("Do X", "Return Y"). Describe the runtime contract: inputs, tools, outputs, verification.
-- `agents/` is the source of truth. Do not edit files in `agents-copilot/` or `.codex/agents/` directly.
+- `agents/` is the source of truth. Do not edit files in `agents-copilot/`, `.codex/agents/`, or `agents-claude/` directly.
 - Each source agent MUST have a matching materialized Copilot file at `agents-copilot/<name>.agent.md`.
 - Each source agent MUST have a matching materialized Codex file at `.codex/agents/<name>.toml`.
-- After adding, removing, renaming, or editing agents, run `scripts/sync-copilot-agents.sh sync` and `scripts/sync-codex-agents.sh sync` to refresh generated targets.
+- Each source agent MUST have a matching materialized Claude Code file at `agents-claude/<name>.md`. The generator drops `model` (source values are Cursor model ids, and Claude Code sends unknown ids to the API verbatim) and turns `readonly: true` into `disallowedTools`.
+- After adding, removing, renaming, or editing agents, run `scripts/sync-copilot-agents.sh sync`, `scripts/sync-codex-agents.sh sync`, and `scripts/sync-claude-agents.sh sync` to refresh generated targets. The Claude sync also rewrites the `agents` file list in `.claude-plugin/plugin.json`, because Claude Code rejects directory paths in that field.
 - Add a row to the Agents table in `README.md` when adding or renaming an agent.
 
 ## Skills (`skills/<name>/SKILL.md`)
@@ -47,6 +49,7 @@ Follow these conventions whenever you touch files in this repo.
 - Codex reads plugin metadata from `.codex-plugin/plugin.json`; keep `"skills": "./skills/"` unless the repository layout changes deliberately.
 - Codex repo marketplace points at `plugins/soofi-xyz-team-kit/`, whose `.codex-plugin` and `skills` entries are symlinks back to the canonical root manifest and `skills/` tree. Do not edit through the nested symlink path.
 - Codex custom agents are project-scoped TOML files in `.codex/agents/` generated from `agents/`.
+- Claude Code reads `.claude-plugin/plugin.json`; keep `"skills": "./skills/"`, `"mcpServers": "./mcp.json"`, and let `scripts/sync-claude-agents.sh` own the `agents` array.
 
 ## Self-contained Elephant ingestion (`skills/use-oracle/runtime/`)
 
@@ -83,6 +86,9 @@ soofi-xyz-plugin-kit/
 ├── .agents/
 │   └── plugins/
 │       └── marketplace.json          # OpenAI Codex repo marketplace manifest
+├── .claude-plugin/
+│   ├── plugin.json                   # Claude Code plugin manifest
+│   └── marketplace.json              # Claude Code marketplace manifest
 ├── .codex/
 │   └── agents/                       # Materialized `.toml` copies for Codex custom agents
 ├── .codex-plugin/
@@ -95,6 +101,7 @@ soofi-xyz-plugin-kit/
 ├── plugin.json                       # GitHub Copilot CLI plugin manifest
 ├── agents/                           # Source agent definitions
 ├── agents-copilot/                   # Materialized `.agent.md` copies for Copilot CLI
+├── agents-claude/                    # Materialized `.md` copies for Claude Code (model stripped)
 ├── plugins/
 │   └── soofi-xyz-team-kit/           # Codex marketplace plugin folder with symlinked manifest and skills
 ├── skills/                           # Agent skills, one directory per skill
@@ -107,7 +114,7 @@ soofi-xyz-plugin-kit/
 
 ## Local validation
 
-Run the plugin validation script before preparing a PR. It checks that Copilot and Codex agent copies are synced, manifests are consistent, agent and skill frontmatter is valid, source names match paths, generated agents are real files, skills stay under 500 lines, `oracle-paths.sh` resolves independent of cwd, and the bundled Oracle runtime package/catalog are present.
+Run the plugin validation script before preparing a PR. It checks that Copilot, Codex, and Claude Code agent copies are synced, manifests are consistent, agent and skill frontmatter is valid, source names match paths, generated agents are real files, skills stay under 500 lines, `oracle-paths.sh` resolves independent of cwd, and the bundled Oracle runtime package/catalog are present.
 
 ```bash
 scripts/validate-plugin.sh
@@ -178,18 +185,30 @@ codex plugin list
 
 Start a new Codex thread after installing or updating the plugin so Codex reloads skills and project-scoped custom agents.
 
+Validate Claude Code with the CLI validator, then load the checkout directly as a plugin and smoke-test one agent:
+
+```bash
+scripts/sync-claude-agents.sh check
+claude plugin validate . --strict
+claude --plugin-dir . -p "Use the soofi-xyz-team-kit:arceus subagent to reply with exactly: ok"
+```
+
+Skills with `disable-model-invocation: true` are hidden from the model's skill list by design but remain user-invocable as `/soofi-xyz-team-kit:<skill>`.
+
 ## Checklist before committing
 
 - [ ] Frontmatter is valid on every new or changed agent / skill / rule.
 - [ ] `agents-copilot/` contains one real `.agent.md` file for every source file in `agents/`, generated by `scripts/sync-copilot-agents.sh sync`.
 - [ ] `.codex/agents/` contains one real `.toml` file for every source file in `agents/`, generated by `scripts/sync-codex-agents.sh sync`.
+- [ ] `agents-claude/` contains one real `.md` file for every source file in `agents/`, generated by `scripts/sync-claude-agents.sh sync`.
 - [ ] `scripts/validate-plugin.sh` passes before preparing or creating a PR.
 - [ ] `README.md` tables reflect the new state.
-- [ ] `.cursor-plugin/plugin.json`, `.codex-plugin/plugin.json`, `plugin.json`, and `.github/plugin/marketplace.json` versions are in sync.
+- [ ] `.cursor-plugin/plugin.json`, `.codex-plugin/plugin.json`, `plugin.json`, `.github/plugin/marketplace.json`, `.claude-plugin/plugin.json`, and `.claude-plugin/marketplace.json` versions are in sync.
 - [ ] `scripts/local-cursor-plugin.sh install` has refreshed `~/.cursor/plugins/local/soofi-xyz-team-kit-local`.
 - [ ] User has been prompted to reload/restart Cursor, confirm `soofi-xyz-team-kit-local` under Settings > Plugins, and smoke-test the changed agent or skill.
 - [ ] Plugin installs locally via `copilot plugin install ./` and lists expected agents / skills.
 - [ ] Plugin installs locally via the Codex repo marketplace and lists expected skills.
+- [ ] `claude plugin validate . --strict` passes and `claude --plugin-dir .` loads the expected agents, skills, and the `elephant` MCP server.
 - [ ] Before creating a PR, `scripts/local-cursor-plugin.sh remove` has deleted the local Cursor test copy.
 - [ ] If `skills/use-oracle/runtime/` changed: `npm ci` and `npm test` pass under Node 22.18+, and `python3 scripts/check-plugin-clean-room.py` passes.
 
