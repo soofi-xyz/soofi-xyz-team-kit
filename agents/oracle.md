@@ -24,9 +24,11 @@ Read `skills/use-oracle/SKILL.md` and `skills/use-oracle/reference/car-publicati
 4. **Validate the county** — `elephant-cli validate <county-dir>` over the directory of property outputs. A lexicon error is fixed in the transform and re-run; it is never suppressed.
 5. **Hash and pack** — `elephant-cli hash <county-dir> --output-zip <hashed-dir> --output-csv <hash.csv> --output-car <county>.car`. Record the printed root CID and block count.
 6. **Validate the archive** — `elephant-cli validate <county>.car`. All six checks must be clean; lexicon rows here mean step 4 was skipped.
-7. **Publish the archive** — `elephant-cli upload <county>.car` to the chosen node: a local kubo by default, or a hosted node with `--api` and a token. Success requires the root read back from the gateway with matching bytes; keep the `--output-json` summary as the run's evidence.
-8. **Existing publication, when in scope** — `county-query-table-publish`, `county-open-data-publish`, coverage, and MCP wiring run exactly as their skills describe, unchanged. The archive adds to them; it does not replace them yet.
-9. **Report** — the status report below. Registry registration, replacing the IPNS and query-table path, and per-table Parquet indexes are separate stories and out of scope.
+7. **Export the tables** — `elephant-cli export-tables <county>.car --output <tables-dir> --output-json <tables-export.json>`. Record the printed table count, part count, and tables root. This command is the only source of per-class tables; never invent or hand-write a table layout.
+8. **Publish the archive** — `elephant-cli upload <county>.car` to the chosen node: a local kubo by default, or a hosted node with `--api` and a token. Success requires the root read back from the gateway with matching bytes; keep the `--output-json` summary as the run's evidence.
+9. **Publish the tables** — `elephant-cli upload <tables-dir>` to the same node with the same options. Success requires every part's CID to match the tables index and the tables root read back from the gateway; keep its `--output-json` summary too.
+10. **Existing publication, when in scope** — `county-query-table-publish`, `county-open-data-publish`, coverage, and MCP wiring run exactly as their skills describe, unchanged. The archive and its tables add to them; they do not replace them yet.
+11. **Report** — the status report below. Registry registration and replacing the IPNS and query-table path are separate stories and out of scope.
 
 ## Routing common requests
 
@@ -34,20 +36,22 @@ Read `skills/use-oracle/SKILL.md` and `skills/use-oracle/reference/car-publicati
 |---|---|
 | "Mine a new county" / "do the same as Lee" | `onboard-county` intake, then the pipeline above |
 | "Re-mine county X" / "legacy data is not lexicon" | Full capture and transform again; delta refresh is not a substitute for a format change |
-| "Re-mine these properties" with a list | Property-list run in `use-oracle`: group the list by county, run steps 2 through 7 per county, one archive per county |
+| "Re-mine these properties" with a list | Property-list run in `use-oracle`: group the list by county, run steps 2 through 9 per county, one archive and one tables root per county |
 | "Identity baseline / registry refresh" | `sunbiz-corporate-ingest` then `dbpr-license-ingest` (or the official equivalents); before any permit harvest |
 | "Permit harvest" | `county-permit-adapter` then `county-ingest-run`, only after the identity baseline is loaded |
 | "Is the county valid?" | `validate` on the directory, then on the archive |
-| "Publish the county archive" | Steps 5 through 7; report the root CID |
+| "Publish the county archive" | Steps 5 through 9; report the root CID and the tables root |
+| "Parquet per table" / "export the tables" | `elephant-cli export-tables <county>.car`, then `elephant-cli upload <tables-dir>`; never a hand-built layout |
 | "Publish query table / coverage / wire MCP" | `county-query-table-publish`, `county-open-data-publish`, `deploy-open-data-mcp`, unchanged |
 | Status, ETA, stall diagnosis | `monitoring-county-ingestion` (local) or `monitoring-oracle-ingestion` (AWS) |
-| "Put it in the registry", "replace the IPNS path", "Parquet per table" | Out of scope for this milestone; say so and hand back the root CID |
+| "Put it in the registry", "replace the IPNS path" | Out of scope for this milestone; say so and hand back the root CID and tables root |
 
 ## Operating invariants
 
 - Choose one stack before loading procedures. Confirm US egress before any portal probe. Never solve, bypass, or evade CAPTCHA.
 - The seed CSV is the input of record. Never re-derive work from the query DB.
 - Validate before hash, hash before publish, read back before reporting success. Skipping any of these is a failure, not a shortcut.
+- Per-class tables come only from `elephant-cli export-tables` over a validated archive. Never write, patch, or describe a table layout yourself.
 - Install the Elephant CLI from GitHub `main` (`npm i github:elephant-xyz/elephant-cli#main`), not from npm, until the release workflow is repaired; record the installed commit in the report.
 - The Elephant CLI must resolve the live lexicon manifest and fetch schemas through a gateway that serves them; see the CLI requirements in `use-oracle`. A validation run that cannot load the manifest has proved nothing.
 - Data-record CIDs are dag-json; schema CIDs from the lexicon are raw. Do not string-compare CIDs across codecs; compare digests.
@@ -63,8 +67,9 @@ Return (required status report):
 - identity baseline: registry and licensing snapshot freshness and reconciliation; whether it preceded permit harvest
 - archive: CAR path, root CID, block count, hash CSV path, and the per-check result of `validate <county>.car`
 - archive publication: node used (local or hosted), root readback result, gateway URL, upload summary path; or exactly why it did not happen
+- tables: tables root, table count, part count, tables export summary path, tables upload summary path and tables-root readback result; or exactly why it did not happen
 - existing publication, when in scope: query-table validation gate result and IPNS name, coverage IPNS name, MCP wiring, Donphan smoke result, exactly as before
 - lexicon manifest URL the CLI used, and the CLI version or commit
 - blockers with the exact category (unreadiness, CAPTCHA, login, custodian-only, missing token, gateway) and the exact fix
 - next automated action and required human action
-- a reminder that registry registration, replacing the IPNS and query-table path, and per-table Parquet indexes remain separate stories
+- a reminder that registry registration and replacing the IPNS and query-table path remain separate stories
