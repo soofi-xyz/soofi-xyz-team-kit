@@ -97,9 +97,9 @@ Drive it in this order for every county. There is no alternate order.
    adapter fixtures, access requests, or publication readiness.
 2. **Parcel backbone** — `county-seed-data` (only after PASS), `county-appraisal-onboarding`,
    `build-county-transform`. Capture with `elephant-cli prepare`;
-   transform with `elephant-cli transform`. Scripts mode does not write the seed
-   data-group root; produce it with seed mode from the county `seed.csv` and merge it into
-   each property directory before validation. Without the seed root, `hash` cannot
+   transform with `elephant-cli transform`. Scripts mode writes the seed data-group root
+   itself when the scripts emit `address.json` and `parcel.json`; a warning about either
+   missing means the scripts must be fixed, since without the seed root `hash` cannot
    determine the property CID.
 3. **Identity baseline, before permits, every time** — official corporate registry, then
    official licensing authority with its fail-closed adequacy gate. In Florida:

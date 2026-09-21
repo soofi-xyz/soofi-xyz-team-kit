@@ -224,7 +224,7 @@ or `index.json` on `main`.
 - Install the Elephant CLI from GitHub `main`: `npm i github:elephant-xyz/elephant-cli#main`
   (or run it with `npx --package=github:elephant-xyz/elephant-cli#main elephant-cli`).
   The npm release workflow is failing, so the registry package lacks batch input,
-  `--output-car`, CAR upload, CAR validation, `export-tables`, and its `--atlas-page` option (PRs 244 through 250). Record the
+  `--output-car`, CAR upload, CAR validation, `export-tables`, and its `--atlas-page` option (PRs 244 through 251). Record the
   installed commit in the run evidence.
 - The CLI reads the lexicon manifest from `https://lexicon.elephant.xyz/api/manifest`
   (`ELEPHANT_SCHEMA_MANIFEST_URL` overrides) and fetches schemas from
