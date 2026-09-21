@@ -68,9 +68,11 @@ supports it):
    Filebase credentials exist, and do the two per-county bucket/IPNS labels exist or need
    creating (`county-open-data-publish` / `county-query-table-publish`)? Where will the
    MCP be deployed (`deploy-open-data-mcp`)?
-   Which node receives the county archive — a local kubo daemon (default) or a hosted
-   Kubo RPC endpoint such as Filebase (`--api https://rpc.filebase.io` with the three
-   `FILEBASE_*` variables)?
+   Which node receives the county archives: any IPFS pinning provider (Filebase through
+   `--api https://rpc.filebase.io` with the three `FILEBASE_*` variables is the worked
+   example), or a node that stays online and publicly reachable until the Atlas merge?
+   A local kubo daemon is for development and validation; one behind NAT that goes
+   offline before the merge cannot be registered.
 
 Restate the answers as a short written plan (stages, county key, job-id prefix, sources),
 then execute it end-to-end autonomously. Do NOT pause for per-stage approvals or
@@ -188,23 +190,36 @@ after query-DB reconciliation and the artifact/code handoff.
     MCP's `ORACLE_OPEN_DATA_IPNS_MAP`, restart the local MCP (or redeploy the hosted
     MCP) after changing environment variables, confirm NEO renders the county.
 
-17. **Validate, pack, and publish the county archive** *(when publishing is in scope)* —
-    follow `skills/use-oracle/reference/car-publication.md` exactly:
-    `elephant-cli validate <county-dir>` over the directory of per-property lexicon
-    outputs (each with its seed data-group root) until it reports no data rows;
-    `elephant-cli hash <county-dir> --output-zip <hashed-dir> --output-csv <hash.csv>
-    --output-car <county>.car` and record the printed root CID and block count;
-    `elephant-cli validate <county>.car` with all six checks clean;
-    `elephant-cli export-tables <county>.car --output <tables-dir> --output-json
-    <tables-export.json>` and record the printed table count, part count, and tables root;
-    `elephant-cli upload <county>.car --output-json <summary.json>` to the chosen node,
-    which succeeds only after the root reads back from the gateway with matching bytes;
-    then `elephant-cli upload <tables-dir> --output-json <tables-summary.json>` to the
-    same node, which succeeds only after every part's CID matches the tables index and
-    the tables root reads back. Hand back the root CID, the tables root, and both
-    summaries. The per-class tables come only from `export-tables`; never hand-build
-    them. This stage adds to stages 14 to 16; it does not replace them. Registry
-    registration and replacing the IPNS path are separate stories.
+17. **Validate, pack, upload, and register the county archives** *(when publishing is in scope)* —
+    follow `skills/use-oracle/reference/car-publication.md` exactly. Run this sequence
+    **once per data group** (`county`, `property_improvement`, `hoa`, `corporate_registry`,
+    `places`, whichever the county produced) over that group's output directory, where
+    every property carries the group's data-group root plus the seed data-group root:
+    `elephant-cli validate <group-dir>` until it reports no data rows;
+    `elephant-cli hash <group-dir> --output-zip <hashed-dir> --output-csv <hash.csv>
+    --output-car <county>-<group>.car` and record the printed root CID, block count, and
+    the group's schema CID (`dataGroupCid` in the hash CSV);
+    `elephant-cli validate <county>-<group>.car` with all six checks clean;
+    `elephant-cli export-tables <county>-<group>.car --output <tables-dir> --output-json
+    <tables-export.json> --atlas-page <atlas-clone>/counties/<STATE>/<county>.json
+    --county <county> --state <STATE> --fips <fips>` and record the printed table count,
+    part count, tables root, and the `Atlas page written` line;
+    `elephant-cli upload <county>-<group>.car --output-json <summary.json>` to an IPFS
+    pinning provider or a node that stays publicly reachable until the Atlas merge (Atlas
+    fetches by root from public gateways and copies onto the org account on merge; a local
+    kubo behind NAT that goes offline first cannot be registered), which succeeds only after the root reads back from the gateway with matching
+    bytes; then `elephant-cli upload <tables-dir> --output-json <tables-summary.json>` to
+    the same node, which succeeds only after every part's CID matches the tables index and
+    the tables root reads back. The per-class tables come only from `export-tables`;
+    never hand-build them. Seed is never a group of its own.
+    **Final step: register in Atlas.** Commit the page `export-tables` wrote to
+    `counties/<STATE>/<county>.json` in the `elephant-xyz/atlas` clone (never edit it by
+    hand; each group's export adds its entry and keeps the others), open the PR
+    on branch `publish/<state>-<county>` with `gh pr create` touching only that file, wait
+    for the `validate` check, and ask a code owner to merge. A reverted merge means the
+    archive was not served: re-upload and open a new PR. Hand back every group's three
+    CIDs, both summaries per group, and the PR URL with its merge state. This stage adds to
+    stages 14 to 16; it does not replace them.
 
 ## Persist artifacts — commit + PR, nothing lives only on disk
 
