@@ -44,11 +44,6 @@ import { collectGeometryPoints, assertGeometryInCounty, assertManifestReconciled
 
 const RUNTIME_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const QUERY_TABLE_SCHEMA_FIELDS = duvalEnrichmentProfile.queryTable.schemaFields;
-const {
-  bucket: QUERY_TABLE_BUCKET,
-  queryTableIpnsLabel: QUERY_TABLE_IPNS_LABEL,
-  coverageIpnsLabel: COVERAGE_IPNS_LABEL,
-} = duvalEnrichmentProfile.publication;
 export const TRANSFORMS_DIR = path.join(RUNTIME_ROOT, "counties", "duval", "transforms");
 export const FLOW_PATH = path.join(RUNTIME_ROOT, "counties", "duval", "flow.json");
 export const STATIC_PARTS_PATH = path.join(RUNTIME_ROOT, "counties", "duval", "static-parts.csv");
@@ -521,26 +516,23 @@ export async function validateRun(manifest, options = {}) {
 }
 
 /**
- * @typedef {object} PublicationArtifacts
+ * @typedef {object} ReconciliationArtifacts
  * @property {string} county
  * @property {string} parquetPath
  * @property {string} coveragePath
  * @property {string} manifestPath
- * @property {string} bucket
- * @property {string} queryTableIpnsLabel
- * @property {string} coverageIpnsLabel
  * @property {number} rowCount
  * @property {number} expectedCount
  */
 
 /**
- * @typedef {object} BuildPublicationArtifactsOptions
+ * @typedef {object} BuildReconciliationArtifactsOptions
  * @property {string} outputDir - Ingest run directory (holds `<parcel_id>/transformed.zip` per parcel).
  * @property {readonly Record<string, string>[]} seedRows - Seed rows the ingest run attempted.
- * @property {string} publishDir - Destination directory for the Parquet/coverage/manifest files.
+ * @property {string} workingDir - Destination directory for the private Parquet/coverage/manifest files.
  * @property {boolean} [allowEmpty] - When true, permit writing a zero-row
  *   query table for a non-empty seed (Global Constraint fail-closed gate;
- *   see {@link buildPublicationArtifacts}). Defaults to false.
+ *   see {@link buildReconciliationArtifacts}). Defaults to false.
  */
 
 /**
@@ -553,13 +545,13 @@ export async function validateRun(manifest, options = {}) {
  *
  * Fails closed on an empty export: if the seed was non-empty but zero
  * parcels produced a row (e.g. every parcel failed), this throws *before*
- * writing any Parquet/coverage file, rather than silently publishing a
+ * writing any Parquet/coverage file, rather than silently writing a
  * zero-row table, unless `options.allowEmpty` is explicitly `true`.
  *
- * @param {BuildPublicationArtifactsOptions} run - Ingest output, seed rows, destination directory, and options.
- * @returns {Promise<PublicationArtifacts>} Written artifact paths and counts.
+ * @param {BuildReconciliationArtifactsOptions} run - Ingest output, seed rows, destination directory, and options.
+ * @returns {Promise<ReconciliationArtifacts>} Written artifact paths and counts.
  */
-export async function buildPublicationArtifacts({ outputDir, seedRows, publishDir, allowEmpty = false }) {
+export async function buildReconciliationArtifacts({ outputDir, seedRows, workingDir, allowEmpty = false }) {
   const expectedCount = seedRows.length;
   /** @type {Record<string, unknown>[]} */
   const rows = [];
@@ -585,15 +577,15 @@ export async function buildPublicationArtifacts({ outputDir, seedRows, publishDi
   }
   if (expectedCount > 0 && rows.length === 0 && allowEmpty !== true) {
     throw new Error(
-      `Refusing to publish an empty Duval query table: 0 of ${expectedCount} seed rows produced a successful, ` +
+      `Refusing to write an empty Duval reconciliation table: 0 of ${expectedCount} seed rows produced a successful, ` +
         `complete parcel. Pass { allowEmpty: true } (CLI: --allow-empty) to permit an empty export.`,
     );
   }
 
-  await mkdir(publishDir, { recursive: true });
-  const parquetPath = path.join(publishDir, "query-table.parquet");
-  const coveragePath = path.join(publishDir, "dataset-coverage.json");
-  const manifestPath = path.join(publishDir, "manifest.json");
+  await mkdir(workingDir, { recursive: true });
+  const parquetPath = path.join(workingDir, "query-table.parquet");
+  const coveragePath = path.join(workingDir, "dataset-coverage.json");
+  const manifestPath = path.join(workingDir, "manifest.json");
   await writeQueryTableParquet({ parquetPath, schemaFields: QUERY_TABLE_SCHEMA_FIELDS, rows });
 
   const exportedAt = new Date().toISOString();
@@ -603,7 +595,6 @@ export async function buildPublicationArtifacts({ outputDir, seedRows, publishDi
     ingestedCount: rows.length,
     expectedCount,
     exportedAt,
-    ipnsLabel: COVERAGE_IPNS_LABEL,
   });
   await writeFile(coveragePath, `${JSON.stringify(coverage, null, 2)}\n`, "utf8");
 
@@ -612,9 +603,6 @@ export async function buildPublicationArtifacts({ outputDir, seedRows, publishDi
     parquetPath,
     coveragePath,
     manifestPath,
-    bucket: QUERY_TABLE_BUCKET,
-    queryTableIpnsLabel: QUERY_TABLE_IPNS_LABEL,
-    coverageIpnsLabel: COVERAGE_IPNS_LABEL,
     rowCount: rows.length,
     expectedCount,
   };
@@ -634,5 +622,5 @@ export const duvalAdapter = {
   buildSeed: buildDuvalSeedFiles,
   captureAndTransform,
   validateRun,
-  buildPublicationArtifacts,
+  buildReconciliationArtifacts,
 };
