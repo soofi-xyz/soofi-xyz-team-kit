@@ -10,6 +10,7 @@
   "plugins": [
     {
       "name": "soofi-xyz-team-kit",
+      "source": "./",
       "description": "Company-wide project subagents and skills for AI-assisted development, including local and AWS RAG, platform services, reporting, frontend, communication, batch, and deployment specialists.",
       "version": "0.58.0",
       "author": {
@@ -18,6 +19,7 @@
       "homepage": "https://github.com/soofi-xyz/cursor-plugin",
       "repository": "https://github.com/soofi-xyz/cursor-plugin",
       "license": "MIT",
+      "category": "productivity",
       "keywords": [
         "agents",
         "skills",
@@ -26,10 +28,7 @@
         "frontend",
         "reporting",
         "socapital"
-      ],
-      "source": "./",
-      "agents": "agents-copilot/",
-      "skills": "skills/"
+      ]
     }
   ]
 }

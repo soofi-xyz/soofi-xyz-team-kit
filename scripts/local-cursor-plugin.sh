@@ -121,6 +121,8 @@ def rewrite_marketplace(data):
             plugin["name"] = local_name
 
 rewrite_json(target / ".github" / "plugin" / "marketplace.json", rewrite_marketplace)
+rewrite_json(target / ".claude-plugin" / "plugin.json", lambda data: data.__setitem__("name", local_name))
+rewrite_json(target / ".claude-plugin" / "marketplace.json", rewrite_marketplace)
 
 print(target)
 PY

@@ -13,6 +13,7 @@ main() {
 
   "${root}/scripts/sync-copilot-agents.sh" check
   "${root}/scripts/sync-codex-agents.sh" check
+  "${root}/scripts/sync-claude-agents.sh" check
 
   local python_bin="${PYTHON:-}"
   if [[ -z "${python_bin}" ]]; then
@@ -104,6 +105,8 @@ def validate_manifests():
         root / "plugin.json",
         root / ".github" / "plugin" / "marketplace.json",
         root / ".agents" / "plugins" / "marketplace.json",
+        root / ".claude-plugin" / "plugin.json",
+        root / ".claude-plugin" / "marketplace.json",
     ]
     for path in manifest_paths:
         if not path.is_file():
@@ -115,6 +118,8 @@ def validate_manifests():
     copilot_manifest = json.loads((root / "plugin.json").read_text(encoding="utf-8"))
     copilot_marketplace = json.loads((root / ".github" / "plugin" / "marketplace.json").read_text(encoding="utf-8"))
     codex_marketplace = json.loads((root / ".agents" / "plugins" / "marketplace.json").read_text(encoding="utf-8"))
+    claude_manifest = json.loads((root / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    claude_marketplace = json.loads((root / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
 
     versions = {
         ".cursor-plugin/plugin.json": cursor_manifest.get("version"),
@@ -122,6 +127,9 @@ def validate_manifests():
         "plugin.json": copilot_manifest.get("version"),
         ".github/plugin/marketplace.json metadata": copilot_marketplace.get("metadata", {}).get("version"),
         ".github/plugin/marketplace.json plugin": (copilot_marketplace.get("plugins") or [{}])[0].get("version"),
+        ".claude-plugin/plugin.json": claude_manifest.get("version"),
+        ".claude-plugin/marketplace.json metadata": claude_marketplace.get("metadata", {}).get("version"),
+        ".claude-plugin/marketplace.json plugin": (claude_marketplace.get("plugins") or [{}])[0].get("version"),
     }
     if len(set(versions.values())) != 1:
         details = ", ".join(f"{path}={version}" for path, version in versions.items())
@@ -135,6 +143,23 @@ def validate_manifests():
         fail('plugin.json: agents must be "agents-copilot/"')
     if copilot_manifest.get("skills") != "skills/":
         fail('plugin.json: skills must be "skills/"')
+
+    if claude_manifest.get("name") != cursor_manifest.get("name"):
+        fail(".claude-plugin/plugin.json: name must match .cursor-plugin/plugin.json")
+    if claude_manifest.get("skills") != "./skills/":
+        fail('.claude-plugin/plugin.json: skills must be "./skills/"')
+    if claude_manifest.get("mcpServers") != "./mcp.json":
+        fail('.claude-plugin/plugin.json: mcpServers must be "./mcp.json"')
+    if not isinstance(claude_manifest.get("agents"), list):
+        fail(".claude-plugin/plugin.json: agents must be a list of agents-claude/*.md files (Claude Code rejects directory paths)")
+    claude_entry = next(
+        (entry for entry in claude_marketplace.get("plugins") or [] if entry.get("name") == claude_manifest.get("name")),
+        None,
+    )
+    if not claude_entry:
+        fail(".claude-plugin/marketplace.json: missing plugin entry for .claude-plugin/plugin.json name")
+    elif claude_entry.get("source") != "./":
+        fail('.claude-plugin/marketplace.json: plugin source must be "./"')
 
     codex_plugins = codex_marketplace.get("plugins")
     if not isinstance(codex_plugins, list) or not codex_plugins:
@@ -198,6 +223,23 @@ def validate_agents():
             fail(f"{target.relative_to(root)}: missing Codex agent copy")
         elif target.is_symlink():
             fail(f"{target.relative_to(root)}: must be a real file, not a symlink")
+
+    claude_target_dir = root / "agents-claude"
+    expected_claude_targets = {claude_target_dir / agent.name for agent in source_agents}
+    actual_claude_targets = set(claude_target_dir.glob("*.md")) if claude_target_dir.is_dir() else set()
+    for stale in sorted(actual_claude_targets - expected_claude_targets):
+        fail(f"{stale.relative_to(root)}: no matching source agent")
+
+    for agent in source_agents:
+        target = claude_target_dir / agent.name
+        if not target.is_file():
+            fail(f"{target.relative_to(root)}: missing Claude Code agent copy")
+        elif target.is_symlink():
+            fail(f"{target.relative_to(root)}: must be a real file, not a symlink")
+        else:
+            fields, _ = parse_frontmatter(target)
+            if "model" in fields:
+                fail(f"{target.relative_to(root)}: must not carry a model (Claude Code sends it to the API verbatim)")
 
 
 def validate_oracle_runtime():
