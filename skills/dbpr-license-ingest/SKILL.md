@@ -1,13 +1,20 @@
 ---
 name: dbpr-license-ingest
-description: "Acquire, validate, and load the official Florida DBPR contractor-license identity baseline before permit harvest, including licenses, qualifiers, qualified-business relationships, status, and effective dates. Use on every Florida county ingest or re-ingest when DBPR adequacy is checked or stale."
+description: "Look up the official Florida DBPR license detail for a license number printed on a permit, then resolve that license to the Sunbiz company. Acquire the missing public-records relationship extract only for historical qualification when the permit has no license number."
 metadata: {"author":"elephant-xyz"}
 ---
 # DBPR License Ingest
 
 Use Florida Department of Business and Professional Regulation (DBPR) records as the
-official contractor-licensing layer. Run this skill after `sunbiz-corporate-ingest` and
-before any permit harvest. It is statewide and county-neutral.
+official contractor-licensing layer. It is statewide and county-neutral.
+
+When a permit prints a license number, follow this route: the permit (person and
+company, and that license number) → the official license-detail lookup for that number
+→ the Sunbiz company. Use the permit as the source of the license number. Do not wait
+for a statewide relationship extract before reading permits that already carry a
+license. Do not build the whole license–company graph from the bulk file and then
+harvest. Require the missing public-records extract only for historical qualification
+when the permit has no license number.
 
 Do not invent a generic SID, canonical license entity, qualified-business table, or
 permit-license foreign key. Do not load DBPR records into BBB reputation-license tables.
@@ -45,10 +52,13 @@ On every ingest or re-ingest, fail the gate unless the snapshot is all of:
 5. able to support the permit attribution dates in scope.
 
 Emit exactly one result: `adequate_reuse`, `adequate_acquired`, or `inadequate`.
-An inadequate result enqueues acquisition immediately and blocks permit harvest. If a
-current bulk file lacks relationship history, it is not adequate for historical
-attribution; obtain the official relationship/history extract through DBPR public
-records.
+An inadequate relationship-history result enqueues the public-records extract and
+blocks historical qualification for permits that omit a license number. It does not
+block reading permits that already print a license number; look those up on the
+official license-detail record first. If a current bulk file lacks relationship
+history, it is not adequate for historical attribution; obtain the official
+relationship/history extract through DBPR public records. Require that extract only
+when the permit has no license number.
 
 ## 2. Acquire official DBPR records
 
@@ -150,5 +160,7 @@ Use these exact gap codes:
 Only the last three are schema-capability gaps; they do not excuse acquisition. Return
 snapshot revision/digests, source boundary, posted/retrieved dates, counts, quarantines,
 relationship-window coverage, supported rows loaded, adequacy result, gap codes, and the
-next automated action. Permit harvest may proceed only after `adequate_reuse` or
-`adequate_acquired`.
+next automated action. Read permits that already print a license number through the
+official license-detail lookup without waiting for this extract. Historical
+qualification of permits with no license number proceeds only after `adequate_reuse`
+or `adequate_acquired`.

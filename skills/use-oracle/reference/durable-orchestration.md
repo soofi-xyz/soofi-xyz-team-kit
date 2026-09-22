@@ -238,18 +238,27 @@ is derived from frozen manifests — not adapter counts, dashboard labels, or pi
 
 ### 16. Keep identity baseline and reputation enrichment separate
 
-Identity baseline is a predecessor of permit harvest, not an enrichment dimension. For
-Florida, `sunbiz-corporate-ingest` loads legal entities and `document_number`; the official
-DBPR snapshot loads licenses, qualifiers, and qualified-business relationships. Sunbiz
-does not issue contractor licenses. For every county, stamp each company with a GET of
-its own official detail URL from its document number before load. The quarterly bulk
-download page is the archive source, not the company `source_http_request`.
+When a permit prints a license number, follow this route: the permit (person and
+company, and that license number) → the official license-detail lookup for that number
+→ the Sunbiz company. Use the permit as the source of the license number. Do not wait
+for a statewide relationship extract before reading permits that already carry a
+license. Do not build the whole license–company graph from the bulk file and then
+harvest. Require the missing public-records extract only for historical qualification
+when the permit has no license number.
+
+For Florida, `sunbiz-corporate-ingest` loads legal entities and `document_number`;
+`dbpr-license-ingest` performs the official license-detail lookup and, only for permits
+with no license number, the public-records relationship extract. Sunbiz does not issue
+contractor licenses. For every county, stamp each company with a GET of its own
+official detail URL from its document number before load. The quarterly bulk download
+page is the archive source, not the company `source_http_request`.
 
 BBB, reviews, complaints, and `overture-places-ingest` are reputation/context enrichment
 (`bbb-harvest`, `overture-places-ingest`). Their absence must not silently change core
-permit-capture completeness. Report their coverage separately. Inadequate Sunbiz/DBPR
-blocks automatic permit identity linking and enqueues official-source acquisition next;
-it does not authorize harvesting permits first or recording a forever gap.
+permit-capture completeness. Report their coverage separately. A missing Sunbiz detail
+URL or license-detail lookup blocks automatic linking for that permit and enqueues the
+official lookup next. A missing public-records extract blocks only historical
+qualification of permits that omit a license number. Neither authorizes a name match.
 
 Official API and public-site scrape are different sources. Run any BBB public-site browser
 on approved AWS-managed remote compute with US egress, never on the operator's machine. The

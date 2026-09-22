@@ -28,10 +28,11 @@ supports it):
    at `data/seeds/<county>.csv`)? If not, do you know the county's bulk parcel-roll source,
    or should I research one?
 4. **Sources & Compute Execution Mode** — which appraiser portal and permit vendor, or should discovery determine
-   them? Any sources to explicitly avoid? For Florida the identity baseline is required
-   before permit harvest: Sunbiz (legal entities / `document_number`; Sunbiz does **not**
-   issue contractor licenses) plus the official DBPR licensing snapshot (licenses,
-   qualifiers, qualified-business relationships). BBB contractor reputation harvest:
+   them? Any sources to explicitly avoid? For Florida, when a permit prints a license
+   number, look up the official DBPR license detail for that number, then the Sunbiz
+   company. Do not wait for a statewide relationship extract before reading those
+   permits. Require the missing public-records extract only when the permit has no
+   license number. Sunbiz does **not** issue contractor licenses. BBB contractor reputation harvest:
    yes/no? Other candidates (tax collector, recorder, GIS, code
    enforcement) are added scope with their own harvest/transform plan; operator interest
    only puts a source into discovery — bulk acquisition still requires the feasibility
@@ -113,26 +114,21 @@ Track progress in the county's findings doc (PR'd to `Counties-trasform-scripts`
 5. **Transform validation** — `build-county-transform`: 10-20 diverse parcels; prove
    100% field coverage vs raw captures; log lexicon gaps. Gate: do not scale before this
    passes. (Authoring or repairing transforms in any mode: `build-county-transform`.)
-6. **Identity baseline FIRST** — after the seed/appraisal backbone, pre-populate official
-   companies before any permit harvest.
-   Drive the official corporate registry, then the official contractor-licensing
-   authority. In Florida, run `sunbiz-corporate-ingest` for legal entities and
-   `document_number`, then `dbpr-license-ingest`. Apply the licensing stage's fail-closed
-   adequacy gate: official, loaded, reconciled, dated coverage
-   of licenses, qualifier/person relationships, qualified-business relationships, status,
-   and effective dates for the ingest window. Missing, stale, unreconciled, empty,
-   reputation-only, or name-only lists are not adequate. If inadequate, acquire the
-   official licensing snapshot next from public records/downloads at conservative rate,
-   write a private snapshot with provenance/digests, load supported tables, and record
-   remaining schema gaps without inventing SID/license-entity fields. Permits wait until DBPR is
-   adequate or the operator explicitly aborts. If adequate, do not re-harvest unless
-   freshness is stale versus the as-of rule. The identity baseline is not optional and is
-   never moved after permits.
+6. **Permit license to Sunbiz** — after the seed/appraisal backbone, read permits that
+   print a license number. Follow this route: the permit (person and company, and that
+   license number) → the official license-detail lookup for that number → the Sunbiz
+   company. Use the permit as the source of the license number. Do not wait for a
+   statewide relationship extract before reading those permits. Do not build the whole
+   license–company graph from the bulk file and then harvest. In Florida, run
+   `dbpr-license-ingest` for the license-detail lookup and `sunbiz-corporate-ingest`
+   for the company, stamped with its own detail URL. Require the missing public-records
+   extract only for historical qualification when the permit has no license number.
+   Do not invent SID or license-entity fields.
 7. **Permit adapter** — `county-permit-adapter`: per-vendor module in `PermitHarvest`,
-   local tests, single-parcel smoke test. Adapter scaffolds may start during discovery;
-   do not harvest permits for the county until step 6's corporate-registry load and
-   adequate licensing snapshot are loaded and reconciled. Service changes: see
-   `durable-workflow-builder`.
+   local tests, single-parcel smoke test. Adapter scaffolds may start during discovery.
+   Harvest permits that already print a license number without waiting for the statewide
+   relationship extract. Hold only the no-license historical-qualification path until
+   that extract is adequate. Service changes: see `durable-workflow-builder`.
 8. **Pilot run** — `county-ingest-run` §pilot: ~25 parcels end-to-end **after** the
    identity baseline. Verify every artifact class plus DB rows, including residential-skip
    and permit-less paths. Capture permit details, contacts, explicit scope text, lifecycle
@@ -241,10 +237,11 @@ Record each PR URL in the findings doc.
   anything else.
 - Prioritize commercial properties when asked: sort the seed CSV; the eligibility branch
   already limits permit harvest to commercial/industrial usage types.
-- Identity baseline before permits, every time. Run the official corporate registry,
-  then fail-closed licensing-authority adequacy-or-acquire. In Florida use
-  `sunbiz-corporate-ingest` then `dbpr-license-ingest`. Harvest permits second (raw
-  details/contacts), then
-  resolve and stamp `companies.company_id` edges. Do not harvest permits first, in
-  parallel with those registries, treat missing licensing data as a forever gap, or treat
+- When a permit prints a license number, follow this route: the permit (person and
+  company, and that license number) → the official license-detail lookup for that
+  number → the Sunbiz company. Use the permit as the source of the license number. Do
+  not wait for a statewide relationship extract before reading permits that already
+  carry a license. Do not build the whole license–company graph from the bulk file and
+  then harvest. Require the missing public-records extract only for historical
+  qualification when the permit has no license number. Do not treat a name match or
   reputation data as the licensing method.

@@ -95,18 +95,23 @@ Drive it in this order for every county. There is no alternate order.
    data-group root; produce it with seed mode from the county `seed.csv` and merge it into
    each property directory before validation. Without the seed root, `hash` cannot
    determine the property CID.
-3. **Identity baseline, before permits, every time** — official corporate registry, then
-   official licensing authority with its fail-closed adequacy gate. In Florida:
-   `sunbiz-corporate-ingest`, then `dbpr-license-ingest`. A snapshot is adequate only if
-   it is official, loaded, reconciled, dated, and covers the ingest window. For every
-   county, the quarterly `cordata.zip` is the archive source. Before load, stamp each
-   company with a GET of its own Sunbiz detail URL from its document number
+3. **Permit to license to Sunbiz** — when a permit prints a license number, follow this
+   route: the permit (person and company, and that license number) → the official
+   license-detail lookup for that number → the Sunbiz company. Use the permit as the
+   source of the license number. Do not wait for a statewide relationship extract
+   before reading permits that already carry a license. Do not build the whole
+   license–company graph from the bulk file and then harvest. Require the missing
+   public-records extract only for historical qualification when the permit has no
+   license number (`dbpr-license-ingest` in Florida). For every county, the quarterly
+   `cordata.zip` is the archive source. Before load, stamp each company with a GET of
+   its own Sunbiz detail URL from its document number
    (`sunbiz:<documentNumber>:company`). Do not write
    `https://dos.fl.gov/sunbiz/other-services/data-downloads/` onto the company.
-4. **Permits, second** — `county-permit-adapter` then `county-ingest-run`; then
-   `reference/permit-evidence-preflight.md`. A permit contact resolves to an existing
-   company record deterministically by license number, or by unique company plus
-   licensed qualifier effective on the attribution date. Ambiguous stays unresolved.
+4. **Permits** — `county-permit-adapter` then `county-ingest-run`; then
+   `reference/permit-evidence-preflight.md`. A printed license number resolves through
+   the official license-detail lookup to one Sunbiz company. A permit with no license
+   number stays unresolved until the public-records extract supports historical
+   qualification. Ambiguous stays unresolved.
 5. **Reputation and places** — `bbb-harvest`, `overture-places-ingest`. Enrichment only;
    never license, qualifier, or identity evidence.
 6. **Validate the county** — `elephant-cli validate <county-dir> --output-csv <errors.csv>`.
@@ -169,9 +174,9 @@ sequence. A delta refresh is for stale records, not for a format change.
 | `county-seed-data` | Produce and stage the parcel seed CSV, only after readiness PASS |
 | `county-appraisal-onboarding` | Browser flow, per-county prepare queue, transform wiring |
 | `build-county-transform` | Author or repair a county transform, prove lexicon validity and coverage, open the transform PR |
-| `sunbiz-corporate-ingest` | **Identity baseline, before permits.** Official corporate registry |
-| `dbpr-license-ingest` | **Identity baseline, before permits.** Official licensing authority with adequacy gate |
-| `county-permit-adapter` | Build the county permit-portal harvester, after the identity baseline |
+| `sunbiz-corporate-ingest` | Sunbiz company record. Stamp each company with its own detail URL from the document number |
+| `dbpr-license-ingest` | Official license-detail lookup for a number printed on a permit. Public-records extract only when the permit has no license number |
+| `county-permit-adapter` | Build the county permit-portal harvester. Read permits that print a license number without waiting for the statewide relationship extract |
 | `county-ingest-run` | Backpressure-aware seed feeder, after readiness PASS |
 | `monitoring-county-ingestion` | **Local stack:** queue and invocation health, counts, ETAs |
 | `monitoring-oracle-ingestion` | **AWS stack:** SQS, Lambda, S3 counts, ETAs |
@@ -191,7 +196,13 @@ sequence. A delta refresh is for stale records, not for a format change.
 - Drive the skills and the CLI; never improvise mining commands they do not define.
 - Never hardcode or print account ids, tokens, secrets, or `DATABASE_URL`.
 - Never skip `validate-county-readiness.py` before seed, pilot, or full ingest.
-- Identity baseline first, permits second, every time.
+- When a permit prints a license number, follow this route: the permit (person and
+  company, and that license number) → the official license-detail lookup for that
+  number → the Sunbiz company. Use the permit as the source of the license number. Do
+  not wait for a statewide relationship extract before reading permits that already
+  carry a license. Do not build the whole license–company graph from the bulk file and
+  then harvest. Require the missing public-records extract only for historical
+  qualification when the permit has no license number.
 - Validate before hash, hash before publish, read back before reporting success.
 - Every archive block comes from `elephant-cli hash`; the archive is never exported from
   the query DB. The existing query-table and coverage exports continue unchanged.
@@ -203,8 +214,8 @@ sequence. A delta refresh is for stale records, not for a format change.
 
 ## Milestone scope
 
-**In:** discover and capture county sources; transform to lexicon; identity baseline
-then permits; validate; pack one archive per county run; publish it to a local or
+**In:** discover and capture county sources; transform to lexicon; permit-to-license-to-Sunbiz
+resolution; validate; pack one archive per county run; publish it to a local or
 hosted IPFS node with root readback; property-list re-mining; re-mining of legacy data;
 the existing query-table, coverage, IPNS, and MCP publication, unchanged.
 

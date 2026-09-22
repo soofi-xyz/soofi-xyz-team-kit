@@ -20,7 +20,7 @@ Read `skills/use-oracle/SKILL.md` and `skills/use-oracle/reference/car-publicati
 
 1. **Intake and readiness** — `onboard-county` intake, `county-discovery`, then `county-readiness-preflight`. Non-zero exit stops seed, pilot, and full runs. Choose exactly one runtime stack (local Restate or AWS) before loading stage procedures.
 2. **Capture and transform per property** — `county-seed-data`, `county-appraisal-onboarding`, `build-county-transform`. Every property ends as a directory of lexicon JSON that includes the seed data-group root; without the seed root the property cannot be hashed.
-3. **Identity baseline before permits, every time** — official corporate registry then official licensing authority (`sunbiz-corporate-ingest`, `dbpr-license-ingest` in Florida), then `county-permit-adapter` and `county-ingest-run`. Permit contacts resolve to existing company records so the transform can link by identifier.
+3. **Permit to license to Sunbiz** — when the portal prints a license number, read that permit (person, company, and the license number), look up the official license detail for that number (`dbpr-license-ingest` in Florida), then resolve the Sunbiz company (`sunbiz-corporate-ingest`). Do not wait for a statewide relationship extract before reading permits that already carry a license. Require that extract only for historical qualification when the permit has no license number. Then `county-permit-adapter` and `county-ingest-run`.
 4. **Validate the county** — `elephant-cli validate <county-dir>` over the directory of property outputs. A lexicon error is fixed in the transform and re-run; it is never suppressed.
 5. **Hash and pack** — `elephant-cli hash <county-dir> --output-zip <hashed-dir> --output-csv <hash.csv> --output-car <county>.car`. Record the printed root CID and block count.
 6. **Validate the archive** — `elephant-cli validate <county>.car`. All six checks must be clean; lexicon rows here mean step 4 was skipped.
@@ -35,8 +35,8 @@ Read `skills/use-oracle/SKILL.md` and `skills/use-oracle/reference/car-publicati
 | "Mine a new county" / "do the same as Lee" | `onboard-county` intake, then the pipeline above |
 | "Re-mine county X" / "legacy data is not lexicon" | Full capture and transform again; delta refresh is not a substitute for a format change |
 | "Re-mine these properties" with a list | Property-list run in `use-oracle`: group the list by county, run steps 2 through 7 per county, one archive per county |
-| "Identity baseline / registry refresh" | `sunbiz-corporate-ingest` then `dbpr-license-ingest` (or the official equivalents); before any permit harvest |
-| "Permit harvest" | `county-permit-adapter` then `county-ingest-run`, only after the identity baseline is loaded |
+| "Identity baseline / registry refresh" | `sunbiz-corporate-ingest` for the company detail URL. `dbpr-license-ingest` for the official license-detail lookup of a number printed on a permit, and for the public-records extract only when a permit has no license number |
+| "Permit harvest" | `county-permit-adapter` then `county-ingest-run`. When the portal prints a license number, resolve it by official license-detail lookup, then the Sunbiz company. Do not wait for the statewide relationship extract |
 | "Is the county valid?" | `validate` on the directory, then on the archive |
 | "Publish the county archive" | Steps 5 through 7; report the root CID |
 | "Publish query table / coverage / wire MCP" | `county-query-table-publish`, `county-open-data-publish`, `deploy-open-data-mcp`, unchanged |
@@ -52,6 +52,7 @@ Read `skills/use-oracle/SKILL.md` and `skills/use-oracle/reference/car-publicati
 - The Elephant CLI must resolve the live lexicon manifest and fetch schemas through a gateway that serves them; see the CLI requirements in `use-oracle`. A validation run that cannot load the manifest has proved nothing.
 - Data-record CIDs are dag-json; schema CIDs from the lexicon are raw. Do not string-compare CIDs across codecs; compare digests.
 - Identity comes from the identity baseline, never from a name match at publish time.
+- When a permit prints a license number, follow this route: the permit (person and company, and that license number) → the official license-detail lookup for that number → the Sunbiz company. Use the permit as the source of the license number. Do not wait for a statewide relationship extract before reading permits that already carry a license. Do not build the whole license–company graph from the bulk file and then harvest. Require the missing public-records extract only for historical qualification when the permit has no license number.
 - For every county, Sunbiz company provenance is a GET of the official detail URL calculated from that company's document number (`sunbiz:<documentNumber>:company`). The quarterly bulk download page is the archive source, not the company `source_http_request`. Follow `sunbiz-corporate-ingest`.
 - Keep reputation enrichment (BBB, places) separate from core completeness. It is never license or identity evidence.
 - Never commit scraped data, archives, or secrets. PR code, transforms, and findings as they are created.
@@ -61,7 +62,7 @@ Return (required status report):
 
 - source boundary: county, jurisdictions, sources, pilot or full scope, or the property list and its per-county split
 - capture and transform: properties captured, transformed, and validated; transform failures by cause; lexicon errors fixed versus outstanding
-- identity baseline: registry and licensing snapshot freshness and reconciliation; whether it preceded permit harvest
+- identity: license numbers taken from permits that print one; official license-detail lookups; Sunbiz companies reached from those lookups; public-records extract used only where a permit had no license number
 - archive: CAR path, root CID, block count, hash CSV path, and the per-check result of `validate <county>.car`
 - archive publication: node used (local or hosted), root readback result, gateway URL, upload summary path; or exactly why it did not happen
 - existing publication, when in scope: query-table validation gate result and IPNS name, coverage IPNS name, MCP wiring, Donphan smoke result, exactly as before

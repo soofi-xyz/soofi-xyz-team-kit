@@ -7,11 +7,12 @@ old-roof contractor-expansion query. The policy is county-neutral.
 
 1. Freeze the durable run manifest and pass county readiness. Rebuild or repair the seed
    and appraisal/property backbone; preserve the seed CSV as input of record.
-2. Load the official corporate registry, then run the official contractor-licensing
-   authority adequacy-or-acquire stage. In Florida, run `sunbiz-corporate-ingest`, then
-   `dbpr-license-ingest`. Permit harvest is blocked until both identity snapshots are
-   loaded/reconciled and the licensing stage returns `adequate_reuse` or
-   `adequate_acquired`.
+2. Read permits that print a license number and resolve each one: official
+   license-detail lookup, then the Sunbiz company. Do not wait for a statewide
+   relationship extract before that read. In Florida, run `sunbiz-corporate-ingest`
+   for the company detail URL and `dbpr-license-ingest` for the license-detail lookup.
+   Require the public-records extract only for historical qualification when the
+   permit has no license number.
 3. Run `county-permit-adapter` and `county-ingest-run` with permit list, detail, contact,
    lifecycle-date, inspection, description/scope, raw artifact, and digest capture.
 4. Run `permit-evidence-preflight.md`, classify roofing work from explicit source text,
