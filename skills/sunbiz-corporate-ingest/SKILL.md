@@ -41,7 +41,7 @@ The implementation lives in `skills/use-oracle/runtime/src/enrichment/` and is e
 through `elephant-county`. It validates the archive entry list and SHA-256, expands with
 system `unzip`, streams every fixed-width record once, writes checksummed JSONL chunks,
 transforms them to lexicon records, and writes the Sunbiz identity rows used by the
-county query table. The CLI still uses `sunbiz-enrich`; that command is identity-baseline
+internal reconciliation store. The CLI still uses `sunbiz-enrich`; that command is identity-baseline
 load, not post-permit enrichment.
 
 ```bash

@@ -84,9 +84,10 @@ dedupe instead of overwriting.
 
 ## Credentials and environments
 
-**Runtime Secrets inject at process start.** Adding `AWS_*` or Filebase keys does not patch
-an already-running process (`environment: null` is proof). Start a new AWS job/runner after
-secret injection, or use the documented OIDC assume-role path. Never paste keys into chat.
+**Runtime secrets inject at process start.** Adding AWS or upload-node credentials does not
+patch an already-running process (`environment: null` is proof). Start a new job/runner
+after secret injection, or use the documented OIDC assume-role path. Never paste keys into
+chat.
 
 **Child jobs do not inherit late secret changes.** Verify required secret names before
 starting remote work. If one is missing, request it at intake and start a fresh job after it
@@ -103,25 +104,23 @@ digests in the run manifest. Reject mismatches instead of silently continuing.
 
 ## Load, dashboard, publication
 
-**Local capture ≠ Neon load ≠ publication.** Completed JSONL on disk is not queryable.
-Loaded Neon rows are not in Donphan until immutable artifacts are uploaded and read back.
+**Local capture ≠ Query DB load ≠ publication.** Completed artifacts on disk are not
+reconciled. Loaded Query DB rows are internal and never become Donphan's source. Public
+visibility requires validated CARs and CLI-exported tables, upload readback, an Atlas merge,
+global Atlas IPNS, and MCP SQL synchronization.
 
-**Staging S3 ≠ Filebase/IPNS.** AWS staging of Parquet/JSON is private. Public Donphan
-needs Filebase upload, IPNS update, catalog/MCP maps, and remote hash/count readback.
-There is no credential-free upload path. At intake, verify that the eventual publish runtime
-has the Filebase secret, correct bucket, and IPNS ownership; request missing access
-immediately. Move **frozen artifacts**, not live checkpoints or browser sessions, to that
-runtime.
+**Staging storage ≠ Atlas.** AWS or local Parquet/JSON staging is private. Never configure
+MCP to read it. At intake, verify upload-node credentials and Atlas repository access;
+request missing access immediately. Move frozen CAR/table artifacts, not live checkpoints
+or browser sessions, to the upload step.
 
-**Never mutate a published snapshot.** Later loads produce a **new** versioned prefix.
-Compare loaded and published manifest watermarks continuously. Later loads automatically
-enqueue a **new** versioned prefix; IPNS labels move only after CID and remote readback
-verification.
+**Never mutate a published snapshot.** Later loads produce new validated group output and a
+new CAR/table root. Compare loaded and published watermarks continuously. Publish changes
+through a replacement Atlas group entry; only the global Atlas workflow moves its IPNS.
 
-**Unsupported access must not look like zero.** If the county is absent from the catalog,
-Donphan zeros mean unsupported, not empty. Coverage-only BBB publication must keep
-`propertyDatasetAvailable: false` and null property/permit table URLs until those tables
-exist.
+**Unsupported access must not look like zero.** If a county/data group/table is absent from
+the synchronized Atlas index, report it as unpublished. Do not represent it as an empty
+dataset.
 
 **Dashboard.** Do not rescan large tables per `/api/status`. Use durable rollups, a
 reconnecting pool, query deadlines, and a last-good snapshot. `ERR_CONNECTION_REFUSED` is

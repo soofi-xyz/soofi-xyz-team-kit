@@ -1,6 +1,6 @@
 /**
  * Pinellas county adapter: seed construction, capture + transform, run
- * validation, and publication-artifact building.
+ * validation, and internal reconciliation-artifact building.
  *
  * `captureAndTransform` is adapted from `oracle-node@ff68b0b6`
  * `scripts/run-pinellas-local-ingest.mjs` (`buildSourceHttpRequest`,
@@ -27,9 +27,6 @@ import {
 import {
   mapTransformedFilesToQueryTableRow,
   QUERY_TABLE_SCHEMA_FIELDS,
-  QUERY_TABLE_BUCKET,
-  QUERY_TABLE_IPNS_LABEL,
-  COVERAGE_IPNS_LABEL,
   COUNTY_KEY,
   COUNTY_NAME,
   SOURCE_SYSTEM,
@@ -226,8 +223,7 @@ async function zipDataDirectory(dataDir, zipPath) {
  * plus a run `manifest.json`.
  *
  * Fails closed: a missing local HTML file is a hard error unless
- * `liveFetch` is explicitly `true` (Global Constraint: "Live fetch and
- * publication fail closed unless explicit flags/approval are supplied").
+ * `liveFetch` is explicitly `true`; fixture replay stays network-free.
  *
  * @param {CaptureAndTransformOptions} options - Seed rows, HTML source, and output directory.
  * @returns {Promise<{ county: string, outputDir: string, results: ParcelTransformResult[] }>}
@@ -344,14 +340,11 @@ export async function validateRun(manifest) {
 }
 
 /**
- * @typedef {object} PublicationArtifacts
+ * @typedef {object} ReconciliationArtifacts
  * @property {string} county
  * @property {string} parquetPath
  * @property {string} coveragePath
  * @property {string} manifestPath
- * @property {string} bucket
- * @property {string} queryTableIpnsLabel
- * @property {string} coverageIpnsLabel
  * @property {number} rowCount
  * @property {number} expectedCount
  */
@@ -360,11 +353,11 @@ export async function validateRun(manifest) {
  * Build the query-table Parquet + dataset-coverage JSON from a completed
  * ingest run.
  *
- * @param {{ outputDir: string, seedRows: readonly Record<string, string>[], publishDir: string }} run - Ingest output plus seed rows and destination directory.
- * @returns {Promise<PublicationArtifacts>} Written artifact paths and counts.
+ * @param {{ outputDir: string, seedRows: readonly Record<string, string>[], workingDir: string }} run - Ingest output plus seed rows and destination directory.
+ * @returns {Promise<ReconciliationArtifacts>} Written artifact paths and counts.
  */
-export async function buildPublicationArtifacts({ outputDir, seedRows, publishDir }) {
-  await mkdir(publishDir, { recursive: true });
+export async function buildReconciliationArtifacts({ outputDir, seedRows, workingDir }) {
+  await mkdir(workingDir, { recursive: true });
   const expectedCount = seedRows.length;
   /** @type {Record<string, unknown>[]} */
   const rows = [];
@@ -391,9 +384,9 @@ export async function buildPublicationArtifacts({ outputDir, seedRows, publishDi
     throw new Error("Query table would contain duplicate request_identifier values");
   }
 
-  const parquetPath = path.join(publishDir, "query-table.parquet");
-  const coveragePath = path.join(publishDir, "dataset-coverage.json");
-  const manifestPath = path.join(publishDir, "manifest.json");
+  const parquetPath = path.join(workingDir, "query-table.parquet");
+  const coveragePath = path.join(workingDir, "dataset-coverage.json");
+  const manifestPath = path.join(workingDir, "manifest.json");
   await writeQueryTableParquet({ parquetPath, schemaFields: QUERY_TABLE_SCHEMA_FIELDS, rows });
 
   const exportedAt = new Date().toISOString();
@@ -403,7 +396,6 @@ export async function buildPublicationArtifacts({ outputDir, seedRows, publishDi
     ingestedCount: rows.length,
     expectedCount,
     exportedAt,
-    ipnsLabel: COVERAGE_IPNS_LABEL,
   });
   await writeFile(coveragePath, `${JSON.stringify(coverage, null, 2)}\n`, "utf8");
 
@@ -412,9 +404,6 @@ export async function buildPublicationArtifacts({ outputDir, seedRows, publishDi
     parquetPath,
     coveragePath,
     manifestPath,
-    bucket: QUERY_TABLE_BUCKET,
-    queryTableIpnsLabel: QUERY_TABLE_IPNS_LABEL,
-    coverageIpnsLabel: COVERAGE_IPNS_LABEL,
     rowCount: rows.length,
     expectedCount,
   };
@@ -434,5 +423,5 @@ export const pinellasAdapter = {
   buildSeed: buildPinellasSeedFiles,
   captureAndTransform,
   validateRun,
-  buildPublicationArtifacts,
+  buildReconciliationArtifacts,
 };

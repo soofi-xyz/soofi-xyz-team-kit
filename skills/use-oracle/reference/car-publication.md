@@ -188,8 +188,23 @@ If a root cannot be fetched at merge time, the merge is **reverted automatically
 issue is opened**. Treat that as "the archive was not available": re-upload to a node
 whose gateway serves the root, confirm the readback, and open a new PR.
 
-Consumers read `https://ipfs.filebase.io/ipns/k51qzi5uqu5dhzmj1jtn06idud425ozwdjjjn4eu7q01g2t814h7rw4du0nd04`
-or `index.json` on `main`.
+Consumers read global Atlas IPNS
+`k51qzi5uqu5dhzmj1jtn06idud425ozwdjjjn4eu7q01g2t814h7rw4du0nd04`.
+Do not configure a county-specific public pointer.
+
+### Verify the merged global index
+
+After merge:
+
+1. Resolve the global Atlas IPNS through the configured gateway order.
+2. Hash the returned index bytes and record the accepted index CID.
+3. Confirm the county page and every merged data-group entry appear.
+4. Run Elephant MCP 2.0 `mcp sync`.
+5. Call `listPublishedCounties`, then `getOracleDatasetInfo` with explicit
+   `county` and `dataGroup`.
+
+A merged PR without global-IPNS and synchronized-SQL evidence is not a completed
+publication.
 
 ## Facts the design depends on
 
@@ -262,7 +277,7 @@ counties into one archive; the index is a county index.
 
 - The county index does not yet record the county key or the lexicon manifest CID. Record
   both in the run evidence until the CLI carries them.
-- The existing query-table, coverage, per-county IPNS, and MCP publication keeps running as
-  its skills describe; it is a separate path. Replacing it is out of scope.
 - A raw IPFS node cannot discover inner blocks from the network. Consumers that need that
   must pin the archive on a node they control.
+- The internal Query DB may produce working Parquet or coverage artifacts for
+  reconciliation and enrichment. Never register, upload, or serve those intermediates.

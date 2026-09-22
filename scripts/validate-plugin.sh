@@ -29,6 +29,7 @@ main() {
   "${root}/skills/use-oracle/scripts/oracle-paths.test.sh"
 
   "${python_bin}" "${root}/scripts/check-plugin-clean-room.py" --self-test
+  "${python_bin}" "${root}/scripts/test_atlas_migration.py"
 
   "${python_bin}" - "$root" <<'PY'
 import json
@@ -202,11 +203,7 @@ def validate_agents():
 
 def validate_oracle_runtime():
     runtime_dir = root / "skills" / "use-oracle" / "runtime"
-    required = [
-        runtime_dir / "package.json",
-        runtime_dir / "catalog" / "published-counties.json",
-        runtime_dir / "catalog" / "mcp-overlays.json",
-    ]
+    required = [runtime_dir / "package.json"]
     for path in required:
         if not path.is_file():
             fail(f"{path.relative_to(root)}: required Oracle runtime file is missing")
@@ -249,7 +246,11 @@ def validate_skills():
             fail(f"{skill.relative_to(root)}: must stay under 500 lines ({line_count})")
 
     for child in sorted(skills_dir.iterdir()):
-        if child.is_dir() and not (child / "SKILL.md").is_file():
+        if (
+            child.is_dir()
+            and any(path.is_file() for path in child.rglob("*"))
+            and not (child / "SKILL.md").is_file()
+        ):
             fail(f"{child.relative_to(root)}: skill directory must contain SKILL.md")
 
 

@@ -13,7 +13,7 @@ stop.
 
 Start the independent preparation tracks at intake: full source/jurisdiction enumeration,
 adapter fingerprinting and implementation scaffolds, AWS remote BBB execution setup,
-destination proof, Filebase/IPNS readiness, and named request routing. This validator stops
+internal destination proof, Atlas upload/PR readiness, and named request routing. This validator stops
 seed, pilots, adapter scale-out, and full ingest; it does not stop that safe preparation.
 
 ## At the jump of every ingest

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * `elephant-county` CLI: county-agnostic ingest / export / publish / replay
+ * `elephant-county` CLI: county-agnostic ingest, reconciliation, and replay
  * commands over the county adapters in `src/counties/*`.
  *
  * All script-relative paths (transforms, fixtures, flow definitions) resolve
@@ -18,24 +18,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { pathToFileURL } from "node:url";
 import { parseCsvRecords } from "../src/core/csv.mjs";
-import {
-  loadEnvFile,
-  publishFilebase,
-  publishPermitFilebase,
-} from "../src/core/filebase.mjs";
-import { publishHoaPmPropertyPages } from "../src/core/hoa-pm-property-publication.mjs";
-import {
-  assertOverlayOnlyIpnsLabels,
-  withOverlayPublisherLock,
-} from "../src/core/hoa-pm-overlay-publisher.mjs";
-import { requireQueryTablePublication } from "../src/core/query-table-publication.mjs";
+import { withProcessLock } from "../src/core/process-lock.mjs";
 import { runReplay } from "../src/core/replay.mjs";
-import {
-  exportCoverageArtifact,
-  loadCoverageArtifact,
-  publishCoverageFilebase,
-  writeCoverageApproval,
-} from "../src/core/coverage-publication.mjs";
 import { pinellasAdapter } from "../src/counties/pinellas/adapter.mjs";
 import { duvalAdapter } from "../src/counties/duval/adapter.mjs";
 import { requireEnrichmentProfile } from "../src/counties/enrichment-profiles.mjs";
@@ -131,19 +115,6 @@ export function parseFlags(argv, booleanFlags = []) {
 }
 
 /**
- * @param {Record<string, string | boolean>} flags
- * @param {string} name
- * @returns {string}
- */
-function requiredFlag(flags, name) {
-  const value = flags[name];
-  if (typeof value !== "string" || value.trim().length === 0) {
-    throw new Error(`--${name} is required`);
-  }
-  return value;
-}
-
-/**
  * @param {string} seedPath - CSV file path.
  * @returns {Promise<Record<string, string>[]>} Parsed seed rows.
  */
@@ -194,148 +165,28 @@ async function runIngest(argv) {
 }
 
 /**
- * `elephant-county export --county <key> --seed <csv> --run <run-dir> --output <publish-dir> [--allow-empty]`
+ * `elephant-county reconcile-export --county <key> --seed <csv> --run <run-dir> --output <working-dir> [--allow-empty]`
  *
  * Fails closed on an empty export: if every seed row failed to produce a
- * complete parcel, this refuses to publish a zero-row query table unless
+ * complete parcel, this refuses to write a zero-row working table unless
  * `--allow-empty` is explicitly supplied (Global Constraint).
  *
  * @param {readonly string[]} argv - Arguments after `export`.
- * @returns {Promise<void>} Resolves once publication artifacts are written and printed.
+ * @returns {Promise<void>} Resolves once reconciliation artifacts are written and printed.
  */
-async function runExport(argv) {
+async function runReconciliationExport(argv) {
   const flags = parseFlags(argv, ["allow-empty"]);
   const adapter = requireAdapter(String(flags.county));
   const seedRows = await readSeedRows(String(flags.seed));
-  const artifacts = await adapter.buildPublicationArtifacts({
+  const artifacts = await adapter.buildReconciliationArtifacts({
     outputDir: String(flags.run),
     seedRows,
-    publishDir: String(flags.output),
+    workingDir: String(flags.output),
     allowEmpty: flags["allow-empty"] === true,
   });
-  console.log(JSON.stringify({ event: "export_complete", artifacts }, null, 2));
-}
-
-/**
- * `elephant-county publish --county <key> --input <publish-dir> [--dry-run] [--approve <manifest>]`
- *
- * A live publish (no `--dry-run`) is rejected unless `--approve <manifest>`
- * points at an existing file, and unless Filebase credentials are present
- * in the environment (Global Constraint).
- *
- * @param {readonly string[]} argv - Arguments after `publish`.
- * @returns {Promise<void>} Resolves once the dry-run report or live publish result is printed.
- */
-async function runPublish(argv) {
-  const flags = parseFlags(argv, ["dry-run"]);
-  requireAdapter(String(flags.county));
-  const manifestPath = path.join(String(flags.input), "manifest.json");
-  const artifacts = JSON.parse(await readFile(manifestPath, "utf8"));
-  const result = await publishFilebase(artifacts, {
-    dryRun: flags["dry-run"] === true,
-    approvalManifestPath: typeof flags.approve === "string" ? flags.approve : null,
-    env: process.env,
-  });
-  console.log(JSON.stringify({ event: "publish_complete", result }, null, 2));
-}
-
-/**
- * `elephant-county export-coverage --county <key> --evidence <json> --output <dir>`
- *
- * Builds only dataset-coverage.json from frozen, reconciled evidence. This
- * command is adapter-independent, so already-published counties such as Lee
- * do not need an ingest adapter registration.
- *
- * @param {readonly string[]} argv
- * @returns {Promise<void>}
- */
-async function runExportCoverage(argv) {
-  const flags = parseFlags(argv);
-  const result = await exportCoverageArtifact({
-    county: requiredFlag(flags, "county"),
-    evidencePath: requiredFlag(flags, "evidence"),
-    outputDir: requiredFlag(flags, "output"),
-  });
-  console.log(JSON.stringify({ event: "coverage_export_complete", result }, null, 2));
-}
-
-/**
- * `elephant-county sign-coverage-approval ...`
- *
- * Human-run action that binds an Ed25519 signature to one exact coverage
- * artifact, bucket, object key, existing IPNS label/network key, and time.
- *
- * @param {readonly string[]} argv
- * @returns {Promise<void>}
- */
-async function runSignCoverageApproval(argv) {
-  const flags = parseFlags(argv);
-  const county = requiredFlag(flags, "county");
-  const artifact = await loadCoverageArtifact({
-    county,
-    inputDir: requiredFlag(flags, "input"),
-  });
-  const outputPath = requiredFlag(flags, "output");
-  const approval = await writeCoverageApproval({
-    artifact,
-    bucket: requiredFlag(flags, "bucket"),
-    expectedIpnsName: requiredFlag(flags, "expected-ipns-name"),
-    approver: requiredFlag(flags, "approver"),
-    approvedAt:
-      typeof flags["approved-at"] === "string"
-        ? flags["approved-at"]
-        : new Date().toISOString(),
-    privateKeyPath: requiredFlag(flags, "private-key"),
-    outputPath,
-  });
   console.log(
-    JSON.stringify(
-      {
-        event: "coverage_approval_signed",
-        outputPath,
-        payload: approval.payload,
-        keyId: approval.signature.keyId,
-      },
-      null,
-      2,
-    ),
+    JSON.stringify({ event: "reconciliation_export_complete", artifacts }, null, 2),
   );
-}
-
-/**
- * `elephant-county publish-coverage --county <key> --input <dir>
- *   --bucket <bucket> --expected-ipns-name <k51...> [--dry-run]
- *   [--approve <json> --approval-public-key <pem>] [--env-file <dotenv>]`
- *
- * Uploads one coverage JSON object and updates only the existing
- * oracle-dataset-coverage-<county> IPNS label.
- *
- * @param {readonly string[]} argv
- * @returns {Promise<void>}
- */
-async function runPublishCoverage(argv) {
-  const flags = parseFlags(argv, ["dry-run"]);
-  const county = requiredFlag(flags, "county");
-  const artifact = await loadCoverageArtifact({
-    county,
-    inputDir: requiredFlag(flags, "input"),
-  });
-  const env = { ...process.env };
-  if (typeof flags["env-file"] === "string") {
-    await loadEnvFile(flags["env-file"], env);
-  }
-  const result = await publishCoverageFilebase(artifact, {
-    dryRun: flags["dry-run"] === true,
-    bucket: requiredFlag(flags, "bucket"),
-    expectedIpnsName: requiredFlag(flags, "expected-ipns-name"),
-    approvalManifestPath: typeof flags.approve === "string" ? flags.approve : null,
-    approvalPublicKeyPath:
-      typeof flags["approval-public-key"] === "string"
-        ? flags["approval-public-key"]
-        : null,
-    env,
-  });
-  console.log(JSON.stringify({ event: "coverage_publish_complete", result }, null, 2));
 }
 
 /**
@@ -355,7 +206,6 @@ async function runReplayCommand(argv) {
     county: adapter.key,
     manifest: replay.manifest,
     artifacts: replay.artifacts,
-    publishResult: replay.publishResult,
   };
   await writeFile(summaryPath, `${JSON.stringify(summary, null, 2)}\n`, "utf8");
   console.log(JSON.stringify({ event: "replay_complete", ...summary }, null, 2));
@@ -535,8 +385,8 @@ async function runHoaPmIndexCommand(argv) {
 async function runHoaPmOverlaySyncCommand(argv) {
   const flags = parseFlags(argv);
   const county = requireStringFlag(flags, "county");
-  const summary = await withOverlayPublisherLock(
-    { county, command: "hoa-pm-overlay-sync" },
+  const summary = await withProcessLock(
+    { county, operation: "hoa-pm-overlay-sync" },
     () =>
       syncHoaPmOverlay({
         county,
@@ -551,97 +401,6 @@ async function runHoaPmOverlaySyncCommand(argv) {
       }),
   );
   console.log(JSON.stringify({ event: "hoa_pm_overlay_sync_complete", summary }, null, 2));
-}
-
-async function runHoaPmPublishCommand(argv) {
-  const flags = parseFlags(argv, [
-    "dry-run",
-    "query-table-only",
-    "move-existing-ipns-only",
-  ]);
-  const countyKey = requireStringFlag(flags, "county");
-  const inputDir = requireStringFlag(flags, "input");
-  if (typeof flags["env-file"] === "string") {
-    await loadEnvFile(flags["env-file"], process.env);
-  }
-  const publication = requireQueryTablePublication(countyKey);
-  const datasetKey = `${countyKey}-hoa-pm`;
-  const artifacts = {
-    county: countyKey,
-    parquetPath: path.join(inputDir, "query-table.parquet"),
-    coveragePath: path.join(inputDir, "dataset-coverage.json"),
-    ...(flags["query-table-only"] === true
-      ? {}
-      : {
-          hoaPmObjectsPath: path.join(
-            inputDir,
-            "objects",
-            "hoa-pm-objects.jsonl",
-          ),
-        }),
-    bucket: publication.bucket,
-    queryTableIpnsLabel: `oracle-query-table-${datasetKey}`,
-    coverageIpnsLabel: `oracle-dataset-coverage-${datasetKey}`,
-  };
-  assertOverlayOnlyIpnsLabels(artifacts);
-  const publish = () =>
-    publishFilebase(artifacts, {
-      dryRun: flags["dry-run"] === true,
-      moveExistingIpnsOnly: true,
-      approvalManifestPath:
-        typeof flags.approve === "string" ? flags.approve : null,
-      receiptPath:
-        typeof flags.receipt === "string" ? flags.receipt : null,
-      env: process.env,
-    });
-  const result =
-    flags["dry-run"] === true
-      ? await publish()
-      : await withOverlayPublisherLock(
-          { county: countyKey, command: "hoa-pm-publish" },
-          publish,
-        );
-  console.log(JSON.stringify({ event: "hoa_pm_publish_complete", result }, null, 2));
-}
-
-async function runHoaPmPropertyPublishCommand(argv) {
-  const flags = parseFlags(argv, ["dry-run", "thin-overlay"]);
-  const countyKey = requireStringFlag(flags, "county");
-  const publication = requireQueryTablePublication(countyKey);
-  if (typeof flags["env-file"] === "string") {
-    await loadEnvFile(flags["env-file"], process.env);
-  }
-  const artifacts = {
-    county: countyKey,
-    parquetPath: requireStringFlag(flags, "input-parquet"),
-    officialParquetPath:
-      typeof flags["official-parquet"] === "string"
-        ? flags["official-parquet"]
-        : null,
-    bucket: publication.bucket,
-    queryTableIpnsLabel: `oracle-query-table-${countyKey}-hoa-pm`,
-  };
-  assertOverlayOnlyIpnsLabels(artifacts);
-  const publish = () =>
-    publishHoaPmPropertyPages(artifacts, {
-      dryRun: flags["dry-run"] === true,
-      approvalManifestPath:
-        typeof flags.approve === "string" ? flags.approve : null,
-      receiptPath:
-        typeof flags.receipt === "string" ? flags.receipt : null,
-      thinOverlay: flags["thin-overlay"] === true,
-      env: process.env,
-    });
-  const result =
-    flags["dry-run"] === true
-      ? await publish()
-      : await withOverlayPublisherLock(
-          { county: countyKey, command: "hoa-pm-property-publish" },
-          publish,
-        );
-  console.log(
-    JSON.stringify({ event: "hoa_pm_property_publish_complete", result }, null, 2),
-  );
 }
 
 async function runAvmEnrichCommand(argv) {
@@ -1096,51 +855,13 @@ async function runPermitBulkExportCommand(argv) {
   );
 }
 
-async function runPermitPublishCommand(argv) {
-  const flags = parseFlags(argv);
-  const county = requireStringFlag(flags, "county");
-  const inputDir = requireStringFlag(flags, "input");
-  const profile = requirePermitProfile(county);
-  const receipt = await publishPermitFilebase(
-    {
-      county,
-      bucket: profile.publication.bucket,
-      permitTableIpnsLabel:
-        profile.publication.permitTableIpnsLabel,
-      queryTableIpnsLabel:
-        profile.publication.propertyQueryTableIpnsLabel,
-      coverageIpnsLabel: profile.publication.coverageIpnsLabel,
-      permitTablePath: path.join(inputDir, "permit-table.parquet"),
-      queryTablePath: path.join(inputDir, "query-table.parquet"),
-      coveragePath: path.join(inputDir, "dataset-coverage.json"),
-      permitCoveragePath: path.join(inputDir, "permit-coverage.json"),
-    },
-    {
-      approvalManifestPath: requireStringFlag(flags, "approve"),
-      receiptPath: requireStringFlag(flags, "receipt"),
-      env: process.env,
-    },
-  );
-  console.log(
-    JSON.stringify(
-      { event: "permit_publish_complete", receipt },
-      null,
-      2,
-    ),
-  );
-}
-
 /**
  * @returns {Promise<void>} Resolves once the requested subcommand finishes.
  */
 async function main() {
   const [command, ...rest] = process.argv.slice(2);
   if (command === "ingest") return runIngest(rest);
-  if (command === "export") return runExport(rest);
-  if (command === "publish") return runPublish(rest);
-  if (command === "export-coverage") return runExportCoverage(rest);
-  if (command === "sign-coverage-approval") return runSignCoverageApproval(rest);
-  if (command === "publish-coverage") return runPublishCoverage(rest);
+  if (command === "reconcile-export") return runReconciliationExport(rest);
   if (command === "replay") return runReplayCommand(rest);
   if (command === "sunbiz-prepare") return runSunbizPrepareCommand(rest);
   if (command === "sunbiz-filter") return runSunbizFilterCommand(rest);
@@ -1150,10 +871,6 @@ async function main() {
   if (command === "hoa-pm-index") return runHoaPmIndexCommand(rest);
   if (command === "hoa-pm-overlay-sync") return runHoaPmOverlaySyncCommand(rest);
   if (command === "hoa-pm-enrich") return runHoaPmEnrichCommand(rest);
-  if (command === "hoa-pm-publish") return runHoaPmPublishCommand(rest);
-  if (command === "hoa-pm-property-publish") {
-    return runHoaPmPropertyPublishCommand(rest);
-  }
   if (command === "avm-enrich") return runAvmEnrichCommand(rest);
   if (command === "bbb-harvest") return runBbbHarvestCommand(rest);
   if (command === "bbb-reconcile") return runBbbReconcileCommand(rest);
@@ -1175,17 +892,10 @@ async function main() {
   if (command === "permit-bulk-export") {
     return runPermitBulkExportCommand(rest);
   }
-  if (command === "permit-publish") {
-    return runPermitPublishCommand(rest);
-  }
   console.error(
-    "Usage: elephant-county <ingest|export|publish|export-coverage|sign-coverage-approval|publish-coverage|replay|sunbiz-prepare|sunbiz-filter|sunbiz-transform|sunbiz-enrich|avm-enrich|hoa-enrich|hoa-pm-index|hoa-pm-overlay-sync|hoa-pm-enrich|hoa-pm-publish|hoa-pm-property-publish|bbb-harvest|bbb-reconcile|bbb-link|enrichment-finalize|permit-probe|permit-bounded-harvest|permit-resume|permit-reconcile|permit-export|permit-bulk-export|permit-publish> [...flags]\n" +
+    "Usage: elephant-county <ingest|reconcile-export|replay|sunbiz-prepare|sunbiz-filter|sunbiz-transform|sunbiz-enrich|avm-enrich|hoa-enrich|hoa-pm-index|hoa-pm-overlay-sync|hoa-pm-enrich|bbb-harvest|bbb-reconcile|bbb-link|enrichment-finalize|permit-probe|permit-bounded-harvest|permit-resume|permit-reconcile|permit-export|permit-bulk-export> [...flags]\n" +
       "  ingest  --county <key> --seed <csv> --html-dir <dir> [--skip-validate] [--live-fetch] [--allow-empty] --output <run-dir>\n" +
-      "  export  --county <key> --seed <csv> --run <run-dir> --output <publish-dir> [--allow-empty]\n" +
-      "  publish --county <key> --input <publish-dir> [--dry-run] [--approve <manifest>]\n" +
-      "  export-coverage --county <key> --evidence <json> --output <publish-dir>\n" +
-      "  sign-coverage-approval --county <key> --input <publish-dir> --bucket <bucket> --expected-ipns-name <k51...> --approver <identity> --private-key <ed25519.pem> --output <approval.json> [--approved-at <ISO-8601>]\n" +
-      "  publish-coverage --county <key> --input <publish-dir> --bucket <bucket> --expected-ipns-name <k51...> [--dry-run] [--approve <approval.json> --approval-public-key <ed25519-public.pem>] [--env-file <dotenv>]\n" +
+      "  reconcile-export --county <key> --seed <csv> --run <run-dir> --output <working-dir> [--allow-empty]\n" +
       "  replay  --county <key> --fixture <dir> --output <dir>\n" +
       "  sunbiz-prepare --archive <cordata.zip> --sha256 <digest> --output <expanded-dir>\n" +
       "  sunbiz-filter --county <profile-key> --quarter <YYYYQn> --source-dir <expanded-dir> --output <dir> [--max-source-records N]\n" +
@@ -1196,9 +906,6 @@ async function main() {
       "  hoa-pm-index --source-dir <expanded-cordata-dir> --subdivisions <json-array> --quarter <YYYYQn> --output <dir>\n" +
       "  hoa-pm-overlay-sync --county <key> --overlay-parquet <overlay.parquet> --output-dir <dir> [--official-parquet <official.parquet>] [--parcel-csv <csv>]\n" +
       "  hoa-pm-enrich --county <profile-key> --input-parquet <parquet> --input-coverage <json> --sunbiz-extract <dir> [--sunbiz-pm-extract <dir>] [--ctmh-extract <dir>] [--sunbiz-events-extract <expanded-corevent-dir>] [--sunbiz-fictitious-extract <expanded-ficdata-and-ficevt-dir>] [--clerk-records <recorded-community-names.jsonl> --clerk-source-manifest <json>] --output-dir <dir>\n" +
-      "  hoa-pm-publish --county <published-or-overlay-county-key> --input <enriched-dir> [--query-table-only] [--move-existing-ipns-only] [--dry-run] [--approve <manifest> --receipt <json> --env-file <dotenv>]\n" +
-      "    Overlay IPNS moves abort if another overlay publish/sync process holds the lock, if the live name already points at a newer approved receipt, or if the CID is not this run's byte-bound receipt. Overlay-only: never move oracle-query-table-<county>. At Filebase 100/100, move existing overlay names only.\n" +
-      "  hoa-pm-property-publish --county <published-county-key> --input-parquet <overlay.parquet> [--official-parquet <official.parquet> | --thin-overlay] [--dry-run] [--approve <manifest> --receipt <json> --env-file <dotenv>]\n" +
       "  bbb-harvest --county <profile-key> --category <reviewed-key> --job-id <id> --max-pages N --max-profiles N --max-requests N --max-duration-minutes N --output <dir>\n" +
       "  bbb-reconcile --county <profile-key> --harvest-root <category-dirs-root> --input-coverage <json> --output-dir <dir>\n" +
       "  bbb-link --county duval --input-parquet <query-table.parquet> --input-coverage <dataset-coverage.json> --bbb-profiles <bbb-profiles.jsonl> --bbb-reconciliation-manifest <json> --permit-source <jaxepics-bid-map.jsonl.gz> --permit-artifact-manifest <json> --output-dir <dir>\n" +
@@ -1208,8 +915,7 @@ async function main() {
       "  permit-resume --county <profile-key> --job-id <id> --input-parquet <parquet> --limit N --output <dir>\n" +
       "  permit-reconcile --county <profile-key> --harvest <dir>\n" +
       "  permit-export --county <profile-key> --job-id <id> --harvest <dir> --input-parquet <parquet> --input-coverage <json> --output <dir>\n" +
-      "  permit-bulk-export --county <profile-key> --job-id <id> --input-parquet <parquet> --input-coverage <json> --output <dir> [--max-pages N]\n" +
-      "  permit-publish --county <profile-key> --input <dir> --approve <manifest> --receipt <json>",
+      "  permit-bulk-export --county <profile-key> --job-id <id> --input-parquet <parquet> --input-coverage <json> --output <dir> [--max-pages N]",
   );
   process.exitCode = 1;
 }
@@ -1228,11 +934,7 @@ export {
   main,
   requireAdapter,
   runIngest,
-  runExport,
-  runPublish,
-  runExportCoverage,
-  runSignCoverageApproval,
-  runPublishCoverage,
+  runReconciliationExport,
   runReplayCommand,
   runSunbizPrepareCommand,
   runSunbizFilterCommand,
@@ -1242,8 +944,6 @@ export {
   runHoaPmIndexCommand,
   runHoaPmOverlaySyncCommand,
   runHoaPmEnrichCommand,
-  runHoaPmPublishCommand,
-  runHoaPmPropertyPublishCommand,
   runAvmEnrichCommand,
   runBbbHarvestCommand,
   runBbbReconcileCommand,
