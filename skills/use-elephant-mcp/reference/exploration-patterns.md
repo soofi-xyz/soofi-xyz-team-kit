@@ -16,8 +16,10 @@ Report scope and `source` CIDs.
 
 ## Find a property from a folio
 
-1. Query `parcel` for the exact user-supplied `parcel_identifier` (or any entity
-   table's `request_identifier`); return its `property_cid`.
+1. Run `SELECT property_cid FROM property WHERE parcel_identifier = '<folio>'` with the
+   exact user-supplied value (one table, no join). `parcel` carries the same
+   `parcel_identifier` and gives the same answer; any entity table's
+   `request_identifier` also works.
 2. Call `getAtlasProperty` with that CID.
 3. If a separately disclosed normalized fallback was needed, report both the stored and
    supplied identifiers.

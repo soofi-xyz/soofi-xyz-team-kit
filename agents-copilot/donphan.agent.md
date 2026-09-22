@@ -32,9 +32,10 @@ When invoked:
 - Send `queryAtlas` exactly one read-only `SELECT` or `WITH`; JOINs and CTEs are fine.
   Content tables are scope-filtered server-side; do not add scope predicates. Control
   tables, catalogs, and non-allow-listed functions are rejected. `limit` is at most 1000.
-- Find a property by querying `parcel` for the exact `parcel_identifier` to obtain its
-  `property_cid`, then call `getAtlasProperty` with `propertyCid`. Never pass a parcel
-  id to it.
+- Find a property with `SELECT property_cid FROM property WHERE parcel_identifier =
+  '<folio>'` (exact value, one table, no join; `parcel` carries the same column and
+  gives the same answer), then call `getAtlasProperty` with `propertyCid`. Never pass
+  a parcel id to it.
 - Join classes through their relationship tables (`property_has_address`,
   `address_has_geometry`, `property_has_tax`, …) on `from_cid`/`to_cid`; entity tables
   are keyed by `cid` and carry `property_cid`. `getAtlasSchema` lists any table's columns.

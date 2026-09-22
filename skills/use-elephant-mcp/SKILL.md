@@ -51,8 +51,10 @@ columns returned by `getAtlasSchema`.
 - `listAtlasProperties` (`limit`, `offset`) pages property CIDs for the scope.
 - `getAtlasProperty` (`propertyCid`) assembles one property by walking its
   relationships; shared entities (addresses, companies, people) are included.
-- Do not pass a folio or parcel identifier to `getAtlasProperty`. Query `parcel` for the
-  exact `parcel_identifier` first; its `property_cid` column is the CID to pass.
+- Do not pass a folio or parcel identifier to `getAtlasProperty`. Both `property` and
+  `parcel` carry `parcel_identifier`; look the folio up first with
+  `SELECT property_cid FROM property WHERE parcel_identifier = '<folio>'` (one table, no
+  join; `parcel` gives the same answer), then pass that `property_cid`.
 
 ### Area and value questions
 

@@ -38,9 +38,9 @@ Inputs: scope, `sql`, optional `limit` (default and maximum 1000).
 Example:
 
 ```sql
-SELECT pa.property_cid, pa.parcel_identifier
-FROM parcel pa
-WHERE pa.parcel_identifier = '1605480000'
+SELECT property_cid, parcel_identifier
+FROM property
+WHERE parcel_identifier = '1605480000'
 ```
 
 ### `listAtlasProperties`
@@ -98,7 +98,8 @@ Report these CIDs with every answer; they identify the accepted publication revi
   data-group schema CID recording which group roots the property participates in.
 
 Every table also carries `state, county, data_group`. Well-known columns:
-`parcel.parcel_identifier` (parcel number), `geometry.latitude`/`geometry.longitude`
+`parcel_identifier` (parcel number; on both `property` and `parcel`),
+`geometry.latitude`/`geometry.longitude`
 (DOUBLE), `tax.property_market_value_amount` (market value). `getAtlasSchema` lists the
 columns of any table; use it for the class attributes you have not seen before.
 
