@@ -1,0 +1,68 @@
+{
+  "catalog": "catalog.json",
+  "models": [
+    {
+      "counts": {
+        "classes": 197
+      },
+      "id": "model-a",
+      "paradigm": "rdf_ontology",
+      "path": "model-a.json",
+      "semantics": {
+        "entity_construct": "class",
+        "materialization": "simplified_class_catalog",
+        "property_construct": "datatype_property",
+        "relationship_construct": "object_property",
+        "supports": [
+          "class_inheritance",
+          "domain_and_range",
+          "relationship_reification"
+        ]
+      }
+    },
+    {
+      "counts": {
+        "edges": 185,
+        "patterns": 1,
+        "vertices": 74
+      },
+      "id": "model-b",
+      "paradigm": "property_graph",
+      "path": "model-b.json",
+      "semantics": {
+        "entity_construct": "vertex",
+        "materialization": "vertex_edge_schema",
+        "property_construct": "vertex_or_edge_property",
+        "relationship_construct": "directed_edge",
+        "supports": [
+          "association_vertices",
+          "event_history",
+          "derived_indexes"
+        ]
+      }
+    },
+    {
+      "counts": {
+        "classes": 215,
+        "data_groups": 16,
+        "patterns": 7
+      },
+      "id": "model-c",
+      "paradigm": "class_relationship_catalog",
+      "path": "model-c.json",
+      "semantics": {
+        "entity_construct": "class",
+        "materialization": "class_and_relationship_catalog",
+        "property_construct": "json_schema_property",
+        "relationship_construct": "target_declaration",
+        "supports": [
+          "class_relationships",
+          "data_group_cardinality",
+          "common_patterns"
+        ]
+      }
+    }
+  ],
+  "schema_version": "1.0.0",
+  "snapshot_version": "1.0.0"
+}
