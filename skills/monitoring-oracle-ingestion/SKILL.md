@@ -1,11 +1,11 @@
 ---
 name: monitoring-oracle-ingestion
-description: Monitors oracle-node ingestion tracks for Lee appraisal, Lee permits, and Sunbiz corporate data, including queue health, S3 artifact counts, and rough ETAs. Use when asked for ingestion status, ETA, backlog, permit harvest progress, appraisal queue progress, or Sunbiz transform status in this repo.
+description: Monitor the bundled AWS ingestion tracks for appraisal, permits, and corporate data, including queue health, artifact counts, and ETAs. Use for AWS-mode Oracle ingestion status.
 ---
 
 # Monitoring Oracle Ingestion
 
-Use this skill to produce repeatable status/ETA updates for the three active oracle-node data tracks:
+Use this skill to produce repeatable status/ETA updates for the bundled AWS data tracks:
 
 - Lee County appraisal website prepare queue
 - Lee County permit harvest queue and S3 artifacts
@@ -16,14 +16,14 @@ Use this skill to produce repeatable status/ETA updates for the three active ora
 Run the status script from the repo root:
 
 ```bash
-AWS_PROFILE=elephant-oracle-node AWS_REGION=us-east-1 \
+AWS_PROFILE=<selected-profile> AWS_REGION=<verified-region> \
   skills/monitoring-oracle-ingestion/scripts/ingestion-status.sh
 ```
 
 For a different recent-throughput window:
 
 ```bash
-AWS_PROFILE=elephant-oracle-node AWS_REGION=us-east-1 \
+AWS_PROFILE=<selected-profile> AWS_REGION=<verified-region> \
   skills/monitoring-oracle-ingestion/scripts/ingestion-status.sh --window-minutes 120
 ```
 

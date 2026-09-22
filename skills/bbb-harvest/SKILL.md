@@ -104,12 +104,12 @@ node bin/elephant-county.mjs bbb-link \
 ```
 
 The linker automatically accepts unique exact license, phone, and normalized-name
-matches. Jaro-Winkler matches are review candidates only and must not set public property
+matches. Jaro-Winkler matches are review candidates only and must not set accepted property
 flags without explicit review. Preserve accepted links and review candidates as private
-audit artifacts. The linker must reproduce the permit publication's exclusions and
-deduplication, reconcile source/published/linked/excluded permit counts exactly, and prove
-that every BBB-flagged property also has `has_permits = true` before exact-byte publication
-approval. The flag links the current BBB snapshot to historical permit contractor
+audit artifacts. The linker must reproduce the permit reconciliation exclusions and
+deduplication, reconcile source/loaded/linked/excluded permit counts exactly, and prove
+that every BBB-flagged property also has `has_permits = true` before lexicon validation.
+The flag links the current BBB snapshot to historical permit contractor
 identities; it does not claim that a contractor held BBB accreditation when an older
 permit was issued.
 

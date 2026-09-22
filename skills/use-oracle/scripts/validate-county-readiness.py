@@ -46,7 +46,7 @@ GATE_OWNERS = {
 SAFE_PREPARATION_ACTIONS = [
     "Continue bounded source and jurisdiction enumeration",
     "Continue adapter fingerprinting, scaffolds, fixtures, and bounded tests",
-    "Continue AWS BBB runtime, Neon destination, and Filebase/IPNS readiness",
+    "Continue AWS BBB runtime, internal destination, upload-node, and Atlas PR readiness",
     "Prepare named API or records requests for blocked sources",
 ]
 READY_AUTO_ADVANCE_ACTION = (

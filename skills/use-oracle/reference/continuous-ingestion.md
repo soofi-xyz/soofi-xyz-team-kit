@@ -51,8 +51,8 @@ Record:
 - independently proven Neon destination identifiers;
 - AWS BBB execution proof: approved AWS account/region, remote runtime identity, US egress,
   `operator_machine: false`, and secret references/availability—not secret values;
-- Filebase publication readiness: credential reference/availability, bucket, IPNS owner,
-  approval state, and last published watermark;
+- Atlas publication readiness: upload-node credential availability, Atlas repository
+  access, county-page path, PR state, global index CID, and last published watermark;
 - stage state, attempt count, heartbeat, lease expiry, fencing token, checkpoint URI and
   signature, artifact manifest URI, source/captured/loaded/published counts, and blocker
   owner/action.
@@ -100,36 +100,34 @@ recovery action, and continue independent workstreams.
 
 ## Automatic stage transitions
 
-- Intake launches source/jurisdiction enumeration, adapter determination/build, identity-registry
-  route proof, execution and destination proof, Filebase/IPNS readiness, and blocker routing
-  in parallel. Adapter build is not permit harvest.
-- After appraisal/transform readiness, read permits that print a license number and
-  resolve each one by official license-detail lookup, then the Sunbiz company. Use
-  the permit license number, person name, and company name only as DBPR search keys.
-  Persist company, person, and license from the DBPR record. If DBPR returns no
-  match, write no contractor, person, or license. Write
-  `property_improvement_has_contractor` from `property_improvement` to `company`
-  (the contractor is the company, not a separate class), `contractor_has_license`
-  from `company` to `license` (relationship objects are only `from` and `to`; the
-  license id is `license_identifier` on class `license`), and `contractor_has_person`
-  from `company` to `person` (schema title `company_to_person`; the person is an
-  object with `first_name` and `last_name`, not a string field, and there is no
-  license field on the person). `source_http_request.url` on those DBPR records is
-  the official DBPR license-detail URL, not the permit page and not the Sunbiz
-  download page. The Sunbiz company detail URL stays `search.sunbiz.org` by document
-  number. Do not wait for a statewide relationship extract before that read. Enqueue
-  `dbpr-license-ingest` for the public-records extract only when a permit has no
-  license number and historical qualification needs it. Schema gaps after loading
-  supported tables do not skip that extract.
+- Intake launches source/jurisdiction enumeration, adapter determination/build,
+  identity-registry route proof, execution and internal-destination proof, upload-node and
+  Atlas-PR readiness, and blocker routing in parallel. Adapter build is not permit harvest.
+- After appraisal/transform readiness, enqueue identity-baseline load. Sunbiz comes
+  first: stamp each company with a GET of `search.sunbiz.org` by document number, not
+  the bulk download page. Then enqueue `dbpr-license-ingest`. A printed permit license
+  number, person name, and company name are DBPR search keys only. Persist company,
+  person, and license from the DBPR license-detail record. If DBPR returns no match,
+  write no contractor, person, or license. Do not persist those records copied from
+  the permit. Map a match with `property_improvement_has_contractor`
+  (`property_improvement` → `company`), `contractor_has_license` (`company` →
+  `license`, `license_identifier` on class `license`), and `contractor_has_person`
+  (`company` → `person`, `first_name` and `last_name`; no license field on the
+  person). Relationship objects are only `from` and `to`. Do not enqueue `PermitFeed`
+  for historical qualification of permits that omit a license number until the
+  public-records relationship extract is adequate. That extract does not block
+  reading permits that already print a license number. Schema gaps after loading
+  supported tables do not skip acquisition.
 - Readiness `PASS` enqueues the next dependency-ready seed/pilot/run stages automatically.
 - A capture handoff enqueues transform/validation; a valid transform handoff enqueues
-  idempotent load/match; a reconciled load advances the loaded watermark and enqueues publish
-  preparation.
+  idempotent load/match; a reconciled load advances the loaded watermark and enqueues the
+  CAR/table/Atlas-PR preparation sequence.
 - A readiness block prevents seed, pilots, adapter scale-out, and full ingestion, but keeps
   bounded enumeration, adapter implementation/fixtures, access remediation, records-request
   preparation, and publication readiness active.
-- PII publication waits for the durable human approval only. Once approved, `Publish.tick`
-  uploads and the controller continues through verification without another prompt.
+- Public publication requires the authorized Atlas scope and any required privacy approval.
+  Once authorized, continue through CLI upload/readback, Atlas PR, merge wait, global IPNS,
+  and MCP sync without inventing a second publisher.
 
 ## Completion and snapshot drift
 
@@ -137,12 +135,12 @@ Set `COMPLETE` only when the requested scope has:
 
 1. terminal source enumeration and capture checkpoints;
 2. reconciled, idempotently loaded Neon rows with linked and valid-unlinked counts;
-3. a frozen privacy-approved artifact manifest and watermark;
-4. immutable Filebase/IPFS upload and CID;
-5. remote digest/count readback;
-6. IPNS/catalog/MCP registration; and
-7. successful `listPublishedCounties`, `getOracleDatasetInfo`, and representative Donphan
-   smoke checks.
+3. validated lexicon groups and one validated CAR per data group;
+4. CLI-exported normalized table roots;
+5. archive/table upload with remote CID readback;
+6. merged Atlas county page and verified global Atlas IPNS; and
+7. successful MCP sync, `listAtlasCounties`, `getAtlasDatasetInfo`, and representative
+   scoped `queryAtlas` checks.
 
 Capture is not load. Load is not publication. Publication is not MCP visibility.
 

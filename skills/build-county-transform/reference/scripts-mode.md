@@ -20,21 +20,15 @@ zip -j county-input.zip input.html property_seed.json unnormalized_address.json
 elephant-cli transform --input-zip county-input.zip --scripts-zip county-scripts.zip --output-zip county-transformed.zip
 ```
 
-The CLI runs the scripts, then creates the county data-group root from the relationship
-files. It does **not** create the seed data-group root in this mode.
+The CLI runs the scripts, creates the county data-group root from the relationship
+files, then writes the seed data-group root and `address_has_parcel.json` linking the
+`address.json` and `parcel.json` the scripts produced (elephant-cli #251). Files the
+scripts already wrote are kept; a script that emits its own seed root is left alone. The
+output validates and hashes as it is. No seed-mode run and no merge step.
 
-## Produce the seed root and merge it
-
-```bash
-# seed.csv: parcel_id,address,method,url,multiValueQueryString,source_identifier,county
-zip -j seed-input.zip seed.csv
-elephant-cli transform --input-zip seed-input.zip --output-zip seed-bundle.zip
-mkdir merged && unzip -qo county-transformed.zip -d merged && unzip -qn seed-bundle.zip -d merged
-```
-
-County files win on name collisions (`-n` does not overwrite), the seed bundle adds the
-seed root, `address_has_parcel.json`, and the seed entities. Validate the merged
-directory, not the two halves.
+If the CLI warns that `address.json` or `parcel.json` is missing, the scripts did not emit
+them and `hash` cannot derive the property CID: fix the scripts, do not hand-merge a seed
+bundle.
 
 ## Traps seen on real counties
 
@@ -42,7 +36,8 @@ directory, not the two halves.
   `source_http_request` and fail validation. Strip them at seed generation.
 - An empty `address` column produces a seed address that fails the lexicon's address
   schema on every field. The seed row needs the real unnormalized address.
-- Scripts that emit `fact_sheet.json` without a relationship trigger the unused-file
-  error; emit it only with its relationships.
+- Scripts must not emit `fact_sheet.json` or `*_has_fact_sheet.json`: the CLI no longer
+  generates fact sheets, the archive carries only lexicon data, and an unlinked file fails
+  validation.
 - The runtime's transform runner executes these scripts one parcel at a time with
   `process.chdir`; never run two parcels concurrently in one process.

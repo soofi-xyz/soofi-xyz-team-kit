@@ -2,8 +2,8 @@
 
 This overlay governs how Oracle drives bundled stage skills under `skills/` on **one chosen
 runtime** at `skills/use-oracle/runtime/` (default: local Restate + Postgres; AWS markers
-only when the runtime contains oracle-node infrastructure). It does not replace
-`onboard-county`, the seed CSV, delta/repair refresh, or the IPFS publish path. Apply
+only when the bundled runtime contains AWS infrastructure). It does not replace
+`onboard-county`, the seed CSV, delta/repair refresh, or the Atlas publish path. Apply
 [`continuous-ingestion.md`](./continuous-ingestion.md) for durable run state, autonomous
 stage transitions, handoffs, worker recovery, provenance, and completion.
 
@@ -21,8 +21,8 @@ At intake, automatically start every independent, reversible preparation track:
   identity-registry routes (Sunbiz + official DBPR), and reputation-enrichment scope;
 - fingerprint each portal/vendor, map reusable adapter coverage, and start missing adapter
   scaffolds, fixtures, and bounded tests;
-- prove the selected stack, Neon destination, AWS remote BBB execution path, Filebase
-  credential availability, publication bucket, and IPNS ownership;
+- prove the selected stack, internal Query DB destination, AWS remote BBB execution path,
+  upload-node availability, Atlas repository access, and county-page path;
 - classify access blockers and prepare the named API/records request.
 
 Do not serialize these tracks behind parcel ingestion. A readiness failure stops seed, pilots,
@@ -218,9 +218,9 @@ Never return private rows, addresses, folios, names, credentials, raw errors, or
 ### 14. Publish fail-closed
 
 Follow the publication checklist in [`readiness-and-completeness.md`](./readiness-and-completeness.md).
-**PII publish is human-approved, then automated.** The `Publish` object dry-runs until a
-human POSTs `Publish/<county>/approve`; after that, `tick` uploads to Filebase/IPFS.
-Coverage is public metadata and must use IPFS/IPNS only.
+Require the single sequence: validate group, build CAR, validate CAR, export tables and
+Atlas page, upload both roots with readback, merge the Atlas county-page PR, verify global
+Atlas IPNS, then synchronize MCP 2.0 SQL. Never publish internal Query DB intermediates.
 
 Availability must be typed:
 
@@ -286,8 +286,8 @@ Stop and request human action for:
 
 - CAPTCHA;
 - API/login authorization;
-- AWS remote-runtime or Filebase secret injection, requested at intake rather than at the
-  blocked execution/publish stage;
+- AWS remote-runtime or upload-node secret injection, requested at intake rather than at
+  the blocked execution/publication stage;
 - official records requests and fees (name office, portal, and system from
   [`request-routing.md`](./request-routing.md));
 - privacy/legal approval;

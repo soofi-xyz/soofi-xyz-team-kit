@@ -1,6 +1,6 @@
 /**
  * Generic dispatch over a county adapter's `buildSeed` / `captureAndTransform`
- * / `validateRun` / `buildPublicationArtifacts` methods, plus the one-parcel
+ * / `validateRun` / `buildReconciliationArtifacts` methods, plus the one-parcel
  * fixture replay pipeline the CLI's `replay` command and Gate B tests use.
  *
  * This module has no county-specific knowledge; every county-specific
@@ -13,7 +13,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { parseCsvRecords } from "./csv.mjs";
-import { publishFilebase } from "./filebase.mjs";
 
 export const FIXTURE_REPLAY_AS_OF_DATE = "2026-09-14";
 
@@ -23,7 +22,7 @@ export const FIXTURE_REPLAY_AS_OF_DATE = "2026-09-14";
  * @property {(options: object) => Promise<object>} buildSeed
  * @property {(options: object) => Promise<object>} captureAndTransform
  * @property {(manifest: object) => Promise<object>} validateRun
- * @property {(run: object) => Promise<object>} buildPublicationArtifacts
+ * @property {(run: object) => Promise<object>} buildReconciliationArtifacts
  */
 
 /**
@@ -62,21 +61,21 @@ export async function validateRun(adapter, manifest) {
 }
 
 /**
- * Build query-table + coverage publication artifacts via a county's adapter.
+ * Build internal query-table and coverage reconciliation artifacts.
  *
  * @param {CountyAdapter} adapter - County adapter.
  * @param {object} run - Ingest output directory plus seed rows.
- * @returns {Promise<object>} Publication artifacts.
+ * @returns {Promise<object>} Reconciliation artifacts.
  */
-export async function buildPublicationArtifacts(adapter, run) {
-  return adapter.buildPublicationArtifacts(run);
+export async function buildReconciliationArtifacts(adapter, run) {
+  return adapter.buildReconciliationArtifacts(run);
 }
 
 /**
  * @typedef {object} ReplayOptions
  * @property {CountyAdapter} adapter - County adapter under test.
  * @property {string} fixtureDir - Directory containing `seed.csv` and an `html/` subdirectory.
- * @property {string} outputDir - Scratch directory for ingest + publish output.
+ * @property {string} outputDir - Scratch directory for ingest and reconciliation output.
  * @property {boolean} [skipValidate] - When false, run {@link validateRun} and fail on issues. Defaults to true.
  */
 
@@ -84,17 +83,16 @@ export async function buildPublicationArtifacts(adapter, run) {
  * @typedef {object} ReplayResult
  * @property {object} manifest - Ingest run manifest.
  * @property {object | null} validation - Validation summary, or null when `skipValidate` is true.
- * @property {object} artifacts - Publication artifacts (Parquet + coverage paths, labels).
- * @property {object} publishResult - Filebase dry-run report.
+ * @property {object} artifacts - Internal reconciliation artifacts.
  * @property {Record<string, string>[]} seedRows - Parsed fixture seed rows.
  * @property {string} ingestDir - Directory holding per-parcel `transformed.zip` output.
- * @property {string} publishDir - Directory holding `query-table.parquet` / `dataset-coverage.json`.
+ * @property {string} workingDir - Directory holding private reconciliation artifacts.
  */
 
 /**
  * Run the full offline replay pipeline for one county fixture: seed →
  * capture/transform (fixture HTML only, no network) → optional structural
- * validation → publication artifacts → a credential-free Filebase dry-run.
+ * validation → internal reconciliation artifacts.
  *
  * @param {ReplayOptions} options - Adapter, fixture directory, and output directory.
  * @returns {Promise<ReplayResult>} Every artifact produced by the replay.
@@ -108,7 +106,7 @@ export async function runReplay({ adapter, fixtureDir, outputDir, skipValidate =
   }
 
   const ingestDir = path.join(outputDir, "ingest");
-  const publishDir = path.join(outputDir, "publish");
+  const workingDir = path.join(outputDir, "reconciliation");
 
   const manifest = await captureAndTransform(adapter, {
     seedRows,
@@ -126,13 +124,11 @@ export async function runReplay({ adapter, fixtureDir, outputDir, skipValidate =
     }
   }
 
-  const artifacts = await buildPublicationArtifacts(adapter, {
+  const artifacts = await buildReconciliationArtifacts(adapter, {
     outputDir: ingestDir,
     seedRows,
-    publishDir,
+    workingDir,
   });
 
-  const publishResult = await publishFilebase(artifacts, { dryRun: true });
-
-  return { manifest, validation, artifacts, publishResult, seedRows, ingestDir, publishDir };
+  return { manifest, validation, artifacts, seedRows, ingestDir, workingDir };
 }

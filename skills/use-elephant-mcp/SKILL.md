@@ -1,156 +1,111 @@
 ---
 name: use-elephant-mcp
-description: "Operating guide for exploring Elephant open data through the bundled elephant MCP server. Use for county property questions, business-category counts and groups, contractor quality, address mismatches, or schema fields. Not for direct database access or county ingestion."
+description: "Explore published county property data through the Elephant MCP: scoped counts and filters, property lookups, area questions, and lexicon schema definitions. Use when answering questions about published Atlas county records. Not for ingestion."
 ---
 
 # Use Elephant MCP
 
-This skill governs how to **explore Elephant data through the MCP server** published as
-[`@elephant-xyz/mcp`](https://github.com/elephant-xyz/elephant-mcp). The agent reads Oracle
-open-data (IPFS), geo indexes, and lexicon schemas by calling MCP tools — never by shelling
-out to IPFS, AWS, or ad-hoc HTTP.
+Call only MCP tools on server `elephant`. The server serves a local snapshot synchronized
+from the global Atlas index; request handlers never fetch remote archives. The ingestion
+query DB is internal: never query it, expose it, or treat it as the MCP or publication
+source.
 
-Do **not** use this skill for:
+## Read first
 
-- **Neon SQL** over ingested rows → [`use-elephant-query-db`](../../use-elephant-query-db/SKILL.md)
-- **County ingestion / refresh** → [`use-oracle`](../../use-oracle/SKILL.md)
+1. [`reference/mcp-setup.md`](./reference/mcp-setup.md) — bundled server, cutover status, sync
+2. [`reference/tools-and-workflows.md`](./reference/tools-and-workflows.md) — tool contract and table layout
+3. [`reference/exploration-patterns.md`](./reference/exploration-patterns.md) — recipes
 
-## Always read first
+## Mandatory gate
 
-1. [`reference/mcp-setup.md`](./reference/mcp-setup.md) — Cursor MCP install, env vars, regenerating the county maps from the catalog
-2. [`reference/tools-and-workflows.md`](./reference/tools-and-workflows.md) — tool catalog and decision tree
-3. [`reference/exploration-patterns.md`](./reference/exploration-patterns.md) — worked patterns and limitations
-4. [`reference/consolidated-property-shape.md`](./reference/consolidated-property-shape.md) — JSON paths for filtering
+1. Confirm MCP server `elephant` is connected.
+2. Call `listAtlasCounties`. If the tool is absent, the bundled server has not been cut
+   over to MCP 2.0 yet — report that and stop (see `mcp-setup.md`).
+3. Resolve the requested `state` (two-letter code), `county`, and `dataGroup` from the
+   index. Ask only when the scope cannot be inferred safely.
+4. Call `getAtlasDatasetInfo` for that exact scope.
+5. Stop on a connection, sync, or unpublished-scope error. Use the setup reference; do
+   not bypass MCP with direct IPFS, HTTP, shell, or database access.
 
-## Prerequisites
-
-- **Node.js 22.18+** (Node ≥26 requires the built `dist/index.js`; do not import `package.json`
-  from raw TypeScript)
-- **Elephant MCP** via this plugin's bundled `mcp.json` (server name **`elephant`**), installing
-  **`main`** from `github:elephant-xyz/elephant-mcp#main` until npm publishes a build with
-  `queryProperties` and current Oracle open-data/geo tools. Reload Cursor after installing/updating
-  the kit; confirm **`elephant`** is enabled under MCP settings.
-- **Optional env** (for teammates, not hard-coded in skill text):
-  - `OPENAI_API_KEY` in the shell for `getVerifiedScriptExamples`, or AWS creds for Bedrock. Do
-    **not** set an empty key — the server crashes on a blank `OPENAI_API_KEY`.
-  - Geo index, county maps, and open-data IPNS are preconfigured in the plugin `mcp.json`
-- **Default dataset:** Lee County, FL (reference). Confirm if the user names another county.
-
-## MCP gate (mandatory)
-
-Before exploring data:
-
-1. Confirm MCP server **`elephant`** is connected (MCP panel shows tools enabled).
-2. Call `getOracleDatasetInfo` on server **`elephant`** with the county under discussion
-   (`county` is optional and defaults to Lee). If tools are missing or the call fails
-   with a connection error, **STOP** and point to
-   [`reference/mcp-setup.md`](./reference/mcp-setup.md) (reload Cursor, enable `elephant`, manual
-   fallback). Do not bypass with shell, IPFS CLI, or direct CID fetches.
-
-For a query-only HOA/PM slice, call `getOracleDatasetInfo` with the base county for context,
-then append `-hoa-pm` to the base key for `getPropertyQuerySchema` and `queryProperties`.
-Available base keys are Broward, Duval, Hillsborough, Lee, Miami-Dade, Orange, Osceola,
-Palm Beach, Pasco, Pinellas, Polk, Seminole, Clay, Hernando, Lake, Manatee, Marion,
-Sarasota, St. Johns, and Volusia. These MCP overlays
-intentionally have no coverage snapshot and are not returned by `listPublishedCounties`;
-schema success is their availability gate. Treat HOA/property-manager lookup as an attribute
-query: do not use `getOracleProperty` and do not substitute the base county's property table.
-Never ask the user for or pass a raw CID. Query the supplied APN exactly first. If it misses,
-a second SQL query may compare `regexp_replace(parcel_identifier, '[^0-9]', '', 'g')` to the
-digits from the supplied APN, but report both exact strings when that fallback matches. Never
-silently rewrite the user-facing identifier.
-
-When calling tools in Cursor, use `CallMcpTool` with `server`: **`elephant`** and `toolName` set
-to the exact registered tool name (e.g. `getOracleDatasetInfo`).
-
-**Pass `county` on every tool that accepts it.** Omitting it silently falls back to the default
-county (Lee) and answers the wrong question. `listPublishedCounties` returns the canonical
-catalog of counties the server can serve. Overlay counties (`clay`, `hernando`, `lake`,
-`manatee`, `marion`, `santa-clara`, `sarasota`, `st-johns`, `volusia`) are queryable
-through `PROPERTY_QUERY_TABLE_MAP` even when absent from that catalog. For those,
-`getOracleDatasetInfo` may return `source: "query-table"` and `publicationScope: null`;
-continue with `queryProperties`. Clay, Hernando, Lake, Manatee, Marion, Sarasota,
-St. Johns, and Volusia are targeted OpenDoor identity overlays (not full county rolls);
-every overlay row has `elephant_uuid` / `elephant_token`.
+Every Atlas tool except `listAtlasCounties` takes `state`, `county`, and `dataGroup`.
+There is no default-county workflow.
 
 ## Exploration playbook
 
-For **property attribute / aggregate / count / filter** questions (how many, by owner, by zip,
-by city, by value, by acreage, by material) use the property SQL query path below.
-For **Overture business place/category** questions, use the structured places query path.
-For geo-scoped or per-record questions, narrow geographically or paginate, then fetch
-consolidated JSON.
+### Discover tables
 
-0. **Business places / categories** — `getPlaceQuerySchema` for the county → `queryPlaces`.
-   Use `mode: "count"` for counts, `"rows"` for lists, and `"groupByPrimaryCategory"` for
-   grouped primary categories. Use exact `taxonomyPrimary` for a single primary label and
-   `taxonomyHierarchyMember` for roll-ups (for example, `restaurant` anywhere in the
-   `/`-delimited hierarchy). Do not count taxonomy alternates. For business/co-location counts
-   and lists, default `hostedService` to `"exclude"` and disclose that advisory hosted
-   ATMs/kiosks/services were excluded; use `"include"` when the user requests every source row.
-   Report Overture release/licence provenance and honest `completionPercent: null` because no
-   authoritative all-business denominator exists. Never read the places IPFS URL or Neon
-   directly; the MCP resolves the catalog-authorized parquet.
-1. **Property attribute / aggregate / count / filter** — `getPropertyQuerySchema` (learn the
-   published columns, including `elephant_uuid` / `elephant_token`) → `queryProperties` with ONE read-only `SELECT`/`WITH…SELECT` over the
-   `properties` view. Single statement, SELECT/CTE only; row cap auto-applies (default 100,
-   max 1000). Use `ILIKE '%…%'` for owner (`owners_text`), city (`address_city`), material
-   (`exterior_wall_material`). Use `elephant_uuid` or `elephant_token` for deterministic
-   `address:v1` matching (country, state, ZIP5, street, unit) — do not reuse
-   `normalizedAddressHash`. This runs SQL over the **OPEN IPFS parquet via MCP (NOT Neon)** —
-   do **not** hand these off to `use-elephant-query-db`. `county` defaults to `lee` and must
-   match the MCP's `PROPERTY_QUERY_TABLE_MAP`. Coverage varies by county: Lee has no
-   acreage/material (NULL); HOA membership (`hoa_flag`) is usually NULL; after
-   `hoa-pm-enrich`, automatically route HOA/property-management questions for an available
-   base key to its `-hoa-pm` key. These are bounded slices, not county-wide denominators.
-   `hoa_cid` / `property_manager_cid` may be populated. Identity columns are NULL
-   until a republish includes them. The new slices have 705 Clay, 167 Hernando,
-   770 Lake, 234 Manatee, 214 Marion, 315 Sarasota, 234 St. Johns, and 784 Volusia
-   rows. Treat Clay through St. Johns `no_subdivision` results as a stale HOA/PM overlay
-   gap, not a county fact. When the base official/identity table has subdivision text,
-   tell Oracle to run `hoa-pm-overlay-sync`; do not report subdivision as unavailable.
-   Confirm current fields with `getPropertyQuerySchema` / `SELECT count(col)` and keep
-   unresolved HOA/PM matches explicit rather than inventing them.
-2. **Dataset context** — `getOracleDatasetInfo` → county, `propertyCount`, freshness timestamps
-3. **Geo-scoped questions** — `findPropertiesInArea` with `county` plus bbox or polygon →
-   parcel/property IDs in area → `getOracleProperty` with `county` on candidates. Omitting
-   `county` searches the default (Lee) query table.
-4. **County-wide discovery** — `listOracleProperties` with pagination (`limit` max 500,
-   increase `offset`) → selective `getOracleProperty`
-5. **Value aggregates in area** — `sumPropertyValueInArea` with `county` when the question is
-   AVM sum/count in a bbox/polygon
-6. **Contractor / business quality** — `getOracleProperty` → inspect BBB blocks and Sunbiz
-   registrations (see consolidated-property-shape)
-7. **Address mismatches** — compare appraisal, permit, and Sunbiz address fields in consolidated
-   JSON; cite field paths and normalized keys when present
-8. **Permits** — if the county is in `PERMIT_QUERY_TABLE_MAP`, use `getPermitQuerySchema` →
-   `queryPermits`; that is the only path for county-wide permit counts. Otherwise
-   `getPropertyPermits` with `parcelId` **and `countyFips`** (default `12071` = Lee). On-demand
-   harvest needs pipeline ingress on the MCP; if that is not configured, report harvest
-   unavailable instead of polling for 90s.
-9. **Schema semantics** — `listClassesByDataGroup`, `listPropertiesByClassName`,
-   `getPropertySchema` when the user asks what a field means or which class owns it
-10. **Transform / mapping help** — `getVerifiedScriptExamples` (requires embedding credentials)
+Call `getAtlasSchema` without `table` to list the tables synchronized for the scope
+(one per lexicon class and relationship, plus `properties`). Call it again with `table`
+to get exact columns.
 
-## Non-negotiables
+### Query
 
-- **MCP tools only** for Elephant data reads in this workflow.
-- Never access places parquet/index/NOTICE through direct IPFS/HTTP or query Neon from Donphan.
-- Never hard-code or print API keys, AWS secrets, or IPFS credentials.
-- Never claim a **full-count** answer without stating geo scope, pagination limits, and how many
-  records were actually inspected.
-- Report **methodology**: tools called, area/bbox used, sample size, filter rules applied.
-- Open-data attribute/aggregate/filter SQL runs here via `queryProperties` (open IPFS parquet,
-  not Neon) — only hand off to `use-elephant-query-db` for Neon-only rows/joins not in the parquet.
-- Overture places rows/counts/groups run through structured `queryPlaces`, not `queryProperties`.
-- Hand off to `use-oracle` when the user wants to ingest or refresh source data.
+Call `queryAtlas` with `sql` and `limit` (max 1000). Send exactly one read-only
+`SELECT` or `WITH` statement. JOINs and CTEs are allowed; every content table is
+scope-filtered server-side, so never add `state`/`county`/`data_group` predicates by
+hand. Control tables, catalogs, and non-allow-listed functions are rejected. Use only
+columns returned by `getAtlasSchema`.
+
+### List and assemble properties
+
+- `listAtlasProperties` (`limit`, `offset`) pages property CIDs for the scope.
+- `getAtlasProperty` (`propertyCid`) assembles one property by walking its
+  relationships; shared entities (addresses, companies, people) are included.
+- Do not pass a folio or parcel identifier to `getAtlasProperty`. Both `property` and
+  `parcel` carry `parcel_identifier`; look the folio up first with
+  `SELECT property_cid FROM property WHERE parcel_identifier = '<folio>'` (one table, no
+  join; `parcel` gives the same answer), then pass that `property_cid`.
+
+### Area and value questions
+
+There are no geo tools. Write the bbox JOIN in `queryAtlas`:
+
+```sql
+SELECT p.cid AS property_cid, g.latitude, g.longitude, t.property_market_value_amount
+FROM property p
+JOIN property_has_address pha ON pha.from_cid = p.cid
+JOIN address_has_geometry ahg ON ahg.from_cid = pha.to_cid
+JOIN geometry g ON g.cid = ahg.to_cid
+LEFT JOIN property_has_tax pht ON pht.from_cid = p.cid
+LEFT JOIN tax t ON t.cid = pht.to_cid
+WHERE g.latitude BETWEEN :south AND :north
+  AND g.longitude BETWEEN :west AND :east
+```
+
+Relationship tables always carry `relationship_cid, from_cid, to_cid, property_cid,
+data_group_cid`; `geometry.latitude`/`geometry.longitude` are DOUBLE. Wrap in
+`SELECT count(*), sum(...)` for aggregates.
+
+### Schema semantics
+
+Use `listClassesByDataGroup`, `listPropertiesByClassName`, and `getPropertySchema`.
+Use `getVerifiedScriptExamples` only when embedding credentials are configured.
+
+## Tool surface
+
+Atlas: `listAtlasCounties`, `getAtlasDatasetInfo`, `getAtlasSchema`, `queryAtlas`,
+`listAtlasProperties`, `getAtlasProperty`.
+
+Lexicon: `listClassesByDataGroup`, `listPropertiesByClassName`, `getPropertySchema`,
+`getVerifiedScriptExamples`.
+
+Removed in 2.0 — do not call: HOA, permit, places, dataset-plan, area/geo, catalog,
+and legacy open-data tools.
+
+## Evidence and limits
+
+- Report the exact state/county/data-group scope and the tables used.
+- Report tools in call order and significant parameters.
+- Every response carries `source` = `{ state, county, dataGroup, archiveCid, tablesCid,
+  schemaCid, indexCid, syncedAt }`. Report those CIDs with every answer.
+- State row limits, filters, and whether an answer is exhaustive.
+- Treat absent groups, tables, columns, and rows distinctly.
+- Do not infer county completeness from one data group or table.
+- Do not infer legal identity from names, addresses, or enrichment alone.
+- Hand ingestion or refresh requests to `use-oracle`.
 
 ## Expected output
 
-When answering exploration questions, return:
-
-- Restated question and inferred filters (geo, business type, quality threshold)
-- MCP tools called (in order) and key parameters (bbox, offset/limit, parcel IDs sampled)
-- Answer with counts or list (parcel ID, address snippet, evidence field)
-- Coverage limits (e.g. "inspected 120 of ~45k properties in Fort Myers bbox")
-- Gaps or blockers with exact fix (MCP not connected, missing `ORACLE_GEO_INDEX_IPNS`, etc.)
+Return the restated question, explicit scope, tools called, result, methodology, the
+`source` CIDs, row/sample limits, missing data, and the exact sync or publication fix
+for any blocker.

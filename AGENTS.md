@@ -67,7 +67,7 @@ Follow these conventions whenever you touch files in this repo.
   broken symlinks — see the script's module docstring for the exact gates.
 - See
   [`skills/use-oracle/reference/self-contained-ingestion.md`](./skills/use-oracle/reference/self-contained-ingestion.md)
-  for the full install → replay → pilot → publish command sequence and the team-facing test
+  for the full install → replay → pilot → Atlas handoff sequence and the team-facing test
   evidence template.
 
 ## AWS access guidance
@@ -107,7 +107,7 @@ soofi-xyz-plugin-kit/
 
 ## Local validation
 
-Run the plugin validation script before preparing a PR. It checks that Copilot and Codex agent copies are synced, manifests are consistent, agent and skill frontmatter is valid, source names match paths, generated agents are real files, skills stay under 500 lines, `oracle-paths.sh` resolves independent of cwd, and the bundled Oracle runtime package/catalog are present.
+Run the plugin validation script before preparing a PR. It checks that Copilot and Codex agent copies are synced, manifests are consistent, agent and skill frontmatter is valid, source names match paths, generated agents are real files, skills stay under 500 lines, `oracle-paths.sh` resolves independent of cwd, and the bundled Oracle runtime package is present.
 
 ```bash
 scripts/validate-plugin.sh

@@ -1,9 +1,7 @@
 /**
- * Pinellas query-table row mapping, Parquet schema, and Filebase publication
- * targets.
+ * Pinellas internal reconciliation-table row mapping and Parquet schema.
  *
- * Adapted from `oracle-node@ff68b0b6`
- * `scripts/publish-pinellas-pilot-to-filebase.mjs`
+ * Adapted from historical `oracle-node@ff68b0b6` table helpers
  * (`mapTransformedFilesToQueryTableRow`, `propertyIdForStrap`,
  * `ownerNameFromRecord`, `buildQueryTableParquetSchema`,
  * `buildPinellasPilotCoverage`). Two fixes vs. the source script, both
@@ -29,9 +27,6 @@ export const SOURCE_SYSTEM = "pinellas_appraiser";
 export const COUNTY_KEY = "pinellas";
 export const COUNTY_NAME = "Pinellas";
 export const STATE_CODE = "FL";
-export const QUERY_TABLE_BUCKET = "elephant-oracle-query-table-pinellas";
-export const QUERY_TABLE_IPNS_LABEL = "oracle-query-table-pinellas";
-export const COVERAGE_IPNS_LABEL = "oracle-dataset-coverage-pinellas";
 
 /**
  * Stable UTF-8 property id derived from a Pinellas STRAP.

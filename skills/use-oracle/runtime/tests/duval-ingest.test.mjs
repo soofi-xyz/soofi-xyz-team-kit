@@ -23,7 +23,7 @@ import {
   hasCompletedTransform,
   captureAndTransform,
   validateRun,
-  buildPublicationArtifacts,
+  buildReconciliationArtifacts,
   duvalAdapter,
   ZIP_LOCAL_FILE_MAGIC,
   TRANSFORMS_DIR,
@@ -259,7 +259,9 @@ describe("captureAndTransform (Gate B fixture, no network)", () => {
   it("exposes the same captureAndTransform/validateRun functions on the duvalAdapter object", () => {
     expect(duvalAdapter.captureAndTransform).toBe(captureAndTransform);
     expect(duvalAdapter.validateRun).toBe(validateRun);
-    expect(duvalAdapter.buildPublicationArtifacts).toBe(buildPublicationArtifacts);
+    expect(duvalAdapter.buildReconciliationArtifacts).toBe(
+      buildReconciliationArtifacts,
+    );
     expect(duvalAdapter.key).toBe("duval");
     expect(duvalAdapter.countyName).toBe("Duval");
   });
@@ -398,7 +400,7 @@ describe("all-fail empty-export gate (Review finding #1, fail-closed by default)
     expect(validation).toEqual({ valid: true, checked: 0, issues: [] });
   });
 
-  it("buildPublicationArtifacts throws on a 1-of-1 all-failure run by default, and writes a zero-row table with allowEmpty", async () => {
+  it("buildReconciliationArtifacts rejects an all-failure run unless allowEmpty is explicit", async () => {
     const tempDir = await mkdtemp(path.join(tmpdir(), "duval-all-fail-export-"));
     try {
       const [fixtureRow] = await loadFixtureSeedRows();
@@ -411,19 +413,25 @@ describe("all-fail empty-export gate (Review finding #1, fail-closed by default)
         liveFetch: false,
       });
 
-      const publishDir = path.join(tempDir, "publish");
+      const workingDir = path.join(tempDir, "reconciliation");
       await expect(
-        buildPublicationArtifacts({ outputDir, seedRows: [missingRow], publishDir }),
-      ).rejects.toThrow(/Refusing to publish an empty Duval query table/);
+        buildReconciliationArtifacts({
+          outputDir,
+          seedRows: [missingRow],
+          workingDir,
+        }),
+      ).rejects.toThrow(/Refusing to write an empty Duval reconciliation table/);
 
       // Nothing was written on the rejected attempt.
       const { access } = await import("node:fs/promises");
-      await expect(access(path.join(publishDir, "query-table.parquet"))).rejects.toThrow();
+      await expect(
+        access(path.join(workingDir, "query-table.parquet")),
+      ).rejects.toThrow();
 
-      const artifacts = await buildPublicationArtifacts({
+      const artifacts = await buildReconciliationArtifacts({
         outputDir,
         seedRows: [missingRow],
-        publishDir,
+        workingDir,
         allowEmpty: true,
       });
       expect(artifacts.rowCount).toBe(0);
@@ -440,13 +448,13 @@ describe("all-fail empty-export gate (Review finding #1, fail-closed by default)
     }
   });
 
-  it("buildPublicationArtifacts never throws the empty-export error for a genuinely empty seed (seedRows === 0)", async () => {
+  it("buildReconciliationArtifacts allows a genuinely empty seed", async () => {
     const tempDir = await mkdtemp(path.join(tmpdir(), "duval-zero-seed-export-"));
     try {
-      const artifacts = await buildPublicationArtifacts({
+      const artifacts = await buildReconciliationArtifacts({
         outputDir: path.join(tempDir, "ingest"),
         seedRows: [],
-        publishDir: path.join(tempDir, "publish"),
+        workingDir: path.join(tempDir, "reconciliation"),
       });
       expect(artifacts.rowCount).toBe(0);
       expect(artifacts.expectedCount).toBe(0);
@@ -457,7 +465,7 @@ describe("all-fail empty-export gate (Review finding #1, fail-closed by default)
 });
 
 describe("runReplay (in-process pipeline)", () => {
-  it("runs the full offline pipeline: seed -> capture/transform -> artifacts -> credential-free dry-run", async () => {
+  it("runs the offline pipeline through internal reconciliation artifacts", async () => {
     const tempDir = await mkdtemp(path.join(tmpdir(), "duval-replay-inprocess-"));
     try {
       const replay = await runReplay({ adapter: duvalAdapter, fixtureDir: FIXTURE_DIR, outputDir: tempDir, skipValidate: false });
@@ -475,12 +483,6 @@ describe("runReplay (in-process pipeline)", () => {
       expect(replay.validation).toEqual({ valid: true, checked: 1, issues: [] });
       expect(replay.artifacts.rowCount).toBe(1);
       expect(replay.artifacts.expectedCount).toBe(1);
-      expect(replay.publishResult).toEqual({
-        dryRun: true,
-        bucket: "elephant-oracle-query-table",
-        queryTableIpnsLabel: "oracle-query-table-duval",
-        coverageIpnsLabel: "oracle-dataset-coverage-duval",
-      });
 
       const rows = await readParquetRows(replay.artifacts.parquetPath);
       expect(rows).toHaveLength(1);
@@ -500,7 +502,7 @@ describe("runReplay (in-process pipeline)", () => {
 });
 
 describe("elephant-county replay (public CLI, subprocess)", () => {
-  it("produces required transformed JSON, a valid ZIP, one Parquet row, matching one-row coverage, and a dry-run publish for --county duval", async () => {
+  it("produces Duval transformed JSON and matching private reconciliation artifacts", async () => {
     const tempDir = await mkdtemp(path.join(tmpdir(), "duval-replay-cli-"));
     const cwdDir = await mkdtemp(path.join(tmpdir(), "duval-replay-cwd-"));
     try {
@@ -514,18 +516,8 @@ describe("elephant-county replay (public CLI, subprocess)", () => {
       expect(summary.county).toBe("duval");
       expect(summary.manifest.results[0].transformSuccess).toBe(true);
 
-      expect(summary.artifacts.bucket).toBe("elephant-oracle-query-table");
-      expect(summary.artifacts.queryTableIpnsLabel).toBe("oracle-query-table-duval");
-      expect(summary.artifacts.coverageIpnsLabel).toBe("oracle-dataset-coverage-duval");
       expect(summary.artifacts.rowCount).toBe(1);
       expect(summary.artifacts.expectedCount).toBe(1);
-
-      expect(summary.publishResult).toEqual({
-        dryRun: true,
-        bucket: "elephant-oracle-query-table",
-        queryTableIpnsLabel: "oracle-query-table-duval",
-        coverageIpnsLabel: "oracle-dataset-coverage-duval",
-      });
 
       const zipPath = path.join(tempDir, "ingest", PARCEL_ID, "transformed.zip");
       const zipBytes = await readFile(zipPath);

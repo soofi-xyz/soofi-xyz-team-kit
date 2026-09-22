@@ -1,245 +1,179 @@
 ---
 name: use-oracle
-description: "Operating guide for the Oracle public-data mining agent. Use when driving the bundled stage skills and the Elephant CLI to capture, transform, validate, pack, and publish a county's property, permit, corporate-registry, and contractor data as lexicon records in one county archive, or to re-mine a supplied list of properties."
+description: "Operate Oracle county mining and the single Atlas publication path: capture, reconcile internally, validate lexicon groups, build CARs and tables, register the county in Atlas, and verify the global Atlas index."
 ---
 
 # Use Oracle
 
-Oracle does not contain its own mining code. It **drives the bundled stage skills** under
-`skills/` for capture and transform, and the **Elephant CLI** for validation, hashing,
-archive packing, and publication. This skill is the operating contract: what a finished
-county looks like, the stack choice, the pipeline, the CLI requirements, and the rules.
+Drive the bundled ingestion runtime and the Elephant CLI. Keep ingestion,
+reconciliation, and publication boundaries explicit.
 
-## What a finished county is
+## Public boundary
 
-1. Every property is a directory of lexicon JSON: entity records with
-   `source_http_request` and `request_identifier`, relationship records that link them,
-   and one data-group root per data group, including the seed root.
-2. `elephant-cli validate` over the county directory reports no data rows.
-3. `elephant-cli hash --output-car` produced one archive whose single root is the county
-   index, plus the hash CSV mapping every property to its data-group roots.
-4. `elephant-cli validate <county>.car` passed all six checks.
-5. `elephant-cli upload <county>.car` read the root back from the gateway.
-6. The run evidence lists the root CID, block count, CLI commit, manifest URL, and node.
-7. When publishing is in scope, the existing query-table, coverage, IPNS, and MCP
-   publication ran exactly as its skills describe. The archive is an additional output
-   today, not a replacement.
+Use exactly one public path:
 
-Registry registration, replacing the IPNS and query-table path, and per-table Parquet
-indexes are out of scope for this milestone. Hand back the root CID; do not improvise
-those steps.
+```text
+validate group
+  → hash one CAR per county/data group
+  → validate CAR
+  → export normalized tables and Atlas page
+  → upload CAR and tables with readback
+  → Atlas county-page PR
+  → merge
+  → verify global Atlas IPNS
+  → synchronize MCP 2.0 SQL
+```
 
-## Always read
+Do not publish Query DB exports, per-county pointers, coverage objects, overlays, or
+environment maps. The Query DB is an internal working store for reconciliation and
+product checks. Atlas archives and CLI-exported tables are the MCP/public source.
 
-1. [`reference/car-publication.md`](./reference/car-publication.md) — the command
-   sequence, archive layout, the provider facts the design depends on, CLI requirements,
-   evidence to keep, property-list runs, known limits
-2. [`reference/readiness-and-completeness.md`](./reference/readiness-and-completeness.md) —
-   catalog fields, jump-of-ingest rules, parcel and permit gates, completeness
-3. [`reference/failure-modes.md`](./reference/failure-modes.md) — capture and enrichment
-   traps: caps, sessions, BBB counts, remote browser, secrets at process start
-4. [`reference/permit-evidence-preflight.md`](./reference/permit-evidence-preflight.md) —
-   per-source capability matrix, field evidence states, permit-to-company resolution
-5. [`reference/request-routing.md`](./reference/request-routing.md) — who receives a
-   records or API request; catalog `records_request` fields
-6. [`reference/hoa-property-management.md`](./reference/hoa-property-management.md) —
-   HOA and property-management lookup rules
-7. [`reference/self-contained-ingestion.md`](./reference/self-contained-ingestion.md) —
-   runtime install, offline replay, bounded pilot, clean-room gate
-8. [`../county-readiness-preflight/SKILL.md`](../county-readiness-preflight/SKILL.md) —
-   the deterministic validator; run it before seed, pilot, or full ingest
-9. [`reference/durable-orchestration.md`](./reference/durable-orchestration.md) — core
-   principles, adapter vs inventory status, required status report, human-required actions
-10. [`reference/continuous-ingestion.md`](./reference/continuous-ingestion.md) —
-   autonomous stage advancement, durable handoffs, worker recovery, immutable republish
-11. [`reference/continuous-safe-optimization.md`](./reference/continuous-safe-optimization.md) —
-   measured bottlenecks, bounded experiments, automatic rollback
-12. [`reference/roof-age-and-identity-reingest.md`](./reference/roof-age-and-identity-reingest.md) —
-   county re-ingest checklist, roof-age estimator, identity-edge backfill
-13. [`reference/coverage-only-publication.md`](./reference/coverage-only-publication.md) —
-   repair of a county's coverage pointer without touching its query table
+## Read first
 
-References 9 through 13 describe the capture runtime, the query-DB working store, and the
-existing query-table, coverage, and IPNS publication. That publication keeps running as
-written; `car-publication.md` adds the archive alongside it.
+1. [`reference/car-publication.md`](./reference/car-publication.md)
+2. [`reference/readiness-and-completeness.md`](./reference/readiness-and-completeness.md)
+3. [`reference/permit-evidence-preflight.md`](./reference/permit-evidence-preflight.md)
+4. [`reference/roof-age-and-identity-reingest.md`](./reference/roof-age-and-identity-reingest.md)
+5. [`reference/hoa-property-management.md`](./reference/hoa-property-management.md)
+6. [`reference/self-contained-ingestion.md`](./reference/self-contained-ingestion.md)
+7. [`reference/failure-modes.md`](./reference/failure-modes.md)
+8. [`reference/durable-orchestration.md`](./reference/durable-orchestration.md)
 
-## Choose the stack first
+## Choose the ingestion stack
 
-Identify **exactly one** capture runtime from `skills/use-oracle/runtime/` before loading
-any stage procedure. Do not warn-and-continue.
+Select one bundled runtime mode before capture:
 
-| Marker in the runtime | Stack | Load these procedures |
-|---|---|---|
-| `docker-compose.yml`, Restate services, `docs/` | **local** | Bundled `skills/` stage skills; `bootstrap-oracle-infra` is local Docker + Restate. Status: `monitoring-county-ingestion`. |
-| AWS/SQS, CDK, `catalog/published-counties.json` | **aws** | AWS profile and region, SQS seed feeder. Do not run Restate handlers. Status: `monitoring-oracle-ingestion`. |
+- **Local:** Restate + Postgres under `skills/use-oracle/runtime/`.
+- **AWS:** the bundled AWS batch/queue modules and the selected, verified AWS profile.
 
-If both markers are present, or neither, **STOP** and ask. Never run Restate procedures
-against an AWS runtime, or AWS procedures against the local stack. The stack governs
-capture and transform only; publication is the same CLI sequence on either stack.
+Do not require a sibling source checkout. Do not mix local Restate handlers with AWS
+workers. Stack choice affects capture and internal loading only; publication always uses
+the Atlas sequence above.
 
-BBB browser work runs on approved AWS-managed remote compute with US egress, never in a
-browser on the operator's machine, whichever stack captures the county.
+## Ingest and reconcile
 
-## The pipeline
+Run these stages in order:
 
-Drive it in this order for every county. There is no alternate order.
-
-1. **Intake and readiness** — `onboard-county` intake once; `county-discovery` writes
-   `skills/use-oracle/runtime/docs/<county>-sources.yaml`; then
-   `python3 skills/use-oracle/scripts/validate-county-readiness.py <that yaml>`.
-   Non-zero exit stops seed, pilot, and full ingest. It does not stop enumeration,
-   adapter fixtures, access requests, or publication readiness.
-2. **Parcel backbone** — `county-seed-data` (only after PASS), `county-appraisal-onboarding`,
-   `build-county-transform`. Capture with `elephant-cli prepare`;
-   transform with `elephant-cli transform`. Scripts mode does not write the seed
-   data-group root; produce it with seed mode from the county `seed.csv` and merge it into
-   each property directory before validation. Without the seed root, `hash` cannot
-   determine the property CID.
-3. **Permit to license to Sunbiz** — when a permit prints a license number, use that
-   license number, the person name, and the company name only as search keys for the
-   official license-detail lookup (`dbpr-license-ingest` in Florida). Persist company,
-   person, and license from the DBPR record. If DBPR returns no match, write no
-   contractor, person, or license. Map the match with
-   `property_improvement_has_contractor`, `contractor_has_license`
-   (`license_identifier` on class `license`), and `contractor_has_person`, as the
-   Rules section states. Do not wait for a statewide relationship extract before
-   reading permits that already carry a license. Do not build the whole
-   license–company graph from the bulk file and then harvest. Require the missing
-   public-records extract only for historical qualification when the permit has no
-   license number. For every county, the quarterly `cordata.zip` is the archive
-   source. The Sunbiz company detail URL rule stays: stamp each Sunbiz company with a
-   GET of `search.sunbiz.org` by document number
-   (`sunbiz:<documentNumber>:company`), not the bulk file. Do not write
+1. **Intake and readiness:** `onboard-county`, `county-discovery`,
+   `county-readiness-preflight`.
+2. **Parcel backbone:** `county-seed-data`, `county-appraisal-onboarding`,
+   `build-county-transform`.
+3. **Official identity baseline:** corporate registry, then licensing authority. In
+   Florida run `sunbiz-corporate-ingest`, then `dbpr-license-ingest`. Stamp each
+   Sunbiz company with a GET of `search.sunbiz.org` by document number
+   (`sunbiz:<documentNumber>:company`). Do not write
    `https://dos.fl.gov/sunbiz/other-services/data-downloads/` onto the company.
-4. **Permits** — `county-permit-adapter` then `county-ingest-run`; then
-   `reference/permit-evidence-preflight.md`. A printed license number is a search key.
-   A DBPR match writes company, person, and license and the three contractor edges.
-   A permit with no license number stays unresolved until the public-records extract
-   supports historical qualification. A DBPR no-match writes no contractor, person,
-   or license. Ambiguous stays unresolved.
-5. **Reputation and places** — `bbb-harvest`, `overture-places-ingest`. Enrichment only;
-   never license, qualifier, or identity evidence.
-6. **Validate the county** — `elephant-cli validate <county-dir> --output-csv <errors.csv>`.
-   Fix transforms and re-run until no data rows remain. Never suppress a lexicon error to
-   reach publication.
-7. **Hash and pack** — `elephant-cli hash <county-dir> --output-zip <hashed-dir>
-   --output-csv <hash.csv> --output-car <county>.car`. Record the root CID and block count.
-8. **Validate the archive** — `elephant-cli validate <county>.car --output-csv <car-errors.csv>`.
-   Integrity, root, index, graph, lexicon, orphans: all zero.
-9. **Publish the archive** — `elephant-cli upload <county>.car --output-json <summary.json>`;
-   local kubo by default, hosted node with `--api` and a token. Success means the gateway
-   served the root with matching bytes.
-10. **Existing publication, when in scope** — `county-query-table-publish`,
-    `county-open-data-publish`, coverage, and `deploy-open-data-mcp` exactly as their
-    skills describe: the `Publish` object dry-runs until a human approves, per-county
-    IPNS labels, catalog-driven MCP maps, Donphan smoke. Unchanged in this milestone.
-11. **Report** with the status report in `agents/oracle.md`.
+4. **Permits:** `county-permit-adapter`, `county-ingest-run`, then permit evidence
+   preflight. When a permit prints a license number, use that license number, the
+   person name, and the company name only as search keys for the official DBPR
+   license-detail lookup. Persist company, person, and license from the DBPR
+   record. If DBPR returns no match, write no contractor, person, or license. Do
+   not persist a contractor copied from the permit. Do not wait for a statewide
+   relationship extract before reading permits that already carry a license.
+   Require that extract only for historical qualification when the permit has no
+   license number. Map a DBPR match with `property_improvement_has_contractor`
+   (`property_improvement` → `company`), `contractor_has_license`
+   (`company` → `license`; `license_identifier` on class `license`), and
+   `contractor_has_person` (`company` → `person`; `first_name` and `last_name`;
+   no license field on the person). Relationship objects are only `from` and `to`.
+   `source_http_request.url` on those records is the official DBPR license-detail
+   URL, not the permit page and not the Sunbiz download page. If the live manifest
+   lacks those edges or the license source fields, record the gap and do not
+   substitute another edge.
+5. **Internal reconciliation:** `query-db-loading-matching`.
+6. **Enrichment:** BBB, places, HOA/property management, AVM, and roof age as applicable.
 
-The query DB (`query-db-loading-matching`, `use-elephant-query-db`) remains the working
-store for reconciliation, identity edges, product queries, and the existing query-table
-and coverage exports. The archive is never exported from it.
+Preserve these internal contracts:
 
-## Property-list runs
+- Key parcels by folio/request identifier, never a digits-only parcel normalization.
+- Merge idempotently through one writer per county.
+- Scope artifacts by county/job and load only fail-closed ready markers.
+- Track `(path, artifact hash)` watermarks so corrected in-place outputs reload.
+- Consume dead/invalid tombstones so stale rows do not survive.
+- Preserve raw source payloads and valid unmatched permits.
+- Link permits to the targeted parcel evidence; never trust a portal's displayed related
+  parcel without reconciliation.
+- Stamp company edges only from official, versioned, temporally valid identity evidence.
+- Preserve unresolved, ambiguous, and conflicting contacts as unlinked.
+- Compute roof age from accepted lifecycle evidence and retain confidence/coverage
+  caveats.
+- Keep reputation and places separate from legal identity.
 
-When the input is a list of properties rather than a county (for example a partner's
-set spanning many counties): split the list by county, build one `seed.csv` per county
-with only those rows, run steps 2 through 9 per county, and return one root CID per
-county. Never merge counties into one archive.
+The Query DB never becomes the publication source. Its successful reconciliation gates
+completion and provides diagnostics; CAR inputs remain validated lexicon output.
 
-## Re-mining legacy data
+## Publish each data group
 
-Records mined before the lexicon format lack provenance and cannot be converted. Re-mine
-them: capture and transform again, then the same validate, hash, validate, upload
-sequence. A delta refresh is for stale records, not for a format change.
+Repeat for `county`, `property_improvement`, `hoa`, `corporate_registry`, `places`, or
+each other group actually produced.
 
-## CLI requirements
+```bash
+elephant-cli validate <group-dir> --output-csv <group-errors.csv>
 
-- Install the Elephant CLI from GitHub `main`, not from npm:
-  `npm i github:elephant-xyz/elephant-cli#main` (or `npx --package=github:elephant-xyz/elephant-cli#main elephant-cli`).
-  The npm release workflow is currently failing, so `@elephant-xyz/cli@latest` lacks
-  batch input, `--output-car`, CAR upload, and CAR validation. Record the installed
-  commit (`npm ls @elephant-xyz/cli` shows it) in the run evidence.
-- The CLI must reach the lexicon manifest at `https://lexicon.elephant.xyz/api/manifest`
-  and fetch schemas through a gateway that serves them. Defaults are Filebase's public
-  gateway, then Pinata's, then the public gateways; override with
-  `ELEPHANT_SCHEMA_MANIFEST_URL` and `ELEPHANT_IPFS_GATEWAYS`. A run that could not load
-  the manifest has validated nothing.
-- Publication environment: `IPFS_API`, `IPFS_API_TOKEN`, `ELEPHANT_CAR_GATEWAY`, or the
-  three `FILEBASE_*` variables. Tokens are never printed or written into the catalog.
-- For local portal probing, a US egress IP (`curl -s ipinfo.io/country`).
+elephant-cli hash <group-dir> \
+  --output-zip <hashed-dir> \
+  --output-csv <hash.csv> \
+  --output-car <county>-<group>.car
 
-## Stage-skill map
+elephant-cli validate <county>-<group>.car \
+  --output-csv <car-errors.csv>
 
-| Skill | Purpose |
-|---|---|
-| `onboard-county` | Orchestrator: intake, then every stage below for a county |
-| `bootstrap-oracle-infra` | Verify or bootstrap the chosen capture stack |
-| `county-discovery` | Research a county; write `docs/<county>-sources.yaml` |
-| `county-readiness-preflight` | **Hard gate.** Run the validator; STOP on BLOCKED |
-| `county-seed-data` | Produce and stage the parcel seed CSV, only after readiness PASS |
-| `county-appraisal-onboarding` | Browser flow, per-county prepare queue, transform wiring |
-| `build-county-transform` | Author or repair a county transform, prove lexicon validity and coverage, open the transform PR |
-| `sunbiz-corporate-ingest` | Sunbiz company record. Stamp each company with its own detail URL from the document number |
-| `dbpr-license-ingest` | Official license-detail lookup. Permit license number, person name, and company name are search keys. Persist company, person, and license from the DBPR record and map `contractor_has_license` |
-| `county-permit-adapter` | Build the county permit-portal harvester. Read permits that print a license number without waiting for the statewide relationship extract |
-| `county-ingest-run` | Backpressure-aware seed feeder, after readiness PASS |
-| `monitoring-county-ingestion` | **Local stack:** queue and invocation health, counts, ETAs |
-| `monitoring-oracle-ingestion` | **AWS stack:** SQS, Lambda, S3 counts, ETAs |
-| `bbb-harvest` | Contractor reputation enrichment only |
-| `overture-places-ingest` | Places taxonomy and boundary enrichment |
-| `query-db-loading-matching` | Load artifacts into the working store; cross-match by parcel and address |
-| `use-elephant-query-db` | Read the working store |
-| `durable-workflow-builder` | Author capture workflows and handlers |
-| `county-open-data-publish` | Existing publication: consolidated property JSON to Filebase/IPFS behind the county's IPNS name |
-| `county-query-table-publish` | Existing publication: query-table Parquet export, validation gate, IPNS, MCP wiring |
-| `deploy-open-data-mcp` | Existing publication: self-host the open-data MCP server |
-| `use-elephant-mcp` | Read published counties through the MCP |
+elephant-cli export-tables <county>-<group>.car \
+  --output <tables-dir> \
+  --output-json <tables-export.json> \
+  --atlas-page <atlas>/counties/<STATE>/<county>.json \
+  --county <county> --state <STATE> --fips <fips>
 
-## Rules
+elephant-cli upload <county>-<group>.car \
+  --output-json <archive-upload.json>
 
-- Choose one stack before loading procedures.
-- Drive the skills and the CLI; never improvise mining commands they do not define.
-- Never hardcode or print account ids, tokens, secrets, or `DATABASE_URL`.
-- Never skip `validate-county-readiness.py` before seed, pilot, or full ingest.
-- When a permit prints a license number, use that license number, the person name,
-  and the company name only as search keys for the official DBPR license-detail
-  lookup. Do not persist a contractor company, person, or license copied from the
-  permit portal. Persist company, person, and license from the DBPR record. If DBPR
-  returns no match, write no contractor, person, or license.
-  `source_http_request.url` on those records is the official DBPR license-detail URL,
-  not the permit page and not the Sunbiz download page. The Sunbiz company detail URL
-  rule stays: `search.sunbiz.org` by document number, not the bulk file. Do not wait
-  for a statewide relationship extract before reading permits that already carry a
-  license. Do not build the whole license–company graph from the bulk file and then
-  harvest. Require the missing public-records extract only for historical
-  qualification when the permit has no license number.
-- Write `property_improvement_has_contractor` from `property_improvement` to
-  `company`. The contractor is the company, not a separate class. Write
-  `contractor_has_license` from `company` to `license`. Relationship objects are only
-  `from` and `to`. The license id is `license_identifier` on class `license`. Write
-  `contractor_has_person` from `company` to `person` (schema title
-  `company_to_person`). The person is an object with `first_name` and `last_name`,
-  not a string field. There is no license field on the person. Lexicon PR 178
-  requires `license_identifier` to be non-empty and adds `source_http_request` and
-  `request_identifier` on `license`. `license_identifier` is already on main. If the
-  live manifest does not yet include those license fields or these edges, record the
-  gap and do not substitute another edge. Detail is in
-  `reference/permit-evidence-preflight.md`.
-- Validate before hash, hash before publish, read back before reporting success.
-- Every archive block comes from `elephant-cli hash`; the archive is never exported from
-  the query DB. The existing query-table and coverage exports continue unchanged.
-- Data-record CIDs are dag-json, schema CIDs are raw; compare digests, not strings.
-- Never solve, bypass, OCR, or evade CAPTCHA. Preserve valid unmatched records.
-- Runtime secrets apply at process start; restart a job after adding keys.
-- Report completeness honestly. A pilot that passed does not make a county complete.
-- Every status response uses the required status report in `agents/oracle.md`.
+elephant-cli upload <tables-dir> \
+  --output-json <tables-upload.json>
+```
 
-## Milestone scope
+Use a public, durable IPFS node for a registrable run. Filebase Kubo RPC is the worked
+example. A local node is acceptable only for development unless it remains publicly
+reachable through Atlas merge. Require archive-root and tables-root readback before the
+PR.
 
-**In:** discover and capture county sources; transform to lexicon; permit-to-license-to-Sunbiz
-resolution; validate; pack one archive per county run; publish it to a local or
-hosted IPFS node with root readback; property-list re-mining; re-mining of legacy data;
-the existing query-table, coverage, IPNS, and MCP publication, unchanged.
+## Register and verify
 
-**Out:** registry registration, replacing the IPNS and query-table path, per-table
-Parquet indexes, on-chain submission, and Elephant.xyz UI changes.
+1. Confirm only `counties/<STATE>/<county>.json` changed in the Atlas clone.
+2. Open branch `publish/<state>-<county>`.
+3. Create one PR and wait for `validate`.
+4. Ask a code owner to merge. Do not self-merge.
+5. If automation reverts the merge, treat publication as failed, restore public
+   availability, and open a new PR.
+6. Resolve global Atlas IPNS
+   `k51qzi5uqu5dhzmj1jtn06idud425ozwdjjjn4eu7q01g2t814h7rw4du0nd04`
+   through the configured gateway order.
+7. Verify the accepted index CID and county/group entries reflect the merge.
+8. Run MCP 2.0 `sync` (`npx -y @elephant-xyz/mcp@2 sync`), then call
+   `listAtlasCounties` and `getAtlasDatasetInfo` with explicit `state`, `county`, and
+   `dataGroup`.
+
+Do not report publication from a green PR alone. Require the merged global IPNS and the
+synchronized MCP snapshot.
+
+## CLI and credentials
+
+- Use a CLI build that supports CAR validation, `export-tables --atlas-page`, and CAR
+  upload. Record its version or commit.
+- Require the live lexicon manifest and schema gateways during validation.
+- Keep upload credentials outside Git and command output.
+- Require authenticated `gh` access to Atlas only when opening the registration PR.
+- Never invent credentials or run a live upload just to test documentation.
+
+## Property-list and legacy runs
+
+Split a supplied property list by county. Build one seed file per county and one CAR per
+county/data group. Never combine counties in one archive.
+
+Re-mine pre-lexicon records from source. Do not backfill missing provenance into legacy
+rows.
+
+## Completion report
+
+Use the required report in `agents/oracle.md`. Include internal reconciliation evidence
+without exposing private rows or database credentials, and include global Atlas IPNS plus
+MCP sync evidence for every public claim.

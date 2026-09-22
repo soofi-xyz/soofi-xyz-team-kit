@@ -1,183 +1,158 @@
-# MCP tools and workflows
+# MCP 2.0 tools and workflows
 
-All tools are registered in
-[`elephant-mcp/src/tools/registry.ts`](https://github.com/elephant-xyz/elephant-mcp/blob/main/src/tools/registry.ts).
+## Scope arguments
 
-## Tool catalog
+Every Atlas tool except `listAtlasCounties` requires:
 
-### Oracle open data
+- `state` — two-letter state code (for example `FL`)
+- `county` — county slug as listed in the Atlas index
+- `dataGroup` — data-group name as listed for that county
 
-| Tool | Purpose | Key inputs |
-|------|---------|------------|
-| `getOracleDatasetInfo` | Dataset provenance and freshness | `county?` (default Lee) |
-| `listOracleProperties` | Paginated slim property list | `county?`, `limit` (default 50, max 500), `offset` |
-| `getOracleProperty` | Full consolidated JSON from IPFS | `county?` plus exactly one of: `parcelIdentifier`, `propertyId`, `cid` |
-| `listPublishedCounties` | Canonical published-county catalog | _(none)_ |
-| `getPropertyPermits` | On-demand permit harvest | `parcelId`, `countyFips?` (default `12071` Lee). Harvest needs pipeline ingress; otherwise report unavailable. |
+## Atlas tools
 
-Slim list entry fields: `propertyId`, `parcelIdentifier`, `cid`, `county`, `fileSizeBytes`.
+### `listAtlasCounties`
 
-### Overture places query (catalog-authorized public parquet)
+Inputs: none. Returns the accepted index CID, `generated_from`, `synced_at`, and the
+counties with their data groups and per-group CIDs. Use it as the only discovery surface.
 
-| Tool | Purpose | Key inputs |
-|------|---------|------------|
-| `getPlaceQuerySchema` | Lists the real places parquet columns, exact structured query contract, release/licence provenance, safety limits, and null completeness — **call FIRST per county** | `county` |
-| `queryPlaces` | Returns filtered place rows, a total count, or grouped primary-category aggregates without accepting SQL or URLs | `county`, `mode?`, `filters?`, `sortBy?`, `sortDirection?`, `limit?`, `offset?` |
+### `getAtlasDatasetInfo`
 
-`queryPlaces` modes:
+Inputs: scope. Returns the synchronized tables for the scope with row counts and the
+publication provenance (`source`).
 
-- `rows` — deterministic page plus `totalCount`
-- `count` — exact filtered `totalCount`
-- `groupByPrimaryCategory` — deterministic `taxonomy_primary` groups and counts
+### `getAtlasSchema`
 
-Important filters:
+Inputs: scope, optional `table`. Without `table`, returns the table catalog for the scope.
+With `table`, returns that table's columns. Call it before every query.
 
-- `taxonomyPrimary: { value, match: "exact" | "contains" }` — one primary label; use this
-  dimension for exact category counts and grouped output.
-- `taxonomyHierarchyMember` — exact case-insensitive segment anywhere in the `/`-delimited
-  hierarchy; use this for a roll-up such as `restaurant`.
-- `basicCategory`, `nameContains`, `normalizedNameContains`, `locality`, `postcode`,
-  `operatingStatus`, and `minConfidence`.
-- `hostedService: "include" | "exclude" | "only"` — MCP defaults to `include`. Donphan defaults
-  business-location/co-location counts and lists to `exclude` and explains that advisory hosted
-  ATMs/kiosks/services were removed. Use `include` to reconcile the full published source count.
+### `queryAtlas`
 
-Do not use taxonomy alternates for counts: they are not part of the public query contract and
-are not a reliable count dimension. Default rows omit public business `websites`, `phones`, and
-`emails`. Query responses include release/provenance, publication index/notice URLs, and
-`completionPercent: null`; there is no authoritative denominator for all business locations.
-The MCP resolves `placesTableUrl` only from `listPublishedCounties`' canonical catalog and
-rejects caller SQL/URLs.
+Inputs: scope, `sql`, optional `limit` (default and maximum 1000).
 
-### Property SQL query (open parquet via DuckDB)
+- Exactly one read-only `SELECT` or `WITH` statement.
+- JOINs and CTEs are allowed.
+- Every content table is filtered to the scope server-side; do not add scope predicates.
+- Control tables, catalogs, multiple statements, mutations, file access, extension
+  operations, and functions outside the allow-list are rejected.
 
-| Tool | Purpose | Key inputs |
-|------|---------|------------|
-| `getPropertyQuerySchema` | Lists the property query-table columns + descriptions, including `elephant_uuid` / `elephant_token` when published — **call FIRST** to learn columns | `county?` (default `lee`) |
-| `queryProperties` | Runs ONE read-only `SELECT`/`WITH…SELECT` over the `properties` view (per-county Parquet read from IPFS via DuckDB) and returns rows | `county?` (default `lee`), `sql`, `limit?` |
+Example:
 
-This is the **PRIMARY path for attribute / aggregate / count / filter questions** — "how
-many", by owner, by zip, by city, by value, by acreage, by material. It runs SQL over the
-**OPEN IPFS parquet via MCP (NOT Neon)** — do not hand these questions off to
-`use-elephant-query-db`.
-
-Constraints on `queryProperties`:
-
-- **Single statement, `SELECT`/CTE only.** Mutations and multi-statement SQL are rejected.
-- A **row cap auto-applies** (default 100, max 1000) via `limit`.
-- The queried view is always named **`properties`**.
-- Use `ILIKE '%…%'` for text matching: owner (`owners_text`), city (`address_city`),
-  material (`exterior_wall_material`).
-- Use `elephant_uuid` / `elephant_token` for stable address identity (`address:v1`: country,
-  state, ZIP5, street, unit). Do not treat `normalized_address_hash` as the same id.
-  Columns may be NULL until a county republish includes them.
-- `county` must match the MCP server's `PROPERTY_QUERY_TABLE_MAP` (default `lee`).
-
-**Data coverage varies by county.** Lee has no acreage/material (those columns are NULL);
-HOA (`hoa_flag`) is NULL unless Chapter 720 membership records were approved.
-After HOA/PM enrichment, query `subdivision`, `hoa_name`, `hoa_cid`,
-`property_manager_name`, and `property_manager_cid` when `getPropertyQuerySchema`
-lists them. NULL on those columns means no unique Sunbiz hit. `elephant_uuid` / `elephant_token` are NULL until
-a republish. Call `getPropertyQuerySchema` or run a
-`SELECT count(col)` to confirm a column is populated, and state "not available for this
-county" rather than inventing values. On Lee, owner / city / value / count questions work.
-
-### Permit SQL query
-
-| Tool | Purpose | Key inputs |
-|------|---------|------------|
-| `getPermitQuerySchema` | Columns + contract for the permit query table | `county` |
-| `queryPermits` | Read-only SQL over the published permit parquet | `county`, `sql`, `limit?` |
-
-Only counties in `PERMIT_QUERY_TABLE_MAP` have a published permit table. Do not use
-`getPropertyPermits` for county-wide permit counts.
-
-### Geo (query table, optional derived-index fallback)
-
-| Tool | Purpose | Key inputs |
-|------|---------|------------|
-| `findPropertiesInArea` | Properties whose centroid is inside area | `county?`, exactly one of: `bbox`, `polygon` |
-| `sumPropertyValueInArea` | Sum of `current_avm_value` in area | `county?`, exactly one of: `bbox`, `polygon` |
-
-`bbox`: `{ minLat, minLng, maxLat, maxLng }`
-
-`polygon`: array of `{ lat, lng }` vertices (≥ 3), closed ring implied.
-
-These tools read the per-county property query table when the county is in
-`PROPERTY_QUERY_TABLE_MAP`. Omitting `county` uses the default (Lee).
-`ORACLE_GEO_INDEX_IPNS` / `ORACLE_GEO_INDEX_CID` is an optional fallback for counties not in
-the map — it is a Lee reference index, not a substitute for passing `county`.
-
-### Lexicon / schema
-
-| Tool | Purpose | Key inputs |
-|------|---------|------------|
-| `listClassesByDataGroup` | Classes in a data group | `groupName` (e.g. `County`) |
-| `listPropertiesByClassName` | Property keys on a class | `className` |
-| `getPropertySchema` | Full JSON Schema for one property | `className`, `propertyName` |
-
-### Transform examples
-
-| Tool | Purpose | Key inputs |
-|------|---------|------------|
-| `getVerifiedScriptExamples` | Semantic search over verified mapping scripts | `query`, `topK?` (default 5, max 50) |
-
-Requires embedding provider (OpenAI or Bedrock).
-
-## Decision tree
-
-```
-User question
-├─ Overture business/place/category count, list, or group
-│   └─ getPlaceQuerySchema (learn fields, release, licence, null completeness)
-│   └─ queryPlaces (structured filters; no SQL/URL)
-│       ├─ count → mode=count
-│       ├─ list → mode=rows
-│       ├─ group → mode=groupByPrimaryCategory
-│       ├─ exact primary label → taxonomyPrimary
-│       └─ roll-up → taxonomyHierarchyMember
-├─ "How many …" / by owner / by zip / by city / by value / by acreage / by material
-│   (attribute · aggregate · count · filter) — PRIMARY PATH
-│   └─ getPropertyQuerySchema (learn columns)
-│   └─ queryProperties (ONE SELECT/CTE over the `properties` view; ILIKE for text)
-│       — SQL over the OPEN IPFS parquet via MCP, NOT Neon; do not hand off to query-db
-├─ "What fields exist on class X?" / schema semantics
-│   └─ listClassesByDataGroup → listPropertiesByClassName → getPropertySchema
-├─ "How do I map source Y to Elephant?"
-│   └─ getVerifiedScriptExamples (+ schema tools as needed)
-├─ "How many permits …" / permit aggregates for a county in PERMIT_QUERY_TABLE_MAP
-│   └─ getPermitQuerySchema then queryPermits
-├─ "In [city/area] …" (geo scoped, bbox/polygon)
-│   └─ getOracleDatasetInfo (county)
-│   └─ findPropertiesInArea (county + bbox/polygon)
-│   └─ getOracleProperty on hits (county; filter in reasoning)
-├─ "Total value in [area]" (geo)
-│   └─ sumPropertyValueInArea (county)
-├─ "Full record for parcel/property X"
-│   └─ getOracleProperty (county + one identifier)
-├─ "Address mismatch …"
-│   └─ getOracleProperty → compare address fields (see consolidated-property-shape)
-└─ "Permits for parcel …" (missing in consolidated JSON)
-    └─ getPropertyPermits (parcelId + countyFips) → poll only if harvest is configured
+```sql
+SELECT property_cid, parcel_identifier
+FROM property
+WHERE parcel_identifier = '1605480000'
 ```
 
-## Pagination strategy
+### `listAtlasProperties`
 
-- `queryPlaces`: use `limit`/`offset`; every row page includes the complete filtered
-  `totalCount`. Sort is deterministic with GERS id as the tie-breaker. Group pages are ordered
-  by count descending then primary category ascending.
-- `listOracleProperties`: use `limit=500` and walk `offset` until you have enough candidates or
-  hit a practical cap (state cap in exploration-patterns).
-- Prefer **geo narrow first** when the user names a city or neighborhood — fewer
-  `getOracleProperty` calls.
+Inputs: scope, optional `limit` and `offset`. Returns property CIDs for the scope with a
+total count.
+
+### `getAtlasProperty`
+
+Inputs: scope, `propertyCid`. Assembles one property by walking its relationships from
+the `property` row outward; shared entities reachable through relationships (addresses,
+companies, people, geometry, tax, …) are included. Do not pass a folio or parcel id.
+
+## Lexicon tools
+
+- `listClassesByDataGroup` — input `groupName`
+- `listPropertiesByClassName` — input `className`
+- `getPropertySchema` — inputs `className`, `propertyName`
+- `getVerifiedScriptExamples` — inputs `query`, optional `topK`
+
+## Response provenance
+
+Every Atlas response carries:
+
+```jsonc
+{
+  "source": {
+    "state": "FL",
+    "county": "duval",
+    "dataGroup": "county",
+    "archiveCid": "...",
+    "tablesCid": "...",
+    "schemaCid": "...",
+    "indexCid": "...",
+    "syncedAt": "..."
+  }
+}
+```
+
+Report these CIDs with every answer; they identify the accepted publication revision.
+
+## Synchronized table layout
+
+`npx -y @elephant-xyz/mcp@2 sync` loads each published data group into:
+
+- one table per lexicon class, named as in the archive (`property`, `parcel`, `address`,
+  `geometry`, `tax`, `company`, …), keyed by `(state, county, data_group, cid)`, with
+  columns `cid, property_cid, data_group_cid, request_identifier` plus the class's
+  lexicon attributes;
+- one table per relationship, named as in the archive (`property_has_address`,
+  `address_has_geometry`, `property_has_tax`, …), keyed by
+  `(state, county, data_group, relationship_cid)`, with columns
+  `relationship_cid, from_cid, to_cid, property_cid, data_group_cid`;
+- `properties`, keyed by `(state, county, data_group, property_cid)`, with one column per
+  data-group schema CID recording which group roots the property participates in.
+
+Every table also carries `state, county, data_group`. Well-known columns:
+`parcel_identifier` (parcel number; on both `property` and `parcel`),
+`geometry.latitude`/`geometry.longitude`
+(DOUBLE), `tax.property_market_value_amount` (market value). `getAtlasSchema` lists the
+columns of any table; use it for the class attributes you have not seen before.
+
+## Removed tools
+
+MCP 2.0 removed all HOA, permit, places, dataset-plan, and area/geo tools. Permit, HOA,
+and places data are ordinary classes and relationships in their data groups — query them
+with `queryAtlas`. Area questions are the bbox JOIN below.
+
+## Area query recipe
+
+```sql
+SELECT p.cid AS property_cid, g.latitude, g.longitude, t.property_market_value_amount
+FROM property p
+JOIN property_has_address pha ON pha.from_cid = p.cid
+JOIN address_has_geometry ahg ON ahg.from_cid = pha.to_cid
+JOIN geometry g ON g.cid = ahg.to_cid
+LEFT JOIN property_has_tax pht ON pht.from_cid = p.cid
+LEFT JOIN tax t ON t.cid = pht.to_cid
+WHERE g.latitude BETWEEN :south AND :north
+  AND g.longitude BETWEEN :west AND :east
+```
+
+For totals: `SELECT count(DISTINCT p.cid), sum(t.property_market_value_amount)` over the
+same joins. Point-in-bbox filtering uses the geometry point; state the bbox and the row
+limit in the answer.
+
+## Decision workflow
+
+```text
+question
+├─ discover states/counties/groups
+│  └─ listAtlasCounties
+├─ dataset provenance/tables
+│  └─ getAtlasDatasetInfo
+├─ count/filter/aggregate, joins across classes
+│  └─ getAtlasSchema → queryAtlas
+├─ find a property by folio or another field
+│  └─ getAtlasSchema → queryAtlas on property → getAtlasProperty
+├─ page property CIDs
+│  └─ listAtlasProperties
+├─ area/value question
+│  └─ getAtlasSchema → queryAtlas bbox JOIN
+├─ field semantics
+│  └─ lexicon tools
+└─ transform example
+   └─ getVerifiedScriptExamples
+```
 
 ## Error handling
 
-- Tool errors return MCP text content — tell the user the cause and the recovery step from
-  `mcp-setup.md`; keep the raw MCP message as a diagnostic, not as the only answer.
-- A county with `placesTableUrl: null` has no published places table; report that unavailable
-  state rather than switching to direct IPFS/Neon.
-- `getPropertyPermits` returns harvest-in-progress only when pipeline ingress is configured;
-  wait ~90s and retry in that case. If harvest is not configured, say so.
-- Geo tools without `county` search the default county (Lee). Pass `county` for every
-  non-default question.
+- Treat unpublished scope, missing table, and missing column as different errors.
+- On sync failure, report the accepted index state and gateway error; do not fall back
+  to direct IPFS or the ingestion query DB.
+- On row-cap truncation, narrow the query or paginate by deterministic fields.
+- Treat empty rows as empty only within the exact scope and filter used.

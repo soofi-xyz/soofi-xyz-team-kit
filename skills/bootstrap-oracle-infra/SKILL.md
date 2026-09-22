@@ -1,6 +1,6 @@
 ---
 name: bootstrap-oracle-infra
-description: "Verify and bootstrap the local pipeline stack required for county ingestion - Restate server, data directories, Postgres, and the skills/use-oracle/runtime services process registered with Restate. Use when starting county onboarding, when a run or registration fails because the stack is down or services are missing, or when setting up the pipeline on a fresh machine."
+description: "Verify and bootstrap the local pipeline stack required for county ingestion: the durable workflow server, data directories, the internal database, and the bundled runtime services process. Use when starting county onboarding, when a run or registration fails because the stack is down, or when setting up on a fresh machine."
 metadata: {"author":"elephant-xyz"}
 ---
 # Bootstrap Oracle Infra
@@ -32,8 +32,7 @@ elephant/
       county-ingest.ts        # CountyIngest workflow (feeder) + its IngestChunk child workflow
       parcel.ts               # Parcel service (prepare→transform→validate→store)
       permit-harvest.ts       # PermitHarvest service (portal harvesters per vendor)
-      loader.ts               # Loader virtual object (per-county DB merges)
-      publish.ts              # Publish virtual object (export→approve→IPNS loop)
+      loader.ts               # Loader virtual object (per-county internal DB merges)
       enrichment.ts           # SunbizIngest / BbbHarvest workflows
     flows/                    # Browser Flow v2 JSON per county (elephant-cli prepare)
     transforms/               # synced from Counties-trasform-scripts (<county>/scripts/)
@@ -104,10 +103,8 @@ for the latest tested tag and record the chosen ref in the project README; the n
 registry `@elephant-xyz/cli@<version>` is the fallback when publishing works), and
 `npm i -D vitest`. Add `"dev": "tsx watch services/app.ts"`,
 `"typecheck": "tsc --noEmit"`, and `"test": "vitest run"` to scripts.
-(`@aws-sdk/client-s3` is needed only
-by the publish services — Filebase upload — not the core scaffold. Playwright/Puppeteer
-are installed when authoring browser-based modules — permit vendors, BBB — not part of
-the core scaffold.)
+(Playwright/Puppeteer are installed when authoring browser-based modules — permit
+vendors, BBB — not part of the core scaffold.)
 
 `.env`:
 
@@ -120,7 +117,10 @@ CONCURRENCY_PERMIT_ACCELA=2
 ```
 
 The `CONCURRENCY_*` caps feed in-process semaphores — see `durable-workflow-builder`
-pattern 2 for how they're enforced.
+pattern 2 for how they're enforced. `DATABASE_URL` is the internal reconciliation store;
+never print it. Do not configure public county pointers, catalog maps, or runtime
+publishers here — Atlas publication runs later through the Elephant CLI and the Atlas
+repository (`use-oracle`).
 
 `services/app.ts` starts as a stub endpoint binding no services yet and listening on
 :9080, with `import "dotenv/config"` as its first line so `.env` (DATA_DIR,
@@ -172,13 +172,13 @@ restate deployments register http://host.docker.internal:9080
 
 Register (or `--force` re-register in dev) each time you author and bind a new service,
 then confirm whichever services are registered at that point appear in the Web UI at
-`http://localhost:9070`. The full set once everything is authored (10 services):
+`http://localhost:9070`. The full set once everything is authored (9 services):
 `CountyIngest`, `IngestChunk`, `Parcel`, `PermitFeed`, `PermitFeedChunk`,
-`PermitHarvest`, `Loader`, `Publish`, `SunbizIngest`, `BbbHarvest` (the latter two per
+`PermitHarvest`, `Loader`, `SunbizIngest`, `BbbHarvest` (the latter two per
 `sunbiz-corporate-ingest`/`bbb-harvest`).
 
 Then raise `inactivityTimeout`/`abortTimeout` for the long-step services (`Loader`,
-`Publish`, `SunbizIngest`, `BbbHarvest`, `PermitHarvest` — detail-heavy parcels can
+`SunbizIngest`, `BbbHarvest`, `PermitHarvest` — detail-heavy parcels can
 exceed the abort window; alternatively split vendor work into journaled
 search/list/detail steps — and `Parcel`, whose heavy captures can also exceed the
 abort window) — apply this to whichever of them are
@@ -221,3 +221,10 @@ See `durable-workflow-builder`'s error taxonomy.
   steps added/removed/reordered), apply it in place and `--force` re-register;
   otherwise cancel the affected invocations and re-run them as a redrive pass on the
   new code. See `durable-workflow-builder` authoring rule 2.
+- If ports 5432/8080/9070/9080 conflict, identify the owning local process and ask
+  before stopping it. If Restate is up but services are absent, restart the services
+  process and re-register. If database identity cannot be proven, stop writes.
+
+Return Node/Docker/Restate versions, container health, the deployment list, database
+identity proof, data-directory readiness, the service smoke result, and blockers.
+Redact secrets.

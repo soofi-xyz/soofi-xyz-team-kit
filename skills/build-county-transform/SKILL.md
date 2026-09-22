@@ -57,9 +57,16 @@ county passed.
    `expected-row.json`) and the transform tests under
    `skills/use-oracle/runtime/counties/<county>/transforms/*.test.js`; run
    `npm test --prefix skills/use-oracle/runtime`.
-7. **Hash a sample.** `elephant-cli hash <samples-dir> --output-zip ./hashed
-   --output-csv hash.csv --output-car sample.car` then `elephant-cli validate sample.car`.
+7. **Hash a sample per data group.** For each data group the transform emits (the
+   appraisal transform emits `county`; a permit transform emits `property_improvement`),
+   `elephant-cli hash <samples-dir> --output-zip ./hashed --output-csv hash.csv
+   --output-car sample-<group>.car` then `elephant-cli validate sample-<group>.car`.
    This is the first time the seed root, links, and codecs are exercised together.
+   Note the group's schema CID (`dataGroupCid` in `hash.csv`): the county's Atlas page
+   entry for this group carries it. Then `elephant-cli export-tables sample-<group>.car
+   --output ./sample-<group>-tables` and confirm every entity class and relationship
+   type the transform emits appears as its own table with the expected row count. A
+   missing or unexpected table is a transform bug, not a CLI setting.
 8. **Open the pull request** with the checklist below.
 
 ## Provenance: `source_http_request`

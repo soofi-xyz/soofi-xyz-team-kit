@@ -84,8 +84,8 @@ inside the permit load transaction. Preserve explicit parcel `roof_date` and
 four-digit year to the legacy text `roof_date` column and records
 `roofDatePrecision: "year"`; it does not claim January 1 or any exact date.
 
-Lineage is queryable at `structures.source_payload->'roof_age_lineage'` and is flattened
-into county query tables as `roof_age_*` columns. It records source category, date
+Lineage is queryable internally at `structures.source_payload->'roof_age_lineage'` and may
+be flattened into private reconciliation tables as `roof_age_*` columns. It records source category, date
 precision, confidence, policy/profile versions and digest, selected permit source/id,
 coverage state/caveats, as-of date, and eligibility reason.
 
@@ -93,7 +93,7 @@ coverage state/caveats, as-of date, and eligibility reason.
 
 Require Node 22.18+, installed bundled dependencies, the reflected Query DB schema, and
 an explicit environment-variable **name** containing a PostgreSQL URL. Do not print the
-URL. AWS and Filebase credentials are not required for a database-only audit.
+URL. AWS and upload-node credentials are not required for a database-only audit.
 
 Run a bounded read-only audit first; dry-run is the default:
 
