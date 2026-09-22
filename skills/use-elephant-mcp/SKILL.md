@@ -51,8 +51,8 @@ columns returned by `getAtlasSchema`.
 - `listAtlasProperties` (`limit`, `offset`) pages property CIDs for the scope.
 - `getAtlasProperty` (`propertyCid`) assembles one property by walking its
   relationships; shared entities (addresses, companies, people) are included.
-- Do not pass a folio or parcel identifier to `getAtlasProperty`. Query `property` for
-  the exact identifier first to obtain `property_cid`.
+- Do not pass a folio or parcel identifier to `getAtlasProperty`. Query `parcel` for the
+  exact `parcel_identifier` first; its `property_cid` column is the CID to pass.
 
 ### Area and value questions
 
@@ -70,8 +70,9 @@ WHERE g.latitude BETWEEN :south AND :north
   AND g.longitude BETWEEN :west AND :east
 ```
 
-Verify the relationship endpoint column names with `getAtlasSchema` before running it;
-wrap in `SELECT count(*), sum(...)` for aggregates.
+Relationship tables always carry `relationship_cid, from_cid, to_cid, property_cid,
+data_group_cid`; `geometry.latitude`/`geometry.longitude` are DOUBLE. Wrap in
+`SELECT count(*), sum(...)` for aggregates.
 
 ### Schema semantics
 

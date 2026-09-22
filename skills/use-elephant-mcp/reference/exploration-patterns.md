@@ -16,19 +16,18 @@ Report scope and `source` CIDs.
 
 ## Find a property from a folio
 
-1. Describe `property` and find the identifier column (`parcel_identifier` or
-   `request_identifier`).
-2. Query the exact user-supplied value first; return `cid` as the property CID.
-3. Call `getAtlasProperty` with that CID.
-4. If a separately disclosed normalized fallback was needed, report both the stored and
+1. Query `parcel` for the exact user-supplied `parcel_identifier` (or any entity
+   table's `request_identifier`); return its `property_cid`.
+2. Call `getAtlasProperty` with that CID.
+3. If a separately disclosed normalized fallback was needed, report both the stored and
    supplied identifiers.
 
 Never silently strip punctuation or use normalized parcel digits as folio identity.
 
 ## Join across classes
 
-Relationship tables carry two endpoint CID columns (shown as `from_cid`/`to_cid`;
-confirm names with `getAtlasSchema`). Example — properties with their mailing
+Relationship tables carry `from_cid`/`to_cid` (plus `relationship_cid`, `property_cid`,
+`data_group_cid`); entity tables carry `cid` and `property_cid`. Example — properties with their mailing
 address:
 
 ```sql

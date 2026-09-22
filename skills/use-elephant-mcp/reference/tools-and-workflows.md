@@ -38,9 +38,9 @@ Inputs: scope, `sql`, optional `limit` (default and maximum 1000).
 Example:
 
 ```sql
-SELECT p.cid AS property_cid, p.parcel_identifier
-FROM property p
-WHERE p.parcel_identifier = '1605480000'
+SELECT pa.property_cid, pa.parcel_identifier
+FROM parcel pa
+WHERE pa.parcel_identifier = '1605480000'
 ```
 
 ### `listAtlasProperties`
@@ -86,18 +86,21 @@ Report these CIDs with every answer; they identify the accepted publication revi
 
 `npx -y @elephant-xyz/mcp@2 sync` loads each published data group into:
 
-- one table per lexicon class, named as in the archive (`property`, `address`,
-  `geometry`, `tax`, `company`, …), keyed by `(state, county, data_group, cid)`;
+- one table per lexicon class, named as in the archive (`property`, `parcel`, `address`,
+  `geometry`, `tax`, `company`, …), keyed by `(state, county, data_group, cid)`, with
+  columns `cid, property_cid, data_group_cid, request_identifier` plus the class's
+  lexicon attributes;
 - one table per relationship, named as in the archive (`property_has_address`,
   `address_has_geometry`, `property_has_tax`, …), keyed by
-  `(state, county, data_group, relationship_cid)`, with the two endpoint CID columns
-  (the examples here call them `from_cid`/`to_cid`; confirm with `getAtlasSchema`);
+  `(state, county, data_group, relationship_cid)`, with columns
+  `relationship_cid, from_cid, to_cid, property_cid, data_group_cid`;
 - `properties`, keyed by `(state, county, data_group, property_cid)`, with one column per
   data-group schema CID recording which group roots the property participates in.
 
-Discover the exact table and column names with `getAtlasSchema`; do not assume a fixed
-set. Relationship tables are how you join classes; verify their endpoint column names
-before writing a JOIN.
+Every table also carries `state, county, data_group`. Well-known columns:
+`parcel.parcel_identifier` (parcel number), `geometry.latitude`/`geometry.longitude`
+(DOUBLE), `tax.property_market_value_amount` (market value). `getAtlasSchema` lists the
+columns of any table; use it for the class attributes you have not seen before.
 
 ## Removed tools
 
