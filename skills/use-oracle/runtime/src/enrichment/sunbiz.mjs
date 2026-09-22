@@ -431,6 +431,11 @@ function addressIdentifier(address) {
   ])}`;
 }
 
+/** Official Sunbiz entity detail page, one URL per document number. */
+export function sunbizCompanyDetailUrl(documentNumber) {
+  return `https://search.sunbiz.org/Inquiry/CorporationSearch/SearchResultDetail?inquirytype=DocumentNumber&directionType=Initial&searchNameOrder=&aggregateId=&searchTerm=${encodeURIComponent(documentNumber)}`;
+}
+
 function toAddressRecord(address) {
   if (!address?.singleLine) return null;
   const { postalCode, plusFour } = splitZip(address.zip);
@@ -474,7 +479,7 @@ export function transformSunbizRecord(record) {
       {
         source_http_request: {
           method: "GET",
-          url: "https://dos.fl.gov/sunbiz/other-services/data-downloads/",
+          url: sunbizCompanyDetailUrl(documentNumber),
         },
         request_identifier: companyId,
         name: entity.entityName ?? documentNumber,

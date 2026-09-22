@@ -52,6 +52,7 @@ Read `skills/use-oracle/SKILL.md` and `skills/use-oracle/reference/car-publicati
 - The Elephant CLI must resolve the live lexicon manifest and fetch schemas through a gateway that serves them; see the CLI requirements in `use-oracle`. A validation run that cannot load the manifest has proved nothing.
 - Data-record CIDs are dag-json; schema CIDs from the lexicon are raw. Do not string-compare CIDs across codecs; compare digests.
 - Identity comes from the identity baseline, never from a name match at publish time.
+- For every county, Sunbiz company provenance is a GET of the official detail URL calculated from that company's document number (`sunbiz:<documentNumber>:company`). The quarterly bulk download page is the archive source, not the company `source_http_request`. Follow `sunbiz-corporate-ingest`.
 - Keep reputation enrichment (BBB, places) separate from core completeness. It is never license or identity evidence.
 - Never commit scraped data, archives, or secrets. PR code, transforms, and findings as they are created.
 - Interrupt only for a human-owned blocker; continue every independent safe workstream.

@@ -98,7 +98,11 @@ Drive it in this order for every county. There is no alternate order.
 3. **Identity baseline, before permits, every time** — official corporate registry, then
    official licensing authority with its fail-closed adequacy gate. In Florida:
    `sunbiz-corporate-ingest`, then `dbpr-license-ingest`. A snapshot is adequate only if
-   it is official, loaded, reconciled, dated, and covers the ingest window.
+   it is official, loaded, reconciled, dated, and covers the ingest window. For every
+   county, the quarterly `cordata.zip` is the archive source. Before load, stamp each
+   company with a GET of its own Sunbiz detail URL from its document number
+   (`sunbiz:<documentNumber>:company`). Do not write
+   `https://dos.fl.gov/sunbiz/other-services/data-downloads/` onto the company.
 4. **Permits, second** — `county-permit-adapter` then `county-ingest-run`; then
    `reference/permit-evidence-preflight.md`. A permit contact resolves to an existing
    company record deterministically by license number, or by unique company plus

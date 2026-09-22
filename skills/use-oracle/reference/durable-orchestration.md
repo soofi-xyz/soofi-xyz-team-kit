@@ -241,7 +241,9 @@ is derived from frozen manifests — not adapter counts, dashboard labels, or pi
 Identity baseline is a predecessor of permit harvest, not an enrichment dimension. For
 Florida, `sunbiz-corporate-ingest` loads legal entities and `document_number`; the official
 DBPR snapshot loads licenses, qualifiers, and qualified-business relationships. Sunbiz
-does not issue contractor licenses.
+does not issue contractor licenses. For every county, stamp each company with a GET of
+its own official detail URL from its document number before load. The quarterly bulk
+download page is the archive source, not the company `source_http_request`.
 
 BBB, reviews, complaints, and `overture-places-ingest` are reputation/context enrichment
 (`bbb-harvest`, `overture-places-ingest`). Their absence must not silently change core
