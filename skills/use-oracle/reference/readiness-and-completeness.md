@@ -163,9 +163,20 @@ branch/endpoint IDs). Do not copy expected IDs from the connection under test.
 
 ### Enrichment readiness gate
 
-BBB and places do not control permit-capture completeness. Identity-baseline readiness
-(Sunbiz legal entities plus official DBPR licensing) is a predecessor of permit harvest
-and of permit identity resolution; do not classify it as optional post-permit enrichment.
+BBB and places do not control permit-capture completeness. When a permit prints a
+license number, resolve it by official license-detail lookup, then the Sunbiz company.
+Use the permit license number, person name, and company name only as DBPR search
+keys. Persist company, person, and license from the DBPR record. If DBPR returns no
+match, write no contractor, person, or license. Write
+`property_improvement_has_contractor` from `property_improvement` to `company` (the
+contractor is the company, not a separate class), `contractor_has_license` from
+`company` to `license` (relationship objects are only `from` and `to`; the license
+id is `license_identifier` on class `license`), and `contractor_has_person` from
+`company` to `person` (schema title `company_to_person`; the person is an object
+with `first_name` and `last_name`, not a string field, and there is no license field
+on the person). Do not classify that lookup as optional enrichment, and do not wait
+for a statewide relationship extract before reading permits that already carry a
+license.
 If `enrichment.bbb.expected_count`
 equals `advertised_listing_count`, the catalog must also set `listing_page_cap` and
 `cap_acknowledged: true`. Advertised directory totals are not harvestable census counts.
@@ -253,9 +264,10 @@ counts, dashboard labels, or pilot success.
 
 Never set `oracle_dataset_coverage.expected_count` as if a source were complete unless these
 gates pass for that source. Reputation/places gaps (BBB, places) must not silently change
-core permit-capture completeness. Identity-baseline gaps (Sunbiz, DBPR) block automatic
-identity edges and enqueue official-source acquisition; they are not a terminal wait
-and do not authorize permit harvest first.
+core permit-capture completeness. A missing Sunbiz detail URL or license-detail lookup
+blocks automatic identity edges for that permit and enqueues the official lookup. A
+missing public-records extract blocks only historical qualification when the permit has
+no license number. Neither authorizes a name match.
 
 ## Publish fail-closed
 

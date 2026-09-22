@@ -59,9 +59,27 @@ Run these stages in order:
 2. **Parcel backbone:** `county-seed-data`, `county-appraisal-onboarding`,
    `build-county-transform`.
 3. **Official identity baseline:** corporate registry, then licensing authority. In
-   Florida run `sunbiz-corporate-ingest`, then `dbpr-license-ingest`.
+   Florida run `sunbiz-corporate-ingest`, then `dbpr-license-ingest`. Stamp each
+   Sunbiz company with a GET of `search.sunbiz.org` by document number
+   (`sunbiz:<documentNumber>:company`). Do not write
+   `https://dos.fl.gov/sunbiz/other-services/data-downloads/` onto the company.
 4. **Permits:** `county-permit-adapter`, `county-ingest-run`, then permit evidence
-   preflight.
+   preflight. When a permit prints a license number, use that license number, the
+   person name, and the company name only as search keys for the official DBPR
+   license-detail lookup. Persist company, person, and license from the DBPR
+   record. If DBPR returns no match, write no contractor, person, or license. Do
+   not persist a contractor copied from the permit. Do not wait for a statewide
+   relationship extract before reading permits that already carry a license.
+   Require that extract only for historical qualification when the permit has no
+   license number. Map a DBPR match with `property_improvement_has_contractor`
+   (`property_improvement` → `company`), `contractor_has_license`
+   (`company` → `license`; `license_identifier` on class `license`), and
+   `contractor_has_person` (`company` → `person`; `first_name` and `last_name`;
+   no license field on the person). Relationship objects are only `from` and `to`.
+   `source_http_request.url` on those records is the official DBPR license-detail
+   URL, not the permit page and not the Sunbiz download page. If the live manifest
+   lacks those edges or the license source fields, record the gap and do not
+   substitute another edge.
 5. **Internal reconciliation:** `query-db-loading-matching`.
 6. **Enrichment:** BBB, places, HOA/property management, AVM, and roof age as applicable.
 

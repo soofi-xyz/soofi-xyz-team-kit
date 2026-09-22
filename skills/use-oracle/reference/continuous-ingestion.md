@@ -103,11 +103,21 @@ recovery action, and continue independent workstreams.
 - Intake launches source/jurisdiction enumeration, adapter determination/build,
   identity-registry route proof, execution and internal-destination proof, upload-node and
   Atlas-PR readiness, and blocker routing in parallel. Adapter build is not permit harvest.
-- After appraisal/transform readiness, enqueue identity-baseline load (Sunbiz first, then
-  the DBPR adequacy gate). If DBPR is inadequate, enqueue official DBPR acquisition next
-  and do not enqueue `PermitFeed` or county permit capture until the snapshot is adequate
-  or the operator aborts. Schema gaps after loading supported tables do not skip
-  acquisition.
+- After appraisal/transform readiness, enqueue identity-baseline load. Sunbiz comes
+  first: stamp each company with a GET of `search.sunbiz.org` by document number, not
+  the bulk download page. Then enqueue `dbpr-license-ingest`. A printed permit license
+  number, person name, and company name are DBPR search keys only. Persist company,
+  person, and license from the DBPR license-detail record. If DBPR returns no match,
+  write no contractor, person, or license. Do not persist those records copied from
+  the permit. Map a match with `property_improvement_has_contractor`
+  (`property_improvement` → `company`), `contractor_has_license` (`company` →
+  `license`, `license_identifier` on class `license`), and `contractor_has_person`
+  (`company` → `person`, `first_name` and `last_name`; no license field on the
+  person). Relationship objects are only `from` and `to`. Do not enqueue `PermitFeed`
+  for historical qualification of permits that omit a license number until the
+  public-records relationship extract is adequate. That extract does not block
+  reading permits that already print a license number. Schema gaps after loading
+  supported tables do not skip acquisition.
 - Readiness `PASS` enqueues the next dependency-ready seed/pilot/run stages automatically.
 - A capture handoff enqueues transform/validation; a valid transform handoff enqueues
   idempotent load/match; a reconciled load advances the loaded watermark and enqueues the

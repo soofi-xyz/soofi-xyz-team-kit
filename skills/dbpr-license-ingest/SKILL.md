@@ -1,18 +1,43 @@
 ---
 name: dbpr-license-ingest
-description: "Acquire, validate, and load the official Florida DBPR contractor-license identity baseline before permit harvest, including licenses, qualifiers, qualified-business relationships, status, and effective dates. Use on every Florida county ingest or re-ingest when DBPR adequacy is checked or stale."
+description: "Look up the official Florida DBPR license detail for a license number printed on a permit, persist company, person, and license from that record, and map property_improvement_has_contractor, contractor_has_license, and contractor_has_person. Acquire the missing public-records relationship extract only for historical qualification when the permit has no license number."
 metadata: {"author":"elephant-xyz"}
 ---
 # DBPR License Ingest
 
 Use Florida Department of Business and Professional Regulation (DBPR) records as the
-official contractor-licensing layer. Run this skill after `sunbiz-corporate-ingest` and
-before any permit harvest. It is statewide and county-neutral.
+official contractor-licensing layer. It is statewide and county-neutral.
 
-Do not invent a generic SID, canonical license entity, qualified-business table, or
-permit-license foreign key. Do not load DBPR records into BBB reputation-license tables.
-Load only fields and relationships supported by the deployed Query DB; retain unsupported
-official records in the private snapshot and resolution ledger and report schema gaps.
+When a permit prints a license number, use that license number, the person name, and
+the company name only as search keys for the official DBPR license-detail lookup. Do
+not persist a contractor company, person, or license copied from the permit portal.
+Persist company, person, and license from the DBPR record. If DBPR returns no match,
+write no contractor, person, or license. `source_http_request.url` on those records
+is the official DBPR license-detail URL, not the permit page and not the Sunbiz
+download page. The Sunbiz company detail URL rule stays: `search.sunbiz.org` by
+document number, not the bulk file. Do not wait for a statewide relationship extract
+before reading permits that already carry a license. Do not build the whole
+license–company graph from the bulk file and then harvest. Require the missing
+public-records extract only for historical qualification when the permit has no
+license number.
+
+Write `property_improvement_has_contractor` from `property_improvement` to `company`.
+The contractor is the company, not a separate class. Write `contractor_has_license`
+from `company` to `license`. Relationship objects are only `from` and `to`. The
+license id is `license_identifier` on class `license`. Write `contractor_has_person`
+from `company` to `person` (schema title `company_to_person`). The person is an
+object with `first_name` and `last_name`, not a string field. There is no license
+field on the person. Lexicon PR 178 requires `license_identifier` to be non-empty and
+adds `source_http_request` and `request_identifier` on `license`.
+`license_identifier` is already on main. If the live manifest does not yet include
+those license fields or these edges, record the gap and do not substitute another
+edge.
+
+Do not invent a generic SID, a license field on the person, or a separate contractor
+class. Do not load DBPR records into BBB reputation-license tables. For the Query DB
+working store, load only columns the deployed schema has; retain unsupported official
+records in the private snapshot and resolution ledger and report schema gaps. The
+lexicon archive still writes the three edges above from the DBPR record.
 
 ## Inputs and outputs
 
@@ -45,10 +70,13 @@ On every ingest or re-ingest, fail the gate unless the snapshot is all of:
 5. able to support the permit attribution dates in scope.
 
 Emit exactly one result: `adequate_reuse`, `adequate_acquired`, or `inadequate`.
-An inadequate result enqueues acquisition immediately and blocks permit harvest. If a
-current bulk file lacks relationship history, it is not adequate for historical
-attribution; obtain the official relationship/history extract through DBPR public
-records.
+An inadequate relationship-history result enqueues the public-records extract and
+blocks historical qualification for permits that omit a license number. It does not
+block reading permits that already print a license number; look those up on the
+official license-detail record first. If a current bulk file lacks relationship
+history, it is not adequate for historical attribution; obtain the official
+relationship/history extract through DBPR public records. Require that extract only
+when the permit has no license number.
 
 ## 2. Acquire official DBPR records
 
@@ -120,12 +148,14 @@ Verify:
 
 ## 4. Load supported structures only
 
-Inspect the deployed schema before writing. Load legal companies only through the
-existing company/Sunbiz identity path when an exact official relationship resolves to an
-existing `business_registrations.document_number` and `companies.company_id`. Keep DBPR
-licenses, qualifiers, qualified-business relationships, statuses, and effective periods
-in the private normalized snapshot and immutable resolver ledger unless reviewed schema
-tables exist for them.
+Inspect the deployed Query DB schema before writing working-store rows. Load legal
+companies into that store only through the existing company/Sunbiz identity path when
+an exact official relationship resolves to an existing
+`business_registrations.document_number` and `companies.company_id`. The lexicon
+archive is separate: persist company, person, and license from the DBPR record and
+write `property_improvement_has_contractor`, `contractor_has_license`, and
+`contractor_has_person`. Keep statuses and effective periods in the private normalized
+snapshot and immutable resolver ledger when the Query DB has no column for them.
 
 Never populate `business_reputation_license_id`, synthesize
 `permit_contacts.license_number`, or write `permit_contacts.person_id` from a name.
@@ -147,8 +177,15 @@ Use these exact gap codes:
 - `dbpr_permit_license_edge_unsupported`
 - `dbpr_resolver_provenance_unsupported`
 
-Only the last three are schema-capability gaps; they do not excuse acquisition. Return
-snapshot revision/digests, source boundary, posted/retrieved dates, counts, quarantines,
-relationship-window coverage, supported rows loaded, adequacy result, gap codes, and the
-next automated action. Permit harvest may proceed only after `adequate_reuse` or
-`adequate_acquired`.
+Emit `dbpr_canonical_license_entity_unsupported` only when the live lexicon manifest
+has no `license` class. Emit `dbpr_permit_license_edge_unsupported` only when that
+manifest lacks `contractor_has_license`, `property_improvement_has_contractor`, or
+`contractor_has_person`. Once those are present, write them and do not emit those
+codes. `dbpr_resolver_provenance_unsupported` remains a schema-capability gap. None of
+these codes excuse acquisition, and none authorize a permit-portal copy or a
+substitute edge. Return snapshot revision/digests, source boundary, posted/retrieved
+dates, counts, quarantines, relationship-window coverage, supported rows loaded,
+adequacy result, gap codes, and the next automated action. Read permits that already
+print a license number through the official license-detail lookup without waiting for
+this extract. Historical qualification of permits with no license number proceeds
+only after `adequate_reuse` or `adequate_acquired`.

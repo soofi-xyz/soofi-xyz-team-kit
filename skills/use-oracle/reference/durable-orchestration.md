@@ -238,16 +238,39 @@ is derived from frozen manifests — not adapter counts, dashboard labels, or pi
 
 ### 16. Keep identity baseline and reputation enrichment separate
 
-Identity baseline is a predecessor of permit harvest, not an enrichment dimension. For
-Florida, `sunbiz-corporate-ingest` loads legal entities and `document_number`; the official
-DBPR snapshot loads licenses, qualifiers, and qualified-business relationships. Sunbiz
-does not issue contractor licenses.
+When a permit prints a license number, use that license number, the person name, and
+the company name only as search keys for the official DBPR license-detail lookup. Do
+not persist a contractor company, person, or license copied from the permit portal.
+Persist company, person, and license from the DBPR record. If DBPR returns no match,
+write no contractor, person, or license. `source_http_request.url` on those records
+is the official DBPR license-detail URL, not the permit page and not the Sunbiz
+download page. Do not wait for a statewide relationship extract before reading permits
+that already carry a license. Do not build the whole license–company graph from the
+bulk file and then harvest. Require the missing public-records extract only for
+historical qualification when the permit has no license number.
+
+Write `property_improvement_has_contractor` from `property_improvement` to `company`.
+The contractor is the company, not a separate class. Write `contractor_has_license`
+from `company` to `license`. Relationship objects are only `from` and `to`. The
+license id is `license_identifier` on class `license`. Write `contractor_has_person`
+from `company` to `person` (schema title `company_to_person`). The person is an
+object with `first_name` and `last_name`, not a string field. There is no license
+field on the person.
+
+For Florida, `sunbiz-corporate-ingest` loads legal entities and `document_number`;
+`dbpr-license-ingest` performs the official license-detail lookup and, only for permits
+with no license number, the public-records relationship extract. Sunbiz does not issue
+contractor licenses. For every county, the Sunbiz company detail URL rule stays: stamp
+each Sunbiz company with a GET of `search.sunbiz.org` by document number before load,
+not the bulk file. The quarterly bulk download page is the archive source, not the
+company `source_http_request`.
 
 BBB, reviews, complaints, and `overture-places-ingest` are reputation/context enrichment
 (`bbb-harvest`, `overture-places-ingest`). Their absence must not silently change core
-permit-capture completeness. Report their coverage separately. Inadequate Sunbiz/DBPR
-blocks automatic permit identity linking and enqueues official-source acquisition next;
-it does not authorize harvesting permits first or recording a forever gap.
+permit-capture completeness. Report their coverage separately. A missing Sunbiz detail
+URL or license-detail lookup blocks automatic linking for that permit and enqueues the
+official lookup next. A missing public-records extract blocks only historical
+qualification of permits that omit a license number. Neither authorizes a name match.
 
 Official API and public-site scrape are different sources. Run any BBB public-site browser
 on approved AWS-managed remote compute with US egress, never on the operator's machine. The

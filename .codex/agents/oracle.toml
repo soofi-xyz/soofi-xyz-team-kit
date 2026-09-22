@@ -32,10 +32,26 @@ Read `skills/use-oracle/SKILL.md` and
    `county-readiness-preflight`. Stop seed, pilot, and full ingest on a non-zero gate.
 2. Build the parcel backbone with `county-seed-data`,
    `county-appraisal-onboarding`, and `build-county-transform`.
-3. Load the official corporate registry and licensing authority before permit harvest.
-   In Florida run `sunbiz-corporate-ingest`, then `dbpr-license-ingest`.
+3. Load the official corporate registry and licensing authority before writing
+   contractor records. In Florida run `sunbiz-corporate-ingest`, then
+   `dbpr-license-ingest`. Stamp each Sunbiz company with its own detail URL: a GET
+   of `search.sunbiz.org` calculated from the document number
+   (`sunbiz:<documentNumber>:company`). The quarterly bulk download page is the
+   archive source, not the company `source_http_request`.
 4. Run `county-permit-adapter` and `county-ingest-run`. Preserve raw contacts,
-   unmatched permits, folio identity, source provenance, and tombstones.
+   unmatched permits, folio identity, source provenance, and tombstones. When a
+   permit prints a license number, use that license number, the person name, and
+   the company name only as search keys for the official DBPR license-detail
+   lookup. Persist company, person, and license from the DBPR record. If DBPR
+   returns no match, write no contractor, person, or license. Do not persist a
+   contractor copied from the permit. Do not wait for a statewide relationship
+   extract before reading permits that already carry a license. Require that
+   extract only for historical qualification when the permit has no license number.
+   Map a DBPR match with `property_improvement_has_contractor`
+   (`property_improvement` → `company`), `contractor_has_license`
+   (`company` → `license`, `license_identifier` on class `license`), and
+   `contractor_has_person` (`company` → `person`, `first_name` and `last_name`;
+   no license field on the person). Relationship objects are only `from` and `to`.
 5. Run `query-db-loading-matching` for internal reconciliation. Require folio counts,
    content-aware watermarks, tombstone consumption, deterministic permit/property
    links, versioned official identity edges, roof-age lineage, and separate enrichment
@@ -75,6 +91,20 @@ Read `skills/use-oracle/SKILL.md` and
   unlinked.
 - Resolve permit companies from official license/corporate evidence with temporal
   validity. Name, phone, BBB, and address matches are candidates, not legal identity.
+- Stamp each Sunbiz company from `search.sunbiz.org` by document number. Do not
+  write the bulk download page onto the company.
+- Permit license number, person name, and company name are DBPR search keys only.
+  Persist company, person, and license from the DBPR license-detail record. No
+  DBPR match means write no contractor, person, or license. Do not copy those
+  records from the permit.
+- Write `property_improvement_has_contractor` from `property_improvement` to
+  `company`, `contractor_has_license` from `company` to `license`
+  (`license_identifier` on class `license`), and `contractor_has_person` from
+  `company` to `person` (`first_name` and `last_name`; no license field on the
+  person). Relationship objects are only `from` and `to`. If the live manifest
+  lacks those edges or `license_identifier`, `source_http_request`, and
+  `request_identifier` on `license`, record the gap and do not substitute another
+  edge.
 - Keep roof-age evidence and confidence caveats. Keep BBB, places, HOA, and AVM as
   enrichment; they do not establish official identity.
 - Never solve or bypass CAPTCHA. Never commit captures, CARs, Parquet, secrets, or
@@ -83,6 +113,9 @@ Read `skills/use-oracle/SKILL.md` and
 ## Routing
 
 - New county or full re-ingest: `onboard-county`, then this pipeline.
+- Printed permit license or Sunbiz company detail: `dbpr-license-ingest` and
+  `sunbiz-corporate-ingest`. Permit fields are search keys. Persist from the DBPR
+  license-detail record. Stamp Sunbiz from `search.sunbiz.org` by document number.
 - Property list: split by county; run one publication sequence per county/data group.
 - Load, matching, stale rows, identity edges, or roof age: `query-db-loading-matching`.
 - Public publish: `use-oracle` and `car-publication.md` only.
@@ -98,6 +131,13 @@ Return:
 - county, jurisdictions, source boundary, pilot/full scope, and seed count;
 - capture, transform, validation, dead/invalid/retryable counts, and readiness result;
 - official identity snapshots, freshness, adequacy, and whether they preceded permits;
+- license numbers, person names, and company names taken from permits only as DBPR
+  search keys; DBPR matches written as company, person, and license with
+  `property_improvement_has_contractor`, `contractor_has_license`
+  (`license_identifier`), and `contractor_has_person`; permits with no DBPR match
+  and therefore no contractor, person, or license written; Sunbiz companies stamped
+  with the document-number detail URL; public-records extract used only where a
+  permit had no license number;
 - internal reconciliation by folio, per-track watermark, tombstones consumed,
   linked/unresolved/conflicting identities, roof-age coverage, and enrichment counts;
 - per data group: group directory, CAR path, archive root, block count, schema CID,

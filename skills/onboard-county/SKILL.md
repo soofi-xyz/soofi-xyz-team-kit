@@ -16,6 +16,10 @@ Ask once, then execute approved stages without repeated confirmation:
 1. County, state, five-digit FIPS, and lowercase-hyphen county slug.
 2. Pilot or full scope; supplied seed or official parcel-roll source.
 3. Appraiser, permit, corporate-registry, and licensing sources; sources to exclude.
+   For Florida, a license number printed on a permit is a DBPR search key, not a
+   record to copy. Look it up on the official license detail, then stamp the Sunbiz
+   company from `search.sunbiz.org` by document number. Do not wait for a statewide
+   relationship extract before reading those permits.
 4. Local Restate or bundled AWS execution. Verify selected AWS identity and region when
    AWS is chosen; fall back to local only with operator agreement.
 5. US egress and any login, CAPTCHA, records-request, or custodian constraints.
@@ -31,8 +35,11 @@ whose projected acquisition exceeds 48 hours.
 ## Target outcome
 
 Produce validated lexicon records with exact source-request provenance; reconcile them
-internally by folio; load official corporate and license identities before permits;
-preserve unmatched evidence; calculate roof-age lineage; add enrichment separately; and,
+internally by folio; stamp each Sunbiz company from its document-number detail URL;
+resolve a printed permit license through official DBPR license detail before writing
+any contractor, person, or license; require the public-records relationship extract
+before historical qualification of permits that omit a license number; preserve
+unmatched evidence; calculate roof-age lineage; add enrichment separately; and,
 when publication is authorized, register each data group through the single Atlas
 publication sequence.
 
@@ -50,11 +57,26 @@ publication input.
 5. **Transform validation:** `build-county-transform`; prove source-field coverage and
    live-lexicon validity before scale.
 6. **Official identity baseline:** load corporate registry, then licensing authority.
-   In Florida run `sunbiz-corporate-ingest`, then `dbpr-license-ingest`. Require an
-   official, dated, reconciled snapshot covering licenses, qualifiers,
-   qualified-business relationships, status, and effective dates.
-7. **Permit adapter:** `county-permit-adapter`. Build may overlap discovery; harvest may
-   not precede identity adequacy.
+   In Florida run `sunbiz-corporate-ingest`, then `dbpr-license-ingest`. Stamp each
+   Sunbiz company with `search.sunbiz.org` by document number, not the bulk download
+   page. When a permit prints a license number, use that license number, the person
+   name, and the company name only as search keys for the official DBPR
+   license-detail lookup. Persist company, person, and license from the DBPR record.
+   If DBPR returns no match, write no contractor, person, or license. Do not persist
+   a contractor copied from the permit. Map the match with
+   `property_improvement_has_contractor` (`property_improvement` → `company`),
+   `contractor_has_license` (`company` → `license`, `license_identifier` on class
+   `license`), and `contractor_has_person` (`company` → `person`, `first_name` and
+   `last_name`; no license field on the person). Relationship objects are only
+   `from` and `to`. Do not wait for a statewide relationship extract before reading
+   permits that already carry a license. Require that extract only for historical
+   qualification when the permit has no license number. Still require an official,
+   dated, reconciled snapshot covering licenses, qualifiers, qualified-business
+   relationships, status, and effective dates before that historical path.
+7. **Permit adapter:** `county-permit-adapter`. Build may overlap discovery. Harvest
+   of permits that print a license number uses the DBPR license-detail lookup and
+   does not wait for the statewide relationship extract. Historical qualification of
+   permits with no license number may not precede that extract's adequacy.
 8. **Pilot:** `county-ingest-run` with about 25 representative parcels. Verify
    residential skip, permit-less, permit detail/contact, and failure paths.
 9. **Feasibility:** project full duration. Above 48 hours, ask whether to continue,
@@ -111,6 +133,9 @@ Never derive the CAR or Atlas table set from the Query DB.
 
 - Commit code, small fixtures, transforms, flows, and findings. Never commit raw county
   data, archives, Parquet, database URLs, or secrets.
+- Do not persist a contractor company, person, or license copied from a permit.
+  Permit fields are DBPR search keys only. No DBPR match means write no contractor,
+  person, or license.
 - Keep each source bounded, rate-limited, retryable, and resumable.
 - Never bypass CAPTCHA or automation restrictions.
 - Preserve source payloads and lexicon gaps.

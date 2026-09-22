@@ -7,11 +7,22 @@ old-roof contractor-expansion query. The policy is county-neutral.
 
 1. Freeze the durable run manifest and pass county readiness. Rebuild or repair the seed
    and appraisal/property backbone; preserve the seed CSV as input of record.
-2. Load the official corporate registry, then run the official contractor-licensing
-   authority adequacy-or-acquire stage. In Florida, run `sunbiz-corporate-ingest`, then
-   `dbpr-license-ingest`. Permit harvest is blocked until both identity snapshots are
-   loaded/reconciled and the licensing stage returns `adequate_reuse` or
-   `adequate_acquired`.
+2. Read permits that print a license number and resolve each one: official
+   license-detail lookup, then the Sunbiz company. Use the permit license number,
+   person name, and company name only as DBPR search keys. Persist company, person,
+   and license from the DBPR record. If DBPR returns no match, write no contractor,
+   person, or license. Write `property_improvement_has_contractor` from
+   `property_improvement` to `company`. The contractor is the company, not a separate
+   class. Write `contractor_has_license` from `company` to `license`. Relationship
+   objects are only `from` and `to`. The license id is `license_identifier` on class
+   `license`. Write `contractor_has_person` from `company` to `person` (schema title
+   `company_to_person`). The person is an object with `first_name` and `last_name`,
+   not a string field. There is no license field on the person. Do not wait for a
+   statewide relationship extract before that read. In Florida, run
+   `sunbiz-corporate-ingest` for the company detail URL (`search.sunbiz.org` by
+   document number, not the bulk file) and `dbpr-license-ingest` for the
+   license-detail lookup. Require the public-records extract only for historical
+   qualification when the permit has no license number.
 3. Run `county-permit-adapter` and `county-ingest-run` with permit list, detail, contact,
    lifecycle-date, inspection, description/scope, raw artifact, and digest capture.
 4. Run `permit-evidence-preflight.md`, classify roofing work from explicit source text,
@@ -114,8 +125,10 @@ remains a caveat; a dry-run never writes property rows.
 ## Product-query contract
 
 Feed the query only permit IDs accepted by the frozen, profile-versioned work classifier;
-do not classify production results with SQL regex. Join companies through
-`permit_contacts.company_id` or
+do not classify production results with SQL regex. Join lexicon contractors through
+`property_improvement_has_contractor`, `contractor_has_license`
+(`license_identifier`), and `contractor_has_person`. In the Query DB, join companies
+through `permit_contacts.company_id` or
 `property_improvements.contractor_company_id`. Use raw names, license text, regex, fuzzy
 matching, addresses, and phones only to discover unresolved repair candidates.
 
