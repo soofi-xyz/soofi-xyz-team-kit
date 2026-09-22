@@ -238,20 +238,32 @@ is derived from frozen manifests — not adapter counts, dashboard labels, or pi
 
 ### 16. Keep identity baseline and reputation enrichment separate
 
-When a permit prints a license number, follow this route: the permit (person and
-company, and that license number) → the official license-detail lookup for that number
-→ the Sunbiz company. Use the permit as the source of the license number. Do not wait
-for a statewide relationship extract before reading permits that already carry a
-license. Do not build the whole license–company graph from the bulk file and then
-harvest. Require the missing public-records extract only for historical qualification
-when the permit has no license number.
+When a permit prints a license number, use that license number, the person name, and
+the company name only as search keys for the official DBPR license-detail lookup. Do
+not persist a contractor company, person, or license copied from the permit portal.
+Persist company, person, and license from the DBPR record. If DBPR returns no match,
+write no contractor, person, or license. `source_http_request.url` on those records
+is the official DBPR license-detail URL, not the permit page and not the Sunbiz
+download page. Do not wait for a statewide relationship extract before reading permits
+that already carry a license. Do not build the whole license–company graph from the
+bulk file and then harvest. Require the missing public-records extract only for
+historical qualification when the permit has no license number.
+
+Write `property_improvement_has_contractor` from `property_improvement` to `company`.
+The contractor is the company, not a separate class. Write `contractor_has_license`
+from `company` to `license`. Relationship objects are only `from` and `to`. The
+license id is `license_identifier` on class `license`. Write `contractor_has_person`
+from `company` to `person` (schema title `company_to_person`). The person is an
+object with `first_name` and `last_name`, not a string field. There is no license
+field on the person.
 
 For Florida, `sunbiz-corporate-ingest` loads legal entities and `document_number`;
 `dbpr-license-ingest` performs the official license-detail lookup and, only for permits
 with no license number, the public-records relationship extract. Sunbiz does not issue
-contractor licenses. For every county, stamp each company with a GET of its own
-official detail URL from its document number before load. The quarterly bulk download
-page is the archive source, not the company `source_http_request`.
+contractor licenses. For every county, the Sunbiz company detail URL rule stays: stamp
+each Sunbiz company with a GET of `search.sunbiz.org` by document number before load,
+not the bulk file. The quarterly bulk download page is the archive source, not the
+company `source_http_request`.
 
 BBB, reviews, complaints, and `overture-places-ingest` are reputation/context enrichment
 (`bbb-harvest`, `overture-places-ingest`). Their absence must not silently change core

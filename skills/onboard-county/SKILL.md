@@ -115,15 +115,23 @@ Track progress in the county's findings doc (PR'd to `Counties-trasform-scripts`
    100% field coverage vs raw captures; log lexicon gaps. Gate: do not scale before this
    passes. (Authoring or repairing transforms in any mode: `build-county-transform`.)
 6. **Permit license to Sunbiz** — after the seed/appraisal backbone, read permits that
-   print a license number. Follow this route: the permit (person and company, and that
-   license number) → the official license-detail lookup for that number → the Sunbiz
-   company. Use the permit as the source of the license number. Do not wait for a
+   print a license number. Use that license number, the person name, and the company
+   name only as search keys for the official license-detail lookup. Persist company,
+   person, and license from the DBPR record. If DBPR returns no match, write no
+   contractor, person, or license. Write `property_improvement_has_contractor` from
+   `property_improvement` to `company`. The contractor is the company, not a separate
+   class. Write `contractor_has_license` from `company` to `license`. Relationship
+   objects are only `from` and `to`. The license id is `license_identifier` on class
+   `license`. Write `contractor_has_person` from `company` to `person` (schema title
+   `company_to_person`). The person is an object with `first_name` and `last_name`,
+   not a string field. There is no license field on the person. Do not wait for a
    statewide relationship extract before reading those permits. Do not build the whole
    license–company graph from the bulk file and then harvest. In Florida, run
    `dbpr-license-ingest` for the license-detail lookup and `sunbiz-corporate-ingest`
-   for the company, stamped with its own detail URL. Require the missing public-records
-   extract only for historical qualification when the permit has no license number.
-   Do not invent SID or license-entity fields.
+   for the Sunbiz company, stamped with `search.sunbiz.org` by document number, not
+   the bulk file. Require the missing public-records extract only for historical
+   qualification when the permit has no license number. Do not invent a SID, a
+   license field on the person, or a separate contractor class.
 7. **Permit adapter** — `county-permit-adapter`: per-vendor module in `PermitHarvest`,
    local tests, single-parcel smoke test. Adapter scaffolds may start during discovery.
    Harvest permits that already print a license number without waiting for the statewide
@@ -237,11 +245,20 @@ Record each PR URL in the findings doc.
   anything else.
 - Prioritize commercial properties when asked: sort the seed CSV; the eligibility branch
   already limits permit harvest to commercial/industrial usage types.
-- When a permit prints a license number, follow this route: the permit (person and
-  company, and that license number) → the official license-detail lookup for that
-  number → the Sunbiz company. Use the permit as the source of the license number. Do
-  not wait for a statewide relationship extract before reading permits that already
-  carry a license. Do not build the whole license–company graph from the bulk file and
-  then harvest. Require the missing public-records extract only for historical
-  qualification when the permit has no license number. Do not treat a name match or
-  reputation data as the licensing method.
+- When a permit prints a license number, use that license number, the person name,
+  and the company name only as search keys for the official DBPR license-detail
+  lookup. Do not persist a contractor company, person, or license copied from the
+  permit portal. Persist company, person, and license from the DBPR record. If DBPR
+  returns no match, write no contractor, person, or license. Write
+  `property_improvement_has_contractor` from `property_improvement` to `company`.
+  The contractor is the company, not a separate class. Write `contractor_has_license`
+  from `company` to `license`. Relationship objects are only `from` and `to`. The
+  license id is `license_identifier` on class `license`. Write `contractor_has_person`
+  from `company` to `person` (schema title `company_to_person`). The person is an
+  object with `first_name` and `last_name`, not a string field. There is no license
+  field on the person. Do not wait for a statewide relationship extract before
+  reading permits that already carry a license. Do not build the whole
+  license–company graph from the bulk file and then harvest. Require the missing
+  public-records extract only for historical qualification when the permit has no
+  license number. Do not treat a name match or reputation data as the licensing
+  method.

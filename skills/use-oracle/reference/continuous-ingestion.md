@@ -104,8 +104,20 @@ recovery action, and continue independent workstreams.
   route proof, execution and destination proof, Filebase/IPNS readiness, and blocker routing
   in parallel. Adapter build is not permit harvest.
 - After appraisal/transform readiness, read permits that print a license number and
-  resolve each one by official license-detail lookup, then the Sunbiz company. Do not
-  wait for a statewide relationship extract before that read. Enqueue
+  resolve each one by official license-detail lookup, then the Sunbiz company. Use
+  the permit license number, person name, and company name only as DBPR search keys.
+  Persist company, person, and license from the DBPR record. If DBPR returns no
+  match, write no contractor, person, or license. Write
+  `property_improvement_has_contractor` from `property_improvement` to `company`
+  (the contractor is the company, not a separate class), `contractor_has_license`
+  from `company` to `license` (relationship objects are only `from` and `to`; the
+  license id is `license_identifier` on class `license`), and `contractor_has_person`
+  from `company` to `person` (schema title `company_to_person`; the person is an
+  object with `first_name` and `last_name`, not a string field, and there is no
+  license field on the person). `source_http_request.url` on those DBPR records is
+  the official DBPR license-detail URL, not the permit page and not the Sunbiz
+  download page. The Sunbiz company detail URL stays `search.sunbiz.org` by document
+  number. Do not wait for a statewide relationship extract before that read. Enqueue
   `dbpr-license-ingest` for the public-records extract only when a permit has no
   license number and historical qualification needs it. Schema gaps after loading
   supported tables do not skip that extract.

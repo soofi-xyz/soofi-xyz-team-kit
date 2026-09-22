@@ -95,23 +95,28 @@ Drive it in this order for every county. There is no alternate order.
    data-group root; produce it with seed mode from the county `seed.csv` and merge it into
    each property directory before validation. Without the seed root, `hash` cannot
    determine the property CID.
-3. **Permit to license to Sunbiz** — when a permit prints a license number, follow this
-   route: the permit (person and company, and that license number) → the official
-   license-detail lookup for that number → the Sunbiz company. Use the permit as the
-   source of the license number. Do not wait for a statewide relationship extract
-   before reading permits that already carry a license. Do not build the whole
+3. **Permit to license to Sunbiz** — when a permit prints a license number, use that
+   license number, the person name, and the company name only as search keys for the
+   official license-detail lookup (`dbpr-license-ingest` in Florida). Persist company,
+   person, and license from the DBPR record. If DBPR returns no match, write no
+   contractor, person, or license. Map the match with
+   `property_improvement_has_contractor`, `contractor_has_license`
+   (`license_identifier` on class `license`), and `contractor_has_person`, as the
+   Rules section states. Do not wait for a statewide relationship extract before
+   reading permits that already carry a license. Do not build the whole
    license–company graph from the bulk file and then harvest. Require the missing
    public-records extract only for historical qualification when the permit has no
-   license number (`dbpr-license-ingest` in Florida). For every county, the quarterly
-   `cordata.zip` is the archive source. Before load, stamp each company with a GET of
-   its own Sunbiz detail URL from its document number
-   (`sunbiz:<documentNumber>:company`). Do not write
+   license number. For every county, the quarterly `cordata.zip` is the archive
+   source. The Sunbiz company detail URL rule stays: stamp each Sunbiz company with a
+   GET of `search.sunbiz.org` by document number
+   (`sunbiz:<documentNumber>:company`), not the bulk file. Do not write
    `https://dos.fl.gov/sunbiz/other-services/data-downloads/` onto the company.
 4. **Permits** — `county-permit-adapter` then `county-ingest-run`; then
-   `reference/permit-evidence-preflight.md`. A printed license number resolves through
-   the official license-detail lookup to one Sunbiz company. A permit with no license
-   number stays unresolved until the public-records extract supports historical
-   qualification. Ambiguous stays unresolved.
+   `reference/permit-evidence-preflight.md`. A printed license number is a search key.
+   A DBPR match writes company, person, and license and the three contractor edges.
+   A permit with no license number stays unresolved until the public-records extract
+   supports historical qualification. A DBPR no-match writes no contractor, person,
+   or license. Ambiguous stays unresolved.
 5. **Reputation and places** — `bbb-harvest`, `overture-places-ingest`. Enrichment only;
    never license, qualifier, or identity evidence.
 6. **Validate the county** — `elephant-cli validate <county-dir> --output-csv <errors.csv>`.
@@ -175,7 +180,7 @@ sequence. A delta refresh is for stale records, not for a format change.
 | `county-appraisal-onboarding` | Browser flow, per-county prepare queue, transform wiring |
 | `build-county-transform` | Author or repair a county transform, prove lexicon validity and coverage, open the transform PR |
 | `sunbiz-corporate-ingest` | Sunbiz company record. Stamp each company with its own detail URL from the document number |
-| `dbpr-license-ingest` | Official license-detail lookup for a number printed on a permit. Public-records extract only when the permit has no license number |
+| `dbpr-license-ingest` | Official license-detail lookup. Permit license number, person name, and company name are search keys. Persist company, person, and license from the DBPR record and map `contractor_has_license` |
 | `county-permit-adapter` | Build the county permit-portal harvester. Read permits that print a license number without waiting for the statewide relationship extract |
 | `county-ingest-run` | Backpressure-aware seed feeder, after readiness PASS |
 | `monitoring-county-ingestion` | **Local stack:** queue and invocation health, counts, ETAs |
@@ -196,13 +201,30 @@ sequence. A delta refresh is for stale records, not for a format change.
 - Drive the skills and the CLI; never improvise mining commands they do not define.
 - Never hardcode or print account ids, tokens, secrets, or `DATABASE_URL`.
 - Never skip `validate-county-readiness.py` before seed, pilot, or full ingest.
-- When a permit prints a license number, follow this route: the permit (person and
-  company, and that license number) → the official license-detail lookup for that
-  number → the Sunbiz company. Use the permit as the source of the license number. Do
-  not wait for a statewide relationship extract before reading permits that already
-  carry a license. Do not build the whole license–company graph from the bulk file and
-  then harvest. Require the missing public-records extract only for historical
+- When a permit prints a license number, use that license number, the person name,
+  and the company name only as search keys for the official DBPR license-detail
+  lookup. Do not persist a contractor company, person, or license copied from the
+  permit portal. Persist company, person, and license from the DBPR record. If DBPR
+  returns no match, write no contractor, person, or license.
+  `source_http_request.url` on those records is the official DBPR license-detail URL,
+  not the permit page and not the Sunbiz download page. The Sunbiz company detail URL
+  rule stays: `search.sunbiz.org` by document number, not the bulk file. Do not wait
+  for a statewide relationship extract before reading permits that already carry a
+  license. Do not build the whole license–company graph from the bulk file and then
+  harvest. Require the missing public-records extract only for historical
   qualification when the permit has no license number.
+- Write `property_improvement_has_contractor` from `property_improvement` to
+  `company`. The contractor is the company, not a separate class. Write
+  `contractor_has_license` from `company` to `license`. Relationship objects are only
+  `from` and `to`. The license id is `license_identifier` on class `license`. Write
+  `contractor_has_person` from `company` to `person` (schema title
+  `company_to_person`). The person is an object with `first_name` and `last_name`,
+  not a string field. There is no license field on the person. Lexicon PR 178
+  requires `license_identifier` to be non-empty and adds `source_http_request` and
+  `request_identifier` on `license`. `license_identifier` is already on main. If the
+  live manifest does not yet include those license fields or these edges, record the
+  gap and do not substitute another edge. Detail is in
+  `reference/permit-evidence-preflight.md`.
 - Validate before hash, hash before publish, read back before reporting success.
 - Every archive block comes from `elephant-cli hash`; the archive is never exported from
   the query DB. The existing query-table and coverage exports continue unchanged.

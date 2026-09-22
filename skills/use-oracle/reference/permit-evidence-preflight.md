@@ -192,16 +192,33 @@ authorities in the source profile and apply the same gates.
 When a permit prints a license number, follow this route. Do not use the bulk-file-first
 order for that permit.
 
-1. **Read the permit.** Capture the person, the company, and the license number when the
-   portal prints one. Use that permit as the source of the license number. Keep the raw
-   values, including an omitted license number.
+1. **Read the permit as search keys only.** Capture the person name, the company name,
+   and the license number when the portal prints one. Do not persist a contractor
+   company, person, or license copied from the permit portal. Keep the raw values,
+   including an omitted license number, as search keys and source evidence.
 2. **Look up the official license detail** for that number (`dbpr-license-ingest` in
    Florida). Do not wait for a statewide relationship extract before reading permits that
-   already carry a license.
-3. **Resolve the Sunbiz company** from that license detail. Stamp the company with a GET
-   of its own detail URL from its document number (`sunbiz:<documentNumber>:company`).
-   Do not write the quarterly bulk download page onto the company.
-4. **Do not build the whole license–company graph from the bulk file and then harvest.**
+   already carry a license. If DBPR returns no match, write no contractor, person, or
+   license.
+3. **Persist company, person, and license from the DBPR record.**
+   `source_http_request.url` on those records is the official DBPR license-detail URL,
+   not the permit page and not the Sunbiz download page. Then resolve the Sunbiz
+   company. The Sunbiz company detail URL rule stays: stamp that company with a GET of
+   `search.sunbiz.org` by its document number (`sunbiz:<documentNumber>:company`), not
+   the bulk file.
+4. **Write these lexicon edges.** Relationship objects are only `from` and `to`.
+   - Write `property_improvement_has_contractor` from `property_improvement` to
+     `company`. The contractor is the company, not a separate class.
+   - Write `contractor_has_license` from `company` to `license`. The license id is
+     `license_identifier` on class `license`. Lexicon PR 178 requires
+     `license_identifier` to be non-empty and adds `source_http_request` and
+     `request_identifier` on `license`. `license_identifier` is already on main.
+   - Write `contractor_has_person` from `company` to `person` (schema title
+     `company_to_person`). The person is an object with `first_name` and `last_name`,
+     not a string field. There is no license field on the person.
+   If the live manifest does not yet include those license fields or these edges,
+   record the gap and do not substitute another edge.
+5. **Do not build the whole license–company graph from the bulk file and then harvest.**
    Require the missing public-records extract only for historical qualification when the
    permit has no license number. Until that extract supports one historical qualification,
    keep a permit that omits the license number as source-name attribution. Do not infer a
@@ -209,9 +226,9 @@ order for that permit.
 
 Use official public records/downloads at a conservative rate, write a private snapshot
 with provenance/digests, load supported tables, and record remaining schema gaps without
-inventing SID or license-entity fields. A missing relationship extract is not a terminal
-recorded gap. It does not authorize a name match, and it does not block reading permits
-that already print a license number.
+inventing a SID, a license field on the person, or a separate contractor class. A missing
+relationship extract is not a terminal recorded gap. It does not authorize a name match,
+and it does not block reading permits that already print a license number.
 
 ### Use the supported identity vocabulary
 
@@ -243,11 +260,18 @@ Verify the deployed schema before each run. The bundled query-DB schema currentl
 - `business_reputation_license_id` — a BBB reputation-profile child-row ID. It is not a
   DBPR license identity and must not be used as one.
 
-No field named `SID` exists in the bundled permit/company schema. No canonical DBPR
-license-identity table, DBPR qualified-business relationship table, permit-to-license
-foreign key, or dedicated resolver-provenance edge table exists in the bundled schema
-snapshot. Record these as explicit schema/capability gaps. Do not fabricate a `license_id`,
-an official SID, or a permit-license edge.
+No field named `SID` exists in the bundled permit/company schema. The lexicon license
+identity is class `license`, property `license_identifier`. Link it with
+`contractor_has_license` (`company` → `license`). Link the permit with
+`property_improvement_has_contractor` (`property_improvement` → `company`). Link the
+person with `contractor_has_person` (`company` → `person`, schema title
+`company_to_person`). Relationship objects are only `from` and `to`. Do not fabricate
+a `license_id`, an official SID, a license field on the person, or a separate
+contractor class. The bundled Query DB snapshot may still lack a license table. That
+gap does not authorize copying the permit portal into these lexicon records. If the
+live lexicon manifest does not yet include these edges or `license.source_http_request`
+and `license.request_identifier` (lexicon PR 178 is not necessarily merged), record
+the gap and do not substitute another mapping.
 
 The existing `property_improvements.contractor_company_id` and
 `permit_contacts.company_id` edges may be populated only when the resolution is backed
@@ -289,14 +313,17 @@ number through `dbpr-license-ingest`, then the Sunbiz company. Do not wait for a
 statewide relationship extract before reading those permits. If the permit has no
 license number, acquire the official relationship/history extract next and block only
 that historical qualification until it is adequate or the operator aborts. Load
-whatever supported tables exist; record remaining schema gaps without inventing SID or
-license-entity fields. Do not skip acquisition of a missing extract that a no-license
+whatever supported tables exist; record remaining schema gaps without inventing a
+SID, a license field on the person, or a substitute for `contractor_has_license`.
+Do not skip acquisition of a missing extract that a no-license
 permit needs. If that extract is already adequate, do not re-harvest it unless
 freshness is stale versus the as-of rule.
 
-Schema gaps (no generic `SID`, no canonical DBPR license entity, no permit-license FK)
-are not the same as a missing snapshot. Record schema gaps after loading supported
-tables. They do not disable the acquire stage.
+Schema gaps (no generic `SID`; live manifest missing class `license` or the edges
+`contractor_has_license`, `property_improvement_has_contractor`, and
+`contractor_has_person`) are not the same as a missing snapshot. Record schema gaps
+after loading supported tables. They do not disable the acquire stage, and they do
+not authorize a substitute edge.
 
 ### Preserve the permit extraction contract
 
@@ -319,9 +346,10 @@ Evaluate each permit contact in order and emit one exact terminal outcome:
 
 1. **`verified_license`** — normalize the raw license only with the
    licensing-authority/source profile, then find exactly one official DBPR license
-   record. Verify status and effective dates for the permit attribution date. This
-   resolves the license identity in the immutable ledger, but it cannot stamp a
-   permit-license database edge until a reviewed schema adds that edge.
+   record. Verify status and effective dates for the permit attribution date. Write
+   class `license` with `license_identifier` from that DBPR record, and link it from
+   the company with `contractor_has_license`. Do not write that license from the
+   permit portal.
 2. **`verified_company_via_license_relationship`** — from the verified license, select
    exactly one DBPR qualified-business relationship effective on the permit attribution
    date, then resolve that legal business to exactly one Sunbiz document number and
@@ -362,7 +390,23 @@ names without licenses as source-name attribution.
 
 ### Stamp only supported edges
 
-After a company outcome passes, write only these supported edges:
+After a DBPR match, write lexicon relationship objects that are only `from` and `to`:
+
+- Write `property_improvement_has_contractor` from `property_improvement` to `company`.
+  The contractor is the company, not a separate class.
+- Write `contractor_has_license` from `company` to `license`. The license id is
+  `license_identifier` on class `license`.
+- Write `contractor_has_person` from `company` to `person` (schema title
+  `company_to_person`). The person is an object with `first_name` and `last_name`,
+  not a string field. There is no license field on the person.
+
+Do not persist those company, person, or license records from the permit portal.
+`source_http_request.url` on the records written from the DBPR record is the official
+DBPR license-detail URL, not the permit page and not the Sunbiz download page. If
+DBPR returns no match, write no contractor, person, or license.
+
+When the Query DB working store is in scope, also write only these supported foreign
+keys after the same DBPR match:
 
 - contractor-role contact:
   `permit_contacts.company_id -> companies.company_id`;
@@ -371,13 +415,14 @@ After a company outcome passes, write only these supported edges:
   `property_improvements.contractor_company_id -> companies.company_id`.
 
 If contractor-role contacts resolve to different companies, retain valid contact-level
-edges and leave the permit-level edge null with outcome `conflicting`. Never write
-`permit_contacts.person_id` from name-only evidence.
+edges and leave the permit-level Query DB edge null with outcome `conflicting`. Never
+write `permit_contacts.person_id` from name-only evidence. The lexicon person is the
+DBPR qualifier written as `first_name` and `last_name`, linked by
+`contractor_has_person`.
 
-Never write an inferred or resolved license into raw `permit_contacts.license_number`. An
-omitted permit license stays omitted; the verified license identity lives only in the
-immutable resolution ledger until a reviewed migration adds a canonical license entity and
-permit-license edge.
+Never write an inferred or resolved license into raw `permit_contacts.license_number`.
+An omitted permit license stays omitted. The license id on the lexicon `license`
+record is `license_identifier` from the DBPR record.
 
 Before writing, require:
 
@@ -405,15 +450,15 @@ versioned edge provenance.
 
 ### Query through verified edges
 
-Build downstream contractor/company cohorts through verified
-`property_improvements.contractor_company_id` or `permit_contacts.company_id` joins.
-Use raw name/license regex searches only to discover repair candidates. A regex,
-fuzzy-name, shared-address, phone, or raw display-name hit cannot count as resolved
-attribution.
+Build lexicon contractor cohorts through `property_improvement_has_contractor`,
+`contractor_has_license`, and `contractor_has_person`. In the Query DB, build cohorts
+through verified `property_improvements.contractor_company_id` or
+`permit_contacts.company_id` joins. Use raw name/license regex searches only to
+discover repair candidates. A regex, fuzzy-name, shared-address, phone, or raw
+display-name hit cannot count as resolved attribution.
 
-Do not query a verified permit-license cohort until the schema supports a canonical DBPR
-license entity and permit-license edge with provenance. Report that capability as
-unsupported rather than joining raw `license_number` text as if it were an ID.
+Do not join raw `license_number` text as if it were `license_identifier`. The license
+id is `license_identifier` on the `license` record linked by `contractor_has_license`.
 
 ### Reconcile identity resolution
 
@@ -459,8 +504,10 @@ Require fixture and bounded integration tests proving:
   in matching;
 - downstream cohort queries traverse verified company edges and reject regex-only
   attribution;
-- absent DBPR license schema/edge support produces an explicit capability gap, never a
-  fabricated ID.
+- a live manifest that lacks class `license` or the edges
+  `contractor_has_license`, `property_improvement_has_contractor`, and
+  `contractor_has_person` produces an explicit capability gap, never a fabricated ID
+  or a permit-portal copy.
 
 Return registry revisions/freshness, resolver version, ladder outcome counts, collision
 counts, edge write/read-back counts, orphan/stale/unresolved counts, schema gaps, allowed
@@ -636,13 +683,14 @@ ambiguous without unique official qualifier and temporal evidence.”
 permits anyway, or wait forever for a future skill.”
 
 **Correct:** “When the permit prints a license number, look up the official license
-detail for that number, then the Sunbiz company. Do not wait for the statewide
-relationship extract. Require that extract only for historical qualification when the
-permit has no license number. Do not resolve from a name alone.”
+detail for that number, then the Sunbiz company. Persist company, person, and license
+from the DBPR record. Do not wait for the statewide relationship extract. Require
+that extract only for historical qualification when the permit has no license number.
+Do not resolve from a name alone.”
 
 **Incorrect:** “Write the verified DBPR license into `business_reputation_license_id`
 and call it the permit's license edge.”
 
-**Correct:** “Keep the verified DBPR license in the immutable resolution ledger and
-record the missing canonical DBPR license entity/permit-license edge as a schema
-capability gap until a reviewed migration supports it.”
+**Correct:** “Write class `license` with `license_identifier` from the DBPR record,
+and link it with `contractor_has_license` from the company. Do not copy the permit
+portal into that record, and do not use `business_reputation_license_id`.”

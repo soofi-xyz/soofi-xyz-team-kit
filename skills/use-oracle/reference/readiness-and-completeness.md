@@ -165,8 +165,18 @@ branch/endpoint IDs). Do not copy expected IDs from the connection under test.
 
 BBB and places do not control permit-capture completeness. When a permit prints a
 license number, resolve it by official license-detail lookup, then the Sunbiz company.
-Do not classify that lookup as optional enrichment, and do not wait for a statewide
-relationship extract before reading permits that already carry a license.
+Use the permit license number, person name, and company name only as DBPR search
+keys. Persist company, person, and license from the DBPR record. If DBPR returns no
+match, write no contractor, person, or license. Write
+`property_improvement_has_contractor` from `property_improvement` to `company` (the
+contractor is the company, not a separate class), `contractor_has_license` from
+`company` to `license` (relationship objects are only `from` and `to`; the license
+id is `license_identifier` on class `license`), and `contractor_has_person` from
+`company` to `person` (schema title `company_to_person`; the person is an object
+with `first_name` and `last_name`, not a string field, and there is no license field
+on the person). Do not classify that lookup as optional enrichment, and do not wait
+for a statewide relationship extract before reading permits that already carry a
+license.
 If `enrichment.bbb.expected_count`
 equals `advertised_listing_count`, the catalog must also set `listing_page_cap` and
 `cap_acknowledged: true`. Advertised directory totals are not harvestable census counts.
