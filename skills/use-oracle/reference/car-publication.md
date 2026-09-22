@@ -199,11 +199,11 @@ After merge:
 1. Resolve the global Atlas IPNS through the configured gateway order.
 2. Hash the returned index bytes and record the accepted index CID.
 3. Confirm the county page and every merged data-group entry appear.
-4. Run Elephant MCP 2.0 `mcp sync`.
-5. Call `listPublishedCounties`, then `getOracleDatasetInfo` with explicit
-   `county` and `dataGroup`.
+4. Run Elephant MCP 2.0 sync (`npx -y @elephant-xyz/mcp@2 sync`).
+5. Call `listAtlasCounties`, then `getAtlasDatasetInfo` with explicit `state`,
+   `county`, and `dataGroup`.
 
-A merged PR without global-IPNS and synchronized-SQL evidence is not a completed
+A merged PR without global-IPNS and synchronized-MCP evidence is not a completed
 publication.
 
 ## Facts the design depends on

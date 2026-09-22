@@ -52,8 +52,8 @@ Read `skills/use-oracle/SKILL.md` and
       `validate`, request code-owner merge, and handle an automatic revert as a failed
       publication.
    7. Resolve the global `elephant-atlas` IPNS, verify the accepted index changed to
-      the merged Atlas revision, run MCP `sync`, then verify the county/data groups with
-      `listPublishedCounties` and `getOracleDatasetInfo`.
+      the merged Atlas revision, run MCP 2.0 `sync`, then verify the county/data groups
+      with `listAtlasCounties` and `getAtlasDatasetInfo` (`state`, `county`, `dataGroup`).
 7. Report every gate and CID. Do not call a county published before the global IPNS and
    synchronized MCP snapshot contain it.
 

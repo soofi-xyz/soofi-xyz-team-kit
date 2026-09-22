@@ -44,7 +44,7 @@ Follow in order; each phase gates the next.
 
 ### Phase 1 — Establish the data contract
 
-Deploy or connect to a Watchog-owned Elephant MCP 2.0 HTTP transport. Protect the endpoint, synchronize the global Atlas index into hosted SQL as a separate job, enumerate counties and data groups with `listPublishedCounties`, and read scoped publication provenance with `getOracleDatasetInfo` (see `rules/catalog-dataset-monitoring.md`).
+Deploy or connect to a Watchog-owned Elephant MCP 2.0 HTTP transport. Protect the endpoint, synchronize the global Atlas index into hosted SQL as a separate job, enumerate states, counties, and data groups with `listAtlasCounties`, and read scoped publication provenance with `getAtlasDatasetInfo` (see `rules/catalog-dataset-monitoring.md`).
 
 ### Phase 2 — Data gateway and change detection
 

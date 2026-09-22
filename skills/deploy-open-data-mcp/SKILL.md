@@ -1,135 +1,123 @@
 ---
 name: deploy-open-data-mcp
-description: "Run or deploy Elephant MCP 2.0 against the global Atlas IPNS, synchronizing verified Atlas tables into local SQLite or hosted Postgres/Neon before normalized tools serve data."
+description: "Run or deploy the Elephant MCP server against the published Atlas county index, synchronize it, and verify the served tools after a county publication. Use when setting up, cutting over, or checking the open-data MCP."
 metadata: {"author":"elephant-xyz"}
 ---
 
 # Deploy Elephant MCP 2.0
 
-Elephant MCP resolves the global Atlas index, verifies archive and table CIDs, and
-synchronizes normalized Atlas tables into SQL. Tool handlers query that accepted SQL
-snapshot; they never query remote Parquet during a request.
+Elephant MCP 2.0 resolves the global Atlas index, verifies archive and table CIDs, and
+synchronizes the published tables into a local snapshot. Tool handlers query that
+accepted snapshot; they never fetch remote archives during a request.
 
-The Query DB used by ingestion is internal and unrelated to MCP serving. Do not point MCP
-at it or expose it as a public source.
+The ingestion query DB is internal and unrelated to MCP serving. Do not point MCP at it
+or expose it as a public source.
 
 ## Configuration
-
-Use:
 
 | Variable | Purpose |
 |---|---|
 | `ATLAS_IPNS` | Global `elephant-atlas` IPNS name |
 | `ATLAS_GATEWAYS` | Comma-separated gateway origins in retry order |
-| `DATABASE_URL` | MCP Atlas SQLite or Postgres/Neon database |
 | `MCP_HTTP_AUTH_TOKEN` | Optional bearer token for hosted MCP routes |
 | embedding credentials | Optional; only for verified-script search |
 
-Default Atlas IPNS:
+Defaults:
 
 ```text
-k51qzi5uqu5dhzmj1jtn06idud425ozwdjjjn4eu7q01g2t814h7rw4du0nd04
+ATLAS_IPNS=k51qzi5uqu5dhzmj1jtn06idud425ozwdjjjn4eu7q01g2t814h7rw4du0nd04
+ATLAS_GATEWAYS=https://ipfs.filebase.io,https://ipfs.io,https://dweb.link,https://w3s.link
 ```
 
-Default gateways:
+The local server stores its snapshot in a default file under the operator's home
+directory; do not set a database URL for local use. Do not configure county maps, catalog
+URLs, specialized dataset pointers, or per-county publication variables.
 
-```text
-https://ipfs.filebase.io
-https://ipfs.io
-https://dweb.link
-https://w3s.link
-```
+## Plugin cutover
 
-Do not configure county maps, catalog URLs, specialized dataset pointers, or per-county
-publication variables.
+The plugin's `mcp.json` still runs the current server with the legacy per-county maps.
+The 2.0 configuration is `docs/mcp-atlas.example.json`
+(`npx -y @elephant-xyz/mcp@2 mcp` with the two variables above). Replace `mcp.json`
+with it only when both hold:
 
-## Local stdio with SQLite
+1. MCP 2.0 is released on npm (`npx -y @elephant-xyz/mcp@2 mcp` starts), and
+2. the global Atlas index lists at least one county.
 
-Use Node 22.18+ and MCP 2.0:
+Until then leave `mcp.json` untouched so Donphan does not go dark.
+
+## Local stdio
+
+Node 22.18+:
 
 ```bash
-npx -y --package=github:elephant-xyz/elephant-mcp#main mcp
+npx -y @elephant-xyz/mcp@2 mcp
 ```
 
-The stdio server starts one Atlas sync before serving Atlas-backed calls. Use a `file:`
-`DATABASE_URL` under the operator's home directory. The plugin launcher expands its
-portable home placeholder before starting MCP.
-
-Run an explicit sync when validating a new Atlas publication:
+The stdio server runs one sync on startup before serving Atlas-backed calls. Force and
+inspect a sync when validating a new publication:
 
 ```bash
-npx -y --package=github:elephant-xyz/elephant-mcp#main mcp sync
+npx -y @elephant-xyz/mcp@2 sync
 ```
 
 Sync must:
 
-1. resolve global Atlas IPNS through the configured gateways;
+1. resolve `ATLAS_IPNS` through the configured gateways;
 2. hash and verify the accepted index;
-3. verify county indexes, table indexes, and UnixFS parts;
-4. load changed data groups transactionally;
+3. verify county indexes, table indexes, and archive parts;
+4. load changed data groups transactionally into one table per class and relationship
+   (named as in the archive) plus `properties`, keyed by
+   `(state, county, data_group, cid | relationship_cid | property_cid)`;
 5. apply replacements and withdrawals atomically;
-6. report the index CID and per-group counts.
+6. report the index CID and per-group row counts.
 
 An unchanged index performs no writes.
 
-## Hosted HTTP with Postgres/Neon
+## Hosted HTTP
 
-Use a direct writer URL for the separate sync job:
-
-```bash
-DATABASE_URL=<direct-writer-url> \
-  npx -y --package=github:elephant-xyz/elephant-mcp#main mcp sync
-```
-
-Run the HTTP server with a read-only database credential:
+Run sync as a scheduled job (after each Atlas merge and as bounded reconciliation), and
+serve requests from a separate process configured per the `@elephant-xyz/mcp` README for
+its persistent store:
 
 ```bash
-npx -y --package=github:elephant-xyz/elephant-mcp#main mcp-http
+npx -y @elephant-xyz/mcp@2 sync        # scheduled job
+npx -y @elephant-xyz/mcp@2 mcp-http    # request process
 ```
 
-Expose `POST /mcp` and `GET /health`. Protect `/mcp` with
-`MCP_HTTP_AUTH_TOKEN`. Do not run IPNS resolution or DuckDB ETL inside an HTTP request.
-Schedule `mcp sync` separately after Atlas publication and as bounded reconciliation.
+Expose `POST /mcp` and `GET /health`. Protect `/mcp` with `MCP_HTTP_AUTH_TOKEN`. Do not
+resolve the index or load archives inside an HTTP request.
 
-## Retained MCP 2.0 tools
+## MCP 2.0 tools
 
-Atlas SQL:
+Atlas (all take `state`, `county`, `dataGroup` except the first):
 
-- `listPublishedCounties`
-- `listOracleProperties`
-- `getOracleProperty`
-- `getOracleDatasetInfo`
-- `getPropertyQuerySchema`
-- `queryProperties`
-- `findPropertiesInArea`
-- `sumPropertyValueInArea`
+- `listAtlasCounties` — index CID, `generated_from`, `synced_at`, counties with groups and CIDs
+- `getAtlasDatasetInfo` — tables with row counts and provenance
+- `getAtlasSchema` — table catalog; with `table`, its columns
+- `queryAtlas` — `sql`, `limit` ≤ 1000; one read-only SELECT/WITH, JOINs and CTEs allowed,
+  content tables scope-filtered, control tables/catalogs/non-allow-listed functions rejected
+- `listAtlasProperties` — `limit`, `offset`
+- `getAtlasProperty` — `propertyCid`; assembled by walking relationships, shared entities included
 
-Lexicon and verified scripts:
+Lexicon: `listClassesByDataGroup`, `listPropertiesByClassName`, `getPropertySchema`,
+`getVerifiedScriptExamples`.
 
-- `listClassesByDataGroup`
-- `listPropertiesByClassName`
-- `getPropertySchema`
-- `getVerifiedScriptExamples`
-
-Atlas tools require explicit `county` and `dataGroup`. Table queries and geo tools also
-require explicit `table`. They return Atlas index, archive, tables, and schema
-provenance.
+Removed: all HOA, permit, places, dataset-plan, and area/geo tools. Every response
+carries `source` = `{ state, county, dataGroup, archiveCid, tablesCid, schemaCid,
+indexCid, syncedAt }`. Full contract: `use-elephant-mcp/reference/tools-and-workflows.md`.
 
 ## Verification
 
 After an Atlas merge:
 
 1. Resolve `ATLAS_IPNS` through at least the first configured gateway.
-2. Run `mcp sync` and record the accepted index CID.
-3. Call `listPublishedCounties`; confirm the county and data groups.
-4. Call `getOracleDatasetInfo` with explicit scope; confirm archive, tables, schema, and
-   index CIDs.
-5. Call `getPropertyQuerySchema` without `table`, choose a returned normalized table,
-   then describe it with `table`.
-6. Run one read-only `queryProperties` call over logical relation `properties`.
-7. For local SQLite, restart and confirm the accepted snapshot remains queryable.
-8. For hosted Postgres/Neon, confirm the HTTP process cannot write and does not perform
-   network synchronization during requests.
+2. Run `sync` and record the accepted index CID.
+3. Call `listAtlasCounties`; confirm the state, county, and data groups.
+4. Call `getAtlasDatasetInfo` with explicit scope; confirm the `source` CIDs and row counts.
+5. Call `getAtlasSchema` without `table`, choose a returned table, then describe it.
+6. Run one `queryAtlas` `SELECT count(*) FROM property`.
+7. For local stdio, restart and confirm the accepted snapshot remains queryable.
+8. For hosted, confirm the request process performs no network synchronization.
 
 Do not claim a new county is served from a successful upload or Atlas PR alone. Require
-global IPNS, sync, and scoped tool evidence.
+the global index, sync, and scoped tool evidence.

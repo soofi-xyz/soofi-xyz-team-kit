@@ -1,103 +1,68 @@
-# Elephant MCP 2.0 setup
+# Elephant MCP setup
 
 ## Bundled Cursor server
 
 The plugin root `mcp.json` registers server `elephant`. Reload Cursor after updating the
-plugin, then confirm the server is enabled.
+plugin, then confirm the server is enabled. Requires Node.js 22.18+.
 
-Requirements:
+## Cutover status
 
-- Node.js 22.18+
-- network access to Atlas gateways for local synchronization
-- write access to the configured local SQLite file
-- optional embedding credentials only for verified-script search
+`mcp.json` still runs the current server with the legacy per-county environment maps, so
+Donphan keeps working during the transition. The MCP 2.0 configuration lives in
+[`docs/mcp-atlas.example.json`](../../../docs/mcp-atlas.example.json). Switch `mcp.json`
+to it only when both conditions hold:
 
-The bundled environment contains only:
+1. MCP 2.0 is released (`npx -y @elephant-xyz/mcp@2 mcp` starts), and
+2. the global Atlas index lists at least one county.
 
-```text
-ATLAS_IPNS
-ATLAS_GATEWAYS
-DATABASE_URL
-```
+Until then, a connected server that lacks `listAtlasCounties` is expected: report that
+the cutover has not happened and stop. Do not improvise against the legacy tools from this
+skill's contract.
 
-Default Atlas IPNS:
+## MCP 2.0 configuration
 
-```text
-k51qzi5uqu5dhzmj1jtn06idud425ozwdjjjn4eu7q01g2t814h7rw4du0nd04
-```
-
-Default gateway order:
+The example config launches `npx -y @elephant-xyz/mcp@2 mcp` with only:
 
 ```text
-https://ipfs.filebase.io
-https://ipfs.io
-https://dweb.link
-https://w3s.link
+ATLAS_IPNS=k51qzi5uqu5dhzmj1jtn06idud425ozwdjjjn4eu7q01g2t814h7rw4du0nd04
+ATLAS_GATEWAYS=https://ipfs.filebase.io,https://ipfs.io,https://dweb.link,https://w3s.link
 ```
 
-The local `DATABASE_URL` is a home-directory `file:` URL. The bundled bash launcher
-expands the portable home placeholder before starting MCP.
-
-## Manual local configuration
-
-```jsonc
-{
-  "mcpServers": {
-    "elephant": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "--package=github:elephant-xyz/elephant-mcp#main",
-        "mcp"
-      ],
-      "env": {
-        "ATLAS_IPNS": "k51qzi5uqu5dhzmj1jtn06idud425ozwdjjjn4eu7q01g2t814h7rw4du0nd04",
-        "ATLAS_GATEWAYS": "https://ipfs.filebase.io,https://ipfs.io,https://dweb.link,https://w3s.link",
-        "DATABASE_URL": "file:/absolute/home/path/.elephant-mcp/atlas.sqlite"
-      }
-    }
-  }
-}
-```
-
-Use an absolute home path in a manual config because MCP client JSON does not expand shell
-variables. Do not add county maps or dataset pointers.
+The server stores its synchronized snapshot in a default file under the operator's home
+directory; do not set a database URL for local use. Do not add county maps, catalog URLs,
+or dataset pointers.
 
 ## Synchronization
 
-Local stdio starts one sync and blocks Atlas-backed tools until an accepted snapshot is
-ready. To force and inspect a sync:
+Local stdio starts one sync on startup and blocks Atlas-backed tools until an accepted
+snapshot is ready. To force and inspect a sync:
 
 ```bash
-npx -y --package=github:elephant-xyz/elephant-mcp#main mcp sync
+npx -y @elephant-xyz/mcp@2 sync
 ```
 
-Record the accepted Atlas index CID and per-group counts.
-
-For hosted HTTP, run sync as a separate job with a direct writer credential. Run the HTTP
-server with a read-only Postgres/Neon credential. Request handlers must not resolve IPNS or
-download Atlas content.
+Record the accepted index CID and per-group row counts. Hosted deployments run the same
+command as a scheduled job; request handlers never resolve the index or download archives.
 
 ## Connectivity smoke test
 
-1. Call `listPublishedCounties`.
-2. Choose an existing county and data group from the result.
-3. Call `getOracleDatasetInfo` with both values.
-4. Confirm the response contains `indexCid`, `archiveCid`, `tablesCid`, and `schemaCid`.
-5. Call `getPropertyQuerySchema` for the same scope.
+1. Call `listAtlasCounties`; confirm the index CID and at least one county.
+2. Choose a listed `state`, `county`, and `dataGroup`.
+3. Call `getAtlasDatasetInfo`; confirm `source` carries `archiveCid`, `tablesCid`,
+   `schemaCid`, `indexCid`, and `syncedAt`.
+4. Call `getAtlasSchema` without `table`, then with one returned table.
+5. Run one `queryAtlas` `SELECT count(*) FROM property`.
 
 ## Troubleshooting
 
 - **Server missing:** reload Cursor and confirm the plugin is enabled.
 - **Node too old:** fix the GUI process PATH or use the bundled launcher.
-- **Atlas not ready:** run explicit sync and inspect gateway/CID errors.
-- **County/group not published:** choose a scope from `listPublishedCounties` or complete
-  the Atlas county PR and global IPNS verification.
-- **SQLite path error:** use an absolute `file:` URL and ensure the parent directory is
-  writable.
-- **Hosted requests attempt network sync:** separate the sync writer job from the
-  read-only HTTP process.
-- **Verified-script search fails:** configure one supported embedding provider; Atlas data
+- **`listAtlasCounties` absent:** cutover not done; see above.
+- **Atlas not ready:** run an explicit sync and inspect gateway/CID errors.
+- **Scope not published:** choose a scope from `listAtlasCounties` or complete the Atlas
+  county PR and global index verification (`use-oracle`).
+- **Hosted requests attempt network sync:** move sync to the scheduled job.
+- **Verified-script search fails:** configure one supported embedding provider; Atlas
   tools do not require it.
 
-Never fix a v2 sync problem by restoring legacy public maps or direct Query DB reads.
+Never fix a sync problem by pointing MCP at the ingestion query DB.

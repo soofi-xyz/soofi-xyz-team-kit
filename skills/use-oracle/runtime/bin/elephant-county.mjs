@@ -18,7 +18,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { pathToFileURL } from "node:url";
 import { parseCsvRecords } from "../src/core/csv.mjs";
-import { withProcessLock } from "../src/core/process-lock.mjs";
 import { runReplay } from "../src/core/replay.mjs";
 import { pinellasAdapter } from "../src/counties/pinellas/adapter.mjs";
 import { duvalAdapter } from "../src/counties/duval/adapter.mjs";
@@ -171,7 +170,7 @@ async function runIngest(argv) {
  * complete parcel, this refuses to write a zero-row working table unless
  * `--allow-empty` is explicitly supplied (Global Constraint).
  *
- * @param {readonly string[]} argv - Arguments after `export`.
+ * @param {readonly string[]} argv - Arguments after `reconcile-export`.
  * @returns {Promise<void>} Resolves once reconciliation artifacts are written and printed.
  */
 async function runReconciliationExport(argv) {
@@ -385,21 +384,17 @@ async function runHoaPmIndexCommand(argv) {
 async function runHoaPmOverlaySyncCommand(argv) {
   const flags = parseFlags(argv);
   const county = requireStringFlag(flags, "county");
-  const summary = await withProcessLock(
-    { county, operation: "hoa-pm-overlay-sync" },
-    () =>
-      syncHoaPmOverlay({
-        county,
-        overlayParquet: requireStringFlag(flags, "overlay-parquet"),
-        officialParquet:
-          typeof flags["official-parquet"] === "string"
-            ? flags["official-parquet"]
-            : null,
-        outputDir: requireStringFlag(flags, "output-dir"),
-        parcelCsv:
-          typeof flags["parcel-csv"] === "string" ? flags["parcel-csv"] : null,
-      }),
-  );
+  const summary = await syncHoaPmOverlay({
+    county,
+    overlayParquet: requireStringFlag(flags, "overlay-parquet"),
+    officialParquet:
+      typeof flags["official-parquet"] === "string"
+        ? flags["official-parquet"]
+        : null,
+    outputDir: requireStringFlag(flags, "output-dir"),
+    parcelCsv:
+      typeof flags["parcel-csv"] === "string" ? flags["parcel-csv"] : null,
+  });
   console.log(JSON.stringify({ event: "hoa_pm_overlay_sync_complete", summary }, null, 2));
 }
 
@@ -909,7 +904,7 @@ async function main() {
       "  bbb-harvest --county <profile-key> --category <reviewed-key> --job-id <id> --max-pages N --max-profiles N --max-requests N --max-duration-minutes N --output <dir>\n" +
       "  bbb-reconcile --county <profile-key> --harvest-root <category-dirs-root> --input-coverage <json> --output-dir <dir>\n" +
       "  bbb-link --county duval --input-parquet <query-table.parquet> --input-coverage <dataset-coverage.json> --bbb-profiles <bbb-profiles.jsonl> --bbb-reconciliation-manifest <json> --permit-source <jaxepics-bid-map.jsonl.gz> --permit-artifact-manifest <json> --output-dir <dir>\n" +
-      "  enrichment-finalize --county <profile-key> --input <publish-dir>\n" +
+      "  enrichment-finalize --county <profile-key> --input <enrichment-output-dir>\n" +
       "  permit-probe --county <profile-key>\n" +
       "  permit-bounded-harvest --county <profile-key> --job-id <id> --input-parquet <parquet> --limit N --output <dir>\n" +
       "  permit-resume --county <profile-key> --job-id <id> --input-parquet <parquet> --limit N --output <dir>\n" +

@@ -1,6 +1,6 @@
 ---
 name: query-db-loading-matching
-description: "Operate the internal Query DB reconciliation store: idempotent county loads, folio identity, content-aware watermarks, tombstones, permit/property links, official company edges, roof age, and enrichment. Never use it as the MCP or publication source."
+description: "Load county artifacts into the internal reconciliation store and cross-match records: folio identity, watermarks, tombstones, permit and official identity links, roof age, and enrichment. Use when loading or reconciling a county run; never as the public data source."
 metadata: {"author":"elephant-xyz"}
 ---
 

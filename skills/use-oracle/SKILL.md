@@ -1,6 +1,6 @@
 ---
 name: use-oracle
-description: "Operate Oracle county mining and the single Atlas publication path: capture, reconcile internally, validate lexicon groups, build CARs and tables, register the county in Atlas, and verify the global Atlas IPNS."
+description: "Operate Oracle county mining and the single Atlas publication path: capture, reconcile internally, validate lexicon groups, build CARs and tables, register the county in Atlas, and verify the global Atlas index."
 ---
 
 # Use Oracle
@@ -130,11 +130,12 @@ PR.
    `k51qzi5uqu5dhzmj1jtn06idud425ozwdjjjn4eu7q01g2t814h7rw4du0nd04`
    through the configured gateway order.
 7. Verify the accepted index CID and county/group entries reflect the merge.
-8. Run MCP 2.0 `sync`, then call `listPublishedCounties` and
-   `getOracleDatasetInfo` with explicit `county` and `dataGroup`.
+8. Run MCP 2.0 `sync` (`npx -y @elephant-xyz/mcp@2 sync`), then call
+   `listAtlasCounties` and `getAtlasDatasetInfo` with explicit `state`, `county`, and
+   `dataGroup`.
 
 Do not report publication from a green PR alone. Require the merged global IPNS and the
-synchronized SQL snapshot.
+synchronized MCP snapshot.
 
 ## CLI and credentials
 

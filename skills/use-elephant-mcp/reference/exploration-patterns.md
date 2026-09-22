@@ -1,93 +1,88 @@
 # Atlas exploration patterns
 
-Use MCP tools only. Discover county, data group, tables, and columns before querying.
+Use MCP tools only. Discover scope, tables, and columns before querying. Every recipe
+starts with `listAtlasCounties` → `getAtlasDatasetInfo` → `getAtlasSchema`.
 
 ## Count or group one class
 
-1. Call `listPublishedCounties`.
-2. Call `getOracleDatasetInfo` with explicit scope.
-3. Call `getPropertyQuerySchema` without `table`.
-4. Select the normalized class table and describe it.
-5. Call `queryProperties` with one aggregate `SELECT FROM properties`.
-6. Report scope and source CIDs.
-
-Example:
-
 ```sql
 SELECT status, count(*) AS records
-FROM properties
+FROM property
 GROUP BY status
 ORDER BY records DESC
 ```
 
+Report scope and `source` CIDs.
+
 ## Find a property from a folio
 
-1. Discover a table containing `request_identifier` or `parcel_identifier`.
-2. Query the exact user-supplied value first.
-3. Return the matching `property_cid`.
-4. Call `getOracleProperty` with that CID.
-5. Report exact stored and supplied identifiers if a separately disclosed normalized
-   fallback was needed.
+1. Describe `property` and find the identifier column (`parcel_identifier` or
+   `request_identifier`).
+2. Query the exact user-supplied value first; return `cid` as the property CID.
+3. Call `getAtlasProperty` with that CID.
+4. If a separately disclosed normalized fallback was needed, report both the stored and
+   supplied identifiers.
 
 Never silently strip punctuation or use normalized parcel digits as folio identity.
 
+## Join across classes
+
+Relationship tables carry two endpoint CID columns (shown as `from_cid`/`to_cid`;
+confirm names with `getAtlasSchema`). Example — properties with their mailing
+address:
+
+```sql
+SELECT p.cid AS property_cid, a.street_number, a.street_name, a.city_name
+FROM property p
+JOIN property_has_address pha ON pha.from_cid = p.cid
+JOIN address a ON a.cid = pha.to_cid
+LIMIT 100
+```
+
 ## Inspect permit evidence
 
-1. Choose the published permit/property-improvement data group.
-2. Discover its normalized permit table.
-3. Query exact permit, folio, status, work text, or company-edge fields.
-4. Use `property_cid` to reconstruct one property when needed.
+1. Choose the data group that publishes permits (see `listAtlasCounties`).
+2. Describe its permit/improvement class and its relationship tables.
+3. Query exact permit, folio, status, work text, or company-edge fields, joining through
+   the relationship tables.
+4. Use `getAtlasProperty` to assemble one property when needed.
 5. Keep unmatched permits and null company edges explicit.
 
 Do not infer a contractor's legal identity from name, phone, address, BBB, or place data.
 
 ## Inspect official identity and enrichment
 
-Query official corporate/licensing tables separately from BBB, places, HOA, and AVM
-tables. Report the evidence class used. A shared name is not an identity edge.
+Query official corporate/licensing classes separately from BBB, places, HOA, and AVM
+classes. Report the evidence class used. A shared name is not an identity edge.
 
-For contractor quality:
-
-1. find permit contacts or accepted company UUIDs;
-2. query reputation rows linked to those exact company IDs;
-3. state whether the link was official or only an unresolved candidate;
-4. count companies, not permit or property duplicates, unless requested otherwise.
+For contractor quality: find permit contacts or accepted company CIDs, query reputation
+rows linked to those exact CIDs, state whether the link was official or an unresolved
+candidate, and count companies rather than permit or property duplicates.
 
 ## Address mismatch
 
-1. Discover address-bearing class and relationship tables.
+1. Describe the address class and the relationship tables that reach it.
 2. Query bounded rows for one property CID or folio.
 3. Compare raw source addresses and typed fields.
 4. Report the source, exact values, and mismatch rule.
 
-Do not treat address similarity as legal identity.
+## Area query
 
-## Geo query
+Use the bbox JOIN recipe in `tools-and-workflows.md` (property → property_has_address →
+address_has_geometry → geometry, plus property_has_tax → tax for values). Report the
+bbox, the row limit (1000), and that filtering is by the geometry point.
 
-1. Discover a normalized table with latitude, longitude, parcel, and optional value
-   columns.
-2. Call `findPropertiesInArea` with explicit column names and one bbox or polygon.
-3. For value sums, call `sumPropertyValueInArea` with the same scope.
-4. Report that polygon filtering uses point coordinates and the result limit is 1000.
+## Property assembly
 
-## Property reconstruction
-
-`getOracleProperty` returns:
-
-- property roots for the selected data group;
-- normalized class rows grouped by table;
-- normalized relationship rows grouped by table;
-- source index/archive/tables/schema CIDs.
-
-Do not expect a pre-2.0 consolidated document.
+`getAtlasProperty` returns the `property` row plus every class row reachable through
+relationships, grouped by table, including shared entities, with `source`. Do not expect
+a pre-2.0 consolidated document; discover tables first.
 
 ## Honest limitations
 
 - One data group does not prove county-wide completeness.
-- A missing table means the group did not publish it; an empty query means no rows matched
-  that exact scope.
-- Query SQL forbids JOIN and CTE. Use bounded separate queries and CID-based reasoning.
-- Geo tools cap the selected rows at 1000.
+- A missing table means the group did not publish it; an empty query means no rows
+  matched that exact scope and filter.
+- `queryAtlas` caps results at 1000 rows; paginate deterministically.
 - Atlas reflects its synchronized index revision, not live county portals.
-- Query DB rows not published through Atlas are intentionally unavailable to public MCP
-  consumers.
+- Ingestion query DB rows not published through Atlas are intentionally unavailable.

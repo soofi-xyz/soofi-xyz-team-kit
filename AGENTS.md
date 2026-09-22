@@ -107,7 +107,7 @@ soofi-xyz-plugin-kit/
 
 ## Local validation
 
-Run the plugin validation script before preparing a PR. It checks that Copilot and Codex agent copies are synced, manifests are consistent, agent and skill frontmatter is valid, source names match paths, generated agents are real files, skills stay under 500 lines, `oracle-paths.sh` resolves independent of cwd, the bundled Oracle runtime package is present, and the Atlas migration guard passes.
+Run the plugin validation script before preparing a PR. It checks that Copilot and Codex agent copies are synced, manifests are consistent, agent and skill frontmatter is valid, source names match paths, generated agents are real files, skills stay under 500 lines, `oracle-paths.sh` resolves independent of cwd, and the bundled Oracle runtime package is present.
 
 ```bash
 scripts/validate-plugin.sh

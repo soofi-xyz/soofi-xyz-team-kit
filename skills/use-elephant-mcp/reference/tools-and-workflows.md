@@ -1,108 +1,58 @@
 # MCP 2.0 tools and workflows
 
-## Atlas SQL tools
+## Scope arguments
 
-### `listPublishedCounties`
+Every Atlas tool except `listAtlasCounties` requires:
 
-List counties and data groups in the accepted Atlas SQL snapshot. Inputs: none.
+- `state` — two-letter state code (for example `FL`)
+- `county` — county slug as listed in the Atlas index
+- `dataGroup` — data-group name as listed for that county
 
-Use this as the authoritative discovery surface. Record `indexCid` and `syncedAt`.
+## Atlas tools
 
-### `getOracleDatasetInfo`
+### `listAtlasCounties`
 
-Return synchronized tables and publication provenance.
+Inputs: none. Returns the accepted index CID, `generated_from`, `synced_at`, and the
+counties with their data groups and per-group CIDs. Use it as the only discovery surface.
 
-Required inputs:
+### `getAtlasDatasetInfo`
 
-- `county`
-- `dataGroup`
+Inputs: scope. Returns the synchronized tables for the scope with row counts and the
+publication provenance (`source`).
 
-### `listOracleProperties`
+### `getAtlasSchema`
 
-List property CIDs and roots for one scope.
+Inputs: scope, optional `table`. Without `table`, returns the table catalog for the scope.
+With `table`, returns that table's columns. Call it before every query.
 
-Required inputs:
+### `queryAtlas`
 
-- `county`
-- `dataGroup`
+Inputs: scope, `sql`, optional `limit` (default and maximum 1000).
 
-Optional inputs: `limit` up to 500 and `offset`.
-
-### `getOracleProperty`
-
-Reconstruct roots, normalized class rows, and relationship rows for one property.
-
-Required inputs:
-
-- `county`
-- `dataGroup`
-- exactly one of `propertyCid` or compatibility alias `cid`
-
-Do not pass a folio or parcel identifier.
-
-### `getPropertyQuerySchema`
-
-List synchronized normalized tables or describe one selected table.
-
-Required inputs:
-
-- `county`
-- `dataGroup`
-
-Optional input: `table`.
-
-Call once without `table`, then again with the chosen table.
-
-### `queryProperties`
-
-Run one scoped read-only query over a selected normalized table.
-
-Required inputs:
-
-- `county`
-- `dataGroup`
-- `table`
-- `sql`
-
-Optional input: `limit`, maximum 1000.
-
-The selected table appears as logical relation `properties` inside SQL. Require exactly
-one `FROM properties`. CTEs, JOINs, mutations, multiple statements, file access, and
-extension operations are rejected.
+- Exactly one read-only `SELECT` or `WITH` statement.
+- JOINs and CTEs are allowed.
+- Every content table is filtered to the scope server-side; do not add scope predicates.
+- Control tables, catalogs, multiple statements, mutations, file access, extension
+  operations, and functions outside the allow-list are rejected.
 
 Example:
 
 ```sql
-SELECT property_cid, parcel_identifier
-FROM properties
-WHERE parcel_identifier = '1605480000'
+SELECT p.cid AS property_cid, p.parcel_identifier
+FROM property p
+WHERE p.parcel_identifier = '1605480000'
 ```
 
-Use only columns returned for the selected table.
+### `listAtlasProperties`
 
-### `findPropertiesInArea`
+Inputs: scope, optional `limit` and `offset`. Returns property CIDs for the scope with a
+total count.
 
-Return rows inside one bounding box or polygon.
+### `getAtlasProperty`
 
-Required inputs:
-
-- `county`
-- `dataGroup`
-- `table`
-- exactly one of `bbox` or `polygon`
-
-Optional column inputs:
-
-- `latitudeColumn`
-- `longitudeColumn`
-- `parcelColumn`
-- `valueColumn`
-
-Verify column names first. The default names may not exist in every normalized class.
-
-### `sumPropertyValueInArea`
-
-Use the same scope and column contract as `findPropertiesInArea`; return count and sum.
+Inputs: scope, `propertyCid`. Assembles one property by walking its relationships from
+the `property` row outward; shared entities reachable through relationships (addresses,
+companies, people, geometry, tax, …) are included. Do not pass a folio or parcel id.
 
 ## Lexicon tools
 
@@ -111,22 +61,84 @@ Use the same scope and column contract as `findPropertiesInArea`; return count a
 - `getPropertySchema` — inputs `className`, `propertyName`
 - `getVerifiedScriptExamples` — inputs `query`, optional `topK`
 
+## Response provenance
+
+Every Atlas response carries:
+
+```jsonc
+{
+  "source": {
+    "state": "FL",
+    "county": "duval",
+    "dataGroup": "county",
+    "archiveCid": "...",
+    "tablesCid": "...",
+    "schemaCid": "...",
+    "indexCid": "...",
+    "syncedAt": "..."
+  }
+}
+```
+
+Report these CIDs with every answer; they identify the accepted publication revision.
+
+## Synchronized table layout
+
+`npx -y @elephant-xyz/mcp@2 sync` loads each published data group into:
+
+- one table per lexicon class, named as in the archive (`property`, `address`,
+  `geometry`, `tax`, `company`, …), keyed by `(state, county, data_group, cid)`;
+- one table per relationship, named as in the archive (`property_has_address`,
+  `address_has_geometry`, `property_has_tax`, …), keyed by
+  `(state, county, data_group, relationship_cid)`, with the two endpoint CID columns
+  (the examples here call them `from_cid`/`to_cid`; confirm with `getAtlasSchema`);
+- `properties`, keyed by `(state, county, data_group, property_cid)`, with one column per
+  data-group schema CID recording which group roots the property participates in.
+
+Discover the exact table and column names with `getAtlasSchema`; do not assume a fixed
+set. Relationship tables are how you join classes; verify their endpoint column names
+before writing a JOIN.
+
+## Removed tools
+
+MCP 2.0 removed all HOA, permit, places, dataset-plan, and area/geo tools. Permit, HOA,
+and places data are ordinary classes and relationships in their data groups — query them
+with `queryAtlas`. Area questions are the bbox JOIN below.
+
+## Area query recipe
+
+```sql
+SELECT p.cid AS property_cid, g.latitude, g.longitude, t.property_market_value_amount
+FROM property p
+JOIN property_has_address pha ON pha.from_cid = p.cid
+JOIN address_has_geometry ahg ON ahg.from_cid = pha.to_cid
+JOIN geometry g ON g.cid = ahg.to_cid
+LEFT JOIN property_has_tax pht ON pht.from_cid = p.cid
+LEFT JOIN tax t ON t.cid = pht.to_cid
+WHERE g.latitude BETWEEN :south AND :north
+  AND g.longitude BETWEEN :west AND :east
+```
+
+For totals: `SELECT count(DISTINCT p.cid), sum(t.property_market_value_amount)` over the
+same joins. Point-in-bbox filtering uses the geometry point; state the bbox and the row
+limit in the answer.
+
 ## Decision workflow
 
 ```text
 question
-├─ discover counties/groups
-│  └─ listPublishedCounties
+├─ discover states/counties/groups
+│  └─ listAtlasCounties
 ├─ dataset provenance/tables
-│  └─ getOracleDatasetInfo
-├─ count/filter/aggregate one normalized class or relationship
-│  └─ getPropertyQuerySchema → queryProperties
+│  └─ getAtlasDatasetInfo
+├─ count/filter/aggregate, joins across classes
+│  └─ getAtlasSchema → queryAtlas
 ├─ find a property by folio or another field
-│  └─ schema → query table for property_cid → getOracleProperty
-├─ list property roots
-│  └─ listOracleProperties
-├─ geo/value area question
-│  └─ schema → findPropertiesInArea or sumPropertyValueInArea
+│  └─ getAtlasSchema → queryAtlas on property → getAtlasProperty
+├─ page property CIDs
+│  └─ listAtlasProperties
+├─ area/value question
+│  └─ getAtlasSchema → queryAtlas bbox JOIN
 ├─ field semantics
 │  └─ lexicon tools
 └─ transform example
@@ -135,10 +147,8 @@ question
 
 ## Error handling
 
-- Treat unpublished county/group, missing table, and missing column as different errors.
-- On sync failure, report the accepted index state and gateway error; do not use direct
-  IPFS or Query DB fallback.
+- Treat unpublished scope, missing table, and missing column as different errors.
+- On sync failure, report the accepted index state and gateway error; do not fall back
+  to direct IPFS or the ingestion query DB.
 - On row-cap truncation, narrow the query or paginate by deterministic fields.
-- If a relationship requires a JOIN, query each relevant normalized table separately and
-  join bounded results in reasoning by CIDs. The SQL tool itself forbids JOINs.
-- Treat empty rows as empty only within the exact county/data-group/table/filter scope.
+- Treat empty rows as empty only within the exact scope and filter used.

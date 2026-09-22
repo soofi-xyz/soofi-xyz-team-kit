@@ -46,11 +46,12 @@ Oracle invokes these commands; the team kit does not duplicate them.
 `elephant-xyz/elephant-mcp` 2.0 owns:
 
 - global Atlas IPNS resolution;
-- CID verification and SQL synchronization;
-- local SQLite and hosted Postgres/Neon Atlas backends;
-- normalized Atlas/lexicon MCP tools.
+- CID verification and snapshot synchronization (`npx -y @elephant-xyz/mcp@2 sync`);
+- local stdio and hosted HTTP transports;
+- the Atlas tools (`listAtlasCounties`, `getAtlasDatasetInfo`, `getAtlasSchema`,
+  `queryAtlas`, `listAtlasProperties`, `getAtlasProperty`) and the lexicon tools.
 
-Request handlers query the accepted SQL snapshot. They do not query remote Parquet or the
+Request handlers query the accepted snapshot. They do not fetch remote archives or the
 ingestion Query DB.
 
 ## Query DB

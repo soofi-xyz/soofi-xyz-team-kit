@@ -129,8 +129,8 @@ Set `COMPLETE` only when the requested scope has:
 4. CLI-exported normalized table roots;
 5. archive/table upload with remote CID readback;
 6. merged Atlas county page and verified global Atlas IPNS; and
-7. successful MCP sync, `listPublishedCounties`, `getOracleDatasetInfo`, and representative
-   scoped query checks.
+7. successful MCP sync, `listAtlasCounties`, `getAtlasDatasetInfo`, and representative
+   scoped `queryAtlas` checks.
 
 Capture is not load. Load is not publication. Publication is not MCP visibility.
 
