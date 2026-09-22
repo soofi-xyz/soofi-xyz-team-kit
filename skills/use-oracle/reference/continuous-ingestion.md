@@ -51,8 +51,8 @@ Record:
 - independently proven Neon destination identifiers;
 - AWS BBB execution proof: approved AWS account/region, remote runtime identity, US egress,
   `operator_machine: false`, and secret references/availability—not secret values;
-- Filebase publication readiness: credential reference/availability, bucket, IPNS owner,
-  approval state, and last published watermark;
+- Atlas publication readiness: upload-node credential availability, Atlas repository
+  access, county-page path, PR state, global index CID, and last published watermark;
 - stage state, attempt count, heartbeat, lease expiry, fencing token, checkpoint URI and
   signature, artifact manifest URI, source/captured/loaded/published counts, and blocker
   owner/action.
@@ -100,9 +100,9 @@ recovery action, and continue independent workstreams.
 
 ## Automatic stage transitions
 
-- Intake launches source/jurisdiction enumeration, adapter determination/build, identity-registry
-  route proof, execution and destination proof, Filebase/IPNS readiness, and blocker routing
-  in parallel. Adapter build is not permit harvest.
+- Intake launches source/jurisdiction enumeration, adapter determination/build,
+  identity-registry route proof, execution and internal-destination proof, upload-node and
+  Atlas-PR readiness, and blocker routing in parallel. Adapter build is not permit harvest.
 - After appraisal/transform readiness, enqueue identity-baseline load (Sunbiz first, then
   the DBPR adequacy gate). If DBPR is inadequate, enqueue official DBPR acquisition next
   and do not enqueue `PermitFeed` or county permit capture until the snapshot is adequate
@@ -110,13 +110,14 @@ recovery action, and continue independent workstreams.
   acquisition.
 - Readiness `PASS` enqueues the next dependency-ready seed/pilot/run stages automatically.
 - A capture handoff enqueues transform/validation; a valid transform handoff enqueues
-  idempotent load/match; a reconciled load advances the loaded watermark and enqueues publish
-  preparation.
+  idempotent load/match; a reconciled load advances the loaded watermark and enqueues the
+  CAR/table/Atlas-PR preparation sequence.
 - A readiness block prevents seed, pilots, adapter scale-out, and full ingestion, but keeps
   bounded enumeration, adapter implementation/fixtures, access remediation, records-request
   preparation, and publication readiness active.
-- PII publication waits for the durable human approval only. Once approved, `Publish.tick`
-  uploads and the controller continues through verification without another prompt.
+- Public publication requires the authorized Atlas scope and any required privacy approval.
+  Once authorized, continue through CLI upload/readback, Atlas PR, merge wait, global IPNS,
+  and MCP sync without inventing a second publisher.
 
 ## Completion and snapshot drift
 
@@ -124,12 +125,12 @@ Set `COMPLETE` only when the requested scope has:
 
 1. terminal source enumeration and capture checkpoints;
 2. reconciled, idempotently loaded Neon rows with linked and valid-unlinked counts;
-3. a frozen privacy-approved artifact manifest and watermark;
-4. immutable Filebase/IPFS upload and CID;
-5. remote digest/count readback;
-6. IPNS/catalog/MCP registration; and
-7. successful `listPublishedCounties`, `getOracleDatasetInfo`, and representative Donphan
-   smoke checks.
+3. validated lexicon groups and one validated CAR per data group;
+4. CLI-exported normalized table roots;
+5. archive/table upload with remote CID readback;
+6. merged Atlas county page and verified global Atlas IPNS; and
+7. successful MCP sync, `listPublishedCounties`, `getOracleDatasetInfo`, and representative
+   scoped query checks.
 
 Capture is not load. Load is not publication. Publication is not MCP visibility.
 

@@ -13,7 +13,7 @@ import {
   loadClerkOfficialRecords,
   recordedCommunityEvidenceForParcel,
 } from "./clerk-official-records.mjs";
-import { isIpfsCid } from "./hoa-pm-object-publication.mjs";
+import { isIpfsCid } from "../core/cid.mjs";
 import { emptyCtmhRecords, loadCtmhExtract } from "./ctmh-condo.mjs";
 import { resolveHoaAndPropertyManagement, stampPropertyCids } from "./hoa-pm-heuristic.mjs";
 import { loadSunbizAliasIndex } from "./sunbiz-aliases.mjs";

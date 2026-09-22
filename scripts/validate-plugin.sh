@@ -295,11 +295,7 @@ def validate_agents():
 
 def validate_oracle_runtime():
     runtime_dir = root / "skills" / "use-oracle" / "runtime"
-    required = [
-        runtime_dir / "package.json",
-        runtime_dir / "catalog" / "published-counties.json",
-        runtime_dir / "catalog" / "mcp-overlays.json",
-    ]
+    required = [runtime_dir / "package.json"]
     for path in required:
         if not path.is_file():
             fail(f"{path.relative_to(root)}: required Oracle runtime file is missing")

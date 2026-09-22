@@ -104,9 +104,8 @@ npm run permits:probe-broward --prefix skills/use-oracle/runtime -- \
 ## Approved delta and repair execution
 
 The backfill command writes local private artifacts only. It has no database,
-truncate, publication, or Filebase path, so it cannot mutate the existing
-1,276,328 published Broward rows or the 16,084 rows retained from blocked
-systems. Loading and publication remain separate reviewed operations.
+truncate, upload, or Atlas path, so it cannot mutate published Broward data.
+Loading and Atlas publication remain separate reviewed operations.
 
 ### Required operator inputs
 

@@ -111,29 +111,22 @@ merged (path, artifact-hash) pairs — the hash index lives on disk under
 in-place redrive that regenerates `transformed.zip` gets re-merged; a path-only
 watermark would silently skip corrections. The incremental merge also consumes
 invalid/dead TOMBSTONES — removing or downgrading previously loaded rows; without that,
-a parcel that went invalid after loading lives on in the DB and the published data.
-Loader steps are long: raise its timeouts per authoring rule 3. The same primitive makes `Publish` a per-county singleton for free. Merge
+a parcel that went invalid after loading lives on in the DB.
+Loader steps are long: raise its timeouts per authoring rule 3. Merge
 details: `query-db-loading-matching`.
 
-**9. Human approval gate as durable state.** PII review: `Publish` dry-runs until
-`Publish/<county>/approve` has been called once; `approve()` flips a durable flag in
-object state. No external parameter store, no "missing param = dry-run" convention —
-the gate is explicit state you can read in the UI.
+**9. Human approval as a handoff state.** Store any required privacy or scope approval
+durably against an immutable group-manifest digest. Approval makes the validated group
+eligible for the external Elephant CLI/Atlas sequence; it does not upload from the
+runtime. No "missing parameter means approved" convention.
 
-**10. Self-scheduling loop.** Recurring work (the incremental publish tick) is a virtual
-object handler that re-schedules itself with a delayed send —
-`ctx.objectSendClient(publish, county).tick({}, restate.rpc.sendOpts({ delay: { minutes: 15 } }))`
-— or waits with `ctx.sleep`. One tick per county runs the full publish sequence in
-order: consolidation export/upload first (writes `manifest.json`), then the query-table
-export/publish (which reads that manifest) — a single loop, not two competing ones.
-`requestPublish()` sets pending AND arms the first tick when none is scheduled (persist
-a `tickScheduled` flag; every tick re-arms exactly one successor) — a fresh county must
-never sit pending forever. State machine: an unapproved tick dry-runs ONCE per content
-watermark (persist `lastDryRunWatermark`), LEAVES `pending = true`, and stops re-arming
-until `approve()` or a newer `requestPublish()` — never rebuild a multi-GB export every
-15 minutes while waiting for a human. `approve()` sets approved and arms an immediate
-tick when pending; `pending` clears only after a successful APPROVED publication. Replaces cron rules, poll loops, and the
-stale-checkpoint watchdog — which, in its naive no-cooldown form, once piled ~150
+**10. Self-scheduling reconciliation loop.** Recurring internal work is a virtual-object
+handler that re-schedules itself with a delayed send or waits with `ctx.sleep`. Persist one
+scheduled flag and one content watermark so a fresh county cannot sit pending and unchanged
+multi-GB working artifacts are not rebuilt every interval. Clear pending only after the
+internal load, watermark, and tombstone reconciliation succeeds. Public publication remains
+the separate CAR/table/Atlas sequence. This replaces naive cron poll loops and the
+stale-checkpoint watchdog — which, in its no-cooldown form, once piled ~150
 duplicate feeder invocations that deadlocked the worker.
 
 **11. Chunked fan-out.** Never run a whole county through one invocation: `window` bounds
@@ -199,9 +192,6 @@ restate deployments register http://host.docker.internal:9080   # --force in dev
 curl localhost:8080/restate/send/CountyIngest/<county>-<jobId>/run \
   --json '{"county":"lee","jobId":"2026q3","seedPath":"seeds/lee.csv","chunkSize":10000,"batchSize":100,"window":25}'
 
-# approve publish (durable PII gate; --json makes this a POST)
-curl localhost:8080/restate/call/Publish/<county>/approve --json '{}'
-
 # inspect
 restate invocations list
 restate invocations describe <id>         # journal, current step, last error
@@ -211,7 +201,7 @@ restate sql "SELECT id, target, status FROM sys_invocation WHERE status != 'comp
 ```
 
 - **Web UI `http://localhost:9070`**: invocations with live journals, workflow/object
-  state (e.g. `CountyIngest` chunksDone, `Publish` approved flag), paused invocations
+  state (for example `CountyIngest` chunksDone and Loader watermarks), paused invocations
   with their error, and per-service configuration (retries and the inactivity/abort
   timeouts from authoring rule 3 — not concurrency).
 - **Concurrency caps live in `.env`** (`CONCURRENCY_*`, pattern 2): edit and restart the
