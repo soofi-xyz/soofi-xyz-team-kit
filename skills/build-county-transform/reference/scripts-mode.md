@@ -36,7 +36,8 @@ bundle.
   `source_http_request` and fail validation. Strip them at seed generation.
 - An empty `address` column produces a seed address that fails the lexicon's address
   schema on every field. The seed row needs the real unnormalized address.
-- Scripts that emit `fact_sheet.json` without a relationship trigger the unused-file
-  error; emit it only with its relationships.
+- Scripts must not emit `fact_sheet.json` or `*_has_fact_sheet.json`: the CLI no longer
+  generates fact sheets, the archive carries only lexicon data, and an unlinked file fails
+  validation.
 - The runtime's transform runner executes these scripts one parcel at a time with
   `process.chdir`; never run two parcels concurrently in one process.
