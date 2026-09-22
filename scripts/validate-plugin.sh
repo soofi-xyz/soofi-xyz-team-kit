@@ -7,6 +7,98 @@ repo_root() {
   cd -- "${script_dir}/.." && pwd
 }
 
+validate_neutral_references() {
+  local root="$1"
+  local refs="${root}/skills/use-neutral-lexicon/reference"
+
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "jq is required to validate neutral lexicon references" >&2
+    return 1
+  fi
+
+  jq -e '
+    (.models | type == "array" and length == 3)
+    and (
+      [.models[].paradigm] | sort
+      == ["class_relationship_catalog", "property_graph", "rdf_ontology"]
+    )
+    and all(.models[];
+      (.id | type == "string")
+      and (.path | type == "string")
+      and (.counts | type == "object")
+      and (.semantics | type == "object")
+    )
+  ' "${refs}/manifest.json" >/dev/null
+
+  jq -e '
+    [.classes[].type] as $types
+    | ($types | length) == ($types | unique | length)
+    and all(.classes[]; . as $class
+      | (($class.properties // {}) | type == "object")
+      and all(($class.required // [])[]; . as $required
+        | ($class.properties | has($required))
+      )
+      and all((($class.relationships // {}) | to_entries)[]; . as $relationship
+        | all(($relationship.value.targets // [])[]; . as $target
+          | ($types | index($target)) != null
+        )
+      )
+    )
+  ' "${refs}/model-a.json" >/dev/null
+
+  jq -e '
+    [.vertices[].type] as $vertices
+    | [.edges[].type] as $edges
+    | ($vertices | length) == ($vertices | unique | length)
+    and ($edges | length) == ($edges | unique | length)
+    and all(.vertices[]; . as $vertex
+      | (($vertex.properties // {}) | type == "object")
+      and all(($vertex.required // [])[]; . as $required
+        | ($vertex.properties | has($required))
+      )
+    )
+    and all(.edges[]; . as $edge
+      | ($vertices | index($edge.from)) != null
+      and ($vertices | index($edge.to)) != null
+      and (($edge.properties // {}) | type == "object")
+      and all(($edge.required // [])[]; . as $required
+        | ($edge.properties | has($required))
+      )
+    )
+  ' "${refs}/model-b.json" >/dev/null
+
+  jq -e '
+    [.classes[].type] as $types
+    | ($types | length) == ($types | unique | length)
+    and all(.classes[]; . as $class
+      | (($class.properties // {}) | type == "object")
+      and all(($class.required // [])[]; . as $required
+        | ($class.properties | has($required))
+      )
+      and all((($class.relationships // {}) | to_entries)[]; . as $relationship
+        | all(($relationship.value.targets // [])[]; . as $target
+          | ($types | index($target)) != null
+        )
+      )
+    )
+    and all(.data_groups[]; . as $group
+      | all(($group.relationships // [])[]; . as $relationship
+        | ($types | index($relationship.from)) != null
+        and ($types | index($relationship.to)) != null
+      )
+    )
+  ' "${refs}/model-c.json" >/dev/null
+
+  if rg -n -i \
+    'https?://|ipfs://|github\.com|raw\.githubusercontent|\bbaf[a-z2-7]{20,}\b|"(source_http_request|entry_http_request|full_generation_command|content_commit_hash|example|examples|gremlin)"[[:space:]]*:' \
+    "${refs}"/*.json; then
+    echo "neutral lexicon references contain prohibited operational content" >&2
+    return 1
+  fi
+
+  echo "neutral lexicon references are valid"
+}
+
 main() {
   local root
   root="$(repo_root)"
@@ -29,6 +121,7 @@ main() {
   "${root}/skills/use-oracle/scripts/oracle-paths.test.sh"
 
   "${python_bin}" "${root}/scripts/check-plugin-clean-room.py" --self-test
+  validate_neutral_references "${root}"
 
   "${python_bin}" - "$root" <<'PY'
 import json
