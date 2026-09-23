@@ -233,6 +233,8 @@ evaluation over persisted facts. Elephant county transforms remain with `oracle`
 | [`monitoring-county-ingestion`](./skills/monitoring-county-ingestion/) | Monitor a running local-stack county ingestion — workflow progress, artifact counts, DB counts, ETAs, and stall diagnosis. |
 | [`monitoring-oracle-ingestion`](./skills/monitoring-oracle-ingestion/) | Monitor legacy AWS oracle-node ingestion tracks — SQS/Lambda health, S3 artifact counts, and ETAs. |
 | [`onboard-county`](./skills/onboard-county/) | Orchestrate end-to-end county onboarding — intake, discovery, seed, appraisal, permits, run, enrichment, and publish stages. |
+| [`operate-calling-campaigns`](./skills/operate-calling-campaigns/) | Prepare and deliver calling campaigns through the required calling Filter, live Interprose scrub, graph_catalog Solver, live PRIMARY ZIP/hour correction, and explicit-approval Integrate/LiveVox handoff. |
+| [`operate-sms-campaigns`](./skills/operate-sms-campaigns/) | Prepare and send SMS campaigns through the mandatory standard or payfail Filter contract, live Interprose/ZIP gates, same-day dedupe, certification, and explicit-approval SMS orchestration. |
 | [`overture-places-ingest`](./skills/overture-places-ingest/) | Ingest Overture Maps places for a county with taxonomy, boundary, coverage, and publication gates. |
 | [`query-db-loading-matching`](./skills/query-db-loading-matching/) | Load county artifacts into the internal reconciliation store and cross-match records: folio identity, watermarks, tombstones, permit and official identity links, roof age, enrichment. |
 | [`responsive-design-tests`](./skills/responsive-design-tests/) | Write Playwright design tests for Figma-driven responsive UI updates across mocked and real-device lanes. |
