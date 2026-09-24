@@ -25,6 +25,57 @@ jq -c --arg query "communication" '
 ' "$REFERENCE_DIR/catalog.json"
 ```
 
+## Find exact type matches across paradigms
+
+```bash
+jq -c --arg type "payment" '
+  limit(10;
+    .entries[]
+    | select(.type == $type)
+    | {model, kind, type}
+  )
+' "$REFERENCE_DIR/catalog.json"
+```
+
+Use the property-graph match when no paradigm was requested and one exists. Do not combine definitions from multiple matches.
+
+## Return one exact property-graph definition
+
+```bash
+jq -c --arg type "payment" '
+  . as $model |
+  first($model.vertices[] | select(.type == $type)) as $entity |
+  {
+    entity: $entity,
+    relationships: [
+      limit(50;
+        $model.edges[]
+        | select(.from == $type or .to == $type)
+      )
+    ]
+  }
+' "$REFERENCE_DIR/model-b.json"
+```
+
+This is the complete-but-bounded lookup recipe for one property-graph type. It returns all observed entity properties, required fields, enums, indexes, and up to 50 one-hop relationships.
+
+## Return one exact class definition
+
+```bash
+jq -c --arg type "payment" '
+  limit(1;
+    .classes[]
+    | select(.type == $type)
+    | {
+        class: .,
+        relationship_count: ((.relationships // {}) | length)
+      }
+  )
+' "$REFERENCE_DIR/model-a.json"
+```
+
+Use the same query against `model-c.json` when the selected paradigm is the class/relationship catalog.
+
 ## Find one class
 
 ```bash
