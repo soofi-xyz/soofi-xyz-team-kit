@@ -32,6 +32,6 @@ Inspect partial artifacts and failed phases before retrying; use fresh paths for
 
 ## Coordinate and return
 
-Keep Transform execution here. Use Lapras for Connect source extraction, entity bundles and ingestion checkpoints. Use Conkeldurr for Lexicon/Persist dependencies, Gallade for Filter, Machamp for batch capacity, Porygon for metrics and Regigigas for distribution. Use another execution product only when its actual API/runtime contract is requested.
+Keep Transform execution here. Use Lapras for Connect, which lands external partner data as files for the calling product. Use Conkeldurr for Lexicon/Persist dependencies, Gallade for Filter, Machamp for batch capacity, Porygon for metrics and Regigigas for distribution. Use another execution product only when its actual API/runtime contract is requested.
 
 Return the resolved language pair/mapping, definitions/formats, graph bindings when applicable, exact SQL/Python/TypeScript/CDK changes, configuration/deployment status and verification evidence. Distinguish requirements, implemented code and observed runtime behavior.

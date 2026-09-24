@@ -1,66 +1,84 @@
 ---
 name: build-connect-product
-description: "Build the Connect ingestion product from Stage-derived behavior: registered adapters (PostgreSQL JDBC, S3 Parquet/CSV/Excel objects) into PySpark, registered source contracts, entity delta bundles, dependency hydration, downstream-gated checkpoints, sampling and Iceberg snapshots. Use for source-to-Transform delivery, not the separate partner API/webhook flow compiler."
+description: "Build Connect, the only layer that talks to external systems, as configurable blocks: generic verbs (LIST, FETCH, PUT, MOVE, CALL, POLL, WAIT_FOR_WEBHOOK, DECRYPT) over typed connections (http, sftp, azure_blob, s3, drop_zone), shared options (ledger, pagination, file landing), partner configurations, activations (schedule, drop zone, webhook) and a job API, compiled to Step Functions. Use for partner APIs, webhooks, partner file intake or delivery, and adding partners, drivers or verbs."
 ---
 
 # Build Connect Product
 
-Use `lapras` for Connect ingestion. Make the database extraction/delta workflow
-its primary, fully specified use case. Generalize source tables, entity links,
-projections and policies through registration; do not hardcode a source system
-or business domain. An adapter is code, a use case is a registration: adding a
-second database or a new spreadsheet is a configuration release, not Python. Implement product code in the user's target repository.
-This skill contains instructions, contracts and examples only.
+Use `lapras` for Connect. Connect talks to external systems only and hands
+results to products through its job contract. It is a flow specification of
+generic verbs over typed connections, compiled into Step Functions state
+machines. Implement product code in the user's target repository; this skill
+contains instructions, contracts and examples only.
 
 ## Read by task
 
-1. Read [the product contract](reference/PRD.md) for ownership and required behavior.
-2. For a new implementation, follow [the build sequence](reference/from-scratch.md)
-   and [machine contracts](reference/contracts.md). Use the defaults instead of
-   asking the user to choose routine libraries or module layouts.
-3. For source reads, deltas or missing related records, read
-   [extraction and hydration](reference/extraction-and-hydration.md). For a new
-   source type, read the [adapter registry](reference/contracts.md#adapters) first.
-4. For replay, lost updates, observed changes or downstream delivery, read
-   [checkpoints and observations](reference/checkpoints-and-observations.md).
-5. For current-state copies, historical context or bounded trials, read
-   [snapshots and samples](reference/snapshots-and-samples.md).
-6. Implement [the worked example and acceptance cases](reference/verification.md)
-   and [AWS workflow](reference/aws-workflow.md) in the target repository.
-7. When adapting Stage, use [implementation evidence](reference/implementation-evidence.md)
-   to preserve its actual contracts and distinguish generalization work from
-   shipped functionality. A source checkout is not required to follow this guide.
+1. Always read [architecture](reference/architecture.md) for the boundary,
+   concepts, pipelines and caller contract.
+2. To write or review a flow, partner configuration or activation, read
+   [flow specification](reference/flow-spec.md) and
+   [blocks](reference/blocks.md), and validate against
+   [`contracts/flow.schema.json`](reference/contracts/flow.schema.json).
+3. To onboard a partner or a new use case, start from
+   [use cases](reference/use-cases.md) and the closest file in
+   [examples](reference/examples/). Reuse an existing flow before writing one.
+4. To implement or change the runtime, read
+   [AWS runtime](reference/aws-runtime.md) and the
+   [Connect service PRD](../build-connect-service/reference/PRD.md) it builds on.
+5. Prove changes with [verification](reference/verification.md).
 
-## Keep shared skills
+## Decide the cost of a request
 
-- Apply [engineering guidelines](../apply-engineering-guidelines/SKILL.md):
-  TypeScript control plane/CDK, Python PySpark jobs, quality checks, telemetry and alerts.
-- Use [Lexicon](../build-lexicon-product/SKILL.md) for governed source schemas,
-  projections, mapping dependencies and configuration publication.
-- Use [batch workflows](../build-batch-workflows/SKILL.md) for capacity, admission,
-  bounded concurrency and retry orchestration when building the workflows.
-- Use [Transform](../build-transform-product/SKILL.md) for language conversion
-  and [Persist](../build-persist-service/SKILL.md) for requested graph delivery.
-  Keep ingestion results and each consumer's success independently verifiable.
-- Preserve the separate [Connect service](../build-connect-service/SKILL.md)
-  and [inbound SFTP](../build-inbound-sftp-workflows/SKILL.md) contracts when those
-  transport surfaces are requested. Do not silently combine their APIs with the
-  Stage-derived ingestion workflow.
+Classify every request before designing anything:
+
+| Request | Deliver |
+| --- | --- |
+| New partner of a known kind | Partner configuration + activation. No code |
+| Known partner, new interaction | New flow from existing verbs and options |
+| New storage system or auth scheme | One driver or auth profile, with conformance tests |
+| New verb or option | Only with at least two use cases that cannot be composed from the catalog; record the evidence |
+| Parsing, classification, graph writes, events, internal calls | Not Connect. Hand back to the product owner |
 
 ## Invariants
 
-Require explicit source/version and entity scope. Pin configuration, source-read
-semantics and the exact committed checkpoint before Spark starts. Fail unknown
-or incompatible registrations; never turn a checkpoint read error into an
-unplanned full scan. Keep extraction, changed records, affected entities,
-hydrated context and delivered outputs distinct.
+- Talk only to external systems. Never read or write Persist, publish to
+  EventBridge, SNS or product queues, call internal services, or start from
+  internal events.
+- Name verbs for actions, never for providers, formats or partners. Keep
+  provider details in connection types, tenant details in partner
+  configurations, and shared behavior in options.
+- Put auth and secrets on connections as Secrets Manager references. Flows
+  never name secrets.
+- Land payloads in the Connect bucket and return file pointers with checksums.
+  Keep inline responses within `MaxInlineBytes`.
+- Require `limits` on every flow and `Concurrency` on every `Map`.
+- Make everything runtime-operable: flows, partner configurations, connections
+  and activations change through the API, never through a CDK deploy or
+  context flag.
+- Pin flow versions in activations. Accept legacy task types only as aliases.
+- Do not add a general `CODE` verb.
 
-Publish typed dataset manifests and pending checkpoint artifacts only after
-validation. Advance a production generation only at its configured delivery
-boundary. Keep samples/backfills isolated, workflow switches operable through
-runtime configuration, and snapshot refresh outside the extraction critical path.
+## Keep shared skills
 
-Return implemented changes and evidence for local execution, synthesized
-infrastructure and any actual deployment separately. Do not claim generic
-connectors, deletion propagation or transactional source snapshots exist without
-implementing and verifying their explicit contracts.
+- Apply [engineering guidelines](../apply-engineering-guidelines/SKILL.md) for
+  TypeScript CDK, testing, observability and alerting.
+- Use [batch workflows](../build-batch-workflows/SKILL.md) for fan-out capacity,
+  throttling and cost gates.
+- Use [inbound SFTP workflows](../build-inbound-sftp-workflows/SKILL.md) for
+  Transfer Family connector details behind the `sftp` driver.
+
+## Set-aside track
+
+[`reference/table-ingestion/`](reference/table-ingestion/PRD.md) holds the
+Stage-derived Interprose table-ingestion specification (JDBC reads, record
+deltas, entity bundles, Persist-gated checkpoints, Iceberg snapshots). It is
+not part of the block architecture and conflicts with the external-only
+boundary. Do not build from it unless the user explicitly asks, and resolve
+that boundary with them first.
+
+## Return
+
+Return the request classification, flows, partner configurations and
+activations added or changed, drivers or options added with their evidence,
+schema validation output, compiler and driver test results, and deployment or
+live-run evidence reported separately.

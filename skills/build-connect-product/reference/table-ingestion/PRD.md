@@ -1,5 +1,11 @@
 # Connect ingestion — product contract
 
+> **Status: set aside.** This Stage-derived table-ingestion track is not part of
+> the Connect block architecture in [`../architecture.md`](../architecture.md).
+> Its Transform/Persist handoff and Persist-gated checkpoint conflict with the
+> rule that Connect only talks to external systems. Do not build it unless the
+> user explicitly asks, and resolve that boundary with them first.
+
 Build a configurable ingestion product that acquires registered source tables,
 detects record changes and publishes the related data needed to process affected
 entities. Use the Stage-derived PostgreSQL/JDBC workflow as the primary use case.
