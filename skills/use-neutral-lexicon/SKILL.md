@@ -1,6 +1,6 @@
 ---
 name: use-neutral-lexicon
-description: "Queries bundled neutral lexicon references for modeling precedent. Use when Mew needs to check existing entity, property, relationship, lifecycle, identity, or modeling-paradigm patterns without loading full reference files."
+description: "Queries bundled neutral lexicon references for exact schema lookup and modeling precedent. Use when Mew must return entity properties, enums, indexes, relationships, lifecycle, identity, or modeling-paradigm patterns without loading full reference files."
 disable-model-invocation: true
 ---
 
@@ -12,22 +12,33 @@ Use the bundled references as precedent, not as authority over the user's busine
 
 Query when at least one condition applies:
 
+- the user asks for an exact or existing entity, class, model, schema, property, enum, index, or relationship
 - a proposed entity, association, or event may already have a reusable pattern
 - identity, lifecycle, cardinality, or relationship representation is uncertain
 - the user supplied an existing model and needs compatibility guidance
 - the target modeling paradigm affects the proposed representation
 - a core-versus-extension decision needs evidence from prior models
 
-Do not query merely to restate concepts already established by the user's use case.
+Always query for exact lookup. For design requests, do not query merely to restate concepts already established by the user's use case.
+
+## Lookup routing
+
+- Search the catalog for an exact type before reading a model file.
+- Honor an explicitly requested RDF, property-graph, or class-catalog paradigm.
+- When no paradigm is specified and the type exists in the property-graph reference, use it by default.
+- When the type exists only once elsewhere, use that definition.
+- When several non-property-graph definitions differ, return separate paradigm-specific results.
+- Never ask for an external repository or file path to answer a bundled lookup.
+- Never merge fields from different paradigms into a synthetic “exact” definition.
 
 ## Retrieval workflow
 
 1. Resolve `reference/` from this `SKILL.md` location, never from the caller's working directory.
 2. Read [`reference/query-examples.md`](reference/query-examples.md) and select the narrowest applicable `jq` recipe.
 3. Query `manifest.json` first when the target paradigm matters.
-4. Search `catalog.json` with one or two business terms.
-5. Query an exact entity in only the relevant model file.
-6. Query one-hop relationships or an individual property only when needed.
+4. Search `catalog.json` for exact type matches before broader keyword matches.
+5. For lookup mode, use the complete-but-bounded entity recipe for only the selected type and paradigm.
+6. Query one-hop relationships or an individual property only for that selected type.
 7. Stop when the retrieved slice answers the modeling question.
 
 Set an absolute reference path before running a recipe:
