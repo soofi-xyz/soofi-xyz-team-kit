@@ -36,6 +36,26 @@ priority. If classification is ambiguous, ask before running Filter.
 Never combine the standard and payfail contracts. Never remove a rule because
 the source audience appears to satisfy it already.
 
+## Hand off local workbooks and files
+
+A path such as `/Users/<name>/Downloads/...` works only for an agent on that
+machine. Do not use a developer-specific local path as a shared campaign
+contract.
+
+For another operator, remote agent, or later run:
+
+1. Upload the untouched source workbook/file to an isolated campaign S3
+   prefix using AES256.
+2. Publish a source manifest with original filename, byte count, SHA256, sheet
+   names, per-sheet row counts, parsed debt counts, duplicate counts, uploader
+   timestamp, and S3 URI.
+3. Parse every required sheet and reconcile source rows to unique debts.
+4. Publish normalized Filter input files with the exact `debt_id` header under
+   a separate `filter-input/` prefix.
+
+Treat the workbook as immutable source evidence, not direct Filter input.
+Never assume a team member can access the original local path.
+
 ## Standard SMS contract
 
 Every non-payfail SMS campaign MUST pass the exact ordered contract proven by:

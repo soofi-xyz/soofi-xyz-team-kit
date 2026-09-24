@@ -43,6 +43,28 @@ Require a unique `debt_id` per source row and publish a source manifest with:
 For a multi-date audience, preserve per-date membership and report each date,
 the overlap, and the deduplicated union.
 
+### Local workbooks and files
+
+Never put a developer-specific path such as `/Users/<name>/Downloads/...` in
+a reusable campaign handoff. A local file is usable only by an agent running
+on that same machine.
+
+For another operator, remote agent, or later run:
+
+1. Upload the untouched workbook/file to an isolated campaign S3 prefix using
+   AES256.
+2. Publish a source manifest containing original filename, byte count, SHA256,
+   sheet names, per-sheet row counts, parsed debt counts, duplicate counts,
+   uploader timestamp, and S3 URI.
+3. Parse and classify every relevant sheet according to the campaign's
+   business definitions.
+4. Reconcile workbook rows to unique debts and cohort totals.
+5. Publish normalized Filter inputs with the `debt_id` header under a separate
+   `filter-input/` prefix.
+
+Treat the raw workbook as source evidence, not as direct Filter input. Never
+assume another team member can access the original local path.
+
 ### Payfail calling source
 
 Do not infer a historical payfail audience from an SMS-final audience or from
