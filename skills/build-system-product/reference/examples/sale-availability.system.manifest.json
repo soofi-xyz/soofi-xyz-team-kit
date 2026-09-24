@@ -1,0 +1,148 @@
+{
+  "contractVersion": 1,
+  "systemId": "sale-availability",
+  "title": "Sale availability lookup",
+  "outcome": "Given an address or parcelId, return sale availability and evidence from curated Connect/Transform artifacts (fixtures in v1). Unknown identifiers fail closed. No scrape-on-request.",
+  "products": [
+    {
+      "product": "lexicon",
+      "role": "configure",
+      "notes": "Publish source and sale-availability languages plus mapping via Conkeldurr / build-lexicon-product."
+    },
+    {
+      "product": "connect",
+      "role": "execute",
+      "notes": "Batch ingest prepared source objects (prefer s3-file for fixture pilots)."
+    },
+    {
+      "product": "transform",
+      "role": "execute",
+      "notes": "Translate source language to sale-availability language (contractVersion 2)."
+    },
+    {
+      "product": "system-runtime",
+      "role": "serve",
+      "notes": "Future thin TypeScript lookup API in a System target repo — not built in this kit."
+    },
+    {
+      "product": "deploy",
+      "role": "activate",
+      "notes": "CDK stub remains activationEnabled false until authorized."
+    }
+  ],
+  "configRefs": {
+    "lexiconCatalog": {
+      "kind": "lexicon-catalog",
+      "path": "emits/lexicon/catalog.stub.json",
+      "ownerAgent": "conkeldurr"
+    },
+    "connectSource": {
+      "kind": "connect-source",
+      "path": "emits/connect/source.stub.json",
+      "ownerAgent": "lapras"
+    },
+    "transformRequest": {
+      "kind": "transform-request",
+      "path": "emits/transform/request.stub.json",
+      "ownerAgent": "kecleon"
+    },
+    "systemOpenApi": {
+      "kind": "system-openapi",
+      "path": "systems/sale-availability/openapi.yaml",
+      "ownerAgent": "zygarde"
+    },
+    "systemFixtures": {
+      "kind": "system-fixtures",
+      "path": "systems/sale-availability/fixtures/",
+      "ownerAgent": "zygarde"
+    },
+    "deployEnvironment": {
+      "kind": "deploy-environment",
+      "path": "emits/deploy/environment.stub.json",
+      "ownerAgent": "conkeldurr"
+    }
+  },
+  "workflow": [
+    {
+      "id": "publish-lexicon",
+      "product": "lexicon",
+      "configRef": "lexiconCatalog",
+      "agent": "conkeldurr",
+      "gate": "languages-and-mapping-proposed"
+    },
+    {
+      "id": "ingest-source",
+      "product": "connect",
+      "configRef": "connectSource",
+      "agent": "lapras",
+      "gate": "checkpoint-or-fixture-datasets-ready"
+    },
+    {
+      "id": "translate",
+      "product": "transform",
+      "configRef": "transformRequest",
+      "agent": "kecleon",
+      "gate": "curated-sale-availability-artifacts-written"
+    },
+    {
+      "id": "serve-lookup",
+      "product": "system-runtime",
+      "configRef": "systemFixtures",
+      "agent": "zygarde",
+      "gate": "fixture-address-and-parcel-pass-openapi-shape"
+    },
+    {
+      "id": "deploy-stub",
+      "product": "deploy",
+      "configRef": "deployEnvironment",
+      "agent": "conkeldurr",
+      "gate": "synth-with-activation-disabled"
+    }
+  ],
+  "successCriteria": [
+    {
+      "id": "manifest-valid",
+      "description": "This manifest validates against composition.manifest.schema.json.",
+      "verify": "schema"
+    },
+    {
+      "id": "fixture-address",
+      "description": "Known fixture address returns availability + evidence (deferred until System package exists).",
+      "verify": "deferred"
+    },
+    {
+      "id": "fixture-parcel",
+      "description": "Known fixture parcelId returns availability + evidence (deferred until System package exists).",
+      "verify": "deferred"
+    },
+    {
+      "id": "unknown-id-closed",
+      "description": "Unknown address/parcelId fails closed with typed error (deferred).",
+      "verify": "deferred"
+    },
+    {
+      "id": "no-scrape",
+      "description": "Request path does not perform live website scraping.",
+      "verify": "manual"
+    }
+  ],
+  "dependencies": {
+    "repos": [
+      "elephant-xyz/lexicon",
+      "elephant-xyz/connect",
+      "elephant-xyz/transform"
+    ],
+    "env": [
+      {
+        "name": "ELEPHANT_LEXICON_ROOT",
+        "purpose": "Local or checkout path to Elephant Lexicon for catalog resolution."
+      }
+    ],
+    "notes": "System target repo (elephant-xyz/system) is a follow-on story; kit skill ships the skeleton only."
+  },
+  "deploy": {
+    "activationEnabled": false,
+    "costCeilingUsd": 25,
+    "notes": "Do not enable activation without account/region authorization and product wiring evidence."
+  }
+}
