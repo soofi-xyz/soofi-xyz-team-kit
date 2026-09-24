@@ -171,6 +171,26 @@ duplicates, nonempty outputs, expected file counts, and AES256.
 Run after Filter and before Solver through the production PrivateLink in one
 read-only `REPEATABLE READ` transaction.
 
+### Connect to Interprose
+
+Do not guess an endpoint or use public networking:
+
+1. Run from a SOC-network workstation or VPC-connected compute such as an
+   approved SSM-managed EC2 worker.
+2. Fetch secret `prod/interprose/endpoint/privatelink` from Secrets Manager in
+   `us-east-2` using the selected AWS profile.
+3. Read `host`, `port` (default `5432`), `database`, `username`, and
+   `password` from the secret at runtime.
+4. Connect with PostgreSQL `sslmode=require`.
+5. Start `BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY`.
+6. Restrict reads to the campaign debt IDs and required `spring.*` columns.
+7. Record transaction snapshot/isolation/read-only evidence, then commit.
+
+Never print or persist the secret values. Never write to Interprose through
+SQL; transactional writes use the Interprose API. If the PrivateLink host is
+unreachable, move the read to approved VPC-connected compute rather than
+opening public access.
+
 Retain a debt only when:
 
 - exactly one current SPRING account exists;
@@ -214,6 +234,10 @@ layout alone.
 After Solver, read the latest live production Interprose
 `spring.demographic` row whose type is `PRIMARY`; normalize it to ZIP5. Do not
 authorize against Persist/Graph ZIP or `interprose_current` snapshots.
+
+`ZIP5` means the first five numeric digits of a US postal code. Accept source
+forms `12345`, `12345-6789`, or `123456789`, and normalize each to `12345`.
+Reject missing values and values with fewer than five digits.
 
 Re-evaluate each row with the deployed Solver timezone, curfew, DST,
 NPA-NXX/phone overlay, prohibited-area-code, selected-hour, and capacity

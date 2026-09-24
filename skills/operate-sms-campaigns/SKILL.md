@@ -204,6 +204,26 @@ The payfail contract intentionally omits:
 It retains `has_single_debt_for_person_owner`. Use the same canonical
 `daily_account_contact_limit_2` path required by the standard contract.
 
+### Exact standard versus payfail difference
+
+The contracts share 50 rule IDs.
+
+Standard-only rules:
+
+- `no_active_payment_plan` — excludes accounts with an active payment plan;
+- `max_1_rpc_in_7_days` — applies the standard recent-RPC frequency gate;
+- `balance_over_25` — requires balance greater than $25.
+
+Payfail-only rule:
+
+- `has_failed_or_returned_transaction_today` — requires the qualifying
+  failed/returned payment or failed-installment event.
+
+Therefore `54 - 3 + 1 = 52`. Both contracts omit
+`has_single_assigned_address` and `balance_over_250`; omission means those two
+rules do not block the campaign. This comparison is limited to the reviewed
+standard and payfail contracts, not every rule that exists in Lexicon.
+
 For historical payfail dates, back-date the canonical payfail selector's
 runtime Eastern-day bounds against the underlying event source. Do not pretend
 a daily Filter output exists for a date when it does not.
@@ -245,6 +265,22 @@ totals, nonempty aggregate output, and AES256.
 Run after Filter through production PrivateLink in one read-only
 `REPEATABLE READ` transaction.
 
+### Connect to Interprose
+
+1. Run from a SOC-network workstation or approved compute connected to a
+   SOCAPITAL VPC, such as an SSM-managed EC2 worker.
+2. Fetch secret `prod/interprose/endpoint/privatelink` from Secrets Manager in
+   `us-east-2` using the selected AWS profile.
+3. Read `host`, `port` (default `5432`), `database`, `username`, and
+   `password` at runtime; never print or persist them.
+4. Connect with PostgreSQL `sslmode=require`.
+5. Start `BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY`.
+6. Restrict queries to the campaign debt IDs and required `spring.*` columns.
+7. Capture transaction snapshot/isolation/read-only evidence, then commit.
+
+Never write to Interprose through SQL. If PrivateLink is unreachable, use
+approved VPC-connected compute; do not expose the database publicly.
+
 Retain a debt only when:
 
 - exactly one current SPRING account exists;
@@ -266,6 +302,10 @@ Read current production Interprose `spring.demographic` rows whose type is
 `PRIMARY`. Require exactly one valid ZIP and normalize to ZIP5. Do not use
 Persist/Graph ZIP, residential/mailing unions, or `interprose_current`
 snapshots for this gate.
+
+`ZIP5` means the first five numeric digits of a US postal code. Normalize
+`12345`, `12345-6789`, or `123456789` to `12345`; reject missing values or
+values with fewer than five digits.
 
 ## Deduplicate against today's sends
 
