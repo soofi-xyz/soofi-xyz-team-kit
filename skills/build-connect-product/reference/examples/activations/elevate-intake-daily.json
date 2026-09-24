@@ -1,0 +1,12 @@
+{
+  "activation_id": "elevate-media-intake-daily",
+  "flow_name": "partner-file-intake",
+  "flow_version": 1,
+  "configuration_id": "elevate-media-prod",
+  "trigger": { "type": "schedule", "cron": "0 7 * * ? *", "timezone": "America/New_York" },
+  "subscriber": {
+    "url": "https://<m2d-intake-endpoint>",
+    "signing_secret_ref": "arn:aws:secretsmanager:<region>:<account>:secret:<subscriber-signing-secret>"
+  },
+  "enabled": true
+}
