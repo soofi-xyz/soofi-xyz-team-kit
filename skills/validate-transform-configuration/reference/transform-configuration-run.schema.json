@@ -268,7 +268,6 @@
         "allowLongerRange": { "type": "boolean" },
         "candidateComparisons": {
           "type": "array",
-          "minItems": 1,
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -312,7 +311,12 @@
             }
           }
         },
-        "recommendedWindow": { "$ref": "#/$defs/utcWindow" },
+        "recommendedWindow": {
+          "oneOf": [
+            { "$ref": "#/$defs/utcWindow" },
+            { "type": "null" }
+          ]
+        },
         "confirmedWindow": {
           "oneOf": [
             { "$ref": "#/$defs/utcWindow" },

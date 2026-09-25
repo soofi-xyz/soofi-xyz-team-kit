@@ -314,9 +314,15 @@ def run_errors(value: dict) -> list[str]:
                 and duration_days >= minimum_days
             )
 
-        recommended = source_window.get("recommendedWindow", {})
-        if not valid_complete_window(recommended):
+        status = source_window.get("status")
+        recommended = source_window.get("recommendedWindow")
+        if status != "BLOCKED" and (
+            not isinstance(recommended, dict)
+            or not valid_complete_window(recommended)
+        ):
             errors.append("invalid recommended complete UTC window")
+        if status == "BLOCKED" and recommended is not None:
+            errors.append("blocked source window has a recommendation")
         for candidate in source_window.get("candidateComparisons", []):
             candidate_window = {
                 "start": candidate.get("start"),
@@ -330,8 +336,10 @@ def run_errors(value: dict) -> list[str]:
                 or not candidate.get("immutableEvidence")
             ):
                 errors.append("complete candidate lacks closure evidence")
-        status = source_window.get("status")
         confirmed = source_window.get("confirmedWindow")
+        candidates = source_window.get("candidateComparisons", [])
+        if status != "BLOCKED" and not candidates:
+            errors.append("source window has no candidate comparisons")
         if status == "CONFIRMED":
             if not isinstance(confirmed, dict) or not valid_complete_window(confirmed):
                 errors.append("confirmed source window is invalid")
@@ -642,6 +650,22 @@ def test_schemas_and_profiles() -> list[dict]:
         run_check,
         implied_confirmation,
         "source window confirmation without confirmed status",
+    )
+
+    inaccessible_metadata = copy.deepcopy(prod_derived)
+    inaccessible_metadata["sourceWindowSelection"].update(
+        {
+            "status": "BLOCKED",
+            "candidateComparisons": [],
+            "recommendedWindow": None,
+            "confirmedWindow": None,
+            "evidenceIds": ["prod-metadata-access-denied"],
+        }
+    )
+    assert_valid(
+        run_check,
+        inaccessible_metadata,
+        "blocked PROD-derived window without invented candidates",
     )
 
     not_ready = copy.deepcopy(run)
