@@ -3,7 +3,7 @@
 Render the validated Transform configuration/readiness package into this order:
 
 1. **Configuration-readiness verdict** — `READY`, `NOT_READY`, or `BLOCKED`; one-sentence reason. State explicitly that this is not platform or product approval.
-2. **Scope and discovery** — profile, all required directions, environment, mode and consumers; repositories searched, required paths, candidate-selection method, matching pull requests, selected commit SHAs and rejected candidates.
+2. **Scope and discovery** — profile, all required directions, environment, mode and consumers; repositories searched, required paths, candidate-selection method, matching pull requests, selected commit SHAs and rejected candidates. For PROD-derived DEV validation, include the sanitized complete-UTC-day candidate comparison, recommended half-open window, minimum-day policy, confirmation status and evidence IDs before any staging approval.
 3. **Reusable package** — package version; Transform product/version; every source/target language and mapping digest; Lexicon digest; dependencies; Test evidence; Deploy-owned environment digest; Marketplace-registration readiness.
 4. **Phase results** — all 12 phases in order with status, evidence IDs and concise reason.
 5. **Boundary decisions** — every proposal labeled `CONFIGURATION` or `PRODUCT_CHANGE`, with evidence, state and owner handoff.
@@ -28,3 +28,4 @@ Render the validated Transform configuration/readiness package into this order:
 - Do not classify by repository alone. Mapping declarations stored in Lexicon remain Transform configuration; executable reader/schema/failure behavior remains a Transform product change.
 - Recommend fixes without editing code, weakening validation, or claiming the recommendation has passed.
 - Never report “likely” paths. Trace generated artifacts to checked-in source and provide location evidence, or state that source discovery remains unresolved.
+- Never present a PROD-derived source window as selected until the user explicitly confirms the recommended day or a permitted longer range.

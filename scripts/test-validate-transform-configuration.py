@@ -7,6 +7,7 @@ import copy
 import json
 import re
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 try:
@@ -173,6 +174,16 @@ def profile_errors(value: dict) -> list[str]:
     }
     if set(value.get("configurationChoices", {})) != allowed_choices:
         errors.append("product boundary disguised as configuration")
+    source_window = value.get("sourceWindowPolicy")
+    if source_window is not None:
+        if source_window.get("kind") != "prod-derived-complete-utc-days":
+            errors.append("source window policy kind")
+        if source_window.get("minimumCompleteUtcDays", 0) < 1:
+            errors.append("source window minimum")
+        if not source_window.get("requiredSourceFamilies"):
+            errors.append("source window source families")
+        if not source_window.get("requiredCoverageSignals"):
+            errors.append("source window coverage signals")
     return errors
 
 
@@ -280,6 +291,52 @@ def run_errors(value: dict) -> list[str]:
     ]
     if value.get("verdict") == "READY" and unresolved:
         errors.append("ready with unresolved product change")
+    source_window = value.get("sourceWindowSelection")
+    if source_window is not None:
+        minimum_days = source_window.get("minimumCompleteUtcDays", 0)
+
+        def parse_utc(raw: str) -> datetime:
+            return datetime.fromisoformat(raw.replace("Z", "+00:00"))
+
+        def valid_complete_window(window: dict) -> bool:
+            try:
+                start = parse_utc(window["start"])
+                end = parse_utc(window["endExclusive"])
+            except (KeyError, TypeError, ValueError):
+                return False
+            duration_days = (end - start).total_seconds() / 86400
+            return (
+                start.tzinfo is not None
+                and start.utcoffset() == timezone.utc.utcoffset(start)
+                and start.hour == start.minute == start.second == start.microsecond == 0
+                and end.hour == end.minute == end.second == end.microsecond == 0
+                and duration_days == window.get("completeUtcDays")
+                and duration_days >= minimum_days
+            )
+
+        recommended = source_window.get("recommendedWindow", {})
+        if not valid_complete_window(recommended):
+            errors.append("invalid recommended complete UTC window")
+        for candidate in source_window.get("candidateComparisons", []):
+            candidate_window = {
+                "start": candidate.get("start"),
+                "endExclusive": candidate.get("endExclusive"),
+                "completeUtcDays": 1,
+            }
+            if not valid_complete_window(candidate_window):
+                errors.append("candidate is not one complete UTC day")
+            if candidate.get("complete") and (
+                not candidate.get("sourceFamiliesPresent")
+                or not candidate.get("immutableEvidence")
+            ):
+                errors.append("complete candidate lacks closure evidence")
+        status = source_window.get("status")
+        confirmed = source_window.get("confirmedWindow")
+        if status == "CONFIRMED":
+            if not isinstance(confirmed, dict) or not valid_complete_window(confirmed):
+                errors.append("confirmed source window is invalid")
+        elif confirmed is not None:
+            errors.append("unconfirmed source window has confirmation")
     return errors
 
 
@@ -528,6 +585,65 @@ def test_schemas_and_profiles() -> list[dict]:
     run = valid_run()
     assert_valid(run_check, run, "valid synthetic run")
 
+    prod_derived = copy.deepcopy(run)
+    prod_derived["sourceWindowSelection"] = {
+        "status": "NEEDS_CONFIRMATION",
+        "minimumCompleteUtcDays": 1,
+        "allowLongerRange": True,
+        "candidateComparisons": [
+            {
+                "start": "2026-09-23T00:00:00Z",
+                "endExclusive": "2026-09-24T00:00:00Z",
+                "complete": True,
+                "sourceFamiliesPresent": [
+                    "decision_batch",
+                    "debt_outcomes",
+                    "authoritative_graph_export",
+                ],
+                "coverageSignals": {
+                    "accepted-outcomes": 17,
+                    "rejected-outcomes": 9,
+                    "client-events": 12,
+                },
+                "rowCount": 120,
+                "byteCount": 4096,
+                "estimatedCostUsd": 0.05,
+                "immutableEvidence": True,
+            }
+        ],
+        "recommendedWindow": {
+            "start": "2026-09-23T00:00:00Z",
+            "endExclusive": "2026-09-24T00:00:00Z",
+            "completeUtcDays": 1,
+        },
+        "confirmedWindow": None,
+        "evidenceIds": ["source-window-metadata"],
+    }
+    assert_valid(run_check, prod_derived, "valid unconfirmed PROD-derived window")
+
+    confirmed_window = copy.deepcopy(prod_derived)
+    confirmed_window["sourceWindowSelection"]["status"] = "CONFIRMED"
+    confirmed_window["sourceWindowSelection"]["confirmedWindow"] = copy.deepcopy(
+        confirmed_window["sourceWindowSelection"]["recommendedWindow"]
+    )
+    assert_valid(run_check, confirmed_window, "valid confirmed PROD-derived window")
+
+    partial_day = copy.deepcopy(prod_derived)
+    partial_day["sourceWindowSelection"]["candidateComparisons"][0][
+        "endExclusive"
+    ] = "2026-09-23T12:00:00Z"
+    assert_rejected(run_check, partial_day, "partial PROD day")
+
+    implied_confirmation = copy.deepcopy(prod_derived)
+    implied_confirmation["sourceWindowSelection"]["confirmedWindow"] = copy.deepcopy(
+        implied_confirmation["sourceWindowSelection"]["recommendedWindow"]
+    )
+    assert_rejected(
+        run_check,
+        implied_confirmation,
+        "source window confirmation without confirmed status",
+    )
+
     not_ready = copy.deepcopy(run)
     not_ready["verdict"] = "NOT_READY"
     not_ready["phases"][5]["status"] = "FAIL"
@@ -662,6 +778,8 @@ def test_core_and_references(profiles: list[dict]) -> None:
         "never guess a path", "generated mapping artifacts",
         "name every contradicted field", "vertex-rule-execution",
         "already implemented but not yet revalidated",
+        "complete utc-day", "day-or-range confirmation",
+        "never choose random rows", "sourcewindowselection",
     ):
         if token not in core:
             fail(f"core routing/safety contract missing {token!r}")
@@ -717,6 +835,23 @@ def test_core_and_references(profiles: list[dict]) -> None:
         "e890fb58a0866b9cd873b3665d6cae12adbcf29d12952e84edb63a9cf1495e5d"
     ):
         fail("Decision profile must pin the sanitized contract-freeze manifest")
+    source_window = decision.get("sourceWindowPolicy", {})
+    if (
+        source_window.get("kind") != "prod-derived-complete-utc-days"
+        or source_window.get("minimumCompleteUtcDays") != 1
+        or source_window.get("allowLongerRange") is not True
+        or set(source_window.get("requiredSourceFamilies", []))
+        != {
+            "decision_batch",
+            "chunk_executions",
+            "debt_outcomes",
+            "rule_evaluations",
+            "dsa_client_id_updates",
+            "graph_identity_references",
+            "authoritative_graph_export",
+        }
+    ):
+        fail("Decision profile must require a complete PROD-derived UTC day")
     decision_text = json.dumps(decision).lower()
     for invented in (
         "dsa-client-events", "filter-decision-graph", "dsa-form-1281",

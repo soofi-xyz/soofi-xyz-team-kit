@@ -201,6 +201,27 @@
     { "name": "filter-runtime", "owner": "gallade", "contract": "Consumes registered facts and produces durable traceable outcomes" },
     { "name": "partner-form-delivery", "owner": "lapras", "contract": "Delivers product-produced form output through the registered external adapter" }
   ],
+  "sourceWindowPolicy": {
+    "kind": "prod-derived-complete-utc-days",
+    "minimumCompleteUtcDays": 1,
+    "allowLongerRange": true,
+    "requiredSourceFamilies": [
+      "decision_batch",
+      "chunk_executions",
+      "debt_outcomes",
+      "rule_evaluations",
+      "dsa_client_id_updates",
+      "graph_identity_references",
+      "authoritative_graph_export"
+    ],
+    "requiredCoverageSignals": [
+      "accepted-outcomes",
+      "rejected-outcomes",
+      "client-events",
+      "authoritative-endpoints",
+      "immutable-evidence"
+    ]
+  },
   "scaleTiers": [
     { "id": "synthetic", "maximumRows": 100, "maximumCostUsd": 0, "evidenceRequired": true },
     { "id": "bounded-dev", "maximumRows": 10000, "maximumCostUsd": 25, "evidenceRequired": true }

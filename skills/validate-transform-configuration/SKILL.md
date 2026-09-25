@@ -54,6 +54,27 @@ Resolve through supplied context, discovery, or focused questions:
 
 Resolve every repository ref to a commit SHA and every configuration/deployment artifact to an immutable digest before evaluation. Branches and `latest` aliases may be discovery inputs but never evidence identities.
 
+## Confirm PROD-derived source windows
+
+When a profile declares `sourceWindowPolicy` and validation will copy or derive
+DEV evidence from PROD, inspect only sanitized read-only PROD metadata first.
+Compare recent complete UTC-day candidates using the profile's required source
+families and coverage signals, plus bounded rows, bytes, cost and immutable
+evidence availability. Never choose random rows or a partial day.
+
+Recommend one half-open UTC window `[start, endExclusive)` covering at least
+`minimumCompleteUtcDays`; allow the user to choose a longer contiguous range
+when `allowLongerRange` is true. Ask one explicit day-or-range confirmation
+question and stop before staging. Do not infer confirmation from a general
+request to validate, a cost ceiling or an earlier approval. Record every
+candidate and the confirmed window in `sourceWindowSelection`.
+
+Preserve complete relational and join closure across every profile-declared
+source family and authoritative endpoint. If no candidate proves completeness,
+return `BLOCKED`; do not pad fixtures, select the least-incomplete day or copy
+PROD data to discover what is missing. PROD remains read-only and each later
+DEV staging operation requires its own approval digest.
+
 ## Resolve configuration sources automatically
 
 When the user names a profile or a language pair, do not limit discovery to the current workspace. The profile's `repositories`, `directions`, and `validationSources` are the discovery plan.

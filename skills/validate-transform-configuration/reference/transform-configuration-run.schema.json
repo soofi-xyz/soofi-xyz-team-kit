@@ -248,6 +248,85 @@
         "executionMode": { "enum": ["synthetic-local", "bounded-dev-dry-run", "observed-dev", "observed-prod-read-only"] }
       }
     },
+    "sourceWindowSelection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "minimumCompleteUtcDays",
+        "allowLongerRange",
+        "candidateComparisons",
+        "recommendedWindow",
+        "confirmedWindow",
+        "evidenceIds"
+      ],
+      "properties": {
+        "status": {
+          "enum": ["NEEDS_CONFIRMATION", "CONFIRMED", "BLOCKED"]
+        },
+        "minimumCompleteUtcDays": { "type": "integer", "minimum": 1 },
+        "allowLongerRange": { "type": "boolean" },
+        "candidateComparisons": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "start",
+              "endExclusive",
+              "complete",
+              "sourceFamiliesPresent",
+              "coverageSignals",
+              "rowCount",
+              "byteCount",
+              "estimatedCostUsd",
+              "immutableEvidence"
+            ],
+            "properties": {
+              "start": { "type": "string", "format": "date-time" },
+              "endExclusive": { "type": "string", "format": "date-time" },
+              "complete": { "type": "boolean" },
+              "sourceFamiliesPresent": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*$"
+                }
+              },
+              "coverageSignals": {
+                "type": "object",
+                "minProperties": 1,
+                "additionalProperties": {
+                  "oneOf": [
+                    { "type": "boolean" },
+                    { "type": "integer", "minimum": 0 }
+                  ]
+                }
+              },
+              "rowCount": { "type": "integer", "minimum": 0 },
+              "byteCount": { "type": "integer", "minimum": 0 },
+              "estimatedCostUsd": { "type": "number", "minimum": 0 },
+              "immutableEvidence": { "type": "boolean" }
+            }
+          }
+        },
+        "recommendedWindow": { "$ref": "#/$defs/utcWindow" },
+        "confirmedWindow": {
+          "oneOf": [
+            { "$ref": "#/$defs/utcWindow" },
+            { "type": "null" }
+          ]
+        },
+        "evidenceIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/kebab" }
+        }
+      }
+    },
     "persistCanary": { "$ref": "#/$defs/proof" },
     "exporterHydration": { "$ref": "#/$defs/proof" },
     "roundTrip": {
@@ -464,6 +543,16 @@
   "$defs": {
     "kebab": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
     "sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "utcWindow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "endExclusive", "completeUtcDays"],
+      "properties": {
+        "start": { "type": "string", "format": "date-time" },
+        "endExclusive": { "type": "string", "format": "date-time" },
+        "completeUtcDays": { "type": "integer", "minimum": 1 }
+      }
+    },
     "digestedIdentity": {
       "type": "object",
       "additionalProperties": false,

@@ -29,6 +29,15 @@ Require a profile ID equal to its filename, environment, region, optional reques
 
 Reject mutable evidence as proof. A branch, pull request, tag, `latest` object, undocumented deployment timestamp, or successful status without an immutable binding cannot validate behavior; a pull request is only a discovery selector and its resolved head SHA is the evidence identity.
 
+For PROD-derived DEV validation, let the selected profile opt in through
+`sourceWindowPolicy`. Before any copy, use read-only sanitized metadata to
+compare recent complete UTC days, require all declared source families and
+coverage signals, and recommend at least the configured minimum number of
+complete days. Ask the user to confirm the recommended half-open UTC window or
+a longer permitted range. No staging approval substitutes for this explicit
+source-window confirmation. Preserve relational/join closure and authoritative
+endpoint coverage; random-row and partial-day samples are prohibited.
+
 ## Configuration/product decision
 
 Classify each proposal with evidence:

@@ -336,6 +336,34 @@
       "minItems": 1,
       "items": { "$ref": "#/$defs/boundary" }
     },
+    "sourceWindowPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "minimumCompleteUtcDays",
+        "allowLongerRange",
+        "requiredSourceFamilies",
+        "requiredCoverageSignals"
+      ],
+      "properties": {
+        "kind": { "const": "prod-derived-complete-utc-days" },
+        "minimumCompleteUtcDays": { "type": "integer", "minimum": 1 },
+        "allowLongerRange": { "type": "boolean" },
+        "requiredSourceFamilies": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/datasetName" }
+        },
+        "requiredCoverageSignals": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/kebab" }
+        }
+      }
+    },
     "scaleTiers": {
       "type": "array",
       "minItems": 1,
