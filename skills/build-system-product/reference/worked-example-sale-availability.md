@@ -1,41 +1,50 @@
 # Worked example — sale-availability (skeleton)
 
-Skeleton composition for a **future** Elephant System that answers
-"is this address or parcel available for sale?" from **curated** Connect →
-Transform artifacts (or fixtures standing in for them).
+Skeleton composition for a sale-availability outcome delivered as a **Product**
+configuration that composes curated Connect → Transform (or fixture) data —
+aligned with [StaircaseAPI/product](https://github.com/StaircaseAPI/product).
 
-This example is **kit-only**. It does not create `elephant-xyz/system`, does not
-scrape websites on request, and does not claim AWS readiness.
+Kit-only example: does not create `elephant-xyz/system`, does not scrape on
+request, and does not claim AWS readiness.
 
 ## Outcome
 
-Given `address` or `parcelId`, return availability plus evidence/source pointers
-from curated datasets. Unknown ids fail closed.
+Given `address` or `parcelId`, return availability plus evidence. Unknown ids
+fail closed. Prefer `POST /products/sale-availability/invocations` once Product
+is available.
 
 ## Manifest
 
 See [examples/sale-availability.system.manifest.json](examples/sale-availability.system.manifest.json).
-Validate it with the skill schema before treating the composition as ready.
 
-## Intended product roles
+## Intended shape
 
-| Product | Agent | Role in v1 |
+| Layer | Agent | Role |
 | --- | --- | --- |
-| Lexicon | Conkeldurr | Publish/source languages and mapping for sale-availability fields |
-| Connect | Lapras | Batch ingest prepared source files (e.g. `s3-file`) into typed datasets |
-| Transform | Kecleon | Map source language → sale-availability language |
-| System runtime | Zygarde (later repo) | Lookup API over fixtures / curated prefix |
-| Deploy | Conkeldurr | Inactive CDK stub until activation authorized |
+| Product orchestration | Conkeldurr (+ Machamp) | Product definition, schemas, flow template, flow, optional waterfall |
+| Lexicon | Conkeldurr | Languages + mapping for sale-availability fields |
+| Connect | Lapras | Batch ingest prepared sources (`s3-file` for pilots) |
+| Transform | Kecleon | Source language → sale-availability language |
+| Deploy | Conkeldurr | Activation remains false until authorized |
 
-## Explicit non-goals for this skeleton
+### Flow template sketch
+
+1. Validate request against Product request schema.
+2. `StaircaseService` (or leaf batch precompute) resolve curated artifact /
+   Transform output for the key.
+3. Map to response schema; on miss → Fail closed.
+4. Optional Persist collection write for audit.
+
+Precompute via Connect/Transform batch is valid: the Product flow then becomes
+a lookup over curated artifacts (still Product-shaped, not a new ETL engine).
+
+## Non-goals
 
 - Live website scrape in the request path
-- Full Glue pilot
-- Marketplace registration
-- Implementing the System API in this kit repository
+- Legacy default connector pipeline without `flow_template_name`
+- Marketplace registration from this skeleton alone
 
-## Follow-on (Story B — not this skill change)
+## Follow-on
 
-When authorized: create the System target repo, copy this manifest under
-`systems/sale-availability/`, add OpenAPI + fixtures, wire real Connect/Transform
-config refs, keep activation off until pilot evidence exists.
+Apply emits to a Product deployment; wire real Connect/Transform refs; keep
+activation off until pilot evidence exists.

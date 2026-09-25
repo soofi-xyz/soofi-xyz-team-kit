@@ -1,13 +1,24 @@
 {
   "contractVersion": 1,
   "systemId": "sale-availability",
+  "productName": "sale-availability",
   "title": "Sale availability lookup",
-  "outcome": "Given an address or parcelId, return sale availability and evidence from curated Connect/Transform artifacts (fixtures in v1). Unknown identifiers fail closed. No scrape-on-request.",
+  "outcome": "Given an address or parcelId, return sale availability and evidence from curated Connect/Transform artifacts via a Product invocation. Unknown identifiers fail closed. No scrape-on-request.",
+  "orchestration": {
+    "mode": "product-service",
+    "invocationMode": "single_flow",
+    "notes": "Serve through Product APIs once a deployment is integrated or provisioned. Template-backed flow only."
+  },
   "products": [
+    {
+      "product": "product-orchestration",
+      "role": "serve",
+      "notes": "Product definition, schemas, flow template, and product flow (flow_template_name required)."
+    },
     {
       "product": "lexicon",
       "role": "configure",
-      "notes": "Publish source and sale-availability languages plus mapping via Conkeldurr / build-lexicon-product."
+      "notes": "Publish source and sale-availability languages plus mapping."
     },
     {
       "product": "connect",
@@ -20,17 +31,32 @@
       "notes": "Translate source language to sale-availability language (contractVersion 2)."
     },
     {
-      "product": "system-runtime",
-      "role": "serve",
-      "notes": "Future thin TypeScript lookup API in a System target repo — not built in this kit."
-    },
-    {
       "product": "deploy",
       "role": "activate",
-      "notes": "CDK stub remains activationEnabled false until authorized."
+      "notes": "Keep activationEnabled false until authorized."
     }
   ],
   "configRefs": {
+    "productDefinition": {
+      "kind": "product-definition",
+      "path": "emits/product/product.definition.stub.json",
+      "ownerAgent": "conkeldurr"
+    },
+    "productFlowTemplate": {
+      "kind": "product-flow-template",
+      "path": "emits/product/flow-templates/sale-availability-lookup.stub.json",
+      "ownerAgent": "machamp"
+    },
+    "productFlow": {
+      "kind": "product-flow",
+      "path": "emits/product/product-flows/default.stub.json",
+      "ownerAgent": "conkeldurr"
+    },
+    "productInvocation": {
+      "kind": "product-invocation",
+      "path": "emits/product/invocation.contract.md",
+      "ownerAgent": "zygarde"
+    },
     "lexiconCatalog": {
       "kind": "lexicon-catalog",
       "path": "emits/lexicon/catalog.stub.json",
@@ -45,16 +71,6 @@
       "kind": "transform-request",
       "path": "emits/transform/request.stub.json",
       "ownerAgent": "kecleon"
-    },
-    "systemOpenApi": {
-      "kind": "system-openapi",
-      "path": "systems/sale-availability/openapi.yaml",
-      "ownerAgent": "zygarde"
-    },
-    "systemFixtures": {
-      "kind": "system-fixtures",
-      "path": "systems/sale-availability/fixtures/",
-      "ownerAgent": "zygarde"
     },
     "deployEnvironment": {
       "kind": "deploy-environment",
@@ -85,11 +101,32 @@
       "gate": "curated-sale-availability-artifacts-written"
     },
     {
-      "id": "serve-lookup",
-      "product": "system-runtime",
-      "configRef": "systemFixtures",
+      "id": "configure-product",
+      "product": "product-orchestration",
+      "configRef": "productDefinition",
+      "agent": "conkeldurr",
+      "gate": "product-schemas-accepted"
+    },
+    {
+      "id": "compile-flow-template",
+      "product": "product-orchestration",
+      "configRef": "productFlowTemplate",
+      "agent": "machamp",
+      "gate": "flow-template-compiled"
+    },
+    {
+      "id": "bind-product-flow",
+      "product": "product-orchestration",
+      "configRef": "productFlow",
+      "agent": "conkeldurr",
+      "gate": "flow-template-name-bound"
+    },
+    {
+      "id": "invoke-contract",
+      "product": "product-orchestration",
+      "configRef": "productInvocation",
       "agent": "zygarde",
-      "gate": "fixture-address-and-parcel-pass-openapi-shape"
+      "gate": "invocation-contract-documented"
     },
     {
       "id": "deploy-stub",
@@ -106,13 +143,13 @@
       "verify": "schema"
     },
     {
-      "id": "fixture-address",
-      "description": "Known fixture address returns availability + evidence (deferred until System package exists).",
-      "verify": "deferred"
+      "id": "template-backed-flow",
+      "description": "Product flow stub sets flow_template_name; no legacy default connector pipeline.",
+      "verify": "manual"
     },
     {
-      "id": "fixture-parcel",
-      "description": "Known fixture parcelId returns availability + evidence (deferred until System package exists).",
+      "id": "invocation-known-key",
+      "description": "Known address/parcelId invocation returns availability + evidence (deferred until Product + leaf wiring).",
       "verify": "deferred"
     },
     {
@@ -128,6 +165,7 @@
   ],
   "dependencies": {
     "repos": [
+      "StaircaseAPI/product",
       "elephant-xyz/lexicon",
       "elephant-xyz/connect",
       "elephant-xyz/transform"
@@ -138,7 +176,7 @@
         "purpose": "Local or checkout path to Elephant Lexicon for catalog resolution."
       }
     ],
-    "notes": "System target repo (elephant-xyz/system) is a follow-on story; kit skill ships the skeleton only."
+    "notes": "Primary runtime is Product (StaircaseAPI/product / build-product-service). Thin System package is out of scope unless orchestration.mode is thin-package-deferred."
   },
   "deploy": {
     "activationEnabled": false,

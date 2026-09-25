@@ -43,17 +43,22 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["product", "role"],
+        "required": [
+          "product",
+          "role"
+        ],
         "properties": {
           "product": {
             "type": "string",
             "enum": [
+              "product-orchestration",
               "lexicon",
               "connect",
               "transform",
+              "translate",
+              "persist",
               "deploy",
               "system-runtime",
-              "persist",
               "batch"
             ]
           },
@@ -80,11 +85,20 @@
       "additionalProperties": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["kind", "path"],
+        "required": [
+          "kind",
+          "path"
+        ],
         "properties": {
           "kind": {
             "type": "string",
             "enum": [
+              "product-definition",
+              "product-schema",
+              "product-flow-template",
+              "product-flow",
+              "product-waterfall",
+              "product-invocation",
               "lexicon-catalog",
               "connect-source",
               "transform-request",
@@ -106,7 +120,13 @@
           },
           "ownerAgent": {
             "type": "string",
-            "enum": ["conkeldurr", "lapras", "kecleon", "zygarde", "machamp"]
+            "enum": [
+              "conkeldurr",
+              "lapras",
+              "kecleon",
+              "zygarde",
+              "machamp"
+            ]
           }
         }
       }
@@ -117,7 +137,13 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "product", "configRef", "agent", "gate"],
+        "required": [
+          "id",
+          "product",
+          "configRef",
+          "agent",
+          "gate"
+        ],
         "properties": {
           "id": {
             "type": "string",
@@ -126,12 +152,14 @@
           "product": {
             "type": "string",
             "enum": [
+              "product-orchestration",
               "lexicon",
               "connect",
               "transform",
+              "translate",
+              "persist",
               "deploy",
               "system-runtime",
-              "persist",
               "batch"
             ]
           },
@@ -141,7 +169,13 @@
           },
           "agent": {
             "type": "string",
-            "enum": ["conkeldurr", "lapras", "kecleon", "zygarde", "machamp"]
+            "enum": [
+              "conkeldurr",
+              "lapras",
+              "kecleon",
+              "zygarde",
+              "machamp"
+            ]
           },
           "gate": {
             "type": "string",
@@ -157,7 +191,10 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "description"],
+        "required": [
+          "id",
+          "description"
+        ],
         "properties": {
           "id": {
             "type": "string",
@@ -174,6 +211,7 @@
               "schema",
               "fixture",
               "openapi",
+              "invocation",
               "integration",
               "manual",
               "deferred"
@@ -188,17 +226,29 @@
       "properties": {
         "repos": {
           "type": "array",
-          "items": { "type": "string", "minLength": 1 }
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         },
         "env": {
           "type": "array",
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["name", "purpose"],
+            "required": [
+              "name",
+              "purpose"
+            ],
             "properties": {
-              "name": { "type": "string", "minLength": 1 },
-              "purpose": { "type": "string", "minLength": 1 }
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "purpose": {
+                "type": "string",
+                "minLength": 1
+              }
             }
           }
         },
@@ -211,7 +261,9 @@
     "deploy": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["activationEnabled"],
+      "required": [
+        "activationEnabled"
+      ],
       "properties": {
         "activationEnabled": {
           "type": "boolean",
@@ -224,6 +276,37 @@
         },
         "regionHint": {
           "type": "string"
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 2000
+        }
+      }
+    },
+    "productName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Product service name when different from systemId."
+    },
+    "orchestration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "product-service",
+            "thin-package-deferred"
+          ],
+          "description": "Default product-service. thin-package-deferred requires deferred Product cutover criteria."
+        },
+        "invocationMode": {
+          "type": "string",
+          "enum": [
+            "single_flow",
+            "waterfall"
+          ]
         },
         "notes": {
           "type": "string",

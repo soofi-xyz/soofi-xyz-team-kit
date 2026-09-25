@@ -1,67 +1,77 @@
 # Emit contracts for product agents
 
-Zygarde emits **reviewable stubs**. Product agents turn stubs into real configs
-in their target repositories. Paths below are relative to the System package
-root when a target repo exists; for kit-only work, keep emits under the skill
-worked example or session notes.
+Zygarde emits **reviewable stubs**. Agents turn stubs into real configs in
+their target repositories or via Product APIs. Paths are relative to the
+composition package root when one exists.
+
+## Product orchestration → Conkeldurr + `build-product-service` (Machamp verify)
+
+Emit:
+
+```text
+emits/product/
+  product.definition.stub.json   # name, request_schema, response_schema, metadata
+  flow-templates/
+    <template_name>.stub.json    # DSL definition (+ persistence_integration / output_path)
+  product-flows/
+    <flow_name>.stub.json        # flow_template_name required; tags/active/metadata
+  waterfall.stub.json            # optional { "waterfall": [{ "priority", "flow_name" }] }
+  invocation.contract.md         # single_flow | waterfall; required fields; status gates
+```
+
+**Rules**
+
+- Every executable flow stub sets `flow_template_name`.
+- Template steps that call peers use relative URLs (Connect / Language /
+  Persist / Product), not secrets.
+- Prefer citing shapes from
+  [implementation-evidence.md](implementation-evidence.md) and the Product
+  PRD; do not paste tenant hostnames.
+
+Integrate an existing Product deployment before provisioning a new one.
 
 ## Lexicon → Conkeldurr (`build-lexicon-product`)
 
-Emit:
-
 ```text
 emits/lexicon/
-  README.md                 # which languages/mappings the System needs
-  catalog.stub.json         # logical language ids + mapping ids (no secrets)
+  README.md
+  catalog.stub.json
 ```
-
-Minimum stub fields: `languages[]` (`id`, `purpose`), `mappings[]`
-(`from`, `to`, `id`, `status: proposed`). Prefer pointing at existing Elephant
-Lexicon `publish/pipelines` paths when known. Do not invent published digests.
 
 ## Connect → Lapras (`build-connect-product`)
 
-Emit:
-
 ```text
 emits/connect/
-  source.stub.json          # adapter id, source language, entity scope
-  tables.stub.json          # logical tables + record keys (no credentials)
+  source.stub.json
+  tables.stub.json
 ```
 
-Reference `skills/build-connect-product/reference/contracts.md` for real shapes.
-Use `s3-file` for fixture-backed pilots; `postgres-jdbc` only when network and
-secrets are authorized. Never put Secrets Manager ARNs from another tenant in
-the stub without session evidence.
+Use `s3-file` for fixture pilots; never invent cross-tenant secret ARNs.
 
 ## Transform → Kecleon (`build-transform-product`)
 
-Emit:
-
 ```text
 emits/transform/
-  request.stub.json         # contractVersion 2, from, to, input/output prefixes
-  mapping.ref.md            # points at Lexicon mapping id / path
+  request.stub.json          # contractVersion 2; from/to; S3 locations only
+  mapping.ref.md
 ```
 
-Requests name only `from` / `to` languages and S3 locations. Formats and SQL
-live in Lexicon mappings — do not embed Spark SQL in the System manifest.
+## Persist → Conkeldurr (when invocations need collections/graph)
+
+```text
+emits/persist/
+  collections.stub.md        # transaction/collection correlation expectations
+```
 
 ## Deploy → Conkeldurr
 
-Emit:
-
 ```text
 emits/deploy/
-  environment.stub.json     # region/stage placeholders, activationEnabled false
-  cost-ceiling.md           # default ceiling note; resolve real value from env
+  environment.stub.json      # activationEnabled false
+  cost-ceiling.md
 ```
 
-Do not hardcode developer AWS profile names.
-
-## System runtime → Zygarde (target repo only)
-
-Emit / own:
+## Thin System package → Zygarde (fallback only)
 
 ```text
 systems/<id>/system.manifest.json
@@ -69,15 +79,16 @@ systems/<id>/openapi.yaml
 systems/<id>/fixtures/
 ```
 
-Handlers load curated artifacts; they do not call Connect/Transform engines
-inline unless the composition explicitly schedules those products out-of-band.
+Allowed only when orchestration mode is `thin-package-deferred`.
 
 ## Handoff checklist
 
-| Emit | Owner agent | Done when |
+| Emit | Owner | Done when |
 | --- | --- | --- |
-| Lexicon stubs | Conkeldurr | Catalog/mapping PR or local catalog path exists |
-| Connect stubs | Lapras | Source registration + acceptance fixtures |
-| Transform stubs | Kecleon | Mapping enabled + local transform acceptance |
-| Deploy stubs | Conkeldurr | Synth with activation off |
+| Product definition/template/flow | Conkeldurr (+ Machamp verify) | APIs accept config or PR merged |
+| Lexicon | Conkeldurr | Catalog/mapping path exists |
+| Connect | Lapras | Source registration + fixtures |
+| Transform | Kecleon | Mapping enabled + acceptance |
+| Persist | Conkeldurr | Collection contract agreed |
+| Deploy | Conkeldurr | Synth with activation off |
 | Manifest | Zygarde | Schema-valid + successCriteria listed |

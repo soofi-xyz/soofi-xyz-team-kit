@@ -1,65 +1,61 @@
-# Recreate a System package in a target repository
+# Recreate a System outcome (Product-shaped)
 
-Use this guide when the user asks to **scaffold a System package** in a target
-repo (for example a future `elephant-xyz/system`). This skill still ships only
-instructions and contracts — create code in that repository.
-
-Kit-only Story A stops at a validated composition manifest and emit stubs in
-this skill. Do not create the Elephant System repo unless the user explicitly
-requests that follow-on story.
+Use this guide when composing a business outcome. Prefer configuring the
+**Product** service; keep leaf Product engines with their specialists.
 
 ## 1. Intake
 
-Use this initial instruction:
-
-> Use Zygarde to compose a System for this outcome. Follow
-> `build-system-product` PRD, contracts, and emit shapes. Keep Lapras/Kecleon/
-> Conkeldurr for product engines. Prefer curated artifacts over scrape-on-request.
+> Use Zygarde to compose this outcome as a Product configuration. Follow
+> `build-system-product`. Read Product runtime mapping and StaircaseAPI/product
+> evidence. Keep `build-product-service` for platform integrate-vs-provision.
+> Template-backed flows only.
 
 Collect:
 
-- Outcome statement and callers (API? batch? both?)
-- Which Products already exist (Lexicon / Connect / Transform / Deploy)
-- Success criteria and failure modes (unknown id, stale data)
-- Target repo path and whether CDK may be stubbed inactive
+- Outcome statement and callers (sync API? async invocation? waterfall?)
+- Whether Product is already deployed (integrate) or must be provisioned
+- Leaf Products needed (Lexicon, Connect, Transform, Persist)
+- Success criteria and failure modes
 
 ## 2. Emit sequence
 
 1. **Draft manifest** — validate against `composition.manifest.schema.json`.
-2. **Lexicon emits** — language/mapping stubs → Conkeldurr (`build-lexicon-product`).
-3. **Connect emits** — source registration stubs → Lapras (`build-connect-product`).
-4. **Transform emits** — from/to + mapping refs → Kecleon (`build-transform-product`).
-5. **System package layout** (target repo only):
+   Set `orchestration.mode` to `product-service` unless Product is unavailable.
+2. **Product emits** — definition + schemas + flow template DSL + product flow
+   (`flow_template_name`) + optional waterfall + invocation contract.
+3. **Leaf emits** — Lexicon / Connect / Transform / Persist stubs the template
+   will call.
+4. **Deploy posture** — inactive activation; no hardcoded AWS profile names.
+5. **Apply** — Conkeldurr applies Product configs (Machamp verifies compile /
+   waterfall). Lapras/Kecleon implement leaf wiring.
+6. **Verify** — schema-valid manifest; template compiles; invocation criteria
+   listed; evidence levels separated.
+
+## 3. Optional target package layout
+
+When storing emits in git (not required to be named `system`):
 
 ```text
 systems/<systemId>/
   system.manifest.json
-  openapi.yaml          # when serving HTTP
-  fixtures/             # curated stand-ins for Transform output
-src/                    # thin TypeScript lookup/handlers
-lib/                    # CDK stub, activationEnabled false
-AGENTS.md
-README.md
+  emits/product/...
+  emits/lexicon|connect|transform|persist|deploy/...
+  fixtures/                    # only if thin-package-deferred
 ```
 
-6. **Deploy posture** — Conkeldurr: inactive activation, cost ceiling, region
-   from environment — never hardcode a developer AWS profile name.
-7. **Verify** — schema validate manifest; fixture criteria listed; assert no
-   scrape in request path for curated-lookup Systems.
+## 4. Shared dependencies
 
-## 3. Shared dependencies
-
-| Dependency | Apply it to |
+| Dependency | Use |
 | --- | --- |
-| [Engineering](../../apply-engineering-guidelines/SKILL.md) | TypeScript API/CDK quality |
-| [Lexicon](../../build-lexicon-product/SKILL.md) | Catalog and mapping publication |
-| [Connect](../../build-connect-product/SKILL.md) | Source acquisition configs |
-| [Transform](../../build-transform-product/SKILL.md) | Language translation configs |
-| [Batch](../../build-batch-workflows/SKILL.md) | When workflow needs Distributed Map |
+| [Engineering](../../apply-engineering-guidelines/SKILL.md) | Quality defaults |
+| [Product service](../../build-product-service/SKILL.md) | Orchestration platform |
+| [Lexicon](../../build-lexicon-product/SKILL.md) | Languages/mappings |
+| [Connect](../../build-connect-product/SKILL.md) | Source / connector jobs |
+| [Transform](../../build-transform-product/SKILL.md) | Spark language pairs |
+| [Batch](../../build-batch-workflows/SKILL.md) | Capacity outside waterfalls |
 
-## 4. Stop conditions
+## 5. Stop conditions
 
-- Manifest invalid → fix before product handoffs.
-- Missing Product engine → do not invent one under System; open product work.
-- User asked kit-only composition → stop after manifest + emits; do not scaffold
-  a System repo unprompted.
+- Manifest invalid → fix before handoffs.
+- No Product and user refuses thin package → stop and ask to provision Product.
+- Missing leaf engine → do not invent under System; open Lapras/Kecleon work.

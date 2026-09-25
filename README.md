@@ -129,9 +129,10 @@ output, with Parquet/JSONL/CSV encodings and explicit graph ID/endpoint mappings
 Use `conkeldurr` for Lexicon,
 Persist loading and the separate Translate service; use `gallade` for Filter
 evaluation over persisted facts. Elephant county transforms remain with `oracle`.
-`zygarde` + `build-system-product` owns System composition (Prism Priority 4:
-versioned manifests that combine Lexicon, Connect, Transform, and Deploy into one
-outcome; does not reimplement product engines).
+`zygarde` + `build-system-product` owns System composition (business outcomes as
+Product configuration — schemas, flow templates, flows, waterfall — composing
+Lexicon/Connect/Transform/Persist; aligned with StaircaseAPI/product; does not
+reimplement Product or leaf engines).
 
 | Mascot | Agent | Description | Start With |
 | :---: | --- | --- | --- |
@@ -176,7 +177,7 @@ outcome; does not reimplement product engines).
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/700.png" alt="Sylveon" width="96"> | [`sylveon`](./agents/sylveon.md) | Figma-to-code specialist — updates existing frontend code to match Figma while preserving business logic and locking breakpoints. | `/sylveon Apply Figma design...` |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/504.png" alt="Watchog" width="96"> | [`watchog`](./agents/watchog.md) | Elephant hero-facts agent builder — builds a separate `watchog-agent` runtime that monitors published Elephant open property data on a schedule, detects new counties/dataset changes, generates source-backed candidate facts for the elephant.xyz homepage hero, verifies each against a pinned data revision, routes recommendations to Asana for human approval, and publishes approved facts through a content-only GitHub PR (no auto-merge). | `/watchog Build the hero-facts service...` |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/178.png" alt="Xatu" width="96"> | [`xatu`](./agents/xatu.md) | Audience-selection specialist — eligibility boundaries, runtime intake contracts, and filter-to-runtime handoffs. | `/xatu Define audience for...` |
-| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/718.png" alt="Zygarde" width="96"> | [`zygarde`](./agents/zygarde.md) | System composition specialist — versioned composition manifests that combine Lexicon, Connect, Transform, and Deploy into one business outcome; emits reviewable config stubs and delegates engines to Conkeldurr/Lapras/Kecleon. | `/zygarde Compose a sale-availability System from Lexicon, Connect, and Transform...` |
+| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/718.png" alt="Zygarde" width="96"> | [`zygarde`](./agents/zygarde.md) | System composition specialist — deliver a business outcome as Product configuration (schemas, flow templates, flows, waterfall) composing Lexicon/Connect/Transform/Persist; aligned with StaircaseAPI/product; delegates engines to Conkeldurr/Lapras/Kecleon/Machamp. | `/zygarde Compose a sale-availability System from Lexicon, Connect, and Transform...` |
 
 ## Skills
 
@@ -210,7 +211,7 @@ outcome; does not reimplement product engines).
 | [`build-rules-product`](./skills/build-rules-product/) | Define generic entity selection, rule evaluation and output with Gallade; require durable record-level outcomes and filtering-rule traceability through an asynchronous Event → Queue path, with graph versions, snapshots, performance, operations and verification. |
 | [`build-saas-marketplace`](./skills/build-saas-marketplace/) | Build a multi-tenant SaaS distribution marketplace on AWS — Organizations-backed per-customer accounts, a central marketplace control plane, a `cdk synth`-artifact component registry, cross-account CloudFormation StackSet deploys, and the six register / release / rollback / list / subscribe / unsubscribe operations. |
 | [`build-solver-services`](./skills/build-solver-services/) | Build optimization services combining AWS Glue PySpark data prep with Google OR-Tools solvers using the three-layer architecture. |
-| [`build-system-product`](./skills/build-system-product/) | Compose Prism Systems in a target repository — composition manifest schema, Lexicon/Connect/Transform/Deploy emit contracts, from-scratch sequence, and a sale-availability worked-example skeleton; keep product engines with Lapras/Kecleon/Conkeldurr. |
+| [`build-system-product`](./skills/build-system-product/) | Compose a business outcome as Product configuration (schemas, flow templates, flows, waterfall, invocations) plus Lexicon/Connect/Transform emits — aligned with StaircaseAPI/product; Zygarde owns composition, Conkeldurr/Machamp own Product platform apply/verify. |
 | [`build-tenant-account-manager`](./skills/build-tenant-account-manager/) | Build the Tenant Account Manager standalone product — owns customers, environments, and per-environment API keys; mints the bootstrap key issued by the provider for a new customer; supports overlap rotation; ships the shared Lambda authorizer every other marketplace API consumes. |
 | [`build-tenant-domain-router`](./skills/build-tenant-domain-router/) | Build the Tenant Domain Router standalone product — root domain `provider.xyz` in marketplace Route 53, per-environment subdomains delegated via NS to a child hosted zone in each tenant account, ACM strategy, and the SSM-backed base-path contract every other product uses to publish HTTP endpoints. |
 | [`build-transform-product`](./skills/build-transform-product/) | Implement multilingual Transform in a target repository — build sequence, machine-readable contracts, worked SQL/data examples, exact graph identity/endpoint mappings, Python/PySpark formats, AWS workflow and acceptance criteria; retain shared skills. |
