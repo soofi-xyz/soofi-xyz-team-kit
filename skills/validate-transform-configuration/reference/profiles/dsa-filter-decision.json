@@ -83,6 +83,7 @@
     { "id": "resolve-decision-contracts", "kind": "repository", "description": "Locate decision, client-event and form projection contracts", "readOnly": true },
     { "id": "resolve-active-mappings", "kind": "configuration", "description": "Resolve exact enabled directional mappings and digests", "readOnly": true },
     { "id": "resolve-deployment-provenance", "kind": "deployment", "description": "Bind active runtime to source and configuration digests", "readOnly": true },
+    { "id": "resolve-authoritative-graph-export", "kind": "consumer", "description": "Locate a bounded immutable graph export that resolves physical rule-execution, debt, rule, ruleset, and company endpoints", "readOnly": true },
     { "id": "read-form-aggregate", "kind": "consumer", "description": "Read sanitized aggregate form-output evidence", "readOnly": true }
   ],
   "directions": [
