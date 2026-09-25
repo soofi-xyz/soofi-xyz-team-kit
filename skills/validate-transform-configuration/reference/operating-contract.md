@@ -8,6 +8,14 @@ Validate one profile-declared Transform configuration from immutable source thro
 
 The profile carries all domain vocabulary and invariants. The agent and core skill execute the same 12 phases for every profile and must not branch on profile names.
 
+## Intake boundary
+
+Operational Architects may begin with ordinary business language, a repository or pull-request link, a sample location, an exact mapping, an existing profile, or no context beyond requesting Transform help. Do bounded read-only discovery first. The user does not need to know profile IDs or internal product vocabulary.
+
+Select an existing profile only from a unique evidence-backed match. Otherwise create a sanitized local draft conforming to `transform-configuration-profile-draft.schema.json`, ask one focused plain-language question at a time, and preserve unresolved facts explicitly. Never invent configuration to make the draft complete.
+
+Intake states are `DISCOVERING`, `NEEDS_INPUT`, `CONTEXT_COMPLETE`, and `VALIDATING`. They are not phase statuses or verdicts. Do not begin the 12 phases, run mappings, invoke Test, request a DEV write, create a validation-run package, or return a readiness verdict before context is complete and the profile passes the strict profile schema.
+
 ## Inputs and identities
 
 Require a profile ID equal to its filename, environment, region, optional requested repository refs, and optional existing executions. Treat the profile's repositories, exact directions, mapping sources, and validation sources as the discovery plan. Resolve:

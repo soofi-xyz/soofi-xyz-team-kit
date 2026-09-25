@@ -12,27 +12,45 @@ Use this skill as the Transform Configuration Agent's operating procedure for Op
 Read, in order:
 
 1. `reference/operating-contract.md`
-2. `reference/transform-configuration-profile.schema.json`
-3. the selected document in `reference/profiles/`
-4. `reference/validation-phases-and-gates.md`
-5. `reference/evidence-requirements.md`
-6. `reference/transform-configuration-run.schema.json`
-7. `reference/known-failure-modes.md`
-8. `reference/validation-report.md`
-9. the selected profile's dossier in `reference/calibrations/` only when calibrating or running its declared scenario
+2. `reference/transform-configuration-profile-draft.schema.json`
+3. `reference/transform-configuration-profile.schema.json`
+4. the selected document in `reference/profiles/` after profile matching
+5. `reference/validation-phases-and-gates.md`
+6. `reference/evidence-requirements.md`
+7. `reference/transform-configuration-run.schema.json`
+8. `reference/known-failure-modes.md`
+9. `reference/validation-report.md`
+10. the selected profile's dossier in `reference/calibrations/` only when calibrating or running its declared scenario
 
 Read `skills/build-transform-product/reference/contracts-and-defaults.md` and `languages-and-mappings.md` for the Transform contract. Load only the product skills and agents named by the profile.
 
+## Generic intake
+
+A profile ID is not required from the user. Select or build the profile through discovery before starting validation.
+
+1. Parse every supplied clue: business goal, repository or pull-request URL, source/target terms, mapping name, sample/evidence location, environment, and requested mode.
+2. Perform bounded read-only discovery before asking questions. Inspect profile descriptors, repository metadata, changed paths, registered language/mapping identities, and safe sample metadata.
+3. Match an existing profile only when exactly one compatible candidate remains and at least one hard signal supports it: exact profile ID, exact mapping/language identity, pull-request path overlap, or a corroborated dataset signature.
+4. Treat business phrases as candidate hints only. If zero or multiple profiles remain, create a sanitized local draft conforming to `transform-configuration-profile-draft.schema.json`.
+5. Record every material fact as `CONFIRMED`, `INFERRED`, `AMBIGUOUS`, or `MISSING`, with evidence IDs and the next plain-language question where needed. Never invent mapping IDs, canonical meanings, fields, identities, consumers, or product behavior.
+6. Ask one focused question at a time, prioritizing: business meaning and direction; required directions; repository/ref; environment/mode; evidence and sensitive-data handling; consumer/readback; field preservation and permitted losses; measurable success and bounds.
+7. Promote the draft to the strict profile schema only when all material facts are resolved and `promotionEligible` is true.
+8. Begin the 12-phase validation workflow only after promotion.
+
+Use intake states `DISCOVERING`, `NEEDS_INPUT`, `CONTEXT_COMPLETE`, and `VALIDATING`. They are not validation statuses. During incomplete intake, do not run mapping tests, invoke Test, request DEV approval, produce a validation-run artifact, or calculate `READY`, `NOT_READY`, or `BLOCKED`.
+
+An experienced request containing all required context takes the fast path without redundant questions. A bare invocation or generic request is valid and starts read-only discovery.
+
 ## Required inputs
 
-Collect:
+Resolve through supplied context, discovery, or focused questions:
 
-- profile path or ID;
+- selected strict profile, or a complete promoted local draft;
 - target environment, region, and operator-selected access profile;
 - repositories and requested refs;
 - source and target language names and requested direction;
 - optional existing execution IDs and artifact locations;
-- mode: `validation`, `synthetic-local`, or `bounded-dev-dry-run`.
+- mode: `synthetic-local`, `bounded-dev-dry-run`, `observed-dev`, or `observed-prod-read-only`.
 
 Resolve every repository ref to a commit SHA and every configuration/deployment artifact to an immutable digest before evaluation. Branches and `latest` aliases may be discovery inputs but never evidence identities.
 

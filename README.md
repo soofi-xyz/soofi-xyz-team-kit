@@ -169,13 +169,34 @@ evaluation over persisted facts. Elephant county transforms remain with `oracle`
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/137.png" alt="Porygon" width="96"> | [`porygon`](./agents/porygon.md) | Unifies and analyzes metrics across vendors and data sources with a lexicon-first, audit-friendly workflow. | `/porygon Compare metrics for...` |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/486.png" alt="Regigigas" width="96"> | [`regigigas`](./agents/regigigas.md) | SaaS marketplace architect — centralized marketplace account governing per-customer AWS tenant accounts, CloudFormation bundle distribution (`cdk synth` artifacts), and component register/release/rollback/list/subscribe/unsubscribe operations. | `/regigigas Design marketplace...` |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/479.png" alt="Rotom" width="96"> | [`rotom`](./agents/rotom.md) | Weekly stakeholder email agent on the `rotom-agent` runtime — drafts formal progress emails in Google Chat from Asana facts plus saved template/example memory, with per-user Asana OAuth and hosted HTML output. | `/rotom Improve weekly stakeholder email drafting...` |
-| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/773.png" alt="Silvally" width="96"> | [`silvally`](./agents/silvally.md) | Transform Configuration Agent for Operational Architects — investigates requirements, guides reusable configuration choices, coordinates Test evidence, separates configuration from product changes, and returns `READY`, `NOT_READY`, or `BLOCKED` for configuration readiness. | `/silvally Validate this Transform language pair with the DSA decision profile...` |
+| <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/773.png" alt="Silvally" width="96"> | [`silvally`](./agents/silvally.md) | Transform Configuration Agent for Operational Architects — accepts ordinary business requests, discovers context, asks focused questions, builds or selects reusable configuration, coordinates Test evidence, and reports configuration readiness. | `/silvally I need to test a new transformation` |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/080.png" alt="Slowbro" width="96"> | [`slowbro`](./agents/slowbro.md) | Read-only Email Workflow agent and focused diagnostic — compares the full workflow or explicitly selected dimensions against pinned SMS capabilities using deterministic scoring and existing GitHub/AWS evidence. Focused mode returns dimension scores without a validation verdict or overall score. Defaults to the current `sms-workflow/main`, pinned to its HEAD SHA at run start. | `/slowbro Compare only template rendering in email-workflow PR 1 with the current SMS main...` |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/199.png" alt="Slowking" width="96"> | [`slowking`](./agents/slowking.md) | Candidate assignment evaluation orchestrator — derives the story's business intent first, computes elapsed delivery time from the latest GitHub commit, enforces gates (PR to the designated assignment repo, deployed runtime, credentials, demo) with a hard runtime fail that rejects locally run apps and requires a candidate-deployed hosted runtime, drives the live deployed runtime with Playwright to prove the outcome via working/data/output/demo evidence, checks assignment-specific access boundaries, then evaluates implementation and kit usage. Returns a factual 100-point score and hiring signal, verdict first. | `/slowking Evaluate this candidate assignment...` |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/235.png" alt="Smeargle" width="96"> | [`smeargle`](./agents/smeargle.md) | Responsive design-testing specialist — Playwright design specs across breakpoints, with mocked and real-device lane selection. | `/smeargle Add responsive tests...` |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/700.png" alt="Sylveon" width="96"> | [`sylveon`](./agents/sylveon.md) | Figma-to-code specialist — updates existing frontend code to match Figma while preserving business logic and locking breakpoints. | `/sylveon Apply Figma design...` |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/504.png" alt="Watchog" width="96"> | [`watchog`](./agents/watchog.md) | Elephant hero-facts agent builder — builds a separate `watchog-agent` runtime that monitors published Elephant open property data on a schedule, detects new counties/dataset changes, generates source-backed candidate facts for the elephant.xyz homepage hero, verifies each against a pinned data revision, routes recommendations to Asana for human approval, and publishes approved facts through a content-only GitHub PR (no auto-merge). | `/watchog Build the hero-facts service...` |
 | <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/178.png" alt="Xatu" width="96"> | [`xatu`](./agents/xatu.md) | Audience-selection specialist — eligibility boundaries, runtime intake contracts, and filter-to-runtime handoffs. | `/xatu Define audience for...` |
+
+### Silvally Transform configuration intake
+
+Users do not need to know profile IDs, mapping names, or validation modes. Start with the business goal or whatever evidence is available:
+
+```text
+/silvally I need to test a new transformation
+/silvally Can this data be transformed into Interprose?
+/silvally Help me validate the mappings in https://github.com/org/repo/pull/123
+/silvally The sample is at local://samples/input.jsonl
+```
+
+Silvally performs bounded read-only discovery, selects an existing profile only from a unique evidence-backed match, and asks one focused plain-language question for the next missing fact. It does not execute mappings or issue a readiness verdict until context is complete.
+
+Experienced users can provide the full context directly:
+
+```text
+/silvally Validate decision-to-lexicon using dsa-filter-decision in synthetic-local mode
+```
+
+DEV writes still require operation-specific approval. PROD remains read-only.
 
 ## Skills
 

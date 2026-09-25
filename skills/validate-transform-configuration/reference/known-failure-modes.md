@@ -2,6 +2,9 @@
 
 | Failure | Detection | Result and route |
 | --- | --- | --- |
+| Novice request is rejected because it lacks an internal profile ID | Start generic intake, discover safe context, and create a local draft when no unique profile matches | `NEEDS_INPUT`; ask one focused plain-language question without issuing a readiness verdict |
+| Business-language similarity selects a profile without repository, mapping, path, or schema evidence | Require exactly one compatible candidate with at least one hard signal | Keep intake open; never select or test an inferred profile |
+| Tests or readiness verdict begin while material intake facts are missing | Validate the local draft and require `CONTEXT_COMPLETE` plus `promotionEligible` | Stop before the 12 phases; no Test invocation or DEV approval request |
 | Agent searches only the current checkout and declares a cross-repository mapping absent | Resolve every profile repository using required paths and the requested-ref/open-PR/default-branch order | `BLOCKED` until discovery is complete; absence in an unrelated checkout is not `NOT_READY` evidence |
 | Profile aliases replace registered language, mapping, dataset, or field names | Compare the profile's exact identities with the materialized mapping artifact | `FAIL`; correct the profile without inventing semantics |
 | General repository checks pass but no mapping is executed | Require mapping-specific expected-output and negative evidence for every profile direction | `BLOCKED`; typecheck, lint, synthesis, and generic tests are supporting evidence only |

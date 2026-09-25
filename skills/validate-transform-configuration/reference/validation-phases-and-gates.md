@@ -1,6 +1,6 @@
 # Validation phases and gates
 
-Run every profile through these phases in order. Use only `PASS`, `FAIL`, `BLOCKED`, and `APPROVAL_REQUIRED`.
+Run every promoted, schema-valid profile through these phases in order after generic intake reaches `CONTEXT_COMPLETE`. Intake is not a thirteenth phase and cannot use readiness verdicts. Use only `PASS`, `FAIL`, `BLOCKED`, and `APPROVAL_REQUIRED` during validation.
 
 1. **Intake, terminology, and boundary** — resolve aliases, intent, direction, environment, datasets, adapters and consumers; classify every proposal as `CONFIGURATION` or `PRODUCT_CHANGE`. Gate: no ambiguous term remains and every unresolved product change has a named handoff and blocks the affected path.
 2. **Repository and environment discovery** — resolve the profile's repository plan in order: requested ref, one matching open PR when allowed, then default branch. Reuse a local checkout only when its remote and HEAD exactly match the remotely selected SHA. Pin the selected candidates and discover configured account, region and resources. Gate: every required path exists at one unambiguous commit SHA, every rejected candidate is recorded and discovery is read-only.

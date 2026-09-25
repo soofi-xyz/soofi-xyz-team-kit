@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SKILL = ROOT / "skills" / "validate-transform-configuration"
 REFERENCE = SKILL / "reference"
 AGENT = ROOT / "agents" / "silvally.md"
+DRAFT_PROFILE_SCHEMA = REFERENCE / "transform-configuration-profile-draft.schema.json"
 PROFILE_SCHEMA = REFERENCE / "transform-configuration-profile.schema.json"
 RUN_SCHEMA = REFERENCE / "transform-configuration-run.schema.json"
 PROFILE_NAMES = (
@@ -33,6 +34,18 @@ CALIBRATION_NAMES = (
 )
 STATUSES = {"PASS", "FAIL", "BLOCKED", "APPROVAL_REQUIRED"}
 DOMAIN_BRANCH_TERMS = ("dsa-filter-decision", "quiq-sms-lifecycle", "m2d-document-media")
+MATERIAL_FACT_IDS = (
+    "source-and-target-meaning",
+    "required-directions",
+    "configuration-repository-and-ref",
+    "environment-region-and-mode",
+    "sample-or-evidence-source",
+    "sensitivity-and-handling",
+    "required-fields-and-permitted-losses",
+    "consumer-and-readback",
+    "success-scale-and-cost",
+    "configuration-product-boundary",
+)
 
 
 def fail(message: str) -> None:
@@ -65,7 +78,12 @@ class ContractValidator:
         )
 
     def errors(self, value: dict) -> list[str]:
-        errors = profile_errors(value) if self.kind == "profile" else run_errors(value)
+        if self.kind == "profile":
+            errors = profile_errors(value)
+        elif self.kind == "draft":
+            errors = draft_errors(value)
+        else:
+            errors = run_errors(value)
         if self.external is not None:
             errors.extend(error.message for error in self.external.iter_errors(value))
         return errors
@@ -84,7 +102,13 @@ def validator(path: Path) -> ContractValidator:
         fail(f"{path.relative_to(ROOT)}: schema ID must equal filename")
     if schema.get("type") != "object" or schema.get("additionalProperties") is not False:
         fail(f"{path.relative_to(ROOT)}: schema must be a closed object")
-    kind = "profile" if path == PROFILE_SCHEMA else "artifact"
+    kind = (
+        "profile"
+        if path == PROFILE_SCHEMA
+        else "draft"
+        if path == DRAFT_PROFILE_SCHEMA
+        else "artifact"
+    )
     return ContractValidator(kind, schema)
 
 
@@ -152,6 +176,56 @@ def profile_errors(value: dict) -> list[str]:
     return errors
 
 
+def draft_errors(value: dict) -> list[str]:
+    required = {
+        "id", "contractVersion", "intakeState", "originalRequest",
+        "candidateProfiles", "selectedProfile", "discoveryTrace",
+        "materialFacts", "boundaryDecisions", "unresolvedFacts",
+        "promotionEligible", "sensitivity", "localLocation",
+    }
+    errors = [f"missing {field}" for field in sorted(required - value.keys())]
+    facts = value.get("materialFacts", [])
+    fact_ids = [fact.get("id") for fact in facts]
+    if len(fact_ids) != len(MATERIAL_FACT_IDS) or set(fact_ids) != set(MATERIAL_FACT_IDS):
+        errors.append("material facts must appear exactly once")
+    unresolved = set(value.get("unresolvedFacts", []))
+    actual_unresolved = {
+        fact.get("id")
+        for fact in facts
+        if fact.get("state") in {"AMBIGUOUS", "MISSING"}
+    }
+    if unresolved != actual_unresolved:
+        errors.append("unresolved facts do not match fact states")
+    for fact in facts:
+        unresolved_state = fact.get("state") in {"AMBIGUOUS", "MISSING"}
+        if unresolved_state and not fact.get("nextQuestion"):
+            errors.append(f"{fact.get('id')} lacks next question")
+        if not unresolved_state and fact.get("nextQuestion") is not None:
+            errors.append(f"{fact.get('id')} retains a resolved question")
+    if value.get("promotionEligible"):
+        if value.get("intakeState") not in {"CONTEXT_COMPLETE", "VALIDATING"}:
+            errors.append("promotion before context complete")
+        if unresolved:
+            errors.append("promotion with unresolved facts")
+    selected = value.get("selectedProfile")
+    selected_candidates = [
+        candidate for candidate in value.get("candidateProfiles", [])
+        if candidate.get("disposition") == "SELECTED"
+    ]
+    if selected is None and selected_candidates:
+        errors.append("selected candidate without selected profile")
+    if selected is not None and (
+        len(selected_candidates) != 1
+        or selected_candidates[0].get("profileId") != selected
+        or not selected_candidates[0].get("hardSignals")
+    ):
+        errors.append("selected profile lacks one hard-signal candidate")
+    sensitivity = value.get("sensitivity", {})
+    if sensitivity != {"containsRawPii": False, "containsSecrets": False}:
+        errors.append("unsafe draft sensitivity")
+    return errors
+
+
 def run_errors(value: dict) -> list[str]:
     required = {
         "id", "contractVersion", "profile", "discoveryTrace",
@@ -203,6 +277,41 @@ def assert_valid(checker: ContractValidator, value: dict, label: str) -> None:
 def assert_rejected(checker: ContractValidator, value: dict, label: str) -> None:
     if checker.is_valid(value):
         fail(f"{label}: invalid value was accepted")
+
+
+def valid_draft(*, complete: bool = False) -> dict:
+    state = "CONFIRMED" if complete else "MISSING"
+    return {
+        "id": "transform-configuration-draft-" + "a" * 12,
+        "contractVersion": 1,
+        "intakeState": "CONTEXT_COMPLETE" if complete else "NEEDS_INPUT",
+        "originalRequest": "Help me test a new transformation",
+        "candidateProfiles": [],
+        "selectedProfile": None,
+        "discoveryTrace": [
+            {
+                "kind": "workspace",
+                "subject": "current-workspace",
+                "result": "No exact mapping identity was supplied",
+                "evidenceIds": ["workspace-scan"],
+            }
+        ],
+        "materialFacts": [
+            {
+                "id": fact_id,
+                "state": state,
+                "value": "confirmed value" if complete else None,
+                "evidenceIds": ["intake-evidence"] if complete else [],
+                "nextQuestion": None if complete else f"What is {fact_id}?",
+            }
+            for fact_id in MATERIAL_FACT_IDS
+        ],
+        "boundaryDecisions": [],
+        "unresolvedFacts": [] if complete else list(MATERIAL_FACT_IDS),
+        "promotionEligible": complete,
+        "sensitivity": {"containsRawPii": False, "containsSecrets": False},
+        "localLocation": "local://transform-configuration-intake/draft-a1b2c3",
+    }
 
 
 def valid_run() -> dict:
@@ -351,6 +460,7 @@ def valid_run() -> dict:
 
 
 def test_schemas_and_profiles() -> list[dict]:
+    draft_check = validator(DRAFT_PROFILE_SCHEMA)
     profile_check = validator(PROFILE_SCHEMA)
     run_check = validator(RUN_SCHEMA)
     profiles = []
@@ -371,6 +481,33 @@ def test_schemas_and_profiles() -> list[dict]:
         }:
             fail(f"{filename}: unsafe approval policy")
         profiles.append(profile)
+
+    incomplete_draft = valid_draft()
+    assert_valid(draft_check, incomplete_draft, "valid incomplete intake draft")
+    assert_rejected(
+        profile_check,
+        incomplete_draft,
+        "incomplete intake draft as executable profile",
+    )
+
+    premature_promotion = copy.deepcopy(incomplete_draft)
+    premature_promotion["promotionEligible"] = True
+    assert_rejected(draft_check, premature_promotion, "premature draft promotion")
+
+    complete_draft = valid_draft(complete=True)
+    assert_valid(draft_check, complete_draft, "complete promotable intake draft")
+
+    missing_question = copy.deepcopy(incomplete_draft)
+    missing_question["materialFacts"][0]["nextQuestion"] = None
+    assert_rejected(draft_check, missing_question, "missing focused intake question")
+
+    invented_selection = copy.deepcopy(incomplete_draft)
+    invented_selection["selectedProfile"] = PROFILE_NAMES[0]
+    assert_rejected(
+        draft_check,
+        invented_selection,
+        "profile selection without hard evidence",
+    )
 
     run = valid_run()
     assert_valid(run_check, run, "valid synthetic run")
@@ -537,6 +674,7 @@ def test_core_and_references(profiles: list[dict]) -> None:
 
 def test_naming_and_sanitization() -> None:
     paths = [
+        DRAFT_PROFILE_SCHEMA,
         PROFILE_SCHEMA,
         RUN_SCHEMA,
         *(REFERENCE / "profiles" / name for name in PROFILE_NAMES),
@@ -594,13 +732,81 @@ def test_golden_routes_and_dry_run() -> None:
         fail("bounded DEV dry-run did not stop at approval gates")
 
 
+def test_generic_intake_contract() -> None:
+    core = (read(AGENT) + "\n" + read(SKILL / "SKILL.md")).lower()
+    for token in (
+        "profile id is not required",
+        "bounded read-only discovery",
+        "one focused question at a time",
+        "bare",
+        "business-language similarity",
+        "transform-configuration-profile-draft.schema.json",
+        "context_complete",
+        "do not run mapping tests",
+        "without redundant questions",
+    ):
+        if token not in core:
+            fail(f"generic intake contract missing {token!r}")
+
+    def select_profile(candidates: list[dict]) -> str | None:
+        supported = [
+            candidate["profileId"]
+            for candidate in candidates
+            if candidate["compatible"] and candidate["hardSignals"]
+        ]
+        return supported[0] if len(supported) == 1 else None
+
+    if select_profile([
+        {
+            "profileId": PROFILE_NAMES[0],
+            "compatible": True,
+            "hardSignals": ["pull-request-path-match"],
+        }
+    ]) != PROFILE_NAMES[0]:
+        fail("one hard-signal profile was not selected")
+
+    if select_profile([
+        {
+            "profileId": PROFILE_NAMES[0],
+            "compatible": True,
+            "hardSignals": ["mapping-match"],
+        },
+        {
+            "profileId": PROFILE_NAMES[1],
+            "compatible": True,
+            "hardSignals": ["language-match"],
+        },
+    ]) is not None:
+        fail("ambiguous profile candidates were selected arbitrarily")
+
+    if select_profile([
+        {
+            "profileId": PROFILE_NAMES[0],
+            "compatible": True,
+            "hardSignals": [],
+        }
+    ]) is not None:
+        fail("business-language similarity selected a profile without evidence")
+
+    bare = valid_draft()
+    if bare["intakeState"] != "NEEDS_INPUT" or bare["promotionEligible"]:
+        fail("bare invocation did not remain in intake")
+    if not bare["unresolvedFacts"]:
+        fail("bare invocation draft did not preserve missing context")
+
+    expert = valid_draft(complete=True)
+    if expert["intakeState"] != "CONTEXT_COMPLETE" or not expert["promotionEligible"]:
+        fail("complete expert intake did not take the validation fast path")
+
+
 def main() -> int:
     profiles = test_schemas_and_profiles()
     test_core_and_references(profiles)
     test_naming_and_sanitization()
     test_golden_routes_and_dry_run()
+    test_generic_intake_contract()
     print(
-        "Silvally contract tests passed: 3 profiles, 12 phases, "
+        "Silvally contract tests passed: generic intake, 3 profiles, 12 phases, "
         "synthetic local validation, bounded DEV dry-run, 0 writes"
     )
     return 0
