@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "transform-configuration-profile-draft.schema.json",
+  "title": "Transform configuration discovery and intake draft",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "contractVersion",
+    "intakeState",
+    "originalRequest",
+    "candidateProfiles",
+    "selectedProfile",
+    "discoveryTrace",
+    "materialFacts",
+    "boundaryDecisions",
+    "unresolvedFacts",
+    "promotionEligible",
+    "sensitivity",
+    "localLocation"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^transform-configuration-draft-[a-f0-9]{12,64}$"
+    },
+    "contractVersion": { "const": 1 },
+    "intakeState": {
+      "enum": [
+        "DISCOVERING",
+        "NEEDS_INPUT",
+        "CONTEXT_COMPLETE",
+        "VALIDATING"
+      ]
+    },
+    "originalRequest": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "candidateProfiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["profileId", "disposition", "hardSignals", "reason"],
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*\\.json$"
+          },
+          "disposition": {
+            "enum": ["CANDIDATE", "SELECTED", "REJECTED"]
+          },
+          "hardSignals": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/evidenceId" }
+          },
+          "reason": { "type": "string", "minLength": 3 }
+        }
+      }
+    },
+    "selectedProfile": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*\\.json$"
+        },
+        { "type": "null" }
+      ]
+    },
+    "discoveryTrace": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "subject", "result", "evidenceIds"],
+        "properties": {
+          "kind": {
+            "enum": [
+              "workspace",
+              "repository",
+              "pull-request",
+              "mapping",
+              "language",
+              "sample-metadata",
+              "profile"
+            ]
+          },
+          "subject": { "type": "string", "minLength": 1 },
+          "result": { "type": "string", "minLength": 1 },
+          "evidenceIds": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/evidenceId" }
+          }
+        }
+      }
+    },
+    "materialFacts": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "state", "value", "evidenceIds", "nextQuestion"],
+        "properties": {
+          "id": {
+            "enum": [
+              "source-and-target-meaning",
+              "required-directions",
+              "configuration-repository-and-ref",
+              "environment-region-and-mode",
+              "sample-or-evidence-source",
+              "sensitivity-and-handling",
+              "required-fields-and-permitted-losses",
+              "consumer-and-readback",
+              "success-scale-and-cost",
+              "configuration-product-boundary"
+            ]
+          },
+          "state": {
+            "enum": ["CONFIRMED", "INFERRED", "AMBIGUOUS", "MISSING"]
+          },
+          "value": { "type": ["string", "null"], "maxLength": 4000 },
+          "evidenceIds": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/evidenceId" }
+          },
+          "nextQuestion": { "type": ["string", "null"], "maxLength": 1000 }
+        }
+      }
+    },
+    "boundaryDecisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "classification", "reason", "evidenceIds"],
+        "properties": {
+          "id": { "$ref": "#/$defs/evidenceId" },
+          "classification": {
+            "enum": ["CONFIGURATION", "PRODUCT_CHANGE", "UNRESOLVED"]
+          },
+          "reason": { "type": "string", "minLength": 3 },
+          "evidenceIds": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/evidenceId" }
+          }
+        }
+      }
+    },
+    "unresolvedFacts": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "source-and-target-meaning",
+          "required-directions",
+          "configuration-repository-and-ref",
+          "environment-region-and-mode",
+          "sample-or-evidence-source",
+          "sensitivity-and-handling",
+          "required-fields-and-permitted-losses",
+          "consumer-and-readback",
+          "success-scale-and-cost",
+          "configuration-product-boundary"
+        ]
+      }
+    },
+    "promotionEligible": { "type": "boolean" },
+    "sensitivity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["containsRawPii", "containsSecrets"],
+      "properties": {
+        "containsRawPii": { "const": false },
+        "containsSecrets": { "const": false }
+      }
+    },
+    "localLocation": {
+      "type": "string",
+      "pattern": "^local://transform-configuration-intake/[a-z0-9][a-z0-9-]*$"
+    }
+  },
+  "$defs": {
+    "evidenceId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    }
+  }
+}

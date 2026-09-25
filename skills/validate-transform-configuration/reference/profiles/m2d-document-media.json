@@ -1,0 +1,154 @@
+{
+  "id": "m2d-document-media.json",
+  "contractVersion": 1,
+  "terminologyAliases": {
+    "media": ["document body", "seller file", "Interprose document"],
+    "document-reference": ["document ID", "remote object pointer", "media pointer"],
+    "chain-of-custody": ["immutable manifest", "artifact provenance"]
+  },
+  "roles": {
+    "source": "Connect-landed document/media artifacts and immutable source manifests",
+    "target": "M2D document/media metadata with graph linkage and readback provenance"
+  },
+  "transformClassification": {
+    "kind": "deterministic",
+    "evidenceBasis": "This profile covers version-controlled metadata and linkage mappings only; M2D extraction and classification remain product runtime behavior outside this Transform configuration.",
+    "expectedOutputTests": ["media-metadata-linkage-round-trip"],
+    "negativeTests": ["mutable-media-manifest", "missing-hydrated-media", "dangling-document-linkage"]
+  },
+  "configurationChoices": {
+    "fieldNames": ["document/media metadata and provenance fields"],
+    "schemaShape": ["metadata vertices and document/media linkage edges"],
+    "formats": ["registered manifest and metadata formats"],
+    "normalizationRules": ["media type, source category and received time"],
+    "mappingExpressions": ["versioned metadata and linkage SQL"],
+    "profileInputs": ["immutable media manifests and bounded sample tier"],
+    "vocabularySelections": ["existing Lexicon document, media and provenance terms"]
+  },
+  "productBoundary": {
+    "prohibitedAsConfiguration": ["representation-family", "identity-scheme", "executable-code-path", "dependency-type", "storage-engine-mode", "failure-semantics"],
+    "onDetection": "block-and-handoff"
+  },
+  "datasets": [
+    { "name": "document-manifests", "role": "source", "required": true, "schemaSource": "consumer-contract" },
+    { "name": "document-media-metadata", "role": "target", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "document-linkage", "role": "target", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "classified-media-readback", "role": "readback", "required": true, "schemaSource": "consumer-contract" }
+  ],
+  "invariants": [
+    { "id": "manifest-is-immutable", "description": "Every source media object is bound to an immutable manifest and content digest", "phase": 6, "failureCode": "MutableMediaManifest" },
+    { "id": "artifact-hydration-is-complete", "description": "Hydrated media object counts and hashes reconcile with the source manifest", "phase": 9, "failureCode": "MediaHydrationMismatch" },
+    { "id": "metadata-linkage-is-closed", "description": "Every document/media relationship resolves to declared metadata and graph endpoints", "phase": 10, "failureCode": "DocumentLinkageMismatch" },
+    { "id": "chain-of-custody-survives-round-trip", "description": "Source, transformed, classified and readback artifacts retain immutable provenance", "phase": 11, "failureCode": "ChainOfCustodyMismatch" }
+  ],
+  "repositories": [
+    {
+      "slug": "Spring-Oaks-Capital-LLC/m2d-pipeline",
+      "purpose": "M2D preprocessing, classification, run tracking, and staging contracts",
+      "role": "domain-contract",
+      "revisionPolicy": "commit-sha",
+      "candidateDiscovery": "requested-ref-then-default-branch",
+      "requiredPaths": ["package.json", "src"]
+    },
+    {
+      "slug": "Spring-Oaks-Capital-LLC/seller-media-transfer-workflow",
+      "purpose": "Seller media transfer boundary",
+      "role": "domain-contract",
+      "revisionPolicy": "commit-sha",
+      "candidateDiscovery": "requested-ref-then-default-branch",
+      "requiredPaths": ["package.json"]
+    },
+    {
+      "slug": "Spring-Oaks-Capital-LLC/seller-media-upload-workflow",
+      "purpose": "Classified media upload boundary",
+      "role": "domain-contract",
+      "revisionPolicy": "commit-sha",
+      "candidateDiscovery": "requested-ref-then-default-branch",
+      "requiredPaths": ["package.json"]
+    },
+    {
+      "slug": "Spring-Oaks-Capital-LLC/transform",
+      "purpose": "Transform Spark runtime compatibility",
+      "role": "product-runtime",
+      "revisionPolicy": "commit-sha",
+      "candidateDiscovery": "requested-ref-then-default-branch",
+      "requiredPaths": [
+        "package.json",
+        "glue_scripts/transform_with_sql_mappings.py",
+        "glue_scripts/test_transform_with_sql_mappings.py",
+        "scripts/setup-spark-tests.sh",
+        "scripts/run-spark-tests.sh"
+      ]
+    }
+  ],
+  "discoveryProbes": [
+    { "id": "resolve-m2d-contracts", "kind": "repository", "description": "Locate staging, preprocessing, classification and run-tracker contracts", "readOnly": true },
+    { "id": "resolve-media-manifests", "kind": "configuration", "description": "Resolve immutable source and transformed manifest digests", "readOnly": true },
+    { "id": "resolve-classification-deployment", "kind": "deployment", "description": "Bind processing runtime to source and configuration revisions", "readOnly": true },
+    { "id": "read-run-status-aggregates", "kind": "runtime", "description": "Read bounded run status and classified artifact counts", "readOnly": true },
+    { "id": "read-upload-aggregate", "kind": "consumer", "description": "Read sanitized Interprose or seller reporting reconciliation", "readOnly": true }
+  ],
+  "directions": [
+    {
+      "id": "media-manifest-to-document-graph",
+      "fromLanguage": "m2d-media-manifest",
+      "toLanguage": "document-media-graph",
+      "required": true,
+      "mapping": {
+        "status": "not-registered",
+        "expectedId": "m2d-media-manifest-to-lexicon",
+        "owner": "kecleon",
+        "reason": "No immutable registered Transform mapping source has been identified for this calibration profile."
+      },
+      "parityFields": ["content-digest", "media-type", "source-category", "received-time", "provenance-revision"]
+    },
+    {
+      "id": "document-graph-to-media-readback",
+      "fromLanguage": "document-media-graph",
+      "toLanguage": "m2d-media-readback",
+      "required": true,
+      "mapping": {
+        "status": "not-registered",
+        "expectedId": "lexicon-to-m2d-media-readback",
+        "owner": "kecleon",
+        "reason": "No immutable registered reverse Transform mapping source has been identified for this calibration profile."
+      },
+      "parityFields": ["content-digest", "media-type", "source-category", "received-time", "provenance-revision"]
+    }
+  ],
+  "validationSources": [
+    {
+      "id": "m2d-transform-evidence",
+      "kind": "not-available",
+      "reason": "The profile remains a calibration contract until registered mappings and sanitized immutable fixtures exist.",
+      "owner": "lucario",
+      "appliesTo": ["media-manifest-to-document-graph", "document-graph-to-media-readback"],
+      "required": true
+    }
+  ],
+  "evidencePolicy": {
+    "sensitivity": "restricted",
+    "sanitization": "aggregates-and-digests-only",
+    "allowed": ["counts", "schemas", "sha256", "statuses", "durations", "costs", "credential-free-locations"],
+    "prohibited": ["raw-pii", "business-identifiers", "secret-values", "credentials", "signed-urls", "source-rows"]
+  },
+  "graph": {
+    "required": true,
+    "identityRules": ["Use deterministic document/media identity derived by the registered mapping", "Do not expose document, account or debt identifiers in evidence"],
+    "endpointRules": ["Every media linkage resolves to declared document and artifact vertices", "Dangling endpoint count must equal zero"]
+  },
+  "adapters": [
+    { "name": "interprose-document-fetch", "owner": "lapras", "contract": "Connect lists and fetches Interprose documents; Transform receives landed files only" },
+    { "name": "seller-encrypted-file-intake", "owner": "lapras", "contract": "Connect lands and decrypts approved seller transfers before product preprocessing" },
+    { "name": "classified-media-upload", "owner": "lapras", "contract": "Connect uploads product-classified files through registered external adapters" }
+  ],
+  "consumers": [
+    { "name": "m2d-preprocessing", "owner": "lucario", "contract": "Owns archive unpacking, text extraction, classification and run tracking" },
+    { "name": "persist-classification-readback", "owner": "conkeldurr", "contract": "Owns existing classification reuse and graph readback" }
+  ],
+  "scaleTiers": [
+    { "id": "synthetic", "maximumRows": 25, "maximumCostUsd": 0, "evidenceRequired": true },
+    { "id": "sample-media-dev", "maximumRows": 250, "maximumCostUsd": 25, "evidenceRequired": true }
+  ],
+  "approvals": { "devWrites": "explicit", "prodWrites": "forbidden", "perOperation": true }
+}

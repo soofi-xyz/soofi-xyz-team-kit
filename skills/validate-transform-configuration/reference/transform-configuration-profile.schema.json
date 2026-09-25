@@ -1,0 +1,517 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "transform-configuration-profile.schema.json",
+  "title": "Transform configuration input profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "contractVersion",
+    "terminologyAliases",
+    "roles",
+    "transformClassification",
+    "configurationChoices",
+    "productBoundary",
+    "datasets",
+    "invariants",
+    "repositories",
+    "discoveryProbes",
+    "directions",
+    "validationSources",
+    "evidencePolicy",
+    "graph",
+    "adapters",
+    "consumers",
+    "scaleTiers",
+    "approvals"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*\\.json$"
+    },
+    "contractVersion": { "const": 1 },
+    "terminologyAliases": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "uniqueItems": true,
+        "items": { "type": "string", "minLength": 2 }
+      }
+    },
+    "roles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "target"],
+      "properties": {
+        "source": { "type": "string", "minLength": 2 },
+        "target": { "type": "string", "minLength": 2 }
+      }
+    },
+    "transformClassification": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "evidenceBasis", "expectedOutputTests", "negativeTests"],
+          "properties": {
+            "kind": { "const": "deterministic" },
+            "evidenceBasis": { "type": "string", "minLength": 10 },
+            "expectedOutputTests": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/kebab" }
+            },
+            "negativeTests": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/kebab" }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "evidenceBasis", "confidenceOutput", "thresholds", "humanReviewPolicy"],
+          "properties": {
+            "kind": { "const": "non-deterministic" },
+            "evidenceBasis": { "type": "string", "minLength": 10 },
+            "confidenceOutput": { "type": "string", "minLength": 3 },
+            "thresholds": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "number", "minimum": 0, "maximum": 1 }
+            },
+            "humanReviewPolicy": { "type": "string", "minLength": 10 }
+          }
+        }
+      ]
+    },
+    "configurationChoices": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fieldNames",
+        "schemaShape",
+        "formats",
+        "normalizationRules",
+        "mappingExpressions",
+        "profileInputs",
+        "vocabularySelections"
+      ],
+      "properties": {
+        "fieldNames": { "$ref": "#/$defs/stringList" },
+        "schemaShape": { "$ref": "#/$defs/stringList" },
+        "formats": { "$ref": "#/$defs/stringList" },
+        "normalizationRules": { "$ref": "#/$defs/stringList" },
+        "mappingExpressions": { "$ref": "#/$defs/stringList" },
+        "profileInputs": { "$ref": "#/$defs/stringList" },
+        "vocabularySelections": { "$ref": "#/$defs/stringList" }
+      }
+    },
+    "productBoundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prohibitedAsConfiguration", "onDetection"],
+      "properties": {
+        "prohibitedAsConfiguration": {
+          "type": "array",
+          "minItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "representation-family",
+              "identity-scheme",
+              "executable-code-path",
+              "dependency-type",
+              "storage-engine-mode",
+              "failure-semantics"
+            ]
+          }
+        },
+        "onDetection": { "const": "block-and-handoff" }
+      }
+    },
+    "datasets": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/dataset" }
+    },
+    "invariants": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/invariant" }
+    },
+    "repositories": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "slug",
+          "purpose",
+          "role",
+          "revisionPolicy",
+          "candidateDiscovery",
+          "requiredPaths"
+        ],
+        "properties": {
+          "slug": { "type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" },
+          "purpose": { "type": "string", "minLength": 3 },
+          "role": {
+            "enum": [
+              "configuration-source",
+              "product-runtime",
+              "domain-contract"
+            ]
+          },
+          "revisionPolicy": { "const": "commit-sha" },
+          "candidateDiscovery": {
+            "enum": [
+              "requested-ref-then-default-branch",
+              "requested-ref-then-matching-open-pr-then-default-branch"
+            ]
+          },
+          "requiredPaths": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/repositoryPath" }
+          }
+        }
+      }
+    },
+    "discoveryProbes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "description", "readOnly"],
+        "properties": {
+          "id": { "$ref": "#/$defs/kebab" },
+          "kind": { "enum": ["repository", "configuration", "deployment", "runtime", "consumer"] },
+          "description": { "type": "string", "minLength": 3 },
+          "readOnly": { "const": true }
+        }
+      }
+    },
+    "directions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "fromLanguage", "toLanguage", "required", "mapping"],
+        "properties": {
+          "id": { "$ref": "#/$defs/kebab" },
+          "fromLanguage": { "$ref": "#/$defs/kebab" },
+          "toLanguage": { "$ref": "#/$defs/kebab" },
+          "required": { "type": "boolean" },
+          "mapping": { "$ref": "#/$defs/mappingSource" },
+          "parityFields": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "validationSources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "repository",
+              "path",
+              "appliesTo",
+              "required"
+            ],
+            "properties": {
+              "id": { "$ref": "#/$defs/kebab" },
+              "kind": { "const": "repository-test" },
+              "repository": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+              },
+              "path": { "$ref": "#/$defs/repositoryPath" },
+              "appliesTo": { "$ref": "#/$defs/kebabList" },
+              "required": { "const": true }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "location",
+              "manifestSha256",
+              "appliesTo",
+              "required"
+            ],
+            "properties": {
+              "id": { "$ref": "#/$defs/kebab" },
+              "kind": { "const": "sanitized-evidence-package" },
+              "location": {
+                "type": "string",
+                "pattern": "^s3://[^?#@]+/$"
+              },
+              "manifestSha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "manifestVersionId": { "type": "string", "minLength": 1 },
+              "appliesTo": { "$ref": "#/$defs/kebabList" },
+              "required": { "const": true }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "reason",
+              "owner",
+              "appliesTo",
+              "required"
+            ],
+            "properties": {
+              "id": { "$ref": "#/$defs/kebab" },
+              "kind": { "const": "not-available" },
+              "reason": { "type": "string", "minLength": 10 },
+              "owner": { "$ref": "#/$defs/kebab" },
+              "appliesTo": { "$ref": "#/$defs/kebabList" },
+              "required": { "const": true }
+            }
+          }
+        ]
+      }
+    },
+    "evidencePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sensitivity", "sanitization", "allowed", "prohibited"],
+      "properties": {
+        "sensitivity": { "enum": ["public", "internal", "confidential", "restricted"] },
+        "sanitization": { "const": "aggregates-and-digests-only" },
+        "allowed": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "enum": ["counts", "schemas", "sha256", "statuses", "durations", "costs", "credential-free-locations"] }
+        },
+        "prohibited": {
+          "type": "array",
+          "minItems": 4,
+          "items": { "enum": ["raw-pii", "business-identifiers", "secret-values", "credentials", "signed-urls", "source-rows"] }
+        }
+      }
+    },
+    "graph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "identityRules", "endpointRules"],
+      "properties": {
+        "required": { "type": "boolean" },
+        "identityRules": { "type": "array", "items": { "type": "string", "minLength": 3 } },
+        "endpointRules": { "type": "array", "items": { "type": "string", "minLength": 3 } }
+      }
+    },
+    "adapters": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/boundary" }
+    },
+    "consumers": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/boundary" }
+    },
+    "lexiconConceptPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "currentDefinitionRequired",
+        "rejectAbsent",
+        "rejectDeprecated",
+        "reintroductionRequiresModelingApproval"
+      ],
+      "properties": {
+        "currentDefinitionRequired": { "const": true },
+        "rejectAbsent": { "const": true },
+        "rejectDeprecated": { "const": true },
+        "reintroductionRequiresModelingApproval": { "const": true }
+      }
+    },
+    "sourceWindowPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "minimumCompleteUtcDays",
+        "allowLongerRange",
+        "requiredSourceFamilies",
+        "requiredCoverageSignals"
+      ],
+      "properties": {
+        "kind": { "const": "prod-derived-complete-utc-days" },
+        "minimumCompleteUtcDays": { "type": "integer", "minimum": 1 },
+        "allowLongerRange": { "type": "boolean" },
+        "requiredSourceFamilies": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/datasetName" }
+        },
+        "requiredCoverageSignals": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/kebab" }
+        }
+      }
+    },
+    "scaleTiers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "maximumRows", "maximumCostUsd", "evidenceRequired"],
+        "properties": {
+          "id": { "$ref": "#/$defs/kebab" },
+          "maximumRows": { "type": "integer", "minimum": 1 },
+          "maximumCostUsd": { "type": "number", "minimum": 0 },
+          "evidenceRequired": { "type": "boolean" }
+        }
+      }
+    },
+    "approvals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["devWrites", "prodWrites", "perOperation"],
+      "properties": {
+        "devWrites": { "const": "explicit" },
+        "prodWrites": { "const": "forbidden" },
+        "perOperation": { "const": true }
+      }
+    }
+  },
+  "$defs": {
+    "kebab": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "kebabList": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/kebab" }
+    },
+    "datasetName": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*$"
+    },
+    "datasetNameList": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/datasetName" }
+    },
+    "repositoryPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+    },
+    "mappingSource": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "id",
+            "version",
+            "repository",
+            "sourcePaths",
+            "artifactPath",
+            "expectedOutputDatasets"
+          ],
+          "properties": {
+            "status": { "const": "registered" },
+            "id": { "$ref": "#/$defs/kebab" },
+            "version": {
+              "type": "string",
+              "pattern": "^\\d+\\.\\d+\\.\\d+$"
+            },
+            "repository": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+            },
+            "sourcePaths": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "$ref": "#/$defs/repositoryPath" }
+            },
+            "artifactPath": { "$ref": "#/$defs/repositoryPath" },
+            "expectedOutputDatasets": { "$ref": "#/$defs/datasetNameList" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "expectedId", "owner", "reason"],
+          "properties": {
+            "status": { "const": "not-registered" },
+            "expectedId": { "$ref": "#/$defs/kebab" },
+            "owner": { "$ref": "#/$defs/kebab" },
+            "reason": { "type": "string", "minLength": 10 }
+          }
+        }
+      ]
+    },
+    "stringList": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "role", "required", "schemaSource"],
+      "properties": {
+        "name": { "$ref": "#/$defs/datasetName" },
+        "role": { "enum": ["source", "target", "intermediate", "readback"] },
+        "required": { "type": "boolean" },
+        "schemaSource": { "enum": ["lexicon-language-definition", "consumer-contract"] }
+      }
+    },
+    "invariant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "description", "phase", "failureCode"],
+      "properties": {
+        "id": { "$ref": "#/$defs/kebab" },
+        "description": { "type": "string", "minLength": 5 },
+        "phase": { "type": "integer", "minimum": 1, "maximum": 12 },
+        "failureCode": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$" }
+      }
+    },
+    "boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "owner", "contract"],
+      "properties": {
+        "name": { "$ref": "#/$defs/kebab" },
+        "owner": { "$ref": "#/$defs/kebab" },
+        "contract": { "type": "string", "minLength": 3 }
+      }
+    }
+  }
+}

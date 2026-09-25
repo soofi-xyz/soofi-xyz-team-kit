@@ -1,0 +1,429 @@
+{
+  "id": "dsa-filter-decision.json",
+  "contractVersion": 1,
+  "terminologyAliases": {
+    "decision": [
+      "filter outcome",
+      "eligibility decision",
+      "rule result"
+    ],
+    "client-event": [
+      "client ID event",
+      "partner record event"
+    ],
+    "form-output": [
+      "form 1281",
+      "partner decision form"
+    ]
+  },
+  "roles": {
+    "source": "Registered Decision datasets from the source workflow",
+    "target": "Lexicon graph records, reconstructed Decision datasets, and Interprose form-1281 rows"
+  },
+  "transformClassification": {
+    "kind": "deterministic",
+    "evidenceBasis": "The profile selects three registered, version-controlled Spark SQL mappings with fixed Decision, graph, and form-1281 projections; readiness still requires pinned implementation and execution evidence.",
+    "expectedOutputTests": [
+      "decision-lexicon-decision-round-trip",
+      "lexicon-interprose-form-1281"
+    ],
+    "negativeTests": [
+      "conflicting-client-event",
+      "missing-authoritative-endpoint",
+      "invalid-evidence-package",
+      "unsupported-mapping-option"
+    ]
+  },
+  "configurationChoices": {
+    "fieldNames": [
+      "registered Decision, Lexicon graph, and Interprose form-1281 fields"
+    ],
+    "schemaShape": [
+      "six Decision datasets, graph vertices and edges, and one form_1281 table"
+    ],
+    "formats": [
+      "Decision JSONL, Neptune-profile graph CSV, graph Parquet input, and Interprose JSONL"
+    ],
+    "normalizationRules": [
+      "source-run joins, deterministic graph identities, nullable effective_at, and form constants"
+    ],
+    "mappingExpressions": [
+      "decision-to-lexicon@1.0.0",
+      "lexicon-to-decision@1.0.0",
+      "lexicon-to-interprose@3.0.0"
+    ],
+    "profileInputs": [
+      "sanitized contract-freeze package and authoritative graph export"
+    ],
+    "vocabularySelections": [
+      "registered Decision, Lexicon, and Interprose definitions"
+    ]
+  },
+  "productBoundary": {
+    "prohibitedAsConfiguration": [
+      "representation-family",
+      "identity-scheme",
+      "executable-code-path",
+      "dependency-type",
+      "storage-engine-mode",
+      "failure-semantics"
+    ],
+    "onDetection": "block-and-handoff"
+  },
+  "datasets": [
+    {
+      "name": "decision_batch",
+      "role": "source",
+      "required": true,
+      "schemaSource": "lexicon-language-definition"
+    },
+    {
+      "name": "chunk_executions",
+      "role": "source",
+      "required": true,
+      "schemaSource": "lexicon-language-definition"
+    },
+    {
+      "name": "debt_outcomes",
+      "role": "source",
+      "required": true,
+      "schemaSource": "lexicon-language-definition"
+    },
+    {
+      "name": "rule_evaluations",
+      "role": "source",
+      "required": true,
+      "schemaSource": "lexicon-language-definition"
+    },
+    {
+      "name": "dsa_client_id_updates",
+      "role": "source",
+      "required": true,
+      "schemaSource": "lexicon-language-definition"
+    },
+    {
+      "name": "graph_identity_references",
+      "role": "source",
+      "required": true,
+      "schemaSource": "lexicon-language-definition"
+    },
+    {
+      "name": "authoritative_graph_export",
+      "role": "source",
+      "required": true,
+      "schemaSource": "consumer-contract"
+    },
+    {
+      "name": "form_1281",
+      "role": "readback",
+      "required": true,
+      "schemaSource": "consumer-contract"
+    },
+    {
+      "name": "product_execution",
+      "role": "target",
+      "required": true,
+      "schemaSource": "lexicon-language-definition"
+    },
+    {
+      "name": "product_execution_includes_debt",
+      "role": "target",
+      "required": true,
+      "schemaSource": "lexicon-language-definition"
+    },
+    {
+      "name": "company_represents_debt",
+      "role": "target",
+      "required": true,
+      "schemaSource": "lexicon-language-definition"
+    },
+    {
+      "name": "hydrated_decision_evidence",
+      "role": "readback",
+      "required": true,
+      "schemaSource": "consumer-contract"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "one-outcome-per-debt",
+      "description": "Every evaluated debt is linked through product_execution_includes_debt; exact accepted/rejected outcome and two-rule booleans reconstruct from the immutable hydrated Decision evidence package",
+      "phase": 9,
+      "failureCode": "DecisionCardinalityMismatch"
+    },
+    {
+      "id": "declared-decision-graph-model",
+      "description": "Decision output uses only active canonical product, product_execution, ruleset, debt, company and company_represents_debt concepts; removed Rule-specific execution concepts are forbidden",
+      "phase": 10,
+      "failureCode": "DecisionGraphShapeMismatch"
+    },
+    {
+      "id": "authoritative-endpoints-close",
+      "description": "Every emitted graph edge resolves to a declared authoritative endpoint",
+      "phase": 10,
+      "failureCode": "DecisionEndpointMismatch"
+    },
+    {
+      "id": "decision-round-trip-reconciles",
+      "description": "The inverse mapping joins canonical product-execution graph facts with the immutable hydrated Decision evidence package to reconstruct all six Decision datasets",
+      "phase": 11,
+      "failureCode": "DecisionRoundTripMismatch"
+    },
+    {
+      "id": "form-projection-reconciles",
+      "description": "The form_1281 projection selects the deterministic latest client-ID event from company_represents_debt and preserves five source fields plus two constants",
+      "phase": 11,
+      "failureCode": "FormProjectionMismatch"
+    }
+  ],
+  "repositories": [
+    {
+      "slug": "Spring-Oaks-Capital-LLC/lexicon",
+      "purpose": "Decision and Interprose language definitions plus all three mapping configurations",
+      "role": "configuration-source",
+      "revisionPolicy": "commit-sha",
+      "candidateDiscovery": "requested-ref-then-matching-open-pr-then-default-branch",
+      "requiredPaths": [
+        "src/data/decision.json",
+        "src/data/interprose.json",
+        "src/data/lexicon.json",
+        "src/transform/mappings/decision-to-lexicon/registration.json",
+        "src/transform/mappings/lexicon-to-decision/registration.json",
+        "src/transform/mappings/lexicon-to-interprose/versions/3.0.0/queries/form_1281.sql"
+      ]
+    },
+    {
+      "slug": "Spring-Oaks-Capital-LLC/transform",
+      "purpose": "Transform Spark runtime compatibility",
+      "role": "product-runtime",
+      "revisionPolicy": "commit-sha",
+      "candidateDiscovery": "requested-ref-then-default-branch",
+      "requiredPaths": [
+        "package.json",
+        "glue_scripts/transform_with_sql_mappings.py",
+        "glue_scripts/transform_to_neptune_csv.py",
+        "glue_scripts/test_transform_with_sql_mappings.py",
+        "scripts/setup-spark-tests.sh",
+        "scripts/run-spark-tests.sh"
+      ]
+    }
+  ],
+  "discoveryProbes": [
+    {
+      "id": "resolve-decision-contracts",
+      "kind": "repository",
+      "description": "Locate decision, client-event and form projection contracts",
+      "readOnly": true
+    },
+    {
+      "id": "resolve-active-mappings",
+      "kind": "configuration",
+      "description": "Resolve exact enabled directional mappings and digests",
+      "readOnly": true
+    },
+    {
+      "id": "resolve-deployment-provenance",
+      "kind": "deployment",
+      "description": "Bind active runtime to source and configuration digests",
+      "readOnly": true
+    },
+    {
+      "id": "resolve-authoritative-graph-export",
+      "kind": "consumer",
+      "description": "Locate a bounded immutable graph export that resolves physical rule-execution, debt, rule, ruleset, and company endpoints",
+      "readOnly": true
+    },
+    {
+      "id": "read-form-aggregate",
+      "kind": "consumer",
+      "description": "Read sanitized aggregate form-output evidence",
+      "readOnly": true
+    }
+  ],
+  "directions": [
+    {
+      "id": "decision-to-lexicon",
+      "fromLanguage": "decision",
+      "toLanguage": "lexicon",
+      "required": true,
+      "mapping": {
+        "status": "not-registered",
+        "expectedId": "decision-to-lexicon",
+        "owner": "kecleon",
+        "reason": "The prior registration depends on removed rule_execution concepts and is blocked until a canonical product_execution plus hydrated-evidence mapping is reviewed and published."
+      },
+      "parityFields": [
+        "outcome",
+        "dsc_client_id",
+        "effective_at",
+        "source_run_id",
+        "idempotency_key"
+      ]
+    },
+    {
+      "id": "lexicon-to-decision",
+      "fromLanguage": "lexicon",
+      "toLanguage": "decision",
+      "required": true,
+      "mapping": {
+        "status": "not-registered",
+        "expectedId": "lexicon-to-decision",
+        "owner": "kecleon",
+        "reason": "The prior registration depends on removed rule_execution concepts and is blocked until a canonical product_execution plus hydrated-evidence mapping is reviewed and published."
+      },
+      "parityFields": [
+        "source_run_id",
+        "debt_id",
+        "outcome",
+        "dsc_client_id",
+        "effective_at",
+        "idempotency_key"
+      ]
+    },
+    {
+      "id": "lexicon-to-interprose",
+      "fromLanguage": "lexicon",
+      "toLanguage": "interprose",
+      "required": true,
+      "mapping": {
+        "status": "not-registered",
+        "expectedId": "lexicon-to-interprose",
+        "owner": "kecleon",
+        "reason": "The prior registration depends on removed rule_execution concepts and is blocked until a canonical product_execution plus hydrated-evidence mapping is reviewed and published."
+      },
+      "parityFields": [
+        "debtID",
+        "dsc_client_id",
+        "effective_at",
+        "source_run_id",
+        "idempotency_key",
+        "form_config_id",
+        "field_identifier"
+      ]
+    }
+  ],
+  "validationSources": [
+    {
+      "id": "lexicon-mapping-contract-tests",
+      "kind": "repository-test",
+      "repository": "Spring-Oaks-Capital-LLC/lexicon",
+      "path": "infra/test/transform-mappings.spec.ts",
+      "appliesTo": [
+        "decision-to-lexicon",
+        "lexicon-to-decision",
+        "lexicon-to-interprose"
+      ],
+      "required": true
+    },
+    {
+      "id": "decision-contract-freeze",
+      "kind": "sanitized-evidence-package",
+      "location": "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/dsa-filter-decision-evidence/20260924T133000Z-contract-freeze-v1/",
+      "manifestSha256": "e890fb58a0866b9cd873b3665d6cae12adbcf29d12952e84edb63a9cf1495e5d",
+      "manifestVersionId": "pMyiczzE3ZZqiue133uIZmCOB94uVfCD",
+      "appliesTo": [
+        "decision-to-lexicon",
+        "lexicon-to-decision",
+        "lexicon-to-interprose"
+      ],
+      "required": true
+    }
+  ],
+  "evidencePolicy": {
+    "sensitivity": "restricted",
+    "sanitization": "aggregates-and-digests-only",
+    "allowed": [
+      "counts",
+      "schemas",
+      "sha256",
+      "statuses",
+      "durations",
+      "costs",
+      "credential-free-locations"
+    ],
+    "prohibited": [
+      "raw-pii",
+      "business-identifiers",
+      "secret-values",
+      "credentials",
+      "signed-urls",
+      "source-rows"
+    ]
+  },
+  "graph": {
+    "required": true,
+    "identityRules": [
+      "Derive stable edge identity from declared normalized endpoint roles and rule revision",
+      "Never emit client identifiers into validation evidence"
+    ],
+    "endpointRules": [
+      "Every decision edge endpoint must resolve to a declared client-event or governed rule vertex",
+      "Dangling endpoint count must equal zero"
+    ]
+  },
+  "adapters": [
+    {
+      "name": "partner-file-intake",
+      "owner": "lapras",
+      "contract": "Connect lands partner files; Transform does not call Azure or SFTP"
+    }
+  ],
+  "consumers": [
+    {
+      "name": "filter-runtime",
+      "owner": "gallade",
+      "contract": "Consumes registered facts and produces durable traceable outcomes"
+    },
+    {
+      "name": "partner-form-delivery",
+      "owner": "lapras",
+      "contract": "Delivers product-produced form output through the registered external adapter"
+    }
+  ],
+  "lexiconConceptPolicy": {
+    "currentDefinitionRequired": true,
+    "rejectAbsent": true,
+    "rejectDeprecated": true,
+    "reintroductionRequiresModelingApproval": true
+  },
+  "sourceWindowPolicy": {
+    "kind": "prod-derived-complete-utc-days",
+    "minimumCompleteUtcDays": 1,
+    "allowLongerRange": true,
+    "requiredSourceFamilies": [
+      "decision_batch",
+      "chunk_executions",
+      "debt_outcomes",
+      "rule_evaluations",
+      "dsa_client_id_updates",
+      "graph_identity_references",
+      "authoritative_graph_export"
+    ],
+    "requiredCoverageSignals": [
+      "accepted-outcomes",
+      "rejected-outcomes",
+      "client-events",
+      "authoritative-endpoints",
+      "immutable-evidence"
+    ]
+  },
+  "scaleTiers": [
+    {
+      "id": "synthetic",
+      "maximumRows": 100,
+      "maximumCostUsd": 0,
+      "evidenceRequired": true
+    },
+    {
+      "id": "bounded-dev",
+      "maximumRows": 10000,
+      "maximumCostUsd": 25,
+      "evidenceRequired": true
+    }
+  ],
+  "approvals": {
+    "devWrites": "explicit",
+    "prodWrites": "forbidden",
+    "perOperation": true
+  }
+}
