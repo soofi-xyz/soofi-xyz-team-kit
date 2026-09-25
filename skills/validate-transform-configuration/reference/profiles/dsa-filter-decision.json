@@ -75,6 +75,7 @@
         "glue_scripts/transform_with_sql_mappings.py",
         "glue_scripts/transform_to_neptune_csv.py",
         "glue_scripts/test_transform_with_sql_mappings.py",
+        "scripts/setup-spark-tests.sh",
         "scripts/run-spark-tests.sh"
       ]
     }

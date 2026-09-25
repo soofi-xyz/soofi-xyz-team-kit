@@ -458,6 +458,7 @@ def test_core_and_references(profiles: list[dict]) -> None:
         "test", "deploy", "system", "runtime",
         "open pull requests", "current workspace", "requiredpaths",
         "generic repository test suite", "incomplete discovery",
+        "absent system-wide", "declared local spark setup",
     ):
         if token not in core:
             fail(f"core routing/safety contract missing {token!r}")
@@ -486,6 +487,12 @@ def test_core_and_references(profiles: list[dict]) -> None:
         "requested-ref-then-matching-open-pr-then-default-branch"
     ):
         fail("Decision profile must discover an unmerged mapping candidate")
+    transform = repositories.get("Spring-Oaks-Capital-LLC/transform")
+    if transform is None or {
+        "scripts/setup-spark-tests.sh",
+        "scripts/run-spark-tests.sh",
+    } - set(transform["requiredPaths"]):
+        fail("Decision profile must declare the pinned Transform Spark harness")
     mappings = {
         direction["mapping"].get("id"): direction["mapping"]
         for direction in decision["directions"]

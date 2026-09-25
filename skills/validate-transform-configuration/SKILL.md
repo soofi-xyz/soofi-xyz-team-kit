@@ -98,6 +98,8 @@ Use only `PASS`, `FAIL`, `BLOCKED`, or `APPROVAL_REQUIRED` for phase/gate status
 
 In `synthetic-local` mode, automatically run all read-only work available from the pinned configuration candidate: profile/schema validation, mapping materialization, repository tests, sanitized fixture validation, deployed Spark-version compatibility, each required forward mapping, every declared inverse/cross-source mapping, expected-output comparisons, and negative cases. Report the exact repository SHAs, mapping identities, fixture manifest digest, commands, counts, and mismatches. Do not stop after typecheck/lint/general unit tests when a mapping execution remains untested.
 
+Do not treat an absent system-wide `pyspark` or `spark-submit` binary as an immediate blocker. First inspect the pinned Transform runtime for its declared local Spark setup and test entrypoints. When present, run the bounded setup inside the isolated checkout, verify the resulting Spark major/minor version against the profile/runtime target, and use that environment for mapping-specific fixture execution. This is a local dependency setup, not a DEV write. Return `BLOCKED` only when the pinned runtime has no compatible setup path or that bounded setup fails with recorded evidence.
+
 ## Approval protocol
 
 Before each DEV external write:
