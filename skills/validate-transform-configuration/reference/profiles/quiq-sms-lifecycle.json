@@ -1,0 +1,82 @@
+{
+  "id": "quiq-sms-lifecycle.json",
+  "contractVersion": 1,
+  "terminologyAliases": {
+    "lifecycle-event": ["Quiq feedback", "delivery update", "message status"],
+    "phone-location": ["phone timezone", "contact location policy"],
+    "full-day-export": ["daily BI export", "UTC day export"]
+  },
+  "roles": {
+    "source": "Quiq lifecycle events and immutable daily export manifests",
+    "target": "Canonical SMS lifecycle facts and reverse-compatible export rows"
+  },
+  "transformClassification": {
+    "kind": "deterministic",
+    "evidenceBasis": "The profile declares version-controlled forward and reverse mappings with nine fixed parity fields; readiness still requires pinned implementation and Test evidence.",
+    "expectedOutputTests": ["full-day-nine-field-round-trip"],
+    "negativeTests": ["optional-json-field-omitted", "utc-day-boundary", "missing-hydrated-object"]
+  },
+  "configurationChoices": {
+    "fieldNames": ["nine declared lifecycle parity fields"],
+    "schemaShape": ["lifecycle fact graph and reverse-compatible rows"],
+    "formats": ["registered JSON and export formats"],
+    "normalizationRules": ["UTC timestamps, provider status and phone-location policy"],
+    "mappingExpressions": ["versioned forward and reverse lifecycle SQL"],
+    "profileInputs": ["full-day manifest and source bindings"],
+    "vocabularySelections": ["existing Lexicon message and lifecycle terms"]
+  },
+  "productBoundary": {
+    "prohibitedAsConfiguration": ["representation-family", "identity-scheme", "executable-code-path", "dependency-type", "storage-engine-mode", "failure-semantics"],
+    "onDetection": "block-and-handoff"
+  },
+  "datasets": [
+    { "name": "quiq-events", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "sms-lifecycle-facts", "role": "target", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "hydrated-export-rows", "role": "readback", "required": true, "schemaSource": "consumer-contract" }
+  ],
+  "invariants": [
+    { "id": "optional-json-fields-remain-nullable", "description": "Omitted optional JSON fields materialize as typed nulls without schema inference drift", "phase": 7, "failureCode": "OptionalJsonSchemaMismatch" },
+    { "id": "phone-location-policy-preserved", "description": "Lifecycle enrichment applies the declared phone-location policy consistently", "phase": 9, "failureCode": "PhoneLocationPolicyMismatch" },
+    { "id": "full-day-window-is-utc", "description": "Daily export uses an explicit UTC half-open time window", "phase": 11, "failureCode": "TimezoneExportMismatch" },
+    { "id": "nine-field-reverse-parity", "description": "All nine declared lifecycle fields survive reverse mapping after normalization", "phase": 11, "failureCode": "LifecycleParityMismatch" },
+    { "id": "artifact-hydration-reconciles", "description": "Hydrated objects exactly reconcile with the immutable source manifest", "phase": 11, "failureCode": "ArtifactHydrationMismatch" }
+  ],
+  "repositories": [
+    { "slug": "Spring-Oaks-Capital-LLC/sms-workflow", "purpose": "SMS product, Quiq lifecycle and export contracts", "revisionPolicy": "commit-sha" },
+    { "slug": "Spring-Oaks-Capital-LLC/transform", "purpose": "Transform runtime and mappings", "revisionPolicy": "commit-sha" }
+  ],
+  "discoveryProbes": [
+    { "id": "resolve-quiq-contracts", "kind": "repository", "description": "Locate lifecycle, enrichment and reverse-export contracts", "readOnly": true },
+    { "id": "resolve-export-manifest", "kind": "configuration", "description": "Resolve immutable full-day export manifest and mapping", "readOnly": true },
+    { "id": "resolve-runtime-version", "kind": "deployment", "description": "Resolve active Spark and deployed package provenance", "readOnly": true },
+    { "id": "read-lifecycle-aggregates", "kind": "consumer", "description": "Read sanitized status and parity aggregates", "readOnly": true }
+  ],
+  "directions": [
+    { "id": "quiq-to-sms-lifecycle", "fromLanguage": "quiq-sms-lifecycle", "toLanguage": "canonical-sms-lifecycle", "required": true, "parityFields": ["message-key", "event-type", "event-time", "provider-status", "channel", "direction", "phone-location", "source-revision", "artifact-key"] },
+    { "id": "sms-lifecycle-to-quiq", "fromLanguage": "canonical-sms-lifecycle", "toLanguage": "quiq-sms-lifecycle", "required": true, "parityFields": ["message-key", "event-type", "event-time", "provider-status", "channel", "direction", "phone-location", "source-revision", "artifact-key"] }
+  ],
+  "evidencePolicy": {
+    "sensitivity": "restricted",
+    "sanitization": "aggregates-and-digests-only",
+    "allowed": ["counts", "schemas", "sha256", "statuses", "durations", "costs", "credential-free-locations"],
+    "prohibited": ["raw-pii", "business-identifiers", "secret-values", "credentials", "signed-urls", "source-rows"]
+  },
+  "graph": {
+    "required": true,
+    "identityRules": ["Derive stable lifecycle identity from provider correlation and event role without reporting message or phone identifiers"],
+    "endpointRules": ["Every lifecycle edge references a declared message vertex", "Dangling endpoint count must equal zero"]
+  },
+  "adapters": [
+    { "name": "quiq-webhook-receipt", "owner": "lapras", "contract": "Connect receives external callbacks; product parses and correlates the reply" },
+    { "name": "quiq-drop-receipt", "owner": "lapras", "contract": "Connect lands BI export objects and returns immutable pointers" }
+  ],
+  "consumers": [
+    { "name": "sms-workflow", "owner": "oranguru", "contract": "Owns lifecycle interpretation, enrichment and product-level correlation" },
+    { "name": "communication-activity", "owner": "chatot", "contract": "Owns provider feedback and canonical activity closure" }
+  ],
+  "scaleTiers": [
+    { "id": "synthetic", "maximumRows": 100, "maximumCostUsd": 0, "evidenceRequired": true },
+    { "id": "full-day-dev", "maximumRows": 100000, "maximumCostUsd": 50, "evidenceRequired": true }
+  ],
+  "approvals": { "devWrites": "explicit", "prodWrites": "forbidden", "perOperation": true }
+}

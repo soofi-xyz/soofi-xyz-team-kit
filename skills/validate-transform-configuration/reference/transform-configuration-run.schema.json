@@ -1,0 +1,338 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "transform-configuration-run.schema.json",
+  "title": "Transform configuration validation run and readiness package",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "contractVersion",
+    "profile",
+    "configurationPackage",
+    "environment",
+    "sensitivity",
+    "datasets",
+    "graph",
+    "runtime",
+    "persistCanary",
+    "exporterHydration",
+    "roundTrip",
+    "phases",
+    "boundaryDecisions",
+    "approvals",
+    "cost",
+    "failures",
+    "verdict"
+  ],
+  "properties": {
+    "id": { "type": "string", "pattern": "^validation-[a-f0-9]{12,64}$" },
+    "contractVersion": { "const": 1 },
+    "profile": { "$ref": "#/$defs/digestedIdentity" },
+    "configurationPackage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "transformProduct",
+        "sourceLanguage",
+        "targetLanguage",
+        "mapping",
+        "lexicon",
+        "sourceRevisions",
+        "dependencies",
+        "testEvidenceIds",
+        "deployedDigest",
+        "unresolvedProductChangeHandoffs",
+        "marketplaceRegistrationReady"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/kebab" },
+        "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "transformProduct": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "version", "sha256"],
+          "properties": {
+            "name": { "const": "Transform" },
+            "version": { "type": "string", "minLength": 1 },
+            "sha256": { "$ref": "#/$defs/sha256" }
+          }
+        },
+        "sourceLanguage": { "$ref": "#/$defs/digestedIdentity" },
+        "targetLanguage": { "$ref": "#/$defs/digestedIdentity" },
+        "mapping": { "$ref": "#/$defs/digestedIdentity" },
+        "lexicon": { "$ref": "#/$defs/digestedIdentity" },
+        "sourceRevisions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["slug", "commitSha"],
+            "properties": {
+              "slug": { "type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" },
+              "commitSha": { "type": "string", "pattern": "^[a-f0-9]{40}$" }
+            }
+          }
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["product", "version", "sha256", "role"],
+            "properties": {
+              "product": { "enum": ["Test", "Lexicon", "Model", "Persist", "Deploy"] },
+              "version": { "type": "string", "minLength": 1 },
+              "sha256": { "$ref": "#/$defs/sha256" },
+              "role": { "type": "string", "minLength": 3 }
+            }
+          }
+        },
+        "testEvidenceIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/kebab" }
+        },
+        "deployedDigest": {
+          "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }]
+        },
+        "unresolvedProductChangeHandoffs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/kebab" }
+        },
+        "marketplaceRegistrationReady": { "type": "boolean" }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "accountHash", "region", "writePolicy"],
+      "properties": {
+        "name": { "enum": ["local", "dev", "prod"] },
+        "accountHash": { "$ref": "#/$defs/sha256" },
+        "region": { "type": "string", "pattern": "^[a-z]{2}-[a-z]+-[0-9]$" },
+        "writePolicy": { "enum": ["local-only", "approval-required", "read-only"] }
+      }
+    },
+    "sensitivity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["classification", "sanitization", "containsRawPii", "containsSecrets"],
+      "properties": {
+        "classification": { "enum": ["public", "internal", "confidential", "restricted"] },
+        "sanitization": { "const": "aggregates-and-digests-only" },
+        "containsRawPii": { "const": false },
+        "containsSecrets": { "const": false }
+      }
+    },
+    "datasets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "schemaSha256", "rowCount", "contentSha256", "location"],
+        "properties": {
+          "name": { "$ref": "#/$defs/kebab" },
+          "schemaSha256": { "$ref": "#/$defs/sha256" },
+          "rowCount": { "type": "integer", "minimum": 0 },
+          "contentSha256": { "$ref": "#/$defs/sha256" },
+          "location": {
+            "type": "string",
+            "pattern": "^(local|s3)://[^?#@]+$"
+          }
+        }
+      }
+    },
+    "graph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "identityUnique", "endpointCount", "danglingEndpointCount"],
+      "properties": {
+        "required": { "type": "boolean" },
+        "identityUnique": { "type": "boolean" },
+        "endpointCount": { "type": "integer", "minimum": 0 },
+        "danglingEndpointCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sparkVersion", "transformRevision", "deploymentDigest", "executionMode"],
+      "properties": {
+        "sparkVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+(?:\\.[0-9]+)?$" },
+        "transformRevision": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+        "deploymentDigest": { "$ref": "#/$defs/sha256" },
+        "executionMode": { "enum": ["synthetic-local", "bounded-dev-dry-run", "observed-dev", "observed-prod-read-only"] }
+      }
+    },
+    "persistCanary": { "$ref": "#/$defs/proof" },
+    "exporterHydration": { "$ref": "#/$defs/proof" },
+    "roundTrip": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "status", "evidenceIds", "comparedFields", "mismatchCount"],
+      "properties": {
+        "required": { "type": "boolean" },
+        "status": { "enum": ["PASS", "FAIL", "BLOCKED", "APPROVAL_REQUIRED"] },
+        "evidenceIds": { "type": "array", "items": { "$ref": "#/$defs/kebab" } },
+        "comparedFields": { "type": "integer", "minimum": 0 },
+        "mismatchCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "phases": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 12,
+      "prefixItems": [
+        { "$ref": "#/$defs/phase1" }, { "$ref": "#/$defs/phase2" },
+        { "$ref": "#/$defs/phase3" }, { "$ref": "#/$defs/phase4" },
+        { "$ref": "#/$defs/phase5" }, { "$ref": "#/$defs/phase6" },
+        { "$ref": "#/$defs/phase7" }, { "$ref": "#/$defs/phase8" },
+        { "$ref": "#/$defs/phase9" }, { "$ref": "#/$defs/phase10" },
+        { "$ref": "#/$defs/phase11" }, { "$ref": "#/$defs/phase12" }
+      ],
+      "items": false
+    },
+    "boundaryDecisions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "proposedChange", "classification", "evidenceIds", "resolved", "handoffOwner"],
+        "properties": {
+          "id": { "$ref": "#/$defs/kebab" },
+          "proposedChange": { "type": "string", "minLength": 5 },
+          "classification": { "enum": ["CONFIGURATION", "PRODUCT_CHANGE"] },
+          "evidenceIds": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "$ref": "#/$defs/kebab" }
+          },
+          "resolved": { "type": "boolean" },
+          "handoffOwner": { "type": ["string", "null"], "minLength": 2 }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "classification": { "const": "PRODUCT_CHANGE" } } },
+            "then": { "properties": { "handoffOwner": { "type": "string", "minLength": 2 } } },
+            "else": { "properties": { "handoffOwner": { "type": "null" } } }
+          }
+        ]
+      }
+    },
+    "approvals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["operationDigest", "environment", "status", "recordedAt"],
+        "properties": {
+          "operationDigest": { "$ref": "#/$defs/sha256" },
+          "environment": { "const": "dev" },
+          "status": { "enum": ["APPROVAL_REQUIRED", "APPROVED", "REJECTED"] },
+          "recordedAt": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "cost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ceilingUsd", "estimatedUsd", "actualUsd"],
+      "properties": {
+        "ceilingUsd": { "type": "number", "minimum": 0 },
+        "estimatedUsd": { "type": "number", "minimum": 0 },
+        "actualUsd": { "type": ["number", "null"], "minimum": 0 }
+      }
+    },
+    "failures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["phase", "code", "message"],
+        "properties": {
+          "phase": { "type": "integer", "minimum": 1, "maximum": 12 },
+          "code": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$" },
+          "message": { "type": "string", "minLength": 3 }
+        }
+      }
+    },
+    "verdict": { "enum": ["READY", "NOT_READY", "BLOCKED"] }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "verdict": { "const": "READY" } } },
+      "then": {
+        "properties": {
+          "boundaryDecisions": {
+            "not": {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "classification": { "const": "PRODUCT_CHANGE" },
+                  "resolved": { "const": false }
+                },
+                "required": ["classification", "resolved"]
+              }
+            }
+          },
+          "configurationPackage": {
+            "properties": {
+              "unresolvedProductChangeHandoffs": { "maxItems": 0 }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "kebab": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "digestedIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "revision", "sha256"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "revision": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "status", "evidenceIds"],
+      "properties": {
+        "required": { "type": "boolean" },
+        "status": { "enum": ["PASS", "FAIL", "BLOCKED", "APPROVAL_REQUIRED"] },
+        "evidenceIds": { "type": "array", "items": { "$ref": "#/$defs/kebab" } }
+      }
+    },
+    "phase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["number", "status", "evidenceIds"],
+      "properties": {
+        "number": { "type": "integer", "minimum": 1, "maximum": 12 },
+        "status": { "enum": ["PASS", "FAIL", "BLOCKED", "APPROVAL_REQUIRED"] },
+        "evidenceIds": { "type": "array", "items": { "$ref": "#/$defs/kebab" } }
+      }
+    },
+    "phase1": { "allOf": [{ "$ref": "#/$defs/phase" }, { "properties": { "number": { "const": 1 } } }] },
+    "phase2": { "allOf": [{ "$ref": "#/$defs/phase" }, { "properties": { "number": { "const": 2 } } }] },
+    "phase3": { "allOf": [{ "$ref": "#/$defs/phase" }, { "properties": { "number": { "const": 3 } } }] },
+    "phase4": { "allOf": [{ "$ref": "#/$defs/phase" }, { "properties": { "number": { "const": 4 } } }] },
+    "phase5": { "allOf": [{ "$ref": "#/$defs/phase" }, { "properties": { "number": { "const": 5 } } }] },
+    "phase6": { "allOf": [{ "$ref": "#/$defs/phase" }, { "properties": { "number": { "const": 6 } } }] },
+    "phase7": { "allOf": [{ "$ref": "#/$defs/phase" }, { "properties": { "number": { "const": 7 } } }] },
+    "phase8": { "allOf": [{ "$ref": "#/$defs/phase" }, { "properties": { "number": { "const": 8 } } }] },
+    "phase9": { "allOf": [{ "$ref": "#/$defs/phase" }, { "properties": { "number": { "const": 9 } } }] },
+    "phase10": { "allOf": [{ "$ref": "#/$defs/phase" }, { "properties": { "number": { "const": 10 } } }] },
+    "phase11": { "allOf": [{ "$ref": "#/$defs/phase" }, { "properties": { "number": { "const": 11 } } }] },
+    "phase12": { "allOf": [{ "$ref": "#/$defs/phase" }, { "properties": { "number": { "const": 12 } } }] }
+  }
+}

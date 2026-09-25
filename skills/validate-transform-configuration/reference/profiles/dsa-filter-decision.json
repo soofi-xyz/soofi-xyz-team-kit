@@ -1,0 +1,80 @@
+{
+  "id": "dsa-filter-decision.json",
+  "contractVersion": 1,
+  "terminologyAliases": {
+    "decision": ["filter outcome", "eligibility decision", "rule result"],
+    "client-event": ["client ID event", "partner record event"],
+    "form-output": ["form 1281", "partner decision form"]
+  },
+  "roles": {
+    "source": "Partner client events and registered decision inputs",
+    "target": "Durable Filter decisions and bounded partner form projection"
+  },
+  "transformClassification": {
+    "kind": "deterministic",
+    "evidenceBasis": "The profile selects version-controlled directional Spark SQL mappings with fixed graph and form projections; readiness still requires pinned implementation evidence.",
+    "expectedOutputTests": ["decision-edge-and-form-projection"],
+    "negativeTests": ["duplicate-client-event", "dangling-decision-endpoint", "unsupported-mapping-option"]
+  },
+  "configurationChoices": {
+    "fieldNames": ["client-event and decision projection fields"],
+    "schemaShape": ["edge-only decision output and bounded form table"],
+    "formats": ["registered input and output formats"],
+    "normalizationRules": ["client event and reason category normalization"],
+    "mappingExpressions": ["versioned decision and form projection SQL"],
+    "profileInputs": ["source dataset bindings and scale tier"],
+    "vocabularySelections": ["existing Lexicon client-event, rule and decision terms"]
+  },
+  "productBoundary": {
+    "prohibitedAsConfiguration": ["representation-family", "identity-scheme", "executable-code-path", "dependency-type", "storage-engine-mode", "failure-semantics"],
+    "onDetection": "block-and-handoff"
+  },
+  "datasets": [
+    { "name": "client-events", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "filter-decisions", "role": "target", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "form-1281-rows", "role": "readback", "required": true, "schemaSource": "consumer-contract" }
+  ],
+  "invariants": [
+    { "id": "one-decision-per-client-event", "description": "Every admitted client event produces one traceable decision", "phase": 9, "failureCode": "DecisionCardinalityMismatch" },
+    { "id": "edge-only-decision-model", "description": "Decision output is represented by declared graph edges without invented decision vertices", "phase": 10, "failureCode": "DecisionGraphShapeMismatch" },
+    { "id": "client-identity-preserved", "description": "Client identity joins remain deterministic without exposing client identifiers in evidence", "phase": 10, "failureCode": "ClientIdentityMismatch" },
+    { "id": "form-projection-reconciles", "description": "The bounded form projection reconciles with decision counts and reason categories", "phase": 11, "failureCode": "FormProjectionMismatch" }
+  ],
+  "repositories": [
+    { "slug": "Spring-Oaks-Capital-LLC/claydol-agent", "purpose": "DSA product, Filter and partner form boundaries", "revisionPolicy": "commit-sha" },
+    { "slug": "Spring-Oaks-Capital-LLC/transform", "purpose": "Transform runtime and mappings", "revisionPolicy": "commit-sha" }
+  ],
+  "discoveryProbes": [
+    { "id": "resolve-decision-contracts", "kind": "repository", "description": "Locate decision, client-event and form projection contracts", "readOnly": true },
+    { "id": "resolve-active-mappings", "kind": "configuration", "description": "Resolve exact enabled directional mappings and digests", "readOnly": true },
+    { "id": "resolve-deployment-provenance", "kind": "deployment", "description": "Bind active runtime to source and configuration digests", "readOnly": true },
+    { "id": "read-form-aggregate", "kind": "consumer", "description": "Read sanitized aggregate form-output evidence", "readOnly": true }
+  ],
+  "directions": [
+    { "id": "client-events-to-filter-decisions", "fromLanguage": "dsa-client-events", "toLanguage": "filter-decision-graph", "required": true, "parityFields": ["decision-category", "reason-category", "effective-date"] },
+    { "id": "filter-decisions-to-form-1281", "fromLanguage": "filter-decision-graph", "toLanguage": "dsa-form-1281", "required": true, "parityFields": ["decision-category", "reason-category"] }
+  ],
+  "evidencePolicy": {
+    "sensitivity": "restricted",
+    "sanitization": "aggregates-and-digests-only",
+    "allowed": ["counts", "schemas", "sha256", "statuses", "durations", "costs", "credential-free-locations"],
+    "prohibited": ["raw-pii", "business-identifiers", "secret-values", "credentials", "signed-urls", "source-rows"]
+  },
+  "graph": {
+    "required": true,
+    "identityRules": ["Derive stable edge identity from declared normalized endpoint roles and rule revision", "Never emit client identifiers into validation evidence"],
+    "endpointRules": ["Every decision edge endpoint must resolve to a declared client-event or governed rule vertex", "Dangling endpoint count must equal zero"]
+  },
+  "adapters": [
+    { "name": "partner-file-intake", "owner": "lapras", "contract": "Connect lands partner files; Transform does not call Azure or SFTP" }
+  ],
+  "consumers": [
+    { "name": "filter-runtime", "owner": "gallade", "contract": "Consumes registered facts and produces durable traceable outcomes" },
+    { "name": "partner-form-delivery", "owner": "lapras", "contract": "Delivers product-produced form output through the registered external adapter" }
+  ],
+  "scaleTiers": [
+    { "id": "synthetic", "maximumRows": 100, "maximumCostUsd": 0, "evidenceRequired": true },
+    { "id": "bounded-dev", "maximumRows": 10000, "maximumCostUsd": 25, "evidenceRequired": true }
+  ],
+  "approvals": { "devWrites": "explicit", "prodWrites": "forbidden", "perOperation": true }
+}
