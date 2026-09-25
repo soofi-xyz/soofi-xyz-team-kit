@@ -3,8 +3,8 @@
 Render the validated Transform configuration/readiness package into this order:
 
 1. **Configuration-readiness verdict** — `READY`, `NOT_READY`, or `BLOCKED`; one-sentence reason. State explicitly that this is not platform or product approval.
-2. **Scope** — profile, direction, environment, mode, languages, mapping and consumers.
-3. **Reusable package** — package version; Transform product/version; source/target language versions; mapping and Lexicon digests; dependencies; Test evidence; Deploy-owned environment digest; Marketplace-registration readiness.
+2. **Scope and discovery** — profile, all required directions, environment, mode and consumers; repositories searched, required paths, candidate-selection method, matching pull requests, selected commit SHAs and rejected candidates.
+3. **Reusable package** — package version; Transform product/version; every source/target language and mapping digest; Lexicon digest; dependencies; Test evidence; Deploy-owned environment digest; Marketplace-registration readiness.
 4. **Phase results** — all 12 phases in order with status, evidence IDs and concise reason.
 5. **Boundary decisions** — every proposal labeled `CONFIGURATION` or `PRODUCT_CHANGE`, with evidence, state and owner handoff.
 6. **Dataset reconciliation** — sanitized schema digests, counts, hashes and credential-free locations.

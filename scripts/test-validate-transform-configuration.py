@@ -92,7 +92,7 @@ def profile_errors(value: dict) -> list[str]:
     required = {
         "id", "contractVersion", "terminologyAliases", "roles", "datasets",
         "invariants", "repositories", "discoveryProbes", "directions",
-        "evidencePolicy", "graph", "adapters", "consumers", "scaleTiers",
+        "validationSources", "evidencePolicy", "graph", "adapters", "consumers", "scaleTiers",
         "approvals", "transformClassification", "configurationChoices",
         "productBoundary",
     }
@@ -107,6 +107,29 @@ def profile_errors(value: dict) -> list[str]:
     for repository in value.get("repositories", []):
         if repository.get("revisionPolicy") != "commit-sha":
             errors.append("mutable repository policy")
+        if repository.get("role") not in {
+            "configuration-source", "product-runtime", "domain-contract",
+        }:
+            errors.append("repository role")
+        if not repository.get("candidateDiscovery") or not repository.get("requiredPaths"):
+            errors.append("repository discovery contract")
+    for direction in value.get("directions", []):
+        mapping = direction.get("mapping", {})
+        if mapping.get("status") == "registered":
+            for field in (
+                "id", "version", "repository", "sourcePaths",
+                "artifactPath", "expectedOutputDatasets",
+            ):
+                if not mapping.get(field):
+                    errors.append(f"registered mapping {field}")
+        elif mapping.get("status") == "not-registered":
+            for field in ("expectedId", "owner", "reason"):
+                if not mapping.get(field):
+                    errors.append(f"unregistered mapping {field}")
+        else:
+            errors.append("mapping registration status")
+    if not value.get("validationSources"):
+        errors.append("validation sources")
     for invariant in value.get("invariants", []):
         if invariant.get("phase") not in range(1, 13):
             errors.append("invariant phase")
@@ -131,7 +154,8 @@ def profile_errors(value: dict) -> list[str]:
 
 def run_errors(value: dict) -> list[str]:
     required = {
-        "id", "contractVersion", "profile", "configurationPackage", "environment",
+        "id", "contractVersion", "profile", "discoveryTrace",
+        "configurationPackage", "environment",
         "sensitivity", "datasets", "graph", "runtime",
         "persistCanary", "exporterHydration", "roundTrip", "phases", "approvals",
         "boundaryDecisions", "cost", "failures", "verdict",
@@ -192,6 +216,26 @@ def valid_run() -> dict:
         "id": "validation-" + "b" * 12,
         "contractVersion": 1,
         "profile": {"id": PROFILE_NAMES[0], "revision": "1", "sha256": digest},
+        "discoveryTrace": [
+            {
+                "repository": "example/lexicon",
+                "selectionMethod": "matching-open-pull-request",
+                "materialization": "matching-local-checkout",
+                "selectedCommitSha": "d" * 40,
+                "pullRequestNumber": 37,
+                "requiredPathsVerified": True,
+                "rejectedCandidateCommitShas": [],
+            },
+            {
+                "repository": "example/transform",
+                "selectionMethod": "default-branch",
+                "materialization": "isolated-checkout",
+                "selectedCommitSha": "c" * 40,
+                "pullRequestNumber": None,
+                "requiredPathsVerified": True,
+                "rejectedCandidateCommitShas": [],
+            },
+        ],
         "configurationPackage": {
             "id": "synthetic-transform-configuration",
             "version": "1.0.0",
@@ -200,21 +244,27 @@ def valid_run() -> dict:
                 "version": "2",
                 "sha256": digest,
             },
-            "sourceLanguage": {
-                "id": "source",
-                "revision": "1.0.0",
-                "sha256": digest,
-            },
-            "targetLanguage": {
-                "id": "target",
-                "revision": "1.0.0",
-                "sha256": digest,
-            },
-            "mapping": {
-                "id": "source-to-target",
-                "revision": "1.0.0",
-                "sha256": digest,
-            },
+            "directions": [
+                {
+                    "id": "source-to-target",
+                    "sourceLanguage": {
+                        "id": "source",
+                        "revision": "1.0.0",
+                        "sha256": digest,
+                    },
+                    "targetLanguage": {
+                        "id": "target",
+                        "revision": "1.0.0",
+                        "sha256": digest,
+                    },
+                    "mapping": {
+                        "id": "source-to-target",
+                        "revision": "1.0.0",
+                        "sha256": digest,
+                    },
+                    "evidenceIds": ["source-to-target-proof"],
+                }
+            ],
             "lexicon": {
                 "id": "lexicon",
                 "revision": "2.0.0",
@@ -373,6 +423,23 @@ def test_schemas_and_profiles() -> list[dict]:
         invalid_profile = copy.deepcopy(profiles[0])
         invalid_profile["configurationChoices"][setting] = ["not-configuration"]
         assert_rejected(profile_check, invalid_profile, f"{setting} as configuration")
+
+    missing_mapping_source = copy.deepcopy(profiles[0])
+    del missing_mapping_source["directions"][0]["mapping"]["sourcePaths"]
+    assert_rejected(
+        profile_check,
+        missing_mapping_source,
+        "registered mapping without source paths",
+    )
+
+    invented_direction = copy.deepcopy(profiles[0])
+    invented_direction["directions"][0]["mapping"]["id"] = "invented-mapping"
+    invented_direction["directions"][0]["mapping"]["sourcePaths"] = []
+    assert_rejected(
+        profile_check,
+        invented_direction,
+        "invented mapping without resolvable source",
+    )
     return profiles
 
 
@@ -389,6 +456,8 @@ def test_core_and_references(profiles: list[dict]) -> None:
         "explicit approval", "prod", "read-only", "fail closed",
         "ready", "not_ready", "blocked", "configuration", "product_change",
         "test", "deploy", "system", "runtime",
+        "open pull requests", "current workspace", "requiredpaths",
+        "generic repository test suite", "incomplete discovery",
     ):
         if token not in core:
             fail(f"core routing/safety contract missing {token!r}")
@@ -405,6 +474,46 @@ def test_core_and_references(profiles: list[dict]) -> None:
         for invariant in profile["invariants"]:
             if invariant["phase"] not in range(1, 13):
                 fail(f"{profile['id']}: invariant phase outside core state machine")
+
+    decision = next(
+        profile for profile in profiles if profile["id"] == "dsa-filter-decision.json"
+    )
+    repositories = {repository["slug"]: repository for repository in decision["repositories"]}
+    lexicon = repositories.get("Spring-Oaks-Capital-LLC/lexicon")
+    if lexicon is None or lexicon["role"] != "configuration-source":
+        fail("Decision profile must discover mappings from the Lexicon repository")
+    if lexicon["candidateDiscovery"] != (
+        "requested-ref-then-matching-open-pr-then-default-branch"
+    ):
+        fail("Decision profile must discover an unmerged mapping candidate")
+    mappings = {
+        direction["mapping"].get("id"): direction["mapping"]
+        for direction in decision["directions"]
+    }
+    expected_mappings = {
+        "decision-to-lexicon": "1.0.0",
+        "lexicon-to-decision": "1.0.0",
+        "lexicon-to-interprose": "3.0.0",
+    }
+    if {
+        mapping_id: mapping.get("version")
+        for mapping_id, mapping in mappings.items()
+    } != expected_mappings:
+        fail("Decision profile does not declare the three exact mapping identities")
+    evidence = {
+        source["id"]: source for source in decision["validationSources"]
+    }.get("decision-contract-freeze")
+    if evidence is None or evidence.get("manifestSha256") != (
+        "e890fb58a0866b9cd873b3665d6cae12adbcf29d12952e84edb63a9cf1495e5d"
+    ):
+        fail("Decision profile must pin the sanitized contract-freeze manifest")
+    decision_text = json.dumps(decision).lower()
+    for invented in (
+        "dsa-client-events", "filter-decision-graph", "dsa-form-1281",
+        "decision-category", "reason-category", "claydol",
+    ):
+        if invented in decision_text:
+            fail(f"Decision profile contains obsolete or invented term {invented!r}")
 
     required = (
         "operating-contract.md",

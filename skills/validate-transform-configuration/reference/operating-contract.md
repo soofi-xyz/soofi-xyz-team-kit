@@ -10,14 +10,16 @@ The profile carries all domain vocabulary and invariants. The agent and core ski
 
 ## Inputs and identities
 
-Require a profile ID equal to its filename, environment, region, source/target language names, direction, repository refs, and optional existing executions. Resolve:
+Require a profile ID equal to its filename, environment, region, optional requested repository refs, and optional existing executions. Treat the profile's repositories, exact directions, mapping sources, and validation sources as the discovery plan. Resolve:
 
-- repository refs to 40-character commit SHAs;
+- requested refs first; otherwise exactly one matching open pull request when allowed, or the default branch;
+- local checkout reuse only when its remote and current HEAD exactly match the remotely selected commit SHA;
+- every selected repository candidate to a 40-character commit SHA after verifying all required paths;
 - profile, language definition, mapping, SQL, plan, deployment and output artifacts to SHA-256 digests;
-- requested languages to exactly one enabled current version;
-- the direction to exactly one enabled `spark-sql` mapping.
+- every declared language to exactly one version;
+- every required direction to its exact enabled mapping identity and version.
 
-Reject mutable evidence as proof. A branch, tag, `latest` object, undocumented deployment timestamp, or successful status without an immutable binding cannot validate behavior.
+Reject mutable evidence as proof. A branch, pull request, tag, `latest` object, undocumented deployment timestamp, or successful status without an immutable binding cannot validate behavior; a pull request is only a discovery selector and its resolved head SHA is the evidence identity.
 
 ## Configuration/product decision
 

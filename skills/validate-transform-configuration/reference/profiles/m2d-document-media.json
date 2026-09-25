@@ -42,10 +42,43 @@
     { "id": "chain-of-custody-survives-round-trip", "description": "Source, transformed, classified and readback artifacts retain immutable provenance", "phase": 11, "failureCode": "ChainOfCustodyMismatch" }
   ],
   "repositories": [
-    { "slug": "Spring-Oaks-Capital-LLC/m2d-pipeline", "purpose": "M2D preprocessing, classification, run tracking and staging contracts", "revisionPolicy": "commit-sha" },
-    { "slug": "Spring-Oaks-Capital-LLC/seller-media-transfer-workflow", "purpose": "Seller media transfer boundary", "revisionPolicy": "commit-sha" },
-    { "slug": "Spring-Oaks-Capital-LLC/seller-media-upload-workflow", "purpose": "Classified media upload boundary", "revisionPolicy": "commit-sha" },
-    { "slug": "Spring-Oaks-Capital-LLC/transform", "purpose": "Transform runtime and mappings", "revisionPolicy": "commit-sha" }
+    {
+      "slug": "Spring-Oaks-Capital-LLC/m2d-pipeline",
+      "purpose": "M2D preprocessing, classification, run tracking, and staging contracts",
+      "role": "domain-contract",
+      "revisionPolicy": "commit-sha",
+      "candidateDiscovery": "requested-ref-then-default-branch",
+      "requiredPaths": ["package.json", "src"]
+    },
+    {
+      "slug": "Spring-Oaks-Capital-LLC/seller-media-transfer-workflow",
+      "purpose": "Seller media transfer boundary",
+      "role": "domain-contract",
+      "revisionPolicy": "commit-sha",
+      "candidateDiscovery": "requested-ref-then-default-branch",
+      "requiredPaths": ["package.json"]
+    },
+    {
+      "slug": "Spring-Oaks-Capital-LLC/seller-media-upload-workflow",
+      "purpose": "Classified media upload boundary",
+      "role": "domain-contract",
+      "revisionPolicy": "commit-sha",
+      "candidateDiscovery": "requested-ref-then-default-branch",
+      "requiredPaths": ["package.json"]
+    },
+    {
+      "slug": "Spring-Oaks-Capital-LLC/transform",
+      "purpose": "Transform Spark runtime compatibility",
+      "role": "product-runtime",
+      "revisionPolicy": "commit-sha",
+      "candidateDiscovery": "requested-ref-then-default-branch",
+      "requiredPaths": [
+        "package.json",
+        "glue_scripts/transform_with_sql_mappings.py",
+        "glue_scripts/test_transform_with_sql_mappings.py",
+        "scripts/run-spark-tests.sh"
+      ]
+    }
   ],
   "discoveryProbes": [
     { "id": "resolve-m2d-contracts", "kind": "repository", "description": "Locate staging, preprocessing, classification and run-tracker contracts", "readOnly": true },
@@ -55,8 +88,42 @@
     { "id": "read-upload-aggregate", "kind": "consumer", "description": "Read sanitized Interprose or seller reporting reconciliation", "readOnly": true }
   ],
   "directions": [
-    { "id": "media-manifest-to-document-graph", "fromLanguage": "m2d-media-manifest", "toLanguage": "document-media-graph", "required": true, "parityFields": ["content-digest", "media-type", "source-category", "received-time", "provenance-revision"] },
-    { "id": "document-graph-to-media-readback", "fromLanguage": "document-media-graph", "toLanguage": "m2d-media-readback", "required": true, "parityFields": ["content-digest", "media-type", "source-category", "received-time", "provenance-revision"] }
+    {
+      "id": "media-manifest-to-document-graph",
+      "fromLanguage": "m2d-media-manifest",
+      "toLanguage": "document-media-graph",
+      "required": true,
+      "mapping": {
+        "status": "not-registered",
+        "expectedId": "m2d-media-manifest-to-lexicon",
+        "owner": "kecleon",
+        "reason": "No immutable registered Transform mapping source has been identified for this calibration profile."
+      },
+      "parityFields": ["content-digest", "media-type", "source-category", "received-time", "provenance-revision"]
+    },
+    {
+      "id": "document-graph-to-media-readback",
+      "fromLanguage": "document-media-graph",
+      "toLanguage": "m2d-media-readback",
+      "required": true,
+      "mapping": {
+        "status": "not-registered",
+        "expectedId": "lexicon-to-m2d-media-readback",
+        "owner": "kecleon",
+        "reason": "No immutable registered reverse Transform mapping source has been identified for this calibration profile."
+      },
+      "parityFields": ["content-digest", "media-type", "source-category", "received-time", "provenance-revision"]
+    }
+  ],
+  "validationSources": [
+    {
+      "id": "m2d-transform-evidence",
+      "kind": "not-available",
+      "reason": "The profile remains a calibration contract until registered mappings and sanitized immutable fixtures exist.",
+      "owner": "lucario",
+      "appliesTo": ["media-manifest-to-document-graph", "document-graph-to-media-readback"],
+      "required": true
+    }
   ],
   "evidencePolicy": {
     "sensitivity": "restricted",

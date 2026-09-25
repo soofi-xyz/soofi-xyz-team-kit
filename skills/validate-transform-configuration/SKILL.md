@@ -36,6 +36,31 @@ Collect:
 
 Resolve every repository ref to a commit SHA and every configuration/deployment artifact to an immutable digest before evaluation. Branches and `latest` aliases may be discovery inputs but never evidence identities.
 
+## Resolve configuration sources automatically
+
+When the user names a profile or a language pair, do not limit discovery to the current workspace. The profile's `repositories`, `directions`, and `validationSources` are the discovery plan.
+
+For each repository, resolve one candidate in this order:
+
+1. use a user-supplied ref and resolve it to a commit SHA;
+2. for `requested-ref-then-matching-open-pr-then-default-branch`, query open pull requests read-only and retain candidates whose changed files overlap the declared `requiredPaths`;
+3. if exactly one pull request matches, pin its head SHA; if multiple match, return `BLOCKED` with the candidate list;
+4. otherwise resolve the default branch HEAD to a commit SHA.
+
+Use a local checkout only to materialize a candidate after its remote slug and current HEAD exactly match the selected SHA. Never select an arbitrary local feature branch merely because required paths exist. Otherwise inspect by immutable GitHub API reads or create an isolated temporary checkout. Verify every `requiredPaths` entry at the pinned candidate before evaluating mappings. A missing path in one unrelated checkout is not evidence that a configuration is absent.
+
+For every required direction:
+
+1. reject `mapping.status: not-registered` as `BLOCKED` with its declared owner and reason;
+2. locate every `sourcePaths` entry in the mapping's declared repository and pinned revision;
+3. materialize or inspect the declared `artifactPath`;
+4. assert the artifact's `id`, `version`, `from`, `to`, enabled status, input tables, output format, query digests, and `expectedOutputDatasets`;
+5. pin all source files and the materialized mapping artifact by SHA-256.
+
+Do not substitute aliases invented from prose for the profile's exact language, mapping, dataset, or field names. Do not report `NOT_READY` for missing configuration until all declared repositories and candidate rules were exhausted. Incomplete discovery is `BLOCKED`; a contradiction in a resolved candidate is `NOT_READY`.
+
+Execute every required `repository-test` from `validationSources` in its pinned repository using that repository's documented package manager and runtime. Verify every `sanitized-evidence-package` manifest digest before reading bounded fixtures. A generic repository test suite is supporting evidence only; it cannot replace execution of each required directional mapping.
+
 ## Classify the requested change
 
 Record one evidence-backed boundary decision for every proposed change:
@@ -70,6 +95,8 @@ Run the same 12 phases for every profile:
 12. Report, handoff, and verdict
 
 Use only `PASS`, `FAIL`, `BLOCKED`, or `APPROVAL_REQUIRED` for phase/gate status. A required phase passes only when every required invariant in the profile has admissible evidence.
+
+In `synthetic-local` mode, automatically run all read-only work available from the pinned configuration candidate: profile/schema validation, mapping materialization, repository tests, sanitized fixture validation, deployed Spark-version compatibility, each required forward mapping, every declared inverse/cross-source mapping, expected-output comparisons, and negative cases. Report the exact repository SHAs, mapping identities, fixture manifest digest, commands, counts, and mismatches. Do not stop after typecheck/lint/general unit tests when a mapping execution remains untested.
 
 ## Approval protocol
 

@@ -23,9 +23,12 @@ Use the 12 phases and status vocabulary in `skills/validate-transform-configurat
 
 1. Load `skills/validate-transform-configuration/SKILL.md` and all references it requires.
 2. Require one profile that validates against `transform-configuration-profile.schema.json`. Keep domain behavior in that profile; do not add domain-specific branches here or in the core skill.
-3. Challenge ambiguous terms before discovery. Resolve every noun to a repository contract, language, mapping, dataset, endpoint, adapter, consumer, environment, and immutable revision. If two meanings remain plausible, return `BLOCKED`.
-4. Record the target environment and verify account/region before any external operation. Never hardcode a developer-specific AWS profile.
-5. Classify every proposed change as `CONFIGURATION` or `PRODUCT_CHANGE` with evidence. Configuration includes field names, schema shape, formats, normalization rules, mapping expressions, profile inputs, and client/domain vocabulary selections. Executable code paths, business identity schemes, dependency types, representation families/bindings, storage-engine behavior, and failure semantics are product changes. Stop and return `BLOCKED` for unresolved product changes.
+3. Treat the profile's repositories, required paths, exact mapping identities, validation sources, and candidate-discovery policies as an executable discovery plan. Search beyond the current workspace, resolve a single candidate revision, and pin it to a commit SHA before judging availability.
+4. Challenge ambiguous terms before discovery. Resolve every noun to a repository contract, language, mapping, dataset, endpoint, adapter, consumer, environment, and immutable revision. If two meanings remain plausible, return `BLOCKED`.
+5. Record the target environment and verify account/region before any external operation. Never hardcode a developer-specific AWS profile.
+6. Classify every proposed change as `CONFIGURATION` or `PRODUCT_CHANGE` with evidence. Configuration includes field names, schema shape, formats, normalization rules, mapping expressions, profile inputs, and client/domain vocabulary selections. Executable code paths, business identity schemes, dependency types, representation families/bindings, storage-engine behavior, and failure semantics are product changes. Stop and return `BLOCKED` for unresolved product changes.
+
+Never infer a mapping name or field from the user's prose when the selected profile declares an exact registered name. Never conclude that a mapping is absent after searching only the current checkout. Missing or ambiguous discovery evidence is `BLOCKED`; `NOT_READY` requires a contradiction in a resolved immutable candidate.
 
 ## Execution boundary
 
@@ -58,6 +61,7 @@ Produce a report conforming to `validation-report.md` and a versioned reusable T
 
 - Transform product/version/digest, profile ID/digest, and immutable source revisions;
 - source/target language versions, mapping version/digest, Lexicon version, dependencies, Test evidence, and deployed digest when applicable;
+- the candidate-selection trace: repositories searched, required paths, matching pull requests, selected commit SHAs, and rejected candidates;
 - environment, Spark/runtime/deployment evidence without taking ownership from Test, Persist, or Deploy;
 - sanitized dataset schemas, counts, hashes and credential-free locations;
 - graph identity and endpoint closure;
@@ -67,3 +71,4 @@ Produce a report conforming to `validation-report.md` and a versioned reusable T
 - the final `READY`, `NOT_READY`, or `BLOCKED` verdict and exact reason.
 
 Do not fix findings directly. Do not claim validation while any required phase is `FAIL`, `BLOCKED`, or `APPROVAL_REQUIRED`.
+Do not substitute typecheck, lint, synthesis, or generic unit-test success for execution of every required profile direction.

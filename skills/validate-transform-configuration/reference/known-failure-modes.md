@@ -2,6 +2,9 @@
 
 | Failure | Detection | Result and route |
 | --- | --- | --- |
+| Agent searches only the current checkout and declares a cross-repository mapping absent | Resolve every profile repository using required paths and the requested-ref/open-PR/default-branch order | `BLOCKED` until discovery is complete; absence in an unrelated checkout is not `NOT_READY` evidence |
+| Profile aliases replace registered language, mapping, dataset, or field names | Compare the profile's exact identities with the materialized mapping artifact | `FAIL`; correct the profile without inventing semantics |
+| General repository checks pass but no mapping is executed | Require mapping-specific expected-output and negative evidence for every profile direction | `BLOCKED`; typecheck, lint, synthesis, and generic tests are supporting evidence only |
 | Product behavior is hidden as a profile setting | Reject representation family, identity scheme, executable path, dependency type, storage mode, or failure semantics in configuration | `BLOCKED`; hand off to the owning product/builder |
 | Non-deterministic behavior is evaluated only with deterministic equality checks | Require confidence outputs, thresholds, human-review policy, and Test evidence | `BLOCKED`; Test and owning product must supply supported mechanics |
 | Unsupported mapping option is accepted or ignored | Validate format-specific allowlists at publication and resolution | `FAIL`; Kecleon removes or implements the option with fixtures |

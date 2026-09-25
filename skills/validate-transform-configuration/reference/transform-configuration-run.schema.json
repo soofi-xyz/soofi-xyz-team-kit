@@ -8,6 +8,7 @@
     "id",
     "contractVersion",
     "profile",
+    "discoveryTrace",
     "configurationPackage",
     "environment",
     "sensitivity",
@@ -35,9 +36,7 @@
         "id",
         "version",
         "transformProduct",
-        "sourceLanguage",
-        "targetLanguage",
-        "mapping",
+        "directions",
         "lexicon",
         "sourceRevisions",
         "dependencies",
@@ -59,9 +58,32 @@
             "sha256": { "$ref": "#/$defs/sha256" }
           }
         },
-        "sourceLanguage": { "$ref": "#/$defs/digestedIdentity" },
-        "targetLanguage": { "$ref": "#/$defs/digestedIdentity" },
-        "mapping": { "$ref": "#/$defs/digestedIdentity" },
+        "directions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "sourceLanguage",
+              "targetLanguage",
+              "mapping",
+              "evidenceIds"
+            ],
+            "properties": {
+              "id": { "$ref": "#/$defs/kebab" },
+              "sourceLanguage": { "$ref": "#/$defs/digestedIdentity" },
+              "targetLanguage": { "$ref": "#/$defs/digestedIdentity" },
+              "mapping": { "$ref": "#/$defs/digestedIdentity" },
+              "evidenceIds": {
+                "type": "array",
+                "minItems": 1,
+                "items": { "$ref": "#/$defs/kebab" }
+              }
+            }
+          }
+        },
         "lexicon": { "$ref": "#/$defs/digestedIdentity" },
         "sourceRevisions": {
           "type": "array",
@@ -105,6 +127,60 @@
         "marketplaceRegistrationReady": { "type": "boolean" }
       }
     },
+    "discoveryTrace": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "repository",
+          "selectionMethod",
+          "materialization",
+          "selectedCommitSha",
+          "pullRequestNumber",
+          "requiredPathsVerified",
+          "rejectedCandidateCommitShas"
+        ],
+        "properties": {
+          "repository": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+          },
+          "selectionMethod": {
+            "enum": [
+              "requested-ref",
+              "matching-open-pull-request",
+              "default-branch"
+            ]
+          },
+          "materialization": {
+            "enum": [
+              "matching-local-checkout",
+              "isolated-checkout",
+              "github-api"
+            ]
+          },
+          "selectedCommitSha": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "pullRequestNumber": {
+            "type": ["integer", "null"],
+            "minimum": 1
+          },
+          "requiredPathsVerified": { "const": true },
+          "rejectedCandidateCommitShas": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{40}$"
+            }
+          }
+        }
+      }
+    },
     "environment": {
       "type": "object",
       "additionalProperties": false,
@@ -135,7 +211,10 @@
         "additionalProperties": false,
         "required": ["name", "schemaSha256", "rowCount", "contentSha256", "location"],
         "properties": {
-          "name": { "$ref": "#/$defs/kebab" },
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*$"
+          },
           "schemaSha256": { "$ref": "#/$defs/sha256" },
           "rowCount": { "type": "integer", "minimum": 0 },
           "contentSha256": { "$ref": "#/$defs/sha256" },

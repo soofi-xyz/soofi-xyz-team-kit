@@ -17,6 +17,7 @@
     "repositories",
     "discoveryProbes",
     "directions",
+    "validationSources",
     "evidencePolicy",
     "graph",
     "adapters",
@@ -149,11 +150,37 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["slug", "purpose", "revisionPolicy"],
+        "required": [
+          "slug",
+          "purpose",
+          "role",
+          "revisionPolicy",
+          "candidateDiscovery",
+          "requiredPaths"
+        ],
         "properties": {
           "slug": { "type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" },
           "purpose": { "type": "string", "minLength": 3 },
-          "revisionPolicy": { "const": "commit-sha" }
+          "role": {
+            "enum": [
+              "configuration-source",
+              "product-runtime",
+              "domain-contract"
+            ]
+          },
+          "revisionPolicy": { "const": "commit-sha" },
+          "candidateDiscovery": {
+            "enum": [
+              "requested-ref-then-default-branch",
+              "requested-ref-then-matching-open-pr-then-default-branch"
+            ]
+          },
+          "requiredPaths": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/repositoryPath" }
+          }
         }
       }
     },
@@ -178,18 +205,97 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "fromLanguage", "toLanguage", "required"],
+        "required": ["id", "fromLanguage", "toLanguage", "required", "mapping"],
         "properties": {
           "id": { "$ref": "#/$defs/kebab" },
           "fromLanguage": { "$ref": "#/$defs/kebab" },
           "toLanguage": { "$ref": "#/$defs/kebab" },
           "required": { "type": "boolean" },
+          "mapping": { "$ref": "#/$defs/mappingSource" },
           "parityFields": {
             "type": "array",
             "uniqueItems": true,
             "items": { "type": "string", "minLength": 1 }
           }
         }
+      }
+    },
+    "validationSources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "repository",
+              "path",
+              "appliesTo",
+              "required"
+            ],
+            "properties": {
+              "id": { "$ref": "#/$defs/kebab" },
+              "kind": { "const": "repository-test" },
+              "repository": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+              },
+              "path": { "$ref": "#/$defs/repositoryPath" },
+              "appliesTo": { "$ref": "#/$defs/kebabList" },
+              "required": { "const": true }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "location",
+              "manifestSha256",
+              "appliesTo",
+              "required"
+            ],
+            "properties": {
+              "id": { "$ref": "#/$defs/kebab" },
+              "kind": { "const": "sanitized-evidence-package" },
+              "location": {
+                "type": "string",
+                "pattern": "^s3://[^?#@]+/$"
+              },
+              "manifestSha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "manifestVersionId": { "type": "string", "minLength": 1 },
+              "appliesTo": { "$ref": "#/$defs/kebabList" },
+              "required": { "const": true }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "reason",
+              "owner",
+              "appliesTo",
+              "required"
+            ],
+            "properties": {
+              "id": { "$ref": "#/$defs/kebab" },
+              "kind": { "const": "not-available" },
+              "reason": { "type": "string", "minLength": 10 },
+              "owner": { "$ref": "#/$defs/kebab" },
+              "appliesTo": { "$ref": "#/$defs/kebabList" },
+              "required": { "const": true }
+            }
+          }
+        ]
       }
     },
     "evidencePolicy": {
@@ -258,6 +364,75 @@
   },
   "$defs": {
     "kebab": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "kebabList": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/kebab" }
+    },
+    "datasetName": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*$"
+    },
+    "datasetNameList": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/datasetName" }
+    },
+    "repositoryPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+    },
+    "mappingSource": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "id",
+            "version",
+            "repository",
+            "sourcePaths",
+            "artifactPath",
+            "expectedOutputDatasets"
+          ],
+          "properties": {
+            "status": { "const": "registered" },
+            "id": { "$ref": "#/$defs/kebab" },
+            "version": {
+              "type": "string",
+              "pattern": "^\\d+\\.\\d+\\.\\d+$"
+            },
+            "repository": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+            },
+            "sourcePaths": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "$ref": "#/$defs/repositoryPath" }
+            },
+            "artifactPath": { "$ref": "#/$defs/repositoryPath" },
+            "expectedOutputDatasets": { "$ref": "#/$defs/datasetNameList" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "expectedId", "owner", "reason"],
+          "properties": {
+            "status": { "const": "not-registered" },
+            "expectedId": { "$ref": "#/$defs/kebab" },
+            "owner": { "$ref": "#/$defs/kebab" },
+            "reason": { "type": "string", "minLength": 10 }
+          }
+        }
+      ]
+    },
     "stringList": {
       "type": "array",
       "items": { "type": "string", "minLength": 1 }
@@ -267,7 +442,7 @@
       "additionalProperties": false,
       "required": ["name", "role", "required", "schemaSource"],
       "properties": {
-        "name": { "$ref": "#/$defs/kebab" },
+        "name": { "$ref": "#/$defs/datasetName" },
         "role": { "enum": ["source", "target", "intermediate", "readback"] },
         "required": { "type": "boolean" },
         "schemaSource": { "enum": ["lexicon-language-definition", "consumer-contract"] }
