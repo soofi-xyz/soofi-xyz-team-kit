@@ -244,9 +244,9 @@ publication.
 - The CLI reads the lexicon manifest from `https://lexicon.elephant.xyz/api/manifest`
   (`ELEPHANT_SCHEMA_MANIFEST_URL` overrides) and fetches schemas as trustless raw blocks from
   `https://ipfs.filebase.io`, then `https://gateway.pinata.cloud`, then
-  `https://trustless-gateway.link`. Put a faster gateway of your own first with the global
-  `--ipfs-gateway <origins>` option or `ELEPHANT_IPFS_GATEWAYS`; keep that origin out of
-  every shared file.
+  `https://trustless-gateway.link`. The global `--ipfs-gateway <origins>` option (or
+  `ELEPHANT_IPFS_GATEWAYS`) replaces that list; put your own gateway first and keep the
+  public ones after it for fallback. Keep your own origin out of every shared file.
 - Upload environment: `IPFS_API`, `IPFS_API_TOKEN`, `ELEPHANT_CAR_GATEWAY` (origin, no
   trailing slash), or the three `FILEBASE_*` variables. `--timeout` bounds the gateway
   readback, not the upload.

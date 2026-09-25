@@ -77,8 +77,10 @@ Interpret the results for the user:
 - **A 504 on the first try of check 3** is a cold network lookup. Retry once before failing.
 - **Any other failure.** Report the failing check and its HTTP status, and keep the defaults.
 
-Pass the same origin to the Elephant CLI with `--ipfs-gateway "$GW"` (or
-`ELEPHANT_IPFS_GATEWAYS`) so lexicon schemas come from it too.
+Pass the same origin to the Elephant CLI so lexicon schemas come from it too. A custom
+list replaces the CLI's defaults, so keep the public gateways after it:
+`--ipfs-gateway "$GW,https://ipfs.filebase.io,https://gateway.pinata.cloud,https://trustless-gateway.link"`
+(or the same value in `ELEPHANT_IPFS_GATEWAYS`).
 
 ## Plugin cutover
 
