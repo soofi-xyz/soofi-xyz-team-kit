@@ -245,7 +245,7 @@ def run_errors(value: dict) -> list[str]:
     for remediation in remediations:
         for field in (
             "id", "findingCode", "status", "classification", "owner",
-            "locations", "recommendedChange", "regressionEvidence",
+            "locations", "locationEvidenceIds", "recommendedChange", "regressionEvidence",
             "rerunPhases", "rerunDirections",
         ):
             if not remediation.get(field):
@@ -547,6 +547,7 @@ def test_schemas_and_profiles() -> list[dict]:
             "owner": "Kecleon",
             "repository": "example/lexicon",
             "locations": ["mapping.json/inputs", "mapping.json/outputs/0/requiredInputs"],
+            "locationEvidenceIds": ["pinned-generator-source"],
             "recommendedChange": "Declare the edge source vertex dataset in the existing mapping inputs.",
             "regressionEvidence": ["Registered runtime executes with zero dangling endpoints."],
             "rerunPhases": [6, 9, 11, 12],
@@ -658,6 +659,7 @@ def test_core_and_references(profiles: list[dict]) -> None:
         "generic repository test suite", "incomplete discovery",
         "absent system-wide", "declared local spark setup",
         "mapping `configuration` defect", "typed-null materialization",
+        "never guess a path", "generated mapping artifacts",
     ):
         if token not in core:
             fail(f"core routing/safety contract missing {token!r}")

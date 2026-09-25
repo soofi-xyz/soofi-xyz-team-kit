@@ -176,7 +176,9 @@ Classify the remediation:
 - `PRODUCT_CHANGE`: executable runtime paths, schema-reading behavior, identity algorithms, dependency types, representation bindings, storage behavior, or failure semantics.
 - `ACCESS_OR_EVIDENCE`: authentication, authorization, missing immutable fixtures, unavailable deployment provenance, or an approval gate.
 
-Name the owning product/specialist and repository when known. Point to exact files, mappings, datasets, and contracts. State the smallest safe change, the regression case that must be added, the expected evidence, and which phases/directions must rerun. Do not implement a recommendation during an independent validation run.
+Name the owning product/specialist and repository when known. Point only to exact files, mappings, datasets, and contracts verified at the pinned revision, and attach the evidence IDs that prove each location exists. State the smallest safe change, the regression case that must be added, the expected evidence, and which phases/directions must rerun. Do not implement a recommendation during an independent validation run.
+
+Trace generated mapping artifacts back to their checked-in registration or generator source. Never recommend editing a materialized artifact, invent a manifest path, or describe an unverified path as “likely.” If the source or test location cannot be verified, leave it unknown and add an `ACCESS_OR_EVIDENCE` remediation for the missing discovery.
 
 Apply these boundary examples consistently:
 

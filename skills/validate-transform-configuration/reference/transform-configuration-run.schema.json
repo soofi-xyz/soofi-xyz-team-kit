@@ -354,6 +354,7 @@
           "owner",
           "repository",
           "locations",
+          "locationEvidenceIds",
           "recommendedChange",
           "regressionEvidence",
           "rerunPhases",
@@ -388,6 +389,12 @@
             "minItems": 1,
             "uniqueItems": true,
             "items": { "type": "string", "minLength": 1 }
+          },
+          "locationEvidenceIds": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/kebab" }
           },
           "recommendedChange": { "type": "string", "minLength": 10 },
           "regressionEvidence": {

@@ -12,7 +12,7 @@ Render the validated Transform configuration/readiness package into this order:
 8. **Export, hydration and parity** — window/timezone, manifests, counts and field mismatches.
 9. **Approvals and cost** — each DEV operation digest, approval chronology, ceiling, estimate and actual.
 10. **Failures and blockers** — safe failure code, phase, effect and evidence.
-11. **Recommended remediation** — one entry per failure/blocker: `CONFIGURATION`, `PRODUCT_CHANGE`, or `ACCESS_OR_EVIDENCE`; owner/repository; exact location; smallest recommended change; regression evidence; phases/directions to rerun.
+11. **Recommended remediation** — one entry per failure/blocker: `CONFIGURATION`, `PRODUCT_CHANGE`, or `ACCESS_OR_EVIDENCE`; owner/repository; exact pinned and evidence-backed source location; smallest recommended change; regression evidence; phases/directions to rerun.
 12. **Specialist handoffs** — owner, exact failed contract, pinned evidence and required proof for re-validation.
 13. **Limitations** — untested scale tiers, unavailable evidence and expected losses.
 
@@ -27,3 +27,4 @@ Render the validated Transform configuration/readiness package into this order:
 - Do not hide failed gates behind an overall narrative; any required `FAIL` means `NOT_READY`.
 - Do not classify by repository alone. Mapping declarations stored in Lexicon remain Transform configuration; executable reader/schema/failure behavior remains a Transform product change.
 - Recommend fixes without editing code, weakening validation, or claiming the recommendation has passed.
+- Never report “likely” paths. Trace generated artifacts to checked-in source and provide location evidence, or state that source discovery remains unresolved.

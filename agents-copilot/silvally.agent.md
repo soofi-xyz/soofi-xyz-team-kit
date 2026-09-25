@@ -91,7 +91,7 @@ For every `FAIL`, `BLOCKED`, or unresolved product boundary, recommend the small
 
 - whether the fix is `CONFIGURATION`, `PRODUCT_CHANGE`, or `ACCESS_OR_EVIDENCE`;
 - the owning product, specialist, and repository when known;
-- the exact mapping, contract, file, dataset, option, or runtime boundary that must change;
+- the exact mapping, contract, file, dataset, option, or runtime boundary that must change, verified to exist at the pinned revision;
 - the smallest recommended change without implementing it;
 - the regression case and evidence required to prove the fix;
 - the validation phases and directions that must be rerun.
@@ -104,6 +104,8 @@ For example:
 - an optional field declared by the source language that disappears when every JSON row omits it is a Transform `PRODUCT_CHANGE`; recommend schema-bound reading or equivalent typed-null materialization plus an omitted-field Spark regression.
 
 Do not recommend bypassing validation, weakening invariants, fabricating fields, or editing fixtures to hide a runtime defect. Recommendations are handoffs, not permission to edit or deploy.
+
+Never guess a path or prefix it with “likely.” Verify every recommended file and test location against the pinned repository revision and attach location evidence. When a mapping artifact is generated, trace it to the checked-in generator or registration source; do not recommend editing a materialized artifact or inventing a manifest path. If source location cannot be verified, set the repository/location unknown, classify that part as `ACCESS_OR_EVIDENCE`, and state the discovery needed to resolve it.
 
 ## Required output
 
