@@ -761,7 +761,7 @@ def test_schemas_and_profiles() -> list[dict]:
         invalid_profile["configurationChoices"][setting] = ["not-configuration"]
         assert_rejected(profile_check, invalid_profile, f"{setting} as configuration")
 
-    missing_mapping_source = copy.deepcopy(profiles[0])
+    missing_mapping_source = copy.deepcopy(profiles[1])
     del missing_mapping_source["directions"][0]["mapping"]["sourcePaths"]
     assert_rejected(
         profile_check,
@@ -769,7 +769,7 @@ def test_schemas_and_profiles() -> list[dict]:
         "registered mapping without source paths",
     )
 
-    invented_direction = copy.deepcopy(profiles[0])
+    invented_direction = copy.deepcopy(profiles[1])
     invented_direction["directions"][0]["mapping"]["id"] = "invented-mapping"
     invented_direction["directions"][0]["mapping"]["sourcePaths"] = []
     assert_rejected(
@@ -858,19 +858,24 @@ def test_core_and_references(profiles: list[dict]) -> None:
     } - set(transform["requiredPaths"]):
         fail("Decision profile must declare the pinned Transform Spark harness")
     mappings = {
-        direction["mapping"].get("id"): direction["mapping"]
+        direction["id"]: direction["mapping"]
         for direction in decision["directions"]
     }
     expected_mappings = {
-        "decision-to-lexicon": "1.0.0",
-        "lexicon-to-decision": "1.0.0",
-        "lexicon-to-interprose": "3.0.0",
+        "decision-to-lexicon",
+        "lexicon-to-decision",
+        "lexicon-to-interprose",
     }
-    if {
-        mapping_id: mapping.get("version")
+    if set(mappings) != expected_mappings or any(
+        mapping.get("status") != "not-registered"
+        or mapping.get("expectedId") != mapping_id
+        or mapping.get("owner") != "kecleon"
+        or "removed rule_execution" not in mapping.get("reason", "")
         for mapping_id, mapping in mappings.items()
-    } != expected_mappings:
-        fail("Decision profile does not declare the three exact mapping identities")
+    ):
+        fail("Decision profile must block the three stale mapping registrations")
+    if "rule_execution" in json.dumps(decision["datasets"] + decision["invariants"]):
+        fail("Decision profile retains a removed rule_execution concept")
     evidence = {
         source["id"]: source for source in decision["validationSources"]
     }.get("decision-contract-freeze")
