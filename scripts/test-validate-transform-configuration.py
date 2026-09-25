@@ -660,6 +660,8 @@ def test_core_and_references(profiles: list[dict]) -> None:
         "absent system-wide", "declared local spark setup",
         "mapping `configuration` defect", "typed-null materialization",
         "never guess a path", "generated mapping artifacts",
+        "name every contradicted field", "vertex-rule-execution",
+        "already implemented but not yet revalidated",
     ):
         if token not in core:
             fail(f"core routing/safety contract missing {token!r}")
