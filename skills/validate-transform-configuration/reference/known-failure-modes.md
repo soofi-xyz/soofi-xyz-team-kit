@@ -2,6 +2,8 @@
 
 | Failure | Detection | Result and route |
 | --- | --- | --- |
+| Finding is reported without an actionable recommendation | Require classification, owner, exact location, minimal change, regression evidence, and rerun scope | Keep report incomplete until every failure/blocker has one remediation record |
+| Mapping configuration defect is mislabeled a product change because mappings are stored in Lexicon | Determine whether the repair changes only declared mapping inputs/outputs/SQL/options or changes executable runtime behavior | Mapping-only repair is `CONFIGURATION`; route implementation to Kecleon without claiming a Transform runtime change |
 | Novice request is rejected because it lacks an internal profile ID | Start generic intake, discover safe context, and create a local draft when no unique profile matches | `NEEDS_INPUT`; ask one focused plain-language question without issuing a readiness verdict |
 | Business-language similarity selects a profile without repository, mapping, path, or schema evidence | Require exactly one compatible candidate with at least one hard signal | Keep intake open; never select or test an inferred profile |
 | Tests or readiness verdict begin while material intake facts are missing | Validate the local draft and require `CONTEXT_COMPLETE` plus `promotionEligible` | Stop before the 12 phases; no Test invocation or DEV approval request |

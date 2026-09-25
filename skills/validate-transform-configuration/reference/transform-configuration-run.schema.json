@@ -23,6 +23,7 @@
     "approvals",
     "cost",
     "failures",
+    "remediations",
     "verdict"
   ],
   "properties": {
@@ -340,6 +341,79 @@
         }
       }
     },
+    "remediations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "findingCode",
+          "status",
+          "classification",
+          "owner",
+          "repository",
+          "locations",
+          "recommendedChange",
+          "regressionEvidence",
+          "rerunPhases",
+          "rerunDirections"
+        ],
+        "properties": {
+          "id": { "$ref": "#/$defs/kebab" },
+          "findingCode": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Za-z0-9]+$"
+          },
+          "status": { "enum": ["FAIL", "BLOCKED", "APPROVAL_REQUIRED"] },
+          "classification": {
+            "enum": [
+              "CONFIGURATION",
+              "PRODUCT_CHANGE",
+              "ACCESS_OR_EVIDENCE"
+            ]
+          },
+          "owner": { "type": "string", "minLength": 2 },
+          "repository": {
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+              },
+              { "type": "null" }
+            ]
+          },
+          "locations": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "recommendedChange": { "type": "string", "minLength": 10 },
+          "regressionEvidence": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 3 }
+          },
+          "rerunPhases": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            }
+          },
+          "rerunDirections": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/kebab" }
+          }
+        }
+      }
+    },
     "verdict": { "enum": ["READY", "NOT_READY", "BLOCKED"] }
   },
   "allOf": [
@@ -364,6 +438,18 @@
               "unresolvedProductChangeHandoffs": { "maxItems": 0 }
             }
           }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "verdict": { "enum": ["NOT_READY", "BLOCKED"] }
+        }
+      },
+      "then": {
+        "properties": {
+          "remediations": { "minItems": 1 }
         }
       }
     }

@@ -166,6 +166,23 @@ Validation remains separate from implementation. End a failed run with findings 
 - System composition remains outside this product-specific scope.
 - Marketplace registration is package metadata readiness, not ownership of Marketplace or Deploy.
 
+## Recommend remediation
+
+Every failed or blocked gate must produce a remediation record. Base it on the observed invariant and pinned implementation evidence, not on repository ownership alone.
+
+Classify the remediation:
+
+- `CONFIGURATION`: mapping registrations, declared inputs/outputs, required inputs, SQL expressions, fields, formats, normalization, options, or profile values within existing product behavior.
+- `PRODUCT_CHANGE`: executable runtime paths, schema-reading behavior, identity algorithms, dependency types, representation bindings, storage behavior, or failure semantics.
+- `ACCESS_OR_EVIDENCE`: authentication, authorization, missing immutable fixtures, unavailable deployment provenance, or an approval gate.
+
+Name the owning product/specialist and repository when known. Point to exact files, mappings, datasets, and contracts. State the smallest safe change, the regression case that must be added, the expected evidence, and which phases/directions must rerun. Do not implement a recommendation during an independent validation run.
+
+Apply these boundary examples consistently:
+
+- When graph-edge metadata names a source or target vertex dataset but a mapping omits that dataset from its inputs or an output's `requiredInputs`, classify the repair as `CONFIGURATION`. Recommend declaring the endpoint dataset and proving registered-runtime endpoint closure.
+- When a language declares an optional JSON property but Transform drops the column when every row omits the key, classify the repair as `PRODUCT_CHANGE`. Recommend schema-bound reading or equivalent typed-null materialization and a Spark regression where the property is absent from every row.
+
 ## Stop and verdict rules
 
 - `FAIL` any contradicted invariant, mutable evidence used as proof, unsupported option, schema mismatch, endpoint gap, hash mismatch, deployment drift, or parity breach.
@@ -189,6 +206,7 @@ Validate the final artifact against `transform-configuration-run.schema.json`, t
 - PROD has no writes;
 - specialist routing is explicit;
 - every proposed change is classified and unresolved product changes are blocked;
+- every failure, blocker, and approval gate has one actionable remediation with correct boundary classification and rerun evidence;
 - transform classification has the required deterministic or non-deterministic evidence;
 - the reusable package identifies product/languages/mapping/Lexicon/dependencies/Test evidence/deployment and Marketplace-registration readiness;
 - the artifact and human report agree on statuses and verdict.

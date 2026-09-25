@@ -232,13 +232,28 @@ def run_errors(value: dict) -> list[str]:
         "configurationPackage", "environment",
         "sensitivity", "datasets", "graph", "runtime",
         "persistCanary", "exporterHydration", "roundTrip", "phases", "approvals",
-        "boundaryDecisions", "cost", "failures", "verdict",
+        "boundaryDecisions", "cost", "failures", "remediations", "verdict",
     }
     errors = [f"missing {field}" for field in sorted(required - value.keys())]
     if value.get("contractVersion") != 1:
         errors.append("contractVersion")
     if value.get("verdict") not in {"READY", "NOT_READY", "BLOCKED"}:
         errors.append("verdict")
+    remediations = value.get("remediations", [])
+    if value.get("verdict") in {"NOT_READY", "BLOCKED"} and not remediations:
+        errors.append("non-ready verdict without remediation")
+    for remediation in remediations:
+        for field in (
+            "id", "findingCode", "status", "classification", "owner",
+            "locations", "recommendedChange", "regressionEvidence",
+            "rerunPhases", "rerunDirections",
+        ):
+            if not remediation.get(field):
+                errors.append(f"remediation {field}")
+        if remediation.get("classification") not in {
+            "CONFIGURATION", "PRODUCT_CHANGE", "ACCESS_OR_EVIDENCE",
+        }:
+            errors.append("remediation classification")
     package = value.get("configurationPackage", {})
     for repository in package.get("sourceRevisions", []):
         if not re.fullmatch(r"[a-f0-9]{40}", repository.get("commitSha", "")):
@@ -455,6 +470,7 @@ def valid_run() -> dict:
         "approvals": [],
         "cost": {"ceilingUsd": 0, "estimatedUsd": 0, "actualUsd": 0},
         "failures": [],
+        "remediations": [],
         "verdict": "READY",
     }
 
@@ -511,6 +527,41 @@ def test_schemas_and_profiles() -> list[dict]:
 
     run = valid_run()
     assert_valid(run_check, run, "valid synthetic run")
+
+    not_ready = copy.deepcopy(run)
+    not_ready["verdict"] = "NOT_READY"
+    not_ready["phases"][5]["status"] = "FAIL"
+    not_ready["failures"] = [
+        {
+            "phase": 6,
+            "code": "FormMappingEndpointIncomplete",
+            "message": "A declared edge endpoint dataset is absent from mapping inputs.",
+        }
+    ]
+    not_ready["remediations"] = [
+        {
+            "id": "declare-form-source-endpoint",
+            "findingCode": "FormMappingEndpointIncomplete",
+            "status": "FAIL",
+            "classification": "CONFIGURATION",
+            "owner": "Kecleon",
+            "repository": "example/lexicon",
+            "locations": ["mapping.json/inputs", "mapping.json/outputs/0/requiredInputs"],
+            "recommendedChange": "Declare the edge source vertex dataset in the existing mapping inputs.",
+            "regressionEvidence": ["Registered runtime executes with zero dangling endpoints."],
+            "rerunPhases": [6, 9, 11, 12],
+            "rerunDirections": ["lexicon-to-interprose"],
+        }
+    ]
+    assert_valid(run_check, not_ready, "valid not-ready run with remediation")
+
+    no_remediation = copy.deepcopy(not_ready)
+    no_remediation["remediations"] = []
+    assert_rejected(
+        run_check,
+        no_remediation,
+        "not-ready verdict without remediation",
+    )
 
     mutable = copy.deepcopy(run)
     mutable["configurationPackage"]["sourceRevisions"][0]["commitSha"] = "main"
@@ -606,6 +657,7 @@ def test_core_and_references(profiles: list[dict]) -> None:
         "open pull requests", "current workspace", "requiredpaths",
         "generic repository test suite", "incomplete discovery",
         "absent system-wide", "declared local spark setup",
+        "mapping `configuration` defect", "typed-null materialization",
     ):
         if token not in core:
             fail(f"core routing/safety contract missing {token!r}")

@@ -85,6 +85,26 @@ Incomplete intake may create only a local sanitized draft. Do not run mappings, 
 
 Delegation is a handoff, not permission to mutate. Keep the validation run independent and re-evaluate only new immutable evidence.
 
+## Remediation guidance
+
+For every `FAIL`, `BLOCKED`, or unresolved product boundary, recommend the smallest evidence-backed fix. Include:
+
+- whether the fix is `CONFIGURATION`, `PRODUCT_CHANGE`, or `ACCESS_OR_EVIDENCE`;
+- the owning product, specialist, and repository when known;
+- the exact mapping, contract, file, dataset, option, or runtime boundary that must change;
+- the smallest recommended change without implementing it;
+- the regression case and evidence required to prove the fix;
+- the validation phases and directions that must be rerun.
+
+Classify against the actual boundary, not the repository containing the file. Correcting a mapping's declared inputs, required inputs, SQL, fields, formats, or options within an existing Transform contract is `CONFIGURATION`, even when the mapping is stored in Lexicon. Changing how Transform reads schemas, materializes absent optional fields, validates graphs, executes SQL, or handles failures is `PRODUCT_CHANGE`.
+
+For example:
+
+- an edge input whose declared source or target vertex dataset is missing from the same mapping's inputs is a mapping `CONFIGURATION` defect; recommend adding that endpoint dataset and a mapping-contract regression;
+- an optional field declared by the source language that disappears when every JSON row omits it is a Transform `PRODUCT_CHANGE`; recommend schema-bound reading or equivalent typed-null materialization plus an omitted-field Spark regression.
+
+Do not recommend bypassing validation, weakening invariants, fabricating fields, or editing fixtures to hide a runtime defect. Recommendations are handoffs, not permission to edit or deploy.
+
 ## Required output
 
 Produce a report conforming to `validation-report.md` and a versioned reusable Transform configuration/readiness package conforming to `transform-configuration-run.schema.json`. Include:
@@ -97,6 +117,7 @@ Produce a report conforming to `validation-report.md` and a versioned reusable T
 - graph identity and endpoint closure;
 - Persist canary, exporter/hydration, reverse mapping and round-trip parity evidence when required;
 - every phase status, approval, cost, failure, limitation, and specialist handoff;
+- one concrete remediation for every failed or blocked finding, with classification, owner, location, minimal change, and rerun evidence;
 - every boundary decision, unresolved product-change handoff, and Marketplace-registration readiness;
 - the final `READY`, `NOT_READY`, or `BLOCKED` verdict and exact reason.
 
