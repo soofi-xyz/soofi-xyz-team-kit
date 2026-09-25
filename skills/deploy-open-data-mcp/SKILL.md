@@ -26,12 +26,59 @@ Defaults:
 
 ```text
 ATLAS_IPNS=k51qzi5uqu5dhzmj1jtn06idud425ozwdjjjn4eu7q01g2t814h7rw4du0nd04
-ATLAS_GATEWAYS=https://ipfs.filebase.io,https://ipfs.io,https://dweb.link,https://w3s.link
+ATLAS_GATEWAYS=https://ipfs.filebase.io,https://trustless-gateway.link
 ```
+
+ipfs.io, dweb.link and w3s.link are not usable: they refuse plain requests and only
+redirect trustless ones to `trustless-gateway.link`.
 
 The local server stores its snapshot in a default file under the operator's home
 directory; do not set a database URL for local use. Do not configure county maps, catalog
 URLs, specialized dataset pointers, or per-county publication variables.
+
+## Ask for the user's IPFS gateway
+
+Before starting or configuring the server, ask the user once:
+
+> Do you have your own IPFS gateway to use for Elephant data (for example a dedicated
+> Filebase gateway)? If so, give its origin, like `https://<name>.<provider-domain>`.
+
+- Treat the answer as private. Put it only in the user's own MCP client config or shell
+  environment. Never write it into a repository file, commit message, pull request, issue,
+  or log you share.
+- If the user has none, keep the public defaults above and skip to the next section.
+- Otherwise run the smoke test below, and use the gateway only if every check passes.
+
+Smoke test, with `GW` set to the user's origin (no trailing slash):
+
+```bash
+IPNS=k51qzi5uqu5dhzmj1jtn06idud425ozwdjjjn4eu7q01g2t814h7rw4du0nd04
+# 1. Resolves the Atlas index: 200 and an index with "version": 1
+curl -sf -m 60 -H 'Accept: application/vnd.ipld.raw' "$GW/ipns/$IPNS?format=raw" -o index.json \
+  && python3 -c 'import json;i=json.load(open("index.json"));assert i["version"]==1;print(len(i["counties"]),"counties")'
+# 2. Serves a published archive as a trustless CAR (skip when the index lists no county)
+CID=$(python3 -c 'import json;c=json.load(open("index.json"))["counties"];print(next(iter(c[0]["groups"].values()))["cid"] if c else "")')
+[ -z "$CID" ] || curl -sf -m 120 "$GW/ipfs/$CID?format=car" -o archive.car && ls -l archive.car
+# 3. Retrieves content it does not host: a lexicon schema by CID, bytes hashed against the CID
+S=$(curl -sf -m 30 https://lexicon.elephant.xyz/api/manifest | python3 -c 'import json,sys;print(next(iter(json.load(sys.stdin).values()))["ipfsCid"])')
+curl -sf -m 60 -H 'Accept: application/vnd.ipld.raw' "$GW/ipfs/$S?format=raw" -o schema.bin \
+  && python3 -c 'import hashlib,base64,sys;d=hashlib.sha256(open("schema.bin","rb").read()).digest();c="b"+base64.b32encode(bytes([1,0x55,0x12,0x20])+d).decode().lower().rstrip("=");assert c==sys.argv[1],c;print("schema verified")' "$S"
+# 4. No rate limiting: ten requests in a row, all 200
+for i in $(seq 10); do curl -s -o /dev/null -w '%{http_code} ' -m 30 "$GW/ipfs/$S?format=raw"; done; echo
+```
+
+Interpret the results for the user:
+
+- **All pass.** Configure `ATLAS_GATEWAYS=$GW,https://ipfs.filebase.io,https://trustless-gateway.link`
+  so the user's gateway is tried first and the public ones remain as fallback.
+- **Check 3 returns `404 CONTENT_NOT_HOSTED`.** The gateway is in private mode and serves
+  only content pinned in its own account. It cannot fetch Atlas data it does not host;
+  tell the user to switch it to public mode or keep the defaults.
+- **A 504 on the first try of check 3** is a cold network lookup. Retry once before failing.
+- **Any other failure.** Report the failing check and its HTTP status, and keep the defaults.
+
+Pass the same origin to the Elephant CLI with `--ipfs-gateway "$GW"` (or
+`ELEPHANT_IPFS_GATEWAYS`) so lexicon schemas come from it too.
 
 ## Plugin cutover
 
