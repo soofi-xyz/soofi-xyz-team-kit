@@ -5,7 +5,7 @@ description: "Validate a profile-declared Transform language and directional map
 
 # Validate Transform Configuration
 
-Use this skill as the Transform Configuration Agent's operating procedure for Operational Architects. Configure and validate a reusable Transform product. Do not turn the agent into a runtime, product, System, Test, storage, model, lexicon, or deployment owner.
+Use this skill as the Transform Configuration Validation Agent's operating procedure. Investigate and validate reusable Transform configuration without turning the agent into a runtime, product, System, Test, storage, model, lexicon, or deployment owner.
 
 ## Load first
 

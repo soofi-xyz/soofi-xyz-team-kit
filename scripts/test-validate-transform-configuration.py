@@ -584,6 +584,16 @@ def test_core_and_references(profiles: list[dict]) -> None:
     agent = read(AGENT)
     skill = read(SKILL / "SKILL.md")
     core = (agent + "\n" + skill).lower()
+    operating_contract = read(REFERENCE / "operating-contract.md")
+    naming_corpus = agent + "\n" + skill + "\n" + operating_contract
+    if "Transform Configuration Validation Agent" not in naming_corpus:
+        fail("Silvally validation-agent role is missing")
+    for obsolete_role in (
+        "Transform Configuration Agent",
+        "Operational Architect",
+    ):
+        if obsolete_role in naming_corpus:
+            fail(f"Silvally retains obsolete role wording {obsolete_role!r}")
     for term in DOMAIN_BRANCH_TERMS:
         if term in core:
             fail(f"core must not branch on profile {term}")
