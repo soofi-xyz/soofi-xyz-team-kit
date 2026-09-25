@@ -9,7 +9,7 @@
       ],
       "env": {
         "ATLAS_IPNS": "k51qzi5uqu5dhzmj1jtn06idud425ozwdjjjn4eu7q01g2t814h7rw4du0nd04",
-        "ATLAS_GATEWAYS": "https://ipfs.filebase.io,https://ipfs.io,https://dweb.link,https://w3s.link"
+        "ATLAS_GATEWAYS": "https://ipfs.filebase.io,https://trustless-gateway.link"
       }
     }
   }

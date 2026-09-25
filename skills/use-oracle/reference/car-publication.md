@@ -242,10 +242,11 @@ publication.
   `--output-car`, CAR upload, CAR validation, `export-tables`, and its `--atlas-page` option (PRs 244 through 251). Record the
   installed commit in the run evidence.
 - The CLI reads the lexicon manifest from `https://lexicon.elephant.xyz/api/manifest`
-  (`ELEPHANT_SCHEMA_MANIFEST_URL` overrides) and fetches schemas from
-  `https://ipfs.filebase.io` first, then Pinata's gateway, then the public gateways
-  (`ELEPHANT_IPFS_GATEWAYS` overrides, comma-separated origins). The ipfs.io family
-  rate-limits shared runners; a local kubo gateway in that list is the most robust option.
+  (`ELEPHANT_SCHEMA_MANIFEST_URL` overrides) and fetches schemas as trustless raw blocks from
+  `https://ipfs.filebase.io`, then `https://gateway.pinata.cloud`, then
+  `https://trustless-gateway.link`. The global `--ipfs-gateway <origins>` option (or
+  `ELEPHANT_IPFS_GATEWAYS`) replaces that list; put your own gateway first and keep the
+  public ones after it for fallback. Keep your own origin out of every shared file.
 - Upload environment: `IPFS_API`, `IPFS_API_TOKEN`, `ELEPHANT_CAR_GATEWAY` (origin, no
   trailing slash), or the three `FILEBASE_*` variables. `--timeout` bounds the gateway
   readback, not the upload.

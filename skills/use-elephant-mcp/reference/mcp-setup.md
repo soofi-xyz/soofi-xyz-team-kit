@@ -25,8 +25,12 @@ The example config launches `npx -y @elephant-xyz/mcp@2 mcp` with only:
 
 ```text
 ATLAS_IPNS=k51qzi5uqu5dhzmj1jtn06idud425ozwdjjjn4eu7q01g2t814h7rw4du0nd04
-ATLAS_GATEWAYS=https://ipfs.filebase.io,https://ipfs.io,https://dweb.link,https://w3s.link
+ATLAS_GATEWAYS=https://ipfs.filebase.io,https://trustless-gateway.link
 ```
+
+To use the user's own IPFS gateway, follow "Ask for the user's IPFS gateway" in
+`deploy-open-data-mcp`: ask for it, smoke-test it, and put it first in `ATLAS_GATEWAYS`
+only when every check passes. Keep it out of every shared file.
 
 The server stores its synchronized snapshot in a default file under the operator's home
 directory; do not set a database URL for local use. Do not add county maps, catalog URLs,
