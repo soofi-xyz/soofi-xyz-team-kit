@@ -184,6 +184,14 @@ def profile_errors(value: dict) -> list[str]:
             errors.append("source window source families")
         if not source_window.get("requiredCoverageSignals"):
             errors.append("source window coverage signals")
+    concept_policy = value.get("lexiconConceptPolicy")
+    if concept_policy is not None and concept_policy != {
+        "currentDefinitionRequired": True,
+        "rejectAbsent": True,
+        "rejectDeprecated": True,
+        "reintroductionRequiresModelingApproval": True,
+    }:
+        errors.append("unsafe lexicon concept policy")
     return errors
 
 
@@ -769,6 +777,14 @@ def test_schemas_and_profiles() -> list[dict]:
         invented_direction,
         "invented mapping without resolvable source",
     )
+
+    unsafe_concept_policy = copy.deepcopy(profiles[0])
+    unsafe_concept_policy["lexiconConceptPolicy"]["rejectAbsent"] = False
+    assert_rejected(
+        profile_check,
+        unsafe_concept_policy,
+        "profile permitting absent Lexicon concepts",
+    )
     return profiles
 
 
@@ -804,6 +820,9 @@ def test_core_and_references(profiles: list[dict]) -> None:
         "already implemented but not yet revalidated",
         "complete utc-day", "day-or-range confirmation",
         "never choose random rows", "sourcewindowselection",
+        "removedlexiconconcept", "pinned current lexicon",
+        "absent or deprecated", "reintroduction",
+        "explicit pinned modeling approval",
     ):
         if token not in core:
             fail(f"core routing/safety contract missing {token!r}")
@@ -876,6 +895,13 @@ def test_core_and_references(profiles: list[dict]) -> None:
         }
     ):
         fail("Decision profile must require a complete PROD-derived UTC day")
+    if decision.get("lexiconConceptPolicy") != {
+        "currentDefinitionRequired": True,
+        "rejectAbsent": True,
+        "rejectDeprecated": True,
+        "reintroductionRequiresModelingApproval": True,
+    }:
+        fail("Decision profile must reject removed/deprecated Lexicon concepts")
     decision_text = json.dumps(decision).lower()
     for invented in (
         "dsa-client-events", "filter-decision-graph", "dsa-form-1281",

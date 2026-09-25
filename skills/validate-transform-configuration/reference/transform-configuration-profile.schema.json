@@ -336,6 +336,22 @@
       "minItems": 1,
       "items": { "$ref": "#/$defs/boundary" }
     },
+    "lexiconConceptPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "currentDefinitionRequired",
+        "rejectAbsent",
+        "rejectDeprecated",
+        "reintroductionRequiresModelingApproval"
+      ],
+      "properties": {
+        "currentDefinitionRequired": { "const": true },
+        "rejectAbsent": { "const": true },
+        "rejectDeprecated": { "const": true },
+        "reintroductionRequiresModelingApproval": { "const": true }
+      }
+    },
     "sourceWindowPolicy": {
       "type": "object",
       "additionalProperties": false,

@@ -96,6 +96,16 @@ For every required direction:
 4. assert the artifact's `id`, `version`, `from`, `to`, enabled status, input tables, output format, query digests, and `expectedOutputDatasets`;
 5. pin all source files and the materialized mapping artifact by SHA-256.
 
+For every graph input and output, resolve its vertex or edge label against the
+profile-declared pinned current Lexicon definition. `lexiconConceptPolicy`
+requires active concepts: an absent or deprecated label, an endpoint that
+resolves to an absent/deprecated vertex, or a candidate that reintroduces a
+concept proven removed from current Lexicon is a phase-5/6 `FAIL`. Return
+`RemovedLexiconConcept` with the exact label, removal/current-definition
+evidence and modeling-owner handoff. Do not treat a same-PR schema addition as
+proof that reintroduction is valid; explicit pinned modeling approval must exist
+when the current Lexicon or its history removed the concept.
+
 Do not substitute aliases invented from prose for the profile's exact language, mapping, dataset, or field names. Do not report `NOT_READY` for missing configuration until all declared repositories and candidate rules were exhausted. Incomplete discovery is `BLOCKED`; a contradiction in a resolved candidate is `NOT_READY`.
 
 Execute every required `repository-test` from `validationSources` in its pinned repository using that repository's documented package manager and runtime. Verify every `sanitized-evidence-package` manifest digest before reading bounded fixtures. A generic repository test suite is supporting evidence only; it cannot replace execution of each required directional mapping.

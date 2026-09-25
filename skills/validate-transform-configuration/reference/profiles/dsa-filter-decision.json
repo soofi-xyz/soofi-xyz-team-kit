@@ -201,6 +201,12 @@
     { "name": "filter-runtime", "owner": "gallade", "contract": "Consumes registered facts and produces durable traceable outcomes" },
     { "name": "partner-form-delivery", "owner": "lapras", "contract": "Delivers product-produced form output through the registered external adapter" }
   ],
+  "lexiconConceptPolicy": {
+    "currentDefinitionRequired": true,
+    "rejectAbsent": true,
+    "rejectDeprecated": true,
+    "reintroductionRequiresModelingApproval": true
+  },
   "sourceWindowPolicy": {
     "kind": "prod-derived-complete-utc-days",
     "minimumCompleteUtcDays": 1,

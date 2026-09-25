@@ -47,6 +47,14 @@ Classify each proposal with evidence:
 
 An unresolved `PRODUCT_CHANGE` requires a named owner handoff and blocks readiness. Never encode it as a profile setting.
 
+Graph mappings must resolve every label and endpoint against the
+profile-declared pinned current Lexicon. When `lexiconConceptPolicy` applies,
+absent or deprecated concepts fail validation. A candidate cannot legitimize a
+concept merely by adding it in the same pull request when pinned current
+Lexicon or immutable history proves that the concept was removed; reintroduction
+requires explicit pinned modeling approval. Silvally reports and routes this
+contradiction but does not choose or implement a replacement model.
+
 Profiles classify mappings as deterministic or non-deterministic. Deterministic mappings require versioned expected-output and negative tests. Non-deterministic mappings require confidence output, thresholds, human review, and evidence; unsupported mechanics block readiness.
 
 ## State model
