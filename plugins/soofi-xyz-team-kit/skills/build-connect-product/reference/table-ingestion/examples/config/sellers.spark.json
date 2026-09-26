@@ -1,0 +1,23 @@
+{
+  "type": "struct",
+  "fields": [
+    {
+      "name": "seller_id",
+      "type": "string",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "seller_name",
+      "type": "string",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "nullable": false,
+      "metadata": {}
+    }
+  ]
+}

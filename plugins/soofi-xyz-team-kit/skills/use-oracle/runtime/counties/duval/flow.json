@@ -1,0 +1,18 @@
+{
+  "requests": [
+    {
+      "key": "CojDetail",
+      "request": {
+        "method": "GET",
+        "url": "https://paopropertysearch.coj.net/Basic/Detail.aspx",
+        "headers": {
+          "User-Agent": "Mozilla/5.0 (compatible; ElephantDuvalPilot/1.0; +https://github.com/elephant-xyz/oracle-node)",
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "multiValueQueryString": {
+          "RE": ["{{=it.request_identifier}}"]
+        }
+      }
+    }
+  ]
+}

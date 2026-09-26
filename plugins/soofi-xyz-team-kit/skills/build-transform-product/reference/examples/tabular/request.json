@@ -1,0 +1,15 @@
+{
+  "contractVersion": 2,
+  "from": "crm",
+  "to": "warehouse",
+  "inputs": [
+    {
+      "table": "customers",
+      "s3Uri": "s3://transform-local/source/customers.jsonl"
+    }
+  ],
+  "output": {
+    "s3Prefix": "s3://transform-local/results/demo"
+  },
+  "costCeilingUsd": 10
+}

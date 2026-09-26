@@ -1,0 +1,17 @@
+{
+  "type": "struct",
+  "fields": [
+    {
+      "name": "organization_id",
+      "type": "string",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "name",
+      "type": "string",
+      "nullable": false,
+      "metadata": {}
+    }
+  ]
+}

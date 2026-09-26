@@ -1,20 +1,25 @@
 #!/usr/bin/env python3
-"""Materialize Codex specialist skills from the canonical agent definitions."""
+"""Build the Codex-only plugin package from canonical skills and agents."""
 
 from __future__ import annotations
 
 import argparse
 import json
 import re
+import stat
+import subprocess
 import sys
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "agents"
-TARGET = ROOT / "skills"
+PACKAGE = ROOT / "plugins" / "soofi-xyz-team-kit"
+TARGET = PACKAGE / "skills"
 GENERATED_MARKER = "<!-- Generated from "
 KEBAB_CASE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+COPIED_ROOTS = ("agents", "docs", "skills")
+COPIED_FILES = ("README.md", ".codex-plugin/plugin.json")
 
 
 def parse_agent(path: Path) -> tuple[dict[str, str], str]:
@@ -50,6 +55,22 @@ def render_skill(source: Path) -> str:
     if not body.strip():
         raise ValueError(f"{source.relative_to(ROOT)}: body is required")
 
+    # Keep host-specific invocation guidance out of the shared Cursor/Copilot
+    # agent source. Only its Codex skill needs the plugin-qualified syntax.
+    if name == "arceus":
+        replacements = {
+            "the right agent(s) and skill(s) in this Cursor plugin":
+                "the right specialist workflows and skills in this Codex plugin",
+            "The user receives a copy-pasteable invocation hint for the primary recommendation.":
+                "The user receives a copy-pasteable Codex invocation hint for the primary recommendation.",
+            "a copy-pasteable line such as `/<name> <short task summary>` or `Use the <name> subagent to <short task summary>`":
+                "a copy-pasteable line such as `$soofi-xyz-team-kit:agent-<name> <short task summary>`",
+        }
+        for old, new in replacements.items():
+            if old not in body:
+                raise ValueError(f"{source.relative_to(ROOT)}: expected Arceus text missing: {old}")
+            body = body.replace(old, new)
+
     # Source links are written from agents/<name>.md. The generated file lives
     # under skills/agent-<name>/, so adjust only those relative Markdown links.
     body = body.replace("](../skills/", "](../")
@@ -62,7 +83,7 @@ def render_skill(source: Path) -> str:
         f"description: {json.dumps(description, ensure_ascii=False)}",
         "---",
         "",
-        f"{GENERATED_MARKER}{source.relative_to(ROOT)}. Run scripts/sync-codex-skills.py; do not edit directly. -->",
+        f"{GENERATED_MARKER}{source.relative_to(ROOT)} in the source repository. Do not edit directly. -->",
         "",
         f"# {name} specialist workflow",
         "",
@@ -79,8 +100,32 @@ def render_skill(source: Path) -> str:
     return "\n".join(lines)
 
 
-def is_generated(path: Path) -> bool:
-    return path.is_file() and GENERATED_MARKER in path.read_text(encoding="utf-8")[:800]
+def source_files() -> dict[Path, tuple[bytes, int]]:
+    """Read tracked and unignored new source files, excluding Codex-only skills."""
+    output = subprocess.check_output(
+        [
+            "git", "ls-files", "-z", "--cached", "--others", "--exclude-standard",
+            "--", *COPIED_FILES, *COPIED_ROOTS,
+        ],
+        cwd=ROOT,
+    )
+    expected: dict[Path, tuple[bytes, int]] = {}
+    for raw in output.split(b"\0"):
+        if not raw:
+            continue
+        relative = Path(raw.decode("utf-8"))
+        if relative.parts[0] == "skills" and relative.parts[1].startswith("agent-"):
+            continue
+        source = ROOT / relative
+        if not source.exists():  # A staged deletion can still appear in ls-files.
+            continue
+        if source.is_symlink():
+            raise ValueError(f"source file must be real: {relative}")
+        if source.is_file():
+            expected[PACKAGE / relative] = (
+                source.read_bytes(), stat.S_IMODE(source.stat().st_mode)
+            )
+    return expected
 
 
 def main() -> int:
@@ -88,20 +133,35 @@ def main() -> int:
     parser.add_argument("command", nargs="?", choices=("sync", "check"), default="sync")
     args = parser.parse_args()
 
-    expected: dict[Path, str] = {}
+    leaked = sorted((ROOT / "skills").glob("agent-*/SKILL.md"))
+    if leaked:
+        raise ValueError(
+            "Codex specialist skills must not live in shared skills/: "
+            + ", ".join(str(path.relative_to(ROOT)) for path in leaked)
+        )
+
+    expected = source_files()
     for source in sorted(SOURCE.glob("*.md")):
-        expected[TARGET / f"agent-{source.stem}" / "SKILL.md"] = render_skill(source)
-    if not expected:
+        expected[TARGET / f"agent-{source.stem}" / "SKILL.md"] = (
+            render_skill(source).encode("utf-8"), 0o644
+        )
+    specialist_count = len(list(SOURCE.glob("*.md")))
+    if not specialist_count:
         raise ValueError("no source agents found")
 
-    existing = {path for path in TARGET.glob("agent-*/SKILL.md") if is_generated(path)}
-    stale = existing - expected.keys()
-    changed = []
-    for path, content in expected.items():
-        if path.exists() and not is_generated(path):
-            raise ValueError(f"refusing to overwrite non-generated skill: {path.relative_to(ROOT)}")
-        if not path.is_file() or path.read_text(encoding="utf-8") != content:
-            changed.append(path)
+    actual = {path for path in PACKAGE.rglob("*") if path.is_file() or path.is_symlink()}
+    stale = actual - expected.keys()
+
+    def out_of_sync(path: Path, item: tuple[bytes, int]) -> bool:
+        content, mode = item
+        return (
+            path.is_symlink()
+            or not path.is_file()
+            or path.read_bytes() != content
+            or stat.S_IMODE(path.stat().st_mode) != mode
+        )
+
+    changed = [path for path, item in expected.items() if out_of_sync(path, item)]
 
     if args.command == "check":
         for path in sorted(stale):
@@ -110,16 +170,25 @@ def main() -> int:
             print(f"out of sync: {path.relative_to(ROOT)}", file=sys.stderr)
         if stale or changed:
             return 1
-        print(f"Codex specialist skills are synced ({len(expected)} skills)")
+        print(f"Codex package is synced ({specialist_count} specialist skills)")
         return 0
 
     for path in sorted(stale):
         path.unlink()
-        path.parent.rmdir()
-    for path in changed:
+    for path, item in expected.items():
+        if not out_of_sync(path, item):
+            continue
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(expected[path], encoding="utf-8")
-    print(f"synced {len(expected)} Codex specialist skills")
+        content, mode = item
+        path.write_bytes(content)
+        path.chmod(mode)
+    for directory in sorted((p for p in PACKAGE.rglob("*") if p.is_dir()), reverse=True):
+        if directory != PACKAGE:
+            try:
+                directory.rmdir()
+            except OSError:
+                pass
+    print(f"synced Codex package ({specialist_count} specialist skills, {len(expected)} files)")
     return 0
 
 

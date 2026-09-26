@@ -1,0 +1,32 @@
+{
+  "contractVersion": 2,
+  "revision": "example-1",
+  "languages": [
+    {
+      "name": "crm",
+      "version": "1.0.0",
+      "current": true,
+      "status": "ENABLED",
+      "shape": "tabular",
+      "s3Uri": "s3://transform-local/config/crm.json",
+      "sha256": "f6833de6b92722635cfd846ae2796ec2fd93c18c4e5ebd12838a9dab429a3a50"
+    },
+    {
+      "name": "warehouse",
+      "version": "2.0.0",
+      "current": true,
+      "status": "ENABLED",
+      "shape": "tabular",
+      "s3Uri": "s3://transform-local/config/warehouse.json",
+      "sha256": "5a47999bf9235b53dbcd436536f601ea665b5b9513d71dcacbaf6a1ba075614b"
+    }
+  ],
+  "mappings": [
+    {
+      "id": "crm-to-warehouse",
+      "version": "1.0.0",
+      "s3Uri": "s3://transform-local/config/crm-to-warehouse.mapping.json",
+      "sha256": "ebae9fe4f86fd7434810152bb5f740102e3c87da793a54bc2ea54d20b2004be9"
+    }
+  ]
+}

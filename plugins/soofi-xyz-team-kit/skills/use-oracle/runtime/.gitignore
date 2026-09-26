@@ -1,0 +1,9 @@
+node_modules/
+downloads/
+tmp/
+local-input/
+local-output/
+*.log
+.env
+.env.*
+!.env.example

@@ -1,0 +1,82 @@
+{
+  "version": "3",
+  "flow_name": "encrypted-file-intake",
+  "kind": "flow",
+  "description": "Land partner files that arrive PGP-encrypted, decrypt them with the partner's key, and archive the source copy. Used for seller media drops on SFTP; works unchanged for encrypted drops on Azure Blob or S3.",
+  "connections": {
+    "inbox": { "types": ["sftp", "azure_blob", "s3"] }
+  },
+  "partner_parameters": {
+    "type": "object",
+    "required": ["prefix", "pattern", "archive_prefix"],
+    "properties": {
+      "prefix": { "type": "string" },
+      "pattern": { "type": "string" },
+      "archive_prefix": { "type": "string" }
+    }
+  },
+  "triggers": ["api", "schedule"],
+  "limits": { "timeout_seconds": 14400, "max_items": 2000, "max_bytes": 107374182400 },
+  "definition": {
+    "StartAt": "ListNewFiles",
+    "States": {
+      "ListNewFiles": {
+        "Type": "Task",
+        "ResourceDefinition": {
+          "Type": "LIST",
+          "Connection": "inbox",
+          "Match": { "Prefix": "$.partner.prefix", "Pattern": "$.partner.pattern" },
+          "Ledger": { "Key": ["path", "size", "modified_at"] },
+          "SaveOutputTo": "$.vars.new_files"
+        },
+        "Next": "PerFile"
+      },
+      "PerFile": {
+        "Type": "Map",
+        "Items": "$.vars.new_files",
+        "Concurrency": 20,
+        "Iterator": {
+          "StartAt": "Fetch",
+          "States": {
+            "Fetch": {
+              "Type": "Task",
+              "ResourceDefinition": {
+                "Type": "FETCH",
+                "Connection": "inbox",
+                "File": "$.item",
+                "Verify": { "Size": true },
+                "Runner": "auto",
+                "SaveOutputTo": "$.vars.encrypted"
+              },
+              "Next": "Decrypt"
+            },
+            "Decrypt": {
+              "Type": "Task",
+              "ResourceDefinition": {
+                "Type": "DECRYPT",
+                "File": "$.vars.encrypted",
+                "Format": "pgp",
+                "Key": "transfer",
+                "Runner": "auto",
+                "SaveOutputTo": "$.vars.landed"
+              },
+              "Next": "Archive"
+            },
+            "Archive": {
+              "Type": "Task",
+              "ResourceDefinition": {
+                "Type": "MOVE",
+                "Connection": "inbox",
+                "File": "$.item",
+                "To": "$.partner.archive_prefix",
+                "IfExists": "skip"
+              },
+              "End": true
+            }
+          }
+        },
+        "End": true
+      }
+    }
+  }
+}

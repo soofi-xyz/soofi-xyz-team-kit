@@ -244,13 +244,15 @@ def validate_manifests():
     source = codex_entry.get("source", {})
     if source.get("source") != "local":
         fail('.agents/plugins/marketplace.json: source.source must be "local"')
-    if source.get("path") != "./":
-        fail('.agents/plugins/marketplace.json: source.path must be "./" so Codex installs real skill files')
-    codex_plugin_root = root
+    if source.get("path") != "./plugins/soofi-xyz-team-kit":
+        fail('.agents/plugins/marketplace.json: source.path must be "./plugins/soofi-xyz-team-kit"')
+    codex_plugin_root = root / "plugins" / "soofi-xyz-team-kit"
     if not (codex_plugin_root / ".codex-plugin" / "plugin.json").is_file():
-        fail(".codex-plugin/plugin.json: missing Codex marketplace plugin manifest")
+        fail("plugins/soofi-xyz-team-kit/.codex-plugin/plugin.json: missing Codex marketplace plugin manifest")
+    if (codex_plugin_root / ".codex-plugin").is_symlink():
+        fail("plugins/soofi-xyz-team-kit/.codex-plugin: must be a real directory")
     if not (codex_plugin_root / "skills").is_dir() or (codex_plugin_root / "skills").is_symlink():
-        fail("skills/: Codex marketplace plugin skills directory must be a real directory")
+        fail("plugins/soofi-xyz-team-kit/skills: must be a real directory")
 
     policy = codex_entry.get("policy", {})
     if policy.get("installation") not in {"NOT_AVAILABLE", "AVAILABLE", "INSTALLED_BY_DEFAULT"}:
@@ -327,21 +329,21 @@ def validate_oracle_runtime():
 
 
 def validate_skills():
-    skills_dir = root / "skills"
-    skill_files = sorted(skills_dir.glob("*/SKILL.md"))
-    if not skill_files:
-        fail("skills/: must contain at least one skill")
+    for skills_dir in (root / "skills", root / "plugins" / "soofi-xyz-team-kit" / "skills"):
+        skill_files = sorted(skills_dir.glob("*/SKILL.md"))
+        if not skill_files:
+            fail(f"{skills_dir.relative_to(root)}/: must contain at least one skill")
 
-    for skill in skill_files:
-        skill_name = skill.parent.name
-        require_frontmatter(skill, skill_name, "skill directory")
-        line_count = len(skill.read_text(encoding="utf-8-sig").splitlines())
-        if line_count > 500:
-            fail(f"{skill.relative_to(root)}: must stay under 500 lines ({line_count})")
+        for skill in skill_files:
+            skill_name = skill.parent.name
+            require_frontmatter(skill, skill_name, "skill directory")
+            line_count = len(skill.read_text(encoding="utf-8-sig").splitlines())
+            if line_count > 500:
+                fail(f"{skill.relative_to(root)}: must stay under 500 lines ({line_count})")
 
-    for child in sorted(skills_dir.iterdir()):
-        if child.is_dir() and not (child / "SKILL.md").is_file():
-            fail(f"{child.relative_to(root)}: skill directory must contain SKILL.md")
+        for child in sorted(skills_dir.iterdir()):
+            if child.is_dir() and not (child / "SKILL.md").is_file():
+                fail(f"{child.relative_to(root)}: skill directory must contain SKILL.md")
 
 
 validate_manifests()

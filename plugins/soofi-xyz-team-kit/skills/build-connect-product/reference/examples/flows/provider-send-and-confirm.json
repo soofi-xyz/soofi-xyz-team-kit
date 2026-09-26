@@ -1,0 +1,54 @@
+{
+  "version": "3",
+  "flow_name": "provider-send-and-confirm",
+  "kind": "flow",
+  "description": "Send one request to a provider API and wait for the provider's webhook that confirms the outcome. Pattern for any provider with request + asynchronous status callback.",
+  "connections": {
+    "provider": { "types": ["http"] }
+  },
+  "parameters": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["message"],
+    "properties": { "message": { "type": "object" } }
+  },
+  "webhooks": {
+    "status": { "connection": "provider", "content_type": "application/json" }
+  },
+  "triggers": ["api"],
+  "limits": { "timeout_seconds": 86400 },
+  "definition": {
+    "StartAt": "Send",
+    "States": {
+      "Send": {
+        "Type": "Task",
+        "ResourceDefinition": {
+          "Type": "CALL",
+          "Connection": "provider",
+          "Method": "POST",
+          "Path": "/api/v1/messaging/notify",
+          "Body": "$.request.message",
+          "RequestFormat": "json",
+          "Response": { "Format": "json", "Mode": "inline", "MaxInlineBytes": 16384 },
+          "Idempotency": { "Header": "Idempotency-Key" },
+          "Extract": { "Save": { "provider_message_id": "$.id" } }
+        },
+        "Next": "WaitForStatus"
+      },
+      "WaitForStatus": {
+        "Type": "Task",
+        "ResourceDefinition": {
+          "Type": "WAIT_FOR_WEBHOOK",
+          "Webhook": "status",
+          "Correlate": { "ValuePath": "$.vars.provider_message_id", "ExpectedPath": "$.messageId" },
+          "Conditions": [{ "Variable": "$.status", "AnyOf": ["DELIVERED", "FAILED", "UNDELIVERABLE"] }],
+          "EarlyArrival": "buffer",
+          "BufferSeconds": 3600,
+          "SaveOutputTo": "$.vars.status"
+        },
+        "TimeoutSeconds": 86400,
+        "End": true
+      }
+    }
+  }
+}

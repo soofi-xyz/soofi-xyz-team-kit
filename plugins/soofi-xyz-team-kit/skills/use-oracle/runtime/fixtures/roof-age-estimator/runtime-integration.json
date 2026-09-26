@@ -1,0 +1,185 @@
+{
+  "profile": {
+    "version": "fixture-source-v1",
+    "sources": [
+      {
+        "sourceSystem": "fixture-permits",
+        "statusMappings": [
+          {
+            "field": "record_status",
+            "value": "Final",
+            "status": "completed"
+          },
+          {
+            "field": "record_status",
+            "value": "Issued",
+            "status": "open"
+          }
+        ],
+        "workMappings": [
+          {
+            "field": "permit_category",
+            "value": "Roof replacement",
+            "classification": "primary_roof_replacement"
+          },
+          {
+            "field": "permit_category",
+            "value": "New house",
+            "classification": "primary_roof_new_construction"
+          },
+          {
+            "field": "permit_category",
+            "value": "Roof coating",
+            "classification": "repair_or_coating"
+          }
+        ]
+      }
+    ]
+  },
+  "input": {
+    "asOfDate": "2026-09-14",
+    "builtYear": {
+      "year": 1994,
+      "evidenceState": "confirmed_present",
+      "sourceSystem": "fixture-appraiser",
+      "sourceRecordId": "parcel-fixture-1",
+      "field": "home_year"
+    },
+    "permits": [
+      {
+        "sourceSystem": "fixture-permits",
+        "sourceRecordId": "permit-closed-replacement",
+        "statusEvidence": [
+          {
+            "field": "record_status",
+            "value": "Final"
+          }
+        ],
+        "workEvidence": [
+          {
+            "field": "permit_category",
+            "value": "Roof replacement"
+          }
+        ],
+        "completionDate": {
+          "value": "2021-08-30",
+          "evidenceState": "confirmed_present"
+        },
+        "closeDate": {
+          "value": null,
+          "evidenceState": "confirmed_empty"
+        },
+        "chronologyStartDate": {
+          "value": "2021-04-12",
+          "evidenceState": "confirmed_present"
+        }
+      },
+      {
+        "sourceSystem": "fixture-permits",
+        "sourceRecordId": "permit-open-replacement",
+        "statusEvidence": [
+          {
+            "field": "record_status",
+            "value": "Issued"
+          }
+        ],
+        "workEvidence": [
+          {
+            "field": "permit_category",
+            "value": "Roof replacement"
+          }
+        ],
+        "completionDate": {
+          "value": null,
+          "evidenceState": "unknown"
+        },
+        "closeDate": {
+          "value": null,
+          "evidenceState": "unknown"
+        },
+        "chronologyStartDate": {
+          "value": "2025-11-03",
+          "evidenceState": "confirmed_present"
+        }
+      },
+      {
+        "sourceSystem": "fixture-permits",
+        "sourceRecordId": "permit-coating",
+        "statusEvidence": [
+          {
+            "field": "record_status",
+            "value": "Final"
+          }
+        ],
+        "workEvidence": [
+          {
+            "field": "permit_category",
+            "value": "Roof coating"
+          }
+        ],
+        "completionDate": {
+          "value": "2024-02-20",
+          "evidenceState": "confirmed_present"
+        },
+        "closeDate": {
+          "value": null,
+          "evidenceState": "unknown"
+        },
+        "chronologyStartDate": null
+      }
+    ],
+    "historicalCoverage": {
+      "state": "partial",
+      "caveats": [
+        "archive_gap"
+      ]
+    }
+  },
+  "expected": {
+    "schemaVersion": "elephant.roof-age-estimate.v1",
+    "asOfDate": "2026-09-14",
+    "anchor": {
+      "type": "permit_terminal_date",
+      "date": "2021-08-30",
+      "source": {
+        "sourceSystem": "fixture-permits",
+        "sourceRecordId": "permit-closed-replacement",
+        "dateField": "completionDate"
+      }
+    },
+    "estimatedAgeYears": 5,
+    "confidence": "high",
+    "workClassification": "primary_roof_replacement",
+    "eligibility": {
+      "eligible": true,
+      "reason": "accepted_completed_primary_roof_replacement"
+    },
+    "historicalCoverage": {
+      "state": "partial",
+      "caveats": [
+        "archive_gap",
+        "partial_history"
+      ]
+    },
+    "evidence": {
+      "permitCount": 3,
+      "permitOutcomeCounts": {
+        "acceptedPrimaryRoofReplacement": 1,
+        "acceptedPrimaryRoofNewConstruction": 0,
+        "excludedOpenPrimaryRoofReplacement": 1,
+        "excludedNonCompletedResettingWork": 0,
+        "excludedNonResettingWork": 1,
+        "excludedNeedsReview": 0,
+        "excludedMissingTerminalDate": 0,
+        "excludedInvalidOrQuarantinedTerminalDate": 0,
+        "excludedFutureTerminalDate": 0,
+        "excludedChronologyInvalidTerminalDate": 0
+      }
+    },
+    "policy": {
+      "version": "oracle.roof-age-policy.v1",
+      "profileVersion": "fixture-source-v1",
+      "profileSha256": "<computed-from-canonical-profile>"
+    }
+  }
+}
