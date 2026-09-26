@@ -1,0 +1,30 @@
+{
+  "vertices": [
+    {
+      "type": "accounts",
+      "description": "Account table in the warehouse.",
+      "properties": {
+        "account_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "account_name": {
+          "type": "string"
+        },
+        "balance": {
+          "type": "number"
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "created_on": {
+          "type": "string",
+          "format": "date"
+        }
+      },
+      "required": ["account_id", "balance", "active", "created_on"]
+    }
+  ],
+  "edges": [],
+  "common_patterns": []
+}

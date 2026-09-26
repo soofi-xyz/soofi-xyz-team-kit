@@ -1,0 +1,4 @@
+{"customer_code": "001", "display_name": "Ada, \"A\"", "balance": 12.3, "active": true, "created_on": "2024-01-02"}
+{"customer_code": "002", "display_name": null, "balance": -4.25, "active": false, "created_on": "2024-02-29"}
+{"customer_code": "003", "display_name": "", "balance": 0, "active": true, "created_on": "2024-03-01"}
+{"customer_code": "004", "display_name": "Zoë\nZ", "balance": 100.01, "active": false, "created_on": "2024-04-01"}

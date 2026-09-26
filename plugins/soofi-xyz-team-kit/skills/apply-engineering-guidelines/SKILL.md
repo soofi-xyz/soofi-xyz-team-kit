@@ -1,0 +1,106 @@
+---
+name: apply-engineering-guidelines
+description: "Applying the company Golden Path engineering standards. Use when building or refactoring services, choosing technologies, setting up infrastructure, testing, CI/CD, observability, or alerting, or reviewing architecture."
+---
+
+# Engineering Guidelines
+
+Follow these standards when building or refactoring any service in this ecosystem. Deviation requires justification in peer review.
+
+## Quick Reference
+
+| Area | Golden Path Standard |
+| --- | --- |
+| Primary language (all services) | **TypeScript** |
+| Exception: PySpark + Glue only | **Python** (PySpark/Glue jobs only — nothing else) |
+| LLM interactions | **[Vercel AI SDK](https://ai-sdk.dev/) (`ai`)** — strict TypeScript, no direct provider SDKs |
+| Cloud | **AWS** (primary region: `us-east-2`) |
+| Infrastructure as Code | **CDK** (`cdk deploy`) — **MANDATORY, no alternatives permitted** |
+| External dependency boundaries | **Default to Queued (Async)** for rate limits, retries, side effects, or vendor migration; **Sync** only with immediate-response need and documented timeout/recovery |
+| Testing | **Vitest / Pytest** + CI in GitHub Actions |
+| Formatting & linting | **Prettier + ESLint** (TS) · **Ruff** (Python) |
+| Type checking | **tsc** (TS) · **basedpyright** (Python) |
+| Observability | **Powertools** (Logger + Tracer + Metrics) · **CloudWatch** · **X-Ray** |
+| Critical failure alerting | **PagerDuty** (Events API v2) — page on-call for every critical failure |
+| DLQ / channel monitoring | **One self-resolving CloudWatch alarm per DLQ** fanned out to channels (email / chat / **PagerDuty**) — never per-item alerts |
+
+## Rule Categories
+
+| Priority | Category | Rule Prefix | Impact |
+| --- | --- | --- | --- |
+| 1 | Tech Stack & Languages | `stack-` | CRITICAL |
+| 2 | Cloud & Infrastructure | `cloud-` | CRITICAL |
+| 2 | External Dependencies & Boundaries | `external-` | CRITICAL |
+| 3 | Testing & Quality | `testing-` | HIGH |
+| 4 | Observability | `observability-` | HIGH |
+
+## Rules Summary
+
+### 1. Tech Stack & Languages (CRITICAL)
+
+- `stack-typescript-for-apis` — Use TypeScript for **all** services, Lambdas, APIs, and batch workloads
+- `stack-python-for-data` — Python is permitted **only** for PySpark + AWS Glue jobs
+- `stack-ai-sdk-for-llm` — **All LLM interactions MUST use the [Vercel AI SDK](https://ai-sdk.dev/) (`ai` package) with strict TypeScript.** No direct provider SDKs.
+
+### 2. Cloud & Infrastructure (CRITICAL)
+
+- `cloud-aws-primary` — AWS-first with `us-east-2`, **CDK is the only permitted IaC tool**, cost tagging
+
+### 3. External Dependencies & Boundaries (CRITICAL)
+
+- `external-dependency-boundaries` — Default to asynchronous (queued) boundaries for external dependencies whenever rate limits, retry resilience, side effects/idempotency, or vendor migration apply; synchronous calls require an immediate-response need and documented timeout and recovery strategy.
+
+### 4. Testing & Quality (HIGH)
+
+- `testing-strategy` — Testing pyramid, tooling standards, mock guidance
+
+### 5. Observability (HIGH)
+
+- `observability-logging-tracing` — Powertools Logger/Tracer/Metrics on every Lambda, structured JSON logs, X-Ray tracing
+- `observability-metrics` — Business-level metrics per service: items processed, items failed, duration
+- `observability-pagerduty-alerting` — Page on-call via PagerDuty (Events API v2) for every critical failure; no critical issue may fail silently
+- `observability-dlq-alarms` — One self-resolving CloudWatch alarm per DLQ fans out to channels (email/chat/**PagerDuty**) when the DLQ is non-empty and clears itself on drain (auto-resolving the PagerDuty incident); works together with `observability-pagerduty-alerting`
+
+## How to Use These Rules
+
+Read individual rule files in `rules/` for detailed explanations, rationale, and code examples:
+
+```
+rules/stack-typescript-for-apis.md
+rules/stack-python-for-data.md
+rules/stack-ai-sdk-for-llm.md
+rules/cloud-aws-primary.md
+rules/external-dependency-boundaries.md
+rules/testing-strategy.md
+rules/observability-logging-tracing.md
+rules/observability-metrics.md
+rules/observability-pagerduty-alerting.md
+rules/observability-dlq-alarms.md
+```
+
+## Applying the Guidelines
+
+When building or refactoring a service:
+
+1. **Default to TypeScript** for all workloads — APIs, Lambdas, batch, Step Functions, etc.
+2. **Use Python only for PySpark + AWS Glue jobs.** For any other workload, use TypeScript.
+3. **Set up infrastructure** per `cloud-aws-primary` — CDK in the same language as the service.
+4. **Enforce external dependency boundaries** per `external-dependency-boundaries` — queue external calls facing rate limits, outages, retries, side effects, or vendor migrations; limit sync calls to immediate-response needs with documented timeouts and fallbacks.
+5. **Configure CI/CD** per `testing-strategy` — formatter, linter, type checker, tests in GitHub Actions.
+6. **Add observability** per `observability-logging-tracing` — Powertools Logger, Tracer, Metrics on every Lambda.
+7. **Emit business metrics** per `observability-metrics` — items processed/failed, duration.
+8. **Wire critical-failure alerting** per `observability-pagerduty-alerting` — page on-call via PagerDuty for every terminal/critical failure so nothing fails silently.
+9. **Add self-resolving DLQ monitoring** per `observability-dlq-alarms` — attach one stateful CloudWatch alarm per DLQ that fans out to channels (email/chat/PagerDuty) when the DLQ is non-empty and clears itself on drain. This works together with PagerDuty alerting: the alarm owns the lifecycle and PagerDuty is one subscriber that auto-resolves.
+
+## Non-Negotiables
+
+These are hard constraints that MUST NOT be violated without VP-level approval:
+
+1. **TypeScript for ALL services.** Python is permitted **only** for PySpark + AWS Glue jobs. No other Python usage without VP-level approval.
+2. **All LLM interactions MUST use the [Vercel AI SDK](https://ai-sdk.dev/) (`ai` package) with strict TypeScript.** Direct use of provider SDKs (`openai`, `@anthropic-ai/sdk`, `@aws-sdk/client-bedrock-runtime`) for LLM calls is FORBIDDEN. Tool schemas MUST use Zod. No `any` types in LLM-related code.
+3. **AWS as primary cloud**, `us-east-2` as primary region.
+4. **CDK is the ONLY permitted IaC tool.** All infrastructure MUST be defined in CDK and deployed via `cdk deploy`. Do NOT use Terraform, Pulumi, SAM, CloudFormation YAML/JSON, Serverless Framework, or any other IaC tool.
+5. **No secrets in logs.** Never log passwords, tokens, secrets, or PII.
+6. **Every metric registered in [Lexicon](https://github.com/Spring-Oaks-Capital-LLC/lexicon)** (`cloudwatch-metrics.json`) **and displayed on [Main Dashboard](https://github.com/Spring-Oaks-Capital-LLC/main-dashboard).** No metric may exist in code without both.
+7. **Every service and workflow MUST page on-call via PagerDuty for critical failures.** Critical production issues MUST NEVER fail silently. Any service/workflow capable of a terminal or critical failure MUST trigger a PagerDuty alert on that path (see `observability-pagerduty-alerting` and the SOCAPITAL `integrating-pagerduty` skill). Swallowing a critical failure with a log-only handler is FORBIDDEN.
+8. **External dependency calls MUST default to queued (asynchronous) boundaries.** Direct synchronous calls to external third-party/partner APIs are forbidden unless there is an immediate interactive response need, bounded volume, and a documented timeout and recovery strategy. Queued boundaries MUST enforce bounded consumer concurrency, atomic idempotency, exponential backoff, DLQ alarms, and adapter abstraction for swappable providers.

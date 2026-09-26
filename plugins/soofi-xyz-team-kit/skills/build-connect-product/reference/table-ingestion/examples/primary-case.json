@@ -1,0 +1,229 @@
+{
+  "baselineObservedAt": "2026-01-01T12:00:00Z",
+  "deltaObservedAt": "2026-01-02T12:00:00Z",
+  "before": {
+    "records": [
+      {
+        "record_id": "R1",
+        "primary_record_id": "R2",
+        "status": "OPEN",
+        "updated_at": "2026-01-01T00:00:00Z"
+      },
+      {
+        "record_id": "R2",
+        "primary_record_id": "R4",
+        "status": "OPEN",
+        "updated_at": "2026-01-01T00:00:00Z"
+      },
+      {
+        "record_id": "R3",
+        "primary_record_id": null,
+        "status": "OPEN",
+        "updated_at": "2026-01-01T00:00:00Z"
+      },
+      {
+        "record_id": "R4",
+        "primary_record_id": null,
+        "status": "OPEN",
+        "updated_at": "2026-01-01T00:00:00Z"
+      }
+    ],
+    "contacts": [
+      {
+        "contact_id": "C1",
+        "record_id": "R1",
+        "email": "person1@example.test",
+        "updated_at": "2026-01-01T00:00:00Z"
+      },
+      {
+        "contact_id": "C2",
+        "record_id": "R2",
+        "email": "person2@example.test",
+        "updated_at": "2026-01-01T00:00:00Z"
+      },
+      {
+        "contact_id": "C3",
+        "record_id": "R3",
+        "email": "person3@example.test",
+        "updated_at": "2026-01-01T00:00:00Z"
+      },
+      {
+        "contact_id": "C4",
+        "record_id": "R4",
+        "email": "person4@example.test",
+        "updated_at": "2026-01-01T00:00:00Z"
+      }
+    ],
+    "organizations": [
+      {
+        "organization_id": "O1",
+        "name": "Example One"
+      },
+      {
+        "organization_id": "O2",
+        "name": "Example Two"
+      }
+    ],
+    "assignments": [
+      {
+        "assignment_id": "A1",
+        "record_id": "R3",
+        "organization_id": "O1"
+      },
+      {
+        "assignment_id": "A2",
+        "record_id": "R4",
+        "organization_id": "O2"
+      }
+    ],
+    "events": [
+      {
+        "event_id": 1,
+        "record_id": "R1",
+        "kind": "opened",
+        "updated_at": "2026-01-01T00:00:00Z"
+      }
+    ]
+  },
+  "after": {
+    "records": [
+      {
+        "record_id": "R1",
+        "primary_record_id": "R2",
+        "status": "OPEN",
+        "updated_at": "2026-01-01T00:00:00Z"
+      },
+      {
+        "record_id": "R2",
+        "primary_record_id": "R4",
+        "status": "OPEN",
+        "updated_at": "2026-01-01T00:00:00Z"
+      },
+      {
+        "record_id": "R3",
+        "primary_record_id": null,
+        "status": "OPEN",
+        "updated_at": "2026-01-01T00:00:00Z"
+      },
+      {
+        "record_id": "R4",
+        "primary_record_id": null,
+        "status": "OPEN",
+        "updated_at": "2026-01-01T00:00:00Z"
+      }
+    ],
+    "contacts": [
+      {
+        "contact_id": "C1",
+        "record_id": "R1",
+        "email": "changed@example.test",
+        "updated_at": "2026-01-02T00:00:00Z"
+      },
+      {
+        "contact_id": "C2",
+        "record_id": "R2",
+        "email": "person2@example.test",
+        "updated_at": "2026-01-01T00:00:00Z"
+      },
+      {
+        "contact_id": "C3",
+        "record_id": "R3",
+        "email": "person3@example.test",
+        "updated_at": "2026-01-01T00:00:00Z"
+      },
+      {
+        "contact_id": "C4",
+        "record_id": "R4",
+        "email": "person4@example.test",
+        "updated_at": "2026-01-01T00:00:00Z"
+      }
+    ],
+    "organizations": [
+      {
+        "organization_id": "O1",
+        "name": "Example One Updated"
+      },
+      {
+        "organization_id": "O2",
+        "name": "Example Two"
+      }
+    ],
+    "assignments": [
+      {
+        "assignment_id": "A1",
+        "record_id": "R3",
+        "organization_id": "O1"
+      },
+      {
+        "assignment_id": "A2",
+        "record_id": "R4",
+        "organization_id": "O2"
+      }
+    ],
+    "events": [
+      {
+        "event_id": 1,
+        "record_id": "R1",
+        "kind": "opened",
+        "updated_at": "2026-01-01T00:00:00Z"
+      },
+      {
+        "event_id": 2,
+        "record_id": "R3",
+        "kind": "reviewed",
+        "updated_at": "2026-01-02T00:00:00Z"
+      }
+    ]
+  },
+  "expected": {
+    "changedKeys": {
+      "contacts": [
+        "C1"
+      ],
+      "organizations": [
+        "O1"
+      ],
+      "events": [
+        "2"
+      ]
+    },
+    "directEntityIds": [
+      "R1",
+      "R3"
+    ],
+    "expandedEntityIds": [
+      "R1",
+      "R2",
+      "R3"
+    ],
+    "outputKeys": {
+      "records": [
+        "R1",
+        "R2",
+        "R3"
+      ],
+      "contacts": [
+        "C1",
+        "C2",
+        "C3"
+      ],
+      "organizations": [
+        "O1"
+      ],
+      "assignments": [
+        "A1"
+      ],
+      "events": [
+        "2"
+      ]
+    },
+    "recordIndexCounts": {
+      "records": 4,
+      "contacts": 4,
+      "organizations": 2,
+      "assignments": 2,
+      "events": 2
+    },
+    "transitionObservations": 0
+  }
+}

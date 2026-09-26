@@ -1,0 +1,12 @@
+{
+  "activation_id": "dsa-americor-intake-hourly",
+  "flow_name": "partner-file-intake",
+  "flow_version": 1,
+  "configuration_id": "dsa-americor-prod",
+  "trigger": { "type": "schedule", "cron": "0 9-23 * * ? *", "timezone": "America/New_York" },
+  "subscriber": {
+    "url": "https://<claydol-intake-endpoint>",
+    "signing_secret_ref": "arn:aws:secretsmanager:<region>:<account>:secret:<subscriber-signing-secret>"
+  },
+  "enabled": true
+}

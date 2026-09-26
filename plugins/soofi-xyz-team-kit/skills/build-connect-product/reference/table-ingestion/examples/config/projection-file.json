@@ -1,0 +1,21 @@
+{
+  "contractVersion": 1,
+  "source": {
+    "id": "sheet",
+    "version": "1.0.0"
+  },
+  "mappingRevision": "example-file-1",
+  "tables": {
+    "sellers": [
+      "seller_id",
+      "seller_name",
+      "status"
+    ],
+    "agreements": [
+      "agreement_id",
+      "seller_id",
+      "media_type",
+      "effective_date"
+    ]
+  }
+}

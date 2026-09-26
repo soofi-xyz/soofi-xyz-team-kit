@@ -1,0 +1,36 @@
+# Hosted-service categories — services offered inside another business rather
+# than a business occupying a location of its own.
+#
+# Sets `business_locations.is_hosted_service = true` and records
+# `hosted_service_rule = 'hosted-service-categories@2026-07-22.0'`.
+# Advisory only: places are never excluded from ingestion on the strength of
+# this list, and consumers may ignore it.
+#
+# Format: one taxonomy.hierarchy path per line, `/`-delimited, L0 first.
+# Matching is on the FULL path so a rename at one level does not silently widen.
+#
+# Rebuilt from the Lee County extract of Overture 2026-07-22.0 against
+# `taxonomy.hierarchy` (40,191 clipped places, 1,194 distinct paths).
+#
+# Judgement (2026-08-12): commit ONLY the five named scoping concepts, resolved
+# onto observed full paths. The old flat `categories.primary` leaves were
+# plural (`atms`, `rental_kiosks`, `money_transfer_services`); the July 2026
+# taxonomy uses singular leaves (`atm`, `rental_kiosk`, `money_transfer_service`).
+# Do not silently expand to ~250 hosted-looking categories — those were counted
+# against the deprecated vocabulary and were never enumerated as paths.
+#
+# Reviewed and rejected for this pass:
+# - shopping/kiosk — may occupy its own location
+# - .../vending_machine_supplier — B2B supplier, not a hosted machine
+# - .../wills_trusts_and_probate — a law firm, not a hosted trust desk
+# - medical `*_treatment_center` paths — false friends of the old leaf matcher
+# - window_treatment_store — not a hosted service
+#
+# Re-review whenever the taxonomy moves (quarterly: March, June, September,
+# December).
+
+services_and_business/financial_service/atm
+services_and_business/real_estate/real_estate_service/rental_service/rental_kiosk
+services_and_business/b2b_service/supplier_or_distributor/propane_supplier
+services_and_business/financial_service/money_transfer_service
+services_and_business/financial_service/trusts

@@ -1,0 +1,7081 @@
+{
+  "common_patterns": [
+    {
+      "format": "date",
+      "properties": {
+        "description": "Date in isoformat. F.e : 2025-07-06",
+        "format": "date",
+        "type": "string"
+      },
+      "type": "date"
+    }
+  ],
+  "edges": [
+    {
+      "from": "calling_window_restriction",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "calling_window_restriction_day_window",
+      "type": "calling_window_restriction_has_day_window"
+    },
+    {
+      "from": "communication_preference",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "to": "communication_preference_day_window",
+      "type": "communication_preference_has_day_window"
+    },
+    {
+      "from": "company",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "ACTIVE",
+            "DELETED"
+          ],
+          "type": "string"
+        }
+      },
+      "to": "debt",
+      "type": "company_collects_debt"
+    },
+    {
+      "from": "company",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "address",
+      "type": "company_has_address"
+    },
+    {
+      "from": "company",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "required_document",
+      "type": "company_has_dispute_required_document"
+    },
+    {
+      "from": "company",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "required_document_group",
+      "type": "company_has_dispute_required_document_group"
+    },
+    {
+      "from": "company",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "email",
+      "type": "company_has_email"
+    },
+    {
+      "from": "company",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "files",
+      "type": "company_has_file"
+    },
+    {
+      "from": "company",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "media",
+      "type": "company_has_media"
+    },
+    {
+      "from": "company",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "phone_number",
+      "type": "company_has_phone_number"
+    },
+    {
+      "from": "company",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "required_document",
+      "type": "company_has_seller_required_document"
+    },
+    {
+      "from": "company",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "to": "debt_product",
+      "type": "company_issues_debt_product"
+    },
+    {
+      "from": "company",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "to": "debt",
+      "type": "company_owns_debt"
+    },
+    {
+      "from": "company",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "portfolio",
+      "type": "company_owns_portfolio"
+    },
+    {
+      "from": "company",
+      "properties": {
+        "company_type": {
+          "enum": [
+            "DEBT_SETTLEMENT_AGENCY"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "power_of_attorney_on_file": {
+          "required": true,
+          "type": "boolean"
+        }
+      },
+      "to": "debt",
+      "type": "company_power_of_attorney_on_file_changed"
+    },
+    {
+      "from": "company",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "payment",
+      "type": "company_received_payment"
+    },
+    {
+      "from": "company",
+      "properties": {
+        "company_type": {
+          "enum": [
+            "ATTORNEY",
+            "COLLECTION_AGENCY",
+            "DEBT_SETTLEMENT_AGENCY",
+            "EMPLOYER",
+            "FORWARD_VENDOR",
+            "ORIGINAL_CREDITOR",
+            "OWNER"
+          ],
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "ACTIVE",
+            "DELETED"
+          ],
+          "type": "string"
+        },
+        "version": {
+          "required": true,
+          "type": "integer"
+        }
+      },
+      "to": "debt",
+      "type": "company_represents_debt"
+    },
+    {
+      "description": "Represents a complaint status change event. Legacy unversioned edges exist in the immutable graph attached to collapsed legacy complaint vertices, so consumers must filter to `version = 2` to read only the corrected per-source-row status edges.",
+      "from": "complaint",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "CLOSED",
+            "OPEN",
+            "RESOLVED"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "version": {
+          "required": true,
+          "type": "integer"
+        }
+      },
+      "to": "complaint",
+      "type": "complaint_status_changed"
+    },
+    {
+      "from": "contract",
+      "properties": {
+        "effective_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "ACTIVE",
+            "INACTIVE"
+          ],
+          "type": "string"
+        }
+      },
+      "to": "company",
+      "type": "contract_has_agent"
+    },
+    {
+      "from": "contract",
+      "properties": {
+        "effective_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "ACTIVE",
+            "INACTIVE"
+          ],
+          "type": "string"
+        }
+      },
+      "to": "company",
+      "type": "contract_has_principal"
+    },
+    {
+      "from": "contract",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "ACTIVE",
+            "INACTIVE"
+          ],
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "contract",
+      "type": "contract_status_changed"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "ACTIVE",
+            "INACTIVE"
+          ],
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "bankruptcy",
+      "type": "debt_bankruptcy_status_changed"
+    },
+    {
+      "description": "Records whether a debt belongs to a business treatment campaign at a business-effective time, preserving debt-level campaign lineage when a person has multiple debts.",
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "is_member": {
+          "required": true,
+          "type": "boolean"
+        },
+        "state_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "to": "campaign",
+      "type": "debt_campaign_membership_changed"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "debt_channel_preference",
+      "type": "debt_channel_preference_changed"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "debt",
+      "type": "debt_credit_report_added"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "debt",
+      "type": "debt_credit_report_aud_submitted"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "debt",
+      "type": "debt_credit_report_deleted"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "debt",
+      "type": "debt_credit_report_stopped"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "debt",
+      "type": "debt_credit_report_updated"
+    },
+    {
+      "description": "Status transition edge from debt to dispute. Always query with `has('version', 2)` so legacy unversioned edges remaining in the immutable graph (e.g. resolved edges left over after a dispute's resolution_code was cleared in the source system) are ignored and the latest corrected status is used.",
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "CLOSED",
+            "OPEN",
+            "RESOLVED"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "version": {
+          "required": true,
+          "type": "integer"
+        }
+      },
+      "to": "dispute",
+      "type": "debt_dispute_status_changed"
+    },
+    {
+      "description": "Represents a change in the forwarded status of a debt. IMPORTANT: consumers MUST filter to `version = 3` when traversing this edge. Earlier mapping generations (version 2 and unversioned legacy edges) do not carry the `vendor_type` discriminator and must be excluded.",
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "FORWARDED",
+            "NOT_FORWARDED"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "vendor_type": {
+          "enum": [
+            "AGENCY",
+            "BANKRUPTCY",
+            "LEGAL"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "version": {
+          "required": true,
+          "type": "integer"
+        }
+      },
+      "to": "debt",
+      "type": "debt_forwarded_status_changed"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "balance",
+      "type": "debt_has_balance"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "bankruptcy",
+      "type": "debt_has_bankruptcy"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "complaint_source": {
+          "enum": [
+            "ATTORNEY_GENERAL",
+            "BBB",
+            "CFPB",
+            "COUNTERCLAIM",
+            "LAWSUIT",
+            "OTHER",
+            "WRITTEN_DEMAND"
+          ],
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "is_formal": {
+          "type": "boolean"
+        }
+      },
+      "to": "complaint",
+      "type": "debt_has_complaint"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "debt_product",
+      "type": "debt_has_debt_product"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "dispute",
+      "type": "debt_has_dispute"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "email_message",
+      "type": "debt_has_email_message"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "files",
+      "type": "debt_has_file"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "good_faith_offer",
+      "type": "debt_has_good_faith_offer"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "hold",
+      "type": "debt_has_hold"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "judgment",
+      "type": "debt_has_judgment"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "cafa": {
+          "required": true,
+          "type": "boolean"
+        },
+        "case_title": {
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "distance": {
+          "type": "integer"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "filing_date": {
+          "format": "date",
+          "type": "string"
+        },
+        "long_score": {
+          "type": "string"
+        },
+        "match_count": {
+          "required": true,
+          "type": "integer"
+        },
+        "match_score": {
+          "required": true,
+          "type": "integer"
+        }
+      },
+      "to": "lawsuit",
+      "type": "debt_has_lawsuit"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "next_work_date": {
+          "format": "date",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "debt",
+      "type": "debt_has_next_work_date"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "original_annual_percentage_rate": {
+          "required": true,
+          "type": "number"
+        }
+      },
+      "to": "debt",
+      "type": "debt_has_original_annual_percentage_rate"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "payment",
+      "type": "debt_has_payment"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "payment_plan",
+      "type": "debt_has_payment_plan"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "phone_call",
+      "type": "debt_has_phone_call"
+    },
+    {
+      "description": "Anchors a portal_session to the debt the consumer is interacting with. Producers emit this edge for every portal_session, including sessions originating from a short URL click and sessions started by direct navigation to the portal where no short_url or trace exists. The legacy short_url -> trace -> portal_session path remains valid for backward compatibility; this edge is the single durable anchor for discovering all portal sessions for a debt.",
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "portal_session",
+      "type": "debt_has_portal_session"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "postal_mail",
+      "type": "debt_has_postal_mail"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "seller_reference",
+      "type": "debt_has_seller_reference"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "settlement_offer",
+      "type": "debt_has_settlement_offer"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "short_url",
+      "type": "debt_has_short_url"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "sol_date": {
+          "format": "date",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "debt",
+      "type": "debt_has_sol_date"
+    },
+    {
+      "description": "Directly attributes a text message to the debt whose account-level communication it records.",
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "text_message",
+      "type": "debt_has_text_message"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "vehicle",
+      "type": "debt_has_vehicle"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "ACTIVE",
+            "RELEASED"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "version": {
+          "required": true,
+          "type": "integer"
+        }
+      },
+      "to": "hold",
+      "type": "debt_hold_status_changed"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "ACTIVE",
+            "INACTIVE"
+          ],
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "judgment",
+      "type": "debt_judgment_status_changed"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "filing_date": {
+          "format": "date",
+          "type": "string"
+        },
+        "lawsuit_confirmed": {
+          "required": true,
+          "type": "boolean"
+        },
+        "match_count": {
+          "type": "integer"
+        }
+      },
+      "to": "debt",
+      "type": "debt_lawsuit_assessment_changed"
+    },
+    {
+      "deprecated_reason": "Superseded for lawsuit modeling and debt.is_litigious indexing by debt_has_lawsuit. Historical negative events make this edge unsafe as the canonical current-state suppression source. It remains emitted only for legacy consumers such as claydol-agent; do not stop emission until those consumers migrate under a separate story.",
+      "from": "debt",
+      "is_deprecated": true,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "is_litigious": {
+          "required": true,
+          "type": "boolean"
+        }
+      },
+      "to": "debt",
+      "type": "debt_litigious_status_changed"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "ACTIVE",
+            "CANCELLED",
+            "COMPLETED",
+            "DEFAULTED"
+          ],
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "payment_plan",
+      "type": "debt_payment_plan_status_changed"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "law_firm",
+      "type": "debt_placed_with_law_firm"
+    },
+    {
+      "description": "Links a debt rule exclusion event to the specific governed rule that caused the exclusion.",
+      "from": "debt_rule_exclusion",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "rule",
+      "type": "debt_rule_exclusion_caused_by_rule"
+    },
+    {
+      "description": "Links a debt rule exclusion event to the specific debt entity that was disqualified.",
+      "from": "debt_rule_exclusion",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "debt",
+      "type": "debt_rule_exclusion_for_debt"
+    },
+    {
+      "description": "Links a debt rule exclusion event to the specific phone number that failed a phone-scoped rule.",
+      "from": "debt_rule_exclusion",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "phone_number",
+      "type": "debt_rule_exclusion_for_phone_number"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "source_signal": {
+          "enum": [
+            "1151",
+            "SLDBCK"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "ACTIVE",
+            "RELEASED"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "version": {
+          "required": true,
+          "type": "integer"
+        }
+      },
+      "to": "debt",
+      "type": "debt_sellback_status_changed"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "source_observed_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "1099C_SENT",
+            "ACTIVE",
+            "ATTORNEY_REPRESENTATION",
+            "BANKRUPTCY",
+            "CANCELLED",
+            "CHARGED_OFF",
+            "CLOSED",
+            "DECEASED",
+            "FRAUD",
+            "INDIRECT",
+            "NFC_NO1099C",
+            "OPEN",
+            "PAID_IN_FULL",
+            "PAYMENT_RECEIVED",
+            "PENDING_1099C",
+            "PROMISE_TO_PAY",
+            "PROMISE_TO_SETTLE",
+            "RESOLVED_LEGAL",
+            "RETURNED",
+            "SETTLED",
+            "UNCOLLECTABLE",
+            "UNKNOWN"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "version": {
+          "required": true,
+          "type": "integer"
+        }
+      },
+      "to": "debt",
+      "type": "debt_status_changed"
+    },
+    {
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "note_body": {
+          "type": "string"
+        },
+        "note_identifier": {
+          "minLength": 1,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "debt",
+      "type": "debt_user_note_added"
+    },
+    {
+      "description": "Records that the phone-interactions eligibility filter marked this (debt, phone_number) pair as eligible to call on the day given by effective_at. One edge is emitted per debt-phone pair per daily eligibility run; presence with a given effective_at means the pair passed every phone-interactions rule on that day, so a rolling union of these edges over a window yields the set of calls we were allowed to place.",
+      "from": "debt",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "eligibility_run_identifier": {
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "phone_number",
+      "type": "eligible_to_call"
+    },
+    {
+      "from": "email",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "dnc",
+      "type": "email_has_dnc"
+    },
+    {
+      "from": "email",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "email_message",
+      "type": "email_has_email_message"
+    },
+    {
+      "from": "email_message",
+      "properties": {
+        "content_type": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "filename": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "uri": {
+          "minLength": 1,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "email_message",
+      "type": "email_message_has_attachment_artifact_uri"
+    },
+    {
+      "from": "email_message",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "campaign",
+      "type": "email_message_has_campaign"
+    },
+    {
+      "from": "email_message",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "debt",
+      "type": "email_message_has_debt"
+    },
+    {
+      "from": "email_message",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "uri": {
+          "minLength": 1,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "email_message",
+      "type": "email_message_has_rendered_artifact_uri"
+    },
+    {
+      "from": "email_message",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "short_url",
+      "type": "email_message_has_short_url"
+    },
+    {
+      "from": "email_message",
+      "properties": {
+        "associated_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "unsubscribe_link",
+      "type": "email_message_has_unsubscribe_link"
+    },
+    {
+      "from": "email_message",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "BOUNCED",
+            "CANCELLED",
+            "CLICKED",
+            "COMPLAINT",
+            "DELIVERED",
+            "DELIVERY_DELAYED",
+            "FAILED",
+            "OPENED",
+            "PENDING",
+            "SENT",
+            "SUBSCRIPTION"
+          ],
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "email_message",
+      "type": "email_message_status_changed"
+    },
+    {
+      "from": "files",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "daily_business_metric_value",
+      "type": "file_has_daily_business_metric_value"
+    },
+    {
+      "from": "files",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "file_content",
+      "type": "file_has_file_content"
+    },
+    {
+      "from": "files",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "file_metadata",
+      "type": "file_has_file_metadata"
+    },
+    {
+      "from": "files",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "direction": {
+          "enum": [
+            "INBOUND",
+            "OUTBOUND"
+          ],
+          "type": "string"
+        }
+      },
+      "to": "complaint",
+      "type": "file_is_evidence_for_complaint"
+    },
+    {
+      "from": "files",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "direction": {
+          "enum": [
+            "INBOUND",
+            "OUTBOUND"
+          ],
+          "type": "string"
+        }
+      },
+      "to": "dispute",
+      "type": "file_is_evidence_for_dispute"
+    },
+    {
+      "from": "lawsuit",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "court",
+      "type": "lawsuit_filed_in_court"
+    },
+    {
+      "from": "lawsuit",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "legal_action",
+      "type": "lawsuit_has_action"
+    },
+    {
+      "from": "lawsuit",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "lawsuit_party",
+      "type": "lawsuit_has_attorney"
+    },
+    {
+      "from": "lawsuit",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "lawsuit_party",
+      "type": "lawsuit_has_defendant"
+    },
+    {
+      "from": "lawsuit",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "lawsuit_party",
+      "type": "lawsuit_has_judge"
+    },
+    {
+      "from": "lawsuit",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "lawsuit_party",
+      "type": "lawsuit_has_lawfirm"
+    },
+    {
+      "from": "lawsuit",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "lawsuit_party",
+      "type": "lawsuit_has_plaintiff"
+    },
+    {
+      "from": "media",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "files",
+      "type": "media_has_file"
+    },
+    {
+      "description": "Self-loop attribution event on a payment that records which channel was assigned, which rule made the decision, and which source event supported it. The payment vertex remains immutable; current reporting values are derived from these edges.",
+      "from": "payment",
+      "properties": {
+        "attributed_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "attributed_channel": {
+          "enum": [
+            "EMAIL",
+            "PHONE",
+            "PORTAL",
+            "SMS"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "attribution_contact_effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "attribution_rule": {
+          "required": true,
+          "type": "string"
+        },
+        "attribution_rule_priority": {
+          "required": true,
+          "type": "integer"
+        },
+        "attribution_rule_version": {
+          "required": true,
+          "type": "string"
+        },
+        "attribution_source_event_id": {
+          "required": true,
+          "type": "string"
+        },
+        "attribution_source_event_label": {
+          "required": true,
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "payment",
+      "type": "payment_attributed_to_channel"
+    },
+    {
+      "from": "payment_plan",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "user_account",
+      "type": "payment_plan_created_by_user_account"
+    },
+    {
+      "from": "payment_plan",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "payment_plan_installment",
+      "type": "payment_plan_has_installment"
+    },
+    {
+      "from": "payment_plan",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "total_amount": {
+          "required": true,
+          "type": "number"
+        }
+      },
+      "to": "payment_plan",
+      "type": "payment_plan_has_total_amount"
+    },
+    {
+      "from": "payment_plan_installment",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "payment",
+      "type": "payment_plan_installment_has_payment"
+    },
+    {
+      "from": "payment_plan_installment",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "scheduled_payment_date": {
+          "format": "date",
+          "required": true,
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "CANCELLED",
+            "COMPLETED",
+            "FAILED",
+            "PAID",
+            "RESCHEDULED",
+            "SCHEDULED"
+          ],
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "payment_plan_installment",
+      "type": "payment_plan_installment_status_changed"
+    },
+    {
+      "from": "payment_plan",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "user_account",
+      "type": "payment_plan_updated_by_user_account"
+    },
+    {
+      "from": "payment",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "reason_code": {
+          "type": "string"
+        },
+        "revenue_delta": {
+          "type": "number"
+        },
+        "status": {
+          "enum": [
+            "CHARGEBACK",
+            "NSF",
+            "RECEIVED",
+            "RECEIVED_ADJUSTMENT",
+            "RETURNED",
+            "REVERSED",
+            "VOIDED"
+          ],
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "payment",
+      "type": "payment_status_changed"
+    },
+    {
+      "from": "person",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "is_member": {
+          "required": true,
+          "type": "boolean"
+        },
+        "state_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "to": "campaign",
+      "type": "person_campaign_membership_changed"
+    },
+    {
+      "from": "person",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "ALIVE",
+            "DECEASED"
+          ],
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "person",
+      "type": "person_deceased_status_changed"
+    },
+    {
+      "from": "person",
+      "properties": {
+        "active": {
+          "type": "boolean"
+        },
+        "contact_priority": {
+          "type": "integer"
+        },
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "demographic_email_identifier": {
+          "minLength": 1,
+          "required": true,
+          "type": "string"
+        },
+        "demographic_type": {
+          "enum": [
+            "BUSINESS",
+            "CO_MAKER",
+            "MISC",
+            "ORIGINAL",
+            "PATIENT",
+            "PRIMARY",
+            "SPOUSE"
+          ],
+          "type": "string"
+        },
+        "mail_return": {
+          "type": "boolean"
+        },
+        "no_contact": {
+          "type": "boolean"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "ACTIVE",
+            "BOUNCED",
+            "DO_NOT_CONTACT",
+            "EXHAUSTED",
+            "INACTIVE",
+            "NEW",
+            "VERIFIED",
+            "WRONG_EMAIL"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "verified": {
+          "type": "boolean"
+        },
+        "verified_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "to": "email",
+      "type": "person_email_status_changed"
+    },
+    {
+      "from": "person",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "MAILING",
+            "RESIDENTIAL"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "version": {
+          "required": true,
+          "type": "integer"
+        }
+      },
+      "to": "address",
+      "type": "person_has_address"
+    },
+    {
+      "description": "Self edge on person carrying the person's date of birth as an immutable fact. Modeled as an edge instead of a person property so the durable person vertex stays minimal and the date-of-birth fact has its own lineage.",
+      "from": "person",
+      "properties": {
+        "birth_date": {
+          "format": "date",
+          "required": true,
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "person",
+      "type": "person_has_birth_date"
+    },
+    {
+      "from": "person",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "calling_window_restriction",
+      "type": "person_has_calling_window_restriction"
+    },
+    {
+      "from": "person",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "dnc",
+      "type": "person_has_dnc"
+    },
+    {
+      "from": "person",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "dne",
+      "type": "person_has_dne"
+    },
+    {
+      "from": "person",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "dnt",
+      "type": "person_has_dnt"
+    },
+    {
+      "from": "person",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "email",
+      "type": "person_has_email"
+    },
+    {
+      "from": "person",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "files",
+      "type": "person_has_file"
+    },
+    {
+      "from": "person",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "to": "income",
+      "type": "person_has_income"
+    },
+    {
+      "from": "person",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "person_language_preference",
+      "type": "person_has_language_preference"
+    },
+    {
+      "from": "person",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "phone_call",
+      "type": "person_has_phone_call"
+    },
+    {
+      "from": "person",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "is_business_phone": {
+          "type": "boolean"
+        }
+      },
+      "to": "phone_number",
+      "type": "person_has_phone_number"
+    },
+    {
+      "from": "person",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "postal_mail",
+      "type": "person_has_postal_mail"
+    },
+    {
+      "from": "person",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "social_security_number",
+      "type": "person_has_social_security_number"
+    },
+    {
+      "from": "person",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "text_message",
+      "type": "person_has_text_message"
+    },
+    {
+      "from": "person",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "to": "tu_score",
+      "type": "person_has_tu_score"
+    },
+    {
+      "from": "person",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "company",
+      "type": "person_owes_company"
+    },
+    {
+      "from": "person",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "debt",
+      "type": "person_owes_debt"
+    },
+    {
+      "from": "person",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "is_business_phone": {
+          "required": true,
+          "type": "boolean"
+        },
+        "source_kind": {
+          "required": true,
+          "type": "string"
+        },
+        "source_record_identifier": {
+          "minLength": 1,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "phone_number",
+      "type": "person_phone_number_business_classification_observed"
+    },
+    {
+      "from": "person",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "dnc_status": {
+          "required": true,
+          "type": "boolean"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "phone_number",
+      "type": "person_phone_number_has_dnc"
+    },
+    {
+      "from": "person",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "dnt_status": {
+          "required": true,
+          "type": "boolean"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "phone_number",
+      "type": "person_phone_number_has_dnt"
+    },
+    {
+      "from": "person",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "opt_in_status": {
+          "required": true,
+          "type": "boolean"
+        }
+      },
+      "to": "phone_number",
+      "type": "person_phone_number_has_opt_in"
+    },
+    {
+      "from": "person",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "ACTIVE",
+            "DISCONNECTED",
+            "INACTIVE",
+            "INVALID",
+            "NEW",
+            "VERIFIED"
+          ],
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "phone_number",
+      "type": "person_phone_number_status_changed"
+    },
+    {
+      "from": "person",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "version": {
+          "required": true,
+          "type": "integer"
+        }
+      },
+      "to": "address",
+      "type": "person_primary_address_changed"
+    },
+    {
+      "from": "phone_number",
+      "properties": {
+        "ai_msg": {
+          "type": "string"
+        },
+        "ai_response_score": {
+          "type": "number"
+        },
+        "compliance_type": {
+          "enum": [
+            "CONSENT_GRANTED",
+            "CONSENT_REVOKED",
+            "SMS_DO_NOT_CONTACT",
+            "SMS_NOT_APPLICABLE",
+            "SMS_NOT_OPTED_IN",
+            "SMS_OPTED_IN",
+            "SMS_OPTED_OUT",
+            "VALIDATION_NOTICE_GIVEN"
+          ],
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "duration": {
+          "type": "integer"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "interaction_identifier": {
+          "required": true,
+          "type": "string"
+        },
+        "phone_contact_type": {
+          "enum": [
+            "ANSWERING_MACHINE",
+            "CO_MAKER",
+            "NON_RESPONSIBLE_PARTY",
+            "PRIMARY",
+            "RIGHT_PARTY",
+            "SPOUSE",
+            "UNKNOWN"
+          ],
+          "type": "string"
+        },
+        "sentiment": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "ANSWERED",
+            "ATTEMPTED",
+            "BUSY",
+            "CANCELLED",
+            "DISCONNECTED",
+            "FAILED",
+            "HUNG_UP",
+            "LEFT_MESSAGE",
+            "NO_ANSWER",
+            "OUT_OF_SERVICE",
+            "PENDING",
+            "RESTRICTED",
+            "SCHEDULED"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "transcript_text": {
+          "type": "string"
+        }
+      },
+      "to": "phone_number",
+      "type": "phone_call"
+    },
+    {
+      "from": "phone_call",
+      "properties": {
+        "ai_msg": {
+          "type": "string"
+        },
+        "ai_response_score": {
+          "required": true,
+          "type": "number"
+        },
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "phone_call",
+      "type": "phone_call_ai_response_scored"
+    },
+    {
+      "from": "phone_call",
+      "properties": {
+        "compliance_type": {
+          "enum": [
+            "CONSENT_GRANTED",
+            "CONSENT_REVOKED",
+            "SMS_DO_NOT_CONTACT",
+            "SMS_NOT_APPLICABLE",
+            "SMS_NOT_OPTED_IN",
+            "SMS_OPTED_IN",
+            "SMS_OPTED_OUT",
+            "VALIDATION_NOTICE_GIVEN"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "phone_call",
+      "type": "phone_call_compliance_event"
+    },
+    {
+      "from": "phone_call",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "phone_contact_type": {
+          "enum": [
+            "ANSWERING_MACHINE",
+            "CO_MAKER",
+            "NON_RESPONSIBLE_PARTY",
+            "PRIMARY",
+            "RIGHT_PARTY",
+            "SPOUSE",
+            "UNKNOWN"
+          ],
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "phone_call",
+      "type": "phone_call_contact_identified"
+    },
+    {
+      "from": "phone_call",
+      "properties": {
+        "uri": {
+          "minLength": 1,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "phone_call",
+      "type": "phone_call_has_transcript_artifact_uri"
+    },
+    {
+      "from": "phone_call",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "sentiment": {
+          "minLength": 1,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "phone_call",
+      "type": "phone_call_sentiment_assessed"
+    },
+    {
+      "from": "phone_call",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "duration": {
+          "type": "integer"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "ANSWERED",
+            "ATTEMPTED",
+            "BUSY",
+            "CANCELLED",
+            "DISCONNECTED",
+            "FAILED",
+            "HUNG_UP",
+            "LEFT_MESSAGE",
+            "NO_ANSWER",
+            "OUT_OF_SERVICE",
+            "PENDING",
+            "RESTRICTED",
+            "SCHEDULED"
+          ],
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "phone_call",
+      "type": "phone_call_status_changed"
+    },
+    {
+      "description": "Records that a call associated with the phone number triggered the outbound text message. This attribution can be written before delayed phone_call edge ingestion completes.",
+      "from": "phone_number",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "text_message",
+      "type": "phone_number_has_call_triggered_text_message"
+    },
+    {
+      "from": "phone_number",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "to": "communication_preference",
+      "type": "phone_number_has_communication_preference"
+    },
+    {
+      "from": "phone_number",
+      "properties": {
+        "complaint_source": {
+          "enum": [
+            "ATTORNEY_GENERAL",
+            "BBB",
+            "CFPB",
+            "COUNTERCLAIM",
+            "LAWSUIT",
+            "OTHER",
+            "WRITTEN_DEMAND"
+          ],
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "is_formal": {
+          "type": "boolean"
+        }
+      },
+      "to": "complaint",
+      "type": "phone_number_has_complaint"
+    },
+    {
+      "from": "phone_number",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "to": "phone_contactability_profile",
+      "type": "phone_number_has_contactability_profile"
+    },
+    {
+      "deprecated_reason": "Replaced by person_phone_number_has_dnc which anchors the DNC event to both the person and the phone number, preventing cross-person DNC bleed when multiple persons share the same phone number.",
+      "from": "phone_number",
+      "is_deprecated": true,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "dnc",
+      "type": "phone_number_has_dnc"
+    },
+    {
+      "from": "phone_number",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "phone_call",
+      "type": "phone_number_has_phone_call"
+    },
+    {
+      "from": "phone_number",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "text_message",
+      "type": "phone_number_has_text_message"
+    },
+    {
+      "from": "phone_number",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "to": "phone_verification_result",
+      "type": "phone_number_has_verification_result"
+    },
+    {
+      "from": "phone_number",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "phone_call",
+      "type": "phone_number_originated_phone_call"
+    },
+    {
+      "deprecated_reason": "Replaced by person_phone_number_status_changed which anchors the status change to both the person and the phone number, preventing cross-person status bleed when multiple persons share the same phone number.",
+      "from": "phone_number",
+      "is_deprecated": true,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "ACTIVE",
+            "DISCONNECTED",
+            "INACTIVE",
+            "INVALID",
+            "NEW",
+            "VERIFIED"
+          ],
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "phone_number",
+      "type": "phone_number_status_changed"
+    },
+    {
+      "description": "Links a portal_event to an experiment run the visitor was assigned to at the time of the event. Emitted per assignment: a single portal_event may have multiple portal_event_has_experiment edges when the visitor is concurrently assigned to more than one experiment run. The variant_key edge property records which variant of that experiment run was assigned for this portal_event.",
+      "from": "portal_event",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "variant_key": {
+          "minLength": 1,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "experiment",
+      "type": "portal_event_has_experiment"
+    },
+    {
+      "description": "Links a LOGIN_FAILED portal_event to its structured portal_login_failure record. Emitted only when the parent portal_event has event_type = LOGIN_FAILED.",
+      "from": "portal_event",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "portal_login_failure",
+      "type": "portal_event_has_login_failure"
+    },
+    {
+      "from": "portal_event",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "payment",
+      "type": "portal_event_has_payment"
+    },
+    {
+      "from": "portal_event",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "payment_plan",
+      "type": "portal_event_has_payment_plan"
+    },
+    {
+      "from": "portal_session",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "ACCEPTED",
+            "PENDING",
+            "REJECTED"
+          ],
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "portal_session",
+      "type": "portal_session_cookie_consent_changed"
+    },
+    {
+      "from": "portal_session",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "browser",
+      "type": "portal_session_has_browser"
+    },
+    {
+      "from": "portal_session",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "device",
+      "type": "portal_session_has_device"
+    },
+    {
+      "from": "portal_session",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "geolocation",
+      "type": "portal_session_has_geolocation"
+    },
+    {
+      "from": "portal_session",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "ip_address",
+      "type": "portal_session_has_ip_address"
+    },
+    {
+      "from": "portal_session",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "operating_system",
+      "type": "portal_session_has_operating_system"
+    },
+    {
+      "from": "portal_session",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "portal_event",
+      "type": "portal_session_has_portal_event"
+    },
+    {
+      "from": "portfolio",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "ACTIVE",
+            "DELETED"
+          ],
+          "type": "string"
+        },
+        "version": {
+          "type": "integer"
+        }
+      },
+      "to": "debt",
+      "type": "portfolio_contains_debt"
+    },
+    {
+      "from": "portfolio",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "files",
+      "type": "portfolio_has_file_for_dispute"
+    },
+    {
+      "from": "portfolio",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "files",
+      "type": "portfolio_has_file_for_legal"
+    },
+    {
+      "from": "address",
+      "is_deprecated": true,
+      "properties": {
+        "compliance_type": {
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "interaction_identifier": {
+          "required": true,
+          "type": "string"
+        },
+        "mail_type": {
+          "type": "string"
+        },
+        "postmail_identifier": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "to": "address",
+      "type": "postal_mail"
+    },
+    {
+      "from": "postal_mail",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "address",
+      "type": "postal_mail_has_address"
+    },
+    {
+      "from": "postal_mail",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "mail_campaign",
+      "type": "postal_mail_has_mail_campaign"
+    },
+    {
+      "from": "postal_mail",
+      "properties": {
+        "compliance_type": {
+          "enum": [
+            "CONSENT_GRANTED",
+            "CONSENT_REVOKED",
+            "SMS_DO_NOT_CONTACT",
+            "SMS_NOT_APPLICABLE",
+            "SMS_NOT_OPTED_IN",
+            "SMS_OPTED_IN",
+            "SMS_OPTED_OUT",
+            "VALIDATION_NOTICE_GIVEN"
+          ],
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "CANCELLED",
+            "PENDING",
+            "RESTRICTED",
+            "RETURNED",
+            "SENT"
+          ],
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "postal_mail",
+      "type": "postal_mail_status_changed"
+    },
+    {
+      "from": "required_document_group",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "required_document",
+      "type": "required_document_group_has_alternative"
+    },
+    {
+      "description": "Links a rule execution to the ruleset(s) evaluated during the run, recording sequence order when multiple rulesets are composed.",
+      "from": "rule_execution",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "evaluation_order": {
+          "type": "integer"
+        }
+      },
+      "to": "ruleset",
+      "type": "rule_execution_evaluates_ruleset"
+    },
+    {
+      "description": "Associates a rule execution with the business treatment campaign under which it was evaluated.",
+      "from": "rule_execution",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "campaign",
+      "type": "rule_execution_for_campaign"
+    },
+    {
+      "description": "Links a rule execution to an individual debt exclusion event recorded during that run.",
+      "from": "rule_execution",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "debt_rule_exclusion",
+      "type": "rule_execution_has_exclusion"
+    },
+    {
+      "description": "Records lifecycle status transitions (STARTED, ENDED, COMPLETED, FAILED) and outcome metrics for a rule execution without mutating the stable execution vertex.",
+      "from": "rule_execution",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "excluded_debt_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "included_debt_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "input_debt_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "COMPLETED",
+            "ENDED",
+            "FAILED",
+            "STARTED"
+          ],
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "rule_execution",
+      "type": "rule_execution_status_changed"
+    },
+    {
+      "description": "Associates the Rule product platform with a concrete execution run.",
+      "from": "rule_product",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "rule_execution",
+      "type": "rule_product_has_execution"
+    },
+    {
+      "description": "Associates the Rule product catalog with a governed ruleset.",
+      "from": "rule_product",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "ruleset",
+      "type": "rule_product_has_ruleset"
+    },
+    {
+      "description": "Defines membership and sequence ordering of a governed rule within a ruleset.",
+      "from": "ruleset",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "evaluation_order": {
+          "type": "integer"
+        }
+      },
+      "to": "rule",
+      "type": "ruleset_has_rule"
+    },
+    {
+      "from": "settlement_offer",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "payment",
+      "type": "settlement_offer_has_payment"
+    },
+    {
+      "from": "settlement_offer",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "payment_plan",
+      "type": "settlement_offer_has_payment_plan"
+    },
+    {
+      "from": "settlement_offer",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "short_url",
+      "type": "settlement_offer_has_short_url"
+    },
+    {
+      "description": "Optional. Associates this settlement offer with a campaign context (for example, a Black Friday or pre-legal campaign offer). Presence marks the offer as belonging to the campaign; absence means the offer is not campaign-scoped.",
+      "from": "settlement_offer",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "campaign",
+      "type": "settlement_offer_in_campaign"
+    },
+    {
+      "description": "Optional. Indicates this settlement offer is valid or offered through the linked company context (for example, an offer that can only be honored when the debt is being represented by a specific debt settlement agency, or a future offer context tied to another company role). The edge does not constrain the company's role  -  DSA-specific meaning is inferred when the same company is also linked to the debt via company_represents_debt with company_type = DEBT_SETTLEMENT_AGENCY. Optional and absent for offers that are not company-scoped.",
+      "from": "settlement_offer",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "company",
+      "type": "settlement_offer_offered_via_company"
+    },
+    {
+      "from": "short_url",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "event_identifier": {
+          "type": "string"
+        },
+        "message_identifier": {
+          "type": "string"
+        },
+        "user_agent": {
+          "type": "string"
+        },
+        "visitor_ip_address": {
+          "type": "string"
+        }
+      },
+      "to": "trace",
+      "type": "short_url_has_trace"
+    },
+    {
+      "from": "template",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "asset",
+      "type": "template_has_asset"
+    },
+    {
+      "from": "template",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "ACTIVE",
+            "INACTIVE"
+          ],
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "template",
+      "type": "template_status_changed"
+    },
+    {
+      "from": "text_message",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "campaign",
+      "type": "text_message_has_campaign"
+    },
+    {
+      "from": "text_message",
+      "properties": {
+        "body_selector": {
+          "enum": [
+            "JSON_BODY",
+            "TEXT"
+          ],
+          "type": "string"
+        },
+        "content_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "content_type": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "uri": {
+          "minLength": 1,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "text_message",
+      "type": "text_message_has_rendered_artifact_uri"
+    },
+    {
+      "from": "text_message",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "short_url",
+      "type": "text_message_has_short_url"
+    },
+    {
+      "from": "text_message",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "rendered_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "rendered_language": {
+          "enum": [
+            "english",
+            "spanish"
+          ],
+          "type": "string"
+        }
+      },
+      "to": "template",
+      "type": "text_message_rendered_from_template"
+    },
+    {
+      "from": "text_message",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "provider": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "provider_message_identifier": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "provider_result": {
+          "type": "string"
+        },
+        "provider_tracking_code": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "CANCELLED",
+            "COMPLAINT",
+            "DELIVERED",
+            "DELIVERY_DELAYED",
+            "FAILED",
+            "OPTED_IN",
+            "OPTED_OUT",
+            "PENDING",
+            "REJECTED",
+            "RESTRICTED",
+            "SENT",
+            "SMS_RESOLVED"
+          ],
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "text_message",
+      "type": "text_message_status_changed"
+    },
+    {
+      "from": "trace",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "payment",
+      "type": "trace_has_payment"
+    },
+    {
+      "from": "trace",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "payment_plan",
+      "type": "trace_has_payment_plan"
+    },
+    {
+      "from": "trace",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "portal_event",
+      "type": "trace_has_portal_event"
+    },
+    {
+      "from": "trace",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "to": "portal_session",
+      "type": "trace_has_portal_session"
+    }
+  ],
+  "vertices": [
+    {
+      "deprecated_properties": {},
+      "description": "Represents a physical or mailing address standardized according to USPS standards. Address data is saved to IPFS as part of the property information.",
+      "is_deprecated": false,
+      "properties": {
+        "address_unit_designator_type": {
+          "enum": [
+            "APT",
+            "BLDG",
+            "BSMT",
+            "DEPT",
+            "FL",
+            "FRNT",
+            "HNGR",
+            "LBBY",
+            "LOT",
+            "LOWR",
+            "OFC",
+            "PH",
+            "PIER",
+            "REAR",
+            "RM",
+            "SIDE",
+            "SLIP",
+            "SPC",
+            "STE",
+            "STOP",
+            "TRLR",
+            "UNIT",
+            "UPPR"
+          ],
+          "type": "string"
+        },
+        "city_name": {
+          "required": true,
+          "type": "string"
+        },
+        "country_code": {
+          "type": "string"
+        },
+        "county_name": {
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "latitude": {
+          "type": "number"
+        },
+        "longitude": {
+          "type": "number"
+        },
+        "out_of_statute": {
+          "type": "boolean"
+        },
+        "plus_four_postal_code": {
+          "pattern": "^[0-9]{4}$",
+          "type": "string"
+        },
+        "postal_code": {
+          "pattern": "^[0-9]{5}$",
+          "type": "string"
+        },
+        "sequence_number": {
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "state_code": {
+          "enum": [
+            "AA",
+            "AE",
+            "AK",
+            "AL",
+            "AP",
+            "AR",
+            "AS",
+            "AZ",
+            "CA",
+            "CO",
+            "CT",
+            "DC",
+            "DE",
+            "FL",
+            "FM",
+            "GA",
+            "GU",
+            "HI",
+            "IA",
+            "ID",
+            "IL",
+            "IN",
+            "KS",
+            "KY",
+            "LA",
+            "MA",
+            "MD",
+            "ME",
+            "MH",
+            "MI",
+            "MN",
+            "MO",
+            "MP",
+            "MS",
+            "MT",
+            "NC",
+            "ND",
+            "NE",
+            "NH",
+            "NJ",
+            "NM",
+            "NV",
+            "NY",
+            "OH",
+            "OK",
+            "OR",
+            "PA",
+            "PR",
+            "PW",
+            "RI",
+            "SC",
+            "SD",
+            "TN",
+            "TX",
+            "UT",
+            "VA",
+            "VI",
+            "VT",
+            "WA",
+            "WI",
+            "WV",
+            "WY"
+          ],
+          "type": "string"
+        },
+        "street_name": {
+          "type": "string"
+        },
+        "street_post_directional_text": {
+          "enum": [
+            "E",
+            "N",
+            "NE",
+            "NW",
+            "S",
+            "SE",
+            "SW",
+            "W"
+          ],
+          "type": "string"
+        },
+        "street_pre_directional_text": {
+          "enum": [
+            "E",
+            "N",
+            "NE",
+            "NW",
+            "S",
+            "SE",
+            "SW",
+            "W"
+          ],
+          "type": "string"
+        },
+        "street_suffix_type": {
+          "enum": [
+            "ALY",
+            "ANX",
+            "ARC",
+            "AVE",
+            "BCH",
+            "BG",
+            "BGS",
+            "BLF",
+            "BLFS",
+            "BLVD",
+            "BND",
+            "BR",
+            "BRG",
+            "BRK",
+            "BRKS",
+            "BTM",
+            "BYP",
+            "BYU",
+            "CIR",
+            "CIRS",
+            "CLB",
+            "CLF",
+            "CLFS",
+            "CMN",
+            "CMNS",
+            "COR",
+            "CORS",
+            "CP",
+            "CPE",
+            "CRES",
+            "CRK",
+            "CRSE",
+            "CRST",
+            "CSWY",
+            "CT",
+            "CTR",
+            "CTRS",
+            "CTS",
+            "CURV",
+            "CV",
+            "CVS",
+            "CYN",
+            "DL",
+            "DM",
+            "DR",
+            "DRS",
+            "DV",
+            "EST",
+            "ESTS",
+            "EXPY",
+            "EXT",
+            "EXTS",
+            "FALL",
+            "FLD",
+            "FLDS",
+            "FLS",
+            "FLT",
+            "FLTS",
+            "FRD",
+            "FRDS",
+            "FRG",
+            "FRGS",
+            "FRK",
+            "FRKS",
+            "FRST",
+            "FRY",
+            "FT",
+            "FWY",
+            "GDN",
+            "GDNS",
+            "GLN",
+            "GLNS",
+            "GRN",
+            "GRNS",
+            "GRV",
+            "GRVS",
+            "GTWY",
+            "HBR",
+            "HBRS",
+            "HL",
+            "HLS",
+            "HOLW",
+            "HTS",
+            "HVN",
+            "HWY",
+            "INLT",
+            "IS",
+            "ISLE",
+            "ISS",
+            "JCT",
+            "JCTS",
+            "KNL",
+            "KNLS",
+            "KY",
+            "KYS",
+            "LAND",
+            "LCK",
+            "LCKS",
+            "LDG",
+            "LF",
+            "LGT",
+            "LGTS",
+            "LK",
+            "LKS",
+            "LN",
+            "LNDG",
+            "LOOP",
+            "MALL",
+            "MDW",
+            "MDWS",
+            "MEWS",
+            "ML",
+            "MLS",
+            "MNR",
+            "MNRS",
+            "MSN",
+            "MT",
+            "MTN",
+            "MTNS",
+            "MTWY",
+            "NCK",
+            "OPAS",
+            "ORCH",
+            "OVAL",
+            "PARK",
+            "PASS",
+            "PATH",
+            "PIKE",
+            "PKWY",
+            "PL",
+            "PLN",
+            "PLNS",
+            "PLZ",
+            "PNE",
+            "PNES",
+            "PR",
+            "PRT",
+            "PRTS",
+            "PT",
+            "PTS",
+            "RADL",
+            "RAMP",
+            "RD",
+            "RDG",
+            "RDGS",
+            "RDS",
+            "RIV",
+            "RNCH",
+            "ROW",
+            "RPD",
+            "RPDS",
+            "RST",
+            "RTE",
+            "RUE",
+            "RUN",
+            "SHL",
+            "SHLS",
+            "SHR",
+            "SHRS",
+            "SKWY",
+            "SMT",
+            "SPG",
+            "SPGS",
+            "SPUR",
+            "SQ",
+            "SQS",
+            "ST",
+            "STA",
+            "STRA",
+            "STRM",
+            "STS",
+            "TER",
+            "TPKE",
+            "TRAK",
+            "TRCE",
+            "TRFY",
+            "TRL",
+            "TRLR",
+            "TRWY",
+            "TUNL",
+            "UN",
+            "UNS",
+            "UPAS",
+            "VIA",
+            "VIS",
+            "VL",
+            "VLG",
+            "VLGS",
+            "VLY",
+            "VLYS",
+            "VW",
+            "VWS",
+            "WALK",
+            "WALL",
+            "WAY",
+            "WAYS",
+            "WL",
+            "WLS",
+            "XING",
+            "XRD",
+            "XRDS"
+          ],
+          "type": "string"
+        },
+        "unit_identifier": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "city_name",
+        "id",
+        "state_code",
+        "street_name"
+      ],
+      "type": "address"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents an external asset referenced by a template, such as a Quiq-managed media asset.",
+      "is_deprecated": false,
+      "properties": {
+        "asset_identifier": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "asset_identifier"
+      ],
+      "type": "asset"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a balance record associated with a debt, tracking balance history over time. Always query balance vertices with has('version', 2) to avoid legacy balance vertices left in the immutable graph that stored balance_amount in raw cents (as integers) and date as epoch-millisecond integers; corrected balance vertices emitted by the current mapping are tagged with version=2 and store balance as a decimal dollar value with an ISO-8601 date string.",
+      "is_deprecated": false,
+      "properties": {
+        "balance": {
+          "type": "number"
+        },
+        "balance_type": {
+          "enum": [
+            "ASSIGNED",
+            "CHARGE_OFF",
+            "CURRENT",
+            "FEES",
+            "INTEREST",
+            "PRINCIPAL",
+            "RECEIVED",
+            "SETTLED"
+          ],
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "date": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "debt_identifier": {
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "version": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "balance",
+        "id",
+        "version"
+      ],
+      "type": "balance"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a bankruptcy proceeding record.",
+      "is_deprecated": false,
+      "properties": {
+        "case_number": {
+          "type": "string"
+        },
+        "chapter": {
+          "enum": [
+            "11",
+            "128_WI",
+            "13",
+            "7"
+          ],
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "filing_date": {
+          "format": "date",
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "bankruptcy"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a distinct web browser identity (name + version) observed during a portal session. One vertex per (browser_name, browser_version) combination; deduped across sessions.",
+      "is_deprecated": false,
+      "properties": {
+        "browser_name": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "browser_version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "browser_name"
+      ],
+      "type": "browser"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a person-level calling-window observation derived from the latest consumer_contact source row for a debt. The observation carries the current state of the reported restriction: when `status` is true the observation is an active restriction with allowed_call_start_time / allowed_call_end_time meaningful for downstream scheduling; when `status` is false the source record cleared all restriction fields and any earlier active restriction MUST be treated as removed. Legacy observations persisted before `status` was introduced do not carry the property; downstream consumers MUST treat any calling_window_restriction lacking a `status` property as an active restriction (never as unrestricted) so calls to those consumers stay inside the persisted window until a fresh observation explicitly clears the restriction with `status = false`. Each incremental ingestion emits a fresh observation reflecting the latest source state so appearance and removal both flow through normal ingestion; deterministic business-effective ordering (effective_at, then created_at) is enforced on the linking person_has_calling_window_restriction edge. Day-window children linked via calling_window_restriction_has_day_window carry the SAME effective_at as the parent person→restriction edge for the observation batch that emitted them; day-window edges from earlier active observations that were later cleared or reactivated without day fields therefore have a stale effective_at and downstream Gremlin filters them out by matching the current parent-edge effective_at.",
+      "is_deprecated": false,
+      "properties": {
+        "allowed_call_end_time": {
+          "format": "time",
+          "type": "string"
+        },
+        "allowed_call_start_time": {
+          "format": "time",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "date_restrictions_reported": {
+          "format": "date",
+          "type": "string"
+        },
+        "debt_identifier": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "person_identifier": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "status": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "debt_identifier",
+        "id",
+        "person_identifier",
+        "status"
+      ],
+      "type": "calling_window_restriction"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a single allowed call window for a specific day of week within a person-level calling restriction.",
+      "is_deprecated": false,
+      "properties": {
+        "allowed_call_end_time": {
+          "format": "time",
+          "type": "string"
+        },
+        "allowed_call_start_time": {
+          "format": "time",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "day_of_week": {
+          "enum": [
+            "FRIDAY",
+            "MONDAY",
+            "SATURDAY",
+            "SUNDAY",
+            "THURSDAY",
+            "TUESDAY",
+            "WEDNESDAY"
+          ],
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "person_identifier": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "allowed_call_end_time",
+        "allowed_call_start_time",
+        "day_of_week",
+        "id",
+        "person_identifier"
+      ],
+      "type": "calling_window_restriction_day_window"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a business treatment campaign: a named, purpose-driven grouping of debts or people that should be treated differently for a period of time or business reason.",
+      "is_deprecated": false,
+      "properties": {
+        "campaign_identifier": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "ends_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "purpose": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "starts_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "PAYFAIL",
+            "PRE_LEGAL"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "campaign_identifier",
+        "name",
+        "purpose"
+      ],
+      "type": "campaign"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents overall call timing preferences tied to a phone number. This is a pure value object: identity is (phone_number, overall_call_start_time, overall_call_end_time[, calling_time_qualifier[, preferred_contact_notes]]). The business-effective timestamp of a given report lives on the incoming phone_number_has_communication_preference edge (and on the outgoing communication_preference_has_day_window edges) rather than on the vertex, so reports that observe the same overall window reuse a single vertex across runs. Two sources exist: (1) misc002 alpha-weight codes from demographic_phone, which are soft activity-weight signals; (2) consumer_contact records, which are hard compliance restrictions that must be respected.",
+      "is_deprecated": false,
+      "properties": {
+        "calling_time_qualifier": {
+          "enum": [
+            "AFTER",
+            "BEFORE",
+            "BETWEEN"
+          ],
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "overall_call_end_time": {
+          "format": "time",
+          "type": "string"
+        },
+        "overall_call_start_time": {
+          "format": "time",
+          "type": "string"
+        },
+        "phone_number": {
+          "type": "string"
+        },
+        "preferred_contact_notes": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "overall_call_end_time",
+        "overall_call_start_time",
+        "phone_number"
+      ],
+      "type": "communication_preference"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a preferred single call window for a specific day of week on a phone number. This is a stateless decomposition of the parent communication_preference vertex: identity is (phone_number, day_of_week, preferred_call_start_time, preferred_call_end_time). The business-effective timestamp lives on the parent communication_preference vertex; day-window vertices intentionally do not carry effective_at so that per-day fan-out remains stable across pipeline re-runs.",
+      "is_deprecated": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "day_of_week": {
+          "enum": [
+            "FRIDAY",
+            "MONDAY",
+            "SATURDAY",
+            "SUNDAY",
+            "THURSDAY",
+            "TUESDAY",
+            "WEDNESDAY"
+          ],
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "phone_number": {
+          "type": "string"
+        },
+        "preferred_call_end_time": {
+          "format": "time",
+          "type": "string"
+        },
+        "preferred_call_start_time": {
+          "format": "time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "day_of_week",
+        "id",
+        "phone_number",
+        "preferred_call_end_time",
+        "preferred_call_start_time"
+      ],
+      "type": "communication_preference_day_window"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a company or organization with basic information including name and contact details.",
+      "is_deprecated": false,
+      "properties": {
+        "company_identifier": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "name": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "type": "company"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a customer complaint record. Legacy unversioned complaint vertices exist in the immutable graph where multiple distinct source complaints collapsed into a single vertex; consumers must filter to `version = 2` to exclude them and query only corrected per-source-row complaint vertices.",
+      "is_deprecated": false,
+      "properties": {
+        "complaint_identifier": {
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "debt_identifier": {
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "type": {
+          "enum": [
+            "ATTORNEY_GENERAL",
+            "BETTER_BUSINESS_BUREAU",
+            "CONSUMER",
+            "CONSUMER_FINANCIAL_PROTECTION_BUREAU",
+            "COUNTERCLAIM",
+            "LAWSUIT",
+            "OTHER",
+            "THIRD_PARTY",
+            "WRITTEN_DEMAND"
+          ],
+          "type": "string"
+        },
+        "version": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "complaint_identifier",
+        "id",
+        "version"
+      ],
+      "type": "complaint"
+    },
+    {
+      "deprecated_properties": {},
+      "is_deprecated": false,
+      "properties": {
+        "contract_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "contract_type": {
+          "enum": [
+            "COLLECTION",
+            "FORWARDING",
+            "LEGAL",
+            "SETTLEMENT"
+          ],
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_id"
+      ],
+      "type": "contract"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a court venue where a lawsuit was filed. Sourced from tlo_enrichment_info.lawsuit_history_court and shared across all lawsuits filed in the same court. Content-hashed on name so the graph store dedupes automatically across debts. A court_has_address edge to an address vertex may be added later if we start parsing city/state out of the raw TLO court label.",
+      "is_deprecated": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "court"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents one immutable daily business metric value persisted for a specific business date.",
+      "is_deprecated": false,
+      "properties": {
+        "calculated_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "daily_business_metric_value_id": {
+          "required": true,
+          "type": "string"
+        },
+        "metric_date": {
+          "format": "date",
+          "required": true,
+          "type": "string"
+        },
+        "metric_name": {
+          "enum": [
+            "all_calls",
+            "expected_recorded_calls",
+            "recorded_calls",
+            "rpc_count",
+            "rpc_rate_pct",
+            "talk_time"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "metric_value": {
+          "required": true,
+          "type": "number"
+        },
+        "namespace": {
+          "required": true,
+          "type": "string"
+        },
+        "operation": {
+          "required": true,
+          "type": "string"
+        },
+        "rules_version": {
+          "type": "string"
+        },
+        "run_id": {
+          "required": true,
+          "type": "string"
+        },
+        "service": {
+          "required": true,
+          "type": "string"
+        },
+        "source": {
+          "required": true,
+          "type": "string"
+        },
+        "unit": {
+          "enum": [
+            "Count",
+            "Percent",
+            "Seconds"
+          ],
+          "required": true,
+          "type": "string"
+        }
+      },
+      "required": [
+        "calculated_at",
+        "daily_business_metric_value_id",
+        "metric_date",
+        "metric_name",
+        "metric_value",
+        "namespace",
+        "operation",
+        "run_id",
+        "service",
+        "source",
+        "unit"
+      ],
+      "type": "daily_business_metric_value"
+    },
+    {
+      "deprecated_properties": {},
+      "indexes": {
+        "account_purchase_date": {
+          "change_trigger": {
+            "label": "company_owns_debt",
+            "type": "edge"
+          },
+          "format": "date-time",
+          "type": "string"
+        },
+        "confirmed_lawsuit_filing_date": {
+          "change_trigger": {
+            "label": "debt_lawsuit_assessment_changed",
+            "type": "edge"
+          },
+          "format": "date",
+          "type": "string"
+        },
+        "credit_report_stop_date": {
+          "change_trigger": {
+            "label": "debt_credit_report_stopped",
+            "type": "edge"
+          },
+          "format": "date-time",
+          "type": "string"
+        },
+        "current_balance": {
+          "change_trigger": {
+            "label": "debt_has_balance",
+            "type": "edge"
+          },
+          "type": "number"
+        },
+        "current_creditor_name": {
+          "change_trigger": {
+            "label": "company_owns_debt",
+            "type": "edge"
+          },
+          "type": "string"
+        },
+        "debt_account_level_dnc_current": {
+          "absent_value": {
+            "value": false
+          },
+          "additional_change_triggers": [
+            {
+              "label": "person_owes_debt",
+              "type": "edge"
+            }
+          ],
+          "change_trigger": {
+            "label": "person_has_dnc",
+            "type": "edge"
+          },
+          "type": "boolean"
+        },
+        "debt_status_latest": {
+          "change_trigger": {
+            "label": "debt_status_changed",
+            "type": "edge"
+          },
+          "enum": [
+            "1099C_SENT",
+            "ACTIVE",
+            "ATTORNEY_REPRESENTATION",
+            "BANKRUPTCY",
+            "CANCELLED",
+            "CHARGED_OFF",
+            "CLOSED",
+            "DECEASED",
+            "FRAUD",
+            "INDIRECT",
+            "NFC_NO1099C",
+            "OPEN",
+            "PAID_IN_FULL",
+            "PAYMENT_RECEIVED",
+            "PENDING_1099C",
+            "PROMISE_TO_PAY",
+            "PROMISE_TO_SETTLE",
+            "RESOLVED_LEGAL",
+            "RETURNED",
+            "SETTLED",
+            "UNCOLLECTABLE",
+            "UNKNOWN"
+          ],
+          "type": "string"
+        },
+        "debtor_social_security_number_hash": {
+          "change_trigger": {
+            "label": "person_has_social_security_number",
+            "type": "edge"
+          },
+          "type": "string"
+        },
+        "demand_letter_sent": {
+          "change_trigger": {
+            "label": "debt_has_postal_mail",
+            "type": "edge"
+          },
+          "type": "boolean"
+        },
+        "dsa_company_name": {
+          "change_trigger": {
+            "label": "company_represents_debt",
+            "type": "edge"
+          },
+          "type": "string"
+        },
+        "has_1099c_status": {
+          "change_trigger": {
+            "label": "debt_status_changed",
+            "type": "edge"
+          },
+          "type": "boolean"
+        },
+        "has_account_level_dnc": {
+          "additional_change_triggers": [
+            {
+              "label": "person_owes_debt",
+              "type": "edge"
+            }
+          ],
+          "change_trigger": {
+            "label": "person_has_dnc",
+            "type": "edge"
+          },
+          "type": "boolean"
+        },
+        "has_account_level_dnt": {
+          "change_trigger": {
+            "label": "person_has_dnt",
+            "type": "edge"
+          },
+          "type": "boolean"
+        },
+        "has_active_payment_plan": {
+          "change_trigger": {
+            "label": "debt_payment_plan_status_changed",
+            "type": "edge"
+          },
+          "type": "boolean"
+        },
+        "has_cease_and_desist_revocation": {
+          "change_trigger": {
+            "label": "postal_mail_status_changed",
+            "type": "edge"
+          },
+          "type": "boolean"
+        },
+        "has_open_complaint": {
+          "additional_change_triggers": [
+            {
+              "label": "debt_has_complaint",
+              "type": "edge"
+            }
+          ],
+          "change_trigger": {
+            "label": "complaint_status_changed",
+            "type": "edge"
+          },
+          "type": "boolean"
+        },
+        "has_open_dispute": {
+          "change_trigger": {
+            "label": "debt_dispute_status_changed",
+            "type": "edge"
+          },
+          "type": "boolean"
+        },
+        "has_uncollectable_status": {
+          "change_trigger": {
+            "label": "debt_status_changed",
+            "type": "edge"
+          },
+          "type": "boolean"
+        },
+        "is_bankruptcy_active": {
+          "change_trigger": {
+            "label": "debt_bankruptcy_status_changed",
+            "type": "edge"
+          },
+          "type": "boolean"
+        },
+        "is_cease_and_desist": {
+          "change_trigger": {
+            "label": "postal_mail_status_changed",
+            "type": "edge"
+          },
+          "type": "boolean"
+        },
+        "is_compliance_hold_active": {
+          "change_trigger": {
+            "label": "debt_hold_status_changed",
+            "type": "edge"
+          },
+          "type": "boolean"
+        },
+        "is_creditor_request_hold_active": {
+          "change_trigger": {
+            "label": "debt_hold_status_changed",
+            "type": "edge"
+          },
+          "type": "boolean"
+        },
+        "is_disputed": {
+          "change_trigger": {
+            "label": "debt_dispute_status_changed",
+            "type": "edge"
+          },
+          "type": "boolean"
+        },
+        "is_dsa": {
+          "change_trigger": {
+            "label": "company_represents_debt",
+            "type": "edge"
+          },
+          "type": "boolean"
+        },
+        "is_forwarded": {
+          "change_trigger": {
+            "label": "debt_forwarded_status_changed",
+            "type": "edge"
+          },
+          "type": "boolean"
+        },
+        "is_in_current_inventory": {
+          "change_trigger": {
+            "label": "portfolio_contains_debt",
+            "type": "edge"
+          },
+          "type": "boolean"
+        },
+        "is_litigious": {
+          "change_trigger": {
+            "label": "debt_has_lawsuit",
+            "type": "edge"
+          },
+          "type": "boolean"
+        },
+        "is_operational_hold_active": {
+          "change_trigger": {
+            "label": "debt_hold_status_changed",
+            "type": "edge"
+          },
+          "type": "boolean"
+        },
+        "is_pending_sellback": {
+          "change_trigger": {
+            "label": "debt_sellback_status_changed",
+            "type": "edge",
+            "when": [
+              {
+                "operator": "eq",
+                "property": "source_signal",
+                "value": "1151"
+              }
+            ]
+          },
+          "type": "boolean"
+        },
+        "is_represented_by_attorney": {
+          "change_trigger": {
+            "label": "company_represents_debt",
+            "type": "edge"
+          },
+          "type": "boolean"
+        },
+        "is_sold_back": {
+          "change_trigger": {
+            "label": "company_owns_debt",
+            "type": "edge"
+          },
+          "type": "boolean"
+        },
+        "last_payment_date": {
+          "change_trigger": {
+            "label": "payment_status_changed",
+            "type": "edge"
+          },
+          "format": "date-time",
+          "type": "string"
+        },
+        "latest_good_faith_offer_amount": {
+          "change_trigger": {
+            "label": "debt_has_good_faith_offer",
+            "type": "edge"
+          },
+          "type": "number"
+        },
+        "latest_good_faith_offer_date": {
+          "change_trigger": {
+            "label": "debt_has_good_faith_offer",
+            "type": "edge"
+          },
+          "format": "date-time",
+          "type": "string"
+        },
+        "latest_settlement_offer_date": {
+          "change_trigger": {
+            "label": "debt_has_settlement_offer",
+            "type": "edge"
+          },
+          "format": "date-time",
+          "type": "string"
+        },
+        "latest_settlement_percent": {
+          "change_trigger": {
+            "label": "debt_has_settlement_offer",
+            "type": "edge"
+          },
+          "type": "number"
+        },
+        "next_work_date_latest": {
+          "change_trigger": {
+            "label": "debt_has_next_work_date",
+            "type": "edge"
+          },
+          "format": "date",
+          "type": "string"
+        },
+        "original_annual_percentage_rate": {
+          "change_trigger": {
+            "label": "debt_has_original_annual_percentage_rate",
+            "type": "edge"
+          },
+          "type": "number"
+        },
+        "original_creditor_name": {
+          "change_trigger": {
+            "label": "company_owns_debt",
+            "type": "edge"
+          },
+          "type": "string"
+        },
+        "original_portfolio": {
+          "change_trigger": {
+            "label": "portfolio_contains_debt",
+            "type": "edge"
+          },
+          "type": "string"
+        },
+        "primary_state_code": {
+          "change_trigger": {
+            "label": "person_primary_address_changed",
+            "type": "edge"
+          },
+          "enum": [
+            "AA",
+            "AE",
+            "AK",
+            "AL",
+            "AP",
+            "AR",
+            "AS",
+            "AZ",
+            "CA",
+            "CO",
+            "CT",
+            "DC",
+            "DE",
+            "FL",
+            "FM",
+            "GA",
+            "GU",
+            "HI",
+            "IA",
+            "ID",
+            "IL",
+            "IN",
+            "KS",
+            "KY",
+            "LA",
+            "MA",
+            "MD",
+            "ME",
+            "MH",
+            "MI",
+            "MN",
+            "MO",
+            "MP",
+            "MS",
+            "MT",
+            "NC",
+            "ND",
+            "NE",
+            "NH",
+            "NJ",
+            "NM",
+            "NV",
+            "NY",
+            "OH",
+            "OK",
+            "OR",
+            "PA",
+            "PR",
+            "PW",
+            "RI",
+            "SC",
+            "SD",
+            "TN",
+            "TX",
+            "UT",
+            "VA",
+            "VI",
+            "VT",
+            "WA",
+            "WI",
+            "WV",
+            "WY"
+          ],
+          "type": "string"
+        },
+        "primary_zip_code": {
+          "change_trigger": {
+            "label": "person_primary_address_changed",
+            "type": "edge"
+          },
+          "pattern": "^[0-9]{5}$",
+          "type": "string"
+        },
+        "seller_code": {
+          "change_trigger": {
+            "label": "portfolio_contains_debt",
+            "type": "edge"
+          },
+          "type": "string"
+        },
+        "sol_date": {
+          "change_trigger": {
+            "label": "debt_has_sol_date",
+            "type": "edge"
+          },
+          "format": "date",
+          "type": "string"
+        },
+        "total_paid_amount": {
+          "change_trigger": {
+            "label": "payment_status_changed",
+            "type": "edge"
+          },
+          "type": "number"
+        },
+        "tu_score_latest": {
+          "change_trigger": {
+            "label": "person_has_tu_score",
+            "type": "edge"
+          },
+          "type": "integer"
+        }
+      },
+      "is_deprecated": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "debt_identifier": {
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "debt"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents one immutable channel and communication-type preference snapshot for a debt captured from the Payment Portal Preference Center. Each portal save emits a new debt_channel_preference vertex; the current preferences for a debt are the reached vertex with the newest effective_at.",
+      "is_deprecated": false,
+      "properties": {
+        "account_notifications_preferred": {
+          "type": "boolean"
+        },
+        "channel_email_preferred": {
+          "type": "boolean"
+        },
+        "channel_phone_preferred": {
+          "type": "boolean"
+        },
+        "channel_physical_mail_preferred": {
+          "type": "boolean"
+        },
+        "channel_sms_preferred": {
+          "type": "boolean"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "marketing_communications_preferred": {
+          "type": "boolean"
+        },
+        "source": {
+          "enum": [
+            "PAYMENT_PORTAL"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "account_notifications_preferred",
+        "channel_email_preferred",
+        "channel_phone_preferred",
+        "channel_physical_mail_preferred",
+        "channel_sms_preferred",
+        "effective_at",
+        "id",
+        "marketing_communications_preferred",
+        "source"
+      ],
+      "type": "debt_channel_preference"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents the customer-facing financial product associated with a debt (e.g., the credit card or loan brand the consumer recognizes, like \"Indigo Mastercard\" or \"Best Egg\"). Distinct from the legal original creditor (issuing company), which is linked via company_issues_debt_product.",
+      "is_deprecated": false,
+      "properties": {
+        "debt_identifier": {
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "name": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "type": "debt_product"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a discrete debt exclusion event occurring during a rule execution, capturing evaluation order, business-effective timestamp, and linking the excluded debt to the disqualifying rule (and candidate phone for phone-scoped rules).",
+      "is_deprecated": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "debt_rule_exclusion_identifier": {
+          "minLength": 1,
+          "required": true,
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "required": true,
+          "type": "string"
+        },
+        "evaluation_order": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "debt_rule_exclusion_identifier",
+        "effective_at"
+      ],
+      "type": "debt_rule_exclusion"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a distinct device class observed during a portal session (e.g., 'iPhone', 'iPad', 'Android Phone', 'Desktop'). One vertex per device_type value; deduped across sessions. This is a device class, not a per-device hardware identity.",
+      "is_deprecated": false,
+      "properties": {
+        "device_type": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "device_type"
+      ],
+      "type": "device"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a dispute record on an account.",
+      "is_deprecated": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "debt_identifier": {
+          "type": "string"
+        },
+        "dispute_identifier": {
+          "required": true,
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "type": {
+          "enum": [
+            "ACT",
+            "DND",
+            "DXB",
+            "DXB_FRAUD",
+            "DXF",
+            "INDIRECT",
+            "SELLER",
+            "VENDOR",
+            "VERBAL",
+            "WRITTEN",
+            "XB"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "dispute_identifier",
+        "id"
+      ],
+      "type": "dispute"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a do-not-contact (DNC) status record.",
+      "is_deprecated": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "email_address": {
+          "format": "email",
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "phone_number": {
+          "format": "phone_number",
+          "type": "string"
+        },
+        "status": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "status"
+      ],
+      "type": "dnc"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a do-not-email (DNE) status record for a person. DNE is email-only and is distinct from DNC, which restricts voice calls, and DNT, which restricts SMS. Sourced from the account-level account.do_not_email flag and modeled at the person level, so the opt-out applies to every email address the person owns rather than to a single address. The record is identified by person_identifier and status; the business-effective time of each transition lives on the person_has_dne edge.",
+      "is_deprecated": false,
+      "properties": {
+        "person_identifier": {
+          "type": "string"
+        },
+        "status": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "person_identifier",
+        "status"
+      ],
+      "type": "dne"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a do-not-text (DNT) status record for a person. DNT is SMS-only and is distinct from DNC, which restricts voice calls. Sourced from the account-level account.do_not_txt flag and modeled at the person level (one DNT record per primary debt's person).",
+      "is_deprecated": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "status"
+      ],
+      "type": "dnt"
+    },
+    {
+      "deprecated_properties": {},
+      "is_deprecated": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "email_address": {
+          "format": "email",
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "email_address",
+        "id"
+      ],
+      "type": "email"
+    },
+    {
+      "deprecated_properties": {},
+      "is_deprecated": false,
+      "properties": {
+        "debt_identifier": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "direction": {
+          "enum": [
+            "INBOUND",
+            "OUTBOUND"
+          ],
+          "type": "string"
+        },
+        "email_queue_identifier": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "interaction_identifier": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "subject": {
+          "type": "string"
+        },
+        "template_identifier": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "interaction_identifier"
+      ],
+      "type": "email_message"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a specific launched run of a portal A/B experiment. Immutable: one vertex per experiment_run_id, and experiment_run_id always maps to the same experiment_key for that run. Portal events assigned to this experiment run are linked via the portal_event_has_experiment edge, which carries the assigned variant_key on the edge for each event.",
+      "is_deprecated": false,
+      "properties": {
+        "experiment_key": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "experiment_run_id": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "experiment_key",
+        "experiment_run_id"
+      ],
+      "type": "experiment"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a single identifiable section inside a file, bounded by an inclusive 1-indexed page range. Applies to ANY file, not only MULTI_DOCUMENT composites: a single-purpose CONTRACT PDF can carry one file_content covering pages 1..N, or multiple file_content children for its distinct sections (Arbitration Agreement, ESIGN Consent, Credit Contract). The parent file is referenced via file_id so lineage survives the database's content-hash id override (child vertices carry their root identifier to avoid hash collisions). content_type is an independent, fine-grained enum that names the specific document form of each section  -  it is deliberately NOT mirrored from files.file_type, which is kept coarse.",
+      "is_deprecated": false,
+      "properties": {
+        "content_hash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "content_id": {
+          "required": true,
+          "type": "string"
+        },
+        "content_type": {
+          "enum": [
+            "ACH_AUTOPAY_AUTHORIZATION",
+            "ADDRESS_VERIFICATION",
+            "ADVERSE_ACTION_NOTICE",
+            "APPLICATION",
+            "APPLICATION_DECISION_NOTICE",
+            "ARBITRATION_AGREEMENT",
+            "BALANCE_BREAKDOWN",
+            "BORROWER_AGREEMENT",
+            "BUSINESS_METRIC_SNAPSHOT",
+            "BUSINESS_RECORD_AFFIDAVIT",
+            "BUYER_ORDER",
+            "CALLING_WORKPLACE_AUTHORIZATION",
+            "CERTIFICATE_OF_COMPLETION",
+            "CHAIN_OF_TITLE_DOCUMENT",
+            "CHARGE_OFF_NOTICE",
+            "CHECK_DOCUMENT",
+            "COLLATERAL_INSURANCE_POLICY",
+            "COMPLAINT_INTAKE_EXPORT",
+            "COMPLAINT_RESPONSE_PACKAGE",
+            "CONSUMER_CREDIT",
+            "CONSUMER_DISPUTE_CORRESPONDENCE",
+            "CONTRACT",
+            "COVER_SHEET",
+            "CRA_DISPUTE_RESPONSE",
+            "CREDIT_CONTRACT",
+            "CREDIT_INSURANCE_STATEMENT",
+            "CREDIT_REPORT",
+            "DEBT_VALIDATION_LETTER",
+            "DEFICIENCY_NOTICE",
+            "DISCLOSURE",
+            "DISPUTE_DOCUMENT",
+            "DRIVERS_LICENSE",
+            "EFT_AGREEMENT",
+            "ELECTRONIC_DISCLOSURE",
+            "ESIGN_ACT_CONSENT",
+            "FINAL_APPROVAL_DISCLOSURE",
+            "FRAUD_CLAIM_RESPONSE_LETTER",
+            "FUNDING_DISBURSEMENT_CONFIRMATION",
+            "GOODBYE_LETTER",
+            "IDENTIFICATION",
+            "IDENTITY_DOCUMENT",
+            "IDENTITY_THEFT_AFFIDAVIT",
+            "INCOME_VERIFICATION",
+            "INSTALLMENT_LOAN_NOTE",
+            "INSURANCE",
+            "INSURANCE_ADJUSTMENT_ACKNOWLEDGEMENT",
+            "INVOLUNTARY_UNEMPLOYMENT_INSURANCE_APPLICATION",
+            "INVOLUNTARY_UNEMPLOYMENT_INSURANCE_CANCELLATION_REQUEST",
+            "INVOLUNTARY_UNEMPLOYMENT_INSURANCE_POLICY",
+            "LIEN_RELEASE",
+            "LIFE_AND_ACCIDENT_HEALTH_INSURANCE_APPLICATION",
+            "LIFE_AND_ACCIDENT_HEALTH_POLICY",
+            "LIVE_CHECK",
+            "LOAN_CONTRACT",
+            "MISCELLANEOUS",
+            "NOTICE_OF_INTENT_TO_SELL_PROPERTY",
+            "OPERATIONAL_JOB_AID",
+            "PERSONAL_PROPERTY_INSURANCE_POLICY",
+            "PORTFOLIO_REFERENCE_GUIDE",
+            "PREPAID_DISBURSEMENT_CARD_ACKNOWLEDGEMENT",
+            "PRIVACY_NOTICE",
+            "PRIVACY_POLICY_AGREEMENT",
+            "PROMISSORY_NOTE",
+            "PROOF_OF_PAYMENT_DOCUMENT",
+            "PROPERTY_INSURANCE_APPLICATION",
+            "PROPERTY_INSURANCE_POLICY",
+            "REFERENCE_LIST",
+            "REPOSSESSION_NOTICE",
+            "RIGHT_TO_CURE",
+            "RISK_BASED_PRICING_NOTICE",
+            "SCHEDULE_OF_INSURANCE",
+            "SERVICE_CONTRACT",
+            "SMS_COMMUNICATION_CONSENT",
+            "STATEMENT",
+            "SUBSTANTIATION_LETTER",
+            "TERMS_AND_CONDITIONS",
+            "THIRD_PARTY_AUTHORIZATION",
+            "TRANSACTION_HISTORY",
+            "TRUTH_IN_LENDING",
+            "UNSUPPORTED"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "file_date": {
+          "format": "date",
+          "type": "string"
+        },
+        "file_id": {
+          "required": true,
+          "type": "string"
+        },
+        "language": {
+          "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+          "type": "string"
+        },
+        "ordinal": {
+          "minimum": 1,
+          "required": true,
+          "type": "integer"
+        },
+        "page_from": {
+          "minimum": 1,
+          "required": true,
+          "type": "integer"
+        },
+        "page_to": {
+          "minimum": 1,
+          "required": true,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "content_id",
+        "content_type",
+        "file_id",
+        "ordinal",
+        "page_from",
+        "page_to"
+      ],
+      "type": "file_content"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents normalized metadata and additional properties associated with files, including statement classification, dates, agreements, and disclosures. Linked to files via relationship.",
+      "is_deprecated": false,
+      "properties": {
+        "arbitration_clause": {
+          "type": "boolean"
+        },
+        "esign_confirmed": {
+          "type": "boolean"
+        },
+        "last_activity_date": {
+          "format": "date",
+          "type": "string"
+        },
+        "last_payment_date": {
+          "format": "date",
+          "type": "string"
+        },
+        "last_statement_date": {
+          "format": "date",
+          "type": "string"
+        },
+        "metadata_id": {
+          "required": true,
+          "type": "string"
+        },
+        "statement_type": {
+          "enum": [
+            "CHARGE_OFF_STATEMENT",
+            "FINANCIAL_STATEMENT",
+            "POST_CHARGE_OFF_STATEMENT",
+            "PRE_CHARGE_OFF_STATEMENT",
+            "STATEMENT_WITH_ACTIVITY",
+            "STATEMENT_WITH_PAYMENT",
+            "ZERO_BALANCE_STATEMENT"
+          ],
+          "type": "string"
+        },
+        "terms_changing": {
+          "type": "boolean"
+        },
+        "transaction_history_type": {
+          "enum": [
+            "POST_CHARGE_OFF",
+            "PRE_CHARGE_OFF"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "metadata_id"
+      ],
+      "type": "file_metadata"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a single stored file artifact with type classification and S3 source location.",
+      "is_deprecated": false,
+      "properties": {
+        "file_date": {
+          "format": "date",
+          "type": "string"
+        },
+        "file_id": {
+          "required": true,
+          "type": "string"
+        },
+        "file_type": {
+          "enum": [
+            "APPLICATION",
+            "BALANCE_BREAKDOWN",
+            "BUSINESS_METRIC_SNAPSHOT",
+            "BUSINESS_RECORD_AFFIDAVIT",
+            "BUYER_ORDER",
+            "CHAIN_OF_TITLE_DOCUMENT",
+            "CHARGE_OFF_NOTICE",
+            "CHECK_DOCUMENT",
+            "CONTRACT",
+            "CREDIT_REPORT",
+            "DEBT_VALIDATION_LETTER",
+            "DEFICIENCY_NOTICE",
+            "DISCLOSURE",
+            "DISPUTE_DOCUMENT",
+            "GOODBYE_LETTER",
+            "IDENTIFICATION",
+            "INSURANCE",
+            "LIEN_RELEASE",
+            "LIVE_CHECK",
+            "MULTI_DOCUMENT",
+            "NOTICE_OF_INTENT_TO_SELL_PROPERTY",
+            "OPERATIONAL_JOB_AID",
+            "PORTFOLIO_REFERENCE_GUIDE",
+            "PROOF_OF_PAYMENT_DOCUMENT",
+            "REPOSSESSION_NOTICE",
+            "STATEMENT",
+            "SUBSTANTIATION_LETTER",
+            "TRANSACTION_HISTORY",
+            "UNSUPPORTED"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "source_filename": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "file_id",
+        "file_type"
+      ],
+      "type": "files"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents an approximate geolocation derived from an IP address or analytics client (city + region + country, with optional latitude/longitude). Distinct from the postal address vertex: this is non-postal, IP-derived location and does not require street-level fields. One vertex per (city_name, region, country_code) combination; deduped across sessions.",
+      "is_deprecated": false,
+      "properties": {
+        "city_name": {
+          "type": "string"
+        },
+        "country_code": {
+          "type": "string"
+        },
+        "latitude": {
+          "type": "number"
+        },
+        "longitude": {
+          "type": "number"
+        },
+        "region": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "country_code"
+      ],
+      "type": "geolocation"
+    },
+    {
+      "deprecated_properties": {},
+      "is_deprecated": false,
+      "properties": {
+        "amount": {
+          "type": "number"
+        },
+        "create_date": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "debt_identifier": {
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "expiration_date": {
+          "format": "date",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount",
+        "debt_identifier",
+        "effective_at",
+        "id"
+      ],
+      "type": "good_faith_offer"
+    },
+    {
+      "deprecated_properties": {},
+      "is_deprecated": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "COMPLIANCE",
+            "CREDITOR_REQUEST",
+            "OPERATIONAL"
+          ],
+          "type": "string"
+        },
+        "version": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "version"
+      ],
+      "type": "hold"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents an immutable income range enrichment associated with a person, sourced from the Credit Vision income band for a debt.",
+      "is_deprecated": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "income_high": {
+          "type": "integer"
+        },
+        "income_low": {
+          "type": "integer"
+        },
+        "income_midpoint": {
+          "type": "integer"
+        },
+        "person_identifier": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "effective_at",
+        "id",
+        "income_high",
+        "income_low",
+        "income_midpoint",
+        "person_identifier"
+      ],
+      "type": "income"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a distinct IP address observed during a portal session. One vertex per ip_address value; deduped across sessions and consumers.",
+      "is_deprecated": false,
+      "properties": {
+        "ip_address": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "ip_address"
+      ],
+      "type": "ip_address"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a judgement awarded against a debt. Presence of this vertex on a debt indicates the debt has a judgement on file. Sourced from the legal_form table when judgment_date is populated.",
+      "is_deprecated": false,
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "judgment_date": {
+          "format": "date",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "judgment"
+    },
+    {
+      "deprecated_properties": {},
+      "is_deprecated": false,
+      "properties": {
+        "display_name": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "name": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "type": "law_firm"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a lawsuit reported by TLO/TU on the tlo_enrichment_info table. One vertex per distinct court case (normalized case_number + normalized court_name), so the same real case referenced by multiple debts collapses to a single vertex - critical for CAFA class actions and serial-litigious plaintiff scenarios. Per-debt TLO enrichment metadata (match_score, match_count, distance, long_score, case_title, filing_date, cafa) lives on the debt_has_lawsuit edge, NOT on this vertex, so cross-debt duplicates dedupe cleanly and re-enrichment does not churn the vertex hash.",
+      "is_deprecated": false,
+      "properties": {
+        "case_number": {
+          "type": "string"
+        },
+        "court_name": {
+          "type": "string"
+        },
+        "identity_source": {
+          "enum": [
+            "CASE_NUMBER",
+            "FALLBACK_HASH"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "case_number",
+        "court_name",
+        "identity_source"
+      ],
+      "type": "lawsuit"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a party named in a TLO lawsuit hit (plaintiff, defendant, attorney, judge, or law firm). Intentionally NOT typed as person or company: TLO gives raw comma-separated strings ('DENNIS E HENRY ATTORNEY', 'TRANS UNION LLC') that cannot be reliably classified and must not pollute the canonical person/company graph where identity matching happens. Role is expressed by the linking edge label (lawsuit_has_plaintiff / lawsuit_has_defendant / lawsuit_has_attorney / lawsuit_has_judge / lawsuit_has_lawfirm). Content-hashed on raw_name so identical names dedupe across lawsuits. Only emitted for TLO rows that would produce a lawsuit vertex (matches>=1 AND court populated), so no orphan parties are minted.",
+      "is_deprecated": false,
+      "properties": {
+        "raw_name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "raw_name"
+      ],
+      "type": "lawsuit_party"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a legal action / cause-of-action code cited in a TLO lawsuit (FDCPA, FCRA, TCPA, RESPA, BKPCY, STATE_XX, etc.). Sourced from tlo_enrichment_info.lawsuit_history_actions, which is a comma-separated string of these codes. One vertex per distinct code across the whole graph. Only emitted for TLO rows that would produce a lawsuit vertex (matches>=1 AND court populated), so no orphan actions are minted.",
+      "is_deprecated": false,
+      "properties": {
+        "code": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "code"
+      ],
+      "type": "legal_action"
+    },
+    {
+      "deprecated_properties": {},
+      "is_deprecated": false,
+      "properties": {
+        "mail_campaign_identifier": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "mail_campaign_identifier"
+      ],
+      "type": "mail_campaign"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Seller-media package / drop container (e.g., Elevate Azure land) that groups related files or documents together; not merely a vague file batch.",
+      "is_deprecated": false,
+      "properties": {
+        "created_date": {
+          "format": "date",
+          "type": "string"
+        },
+        "media_id": {
+          "required": true,
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "required": true,
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "media_id",
+        "name"
+      ],
+      "type": "media"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a distinct operating system identity (name + version) observed during a portal session. One vertex per (os_name, os_version) combination; deduped across sessions.",
+      "is_deprecated": false,
+      "properties": {
+        "os_name": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "os_version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "os_name"
+      ],
+      "type": "operating_system"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a real money event applied to a debt. One vertex per actual money event (received). May or may not be linked to a payment_plan or to a specific payment_plan_installment. Reversals/NSF/chargebacks/voids are modeled as payment_status_changed edges on the original payment, not as separate payment vertices.",
+      "indexes": {
+        "attributed_channel": {
+          "change_trigger": {
+            "label": "payment_attributed_to_channel",
+            "type": "edge"
+          },
+          "enum": [
+            "EMAIL",
+            "PHONE",
+            "PORTAL",
+            "SMS"
+          ],
+          "type": "string"
+        },
+        "attribution_rule_version": {
+          "change_trigger": {
+            "label": "payment_attributed_to_channel",
+            "type": "edge"
+          },
+          "type": "string"
+        }
+      },
+      "is_deprecated": false,
+      "properties": {
+        "amount": {
+          "type": "number"
+        },
+        "debt_identifier": {
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "payment_identifier": {
+          "type": "string"
+        },
+        "payment_method": {
+          "enum": [
+            "ACH",
+            "CASH",
+            "CHECK",
+            "CREDIT_CARD",
+            "DEBIT_CARD",
+            "MONEY_ORDER",
+            "OTHER"
+          ],
+          "type": "string"
+        },
+        "payment_provider": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount",
+        "debt_identifier",
+        "effective_at",
+        "payment_identifier"
+      ],
+      "type": "payment"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a payment arrangement record.",
+      "is_deprecated": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "payment_plan_identifier": {
+          "type": "string"
+        },
+        "plan_type": {
+          "enum": [
+            "INSTALLMENT",
+            "LUMP_SUM",
+            "OTHER"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "payment_plan"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a single scheduled slot within a payment plan: the planned charge for one date in the plan's schedule (scheduled_amount, payment_method). Independent of whether money was actually received, and independent of whether a payment attempt exists: slots are created both from attempted payments and, for already-booked future obligations with no payment row yet, from the authoritative payment_plan_schedule row (ownership resolved through payment_plan, which is the only place debt_id lives). Lifecycle (SCHEDULED, PAID, FAILED, CANCELLED, RESCHEDULED, COMPLETED) and the scheduled date for the slot are recorded on payment_plan_installment_status_changed edges; the latest scheduled date and latest lifecycle state are projected onto this vertex by the scheduled_payment_date and installment_status_latest derived indexes. The owning plan is always reachable through payment_plan_has_installment. When a real money event satisfies a slot, a payment_plan_installment_has_payment edge links the installment to its payment.",
+      "indexes": {
+        "installment_status_latest": {
+          "change_trigger": {
+            "label": "payment_plan_installment_status_changed",
+            "type": "edge"
+          },
+          "enum": [
+            "CANCELLED",
+            "COMPLETED",
+            "FAILED",
+            "PAID",
+            "RESCHEDULED",
+            "SCHEDULED"
+          ],
+          "type": "string"
+        },
+        "scheduled_payment_date": {
+          "change_trigger": {
+            "label": "payment_plan_installment_status_changed",
+            "type": "edge"
+          },
+          "format": "date",
+          "type": "string"
+        }
+      },
+      "is_deprecated": false,
+      "properties": {
+        "debt_identifier": {
+          "type": "string"
+        },
+        "payment_method": {
+          "enum": [
+            "ACH",
+            "CASH",
+            "CHECK",
+            "CREDIT_CARD",
+            "DEBIT_CARD",
+            "MONEY_ORDER",
+            "OTHER"
+          ],
+          "type": "string"
+        },
+        "payment_schedule_identifier": {
+          "type": "string"
+        },
+        "scheduled_amount": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "debt_identifier",
+        "payment_schedule_identifier"
+      ],
+      "type": "payment_plan_installment"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents an individual person with basic personal information including name and contact details.",
+      "indexes": {
+        "has_calling_window_restriction": {
+          "change_trigger": {
+            "label": "person_has_calling_window_restriction",
+            "type": "edge"
+          },
+          "type": "boolean"
+        },
+        "is_account_level_dnc": {
+          "change_trigger": {
+            "label": "person_has_dnc",
+            "type": "edge"
+          },
+          "type": "boolean"
+        },
+        "is_in_prelegal": {
+          "change_trigger": {
+            "label": "person_campaign_membership_changed",
+            "type": "edge"
+          },
+          "type": "boolean"
+        },
+        "is_person_deceased": {
+          "change_trigger": {
+            "label": "person_deceased_status_changed",
+            "type": "edge"
+          },
+          "type": "boolean"
+        }
+      },
+      "is_deprecated": false,
+      "properties": {
+        "first_name": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "last_name": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "middle_name": {
+          "type": "string"
+        },
+        "person_identifier": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "version": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "person_identifier",
+        "version"
+      ],
+      "type": "person"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents an immutable language-preference value object for a person. Version changes over time are captured as new person_has_language_preference edges (which carry the business-effective timestamp), not as new vertex snapshots; identical (person_identifier, preferred_language) pairs dedupe forever.",
+      "is_deprecated": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "person_identifier": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "preferred_language": {
+          "enum": [
+            "EN",
+            "ES"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "person_identifier",
+        "preferred_language"
+      ],
+      "type": "person_language_preference"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents an individual phone call attempt. Only immutable identity facts live on the vertex (with direction present when derivable from source_type); observations that arrive after the call is initiated (lifecycle status, contact type reached, transcript, sentiment, AI outputs) are modeled through subsequent edges. Linked to the dialed consumer phone_number via phone_number_has_phone_call, to the phone_number that originated the call via phone_number_originated_phone_call, to the debt context via debt_has_phone_call, to the specific person reached via person_has_phone_call, to lifecycle status transitions via phone_call_status_changed (self edges), to the contact type classification via phone_call_contact_identified (self edges), to sentiment observations via phone_call_sentiment_assessed (self edges), to AI response scores via phone_call_ai_response_scored (self edges), to the transcript artifact via phone_call_has_transcript_artifact_uri (self edge), to per-call compliance observations via phone_call_compliance_event (self edges). Replaces the prior edge-based phone_call model; the phone_call edge type is retained for backward compatibility.",
+      "indexes": {
+        "ai_response_score_latest": {
+          "change_trigger": {
+            "label": "phone_call_ai_response_scored",
+            "type": "edge"
+          },
+          "type": "number"
+        },
+        "has_transcript_artifact": {
+          "change_trigger": {
+            "label": "phone_call_has_transcript_artifact_uri",
+            "type": "edge"
+          },
+          "type": "boolean"
+        },
+        "phone_call_status_latest": {
+          "change_trigger": {
+            "label": "phone_call_status_changed",
+            "type": "edge"
+          },
+          "enum": [
+            "ANSWERED",
+            "ATTEMPTED",
+            "BUSY",
+            "CANCELLED",
+            "DISCONNECTED",
+            "FAILED",
+            "HUNG_UP",
+            "LEFT_MESSAGE",
+            "NO_ANSWER",
+            "OUT_OF_SERVICE",
+            "PENDING",
+            "RESTRICTED",
+            "SCHEDULED"
+          ],
+          "type": "string"
+        },
+        "phone_contact_type_latest": {
+          "change_trigger": {
+            "label": "phone_call_contact_identified",
+            "type": "edge"
+          },
+          "enum": [
+            "ANSWERING_MACHINE",
+            "CO_MAKER",
+            "NON_RESPONSIBLE_PARTY",
+            "PRIMARY",
+            "RIGHT_PARTY",
+            "SPOUSE",
+            "UNKNOWN"
+          ],
+          "type": "string"
+        },
+        "sentiment_latest": {
+          "change_trigger": {
+            "label": "phone_call_sentiment_assessed",
+            "type": "edge"
+          },
+          "type": "string"
+        }
+      },
+      "is_deprecated": false,
+      "properties": {
+        "direction": {
+          "enum": [
+            "INBOUND",
+            "OUTBOUND"
+          ],
+          "type": "string"
+        },
+        "interaction_identifier": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "interaction_identifier"
+      ],
+      "type": "phone_call"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents an immutable phone contactability profile derived from PBI-style contactability attributes.",
+      "is_deprecated": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "phone_number": {
+          "format": "phone_number",
+          "type": "string"
+        },
+        "phone_type": {
+          "enum": [
+            "ANY",
+            "LANDLINE",
+            "WIRELESS"
+          ],
+          "type": "string"
+        },
+        "phone_usage_12_months": {
+          "enum": [
+            "ANY",
+            "LIGHT",
+            "MINIMAL",
+            "MODERATE_TO_HEAVY",
+            "NONE"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "effective_at",
+        "id",
+        "phone_number",
+        "phone_type",
+        "phone_usage_12_months"
+      ],
+      "type": "phone_contactability_profile"
+    },
+    {
+      "deprecated_properties": {},
+      "indexes": {
+        "has_open_formal_complaint": {
+          "absent_value": {
+            "value": false
+          },
+          "additional_change_triggers": [
+            {
+              "label": "phone_number_has_complaint",
+              "type": "edge"
+            }
+          ],
+          "change_trigger": {
+            "label": "complaint_status_changed",
+            "type": "edge"
+          },
+          "type": "boolean"
+        }
+      },
+      "is_deprecated": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "location_type": {
+          "enum": [
+            "FAX",
+            "HOME",
+            "MOBILE",
+            "OTHER",
+            "UNKNOWN",
+            "WORK"
+          ],
+          "type": "string"
+        },
+        "phone_number": {
+          "format": "phone_number",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "phone_number"
+      ],
+      "type": "phone_number"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents an immutable phone verification result with verification state and name-to-phone linkage outcome.",
+      "is_deprecated": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "phone_number": {
+          "format": "phone_number",
+          "type": "string"
+        },
+        "verification_result": {
+          "enum": [
+            "INVALID_NAME_OR_PHONE",
+            "NAME_AND_PHONE_NEGATIVELY_LINKED",
+            "NAME_AND_PHONE_NEGATIVELY_LINKED_NAME_IS_BUSINESS",
+            "NAME_AND_PHONE_POSITIVELY_LINKED",
+            "NAME_AND_PHONE_POSITIVELY_LINKED_WITH_AUTHORITATIVE_DATA",
+            "NO_DATA_AVAILABLE",
+            "PHONE_LINKED_TO_ADDRESS_OR_EMAIL_ADDRESS",
+            "PHONE_SERVICE_DISCONTINUED_SINCE_INPUT_CONSENT_DATE"
+          ],
+          "type": "string"
+        },
+        "verified": {
+          "enum": [
+            "ANY",
+            "NO",
+            "YES"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "effective_at",
+        "id",
+        "phone_number",
+        "verification_result",
+        "verified"
+      ],
+      "type": "phone_verification_result"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a single discrete event observed in the consumer-facing debt portal during a portal session: landing on a page, a login outcome, or downstream payment/plan actions taken from a settlement offer (method selection, payment-details entry, payment-plan-details entry, authorization submission, authorization success, payment made, plan created, good faith offer selection). Each event is immutable; one vertex per distinct portal event. Browser, operating system, device, IP, and geolocation are session-level and are linked from the parent portal_session rather than being duplicated on each event. When event_type is LOGIN_FAILED, the structured failure reason and any sanitized detail are linked from a separate portal_login_failure vertex via the portal_event_has_login_failure edge rather than carried as properties on this vertex. When the payment-related event references a known scheduled installment slot (typically PAYMENT_METHOD_SELECTED, PAYMENT_DETAILS_ENTERED, PAYMENT_AUTHORIZATION_SUBMITTED, PAYMENT_AUTHORIZED, PAYMENT_MADE), it is linked to the existing payment vertex via the portal_event_has_payment edge; the selected payment method is carried by the payment vertex's payment_method property rather than duplicated on the portal_event.",
+      "indexes": {
+        "effective_at_utc_epoch_day": {
+          "change_trigger": {
+            "label": "portal_session_has_portal_event",
+            "type": "edge"
+          },
+          "type": "integer"
+        },
+        "event_type_index": {
+          "change_trigger": {
+            "label": "portal_session_has_portal_event",
+            "type": "edge"
+          },
+          "enum": [
+            "EXPERIMENT_EXPOSED",
+            "FIRST_CONTENTFUL_PAINT",
+            "GOOD_FAITH_OFFER_SELECTED",
+            "LANDED",
+            "LOGIN_FAILED",
+            "LOGIN_SUCCEEDED",
+            "PAGE_LOADED",
+            "PAYMENT_AUTHORIZATION_SUBMITTED",
+            "PAYMENT_AUTHORIZED",
+            "PAYMENT_DETAILS_ENTERED",
+            "PAYMENT_MADE",
+            "PAYMENT_METHOD_SELECTED",
+            "PAYMENT_PLAN_DETAILS_ENTERED",
+            "PLAN_CREATED"
+          ],
+          "type": "string"
+        }
+      },
+      "is_deprecated": false,
+      "properties": {
+        "current_url": {
+          "format": "uri",
+          "pattern": "^https?://.*$",
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "event_type": {
+          "enum": [
+            "EXPERIMENT_EXPOSED",
+            "FIRST_CONTENTFUL_PAINT",
+            "GOOD_FAITH_OFFER_SELECTED",
+            "LANDED",
+            "LOGIN_FAILED",
+            "LOGIN_SUCCEEDED",
+            "PAGE_LOADED",
+            "PAYMENT_AUTHORIZATION_SUBMITTED",
+            "PAYMENT_AUTHORIZED",
+            "PAYMENT_DETAILS_ENTERED",
+            "PAYMENT_MADE",
+            "PAYMENT_METHOD_SELECTED",
+            "PAYMENT_PLAN_DETAILS_ENTERED",
+            "PLAN_CREATED"
+          ],
+          "type": "string"
+        },
+        "portal_event_id": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "effective_at",
+        "event_type",
+        "portal_event_id"
+      ],
+      "type": "portal_event"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents the structured failure reason for a single LOGIN_FAILED portal_event in the consumer-facing debt portal. One vertex per LOGIN_FAILED event (per-event record, not a deduped lookup). Linked from its parent portal_event via the portal_event_has_login_failure edge. Only emitted when the parent portal_event has event_type = LOGIN_FAILED.",
+      "is_deprecated": false,
+      "properties": {
+        "failure_reason": {
+          "enum": [
+            "EXPIRED_LINK",
+            "INVALID_CREDENTIALS",
+            "MISSING_AUTH_RESPONSE",
+            "NETWORK_ERROR",
+            "REQUEST_FAILED",
+            "SERVER_ERROR",
+            "TIMEOUT"
+          ],
+          "type": "string"
+        },
+        "failure_reason_detail": {
+          "type": "string"
+        },
+        "portal_login_failure_id": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "failure_reason",
+        "portal_login_failure_id"
+      ],
+      "type": "portal_login_failure"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a single browser session in the consumer-facing debt portal. Groups one or more portal_event vertices that occurred within the same session. Session-level environment attributes (browser, operating_system, device, ip_address, geolocation) are linked from this vertex rather than duplicated on each event. Every portal_session is anchored to its debt via the debt_has_portal_session edge so sessions are discoverable from the debt regardless of how the consumer reached the portal. A portal_session may additionally be reachable from one or more trace vertices when the consumer opens a short URL within the same browser session; sessions started from direct portal navigation (no short URL click) have no trace path and are reached exclusively through debt_has_portal_session.",
+      "is_deprecated": false,
+      "properties": {
+        "session_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "session_id"
+      ],
+      "type": "portal_session"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a portfolio of debt owned by a company (seller).",
+      "is_deprecated": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "name": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "type": "portfolio"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a physical postal mail piece sent to a person. Linked to the recipient via person_has_postal_mail, to the owning debt via debt_has_postal_mail, to the delivery address via postal_mail_has_address, to the campaign it belongs to via postal_mail_has_mail_campaign, and to lifecycle status transitions via postal_mail_status_changed (self edges).",
+      "is_deprecated": false,
+      "properties": {
+        "effective_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "postal_mail_identifier": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "effective_at",
+        "postal_mail_identifier"
+      ],
+      "type": "postal_mail"
+    },
+    {
+      "deprecated_properties": {},
+      "is_deprecated": false,
+      "properties": {
+        "content_type": {
+          "enum": [
+            "ACH_AUTOPAY_AUTHORIZATION",
+            "ADDRESS_VERIFICATION",
+            "ADVERSE_ACTION_NOTICE",
+            "APPLICATION",
+            "APPLICATION_DECISION_NOTICE",
+            "ARBITRATION_AGREEMENT",
+            "BALANCE_BREAKDOWN",
+            "BORROWER_AGREEMENT",
+            "BUSINESS_METRIC_SNAPSHOT",
+            "BUSINESS_RECORD_AFFIDAVIT",
+            "BUYER_ORDER",
+            "CALLING_WORKPLACE_AUTHORIZATION",
+            "CERTIFICATE_OF_COMPLETION",
+            "CHAIN_OF_TITLE_DOCUMENT",
+            "CHARGE_OFF_NOTICE",
+            "CHECK_DOCUMENT",
+            "COLLATERAL_INSURANCE_POLICY",
+            "COMPLAINT_INTAKE_EXPORT",
+            "COMPLAINT_RESPONSE_PACKAGE",
+            "CONSUMER_CREDIT",
+            "CONSUMER_DISPUTE_CORRESPONDENCE",
+            "CONTRACT",
+            "COVER_SHEET",
+            "CRA_DISPUTE_RESPONSE",
+            "CREDIT_CONTRACT",
+            "CREDIT_INSURANCE_STATEMENT",
+            "CREDIT_REPORT",
+            "DEBT_VALIDATION_LETTER",
+            "DEFICIENCY_NOTICE",
+            "DISCLOSURE",
+            "DISPUTE_DOCUMENT",
+            "DRIVERS_LICENSE",
+            "EFT_AGREEMENT",
+            "ELECTRONIC_DISCLOSURE",
+            "ESIGN_ACT_CONSENT",
+            "FINAL_APPROVAL_DISCLOSURE",
+            "FRAUD_CLAIM_RESPONSE_LETTER",
+            "FUNDING_DISBURSEMENT_CONFIRMATION",
+            "GOODBYE_LETTER",
+            "IDENTIFICATION",
+            "IDENTITY_DOCUMENT",
+            "IDENTITY_THEFT_AFFIDAVIT",
+            "INCOME_VERIFICATION",
+            "INSTALLMENT_LOAN_NOTE",
+            "INSURANCE",
+            "INSURANCE_ADJUSTMENT_ACKNOWLEDGEMENT",
+            "INVOLUNTARY_UNEMPLOYMENT_INSURANCE_APPLICATION",
+            "INVOLUNTARY_UNEMPLOYMENT_INSURANCE_CANCELLATION_REQUEST",
+            "INVOLUNTARY_UNEMPLOYMENT_INSURANCE_POLICY",
+            "LIEN_RELEASE",
+            "LIFE_AND_ACCIDENT_HEALTH_INSURANCE_APPLICATION",
+            "LIFE_AND_ACCIDENT_HEALTH_POLICY",
+            "LIVE_CHECK",
+            "LOAN_CONTRACT",
+            "MISCELLANEOUS",
+            "NOTICE_OF_INTENT_TO_SELL_PROPERTY",
+            "OPERATIONAL_JOB_AID",
+            "PERSONAL_PROPERTY_INSURANCE_POLICY",
+            "PORTFOLIO_REFERENCE_GUIDE",
+            "PREPAID_DISBURSEMENT_CARD_ACKNOWLEDGEMENT",
+            "PRIVACY_NOTICE",
+            "PRIVACY_POLICY_AGREEMENT",
+            "PROMISSORY_NOTE",
+            "PROOF_OF_PAYMENT_DOCUMENT",
+            "PROPERTY_INSURANCE_APPLICATION",
+            "PROPERTY_INSURANCE_POLICY",
+            "REFERENCE_LIST",
+            "REPOSSESSION_NOTICE",
+            "RIGHT_TO_CURE",
+            "RISK_BASED_PRICING_NOTICE",
+            "SCHEDULE_OF_INSURANCE",
+            "SERVICE_CONTRACT",
+            "SMS_COMMUNICATION_CONSENT",
+            "STATEMENT",
+            "SUBSTANTIATION_LETTER",
+            "TERMS_AND_CONDITIONS",
+            "THIRD_PARTY_AUTHORIZATION",
+            "TRANSACTION_HISTORY",
+            "TRUTH_IN_LENDING",
+            "UNSUPPORTED"
+          ],
+          "type": "string"
+        },
+        "file_type": {
+          "enum": [
+            "APPLICATION",
+            "BALANCE_BREAKDOWN",
+            "BUSINESS_METRIC_SNAPSHOT",
+            "BUSINESS_RECORD_AFFIDAVIT",
+            "BUYER_ORDER",
+            "CHAIN_OF_TITLE_DOCUMENT",
+            "CHARGE_OFF_NOTICE",
+            "CHECK_DOCUMENT",
+            "CONTRACT",
+            "CREDIT_REPORT",
+            "DEBT_VALIDATION_LETTER",
+            "DEFICIENCY_NOTICE",
+            "DISCLOSURE",
+            "DISPUTE_DOCUMENT",
+            "GOODBYE_LETTER",
+            "IDENTIFICATION",
+            "INSURANCE",
+            "LIEN_RELEASE",
+            "LIVE_CHECK",
+            "MULTI_DOCUMENT",
+            "NOTICE_OF_INTENT_TO_SELL_PROPERTY",
+            "OPERATIONAL_JOB_AID",
+            "PORTFOLIO_REFERENCE_GUIDE",
+            "PROOF_OF_PAYMENT_DOCUMENT",
+            "REPOSSESSION_NOTICE",
+            "STATEMENT",
+            "SUBSTANTIATION_LETTER",
+            "TRANSACTION_HISTORY",
+            "UNSUPPORTED"
+          ],
+          "type": "string"
+        },
+        "required_document_id": {
+          "required": true,
+          "type": "string"
+        },
+        "statement_type": {
+          "enum": [
+            "CHARGE_OFF_STATEMENT",
+            "FINANCIAL_STATEMENT",
+            "POST_CHARGE_OFF_STATEMENT",
+            "PRE_CHARGE_OFF_STATEMENT",
+            "STATEMENT_WITH_ACTIVITY",
+            "STATEMENT_WITH_PAYMENT",
+            "ZERO_BALANCE_STATEMENT"
+          ],
+          "type": "string"
+        },
+        "transaction_history_type": {
+          "enum": [
+            "POST_CHARGE_OFF",
+            "PRE_CHARGE_OFF"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "required_document_id"
+      ],
+      "type": "required_document"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents one immutable, source-scoped alternative requirement group. A dispute requirement group is satisfied when any linked required_document alternative matches a debt file. Separate groups and direct ungrouped required documents are combined with AND semantics.",
+      "is_deprecated": false,
+      "properties": {
+        "required_document_group_id": {
+          "required": true,
+          "type": "string"
+        }
+      },
+      "required": [
+        "required_document_group_id"
+      ],
+      "type": "required_document_group"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents an individual governed rule within the Lexicon catalog (e.g. sold_back, sif_pif, person_deceased, daily_account_contact_limit_2).",
+      "is_deprecated": false,
+      "properties": {
+        "category": {
+          "enum": [
+            "BUSINESS",
+            "CAMPAIGN",
+            "COMPLIANCE"
+          ],
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "rule_identifier": {
+          "minLength": 1,
+          "required": true,
+          "type": "string"
+        },
+        "rule_name": {
+          "type": "string"
+        },
+        "rule_scope": {
+          "enum": [
+            "DEBT",
+            "PHONE"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "ruleset_id": {
+          "type": "string"
+        },
+        "ruleset_name": {
+          "type": "string"
+        },
+        "ruleset_version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "rule_identifier",
+        "rule_scope"
+      ],
+      "type": "rule"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents an immutable execution run of the Rule product, tracking run identity, execution mode, channel, and business date. Mutable lifecycle state (status, completion counts, timestamps) is captured via rule_execution_status_changed event edges.",
+      "is_deprecated": false,
+      "properties": {
+        "business_date": {
+          "format": "date",
+          "type": "string"
+        },
+        "channel": {
+          "enum": [
+            "EMAIL",
+            "MAIL",
+            "PHONE",
+            "SMS"
+          ],
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "FILTER",
+            "REPORT"
+          ],
+          "type": "string"
+        },
+        "rule_execution_identifier": {
+          "minLength": 1,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "required": [
+        "rule_execution_identifier"
+      ],
+      "type": "rule_execution"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents the top-level Rule product platform / engine (e.g. Gallade Rule engine).",
+      "is_deprecated": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "rule_product_identifier": {
+          "minLength": 1,
+          "required": true,
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "rule_product_identifier"
+      ],
+      "type": "rule_product"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a governed ruleset configuration (e.g. communication-compliance-baseline, email-specific-rules, phone-interactions) grouping related rules.",
+      "is_deprecated": false,
+      "properties": {
+        "category": {
+          "enum": [
+            "BUSINESS",
+            "CAMPAIGN",
+            "COMPLIANCE"
+          ],
+          "type": "string"
+        },
+        "channel": {
+          "enum": [
+            "EMAIL",
+            "MAIL",
+            "PHONE",
+            "SMS"
+          ],
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "ruleset_identifier": {
+          "minLength": 1,
+          "required": true,
+          "type": "string"
+        },
+        "version": {
+          "required": true,
+          "type": "string"
+        }
+      },
+      "required": [
+        "ruleset_identifier",
+        "version"
+      ],
+      "type": "ruleset"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents seller-provided identifiers used to match accounts with incoming media/documents.",
+      "is_deprecated": false,
+      "properties": {
+        "alternate_account_number": {
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "debt_identifier": {
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "lot_group": {
+          "type": "string"
+        },
+        "lot_number": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "seller_reference"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents an immutable settlement offer record for a debt.",
+      "is_deprecated": false,
+      "properties": {
+        "create_date": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "debt_identifier": {
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "offer_slot": {
+          "enum": [
+            "PRIMARY",
+            "PROMOTIONAL"
+          ],
+          "type": "string"
+        },
+        "payment_count": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "settlement_expiration_date": {
+          "format": "date",
+          "type": "string"
+        },
+        "settlement_offer_amount": {
+          "type": "number"
+        },
+        "settlement_percent": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "debt_identifier",
+        "effective_at",
+        "id",
+        "offer_slot",
+        "settlement_offer_amount"
+      ],
+      "type": "settlement_offer"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a durable short URL artifact referenced by outbound debtor communications.",
+      "is_deprecated": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "short_url_path": {
+          "format": "uri",
+          "pattern": "^https?://.*$",
+          "type": "string"
+        },
+        "short_url_token": {
+          "type": "string"
+        },
+        "target_url": {
+          "format": "uri",
+          "pattern": "^https?://.*$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "short_url_path",
+        "short_url_token",
+        "target_url"
+      ],
+      "type": "short_url"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a person's social security number in the graph as an immutable salted hash, and exposes external-only read projections (SSN last-four and full SSN) that are resolved from an approved operational source at read time and are never persisted to the graph.",
+      "is_deprecated": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "person_identifier": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "social_security_number_full": {
+          "persistence": "external",
+          "type": "string"
+        },
+        "social_security_number_hash": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "social_security_number_last_four": {
+          "pattern": "^\\d{4}$",
+          "persistence": "external",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "person_identifier",
+        "social_security_number_hash"
+      ],
+      "type": "social_security_number"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a durable communication or postal template definition whose authored content is stored in Git and referenced by messages or other channel-specific artifacts.",
+      "is_deprecated": false,
+      "properties": {
+        "channel": {
+          "enum": [
+            "EMAIL",
+            "POSTAL_MAIL",
+            "SMS"
+          ],
+          "type": "string"
+        },
+        "content_uri": {
+          "format": "uri",
+          "type": "string"
+        },
+        "language": {
+          "enum": [
+            "english",
+            "spanish"
+          ],
+          "type": "string"
+        },
+        "template_family": {
+          "enum": [
+            "BLANKET",
+            "PAYMENT_PLAN",
+            "SETTLEMENT"
+          ],
+          "type": "string"
+        },
+        "template_identifier": {
+          "type": "string"
+        },
+        "template_name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "channel",
+        "content_uri",
+        "template_family",
+        "template_identifier",
+        "template_name"
+      ],
+      "type": "template"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents an individual outbound or inbound text message (SMS/MMS). Linked to the person and debt it concerns via person_has_text_message and debt_has_text_message, to the phone number it was sent to / received from via phone_number_has_text_message, to call-triggered attribution via phone_number_has_call_triggered_text_message, to the template used to render outbound messages via text_message_rendered_from_template, to lifecycle status transitions via text_message_status_changed (self edges), to the durable short URL presented in the message via text_message_has_short_url, to the business treatment campaign it was sent under via text_message_has_campaign, and to the URI of its rendered artifact via text_message_has_rendered_artifact_uri. Replaces the prior edge-based `text_message` model.",
+      "is_deprecated": false,
+      "properties": {
+        "compliance_type": {
+          "enum": [
+            "CONSENT_GRANTED",
+            "CONSENT_REVOKED",
+            "SMS_DO_NOT_CONTACT",
+            "SMS_NOT_APPLICABLE",
+            "SMS_NOT_OPTED_IN",
+            "SMS_OPTED_IN",
+            "SMS_OPTED_OUT",
+            "VALIDATION_NOTICE_GIVEN"
+          ],
+          "type": "string"
+        },
+        "direction": {
+          "enum": [
+            "INBOUND",
+            "OUTBOUND"
+          ],
+          "type": "string"
+        },
+        "interaction_identifier": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "message_type": {
+          "enum": [
+            "MMS",
+            "SMS"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "interaction_identifier"
+      ],
+      "type": "text_message"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents a single visit (one-time event) of a short URL. Each time a short URL is opened, a new trace vertex is created and linked from the short URL via the short_url_has_trace edge, so a short URL visited three times has three trace vertices linked to it.",
+      "is_deprecated": false,
+      "properties": {
+        "trace_identifier": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "trace_identifier"
+      ],
+      "type": "trace"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents an immutable TU score enrichment associated with a person.",
+      "is_deprecated": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "person_identifier": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "tu_score": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "effective_at",
+        "id",
+        "person_identifier",
+        "tu_score"
+      ],
+      "type": "tu_score"
+    },
+    {
+      "deprecated_properties": {},
+      "description": "Represents immutable evidence of a signed unsubscribe link embedded in an outbound email. The live non-expiring URL and token are bearer opt-out credentials and are intentionally excluded; the exact URL remains protected inside the rendered email artifact linked from the email_message.",
+      "is_deprecated": false,
+      "properties": {
+        "campaign_run_identifier": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "provider": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "unsubscribe_link_identifier": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "campaign_run_identifier",
+        "provider",
+        "unsubscribe_link_identifier"
+      ],
+      "type": "unsubscribe_link"
+    },
+    {
+      "deprecated_properties": {},
+      "is_deprecated": false,
+      "properties": {
+        "user_identifier": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "user_identifier"
+      ],
+      "type": "user_account"
+    },
+    {
+      "deprecated_properties": {},
+      "is_deprecated": false,
+      "properties": {
+        "debt_identifier": {
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "make": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "vin": {
+          "type": "string"
+        },
+        "year": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "vehicle"
+    }
+  ]
+}

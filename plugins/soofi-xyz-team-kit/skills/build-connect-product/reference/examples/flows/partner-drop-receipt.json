@@ -1,0 +1,27 @@
+{
+  "version": "3",
+  "flow_name": "partner-drop-receipt",
+  "kind": "flow",
+  "description": "Receive one object a partner wrote into its Connect drop zone (for example Quiq BI event exports), land it, and hand it to the subscriber. Parsing the events stays with the product.",
+  "connections": {
+    "drop": { "types": ["drop_zone"] }
+  },
+  "triggers": ["drop_zone"],
+  "limits": { "timeout_seconds": 900, "max_items": 1, "max_bytes": 5368709120 },
+  "definition": {
+    "StartAt": "Land",
+    "States": {
+      "Land": {
+        "Type": "Task",
+        "ResourceDefinition": {
+          "Type": "FETCH",
+          "Connection": "drop",
+          "File": "$.trigger.file",
+          "Verify": { "Size": true },
+          "SaveOutputTo": "$.vars.landed"
+        },
+        "End": true
+      }
+    }
+  }
+}

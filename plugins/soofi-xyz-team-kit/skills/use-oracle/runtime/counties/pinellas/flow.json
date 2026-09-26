@@ -1,0 +1,19 @@
+{
+  "requests": [
+    {
+      "key": "PropertyPrint",
+      "request": {
+        "method": "GET",
+        "url": "https://www.pcpao.gov/property/detail/print",
+        "headers": {
+          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Accept": "text/html"
+        },
+        "multiValueQueryString": {
+          "is_print": ["1"],
+          "s": ["{{=it.request_identifier}}"]
+        }
+      }
+    }
+  ]
+}

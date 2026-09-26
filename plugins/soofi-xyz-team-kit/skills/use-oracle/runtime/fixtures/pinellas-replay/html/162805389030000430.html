@@ -1,0 +1,70 @@
+<!--
+  Synthetic Pinellas Property Appraiser print-page fixture for STRAP
+  162805389030000430. This is NOT a captured real page: every value is
+  invented for test determinism, but the element ids/classes/table
+  structure match the selectors the production transform scripts in
+  ../../../counties/pinellas/transforms actually query
+  (`#pacel_no`, `#owner_details`, `#property_use a`, `#lLegal`,
+  `#tblSalesHistory`, `#tblValueHistory`, `#tblLastYearValue`, `#tblPermit`,
+  `div.panel-body[id^='structural_']`, etc.). See the Task 2 report for how
+  this fixture was derived by running the real scripts against candidate
+  HTML and inspecting `data/*.json` output.
+-->
+<html>
+<head><script>var g_strap = "162805389030000430";</script></head>
+<body>
+<span id="pacel_no">162805389030000430</span>
+<div id="site_address">3400 RUGBY CT, PALM HARBOR FL 34684</div>
+<div id="owner_details">
+  <span>SMITH, JOHN Q</span>
+  <button class="ownermoreBtn">More</button>
+</div>
+<div id="other_owners"></div>
+<div id="mailling_add">3400 RUGBY CT, PALM HARBOR FL 34684</div>
+<span id="property_use"><a href="#">0110 SINGLE FAMILY</a></span>
+<span id="tls">1,450</span>
+<span id="tgs">1,850</span>
+<span id="Yrb">1985</span>
+<span id="tlu">1</span>
+<input type="hidden" id="legal_full_desc" value="LAKE TARPON PARK SEC 3 BLK C, LOT 30" />
+<div id="lLegal">LAKE TARPON PARK SEC 3 BLK C, LOT 30</div>
+<div id="land_info"><span id="sw">10,500 sf</span></div>
+<table id="tblLandInformation"><tbody><tr><td>Dimensions</td><td>75x140</td></tr></tbody></table>
+<div id="tblExtraFeatures"><table><tbody></tbody></table></div>
+<div class="panel-body" id="structural_1">
+  <table class="table-bordered"><thead><tr><th>Structural Elements</th><th>Value</th></tr></thead>
+  <tbody>
+  <tr><td>Foundation</td><td>Slab</td></tr>
+  <tr><td>Exterior Walls</td><td>Concrete Block/Stucco</td></tr>
+  <tr><td>Unit Stories</td><td>1</td></tr>
+  <tr><td>Roof Frame</td><td>Gable</td></tr>
+  <tr><td>Roof Cover</td><td>Shingle</td></tr>
+  <tr><td>Floor Finish</td><td>Carpet</td></tr>
+  <tr><td>Interior Finish</td><td>Paint</td></tr>
+  <tr><td>Year Built</td><td>1985</td></tr>
+  <tr><td>Living Units</td><td>1</td></tr>
+  <tr><td>Cooling</td><td>Central</td></tr>
+  <tr><td>Heating</td><td>Central</td></tr>
+  <tr><td>Fixtures</td><td>7</td></tr>
+  </tbody></table>
+  <table class="table-bordered"><thead><tr><th>Sub Area</th><th>Heated</th><th>Gross</th></tr></thead>
+  <tbody>
+  <tr><td>Base Area</td><td>1,450</td><td>1,450</td></tr>
+  <tr><td>Total Area SF</td><td>1,450</td><td>1,850</td></tr>
+  </tbody></table>
+</div>
+<table id="tblSalesHistory"><tbody>
+<tr><td>21-May-2001</td><td>$150,000</td><td></td><td></td><td></td><td>SMITH, JOHN Q</td><td></td></tr>
+</tbody></table>
+<table id="tblValueHistory"><tbody>
+<tr><td>2025</td><td></td><td>$300,000</td><td>$250,000</td><td>$240,000</td></tr>
+</tbody></table>
+<table id="tblLastYearValue"><tbody>
+<tr><td>2025</td><td>$300,000</td><td>$250,000</td><td>$240,000</td></tr>
+</tbody></table>
+<table id="tblPermit"><tbody>
+<tr><td>BLD-2015-00123</td><td>Roofing</td><td>01-Jun-2015</td><td>Closed</td></tr>
+</tbody></table>
+<form id="frmTaxEstimator"><input type="hidden" name="pn" value="162805389030000430" /></form>
+</body>
+</html>

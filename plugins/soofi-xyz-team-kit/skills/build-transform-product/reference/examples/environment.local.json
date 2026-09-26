@@ -1,0 +1,36 @@
+{
+  "contractVersion": 2,
+  "mode": "local",
+  "stage": "dev",
+  "accountId": "000000000000",
+  "region": "us-east-2",
+  "artifactBucket": "transform-local",
+  "catalogS3Uri": "s3://transform-local/config/catalog.json",
+  "allowedInputPrefixes": ["s3://transform-local/source/"],
+  "localObjectRoot": ".local/objects",
+  "workers": {
+    "glueVersion": "5.1",
+    "type": "G.1X",
+    "count": 2,
+    "timeoutMinutes": 30,
+    "maxConcurrentRuns": 1
+  },
+  "limits": {
+    "maxInputObjects": 1000,
+    "maxInputBytes": 10737418240,
+    "maxObjectBytes": 1073741824,
+    "maxPlanBytes": 4194304,
+    "approvalTimeoutSeconds": 3600
+  },
+  "cost": {
+    "dpuHourUsd": 0.44,
+    "priceAsOf": "2026-01-01",
+    "startupSeconds": 120,
+    "bytesPerDpuSecond": 1048576,
+    "expansionFactor": 4,
+    "complexityFactor": 2,
+    "autoApproveUsd": 1,
+    "defaultCeilingUsd": 10,
+    "maximumCeilingUsd": 25
+  }
+}

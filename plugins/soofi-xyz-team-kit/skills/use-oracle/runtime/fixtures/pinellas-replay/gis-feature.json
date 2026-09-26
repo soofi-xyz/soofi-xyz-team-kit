@@ -1,0 +1,32 @@
+{
+  "type": "Feature",
+  "properties": {
+    "OBJECTID": 1,
+    "STRAP": "162805389030000430",
+    "PARCELID": "052816389030000430",
+    "PARCELID_DSP1": "05-28-16-38903-000-0430",
+    "USE_CODE": "0110",
+    "LAND_USE_CODE": "0110",
+    "SITE_ADDRESS": "3400 RUGBY CT",
+    "SITE_CITY": "PALM HARBOR",
+    "SITE_STATE": "FL",
+    "SITE_ZIP": "34684",
+    "SITE_NUM": "3400",
+    "Acres": 0.24,
+    "TAXABLE_VALUE": 240000,
+    "LAND_VALUE": 50000,
+    "IMP_VALUE": 200000
+  },
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [-82.76, 28.08],
+        [-82.75, 28.08],
+        [-82.75, 28.09],
+        [-82.76, 28.09],
+        [-82.76, 28.08]
+      ]
+    ]
+  }
+}

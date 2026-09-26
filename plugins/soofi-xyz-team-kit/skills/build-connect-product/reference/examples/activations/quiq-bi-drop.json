@@ -1,0 +1,17 @@
+{
+  "activation_id": "quiq-bi-drop",
+  "flow_name": "partner-drop-receipt",
+  "flow_version": 1,
+  "configuration_id": "quiq-prod",
+  "trigger": {
+    "type": "drop_zone",
+    "connection": "drop",
+    "match": { "Prefix": "bi-data/", "Pattern": "*.json" },
+    "ledger": { "Key": ["path", "etag"] }
+  },
+  "subscriber": {
+    "url": "https://<kadabra-quiq-events-endpoint>",
+    "signing_secret_ref": "arn:aws:secretsmanager:<region>:<account>:secret:<subscriber-signing-secret>"
+  },
+  "enabled": true
+}

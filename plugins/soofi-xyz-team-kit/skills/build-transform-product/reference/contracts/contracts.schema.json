@@ -1,0 +1,1388 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:transform:contracts:2",
+  "$defs": {
+    "Artifact": {
+      "type": "object",
+      "properties": {
+        "s3Uri": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+        },
+        "sha256": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "s3Uri",
+        "sha256"
+      ],
+      "additionalProperties": false
+    },
+    "LanguageIdentity": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "additionalProperties": false
+    },
+    "Endpoint": {
+      "type": "object",
+      "properties": {
+        "column": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dataset": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        }
+      },
+      "required": [
+        "column",
+        "dataset"
+      ],
+      "additionalProperties": false
+    },
+    "Property": {
+      "type": "object",
+      "properties": {
+        "column": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "type": {
+          "enum": [
+            "String",
+            "Bool",
+            "Byte",
+            "Short",
+            "Int",
+            "Long",
+            "Float",
+            "Double",
+            "Date"
+          ]
+        }
+      },
+      "required": [
+        "column",
+        "name",
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "Graph": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "vertex",
+            "edge"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "idColumn": {
+          "type": "string",
+          "minLength": 1
+        },
+        "properties": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Property"
+          },
+          "minItems": 0
+        },
+        "from": {
+          "$ref": "#/$defs/Endpoint"
+        },
+        "to": {
+          "$ref": "#/$defs/Endpoint"
+        }
+      },
+      "required": [
+        "kind",
+        "label",
+        "idColumn",
+        "properties"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "edge"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "from",
+              "to"
+            ]
+          },
+          "else": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "from"
+                  ]
+                },
+                {
+                  "required": [
+                    "to"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "LanguageRegistration": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "current": {
+          "type": "boolean"
+        },
+        "status": {
+          "enum": [
+            "ENABLED",
+            "DISABLED"
+          ]
+        },
+        "shape": {
+          "enum": [
+            "tabular",
+            "graph"
+          ]
+        },
+        "s3Uri": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+        },
+        "sha256": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "current",
+        "status",
+        "shape",
+        "s3Uri",
+        "sha256"
+      ],
+      "additionalProperties": false
+    },
+    "Query": {
+      "type": "object",
+      "properties": {
+        "queryS3Uri": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+        },
+        "querySha256": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "queryS3Uri",
+        "querySha256"
+      ],
+      "additionalProperties": false
+    },
+    "MappingOutput": {
+      "type": "object",
+      "properties": {
+        "dataset": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "dependsOn": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          },
+          "minItems": 0
+        },
+        "queryS3Uri": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+        },
+        "querySha256": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "queries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Query"
+          },
+          "minItems": 1
+        },
+        "graph": {
+          "$ref": "#/$defs/Graph"
+        }
+      },
+      "required": [
+        "dataset",
+        "dependsOn"
+      ],
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "queryS3Uri",
+            "querySha256"
+          ],
+          "not": {
+            "required": [
+              "queries"
+            ]
+          }
+        },
+        {
+          "required": [
+            "queries"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "queryS3Uri"
+                ]
+              },
+              {
+                "required": [
+                  "querySha256"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "Mapping": {
+      "type": "object",
+      "properties": {
+        "contractVersion": {
+          "const": 2
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "status": {
+          "enum": [
+            "ENABLED",
+            "DISABLED"
+          ]
+        },
+        "engine": {
+          "const": "spark-sql"
+        },
+        "from": {
+          "$ref": "#/$defs/LanguageIdentity"
+        },
+        "to": {
+          "$ref": "#/$defs/LanguageIdentity"
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "table": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              },
+              "view": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "format": {
+                "enum": [
+                  "parquet",
+                  "jsonl",
+                  "csv",
+                  "xlsx"
+                ]
+              },
+              "sheet": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 31
+              },
+              "options": {
+                "$ref": "#/$defs/Options"
+              }
+            },
+            "required": [
+              "table",
+              "view",
+              "required",
+              "format"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        },
+        "output": {
+          "$ref": "#/$defs/Output"
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MappingOutput"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "contractVersion",
+        "id",
+        "version",
+        "status",
+        "engine",
+        "from",
+        "to",
+        "inputs",
+        "output",
+        "outputs"
+      ],
+      "additionalProperties": false
+    },
+    "Catalog": {
+      "type": "object",
+      "properties": {
+        "contractVersion": {
+          "const": 2
+        },
+        "revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "languages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LanguageRegistration"
+          },
+          "minItems": 1
+        },
+        "mappings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              },
+              "version": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+              },
+              "s3Uri": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+              },
+              "sha256": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            },
+            "required": [
+              "id",
+              "version",
+              "s3Uri",
+              "sha256"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "contractVersion",
+        "revision",
+        "languages",
+        "mappings"
+      ],
+      "additionalProperties": false
+    },
+    "Options": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "type": "boolean"
+        },
+        "delimiter": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1
+        },
+        "quote": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1
+        },
+        "escape": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1
+        },
+        "nullValue": {
+          "type": "string",
+          "minLength": 1
+        },
+        "emptyValue": {
+          "const": ""
+        },
+        "multiLine": {
+          "type": "boolean"
+        },
+        "encoding": {
+          "const": "UTF-8"
+        },
+        "dateFormat": {
+          "const": "yyyy-MM-dd"
+        },
+        "timestampFormat": {
+          "const": "yyyy-MM-dd'T'HH:mm:ss.SSSXXX"
+        },
+        "compression": {
+          "enum": [
+            "snappy",
+            "gzip",
+            "zstd"
+          ]
+        },
+        "ignoreNullFields": {
+          "const": false
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "Input": {
+      "type": "object",
+      "properties": {
+        "table": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "s3Uri": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+        }
+      },
+      "required": [
+        "table",
+        "s3Uri"
+      ],
+      "additionalProperties": false
+    },
+    "Output": {
+      "type": "object",
+      "properties": {
+        "shape": {
+          "enum": [
+            "tabular",
+            "graph"
+          ]
+        },
+        "format": {
+          "enum": [
+            "parquet",
+            "jsonl",
+            "csv",
+            "xlsx"
+          ]
+        },
+        "profile": {
+          "const": "neptune"
+        },
+        "options": {
+          "$ref": "#/$defs/Options"
+        }
+      },
+      "required": [
+        "shape",
+        "format"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "profile"
+            ]
+          },
+          "then": {
+            "properties": {
+              "shape": {
+                "const": "graph"
+              },
+              "format": {
+                "const": "csv"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "OutputLocation": {
+      "type": "object",
+      "properties": {
+        "s3Prefix": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+        }
+      },
+      "required": [
+        "s3Prefix"
+      ],
+      "additionalProperties": false
+    },
+    "Request": {
+      "type": "object",
+      "properties": {
+        "contractVersion": {
+          "const": 2
+        },
+        "from": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "to": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Input"
+          },
+          "minItems": 1
+        },
+        "output": {
+          "$ref": "#/$defs/OutputLocation"
+        },
+        "costCeilingUsd": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "contractVersion",
+        "from",
+        "to",
+        "inputs",
+        "output"
+      ],
+      "additionalProperties": false
+    },
+    "Workers": {
+      "type": "object",
+      "properties": {
+        "glueVersion": {
+          "const": "5.1"
+        },
+        "type": {
+          "const": "G.1X"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 100
+        },
+        "timeoutMinutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 120
+        },
+        "maxConcurrentRuns": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        }
+      },
+      "required": [
+        "glueVersion",
+        "type",
+        "count",
+        "timeoutMinutes",
+        "maxConcurrentRuns"
+      ],
+      "additionalProperties": false
+    },
+    "Limits": {
+      "type": "object",
+      "properties": {
+        "maxInputObjects": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "maxInputBytes": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "maxObjectBytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5368709120
+        },
+        "maxPlanBytes": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 16777216
+        },
+        "approvalTimeoutSeconds": {
+          "type": "integer",
+          "minimum": 60,
+          "maximum": 86400
+        }
+      },
+      "required": [
+        "maxInputObjects",
+        "maxInputBytes",
+        "maxObjectBytes",
+        "maxPlanBytes",
+        "approvalTimeoutSeconds"
+      ],
+      "additionalProperties": false
+    },
+    "CostConfig": {
+      "type": "object",
+      "properties": {
+        "dpuHourUsd": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "priceAsOf": {
+          "type": "string",
+          "format": "date"
+        },
+        "startupSeconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "bytesPerDpuSecond": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "expansionFactor": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "complexityFactor": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "autoApproveUsd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "defaultCeilingUsd": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "maximumCeilingUsd": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "dpuHourUsd",
+        "priceAsOf",
+        "startupSeconds",
+        "bytesPerDpuSecond",
+        "expansionFactor",
+        "complexityFactor",
+        "autoApproveUsd",
+        "defaultCeilingUsd",
+        "maximumCeilingUsd"
+      ],
+      "additionalProperties": false
+    },
+    "Environment": {
+      "type": "object",
+      "properties": {
+        "contractVersion": {
+          "const": 2
+        },
+        "mode": {
+          "enum": [
+            "local",
+            "aws"
+          ]
+        },
+        "stage": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "accountId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[0-9]{12}$"
+        },
+        "region": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z]{2}-[a-z]+-[0-9]$"
+        },
+        "artifactBucket": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9.-]+$"
+        },
+        "catalogS3Uri": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+        },
+        "allowedInputPrefixes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+          },
+          "minItems": 1
+        },
+        "localObjectRoot": {
+          "type": "string",
+          "minLength": 1
+        },
+        "workers": {
+          "$ref": "#/$defs/Workers"
+        },
+        "limits": {
+          "$ref": "#/$defs/Limits"
+        },
+        "cost": {
+          "$ref": "#/$defs/CostConfig"
+        },
+        "criticalAlarmTopicArn": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^arn:aws:sns:"
+        },
+        "metricsNamespace": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "contractVersion",
+        "mode",
+        "stage",
+        "accountId",
+        "region",
+        "artifactBucket",
+        "catalogS3Uri",
+        "allowedInputPrefixes",
+        "localObjectRoot",
+        "workers",
+        "limits",
+        "cost"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "aws"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "criticalAlarmTopicArn",
+              "metricsNamespace"
+            ],
+            "properties": {
+              "accountId": {
+                "not": {
+                  "const": "000000000000"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "PinnedInputObject": {
+      "type": "object",
+      "properties": {
+        "s3Uri": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+        },
+        "sizeBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "etag": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "s3Uri",
+        "sizeBytes",
+        "etag"
+      ],
+      "additionalProperties": false
+    },
+    "ResolvedInput": {
+      "type": "object",
+      "properties": {
+        "table": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "view": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "format": {
+          "enum": [
+            "parquet",
+            "jsonl",
+            "csv",
+            "xlsx"
+          ]
+        },
+        "options": {
+          "$ref": "#/$defs/Options"
+        },
+        "objects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PinnedInputObject"
+          },
+          "minItems": 0
+        },
+        "sheet": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 31
+        }
+      },
+      "required": [
+        "table",
+        "view",
+        "format",
+        "options",
+        "objects"
+      ],
+      "additionalProperties": false
+    },
+    "Cost": {
+      "type": "object",
+      "properties": {
+        "inputBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "estimatedSeconds": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "estimatedUsd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "ceilingUsd": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "requiresApproval": {
+          "type": "boolean"
+        },
+        "maxRuntimeUsd": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "inputBytes",
+        "estimatedSeconds",
+        "estimatedUsd",
+        "ceilingUsd",
+        "requiresApproval",
+        "maxRuntimeUsd"
+      ],
+      "additionalProperties": false
+    },
+    "ResolvedOutput": {
+      "type": "object",
+      "properties": {
+        "s3Prefix": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+        },
+        "shape": {
+          "enum": [
+            "tabular",
+            "graph"
+          ]
+        },
+        "format": {
+          "enum": [
+            "parquet",
+            "jsonl",
+            "csv",
+            "xlsx"
+          ]
+        },
+        "profile": {
+          "const": "neptune"
+        },
+        "options": {
+          "$ref": "#/$defs/Options"
+        }
+      },
+      "required": [
+        "s3Prefix",
+        "shape",
+        "format",
+        "options"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "profile"
+            ]
+          },
+          "then": {
+            "properties": {
+              "shape": {
+                "const": "graph"
+              },
+              "format": {
+                "const": "csv"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Plan": {
+      "type": "object",
+      "properties": {
+        "contractVersion": {
+          "const": 2
+        },
+        "executionId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "requestDigest": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "catalog": {
+          "$ref": "#/$defs/Artifact"
+        },
+        "from": {
+          "$ref": "#/$defs/LanguageIdentity"
+        },
+        "to": {
+          "$ref": "#/$defs/LanguageIdentity"
+        },
+        "sourceLanguage": {
+          "$ref": "#/$defs/LanguageRegistration"
+        },
+        "targetLanguage": {
+          "$ref": "#/$defs/LanguageRegistration"
+        },
+        "mapping": {
+          "$ref": "#/$defs/Mapping"
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResolvedInput"
+          },
+          "minItems": 1
+        },
+        "output": {
+          "$ref": "#/$defs/ResolvedOutput"
+        },
+        "timezone": {
+          "const": "UTC"
+        },
+        "workers": {
+          "$ref": "#/$defs/Workers"
+        },
+        "cost": {
+          "$ref": "#/$defs/Cost"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "executionId",
+        "createdAt",
+        "requestDigest",
+        "catalog",
+        "from",
+        "to",
+        "sourceLanguage",
+        "targetLanguage",
+        "mapping",
+        "inputs",
+        "output",
+        "timezone",
+        "workers",
+        "cost"
+      ],
+      "additionalProperties": false
+    },
+    "Resolved": {
+      "type": "object",
+      "properties": {
+        "executionId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "plan": {
+          "$ref": "#/$defs/Artifact"
+        },
+        "cost": {
+          "$ref": "#/$defs/Cost"
+        }
+      },
+      "required": [
+        "executionId",
+        "plan",
+        "cost"
+      ],
+      "additionalProperties": false
+    },
+    "Approval": {
+      "type": "object",
+      "properties": {
+        "decision": {
+          "enum": [
+            "APPROVE",
+            "REJECT"
+          ]
+        },
+        "executionId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "planSha256": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "ceilingUsd": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "decision",
+        "executionId",
+        "planSha256",
+        "ceilingUsd"
+      ],
+      "additionalProperties": false
+    },
+    "DatasetResult": {
+      "type": "object",
+      "properties": {
+        "dataset": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "s3Prefix": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+        },
+        "rowCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fileCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "byteCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "schemaS3Uri": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+        }
+      },
+      "required": [
+        "dataset",
+        "s3Prefix",
+        "rowCount",
+        "fileCount",
+        "byteCount",
+        "schemaS3Uri"
+      ],
+      "additionalProperties": false
+    },
+    "Result": {
+      "type": "object",
+      "properties": {
+        "contractVersion": {
+          "const": 2
+        },
+        "status": {
+          "const": "SUCCEEDED"
+        },
+        "executionId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "plan": {
+          "$ref": "#/$defs/Artifact"
+        },
+        "from": {
+          "$ref": "#/$defs/LanguageIdentity"
+        },
+        "to": {
+          "$ref": "#/$defs/LanguageIdentity"
+        },
+        "mapping": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            },
+            "version": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+            }
+          },
+          "required": [
+            "id",
+            "version"
+          ],
+          "additionalProperties": false
+        },
+        "outputManifestS3Uri": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+        },
+        "format": {
+          "enum": [
+            "parquet",
+            "jsonl",
+            "csv",
+            "xlsx"
+          ]
+        },
+        "shape": {
+          "enum": [
+            "tabular",
+            "graph"
+          ]
+        },
+        "datasets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DatasetResult"
+          },
+          "minItems": 1
+        },
+        "cost": {
+          "$ref": "#/$defs/Cost"
+        },
+        "finishedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "status",
+        "executionId",
+        "plan",
+        "from",
+        "to",
+        "mapping",
+        "outputManifestS3Uri",
+        "format",
+        "shape",
+        "datasets",
+        "cost",
+        "finishedAt"
+      ],
+      "additionalProperties": false
+    },
+    "Failure": {
+      "type": "object",
+      "properties": {
+        "contractVersion": {
+          "const": 2
+        },
+        "status": {
+          "const": "FAILED"
+        },
+        "executionId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "phase": {
+          "enum": [
+            "RESOLVE",
+            "APPROVAL",
+            "EXECUTE",
+            "REPORT"
+          ]
+        },
+        "error": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string",
+              "minLength": 1
+            },
+            "message": {
+              "type": "string",
+              "minLength": 1
+            },
+            "retryable": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "retryable"
+          ],
+          "additionalProperties": false
+        },
+        "partialOutputS3Prefix": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+        },
+        "finishedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "status",
+        "executionId",
+        "phase",
+        "error",
+        "finishedAt"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
