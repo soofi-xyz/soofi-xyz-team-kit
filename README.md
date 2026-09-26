@@ -39,14 +39,14 @@ copilot plugin install soofi-xyz-team-kit@soofi-xyz
 
 ### OpenAI Codex
 
-From this checkout, add the repo marketplace and install the Codex plugin:
+Add the repo marketplace and install the Codex plugin (from a checkout, use `./` in place of the GitHub source):
 
 ```bash
-codex plugin marketplace add ./
+codex plugin marketplace add soofi-xyz/soofi-xyz-team-kit
 codex plugin add soofi-xyz-team-kit@soofi-xyz-team-kit
 ```
 
-The Codex plugin packages the skills in `skills/`. Project-scoped Codex custom agents are materialized in `.codex/agents/` when you work in this repository.
+The Codex plugin packages the skills in `skills/`, including generated `agent-<name>` specialist skills for all source agents. Invoke a specialist as `$soofi-xyz-team-kit:agent-<name>` from any project after starting a new Codex thread. The source agents remain native subagents in Cursor and Copilot CLI; `.codex/agents/` also contains project-scoped Codex custom agents for work inside this repository.
 
 ## Update Or Remove
 
@@ -107,15 +107,15 @@ Use the arceus subagent to recommend the right specialist for migrating an SMS t
 
 In GitHub Copilot CLI, select the custom agent with `/agent` and choose `soofi-xyz-team-kit:arceus`, or start directly with `--agent soofi-xyz-team-kit:arceus`.
 
-In Codex, start a new thread from this repository and ask Codex to spawn the `arceus` custom agent:
+In Codex, start a new thread after installation and invoke the generated Arceus skill from any project:
 
 ```text
-Spawn the arceus custom agent to recommend the right specialist for migrating an SMS template inventory.
+$soofi-xyz-team-kit:agent-arceus Recommend the right specialist for migrating an SMS template inventory.
 ```
 
 Cursor's Agent can also delegate to `arceus` automatically at the start of a task when no specific specialist has been named — so simply describing your task in plain English usually triggers the right routing.
 
-If you already know which specialist you need, skip the router and call them directly — for example `/sylveon` in Cursor, `soofi-xyz-team-kit:sylveon` in Copilot, or "spawn the `sylveon` custom agent" in Codex for Figma-to-code work. The full roster, with triggers and descriptions, lives in the [Agents](#agents) and [Skills](#skills) tables below.
+If you already know which specialist you need, skip the router and call them directly — for example `/sylveon` in Cursor, `soofi-xyz-team-kit:sylveon` in Copilot, or `$soofi-xyz-team-kit:agent-sylveon` in Codex for Figma-to-code work. The full roster, with triggers and descriptions, lives in the [Agents](#agents) and [Skills](#skills) tables below.
 
 ## Agents
 

@@ -115,6 +115,8 @@ main() {
     fi
   fi
 
+  "${python_bin}" "${root}/scripts/sync-codex-skills.py" check
+
   "${python_bin}" "${root}/skills/use-oracle/scripts/validate-county-readiness.py" --self-test
 
   bash -n "${root}/skills/use-oracle/scripts/oracle-paths.sh"
@@ -242,13 +244,13 @@ def validate_manifests():
     source = codex_entry.get("source", {})
     if source.get("source") != "local":
         fail('.agents/plugins/marketplace.json: source.source must be "local"')
-    if source.get("path") != "./plugins/soofi-xyz-team-kit":
-        fail('.agents/plugins/marketplace.json: source.path must be "./plugins/soofi-xyz-team-kit"')
-    codex_plugin_root = root / "plugins" / "soofi-xyz-team-kit"
+    if source.get("path") != "./":
+        fail('.agents/plugins/marketplace.json: source.path must be "./" so Codex installs real skill files')
+    codex_plugin_root = root
     if not (codex_plugin_root / ".codex-plugin" / "plugin.json").is_file():
-        fail("plugins/soofi-xyz-team-kit/.codex-plugin/plugin.json: missing Codex marketplace plugin manifest")
-    if not (codex_plugin_root / "skills").is_dir():
-        fail("plugins/soofi-xyz-team-kit/skills: missing Codex marketplace plugin skills directory")
+        fail(".codex-plugin/plugin.json: missing Codex marketplace plugin manifest")
+    if not (codex_plugin_root / "skills").is_dir() or (codex_plugin_root / "skills").is_symlink():
+        fail("skills/: Codex marketplace plugin skills directory must be a real directory")
 
     policy = codex_entry.get("policy", {})
     if policy.get("installation") not in {"NOT_AVAILABLE", "AVAILABLE", "INSTALLED_BY_DEFAULT"}:
