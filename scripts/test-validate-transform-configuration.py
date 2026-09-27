@@ -1008,8 +1008,10 @@ def test_core_and_references(profiles: list[dict]) -> None:
     ):
         fail("Decision profile must pin the sanitized mixed rejected-path manifest")
     adapted = evidence_sources.get("decision-mixed-rejected-path-adapted")
-    if adapted is None or adapted.get("artifactStatus") != "staging" or "manifestSha256" in adapted:
-        fail("An unmanifested adapted rejected-path package must stay staging")
+    if adapted is None or adapted.get("artifactStatus") != "ready" or adapted.get("manifestSha256") != (
+        "8c07fdd6a18f0a6a3d7fb187675ff73996d45df05fe6e200e375355ed80a3714"
+    ):
+        fail("Decision profile must pin the manifested adapted rejected-path package")
     if "lexicon-decision-spark-sql" not in evidence_sources:
         fail("Decision profile must run the Lexicon Decision Spark SQL suite")
     workflow = decision["validationWorkflow"]

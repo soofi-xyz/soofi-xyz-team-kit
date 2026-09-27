@@ -55,11 +55,13 @@ case. Its manifested package (SHA-256
 `e890fb58a0866b9cd873b3665d6cae12adbcf29d12952e84edb63a9cf1495e5d`) predates the
 current Decision contract (`rules_report` instead of the two rule booleans; no
 evidence-manifest fields). The executable
-`20260924T133000Z-contract-freeze-v1-decision-contract-adapted-v1/` package has
-no manifest, so it stays `staging`: prove row-for-row lineage to the manifested
-package and pin every object by `VersionId` and SHA-256, but report runtime proof
-on it as `BLOCKED` until a manifest matching those pins is published. Never
-retain a source row or business identifier.
+`20260924T133000Z-contract-freeze-v1-decision-contract-adapted-v1/` package is
+manifested (SHA-256
+`8c07fdd6a18f0a6a3d7fb187675ff73996d45df05fe6e200e375355ed80a3714`, version
+`9vtKQG9LRwVRZuSYNMaSWVIaUs._MJV1`). Verify every listed object's `VersionId`,
+SHA-256, bytes and rows, its `sourceManifest` binding to the manifested package,
+and row-for-row lineage before using it. Never retain a source row or business
+identifier.
 
 ## Automatic local flow
 

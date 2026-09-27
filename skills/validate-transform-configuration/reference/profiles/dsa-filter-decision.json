@@ -620,7 +620,9 @@
       "kind": "existing-dev-artifact",
       "location": "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/dsa-filter-decision-evidence/20260924T133000Z-contract-freeze-v1-decision-contract-adapted-v1/",
       "region": "us-east-2",
-      "artifactStatus": "staging",
+      "artifactStatus": "ready",
+      "manifestSha256": "8c07fdd6a18f0a6a3d7fb187675ff73996d45df05fe6e200e375355ed80a3714",
+      "manifestVersionId": "9vtKQG9LRwVRZuSYNMaSWVIaUs._MJV1",
       "appliesTo": [
         "decision-to-lexicon",
         "lexicon-to-decision"
