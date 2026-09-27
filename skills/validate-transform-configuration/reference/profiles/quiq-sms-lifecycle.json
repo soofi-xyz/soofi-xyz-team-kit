@@ -4,7 +4,8 @@
   "terminologyAliases": {
     "lifecycle-event": ["Quiq feedback", "delivery update", "message status"],
     "phone-location": ["phone timezone", "contact location policy"],
-    "full-day-export": ["daily BI export", "UTC day export"]
+    "full-day-export": ["daily BI export", "UTC day export"],
+    "sms-lifecycle": ["sms", "text message lifecycle", "sms log"]
   },
   "roles": {
     "source": "Quiq lifecycle events and immutable daily export manifests",
@@ -198,6 +199,11 @@
     { "name": "sms-workflow", "owner": "oranguru", "contract": "Owns lifecycle interpretation, enrichment and product-level correlation" },
     { "name": "communication-activity", "owner": "chatot", "contract": "Owns provider feedback and canonical activity closure" }
   ],
+  "parityPolicy": {
+    "fieldSource": "language-definition-and-registration",
+    "declaredFields": "minimum",
+    "undefinedDatasets": "block"
+  },
   "scaleTiers": [
     { "id": "synthetic", "maximumRows": 100, "maximumCostUsd": 0, "evidenceRequired": true },
     { "id": "full-day-dev", "maximumRows": 100000, "maximumCostUsd": 50, "evidenceRequired": true }

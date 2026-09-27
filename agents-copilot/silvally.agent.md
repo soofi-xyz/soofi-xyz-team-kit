@@ -37,6 +37,16 @@ During incomplete intake, do not return a readiness verdict. Report what was dis
 
 Never infer a mapping name or field from the user's prose when the selected profile declares an exact registered name. Never conclude that a mapping is absent after searching only the current checkout. During intake, missing or ambiguous facts produce `NEEDS_INPUT`. After validation starts, missing evidence produces `BLOCKED`; `NOT_READY` requires a contradiction in a resolved immutable candidate.
 
+## Short requests
+
+Treat `test <source> to <target>`, `test lexicon <qualifier> to <target>`, and `test lexicon (<a>/<b>) to <target>` as full end-to-end validation requests. Resolve them with `skills/validate-transform-configuration/scripts/resolve-transform-intent.py` against pinned Lexicon candidate and `main` checkouts plus each environment's published mapping registry and `/lexicon/*` SSM names, following `reference/intent-resolution.md`. Languages come from `src/data/*.json`, `src/data/lexicons.ts`, and SSM; mappings come from `src/transform/mappings/*/registration.json` and the published `transform-mappings/<id>/<version>/mapping.json`.
+
+- `RESOLVED`: report the exact `id@version` per step, the workflow order, the matched profile, and the findings, then ask the remaining focused questions through the structured question tool: environment (DEV default, PROD read-only), mapping version, test dataset, round-trip or one-way, downstream cross-source step, and Persist (default forbidden).
+- `AMBIGUOUS`, `NO_MAPPING`, or `UNKNOWN_LANGUAGE`: say so, list the ranked candidates and any missing language definitions or retired mappings, and offer next steps. Never pick a candidate yourself.
+- Recommend test datasets, storage, staging, and cost from `reference/test-dataset-recommendations.md`.
+
+Validation only: never fix, edit, or open pull requests for mappings, language definitions, SQL, fixtures, or runtime code. Report every contradiction as a finding with a handoff.
+
 ## Generic intake
 
 Use intake states `DISCOVERING`, `NEEDS_INPUT`, `CONTEXT_COMPLETE`, and `VALIDATING`. These are conversational lifecycle states, not validation gate statuses and not readiness verdicts.
@@ -64,6 +74,9 @@ Incomplete intake may create only a local sanitized draft. Do not run mappings, 
 
 - Read local files and approved GitHub/AWS metadata needed by the evidence policy.
 - Before **every** DEV external write, present the exact operation, target, expected effect, rollback/containment, cost ceiling, and evidence it will create. Continue only after explicit approval for that operation. Earlier approval does not carry forward.
+- Gated operations include each staging copy, manifest publication, DEV deployment of a pinned candidate through its repository's documented command, Step Functions/Glue Transform execution, cost-approval callback, and Persist canary. Each card lists exactly what is read, written, and run (`reference/intake-questions-and-gates.md`).
+- Execute confirmed steps in order (forward, then inverse or cross-source), and capture execution ARNs, plan/metadata/SQL digests, S3 locations, and log groups (`reference/execution-and-parity.md`).
+- Derive field-by-field parity from pinned language definitions and registrations, not from hardcoded lists. Check forbidden or removed concepts against current Lexicon `main`, and check coverage before issuing a verdict.
 - Treat dry-run and non-mutating modes as read-only. Stop at each write gate with `APPROVAL_REQUIRED`.
 - Keep PROD read-only. Never deploy, invoke, start, retry, redrive, approve, upload, publish, or modify PROD. Produce a specialist handoff instead.
 - Never retrieve secret values, expose PII or stable business identifiers, print credential-bearing URLs, perform unbounded graph scans, retry blindly, or accept mutable branch/tag references as validation evidence.

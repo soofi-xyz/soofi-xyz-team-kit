@@ -438,6 +438,16 @@
         }
       }
     },
+    "parityPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fieldSource", "declaredFields", "undefinedDatasets"],
+      "properties": {
+        "fieldSource": { "const": "language-definition-and-registration" },
+        "declaredFields": { "enum": ["minimum", "exact"] },
+        "undefinedDatasets": { "enum": ["block", "consumer-contract"] }
+      }
+    },
     "sourceWindowPolicy": {
       "type": "object",
       "additionalProperties": false,

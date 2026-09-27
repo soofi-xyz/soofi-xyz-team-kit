@@ -308,6 +308,71 @@
         "mismatchCount": { "type": "integer", "minimum": 0 }
       }
     },
+    "intentResolution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request", "status", "source", "target", "qualifiers", "selectedMappings", "registrySources", "resolverSha256"],
+      "properties": {
+        "request": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "status": { "enum": ["RESOLVED", "AMBIGUOUS", "NO_MAPPING", "UNKNOWN_LANGUAGE", "UNPARSED"] },
+        "source": { "type": ["string", "null"] },
+        "target": { "type": ["string", "null"] },
+        "qualifiers": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "selectedMappings": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/mappingKey" } },
+        "candidateMappings": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/mappingKey" } },
+        "registrySources": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "resolverSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "executionSteps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sequence", "mapping", "environment", "status", "approvalOperationDigest", "inputManifestSha256", "outputLocation", "executedSqlSha256s", "logLocations"],
+        "properties": {
+          "sequence": { "type": "integer", "minimum": 1 },
+          "mapping": { "$ref": "#/$defs/mappingKey" },
+          "environment": { "enum": ["dev", "synthetic-local"] },
+          "status": { "enum": ["PASS", "FAIL", "BLOCKED", "APPROVAL_REQUIRED"] },
+          "approvalOperationDigest": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
+          "executionArn": {
+            "type": ["string", "null"],
+            "pattern": "^arn:aws:states:[a-z0-9-]+:[0-9]{12}:execution:[A-Za-z0-9_-]+:[A-Za-z0-9_.-]+$"
+          },
+          "inputManifestSha256": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
+          "outputLocation": {
+            "type": ["string", "null"],
+            "pattern": "^(?:s3://[^?#@]+/|local://[a-z0-9][a-z0-9/_-]*)$"
+          },
+          "planSha256": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
+          "metadataSha256": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
+          "executedSqlSha256s": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/sha256" } },
+          "logLocations": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^(?:/aws/[A-Za-z0-9/_.-]+|local://[a-z0-9][a-z0-9/_-]*)$" }
+          }
+        }
+      }
+    },
+    "parityDerivation": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["language", "dataset", "comparedBy", "fieldSource", "fieldCount", "status"],
+        "properties": {
+          "language": { "type": "string", "minLength": 1 },
+          "dataset": { "type": "string", "minLength": 1 },
+          "comparedBy": { "$ref": "#/$defs/mappingKey" },
+          "fieldSource": { "enum": ["language-definition", "consumer-contract", "UNDEFINED_IN_LEXICON"] },
+          "fieldCount": { "type": "integer", "minimum": 0 },
+          "mismatchCount": { "type": "integer", "minimum": 0 },
+          "status": { "enum": ["PASS", "FAIL", "BLOCKED", "APPROVAL_REQUIRED"] },
+          "finding": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
     "phases": {
       "type": "array",
       "minItems": 12,
@@ -539,6 +604,7 @@
   "$defs": {
     "kebab": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
     "sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "mappingKey": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*@[0-9]+\\.[0-9]+\\.[0-9]+$" },
     "unavailableEvidence": {
       "type": "object",
       "additionalProperties": false,

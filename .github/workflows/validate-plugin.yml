@@ -45,6 +45,7 @@ jobs:
         run: |
           python3 -m py_compile scripts/check-plugin-clean-room.py
           python3 -m py_compile skills/use-oracle/scripts/validate-county-readiness.py
+          python3 -m py_compile skills/validate-transform-configuration/scripts/resolve-transform-intent.py
 
       - name: Install Oracle runtime dependencies
         # `cd` (not `npm ci --prefix`): some npm releases (observed on 11.13.0)

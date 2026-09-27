@@ -12,15 +12,20 @@ Use this skill as the Transform Configuration Validation Agent's operating proce
 Read, in order:
 
 1. `reference/operating-contract.md`
-2. `reference/transform-configuration-profile-draft.schema.json`
-3. `reference/transform-configuration-profile.schema.json`
-4. the selected document in `reference/profiles/` after profile matching
-5. `reference/validation-phases-and-gates.md`
-6. `reference/evidence-requirements.md`
-7. `reference/transform-configuration-run.schema.json`
-8. `reference/known-failure-modes.md`
-9. `reference/validation-report.md`
-10. the selected profile's dossier in `reference/calibrations/` only when calibrating or running its declared scenario
+2. `reference/intent-resolution.md`
+3. `reference/intake-questions-and-gates.md`
+4. `reference/transform-configuration-profile-draft.schema.json`
+5. `reference/transform-configuration-profile.schema.json`
+6. the selected document in `reference/profiles/` after profile matching
+7. `reference/test-dataset-recommendations.md`
+8. `reference/validation-phases-and-gates.md`
+9. `reference/evidence-requirements.md`
+10. `reference/execution-and-parity.md`
+11. `reference/transform-configuration-run.schema.json`
+12. `reference/known-failure-modes.md`
+13. `reference/validation-report.md`
+14. the selected profile's dossier in `reference/calibrations/` only when calibrating or running its declared scenario
+15. `reference/adding-profiles.md` only when no profile matches or a profile must change
 
 Read `skills/build-transform-product/reference/contracts-and-defaults.md` and `languages-and-mappings.md` for the Transform contract. Load only the product skills and agents named by the profile.
 
@@ -40,6 +45,28 @@ A profile ID is not required from the user. Select or build the profile through 
 Use intake states `DISCOVERING`, `NEEDS_INPUT`, `CONTEXT_COMPLETE`, and `VALIDATING`. They are not validation statuses. During incomplete intake, do not run mapping tests, invoke Test, request DEV approval, produce a validation-run artifact, or calculate `READY`, `NOT_READY`, or `BLOCKED`.
 
 An experienced request containing all required context takes the fast path without redundant questions. A bare invocation or generic request is valid and starts read-only discovery.
+
+## Short requests
+
+A request such as `test <source> to <target>` or `test lexicon <qualifier> to <target>` is a complete trigger for end-to-end validation intake. Follow `reference/intent-resolution.md`:
+
+1. Materialize read-only inputs in an isolated temp directory: the pinned Lexicon candidate and `main` checkouts, each environment's published `transform-mappings/*/*/mapping.json` from `/lexicon/transform-mappings-uri`, and each environment's `/lexicon/*` SSM parameter names (`us-east-2`).
+2. Run `scripts/resolve-transform-intent.py discover` and pin its SHA-256. Its `status` is one of `RESOLVED`, `AMBIGUOUS`, `NO_MAPPING`, `UNKNOWN_LANGUAGE`, or `UNPARSED`.
+3. Report what was resolved before asking anything: the languages and their states, the selected `id@version` per step, the workflow order, the matched profile, and every finding (profile drift, missing language definitions, removed or added concepts, round-trip gaps).
+4. For `AMBIGUOUS`, `NO_MAPPING`, or `UNKNOWN_LANGUAGE`, say so plainly, list the ranked candidates, and ask `mapping-choice`. Never pick a candidate from business-language similarity. When the user chooses `none`, end intake with next steps and owner handoffs; do not produce a verdict.
+5. For `RESOLVED`, ask the resolver's remaining `questions[]` through the structured question tool, using the defaults in `reference/intake-questions-and-gates.md`: DEV (PROD read-only), mapping version, test dataset, round-trip or one-way, optional cross-source step, and Persist policy (default `forbidden`).
+6. Recommend datasets and storage from `reference/test-dataset-recommendations.md`.
+7. With no matched profile, emit a local draft with `draft-profile`, then promote it before validating.
+
+The resolver is discovery evidence, not a verdict. Its findings enter phases 5–6 and are re-verified against pinned sources.
+
+## Validation only
+
+Silvally validates; it never fixes. It does not edit mappings, language definitions, profiles under test, SQL, fixtures, or runtime code during a run, and it opens no pull requests against Lexicon or Transform. Every contradiction becomes a finding with a remediation handoff.
+
+## Derived parity
+
+Derive the compared fields for every dataset from the pinned language definition and the mapping registration, as described in `reference/execution-and-parity.md`. A profile's `parityDatasets` is a floor under `parityPolicy.declaredFields: minimum`. Definition fields missing from the profile are still compared, and profile fields unknown to the definition are `ProfileParityDrift`. A forward input that the inverse does not reconstruct is `RoundTripDatasetGap`. A dataset or language that Lexicon does not define blocks derived parity unless the profile names a pinned consumer contract.
 
 ## Required inputs
 
@@ -97,7 +124,8 @@ For every required direction:
 5. pin all source files and the materialized mapping artifact by SHA-256.
 
 For every graph input and output, resolve its vertex or edge label against the
-profile-declared pinned current Lexicon definition. `lexiconConceptPolicy`
+profile-declared pinned current Lexicon definition (the resolved Lexicon `main`
+SHA), and scan every executed SQL body for forbidden labels. `lexiconConceptPolicy`
 requires active concepts: an absent or deprecated label, an endpoint that
 resolves to an absent/deprecated vertex, or a candidate that reintroduces a
 concept proven removed from current Lexicon is a phase-5/6 `FAIL`. Return
@@ -172,6 +200,12 @@ Before each DEV external write:
 6. record the approver, time, scope, and result without secret or PII content.
 
 Do not reuse approval for another write or a changed operation. In `synthetic-local` and `bounded-dev-dry-run`, never execute the write: prove that the run stops at the gate. PROD is always read-only and always hands mutation work to a specialist.
+
+Gated DEV operations include staging copies, manifest publication, DEV deployment of a pinned candidate through the owning repository's documented command, every Step Functions/Glue Transform execution, cost-approval callbacks, and Persist canaries. Each one gets its own operation card listing exactly what is read, written, and run (`reference/intake-questions-and-gates.md`). A DEV deployment is Deploy-owned evidence: Silvally records its digests but does not own rollback.
+
+## Execution capture
+
+Execute each confirmed step as described in `reference/execution-and-parity.md`: forward first, then the inverse or cross-source steps, each bound to the previous step's committed output. Record `executionSteps[]` with the execution ARN, plan and `_metadata.json` digests, executed SQL digests, input manifest digest, output location, and log groups. A failed step stops the workflow; later steps are not started.
 
 ## Evidence rules
 

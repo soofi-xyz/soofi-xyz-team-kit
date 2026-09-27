@@ -190,13 +190,24 @@ Users do not need to know profile IDs, mapping names, or validation modes. Start
 
 Silvally performs bounded read-only discovery, selects an existing profile only from a unique evidence-backed match, and asks one focused plain-language question for the next missing fact. It does not execute mappings or issue a readiness verdict until context is complete.
 
+Short end-to-end requests work too. Silvally resolves the languages and exact registered mapping versions from Lexicon, then asks only the questions that remain:
+
+```text
+/silvally test decision to lexicon
+/silvally test sms to lexicon
+/silvally test lexicon decision to interprose
+/silvally test lexicon (sms) to interprose
+```
+
+When no mapping or language definition exists, Silvally says so, lists ranked candidates, and offers next steps. It validates only; it never fixes mappings.
+
 Experienced users can provide the full context directly:
 
 ```text
 /silvally Validate decision-to-lexicon using dsa-filter-decision in synthetic-local mode
 ```
 
-DEV writes still require operation-specific approval. PROD remains read-only.
+DEV writes, deployments, and Transform runs each require operation-specific approval. PROD remains read-only.
 
 ## Skills
 

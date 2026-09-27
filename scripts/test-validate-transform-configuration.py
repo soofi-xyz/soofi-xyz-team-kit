@@ -4,9 +4,12 @@
 from __future__ import annotations
 
 import copy
+import hashlib
+import importlib.util
 import json
 import re
 import sys
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -23,6 +26,14 @@ AGENT = ROOT / "agents" / "silvally.md"
 DRAFT_PROFILE_SCHEMA = REFERENCE / "transform-configuration-profile-draft.schema.json"
 PROFILE_SCHEMA = REFERENCE / "transform-configuration-profile.schema.json"
 RUN_SCHEMA = REFERENCE / "transform-configuration-run.schema.json"
+RESOLVER = SKILL / "scripts" / "resolve-transform-intent.py"
+SHORT_REQUEST_REFERENCES = (
+    "intent-resolution.md",
+    "intake-questions-and-gates.md",
+    "test-dataset-recommendations.md",
+    "execution-and-parity.md",
+    "adding-profiles.md",
+)
 PROFILE_NAMES = (
     "dsa-filter-decision.json",
     "quiq-sms-lifecycle.json",
@@ -287,6 +298,16 @@ def run_errors(value: dict) -> list[str]:
             "CONFIGURATION", "PRODUCT_CHANGE", "ACCESS_OR_EVIDENCE",
         }:
             errors.append("remediation classification")
+    mapping_key = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*@[0-9]+\.[0-9]+\.[0-9]+")
+    for step in value.get("executionSteps", []):
+        if not mapping_key.fullmatch(step.get("mapping", "")):
+            errors.append("execution step mapping must be an exact id@version")
+        location = step.get("outputLocation")
+        if location is not None and not re.fullmatch(r"(?:s3://[^?#@]+/|local://[a-z0-9][a-z0-9/_-]*)", location):
+            errors.append("execution step output location must be credential-free")
+    for entry in value.get("parityDerivation", []):
+        if not mapping_key.fullmatch(entry.get("comparedBy", "")):
+            errors.append("parity derivation must name an exact mapping")
     package = value.get("configurationPackage", {})
     for repository in package.get("sourceRevisions", []):
         if not re.fullmatch(r"[a-f0-9]{40}", repository.get("commitSha", "")):
@@ -1205,15 +1226,387 @@ def test_generic_intake_contract() -> None:
         fail("complete expert intake did not take the validation fast path")
 
 
+def load_resolver():
+    spec = importlib.util.spec_from_file_location("resolve_transform_intent", RESOLVER)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def write_json(path: Path, value: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(value, indent=2) + "\n")
+
+
+def vertex(name: str, properties: dict, required: list[str] | None = None) -> dict:
+    return {
+        "type": name,
+        "is_deprecated": False,
+        "deprecated_properties": {},
+        "properties": properties,
+        "required": required if required is not None else list(properties),
+    }
+
+
+def props(*names: str, **enums: list[str]) -> dict:
+    out = {name: {"type": "string", "minLength": 1} for name in names}
+    for name, values in enums.items():
+        out[name] = {"type": "string", "enum": values}
+    return out
+
+
+DECISION_FIELDS = {
+    "decision_batch": props(
+        "source_run_id", "schema_version", "candidate_count", "accepted_count",
+        "rejected_count", "chunk_count", "historical_client_event_status",
+        "evidence_manifest_uri", "evidence_manifest_versioning",
+        "evidence_manifest_version_id", "evidence_manifest_etag",
+        "evidence_manifest_size", "evidence_manifest_sha256",
+        "versioned_source_object_count", "unversioned_stable_read_object_count",
+        "source_object_count", status=["complete", "not_required"],
+    ),
+    "chunk_executions": props(
+        "source_run_id", "chunk_index", "chunk_count", "candidate_count",
+        "accepted_count", "rejected_count", "filter_execution_arn",
+    ),
+    "debt_outcomes": props("source_run_id", "chunk_index", "debt_id", outcome=["accepted", "rejected"]),
+    "rule_evaluations": props(
+        "source_run_id", "chunk_index", "debt_id",
+        "latest_oos_restricted_state_blocks_dsa_offer",
+        "latest_oos_missing_state_blocks_dsa_offer",
+    ),
+    "dsa_client_id_updates": props(
+        "schema_version", "event_type", "debtID", "dsc_client_id",
+        "effective_at", "source_run_id", "idempotency_key",
+    ),
+    "graph_identity_references": props(
+        "source_run_id", "debt_identifier", "dsa_company_identifier",
+        "identity_basis", "authoritative_graph_export",
+    ),
+}
+DECISION_GRAPH = [
+    "product_execution", "product_execution_has_child_execution",
+    "product_execution_includes_debt", "company_represents_debt",
+]
+SMS_GRAPH = [
+    "vertex-debt", "vertex-phone-number", "vertex-text-message", "vertex-template",
+    "edge-debt-has-text-message", "edge-phone-number-has-text-message",
+    "edge-text-message-status-changed", "edge-text-message-has-rendered-artifact-uri",
+    "edge-text-message-rendered-from-template",
+]
+EMAIL_GRAPH = [
+    "vertex-debt", "vertex-email", "vertex-email-message", "vertex-template",
+    "edge-debt-has-email-message", "edge-email-has-email-message",
+    "edge-email-message-has-from-email", "edge-email-message-rendered-from-template",
+    "edge-email-message-status-changed",
+]
+
+
+def mapping_doc(mid: str, version: str, source: str, target: str, inputs: list[str], outputs: list[str], shape: str, graph_inputs: bool = False) -> dict:
+    return {
+        "id": mid,
+        "version": version,
+        "status": "ENABLED",
+        "engine": "spark-sql",
+        "from": source,
+        "to": target,
+        "inputs": [
+            {"table": t, "view": f"source_{t.replace('-', '_')}", "format": "parquet", "options": {},
+             **({"graph": {"kind": "vertex" if t.startswith("vertex-") else "edge"}} if graph_inputs and t.startswith(("vertex-", "edge-")) else {})}
+            for t in inputs
+        ],
+        "output": {"shape": shape, "format": "csv" if shape == "graph" else "jsonl", "options": {}},
+        "outputs": [{"dataset": o, "requiredInputs": inputs, "queries": [{"path": f"queries/{o}.sql"}], "dependsOn": []} for o in outputs],
+    }
+
+
+REGISTERED_MAPPINGS = {
+    "decision-to-lexicon@1.0.0": ("decision", "lexicon", list(DECISION_FIELDS), DECISION_GRAPH, "tabular", False),
+    "lexicon-to-decision@1.0.0": ("lexicon", "decision", DECISION_GRAPH, [d for d in DECISION_FIELDS if d != "graph_identity_references"], "tabular", False),
+    "lexicon-to-interprose@1.0.0": ("lexicon", "interprose", EMAIL_GRAPH, ["debt", "email_queue"], "tabular", True),
+    "lexicon-to-interprose@2.0.0": ("lexicon", "interprose", SMS_GRAPH + ["hydrated_text_message_artifact"], ["sms_log"], "tabular", True),
+    "lexicon-to-interprose@3.0.0": ("lexicon", "interprose", ["company_represents_debt"], ["form_1281"], "tabular", False),
+    "lexicon-to-sms@1.0.0": ("lexicon", "sms", SMS_GRAPH + ["hydrated_text_message_artifact"], ["sms_log"], "tabular", True),
+    "quiq-to-lexicon@1.0.0": ("quiq", "lexicon", ["lifecycle"], SMS_GRAPH, "graph", False),
+    "interprose-to-lexicon@1.0.0": ("interprose", "lexicon", ["debt", "txt_msg_log", "email_queue"], EMAIL_GRAPH + SMS_GRAPH[:3] + ["edge-company-represents-debt"], "graph", False),
+}
+
+
+def build_lexicon_fixture(root: Path) -> dict[str, Path]:
+    candidate, main, dev, prod, staging = (root / n for n in ("candidate", "main", "dev", "prod", "staging"))
+    concepts_main = ["debt", "company", "product", "product_execution", "phone_number", "text_message", "template", "email", "email_message"]
+    edges_main = [
+        "product_has_execution", "product_execution_includes_debt", "company_represents_debt",
+        "debt_has_text_message", "phone_number_has_text_message", "text_message_status_changed",
+        "text_message_has_rendered_artifact_uri", "text_message_rendered_from_template",
+        "debt_has_email_message", "email_has_email_message", "email_message_has_from_email",
+        "email_message_rendered_from_template", "email_message_status_changed",
+    ]
+    for checkout, extra_edges in ((main, []), (candidate, ["product_execution_has_child_execution"])):
+        write_json(checkout / "src/data/lexicon.json", {
+            "vertices": [vertex(v, props("id")) for v in concepts_main],
+            "edges": [{"type": e, "from": "a", "to": "b", "properties": {}} for e in edges_main + extra_edges],
+        })
+        spec = checkout / "infra/test/transform-mappings.spec.ts"
+        spec.parent.mkdir(parents=True, exist_ok=True)
+        spec.write_text('for (const retired of [\n  "interprose-to-graph",\n  "sms-to-interprose",\n  "sms-log-to-interprose",\n]) {}\n')
+    (candidate / "src/data/lexicons.ts").write_text(
+        "export const lexicons: Record<string, LexiconRegistryEntry> = {\n"
+        "  lexicon: {\n  },\n  interprose: {\n  },\n  quiq: {\n  },\n};\n"
+    )
+    stack = candidate / "infra/lib/lexicon-stack.ts"
+    stack.parent.mkdir(parents=True, exist_ok=True)
+    stack.write_text("\n".join(
+        f'        parameterName: "/lexicon/{p}",' for p in ("data-uri", "interprose-data-uri", "quiq-data-uri", "decision-data-uri", "transform-mappings-uri")
+    ))
+    write_json(candidate / "src/data/decision.json", {
+        "vertices": [vertex(name, fields) for name, fields in DECISION_FIELDS.items()],
+        "edges": [],
+    })
+    write_json(candidate / "src/data/interprose.json", {
+        "vertices": [
+            vertex("form_1281", props("debtID", "dsc_client_id", "form_config_id", "field_identifier", "effective_at", "source_run_id", "idempotency_key")),
+            vertex("txt_msg_log", props("txt_msg_log_id", "debt_id", "status")),
+        ],
+        "edges": [],
+    })
+    write_json(candidate / "src/data/quiq.json", {"vertices": [vertex("lifecycle", props("interaction_identifier", "canonical_status"))], "edges": []})
+    for key in ("decision-to-lexicon@1.0.0", "lexicon-to-decision@1.0.0"):
+        mid, version = key.split("@")
+        write_json(candidate / f"src/transform/mappings/{mid}/registration.json", mapping_doc(mid, version, *REGISTERED_MAPPINGS[key]))
+    for key, spec_args in REGISTERED_MAPPINGS.items():
+        mid, version = key.split("@")
+        write_json(dev / f"transform-mappings/{mid}/{version}/mapping.json", mapping_doc(mid, version, *spec_args))
+        if "decision" not in key and key != "lexicon-to-interprose@3.0.0":
+            write_json(prod / f"transform-mappings/{mid}/{version}/mapping.json", mapping_doc(mid, version, *spec_args))
+    write_json(staging / "transform-mappings/decision-to-lexicon/2.0.0/mapping.json", mapping_doc(
+        "decision-to-lexicon", "2.0.0", "decision", "lexicon", list(DECISION_FIELDS), DECISION_GRAPH + ["rule_execution"], "graph",
+    ))
+    write_json(staging / "transform-mappings/lexicon-to-decision/1.0.0/mapping.json", mapping_doc(
+        "lexicon-to-decision", "1.0.0", "lexicon", "decision", DECISION_GRAPH, list(DECISION_FIELDS), "tabular",
+    ))
+    ssm_dev = root / "ssm-dev.txt"
+    ssm_dev.write_text("/lexicon/data-uri\n/lexicon/decision-data-uri\n/lexicon/interprose-data-uri\n/lexicon/quiq-data-uri\n/lexicon/transform-mappings-uri\n")
+    return {"candidate": candidate, "main": main, "dev": dev, "prod": prod, "staging": staging, "ssm-dev": ssm_dev}
+
+
+def test_intent_resolution() -> None:
+    resolver = load_resolver()
+
+    parsed = resolver.parse_request("/silvally validate lexicon (sms/decision/anything) to interprose @3.0.0 in prod round trip")
+    if parsed["status"] != "PARSED" or parsed["qualifiers"] != ["sms", "decision"]:
+        fail(f"qualifier parsing failed: {parsed}")
+    if parsed["hints"] != {"version": "3.0.0", "environment": "prod", "mode": "round-trip"}:
+        fail(f"hint parsing failed: {parsed['hints']}")
+    if resolver.parse_request("test the decision stuff")["status"] != "UNPARSED":
+        fail("a request without a direction was parsed")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        paths = build_lexicon_fixture(Path(tmp))
+
+        def run(request: str, *extra: str) -> dict:
+            args = [
+                "discover", "--request", request,
+                "--lexicon-root", str(paths["candidate"]),
+                "--main-lexicon-root", str(paths["main"]),
+                "--registry", f"dev={paths['dev']}",
+                "--registry", f"prod={paths['prod']}",
+                "--ssm-parameters", f"dev={paths['ssm-dev']}",
+                *extra,
+            ]
+            parser_args = resolver_args(resolver, args)
+            return resolver.discover(request, resolver.load_registry(parser_args))
+
+        def codes(result: dict) -> set[str]:
+            return {f["code"] for f in result.get("findings", [])}
+
+        def question(result: dict, qid: str) -> dict | None:
+            return next((q for q in result.get("questions", []) if q["id"] == qid), None)
+
+        decision = run("test decision to lexicon")
+        if decision["status"] != "RESOLVED" or decision["selection"]["selected"] != "decision-to-lexicon@1.0.0":
+            fail(f"decision forward did not resolve: {decision.get('status')}")
+        if [s["mapping"] for s in decision["workflow"]["steps"]] != ["decision-to-lexicon@1.0.0", "lexicon-to-decision@1.0.0"]:
+            fail("decision round trip order is wrong")
+        if [c["mapping"] for c in decision["workflow"]["optionalCrossSource"]] != ["lexicon-to-interprose@3.0.0"]:
+            fail("decision cross-source continuation was not offered")
+        if decision["selectedProfile"] != "dsa-filter-decision.json":
+            fail("decision profile was not selected from the mapping identity")
+        if decision["parityPolicy"] != {"fieldSource": "language-definition-and-registration", "declaredFields": "minimum", "undefinedDatasets": "block"}:
+            fail("selected profile parity policy was not surfaced")
+        parity = {p["dataset"]: p for p in decision["parityDerivation"]}
+        if len(parity["decision_batch"]["fields"]) != 17 or parity["decision_batch"]["profileDeclared"]["missingFromProfile"] != ["evidence_manifest_version_id"]:
+            fail("derived parity did not add the definition field missing from the profile")
+        if parity["graph_identity_references"]["status"] != "FAIL" or parity["graph_identity_references"]["finding"] != "RoundTripDatasetGap":
+            fail("unreconstructed forward input was not a round-trip gap")
+        if parity["debt_outcomes"]["coverageTargets"] != [{"field": "outcome", "values": ["accepted", "rejected"]}]:
+            fail("enum coverage targets were not derived")
+        if not parity["form_1281"].get("optional") or len(parity["form_1281"]["fields"]) != 7:
+            fail("optional cross-source parity was not derived from the target language")
+        states = {c["concept"]: c["state"] for c in decision["conceptChecks"]["decision-to-lexicon@1.0.0"]}
+        if states["product_execution_has_child_execution"] != "ADDED_IN_CANDIDATE" or states["product_execution"] != "ACTIVE_ON_MAIN":
+            fail(f"concept classification against main failed: {states}")
+        if not {"HubOutputNotGraph", "ProfileRegistrationStatusDrift", "ProfileOutputDatasetDrift"} <= codes(decision):
+            fail(f"decision profile drift not reported: {codes(decision)}")
+        if [q["id"] for q in decision["questions"]] != ["environment", "test-dataset", "direction-mode", "cross-source-step", "persist-policy"]:
+            fail(f"decision question plan wrong: {[q['id'] for q in decision['questions']]}")
+        if question(decision, "environment")["default"] != "dev" or question(decision, "persist-policy")["default"] != "forbidden":
+            fail("environment or Persist defaults are unsafe")
+        if question(decision, "direction-mode")["default"] != "round-trip":
+            fail("forward request did not default to round trip")
+        dataset_ids = [o["id"] for o in question(decision, "test-dataset")["options"]]
+        if dataset_ids[:2] != ["decision-full-day-dev", "decision-mixed-rejected-path"] or "prod-derived-full-utc-day" not in dataset_ids:
+            fail(f"dataset recommendations missing profile evidence or proposals: {dataset_ids}")
+        rec = next(r for r in decision["datasetRecommendations"] if r["id"] == "prod-derived-full-utc-day")
+        if not rec["location"].startswith("s3://<dev-transform-data-bucket>/inputs/decision-prod-derived/"):
+            fail("proposed dataset location violates the inputs/<language>-<purpose>/ layout")
+
+        cross = run("test lexicon decision to interprose")
+        if cross["status"] != "RESOLVED" or cross["selection"]["selected"] != "lexicon-to-interprose@3.0.0":
+            fail("decision qualifier did not select the form projection version")
+        if [s["mapping"] for s in cross["workflow"]["steps"]] != ["decision-to-lexicon@1.0.0", "lexicon-to-interprose@3.0.0"]:
+            fail("cross-source request did not chain the qualifier producer")
+        if question(cross, "direction-mode")["default"] != "one-way" or question(cross, "mapping-version") is None:
+            fail("cross-source question defaults are wrong")
+        selected = next(c for c in cross["selection"]["candidates"] if c["mapping"] == "lexicon-to-interprose@3.0.0")
+        if not any(s["kind"] == "chain-producer" and s["via"] == "decision-to-lexicon@1.0.0" for s in selected["signals"]):
+            fail("cross-source selection lacks chain-producer evidence")
+
+        sms_projection = run("test lexicon (sms) to interprose")
+        if sms_projection["selection"]["selected"] != "lexicon-to-interprose@2.0.0":
+            fail("sms qualifier did not select the sms_log projection")
+        if sms_projection["selectedProfile"] != "quiq-sms-lifecycle.json":
+            fail("sms projection did not match the lifecycle profile")
+        if "UpstreamSourceUnresolved" not in codes(sms_projection) or question(sms_projection, "upstream-source") is None:
+            fail("unresolved upstream producer was not asked")
+        sms_parity = sms_projection["parityDerivation"][0]
+        if sms_parity["status"] != "BLOCKED" or sms_parity["finding"] != "DatasetUndefined":
+            fail("dataset absent from the target language did not block derived parity")
+
+        ambiguous = run("test lexicon to interprose")
+        if ambiguous["status"] != "AMBIGUOUS" or len(ambiguous["candidates"]) != 3:
+            fail("unqualified multi-version request was not ambiguous")
+        if question(ambiguous, "mapping-choice") is None:
+            fail("ambiguous request did not ask for the mapping")
+
+        pinned = run("test lexicon to interprose @1.0.0")
+        if pinned["selection"]["selected"] != "lexicon-to-interprose@1.0.0":
+            fail("version hint did not select the exact mapping")
+
+        sms = run("test sms to lexicon")
+        if sms["status"] != "NO_MAPPING" or sms.get("selection", {}).get("selected"):
+            fail("missing sms-to-lexicon mapping was not reported")
+        if "LanguageDefinitionMissing" not in codes(sms) or sms["languages"]["sms"]["state"] != "MAPPING_ENDPOINT_ONLY":
+            fail("undefined sms language was not reported")
+        ranked = [c.get("mapping") for c in sms["candidates"]]
+        if ranked[:2] != ["lexicon-to-sms@1.0.0", "quiq-to-lexicon@1.0.0"] or "sms-to-interprose" not in ranked:
+            fail(f"sms candidates not ranked by evidence: {ranked}")
+        choice = question(sms, "mapping-choice")
+        if choice is None or choice["options"][-1]["id"] != "none" or any(o["id"] == "sms-to-interprose" for o in choice["options"]):
+            fail("sms mapping-choice question must exclude retired ids and offer none")
+
+        unknown = run("test foo to bar")
+        if unknown["status"] != "UNKNOWN_LANGUAGE" or not any(c.get("language") == "decision" for c in unknown["candidates"]):
+            fail("unknown languages did not list registered languages")
+
+        staged = run("test decision to lexicon @2.0.0", "--registry", f"staging={paths['staging']}")
+        removed = [f for f in staged["findings"] if f["code"] == "RemovedLexiconConcept"]
+        if [f["concept"] for f in removed] != ["rule_execution"]:
+            fail("forbidden Lexicon concept in a mapping output was not reported")
+        if "RegistrySourceDrift" not in codes(staged):
+            fail("differing registrations for one mapping identity were not reported")
+
+        draft = resolver.draft_profile("test sms to lexicon", sms)
+        assert_valid(validator(DRAFT_PROFILE_SCHEMA), draft, "auto-generated sms draft")
+        if draft["promotionEligible"] or draft["intakeState"] != "NEEDS_INPUT":
+            fail("auto-generated draft skipped intake")
+        resolved_draft = resolver.draft_profile("test decision to lexicon", decision)
+        assert_valid(validator(DRAFT_PROFILE_SCHEMA), resolved_draft, "auto-generated decision draft")
+        if resolved_draft["selectedProfile"] != "dsa-filter-decision.json":
+            fail("resolved draft lost the selected profile")
+
+    run_checker = validator(RUN_SCHEMA)
+    run = valid_run()
+    digest = "sha256:" + "b" * 64
+    run["intentResolution"] = {
+        "request": "test decision to lexicon",
+        "status": "RESOLVED",
+        "source": "decision",
+        "target": "lexicon",
+        "qualifiers": [],
+        "selectedMappings": ["decision-to-lexicon@1.0.0", "lexicon-to-decision@1.0.0"],
+        "candidateMappings": ["lexicon-to-interprose@3.0.0"],
+        "registrySources": ["candidate", "dev", "prod"],
+        "resolverSha256": "sha256:" + hashlib.sha256(RESOLVER.read_bytes()).hexdigest(),
+    }
+    run["executionSteps"] = [{
+        "sequence": 1,
+        "mapping": "decision-to-lexicon@1.0.0",
+        "environment": "dev",
+        "status": "PASS",
+        "approvalOperationDigest": digest,
+        "executionArn": "arn:aws:states:us-east-2:111122223333:execution:TransformPipelineStack-transform-pipeline:silvally-run-1-decision-to-lexicon",
+        "inputManifestSha256": digest,
+        "outputLocation": "s3://example-transform-bucket/outputs/silvally/run/",
+        "planSha256": digest,
+        "metadataSha256": digest,
+        "executedSqlSha256s": [digest],
+        "logLocations": ["/aws/vendedlogs/states/transform-pipeline"],
+    }]
+    run["parityDerivation"] = [{
+        "language": "decision", "dataset": "decision_batch", "comparedBy": "lexicon-to-decision@1.0.0",
+        "fieldSource": "language-definition", "fieldCount": 17, "mismatchCount": 0, "status": "PASS",
+    }]
+    assert_valid(run_checker, run, "run with intent resolution and execution steps")
+    bad = copy.deepcopy(run)
+    bad["executionSteps"][0]["mapping"] = "decision-to-lexicon@latest"
+    assert_rejected(run_checker, bad, "mutable mapping version in execution step")
+    bad = copy.deepcopy(run)
+    bad["executionSteps"][0]["outputLocation"] = "https://signed.example/object?X-Amz-Signature=abc"
+    assert_rejected(run_checker, bad, "signed URL output location")
+
+    core = (read(AGENT) + "\n" + read(SKILL / "SKILL.md")).lower()
+    for token in (
+        "short requests", "resolve-transform-intent.py", "validation only",
+        "never fix", "structured question tool", "dev deployment",
+        "derived parity", "executionsteps", "current lexicon `main`",
+        "no_mapping", "unknown_language", "persist policy (default `forbidden`)",
+    ):
+        if token not in core:
+            fail(f"short-request contract missing {token!r}")
+    skill = read(SKILL / "SKILL.md")
+    for filename in SHORT_REQUEST_REFERENCES:
+        if f"reference/{filename}" not in skill:
+            fail(f"SKILL.md does not load {filename}")
+        read(REFERENCE / filename)
+
+
+def resolver_args(resolver, argv: list[str]):
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("command")
+    parser.add_argument("--request", required=True)
+    parser.add_argument("--lexicon-root")
+    parser.add_argument("--main-lexicon-root")
+    parser.add_argument("--registry", action="append")
+    parser.add_argument("--ssm-parameters", action="append")
+    parser.add_argument("--profiles", default=str(resolver.DEFAULT_PROFILES))
+    return parser.parse_args(argv)
+
+
 def main() -> int:
     profiles = test_schemas_and_profiles()
     test_core_and_references(profiles)
     test_naming_and_sanitization()
     test_golden_routes_and_dry_run()
     test_generic_intake_contract()
+    test_intent_resolution()
     print(
-        "Silvally contract tests passed: generic intake, 3 profiles, 12 phases, "
-        "synthetic local validation, bounded DEV dry-run, 0 writes"
+        "Silvally contract tests passed: generic intake, short-request intent resolution, "
+        "derived parity, 3 profiles, 12 phases, synthetic local validation, "
+        "bounded DEV dry-run, 0 writes"
     )
     return 0
 

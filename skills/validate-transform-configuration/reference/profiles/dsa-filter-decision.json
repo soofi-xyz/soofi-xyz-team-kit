@@ -686,6 +686,11 @@
       "rule_execution_decided_debt"
     ]
   },
+  "parityPolicy": {
+    "fieldSource": "language-definition-and-registration",
+    "declaredFields": "minimum",
+    "undefinedDatasets": "block"
+  },
   "sourceWindowPolicy": {
     "kind": "prod-derived-complete-utc-days",
     "minimumCompleteUtcDays": 1,
