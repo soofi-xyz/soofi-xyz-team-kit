@@ -90,7 +90,7 @@ Use a local checkout only to materialize a candidate after its remote slug and c
 
 For every required direction:
 
-1. reject `mapping.status: not-registered` as `BLOCKED` with its declared owner and reason;
+1. reject `mapping.status: not-registered` as `BLOCKED` with its declared owner and reason; when `plannedSource` exists, verify its repository, checked-in source paths, generator path, logical artifact path and materialization command without treating the planned artifact as registered;
 2. locate every `sourcePaths` entry in the mapping's declared repository and pinned revision;
 3. materialize or inspect the declared `artifactPath`;
 4. assert the artifact's `id`, `version`, `from`, `to`, enabled status, input tables, output format, query digests, and `expectedOutputDatasets`;
@@ -109,6 +109,17 @@ when the current Lexicon or its history removed the concept.
 Do not substitute aliases invented from prose for the profile's exact language, mapping, dataset, or field names. Do not report `NOT_READY` for missing configuration until all declared repositories and candidate rules were exhausted. Incomplete discovery is `BLOCKED`; a contradiction in a resolved candidate is `NOT_READY`.
 
 Execute every required `repository-test` from `validationSources` in its pinned repository using that repository's documented package manager and runtime. Verify every `sanitized-evidence-package` manifest digest before reading bounded fixtures. A generic repository test suite is supporting evidence only; it cannot replace execution of each required directional mapping.
+
+For an `existing-dev-artifact`, require the declared region and credential-free
+S3 prefix. A `staging` artifact is discovery context only and blocks runtime
+proof until an immutable manifest digest and version make it `ready`. Never
+infer readiness from object presence or workflow status.
+
+Execute `validationWorkflow.steps` strictly by ascending sequence. Bind
+`previous-step-output` only to committed physical output from the immediately
+preceding step, and record every executed SQL digest. When `persistPolicy` is
+`forbidden`, do not invoke Persist; prove graph closure directly from Transform
+outputs and mark the Persist canary not required rather than blocked.
 
 ## Classify the requested change
 
@@ -171,6 +182,7 @@ Do not reuse approval for another write or a changed operation. In `synthetic-lo
 - For graph output, prove stable IDs, uniqueness, endpoint membership, and zero dangling endpoints.
 - For Persist, use a bounded canary and read it back through the declared consumer surface.
 - For reverse/round-trip checks, apply profile-declared normalization and field parity. Record every expected loss explicitly.
+- Compare every field in each declared `parityDatasets` entry; a dataset count, field count or value mismatch is a parity failure.
 - Treat multipart ETags as object observations, not SHA-256 digests.
 
 ## Investigation and routing
@@ -245,3 +257,6 @@ Validate the final artifact against `transform-configuration-run.schema.json`, t
 - transform classification has the required deterministic or non-deterministic evidence;
 - the reusable package identifies product/languages/mapping/Lexicon/dependencies/Test evidence/deployment and Marketplace-registration readiness;
 - the artifact and human report agree on statuses and verdict.
+- early `NOT_READY` packages use explicit `UNAVAILABLE` evidence objects instead
+  of fabricated runtime, graph, dataset hashes, counts or locations; `READY`
+  packages contain no unavailable evidence.

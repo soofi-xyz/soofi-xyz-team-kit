@@ -116,6 +116,23 @@
       "parityFields": ["content-digest", "media-type", "source-category", "received-time", "provenance-revision"]
     }
   ],
+  "validationWorkflow": {
+    "steps": [
+      {
+        "sequence": 1,
+        "id": "forward-media",
+        "direction": "media-manifest-to-document-graph",
+        "inputSource": "profile-evidence"
+      },
+      {
+        "sequence": 2,
+        "id": "reverse-media",
+        "direction": "document-graph-to-media-readback",
+        "inputSource": "previous-step-output"
+      }
+    ],
+    "persistPolicy": "required"
+  },
   "validationSources": [
     {
       "id": "m2d-transform-evidence",

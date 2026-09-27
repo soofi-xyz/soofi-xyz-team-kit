@@ -25,10 +25,14 @@
     "evidenceBasis": "The profile selects three registered, version-controlled Spark SQL mappings with fixed Decision, graph, and form-1281 projections; readiness still requires pinned implementation and execution evidence.",
     "expectedOutputTests": [
       "decision-lexicon-decision-round-trip",
-      "lexicon-interprose-form-1281"
+      "lexicon-interprose-form-1281",
+      "full-utc-day-decision-coverage",
+      "decision-sql-executed"
     ],
     "negativeTests": [
       "conflicting-client-event",
+      "dsa-latest-edge-regression",
+      "mixed-run-rejected-path",
       "missing-authoritative-endpoint",
       "invalid-evidence-package",
       "unsupported-mapping-option"
@@ -36,16 +40,16 @@
   },
   "configurationChoices": {
     "fieldNames": [
-      "registered Decision, Lexicon graph, and Interprose form-1281 fields"
+      "all fields from six Decision datasets and all seven Interprose form-1281 fields"
     ],
     "schemaShape": [
-      "six Decision datasets, graph vertices and edges, and one form_1281 table"
+      "Decision fields are additive optional properties on canonical product_execution, product_execution_includes_debt, and company_represents_debt concepts"
     ],
     "formats": [
       "Decision JSONL, Neptune-profile graph CSV, graph Parquet input, and Interprose JSONL"
     ],
     "normalizationRules": [
-      "source-run joins, deterministic graph identities, nullable effective_at, and form constants"
+      "parent and child product-execution joins, deterministic latest company-represents-debt event per debt, nullable effective_at, and form constants"
     ],
     "mappingExpressions": [
       "decision-to-lexicon@1.0.0",
@@ -53,7 +57,7 @@
       "lexicon-to-interprose@3.0.0"
     ],
     "profileInputs": [
-      "sanitized contract-freeze package and authoritative graph export"
+      "one complete 2026-09-18 UTC DEV day and the sanitized 20260915 mixed rejected-path run"
     ],
     "vocabularySelections": [
       "registered Decision, Lexicon, and Interprose definitions"
@@ -110,7 +114,7 @@
     {
       "name": "authoritative_graph_export",
       "role": "source",
-      "required": true,
+      "required": false,
       "schemaSource": "consumer-contract"
     },
     {
@@ -120,7 +124,25 @@
       "schemaSource": "consumer-contract"
     },
     {
+      "name": "product",
+      "role": "target",
+      "required": true,
+      "schemaSource": "lexicon-language-definition"
+    },
+    {
       "name": "product_execution",
+      "role": "target",
+      "required": true,
+      "schemaSource": "lexicon-language-definition"
+    },
+    {
+      "name": "product_has_execution",
+      "role": "target",
+      "required": true,
+      "schemaSource": "lexicon-language-definition"
+    },
+    {
+      "name": "product_execution_has_child_execution",
       "role": "target",
       "required": true,
       "schemaSource": "lexicon-language-definition"
@@ -136,18 +158,12 @@
       "role": "target",
       "required": true,
       "schemaSource": "lexicon-language-definition"
-    },
-    {
-      "name": "hydrated_decision_evidence",
-      "role": "readback",
-      "required": true,
-      "schemaSource": "consumer-contract"
     }
   ],
   "invariants": [
     {
       "id": "one-outcome-per-debt",
-      "description": "Every evaluated debt is linked through product_execution_includes_debt; exact accepted/rejected outcome and two-rule booleans reconstruct from the immutable hydrated Decision evidence package",
+      "description": "Every evaluated debt is linked through product_execution_includes_debt carrying outcome, chunk_index, both rule booleans, and source_run_id with one outcome per source debt",
       "phase": 9,
       "failureCode": "DecisionCardinalityMismatch"
     },
@@ -158,6 +174,24 @@
       "failureCode": "DecisionGraphShapeMismatch"
     },
     {
+      "id": "decision-fields-carried",
+      "description": "Canonical graph outputs carry 16 decision_batch fields, 7 chunk_executions fields, 4 debt_outcomes fields, 5 rule_evaluations fields, 7 dsa_client_id_updates fields, and all graph_identity_references fields without field loss",
+      "phase": 9,
+      "failureCode": "DecisionFieldLoss"
+    },
+    {
+      "id": "chunk-parent-closure",
+      "description": "Each chunk is a child product_execution linked to exactly one parent run product_execution and both identities remain stable through reverse transformation",
+      "phase": 10,
+      "failureCode": "DecisionChunkParentMismatch"
+    },
+    {
+      "id": "full-day-decision-coverage",
+      "description": "The half-open 2026-09-18 UTC day contains all six Decision source families, accepted and rejected outcomes, client events, and at least one decision_batch status not_required run",
+      "phase": 9,
+      "failureCode": "DecisionFullDayCoverageMismatch"
+    },
+    {
       "id": "authoritative-endpoints-close",
       "description": "Every emitted graph edge resolves to a declared authoritative endpoint",
       "phase": 10,
@@ -165,7 +199,7 @@
     },
     {
       "id": "decision-round-trip-reconciles",
-      "description": "The inverse mapping joins canonical product-execution graph facts with the immutable hydrated Decision evidence package to reconstruct all six Decision datasets",
+      "description": "The inverse mapping reconstructs all fields of all six Decision datasets directly from canonical graph facts without Persist",
       "phase": 11,
       "failureCode": "DecisionRoundTripMismatch"
     },
@@ -174,6 +208,24 @@
       "description": "The form_1281 projection selects the deterministic latest client-ID event from company_represents_debt and preserves five source fields plus two constants",
       "phase": 11,
       "failureCode": "FormProjectionMismatch"
+    },
+    {
+      "id": "dsa-latest-edge-wins",
+      "description": "For each debt, form_1281 selects the deterministic latest company_represents_debt event where company_type is DEBT_SETTLEMENT_AGENCY, preserves its five event fields, and rejects stale competing events",
+      "phase": 11,
+      "failureCode": "DecisionLatestClientEventMismatch"
+    },
+    {
+      "id": "client-event-fields-carried",
+      "description": "company_represents_debt carries dsc_client_id, source_run_id, idempotency_key, event_type, and client_event_schema_version and is emitted with company_type DEBT_SETTLEMENT_AGENCY, source status, and version 2",
+      "phase": 9,
+      "failureCode": "DecisionClientEventFieldLoss"
+    },
+    {
+      "id": "decision-sql-executed",
+      "description": "Runtime evidence must identify executed Decision SQL digests and physical outputs for every required direction; registration-only tests never satisfy this invariant",
+      "phase": 9,
+      "failureCode": "DecisionSqlNotExecuted"
     }
   ],
   "repositories": [
@@ -230,7 +282,7 @@
     {
       "id": "resolve-authoritative-graph-export",
       "kind": "consumer",
-      "description": "Locate a bounded immutable graph export that resolves physical rule-execution, debt, rule, ruleset, and company endpoints",
+      "description": "Treat authoritative_graph_export as optional non-graph source evidence and validate any supplied object without requiring graph endpoint materialization",
       "readOnly": true
     },
     {
@@ -250,14 +302,105 @@
         "status": "not-registered",
         "expectedId": "decision-to-lexicon",
         "owner": "kecleon",
-        "reason": "The prior registration depends on removed rule_execution concepts and is blocked until a canonical product_execution plus hydrated-evidence mapping is reviewed and published."
+        "reason": "Wait for the reviewed additive optional-property mapping on canonical product and product_execution concepts; any rule_execution dependency remains forbidden.",
+        "plannedSource": {
+          "repository": "Spring-Oaks-Capital-LLC/lexicon",
+          "sourcePaths": [
+            "src/transform/mappings/decision-to-lexicon/registration.json",
+            "src/transform/mappings/decision-to-lexicon/queries"
+          ],
+          "generatedArtifact": {
+            "generatorPath": "infra/lib/transform-mapping-artifacts.ts",
+            "logicalArtifactPath": "transform-mappings/decision-to-lexicon/1.0.0/mapping.json",
+            "materializationCommand": "cd infra && npx cdk synth"
+          },
+          "expectedOutputDatasets": [
+            "product",
+            "product_execution",
+            "product_has_execution",
+            "product_execution_has_child_execution",
+            "product_execution_includes_debt",
+            "company",
+            "debt",
+            "company_represents_debt"
+          ]
+        }
       },
-      "parityFields": [
-        "outcome",
-        "dsc_client_id",
-        "effective_at",
-        "source_run_id",
-        "idempotency_key"
+      "parityDatasets": [
+        {
+          "dataset": "decision_batch",
+          "fields": [
+            "source_run_id",
+            "schema_version",
+            "status",
+            "candidate_count",
+            "accepted_count",
+            "rejected_count",
+            "chunk_count",
+            "historical_client_event_status",
+            "evidence_manifest_uri",
+            "evidence_manifest_versioning",
+            "evidence_manifest_etag",
+            "evidence_manifest_size",
+            "evidence_manifest_sha256",
+            "versioned_source_object_count",
+            "unversioned_stable_read_object_count",
+            "source_object_count"
+          ]
+        },
+        {
+          "dataset": "chunk_executions",
+          "fields": [
+            "source_run_id",
+            "chunk_index",
+            "chunk_count",
+            "candidate_count",
+            "accepted_count",
+            "rejected_count",
+            "filter_execution_arn"
+          ]
+        },
+        {
+          "dataset": "debt_outcomes",
+          "fields": [
+            "source_run_id",
+            "chunk_index",
+            "debt_id",
+            "outcome"
+          ]
+        },
+        {
+          "dataset": "rule_evaluations",
+          "fields": [
+            "source_run_id",
+            "chunk_index",
+            "debt_id",
+            "latest_oos_restricted_state_blocks_dsa_offer",
+            "latest_oos_missing_state_blocks_dsa_offer"
+          ]
+        },
+        {
+          "dataset": "dsa_client_id_updates",
+          "fields": [
+            "schema_version",
+            "event_type",
+            "debtID",
+            "dsc_client_id",
+            "effective_at",
+            "source_run_id",
+            "idempotency_key"
+          ]
+        },
+        {
+          "dataset": "graph_identity_references",
+          "fields": [
+            "source_run_id",
+            "debt_identifier",
+            "dsa_company_identifier",
+            "identity_basis",
+            "authoritative_graph_export"
+          ]
+        }
       ]
     },
     {
@@ -269,15 +412,103 @@
         "status": "not-registered",
         "expectedId": "lexicon-to-decision",
         "owner": "kecleon",
-        "reason": "The prior registration depends on removed rule_execution concepts and is blocked until a canonical product_execution plus hydrated-evidence mapping is reviewed and published."
+        "reason": "Wait for the reviewed reverse mapping from additive canonical product-execution and company-representation fields; any rule_execution dependency remains forbidden.",
+        "plannedSource": {
+          "repository": "Spring-Oaks-Capital-LLC/lexicon",
+          "sourcePaths": [
+            "src/transform/mappings/lexicon-to-decision/registration.json",
+            "src/transform/mappings/lexicon-to-decision/queries"
+          ],
+          "generatedArtifact": {
+            "generatorPath": "infra/lib/transform-mapping-artifacts.ts",
+            "logicalArtifactPath": "transform-mappings/lexicon-to-decision/1.0.0/mapping.json",
+            "materializationCommand": "cd infra && npx cdk synth"
+          },
+          "expectedOutputDatasets": [
+            "decision_batch",
+            "chunk_executions",
+            "debt_outcomes",
+            "rule_evaluations",
+            "dsa_client_id_updates",
+            "graph_identity_references"
+          ]
+        }
       },
-      "parityFields": [
-        "source_run_id",
-        "debt_id",
-        "outcome",
-        "dsc_client_id",
-        "effective_at",
-        "idempotency_key"
+      "parityDatasets": [
+        {
+          "dataset": "decision_batch",
+          "fields": [
+            "source_run_id",
+            "schema_version",
+            "status",
+            "candidate_count",
+            "accepted_count",
+            "rejected_count",
+            "chunk_count",
+            "historical_client_event_status",
+            "evidence_manifest_uri",
+            "evidence_manifest_versioning",
+            "evidence_manifest_etag",
+            "evidence_manifest_size",
+            "evidence_manifest_sha256",
+            "versioned_source_object_count",
+            "unversioned_stable_read_object_count",
+            "source_object_count"
+          ]
+        },
+        {
+          "dataset": "chunk_executions",
+          "fields": [
+            "source_run_id",
+            "chunk_index",
+            "chunk_count",
+            "candidate_count",
+            "accepted_count",
+            "rejected_count",
+            "filter_execution_arn"
+          ]
+        },
+        {
+          "dataset": "debt_outcomes",
+          "fields": [
+            "source_run_id",
+            "chunk_index",
+            "debt_id",
+            "outcome"
+          ]
+        },
+        {
+          "dataset": "rule_evaluations",
+          "fields": [
+            "source_run_id",
+            "chunk_index",
+            "debt_id",
+            "latest_oos_restricted_state_blocks_dsa_offer",
+            "latest_oos_missing_state_blocks_dsa_offer"
+          ]
+        },
+        {
+          "dataset": "dsa_client_id_updates",
+          "fields": [
+            "schema_version",
+            "event_type",
+            "debtID",
+            "dsc_client_id",
+            "effective_at",
+            "source_run_id",
+            "idempotency_key"
+          ]
+        },
+        {
+          "dataset": "graph_identity_references",
+          "fields": [
+            "source_run_id",
+            "debt_identifier",
+            "dsa_company_identifier",
+            "identity_basis",
+            "authoritative_graph_export"
+          ]
+        }
       ]
     },
     {
@@ -289,19 +520,62 @@
         "status": "not-registered",
         "expectedId": "lexicon-to-interprose",
         "owner": "kecleon",
-        "reason": "The prior registration depends on removed rule_execution concepts and is blocked until a canonical product_execution plus hydrated-evidence mapping is reviewed and published."
+        "reason": "Wait for the reviewed form-1281 mapping that elects the latest DSA company_represents_debt event per debt; any rule_execution dependency remains forbidden.",
+        "plannedSource": {
+          "repository": "Spring-Oaks-Capital-LLC/lexicon",
+          "sourcePaths": [
+            "src/transform/mappings/lexicon-to-interprose/versions/3.0.0/queries/form_1281.sql",
+            "infra/lib/transform-mapping-artifacts.ts"
+          ],
+          "generatedArtifact": {
+            "generatorPath": "infra/lib/transform-mapping-artifacts.ts",
+            "logicalArtifactPath": "transform-mappings/lexicon-to-interprose/3.0.0/mapping.json",
+            "materializationCommand": "cd infra && npx cdk synth"
+          },
+          "expectedOutputDatasets": [
+            "form_1281"
+          ]
+        }
       },
-      "parityFields": [
-        "debtID",
-        "dsc_client_id",
-        "effective_at",
-        "source_run_id",
-        "idempotency_key",
-        "form_config_id",
-        "field_identifier"
+      "parityDatasets": [
+        {
+          "dataset": "form_1281",
+          "fields": [
+            "debtID",
+            "dsc_client_id",
+            "effective_at",
+            "source_run_id",
+            "idempotency_key",
+            "form_config_id",
+            "field_identifier"
+          ]
+        }
       ]
     }
   ],
+  "validationWorkflow": {
+    "steps": [
+      {
+        "sequence": 1,
+        "id": "forward-decision",
+        "direction": "decision-to-lexicon",
+        "inputSource": "profile-evidence"
+      },
+      {
+        "sequence": 2,
+        "id": "reverse-decision",
+        "direction": "lexicon-to-decision",
+        "inputSource": "previous-step-output"
+      },
+      {
+        "sequence": 3,
+        "id": "project-form-1281",
+        "direction": "lexicon-to-interprose",
+        "inputSource": "previous-step-output"
+      }
+    ],
+    "persistPolicy": "forbidden"
+  },
   "validationSources": [
     {
       "id": "lexicon-mapping-contract-tests",
@@ -316,15 +590,26 @@
       "required": true
     },
     {
-      "id": "decision-contract-freeze",
+      "id": "decision-full-day-dev",
+      "kind": "existing-dev-artifact",
+      "location": "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/dsa-filter-decision-prod-derived/2026-09-18T000000Z_2026-09-19T000000Z_v1/",
+      "region": "us-east-2",
+      "artifactStatus": "staging",
+      "appliesTo": [
+        "decision-to-lexicon",
+        "lexicon-to-decision",
+        "lexicon-to-interprose"
+      ],
+      "required": true
+    },
+    {
+      "id": "decision-mixed-rejected-path",
       "kind": "sanitized-evidence-package",
       "location": "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/dsa-filter-decision-evidence/20260924T133000Z-contract-freeze-v1/",
       "manifestSha256": "e890fb58a0866b9cd873b3665d6cae12adbcf29d12952e84edb63a9cf1495e5d",
       "manifestVersionId": "pMyiczzE3ZZqiue133uIZmCOB94uVfCD",
       "appliesTo": [
-        "decision-to-lexicon",
-        "lexicon-to-decision",
-        "lexicon-to-interprose"
+        "decision-to-lexicon"
       ],
       "required": true
     }
@@ -353,11 +638,15 @@
   "graph": {
     "required": true,
     "identityRules": [
-      "Derive stable edge identity from declared normalized endpoint roles and rule revision",
+      "Derive stable product_execution identities for parent runs and child chunks from declared Decision run and chunk identity fields",
+      "Derive stable product_execution_includes_debt and company_represents_debt edge identities from declared normalized endpoints and source event identity",
       "Never emit client identifiers into validation evidence"
     ],
     "endpointRules": [
-      "Every decision edge endpoint must resolve to a declared client-event or governed rule vertex",
+      "Every product_has_execution edge resolves product to a parent product_execution",
+      "Every child product_execution resolves to exactly one parent product_execution",
+      "Every product_execution_includes_debt edge resolves product_execution to debt",
+      "Every company_represents_debt edge resolves a DEBT_SETTLEMENT_AGENCY company to debt",
       "Dangling endpoint count must equal zero"
     ]
   },
@@ -384,7 +673,18 @@
     "currentDefinitionRequired": true,
     "rejectAbsent": true,
     "rejectDeprecated": true,
-    "reintroductionRequiresModelingApproval": true
+    "reintroductionRequiresModelingApproval": true,
+    "forbiddenConcepts": [
+      "rule_execution",
+      "rule_execution_evidence_package",
+      "rule_execution_status_changed",
+      "rule_execution_evaluates_ruleset",
+      "rule_execution_has_exclusion",
+      "rule_execution_for_campaign",
+      "rule_execution_has_child_execution",
+      "rule_execution_has_evidence_package",
+      "rule_execution_decided_debt"
+    ]
   },
   "sourceWindowPolicy": {
     "kind": "prod-derived-complete-utc-days",
@@ -396,14 +696,15 @@
       "debt_outcomes",
       "rule_evaluations",
       "dsa_client_id_updates",
-      "graph_identity_references",
-      "authoritative_graph_export"
+      "graph_identity_references"
     ],
     "requiredCoverageSignals": [
       "accepted-outcomes",
       "rejected-outcomes",
       "client-events",
       "authoritative-endpoints",
+      "not-required-runs",
+      "decision-sql-executed",
       "immutable-evidence"
     ]
   },

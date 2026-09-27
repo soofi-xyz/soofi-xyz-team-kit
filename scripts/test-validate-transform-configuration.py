@@ -117,7 +117,8 @@ def profile_errors(value: dict) -> list[str]:
     required = {
         "id", "contractVersion", "terminologyAliases", "roles", "datasets",
         "invariants", "repositories", "discoveryProbes", "directions",
-        "validationSources", "evidencePolicy", "graph", "adapters", "consumers", "scaleTiers",
+        "validationWorkflow", "validationSources", "evidencePolicy", "graph",
+        "adapters", "consumers", "scaleTiers",
         "approvals", "transformClassification", "configurationChoices",
         "productBoundary",
     }
@@ -153,6 +154,15 @@ def profile_errors(value: dict) -> list[str]:
                     errors.append(f"unregistered mapping {field}")
         else:
             errors.append("mapping registration status")
+    workflow = value.get("validationWorkflow", {})
+    steps = workflow.get("steps", [])
+    if [step.get("sequence") for step in steps] != list(range(1, len(steps) + 1)):
+        errors.append("validation workflow sequence")
+    direction_ids = {direction.get("id") for direction in value.get("directions", [])}
+    if any(step.get("direction") not in direction_ids for step in steps):
+        errors.append("validation workflow direction")
+    if workflow.get("persistPolicy") not in {"required", "forbidden"}:
+        errors.append("validation workflow Persist policy")
     if not value.get("validationSources"):
         errors.append("validation sources")
     for invariant in value.get("invariants", []):
@@ -185,13 +195,17 @@ def profile_errors(value: dict) -> list[str]:
         if not source_window.get("requiredCoverageSignals"):
             errors.append("source window coverage signals")
     concept_policy = value.get("lexiconConceptPolicy")
-    if concept_policy is not None and concept_policy != {
-        "currentDefinitionRequired": True,
-        "rejectAbsent": True,
-        "rejectDeprecated": True,
-        "reintroductionRequiresModelingApproval": True,
-    }:
-        errors.append("unsafe lexicon concept policy")
+    if concept_policy is not None:
+        for field in (
+            "currentDefinitionRequired",
+            "rejectAbsent",
+            "rejectDeprecated",
+            "reintroductionRequiresModelingApproval",
+        ):
+            if concept_policy.get(field) is not True:
+                errors.append("unsafe lexicon concept policy")
+        if not isinstance(concept_policy.get("forbiddenConcepts"), list):
+            errors.append("missing forbidden Lexicon concepts")
     return errors
 
 
@@ -283,6 +297,10 @@ def run_errors(value: dict) -> list[str]:
     if sensitivity.get("containsSecrets") is not False:
         errors.append("secrets")
     for dataset in value.get("datasets", []):
+        if dataset.get("availability") == "UNAVAILABLE":
+            if not dataset.get("subject") or not dataset.get("reason") or not dataset.get("evidenceIds"):
+                errors.append("incomplete unavailable dataset evidence")
+            continue
         location = dataset.get("location", "")
         if not re.fullmatch(r"(?:local|s3)://[^?#@]+", location):
             errors.append("unsafe location")
@@ -299,6 +317,15 @@ def run_errors(value: dict) -> list[str]:
     ]
     if value.get("verdict") == "READY" and unresolved:
         errors.append("ready with unresolved product change")
+    if value.get("verdict") == "READY" and (
+        any(
+            dataset.get("availability") == "UNAVAILABLE"
+            for dataset in value.get("datasets", [])
+        )
+        or value.get("graph", {}).get("availability") == "UNAVAILABLE"
+        or value.get("runtime", {}).get("availability") == "UNAVAILABLE"
+    ):
+        errors.append("ready with unavailable evidence")
     source_window = value.get("sourceWindowSelection")
     if source_window is not None:
         minimum_days = source_window.get("minimumCompleteUtcDays", 0)
@@ -704,6 +731,39 @@ def test_schemas_and_profiles() -> list[dict]:
     ]
     assert_valid(run_check, not_ready, "valid not-ready run with remediation")
 
+    early_not_ready = copy.deepcopy(not_ready)
+    unavailable = {
+        "availability": "UNAVAILABLE",
+        "subject": "runtime-output",
+        "reason": "Static configuration failure stopped runtime proof.",
+        "evidenceIds": ["static-failure"],
+    }
+    early_not_ready["datasets"] = [copy.deepcopy(unavailable)]
+    early_not_ready["graph"] = {
+        **copy.deepcopy(unavailable),
+        "subject": "graph-output",
+    }
+    early_not_ready["runtime"] = {
+        **copy.deepcopy(unavailable),
+        "subject": "transform-runtime",
+    }
+    assert_valid(
+        run_check,
+        early_not_ready,
+        "valid early not-ready run with unavailable evidence",
+    )
+
+    unavailable_ready = copy.deepcopy(early_not_ready)
+    unavailable_ready["verdict"] = "READY"
+    unavailable_ready["phases"][5]["status"] = "PASS"
+    unavailable_ready["failures"] = []
+    unavailable_ready["remediations"] = []
+    assert_rejected(
+        run_check,
+        unavailable_ready,
+        "READY run with unavailable evidence",
+    )
+
     no_remediation = copy.deepcopy(not_ready)
     no_remediation["remediations"] = []
     assert_rejected(
@@ -870,19 +930,99 @@ def test_core_and_references(profiles: list[dict]) -> None:
         mapping.get("status") != "not-registered"
         or mapping.get("expectedId") != mapping_id
         or mapping.get("owner") != "kecleon"
-        or "removed rule_execution" not in mapping.get("reason", "")
+        or "rule_execution" not in mapping.get("reason", "")
+        or mapping.get("plannedSource", {}).get("repository")
+        != "Spring-Oaks-Capital-LLC/lexicon"
+        or not mapping.get("plannedSource", {}).get("sourcePaths")
+        or not mapping.get("plannedSource", {}).get("generatedArtifact", {}).get(
+            "generatorPath"
+        )
+        or not mapping.get("plannedSource", {}).get("generatedArtifact", {}).get(
+            "logicalArtifactPath"
+        )
+        or not mapping.get("plannedSource", {}).get("generatedArtifact", {}).get(
+            "materializationCommand"
+        )
         for mapping_id, mapping in mappings.items()
     ):
-        fail("Decision profile must block the three stale mapping registrations")
+        fail("Decision profile must block and describe all three planned mappings")
     if "rule_execution" in json.dumps(decision["datasets"] + decision["invariants"]):
         fail("Decision profile retains a removed rule_execution concept")
-    evidence = {
+    evidence_sources = {
         source["id"]: source for source in decision["validationSources"]
-    }.get("decision-contract-freeze")
-    if evidence is None or evidence.get("manifestSha256") != (
+    }
+    full_day = evidence_sources.get("decision-full-day-dev")
+    if full_day != {
+        "id": "decision-full-day-dev",
+        "kind": "existing-dev-artifact",
+        "location": (
+            "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/"
+            "inputs/dsa-filter-decision-prod-derived/"
+            "2026-09-18T000000Z_2026-09-19T000000Z_v1/"
+        ),
+        "region": "us-east-2",
+        "artifactStatus": "staging",
+        "appliesTo": [
+            "decision-to-lexicon",
+            "lexicon-to-decision",
+            "lexicon-to-interprose",
+        ],
+        "required": True,
+    }:
+        fail("Decision profile must declare the exact staged full-day DEV artifact")
+    rejected_path = evidence_sources.get("decision-mixed-rejected-path")
+    if rejected_path is None or rejected_path.get("manifestSha256") != (
         "e890fb58a0866b9cd873b3665d6cae12adbcf29d12952e84edb63a9cf1495e5d"
     ):
-        fail("Decision profile must pin the sanitized contract-freeze manifest")
+        fail("Decision profile must pin the sanitized mixed rejected-path manifest")
+    workflow = decision["validationWorkflow"]
+    if (
+        [step["direction"] for step in workflow["steps"]]
+        != [
+            "decision-to-lexicon",
+            "lexicon-to-decision",
+            "lexicon-to-interprose",
+        ]
+        or workflow["persistPolicy"] != "forbidden"
+    ):
+        fail("Decision profile must run forward then two reverse checks without Persist")
+    expected_parity = {
+        "decision_batch": 16,
+        "chunk_executions": 7,
+        "debt_outcomes": 4,
+        "rule_evaluations": 5,
+        "dsa_client_id_updates": 7,
+        "graph_identity_references": 5,
+    }
+    for direction_id in ("decision-to-lexicon", "lexicon-to-decision"):
+        direction = next(
+            item for item in decision["directions"] if item["id"] == direction_id
+        )
+        parity = {
+            dataset["dataset"]: len(dataset["fields"])
+            for dataset in direction.get("parityDatasets", [])
+        }
+        if parity != expected_parity:
+            fail(f"{direction_id}: incomplete per-dataset Decision field parity")
+    form_direction = next(
+        item for item in decision["directions"]
+        if item["id"] == "lexicon-to-interprose"
+    )
+    if {
+        dataset["dataset"]: len(dataset["fields"])
+        for dataset in form_direction.get("parityDatasets", [])
+    } != {"form_1281": 7}:
+        fail("lexicon-to-interprose: form_1281 must compare all seven fields")
+    expected_tests = set(decision["transformClassification"]["expectedOutputTests"])
+    if {
+        "decision-sql-executed",
+        "full-utc-day-decision-coverage",
+    } - expected_tests:
+        fail("Decision profile must require executed SQL and full-day coverage")
+    if "dsa-latest-edge-regression" not in set(
+        decision["transformClassification"]["negativeTests"]
+    ):
+        fail("Decision profile must require the DSA latest-edge regression")
     source_window = decision.get("sourceWindowPolicy", {})
     if (
         source_window.get("kind") != "prod-derived-complete-utc-days"
@@ -896,16 +1036,26 @@ def test_core_and_references(profiles: list[dict]) -> None:
             "rule_evaluations",
             "dsa_client_id_updates",
             "graph_identity_references",
-            "authoritative_graph_export",
         }
+        or "not-required-runs"
+        not in set(source_window.get("requiredCoverageSignals", []))
     ):
         fail("Decision profile must require a complete PROD-derived UTC day")
-    if decision.get("lexiconConceptPolicy") != {
-        "currentDefinitionRequired": True,
-        "rejectAbsent": True,
-        "rejectDeprecated": True,
-        "reintroductionRequiresModelingApproval": True,
-    }:
+    concept_policy = decision.get("lexiconConceptPolicy", {})
+    if (
+        any(
+            concept_policy.get(field) is not True
+            for field in (
+                "currentDefinitionRequired",
+                "rejectAbsent",
+                "rejectDeprecated",
+                "reintroductionRequiresModelingApproval",
+            )
+        )
+        or "rule_execution" not in set(concept_policy.get("forbiddenConcepts", []))
+        or "rule_execution_decided_debt"
+        not in set(concept_policy.get("forbiddenConcepts", []))
+    ):
         fail("Decision profile must reject removed/deprecated Lexicon concepts")
     decision_text = json.dumps(decision).lower()
     for invented in (

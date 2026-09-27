@@ -17,6 +17,7 @@
     "repositories",
     "discoveryProbes",
     "directions",
+    "validationWorkflow",
     "validationSources",
     "evidencePolicy",
     "graph",
@@ -216,8 +217,43 @@
             "type": "array",
             "uniqueItems": true,
             "items": { "type": "string", "minLength": 1 }
+          },
+          "parityDatasets": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/parityDataset" }
           }
         }
+      }
+    },
+    "validationWorkflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["steps", "persistPolicy"],
+      "properties": {
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["sequence", "id", "direction", "inputSource"],
+            "properties": {
+              "sequence": { "type": "integer", "minimum": 1 },
+              "id": { "$ref": "#/$defs/kebab" },
+              "direction": { "$ref": "#/$defs/kebab" },
+              "inputSource": {
+                "enum": [
+                  "profile-evidence",
+                  "previous-step-output",
+                  "existing-dev-artifact"
+                ]
+              }
+            }
+          }
+        },
+        "persistPolicy": { "enum": ["required", "forbidden"] }
       }
     },
     "validationSources": {
@@ -225,6 +261,50 @@
       "minItems": 1,
       "items": {
         "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "location",
+              "region",
+              "artifactStatus",
+              "appliesTo",
+              "required"
+            ],
+            "properties": {
+              "id": { "$ref": "#/$defs/kebab" },
+              "kind": { "const": "existing-dev-artifact" },
+              "location": {
+                "type": "string",
+                "pattern": "^s3://[^?#@]+/$"
+              },
+              "region": {
+                "type": "string",
+                "pattern": "^[a-z]{2}-[a-z]+-[0-9]$"
+              },
+              "artifactStatus": { "enum": ["staging", "ready"] },
+              "manifestSha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "manifestVersionId": { "type": "string", "minLength": 1 },
+              "appliesTo": { "$ref": "#/$defs/kebabList" },
+              "required": { "const": true }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": { "artifactStatus": { "const": "ready" } },
+                  "required": ["artifactStatus"]
+                },
+                "then": {
+                  "required": ["manifestSha256", "manifestVersionId"]
+                }
+              }
+            ]
+          },
           {
             "type": "object",
             "additionalProperties": false,
@@ -343,13 +423,19 @@
         "currentDefinitionRequired",
         "rejectAbsent",
         "rejectDeprecated",
-        "reintroductionRequiresModelingApproval"
+        "reintroductionRequiresModelingApproval",
+        "forbiddenConcepts"
       ],
       "properties": {
         "currentDefinitionRequired": { "const": true },
         "rejectAbsent": { "const": true },
         "rejectDeprecated": { "const": true },
-        "reintroductionRequiresModelingApproval": { "const": true }
+        "reintroductionRequiresModelingApproval": { "const": true },
+        "forbiddenConcepts": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/datasetName" }
+        }
       }
     },
     "sourceWindowPolicy": {
@@ -467,15 +553,72 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["status", "expectedId", "owner", "reason"],
+          "required": [
+            "status",
+            "expectedId",
+            "owner",
+            "reason"
+          ],
           "properties": {
             "status": { "const": "not-registered" },
             "expectedId": { "$ref": "#/$defs/kebab" },
             "owner": { "$ref": "#/$defs/kebab" },
-            "reason": { "type": "string", "minLength": 10 }
+            "reason": { "type": "string", "minLength": 10 },
+            "plannedSource": { "$ref": "#/$defs/plannedMappingSource" }
           }
         }
       ]
+    },
+    "parityDataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dataset", "fields"],
+      "properties": {
+        "dataset": { "$ref": "#/$defs/datasetName" },
+        "fields": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "plannedMappingSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "sourcePaths",
+        "generatedArtifact",
+        "expectedOutputDatasets"
+      ],
+      "properties": {
+        "repository": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+        },
+        "sourcePaths": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/repositoryPath" }
+        },
+        "generatedArtifact": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "generatorPath",
+            "logicalArtifactPath",
+            "materializationCommand"
+          ],
+          "properties": {
+            "generatorPath": { "$ref": "#/$defs/repositoryPath" },
+            "logicalArtifactPath": { "$ref": "#/$defs/repositoryPath" },
+            "materializationCommand": { "type": "string", "minLength": 3 }
+          }
+        },
+        "expectedOutputDatasets": { "$ref": "#/$defs/datasetNameList" }
+      }
     },
     "stringList": {
       "type": "array",

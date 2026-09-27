@@ -27,6 +27,11 @@ Require a profile ID equal to its filename, environment, region, optional reques
 - every declared language to exactly one version;
 - every required direction to its exact enabled mapping identity and version.
 
+Execute `validationWorkflow.steps` in sequence. A `previous-step-output` input
+binds only to the preceding step's committed, physically verified Transform
+output. When `persistPolicy` is `forbidden`, prove graph identity and endpoint
+closure directly from Transform artifacts and record Persist as not required.
+
 Reject mutable evidence as proof. A branch, pull request, tag, `latest` object, undocumented deployment timestamp, or successful status without an immutable binding cannot validate behavior; a pull request is only a discovery selector and its resolved head SHA is the evidence identity.
 
 For PROD-derived DEV validation, let the selected profile opt in through
@@ -77,6 +82,17 @@ PROD is read-only. Collect control-plane metadata and sanitized existing evidenc
 ## Evidence boundary
 
 Store aggregate counts, schemas, SHA-256 digests, statuses, durations, costs, immutable revisions and credential-free locations. Do not store raw rows, PII, stable business identifiers, secrets, credentials, signed URLs or tokens. Sanitize failure messages.
+
+A registration test, generated manifest or successful workflow does not prove
+that mapping SQL executed. Runtime evidence includes executed SQL digests, the
+plan and result manifest, and physical output reconciliation. A staged
+`existing-dev-artifact` remains discovery context until an immutable manifest
+digest and version make it ready.
+
+If an earlier contradiction yields `NOT_READY` before runtime evidence can
+exist, use explicit `UNAVAILABLE` runtime, graph or dataset evidence. Never
+invent hashes, counts, locations or deployment identities; `READY` permits no
+unavailable evidence.
 
 ## Ownership
 

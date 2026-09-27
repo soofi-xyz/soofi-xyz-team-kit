@@ -146,6 +146,29 @@
       "parityFields": ["message-key", "event-type", "event-time", "provider-status", "channel", "direction", "phone-location", "source-revision", "artifact-key"]
     }
   ],
+  "validationWorkflow": {
+    "steps": [
+      {
+        "sequence": 1,
+        "id": "forward-quiq",
+        "direction": "quiq-to-lexicon",
+        "inputSource": "profile-evidence"
+      },
+      {
+        "sequence": 2,
+        "id": "reverse-sms",
+        "direction": "lexicon-to-sms",
+        "inputSource": "previous-step-output"
+      },
+      {
+        "sequence": 3,
+        "id": "reverse-interprose-sms",
+        "direction": "lexicon-to-interprose-sms",
+        "inputSource": "previous-step-output"
+      }
+    ],
+    "persistPolicy": "required"
+  },
   "validationSources": [
     {
       "id": "lexicon-mapping-contract-tests",
