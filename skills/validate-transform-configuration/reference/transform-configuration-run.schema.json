@@ -350,7 +350,10 @@
           "executedSqlSha256s": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/sha256" } },
           "logLocations": {
             "type": "array",
-            "items": { "type": "string", "pattern": "^(?:/aws/[A-Za-z0-9/_.-]+|local://[a-z0-9][a-z0-9/_-]*)$" }
+            "items": {
+              "type": "string",
+              "pattern": "^(?:[A-Za-z0-9_./#-]+(?::[A-Za-z0-9_.#$\\[\\]-][A-Za-z0-9_./#$\\[\\]-]*)?|local://[a-z0-9][a-z0-9/_-]*)$"
+            }
           }
         }
       }

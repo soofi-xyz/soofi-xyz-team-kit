@@ -1666,6 +1666,15 @@ def test_intent_resolution() -> None:
     bad = copy.deepcopy(run)
     bad["executionSteps"][0]["outputLocation"] = "https://signed.example/object?X-Amz-Signature=abc"
     assert_rejected(run_checker, bad, "signed URL output location")
+    glue_logs = copy.deepcopy(run)
+    glue_logs["executionSteps"][0]["logLocations"] = [
+        "TransformPipelineStack-StateMachineLogGroup15B91BCB-WXDLtH0ceaMc",
+        "/aws-glue/jobs/output:jr_8f8330c9bd6fc81e4e5debb680bb9c7075d1a5348014c32707952dfe4a5e5566",
+    ]
+    assert_valid(run_checker, glue_logs, "stack-named and Glue job log locations")
+    bad = copy.deepcopy(run)
+    bad["executionSteps"][0]["logLocations"] = ["https://console.aws.amazon.com/cloudwatch/home?region=us-east-2"]
+    assert_rejected(run_checker, bad, "console URL as a log location")
 
     core = (read(AGENT) + "\n" + read(SKILL / "SKILL.md")).lower()
     for token in (
