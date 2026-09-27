@@ -611,8 +611,7 @@
       "manifestVersionId": "pMyiczzE3ZZqiue133uIZmCOB94uVfCD",
       "appliesTo": [
         "decision-to-lexicon",
-        "lexicon-to-decision",
-        "lexicon-to-interprose"
+        "lexicon-to-decision"
       ],
       "required": true
     },
@@ -624,8 +623,7 @@
       "artifactStatus": "staging",
       "appliesTo": [
         "decision-to-lexicon",
-        "lexicon-to-decision",
-        "lexicon-to-interprose"
+        "lexicon-to-decision"
       ],
       "required": true
     }
