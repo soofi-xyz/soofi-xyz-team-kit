@@ -122,7 +122,9 @@ python3 skills/validate-transform-configuration/scripts/resolve-transform-intent
 `transform-configuration-profile-draft.schema.json` when no profile matches.
 The output contains `status`, `intent`, `languages`, `selection`, `workflow`,
 `profileMatches`, `selectedProfile`, `parityPolicy`, `conceptChecks`,
-`parityDerivation`, `datasetRecommendations`, `findings`, and `questions`.
+`sqlScan`, `parityDerivation`, `datasetRecommendations`, `findings`, and
+`questions`. Pass a full-history `main` clone (a worktree of a non-shallow
+clone works) so added concepts are checked against `main` history.
 Pin the resolver's SHA-256 as `intentResolution.resolverSha256` in the run
 package.
 
@@ -130,7 +132,9 @@ package.
 
 Observed on 2026-09-27 against Lexicon PR #796 head
 `f259b25f4be0a1f2b13699632ce385e001cc5284`, Lexicon `main`
-`6f7a2ebf0877d9a25adf473577e5a711a1262f7b`, and the DEV/PROD registries.
+`6f7a2ebf0877d9a25adf473577e5a711a1262f7b`, and the DEV/PROD registries, and
+re-observed with the same plans against head
+`6955717b16b65285f7c5efa7569f6a3548940b1a` and the DEV registry.
 
 | Request | Status | Plan or candidates |
 | --- | --- | --- |

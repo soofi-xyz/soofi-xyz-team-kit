@@ -8,6 +8,8 @@ import hashlib
 import importlib.util
 import json
 import re
+import shutil
+import subprocess
 import sys
 import tempfile
 from datetime import datetime, timezone
@@ -26,6 +28,7 @@ AGENT = ROOT / "agents" / "silvally.md"
 DRAFT_PROFILE_SCHEMA = REFERENCE / "transform-configuration-profile-draft.schema.json"
 PROFILE_SCHEMA = REFERENCE / "transform-configuration-profile.schema.json"
 RUN_SCHEMA = REFERENCE / "transform-configuration-run.schema.json"
+PROFILES = REFERENCE / "profiles"
 RESOLVER = SKILL / "scripts" / "resolve-transform-intent.py"
 SHORT_REQUEST_REFERENCES = (
     "intent-resolution.md",
@@ -947,26 +950,30 @@ def test_core_and_references(profiles: list[dict]) -> None:
         "lexicon-to-decision",
         "lexicon-to-interprose",
     }
+    expected_versions = {
+        "decision-to-lexicon": "1.0.0",
+        "lexicon-to-decision": "1.0.0",
+        "lexicon-to-interprose": "3.0.0",
+    }
     if set(mappings) != expected_mappings or any(
-        mapping.get("status") != "not-registered"
-        or mapping.get("expectedId") != mapping_id
-        or mapping.get("owner") != "kecleon"
-        or "rule_execution" not in mapping.get("reason", "")
-        or mapping.get("plannedSource", {}).get("repository")
-        != "Spring-Oaks-Capital-LLC/lexicon"
-        or not mapping.get("plannedSource", {}).get("sourcePaths")
-        or not mapping.get("plannedSource", {}).get("generatedArtifact", {}).get(
-            "generatorPath"
-        )
-        or not mapping.get("plannedSource", {}).get("generatedArtifact", {}).get(
-            "logicalArtifactPath"
-        )
-        or not mapping.get("plannedSource", {}).get("generatedArtifact", {}).get(
-            "materializationCommand"
-        )
+        mapping.get("status") != "registered"
+        or mapping.get("id") != mapping_id
+        or mapping.get("version") != expected_versions[mapping_id]
+        or mapping.get("repository") != "Spring-Oaks-Capital-LLC/lexicon"
+        or not mapping.get("sourcePaths")
+        or mapping.get("generatedArtifact", {}).get("logicalArtifactPath")
+        != f"transform-mappings/{mapping_id}/{expected_versions[mapping_id]}/mapping.json"
+        or not mapping.get("generatedArtifact", {}).get("materializationCommand")
         for mapping_id, mapping in mappings.items()
     ):
-        fail("Decision profile must block and describe all three planned mappings")
+        fail("Decision profile must pin all three registered, generated mappings")
+    if mappings["decision-to-lexicon"]["expectedOutputDatasets"] != [
+        "product_execution",
+        "product_execution_has_child_execution",
+        "product_execution_includes_debt",
+        "company_represents_debt",
+    ]:
+        fail("Decision forward outputs must be the four registered canonical concepts")
     if "rule_execution" in json.dumps(decision["datasets"] + decision["invariants"]):
         fail("Decision profile retains a removed rule_execution concept")
     evidence_sources = {
@@ -982,7 +989,11 @@ def test_core_and_references(profiles: list[dict]) -> None:
             "2026-09-18T000000Z_2026-09-19T000000Z_v1/"
         ),
         "region": "us-east-2",
-        "artifactStatus": "staging",
+        "artifactStatus": "ready",
+        "manifestSha256": (
+            "167469f157cf18ed0225570dbbf7b5f213498fd4dd3405a87edc6e25302824cc"
+        ),
+        "manifestVersionId": "Rl2cIl7LIcDPoj6BOmsvVRIW4EURgmmf",
         "appliesTo": [
             "decision-to-lexicon",
             "lexicon-to-decision",
@@ -990,12 +1001,17 @@ def test_core_and_references(profiles: list[dict]) -> None:
         ],
         "required": True,
     }:
-        fail("Decision profile must declare the exact staged full-day DEV artifact")
+        fail("Decision profile must pin the manifested full-day DEV artifact")
     rejected_path = evidence_sources.get("decision-mixed-rejected-path")
     if rejected_path is None or rejected_path.get("manifestSha256") != (
         "e890fb58a0866b9cd873b3665d6cae12adbcf29d12952e84edb63a9cf1495e5d"
     ):
         fail("Decision profile must pin the sanitized mixed rejected-path manifest")
+    adapted = evidence_sources.get("decision-mixed-rejected-path-adapted")
+    if adapted is None or adapted.get("artifactStatus") != "staging" or "manifestSha256" in adapted:
+        fail("An unmanifested adapted rejected-path package must stay staging")
+    if "lexicon-decision-spark-sql" not in evidence_sources:
+        fail("Decision profile must run the Lexicon Decision Spark SQL suite")
     workflow = decision["validationWorkflow"]
     if (
         [step["direction"] for step in workflow["steps"]]
@@ -1008,7 +1024,7 @@ def test_core_and_references(profiles: list[dict]) -> None:
     ):
         fail("Decision profile must run forward then two reverse checks without Persist")
     expected_parity = {
-        "decision_batch": 16,
+        "decision_batch": 17,
         "chunk_executions": 7,
         "debt_outcomes": 4,
         "rule_evaluations": 5,
@@ -1383,12 +1399,67 @@ def build_lexicon_fixture(root: Path) -> dict[str, Path]:
     write_json(staging / "transform-mappings/decision-to-lexicon/2.0.0/mapping.json", mapping_doc(
         "decision-to-lexicon", "2.0.0", "decision", "lexicon", list(DECISION_FIELDS), DECISION_GRAPH + ["rule_execution"], "graph",
     ))
+    staged_sql = staging / "transform-mappings/decision-to-lexicon/2.0.0/queries/product_execution.sql"
+    staged_sql.parent.mkdir(parents=True, exist_ok=True)
+    staged_sql.write_text("SELECT source_run_id AS rule_execution_id FROM source_decision_batch -- rule_execution\n")
     write_json(staging / "transform-mappings/lexicon-to-decision/1.0.0/mapping.json", mapping_doc(
         "lexicon-to-decision", "1.0.0", "lexicon", "decision", DECISION_GRAPH, list(DECISION_FIELDS), "tabular",
     ))
     ssm_dev = root / "ssm-dev.txt"
     ssm_dev.write_text("/lexicon/data-uri\n/lexicon/decision-data-uri\n/lexicon/interprose-data-uri\n/lexicon/quiq-data-uri\n/lexicon/transform-mappings-uri\n")
     return {"candidate": candidate, "main": main, "dev": dev, "prod": prod, "staging": staging, "ssm-dev": ssm_dev}
+
+
+def build_stale_decision_profiles(root: Path) -> Path:
+    """Copy the shipped profiles, reverting Decision to its pre-registration shape."""
+    root.mkdir(parents=True)
+    for source in sorted(PROFILES.glob("*.json")):
+        profile = json.loads(source.read_text())
+        if profile["id"] == "dsa-filter-decision.json":
+            for direction in profile["directions"]:
+                mapping = direction["mapping"]
+                expected = list(mapping["expectedOutputDatasets"])
+                if direction["id"] == "decision-to-lexicon":
+                    expected += ["product", "product_has_execution", "company", "debt"]
+                direction["mapping"] = {
+                    "status": "not-registered",
+                    "expectedId": mapping["id"],
+                    "owner": "kecleon",
+                    "reason": "Stale pre-registration fixture used to prove drift detection.",
+                    "plannedSource": {
+                        "repository": mapping["repository"],
+                        "sourcePaths": mapping["sourcePaths"],
+                        "generatedArtifact": mapping["generatedArtifact"],
+                        "expectedOutputDatasets": expected,
+                    },
+                }
+                for dataset in direction.get("parityDatasets", []):
+                    if dataset["dataset"] == "decision_batch":
+                        dataset["fields"].remove("evidence_manifest_version_id")
+        write_json(root / source.name, profile)
+    return root
+
+
+def build_main_with_removed_concept(root: Path, main: Path, label: str) -> Path:
+    """A full-history main checkout that once declared ``label`` and later removed it."""
+    shutil.copytree(main, root)
+    lexicon_path = root / "src/data/lexicon.json"
+    current = json.loads(lexicon_path.read_text())
+    revived = copy.deepcopy(current)
+    revived["edges"].append({"type": label, "from": "a", "to": "b", "properties": {}})
+
+    def git(*args: str) -> None:
+        subprocess.run(
+            ["git", "-C", str(root), "-c", "user.name=silvally", "-c", "user.email=silvally@example.invalid", *args],
+            check=True, capture_output=True,
+        )
+
+    git("init", "-q")
+    for document, message in ((revived, "add concept"), (current, "remove concept")):
+        write_json(lexicon_path, document)
+        git("add", "-A")
+        git("commit", "-q", "-m", message)
+    return root
 
 
 def test_intent_resolution() -> None:
@@ -1404,15 +1475,17 @@ def test_intent_resolution() -> None:
 
     with tempfile.TemporaryDirectory() as tmp:
         paths = build_lexicon_fixture(Path(tmp))
+        stale_profiles = build_stale_decision_profiles(Path(tmp) / "stale-profiles")
 
-        def run(request: str, *extra: str) -> dict:
+        def run(request: str, *extra: str, profiles: Path = stale_profiles, main: Path = paths["main"]) -> dict:
             args = [
                 "discover", "--request", request,
                 "--lexicon-root", str(paths["candidate"]),
-                "--main-lexicon-root", str(paths["main"]),
+                "--main-lexicon-root", str(main),
                 "--registry", f"dev={paths['dev']}",
                 "--registry", f"prod={paths['prod']}",
                 "--ssm-parameters", f"dev={paths['ssm-dev']}",
+                "--profiles", str(profiles),
                 *extra,
             ]
             parser_args = resolver_args(resolver, args)
@@ -1444,11 +1517,36 @@ def test_intent_resolution() -> None:
             fail("enum coverage targets were not derived")
         if not parity["form_1281"].get("optional") or len(parity["form_1281"]["fields"]) != 7:
             fail("optional cross-source parity was not derived from the target language")
-        states = {c["concept"]: c["state"] for c in decision["conceptChecks"]["decision-to-lexicon@1.0.0"]}
+        checks = {c["concept"]: c for c in decision["conceptChecks"]["decision-to-lexicon@1.0.0"]}
+        states = {concept: check["state"] for concept, check in checks.items()}
         if states["product_execution_has_child_execution"] != "ADDED_IN_CANDIDATE" or states["product_execution"] != "ACTIVE_ON_MAIN":
             fail(f"concept classification against main failed: {states}")
+        if checks["product_execution_has_child_execution"].get("historyChecked") is not False:
+            fail("an added concept checked without main history must say so")
         if not {"HubOutputNotGraph", "ProfileRegistrationStatusDrift", "ProfileOutputDatasetDrift"} <= codes(decision):
             fail(f"decision profile drift not reported: {codes(decision)}")
+        if any(scan["forbiddenLabels"] for scan in decision["sqlScan"].values()):
+            fail("clean Decision SQL reported a forbidden label")
+
+        current = run("test decision to lexicon", profiles=resolver.DEFAULT_PROFILES)
+        current_parity = {p["dataset"]: p for p in current["parityDerivation"]}
+        if "ProfileRegistrationStatusDrift" in codes(current):
+            fail("the shipped Decision profile still lags the registered mappings")
+        if any(f["code"] == "ProfileOutputDatasetDrift" and f.get("direction") == "decision-to-lexicon" for f in current["findings"]):
+            fail("the shipped Decision profile expects outputs the forward mapping does not register")
+        if current_parity["decision_batch"]["profileDeclared"]["missingFromProfile"]:
+            fail("the shipped Decision profile omits a decision_batch definition field")
+
+        revived_main = build_main_with_removed_concept(Path(tmp) / "main-history", paths["main"], "product_execution_has_child_execution")
+        revived = run("test decision to lexicon", main=revived_main)
+        revived_check = next(
+            c for c in revived["conceptChecks"]["decision-to-lexicon@1.0.0"]
+            if c["concept"] == "product_execution_has_child_execution"
+        )
+        if revived_check["state"] != "REMOVED_ON_MAIN" or len(revived_check.get("mainHistoryCommits", [])) != 2:
+            fail(f"a concept removed from main history was accepted as additive: {revived_check}")
+        if not any(f["code"] == "RemovedLexiconConcept" and f["concept"] == "product_execution_has_child_execution" for f in revived["findings"]):
+            fail("a concept revived from main history was not reported")
         if [q["id"] for q in decision["questions"]] != ["environment", "test-dataset", "direction-mode", "cross-source-step", "persist-policy"]:
             fail(f"decision question plan wrong: {[q['id'] for q in decision['questions']]}")
         if question(decision, "environment")["default"] != "dev" or question(decision, "persist-policy")["default"] != "forbidden":
@@ -1516,6 +1614,9 @@ def test_intent_resolution() -> None:
             fail("forbidden Lexicon concept in a mapping output was not reported")
         if "RegistrySourceDrift" not in codes(staged):
             fail("differing registrations for one mapping identity were not reported")
+        sql_hits = [f for f in staged["findings"] if f["code"] == "ForbiddenConceptInSql"]
+        if [(f["concept"], f["query"]) for f in sql_hits] != [("rule_execution", "product_execution.sql")]:
+            fail(f"forbidden label in mapping SQL was not reported: {sql_hits}")
 
         draft = resolver.draft_profile("test sms to lexicon", sms)
         assert_valid(validator(DRAFT_PROFILE_SCHEMA), draft, "auto-generated sms draft")

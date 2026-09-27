@@ -557,6 +557,9 @@
               "items": { "$ref": "#/$defs/repositoryPath" }
             },
             "artifactPath": { "$ref": "#/$defs/repositoryPath" },
+            "generatedArtifact": {
+              "$ref": "#/$defs/plannedMappingSource/properties/generatedArtifact"
+            },
             "expectedOutputDatasets": { "$ref": "#/$defs/datasetNameList" }
           }
         },

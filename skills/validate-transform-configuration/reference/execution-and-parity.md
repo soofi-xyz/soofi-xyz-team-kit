@@ -97,13 +97,17 @@ normalize the label (drop the `vertex-` or `edge-` prefix and change `-` to
 | State | Result |
 | --- | --- |
 | `ACTIVE_ON_MAIN` | pass |
-| `ADDED_IN_CANDIDATE` | pass only when `main` history never removed it (`git log -S '"type": "<label>"' -- src/data/lexicon.json` on a full-history `main` clone); record as additive |
+| `ADDED_IN_CANDIDATE` | pass only when `main` history never removed it (`git log -S '"type": "<label>"' -- src/data/lexicon.json` on a full-history `main` clone); record as additive. `historyChecked: false` means the resolver had no full history, so run the check before phase 6 passes |
+| `REMOVED_ON_MAIN` | `FAIL` (`RemovedLexiconConcept`): absent on `main` but present in its history |
 | `DEPRECATED_ON_MAIN`, `ABSENT` | `FAIL` (`LexiconConceptInactive`) |
 | `FORBIDDEN` (profile `forbiddenConcepts` or a retired mapping id) | `FAIL` (`RemovedLexiconConcept`) |
 | `AUXILIARY_INPUT` | non-graph input without a graph binding; not a concept, recorded only |
 
 Also scan every executed SQL body for forbidden labels. A string match in SQL
-or output labels is a `FAIL` even when registration metadata is clean.
+or output labels is a `FAIL` even when registration metadata is clean. The
+resolver scans each registered and published `queries/*.sql` beside a mapping
+(`sqlScan`, finding `ForbiddenConceptInSql`); after execution, confirm the
+plan's executed query digests equal the scanned files.
 
 ## Coverage
 

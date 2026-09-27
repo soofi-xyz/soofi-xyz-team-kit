@@ -20,6 +20,7 @@ import difflib
 import hashlib
 import json
 import re
+import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -140,6 +141,7 @@ class Mapping:
     outputs: list[dict]
     output: dict
     provenance: list[dict] = field(default_factory=list)
+    query_files: list[Path] = field(default_factory=list)
 
     @property
     def key(self) -> str:
@@ -178,7 +180,7 @@ class Mapping:
         }
 
 
-def mapping_from_document(doc: dict, provenance: dict) -> Mapping | None:
+def mapping_from_document(doc: dict, provenance: dict, query_dir: Path | None = None) -> Mapping | None:
     required = ("id", "version", "from", "to")
     if not all(isinstance(doc.get(k), str) for k in required):
         return None
@@ -192,6 +194,7 @@ def mapping_from_document(doc: dict, provenance: dict) -> Mapping | None:
         outputs=list(doc.get("outputs", [])),
         output=dict(doc.get("output", {})),
         provenance=[provenance],
+        query_files=sorted(query_dir.glob("**/*.sql")) if query_dir and query_dir.is_dir() else [],
     )
 
 
@@ -204,6 +207,7 @@ def load_registry_dir(label: str, root: Path) -> list[Mapping]:
         mapping = mapping_from_document(
             doc,
             {"kind": "published-registry", "label": label, "path": str(path.relative_to(root)), "sha256": sha256_file(path)},
+            path.parent / "queries",
         )
         if mapping:
             found.append(mapping)
@@ -218,6 +222,7 @@ def load_checkout_registrations(label: str, root: Path) -> list[Mapping]:
         mapping = mapping_from_document(
             doc,
             {"kind": "checked-in-registration", "label": label, "path": str(path.relative_to(root)), "sha256": sha256_file(path)},
+            path.parent / "queries",
         )
         if mapping:
             found.append(mapping)
@@ -250,6 +255,7 @@ def merge_mappings(groups: list[list[Mapping]]) -> tuple[dict[str, Mapping], lis
                     "right": mapping.signature(),
                 })
             existing.provenance.extend(mapping.provenance)
+            existing.query_files.extend(mapping.query_files)
     return merged, drift
 
 
@@ -354,6 +360,7 @@ class Registry:
     candidate_concepts: dict[str, dict] | None
     profiles: list[dict]
     registry_labels: list[str]
+    main_root: Path | None = None
 
     def endpoint_languages(self) -> set[str]:
         names = set()
@@ -554,6 +561,29 @@ def continuation_steps(registry: Registry, source: str, forward: Mapping) -> dic
     }
 
 
+def main_history_commits(root: Path | None, label: str) -> list[str] | None:
+    """Commits on the pinned main checkout whose lexicon.json diff adds or removes the label.
+
+    Returns None when the checkout has no full history, so callers cannot mistake
+    an unchecked concept for an additive one.
+    """
+    if root is None or not (root / ".git").exists():
+        return None
+    try:
+        shallow = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "--is-shallow-repository"],
+            capture_output=True, text=True, check=True, timeout=60,
+        ).stdout.strip()
+        if shallow != "false":
+            return None
+        return subprocess.run(
+            ["git", "-C", str(root), "log", "--format=%H", "-S", f'"type": "{label}"', "--", "src/data/lexicon.json"],
+            capture_output=True, text=True, check=True, timeout=120,
+        ).stdout.split()
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
 def concept_checks(registry: Registry, mapping: Mapping, forbidden: list[str]) -> list[dict]:
     if HUB_LANGUAGE not in (mapping.source, mapping.target):
         return []
@@ -565,6 +595,7 @@ def concept_checks(registry: Registry, mapping: Mapping, forbidden: list[str]) -
         has_graph_binding = "graph" in item or mapping.target == HUB_LANGUAGE
         main = (registry.main_concepts or {}).get(label)
         candidate = (registry.candidate_concepts or {}).get(label)
+        check: dict = {"dataset": raw, "concept": label}
         if label in forbidden:
             state = "FORBIDDEN"
         elif registry.main_concepts is None:
@@ -574,17 +605,33 @@ def concept_checks(registry: Registry, mapping: Mapping, forbidden: list[str]) -
         elif main:
             state = "ACTIVE_ON_MAIN"
         elif candidate and not candidate["deprecated"]:
-            state = "ADDED_IN_CANDIDATE"
+            history = main_history_commits(registry.main_root, label)
+            check["historyChecked"] = history is not None
+            if history:
+                state = "REMOVED_ON_MAIN"
+                check["mainHistoryCommits"] = history
+            else:
+                state = "ADDED_IN_CANDIDATE"
         elif not has_graph_binding:
             state = "AUXILIARY_INPUT"
         else:
             state = "ABSENT"
-        results.append({"dataset": raw, "concept": label, "state": state})
+        results.append({**check, "state": state})
     return results
 
 
 def failing_concepts(checks: list[dict]) -> list[dict]:
-    return [c for c in checks if c["state"] in {"FORBIDDEN", "DEPRECATED_ON_MAIN", "ABSENT"}]
+    return [c for c in checks if c["state"] in {"FORBIDDEN", "REMOVED_ON_MAIN", "DEPRECATED_ON_MAIN", "ABSENT"}]
+
+
+def sql_forbidden_labels(mapping: Mapping, forbidden: list[str]) -> list[dict]:
+    hits = []
+    for path in sorted(set(mapping.query_files)):
+        text = path.read_text()
+        for label in forbidden:
+            if re.search(rf"(?<![a-z0-9_]){re.escape(label)}(?![a-z0-9_])", text, re.I):
+                hits.append({"concept": label, "query": path.name, "sha256": sha256_file(path)})
+    return hits
 
 
 def definition_fields(registry: Registry, language: str, dataset: str) -> dict | None:
@@ -893,6 +940,7 @@ def load_registry(args) -> Registry:
         candidate_concepts=load_concepts(lexicon_root),
         profiles=load_profiles(Path(args.profiles)),
         registry_labels=labels,
+        main_root=main_root,
     )
 
 
@@ -1021,7 +1069,13 @@ def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclu
     concept = {m.key: concept_checks(registry, m, forbidden) for m in steps + optional}
     for key, checks in concept.items():
         for c in failing_concepts(checks):
-            findings.append({"code": "RemovedLexiconConcept" if c["state"] == "FORBIDDEN" else "LexiconConceptInactive", "mapping": key, **c})
+            removed = c["state"] in {"FORBIDDEN", "REMOVED_ON_MAIN"}
+            findings.append({"code": "RemovedLexiconConcept" if removed else "LexiconConceptInactive", "mapping": key, **c})
+    sql_scan = {}
+    for m in steps + optional:
+        hits = sql_forbidden_labels(m, forbidden)
+        sql_scan[m.key] = {"queriesScanned": len(set(m.query_files)), "forbiddenLabels": hits}
+        findings.extend({"code": "ForbiddenConceptInSql", "mapping": m.key, **hit} for hit in hits)
     for m in steps:
         if m.target == HUB_LANGUAGE and m.output.get("shape") != "graph":
             findings.append({
@@ -1056,6 +1110,7 @@ def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclu
         "selectedProfile": selected_profile["id"] if selected_profile else None,
         "parityPolicy": (selected_profile or {}).get("parityPolicy"),
         "conceptChecks": concept,
+        "sqlScan": sql_scan,
         "parityDerivation": parity,
         "datasetRecommendations": recommendations,
         "findings": findings,
