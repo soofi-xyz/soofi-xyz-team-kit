@@ -1107,7 +1107,7 @@ def check_v4_profile(profiles: list[dict]) -> None:
     for required in (
         "lexicon-model-unchanged", "no-forbidden-concepts", "csv-pipe-header", "persist-not-invoked", "partial-input-runs",
         "round-trip-column-diff", "payment-method-no-wrong-value", "dsa-reactivation-coverage", "dsa-rename-coverage",
-        "dsa-multiple-edges-per-debt-coverage", "attempted-slot-schedule-closure", "mapping-evidence-pinned-by-digest-and-version-id",
+        "dsa-multiple-edges-per-debt-coverage", "attempted-slot-schedule-closure", "attempted-slot-payment-parity", "mapping-evidence-pinned-by-digest-and-version-id",
     ):
         if required not in invariants:
             fail(f"v4 profile lacks invariant {required}")
@@ -1125,7 +1125,7 @@ def check_v4_profile(profiles: list[dict]) -> None:
             fail(f"partial-input case {case['id']} expectation contradicts the required inputs")
 
     packages = {s["id"]: s for s in v4["validationSources"] if s["kind"] == "existing-dev-artifact"}
-    staged = "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/20260928-dev-stage-sample_v1/"
+    staged = "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/20260928-dev-stage-sample_v2/"
     expected_packages = {
         "lexicon-interprose-v4-dev-stage-sample": (staged + "stage/", ["interprose-to-lexicon"]),
         "lexicon-interprose-v4-dev-graph-export": (staged + "lexicon/", ["lexicon-to-interprose-v4"]),
@@ -1144,6 +1144,9 @@ def check_v4_profile(profiles: list[dict]) -> None:
             or "tbd" in package
         ):
             fail(f"{package_id}: a ready DEV package needs its staged prefix, manifest digest, and version")
+    if not any("5ccdc76f115779d5c0a3ef2fe7cc01f0d950637089b0077330f1e6a85f078cd6" in e and "VersionId" in e
+               for e in v4["configurationChoices"]["mappingExpressions"]):
+        fail("v4 must pin the mapping by mapping.json digest and S3 VersionId")
     tests = {s["path"] for s in v4["validationSources"] if s["kind"] == "repository-test"}
     if "infra/test/spark/test_lexicon_to_interprose.py" not in tests:
         fail("v4 must execute the candidate's v4 Spark SQL tests")
