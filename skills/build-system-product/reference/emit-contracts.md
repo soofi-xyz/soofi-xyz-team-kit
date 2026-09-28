@@ -50,6 +50,8 @@ emits/lexicon/
 
 Language and mapping fields follow Transform's `LanguageRegistration` and
 `Mapping`; Lexicon adds `s3Uri`/`sha256` when it publishes the catalog.
+Lexicon is already deployed, so this stub is a catalog addition for the
+existing deployment, never a request to provision Lexicon.
 
 ## Connect → Lapras (`build-connect-product`)
 
