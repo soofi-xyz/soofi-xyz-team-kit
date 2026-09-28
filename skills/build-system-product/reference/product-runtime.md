@@ -13,7 +13,7 @@ System outcome (systemId)
       + Product Flow Template(s)  → compile → Step Functions
       + Product Flow(s)           → require flow_template_name
       + optional Waterfall        → ordered flow failover
-      + Invocations               → single_flow | waterfall
+      + Invocations               → invocation_mode single | waterfall
 ```
 
 Leaf Products are **callees** inside the template (Connect jobs, Translate/
@@ -29,7 +29,7 @@ replacement for Product.
 | `configRefs` openapi | Product OpenAPI / custom endpoints |
 | Flow template emit | `PUT .../flow-templates/{template_name}` DSL body |
 | Product flow emit | `POST .../product_flows` with `flow_template_name` |
-| Waterfall emit | `PUT .../waterfall` `{ waterfall: [{ priority, flow_name }] }` |
+| Waterfall emit | `PUT .../waterfall` `{ waterfall: [{ flow_name, order, stop_on_status }] }` |
 | Invocation success criteria | `POST .../invocations` contract + status checks |
 | Leaf Connect/Transform/Lexicon | `StaircaseService` URLs + flow metadata — engines stay with Lapras/Kecleon/Conkeldurr |
 

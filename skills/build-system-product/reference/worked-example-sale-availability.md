@@ -13,9 +13,26 @@ Given `address` or `parcelId`, return availability plus evidence. Unknown ids
 fail closed. Prefer `POST /products/sale-availability/invocations` once Product
 is available.
 
-## Manifest
+## Package
 
-See [examples/sale-availability.system.manifest.json](examples/sale-availability.system.manifest.json).
+```text
+examples/sale-availability/
+  system.manifest.json
+  emits/product/product.definition.stub.json
+  emits/product/flow-templates/sale_availability_lookup.stub.json
+  emits/product/product-flows/default.stub.json
+  emits/product/invocation.contract.md
+  emits/lexicon/catalog.stub.json
+  emits/connect/partner.stub.json
+  emits/connect/activation.stub.json
+  emits/transform/request.stub.json
+  emits/deploy/environment.stub.json
+```
+
+`python3 scripts/check-system-manifest.py` validates the manifest and every
+stub it references. The Connect stubs validate against Connect's
+`flow.schema.json` and the Transform request against Transform's
+`contracts.schema.json`.
 
 ## Intended shape
 
@@ -23,7 +40,7 @@ See [examples/sale-availability.system.manifest.json](examples/sale-availability
 | --- | --- | --- |
 | Product orchestration | Conkeldurr (+ Machamp) | Product definition, schemas, flow template, flow, optional waterfall |
 | Lexicon | Conkeldurr | Languages + mapping for sale-availability fields |
-| Connect | Lapras | Batch ingest prepared sources (`s3-file` for pilots) |
+| Connect | Lapras | Partner configuration + disabled activation on the existing `partner-file-intake` flow |
 | Transform | Kecleon | Source language → sale-availability language |
 | Deploy | Conkeldurr | Activation remains false until authorized |
 

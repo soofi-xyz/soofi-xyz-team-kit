@@ -4,6 +4,10 @@ Zygarde emits **reviewable stubs**. Agents turn stubs into real configs in
 their target repositories or via Product APIs. Paths are relative to the
 composition package root when one exists.
 
+[`examples/sale-availability/emits/`](examples/sale-availability/emits/) is a
+complete, checked set of these stubs. Placeholders use `<angle-brackets>`
+wherever the owning agent must supply a tenant value.
+
 ## Product orchestration → Conkeldurr + `build-product-service` (Machamp verify)
 
 Emit:
@@ -15,13 +19,20 @@ emits/product/
     <template_name>.stub.json    # DSL definition (+ persistence_integration / output_path)
   product-flows/
     <flow_name>.stub.json        # flow_template_name required; tags/active/metadata
-  waterfall.stub.json            # optional { "waterfall": [{ "priority", "flow_name" }] }
-  invocation.contract.md         # single_flow | waterfall; required fields; status gates
+  waterfall.stub.json            # optional { "waterfall": [{ "flow_name", "order", "stop_on_status" }] }
+  invocation.contract.md         # invocation_mode single | waterfall; required fields; status gates
 ```
 
 **Rules**
 
-- Every executable flow stub sets `flow_template_name`.
+- Field names follow the target
+  [Product PRD](../../build-product-service/reference/PRD.md) §3.2–3.6, not
+  Staircase legacy (`single`, not `single_flow`; waterfall `order`, not
+  `priority`).
+- Every executable flow stub sets `flow_template_name` to an emitted
+  template's `name`.
+- `StaircaseService` field names in template stubs are drafts; Machamp
+  confirms them against the Product template validator at compile.
 - Template steps that call peers use relative URLs (Connect / Language /
   Persist / Product), not secrets.
 - Prefer citing shapes from
@@ -34,27 +45,32 @@ Integrate an existing Product deployment before provisioning a new one.
 
 ```text
 emits/lexicon/
-  README.md
-  catalog.stub.json
+  catalog.stub.json          # status "proposed"; languages + spark-sql mappings, no digests yet
 ```
+
+Language and mapping fields follow Transform's `LanguageRegistration` and
+`Mapping`; Lexicon adds `s3Uri`/`sha256` when it publishes the catalog.
 
 ## Connect → Lapras (`build-connect-product`)
 
 ```text
 emits/connect/
-  source.stub.json
-  tables.stub.json
+  partner.stub.json          # PartnerConfiguration for an existing flow
+  activation.stub.json       # Activation pinned to flow_name + flow_version; enabled false
 ```
 
-Use `s3-file` for fixture pilots; never invent cross-tenant secret ARNs.
+Reuse a catalog flow (for example `partner-file-intake`) before asking for a
+new one. Connect only talks to external systems; secrets stay as Secrets
+Manager placeholders on connections, never in the manifest.
 
 ## Transform → Kecleon (`build-transform-product`)
 
 ```text
 emits/transform/
-  request.stub.json          # contractVersion 2; from/to; S3 locations only
-  mapping.ref.md
+  request.stub.json          # Transform Request: contractVersion 2; from/to; S3 locations only
 ```
+
+`from` → `to` must match a mapping in the Lexicon stub.
 
 ## Persist → Conkeldurr (when invocations need collections/graph)
 
@@ -67,8 +83,7 @@ emits/persist/
 
 ```text
 emits/deploy/
-  environment.stub.json      # activationEnabled false
-  cost-ceiling.md
+  environment.stub.json      # activationEnabled false; cost ceiling; components[].refs → configRefs
 ```
 
 ## Thin System package → Zygarde (fallback only)
@@ -87,8 +102,8 @@ Allowed only when orchestration mode is `thin-package-deferred`.
 | --- | --- | --- |
 | Product definition/template/flow | Conkeldurr (+ Machamp verify) | APIs accept config or PR merged |
 | Lexicon | Conkeldurr | Catalog/mapping path exists |
-| Connect | Lapras | Source registration + fixtures |
+| Connect | Lapras | Partner configuration + activation accepted by the Connect API |
 | Transform | Kecleon | Mapping enabled + acceptance |
 | Persist | Conkeldurr | Collection contract agreed |
 | Deploy | Conkeldurr | Synth with activation off |
-| Manifest | Zygarde | Schema-valid + successCriteria listed |
+| Manifest | Zygarde | `scripts/check-system-manifest.py` passes |

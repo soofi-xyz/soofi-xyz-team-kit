@@ -57,9 +57,9 @@ new name when an existing Product deployment can host the outcome.
    DownloadPublicContent) compiled to a Step Functions state machine.
 3. **Product Flow** — binds `flow_template_name` (required for execution) plus
    selection metadata (tags, active, marketplace ids).
-4. **Waterfall** (optional) — ordered `{priority, flow_name}` failover across
+4. **Waterfall** (optional) — ordered `{flow_name, order}` failover across
    Product Flows — not steps inside a single template.
-5. **Invocation** — `single_flow` or `waterfall`; correlates via
+5. **Invocation** — `invocation_mode` `single` or `waterfall`; correlates via
    `transaction_id` / collection ids; callbacks and status are first-class.
 
 Cross-service composition uses relative platform URLs (for example Connect
@@ -81,7 +81,8 @@ See [product-runtime.md](product-runtime.md) and
 
 Composition is done when:
 
-1. Manifest validates against `composition.manifest.schema.json`.
+1. `scripts/check-system-manifest.py` accepts the manifest: schema, semantic
+   rules and dependency resolution in [contracts.md](contracts.md).
 2. Product emits cover definition + at least one flow template + one
    template-backed flow (waterfall optional but documented).
 3. Leaf `configRefs` name owners (Lapras / Kecleon / Conkeldurr / Machamp).

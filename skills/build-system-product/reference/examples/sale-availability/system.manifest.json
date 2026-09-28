@@ -6,7 +6,7 @@
   "outcome": "Given an address or parcelId, return sale availability and evidence from curated Connect/Transform artifacts via a Product invocation. Unknown identifiers fail closed. No scrape-on-request.",
   "orchestration": {
     "mode": "product-service",
-    "invocationMode": "single_flow",
+    "invocationMode": "single",
     "notes": "Serve through Product APIs once a deployment is integrated or provisioned. Template-backed flow only."
   },
   "products": [
@@ -23,7 +23,7 @@
     {
       "product": "connect",
       "role": "execute",
-      "notes": "Batch ingest prepared source objects (prefer s3-file for fixture pilots)."
+      "notes": "Land prepared source objects with the existing partner-file-intake flow; partner configuration + activation only, no new verbs."
     },
     {
       "product": "transform",
@@ -44,7 +44,7 @@
     },
     "productFlowTemplate": {
       "kind": "product-flow-template",
-      "path": "emits/product/flow-templates/sale-availability-lookup.stub.json",
+      "path": "emits/product/flow-templates/sale_availability_lookup.stub.json",
       "ownerAgent": "machamp"
     },
     "productFlow": {
@@ -62,9 +62,14 @@
       "path": "emits/lexicon/catalog.stub.json",
       "ownerAgent": "conkeldurr"
     },
-    "connectSource": {
-      "kind": "connect-source",
-      "path": "emits/connect/source.stub.json",
+    "connectPartner": {
+      "kind": "connect-partner",
+      "path": "emits/connect/partner.stub.json",
+      "ownerAgent": "lapras"
+    },
+    "connectActivation": {
+      "kind": "connect-activation",
+      "path": "emits/connect/activation.stub.json",
       "ownerAgent": "lapras"
     },
     "transformRequest": {
@@ -87,11 +92,18 @@
       "gate": "languages-and-mapping-proposed"
     },
     {
-      "id": "ingest-source",
+      "id": "register-source",
       "product": "connect",
-      "configRef": "connectSource",
+      "configRef": "connectPartner",
       "agent": "lapras",
-      "gate": "checkpoint-or-fixture-datasets-ready"
+      "gate": "partner-configuration-accepted"
+    },
+    {
+      "id": "schedule-intake",
+      "product": "connect",
+      "configRef": "connectActivation",
+      "agent": "lapras",
+      "gate": "activation-registered-disabled"
     },
     {
       "id": "translate",
@@ -139,13 +151,13 @@
   "successCriteria": [
     {
       "id": "manifest-valid",
-      "description": "This manifest validates against composition.manifest.schema.json.",
+      "description": "scripts/check-system-manifest.py passes: schema, references, emit contracts.",
       "verify": "schema"
     },
     {
       "id": "template-backed-flow",
-      "description": "Product flow stub sets flow_template_name; no legacy default connector pipeline.",
-      "verify": "manual"
+      "description": "Every product flow stub sets flow_template_name to an emitted template; no legacy default connector pipeline.",
+      "verify": "schema"
     },
     {
       "id": "invocation-known-key",

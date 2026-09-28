@@ -100,7 +100,8 @@
               "product-waterfall",
               "product-invocation",
               "lexicon-catalog",
-              "connect-source",
+              "connect-partner",
+              "connect-activation",
               "transform-request",
               "transform-mapping",
               "system-openapi",
@@ -116,7 +117,8 @@
           },
           "digest": {
             "type": "string",
-            "description": "Optional content digest when pinned."
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "description": "Content digest. Required for remote (scheme://) paths; optional for paths relative to the manifest."
           },
           "ownerAgent": {
             "type": "string",
@@ -304,7 +306,7 @@
         "invocationMode": {
           "type": "string",
           "enum": [
-            "single_flow",
+            "single",
             "waterfall"
           ]
         },

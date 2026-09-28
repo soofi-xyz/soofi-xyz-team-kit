@@ -29,8 +29,10 @@ platform rebuild contract is [`build-product-service`](../build-product-service/
 4. For emits into a target repo, follow [from-scratch](reference/from-scratch.md)
    and [emit-contracts](reference/emit-contracts.md).
 5. Use [worked-example-sale-availability](reference/worked-example-sale-availability.md)
-   and [examples/sale-availability.system.manifest.json](reference/examples/sale-availability.system.manifest.json)
-   as a skeleton only.
+   and [examples/sale-availability/](reference/examples/sale-availability/)
+   (manifest + emits) as a skeleton only.
+6. Check every manifest with `scripts/check-system-manifest.py` before
+   handing emits to other agents.
 
 ## Keep shared skills
 
