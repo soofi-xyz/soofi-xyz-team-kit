@@ -239,7 +239,22 @@
       "properties": {
         "candidateLexiconDiff": { "enum": ["forbidden", "allowed"] },
         "path": { "$ref": "#/$defs/repositoryPath" },
-        "modelAdditions": { "enum": ["forbidden", "allowed"] }
+        "modelAdditions": { "enum": ["forbidden", "allowed"] },
+        "approvedAdditions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["concept", "property", "approval"],
+            "properties": {
+              "concept": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+              "property": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+              "approval": { "type": "string", "minLength": 10 }
+            }
+          }
+        }
       }
     },
     "roundTripStrategy": {

@@ -59,7 +59,8 @@ without being committed. Commit it only through a reviewed PR to this kit.
      `columns`, `columnConstraints`, `status` (`planned`/`verified`), `tbd`;
    - `outputDatasetMatch: includes` when the profile runs a subset of a large
      generated mapping;
-   - `lexiconModelPolicy` to forbid any candidate `lexicon.json` diff against `main`;
+   - `lexiconModelPolicy` to forbid any candidate `lexicon.json` diff against `main`,
+     with `approvedAdditions` naming each owner-approved new property and its approval;
    - `roundTripStrategy` for source-sample reprojection and column diffs;
    - `partialInputPolicy` with pinned Transform evidence and accepted/rejected cases;
    - `artifactStatus: planned` with `tbd` for a reserved, unstaged DEV package.

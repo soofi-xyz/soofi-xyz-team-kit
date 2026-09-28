@@ -1031,11 +1031,11 @@ def check_v4_profile(profiles: list[dict]) -> None:
     constraints = {c["column"]: c for c in form["columnConstraints"]}
     if constraints.get("form_config_id", {}).get("const") != "1281" or set(
         constraints.get("field_identifier", {}).get("enum", [])
-    ) != {"DSA_NAME", "DSA_REPRESENTATION"}:
-        fail("form_1281 must emit only DSA_NAME and DSA_REPRESENTATION")
+    ) != {"DSA_NAME", "REPORTED_DATE", "DSA_REPRESENTATION", "VERIFIED_DATE", "DELETE_DATE"}:
+        fail("form_1281 must emit the Claydol form 1281 fields")
     absent = invariants_by_id(v4).get("form-1281-expected-absent-fields", {}).get("description", "")
-    if "REPORTED_DATE" not in absent or "DSA_CLIENT_ID_" not in absent:
-        fail("form_1281 must declare REPORTED_DATE and DSA_CLIENT_ID_ expected-absent")
+    if "DSA_CLIENT_ID_" not in absent or "'false'" not in absent:
+        fail("form_1281 must declare DSA_CLIENT_ID_ and DSA_REPRESENTATION false expected-absent")
 
     interprose = {
         "payment_plan": {
@@ -1066,8 +1066,8 @@ def check_v4_profile(profiles: list[dict]) -> None:
         if needs_status_edge in parity["payment_plan_schedule"] and status_edge not in contracts["payment_plan_schedule"]["requiredInputs"]:
             fail(f"payment_plan_schedule declares {needs_status_edge} without its status edge input")
     losses = " ".join(v4["roundTripStrategy"]["permittedLosses"])
-    if "deactivation_date empty when the source plan also has a complete_date" not in losses:
-        fail("deactivation_date loss must be permitted only when complete_date is present")
+    if "deactivation_date empty whenever the plan has a COMPLETED event" not in losses or "any other deactivation_date difference fails" not in losses:
+        fail("deactivation_date loss must be permitted only for completed plans")
     if "payment_method empty" not in losses or "wrong non-empty value fails" not in losses:
         fail("payment_method loss must permit only documented empty values")
     if v4["parityPolicy"] != {
@@ -1093,8 +1093,12 @@ def check_v4_profile(profiles: list[dict]) -> None:
         or {k["dataset"] for k in strategy["rowKeys"]} != set(V4_OUTPUTS)
     ):
         fail("v4 round-trip strategy must column-diff every output by row key")
-    if v4["lexiconModelPolicy"] != {"candidateLexiconDiff": "forbidden", "path": "src/data/lexicon.json", "modelAdditions": "forbidden"}:
-        fail("v4 must forbid any lexicon.json diff against main")
+    model_policy = {k: v for k, v in v4["lexiconModelPolicy"].items() if k != "approvedAdditions"}
+    if model_policy != {"candidateLexiconDiff": "forbidden", "path": "src/data/lexicon.json", "modelAdditions": "forbidden"}:
+        fail("v4 must forbid any lexicon.json diff against main beyond approved additions")
+    approved = {(a["concept"], a["property"]) for a in v4["lexiconModelPolicy"].get("approvedAdditions", [])}
+    if approved != {("company_represents_debt", p) for p in ("reported_at", "verified_at", "deleted_at", "dsa_representation")}:
+        fail(f"v4 approved Lexicon additions must be the four form 1281 edge properties: {sorted(approved)}")
 
     invariants = invariants_by_id(v4)
     election = invariants.get("dsa-election-matches-is-dsa", {}).get("description", "")
@@ -1108,7 +1112,9 @@ def check_v4_profile(profiles: list[dict]) -> None:
         "lexicon-model-unchanged", "no-forbidden-concepts", "csv-pipe-header", "persist-not-invoked", "partial-input-runs",
         "round-trip-column-diff", "payment-method-no-wrong-value", "dsa-reactivation-coverage", "dsa-rename-coverage",
         "dsa-multiple-edges-per-debt-coverage", "attempted-slot-schedule-closure", "attempted-slot-payment-parity",
-        "form-1281-interprose-debts-only", "dsa-name-matches-prod-index", "payment-plan-keyed-by-identifier", "iso-datetime-inputs-only", "mapping-evidence-pinned-by-digest-and-version-id",
+        "form-1281-interprose-debts-only", "dsa-name-matches-prod-index", "payment-plan-keyed-by-identifier", "iso-datetime-inputs-only",
+        "form-1281-claydol-field-rules", "form-1281-stage-parity", "dsa-representation-source", "optional-graph-properties-absent",
+        "forward-stage-column-deploy-order", "mapping-evidence-pinned-by-digest-and-version-id",
     ):
         if required not in invariants:
             fail(f"v4 profile lacks invariant {required}")
@@ -1134,6 +1140,14 @@ def check_v4_profile(profiles: list[dict]) -> None:
             "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/20260928-prod-graph-sample_v1/",
             ["lexicon-to-interprose-v4"],
         ),
+        "lexicon-interprose-v4-prod-reconstruct-stage": (
+            "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/20260928-prod-reconstruct_v1/stage/",
+            ["interprose-to-lexicon"],
+        ),
+        "lexicon-interprose-v4-prod-reconstruct-graph": (
+            "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/20260928-prod-reconstruct_v1/lexicon/",
+            ["lexicon-to-interprose-v4"],
+        ),
     }
     if set(packages) != set(expected_packages):
         fail(f"v4 DEV package must be the staged Interprose sample and graph export: {sorted(packages)}")
@@ -1149,7 +1163,7 @@ def check_v4_profile(profiles: list[dict]) -> None:
             or "tbd" in package
         ):
             fail(f"{package_id}: a ready DEV package needs its staged prefix, manifest digest, and version")
-    if not any("0e3146aa6e3ce02b6e19ef7b7fe401e424ffeca72abab18c569b40fc3626347b" in e and "VersionId" in e
+    if not any("1050611b9bb521e00581e2aa6fe71d7625e118e1438fe39e7ec4a1235a77a7d8" in e and "VersionId" in e
                for e in v4["configurationChoices"]["mappingExpressions"]):
         fail("v4 must pin the mapping by mapping.json digest and S3 VersionId")
     closure = invariants_by_id(v4)["attempted-slot-schedule-closure"]["description"]
@@ -1942,6 +1956,31 @@ def test_intent_resolution() -> None:
             fail("a shared forbidden concept in the candidate lexicon.json was not reported")
         if not any(f["code"] == "ForbiddenPropertyInLexicon" and f["property"] == "dsc_client_id" for f in model["findings"]):
             fail("a Decision-only property in the candidate lexicon.json was not reported")
+        # Approved model additions: exactly the approved properties pass; anything else still fails.
+        approved_props = ["reported_at", "verified_at", "deleted_at", "dsa_representation"]
+
+        def approved_candidate(name: str, extra: list[str], mutate=None) -> None:
+            shutil.copytree(paths["candidate-v4"], Path(tmp) / name)
+            model = lexicon_model(extra_properties={"company_represents_debt": approved_props + extra})
+            if mutate:
+                mutate(model)
+            write_json(Path(tmp) / name / "src/data/lexicon.json", model)
+            paths[name] = Path(tmp) / name
+
+        def reword_debt(model: dict) -> None:
+            next(v for v in model["vertices"] if v["type"] == "debt")["comment"] = "changed outside the approved additions"
+
+        approved_candidate("candidate-approved", [])
+        approved_candidate("candidate-approved-plus", ["unapproved_flag"])
+        approved_candidate("candidate-approved-reworded", [], reword_debt)
+        approved_ok = run("test lexicon to interprose form 1281", lexicon="candidate-approved")
+        if "LexiconModelApprovedAdditions" not in codes(approved_ok) or "LexiconModelDiffersFromMain" in codes(approved_ok):
+            fail(f"approved Lexicon additions were not accepted: {codes(approved_ok)}")
+        if approved_ok["lexiconModel"]["approvedAdditions"]["approvedMissing"]:
+            fail("approved additions present in the candidate were reported missing")
+        for name in ("candidate-approved-plus", "candidate-approved-reworded"):
+            if "LexiconModelDiffersFromMain" not in codes(run("test lexicon to interprose form 1281", lexicon=name)):
+                fail(f"{name}: a change beyond the approved additions was accepted")
         unchecked = run("test lexicon to interprose form 1281", "--main-lexicon-root", "")
         if "LexiconModelUnchecked" not in codes(unchecked):
             fail("a missing main checkout must leave the Lexicon diff explicitly unchecked")

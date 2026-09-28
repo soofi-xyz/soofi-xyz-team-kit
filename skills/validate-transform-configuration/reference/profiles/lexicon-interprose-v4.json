@@ -43,16 +43,16 @@
   },
   "configurationChoices": {
     "fieldNames": [
-      "form_1281 columns debtID, form_config_id, field_identifier, value with field_identifier DSA_NAME or DSA_REPRESENTATION; payment_plan and payment_plan_schedule columns from interprose.json in declaration order"
+      "form_1281 columns debtID, form_config_id, field_identifier, value with field_identifier DSA_NAME, REPORTED_DATE, DSA_REPRESENTATION, VERIFIED_DATE or DELETE_DATE; payment_plan and payment_plan_schedule columns from interprose.json in declaration order"
     ],
     "schemaShape": [
-      "one form_1281 row per represented debt and field_identifier (DSA_NAME, DSA_REPRESENTATION); one payment_plan row per payment plan; one payment_plan_schedule row per installment slot"
+      "one form_1281 row per debt and emitted field_identifier, following Claydol form 1281 writes; one payment_plan row per payment plan; one payment_plan_schedule row per installment slot"
     ],
     "formats": ["Parquet graph exports in; pipe-delimited CSV with a header row out"],
     "normalizationRules": ["dollars to integer cents, ISO-8601 UTC timestamps, DSA election per company_identifier by created_at then effective_at"],
-    "mappingExpressions": ["lexicon-to-interprose@4.0.0 pinned by mapping.json sha256 0e3146aa6e3ce02b6e19ef7b7fe401e424ffeca72abab18c569b40fc3626347b, S3 VersionId kbw8QFT.dlJVEmOAaG0DrOpZbJV6pCLX"],
+    "mappingExpressions": ["lexicon-to-interprose@4.0.0 pinned by mapping.json sha256 1050611b9bb521e00581e2aa6fe71d7625e118e1438fe39e7ec4a1235a77a7d8, S3 VersionId Ko5886TiHSl9ax7iIm6l_5xr0cAfffUd; forward interprose-to-lexicon@1.0.0 mapping.json sha256 b378371147d90f88f2b64d6f4b002bf27417da4e315b7afa88f3ea7ac89a4805, S3 VersionId Gesii87aUnenVBfQKTYFXuiqCwdH95cE"],
     "profileInputs": ["DEV package inputs/lexicon-interprose-v4/20260928-dev-stage-sample_v2/ with stage/ingest-a, stage/ingest-b and lexicon/ manifests"],
-    "vocabularySelections": ["existing Lexicon company, debt, payment_plan, payment_plan_installment, and user_account concepts; no model additions"]
+    "vocabularySelections": ["existing Lexicon company, debt, payment_plan, payment_plan_installment, and user_account concepts; the only model additions are the four approved optional company_represents_debt properties"]
   },
   "productBoundary": {
     "prohibitedAsConfiguration": [
@@ -87,7 +87,7 @@
   "invariants": [
     {
       "id": "lexicon-model-unchanged",
-      "description": "src/data/lexicon.json at the pinned candidate is byte-identical to the pinned Lexicon main (git diff <main>..<candidate> -- src/data/lexicon.json is empty); the mapping adds no vertex, edge, property, or index",
+      "description": "src/data/lexicon.json at the pinned candidate equals the pinned Lexicon main except for the lexiconModelPolicy.approvedAdditions properties: removing exactly those properties from the candidate leaves JSON identical to main, so every other concept, property and index definition (including debt is_dsa and dsa_company_name) is unchanged",
       "phase": 5,
       "failureCode": "LexiconModelDiffersFromMain"
     },
@@ -123,7 +123,7 @@
     },
     {
       "id": "form-1281-row-shape",
-      "description": "Every form_1281 row has form_config_id '1281' and field_identifier DSA_NAME or DSA_REPRESENTATION, with at most one row per (debtID, field_identifier) and both rows present for every represented debt; REPORTED_DATE and DSA_CLIENT_ID_ rows are expected-absent and any occurrence fails",
+      "description": "Every form_1281 row has form_config_id '1281' and field_identifier DSA_NAME, REPORTED_DATE, DSA_REPRESENTATION, VERIFIED_DATE or DELETE_DATE, with at most one row per (debtID, field_identifier); DSA_REPRESENTATION is only ever 'true'",
       "phase": 11,
       "failureCode": "Form1281ShapeMismatch"
     },
@@ -165,7 +165,7 @@
     },
     {
       "id": "form-1281-expected-absent-fields",
-      "description": "No form_1281 row carries field_identifier REPORTED_DATE or DSA_CLIENT_ID_; the mapping does not own them",
+      "description": "No form_1281 row carries field_identifier DSA_CLIENT_ID_ or DSA_REPRESENTATION 'false'; Claydol owns the client id and never writes a false representation",
       "phase": 11,
       "failureCode": "Form1281ShapeMismatch"
     },
@@ -234,6 +234,36 @@
       "description": "v4 graph inputs carry DateTime as ISO-8601 UTC strings and Date as yyyy-MM-dd; raw Persist epoch-millis exports are an unsupported input contract, fail in the Glue run rather than in resolve-plan, and are recorded as an input finding, not a mapping failure",
       "phase": 9,
       "failureCode": "UnsupportedInputEncoding"
+    },
+    {
+      "id": "form-1281-claydol-field-rules",
+      "description": "form_1281 reproduces Claydol form 1281 writes from the elected identity head: DSA_NAME for every represented debt; REPORTED_DATE (reported_at) and DSA_REPRESENTATION 'true' only when that head's dsa_representation is true; VERIFIED_DATE when that head's verified_at is present; for a debt with no ACTIVE head, DELETE_DATE from the newest head's deleted_at. Differences from Claydol inventory writes that set REPORTED_DATE without a representation are recorded, not silently accepted",
+      "phase": 11,
+      "failureCode": "Form1281ShapeMismatch"
+    },
+    {
+      "id": "form-1281-stage-parity",
+      "description": "On the PROD-reconstruct package, every emitted form_1281 value equals the PROD Stage debt_settlement_agency row it comes from (dsa_name, reported_date, verified_date, delete_date), and the package's Stage rows equal PROD Stage at the pinned snapshot",
+      "phase": 11,
+      "failureCode": "RoundTripColumnMismatch"
+    },
+    {
+      "id": "dsa-representation-source",
+      "description": "dsa_representation must come from the Interprose source column once Stage extracts it. The PROD-reconstruct package derives it from Claydol COMPLETED representation records, so REPORTED_DATE and DSA_REPRESENTATION parity is reconstruction evidence only until it is revalidated against real Stage values",
+      "phase": 11,
+      "failureCode": "SourceColumnReconstructed"
+    },
+    {
+      "id": "optional-graph-properties-absent",
+      "description": "v4 runs on graph exports whose company_represents_debt dataset lacks the optional reported_at, verified_at, deleted_at and dsa_representation columns (every edge ingested before the change); absent optional properties behave as typed nulls and the election and DSA_NAME output are unchanged",
+      "phase": 9,
+      "failureCode": "OptionalPropertyNotMaterialized"
+    },
+    {
+      "id": "forward-stage-column-deploy-order",
+      "description": "A forward interprose-to-lexicon change that reads a new Stage column is published to an environment only after that environment's Stage table carries the column, and it does not change an already-published mapping version in place; otherwise every consumer of that version breaks on the next run",
+      "phase": 8,
+      "failureCode": "DeployOrderHazard"
     }
   ],
   "repositories": [
@@ -375,11 +405,11 @@
           "format": { "type": "csv", "delimiter": "|", "header": true },
           "columnSource": "consumer-contract",
           "columns": ["debtID", "form_config_id", "field_identifier", "value"],
-          "columnConstraints": [{ "column": "form_config_id", "const": "1281" }, { "column": "field_identifier", "enum": ["DSA_NAME", "DSA_REPRESENTATION"] }],
+          "columnConstraints": [{ "column": "form_config_id", "const": "1281" }, { "column": "field_identifier", "enum": ["DSA_NAME", "REPORTED_DATE", "DSA_REPRESENTATION", "VERIFIED_DATE", "DELETE_DATE"] }],
           "status": "verified",
           "tbd": [
             "risk finding, owner Lexicon (debt.dsa_company_name) with kecleon: with several ACTIVE identity heads DSA_NAME reproduces the java.util.HashMap iteration order of the Gremlin group() step, not a business rule; recheck against PROD dsa_company_name after any Neptune or TinkerPop change",
-            "graph-only placeholder debts (debt_identifier not all digits, such as UNMATCHED_SSN_<hash>) are not Interprose accounts and are never exported"
+            "REPORTED_DATE and DSA_REPRESENTATION are validated against dsa_representation reconstructed from Claydol records until PROD Stage extracts debt_settlement_agency.dsa_representation"
           ]
         },
         {
@@ -494,6 +524,28 @@
       "manifestVersionId": "3BVPzzwYFFEdjIeaBnYPq6qlHcYFnbLe",
       "appliesTo": ["lexicon-to-interprose-v4"],
       "required": true
+    },
+    {
+      "id": "lexicon-interprose-v4-prod-reconstruct-stage",
+      "kind": "existing-dev-artifact",
+      "location": "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/20260928-prod-reconstruct_v1/stage/",
+      "region": "us-east-2",
+      "artifactStatus": "ready",
+      "manifestSha256": "81cdf121e96c365527b2e2dc5f4ac1f59f05c978856257c1cb43ff2dae92bc0a",
+      "manifestVersionId": "MOXmiRbg4EWjwuZsmNkERQcv9.3DleE0",
+      "appliesTo": ["interprose-to-lexicon"],
+      "required": true
+    },
+    {
+      "id": "lexicon-interprose-v4-prod-reconstruct-graph",
+      "kind": "existing-dev-artifact",
+      "location": "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/20260928-prod-reconstruct_v1/lexicon/",
+      "region": "us-east-2",
+      "artifactStatus": "ready",
+      "manifestSha256": "9811bd2bcb15c6f3668d669b2850d109f0ee2579e4036d5df348de4788defe70",
+      "manifestVersionId": "FqQqgOUhi7gj5NYStSsBhPe1PG0yPFE2",
+      "appliesTo": ["lexicon-to-interprose-v4"],
+      "required": true
     }
   ],
   "evidencePolicy": {
@@ -531,7 +583,13 @@
   "lexiconModelPolicy": {
     "candidateLexiconDiff": "forbidden",
     "path": "src/data/lexicon.json",
-    "modelAdditions": "forbidden"
+    "modelAdditions": "forbidden",
+    "approvedAdditions": [
+      { "concept": "company_represents_debt", "property": "reported_at", "approval": "Approved Lexicon model addition (user decision, 2026-09-28): optional property on company_represents_debt for Claydol form 1281 parity; is_dsa and dsa_company_name stay untouched" },
+      { "concept": "company_represents_debt", "property": "verified_at", "approval": "Approved Lexicon model addition (user decision, 2026-09-28): optional property on company_represents_debt for Claydol form 1281 parity; is_dsa and dsa_company_name stay untouched" },
+      { "concept": "company_represents_debt", "property": "deleted_at", "approval": "Approved Lexicon model addition (user decision, 2026-09-28): optional property on company_represents_debt for Claydol form 1281 parity; is_dsa and dsa_company_name stay untouched" },
+      { "concept": "company_represents_debt", "property": "dsa_representation", "approval": "Approved Lexicon model addition (user decision, 2026-09-28): optional property on company_represents_debt for Claydol form 1281 parity; is_dsa and dsa_company_name stay untouched" }
+    ]
   },
   "roundTripStrategy": {
     "kind": "source-sample-reprojection",
@@ -555,7 +613,7 @@
       "payment_plan_schedule rows that interprose-to-lexicon does not project: past slots with no payment attempt, KEPT and BROKEN slots, and slots of inactive, completed, or deactivated plans",
       "payment_plan_schedule.amount for attempted slots, which the forward SQL takes from the first payment attempt rather than payment_plan_schedule.amount",
       "form_1281 rows for debts whose debt_settlement_agency rows have an empty dsa_name",
-      "payment_plan.deactivation_date empty when the source plan also has a complete_date, because the forward SQL emits CANCELLED only when complete_date is null; any other deactivation_date difference fails",
+      "payment_plan.deactivation_date empty whenever the plan has a COMPLETED event (source complete_date), because the forward SQL emits CANCELLED only when complete_date is null and v4 blanks deactivation_date for completed plans; any other deactivation_date difference fails",
       "payment_plan.payment_method empty when the plan's current installments carry no concrete method (MIXED or PROMISE collapse to OTHER, or no installment), disagree, or are ACH on a non-INSTALLMENT plan; a wrong non-empty value fails"
     ],
     "tbd": [

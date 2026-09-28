@@ -744,6 +744,30 @@ def lexicon_model_comparison(registry: Registry) -> dict:
     return result
 
 
+def approved_additions_check(registry: Registry, approved: list[dict]) -> dict:
+    """Remove exactly the approved (concept, property) additions from the candidate and compare the rest with main."""
+    paths = [root / "src" / "data" / "lexicon.json" if root else None for root in (registry.candidate_root, registry.main_root)]
+    if not all(p and p.exists() for p in paths):
+        return {"checked": False}
+    candidate, main = (json.loads(p.read_text()) for p in paths)
+    present, missing = [], []
+    for item in approved:
+        owner = next(
+            (c for group in ("vertices", "edges") for c in candidate.get(group, []) if c.get("type") == item["concept"]),
+            None,
+        )
+        props = (owner or {}).get("properties") or {}
+        key = f"{item['concept']}.{item['property']}"
+        if item["property"] in props:
+            props.pop(item["property"])
+            present.append(key)
+        else:
+            missing.append(key)
+    canonical = lambda doc: json.dumps(doc, sort_keys=True, separators=(",", ":"))
+    return {"checked": True, "approvedPresent": sorted(present), "approvedMissing": sorted(missing),
+            "otherwiseIdentical": canonical(candidate) == canonical(main)}
+
+
 def failing_concepts(checks: list[dict]) -> list[dict]:
     return [c for c in checks if c["state"] in {"FORBIDDEN", "REMOVED_ON_MAIN", "DEPRECATED_ON_MAIN", "ABSENT"}]
 
@@ -1371,7 +1395,19 @@ def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclu
     } | shared_forbidden_labels(registry) | {normalize_dataset(r) for r in registry.retired})
     model_policy = (selected_profile or {}).get("lexiconModelPolicy")
     model = result["lexiconModel"]
-    if model_policy and model_policy["candidateLexiconDiff"] == "forbidden" and model["identical"] is False:
+    approved = (model_policy or {}).get("approvedAdditions") or []
+    if model_policy and approved and model["identical"] is False:
+        model["approvedAdditions"] = approved_additions_check(registry, approved)
+    approved_only = bool(model.get("approvedAdditions", {}).get("otherwiseIdentical"))
+    if approved_only:
+        findings.append({
+            "code": "LexiconModelApprovedAdditions",
+            "profile": selected_profile["id"],
+            "path": model_policy["path"],
+            "approvedPresent": model["approvedAdditions"]["approvedPresent"],
+            "approvedMissing": model["approvedAdditions"]["approvedMissing"],
+        })
+    if model_policy and model_policy["candidateLexiconDiff"] == "forbidden" and model["identical"] is False and not approved_only:
         findings.append({
             "code": "LexiconModelDiffersFromMain",
             "profile": selected_profile["id"],

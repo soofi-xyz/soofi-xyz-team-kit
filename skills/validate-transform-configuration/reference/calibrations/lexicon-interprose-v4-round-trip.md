@@ -72,3 +72,12 @@ Generate Parquet vertex and edge tables locally from the language definitions. U
 - Runtime evidence bound only to `4.0.0` without the plan's `mapping.json` SHA-256 and `VersionId`, or a registry that no longer serves that digest at verdict time: phase 8 `BLOCKED` (`DeploymentDrift`).
 - A request for `payment_plan` without `edge-payment-plan-has-total-amount` is not rejected before Glue starts: phase 9 `FAIL`.
 - Any Persist call: phase 10 `FAIL`.
+
+## Claydol form 1281 round (PR #811 `9cba6122`)
+
+- Pinned: v4 `mapping.json` `1050611b…` (VersionId `Ko5886TiHSl9ax7iIm6l_5xr0cAfffUd`, `form_1281.sql` `ac9141e3…`); forward `interprose-to-lexicon@1.0.0` `b3783711…` (VersionId `Gesii87aUnenVBfQKTYFXuiqCwdH95cE`).
+- Approved model additions: optional `reported_at`, `verified_at`, `deleted_at` (dates) and `dsa_representation` (boolean) on `company_represents_debt`; `is_dsa` and `dsa_company_name` unchanged.
+- `20260928-prod-reconstruct_v1/`: 340 PROD debts; `stage/` equals PROD Stage `debt_settlement_agency` at snapshot `1858287755566753224` except `dsa_representation`, which is reconstructed from Claydol `COMPLETED` representation records because Stage does not extract it yet. Expected `form_1281` fields: `DSA_NAME` 266, `REPORTED_DATE` 114, `DSA_REPRESENTATION` 116, `VERIFIED_DATE` 215, `DELETE_DATE` 74.
+- Claydol inventory writes that set `REPORTED_DATE` without a representation (29 represented debts in the sample) are not reproduced by rule; record them.
+- Graph exports without the four columns (all edges ingested before the change, the v2 and PROD graph samples) must still run: absent optional properties are typed nulls.
+- Deploy order: the forward SQL reads `debt_settlement_agency.dsa_representation`; publish it only where Stage already has the column, and not in place over a live `1.0.0`.

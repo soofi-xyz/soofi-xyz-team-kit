@@ -132,7 +132,8 @@ which applies to every profile; a profile's `lexiconConceptPolicy.forbiddenConce
 only adds to it. A retired mapping version still present in a registry is
 reported and never offered or selected. When a profile declares
 `lexiconModelPolicy.candidateLexiconDiff: forbidden`, any byte difference between
-the candidate and `main` `src/data/lexicon.json` is a phase-5 `FAIL`. `lexiconConceptPolicy`
+the candidate and `main` `src/data/lexicon.json` is a phase-5 `FAIL`, unless removing
+exactly the profile's `approvedAdditions` properties leaves the candidate identical to `main`. `lexiconConceptPolicy`
 requires active concepts: an absent or deprecated label, an endpoint that
 resolves to an absent/deprecated vertex, or a candidate that reintroduces a
 concept proven removed from current Lexicon is a phase-5/6 `FAIL`. Return

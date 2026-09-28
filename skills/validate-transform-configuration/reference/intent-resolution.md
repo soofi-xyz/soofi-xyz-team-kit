@@ -130,7 +130,12 @@ through the request's `outputDatasets`. The candidate `lexicon.json` is
 compared with `main` (`lexiconModel`) on every run. Under
 `lexiconModelPolicy.candidateLexiconDiff: forbidden`, a difference is reported
 as `LexiconModelDiffersFromMain`, and a missing `main` checkout as
-`LexiconModelUnchecked`.
+`LexiconModelUnchecked`. When the profile lists `approvedAdditions`
+(`concept`, `property`, `approval`), the resolver removes exactly those
+properties from the candidate and compares the rest with `main` as canonical
+JSON, index definitions included. An exact match is reported as
+`LexiconModelApprovedAdditions`; any other difference, including a stale
+branch that lacks newer `main` concepts, stays `LexiconModelDiffersFromMain`.
 
 After matching, compare the profile against the registry:
 
