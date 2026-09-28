@@ -104,6 +104,7 @@
               "connect-activation",
               "transform-request",
               "transform-mapping",
+              "persist-collection",
               "system-openapi",
               "system-fixtures",
               "deploy-environment",

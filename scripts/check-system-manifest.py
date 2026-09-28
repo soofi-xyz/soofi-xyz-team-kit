@@ -44,6 +44,7 @@ KIND_PRODUCT = {
     "connect-activation": "connect",
     "transform-request": "transform",
     "transform-mapping": "transform",
+    "persist-collection": "persist",
     "deploy-environment": "deploy",
     "system-openapi": "system-runtime",
     "system-fixtures": "system-runtime",
@@ -143,6 +144,7 @@ class ManifestCheck:
         self.check_dependencies()
         self.check_forbidden_content()
         self.resolve_config_refs()
+        self.check_unreferenced_emits()
         self.check_product_emits()
         self.check_leaf_emits()
         return self.errors
@@ -256,6 +258,25 @@ class ManifestCheck:
                     self.emits[name] = _load_json(target)
                 except json.JSONDecodeError as exc:
                     self.fail(where, f"{path} is not valid JSON: {exc}")
+
+    def check_unreferenced_emits(self) -> None:
+        emits_dir = self.base.resolve() / "emits"
+        if not emits_dir.is_dir():
+            return
+        referenced = [
+            (self.base / ref["path"]).resolve()
+            for ref in self.config_refs.values()
+            if not REMOTE.match(ref["path"])
+        ]
+        for path in sorted(emits_dir.rglob("*")):
+            if not path.is_file() or path.name.startswith("."):
+                continue
+            if not any(path == ref or ref in path.parents for ref in referenced):
+                self.fail(
+                    "configRefs",
+                    f"{path.relative_to(self.base.resolve())} is emitted but no configRef points to it; "
+                    "declare its product, configRef and workflow step or delete it",
+                )
 
     def _emits_of(self, kind: str) -> dict[str, Any]:
         return {

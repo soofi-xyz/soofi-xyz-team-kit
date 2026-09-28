@@ -81,6 +81,9 @@ emits/persist/
   collections.stub.md        # transaction/collection correlation expectations
 ```
 
+Register it as a `persist-collection` configRef with a `persist` product and
+workflow step whenever a flow template reads or writes Persist.
+
 ## Deploy → Conkeldurr
 
 ```text

@@ -42,7 +42,8 @@ Prefer Product kinds for the serve path:
 - `product-definition`, `product-schema`, `product-flow-template`,
   `product-flow`, `product-waterfall`, `product-invocation`
 - Leaf: `lexicon-catalog`, `connect-partner`, `connect-activation`,
-  `transform-request`, `transform-mapping`, `deploy-environment`
+  `transform-request`, `transform-mapping`, `persist-collection`,
+  `deploy-environment`
 - Fallback: `system-openapi`, `system-fixtures`, `other`
 
 Each kind belongs to one product (`product-*` → `product-orchestration`,
@@ -83,6 +84,10 @@ Allowed `agent` values: `zygarde`, `conkeldurr`, `lapras`, `kecleon`,
 A composition with unresolved dependencies is rejected:
 
 - Every local `configRefs[].path` exists; remote paths are digest-pinned.
+- Every file under the package's `emits/` has a configRef pointing to it (or
+  to a directory containing it). A leaf product a flow template calls at
+  request time — Persist included — is declared in `products`, `configRefs`
+  and `workflow`, never left as an unregistered note.
 - Product definition `name` equals `productName` (or `systemId`).
 - Every product flow sets `flow_template_name` to an emitted template's
   `name`; template transitions target existing states; waterfall

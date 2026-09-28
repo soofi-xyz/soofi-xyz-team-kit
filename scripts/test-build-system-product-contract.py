@@ -157,12 +157,34 @@ def assert_reference_resolution() -> None:
         lambda _p, m: m["configRefs"]["lexiconCatalog"].update(path="s3://lexicon/transform-catalog.json"),
         "must be pinned with a digest",
     )
-    assert_accepts(
-        "remote ref with digest",
-        lambda _p, m: m["configRefs"]["lexiconCatalog"].update(
-            path="s3://lexicon/transform-catalog.json", digest="sha256:" + "a" * 64
-        ),
+    def remote_lexicon(p: Path, m: dict) -> None:
+        (p / "emits" / "lexicon" / "catalog.stub.json").unlink()
+        m["configRefs"]["lexiconCatalog"].update(path="s3://lexicon/transform-catalog.json", digest="sha256:" + "a" * 64)
+
+    assert_accepts("remote ref with digest", remote_lexicon)
+    def orphan_persist(p: Path, _m: dict) -> None:
+        (p / "emits" / "persist").mkdir()
+        (p / "emits" / "persist" / "collections.stub.md").write_text("# Persist\n", encoding="utf-8")
+
+    assert_rejects(
+        "emit file no configRef points to",
+        orphan_persist,
+        "emits/persist/collections.stub.md is emitted but no configRef points to it",
     )
+
+    def declared_persist(p: Path, m: dict) -> None:
+        orphan_persist(p, m)
+        m["products"].append({"product": "persist", "role": "execute"})
+        m["configRefs"]["persistCollection"] = {
+            "kind": "persist-collection",
+            "path": "emits/persist/collections.stub.md",
+            "ownerAgent": "conkeldurr",
+        }
+        m["workflow"].append(
+            {"id": "load-collection", "product": "persist", "configRef": "persistCollection", "agent": "conkeldurr", "gate": "collection-contract-agreed"}
+        )
+
+    assert_accepts("Persist declared as product, configRef and workflow step", declared_persist)
     assert_rejects(
         "bad repository",
         lambda _p, m: m["dependencies"]["repos"].append("not a repo"),
