@@ -26,20 +26,26 @@ Stack outputs: `ApiUrl`, `LandingBucketName`, `DropZoneBucketName`,
 
 ## API
 
-All routes except partner webhooks need the API Gateway key
-`connect-dev-default` in `x-api-key`. Keep the key in a shell variable; never
-print it.
+All routes except partner webhooks use IAM authorization: sign requests with
+SigV4 (service `execute-api`, region `us-east-2`) using credentials of a
+principal in the dev account that is allowed `execute-api:Invoke`. Attach the
+managed policy from the `ApiInvokePolicyArn` stack output to the role you use,
+or use a role that already allows it. Principals in other accounts are refused.
 
 ```bash
 API_URL=$(aws cloudformation describe-stacks --stack-name Connect-dev \
   --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text)
-KEY_ID=$(aws apigateway get-api-keys --name-query connect-dev-default \
-  --query 'items[0].id' --output text)
-API_KEY=$(aws apigateway get-api-key --api-key "$KEY_ID" --include-value \
-  --query value --output text)
-curl -sS -H "x-api-key: $API_KEY" -H 'content-type: application/json' \
+curl -sS --aws-sigv4 "aws:amz:us-east-2:execute-api" \
+  --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
+  -H "x-amz-security-token: $AWS_SESSION_TOKEN" \
+  -H 'content-type: application/json' \
   "${API_URL%/}/connect/jobs/<job_id>"
 ```
+
+Export short-lived credentials for the selected profile first (for example
+`eval "$(aws configure export-credentials --format env)"`), or sign from code
+with `@smithy/signature-v4` as the Connect repo's dev suite does. Never print
+the credentials.
 
 | Method and route | Purpose |
 | --- | --- |
