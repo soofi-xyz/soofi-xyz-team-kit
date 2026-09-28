@@ -2,8 +2,8 @@
 """Resolve a short Transform validation request into a read-only intake plan.
 
 Examples:
-  resolve-transform-intent.py parse --request "test decision to lexicon"
-  resolve-transform-intent.py discover --request "test lexicon decision to interprose" \
+  resolve-transform-intent.py parse --request "test lexicon to interprose form 1281"
+  resolve-transform-intent.py discover --request "test lexicon payment plan to interprose" \
       --lexicon-root /tmp/lexicon-candidate --main-lexicon-root /tmp/lexicon-main \
       --registry dev=/tmp/registry-dev --ssm-parameters dev=/tmp/ssm-dev.txt
   resolve-transform-intent.py draft-profile --request "test sms to lexicon" ...
@@ -28,6 +28,7 @@ from pathlib import Path
 HUB_LANGUAGE = "lexicon"
 SKILL_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_PROFILES = SKILL_ROOT / "reference" / "profiles"
+DEFAULT_FORBIDDEN = SKILL_ROOT / "reference" / "forbidden-concepts.json"
 DATA_BUCKET_INPUT_ROOT = "inputs"
 DEFAULT_REGION = "us-east-2"
 MATERIAL_FACT_IDS = (
@@ -96,7 +97,7 @@ def parse_request(request: str) -> dict:
         return {
             "request": request,
             "status": "UNPARSED",
-            "reason": "Expected '<source> to <target>' (for example 'test decision to lexicon').",
+            "reason": "Expected '<source> to <target>' (for example 'test lexicon to interprose form 1281').",
             "sourceTerms": [],
             "targetTerms": [],
             "qualifiers": [],
@@ -337,12 +338,27 @@ def load_concepts(root: Path | None) -> dict[str, dict] | None:
                     "deprecated": bool(item.get("is_deprecated")),
                     "from": item.get("from"),
                     "to": item.get("to"),
+                    "properties": sorted(item.get("properties") or {}),
+                    "indexes": sorted(item.get("indexes") or {}),
                 }
     return concepts
 
 
+def lexicon_sha256(root: Path | None) -> str | None:
+    path = root / "src" / "data" / "lexicon.json" if root else None
+    return sha256_file(path) if path and path.exists() else None
+
+
 def load_profiles(root: Path) -> list[dict]:
     return [json.loads(p.read_text()) for p in sorted(root.glob("*.json"))]
+
+
+def load_forbidden(path: Path | None) -> dict:
+    if path is None or not path.exists():
+        return {"concepts": [], "properties": [], "retiredMappings": []}
+    doc = json.loads(path.read_text())
+    doc["sha256"] = sha256_file(path)
+    return doc
 
 
 # ---------------------------------------------------------------------------
@@ -361,6 +377,12 @@ class Registry:
     profiles: list[dict]
     registry_labels: list[str]
     main_root: Path | None = None
+    candidate_root: Path | None = None
+    shared_forbidden: dict = field(default_factory=dict)
+
+    @property
+    def retired_keys(self) -> set[str]:
+        return {r["mapping"] for r in self.shared_forbidden.get("retiredMappings", [])}
 
     def endpoint_languages(self) -> set[str]:
         names = set()
@@ -376,6 +398,7 @@ class Registry:
             (
                 m for m in self.mappings.values()
                 if m.status == "ENABLED"
+                and m.key not in self.retired_keys
                 and (source is None or m.source == source)
                 and (target is None or m.target == target)
             ),
@@ -435,6 +458,32 @@ def discriminating_inputs(candidates: list[Mapping]) -> dict[str, set[str]]:
     }
 
 
+def discriminating_outputs(candidates: list[Mapping]) -> dict[str, set[str]]:
+    counts: dict[str, int] = {}
+    for m in candidates:
+        for name in {normalize_dataset(n) for n in m.output_names}:
+            counts[name] = counts.get(name, 0) + 1
+    shared = {n for n, c in counts.items() if c > 1} if len(candidates) > 1 else set()
+    return {m.key: {normalize_dataset(n) for n in m.output_names} - shared for m in candidates}
+
+
+def qualifier_phrases(qualifiers: list[str]) -> set[str]:
+    """Contiguous qualifier word runs joined like dataset names ('form 1281' -> 'form_1281')."""
+    phrases = set()
+    for start in range(len(qualifiers)):
+        for end in range(start + 1, len(qualifiers) + 1):
+            words = qualifiers[start:end]
+            phrases.add("_".join(words))
+            if len(words[-1]) > 3 and words[-1].endswith("s"):
+                phrases.add("_".join(words[:-1] + [words[-1][:-1]]))
+    return phrases
+
+
+def output_dataset_signals(candidate_outputs: set[str], phrases: set[str]) -> list[dict]:
+    matched = sorted(candidate_outputs & phrases)
+    return [{"kind": "output-dataset", "hard": True, "datasets": matched}] if matched else []
+
+
 def qualifier_signals(registry: Registry, candidate: Mapping, qualifier: str, disc: set[str]) -> list[dict]:
     hub = candidate.source
     signals = []
@@ -470,6 +519,8 @@ def select_mapping(registry: Registry, source: str, target: str, qualifiers: lis
     if not candidates:
         return {"status": "NO_MAPPING", "selected": None, "candidates": []}
     disc = discriminating_inputs(candidates)
+    disc_out = discriminating_outputs(candidates)
+    phrases = qualifier_phrases(qualifiers)
     ranked = []
     for m in candidates:
         signals = []
@@ -477,6 +528,7 @@ def select_mapping(registry: Registry, source: str, target: str, qualifiers: lis
             signals.append({"kind": "version-hint", "hard": True})
         for q in qualifiers:
             signals.extend(qualifier_signals(registry, m, q, disc[m.key]))
+        signals.extend(output_dataset_signals(disc_out[m.key], phrases))
         ranked.append({
             **m.summary(),
             "servesQualifiers": served_qualifiers(registry, m, disc[m.key]),
@@ -484,10 +536,12 @@ def select_mapping(registry: Registry, source: str, target: str, qualifiers: lis
         })
     if version:
         hard = [r for r in ranked if any(s["kind"] == "version-hint" for s in r["signals"])]
+    elif len(ranked) == 1:
+        hard = ranked
     elif qualifiers:
         hard = [r for r in ranked if any(s["hard"] for s in r["signals"])]
     else:
-        hard = ranked if len(ranked) == 1 else []
+        hard = []
     if len(hard) == 1:
         return {"status": "RESOLVED", "selected": hard[0]["mapping"], "candidates": ranked}
     return {
@@ -535,6 +589,9 @@ def nearest_candidates(registry: Registry, source: str | None, target: str | Non
     for retired in registry.retired:
         if any(t and t in retired for t in terms):
             out.append({"mapping": retired, "from": None, "to": None, "reasons": ["retired-in-lexicon"]})
+    for retired in sorted(registry.retired_keys):
+        if any(t and t != HUB_LANGUAGE and t in retired for t in terms):
+            out.append({"mapping": retired, "from": None, "to": None, "reasons": ["retired-in-kit"]})
     known = sorted(registry.known_languages())
     for term in terms:
         for close in difflib.get_close_matches(term, known, n=2, cutoff=0.75):
@@ -584,7 +641,7 @@ def main_history_commits(root: Path | None, label: str) -> list[str] | None:
         return None
 
 
-def concept_checks(registry: Registry, mapping: Mapping, forbidden: list[str]) -> list[dict]:
+def concept_checks(registry: Registry, mapping: Mapping, forbidden: list[str], selected_outputs: set[str] | None = None) -> list[dict]:
     if HUB_LANGUAGE not in (mapping.source, mapping.target):
         return []
     graph_side = mapping.outputs if mapping.target == HUB_LANGUAGE else mapping.inputs
@@ -596,6 +653,9 @@ def concept_checks(registry: Registry, mapping: Mapping, forbidden: list[str]) -
         main = (registry.main_concepts or {}).get(label)
         candidate = (registry.candidate_concepts or {}).get(label)
         check: dict = {"dataset": raw, "concept": label}
+        if selected_outputs is not None and raw not in selected_outputs and label not in forbidden:
+            results.append({**check, "state": "NOT_SELECTED"})
+            continue
         if label in forbidden:
             state = "FORBIDDEN"
         elif registry.main_concepts is None:
@@ -620,6 +680,70 @@ def concept_checks(registry: Registry, mapping: Mapping, forbidden: list[str]) -
     return results
 
 
+def shared_forbidden_labels(registry: Registry) -> set[str]:
+    return {c["label"] for c in registry.shared_forbidden.get("concepts", [])}
+
+
+def sql_scan_tokens(registry: Registry, labels: list[str]) -> list[str]:
+    props = {p["property"] for p in registry.shared_forbidden.get("properties", []) if p.get("sqlScan")}
+    return sorted(set(labels) | props)
+
+
+def base_findings(registry: Registry) -> list[dict]:
+    """Findings that hold for every request: registry drift, retired mappings, forbidden model content."""
+    findings = list(registry.drift)
+    retired = {r["mapping"]: r["reason"] for r in registry.shared_forbidden.get("retiredMappings", [])}
+    for key in sorted(set(registry.mappings) & set(retired)):
+        findings.append({
+            "code": "RetiredMappingInRegistry",
+            "mapping": key,
+            "registrySources": sorted({p.get("label") for p in registry.mappings[key].provenance}),
+            "detail": retired[key],
+        })
+    for revision, concepts in (("candidate", registry.candidate_concepts), ("main", registry.main_concepts)):
+        if concepts is None:
+            continue
+        for concept in registry.shared_forbidden.get("concepts", []):
+            if concept["label"] in concepts:
+                findings.append({"code": "ForbiddenConceptInLexicon", "revision": revision, "concept": concept["label"], "detail": concept["reason"]})
+        for prop in registry.shared_forbidden.get("properties", []):
+            owner = concepts.get(prop["concept"])
+            if owner and prop["property"] in owner["properties"]:
+                findings.append({
+                    "code": "ForbiddenPropertyInLexicon",
+                    "revision": revision,
+                    "concept": prop["concept"],
+                    "property": prop["property"],
+                    "detail": prop["reason"],
+                })
+    return findings
+
+
+def lexicon_model_comparison(registry: Registry) -> dict:
+    candidate, main = lexicon_sha256(registry.candidate_root), lexicon_sha256(registry.main_root)
+    result: dict = {"candidateSha256": candidate, "mainSha256": main, "identical": None}
+    if candidate is None or main is None:
+        return result
+    result["identical"] = candidate == main
+    left, right = registry.main_concepts or {}, registry.candidate_concepts or {}
+    changed = {}
+    for label in sorted(set(left) & set(right)):
+        delta = {
+            "addedProperties": sorted(set(right[label]["properties"]) - set(left[label]["properties"])),
+            "removedProperties": sorted(set(left[label]["properties"]) - set(right[label]["properties"])),
+            "addedIndexes": sorted(set(right[label]["indexes"]) - set(left[label]["indexes"])),
+            "removedIndexes": sorted(set(left[label]["indexes"]) - set(right[label]["indexes"])),
+        }
+        if any(delta.values()):
+            changed[label] = delta
+    result.update({
+        "addedConcepts": sorted(set(right) - set(left)),
+        "removedConcepts": sorted(set(left) - set(right)),
+        "changedConcepts": changed,
+    })
+    return result
+
+
 def failing_concepts(checks: list[dict]) -> list[dict]:
     return [c for c in checks if c["state"] in {"FORBIDDEN", "REMOVED_ON_MAIN", "DEPRECATED_ON_MAIN", "ABSENT"}]
 
@@ -642,42 +766,54 @@ def definition_fields(registry: Registry, language: str, dataset: str) -> dict |
     return definition["datasets"].get(dataset) or definition["datasets"].get(normalize_dataset(dataset))
 
 
-def derive_parity(registry: Registry, steps: list[Mapping], profile_direction_fields: dict[str, dict[str, list[str]]]) -> list[dict]:
+@dataclass
+class ParityContext:
+    declared: dict[str, dict[str, list[str]]] = field(default_factory=dict)
+    policy: dict = field(default_factory=dict)
+    contracts: dict[str, dict] = field(default_factory=dict)
+    scope: str = "all-forward-inputs"
+
+
+def derive_parity(registry: Registry, steps: list[Mapping], ctx: ParityContext) -> list[dict]:
     """Derive per-dataset field sets from language definitions and registrations."""
     derived = []
     if not steps:
         return derived
+    declared = ctx.declared
     forward = steps[0]
     inverse = next((m for m in steps[1:] if m.source == forward.target and m.target == forward.source), None)
     if inverse is not None:
         reconstructed = set(inverse.output_names)
         for dataset in forward.input_names:
             derived.append(parity_entry(
-                registry, forward.source, dataset, "round-trip", inverse.key,
+                registry, forward.source, dataset, "round-trip", inverse.key, ctx,
                 present=dataset in reconstructed,
-                declared=profile_direction_fields.get(inverse.key, {}).get(dataset)
-                or profile_direction_fields.get(forward.key, {}).get(dataset),
+                declared=declared.get(inverse.key, {}).get(dataset)
+                or declared.get(forward.key, {}).get(dataset),
             ))
         for dataset in sorted(reconstructed - set(forward.input_names)):
-            derived.append(parity_entry(registry, forward.source, dataset, "round-trip", inverse.key, present=True, declared=None, extra=True))
+            derived.append(parity_entry(
+                registry, forward.source, dataset, "round-trip", inverse.key, ctx,
+                present=True, declared=declared.get(inverse.key, {}).get(dataset), extra=True,
+            ))
     for m in steps:
         if m is forward or m is inverse or m.target == HUB_LANGUAGE:
             continue
         for dataset in m.output_names:
             derived.append(parity_entry(
-                registry, m.target, dataset, "projection", m.key, present=True,
-                declared=profile_direction_fields.get(m.key, {}).get(dataset),
+                registry, m.target, dataset, "projection", m.key, ctx, present=True,
+                declared=declared.get(m.key, {}).get(dataset),
             ))
     if inverse is None and forward.target != HUB_LANGUAGE:
         for dataset in forward.output_names:
             derived.append(parity_entry(
-                registry, forward.target, dataset, "projection", forward.key, present=True,
-                declared=profile_direction_fields.get(forward.key, {}).get(dataset),
+                registry, forward.target, dataset, "projection", forward.key, ctx, present=True,
+                declared=declared.get(forward.key, {}).get(dataset),
             ))
     return derived
 
 
-def parity_entry(registry, language, dataset, kind, mapping_key, *, present, declared, extra=False) -> dict:
+def parity_entry(registry, language, dataset, kind, mapping_key, ctx: ParityContext, *, present, declared, extra=False) -> dict:
     spec = definition_fields(registry, language, dataset)
     entry = {
         "language": language,
@@ -686,7 +822,25 @@ def parity_entry(registry, language, dataset, kind, mapping_key, *, present, dec
         "comparedBy": mapping_key,
         "reconstructed": present,
     }
+    contract = ctx.contracts.get(dataset)
+    if not present and ctx.scope == "inverse-outputs":
+        entry.update({
+            "fieldSource": "language-definition" if spec else "UNDEFINED_IN_LEXICON",
+            "fields": [],
+            "status": "OUT_OF_SCOPE",
+            "note": "the profile compares only datasets the inverse mapping outputs",
+        })
+        return entry
     if spec is None:
+        if ctx.policy.get("undefinedDatasets") == "consumer-contract" and contract and contract["columnSource"] == "consumer-contract":
+            entry.update({
+                "fieldSource": "consumer-contract",
+                "fields": list(contract["columns"]),
+                "comparedFields": list(contract["columns"]),
+                "columnConstraints": contract.get("columnConstraints", []),
+                "status": "DERIVED",
+            })
+            return entry
         entry.update({
             "fieldSource": "UNDEFINED_IN_LEXICON",
             "fields": [],
@@ -696,11 +850,14 @@ def parity_entry(registry, language, dataset, kind, mapping_key, *, present, dec
         return entry
     fields = sorted(spec["properties"])
     enums = {k: p["enum"] for k, p in spec["properties"].items() if isinstance(p, dict) and isinstance(p.get("enum"), list)}
+    exact = ctx.policy.get("declaredFields") == "exact" and declared is not None
+    compared = [f for f in declared if f in spec["properties"]] if exact else fields
     entry.update({
         "fieldSource": "language-definition",
         "fields": fields,
+        "comparedFields": compared,
         "requiredFields": sorted(spec["required"]),
-        "coverageTargets": [{"field": k, "values": v} for k, v in sorted(enums.items())],
+        "coverageTargets": [{"field": k, "values": v} for k, v in sorted(enums.items()) if k in compared],
         "status": "DERIVED",
     })
     if not present:
@@ -709,12 +866,54 @@ def parity_entry(registry, language, dataset, kind, mapping_key, *, present, dec
         entry["note"] = "reconstructed by the inverse mapping but not read by the forward mapping"
     if declared is not None:
         entry["profileDeclared"] = {
-            "missingFromProfile": sorted(set(fields) - set(declared)),
+            "missingFromProfile": [] if exact else sorted(set(fields) - set(declared)),
+            "excludedByProfile": sorted(set(fields) - set(declared)) if exact else [],
             "unknownToDefinition": sorted(set(declared) - set(fields)),
         }
         if entry["profileDeclared"]["unknownToDefinition"]:
             entry.update({"status": "BLOCKED", "finding": "ProfileParityDrift"})
     return entry
+
+
+def profile_mapping_key(mapping: dict) -> str | None:
+    mid = mapping.get("id") or mapping.get("expectedId")
+    version = mapping.get("version")
+    planned = mapping.get("plannedSource", {}).get("generatedArtifact", {}).get("logicalArtifactPath", "")
+    if not version and planned.count("/") >= 3:
+        version = planned.split("/")[2]
+    return f"{mid}@{version}" if mid and version else None
+
+
+def output_contract_drift(direction: dict, live: Mapping) -> list[dict]:
+    drift = []
+    live_outputs = {o.get("dataset"): o for o in live.outputs}
+    options = live.output.get("options") or {}
+    for contract in direction.get("outputContracts", []):
+        dataset = contract["dataset"]
+        registered = live_outputs.get(dataset)
+        if registered is not None and "requiredInputs" in registered:
+            expected, actual = set(contract["requiredInputs"]), set(registered.get("requiredInputs") or [])
+            if expected != actual:
+                drift.append({
+                    "direction": direction["id"],
+                    "code": "ProfileOutputInputDrift",
+                    "dataset": dataset,
+                    "missingFromRegistry": sorted(expected - actual),
+                    "missingFromProfile": sorted(actual - expected),
+                })
+        fmt = contract["format"]
+        observed = {"type": live.output.get("format"), "delimiter": options.get("delimiter", ","), "header": options.get("header", False)}
+        mismatched = sorted(k for k in fmt if fmt[k] != observed.get(k))
+        if mismatched:
+            drift.append({
+                "direction": direction["id"],
+                "code": "OutputFormatDrift",
+                "dataset": dataset,
+                "fields": mismatched,
+                "expected": {k: fmt[k] for k in mismatched},
+                "registered": {k: observed.get(k) for k in mismatched},
+            })
+    return drift
 
 
 def match_profiles(registry: Registry, keys: list[str]) -> list[dict]:
@@ -723,13 +922,7 @@ def match_profiles(registry: Registry, keys: list[str]) -> list[dict]:
         signals, drift = [], []
         for direction in profile.get("directions", []):
             mapping = direction.get("mapping", {})
-            mid = mapping.get("id") or mapping.get("expectedId")
-            version = mapping.get("version")
-            planned = mapping.get("plannedSource", {}).get("generatedArtifact", {}).get("logicalArtifactPath", "")
-            if not version and planned:
-                parts = planned.split("/")
-                version = parts[2] if len(parts) > 3 else None
-            key = f"{mid}@{version}" if mid and version else None
+            key = profile_mapping_key(mapping)
             if key in keys:
                 signals.append(f"mapping-match-{direction['id']}")
                 live = registry.mappings.get(key)
@@ -744,13 +937,18 @@ def match_profiles(registry: Registry, keys: list[str]) -> list[dict]:
                         "registrySources": [p.get("label") for p in live.provenance],
                     })
                 expected = mapping.get("expectedOutputDatasets") or mapping.get("plannedSource", {}).get("expectedOutputDatasets")
-                if expected is not None and sorted(expected) != sorted(live.output_names):
+                match_mode = mapping.get("outputDatasetMatch") or mapping.get("plannedSource", {}).get("outputDatasetMatch") or "exact"
+                missing_from_registry = sorted(set(expected or []) - set(live.output_names))
+                missing_from_profile = [] if match_mode == "includes" else sorted(set(live.output_names) - set(expected or []))
+                if expected is not None and (missing_from_registry or missing_from_profile):
                     drift.append({
                         "direction": direction["id"],
                         "code": "ProfileOutputDatasetDrift",
-                        "missingFromRegistry": sorted(set(expected) - set(live.output_names)),
-                        "missingFromProfile": sorted(set(live.output_names) - set(expected)),
+                        "match": match_mode,
+                        "missingFromRegistry": missing_from_registry,
+                        "missingFromProfile": missing_from_profile,
                     })
+                drift.extend(output_contract_drift(direction, live))
         if signals:
             matches.append({"profileId": profile["id"], "hardSignals": signals, "drift": drift})
     return matches
@@ -761,14 +959,56 @@ def profile_parity_fields(profile: dict | None) -> dict[str, dict[str, list[str]
         return {}
     out: dict[str, dict[str, list[str]]] = {}
     for direction in profile.get("directions", []):
-        mapping = direction.get("mapping", {})
-        mid = mapping.get("id") or mapping.get("expectedId")
-        version = mapping.get("version")
-        planned = mapping.get("plannedSource", {}).get("generatedArtifact", {}).get("logicalArtifactPath", "")
-        if not version and planned.count("/") >= 3:
-            version = planned.split("/")[2]
-        key = f"{mid}@{version}"
+        key = profile_mapping_key(direction.get("mapping", {}))
         out[key] = {p["dataset"]: p["fields"] for p in direction.get("parityDatasets", [])}
+    return out
+
+
+def profile_output_subsets(profile: dict | None) -> dict[str, set[str]]:
+    """Mappings a profile runs with a selected subset of outputs (outputDatasetMatch: includes)."""
+    out: dict[str, set[str]] = {}
+    for direction in (profile or {}).get("directions", []):
+        mapping = direction.get("mapping", {})
+        source = mapping if mapping.get("status") == "registered" else mapping.get("plannedSource", {})
+        if source.get("outputDatasetMatch") == "includes":
+            out[profile_mapping_key(mapping)] = set(source.get("expectedOutputDatasets", []))
+    return out
+
+
+def profile_output_contracts(profile: dict | None) -> dict[str, dict]:
+    out: dict[str, dict] = {}
+    for direction in (profile or {}).get("directions", []):
+        for contract in direction.get("outputContracts", []):
+            out[contract["dataset"]] = contract
+    return out
+
+
+def planned_candidates(registry: Registry, source: str, target: str, phrases: set[str]) -> list[dict]:
+    """Profile directions for this language pair whose mapping is declared but not registered anywhere."""
+    out = []
+    for profile in registry.profiles:
+        for direction in profile.get("directions", []):
+            mapping = direction.get("mapping", {})
+            if mapping.get("status") != "not-registered":
+                continue
+            if (direction.get("fromLanguage"), direction.get("toLanguage")) != (source, target):
+                continue
+            key = profile_mapping_key(mapping)
+            if key is None or key in registry.mappings:
+                continue
+            outputs = {normalize_dataset(d) for d in mapping.get("plannedSource", {}).get("expectedOutputDatasets", [])}
+            matched = sorted(outputs & phrases)
+            out.append({
+                "mapping": key,
+                "from": source,
+                "to": target,
+                "status": "PLANNED",
+                "reasons": ["profile-planned-not-registered", *[f"output-dataset-{d}" for d in matched]],
+                "score": 4 * len(matched),
+                "profiles": [profile["id"]],
+                "owner": mapping.get("owner"),
+                "detail": mapping.get("reason"),
+            })
     return out
 
 
@@ -776,14 +1016,22 @@ def dataset_recommendations(source: str, profile: dict | None, window: str) -> l
     recs = []
     for source_entry in (profile or {}).get("validationSources", []):
         if source_entry.get("kind") in {"existing-dev-artifact", "sanitized-evidence-package"}:
-            recs.append({
+            status = source_entry.get("artifactStatus", "ready" if source_entry.get("manifestSha256") else "unknown")
+            rec = {
                 "id": source_entry["id"],
                 "kind": source_entry["kind"],
                 "location": source_entry["location"],
-                "status": source_entry.get("artifactStatus", "ready" if source_entry.get("manifestSha256") else "unknown"),
+                "status": status,
                 "manifestSha256": source_entry.get("manifestSha256"),
-                "note": "Existing profile evidence; verify manifest digest and version before use.",
-            })
+                "note": (
+                    "Existing profile evidence; verify manifest digest and version before use."
+                    if status == "ready"
+                    else f"Profile location reserved but not staged ({status}); cannot prove runtime behavior until it has a manifest digest and version."
+                ),
+            }
+            if source_entry.get("tbd"):
+                rec["tbd"] = source_entry["tbd"]
+            recs.append(rec)
     language = source.replace("_", "-")
     recs.extend([
         {
@@ -808,6 +1056,9 @@ def dataset_recommendations(source: str, profile: dict | None, window: str) -> l
     return recs
 
 
+NOT_SELECTABLE = {"retired-in-lexicon", "retired-in-kit", "profile-planned-not-registered"}
+
+
 def question_plan(
     status: str,
     selection: dict,
@@ -817,7 +1068,9 @@ def question_plan(
     candidates: list[dict],
     *,
     upstream_candidates: list[str] | None = None,
+    upstream_default: str | None = None,
     default_mode: str = "round-trip",
+    persist_policy: str | None = None,
 ) -> list[dict]:
     questions = []
     if status in {"AMBIGUOUS", "NO_MAPPING", "UNKNOWN_LANGUAGE"}:
@@ -830,7 +1083,8 @@ def question_plan(
                 + ")",
             }
             for c in candidates
-            if (c.get("mapping") or c.get("language")) and "retired-in-lexicon" not in c.get("reasons", [])
+            if (c.get("mapping") or c.get("language"))
+            and not NOT_SELECTABLE & set(c.get("reasons", []))
         ]
         options.append({"id": "none", "label": "None of these; stop and report the gap"})
         questions.append({
@@ -871,14 +1125,16 @@ def question_plan(
                 {"id": "existing-graph-export", "label": "Use an existing immutable DEV graph export (manifest + SHA-256 required)"},
             ],
             "allowMultiple": False,
-            "default": None,
+            "default": upstream_default if upstream_default in upstream_candidates else None,
         })
+    ready = [r["id"] for r in recommendations if r.get("status") == "ready"]
+    proposed = [r["id"] for r in recommendations if r["kind"] == "proposed-prod-derived"]
     questions.append({
         "id": "test-dataset",
         "prompt": "Which test dataset should Silvally use?",
         "options": [{"id": r["id"], "label": f"{r['id']}: {r['note']}"} for r in recommendations],
         "allowMultiple": True,
-        "default": recommendations[0]["id"] if recommendations else None,
+        "default": (ready or proposed or [None])[0],
     })
     if continuation and continuation["inverse"] and hints.get("mode") is None:
         questions.append({
@@ -902,6 +1158,8 @@ def question_plan(
             "allowMultiple": True,
             "default": None,
         })
+    if persist_policy is not None:
+        return questions
     questions.append({
         "id": "persist-policy",
         "prompt": "May the validation write a bounded canary to Persist?",
@@ -918,6 +1176,7 @@ def question_plan(
 def load_registry(args) -> Registry:
     lexicon_root = Path(args.lexicon_root) if args.lexicon_root else None
     main_root = Path(args.main_lexicon_root) if args.main_lexicon_root else None
+    forbidden_path = getattr(args, "forbidden_concepts", None)
     groups, labels = [], []
     if lexicon_root:
         groups.append(load_checkout_registrations("candidate", lexicon_root))
@@ -941,6 +1200,8 @@ def load_registry(args) -> Registry:
         profiles=load_profiles(Path(args.profiles)),
         registry_labels=labels,
         main_root=main_root,
+        candidate_root=lexicon_root,
+        shared_forbidden=load_forbidden(Path(forbidden_path) if forbidden_path else DEFAULT_FORBIDDEN),
     )
 
 
@@ -968,7 +1229,18 @@ def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclu
     unknown = [n for n in (source, target) if languages[n]["state"] == "UNKNOWN"]
     selection = select_mapping(registry, source, target, qualifiers, parsed["hints"]["version"])
     result["selection"] = selection
-    findings = list(registry.drift)
+    result["lexiconModel"] = lexicon_model_comparison(registry)
+    findings = base_findings(registry)
+    phrases = qualifier_phrases(qualifiers)
+    planned = planned_candidates(registry, source, target, phrases)
+    findings.extend({
+        "code": "PlannedMappingNotRegistered",
+        "mapping": p["mapping"],
+        "profile": p["profiles"][0],
+        "owner": p["owner"],
+        "matchesRequest": any(r.startswith("output-dataset-") for r in p["reasons"]),
+        "detail": p["detail"],
+    } for p in planned)
     for name in (source, target):
         state = languages[name]["state"]
         if state in {"MAPPING_ENDPOINT_ONLY", "REGISTERED_WITHOUT_DEFINITION"}:
@@ -981,7 +1253,7 @@ def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclu
 
     if unknown or selection["status"] == "NO_MAPPING":
         status = "UNKNOWN_LANGUAGE" if unknown else "NO_MAPPING"
-        candidates = nearest_candidates(registry, source, target, [source, target, *qualifiers])
+        candidates = nearest_candidates(registry, source, target, [source, target, *qualifiers]) + planned
         request_terms = {t for t in (source, target, *qualifiers) if t and t != HUB_LANGUAGE}
         for candidate in candidates:
             if candidate.get("mapping"):
@@ -1009,8 +1281,14 @@ def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclu
         ]
         return result
     if selection["status"] == "AMBIGUOUS":
-        result.update({"status": "AMBIGUOUS", "candidates": selection["candidates"], "findings": findings})
-        result["questions"] = question_plan("AMBIGUOUS", selection, None, parsed["hints"], [], selection["candidates"])
+        candidates = selection["candidates"] + sorted(planned, key=lambda c: -c["score"])
+        result.update({"status": "AMBIGUOUS", "candidates": candidates, "findings": findings})
+        result["questions"] = question_plan("AMBIGUOUS", selection, None, parsed["hints"], [], candidates)
+        if any(f["code"] == "PlannedMappingNotRegistered" and f["matchesRequest"] for f in findings):
+            result["nextSteps"] = [
+                "The request names outputs of a mapping a profile declares but no inspected registry registers.",
+                "Re-run with the candidate Lexicon branch checkout, or its cdk synth transform-mappings output as --registry, once the mapping owner publishes it; Silvally does not create mappings.",
+            ]
         return result
 
     primary = registry.mappings[selection["selected"]]
@@ -1046,13 +1324,39 @@ def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclu
     else:
         continuation = continuation_steps(registry, source, primary)
         steps = [primary]
+        inverse_keys = continuation["inverse"]
+        if phrases and len(inverse_keys) > 1:
+            matching = [
+                k for k in inverse_keys
+                if phrases & {normalize_dataset(n) for n in registry.mappings[k].output_names}
+            ]
+            if len(matching) == 1:
+                inverse_keys = matching
+                continuation["inverse"] = matching
+            elif not matching:
+                planned_inverse = [
+                    p for p in planned_candidates(registry, target, source, phrases)
+                    if any(r.startswith("output-dataset-") for r in p["reasons"])
+                ]
+                findings.extend({
+                    "code": "PlannedMappingNotRegistered",
+                    "mapping": p["mapping"],
+                    "profile": p["profiles"][0],
+                    "owner": p["owner"],
+                    "matchesRequest": True,
+                    "detail": p["detail"],
+                } for p in planned_inverse)
+                if planned_inverse:
+                    inverse_keys = []
+                    continuation["inverse"] = []
         if mode != "one-way":
-            steps += [registry.mappings[k] for k in continuation["inverse"][-1:]]
+            steps += [registry.mappings[k] for k in inverse_keys[-1:]]
     forward = steps[0]
     profiles = match_profiles(registry, [m.key for m in steps] + [c["mapping"] for c in continuation["crossSource"]])
+    step_keys = {m.key for m in steps}
     first_step = [p for p in profiles if p["profileId"] in {
         prof["id"] for prof in registry.profiles
-        if forward.key in profile_parity_fields(prof)
+        if step_keys <= set(profile_parity_fields(prof))
     }]
     selected_profile = None
     if len(first_step) == 1:
@@ -1064,16 +1368,37 @@ def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclu
         if p is selected_profile
         or any((d.get("fromLanguage"), d.get("toLanguage")) in step_pairs for d in p.get("directions", []))
         for concept in p.get("lexiconConceptPolicy", {}).get("forbiddenConcepts", [])
-    } | {normalize_dataset(r) for r in registry.retired})
+    } | shared_forbidden_labels(registry) | {normalize_dataset(r) for r in registry.retired})
+    model_policy = (selected_profile or {}).get("lexiconModelPolicy")
+    model = result["lexiconModel"]
+    if model_policy and model_policy["candidateLexiconDiff"] == "forbidden" and model["identical"] is False:
+        findings.append({
+            "code": "LexiconModelDiffersFromMain",
+            "profile": selected_profile["id"],
+            "path": model_policy["path"],
+            "candidateSha256": model["candidateSha256"],
+            "mainSha256": model["mainSha256"],
+            "addedConcepts": model["addedConcepts"],
+            "removedConcepts": model["removedConcepts"],
+            "changedConcepts": model["changedConcepts"],
+        })
+    elif model_policy and model["identical"] is None:
+        findings.append({
+            "code": "LexiconModelUnchecked",
+            "profile": selected_profile["id"],
+            "detail": "Pass both --lexicon-root and --main-lexicon-root to prove the candidate lexicon.json equals main",
+        })
     optional = [registry.mappings[c["mapping"]] for c in continuation["crossSource"]]
-    concept = {m.key: concept_checks(registry, m, forbidden) for m in steps + optional}
+    subsets = profile_output_subsets(selected_profile)
+    concept = {m.key: concept_checks(registry, m, forbidden, subsets.get(m.key)) for m in steps + optional}
     for key, checks in concept.items():
         for c in failing_concepts(checks):
             removed = c["state"] in {"FORBIDDEN", "REMOVED_ON_MAIN"}
             findings.append({"code": "RemovedLexiconConcept" if removed else "LexiconConceptInactive", "mapping": key, **c})
     sql_scan = {}
+    tokens = sql_scan_tokens(registry, forbidden)
     for m in steps + optional:
-        hits = sql_forbidden_labels(m, forbidden)
+        hits = sql_forbidden_labels(m, tokens)
         sql_scan[m.key] = {"queriesScanned": len(set(m.query_files)), "forbiddenLabels": hits}
         findings.extend({"code": "ForbiddenConceptInSql", "mapping": m.key, **hit} for hit in hits)
     for m in steps:
@@ -1085,15 +1410,26 @@ def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclu
             })
     for p in profiles:
         findings.extend({"profile": p["profileId"], **d} for d in p["drift"])
-    declared = profile_parity_fields(selected_profile)
-    parity = derive_parity(registry, steps, declared)
+    ctx = ParityContext(
+        declared=profile_parity_fields(selected_profile),
+        policy=(selected_profile or {}).get("parityPolicy") or {},
+        contracts=profile_output_contracts(selected_profile),
+        scope=(selected_profile or {}).get("roundTripStrategy", {}).get("comparisonScope", "all-forward-inputs"),
+    )
+    parity = derive_parity(registry, steps, ctx)
     for m in optional:
         for dataset in m.output_names:
             parity.append({**parity_entry(
-                registry, m.target, dataset, "projection", m.key, present=True,
-                declared=declared.get(m.key, {}).get(dataset),
+                registry, m.target, dataset, "projection", m.key, ctx, present=True,
+                declared=ctx.declared.get(m.key, {}).get(dataset),
             ), "optional": True})
-    recommendations = dataset_recommendations(forward.source if forward.source != HUB_LANGUAGE else (qualifiers[0] if qualifiers else forward.target), selected_profile, window)
+    if forward.source != HUB_LANGUAGE:
+        proposal_language = forward.source
+    else:
+        proposal_language = next((q for q in qualifiers if q in registry.known_languages()), f"{HUB_LANGUAGE}-{forward.target}")
+    recommendations = dataset_recommendations(proposal_language, selected_profile, window)
+    persist_policy = (selected_profile or {}).get("validationWorkflow", {}).get("persistPolicy")
+    profile_workflow = profile_workflow_steps(registry, selected_profile)
     result.update({
         "status": "RESOLVED",
         "primaryDirection": primary.summary(),
@@ -1104,11 +1440,14 @@ def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclu
                 for i, m in enumerate(steps)
             ],
             "optionalCrossSource": continuation["crossSource"],
-            "persistPolicyDefault": "forbidden",
+            "persistPolicyDefault": persist_policy or "forbidden",
+            "persistPolicySource": "profile" if persist_policy else "default",
         },
+        "profileWorkflow": profile_workflow,
         "profileMatches": profiles,
         "selectedProfile": selected_profile["id"] if selected_profile else None,
         "parityPolicy": (selected_profile or {}).get("parityPolicy"),
+        "partialInputPolicy": (selected_profile or {}).get("partialInputPolicy"),
         "conceptChecks": concept,
         "sqlScan": sql_scan,
         "parityDerivation": parity,
@@ -1119,9 +1458,31 @@ def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclu
     result["questions"] = question_plan(
         "RESOLVED", selection, continuation, parsed["hints"], recommendations, [],
         upstream_candidates=unresolved_upstream,
+        upstream_default=next((s["mapping"] for s in profile_workflow if s["mapping"] != primary.key), None),
         default_mode="one-way" if primary.source == HUB_LANGUAGE else "round-trip",
+        persist_policy=persist_policy,
     )
     return result
+
+
+def profile_workflow_steps(registry: Registry, profile: dict | None) -> list[dict]:
+    if not profile:
+        return []
+    directions = {d["id"]: d for d in profile.get("directions", [])}
+    steps = []
+    for step in profile.get("validationWorkflow", {}).get("steps", []):
+        direction = directions.get(step["direction"], {})
+        key = profile_mapping_key(direction.get("mapping", {}))
+        live = registry.mappings.get(key)
+        steps.append({
+            "sequence": step["sequence"],
+            "direction": step["direction"],
+            "mapping": key,
+            "inputSource": step["inputSource"],
+            "profileStatus": direction.get("mapping", {}).get("status"),
+            "registrySources": sorted({p.get("label") for p in live.provenance}) if live else [],
+        })
+    return steps
 
 
 def draft_profile(request: str, discovery: dict) -> dict:
@@ -1205,6 +1566,7 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--registry", action="append", help="label=DIR of materialized transform-mappings/<id>/<version>/mapping.json")
         p.add_argument("--ssm-parameters", action="append", help="label=FILE listing /lexicon/* parameter names")
         p.add_argument("--profiles", default=str(DEFAULT_PROFILES))
+        p.add_argument("--forbidden-concepts", default=str(DEFAULT_FORBIDDEN), help="Shared forbidden Lexicon concepts, properties, and retired mappings")
         p.add_argument("--window", default="<startZ>_<endExclusiveZ>")
         p.add_argument("--out")
     args = parser.parse_args(argv)

@@ -1,0 +1,58 @@
+{
+  "id": "forbidden-concepts.json",
+  "contractVersion": 1,
+  "evidence": {
+    "lexiconRepository": "Spring-Oaks-Capital-LLC/lexicon",
+    "mainCommitSha": "6f7a2ebf0877d9a25adf473577e5a711a1262f7b",
+    "observedAt": "2026-09-28",
+    "derivation": "Labels and properties declared by any src/data/lexicon.json revision on the retired Decision branch feat/decision-lexicon-extension and absent from main at the pinned commit, plus the removed Rule execution model."
+  },
+  "concepts": [
+    { "label": "rule_execution", "kind": "vertex", "reason": "Removed Rule execution model" },
+    { "label": "rule_execution_evidence_package", "kind": "vertex", "reason": "Removed Rule execution model" },
+    { "label": "rule_execution_status_changed", "kind": "edge", "reason": "Removed Rule execution model" },
+    { "label": "rule_execution_evaluates_ruleset", "kind": "edge", "reason": "Removed Rule execution model" },
+    { "label": "rule_execution_has_exclusion", "kind": "edge", "reason": "Removed Rule execution model" },
+    { "label": "rule_execution_for_campaign", "kind": "edge", "reason": "Removed Rule execution model" },
+    { "label": "rule_execution_has_child_execution", "kind": "edge", "reason": "Removed Rule execution model" },
+    { "label": "rule_execution_has_evidence_package", "kind": "edge", "reason": "Removed Rule execution model" },
+    { "label": "rule_execution_decided_debt", "kind": "edge", "reason": "Removed Rule execution model" },
+    { "label": "rule_product_has_execution", "kind": "edge", "reason": "Removed Rule execution model" },
+    { "label": "product_execution_has_child_execution", "kind": "edge", "reason": "Reverted Decision addition; Decision Lexicon mappings are dropped" }
+  ],
+  "properties": [
+    { "concept": "company_represents_debt", "property": "dsc_client_id", "sqlScan": true, "reason": "Reverted Decision addition" },
+    { "concept": "company_represents_debt", "property": "client_event_schema_version", "sqlScan": true, "reason": "Reverted Decision addition" },
+    { "concept": "company_represents_debt", "property": "event_type", "sqlScan": false, "reason": "Reverted Decision addition; the name is active on other concepts" },
+    { "concept": "company_represents_debt", "property": "idempotency_key", "sqlScan": false, "reason": "Reverted Decision addition" },
+    { "concept": "company_represents_debt", "property": "source_run_id", "sqlScan": false, "reason": "Reverted Decision addition" },
+    { "concept": "product_execution", "property": "accepted_count", "sqlScan": false, "reason": "Reverted Decision addition" },
+    { "concept": "product_execution", "property": "candidate_count", "sqlScan": false, "reason": "Reverted Decision addition" },
+    { "concept": "product_execution", "property": "chunk_count", "sqlScan": false, "reason": "Reverted Decision addition" },
+    { "concept": "product_execution", "property": "chunk_index", "sqlScan": false, "reason": "Reverted Decision addition" },
+    { "concept": "product_execution", "property": "dsa_company_identifier", "sqlScan": true, "reason": "Reverted Decision addition" },
+    { "concept": "product_execution", "property": "evidence_manifest_etag", "sqlScan": true, "reason": "Reverted Decision addition" },
+    { "concept": "product_execution", "property": "evidence_manifest_sha256", "sqlScan": true, "reason": "Reverted Decision addition" },
+    { "concept": "product_execution", "property": "evidence_manifest_size", "sqlScan": true, "reason": "Reverted Decision addition" },
+    { "concept": "product_execution", "property": "evidence_manifest_uri", "sqlScan": true, "reason": "Reverted Decision addition" },
+    { "concept": "product_execution", "property": "evidence_manifest_version_id", "sqlScan": true, "reason": "Reverted Decision addition" },
+    { "concept": "product_execution", "property": "evidence_manifest_versioning", "sqlScan": true, "reason": "Reverted Decision addition" },
+    { "concept": "product_execution", "property": "historical_client_event_status", "sqlScan": true, "reason": "Reverted Decision addition" },
+    { "concept": "product_execution", "property": "rejected_count", "sqlScan": false, "reason": "Reverted Decision addition" },
+    { "concept": "product_execution", "property": "schema_version", "sqlScan": false, "reason": "Reverted Decision addition" },
+    { "concept": "product_execution", "property": "source_object_count", "sqlScan": false, "reason": "Reverted Decision addition" },
+    { "concept": "product_execution", "property": "status", "sqlScan": false, "reason": "Reverted Decision addition; the name is active on other concepts" },
+    { "concept": "product_execution", "property": "unversioned_stable_read_object_count", "sqlScan": true, "reason": "Reverted Decision addition" },
+    { "concept": "product_execution", "property": "versioned_source_object_count", "sqlScan": true, "reason": "Reverted Decision addition" },
+    { "concept": "product_execution_includes_debt", "property": "chunk_index", "sqlScan": false, "reason": "Reverted Decision addition" },
+    { "concept": "product_execution_includes_debt", "property": "latest_oos_missing_state_blocks_dsa_offer", "sqlScan": true, "reason": "Reverted Decision addition" },
+    { "concept": "product_execution_includes_debt", "property": "latest_oos_restricted_state_blocks_dsa_offer", "sqlScan": true, "reason": "Reverted Decision addition" },
+    { "concept": "product_execution_includes_debt", "property": "outcome", "sqlScan": false, "reason": "Reverted Decision addition" },
+    { "concept": "product_execution_includes_debt", "property": "source_run_id", "sqlScan": false, "reason": "Reverted Decision addition" }
+  ],
+  "retiredMappings": [
+    { "mapping": "decision-to-lexicon@1.0.0", "reason": "Decision Lexicon mappings are dropped" },
+    { "mapping": "lexicon-to-decision@1.0.0", "reason": "Decision Lexicon mappings are dropped" },
+    { "mapping": "lexicon-to-interprose@3.0.0", "reason": "Decision form projection is replaced by lexicon-to-interprose@4.0.0" }
+  ]
+}

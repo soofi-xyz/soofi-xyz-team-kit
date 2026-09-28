@@ -66,7 +66,7 @@ Silvally validates; it never fixes. It does not edit mappings, language definiti
 
 ## Derived parity
 
-Derive the compared fields for every dataset from the pinned language definition and the mapping registration, as described in `reference/execution-and-parity.md`. A profile's `parityDatasets` is a floor under `parityPolicy.declaredFields: minimum`. Definition fields missing from the profile are still compared, and profile fields unknown to the definition are `ProfileParityDrift`. A forward input that the inverse does not reconstruct is `RoundTripDatasetGap`. A dataset or language that Lexicon does not define blocks derived parity unless the profile names a pinned consumer contract.
+Derive the compared fields for every dataset from the pinned language definition and the mapping registration, as described in `reference/execution-and-parity.md`. A profile's `parityDatasets` is a floor under `parityPolicy.declaredFields: minimum`. Definition fields missing from the profile are still compared, and profile fields unknown to the definition are `ProfileParityDrift`. A forward input that the inverse does not reconstruct is `RoundTripDatasetGap`, unless the profile's `roundTripStrategy.comparisonScope` is `inverse-outputs`, which records it as out of scope. With `declaredFields: exact`, only the profile's fields are compared and the remaining definition fields are recorded as excluded. A dataset or language that Lexicon does not define blocks derived parity unless the profile names a pinned consumer contract (`outputContracts` with `columnSource: consumer-contract`). Registered per-output `requiredInputs` and output format options must equal the profile's `outputContracts`; differences are `ProfileOutputInputDrift` and `OutputFormatDrift`.
 
 ## Required inputs
 
@@ -125,7 +125,14 @@ For every required direction:
 
 For every graph input and output, resolve its vertex or edge label against the
 profile-declared pinned current Lexicon definition (the resolved Lexicon `main`
-SHA), and scan every executed SQL body for forbidden labels. `lexiconConceptPolicy`
+SHA), and scan every executed SQL body for forbidden labels. Forbidden labels,
+Decision-era scoped properties that must not appear in `lexicon.json`, and
+retired mapping versions come from the shared `reference/forbidden-concepts.json`,
+which applies to every profile; a profile's `lexiconConceptPolicy.forbiddenConcepts`
+only adds to it. A retired mapping version still present in a registry is
+reported and never offered or selected. When a profile declares
+`lexiconModelPolicy.candidateLexiconDiff: forbidden`, any byte difference between
+the candidate and `main` `src/data/lexicon.json` is a phase-5 `FAIL`. `lexiconConceptPolicy`
 requires active concepts: an absent or deprecated label, an endpoint that
 resolves to an absent/deprecated vertex, or a candidate that reintroduces a
 concept proven removed from current Lexicon is a phase-5/6 `FAIL`. Return
@@ -257,7 +264,7 @@ Name the owning product/specialist and repository when known. Point only to exac
 
 Trace generated mapping artifacts back to their checked-in registration or generator source. Never recommend editing a materialized artifact, invent a manifest path, or describe an unverified path as “likely.” If the source or test location cannot be verified, leave it unknown and add an `ACCESS_OR_EVIDENCE` remediation for the missing discovery.
 
-Name every contradicted field, dataset, endpoint, option, and mapping identity exactly as it appears in pinned evidence. A generic phrase such as “an endpoint dataset” is not an actionable remediation when the evidence identifies `vertex-rule-execution`; include the exact missing name, the declaration that references it, and the checked-in source that must change. Do not claim a pinned mapping still omits an input when the inspected artifact already contains it; distinguish retained pre-fix failure evidence from the current pinned artifact and state whether the recommendation is already implemented but not yet revalidated.
+Name every contradicted field, dataset, endpoint, option, and mapping identity exactly as it appears in pinned evidence. A generic phrase such as “an endpoint dataset” is not an actionable remediation when the evidence identifies `vertex-payment-plan-installment`; include the exact missing name, the declaration that references it, and the checked-in source that must change. Do not claim a pinned mapping still omits an input when the inspected artifact already contains it; distinguish retained pre-fix failure evidence from the current pinned artifact and state whether the recommendation is already implemented but not yet revalidated.
 
 Apply these boundary examples consistently:
 

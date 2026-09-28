@@ -86,7 +86,21 @@ derive it from prose or copy it from a profile. The resolver's
   profile's `parityDatasets` fields are a floor. Definition fields missing
   from the profile are still compared and reported as `missingFromProfile`.
   Profile fields unknown to the definition are `ProfileParityDrift`
-  (`BLOCKED`). With `exact`, any difference is drift.
+  (`BLOCKED`). With `exact`, only the profile's fields are compared
+  (`comparedFields`), and the other definition fields are recorded as
+  `excludedByProfile`; use it for projections that can fill only a subset of
+  the target columns.
+- **Scoped round trip**: under `roundTripStrategy.comparisonScope:
+  inverse-outputs`, a forward input the inverse does not output is
+  `OUT_OF_SCOPE`, not `RoundTripDatasetGap`.
+- **Output format**: for every CSV `outputContracts` entry, read the first line
+  of each committed part file and compare it with the declared columns joined
+  by the declared delimiter. A missing header or a different delimiter is
+  `OutputFormatDrift`.
+- **Partial inputs**: when `partialInputPolicy.status` is `supported`, run each
+  declared case with the request's `outputDatasets`. A `PASS` case must
+  succeed with only its `providedInputs`, and a `REJECTED` case must fail in
+  `resolve-plan` before Glue starts.
 
 ## Forbidden and removed concepts
 
@@ -100,8 +114,14 @@ normalize the label (drop the `vertex-` or `edge-` prefix and change `-` to
 | `ADDED_IN_CANDIDATE` | pass only when `main` history never removed it (`git log -S '"type": "<label>"' -- src/data/lexicon.json` on a full-history `main` clone); record as additive. `historyChecked: false` means the resolver had no full history, so run the check before phase 6 passes |
 | `REMOVED_ON_MAIN` | `FAIL` (`RemovedLexiconConcept`): absent on `main` but present in its history |
 | `DEPRECATED_ON_MAIN`, `ABSENT` | `FAIL` (`LexiconConceptInactive`) |
-| `FORBIDDEN` (profile `forbiddenConcepts` or a retired mapping id) | `FAIL` (`RemovedLexiconConcept`) |
+| `FORBIDDEN` (shared `forbidden-concepts.json`, profile `forbiddenConcepts`, or a retired mapping id) | `FAIL` (`RemovedLexiconConcept`) |
 | `AUXILIARY_INPUT` | non-graph input without a graph binding; not a concept, recorded only |
+| `NOT_SELECTED` | output outside a profile's `outputDatasetMatch: includes` subset; the run excludes it through `outputDatasets` |
+
+Independently of mappings, the shared list's labels and scoped properties
+(`concept.property`) must not appear in the candidate or `main`
+`lexicon.json` (`ForbiddenConceptInLexicon`, `ForbiddenPropertyInLexicon`).
+Properties marked `sqlScan: true` are also scanned for in SQL.
 
 Also scan every executed SQL body for forbidden labels. A string match in SQL
 or output labels is a `FAIL` even when registration metadata is clean. The

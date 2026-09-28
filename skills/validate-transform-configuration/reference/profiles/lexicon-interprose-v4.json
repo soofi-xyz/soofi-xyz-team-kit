@@ -1,0 +1,541 @@
+{
+  "id": "lexicon-interprose-v4.json",
+  "contractVersion": 1,
+  "terminologyAliases": {
+    "form-1281": ["form 1281", "DSA form", "debt settlement agency form"],
+    "payment-plan": ["payment plan", "payment plans", "payment plan export"],
+    "payment-plan-schedule": ["payment plan schedule", "installment schedule", "scheduled payments"],
+    "graph-export": ["Lexicon graph export", "Parquet graph export", "vertex and edge export"]
+  },
+  "roles": {
+    "source": "Parquet Lexicon graph exports (vertices keyed by ~id, edges by ~id/~from/~to) for DSA representation and payment plans",
+    "target": "Pipe-delimited Interprose CSV files: form_1281 rows, payment_plan rows, and payment_plan_schedule rows"
+  },
+  "transformClassification": {
+    "kind": "deterministic",
+    "evidenceBasis": "lexicon-to-interprose@4.0.0 is a planned version-controlled Spark SQL projection with fixed form constants, a declared DSA election rule, and cents conversion; readiness requires the registered mapping, executed SQL digests, and physical CSV outputs.",
+    "expectedOutputTests": [
+      "form-1281-dsa-election",
+      "payment-plan-graph-fillable-projection",
+      "payment-plan-schedule-projection",
+      "interprose-sample-round-trip-column-diff",
+      "csv-pipe-header-format",
+      "cents-conversion-exact",
+      "partial-input-form-1281-only"
+    ],
+    "negativeTests": [
+      "dsa-latest-deleted-not-represented",
+      "dsa-version-1-edge-ignored",
+      "dsa-renamed-company-same-identifier",
+      "non-dsa-company-type-ignored",
+      "missing-required-input-rejected",
+      "cents-rounding-boundary",
+      "lexicon-json-diff-rejected",
+      "forbidden-concept-reintroduced"
+    ]
+  },
+  "configurationChoices": {
+    "fieldNames": [
+      "form_1281 columns debtID, form_config_id, field_identifier, value; graph-fillable payment_plan and payment_plan_schedule columns from interprose.json"
+    ],
+    "schemaShape": [
+      "one form_1281 row per debt and field_identifier; one payment_plan row per payment plan; one payment_plan_schedule row per installment"
+    ],
+    "formats": ["Parquet graph exports in; pipe-delimited CSV with a header row out"],
+    "normalizationRules": [
+      "dollars to integer cents, ISO-8601 UTC timestamps, DSA election per company_identifier by created_at then effective_at"
+    ],
+    "mappingExpressions": ["lexicon-to-interprose@4.0.0"],
+    "profileInputs": ["planned DEV package under inputs/lexicon-interprose-v4/<window>_v1/"],
+    "vocabularySelections": ["existing Lexicon company, debt, payment_plan, payment_plan_installment, and user_account concepts; no model additions"]
+  },
+  "productBoundary": {
+    "prohibitedAsConfiguration": [
+      "representation-family",
+      "identity-scheme",
+      "executable-code-path",
+      "dependency-type",
+      "storage-engine-mode",
+      "failure-semantics"
+    ],
+    "onDetection": "block-and-handoff"
+  },
+  "datasets": [
+    { "name": "vertex-debt", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "vertex-company", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "edge-company-represents-debt", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "vertex-payment-plan", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "vertex-payment-plan-installment", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "vertex-user-account", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "edge-debt-has-payment-plan", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "edge-debt-payment-plan-status-changed", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "edge-payment-plan-has-total-amount", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "edge-payment-plan-has-installment", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "edge-payment-plan-created-by-user-account", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "edge-payment-plan-updated-by-user-account", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "interprose-source-sample", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "form_1281", "role": "target", "required": true, "schemaSource": "consumer-contract" },
+    { "name": "payment_plan", "role": "target", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "payment_plan_schedule", "role": "target", "required": true, "schemaSource": "lexicon-language-definition" }
+  ],
+  "invariants": [
+    {
+      "id": "lexicon-model-unchanged",
+      "description": "src/data/lexicon.json at the pinned candidate is byte-identical to the pinned Lexicon main (git diff <main>..<candidate> -- src/data/lexicon.json is empty); the mapping adds no vertex, edge, property, or index",
+      "phase": 5,
+      "failureCode": "LexiconModelDiffersFromMain"
+    },
+    {
+      "id": "no-forbidden-concepts",
+      "description": "No label or scoped property from reference/forbidden-concepts.json appears in the candidate or main lexicon.json, in any graph input, or in any executed SQL body",
+      "phase": 5,
+      "failureCode": "RemovedLexiconConcept"
+    },
+    {
+      "id": "graph-export-inputs",
+      "description": "Every v4 input is a Parquet graph export bound to an active Lexicon concept: vertex inputs carry ~id, edge inputs carry ~id, ~from and ~to, and every edge endpoint dataset is itself a declared input of the same output",
+      "phase": 6,
+      "failureCode": "GraphExportInputMismatch"
+    },
+    {
+      "id": "per-output-required-inputs",
+      "description": "Each registered output declares exactly the requiredInputs listed in this profile's outputContracts; a missing endpoint dataset is a configuration defect",
+      "phase": 6,
+      "failureCode": "ProfileOutputInputDrift"
+    },
+    {
+      "id": "csv-pipe-header",
+      "description": "Every output is registered as csv with options.delimiter '|' and options.header true, and the first physical line of every committed part file equals the declared columns joined by '|'",
+      "phase": 9,
+      "failureCode": "OutputFormatDrift"
+    },
+    {
+      "id": "graph-fillable-columns-only",
+      "description": "payment_plan and payment_plan_schedule emit exactly the declared graph-fillable interprose.json columns, in declared order; no column is populated from a constant or guessed default",
+      "phase": 11,
+      "failureCode": "ProfileParityDrift"
+    },
+    {
+      "id": "form-1281-row-shape",
+      "description": "Every form_1281 row has form_config_id '1281' and field_identifier in DSA_NAME, REPORTED_DATE, DSA_REPRESENTATION, with at most one row per (debtID, field_identifier)",
+      "phase": 11,
+      "failureCode": "Form1281ShapeMismatch"
+    },
+    {
+      "id": "dsa-election-matches-is-dsa",
+      "description": "For each debt, only version 2 company_represents_debt edges with company_type DEBT_SETTLEMENT_AGENCY are considered; they are grouped by company company_identifier (falling back to the company ~id), the latest edge per group is chosen by created_at descending then effective_at descending, and DSA_REPRESENTATION is true exactly when some group's latest edge is ACTIVE, matching the debt is_dsa index definition on the pinned main; DSA_NAME and REPORTED_DATE come from an elected ACTIVE group",
+      "phase": 11,
+      "failureCode": "DsaElectionMismatch"
+    },
+    {
+      "id": "cents-conversion-exact",
+      "description": "payment_plan.payment_total equals round(payment_plan_has_total_amount.total_amount * 100) and payment_plan_schedule.amount equals round(payment_plan_installment.scheduled_amount * 100) as integers; truncation, float text, or a non-null value for a null amount fails",
+      "phase": 11,
+      "failureCode": "CentsConversionMismatch"
+    },
+    {
+      "id": "round-trip-column-diff",
+      "description": "An Interprose sample run through interprose-to-lexicon@1.0.0 and then lexicon-to-interprose@4.0.0 reproduces every declared column of every declared row key after the declared normalization; every difference is either zero or a listed permitted loss",
+      "phase": 11,
+      "failureCode": "RoundTripColumnMismatch"
+    },
+    {
+      "id": "persist-not-invoked",
+      "description": "No Persist API, GraphSON ingest, or Neptune load is invoked; graph closure is proven from Transform inputs and outputs only",
+      "phase": 10,
+      "failureCode": "PersistInvoked"
+    },
+    {
+      "id": "partial-input-runs",
+      "description": "A request selecting only form_1281 through outputDatasets succeeds with only its three inputs, and a request selecting payment_plan without edge-payment-plan-has-total-amount is rejected by resolve-plan before Glue starts",
+      "phase": 9,
+      "failureCode": "PartialInputRunMismatch"
+    },
+    {
+      "id": "v4-sql-executed",
+      "description": "Runtime evidence identifies the executed v4 SQL digests and physical CSV outputs for every selected output; registration-only tests never satisfy this invariant",
+      "phase": 9,
+      "failureCode": "MappingSqlNotExecuted"
+    }
+  ],
+  "repositories": [
+    {
+      "slug": "Spring-Oaks-Capital-LLC/lexicon",
+      "purpose": "Lexicon and Interprose language definitions, the existing Interprose-to-Lexicon SQL, and the planned lexicon-to-interprose@4.0.0 mapping",
+      "role": "configuration-source",
+      "revisionPolicy": "commit-sha",
+      "candidateDiscovery": "requested-ref-then-matching-open-pr-then-default-branch",
+      "requiredPaths": [
+        "src/data/lexicon.json",
+        "src/data/interprose.json",
+        "src/data/interprose-mappings.json",
+        "src/transform/mappings/lexicon-to-interprose",
+        "src/transform/interprose/edges/company_represents_debt.sql",
+        "src/transform/interprose/vertices/company.sql",
+        "src/transform/interprose/vertices/payment_plan.sql",
+        "src/transform/interprose/vertices/payment_plan_installment.sql",
+        "src/transform/interprose/vertices/user_account.sql",
+        "src/transform/interprose/edges/debt_has_payment_plan.sql",
+        "src/transform/interprose/edges/debt_payment_plan_status_changed.sql",
+        "src/transform/interprose/edges/payment_plan_has_total_amount.sql",
+        "src/transform/interprose/edges/payment_plan_has_installment.sql",
+        "src/transform/interprose/edges/payment_plan_created_by_user_account.sql",
+        "src/transform/interprose/edges/payment_plan_updated_by_user_account.sql",
+        "infra/lib/transform-mapping-artifacts.ts",
+        "infra/test/transform-mappings.spec.ts"
+      ]
+    },
+    {
+      "slug": "Spring-Oaks-Capital-LLC/transform",
+      "purpose": "Transform Spark runtime, v2 request contract, and partial-output planning",
+      "role": "product-runtime",
+      "revisionPolicy": "commit-sha",
+      "candidateDiscovery": "requested-ref-then-default-branch",
+      "requiredPaths": [
+        "package.json",
+        "src/shared/contracts.ts",
+        "src/lambdas/resolve-plan/index.ts",
+        "glue_scripts/transform_with_sql_mappings.py",
+        "glue_scripts/test_transform_with_sql_mappings.py",
+        "scripts/setup-spark-tests.sh",
+        "scripts/run-spark-tests.sh"
+      ]
+    }
+  ],
+  "discoveryProbes": [
+    { "id": "resolve-v4-candidate", "kind": "repository", "description": "Locate the Lexicon branch or PR that registers lexicon-to-interprose@4.0.0 and pin its head SHA", "readOnly": true },
+    { "id": "resolve-active-mappings", "kind": "configuration", "description": "Resolve exact enabled directional mappings, per-output requiredInputs, output options, and query digests", "readOnly": true },
+    { "id": "compare-lexicon-model", "kind": "configuration", "description": "Compare src/data/lexicon.json at the candidate against pinned main by SHA-256 and git diff", "readOnly": true },
+    { "id": "resolve-deployment-provenance", "kind": "deployment", "description": "Bind the DEV registry mapping.json and Transform deployment to the pinned candidate digests", "readOnly": true },
+    { "id": "read-output-aggregates", "kind": "consumer", "description": "Read sanitized row counts, header lines, and column-diff aggregates of the CSV outputs", "readOnly": true }
+  ],
+  "directions": [
+    {
+      "id": "interprose-to-lexicon",
+      "fromLanguage": "interprose",
+      "toLanguage": "lexicon",
+      "required": true,
+      "mapping": {
+        "status": "registered",
+        "id": "interprose-to-lexicon",
+        "version": "1.0.0",
+        "repository": "Spring-Oaks-Capital-LLC/lexicon",
+        "sourcePaths": [
+          "src/data/interprose-mappings.json",
+          "src/transform/interprose",
+          "infra/lib/transform-mapping-artifacts.ts"
+        ],
+        "artifactPath": "infra/lib/transform-mapping-artifacts.ts",
+        "generatedArtifact": {
+          "generatorPath": "infra/lib/transform-mapping-artifacts.ts",
+          "logicalArtifactPath": "transform-mappings/interprose-to-lexicon/1.0.0/mapping.json",
+          "materializationCommand": "cd infra && npx cdk synth"
+        },
+        "expectedOutputDatasets": [
+          "vertex-debt",
+          "vertex-company",
+          "edge-company-represents-debt",
+          "vertex-payment-plan",
+          "vertex-payment-plan-installment",
+          "vertex-user-account",
+          "edge-debt-has-payment-plan",
+          "edge-debt-payment-plan-status-changed",
+          "edge-payment-plan-has-total-amount",
+          "edge-payment-plan-has-installment",
+          "edge-payment-plan-created-by-user-account",
+          "edge-payment-plan-updated-by-user-account"
+        ],
+        "outputDatasetMatch": "includes"
+      }
+    },
+    {
+      "id": "lexicon-to-interprose-v4",
+      "fromLanguage": "lexicon",
+      "toLanguage": "interprose",
+      "required": true,
+      "mapping": {
+        "status": "not-registered",
+        "expectedId": "lexicon-to-interprose",
+        "owner": "kecleon",
+        "reason": "lexicon-to-interprose@4.0.0 is being built on a new Lexicon branch; as of 2026-09-28 Lexicon main 6f7a2ebf0877d9a25adf473577e5a711a1262f7b and its open PRs contain no registration, generator entry, or published artifact for it. Source paths below are TBD until that branch exists.",
+        "plannedSource": {
+          "repository": "Spring-Oaks-Capital-LLC/lexicon",
+          "sourcePaths": ["src/transform/mappings/lexicon-to-interprose/versions/4.0.0"],
+          "generatedArtifact": {
+            "generatorPath": "infra/lib/transform-mapping-artifacts.ts",
+            "logicalArtifactPath": "transform-mappings/lexicon-to-interprose/4.0.0/mapping.json",
+            "materializationCommand": "cd infra && npx cdk synth"
+          },
+          "expectedOutputDatasets": ["form_1281", "payment_plan", "payment_plan_schedule"],
+          "outputDatasetMatch": "exact"
+        }
+      },
+      "parityDatasets": [
+        { "dataset": "form_1281", "fields": ["debtID", "form_config_id", "field_identifier", "value"] },
+        {
+          "dataset": "payment_plan",
+          "fields": [
+            "payment_plan_id",
+            "debt_id",
+            "create_date",
+            "created_by",
+            "last_update",
+            "last_updated_by",
+            "payment_total",
+            "active",
+            "complete_date",
+            "deactivation_date"
+          ]
+        },
+        { "dataset": "payment_plan_schedule", "fields": ["payment_schedule_id", "payment_plan_id", "amount"] }
+      ],
+      "outputContracts": [
+        {
+          "dataset": "form_1281",
+          "requiredInputs": ["vertex-debt", "vertex-company", "edge-company-represents-debt"],
+          "format": { "type": "csv", "delimiter": "|", "header": true },
+          "columnSource": "consumer-contract",
+          "columns": ["debtID", "form_config_id", "field_identifier", "value"],
+          "columnConstraints": [
+            { "column": "form_config_id", "const": "1281" },
+            { "column": "field_identifier", "enum": ["DSA_NAME", "REPORTED_DATE", "DSA_REPRESENTATION"] }
+          ],
+          "status": "planned",
+          "tbd": [
+            "value text format for REPORTED_DATE (date or timestamp) and DSA_REPRESENTATION (for example Y/N or true/false)",
+            "whether REPORTED_DATE is the elected edge effective_at or a separately carried reported date; effective_at is greatest(verified_date, reported_date) or create_date plus one second",
+            "whether rows are emitted for debts whose election is not represented",
+            "tie rule when more than one DSA company_identifier group is ACTIVE for one debt"
+          ]
+        },
+        {
+          "dataset": "payment_plan",
+          "requiredInputs": [
+            "vertex-debt",
+            "vertex-payment-plan",
+            "vertex-user-account",
+            "edge-debt-has-payment-plan",
+            "edge-debt-payment-plan-status-changed",
+            "edge-payment-plan-has-total-amount",
+            "edge-payment-plan-created-by-user-account",
+            "edge-payment-plan-updated-by-user-account"
+          ],
+          "format": { "type": "csv", "delimiter": "|", "header": true },
+          "columnSource": "language-definition-subset",
+          "columns": [
+            "payment_plan_id",
+            "debt_id",
+            "create_date",
+            "created_by",
+            "last_update",
+            "last_updated_by",
+            "payment_total",
+            "active",
+            "complete_date",
+            "deactivation_date"
+          ],
+          "status": "planned",
+          "tbd": [
+            "confirm the graph-fillable column list against the v4 SQL; payment_method, account_type, and plan-level free text are not recoverable from the declared graph inputs"
+          ]
+        },
+        {
+          "dataset": "payment_plan_schedule",
+          "requiredInputs": ["vertex-payment-plan", "vertex-payment-plan-installment", "edge-payment-plan-has-installment"],
+          "format": { "type": "csv", "delimiter": "|", "header": true },
+          "columnSource": "language-definition-subset",
+          "columns": ["payment_schedule_id", "payment_plan_id", "amount"],
+          "status": "planned",
+          "tbd": [
+            "payment_date, promise_status, and active need edge-payment-plan-installment-status-changed, which is not a declared v4 input; confirm with the mapping owner"
+          ]
+        }
+      ]
+    }
+  ],
+  "validationWorkflow": {
+    "steps": [
+      { "sequence": 1, "id": "forward-interprose-sample", "direction": "interprose-to-lexicon", "inputSource": "profile-evidence" },
+      { "sequence": 2, "id": "project-v4", "direction": "lexicon-to-interprose-v4", "inputSource": "previous-step-output" }
+    ],
+    "persistPolicy": "forbidden"
+  },
+  "validationSources": [
+    {
+      "id": "lexicon-mapping-contract-tests",
+      "kind": "repository-test",
+      "repository": "Spring-Oaks-Capital-LLC/lexicon",
+      "path": "infra/test/transform-mappings.spec.ts",
+      "appliesTo": ["interprose-to-lexicon", "lexicon-to-interprose-v4"],
+      "required": true
+    },
+    {
+      "id": "transform-spark-sql-tests",
+      "kind": "repository-test",
+      "repository": "Spring-Oaks-Capital-LLC/transform",
+      "path": "glue_scripts/test_transform_with_sql_mappings.py",
+      "appliesTo": ["interprose-to-lexicon", "lexicon-to-interprose-v4"],
+      "required": true
+    },
+    {
+      "id": "lexicon-interprose-v4-dev-package",
+      "kind": "existing-dev-artifact",
+      "location": "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/<window>_v1/",
+      "region": "us-east-2",
+      "artifactStatus": "planned",
+      "appliesTo": ["interprose-to-lexicon", "lexicon-to-interprose-v4"],
+      "required": true,
+      "tbd": [
+        "window (one confirmed complete UTC snapshot day)",
+        "derived/ Interprose sample tables and derived/ Parquet graph exports",
+        "manifestSha256",
+        "manifestVersionId",
+        "bucket versioning verification"
+      ]
+    }
+  ],
+  "evidencePolicy": {
+    "sensitivity": "restricted",
+    "sanitization": "aggregates-and-digests-only",
+    "allowed": ["counts", "schemas", "sha256", "statuses", "durations", "costs", "credential-free-locations"],
+    "prohibited": ["raw-pii", "business-identifiers", "secret-values", "credentials", "signed-urls", "source-rows"]
+  },
+  "graph": {
+    "required": true,
+    "identityRules": [
+      "Vertex inputs are keyed by ~id and edge inputs by ~id with ~from and ~to, exactly as exported",
+      "DSA identity is company company_identifier, falling back to the company ~id, never the physical vertex alone",
+      "Never emit debt, company, or user identifiers into validation evidence"
+    ],
+    "endpointRules": [
+      "Every edge ~from and ~to resolves to a vertex in the same run's declared inputs",
+      "Every payment_plan_schedule.payment_plan_id resolves to a payment_plan row of the same run when both outputs are selected",
+      "Dangling endpoint count must equal zero"
+    ]
+  },
+  "adapters": [
+    { "name": "interprose-file-delivery", "owner": "lapras", "contract": "Connect delivers the pipe-delimited CSV outputs to Interprose; Transform writes S3 outputs only" }
+  ],
+  "consumers": [
+    { "name": "interprose-import", "owner": "lapras", "contract": "Consumes form_1281, payment_plan, and payment_plan_schedule CSV files with the declared header and delimiter" }
+  ],
+  "lexiconConceptPolicy": {
+    "currentDefinitionRequired": true,
+    "rejectAbsent": true,
+    "rejectDeprecated": true,
+    "reintroductionRequiresModelingApproval": true,
+    "forbiddenConcepts": []
+  },
+  "lexiconModelPolicy": {
+    "candidateLexiconDiff": "forbidden",
+    "path": "src/data/lexicon.json",
+    "modelAdditions": "forbidden"
+  },
+  "roundTripStrategy": {
+    "kind": "source-sample-reprojection",
+    "description": "Take a sanitized Interprose sample, run the existing Interprose-to-Lexicon SQL (interprose-to-lexicon@1.0.0) restricted to the twelve graph datasets v4 reads, feed that graph into lexicon-to-interprose@4.0.0, and column-diff each CSV output against the same Interprose sample.",
+    "sourceLanguage": "interprose",
+    "steps": ["interprose-to-lexicon", "lexicon-to-interprose-v4"],
+    "comparison": "column-diff",
+    "comparisonScope": "inverse-outputs",
+    "rowKeys": [
+      { "dataset": "form_1281", "columns": ["debtID", "field_identifier"] },
+      { "dataset": "payment_plan", "columns": ["payment_plan_id"] },
+      { "dataset": "payment_plan_schedule", "columns": ["payment_schedule_id"] }
+    ],
+    "normalization": [
+      "timestamps to ISO-8601 UTC with millisecond precision",
+      "integer cents on both sides",
+      "booleans to lowercase true/false",
+      "empty CSV field equals SQL NULL"
+    ],
+    "permittedLosses": [
+      "payment_plan_schedule rows that interprose-to-lexicon does not project: past slots with no payment attempt, KEPT and BROKEN slots, and slots of inactive, completed, or deactivated plans",
+      "payment_plan_schedule.amount for attempted slots, which the forward SQL takes from the first payment attempt rather than payment_plan_schedule.amount",
+      "form_1281 rows for debts whose debt_settlement_agency rows have an empty dsa_name"
+    ],
+    "tbd": [
+      "input bridge: interprose-to-lexicon@1.0.0 writes Neptune CSV while v4 reads Parquet graph exports; bind through a Transform tables/ Parquet output, a v4 input declaration that accepts the Neptune prefix, or an approved conversion step",
+      "created_at: Transform outputs do not carry the Persist-assigned created_at used first by the is_dsa election; the round trip must either carry it or record that only effective_at ordering was proven",
+      "form_1281 baseline oracle derived directly from debt_settlement_agency in the same sample",
+      "run on the same UTC date as the sample snapshot, because the forward installment SQL filters future slots with current_date()"
+    ]
+  },
+  "partialInputPolicy": {
+    "status": "supported",
+    "mechanism": "A contract-version-2 request may name outputDatasets; resolve-plan then requires only the requiredInputs of the selected outputs and rejects a missing one before Glue starts.",
+    "evidence": [
+      { "repository": "Spring-Oaks-Capital-LLC/transform", "commitSha": "f67430f98634cf3f783d02aa36d907afed766400", "path": "src/shared/contracts.ts" },
+      { "repository": "Spring-Oaks-Capital-LLC/transform", "commitSha": "f67430f98634cf3f783d02aa36d907afed766400", "path": "src/lambdas/resolve-plan/index.ts" }
+    ],
+    "cases": [
+      {
+        "id": "form-1281-only",
+        "outputDatasets": ["form_1281"],
+        "providedInputs": ["vertex-debt", "vertex-company", "edge-company-represents-debt"],
+        "expected": "PASS"
+      },
+      {
+        "id": "payment-plan-schedule-only",
+        "outputDatasets": ["payment_plan_schedule"],
+        "providedInputs": ["vertex-payment-plan", "vertex-payment-plan-installment", "edge-payment-plan-has-installment"],
+        "expected": "PASS"
+      },
+      {
+        "id": "payment-plan-missing-total-amount",
+        "outputDatasets": ["payment_plan"],
+        "providedInputs": [
+          "vertex-debt",
+          "vertex-payment-plan",
+          "vertex-user-account",
+          "edge-debt-has-payment-plan",
+          "edge-debt-payment-plan-status-changed",
+          "edge-payment-plan-created-by-user-account",
+          "edge-payment-plan-updated-by-user-account"
+        ],
+        "expected": "REJECTED"
+      }
+    ]
+  },
+  "parityPolicy": {
+    "fieldSource": "language-definition-and-registration",
+    "declaredFields": "exact",
+    "undefinedDatasets": "consumer-contract"
+  },
+  "sourceWindowPolicy": {
+    "kind": "prod-derived-complete-utc-days",
+    "minimumCompleteUtcDays": 1,
+    "allowLongerRange": false,
+    "requiredSourceFamilies": [
+      "account",
+      "additional_original_account_information",
+      "attorney_representation",
+      "debt",
+      "debt_settlement_agency",
+      "forward",
+      "forward_vendor",
+      "payment",
+      "payment_plan",
+      "payment_plan_schedule"
+    ],
+    "requiredCoverageSignals": [
+      "dsa-active",
+      "dsa-deleted",
+      "dsa-reactivated",
+      "dsa-renamed-same-identifier",
+      "payment-plan-active",
+      "payment-plan-completed",
+      "payment-plan-cancelled",
+      "payment-plan-defaulted",
+      "attempted-installments",
+      "booked-future-installments",
+      "created-and-updated-by-users",
+      "immutable-evidence"
+    ]
+  },
+  "scaleTiers": [
+    { "id": "synthetic", "maximumRows": 100, "maximumCostUsd": 0, "evidenceRequired": true },
+    { "id": "bounded-dev", "maximumRows": 50000, "maximumCostUsd": 25, "evidenceRequired": true }
+  ],
+  "approvals": { "devWrites": "explicit", "prodWrites": "forbidden", "perOperation": true }
+}

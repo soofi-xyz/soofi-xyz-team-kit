@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "forbidden-concepts.schema.json",
+  "title": "Shared forbidden Lexicon concepts and retired mappings",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "contractVersion", "evidence", "concepts", "properties", "retiredMappings"],
+  "properties": {
+    "id": { "const": "forbidden-concepts.json" },
+    "contractVersion": { "const": 1 },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lexiconRepository", "mainCommitSha", "observedAt", "derivation"],
+      "properties": {
+        "lexiconRepository": { "type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" },
+        "mainCommitSha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+        "observedAt": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "derivation": { "type": "string", "minLength": 10 }
+      }
+    },
+    "concepts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["label", "kind", "reason"],
+        "properties": {
+          "label": { "$ref": "#/$defs/label" },
+          "kind": { "enum": ["vertex", "edge"] },
+          "reason": { "type": "string", "minLength": 5 }
+        }
+      }
+    },
+    "properties": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["concept", "property", "sqlScan", "reason"],
+        "properties": {
+          "concept": { "$ref": "#/$defs/label" },
+          "property": { "$ref": "#/$defs/label" },
+          "sqlScan": { "type": "boolean" },
+          "reason": { "type": "string", "minLength": 5 }
+        }
+      }
+    },
+    "retiredMappings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["mapping", "reason"],
+        "properties": {
+          "mapping": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*@[0-9]+\\.[0-9]+\\.[0-9]+$" },
+          "reason": { "type": "string", "minLength": 5 }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "label": { "type": "string", "pattern": "^[a-z0-9]+(?:_[a-z0-9]+)*$" }
+  }
+}

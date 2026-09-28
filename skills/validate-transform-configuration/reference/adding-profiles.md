@@ -47,8 +47,22 @@ without being committed. Commit it only through a reviewed PR to this kit.
 4. Declare `validationWorkflow.steps` in execution order and choose
    `persistPolicy` (`forbidden` unless a Persist readback is part of the
    contract).
-5. Add `lexiconConceptPolicy.forbiddenConcepts` for any concepts that were
-   removed from Lexicon and must not come back.
+5. Do not copy the shared `reference/forbidden-concepts.json` into the profile.
+   It applies to every profile: forbidden labels, scoped properties that must
+   not appear in `lexicon.json`, and retired mapping versions. Add a label to
+   `lexiconConceptPolicy.forbiddenConcepts` only when one profile needs an
+   extra restriction. Add to the shared list through a reviewed PR with the
+   pinned Lexicon evidence.
+   Optional contracts, all closed in the schema:
+   - `outputContracts` per direction: per-output `requiredInputs`, `format`
+     (`csv` needs a one-character `delimiter` and `header`), `columnSource`,
+     `columns`, `columnConstraints`, `status` (`planned`/`verified`), `tbd`;
+   - `outputDatasetMatch: includes` when the profile runs a subset of a large
+     generated mapping;
+   - `lexiconModelPolicy` to forbid any candidate `lexicon.json` diff against `main`;
+   - `roundTripStrategy` for source-sample reprojection and column diffs;
+   - `partialInputPolicy` with pinned Transform evidence and accepted/rejected cases;
+   - `artifactStatus: planned` with `tbd` for a reserved, unstaged DEV package.
 6. Add `validationSources`: the Lexicon `infra/test/transform-mappings.spec.ts`
    repository test, plus `existing-dev-artifact` or `sanitized-evidence-package`
    entries that follow `test-dataset-recommendations.md`.

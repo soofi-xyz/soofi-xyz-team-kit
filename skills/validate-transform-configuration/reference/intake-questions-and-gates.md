@@ -14,8 +14,8 @@ tool call.
 | `mapping-choice` | status `AMBIGUOUS`, `NO_MAPPING`, or `UNKNOWN_LANGUAGE` | ranked candidates plus `none` (stop and report the gap) | none; the user must choose |
 | `environment` | no `in dev`/`in prod` hint | `dev`, `prod-read-only`, `synthetic-local` | `dev` |
 | `mapping-version` | more than one enabled version and no version hint | each `id@version` with its outputs | the resolver's selection |
-| `upstream-source` | `UpstreamSourceUnresolved` | candidate producers, `existing-graph-export` | none |
-| `test-dataset` | always | profile evidence, then `prod-derived-full-utc-day`, `sanitized-edge-cases`, `synthetic-fixture` | first ready profile evidence, else the full UTC day |
+| `upstream-source` | `UpstreamSourceUnresolved` | candidate producers, `existing-graph-export` | the selected profile's first workflow step when it is a candidate, else none |
+| `test-dataset` | always | profile evidence (including `planned` placeholders), then `prod-derived-full-utc-day`, `sanitized-edge-cases`, `synthetic-fixture` | first `ready` profile evidence, else the full UTC day |
 | `direction-mode` | an inverse mapping exists and no mode hint | `round-trip`, `one-way` | `round-trip` for `X -> lexicon`; `one-way` for `lexicon -> Y` |
 | `cross-source-step` | a `lexicon -> Y` mapping consumes forward outputs | each downstream mapping, `none` | none |
 | `persist-policy` | always, unless the profile fixes it | `forbidden`, `required` | `forbidden` |
@@ -62,19 +62,19 @@ Render the card verbatim, then compute
   "region": "us-east-2",
   "accountAlias": "socdev",
   "reads": [
-    "s3://<dev-transform-data-bucket>/inputs/decision-prod-derived/2026-09-26T000000Z_2026-09-27T000000Z_v1/derived/ (6 tables, ≈268 KiB, manifest sha256:…)",
-    "s3://<lexicon-bucket>/transform-mappings/decision-to-lexicon/1.0.0/mapping.json (sha256:…)"
+    "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/<window>_v1/derived/ (3 graph exports, manifest sha256:…)",
+    "s3://<lexicon-bucket>/transform-mappings/lexicon-to-interprose/4.0.0/mapping.json (sha256:…)"
   ],
   "writes": [
     "s3://<dev-transform-data-bucket>/runs/<executionId>/plan.json",
     "s3://<dev-transform-data-bucket>/outputs/silvally/<runId>/<executionId>/"
   ],
   "runs": "states:StartExecution <state-machine-arn> name=<executionId>",
-  "request": { "contractVersion": 2, "from": "decision", "to": "lexicon", "mappingVersion": "1.0.0", "…": "…" },
+  "request": { "contractVersion": 2, "from": "lexicon", "to": "interprose", "mappingVersion": "4.0.0", "outputDatasets": ["form_1281"], "…": "…" },
   "costCeilingUsd": 5,
-  "expectedEffect": "one Glue run; 4 output datasets and _metadata.json",
+  "expectedEffect": "one Glue run; form_1281 pipe-delimited CSV with header and _metadata.json",
   "containment": "new unique execution name and output prefix; nothing is overwritten; delete the output prefix to roll back",
-  "evidenceIds": ["exec-forward-decision"],
+  "evidenceIds": ["exec-v4-form-1281-only"],
   "operationDigest": "sha256:…"
 }
 ```

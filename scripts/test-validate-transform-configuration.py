@@ -37,18 +37,29 @@ SHORT_REQUEST_REFERENCES = (
     "execution-and-parity.md",
     "adding-profiles.md",
 )
+FORBIDDEN = REFERENCE / "forbidden-concepts.json"
+FORBIDDEN_SCHEMA = REFERENCE / "forbidden-concepts.schema.json"
 PROFILE_NAMES = (
-    "dsa-filter-decision.json",
+    "lexicon-interprose-v4.json",
     "quiq-sms-lifecycle.json",
     "m2d-document-media.json",
 )
 CALIBRATION_NAMES = (
-    "dsa-filter-decision-round-trip.md",
+    "lexicon-interprose-v4-round-trip.md",
     "quiq-sms-full-day-round-trip.md",
     "m2d-document-media-round-trip.md",
 )
+RETIRED_FILES = (
+    PROFILES / "dsa-filter-decision.json",
+    REFERENCE / "calibrations" / "dsa-filter-decision-round-trip.md",
+)
 STATUSES = {"PASS", "FAIL", "BLOCKED", "APPROVAL_REQUIRED"}
-DOMAIN_BRANCH_TERMS = ("dsa-filter-decision", "quiq-sms-lifecycle", "m2d-document-media")
+DOMAIN_BRANCH_TERMS = (
+    "lexicon-interprose-v4", "quiq-sms-lifecycle", "m2d-document-media",
+    "form_1281", "payment_plan_schedule", "dsa-filter-decision",
+)
+V4_KEY = "lexicon-to-interprose@4.0.0"
+V4_OUTPUTS = ("form_1281", "payment_plan", "payment_plan_schedule")
 MATERIAL_FACT_IDS = (
     "source-and-target-meaning",
     "required-directions",
@@ -97,6 +108,8 @@ class ContractValidator:
             errors = profile_errors(value)
         elif self.kind == "draft":
             errors = draft_errors(value)
+        elif self.kind == "forbidden":
+            errors = forbidden_errors(value)
         else:
             errors = run_errors(value)
         if self.external is not None:
@@ -117,14 +130,32 @@ def validator(path: Path) -> ContractValidator:
         fail(f"{path.relative_to(ROOT)}: schema ID must equal filename")
     if schema.get("type") != "object" or schema.get("additionalProperties") is not False:
         fail(f"{path.relative_to(ROOT)}: schema must be a closed object")
-    kind = (
-        "profile"
-        if path == PROFILE_SCHEMA
-        else "draft"
-        if path == DRAFT_PROFILE_SCHEMA
-        else "artifact"
-    )
+    kind = {
+        PROFILE_SCHEMA: "profile",
+        DRAFT_PROFILE_SCHEMA: "draft",
+        FORBIDDEN_SCHEMA: "forbidden",
+    }.get(path, "artifact")
     return ContractValidator(kind, schema)
+
+
+def forbidden_errors(value: dict) -> list[str]:
+    errors = [f"missing {f}" for f in ("id", "contractVersion", "evidence", "concepts", "properties", "retiredMappings") if f not in value]
+    label = re.compile(r"[a-z0-9]+(?:_[a-z0-9]+)*")
+    key = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*@[0-9]+\.[0-9]+\.[0-9]+")
+    for concept in value.get("concepts", []):
+        if not label.fullmatch(concept.get("label", "")) or concept.get("kind") not in {"vertex", "edge"}:
+            errors.append("forbidden concept label or kind")
+    for prop in value.get("properties", []):
+        if not label.fullmatch(prop.get("concept", "")) or not label.fullmatch(prop.get("property", "")):
+            errors.append("forbidden property must be scoped to a concept")
+        if not isinstance(prop.get("sqlScan"), bool):
+            errors.append("forbidden property sqlScan flag")
+    for retired in value.get("retiredMappings", []):
+        if not key.fullmatch(retired.get("mapping", "")):
+            errors.append("retired mapping must be an exact id@version")
+    if not re.fullmatch(r"[a-f0-9]{40}", value.get("evidence", {}).get("mainCommitSha", "")):
+        errors.append("forbidden list must pin a Lexicon main commit")
+    return errors
 
 
 def profile_errors(value: dict) -> list[str]:
@@ -220,6 +251,28 @@ def profile_errors(value: dict) -> list[str]:
                 errors.append("unsafe lexicon concept policy")
         if not isinstance(concept_policy.get("forbiddenConcepts"), list):
             errors.append("missing forbidden Lexicon concepts")
+    for source in value.get("validationSources", []):
+        if source.get("artifactStatus") == "planned":
+            if "manifestSha256" in source or "manifestVersionId" in source:
+                errors.append("planned artifact claims a manifest")
+            if not source.get("tbd"):
+                errors.append("planned artifact without TBD placeholders")
+    for direction in value.get("directions", []):
+        for contract in direction.get("outputContracts", []):
+            fmt = contract.get("format", {})
+            if fmt.get("type") == "csv" and (
+                len(fmt.get("delimiter", "")) != 1 or not isinstance(fmt.get("header"), bool)
+            ):
+                errors.append("csv output contract needs a one-character delimiter and header flag")
+            for constraint in contract.get("columnConstraints", []):
+                if ("const" in constraint) == ("enum" in constraint):
+                    errors.append("column constraint needs exactly one of const or enum")
+    model_policy = value.get("lexiconModelPolicy")
+    if model_policy is not None and model_policy.get("candidateLexiconDiff") not in {"forbidden", "allowed"}:
+        errors.append("Lexicon model diff policy")
+    for evidence in value.get("partialInputPolicy", {}).get("evidence", []):
+        if not re.fullmatch(r"[a-f0-9]{40}", evidence.get("commitSha", "")):
+            errors.append("partial-input evidence must pin a commit")
     return errors
 
 
@@ -308,6 +361,9 @@ def run_errors(value: dict) -> list[str]:
         location = step.get("outputLocation")
         if location is not None and not re.fullmatch(r"(?:s3://[^?#@]+/|local://[a-z0-9][a-z0-9/_-]*)", location):
             errors.append("execution step output location must be credential-free")
+        for log in step.get("logLocations", []):
+            if not re.fullmatch(r"(?:[A-Za-z0-9_./#-]+(?::[A-Za-z0-9_.#$\[\]-][A-Za-z0-9_./#$\[\]-]*)?|local://[a-z0-9][a-z0-9/_-]*)", log):
+                errors.append("execution step log location must be a log group or local path")
     for entry in value.get("parityDerivation", []):
         if not mapping_key.fullmatch(entry.get("comparedBy", "")):
             errors.append("parity derivation must name an exact mapping")
@@ -663,14 +719,14 @@ def test_schemas_and_profiles() -> list[dict]:
                 "endExclusive": "2026-09-24T00:00:00Z",
                 "complete": True,
                 "sourceFamiliesPresent": [
-                    "decision_batch",
-                    "debt_outcomes",
-                    "authoritative_graph_export",
+                    "debt_settlement_agency",
+                    "payment_plan",
+                    "payment_plan_schedule",
                 ],
                 "coverageSignals": {
-                    "accepted-outcomes": 17,
-                    "rejected-outcomes": 9,
-                    "client-events": 12,
+                    "dsa-active": 17,
+                    "dsa-deleted": 9,
+                    "payment-plan-cancelled": 12,
                 },
                 "rowCount": 120,
                 "byteCount": 4096,
@@ -750,7 +806,7 @@ def test_schemas_and_profiles() -> list[dict]:
             "recommendedChange": "Declare the edge source vertex dataset in the existing mapping inputs.",
             "regressionEvidence": ["Registered runtime executes with zero dangling endpoints."],
             "rerunPhases": [6, 9, 11, 12],
-            "rerunDirections": ["lexicon-to-interprose"],
+            "rerunDirections": ["lexicon-to-interprose-v4"],
         }
     ]
     assert_valid(run_check, not_ready, "valid not-ready run with remediation")
@@ -869,7 +925,237 @@ def test_schemas_and_profiles() -> list[dict]:
         unsafe_concept_policy,
         "profile permitting absent Lexicon concepts",
     )
+
+    v4 = next(p for p in profiles if p["id"] == "lexicon-interprose-v4.json")
+    planned_with_manifest = copy.deepcopy(v4)
+    package = next(s for s in planned_with_manifest["validationSources"] if s["kind"] == "existing-dev-artifact")
+    package["manifestSha256"] = "a" * 64
+    assert_rejected(profile_check, planned_with_manifest, "planned artifact claiming a manifest digest")
+
+    planned_without_tbd = copy.deepcopy(v4)
+    package = next(s for s in planned_without_tbd["validationSources"] if s["kind"] == "existing-dev-artifact")
+    del package["tbd"]
+    assert_rejected(profile_check, planned_without_tbd, "planned artifact without TBD placeholders")
+
+    csv_without_delimiter = copy.deepcopy(v4)
+    del csv_without_delimiter["directions"][1]["outputContracts"][0]["format"]["delimiter"]
+    assert_rejected(profile_check, csv_without_delimiter, "csv output contract without a delimiter")
+
+    multi_char_delimiter = copy.deepcopy(v4)
+    multi_char_delimiter["directions"][1]["outputContracts"][0]["format"]["delimiter"] = "||"
+    assert_rejected(profile_check, multi_char_delimiter, "multi-character csv delimiter")
+
+    ambiguous_constraint = copy.deepcopy(v4)
+    ambiguous_constraint["directions"][1]["outputContracts"][0]["columnConstraints"][0]["enum"] = ["1281"]
+    assert_rejected(profile_check, ambiguous_constraint, "column constraint with both const and enum")
+
+    unknown_model_policy = copy.deepcopy(v4)
+    unknown_model_policy["lexiconModelPolicy"]["candidateLexiconDiff"] = "warn"
+    assert_rejected(profile_check, unknown_model_policy, "unknown Lexicon model diff policy")
+
+    mutable_partial_evidence = copy.deepcopy(v4)
+    mutable_partial_evidence["partialInputPolicy"]["evidence"][0]["commitSha"] = "main"
+    assert_rejected(profile_check, mutable_partial_evidence, "partial-input evidence pinned to a branch")
+
+    forbidden_check = validator(FORBIDDEN_SCHEMA)
+    shared = load_json(FORBIDDEN)
+    assert_valid(forbidden_check, shared, "shared forbidden concepts")
+    bad_label = copy.deepcopy(shared)
+    bad_label["concepts"][0]["label"] = "Rule-Execution"
+    assert_rejected(forbidden_check, bad_label, "forbidden concept with a non-canonical label")
+    bad_key = copy.deepcopy(shared)
+    bad_key["retiredMappings"][0]["mapping"] = "decision-to-lexicon@latest"
+    assert_rejected(forbidden_check, bad_key, "retired mapping without an exact version")
     return profiles
+
+
+def check_v4_profile(profiles: list[dict]) -> None:
+    v4 = next(p for p in profiles if p["id"] == "lexicon-interprose-v4.json")
+    directions = {d["id"]: d for d in v4["directions"]}
+    if set(directions) != {"interprose-to-lexicon", "lexicon-to-interprose-v4"}:
+        fail("v4 profile must declare the Interprose sample forward step and the v4 projection")
+    projection = directions["lexicon-to-interprose-v4"]["mapping"]
+    planned = projection.get("plannedSource", {})
+    if (
+        projection.get("status") != "not-registered"
+        or projection.get("expectedId") != "lexicon-to-interprose"
+        or planned.get("generatedArtifact", {}).get("logicalArtifactPath")
+        != "transform-mappings/lexicon-to-interprose/4.0.0/mapping.json"
+        or planned.get("expectedOutputDatasets") != list(V4_OUTPUTS)
+        or planned.get("outputDatasetMatch") != "exact"
+    ):
+        fail("v4 projection must be the planned lexicon-to-interprose@4.0.0 with exactly three outputs")
+    forward = directions["interprose-to-lexicon"]["mapping"]
+    if (
+        forward.get("status") != "registered"
+        or forward.get("version") != "1.0.0"
+        or forward.get("outputDatasetMatch") != "includes"
+        or forward.get("generatedArtifact", {}).get("logicalArtifactPath")
+        != "transform-mappings/interprose-to-lexicon/1.0.0/mapping.json"
+    ):
+        fail("round-trip forward step must be the generated interprose-to-lexicon@1.0.0 subset")
+
+    contracts = {c["dataset"]: c for c in directions["lexicon-to-interprose-v4"]["outputContracts"]}
+    if set(contracts) != set(V4_OUTPUTS):
+        fail("v4 must declare one output contract per output")
+    expected_inputs = {
+        "form_1281": {"vertex-debt", "vertex-company", "edge-company-represents-debt"},
+        "payment_plan": {
+            "vertex-debt", "vertex-payment-plan", "vertex-user-account",
+            "edge-debt-has-payment-plan", "edge-debt-payment-plan-status-changed",
+            "edge-payment-plan-has-total-amount", "edge-payment-plan-created-by-user-account",
+            "edge-payment-plan-updated-by-user-account",
+        },
+        "payment_plan_schedule": {
+            "vertex-payment-plan", "vertex-payment-plan-installment", "edge-payment-plan-has-installment",
+        },
+    }
+    for dataset, inputs in expected_inputs.items():
+        contract = contracts[dataset]
+        if set(contract["requiredInputs"]) != inputs:
+            fail(f"{dataset}: per-output graph inputs differ from the team direction")
+        if contract["format"] != {"type": "csv", "delimiter": "|", "header": True}:
+            fail(f"{dataset}: output must be pipe-delimited CSV with a header")
+        if contract["status"] != "planned" or not contract.get("tbd"):
+            fail(f"{dataset}: an unbuilt output contract must be planned with TBD notes")
+    all_inputs = set().union(*expected_inputs.values())
+    declared_sources = {d["name"] for d in v4["datasets"] if d["role"] == "source"}
+    if not all_inputs <= declared_sources:
+        fail(f"v4 datasets omit graph inputs: {sorted(all_inputs - declared_sources)}")
+    if set(forward["expectedOutputDatasets"]) != all_inputs:
+        fail("the round-trip forward subset must produce exactly the v4 graph inputs")
+    form = contracts["form_1281"]
+    if form["columns"] != ["debtID", "form_config_id", "field_identifier", "value"] or form["columnSource"] != "consumer-contract":
+        fail("form_1281 must be a four-column consumer contract")
+    constraints = {c["column"]: c for c in form["columnConstraints"]}
+    if constraints.get("form_config_id", {}).get("const") != "1281" or set(
+        constraints.get("field_identifier", {}).get("enum", [])
+    ) != {"DSA_NAME", "REPORTED_DATE", "DSA_REPRESENTATION"}:
+        fail("form_1281 constants are wrong")
+
+    interprose = {
+        "payment_plan": {
+            "payment_plan_id", "payment_dest_id", "paused", "create_date", "deactivation_date", "active",
+            "created_by", "misc_notes", "account_type", "debt_id", "last_updated_by", "last_update",
+            "complete_date", "payment_total", "payment_method",
+        },
+        "payment_plan_schedule": {
+            "payment_schedule_id", "payment_plan_id", "amount", "service_fee", "payment_date", "active",
+            "promise_status",
+        },
+    }
+    parity = {p["dataset"]: p["fields"] for p in directions["lexicon-to-interprose-v4"]["parityDatasets"]}
+    for dataset in ("payment_plan", "payment_plan_schedule"):
+        if contracts[dataset]["columnSource"] != "language-definition-subset":
+            fail(f"{dataset}: columns must be a subset of interprose.json")
+        if parity[dataset] != contracts[dataset]["columns"]:
+            fail(f"{dataset}: parity fields must equal the declared graph-fillable columns")
+        if not set(parity[dataset]) <= interprose[dataset]:
+            fail(f"{dataset}: declares a column interprose.json does not define")
+    for not_fillable in ("misc_notes", "payment_method", "account_type", "paused"):
+        if not_fillable in parity["payment_plan"]:
+            fail(f"payment_plan declares non-graph-fillable column {not_fillable}")
+    for needs_status_edge in ("payment_date", "promise_status", "active"):
+        if needs_status_edge in parity["payment_plan_schedule"]:
+            fail(f"payment_plan_schedule declares {needs_status_edge} without its status edge input")
+    if v4["parityPolicy"] != {
+        "fieldSource": "language-definition-and-registration",
+        "declaredFields": "exact",
+        "undefinedDatasets": "consumer-contract",
+    }:
+        fail("v4 parity must be exact graph-fillable columns plus the form consumer contract")
+
+    if v4["validationWorkflow"] != {
+        "steps": [
+            {"sequence": 1, "id": "forward-interprose-sample", "direction": "interprose-to-lexicon", "inputSource": "profile-evidence"},
+            {"sequence": 2, "id": "project-v4", "direction": "lexicon-to-interprose-v4", "inputSource": "previous-step-output"},
+        ],
+        "persistPolicy": "forbidden",
+    }:
+        fail("v4 must run Interprose sample -> Interprose-to-Lexicon SQL -> v4 without Persist")
+    strategy = v4["roundTripStrategy"]
+    if (
+        strategy["steps"] != ["interprose-to-lexicon", "lexicon-to-interprose-v4"]
+        or strategy["comparison"] != "column-diff"
+        or strategy["comparisonScope"] != "inverse-outputs"
+        or {k["dataset"] for k in strategy["rowKeys"]} != set(V4_OUTPUTS)
+    ):
+        fail("v4 round-trip strategy must column-diff every output by row key")
+    if v4["lexiconModelPolicy"] != {"candidateLexiconDiff": "forbidden", "path": "src/data/lexicon.json", "modelAdditions": "forbidden"}:
+        fail("v4 must forbid any lexicon.json diff against main")
+
+    invariants = {i["id"]: i for i in v4["invariants"]}
+    election = invariants.get("dsa-election-matches-is-dsa", {}).get("description", "")
+    for token in ("version 2", "DEBT_SETTLEMENT_AGENCY", "company_identifier", "created_at descending then effective_at descending", "is_dsa"):
+        if token not in election:
+            fail(f"DSA election invariant omits {token!r}")
+    cents = invariants.get("cents-conversion-exact", {}).get("description", "")
+    if "total_amount * 100" not in cents or "scheduled_amount * 100" not in cents:
+        fail("cents conversion must cover plan totals and installment amounts")
+    for required in ("lexicon-model-unchanged", "no-forbidden-concepts", "csv-pipe-header", "persist-not-invoked", "partial-input-runs", "round-trip-column-diff"):
+        if required not in invariants:
+            fail(f"v4 profile lacks invariant {required}")
+
+    partial = v4["partialInputPolicy"]
+    if partial["status"] != "supported" or {c["expected"] for c in partial["cases"]} != {"PASS", "REJECTED"}:
+        fail("partial-input runs must prove both an accepted subset and a rejected missing input")
+    for case in partial["cases"]:
+        needed = set().union(*(expected_inputs[o] for o in case["outputDatasets"]))
+        complete = needed <= set(case["providedInputs"])
+        if complete != (case["expected"] == "PASS"):
+            fail(f"partial-input case {case['id']} expectation contradicts the required inputs")
+
+    package = next(s for s in v4["validationSources"] if s["kind"] == "existing-dev-artifact")
+    if (
+        package["location"]
+        != "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/<window>_v1/"
+        or package["region"] != "us-east-2"
+        or package["artifactStatus"] != "planned"
+        or not package.get("tbd")
+    ):
+        fail("v4 DEV package must be a planned placeholder at the agreed staging prefix")
+    text = json.dumps(v4).lower()
+    for retired in ("decision_batch", "dsc_client_id", "source_run_id", "product_execution", "lexicon-to-decision", "decision-to-lexicon", "3.0.0"):
+        if retired in text:
+            fail(f"v4 profile retains Decision term {retired!r}")
+
+
+def check_shared_forbidden_concepts(profiles: list[dict]) -> None:
+    for path in RETIRED_FILES:
+        if path.exists():
+            fail(f"retired Decision file still exists: {path.relative_to(ROOT)}")
+    shared = load_json(FORBIDDEN)
+    labels = {c["label"] for c in shared["concepts"]}
+    expected = {
+        "rule_execution", "rule_execution_evidence_package", "rule_execution_status_changed",
+        "rule_execution_evaluates_ruleset", "rule_execution_has_exclusion", "rule_execution_for_campaign",
+        "rule_execution_has_child_execution", "rule_execution_has_evidence_package",
+        "rule_execution_decided_debt", "product_execution_has_child_execution",
+    }
+    if not expected <= labels:
+        fail(f"shared forbidden list omits {sorted(expected - labels)}")
+    scoped = {(p["concept"], p["property"]) for p in shared["properties"]}
+    for pair in (
+        ("company_represents_debt", "dsc_client_id"),
+        ("company_represents_debt", "idempotency_key"),
+        ("company_represents_debt", "source_run_id"),
+        ("product_execution", "dsa_company_identifier"),
+        ("product_execution_includes_debt", "outcome"),
+    ):
+        if pair not in scoped:
+            fail(f"shared forbidden list omits Decision-only property {pair}")
+    if len(scoped) != len(shared["properties"]):
+        fail("shared forbidden properties contain duplicates")
+    retired = {r["mapping"] for r in shared["retiredMappings"]}
+    if retired != {"decision-to-lexicon@1.0.0", "lexicon-to-decision@1.0.0", "lexicon-to-interprose@3.0.0"}:
+        fail(f"retired Decision mappings are wrong: {sorted(retired)}")
+    for profile in profiles:
+        extras = set(profile.get("lexiconConceptPolicy", {}).get("forbiddenConcepts", []))
+        if extras & labels:
+            fail(f"{profile['id']}: repeats shared forbidden concepts instead of using the shared list")
+    resolver = read(RESOLVER)
+    if "forbidden-concepts.json" not in resolver:
+        fail("resolver does not load the shared forbidden list by default")
 
 
 def test_core_and_references(profiles: list[dict]) -> None:
@@ -900,7 +1186,7 @@ def test_core_and_references(profiles: list[dict]) -> None:
         "absent system-wide", "declared local spark setup",
         "mapping `configuration` defect", "typed-null materialization",
         "never guess a path", "generated mapping artifacts",
-        "name every contradicted field", "vertex-rule-execution",
+        "name every contradicted field", "vertex-payment-plan-installment",
         "already implemented but not yet revalidated",
         "complete utc-day", "day-or-range confirmation",
         "never choose random rows", "sourcewindowselection",
@@ -924,185 +1210,8 @@ def test_core_and_references(profiles: list[dict]) -> None:
             if invariant["phase"] not in range(1, 13):
                 fail(f"{profile['id']}: invariant phase outside core state machine")
 
-    decision = next(
-        profile for profile in profiles if profile["id"] == "dsa-filter-decision.json"
-    )
-    repositories = {repository["slug"]: repository for repository in decision["repositories"]}
-    lexicon = repositories.get("Spring-Oaks-Capital-LLC/lexicon")
-    if lexicon is None or lexicon["role"] != "configuration-source":
-        fail("Decision profile must discover mappings from the Lexicon repository")
-    if lexicon["candidateDiscovery"] != (
-        "requested-ref-then-matching-open-pr-then-default-branch"
-    ):
-        fail("Decision profile must discover an unmerged mapping candidate")
-    transform = repositories.get("Spring-Oaks-Capital-LLC/transform")
-    if transform is None or {
-        "scripts/setup-spark-tests.sh",
-        "scripts/run-spark-tests.sh",
-    } - set(transform["requiredPaths"]):
-        fail("Decision profile must declare the pinned Transform Spark harness")
-    mappings = {
-        direction["id"]: direction["mapping"]
-        for direction in decision["directions"]
-    }
-    expected_mappings = {
-        "decision-to-lexicon",
-        "lexicon-to-decision",
-        "lexicon-to-interprose",
-    }
-    expected_versions = {
-        "decision-to-lexicon": "1.0.0",
-        "lexicon-to-decision": "1.0.0",
-        "lexicon-to-interprose": "3.0.0",
-    }
-    if set(mappings) != expected_mappings or any(
-        mapping.get("status") != "registered"
-        or mapping.get("id") != mapping_id
-        or mapping.get("version") != expected_versions[mapping_id]
-        or mapping.get("repository") != "Spring-Oaks-Capital-LLC/lexicon"
-        or not mapping.get("sourcePaths")
-        or mapping.get("generatedArtifact", {}).get("logicalArtifactPath")
-        != f"transform-mappings/{mapping_id}/{expected_versions[mapping_id]}/mapping.json"
-        or not mapping.get("generatedArtifact", {}).get("materializationCommand")
-        for mapping_id, mapping in mappings.items()
-    ):
-        fail("Decision profile must pin all three registered, generated mappings")
-    if mappings["decision-to-lexicon"]["expectedOutputDatasets"] != [
-        "product_execution",
-        "product_execution_has_child_execution",
-        "product_execution_includes_debt",
-        "company_represents_debt",
-    ]:
-        fail("Decision forward outputs must be the four registered canonical concepts")
-    if "rule_execution" in json.dumps(decision["datasets"] + decision["invariants"]):
-        fail("Decision profile retains a removed rule_execution concept")
-    evidence_sources = {
-        source["id"]: source for source in decision["validationSources"]
-    }
-    full_day = evidence_sources.get("decision-full-day-dev")
-    if full_day != {
-        "id": "decision-full-day-dev",
-        "kind": "existing-dev-artifact",
-        "location": (
-            "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/"
-            "inputs/dsa-filter-decision-prod-derived/"
-            "2026-09-18T000000Z_2026-09-19T000000Z_v1/"
-        ),
-        "region": "us-east-2",
-        "artifactStatus": "ready",
-        "manifestSha256": (
-            "167469f157cf18ed0225570dbbf7b5f213498fd4dd3405a87edc6e25302824cc"
-        ),
-        "manifestVersionId": "Rl2cIl7LIcDPoj6BOmsvVRIW4EURgmmf",
-        "appliesTo": [
-            "decision-to-lexicon",
-            "lexicon-to-decision",
-            "lexicon-to-interprose",
-        ],
-        "required": True,
-    }:
-        fail("Decision profile must pin the manifested full-day DEV artifact")
-    rejected_path = evidence_sources.get("decision-mixed-rejected-path")
-    if rejected_path is None or rejected_path.get("manifestSha256") != (
-        "e890fb58a0866b9cd873b3665d6cae12adbcf29d12952e84edb63a9cf1495e5d"
-    ):
-        fail("Decision profile must pin the sanitized mixed rejected-path manifest")
-    adapted = evidence_sources.get("decision-mixed-rejected-path-adapted")
-    if adapted is None or adapted.get("artifactStatus") != "ready" or adapted.get("manifestSha256") != (
-        "8c07fdd6a18f0a6a3d7fb187675ff73996d45df05fe6e200e375355ed80a3714"
-    ):
-        fail("Decision profile must pin the manifested adapted rejected-path package")
-    if "lexicon-decision-spark-sql" not in evidence_sources:
-        fail("Decision profile must run the Lexicon Decision Spark SQL suite")
-    workflow = decision["validationWorkflow"]
-    if (
-        [step["direction"] for step in workflow["steps"]]
-        != [
-            "decision-to-lexicon",
-            "lexicon-to-decision",
-            "lexicon-to-interprose",
-        ]
-        or workflow["persistPolicy"] != "forbidden"
-    ):
-        fail("Decision profile must run forward then two reverse checks without Persist")
-    expected_parity = {
-        "decision_batch": 17,
-        "chunk_executions": 7,
-        "debt_outcomes": 4,
-        "rule_evaluations": 5,
-        "dsa_client_id_updates": 7,
-        "graph_identity_references": 5,
-    }
-    for direction_id in ("decision-to-lexicon", "lexicon-to-decision"):
-        direction = next(
-            item for item in decision["directions"] if item["id"] == direction_id
-        )
-        parity = {
-            dataset["dataset"]: len(dataset["fields"])
-            for dataset in direction.get("parityDatasets", [])
-        }
-        if parity != expected_parity:
-            fail(f"{direction_id}: incomplete per-dataset Decision field parity")
-    form_direction = next(
-        item for item in decision["directions"]
-        if item["id"] == "lexicon-to-interprose"
-    )
-    if {
-        dataset["dataset"]: len(dataset["fields"])
-        for dataset in form_direction.get("parityDatasets", [])
-    } != {"form_1281": 7}:
-        fail("lexicon-to-interprose: form_1281 must compare all seven fields")
-    expected_tests = set(decision["transformClassification"]["expectedOutputTests"])
-    if {
-        "decision-sql-executed",
-        "full-utc-day-decision-coverage",
-    } - expected_tests:
-        fail("Decision profile must require executed SQL and full-day coverage")
-    if "dsa-latest-edge-regression" not in set(
-        decision["transformClassification"]["negativeTests"]
-    ):
-        fail("Decision profile must require the DSA latest-edge regression")
-    source_window = decision.get("sourceWindowPolicy", {})
-    if (
-        source_window.get("kind") != "prod-derived-complete-utc-days"
-        or source_window.get("minimumCompleteUtcDays") != 1
-        or source_window.get("allowLongerRange") is not True
-        or set(source_window.get("requiredSourceFamilies", []))
-        != {
-            "decision_batch",
-            "chunk_executions",
-            "debt_outcomes",
-            "rule_evaluations",
-            "dsa_client_id_updates",
-            "graph_identity_references",
-        }
-        or "not-required-runs"
-        not in set(source_window.get("requiredCoverageSignals", []))
-    ):
-        fail("Decision profile must require a complete PROD-derived UTC day")
-    concept_policy = decision.get("lexiconConceptPolicy", {})
-    if (
-        any(
-            concept_policy.get(field) is not True
-            for field in (
-                "currentDefinitionRequired",
-                "rejectAbsent",
-                "rejectDeprecated",
-                "reintroductionRequiresModelingApproval",
-            )
-        )
-        or "rule_execution" not in set(concept_policy.get("forbiddenConcepts", []))
-        or "rule_execution_decided_debt"
-        not in set(concept_policy.get("forbiddenConcepts", []))
-    ):
-        fail("Decision profile must reject removed/deprecated Lexicon concepts")
-    decision_text = json.dumps(decision).lower()
-    for invented in (
-        "dsa-client-events", "filter-decision-graph", "dsa-form-1281",
-        "decision-category", "reason-category", "claydol",
-    ):
-        if invented in decision_text:
-            fail(f"Decision profile contains obsolete or invented term {invented!r}")
+    check_v4_profile(profiles)
+    check_shared_forbidden_concepts(profiles)
 
     required = (
         "operating-contract.md",
@@ -1122,6 +1231,8 @@ def test_naming_and_sanitization() -> None:
         DRAFT_PROFILE_SCHEMA,
         PROFILE_SCHEMA,
         RUN_SCHEMA,
+        FORBIDDEN,
+        FORBIDDEN_SCHEMA,
         *(REFERENCE / "profiles" / name for name in PROFILE_NAMES),
         *(REFERENCE / "calibrations" / name for name in CALIBRATION_NAMES),
     ]
@@ -1274,39 +1385,17 @@ def props(*names: str, **enums: list[str]) -> dict:
     return out
 
 
-DECISION_FIELDS = {
-    "decision_batch": props(
-        "source_run_id", "schema_version", "candidate_count", "accepted_count",
-        "rejected_count", "chunk_count", "historical_client_event_status",
-        "evidence_manifest_uri", "evidence_manifest_versioning",
-        "evidence_manifest_version_id", "evidence_manifest_etag",
-        "evidence_manifest_size", "evidence_manifest_sha256",
-        "versioned_source_object_count", "unversioned_stable_read_object_count",
-        "source_object_count", status=["complete", "not_required"],
-    ),
-    "chunk_executions": props(
-        "source_run_id", "chunk_index", "chunk_count", "candidate_count",
-        "accepted_count", "rejected_count", "filter_execution_arn",
-    ),
-    "debt_outcomes": props("source_run_id", "chunk_index", "debt_id", outcome=["accepted", "rejected"]),
-    "rule_evaluations": props(
-        "source_run_id", "chunk_index", "debt_id",
-        "latest_oos_restricted_state_blocks_dsa_offer",
-        "latest_oos_missing_state_blocks_dsa_offer",
-    ),
-    "dsa_client_id_updates": props(
-        "schema_version", "event_type", "debtID", "dsc_client_id",
-        "effective_at", "source_run_id", "idempotency_key",
-    ),
-    "graph_identity_references": props(
-        "source_run_id", "debt_identifier", "dsa_company_identifier",
-        "identity_basis", "authoritative_graph_export",
-    ),
-}
-DECISION_GRAPH = [
-    "product_execution", "product_execution_has_child_execution",
-    "product_execution_includes_debt", "company_represents_debt",
+FORM_GRAPH = ["vertex-debt", "vertex-company", "edge-company-represents-debt"]
+PAYMENT_PLAN_GRAPH = [
+    "vertex-debt", "vertex-payment-plan", "vertex-user-account",
+    "edge-debt-has-payment-plan", "edge-debt-payment-plan-status-changed",
+    "edge-payment-plan-has-total-amount", "edge-payment-plan-created-by-user-account",
+    "edge-payment-plan-updated-by-user-account",
 ]
+SCHEDULE_GRAPH = ["vertex-payment-plan", "vertex-payment-plan-installment", "edge-payment-plan-has-installment"]
+V4_OUTPUT_INPUTS = {"form_1281": FORM_GRAPH, "payment_plan": PAYMENT_PLAN_GRAPH, "payment_plan_schedule": SCHEDULE_GRAPH}
+V4_INPUTS = list(dict.fromkeys(FORM_GRAPH + PAYMENT_PLAN_GRAPH + SCHEDULE_GRAPH))
+V4_OUTPUT = {"shape": "tabular", "format": "csv", "options": {"delimiter": "|", "header": True}}
 SMS_GRAPH = [
     "vertex-debt", "vertex-phone-number", "vertex-text-message", "vertex-template",
     "edge-debt-has-text-message", "edge-phone-number-has-text-message",
@@ -1319,9 +1408,20 @@ EMAIL_GRAPH = [
     "edge-email-message-has-from-email", "edge-email-message-rendered-from-template",
     "edge-email-message-status-changed",
 ]
+INTERPROSE_TABLES = ["account", "debt", "debt_settlement_agency", "email_queue", "payment", "payment_plan", "payment_plan_schedule", "txt_msg_log"]
+FORM_SQL = (
+    "SELECT d.`~id` AS debtID, '1281' AS form_config_id, 'DSA_NAME' AS field_identifier, c.`name:String` AS value\n"
+    "FROM source_edge_company_represents_debt e\n"
+    "JOIN source_vertex_company c ON c.`~id` = e.`~from`\n"
+    "JOIN source_vertex_debt d ON d.`~id` = e.`~to`\n"
+    "WHERE e.`version:Int` = 2 AND e.`company_type:String` = 'DEBT_SETTLEMENT_AGENCY'\n"
+)
 
 
-def mapping_doc(mid: str, version: str, source: str, target: str, inputs: list[str], outputs: list[str], shape: str, graph_inputs: bool = False) -> dict:
+def mapping_doc(
+    mid: str, version: str, source: str, target: str, inputs: list[str], outputs: list[str], shape: str,
+    graph_inputs: bool = False, *, output_inputs: dict[str, list[str]] | None = None, output: dict | None = None,
+) -> dict:
     return {
         "id": mid,
         "version": version,
@@ -1334,112 +1434,160 @@ def mapping_doc(mid: str, version: str, source: str, target: str, inputs: list[s
              **({"graph": {"kind": "vertex" if t.startswith("vertex-") else "edge"}} if graph_inputs and t.startswith(("vertex-", "edge-")) else {})}
             for t in inputs
         ],
-        "output": {"shape": shape, "format": "csv" if shape == "graph" else "jsonl", "options": {}},
-        "outputs": [{"dataset": o, "requiredInputs": inputs, "queries": [{"path": f"queries/{o}.sql"}], "dependsOn": []} for o in outputs],
+        "output": output or {"shape": shape, "format": "csv" if shape == "graph" else "jsonl", "options": {}},
+        "outputs": [
+            {"dataset": o, "requiredInputs": (output_inputs or {}).get(o, inputs), "queries": [{"path": f"queries/{o}.sql"}], "dependsOn": []}
+            for o in outputs
+        ],
     }
 
 
+def v4_doc(**overrides) -> dict:
+    doc = mapping_doc(
+        "lexicon-to-interprose", "4.0.0", "lexicon", "interprose", V4_INPUTS, list(V4_OUTPUTS), "tabular", True,
+        output_inputs=V4_OUTPUT_INPUTS, output=V4_OUTPUT,
+    )
+    doc.update(overrides)
+    return doc
+
+
 REGISTERED_MAPPINGS = {
-    "decision-to-lexicon@1.0.0": ("decision", "lexicon", list(DECISION_FIELDS), DECISION_GRAPH, "tabular", False),
-    "lexicon-to-decision@1.0.0": ("lexicon", "decision", DECISION_GRAPH, [d for d in DECISION_FIELDS if d != "graph_identity_references"], "tabular", False),
     "lexicon-to-interprose@1.0.0": ("lexicon", "interprose", EMAIL_GRAPH, ["debt", "email_queue"], "tabular", True),
     "lexicon-to-interprose@2.0.0": ("lexicon", "interprose", SMS_GRAPH + ["hydrated_text_message_artifact"], ["sms_log"], "tabular", True),
-    "lexicon-to-interprose@3.0.0": ("lexicon", "interprose", ["company_represents_debt"], ["form_1281"], "tabular", False),
     "lexicon-to-sms@1.0.0": ("lexicon", "sms", SMS_GRAPH + ["hydrated_text_message_artifact"], ["sms_log"], "tabular", True),
     "quiq-to-lexicon@1.0.0": ("quiq", "lexicon", ["lifecycle"], SMS_GRAPH, "graph", False),
-    "interprose-to-lexicon@1.0.0": ("interprose", "lexicon", ["debt", "txt_msg_log", "email_queue"], EMAIL_GRAPH + SMS_GRAPH[:3] + ["edge-company-represents-debt"], "graph", False),
+    "interprose-to-lexicon@1.0.0": (
+        "interprose", "lexicon", INTERPROSE_TABLES,
+        list(dict.fromkeys(EMAIL_GRAPH + SMS_GRAPH[:3] + V4_INPUTS + ["vertex-postal-mail"])), "graph", False,
+    ),
+}
+STALE_DEV_MAPPINGS = {
+    "decision-to-lexicon@1.0.0": ("decision", "lexicon", ["decision_batch"], ["product_execution"], "tabular", False),
+    "lexicon-to-decision@1.0.0": ("lexicon", "decision", ["product_execution"], ["decision_batch"], "tabular", False),
+    "lexicon-to-interprose@3.0.0": ("lexicon", "interprose", ["company_represents_debt"], ["form_1281"], "tabular", False),
 }
 
 
-def build_lexicon_fixture(root: Path) -> dict[str, Path]:
-    candidate, main, dev, prod, staging = (root / n for n in ("candidate", "main", "dev", "prod", "staging"))
-    concepts_main = ["debt", "company", "product", "product_execution", "phone_number", "text_message", "template", "email", "email_message"]
-    edges_main = [
-        "product_has_execution", "product_execution_includes_debt", "company_represents_debt",
+def write_mapping(root: Path, doc: dict, sql: dict[str, str] | None = None) -> None:
+    base = root / f"transform-mappings/{doc['id']}/{doc['version']}"
+    write_json(base / "mapping.json", doc)
+    for name, text in (sql or {}).items():
+        (base / "queries").mkdir(parents=True, exist_ok=True)
+        (base / "queries" / name).write_text(text)
+
+
+def lexicon_model(extra_edges: list[dict] | None = None, extra_properties: dict[str, list[str]] | None = None) -> dict:
+    vertices = [
+        "debt", "company", "payment_plan", "payment_plan_installment", "user_account", "product",
+        "product_execution", "phone_number", "text_message", "template", "email", "email_message",
+    ]
+    edges = [
+        "company_represents_debt", "debt_has_payment_plan", "debt_payment_plan_status_changed",
+        "payment_plan_has_total_amount", "payment_plan_has_installment", "payment_plan_created_by_user_account",
+        "payment_plan_updated_by_user_account", "payment_plan_installment_status_changed",
+        "product_has_execution", "product_execution_includes_debt",
         "debt_has_text_message", "phone_number_has_text_message", "text_message_status_changed",
         "text_message_has_rendered_artifact_uri", "text_message_rendered_from_template",
         "debt_has_email_message", "email_has_email_message", "email_message_has_from_email",
         "email_message_rendered_from_template", "email_message_status_changed",
     ]
-    for checkout, extra_edges in ((main, []), (candidate, ["product_execution_has_child_execution"])):
-        write_json(checkout / "src/data/lexicon.json", {
-            "vertices": [vertex(v, props("id")) for v in concepts_main],
-            "edges": [{"type": e, "from": "a", "to": "b", "properties": {}} for e in edges_main + extra_edges],
-        })
-        spec = checkout / "infra/test/transform-mappings.spec.ts"
-        spec.parent.mkdir(parents=True, exist_ok=True)
-        spec.write_text('for (const retired of [\n  "interprose-to-graph",\n  "sms-to-interprose",\n  "sms-log-to-interprose",\n]) {}\n')
-    (candidate / "src/data/lexicons.ts").write_text(
-        "export const lexicons: Record<string, LexiconRegistryEntry> = {\n"
-        "  lexicon: {\n  },\n  interprose: {\n  },\n  quiq: {\n  },\n};\n"
-    )
-    stack = candidate / "infra/lib/lexicon-stack.ts"
-    stack.parent.mkdir(parents=True, exist_ok=True)
-    stack.write_text("\n".join(
-        f'        parameterName: "/lexicon/{p}",' for p in ("data-uri", "interprose-data-uri", "quiq-data-uri", "decision-data-uri", "transform-mappings-uri")
-    ))
-    write_json(candidate / "src/data/decision.json", {
-        "vertices": [vertex(name, fields) for name, fields in DECISION_FIELDS.items()],
-        "edges": [],
-    })
-    write_json(candidate / "src/data/interprose.json", {
-        "vertices": [
-            vertex("form_1281", props("debtID", "dsc_client_id", "form_config_id", "field_identifier", "effective_at", "source_run_id", "idempotency_key")),
-            vertex("txt_msg_log", props("txt_msg_log_id", "debt_id", "status")),
+    edge_properties = {
+        "company_represents_debt": ["company_type", "status", "effective_at", "version", "created_at"],
+        "payment_plan_has_total_amount": ["total_amount", "effective_at", "created_at"],
+    }
+    for concept, names in (extra_properties or {}).items():
+        edge_properties[concept] = edge_properties.get(concept, []) + names
+    return {
+        "vertices": [vertex(v, props("id")) for v in vertices] + [{**vertex("postal_mail", props("id")), "is_deprecated": True}],
+        "edges": [
+            {"type": e, "from": "a", "to": "b", "properties": props(*edge_properties.get(e, []))}
+            for e in edges
+        ] + (extra_edges or []),
+    }
+
+
+def write_checkout(checkout: Path, model: dict) -> None:
+    write_json(checkout / "src/data/lexicon.json", model)
+    spec = checkout / "infra/test/transform-mappings.spec.ts"
+    spec.parent.mkdir(parents=True, exist_ok=True)
+    spec.write_text('for (const retired of [\n  "interprose-to-graph",\n  "sms-to-interprose",\n  "sms-log-to-interprose",\n]) {}\n')
+
+
+def build_lexicon_fixture(root: Path) -> dict[str, Path]:
+    names = ("candidate", "candidate-v4", "candidate-drift", "main", "dev", "prod", "v4", "v4-bad", "staging", "history-stage")
+    paths = {n: root / n for n in names}
+    write_checkout(paths["main"], lexicon_model())
+    for name in ("candidate", "candidate-v4"):
+        write_checkout(paths[name], lexicon_model())
+    write_checkout(paths["candidate-drift"], lexicon_model(
+        extra_edges=[
+            {"type": "product_execution_has_child_execution", "from": "product_execution", "to": "product_execution", "properties": {}},
+            {"type": "debt_collection_channel_changed", "from": "debt", "to": "debt", "properties": {}},
         ],
-        "edges": [],
-    })
-    write_json(candidate / "src/data/quiq.json", {"vertices": [vertex("lifecycle", props("interaction_identifier", "canonical_status"))], "edges": []})
-    for key in ("decision-to-lexicon@1.0.0", "lexicon-to-decision@1.0.0"):
-        mid, version = key.split("@")
-        write_json(candidate / f"src/transform/mappings/{mid}/registration.json", mapping_doc(mid, version, *REGISTERED_MAPPINGS[key]))
+        extra_properties={"company_represents_debt": ["dsc_client_id"]},
+    ))
+    for name in ("candidate", "candidate-v4", "candidate-drift"):
+        checkout = paths[name]
+        (checkout / "src/data/lexicons.ts").write_text(
+            "export const lexicons: Record<string, LexiconRegistryEntry> = {\n"
+            "  lexicon: {\n  },\n  interprose: {\n  },\n  quiq: {\n  },\n};\n"
+        )
+        stack = checkout / "infra/lib/lexicon-stack.ts"
+        stack.parent.mkdir(parents=True, exist_ok=True)
+        stack.write_text("\n".join(
+            f'        parameterName: "/lexicon/{p}",' for p in ("data-uri", "interprose-data-uri", "quiq-data-uri", "transform-mappings-uri")
+        ))
+        write_json(checkout / "src/data/interprose.json", {
+            "vertices": [
+                vertex("payment_plan", props(
+                    "payment_plan_id", "payment_dest_id", "paused", "create_date", "deactivation_date", "active",
+                    "created_by", "misc_notes", "account_type", "debt_id", "last_updated_by", "last_update",
+                    "complete_date", "payment_total", "payment_method",
+                ), required=[]),
+                vertex("payment_plan_schedule", props(
+                    "payment_schedule_id", "payment_plan_id", "amount", "service_fee", "payment_date", "active",
+                    promise_status=["PENDING", "DEFERRED", "KEPT", "BROKEN"],
+                ), required=[]),
+                vertex("debt_settlement_agency", props("id", "debt_id", "dsa_name", "reported_date", "delete_date"), required=[]),
+                vertex("txt_msg_log", props("txt_msg_log_id", "debt_id", "status")),
+            ],
+            "edges": [],
+        })
+        write_json(checkout / "src/data/quiq.json", {"vertices": [vertex("lifecycle", props("interaction_identifier", "canonical_status"))], "edges": []})
+    registration = paths["candidate-v4"] / "src/transform/mappings/lexicon-to-interprose/versions/4.0.0"
+    write_json(registration / "registration.json", v4_doc())
+    (registration / "queries").mkdir(parents=True)
+    for dataset in V4_OUTPUTS:
+        (registration / "queries" / f"{dataset}.sql").write_text(FORM_SQL if dataset == "form_1281" else f"SELECT 1 AS {dataset}_marker\n")
     for key, spec_args in REGISTERED_MAPPINGS.items():
         mid, version = key.split("@")
-        write_json(dev / f"transform-mappings/{mid}/{version}/mapping.json", mapping_doc(mid, version, *spec_args))
-        if "decision" not in key and key != "lexicon-to-interprose@3.0.0":
-            write_json(prod / f"transform-mappings/{mid}/{version}/mapping.json", mapping_doc(mid, version, *spec_args))
-    write_json(staging / "transform-mappings/decision-to-lexicon/2.0.0/mapping.json", mapping_doc(
-        "decision-to-lexicon", "2.0.0", "decision", "lexicon", list(DECISION_FIELDS), DECISION_GRAPH + ["rule_execution"], "graph",
+        write_mapping(paths["dev"], mapping_doc(mid, version, *spec_args))
+        write_mapping(paths["prod"], mapping_doc(mid, version, *spec_args))
+    for key, spec_args in STALE_DEV_MAPPINGS.items():
+        mid, version = key.split("@")
+        write_mapping(paths["dev"], mapping_doc(mid, version, *spec_args))
+    write_mapping(paths["v4"], v4_doc(), {"form_1281.sql": FORM_SQL})
+    bad_inputs = dict(V4_OUTPUT_INPUTS, payment_plan=[i for i in PAYMENT_PLAN_GRAPH if i != "edge-payment-plan-has-total-amount"])
+    write_mapping(paths["v4-bad"], mapping_doc(
+        "lexicon-to-interprose", "4.0.0", "lexicon", "interprose", V4_INPUTS, list(V4_OUTPUTS), "tabular", True,
+        output_inputs=bad_inputs, output={"shape": "tabular", "format": "csv", "options": {"delimiter": ",", "header": False}},
     ))
-    staged_sql = staging / "transform-mappings/decision-to-lexicon/2.0.0/queries/product_execution.sql"
-    staged_sql.parent.mkdir(parents=True, exist_ok=True)
-    staged_sql.write_text("SELECT source_run_id AS rule_execution_id FROM source_decision_batch -- rule_execution\n")
-    write_json(staging / "transform-mappings/lexicon-to-decision/1.0.0/mapping.json", mapping_doc(
-        "lexicon-to-decision", "1.0.0", "lexicon", "decision", DECISION_GRAPH, list(DECISION_FIELDS), "tabular",
+    staged_inputs = V4_INPUTS + ["edge-product-execution-has-child-execution"]
+    write_mapping(
+        paths["staging"],
+        mapping_doc(
+            "lexicon-to-interprose", "4.0.0", "lexicon", "interprose", staged_inputs, list(V4_OUTPUTS), "tabular", True,
+            output_inputs=V4_OUTPUT_INPUTS, output=V4_OUTPUT,
+        ),
+        {"form_1281.sql": FORM_SQL.replace("c.`name:String` AS value", "e.dsc_client_id AS value") + "-- joins rule_execution for legacy parity\n"},
+    )
+    write_mapping(paths["history-stage"], mapping_doc(
+        "interprose-to-lexicon", "2.0.0", "interprose", "lexicon", INTERPROSE_TABLES,
+        V4_INPUTS + ["edge-debt-collection-channel-changed"], "graph",
     ))
     ssm_dev = root / "ssm-dev.txt"
-    ssm_dev.write_text("/lexicon/data-uri\n/lexicon/decision-data-uri\n/lexicon/interprose-data-uri\n/lexicon/quiq-data-uri\n/lexicon/transform-mappings-uri\n")
-    return {"candidate": candidate, "main": main, "dev": dev, "prod": prod, "staging": staging, "ssm-dev": ssm_dev}
-
-
-def build_stale_decision_profiles(root: Path) -> Path:
-    """Copy the shipped profiles, reverting Decision to its pre-registration shape."""
-    root.mkdir(parents=True)
-    for source in sorted(PROFILES.glob("*.json")):
-        profile = json.loads(source.read_text())
-        if profile["id"] == "dsa-filter-decision.json":
-            for direction in profile["directions"]:
-                mapping = direction["mapping"]
-                expected = list(mapping["expectedOutputDatasets"])
-                if direction["id"] == "decision-to-lexicon":
-                    expected += ["product", "product_has_execution", "company", "debt"]
-                direction["mapping"] = {
-                    "status": "not-registered",
-                    "expectedId": mapping["id"],
-                    "owner": "kecleon",
-                    "reason": "Stale pre-registration fixture used to prove drift detection.",
-                    "plannedSource": {
-                        "repository": mapping["repository"],
-                        "sourcePaths": mapping["sourcePaths"],
-                        "generatedArtifact": mapping["generatedArtifact"],
-                        "expectedOutputDatasets": expected,
-                    },
-                }
-                for dataset in direction.get("parityDatasets", []):
-                    if dataset["dataset"] == "decision_batch":
-                        dataset["fields"].remove("evidence_manifest_version_id")
-        write_json(root / source.name, profile)
-    return root
+    ssm_dev.write_text("/lexicon/data-uri\n/lexicon/interprose-data-uri\n/lexicon/quiq-data-uri\n/lexicon/transform-mappings-uri\n")
+    return {**paths, "ssm-dev": ssm_dev}
 
 
 def build_main_with_removed_concept(root: Path, main: Path, label: str) -> Path:
@@ -1467,31 +1615,29 @@ def build_main_with_removed_concept(root: Path, main: Path, label: str) -> Path:
 def test_intent_resolution() -> None:
     resolver = load_resolver()
 
-    parsed = resolver.parse_request("/silvally validate lexicon (sms/decision/anything) to interprose @3.0.0 in prod round trip")
-    if parsed["status"] != "PARSED" or parsed["qualifiers"] != ["sms", "decision"]:
+    parsed = resolver.parse_request("/silvally validate lexicon (sms/payment/anything) to interprose @4.0.0 in prod round trip")
+    if parsed["status"] != "PARSED" or parsed["qualifiers"] != ["sms", "payment"]:
         fail(f"qualifier parsing failed: {parsed}")
-    if parsed["hints"] != {"version": "3.0.0", "environment": "prod", "mode": "round-trip"}:
+    if parsed["hints"] != {"version": "4.0.0", "environment": "prod", "mode": "round-trip"}:
         fail(f"hint parsing failed: {parsed['hints']}")
-    if resolver.parse_request("test the decision stuff")["status"] != "UNPARSED":
+    if resolver.parse_request("test the payment plan stuff")["status"] != "UNPARSED":
         fail("a request without a direction was parsed")
+    if resolver.qualifier_phrases(["payment", "plans"]) != {"payment", "plan", "plans", "payment_plan", "payment_plans"}:
+        fail(f"qualifier phrases are wrong: {resolver.qualifier_phrases(['payment', 'plans'])}")
 
     with tempfile.TemporaryDirectory() as tmp:
         paths = build_lexicon_fixture(Path(tmp))
-        stale_profiles = build_stale_decision_profiles(Path(tmp) / "stale-profiles")
 
-        def run(request: str, *extra: str, profiles: Path = stale_profiles, main: Path = paths["main"]) -> dict:
+        def run(request: str, *extra: str, lexicon: str = "candidate-v4", main: Path = paths["main"], registries: tuple[str, ...] = ("dev", "prod")) -> dict:
             args = [
                 "discover", "--request", request,
-                "--lexicon-root", str(paths["candidate"]),
+                "--lexicon-root", str(paths[lexicon]),
                 "--main-lexicon-root", str(main),
-                "--registry", f"dev={paths['dev']}",
-                "--registry", f"prod={paths['prod']}",
+                *[a for label in registries for a in ("--registry", f"{label}={paths[label]}")],
                 "--ssm-parameters", f"dev={paths['ssm-dev']}",
-                "--profiles", str(profiles),
                 *extra,
             ]
-            parser_args = resolver_args(resolver, args)
-            return resolver.discover(request, resolver.load_registry(parser_args))
+            return resolver.discover(request, resolver.load_registry(resolver_args(resolver, args)))
 
         def codes(result: dict) -> set[str]:
             return {f["code"] for f in result.get("findings", [])}
@@ -1499,80 +1645,99 @@ def test_intent_resolution() -> None:
         def question(result: dict, qid: str) -> dict | None:
             return next((q for q in result.get("questions", []) if q["id"] == qid), None)
 
-        decision = run("test decision to lexicon")
-        if decision["status"] != "RESOLVED" or decision["selection"]["selected"] != "decision-to-lexicon@1.0.0":
-            fail(f"decision forward did not resolve: {decision.get('status')}")
-        if [s["mapping"] for s in decision["workflow"]["steps"]] != ["decision-to-lexicon@1.0.0", "lexicon-to-decision@1.0.0"]:
-            fail("decision round trip order is wrong")
-        if [c["mapping"] for c in decision["workflow"]["optionalCrossSource"]] != ["lexicon-to-interprose@3.0.0"]:
-            fail("decision cross-source continuation was not offered")
-        if decision["selectedProfile"] != "dsa-filter-decision.json":
-            fail("decision profile was not selected from the mapping identity")
-        if decision["parityPolicy"] != {"fieldSource": "language-definition-and-registration", "declaredFields": "minimum", "undefinedDatasets": "block"}:
-            fail("selected profile parity policy was not surfaced")
-        parity = {p["dataset"]: p for p in decision["parityDerivation"]}
-        if len(parity["decision_batch"]["fields"]) != 17 or parity["decision_batch"]["profileDeclared"]["missingFromProfile"] != ["evidence_manifest_version_id"]:
-            fail("derived parity did not add the definition field missing from the profile")
-        if parity["graph_identity_references"]["status"] != "FAIL" or parity["graph_identity_references"]["finding"] != "RoundTripDatasetGap":
-            fail("unreconstructed forward input was not a round-trip gap")
-        if parity["debt_outcomes"]["coverageTargets"] != [{"field": "outcome", "values": ["accepted", "rejected"]}]:
-            fail("enum coverage targets were not derived")
-        if not parity["form_1281"].get("optional") or len(parity["form_1281"]["fields"]) != 7:
-            fail("optional cross-source parity was not derived from the target language")
-        checks = {c["concept"]: c for c in decision["conceptChecks"]["decision-to-lexicon@1.0.0"]}
-        states = {concept: check["state"] for concept, check in checks.items()}
-        if states["product_execution_has_child_execution"] != "ADDED_IN_CANDIDATE" or states["product_execution"] != "ACTIVE_ON_MAIN":
-            fail(f"concept classification against main failed: {states}")
-        if checks["product_execution_has_child_execution"].get("historyChecked") is not False:
-            fail("an added concept checked without main history must say so")
-        if not {"HubOutputNotGraph", "ProfileRegistrationStatusDrift", "ProfileOutputDatasetDrift"} <= codes(decision):
-            fail(f"decision profile drift not reported: {codes(decision)}")
-        if any(scan["forbiddenLabels"] for scan in decision["sqlScan"].values()):
-            fail("clean Decision SQL reported a forbidden label")
+        def signal_datasets(result: dict, key: str, kind: str) -> list[str]:
+            selected = next(c for c in result["selection"]["candidates"] if c["mapping"] == key)
+            return sorted(d for s in selected["signals"] if s["kind"] == kind for d in s.get("datasets", []))
 
-        current = run("test decision to lexicon", profiles=resolver.DEFAULT_PROFILES)
-        current_parity = {p["dataset"]: p for p in current["parityDerivation"]}
-        if "ProfileRegistrationStatusDrift" in codes(current):
-            fail("the shipped Decision profile still lags the registered mappings")
-        if any(f["code"] == "ProfileOutputDatasetDrift" and f.get("direction") == "decision-to-lexicon" for f in current["findings"]):
-            fail("the shipped Decision profile expects outputs the forward mapping does not register")
-        if current_parity["decision_batch"]["profileDeclared"]["missingFromProfile"]:
-            fail("the shipped Decision profile omits a decision_batch definition field")
+        # New behavior: form 1281 and payment plan requests resolve to the v4 projection.
+        form = run("test lexicon to interprose form 1281")
+        if form["status"] != "RESOLVED" or form["selection"]["selected"] != V4_KEY:
+            fail(f"form 1281 request did not resolve to {V4_KEY}: {form.get('status')} {form['selection'].get('selected')}")
+        if signal_datasets(form, V4_KEY, "output-dataset") != ["form_1281"]:
+            fail("form 1281 selection lacks output-dataset evidence")
+        if [c["mapping"] for c in form["selection"]["candidates"]] != [
+            "lexicon-to-interprose@1.0.0", "lexicon-to-interprose@2.0.0", V4_KEY,
+        ]:
+            fail(f"retired lexicon-to-interprose@3.0.0 was offered: {[c['mapping'] for c in form['selection']['candidates']]}")
+        if form["selectedProfile"] != "lexicon-interprose-v4.json":
+            fail("v4 profile was not selected from the mapping identity")
+        for request, dataset in (
+            ("test lexicon payment plan to interprose", "payment_plan"),
+            ("test lexicon payment plans to interprose", "payment_plan"),
+            ("test lexicon (payment plan schedule) to interprose", "payment_plan_schedule"),
+            ("check lexicon (form 1281) -> interprose in dev", "form_1281"),
+        ):
+            result = run(request)
+            if result["status"] != "RESOLVED" or result["selection"]["selected"] != V4_KEY:
+                fail(f"{request!r} did not resolve to {V4_KEY}")
+            if dataset not in signal_datasets(result, V4_KEY, "output-dataset"):
+                fail(f"{request!r} lacks the {dataset} output-dataset signal")
+        if not {"ProfileRegistrationStatusDrift", "UpstreamSourceUnresolved", "RetiredMappingInRegistry"} <= codes(form):
+            fail(f"v4 resolution findings are incomplete: {codes(form)}")
+        if {"LexiconModelDiffersFromMain", "OutputFormatDrift", "ProfileOutputInputDrift", "ForbiddenConceptInSql",
+                "RemovedLexiconConcept", "ForbiddenConceptInLexicon", "ForbiddenPropertyInLexicon"} & codes(form):
+            fail(f"clean v4 candidate reported a violation: {codes(form)}")
+        retired_found = sorted(f["mapping"] for f in form["findings"] if f["code"] == "RetiredMappingInRegistry")
+        if retired_found != ["decision-to-lexicon@1.0.0", "lexicon-to-decision@1.0.0", "lexicon-to-interprose@3.0.0"]:
+            fail(f"stale Decision mappings in the DEV registry were not reported: {retired_found}")
+        if form["lexiconModel"]["identical"] is not True:
+            fail("an unchanged candidate lexicon.json was not proven identical to main")
+        upstream = next(f for f in form["findings"] if f["code"] == "UpstreamSourceUnresolved")
+        if upstream["candidates"] != ["interprose-to-lexicon@1.0.0"]:
+            fail(f"round-trip producer was not offered upstream: {upstream['candidates']}")
+        if [q["id"] for q in form["questions"]] != ["environment", "mapping-version", "upstream-source", "test-dataset"]:
+            fail(f"v4 question plan wrong: {[q['id'] for q in form['questions']]}")
+        if question(form, "upstream-source")["default"] != "interprose-to-lexicon@1.0.0":
+            fail("upstream default does not follow the profile round-trip workflow")
+        if form["workflow"]["persistPolicyDefault"] != "forbidden" or form["workflow"]["persistPolicySource"] != "profile":
+            fail("profile-fixed Persist policy was not applied")
+        if [(s["mapping"], s["profileStatus"]) for s in form["profileWorkflow"]] != [
+            ("interprose-to-lexicon@1.0.0", "registered"), (V4_KEY, "not-registered"),
+        ] or form["profileWorkflow"][1]["registrySources"] != ["candidate"]:
+            fail(f"profile workflow was not surfaced: {form['profileWorkflow']}")
+        if form["partialInputPolicy"]["status"] != "supported":
+            fail("partial-input policy was not surfaced")
+        parity = {p["dataset"]: p for p in form["parityDerivation"]}
+        if parity["form_1281"]["fieldSource"] != "consumer-contract" or parity["form_1281"]["comparedFields"] != [
+            "debtID", "form_config_id", "field_identifier", "value",
+        ]:
+            fail(f"form_1281 parity must come from the consumer contract: {parity['form_1281']}")
+        plan = parity["payment_plan"]
+        if len(plan["comparedFields"]) != 10 or plan["status"] != "DERIVED":
+            fail(f"payment_plan must compare exactly the graph-fillable columns: {plan}")
+        if not {"misc_notes", "payment_method", "account_type", "paused"} <= set(plan["profileDeclared"]["excludedByProfile"]):
+            fail("non-graph-fillable payment_plan columns were not recorded as excluded")
+        if plan["profileDeclared"]["missingFromProfile"]:
+            fail("exact parity must not report definition fields as missing from the profile")
+        schedule = parity["payment_plan_schedule"]
+        if schedule["comparedFields"] != ["payment_schedule_id", "payment_plan_id", "amount"] or schedule["coverageTargets"]:
+            fail(f"payment_plan_schedule must compare three columns without uncompared enum targets: {schedule}")
+        recs = form["datasetRecommendations"]
+        if recs[0]["id"] != "lexicon-interprose-v4-dev-package" or recs[0]["status"] != "planned" or not recs[0].get("tbd"):
+            fail(f"planned v4 package was not recommended with TBD fields: {recs[0]}")
+        if question(form, "test-dataset")["default"] != "prod-derived-full-utc-day":
+            fail("a planned package was offered as the default dataset")
+        proposal = next(r for r in recs if r["id"] == "prod-derived-full-utc-day")
+        if not proposal["location"].startswith("s3://<dev-transform-data-bucket>/inputs/lexicon-interprose-prod-derived/"):
+            fail(f"proposed dataset location violates the inputs/<language>-<purpose>/ layout: {proposal['location']}")
+        states = {c["concept"]: c["state"] for c in form["conceptChecks"][V4_KEY]}
+        if set(states.values()) != {"ACTIVE_ON_MAIN"} or len(states) != len(V4_INPUTS):
+            fail(f"v4 graph inputs were not all active on main: {states}")
 
-        revived_main = build_main_with_removed_concept(Path(tmp) / "main-history", paths["main"], "product_execution_has_child_execution")
-        revived = run("test decision to lexicon", main=revived_main)
-        revived_check = next(
-            c for c in revived["conceptChecks"]["decision-to-lexicon@1.0.0"]
-            if c["concept"] == "product_execution_has_child_execution"
-        )
-        if revived_check["state"] != "REMOVED_ON_MAIN" or len(revived_check.get("mainHistoryCommits", [])) != 2:
-            fail(f"a concept removed from main history was accepted as additive: {revived_check}")
-        if not any(f["code"] == "RemovedLexiconConcept" and f["concept"] == "product_execution_has_child_execution" for f in revived["findings"]):
-            fail("a concept revived from main history was not reported")
-        if [q["id"] for q in decision["questions"]] != ["environment", "test-dataset", "direction-mode", "cross-source-step", "persist-policy"]:
-            fail(f"decision question plan wrong: {[q['id'] for q in decision['questions']]}")
-        if question(decision, "environment")["default"] != "dev" or question(decision, "persist-policy")["default"] != "forbidden":
-            fail("environment or Persist defaults are unsafe")
-        if question(decision, "direction-mode")["default"] != "round-trip":
-            fail("forward request did not default to round trip")
-        dataset_ids = [o["id"] for o in question(decision, "test-dataset")["options"]]
-        if dataset_ids[:2] != ["decision-full-day-dev", "decision-mixed-rejected-path"] or "prod-derived-full-utc-day" not in dataset_ids:
-            fail(f"dataset recommendations missing profile evidence or proposals: {dataset_ids}")
-        rec = next(r for r in decision["datasetRecommendations"] if r["id"] == "prod-derived-full-utc-day")
-        if not rec["location"].startswith("s3://<dev-transform-data-bucket>/inputs/decision-prod-derived/"):
-            fail("proposed dataset location violates the inputs/<language>-<purpose>/ layout")
+        # Before the Lexicon branch registers v4, the same request names the planned mapping but never selects it.
+        planned = run("test lexicon to interprose form 1281", lexicon="candidate")
+        if planned["status"] != "AMBIGUOUS" or planned["selection"]["selected"] is not None:
+            fail("an unregistered planned mapping was selected")
+        planned_candidate = next((c for c in planned["candidates"] if c["mapping"] == V4_KEY), None)
+        if planned_candidate is None or "output-dataset-form_1281" not in planned_candidate["reasons"] or planned_candidate["status"] != "PLANNED":
+            fail(f"planned v4 was not listed as the matching candidate: {planned['candidates']}")
+        finding = next((f for f in planned["findings"] if f["code"] == "PlannedMappingNotRegistered"), None)
+        if finding is None or not finding["matchesRequest"] or finding["profile"] != "lexicon-interprose-v4.json":
+            fail("PlannedMappingNotRegistered was not reported")
+        if any(o["id"] == V4_KEY for o in question(planned, "mapping-choice")["options"]) or not planned.get("nextSteps"):
+            fail("planned mapping must not be selectable and must explain the next step")
 
-        cross = run("test lexicon decision to interprose")
-        if cross["status"] != "RESOLVED" or cross["selection"]["selected"] != "lexicon-to-interprose@3.0.0":
-            fail("decision qualifier did not select the form projection version")
-        if [s["mapping"] for s in cross["workflow"]["steps"]] != ["decision-to-lexicon@1.0.0", "lexicon-to-interprose@3.0.0"]:
-            fail("cross-source request did not chain the qualifier producer")
-        if question(cross, "direction-mode")["default"] != "one-way" or question(cross, "mapping-version") is None:
-            fail("cross-source question defaults are wrong")
-        selected = next(c for c in cross["selection"]["candidates"] if c["mapping"] == "lexicon-to-interprose@3.0.0")
-        if not any(s["kind"] == "chain-producer" and s["via"] == "decision-to-lexicon@1.0.0" for s in selected["signals"]):
-            fail("cross-source selection lacks chain-producer evidence")
-
+        # Regression: existing SMS and email behavior is unchanged.
         sms_projection = run("test lexicon (sms) to interprose")
         if sms_projection["selection"]["selected"] != "lexicon-to-interprose@2.0.0":
             fail("sms qualifier did not select the sms_log projection")
@@ -1583,16 +1748,22 @@ def test_intent_resolution() -> None:
         sms_parity = sms_projection["parityDerivation"][0]
         if sms_parity["status"] != "BLOCKED" or sms_parity["finding"] != "DatasetUndefined":
             fail("dataset absent from the target language did not block derived parity")
+        if question(sms_projection, "persist-policy") is not None:
+            fail("a profile-fixed Persist policy was asked again")
 
         ambiguous = run("test lexicon to interprose")
-        if ambiguous["status"] != "AMBIGUOUS" or len(ambiguous["candidates"]) != 3:
-            fail("unqualified multi-version request was not ambiguous")
+        if ambiguous["status"] != "AMBIGUOUS" or [c["mapping"] for c in ambiguous["candidates"]] != [
+            "lexicon-to-interprose@1.0.0", "lexicon-to-interprose@2.0.0", V4_KEY,
+        ]:
+            fail(f"unqualified multi-version request was not ambiguous over live versions: {ambiguous.get('candidates')}")
         if question(ambiguous, "mapping-choice") is None:
             fail("ambiguous request did not ask for the mapping")
 
         pinned = run("test lexicon to interprose @1.0.0")
         if pinned["selection"]["selected"] != "lexicon-to-interprose@1.0.0":
             fail("version hint did not select the exact mapping")
+        if run("test lexicon to interprose @3.0.0")["status"] != "AMBIGUOUS":
+            fail("a retired version hint selected a retired mapping")
 
         sms = run("test sms to lexicon")
         if sms["status"] != "NO_MAPPING" or sms.get("selection", {}).get("selected"):
@@ -1606,50 +1777,138 @@ def test_intent_resolution() -> None:
         if choice is None or choice["options"][-1]["id"] != "none" or any(o["id"] == "sms-to-interprose" for o in choice["options"]):
             fail("sms mapping-choice question must exclude retired ids and offer none")
 
+        # Inverse: Decision is retired; its mappings are named but never offered.
+        decision = run("test decision to lexicon")
+        if decision["status"] != "NO_MAPPING":
+            fail(f"retired Decision mapping still resolved: {decision['status']}")
+        retired_candidates = [c for c in decision["candidates"] if "retired-in-kit" in c.get("reasons", [])]
+        if [c["mapping"] for c in retired_candidates] != ["decision-to-lexicon@1.0.0", "lexicon-to-decision@1.0.0"]:
+            fail(f"retired Decision mappings were not explained: {decision['candidates']}")
+        if any(o["id"].startswith(("decision-to-lexicon", "lexicon-to-decision")) for o in question(decision, "mapping-choice")["options"]):
+            fail("a retired Decision mapping was offered as a choice")
+
         unknown = run("test foo to bar")
-        if unknown["status"] != "UNKNOWN_LANGUAGE" or not any(c.get("language") == "decision" for c in unknown["candidates"]):
+        if unknown["status"] != "UNKNOWN_LANGUAGE" or not any(c.get("language") == "interprose" for c in unknown["candidates"]):
             fail("unknown languages did not list registered languages")
 
-        staged = run("test decision to lexicon @2.0.0", "--registry", f"staging={paths['staging']}")
+        # Round trip from an Interprose sample: forward SQL, then v4, compared only where v4 writes.
+        round_trip = run("test interprose to lexicon round trip")
+        if [s["mapping"] for s in round_trip["workflow"]["steps"]] != ["interprose-to-lexicon@1.0.0", V4_KEY]:
+            fail(f"Interprose sample round trip did not chain the v4 projection: {round_trip['workflow']['steps']}")
+        if round_trip["selectedProfile"] != "lexicon-interprose-v4.json":
+            fail("round trip did not select the v4 profile")
+        if any(f["code"] == "ProfileOutputDatasetDrift" and f["direction"] == "interprose-to-lexicon" for f in round_trip["findings"]):
+            fail("an includes-match subset of a large generated mapping was reported as drift")
+        trip = {p["dataset"]: p for p in round_trip["parityDerivation"]}
+        if trip["payment_plan"]["status"] != "DERIVED" or len(trip["payment_plan"]["comparedFields"]) != 10:
+            fail(f"round-trip payment_plan column diff is wrong: {trip['payment_plan']}")
+        if trip["account"]["status"] != "OUT_OF_SCOPE" or trip["txt_msg_log"]["status"] != "OUT_OF_SCOPE":
+            fail("forward inputs outside the v4 outputs must be out of scope, not round-trip gaps")
+        if trip["form_1281"]["fieldSource"] != "consumer-contract":
+            fail("round-trip form_1281 must use the consumer contract")
+
+        states = {c["concept"]: c["state"] for c in round_trip["conceptChecks"]["interprose-to-lexicon@1.0.0"]}
+        if states["postal_mail"] != "NOT_SELECTED" or states["payment_plan"] != "ACTIVE_ON_MAIN":
+            fail(f"profile-selected output subset did not scope concept checks: {states}")
+        if "LexiconConceptInactive" in codes(round_trip):
+            fail("a deprecated output outside the profile's selected subset failed the v4 round trip")
+        qualified = run("test interprose to lexicon round trip form 1281")
+        if [s["mapping"] for s in qualified["workflow"]["steps"]] != ["interprose-to-lexicon@1.0.0", V4_KEY]:
+            fail("form 1281 qualifier did not choose the v4 inverse")
+        email = run("test interprose to lexicon (email queue) round trip")
+        if [s["mapping"] for s in email["workflow"]["steps"]] != ["interprose-to-lexicon@1.0.0", "lexicon-to-interprose@1.0.0"]:
+            fail(f"email qualifier did not choose the email inverse: {email['workflow']['steps']}")
+        if email["selectedProfile"] is not None:
+            fail("a profile that does not declare every workflow step was selected")
+        if not any(f["code"] == "LexiconConceptInactive" and f["concept"] == "postal_mail" for f in email["findings"]):
+            fail("a deprecated output of a full-mapping run was not reported")
+        before_v4 = run("test interprose to lexicon round trip form 1281", lexicon="candidate")
+        if [s["mapping"] for s in before_v4["workflow"]["steps"]] != ["interprose-to-lexicon@1.0.0"]:
+            fail(f"an unrequested inverse was substituted for the unregistered one: {before_v4['workflow']['steps']}")
+        if before_v4["selectedProfile"] != "lexicon-interprose-v4.json" or before_v4["profileWorkflow"][1]["registrySources"]:
+            fail("the planned-inverse run must keep the v4 profile and show its projection as unregistered")
+        if not any(f["code"] == "PlannedMappingNotRegistered" and f["mapping"] == V4_KEY for f in before_v4["findings"]):
+            fail("an unregistered inverse named by the request was not reported")
+
+        # Inverse: registered output contracts that drift from the profile.
+        drift = run("test lexicon to interprose form 1281", lexicon="candidate", registries=("dev", "prod", "v4-bad"))
+        fmt = [f for f in drift["findings"] if f["code"] == "OutputFormatDrift"]
+        if len(fmt) != 3 or any(f["fields"] != ["delimiter", "header"] for f in fmt):
+            fail(f"comma-delimited headerless outputs were not reported: {fmt}")
+        inputs = [f for f in drift["findings"] if f["code"] == "ProfileOutputInputDrift"]
+        if [(f["dataset"], f["missingFromRegistry"]) for f in inputs] != [("payment_plan", ["edge-payment-plan-has-total-amount"])]:
+            fail(f"missing payment_plan required input was not reported: {inputs}")
+
+        # Inverse: forbidden labels and Decision-only properties in graph inputs or SQL.
+        staged = run("test lexicon to interprose form 1281", lexicon="candidate", registries=("dev", "prod", "staging"))
         removed = [f for f in staged["findings"] if f["code"] == "RemovedLexiconConcept"]
-        if [f["concept"] for f in removed] != ["rule_execution"]:
-            fail("forbidden Lexicon concept in a mapping output was not reported")
-        if "RegistrySourceDrift" not in codes(staged):
+        if [(f["concept"], f["state"]) for f in removed] != [("product_execution_has_child_execution", "FORBIDDEN")]:
+            fail(f"reverted Decision edge in v4 inputs was not reported: {removed}")
+        sql_hits = sorted((f["concept"], f["query"]) for f in staged["findings"] if f["code"] == "ForbiddenConceptInSql")
+        if sql_hits != [("dsc_client_id", "form_1281.sql"), ("rule_execution", "form_1281.sql")]:
+            fail(f"forbidden label or property in v4 SQL was not reported: {sql_hits}")
+        merged = run("test lexicon to interprose form 1281", registries=("dev", "prod", "staging"))
+        if "RegistrySourceDrift" not in codes(merged):
             fail("differing registrations for one mapping identity were not reported")
-        sql_hits = [f for f in staged["findings"] if f["code"] == "ForbiddenConceptInSql"]
-        if [(f["concept"], f["query"]) for f in sql_hits] != [("rule_execution", "product_execution.sql")]:
-            fail(f"forbidden label in mapping SQL was not reported: {sql_hits}")
+
+        # Inverse: the candidate lexicon.json changes the model.
+        model = run("test lexicon to interprose form 1281", lexicon="candidate-drift", registries=("dev", "prod", "v4"))
+        model_finding = next((f for f in model["findings"] if f["code"] == "LexiconModelDiffersFromMain"), None)
+        if model_finding is None or model_finding["addedConcepts"] != ["debt_collection_channel_changed", "product_execution_has_child_execution"]:
+            fail(f"a lexicon.json diff against main was not reported: {model_finding}")
+        if model_finding["changedConcepts"] != {"company_represents_debt": {
+            "addedProperties": ["dsc_client_id"], "removedProperties": [], "addedIndexes": [], "removedIndexes": [],
+        }}:
+            fail(f"changed concept properties were not itemized: {model_finding['changedConcepts']}")
+        if not any(f["code"] == "ForbiddenConceptInLexicon" and f["concept"] == "product_execution_has_child_execution" and f["revision"] == "candidate" for f in model["findings"]):
+            fail("a shared forbidden concept in the candidate lexicon.json was not reported")
+        if not any(f["code"] == "ForbiddenPropertyInLexicon" and f["property"] == "dsc_client_id" for f in model["findings"]):
+            fail("a Decision-only property in the candidate lexicon.json was not reported")
+        unchecked = run("test lexicon to interprose form 1281", "--main-lexicon-root", "")
+        if "LexiconModelUnchecked" not in codes(unchecked):
+            fail("a missing main checkout must leave the Lexicon diff explicitly unchecked")
+
+        # Generic concept history: an added concept that main history once removed.
+        added = run("test interprose to lexicon @2.0.0", lexicon="candidate-drift", registries=("history-stage",))
+        added_check = next(c for c in added["conceptChecks"]["interprose-to-lexicon@2.0.0"] if c["concept"] == "debt_collection_channel_changed")
+        if added_check["state"] != "ADDED_IN_CANDIDATE" or added_check.get("historyChecked") is not False:
+            fail(f"an added concept checked without main history must say so: {added_check}")
+        revived_main = build_main_with_removed_concept(Path(tmp) / "main-history", paths["main"], "debt_collection_channel_changed")
+        revived = run("test interprose to lexicon @2.0.0", lexicon="candidate-drift", registries=("history-stage",), main=revived_main)
+        revived_check = next(c for c in revived["conceptChecks"]["interprose-to-lexicon@2.0.0"] if c["concept"] == "debt_collection_channel_changed")
+        if revived_check["state"] != "REMOVED_ON_MAIN" or len(revived_check.get("mainHistoryCommits", [])) != 2:
+            fail(f"a concept removed from main history was accepted as additive: {revived_check}")
 
         draft = resolver.draft_profile("test sms to lexicon", sms)
         assert_valid(validator(DRAFT_PROFILE_SCHEMA), draft, "auto-generated sms draft")
         if draft["promotionEligible"] or draft["intakeState"] != "NEEDS_INPUT":
             fail("auto-generated draft skipped intake")
-        resolved_draft = resolver.draft_profile("test decision to lexicon", decision)
-        assert_valid(validator(DRAFT_PROFILE_SCHEMA), resolved_draft, "auto-generated decision draft")
-        if resolved_draft["selectedProfile"] != "dsa-filter-decision.json":
+        resolved_draft = resolver.draft_profile("test lexicon to interprose form 1281", form)
+        assert_valid(validator(DRAFT_PROFILE_SCHEMA), resolved_draft, "auto-generated v4 draft")
+        if resolved_draft["selectedProfile"] != "lexicon-interprose-v4.json":
             fail("resolved draft lost the selected profile")
 
     run_checker = validator(RUN_SCHEMA)
     run = valid_run()
     digest = "sha256:" + "b" * 64
     run["intentResolution"] = {
-        "request": "test decision to lexicon",
+        "request": "test lexicon to interprose form 1281",
         "status": "RESOLVED",
-        "source": "decision",
-        "target": "lexicon",
-        "qualifiers": [],
-        "selectedMappings": ["decision-to-lexicon@1.0.0", "lexicon-to-decision@1.0.0"],
-        "candidateMappings": ["lexicon-to-interprose@3.0.0"],
+        "source": "lexicon",
+        "target": "interprose",
+        "qualifiers": ["form", "1281"],
+        "selectedMappings": [V4_KEY],
+        "candidateMappings": ["interprose-to-lexicon@1.0.0"],
         "registrySources": ["candidate", "dev", "prod"],
         "resolverSha256": "sha256:" + hashlib.sha256(RESOLVER.read_bytes()).hexdigest(),
     }
     run["executionSteps"] = [{
         "sequence": 1,
-        "mapping": "decision-to-lexicon@1.0.0",
+        "mapping": V4_KEY,
         "environment": "dev",
         "status": "PASS",
         "approvalOperationDigest": digest,
-        "executionArn": "arn:aws:states:us-east-2:111122223333:execution:TransformPipelineStack-transform-pipeline:silvally-run-1-decision-to-lexicon",
+        "executionArn": "arn:aws:states:us-east-2:111122223333:execution:TransformPipelineStack-transform-pipeline:silvally-run-1-lexicon-to-interprose",
         "inputManifestSha256": digest,
         "outputLocation": "s3://example-transform-bucket/outputs/silvally/run/",
         "planSha256": digest,
@@ -1658,12 +1917,12 @@ def test_intent_resolution() -> None:
         "logLocations": ["/aws/vendedlogs/states/transform-pipeline"],
     }]
     run["parityDerivation"] = [{
-        "language": "decision", "dataset": "decision_batch", "comparedBy": "lexicon-to-decision@1.0.0",
-        "fieldSource": "language-definition", "fieldCount": 17, "mismatchCount": 0, "status": "PASS",
+        "language": "interprose", "dataset": "form_1281", "comparedBy": V4_KEY,
+        "fieldSource": "consumer-contract", "fieldCount": 4, "mismatchCount": 0, "status": "PASS",
     }]
     assert_valid(run_checker, run, "run with intent resolution and execution steps")
     bad = copy.deepcopy(run)
-    bad["executionSteps"][0]["mapping"] = "decision-to-lexicon@latest"
+    bad["executionSteps"][0]["mapping"] = "lexicon-to-interprose@latest"
     assert_rejected(run_checker, bad, "mutable mapping version in execution step")
     bad = copy.deepcopy(run)
     bad["executionSteps"][0]["outputLocation"] = "https://signed.example/object?X-Amz-Signature=abc"
@@ -1684,6 +1943,7 @@ def test_intent_resolution() -> None:
         "never fix", "structured question tool", "dev deployment",
         "derived parity", "executionsteps", "current lexicon `main`",
         "no_mapping", "unknown_language", "persist policy (default `forbidden`)",
+        "forbidden-concepts.json",
     ):
         if token not in core:
             fail(f"short-request contract missing {token!r}")
@@ -1705,7 +1965,11 @@ def resolver_args(resolver, argv: list[str]):
     parser.add_argument("--registry", action="append")
     parser.add_argument("--ssm-parameters", action="append")
     parser.add_argument("--profiles", default=str(resolver.DEFAULT_PROFILES))
-    return parser.parse_args(argv)
+    parser.add_argument("--forbidden-concepts", default=str(resolver.DEFAULT_FORBIDDEN))
+    args = parser.parse_args(argv)
+    if args.main_lexicon_root == "":
+        args.main_lexicon_root = None
+    return args
 
 
 def main() -> int:

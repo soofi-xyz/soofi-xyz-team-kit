@@ -8,13 +8,14 @@ cases.
 
 | Id | Content | Proves | Does not prove |
 | --- | --- | --- | --- |
-| profile evidence | `validationSources` entries of the matched profile (`existing-dev-artifact`, `sanitized-evidence-package`) | whatever the manifest covers; reusable across runs | anything when `artifactStatus` is `staging` or the manifest digest does not verify |
+| profile evidence | `validationSources` entries of the matched profile (`existing-dev-artifact`, `sanitized-evidence-package`) | whatever the manifest covers; reusable across runs | anything when `artifactStatus` is `planned` (location reserved, `tbd` lists what is missing) or `staging`, or when the manifest digest does not verify |
 | `prod-derived-full-utc-day` | one complete half-open UTC day `[D, D+1)` of every source family the forward mapping reads, derived from PROD and sanitized | real cardinality, join closure, enum coverage, and scale at the bounded tier | rare rejected or negative paths that did not occur that day |
 | `sanitized-edge-cases` | small hand-selected package: rejected outcomes, nulls in optional fields, all-rows-omit-optional-key, conflicting or stale events, UTC boundary timestamps, duplicate idempotency keys, missing endpoints | negative and inverse behavior with an expected-outcome oracle | volume and realistic distribution |
 | `synthetic-fixture` | rows generated locally from the language definition's properties and enums | shape, typing, and local Spark execution | anything about production data; never sufficient for `READY` alone |
 
 Default recommendation: profile evidence when `ready`; otherwise the full UTC
-day plus the edge-case package. Use the synthetic fixture for `synthetic-local`
+day plus the edge-case package. A `planned` entry is shown with its `tbd`
+fields and is never the default. Use the synthetic fixture for `synthetic-local`
 mode and as a first local smoke test.
 
 ## Choosing the UTC day
@@ -40,8 +41,11 @@ s3://<dev-transform-data-bucket>/inputs/<language>-<purpose>/<window>_<version>/
   expected/<dataset>.jsonl        # edge-case oracle rows (edge-case packages only)
 ```
 
-- `<language>` is the registered source language (`decision`, `quiq`, …).
-  `<purpose>` is `prod-derived`, `edge-cases`, or `synthetic`.
+- `<language>` is the registered source language (`interprose`, `quiq`, …).
+  For a projection out of the hub it is `lexicon-<target>`, unless a qualifier
+  names a registered language. `<purpose>` is `prod-derived`, `edge-cases`, or
+  `synthetic`. A profile may reserve its own prefix, for example
+  `inputs/lexicon-interprose-v4/<window>_v1/`.
 - `<window>` is `YYYY-MM-DDT000000Z_YYYY-MM-DDT000000Z` (half-open) for day
   windows, or `YYYYMMDDTHHMMSSZ-<label>` for curated packages.
 - `<version>` is `v1`, `v2`, …. Never overwrite a prefix. A correction is a new
@@ -74,9 +78,13 @@ Each numbered write is a separate confirmation gate.
 
 ## Expected sizes and cost
 
-- Decision: one full UTC day from the existing DEV package
-  (`dsa-filter-decision-prod-derived/2026-09-18T000000Z_2026-09-19T000000Z_v1/derived/`)
-  is six JSONL tables totaling about 268 KiB.
+- Lexicon to Interprose v4: the planned package
+  `s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/<window>_v1/`
+  (bucket versioning `Enabled`, checked 2026-09-28; the prefix does not exist
+  yet) holds one sanitized Interprose snapshot day of the ten profile source
+  families under `derived/<table>/`, plus the twelve Parquet graph exports v4
+  reads. The window, manifest digest, and version are TBD until the build
+  lands. The `bounded-dev` tier caps it at 50,000 rows and $25.
 - Quiq SMS lifecycle: a full-day export is bounded by the profile's
   `full-day-dev` tier (≤100,000 rows, ≤$50).
 - Transform cost: `resolve-plan` returns `predictedCostUsd` before Glue runs.

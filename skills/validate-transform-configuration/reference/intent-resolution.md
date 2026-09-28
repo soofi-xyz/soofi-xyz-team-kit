@@ -1,7 +1,7 @@
 # Short-request intent resolution
 
-Silvally accepts requests as short as `test decision to lexicon`,
-`test sms to lexicon`, or `test lexicon decision to interprose`. This reference
+Silvally accepts requests as short as `test lexicon to interprose form 1281`,
+`test lexicon payment plan to interprose`, or `test sms to lexicon`. This reference
 defines how such a request becomes an exact `(source language, target language,
 direction, mapping id@version)` plan. It is read-only discovery; no step here
 writes outside a disposable local directory.
@@ -16,10 +16,10 @@ hints     := @<x.y.z> | v<x.y.z>        mapping version
            | round trip | one way       direction mode
 ```
 
-- A side naming the hub `lexicon` plus another word treats that word as a
-  **qualifier** (`lexicon decision`, `lexicon (sms)`): it selects which Lexicon
-  slice feeds the projection. `(sms/decision/anything)` lists alternatives; each
-  word is a qualifier.
+- A side naming the hub `lexicon` plus other words treats those words as
+  **qualifiers** (`lexicon payment plan`, `lexicon (sms)`, `interprose form 1281`):
+  they select which Lexicon slice or which output feeds the projection.
+  `(sms/payment/anything)` lists alternatives; each word is a qualifier.
 - Two non-hub languages on one side is `AMBIGUOUS`.
 - Words that are not registered languages remain terms; they are never mapped
   to a language by prose similarity. Close spellings are offered as candidates
@@ -66,19 +66,43 @@ that side cannot be derived from Lexicon (see `execution-and-parity.md`).
    *discriminating* inputs, which are the inputs not shared by every competing
    version:
    - `chain-producer`: `<qualifier>-to-lexicon` outputs overlap them;
-   - `chain-sibling`: `lexicon-to-<qualifier>` inputs overlap them.
-   A dataset-name token match is a soft signal and never selects alone.
+   - `chain-sibling`: `lexicon-to-<qualifier>` inputs overlap them;
+   - `output-dataset`: a run of qualifier words joined with `_` (a trailing
+     plural `s` is also tried) equals one of that version's discriminating
+     outputs, for example `form 1281` -> `form_1281` or `payment plans` ->
+     `payment_plan`.
+   A dataset-name substring match is a soft signal and never selects alone.
+   A single enabled candidate resolves on its own; qualifiers then only steer
+   the continuation (see below).
 4. Zero or several hard matches: `AMBIGUOUS`; list every version with its
    outputs and the qualifiers it serves.
 5. No direct mapping: `NO_MAPPING`. Rank candidates by inverse direction,
    producers of the inverse mapping's inputs, dataset mentions, same source or
    target, profile aliases, and retired ids. Do not select one.
 
+Two kinds of mapping are listed but never offered in `mapping-choice` and never
+selected:
+
+- **Retired**: ids in Lexicon's `transform-mappings.spec.ts` retired list, and
+  exact `id@version` keys in the shared `forbidden-concepts.json`
+  `retiredMappings`. A retired key still present in a registry is filtered out
+  of selection and reported as `RetiredMappingInRegistry`.
+- **Planned**: a profile direction with `status: not-registered` for the same
+  language pair whose `id@version` no inspected registry holds. It appears with
+  `status: PLANNED`, and its matching outputs are listed as reasons. It is
+  reported as `PlannedMappingNotRegistered`, with `matchesRequest` set when the
+  qualifiers name its outputs. When it is registered on a candidate branch,
+  pass that checkout as `--lexicon-root` or its `cdk synth` output as
+  `--registry`.
+
 ## Workflow derivation
 
 - `X -> lexicon` with an inverse `lexicon -> X`: forward, then inverse
-  (default round-trip). Any `lexicon -> Y` whose inputs consume forward
-  outputs is offered as an optional cross-source step.
+  (default round-trip). With several inverse versions, the one whose outputs
+  the qualifiers name is chosen, otherwise the highest version. If the
+  qualifiers name only a planned inverse, the workflow stops after the forward
+  step instead of substituting another version. Any `lexicon -> Y` whose
+  inputs consume forward outputs is offered as an optional cross-source step.
 - `lexicon -> Y` qualified by `Q` with exactly one `Q -> lexicon` producer:
   producer, then projection (default one-way). The producer's inverse is
   offered as an optional round trip.
@@ -89,17 +113,37 @@ Each later step binds only to the preceding step's committed physical output.
 
 ## Profile matching
 
-A profile matches when one of its directions declares the exact registered
-`id@version` of the first workflow step. `id` comes from `mapping.id` or
-`mapping.expectedId`. `version` comes from `mapping.version` or the planned
-`logicalArtifactPath`. Aliases in `terminologyAliases` only rank candidates.
+A profile is selected when its directions declare the exact `id@version` of
+**every** resolved workflow step, and exactly one profile does. `id` comes from
+`mapping.id` or `mapping.expectedId`. `version` comes from `mapping.version` or
+the planned `logicalArtifactPath`. A profile that reuses a large shared mapping
+(such as `interprose-to-lexicon@1.0.0`) as its first step therefore does not
+capture unrelated round trips through that mapping. Aliases in
+`terminologyAliases` only rank candidates.
+
+The selected profile then shapes the plan. Its `validationWorkflow` appears as
+`profileWorkflow`, and its first step becomes the `upstream-source` default. A
+fixed `persistPolicy` removes the Persist question. For a direction declared
+with `outputDatasetMatch: includes`, concept checks cover only the declared
+outputs; the rest are recorded as `NOT_SELECTED`, because the run selects them
+through the request's `outputDatasets`. The candidate `lexicon.json` is
+compared with `main` (`lexiconModel`) on every run. Under
+`lexiconModelPolicy.candidateLexiconDiff: forbidden`, a difference is reported
+as `LexiconModelDiffersFromMain`, and a missing `main` checkout as
+`LexiconModelUnchecked`.
 
 After matching, compare the profile against the registry:
 
 - `ProfileRegistrationStatusDrift`: the profile says `not-registered`, but an
   environment registry has the mapping `ENABLED`. Record which environments.
 - `ProfileOutputDatasetDrift`: the profile's expected output datasets differ
-  from the registered outputs.
+  from the registered outputs (`exact`), or are not all registered
+  (`includes`).
+- `ProfileOutputInputDrift`: an `outputContracts` entry's `requiredInputs`
+  differ from the registered output's `requiredInputs`.
+- `OutputFormatDrift`: the registered `output.format`, `options.delimiter`
+  (Transform default `,`), or `options.header` (default `false`) differ from
+  the contract's `format`.
 
 Drift is a finding for the profile owner. Silvally does not edit the profile,
 mapping, or language during a run.
@@ -111,7 +155,7 @@ standard library only.
 
 ```bash
 python3 skills/validate-transform-configuration/scripts/resolve-transform-intent.py discover \
-  --request "test lexicon decision to interprose" \
+  --request "test lexicon to interprose form 1281" \
   --lexicon-root "$LEXICON_CANDIDATE" --main-lexicon-root "$LEXICON_MAIN" \
   --registry dev="$REGISTRY_DEV" --registry prod="$REGISTRY_PROD" \
   --ssm-parameters dev="$SSM_DEV" --ssm-parameters prod="$SSM_PROD" \
@@ -120,26 +164,36 @@ python3 skills/validate-transform-configuration/scripts/resolve-transform-intent
 
 `draft-profile` emits a draft conforming to
 `transform-configuration-profile-draft.schema.json` when no profile matches.
-The output contains `status`, `intent`, `languages`, `selection`, `workflow`,
-`profileMatches`, `selectedProfile`, `parityPolicy`, `conceptChecks`,
+The output contains `status`, `intent`, `languages`, `selection`,
+`lexiconModel`, `workflow`, `profileWorkflow`, `profileMatches`,
+`selectedProfile`, `parityPolicy`, `partialInputPolicy`, `conceptChecks`,
 `sqlScan`, `parityDerivation`, `datasetRecommendations`, `findings`, and
-`questions`. Pass a full-history `main` clone (a worktree of a non-shallow
+`questions`. `--forbidden-concepts` defaults to
+`reference/forbidden-concepts.json`. Pass a full-history `main` clone (a worktree of a non-shallow
 clone works) so added concepts are checked against `main` history.
 Pin the resolver's SHA-256 as `intentResolution.resolverSha256` in the run
 package.
 
 ## Example resolutions
 
-Observed on 2026-09-27 against Lexicon PR #796 head
-`f259b25f4be0a1f2b13699632ce385e001cc5284`, Lexicon `main`
-`6f7a2ebf0877d9a25adf473577e5a711a1262f7b`, and the DEV/PROD registries, and
-re-observed with the same plans against head
-`6955717b16b65285f7c5efa7569f6a3548940b1a` and the DEV registry.
+Observed on 2026-09-28, read-only, against Lexicon `main`
+`6f7a2ebf0877d9a25adf473577e5a711a1262f7b` (full-history clone, used as both
+candidate and `main`), the DEV registry from `/lexicon/transform-mappings-uri`
+in `us-east-2` (five packages: `interprose-to-lexicon@1.0.0`,
+`lexicon-to-interprose@1.0.0` and `@2.0.0`, `lexicon-to-sms@1.0.0`,
+`quiq-to-lexicon@1.0.0`), and DEV `/lexicon/*` names. `lexicon-to-interprose@4.0.0`
+is not registered anywhere yet. The PROD registry was not read.
 
 | Request | Status | Plan or candidates |
 | --- | --- | --- |
-| `test decision to lexicon` | `RESOLVED` | `decision-to-lexicon@1.0.0` then `lexicon-to-decision@1.0.0`; optional `lexicon-to-interprose@3.0.0` |
-| `test lexicon decision to interprose` | `RESOLVED` | `decision-to-lexicon@1.0.0` then `lexicon-to-interprose@3.0.0` (chain-producer on `company_represents_debt`) |
+| `test lexicon to interprose form 1281` | `AMBIGUOUS` | `1.0.0`, `2.0.0`, and `lexicon-to-interprose@4.0.0` `PLANNED` (`output-dataset-form_1281`, profile `lexicon-interprose-v4.json`); `PlannedMappingNotRegistered` |
+| `test lexicon payment plan to interprose` | `AMBIGUOUS` | same, with `output-dataset-payment_plan` |
+| `test lexicon to interprose` | `AMBIGUOUS` | `1.0.0` (email), `2.0.0` (sms/quiq); `4.0.0` listed as planned |
+| `test interprose to lexicon round trip form 1281` | `RESOLVED` | `interprose-to-lexicon@1.0.0` only (the named inverse is planned); profile `lexicon-interprose-v4.json`; all 12 v4 graph inputs `ACTIVE_ON_MAIN`, other outputs `NOT_SELECTED` |
 | `test lexicon (sms) to interprose` | `RESOLVED` | `lexicon-to-interprose@2.0.0` (chain-sibling through `lexicon-to-sms@1.0.0`); upstream source must be chosen |
-| `test lexicon to interprose` | `AMBIGUOUS` | versions `1.0.0` (email), `2.0.0` (sms/quiq), `3.0.0` (decision) |
+| `test decision to lexicon` | `UNKNOWN_LANGUAGE` | `decision` is no longer published; `decision-to-lexicon@1.0.0` and `lexicon-to-decision@1.0.0` are listed as `retired-in-kit` and not offered |
 | `test sms to lexicon` | `NO_MAPPING` | `sms` is `MAPPING_ENDPOINT_ONLY`; candidates `lexicon-to-sms@1.0.0`, `quiq-to-lexicon@1.0.0`, `lexicon-to-interprose@2.0.0`; `sms-to-interprose` is retired |
+
+Once the Lexicon branch registers `4.0.0`, the contract tests assert that the
+form 1281 and payment-plan requests return `RESOLVED` with
+`lexicon-to-interprose@4.0.0` and an `output-dataset` signal.

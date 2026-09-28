@@ -223,6 +223,97 @@
             "minItems": 1,
             "uniqueItems": true,
             "items": { "$ref": "#/$defs/parityDataset" }
+          },
+          "outputContracts": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "$ref": "#/$defs/outputContract" }
+          }
+        }
+      }
+    },
+    "lexiconModelPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidateLexiconDiff", "path", "modelAdditions"],
+      "properties": {
+        "candidateLexiconDiff": { "enum": ["forbidden", "allowed"] },
+        "path": { "$ref": "#/$defs/repositoryPath" },
+        "modelAdditions": { "enum": ["forbidden", "allowed"] }
+      }
+    },
+    "roundTripStrategy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "description",
+        "sourceLanguage",
+        "steps",
+        "comparison",
+        "comparisonScope",
+        "rowKeys",
+        "normalization",
+        "permittedLosses"
+      ],
+      "properties": {
+        "kind": { "enum": ["source-sample-reprojection", "forward-inverse"] },
+        "description": { "type": "string", "minLength": 10 },
+        "sourceLanguage": { "$ref": "#/$defs/kebab" },
+        "steps": { "$ref": "#/$defs/kebabList" },
+        "comparison": { "const": "column-diff" },
+        "comparisonScope": { "enum": ["inverse-outputs", "all-forward-inputs"] },
+        "rowKeys": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["dataset", "columns"],
+            "properties": {
+              "dataset": { "$ref": "#/$defs/datasetName" },
+              "columns": { "$ref": "#/$defs/nonEmptyStringList" }
+            }
+          }
+        },
+        "normalization": { "$ref": "#/$defs/nonEmptyStringList" },
+        "permittedLosses": { "$ref": "#/$defs/stringList" },
+        "tbd": { "$ref": "#/$defs/nonEmptyStringList" }
+      }
+    },
+    "partialInputPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "mechanism", "evidence", "cases"],
+      "properties": {
+        "status": { "enum": ["supported", "unsupported", "unverified"] },
+        "mechanism": { "type": "string", "minLength": 10 },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["repository", "commitSha", "path"],
+            "properties": {
+              "repository": { "type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" },
+              "commitSha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+              "path": { "$ref": "#/$defs/repositoryPath" }
+            }
+          }
+        },
+        "cases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "outputDatasets", "providedInputs", "expected"],
+            "properties": {
+              "id": { "$ref": "#/$defs/kebab" },
+              "outputDatasets": { "$ref": "#/$defs/datasetNameList" },
+              "providedInputs": { "$ref": "#/$defs/datasetNameList" },
+              "expected": { "enum": ["PASS", "REJECTED"] }
+            }
           }
         }
       }
@@ -284,14 +375,15 @@
                 "type": "string",
                 "pattern": "^[a-z]{2}-[a-z]+-[0-9]$"
               },
-              "artifactStatus": { "enum": ["staging", "ready"] },
+              "artifactStatus": { "enum": ["planned", "staging", "ready"] },
               "manifestSha256": {
                 "type": "string",
                 "pattern": "^[a-f0-9]{64}$"
               },
               "manifestVersionId": { "type": "string", "minLength": 1 },
               "appliesTo": { "$ref": "#/$defs/kebabList" },
-              "required": { "const": true }
+              "required": { "const": true },
+              "tbd": { "$ref": "#/$defs/nonEmptyStringList" }
             },
             "allOf": [
               {
@@ -301,6 +393,21 @@
                 },
                 "then": {
                   "required": ["manifestSha256", "manifestVersionId"]
+                }
+              },
+              {
+                "if": {
+                  "properties": { "artifactStatus": { "const": "planned" } },
+                  "required": ["artifactStatus"]
+                },
+                "then": {
+                  "required": ["tbd"],
+                  "not": {
+                    "anyOf": [
+                      { "required": ["manifestSha256"] },
+                      { "required": ["manifestVersionId"] }
+                    ]
+                  }
                 }
               }
             ]
@@ -560,7 +667,8 @@
             "generatedArtifact": {
               "$ref": "#/$defs/plannedMappingSource/properties/generatedArtifact"
             },
-            "expectedOutputDatasets": { "$ref": "#/$defs/datasetNameList" }
+            "expectedOutputDatasets": { "$ref": "#/$defs/datasetNameList" },
+            "outputDatasetMatch": { "$ref": "#/$defs/outputDatasetMatch" }
           }
         },
         {
@@ -630,11 +738,65 @@
             "materializationCommand": { "type": "string", "minLength": 3 }
           }
         },
-        "expectedOutputDatasets": { "$ref": "#/$defs/datasetNameList" }
+        "expectedOutputDatasets": { "$ref": "#/$defs/datasetNameList" },
+        "outputDatasetMatch": { "$ref": "#/$defs/outputDatasetMatch" }
+      }
+    },
+    "outputDatasetMatch": {
+      "description": "exact: registered outputs equal expectedOutputDatasets; includes: registered outputs contain them (a profile that consumes a subset of a large generated mapping)",
+      "enum": ["exact", "includes"]
+    },
+    "outputContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dataset", "requiredInputs", "format", "columnSource", "columns", "status"],
+      "properties": {
+        "dataset": { "$ref": "#/$defs/datasetName" },
+        "requiredInputs": { "$ref": "#/$defs/datasetNameList" },
+        "format": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type"],
+          "properties": {
+            "type": { "enum": ["csv", "jsonl", "parquet", "xlsx"] },
+            "delimiter": { "type": "string", "minLength": 1, "maxLength": 1 },
+            "header": { "type": "boolean" }
+          },
+          "if": { "properties": { "type": { "const": "csv" } } },
+          "then": { "required": ["type", "delimiter", "header"] }
+        },
+        "columnSource": { "enum": ["language-definition-subset", "consumer-contract"] },
+        "columns": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "columnConstraints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["column"],
+            "properties": {
+              "column": { "type": "string", "minLength": 1 },
+              "const": { "type": "string" },
+              "enum": { "$ref": "#/$defs/nonEmptyStringList" }
+            },
+            "oneOf": [{ "required": ["const"] }, { "required": ["enum"] }]
+          }
+        },
+        "status": { "enum": ["planned", "verified"] },
+        "tbd": { "$ref": "#/$defs/nonEmptyStringList" }
       }
     },
     "stringList": {
       "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "nonEmptyStringList": {
+      "type": "array",
+      "minItems": 1,
       "items": { "type": "string", "minLength": 1 }
     },
     "dataset": {
