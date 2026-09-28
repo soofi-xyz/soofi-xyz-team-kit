@@ -21,7 +21,11 @@
       "interprose-sample-round-trip-column-diff",
       "csv-pipe-header-format",
       "cents-conversion-exact",
-      "partial-input-form-1281-only"
+      "partial-input-form-1281-only",
+      "form-1281-two-fields-only",
+      "deactivation-date-loss-only-with-complete-date",
+      "dsa-multiple-edges-per-debt",
+      "attempted-slot-schedule-parity"
     ],
     "negativeTests": [
       "dsa-latest-deleted-not-represented",
@@ -31,20 +35,21 @@
       "missing-required-input-rejected",
       "cents-rounding-boundary",
       "lexicon-json-diff-rejected",
-      "forbidden-concept-reintroduced"
+      "forbidden-concept-reintroduced",
+      "form-1281-reported-date-absent",
+      "payment-method-wrong-value-fails",
+      "payment-plan-schedule-missing-status-edge-rejected"
     ]
   },
   "configurationChoices": {
     "fieldNames": [
-      "form_1281 columns debtID, form_config_id, field_identifier, value; graph-fillable payment_plan and payment_plan_schedule columns from interprose.json"
+      "form_1281 columns debtID, form_config_id, field_identifier, value with field_identifier DSA_NAME or DSA_REPRESENTATION; payment_plan and payment_plan_schedule columns from interprose.json in declaration order"
     ],
     "schemaShape": [
-      "one form_1281 row per debt and field_identifier; one payment_plan row per payment plan; one payment_plan_schedule row per installment"
+      "one form_1281 row per represented debt and field_identifier (DSA_NAME, DSA_REPRESENTATION); one payment_plan row per payment plan; one payment_plan_schedule row per installment slot"
     ],
     "formats": ["Parquet graph exports in; pipe-delimited CSV with a header row out"],
-    "normalizationRules": [
-      "dollars to integer cents, ISO-8601 UTC timestamps, DSA election per company_identifier by created_at then effective_at"
-    ],
+    "normalizationRules": ["dollars to integer cents, ISO-8601 UTC timestamps, DSA election per company_identifier by created_at then effective_at"],
     "mappingExpressions": ["lexicon-to-interprose@4.0.0"],
     "profileInputs": ["DEV package inputs/lexicon-interprose-v4/20260928-dev-stage-sample_v1/ with stage/ and lexicon/ manifests"],
     "vocabularySelections": ["existing Lexicon company, debt, payment_plan, payment_plan_installment, and user_account concepts; no model additions"]
@@ -71,6 +76,7 @@
     { "name": "edge-debt-payment-plan-status-changed", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
     { "name": "edge-payment-plan-has-total-amount", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
     { "name": "edge-payment-plan-has-installment", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "edge-payment-plan-installment-status-changed", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
     { "name": "edge-payment-plan-created-by-user-account", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
     { "name": "edge-payment-plan-updated-by-user-account", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
     { "name": "interprose-source-sample", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
@@ -111,19 +117,19 @@
     },
     {
       "id": "graph-fillable-columns-only",
-      "description": "payment_plan and payment_plan_schedule emit exactly the declared graph-fillable interprose.json columns, in declared order; no column is populated from a constant or guessed default",
+      "description": "payment_plan and payment_plan_schedule emit exactly the declared interprose.json columns, in declaration order; no column is populated from a constant or guessed default",
       "phase": 11,
       "failureCode": "ProfileParityDrift"
     },
     {
       "id": "form-1281-row-shape",
-      "description": "Every form_1281 row has form_config_id '1281' and field_identifier in DSA_NAME, REPORTED_DATE, DSA_REPRESENTATION, with at most one row per (debtID, field_identifier)",
+      "description": "Every form_1281 row has form_config_id '1281' and field_identifier DSA_NAME or DSA_REPRESENTATION, with at most one row per (debtID, field_identifier) and both rows present for every represented debt; REPORTED_DATE and DSA_CLIENT_ID_ rows are expected-absent and any occurrence fails",
       "phase": 11,
       "failureCode": "Form1281ShapeMismatch"
     },
     {
       "id": "dsa-election-matches-is-dsa",
-      "description": "For each debt, only version 2 company_represents_debt edges with company_type DEBT_SETTLEMENT_AGENCY are considered; they are grouped by company company_identifier (falling back to the company ~id), the latest edge per group is chosen by created_at descending then effective_at descending, and DSA_REPRESENTATION is true exactly when some group's latest edge is ACTIVE, matching the debt is_dsa index definition on the pinned main; DSA_NAME and REPORTED_DATE come from an elected ACTIVE group",
+      "description": "For each debt, only version 2 company_represents_debt edges with company_type DEBT_SETTLEMENT_AGENCY are considered; they are grouped by company company_identifier (falling back to the company ~id), the latest edge per group is chosen by created_at descending then effective_at descending, and DSA_REPRESENTATION is true exactly when some group's latest edge is ACTIVE, matching the debt is_dsa index definition on the pinned main; DSA_NAME comes from an elected ACTIVE group",
       "phase": 11,
       "failureCode": "DsaElectionMismatch"
     },
@@ -147,7 +153,7 @@
     },
     {
       "id": "partial-input-runs",
-      "description": "A request selecting only form_1281 through outputDatasets succeeds with only its three inputs, and a request selecting payment_plan without edge-payment-plan-has-total-amount is rejected by resolve-plan before Glue starts",
+      "description": "A request selecting only form_1281 or only payment_plan_schedule succeeds with only that output's required inputs, and requests missing edge-payment-plan-installment-status-changed for payment_plan_schedule or edge-payment-plan-has-total-amount for payment_plan are rejected by resolve-plan before Glue starts",
       "phase": 9,
       "failureCode": "PartialInputRunMismatch"
     },
@@ -156,6 +162,48 @@
       "description": "Runtime evidence identifies the executed v4 SQL digests and physical CSV outputs for every selected output; registration-only tests never satisfy this invariant",
       "phase": 9,
       "failureCode": "MappingSqlNotExecuted"
+    },
+    {
+      "id": "form-1281-expected-absent-fields",
+      "description": "No form_1281 row carries field_identifier REPORTED_DATE or DSA_CLIENT_ID_; the mapping does not own them",
+      "phase": 11,
+      "failureCode": "Form1281ShapeMismatch"
+    },
+    {
+      "id": "payment-method-no-wrong-value",
+      "description": "Every non-empty payment_plan.payment_method equals the source payment_method; an empty value is permitted only for the documented causes in roundTripStrategy.permittedLosses, and a wrong non-empty value fails",
+      "phase": 11,
+      "failureCode": "RoundTripColumnMismatch"
+    },
+    {
+      "id": "dsa-reactivation-coverage",
+      "description": "The sample holds at least one debt whose DSA identity is DELETED then ACTIVE (reactivation) and form_1281 represents it exactly when the created_at-first head is ACTIVE",
+      "phase": 11,
+      "failureCode": "CoverageSignalMissing"
+    },
+    {
+      "id": "dsa-rename-coverage",
+      "description": "The sample holds at least one company_identifier spanning more than one company vertex (rename) and the election groups it as one identity",
+      "phase": 11,
+      "failureCode": "CoverageSignalMissing"
+    },
+    {
+      "id": "dsa-multiple-edges-per-debt-coverage",
+      "description": "The sample holds debts with more than one version 2 DEBT_SETTLEMENT_AGENCY edge, including more than one identity, and every such debt matches the independent is_dsa oracle",
+      "phase": 11,
+      "failureCode": "CoverageSignalMissing"
+    },
+    {
+      "id": "attempted-slot-schedule-closure",
+      "description": "Every payment_schedule_id referenced by a sampled payment row has its payment_plan_schedule row in the same sample, so every exported attempted slot is compared against its source schedule row; an unmatched exported slot blocks parity",
+      "phase": 11,
+      "failureCode": "SourceSampleNotJoinClosed"
+    },
+    {
+      "id": "mapping-evidence-pinned-by-digest-and-version-id",
+      "description": "Unmerged mapping versions are re-uploaded under the same id@version, so every execution, registry check and comparison is pinned by mapping.json and query SHA-256 plus S3 VersionId recorded in the plan; the version string alone, and evidence from an earlier upload of the same version, never proves the current candidate",
+      "phase": 8,
+      "failureCode": "DeploymentDrift"
     }
   ],
   "repositories": [
@@ -222,11 +270,7 @@
         "id": "interprose-to-lexicon",
         "version": "1.0.0",
         "repository": "Spring-Oaks-Capital-LLC/lexicon",
-        "sourcePaths": [
-          "src/data/interprose-mappings.json",
-          "src/transform/interprose",
-          "infra/lib/transform-mapping-artifacts.ts"
-        ],
+        "sourcePaths": ["src/data/interprose-mappings.json", "src/transform/interprose", "infra/lib/transform-mapping-artifacts.ts"],
         "artifactPath": "infra/lib/transform-mapping-artifacts.ts",
         "generatedArtifact": {
           "generatorPath": "infra/lib/transform-mapping-artifacts.ts",
@@ -244,6 +288,7 @@
           "edge-debt-payment-plan-status-changed",
           "edge-payment-plan-has-total-amount",
           "edge-payment-plan-has-installment",
+          "edge-payment-plan-installment-status-changed",
           "edge-payment-plan-created-by-user-account",
           "edge-payment-plan-updated-by-user-account"
         ],
@@ -260,10 +305,7 @@
         "id": "lexicon-to-interprose",
         "version": "4.0.0",
         "repository": "Spring-Oaks-Capital-LLC/lexicon",
-        "sourcePaths": [
-          "src/transform/mappings/lexicon-to-interprose/versions/4.0.0",
-          "infra/lib/transform-mapping-artifacts.ts"
-        ],
+        "sourcePaths": ["src/transform/mappings/lexicon-to-interprose/versions/4.0.0", "infra/lib/transform-mapping-artifacts.ts"],
         "artifactPath": "infra/lib/transform-mapping-artifacts.ts",
         "generatedArtifact": {
           "generatorPath": "infra/lib/transform-mapping-artifacts.ts",
@@ -279,18 +321,22 @@
           "dataset": "payment_plan",
           "fields": [
             "payment_plan_id",
-            "debt_id",
             "create_date",
-            "created_by",
-            "last_update",
-            "last_updated_by",
-            "payment_total",
+            "deactivation_date",
             "active",
+            "created_by",
+            "debt_id",
+            "last_updated_by",
+            "last_update",
             "complete_date",
-            "deactivation_date"
+            "payment_total",
+            "payment_method"
           ]
         },
-        { "dataset": "payment_plan_schedule", "fields": ["payment_schedule_id", "payment_plan_id", "amount"] }
+        {
+          "dataset": "payment_plan_schedule",
+          "fields": ["payment_schedule_id", "payment_plan_id", "amount", "payment_date", "active", "promise_status"]
+        }
       ],
       "outputContracts": [
         {
@@ -299,16 +345,11 @@
           "format": { "type": "csv", "delimiter": "|", "header": true },
           "columnSource": "consumer-contract",
           "columns": ["debtID", "form_config_id", "field_identifier", "value"],
-          "columnConstraints": [
-            { "column": "form_config_id", "const": "1281" },
-            { "column": "field_identifier", "enum": ["DSA_NAME", "REPORTED_DATE", "DSA_REPRESENTATION"] }
-          ],
+          "columnConstraints": [{ "column": "form_config_id", "const": "1281" }, { "column": "field_identifier", "enum": ["DSA_NAME", "DSA_REPRESENTATION"] }],
           "status": "planned",
           "tbd": [
-            "value text format for REPORTED_DATE (date or timestamp) and DSA_REPRESENTATION (for example Y/N or true/false)",
-            "whether REPORTED_DATE is the elected edge effective_at or a separately carried reported date; effective_at is greatest(verified_date, reported_date) or create_date plus one second",
-            "whether rows are emitted for debts whose election is not represented",
-            "tie rule when more than one DSA company_identifier group is ACTIVE for one debt"
+            "revalidate after Lexicon PR #811 drops REPORTED_DATE from form_1281.sql and the v2 staged package lands",
+            "observation to report, not a failure: when several ACTIVE identity heads tie on created_at and effective_at the mapping picks the higher company_identifier compared as a string ('9' outranks '10')"
           ]
         },
         {
@@ -316,10 +357,13 @@
           "requiredInputs": [
             "vertex-debt",
             "vertex-payment-plan",
+            "vertex-payment-plan-installment",
             "vertex-user-account",
             "edge-debt-has-payment-plan",
             "edge-debt-payment-plan-status-changed",
             "edge-payment-plan-has-total-amount",
+            "edge-payment-plan-has-installment",
+            "edge-payment-plan-installment-status-changed",
             "edge-payment-plan-created-by-user-account",
             "edge-payment-plan-updated-by-user-account"
           ],
@@ -327,31 +371,33 @@
           "columnSource": "language-definition-subset",
           "columns": [
             "payment_plan_id",
-            "debt_id",
             "create_date",
-            "created_by",
-            "last_update",
-            "last_updated_by",
-            "payment_total",
+            "deactivation_date",
             "active",
+            "created_by",
+            "debt_id",
+            "last_updated_by",
+            "last_update",
             "complete_date",
-            "deactivation_date"
+            "payment_total",
+            "payment_method"
           ],
           "status": "planned",
-          "tbd": [
-            "confirm the graph-fillable column list against the v4 SQL; payment_method, account_type, and plan-level free text are not recoverable from the declared graph inputs"
-          ]
+          "tbd": ["revalidate every column, including payment_method, against the v2 staged package"]
         },
         {
           "dataset": "payment_plan_schedule",
-          "requiredInputs": ["vertex-payment-plan", "vertex-payment-plan-installment", "edge-payment-plan-has-installment"],
+          "requiredInputs": [
+            "vertex-payment-plan",
+            "vertex-payment-plan-installment",
+            "edge-payment-plan-has-installment",
+            "edge-payment-plan-installment-status-changed"
+          ],
           "format": { "type": "csv", "delimiter": "|", "header": true },
           "columnSource": "language-definition-subset",
-          "columns": ["payment_schedule_id", "payment_plan_id", "amount"],
+          "columns": ["payment_schedule_id", "payment_plan_id", "amount", "payment_date", "active", "promise_status"],
           "status": "planned",
-          "tbd": [
-            "payment_date, promise_status, and active need edge-payment-plan-installment-status-changed, which is not a declared v4 input; confirm with the mapping owner"
-          ]
+          "tbd": ["revalidate every column against the v2 staged package with attempted-slot schedule closure"]
         }
       ]
     }
@@ -469,13 +515,15 @@
     "permittedLosses": [
       "payment_plan_schedule rows that interprose-to-lexicon does not project: past slots with no payment attempt, KEPT and BROKEN slots, and slots of inactive, completed, or deactivated plans",
       "payment_plan_schedule.amount for attempted slots, which the forward SQL takes from the first payment attempt rather than payment_plan_schedule.amount",
-      "form_1281 rows for debts whose debt_settlement_agency rows have an empty dsa_name"
+      "form_1281 rows for debts whose debt_settlement_agency rows have an empty dsa_name",
+      "payment_plan.deactivation_date empty when the source plan also has a complete_date, because the forward SQL emits CANCELLED only when complete_date is null; any other deactivation_date difference fails",
+      "payment_plan.payment_method empty when the plan's current installments carry no concrete method (MIXED or PROMISE collapse to OTHER, or no installment), disagree, or are ACH on a non-INSTALLMENT plan; a wrong non-empty value fails"
     ],
     "tbd": [
       "input bridge: interprose-to-lexicon@1.0.0 writes Neptune CSV while v4 reads Parquet graph exports; bind through a Transform tables/ Parquet output, a v4 input declaration that accepts the Neptune prefix, or an approved conversion step",
       "created_at: Transform outputs do not carry the Persist-assigned created_at used first by the is_dsa election; the round trip must either carry it or record that only effective_at ordering was proven",
-      "form_1281 baseline oracle derived directly from debt_settlement_agency in the same sample",
-      "run on the same UTC date as the sample snapshot, because the forward installment SQL filters future slots with current_date()"
+      "run on the same UTC date as the sample snapshot, because the forward installment SQL filters future slots with current_date()",
+      "form_1281 baseline oracle derived directly from debt_settlement_agency in the same sample, restricted to DSA_NAME and DSA_REPRESENTATION"
     ]
   },
   "partialInputPolicy": {
@@ -495,8 +543,19 @@
       {
         "id": "payment-plan-schedule-only",
         "outputDatasets": ["payment_plan_schedule"],
-        "providedInputs": ["vertex-payment-plan", "vertex-payment-plan-installment", "edge-payment-plan-has-installment"],
+        "providedInputs": [
+          "vertex-payment-plan",
+          "vertex-payment-plan-installment",
+          "edge-payment-plan-has-installment",
+          "edge-payment-plan-installment-status-changed"
+        ],
         "expected": "PASS"
+      },
+      {
+        "id": "payment-plan-schedule-missing-status-edge",
+        "outputDatasets": ["payment_plan_schedule"],
+        "providedInputs": ["vertex-payment-plan", "vertex-payment-plan-installment", "edge-payment-plan-has-installment"],
+        "expected": "REJECTED"
       },
       {
         "id": "payment-plan-missing-total-amount",
@@ -504,9 +563,12 @@
         "providedInputs": [
           "vertex-debt",
           "vertex-payment-plan",
+          "vertex-payment-plan-installment",
           "vertex-user-account",
           "edge-debt-has-payment-plan",
           "edge-debt-payment-plan-status-changed",
+          "edge-payment-plan-has-installment",
+          "edge-payment-plan-installment-status-changed",
           "edge-payment-plan-created-by-user-account",
           "edge-payment-plan-updated-by-user-account"
         ],
@@ -547,6 +609,8 @@
       "attempted-installments",
       "booked-future-installments",
       "created-and-updated-by-users",
+      "dsa-multiple-edges-per-debt",
+      "attempted-slot-schedule-closure",
       "immutable-evidence"
     ]
   },

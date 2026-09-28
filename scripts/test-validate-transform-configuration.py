@@ -976,6 +976,10 @@ def test_schemas_and_profiles() -> list[dict]:
     return profiles
 
 
+def invariants_by_id(profile: dict) -> dict[str, dict]:
+    return {i["id"]: i for i in profile["invariants"]}
+
+
 def check_v4_profile(profiles: list[dict]) -> None:
     v4 = next(p for p in profiles if p["id"] == "lexicon-interprose-v4.json")
     directions = {d["id"]: d for d in v4["directions"]}
@@ -1006,18 +1010,7 @@ def check_v4_profile(profiles: list[dict]) -> None:
     contracts = {c["dataset"]: c for c in directions["lexicon-to-interprose-v4"]["outputContracts"]}
     if set(contracts) != set(V4_OUTPUTS):
         fail("v4 must declare one output contract per output")
-    expected_inputs = {
-        "form_1281": {"vertex-debt", "vertex-company", "edge-company-represents-debt"},
-        "payment_plan": {
-            "vertex-debt", "vertex-payment-plan", "vertex-user-account",
-            "edge-debt-has-payment-plan", "edge-debt-payment-plan-status-changed",
-            "edge-payment-plan-has-total-amount", "edge-payment-plan-created-by-user-account",
-            "edge-payment-plan-updated-by-user-account",
-        },
-        "payment_plan_schedule": {
-            "vertex-payment-plan", "vertex-payment-plan-installment", "edge-payment-plan-has-installment",
-        },
-    }
+    expected_inputs = {dataset: set(inputs) for dataset, inputs in V4_OUTPUT_INPUTS.items()}
     for dataset, inputs in expected_inputs.items():
         contract = contracts[dataset]
         if set(contract["requiredInputs"]) != inputs:
@@ -1025,7 +1018,7 @@ def check_v4_profile(profiles: list[dict]) -> None:
         if contract["format"] != {"type": "csv", "delimiter": "|", "header": True}:
             fail(f"{dataset}: output must be pipe-delimited CSV with a header")
         if contract["status"] != "planned" or not contract.get("tbd"):
-            fail(f"{dataset}: an unbuilt output contract must be planned with TBD notes")
+            fail(f"{dataset}: a contract awaiting revalidation must be planned with TBD notes")
     all_inputs = set().union(*expected_inputs.values())
     declared_sources = {d["name"] for d in v4["datasets"] if d["role"] == "source"}
     if not all_inputs <= declared_sources:
@@ -1038,8 +1031,11 @@ def check_v4_profile(profiles: list[dict]) -> None:
     constraints = {c["column"]: c for c in form["columnConstraints"]}
     if constraints.get("form_config_id", {}).get("const") != "1281" or set(
         constraints.get("field_identifier", {}).get("enum", [])
-    ) != {"DSA_NAME", "REPORTED_DATE", "DSA_REPRESENTATION"}:
-        fail("form_1281 constants are wrong")
+    ) != {"DSA_NAME", "DSA_REPRESENTATION"}:
+        fail("form_1281 must emit only DSA_NAME and DSA_REPRESENTATION")
+    absent = invariants_by_id(v4).get("form-1281-expected-absent-fields", {}).get("description", "")
+    if "REPORTED_DATE" not in absent or "DSA_CLIENT_ID_" not in absent:
+        fail("form_1281 must declare REPORTED_DATE and DSA_CLIENT_ID_ expected-absent")
 
     interprose = {
         "payment_plan": {
@@ -1060,12 +1056,20 @@ def check_v4_profile(profiles: list[dict]) -> None:
             fail(f"{dataset}: parity fields must equal the declared graph-fillable columns")
         if not set(parity[dataset]) <= interprose[dataset]:
             fail(f"{dataset}: declares a column interprose.json does not define")
-    for not_fillable in ("misc_notes", "payment_method", "account_type", "paused"):
+    for not_fillable in ("misc_notes", "account_type", "paused"):
         if not_fillable in parity["payment_plan"]:
             fail(f"payment_plan declares non-graph-fillable column {not_fillable}")
+    if "payment_method" not in parity["payment_plan"]:
+        fail("payment_plan must compare payment_method")
+    status_edge = "edge-payment-plan-installment-status-changed"
     for needs_status_edge in ("payment_date", "promise_status", "active"):
-        if needs_status_edge in parity["payment_plan_schedule"]:
+        if needs_status_edge in parity["payment_plan_schedule"] and status_edge not in contracts["payment_plan_schedule"]["requiredInputs"]:
             fail(f"payment_plan_schedule declares {needs_status_edge} without its status edge input")
+    losses = " ".join(v4["roundTripStrategy"]["permittedLosses"])
+    if "deactivation_date empty when the source plan also has a complete_date" not in losses:
+        fail("deactivation_date loss must be permitted only when complete_date is present")
+    if "payment_method empty" not in losses or "wrong non-empty value fails" not in losses:
+        fail("payment_method loss must permit only documented empty values")
     if v4["parityPolicy"] != {
         "fieldSource": "language-definition-and-registration",
         "declaredFields": "exact",
@@ -1092,7 +1096,7 @@ def check_v4_profile(profiles: list[dict]) -> None:
     if v4["lexiconModelPolicy"] != {"candidateLexiconDiff": "forbidden", "path": "src/data/lexicon.json", "modelAdditions": "forbidden"}:
         fail("v4 must forbid any lexicon.json diff against main")
 
-    invariants = {i["id"]: i for i in v4["invariants"]}
+    invariants = invariants_by_id(v4)
     election = invariants.get("dsa-election-matches-is-dsa", {}).get("description", "")
     for token in ("version 2", "DEBT_SETTLEMENT_AGENCY", "company_identifier", "created_at descending then effective_at descending", "is_dsa"):
         if token not in election:
@@ -1100,11 +1104,18 @@ def check_v4_profile(profiles: list[dict]) -> None:
     cents = invariants.get("cents-conversion-exact", {}).get("description", "")
     if "total_amount * 100" not in cents or "scheduled_amount * 100" not in cents:
         fail("cents conversion must cover plan totals and installment amounts")
-    for required in ("lexicon-model-unchanged", "no-forbidden-concepts", "csv-pipe-header", "persist-not-invoked", "partial-input-runs", "round-trip-column-diff"):
+    for required in (
+        "lexicon-model-unchanged", "no-forbidden-concepts", "csv-pipe-header", "persist-not-invoked", "partial-input-runs",
+        "round-trip-column-diff", "payment-method-no-wrong-value", "dsa-reactivation-coverage", "dsa-rename-coverage",
+        "dsa-multiple-edges-per-debt-coverage", "attempted-slot-schedule-closure", "mapping-evidence-pinned-by-digest-and-version-id",
+    ):
         if required not in invariants:
             fail(f"v4 profile lacks invariant {required}")
 
     partial = v4["partialInputPolicy"]
+    schedule_cases = {c["expected"] for c in partial["cases"] if c["outputDatasets"] == ["payment_plan_schedule"]}
+    if schedule_cases != {"PASS", "REJECTED"}:
+        fail("payment_plan_schedule needs both an accepted and a rejected partial-input case")
     if partial["status"] != "supported" or {c["expected"] for c in partial["cases"]} != {"PASS", "REJECTED"}:
         fail("partial-input runs must prove both an accepted subset and a rejected missing input")
     for case in partial["cases"]:
@@ -1409,12 +1420,16 @@ def props(*names: str, **enums: list[str]) -> dict:
 
 FORM_GRAPH = ["vertex-debt", "vertex-company", "edge-company-represents-debt"]
 PAYMENT_PLAN_GRAPH = [
-    "vertex-debt", "vertex-payment-plan", "vertex-user-account",
+    "vertex-debt", "vertex-payment-plan", "vertex-payment-plan-installment", "vertex-user-account",
     "edge-debt-has-payment-plan", "edge-debt-payment-plan-status-changed",
-    "edge-payment-plan-has-total-amount", "edge-payment-plan-created-by-user-account",
+    "edge-payment-plan-has-total-amount", "edge-payment-plan-has-installment",
+    "edge-payment-plan-installment-status-changed", "edge-payment-plan-created-by-user-account",
     "edge-payment-plan-updated-by-user-account",
 ]
-SCHEDULE_GRAPH = ["vertex-payment-plan", "vertex-payment-plan-installment", "edge-payment-plan-has-installment"]
+SCHEDULE_GRAPH = [
+    "vertex-payment-plan", "vertex-payment-plan-installment", "edge-payment-plan-has-installment",
+    "edge-payment-plan-installment-status-changed",
+]
 V4_OUTPUT_INPUTS = {"form_1281": FORM_GRAPH, "payment_plan": PAYMENT_PLAN_GRAPH, "payment_plan_schedule": SCHEDULE_GRAPH}
 V4_INPUTS = list(dict.fromkeys(FORM_GRAPH + PAYMENT_PLAN_GRAPH + SCHEDULE_GRAPH))
 V4_OUTPUT = {"shape": "tabular", "format": "csv", "options": {"delimiter": "|", "header": True}}
@@ -1725,15 +1740,17 @@ def test_intent_resolution() -> None:
         ]:
             fail(f"form_1281 parity must come from the consumer contract: {parity['form_1281']}")
         plan = parity["payment_plan"]
-        if len(plan["comparedFields"]) != 10 or plan["status"] != "DERIVED":
+        if len(plan["comparedFields"]) != 11 or plan["status"] != "DERIVED":
             fail(f"payment_plan must compare exactly the graph-fillable columns: {plan}")
-        if not {"misc_notes", "payment_method", "account_type", "paused"} <= set(plan["profileDeclared"]["excludedByProfile"]):
+        if not {"misc_notes", "account_type", "paused"} <= set(plan["profileDeclared"]["excludedByProfile"]) or "payment_method" not in plan["comparedFields"]:
             fail("non-graph-fillable payment_plan columns were not recorded as excluded")
         if plan["profileDeclared"]["missingFromProfile"]:
             fail("exact parity must not report definition fields as missing from the profile")
         schedule = parity["payment_plan_schedule"]
-        if schedule["comparedFields"] != ["payment_schedule_id", "payment_plan_id", "amount"] or schedule["coverageTargets"]:
-            fail(f"payment_plan_schedule must compare three columns without uncompared enum targets: {schedule}")
+        if schedule["comparedFields"] != [
+            "payment_schedule_id", "payment_plan_id", "amount", "payment_date", "active", "promise_status",
+        ] or [c["field"] for c in schedule["coverageTargets"]] != ["promise_status"]:
+            fail(f"payment_plan_schedule must compare six columns with the promise_status enum target: {schedule}")
         recs = form["datasetRecommendations"]
         if [(r["id"], r["status"]) for r in recs[:2]] != [
             ("lexicon-interprose-v4-dev-stage-sample", "ready"), ("lexicon-interprose-v4-dev-graph-export", "ready"),
@@ -1847,7 +1864,7 @@ def test_intent_resolution() -> None:
         if any(f["code"] == "ProfileOutputDatasetDrift" and f["direction"] == "interprose-to-lexicon" for f in round_trip["findings"]):
             fail("an includes-match subset of a large generated mapping was reported as drift")
         trip = {p["dataset"]: p for p in round_trip["parityDerivation"]}
-        if trip["payment_plan"]["status"] != "DERIVED" or len(trip["payment_plan"]["comparedFields"]) != 10:
+        if trip["payment_plan"]["status"] != "DERIVED" or len(trip["payment_plan"]["comparedFields"]) != 11:
             fail(f"round-trip payment_plan column diff is wrong: {trip['payment_plan']}")
         if trip["account"]["status"] != "OUT_OF_SCOPE" or trip["txt_msg_log"]["status"] != "OUT_OF_SCOPE":
             fail("forward inputs outside the v4 outputs must be out of scope, not round-trip gaps")

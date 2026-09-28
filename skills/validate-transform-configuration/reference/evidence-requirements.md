@@ -20,7 +20,7 @@ Lower levels cannot replace a required higher level. Workflow `SUCCEEDED` alone 
 - Boundary: proposed change, `CONFIGURATION` or `PRODUCT_CHANGE`, evidence IDs, resolution state and product/builder handoff.
 - Transform class: deterministic mapping plus expected-output/negative Test evidence, or non-deterministic confidence/threshold/human-review evidence.
 - Repository: slug and 40-character commit SHA.
-- Configuration: exact profile, language definitions, mapping manifests and SQL SHA-256.
+- Configuration: exact profile, language definitions, mapping manifests and SQL SHA-256. For a registry object, also record its S3 `VersionId` from the execution plan; an unmerged `id@version` can be re-uploaded with different content, so the version string alone is not an identity.
 - Environment: sanitized account hash, region and write policy.
 - PROD-derived source window: sanitized recent complete-UTC-day comparisons, required source-family and coverage-signal results, row/byte/cost bounds, immutable-evidence status, recommended half-open window and explicit user confirmation before DEV staging.
 - Deployment: immutable package/template/image digest and linked source revision.
