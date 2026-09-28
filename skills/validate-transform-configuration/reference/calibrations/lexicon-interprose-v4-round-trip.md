@@ -10,8 +10,17 @@ Use only with `lexicon-interprose-v4.json`. This dossier holds sanitized expecta
 - `lexicon/`: the thirteen Parquet graph exports v4 reads, bridged from two ordered `interprose-to-lexicon@1.0.0` runs with Persist's append-only behaviour: an unchanged edge keeps its first `created_at` and endpoints, a changed vertex mints a new content-hashed physical vertex, and `created_at` is the ingest time plus a rank.
 - Coverage: DSA reactivations, renames, new deletions and debts with two DSA edges, all under one `company_identifier`.
 - Attempted slots: DEV Stage has schedule rows for almost no attempted slots. By owner decision (2026-09-28) the PROD schedule extract is skipped and payment records are the accepted substitute: plan, amount and date against the first attempt, state against the latest outcome.
-- Two DSA identities on one debt: not in the DEV sample. The coverage source is a read-only PROD-derived graph sample selected to include such debts. If PROD has none, the check narrows to multiple edges per debt and the finding is recorded. `form_1281` stays `BLOCKED` until that sample is evaluated.
-- Pinned mapping: `mapping.json` sha256 `5ccdc76f115779d5c0a3ef2fe7cc01f0d950637089b0077330f1e6a85f078cd6`, S3 VersionId `tv86x9ecXJPr4VxdqA7ybSOCm_prq3Vl` (Lexicon PR #811 `50717c3e`).
+- Two DSA identities on one debt: covered by the PROD graph sample below and checked read-only against PROD `is_dsa` and `dsa_company_name`.
+- Pinned mapping: `mapping.json` sha256 `0e3146aa6e3ce02b6e19ef7b7fe401e424ffeca72abab18c569b40fc3626347b`, S3 VersionId `kbw8QFT.dlJVEmOAaG0DrOpZbJV6pCLX` (Lexicon PR #811 `74ddd5ab`). Evidence from earlier uploads (`0ad567be…`, `5ccdc76f…`) is superseded.
+- Expected rows: `form_1281` 198, `payment_plan` 952, `payment_plan_schedule` 4,135.
+
+## PROD graph sample
+
+`s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/20260928-prod-graph-sample_v1/` holds a read-only PROD Persist sample of 309 debts: the 265 v2 debts, the 4 Interprose debts with more than one DSA identity, and 40 sanitized placeholder debts. `iso/` carries ISO-8601 DateTime and is the supported v4 input; `raw/` keeps Persist epoch millis and is an unsupported input contract (the Glue run fails with a bigint-to-date cast error).
+
+- Expected rows from `iso/`: `form_1281` 206 (103 debts x 2 fields), `payment_plan` 968 (991 plan vertices, 23 plans with a changed `plan_type`), `payment_plan_schedule` 4,736.
+- PROD has 13,625 debts with more than one DSA identity; 13,621 are `UNMATCHED_SSN_` placeholders, which v4 never exports, and 4 are Interprose debts.
+- Risk finding: for several ACTIVE identity heads, `DSA_NAME` reproduces the `java.util.HashMap` iteration order of Gremlin `group()` (bucket of `String.hashCode`, then insertion order). This matches PROD today but depends on Neptune/TinkerPop internals. On the 3 real concurrent-ACTIVE debts, the newest-head rule gives the same name, so PROD confirms the output without discriminating the rule. Owner: Lexicon `debt.dsa_company_name`, with Kecleon.
 
 Classification: `deterministic`. The profile fixes the DSA election rule, form constants, cents conversion, and CSV format. Changing any of them in the mapping is a configuration change. Changing the Lexicon model is forbidden for this profile.
 

@@ -1107,7 +1107,8 @@ def check_v4_profile(profiles: list[dict]) -> None:
     for required in (
         "lexicon-model-unchanged", "no-forbidden-concepts", "csv-pipe-header", "persist-not-invoked", "partial-input-runs",
         "round-trip-column-diff", "payment-method-no-wrong-value", "dsa-reactivation-coverage", "dsa-rename-coverage",
-        "dsa-multiple-edges-per-debt-coverage", "attempted-slot-schedule-closure", "attempted-slot-payment-parity", "mapping-evidence-pinned-by-digest-and-version-id",
+        "dsa-multiple-edges-per-debt-coverage", "attempted-slot-schedule-closure", "attempted-slot-payment-parity",
+        "form-1281-interprose-debts-only", "dsa-name-matches-prod-index", "payment-plan-keyed-by-identifier", "iso-datetime-inputs-only", "mapping-evidence-pinned-by-digest-and-version-id",
     ):
         if required not in invariants:
             fail(f"v4 profile lacks invariant {required}")
@@ -1129,6 +1130,10 @@ def check_v4_profile(profiles: list[dict]) -> None:
     expected_packages = {
         "lexicon-interprose-v4-dev-stage-sample": (staged + "stage/", ["interprose-to-lexicon"]),
         "lexicon-interprose-v4-dev-graph-export": (staged + "lexicon/", ["lexicon-to-interprose-v4"]),
+        "lexicon-interprose-v4-prod-graph-sample": (
+            "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/20260928-prod-graph-sample_v1/",
+            ["lexicon-to-interprose-v4"],
+        ),
     }
     if set(packages) != set(expected_packages):
         fail(f"v4 DEV package must be the staged Interprose sample and graph export: {sorted(packages)}")
@@ -1144,14 +1149,14 @@ def check_v4_profile(profiles: list[dict]) -> None:
             or "tbd" in package
         ):
             fail(f"{package_id}: a ready DEV package needs its staged prefix, manifest digest, and version")
-    if not any("5ccdc76f115779d5c0a3ef2fe7cc01f0d950637089b0077330f1e6a85f078cd6" in e and "VersionId" in e
+    if not any("0e3146aa6e3ce02b6e19ef7b7fe401e424ffeca72abab18c569b40fc3626347b" in e and "VersionId" in e
                for e in v4["configurationChoices"]["mappingExpressions"]):
         fail("v4 must pin the mapping by mapping.json digest and S3 VersionId")
     closure = invariants_by_id(v4)["attempted-slot-schedule-closure"]["description"]
     if "Owner-accepted substitute" not in closure or "2026-09-28" not in closure or "attempted-slot-payment-parity" not in closure:
         fail("attempted-slot schedule closure must record the owner-accepted payment-record substitute")
     two_identity = invariants_by_id(v4)["dsa-multiple-edges-per-debt-coverage"]["description"]
-    if "PROD-derived graph sample" not in two_identity or "narrows to multiple edges per debt" not in two_identity:
+    if "read-only PROD graph sample" not in two_identity or "narrows to multiple edges per debt" not in two_identity:
         fail("the two-identity DSA case must name its PROD-derived coverage source and its narrowing rule")
     tests = {s["path"] for s in v4["validationSources"] if s["kind"] == "repository-test"}
     if "infra/test/spark/test_lexicon_to_interprose.py" not in tests:

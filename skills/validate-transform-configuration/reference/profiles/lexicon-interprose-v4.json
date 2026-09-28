@@ -50,7 +50,7 @@
     ],
     "formats": ["Parquet graph exports in; pipe-delimited CSV with a header row out"],
     "normalizationRules": ["dollars to integer cents, ISO-8601 UTC timestamps, DSA election per company_identifier by created_at then effective_at"],
-    "mappingExpressions": ["lexicon-to-interprose@4.0.0 pinned by mapping.json sha256 5ccdc76f115779d5c0a3ef2fe7cc01f0d950637089b0077330f1e6a85f078cd6, S3 VersionId tv86x9ecXJPr4VxdqA7ybSOCm_prq3Vl"],
+    "mappingExpressions": ["lexicon-to-interprose@4.0.0 pinned by mapping.json sha256 0e3146aa6e3ce02b6e19ef7b7fe401e424ffeca72abab18c569b40fc3626347b, S3 VersionId kbw8QFT.dlJVEmOAaG0DrOpZbJV6pCLX"],
     "profileInputs": ["DEV package inputs/lexicon-interprose-v4/20260928-dev-stage-sample_v2/ with stage/ingest-a, stage/ingest-b and lexicon/ manifests"],
     "vocabularySelections": ["existing Lexicon company, debt, payment_plan, payment_plan_installment, and user_account concepts; no model additions"]
   },
@@ -189,7 +189,7 @@
     },
     {
       "id": "dsa-multiple-edges-per-debt-coverage",
-      "description": "The sample holds debts with more than one version 2 DEBT_SETTLEMENT_AGENCY edge, and every such debt matches the independent is_dsa oracle. The two-identity case (one debt, more than one company_identifier) is proven from a read-only PROD-derived graph sample selected to include such debts; if that PROD sample shows none exist, the check narrows to multiple edges per debt with the finding recorded. Until the PROD sample is evaluated, the two-identity case is BLOCKED",
+      "description": "The sample holds debts with more than one version 2 DEBT_SETTLEMENT_AGENCY edge, and every such debt matches the independent is_dsa oracle. The two-identity case (one debt, more than one company_identifier) is proven from the read-only PROD graph sample (lexicon-interprose-v4-prod-graph-sample) against PROD is_dsa and dsa_company_name read through the Persist Gremlin API; if a PROD sample shows no such Interprose debts exist, the check narrows to multiple edges per debt with the finding recorded",
       "phase": 11,
       "failureCode": "CoverageSignalMissing"
     },
@@ -210,6 +210,30 @@
       "description": "Unmerged mapping versions are re-uploaded under the same id@version, so every execution, registry check and comparison is pinned by mapping.json and query SHA-256 plus S3 VersionId recorded in the plan; the version string alone, and evidence from an earlier upload of the same version, never proves the current candidate",
       "phase": 8,
       "failureCode": "DeploymentDrift"
+    },
+    {
+      "id": "form-1281-interprose-debts-only",
+      "description": "form_1281 rows are emitted only for debts whose debt_identifier is all digits (Interprose debt ids); graph-only placeholder debts such as UNMATCHED_SSN_<hash> never appear",
+      "phase": 11,
+      "failureCode": "Form1281ShapeMismatch"
+    },
+    {
+      "id": "dsa-name-matches-prod-index",
+      "description": "For every exported debt in the PROD graph sample, DSA_REPRESENTATION equals PROD debt.is_dsa and DSA_NAME equals PROD debt.dsa_company_name (with CR, LF and pipe replaced by spaces), read-only through the Persist Gremlin API. With several ACTIVE identity heads the mapping reproduces the Gremlin group() java.util.HashMap order; that dependency is a recorded risk, and cases where a simpler order would give the same name do not prove it",
+      "phase": 11,
+      "failureCode": "DsaElectionMismatch"
+    },
+    {
+      "id": "payment-plan-keyed-by-identifier",
+      "description": "payment_plan and payment_plan_schedule are keyed by payment_plan_identifier: a plan whose plan_type change minted a second payment_plan vertex yields exactly one payment_plan row and one schedule row per slot",
+      "phase": 11,
+      "failureCode": "RoundTripColumnMismatch"
+    },
+    {
+      "id": "iso-datetime-inputs-only",
+      "description": "v4 graph inputs carry DateTime as ISO-8601 UTC strings and Date as yyyy-MM-dd; raw Persist epoch-millis exports are an unsupported input contract, fail in the Glue run rather than in resolve-plan, and are recorded as an input finding, not a mapping failure",
+      "phase": 9,
+      "failureCode": "UnsupportedInputEncoding"
     }
   ],
   "repositories": [
@@ -354,8 +378,8 @@
           "columnConstraints": [{ "column": "form_config_id", "const": "1281" }, { "column": "field_identifier", "enum": ["DSA_NAME", "DSA_REPRESENTATION"] }],
           "status": "verified",
           "tbd": [
-            "two-identity DSA coverage waits on the read-only PROD-derived graph sample (dsa-multiple-edges-per-debt-coverage)",
-            "observation to report, not a failure: when several ACTIVE identity heads tie on created_at and effective_at the mapping picks the higher company_identifier compared as a string ('9' outranks '10')"
+            "risk finding, owner Lexicon (debt.dsa_company_name) with kecleon: with several ACTIVE identity heads DSA_NAME reproduces the java.util.HashMap iteration order of the Gremlin group() step, not a business rule; recheck against PROD dsa_company_name after any Neptune or TinkerPop change",
+            "graph-only placeholder debts (debt_identifier not all digits, such as UNMATCHED_SSN_<hash>) are not Interprose accounts and are never exported"
           ]
         },
         {
@@ -457,6 +481,17 @@
       "artifactStatus": "ready",
       "manifestSha256": "d1315b1fadf2b446c05ccbf07c311a2cee4da9f3d03b3d4fa9984a89b67aa2a7",
       "manifestVersionId": "f.nCL3tWciEeNaJpbX4vDGf02ujz81W8",
+      "appliesTo": ["lexicon-to-interprose-v4"],
+      "required": true
+    },
+    {
+      "id": "lexicon-interprose-v4-prod-graph-sample",
+      "kind": "existing-dev-artifact",
+      "location": "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/20260928-prod-graph-sample_v1/",
+      "region": "us-east-2",
+      "artifactStatus": "ready",
+      "manifestSha256": "8ff49b3a6453a80d9612df6598f2eea7ad27bbd037e8ebaf2dadc922a85c05ed",
+      "manifestVersionId": "3BVPzzwYFFEdjIeaBnYPq6qlHcYFnbLe",
       "appliesTo": ["lexicon-to-interprose-v4"],
       "required": true
     }
