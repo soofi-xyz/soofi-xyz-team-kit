@@ -25,7 +25,7 @@ Then read every reference in this skill:
 - `reference/report-contract.md`
 - `reference/scoring-examples.md`
 
-Read `reference/calibration-email-workflow-pr-1.md` only when validating the rubric or comparing a later assessment with the initial calibration.
+Read `reference/calibration-email-workflow-pr-1.md` only when comparing a later assessment with the initial version 1 calibration. It is a frozen historical record and does not validate the version 2 orchestration gate.
 
 ## Required inputs
 
@@ -56,6 +56,8 @@ Use **focused diagnostic mode** for an explicit partial-scope request:
 
 Ask one focused question only when the requested capability cannot be mapped unambiguously. Do not invent or reweight dimensions.
 
+Map a direct question about orchestration implementation or AWS resource type to dimensions 7 (`reliability_replay_and_overflow`) and 8 (`observability_security_and_evidence`). Do not expand an unrelated focused diagnostic solely to evaluate orchestration.
+
 ## Capability model
 
 Evaluate the full workflow through these boundaries:
@@ -72,6 +74,7 @@ Use SMS as the capability reference, not a demand for identical code:
 
 - provider-specific behavior may differ;
 - email does not require OR-Tools when the business decision is to schedule every eligible debt;
+- the top-level Email communication orchestrator must still be an active, deployed AWS Step Functions state machine of effective type `STANDARD` whose definition or PII-safe execution history shows substantive control of the major workflow transitions; `EXPRESS` is allowed only for explicitly bounded child workflows;
 - email still requires deterministic identity, legal timing, capacity enforcement, overflow evidence, idempotency, provider correlation, and lifecycle closure;
 - solver-only output is not an end-to-end communication.
 
@@ -79,7 +82,7 @@ Use SMS as the capability reference, not a demand for identical code:
 
 1. State the one-sentence business intent.
 2. Pin the email and SMS commit SHAs.
-3. Identify the evaluated email scope and runtime components.
+3. Identify the evaluated email scope, the designated top-level orchestrator, and its runtime components.
 4. Create the evidence registry.
 5. In certification mode, evaluate all five gates using `gates-and-verdicts.md`.
 6. In focused mode, record only source linkage, access, safety, or runtime limitations that materially constrain the selected dimensions. Do not assign certification-gate outcomes.
@@ -96,6 +99,7 @@ Collect only the evidence allowed by `evidence-contract.md`. In focused mode, in
 
 Evaluate:
 
+- pinned-source and deployed proof that the same active top-level `STANDARD` Step Functions state machine substantively owns the evaluated execution, allowing only documented alias/version qualification when binding ARNs;
 - email-level eligibility, consent, suppression, and send-time freshness;
 - deterministic one-email-per-debt identity and duplicate behavior;
 - timezone-correct legal windows, daily/hourly capacity, and overflow;
@@ -167,5 +171,6 @@ In focused mode:
 - focused mode names the selected dimensions, scores only those dimensions, and omits certification verdicts and aggregate scores;
 - every scored dimension uses an allowed band and exact point lookup;
 - solver evidence is not presented as full-workflow proof;
+- certification records the top-level source construct, CloudFormation logical resource ID/type/status, state machine ARN/type/status, alias/version qualification, execution binding, and sequencing evidence;
 - report follows `report-contract.md`;
 - no mutation or protected-data action occurred.

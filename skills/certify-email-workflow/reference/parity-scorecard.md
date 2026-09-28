@@ -1,6 +1,8 @@
 # Email Workflow Parity Scorecard
 
-Version: `email-workflow-certification-v1`
+Version: `email-workflow-certification-v2`
+
+Version 2 adds the fail-closed Gate 2 requirement that the deployed top-level Email Workflow orchestrator be a `STANDARD` AWS Step Functions state machine and own the evaluated execution. The frozen PR 1 calibration remains a version 1 historical record.
 
 Score capabilities, not file similarity. Use only bands `0`, `25`, `50`, `75`, or `100`.
 
@@ -101,6 +103,7 @@ Prove:
 
 Prove:
 
+- an active, deployed top-level `STANDARD` Step Functions state machine substantively owns the communication workflow and its replay boundary rather than wrapping another orchestrator;
 - immutable run and artifact identity;
 - explicit partial-success versus infrastructure-failure semantics;
 - exact selected/overflow/hourly reconciliation;
@@ -113,6 +116,7 @@ Prove:
 Prove:
 
 - commit-to-deployment provenance;
+- linked source construct and sequencing evidence, a healthy CloudFormation `AWS::StepFunctions::StateMachine` resource, an active `STANDARD` state machine ARN, and an exact or valid alias/version-qualified execution binding;
 - metrics, alarms, DLQs, cost controls, and run summaries;
 - PII-free logs, Step Functions state, metrics, alerts, and queue control messages;
 - encrypted data artifacts and least-privilege roles;
