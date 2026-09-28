@@ -1017,8 +1017,8 @@ def check_v4_profile(profiles: list[dict]) -> None:
             fail(f"{dataset}: per-output graph inputs differ from the team direction")
         if contract["format"] != {"type": "csv", "delimiter": "|", "header": True}:
             fail(f"{dataset}: output must be pipe-delimited CSV with a header")
-        if contract["status"] != "planned" or not contract.get("tbd"):
-            fail(f"{dataset}: a contract awaiting revalidation must be planned with TBD notes")
+        if contract["status"] != "verified":
+            fail(f"{dataset}: the registered v4 output contract must be verified")
     all_inputs = set().union(*expected_inputs.values())
     declared_sources = {d["name"] for d in v4["datasets"] if d["role"] == "source"}
     if not all_inputs <= declared_sources:

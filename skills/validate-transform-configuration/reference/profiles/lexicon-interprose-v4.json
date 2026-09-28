@@ -352,9 +352,9 @@
           "columnSource": "consumer-contract",
           "columns": ["debtID", "form_config_id", "field_identifier", "value"],
           "columnConstraints": [{ "column": "form_config_id", "const": "1281" }, { "column": "field_identifier", "enum": ["DSA_NAME", "DSA_REPRESENTATION"] }],
-          "status": "planned",
+          "status": "verified",
           "tbd": [
-            "revalidate after Lexicon PR #811 drops REPORTED_DATE from form_1281.sql and the v2 staged package lands",
+            "two-identity DSA coverage waits on the read-only PROD-derived graph sample (dsa-multiple-edges-per-debt-coverage)",
             "observation to report, not a failure: when several ACTIVE identity heads tie on created_at and effective_at the mapping picks the higher company_identifier compared as a string ('9' outranks '10')"
           ]
         },
@@ -388,8 +388,7 @@
             "payment_total",
             "payment_method"
           ],
-          "status": "planned",
-          "tbd": ["revalidate every column, including payment_method, against the v2 staged package"]
+          "status": "verified"
         },
         {
           "dataset": "payment_plan_schedule",
@@ -402,8 +401,7 @@
           "format": { "type": "csv", "delimiter": "|", "header": true },
           "columnSource": "language-definition-subset",
           "columns": ["payment_schedule_id", "payment_plan_id", "amount", "payment_date", "active", "promise_status"],
-          "status": "planned",
-          "tbd": ["revalidate every column against the v2 staged package with attempted-slot schedule closure"]
+          "status": "verified"
         }
       ]
     }
