@@ -1,0 +1,28 @@
+{
+  "configuration_id": "dsa-americor-prod",
+  "partner": "americor",
+  "tenant": "socapital",
+  "environment": "prod",
+  "connections": {
+    "inbox": {
+      "type": "azure_blob",
+      "account_url": "https://<storage-account>.blob.core.windows.net",
+      "containers": ["americor"],
+      "auth": { "profile": "connection_string", "secret_ref": "arn:aws:secretsmanager:<region>:<account>:secret:<azure-blob-secret>" }
+    },
+    "outbox": {
+      "type": "azure_blob",
+      "account_url": "https://<storage-account>.blob.core.windows.net",
+      "containers": ["americor"],
+      "root": "FROM_SOC/",
+      "auth": { "profile": "connection_string", "secret_ref": "arn:aws:secretsmanager:<region>:<account>:secret:<azure-blob-secret>" }
+    }
+  },
+  "parameters": {
+    "prefix": "TO_SOC/",
+    "pattern": "*.xlsx",
+    "archive_prefix": "TO_SOC/completed/",
+    "cutoff": "2026-06-01T00:00:00Z"
+  },
+  "allow_delete": false
+}

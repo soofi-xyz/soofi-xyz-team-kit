@@ -1,0 +1,23 @@
+{
+  "configuration_id": "dsa-example-sftp-prod",
+  "partner": "example-dsa",
+  "tenant": "socapital",
+  "environment": "prod",
+  "connections": {
+    "inbox": {
+      "type": "sftp",
+      "host": "sftp.<partner-domain>",
+      "port": 22,
+      "root": "/",
+      "host_key_fingerprint": "SHA256:<fingerprint>",
+      "username": "<username>",
+      "egress": "static_ip",
+      "auth": { "profile": "private_key", "secret_ref": "arn:aws:secretsmanager:<region>:<account>:secret:<sftp-secret>" }
+    }
+  },
+  "parameters": {
+    "prefix": "TO_SOC/",
+    "pattern": "*.xlsx",
+    "archive_prefix": "TO_SOC/completed/"
+  }
+}

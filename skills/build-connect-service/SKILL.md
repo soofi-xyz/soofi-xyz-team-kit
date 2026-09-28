@@ -14,6 +14,10 @@ This skill is intentionally thin. Use it as a loader for [`reference/PRD.md`](./
 2. Read [`../apply-engineering-guidelines/SKILL.md`](../apply-engineering-guidelines/SKILL.md) for Golden Path constraints.
 3. Read [`../build-inbound-sftp-workflows/SKILL.md`](../build-inbound-sftp-workflows/SKILL.md) whenever the PRD task touches SFTP polling, Transfer Family connectors, or partner file intake.
 
+## Relationship To Connect Blocks
+
+This PRD is the runtime base for [`build-connect-product`](../build-connect-product/SKILL.md), which owns flow spec v3: generic verbs over typed connections, partner configurations, activations and the external-only boundary. Use this PRD for routes, stacks, IAM, workers and operations. For new flows, blocks, drivers or partner onboarding, use `lapras` with `build-connect-product`; v2 task types remain as compile-time aliases.
+
 ## Use With Plugin Agents
 
 - Use `conkeldurr` first for platform product classification, existing-deployment checks, and build-vs-integrate decisions.

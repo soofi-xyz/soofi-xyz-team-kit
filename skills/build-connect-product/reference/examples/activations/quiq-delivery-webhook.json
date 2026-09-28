@@ -1,0 +1,12 @@
+{
+  "activation_id": "quiq-delivery-webhook",
+  "flow_name": "partner-webhook-receipt",
+  "flow_version": 1,
+  "configuration_id": "quiq-prod",
+  "trigger": { "type": "webhook", "webhook": "events", "batch": { "max_events": 1000, "max_seconds": 30 } },
+  "subscriber": {
+    "url": "https://<kadabra-delivery-status-endpoint>",
+    "signing_secret_ref": "arn:aws:secretsmanager:<region>:<account>:secret:<subscriber-signing-secret>"
+  },
+  "enabled": true
+}

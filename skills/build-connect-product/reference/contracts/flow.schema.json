@@ -1,0 +1,714 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:connect:flow:contracts:3",
+  "title": "Connect flow specification v3 definitions",
+  "$defs": {
+    "Identifier": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,62}$" },
+    "Alias": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,31}$" },
+    "JsonPath": { "type": "string", "pattern": "^\\$\\." },
+    "VarsPath": { "type": "string", "pattern": "^\\$\\.vars\\." },
+    "SecretRef": { "type": "string", "pattern": "^arn:aws:secretsmanager:" },
+    "ValueOrPath": {},
+    "ConnectionType": { "enum": ["http", "sftp", "azure_blob", "s3", "drop_zone"] },
+    "JsonSchema": { "type": "object" },
+
+    "Flow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "flow_name", "kind", "connections", "triggers", "limits", "definition"],
+      "properties": {
+        "version": { "const": "3" },
+        "flow_name": { "$ref": "#/$defs/Identifier" },
+        "kind": { "enum": ["flow", "lookup"] },
+        "description": { "type": "string" },
+        "connections": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": { "$ref": "#/$defs/Alias" },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["types"],
+            "properties": {
+              "types": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/ConnectionType" } }
+            }
+          }
+        },
+        "parameters": { "$ref": "#/$defs/JsonSchema" },
+        "partner_parameters": { "$ref": "#/$defs/JsonSchema" },
+        "triggers": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": { "enum": ["api", "schedule", "drop_zone", "webhook"] }
+        },
+        "webhooks": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/Alias" },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["connection"],
+            "properties": {
+              "connection": { "$ref": "#/$defs/Alias" },
+              "content_type": { "enum": ["application/json", "application/xml", "application/x-www-form-urlencoded"] },
+              "response": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "accepted_status": { "type": "integer", "minimum": 200, "maximum": 299 },
+                  "unmatched_status": { "type": "integer", "minimum": 200, "maximum": 499 }
+                }
+              }
+            }
+          }
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["timeout_seconds"],
+          "properties": {
+            "timeout_seconds": { "type": "integer", "minimum": 1, "maximum": 31536000 },
+            "max_items": { "type": "integer", "minimum": 1 },
+            "max_bytes": { "type": "integer", "minimum": 1 },
+            "max_cost_usd": { "type": "number", "exclusiveMinimum": 0 }
+          }
+        },
+        "delivery_settings": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "Retry": { "type": "array", "items": { "$ref": "#/$defs/RetryRule" } },
+            "Catch": { "type": "array", "items": { "$ref": "#/$defs/CatchRule" } }
+          }
+        },
+        "dry_run": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "response_body": {},
+            "response_file_url": { "type": "string", "pattern": "^https://" }
+          }
+        },
+        "definition": { "$ref": "#/$defs/Definition" }
+      }
+    },
+
+    "Definition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["StartAt", "States"],
+      "properties": {
+        "StartAt": { "type": "string" },
+        "States": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "$ref": "#/$defs/State" }
+        }
+      }
+    },
+
+    "State": {
+      "type": "object",
+      "required": ["Type"],
+      "properties": { "Type": { "enum": ["Task", "Map", "Choice", "Wait", "Pass", "Fail"] } },
+      "allOf": [
+        { "if": { "properties": { "Type": { "const": "Task" } } }, "then": { "$ref": "#/$defs/TaskState" } },
+        { "if": { "properties": { "Type": { "const": "Map" } } }, "then": { "$ref": "#/$defs/MapState" } },
+        { "if": { "properties": { "Type": { "const": "Choice" } } }, "then": { "required": ["Choices"] } },
+        { "if": { "properties": { "Type": { "const": "Wait" } } }, "then": { "oneOf": [{ "required": ["Seconds"] }, { "required": ["SecondsPath"] }] } }
+      ]
+    },
+
+    "Transition": {
+      "oneOf": [
+        { "required": ["Next"], "properties": { "Next": { "type": "string" } } },
+        { "required": ["End"], "properties": { "End": { "const": true } } }
+      ]
+    },
+
+    "TaskState": {
+      "type": "object",
+      "required": ["Type", "ResourceDefinition"],
+      "allOf": [{ "$ref": "#/$defs/Transition" }],
+      "properties": {
+        "Type": { "const": "Task" },
+        "Comment": { "type": "string" },
+        "ResourceDefinition": { "$ref": "#/$defs/ResourceDefinition" },
+        "TimeoutSeconds": { "type": "integer", "minimum": 1 },
+        "Retry": { "type": "array", "items": { "$ref": "#/$defs/RetryRule" } },
+        "Catch": { "type": "array", "items": { "$ref": "#/$defs/CatchRule" } },
+        "Next": { "type": "string" },
+        "End": { "const": true }
+      },
+      "additionalProperties": false
+    },
+
+    "MapState": {
+      "type": "object",
+      "required": ["Type", "Concurrency", "Iterator"],
+      "allOf": [
+        { "$ref": "#/$defs/Transition" },
+        { "oneOf": [{ "required": ["Items"] }, { "required": ["ItemsFrom"] }] }
+      ],
+      "properties": {
+        "Type": { "const": "Map" },
+        "Comment": { "type": "string" },
+        "Items": { "$ref": "#/$defs/JsonPath" },
+        "ItemsFrom": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["File", "Format"],
+          "properties": {
+            "File": { "$ref": "#/$defs/JsonPath" },
+            "Format": { "enum": ["json_array", "jsonl", "csv"] },
+            "CsvHeader": { "type": "boolean" }
+          }
+        },
+        "Concurrency": { "type": "integer", "minimum": 1, "maximum": 1000 },
+        "MaxItems": { "type": "integer", "minimum": 1 },
+        "FailOnItemError": { "type": "boolean" },
+        "Iterator": { "$ref": "#/$defs/Definition" },
+        "Next": { "type": "string" },
+        "End": { "const": true }
+      },
+      "additionalProperties": false
+    },
+
+    "ResourceDefinition": {
+      "type": "object",
+      "required": ["Type"],
+      "properties": {
+        "Type": {
+          "enum": ["LIST", "FETCH", "PUT", "MOVE", "DELETE", "CALL", "POLL", "WAIT_FOR_WEBHOOK", "DECRYPT", "DECODE"]
+        }
+      },
+      "allOf": [
+        { "if": { "properties": { "Type": { "const": "LIST" } } }, "then": { "$ref": "#/$defs/List" } },
+        { "if": { "properties": { "Type": { "const": "FETCH" } } }, "then": { "$ref": "#/$defs/Fetch" } },
+        { "if": { "properties": { "Type": { "const": "PUT" } } }, "then": { "$ref": "#/$defs/Put" } },
+        { "if": { "properties": { "Type": { "const": "MOVE" } } }, "then": { "$ref": "#/$defs/Move" } },
+        { "if": { "properties": { "Type": { "const": "DELETE" } } }, "then": { "$ref": "#/$defs/Delete" } },
+        { "if": { "properties": { "Type": { "const": "CALL" } } }, "then": { "$ref": "#/$defs/Call" } },
+        { "if": { "properties": { "Type": { "const": "POLL" } } }, "then": { "$ref": "#/$defs/Poll" } },
+        { "if": { "properties": { "Type": { "const": "WAIT_FOR_WEBHOOK" } } }, "then": { "$ref": "#/$defs/WaitForWebhook" } },
+        { "if": { "properties": { "Type": { "const": "DECRYPT" } } }, "then": { "$ref": "#/$defs/Decrypt" } },
+        { "if": { "properties": { "Type": { "const": "DECODE" } } }, "then": { "$ref": "#/$defs/Decode" } }
+      ]
+    },
+
+    "FileTarget": {
+      "oneOf": [{ "required": ["Path"] }, { "required": ["File"] }]
+    },
+
+    "List": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Type", "Connection", "SaveOutputTo"],
+      "properties": {
+        "Type": { "const": "LIST" },
+        "Connection": { "$ref": "#/$defs/Alias" },
+        "Match": { "$ref": "#/$defs/Match" },
+        "Ledger": { "$ref": "#/$defs/Ledger" },
+        "MaxItems": { "type": "integer", "minimum": 1 },
+        "SaveOutputTo": { "$ref": "#/$defs/VarsPath" }
+      }
+    },
+    "Fetch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Type", "Connection", "SaveOutputTo"],
+      "allOf": [{ "$ref": "#/$defs/FileTarget" }],
+      "properties": {
+        "Type": { "const": "FETCH" },
+        "Connection": { "$ref": "#/$defs/Alias" },
+        "Path": { "$ref": "#/$defs/ValueOrPath" },
+        "File": { "$ref": "#/$defs/JsonPath" },
+        "Verify": {
+          "type": "object", "additionalProperties": false,
+          "properties": { "Size": { "type": "boolean" }, "Checksum": { "enum": ["etag", "md5", "sha256"] } }
+        },
+        "Runner": { "$ref": "#/$defs/Runner" },
+        "SaveOutputTo": { "$ref": "#/$defs/VarsPath" }
+      }
+    },
+    "Put": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Type", "Connection", "From", "Path", "Overwrite"],
+      "properties": {
+        "Type": { "const": "PUT" },
+        "Connection": { "$ref": "#/$defs/Alias" },
+        "From": { "$ref": "#/$defs/JsonPath" },
+        "Path": { "$ref": "#/$defs/ValueOrPath" },
+        "Overwrite": { "enum": ["never", "always", "if_changed"] },
+        "Idempotency": { "$ref": "#/$defs/Idempotency" },
+        "Runner": { "$ref": "#/$defs/Runner" },
+        "SaveOutputTo": { "$ref": "#/$defs/VarsPath" }
+      }
+    },
+    "Move": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Type", "Connection", "To"],
+      "allOf": [{ "$ref": "#/$defs/FileTarget" }],
+      "properties": {
+        "Type": { "const": "MOVE" },
+        "Connection": { "$ref": "#/$defs/Alias" },
+        "Path": { "$ref": "#/$defs/ValueOrPath" },
+        "File": { "$ref": "#/$defs/JsonPath" },
+        "To": { "$ref": "#/$defs/ValueOrPath" },
+        "IfExists": { "enum": ["skip", "fail", "overwrite"] },
+        "SaveOutputTo": { "$ref": "#/$defs/VarsPath" }
+      }
+    },
+    "Delete": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Type", "Connection"],
+      "allOf": [{ "$ref": "#/$defs/FileTarget" }],
+      "properties": {
+        "Type": { "const": "DELETE" },
+        "Connection": { "$ref": "#/$defs/Alias" },
+        "Path": { "$ref": "#/$defs/ValueOrPath" },
+        "File": { "$ref": "#/$defs/JsonPath" }
+      }
+    },
+
+    "Call": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Type", "Connection", "Method", "Path"],
+      "properties": {
+        "Type": { "const": "CALL" },
+        "Connection": { "$ref": "#/$defs/Alias" },
+        "Method": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"] },
+        "Path": { "type": "string", "pattern": "^/" },
+        "PathParameters": { "type": "object", "additionalProperties": { "$ref": "#/$defs/ValueOrPath" } },
+        "Query": { "type": "object", "additionalProperties": { "$ref": "#/$defs/ValueOrPath" } },
+        "Headers": { "type": "object", "additionalProperties": { "$ref": "#/$defs/ValueOrPath" } },
+        "Body": { "$ref": "#/$defs/ValueOrPath" },
+        "RequestFormat": { "enum": ["json", "xml", "form", "multipart", "base64", "binary"] },
+        "Response": { "$ref": "#/$defs/Response" },
+        "Paginate": { "$ref": "#/$defs/Paginate" },
+        "Idempotency": { "$ref": "#/$defs/Idempotency" },
+        "Extract": { "$ref": "#/$defs/Extract" },
+        "AcceptStatus": { "type": "array", "items": { "type": "integer", "minimum": 100, "maximum": 599 } },
+        "SaveOutputTo": { "$ref": "#/$defs/VarsPath" }
+      }
+    },
+    "Poll": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Type", "Call", "Until", "MaxAttempts"],
+      "properties": {
+        "Type": { "const": "POLL" },
+        "Call": {
+          "allOf": [{ "$ref": "#/$defs/Call" }],
+          "properties": { "Type": { "const": "CALL" } }
+        },
+        "Until": { "$ref": "#/$defs/Condition" },
+        "IntervalSeconds": { "type": "integer", "minimum": 1, "maximum": 3600 },
+        "Backoff": { "enum": ["none", "linear", "exponential"] },
+        "MaxAttempts": { "type": "integer", "minimum": 1, "maximum": 1000 },
+        "SaveOutputTo": { "$ref": "#/$defs/VarsPath" }
+      }
+    },
+    "WaitForWebhook": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Type", "Webhook", "Correlate"],
+      "properties": {
+        "Type": { "const": "WAIT_FOR_WEBHOOK" },
+        "Webhook": { "$ref": "#/$defs/Alias" },
+        "Correlate": {
+          "type": "object", "additionalProperties": false,
+          "required": ["ValuePath", "ExpectedPath"],
+          "properties": {
+            "ValuePath": { "$ref": "#/$defs/JsonPath" },
+            "ExpectedPath": { "$ref": "#/$defs/JsonPath" }
+          }
+        },
+        "Conditions": { "type": "array", "items": { "$ref": "#/$defs/Condition" } },
+        "ConditionsMatchAll": { "type": "boolean" },
+        "EarlyArrival": { "enum": ["reject", "buffer"] },
+        "BufferSeconds": { "type": "integer", "minimum": 1, "maximum": 86400 },
+        "SaveResponseToFile": { "type": "boolean" },
+        "SaveOutputTo": { "$ref": "#/$defs/VarsPath" }
+      }
+    },
+    "Decrypt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Type", "File", "Format", "Key", "SaveOutputTo"],
+      "properties": {
+        "Type": { "const": "DECRYPT" },
+        "File": { "$ref": "#/$defs/JsonPath" },
+        "Format": { "enum": ["pgp"] },
+        "Key": { "$ref": "#/$defs/Alias" },
+        "Runner": { "$ref": "#/$defs/Runner" },
+        "SaveOutputTo": { "$ref": "#/$defs/VarsPath" }
+      }
+    },
+    "Decode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Type", "File", "Format", "SaveOutputTo"],
+      "properties": {
+        "Type": { "const": "DECODE" },
+        "File": { "$ref": "#/$defs/JsonPath" },
+        "Format": { "enum": ["base64", "gzip"] },
+        "Runner": { "$ref": "#/$defs/Runner" },
+        "SaveOutputTo": { "$ref": "#/$defs/VarsPath" }
+      }
+    },
+
+    "Match": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Prefix": { "$ref": "#/$defs/ValueOrPath" },
+        "Pattern": { "$ref": "#/$defs/ValueOrPath" },
+        "ModifiedSince": { "$ref": "#/$defs/ValueOrPath" },
+        "Exclude": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "Ledger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Key"],
+      "properties": {
+        "Key": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["path", "etag", "size", "modified_at", "container"] } },
+        "Scope": { "enum": ["partner_flow", "partner"] },
+        "LeaseSeconds": { "type": "integer", "minimum": 60, "maximum": 86400 }
+      }
+    },
+    "Paginate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Style", "MaxPages"],
+      "properties": {
+        "Style": { "enum": ["cursor", "next_link", "offset", "page"] },
+        "RequestParameter": { "type": "string" },
+        "ResponsePath": { "type": "string", "pattern": "^\\$" },
+        "ItemsPath": { "type": "string", "pattern": "^\\$" },
+        "PageSize": { "type": "integer", "minimum": 1 },
+        "MaxPages": { "type": "integer", "minimum": 1, "maximum": 100000 },
+        "Collect": { "enum": ["inline", "file"] }
+      }
+    },
+    "Idempotency": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "KeyPath": { "$ref": "#/$defs/JsonPath" },
+        "Header": { "type": "string" }
+      }
+    },
+    "Extract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Save"],
+      "properties": {
+        "Save": { "type": "object", "propertyNames": { "$ref": "#/$defs/Alias" }, "additionalProperties": { "type": "string", "pattern": "^\\$" } }
+      }
+    },
+    "Response": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Format": { "enum": ["json", "xml", "text", "binary"] },
+        "Mode": { "enum": ["inline", "file"] },
+        "MaxInlineBytes": { "type": "integer", "minimum": 1, "maximum": 262144 },
+        "DecodePath": { "type": "string", "pattern": "^\\$" },
+        "Decode": { "enum": ["base64"] },
+        "ContentTypePath": { "type": "string", "pattern": "^\\$" },
+        "FileNamePath": { "type": "string", "pattern": "^\\$" }
+      },
+      "dependentRequired": { "DecodePath": ["Decode"] }
+    },
+    "Runner": { "enum": ["auto", "lambda", "container"] },
+    "Condition": {
+      "type": "object",
+      "required": ["Variable"],
+      "properties": {
+        "Variable": { "type": "string", "pattern": "^\\$" },
+        "StringEquals": { "type": "string" },
+        "NumericEquals": { "type": "number" },
+        "BooleanEquals": { "type": "boolean" },
+        "IsPresent": { "type": "boolean" },
+        "AnyOf": { "type": "array", "items": {} }
+      }
+    },
+    "RetryRule": {
+      "type": "object",
+      "required": ["ErrorEquals", "MaxAttempts"],
+      "properties": {
+        "ErrorEquals": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "IntervalSeconds": { "type": "integer", "minimum": 1 },
+        "MaxAttempts": { "type": "integer", "minimum": 0 },
+        "BackoffRate": { "type": "number", "minimum": 1 }
+      }
+    },
+    "CatchRule": {
+      "type": "object",
+      "required": ["ErrorEquals", "Next"],
+      "properties": {
+        "ErrorEquals": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "Next": { "type": "string" },
+        "ResultPath": { "$ref": "#/$defs/VarsPath" }
+      }
+    },
+
+    "Auth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile"],
+      "properties": {
+        "profile": {
+          "enum": ["none", "basic", "api_key", "bearer", "oauth2_client_credentials", "token_call", "client_certificate",
+                   "password", "private_key", "connection_string", "sas", "assume_role", "partner_principal"]
+        },
+        "secret_ref": { "$ref": "#/$defs/SecretRef" },
+        "header": { "type": "string" },
+        "prefix": { "type": "string" },
+        "token_url": { "type": "string", "pattern": "^https://" },
+        "token_path": { "type": "string", "pattern": "^\\$" },
+        "scopes": { "type": "array", "items": { "type": "string" } },
+        "role_arn": { "type": "string", "pattern": "^arn:aws:iam::" },
+        "external_id": { "type": "string" }
+      },
+      "allOf": [
+        { "if": { "properties": { "profile": { "const": "assume_role" } } }, "then": { "required": ["role_arn"] } },
+        { "if": { "properties": { "profile": { "enum": ["basic", "api_key", "bearer", "oauth2_client_credentials", "token_call", "client_certificate", "password", "private_key", "connection_string", "sas"] } } }, "then": { "required": ["secret_ref"] } }
+      ]
+    },
+
+    "Connection": {
+      "type": "object",
+      "required": ["type", "auth"],
+      "properties": { "type": { "$ref": "#/$defs/ConnectionType" }, "auth": { "$ref": "#/$defs/Auth" } },
+      "allOf": [
+        { "if": { "properties": { "type": { "const": "http" } } }, "then": {
+          "additionalProperties": false,
+          "required": ["base_url"],
+          "properties": {
+            "type": true, "auth": true,
+            "base_url": { "type": "string", "pattern": "^https://" },
+            "egress": { "enum": ["default", "static_ip"] },
+            "timeout_seconds": { "type": "integer", "minimum": 1, "maximum": 900 },
+            "default_headers": { "type": "object", "additionalProperties": { "type": "string" } }
+          } } },
+        { "if": { "properties": { "type": { "const": "sftp" } } }, "then": {
+          "additionalProperties": false,
+          "required": ["host", "host_key_fingerprint"],
+          "properties": {
+            "type": true, "auth": true,
+            "host": { "type": "string" },
+            "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+            "root": { "type": "string" },
+            "host_key_fingerprint": { "type": "string" },
+            "username": { "type": "string" },
+            "egress": { "enum": ["default", "static_ip"] }
+          } } },
+        { "if": { "properties": { "type": { "const": "azure_blob" } } }, "then": {
+          "additionalProperties": false,
+          "required": ["account_url", "containers"],
+          "properties": {
+            "type": true, "auth": true,
+            "account_url": { "type": "string", "pattern": "^https://" },
+            "containers": { "oneOf": [
+              { "type": "array", "minItems": 1, "items": { "type": "string" } },
+              { "const": "*" }
+            ] },
+            "exclude_containers": { "type": "array", "items": { "type": "string" } },
+            "root": { "type": "string" }
+          } } },
+        { "if": { "properties": { "type": { "const": "s3" } } }, "then": {
+          "additionalProperties": false,
+          "required": ["bucket", "region"],
+          "properties": {
+            "type": true, "auth": true,
+            "bucket": { "type": "string" },
+            "root": { "type": "string" },
+            "region": { "type": "string" },
+            "kms_key_arn": { "type": "string" }
+          } } },
+        { "if": { "properties": { "type": { "const": "drop_zone" } } }, "then": {
+          "additionalProperties": false,
+          "properties": {
+            "type": true, "auth": true,
+            "prefix": { "type": "string" },
+            "max_object_bytes": { "type": "integer", "minimum": 1 }
+          } } }
+      ]
+    },
+
+    "PartnerConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["configuration_id", "partner", "tenant", "environment", "connections"],
+      "properties": {
+        "configuration_id": { "$ref": "#/$defs/Identifier" },
+        "partner": { "$ref": "#/$defs/Identifier" },
+        "tenant": { "$ref": "#/$defs/Identifier" },
+        "environment": { "enum": ["dev", "staging", "prod"] },
+        "connections": {
+          "type": "object", "minProperties": 1,
+          "propertyNames": { "$ref": "#/$defs/Alias" },
+          "additionalProperties": { "$ref": "#/$defs/Connection" }
+        },
+        "parameters": { "type": "object" },
+        "keys": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/Alias" },
+          "additionalProperties": {
+            "type": "object", "additionalProperties": false, "required": ["secret_ref"],
+            "properties": { "secret_ref": { "$ref": "#/$defs/SecretRef" }, "passphrase_ref": { "$ref": "#/$defs/SecretRef" } }
+          }
+        },
+        "webhooks": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/Alias" },
+          "additionalProperties": {
+            "type": "object", "additionalProperties": false, "required": ["auth"],
+            "properties": {
+              "auth": {
+                "type": "object", "additionalProperties": false, "required": ["scheme", "secret_ref"],
+                "properties": {
+                  "scheme": { "enum": ["header_secret", "hmac_sha256", "basic"] },
+                  "header": { "type": "string" },
+                  "secret_ref": { "$ref": "#/$defs/SecretRef" }
+                }
+              }
+            }
+          }
+        },
+        "allow_delete": { "type": "boolean" }
+      }
+    },
+
+    "Activation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["activation_id", "flow_name", "flow_version", "configuration_id", "trigger", "subscriber", "enabled"],
+      "properties": {
+        "activation_id": { "$ref": "#/$defs/Identifier" },
+        "flow_name": { "$ref": "#/$defs/Identifier" },
+        "flow_version": { "type": "integer", "minimum": 1 },
+        "configuration_id": { "$ref": "#/$defs/Identifier" },
+        "trigger": {
+          "type": "object",
+          "required": ["type"],
+          "properties": { "type": { "enum": ["schedule", "drop_zone", "webhook"] } },
+          "allOf": [
+            { "if": { "properties": { "type": { "const": "schedule" } } }, "then": {
+              "additionalProperties": false, "required": ["cron", "timezone"],
+              "properties": { "type": true, "cron": { "type": "string" }, "timezone": { "type": "string" }, "request": { "type": "object" } } } },
+            { "if": { "properties": { "type": { "const": "drop_zone" } } }, "then": {
+              "additionalProperties": false, "required": ["connection"],
+              "properties": { "type": true, "connection": { "$ref": "#/$defs/Alias" }, "match": { "$ref": "#/$defs/Match" }, "ledger": { "$ref": "#/$defs/Ledger" } } } },
+            { "if": { "properties": { "type": { "const": "webhook" } } }, "then": {
+              "additionalProperties": false, "required": ["webhook"],
+              "properties": { "type": true, "webhook": { "$ref": "#/$defs/Alias" },
+                "batch": { "type": "object", "additionalProperties": false, "required": ["max_events", "max_seconds"],
+                  "properties": { "max_events": { "type": "integer", "minimum": 1, "maximum": 100000 }, "max_seconds": { "type": "integer", "minimum": 1, "maximum": 3600 } } } } } }
+          ]
+        },
+        "subscriber": {
+          "type": "object", "additionalProperties": false, "required": ["url", "signing_secret_ref"],
+          "properties": { "url": { "type": "string", "pattern": "^https://" }, "signing_secret_ref": { "$ref": "#/$defs/SecretRef" } }
+        },
+        "enabled": { "type": "boolean" }
+      }
+    },
+
+    "JobRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["transaction_id", "configuration_id", "request_payload", "callback"],
+      "properties": {
+        "transaction_id": { "type": "string", "minLength": 1 },
+        "configuration_id": { "$ref": "#/$defs/Identifier" },
+        "request_payload": { "type": "object" },
+        "callback": {
+          "oneOf": [
+            { "type": "object", "additionalProperties": false, "required": ["url"], "properties": { "url": { "type": "string", "pattern": "^https://" } } },
+            { "type": "object", "additionalProperties": false, "required": ["task_token"], "properties": { "task_token": { "type": "string", "minLength": 1 } } }
+          ]
+        },
+        "dry_run": { "type": "boolean" },
+        "replay": {
+          "type": "object", "additionalProperties": false, "required": ["items"],
+          "properties": { "items": { "type": "array", "minItems": 1, "items": { "type": "string" } } }
+        },
+        "batch_input": {},
+        "maximum_concurrency": { "type": "integer", "minimum": 1, "maximum": 1000 }
+      },
+      "dependentRequired": { "batch_input": ["maximum_concurrency"] }
+    },
+
+    "FileRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["s3Uri", "sha256", "size"],
+      "properties": {
+        "s3Uri": { "type": "string", "pattern": "^s3://" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "size": { "type": "integer", "minimum": 0 },
+        "contentType": { "type": "string" },
+        "source": {
+          "type": "object", "additionalProperties": false, "required": ["connection", "path"],
+          "properties": {
+            "connection": { "$ref": "#/$defs/Alias" },
+            "path": { "type": "string" },
+            "etag": { "type": "string" },
+            "modified_at": { "type": "string", "format": "date-time" }
+          }
+        }
+      }
+    },
+
+    "ResultManifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["job_id", "flow_name", "flow_version", "configuration_id", "status", "started_at", "finished_at", "files", "items", "errors"],
+      "properties": {
+        "job_id": { "type": "string" },
+        "transaction_id": { "type": "string" },
+        "flow_name": { "$ref": "#/$defs/Identifier" },
+        "flow_version": { "type": "integer", "minimum": 1 },
+        "configuration_id": { "$ref": "#/$defs/Identifier" },
+        "status": { "enum": ["SUCCEEDED", "PARTIAL", "FAILED"] },
+        "started_at": { "type": "string", "format": "date-time" },
+        "finished_at": { "type": "string", "format": "date-time" },
+        "files": { "type": "array", "items": { "$ref": "#/$defs/FileRef" } },
+        "values": { "type": "object" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["key", "status"],
+            "properties": {
+              "key": { "type": "string" },
+              "status": { "enum": ["SUCCEEDED", "FAILED", "SKIPPED"] },
+              "files": { "type": "array", "items": { "$ref": "#/$defs/FileRef" } },
+              "error": { "$ref": "#/$defs/Error" }
+            }
+          }
+        },
+        "errors": { "type": "array", "items": { "$ref": "#/$defs/Error" } }
+      }
+    },
+
+    "Error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["phase", "code", "retryable"],
+      "properties": {
+        "phase": { "enum": ["validate", "auth", "list", "fetch", "put", "move", "delete", "call", "poll", "webhook", "decrypt", "decode", "reply"] },
+        "code": { "type": "string" },
+        "retryable": { "type": "boolean" },
+        "item": { "type": "string" },
+        "message": { "type": "string" }
+      }
+    }
+  }
+}

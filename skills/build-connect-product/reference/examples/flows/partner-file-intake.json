@@ -1,0 +1,72 @@
+{
+  "version": "3",
+  "flow_name": "partner-file-intake",
+  "kind": "flow",
+  "description": "List new files in a partner inbox, land each one in the Connect bucket, then archive the source copy. Used by DSA partners and Elevate; only the partner configuration differs.",
+  "connections": {
+    "inbox": { "types": ["azure_blob", "sftp", "s3", "drop_zone"] }
+  },
+  "parameters": { "type": "object", "additionalProperties": false, "properties": {} },
+  "partner_parameters": {
+    "type": "object",
+    "required": ["prefix", "pattern", "archive_prefix"],
+    "properties": {
+      "prefix": { "type": "string" },
+      "pattern": { "type": "string" },
+      "archive_prefix": { "type": "string" },
+      "cutoff": { "type": "string", "format": "date-time" }
+    }
+  },
+  "triggers": ["api", "schedule"],
+  "limits": { "timeout_seconds": 3600, "max_items": 5000, "max_bytes": 21474836480, "max_cost_usd": 25 },
+  "definition": {
+    "StartAt": "ListNewFiles",
+    "States": {
+      "ListNewFiles": {
+        "Type": "Task",
+        "ResourceDefinition": {
+          "Type": "LIST",
+          "Connection": "inbox",
+          "Match": { "Prefix": "$.partner.prefix", "Pattern": "$.partner.pattern", "ModifiedSince": "$.partner.cutoff" },
+          "Ledger": { "Key": ["path", "etag", "size"], "LeaseSeconds": 900 },
+          "SaveOutputTo": "$.vars.new_files"
+        },
+        "Next": "PerFile"
+      },
+      "PerFile": {
+        "Type": "Map",
+        "Items": "$.vars.new_files",
+        "Concurrency": 10,
+        "Iterator": {
+          "StartAt": "Fetch",
+          "States": {
+            "Fetch": {
+              "Type": "Task",
+              "ResourceDefinition": {
+                "Type": "FETCH",
+                "Connection": "inbox",
+                "File": "$.item",
+                "Verify": { "Size": true, "Checksum": "etag" },
+                "Runner": "auto",
+                "SaveOutputTo": "$.vars.landed"
+              },
+              "Next": "Archive"
+            },
+            "Archive": {
+              "Type": "Task",
+              "ResourceDefinition": {
+                "Type": "MOVE",
+                "Connection": "inbox",
+                "File": "$.item",
+                "To": "$.partner.archive_prefix",
+                "IfExists": "skip"
+              },
+              "End": true
+            }
+          }
+        },
+        "End": true
+      }
+    }
+  }
+}

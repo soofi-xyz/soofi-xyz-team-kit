@@ -1,0 +1,22 @@
+{
+  "configuration_id": "interprose-prod",
+  "partner": "interprose",
+  "tenant": "socapital",
+  "environment": "prod",
+  "connections": {
+    "api": {
+      "type": "http",
+      "base_url": "https://<tenant>.interprose.com",
+      "timeout_seconds": 30,
+      "default_headers": { "X-CustomerID": "<customer-id>" },
+      "auth": { "profile": "api_key", "header": "Authorization", "prefix": "Bearer", "secret_ref": "arn:aws:secretsmanager:<region>:<account>:secret:<interprose-api-key>" }
+    },
+    "bucket": {
+      "type": "s3",
+      "bucket": "<interprose-customer-bucket>",
+      "root": "<customer-prefix>/",
+      "region": "<region>",
+      "auth": { "profile": "assume_role", "role_arn": "arn:aws:iam::<interprose-account>:role/<access-role>", "external_id": "<external-id>" }
+    }
+  }
+}

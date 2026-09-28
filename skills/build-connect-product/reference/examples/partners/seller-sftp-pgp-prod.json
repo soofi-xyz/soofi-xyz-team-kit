@@ -1,0 +1,26 @@
+{
+  "configuration_id": "seller-example-prod",
+  "partner": "example-seller",
+  "tenant": "socapital",
+  "environment": "prod",
+  "connections": {
+    "inbox": {
+      "type": "sftp",
+      "host": "sftp.<seller-domain>",
+      "host_key_fingerprint": "SHA256:<fingerprint>",
+      "username": "<username>",
+      "auth": { "profile": "password", "secret_ref": "arn:aws:secretsmanager:<region>:<account>:secret:<seller-sftp-secret>" }
+    }
+  },
+  "keys": {
+    "transfer": {
+      "secret_ref": "arn:aws:secretsmanager:<region>:<account>:secret:<pgp-private-key>",
+      "passphrase_ref": "arn:aws:secretsmanager:<region>:<account>:secret:<pgp-passphrase>"
+    }
+  },
+  "parameters": {
+    "prefix": "outgoing/",
+    "pattern": "*.pgp",
+    "archive_prefix": "outgoing/archive/"
+  }
+}

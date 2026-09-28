@@ -1,0 +1,28 @@
+{
+  "job_id": "01J8Z3K8T4Q6W9M2V7R5B1C0DX",
+  "flow_name": "partner-file-intake",
+  "flow_version": 1,
+  "configuration_id": "dsa-americor-prod",
+  "status": "PARTIAL",
+  "started_at": "2026-09-24T13:00:02Z",
+  "finished_at": "2026-09-24T13:00:41Z",
+  "files": [
+    {
+      "s3Uri": "s3://<connect-bucket>/jobs/americor/01J8Z3K8T4Q6W9M2V7R5B1C0DX/files/scrub-2026-09-24.xlsx",
+      "sha256": "9f2c1e0b7a64d3c85e1f0a9b2c7d4e6f8a1b3c5d7e9f0a2b4c6d8e0f1a3b5c7d",
+      "size": 48213,
+      "contentType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "source": { "connection": "inbox", "path": "americor/TO_SOC/scrub-2026-09-24.xlsx", "etag": "0x8DCDC2A1B3F4E5D", "modified_at": "2026-09-24T12:41:10Z" }
+    }
+  ],
+  "values": {},
+  "items": [
+    { "key": "americor/TO_SOC/scrub-2026-09-24.xlsx", "status": "SUCCEEDED" },
+    {
+      "key": "americor/TO_SOC/letters-2026-09-24.xlsx",
+      "status": "FAILED",
+      "error": { "phase": "fetch", "code": "SizeMismatch", "retryable": true, "item": "americor/TO_SOC/letters-2026-09-24.xlsx" }
+    }
+  ],
+  "errors": []
+}

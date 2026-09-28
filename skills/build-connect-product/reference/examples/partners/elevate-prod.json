@@ -1,0 +1,20 @@
+{
+  "configuration_id": "elevate-media-prod",
+  "partner": "elevate",
+  "tenant": "socapital",
+  "environment": "prod",
+  "connections": {
+    "inbox": {
+      "type": "azure_blob",
+      "account_url": "https://<storage-account>.blob.core.windows.net",
+      "containers": ["elevate"],
+      "root": "downloads/",
+      "auth": { "profile": "connection_string", "secret_ref": "arn:aws:secretsmanager:<region>:<account>:secret:<elevate-blob-secret>" }
+    }
+  },
+  "parameters": {
+    "prefix": "",
+    "pattern": "*",
+    "archive_prefix": "processed/"
+  }
+}

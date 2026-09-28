@@ -1,0 +1,27 @@
+{
+  "configuration_id": "quiq-prod",
+  "partner": "quiq",
+  "tenant": "socapital",
+  "environment": "prod",
+  "connections": {
+    "provider": {
+      "type": "http",
+      "base_url": "https://<tenant>.goquiq.com",
+      "auth": { "profile": "basic", "secret_ref": "arn:aws:secretsmanager:<region>:<account>:secret:<quiq-api-secret>" }
+    },
+    "drop": {
+      "type": "drop_zone",
+      "prefix": "bi-data/",
+      "max_object_bytes": 5368709120,
+      "auth": { "profile": "partner_principal" }
+    }
+  },
+  "webhooks": {
+    "events": {
+      "auth": { "scheme": "header_secret", "header": "X-Webhook-Secret", "secret_ref": "arn:aws:secretsmanager:<region>:<account>:secret:<quiq-webhook-secret>" }
+    },
+    "status": {
+      "auth": { "scheme": "header_secret", "header": "X-Webhook-Secret", "secret_ref": "arn:aws:secretsmanager:<region>:<account>:secret:<quiq-webhook-secret>" }
+    }
+  }
+}
