@@ -1,0 +1,13 @@
+{
+  "systemId": "sale-availability",
+  "environment": "dev",
+  "activationEnabled": false,
+  "costCeilingUsd": 25,
+  "components": [
+    { "product": "product-orchestration", "action": "apply-config", "refs": ["productDefinition", "productFlowTemplate", "productFlow"] },
+    { "product": "connect", "action": "register", "refs": ["connectPartner", "connectActivation"] },
+    { "product": "transform", "action": "register-mapping", "refs": ["transformRequest"] },
+    { "product": "lexicon", "action": "publish", "refs": ["lexiconCatalog"] }
+  ],
+  "notes": "Synth and apply configuration only. Connect activations stay disabled and no invocation runs until account, region and cost ceiling are authorized."
+}

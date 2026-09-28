@@ -1,0 +1,15 @@
+{
+  "contractVersion": 2,
+  "from": "county-sales",
+  "to": "sale-availability",
+  "inputs": [
+    {
+      "table": "sales",
+      "s3Uri": "s3://connect-local/landed/sale-availability/sales/"
+    }
+  ],
+  "output": {
+    "s3Prefix": "s3://transform-local/results/sale-availability"
+  },
+  "costCeilingUsd": 10
+}

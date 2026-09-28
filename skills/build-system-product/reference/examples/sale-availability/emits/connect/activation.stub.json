@@ -1,0 +1,12 @@
+{
+  "activation_id": "sale-availability-source-daily",
+  "flow_name": "partner-file-intake",
+  "flow_version": 1,
+  "configuration_id": "sale-availability-source-dev",
+  "trigger": { "type": "schedule", "cron": "0 6 * * ? *", "timezone": "America/New_York" },
+  "subscriber": {
+    "url": "https://<transform-intake-endpoint>",
+    "signing_secret_ref": "arn:aws:secretsmanager:<region>:<account>:secret:<subscriber-signing-secret>"
+  },
+  "enabled": false
+}
