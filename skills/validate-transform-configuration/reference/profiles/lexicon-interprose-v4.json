@@ -22,10 +22,11 @@
       "csv-pipe-header-format",
       "cents-conversion-exact",
       "partial-input-form-1281-only",
-      "form-1281-two-fields-only",
+      "form-1281-claydol-fields",
       "deactivation-date-loss-only-with-complete-date",
       "dsa-multiple-edges-per-debt",
-      "attempted-slot-schedule-parity"
+      "attempted-slot-schedule-parity",
+      "optional-graph-properties-absent-typed-null"
     ],
     "negativeTests": [
       "dsa-latest-deleted-not-represented",
@@ -36,9 +37,10 @@
       "cents-rounding-boundary",
       "lexicon-json-diff-rejected",
       "forbidden-concept-reintroduced",
-      "form-1281-reported-date-absent",
+      "form-1281-dsa-representation-false-absent",
       "payment-method-wrong-value-fails",
-      "payment-plan-schedule-missing-status-edge-rejected"
+      "payment-plan-schedule-missing-status-edge-rejected",
+      "forward-sql-missing-stage-column-rejected"
     ]
   },
   "configurationChoices": {
@@ -129,7 +131,7 @@
     },
     {
       "id": "dsa-election-matches-is-dsa",
-      "description": "For each debt, only version 2 company_represents_debt edges with company_type DEBT_SETTLEMENT_AGENCY are considered; they are grouped by company company_identifier (falling back to the company ~id), the latest edge per group is chosen by created_at descending then effective_at descending, and DSA_REPRESENTATION is true exactly when some group's latest edge is ACTIVE, matching the debt is_dsa index definition on the pinned main; DSA_NAME comes from an elected ACTIVE group",
+      "description": "For each debt, only version 2 company_represents_debt edges with company_type DEBT_SETTLEMENT_AGENCY are considered; they are grouped by company company_identifier (falling back to the company ~id), the latest edge per group is chosen by created_at descending then effective_at descending, and a DSA_NAME row is emitted exactly when some group's latest edge is ACTIVE, matching the debt is_dsa index definition on the pinned main; DSA_NAME comes from an elected ACTIVE group. The new optional edge properties never change which debts are represented or which name is elected",
       "phase": 11,
       "failureCode": "DsaElectionMismatch"
     },
@@ -219,7 +221,7 @@
     },
     {
       "id": "dsa-name-matches-prod-index",
-      "description": "For every exported debt in the PROD graph sample, DSA_REPRESENTATION equals PROD debt.is_dsa and DSA_NAME equals PROD debt.dsa_company_name (with CR, LF and pipe replaced by spaces), read-only through the Persist Gremlin API. With several ACTIVE identity heads the mapping reproduces the Gremlin group() java.util.HashMap order; that dependency is a recorded risk, and cases where a simpler order would give the same name do not prove it",
+      "description": "For every exported debt in the PROD graph sample, a DSA_NAME row exists exactly when PROD debt.is_dsa is true and DSA_NAME equals PROD debt.dsa_company_name (with CR, LF and pipe replaced by spaces), read-only through the Persist Gremlin API. With several ACTIVE identity heads the mapping reproduces the Gremlin group() java.util.HashMap order; that dependency is a recorded risk, and cases where a simpler order would give the same name do not prove it",
       "phase": 11,
       "failureCode": "DsaElectionMismatch"
     },
@@ -249,7 +251,7 @@
     },
     {
       "id": "dsa-representation-source",
-      "description": "dsa_representation must come from the Interprose source column once Stage extracts it. The PROD-reconstruct package derives it from Claydol COMPLETED representation records, so REPORTED_DATE and DSA_REPRESENTATION parity is reconstruction evidence only until it is revalidated against real Stage values",
+      "description": "dsa_representation must come from the Interprose source column once Stage extracts it. The PROD-reconstruct package derives it from Claydol COMPLETED representation records, so REPORTED_DATE and DSA_REPRESENTATION parity is reconstruction evidence only until it is revalidated against real Stage values. Any Claydol-derived oracle uses only records processed at or before the package extraction time; a later Claydol write is time skew, not a mapping difference",
       "phase": 11,
       "failureCode": "SourceColumnReconstructed"
     },
@@ -409,7 +411,10 @@
           "status": "verified",
           "tbd": [
             "risk finding, owner Lexicon (debt.dsa_company_name) with kecleon: with several ACTIVE identity heads DSA_NAME reproduces the java.util.HashMap iteration order of the Gremlin group() step, not a business rule; recheck against PROD dsa_company_name after any Neptune or TinkerPop change",
-            "REPORTED_DATE and DSA_REPRESENTATION are validated against dsa_representation reconstructed from Claydol records until PROD Stage extracts debt_settlement_agency.dsa_representation"
+            "REPORTED_DATE and DSA_REPRESENTATION are validated against dsa_representation reconstructed from Claydol records until PROD Stage extracts debt_settlement_agency.dsa_representation",
+            "blocking at 1050611b, owner kecleon (Transform) with the graph-export owner: the Transform Glue runtime rejects a graph dataset that lacks any declared property column, so v4 form_1281 and full runs fail on the v2 and PROD graph samples and on every current PROD graph export (graph_call_outputs.company_represents_debt has none of the four columns); optional-graph-properties-absent needs typed-null materialization of absent optional graph properties or exports that carry the columns",
+            "risk, owner Lexicon with Claydol: a represented debt whose head has dsa_representation true but no reported_at gets DSA_REPRESENTATION without REPORTED_DATE, a body Claydol never sends because it requires REPORTED_DATE (2 of 340 debts in the PROD-reconstruct sample)",
+            "observation, owner Claydol: in the PROD-reconstruct sample, 22 of 138 Claydol DSA representation writes targeted debts whose Interprose DSA row had been deleted 63 to 982 days before the write; v4 follows Stage and emits DELETE_DATE for them"
           ]
         },
         {

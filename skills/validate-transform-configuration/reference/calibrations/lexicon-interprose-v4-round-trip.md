@@ -60,13 +60,15 @@ Generate Parquet vertex and edge tables locally from the language definitions. U
 
 ## Regression expectations
 
-- Any `lexicon.json` diff against `main`: phase 5 `FAIL` (`LexiconModelDiffersFromMain`).
+- Any `lexicon.json` diff against `main` beyond `lexiconModelPolicy.approvedAdditions`: phase 5 `FAIL` (`LexiconModelDiffersFromMain`).
 - A forbidden label or property in the model, a graph input, or the SQL: phase 5/6 `FAIL`.
 - Registered `requiredInputs` or CSV options differ from `outputContracts`: phase 6 `FAIL`.
 - Election by `effective_at` alone, or by physical company vertex: phase 11 `FAIL` (`DsaElectionMismatch`).
 - `payment_total` written as `1998` or `19.99`: phase 11 `FAIL` (`CentsConversionMismatch`).
 - A payment-plan column outside the declared list is populated: phase 11 `FAIL` (`ProfileParityDrift`).
-- Any `REPORTED_DATE` or `DSA_CLIENT_ID_` row in `form_1281`: phase 11 `FAIL` (`Form1281ShapeMismatch`).
+- Any `DSA_CLIENT_ID_` row, or `DSA_REPRESENTATION` other than `true`, in `form_1281`: phase 11 `FAIL` (`Form1281ShapeMismatch`).
+- v4 `form_1281` or a full run fails on a graph export that lacks the four optional `company_represents_debt` columns: phase 9 `FAIL` (`OptionalPropertyNotMaterialized`).
+- A forward SQL reading a Stage column that the target environment's Stage outputs do not carry: phase 8 `FAIL` (`DeployOrderHazard`).
 - A non-empty `payment_method` that differs from the source: phase 11 `FAIL` (`RoundTripColumnMismatch`).
 - A request for `payment_plan_schedule` without `edge-payment-plan-installment-status-changed` is not rejected before Glue starts: phase 9 `FAIL`.
 - Runtime evidence bound only to `4.0.0` without the plan's `mapping.json` SHA-256 and `VersionId`, or a registry that no longer serves that digest at verdict time: phase 8 `BLOCKED` (`DeploymentDrift`).
@@ -81,3 +83,12 @@ Generate Parquet vertex and edge tables locally from the language definitions. U
 - Claydol inventory writes that set `REPORTED_DATE` without a representation (29 represented debts in the sample) are not reproduced by rule; record them.
 - Graph exports without the four columns (all edges ingested before the change, the v2 and PROD graph samples) must still run: absent optional properties are typed nulls.
 - Deploy order: the forward SQL reads `debt_settlement_agency.dsa_representation`; publish it only where Stage already has the column, and not in place over a live `1.0.0`.
+
+## Independent re-validation of `9cba6122` (run `20260928T192229Z`)
+
+- Local build reproduces v4 `1050611b…` and forward `b3783711…`; DEV serves the same bytes. The DEV plans executed `form_1281.sql` `ac9141e3…`, `payment_plan.sql` `93536bfa…` and `payment_plan_schedule.sql` `5188a76d…`.
+- `lexicon.json` against the merge base, and a trial merge into current `main`, differ only by the four approved properties. The `is_dsa` and `dsa_company_name` index definitions are byte-identical.
+- PROD-reconstruct package: the forward rerun matches the implementer's output except for per-run random edge `~id`s; the `lexicon/` bridge carries the same edge and company facts. v4 `form_1281` (785 rows) is byte-identical to the implementer's and exact against PROD Stage for 340 of 340 debts. This requires Claydol records cut off at the package extraction time (`18:43:31Z`); one later Claydol write adds one debt.
+- v2 and PROD-sample graph exports: v4 `form_1281` and full runs fail (`lacks property column 'reported_at:Date'`). Payment-only and schedule-only runs pass. `payment_plan_schedule` is unchanged. `payment_plan` changes only `deactivation_date`: 28 PROD-sample plans, all now empty and all with a COMPLETED event. Rerunning with the four columns added as typed nulls (diagnostic only) leaves `DSA_NAME` and the represented-debt set unchanged.
+- Deploy order in DEV: since `18:50Z` the published `interprose/edges/company_represents_debt.sql` (`72e5bb92…`) reads `dsa.dsa_representation`, but no DEV Stage output carries the column. Spark 3.3 fails with `Column 'dsa.dsa_representation' does not exist`. No live DEV forward run failed yet, because none has run on that SQL. DEV mapping objects flip between PR deploys (latest PR wins).
+
