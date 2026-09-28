@@ -1,6 +1,14 @@
 # Lexicon to Interprose v4 round-trip calibration
 
-Use only with `lexicon-interprose-v4.json`. This dossier holds sanitized expectations, not runtime evidence. Status: **planned**. `lexicon-to-interprose@4.0.0` is not registered on any inspected revision. Every run stays `BLOCKED` at phase 6 until the Lexicon branch registers it and its head SHA is pinned.
+Use only with `lexicon-interprose-v4.json`. This dossier holds sanitized expectations, not runtime evidence. Status: **registered on a candidate**. `lexicon-to-interprose@4.0.0` is registered by Lexicon PR #811 (not yet on `main`); pin the PR head SHA and prove that the DEV registry `mapping.json` and query SHA-256 digests equal a local materialization of that SHA before any run. The DEV registry key is overwritten on every PR deploy, so bind each execution to the registry object `VersionId` recorded in its plan.
+
+## DEV package
+
+`s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/20260928-dev-stage-sample_v1/` (bucket versioning `Enabled`) holds a 197-debt DEV Stage sample:
+
+- `stage/`: the ten profile source families, one Parquet object each; `stage/manifest.sha256.json` lists key, bytes, SHA-256 and `VersionId` per object.
+- `lexicon/`: the thirteen Parquet graph exports v4 reads, bridged from an `interprose-to-lexicon@1.0.0` Neptune CSV run; `lexicon/manifest.sha256.json` as above.
+- The manifests carry no row counts, source window, or sanitization record, and the bridge assigns every `created_at` as a synthetic sequence; record both as limitations.
 
 Classification: `deterministic`. The profile fixes the DSA election rule, form constants, cents conversion, and CSV format. Changing any of them in the mapping is a configuration change. Changing the Lexicon model is forbidden for this profile.
 

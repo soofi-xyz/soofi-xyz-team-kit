@@ -78,13 +78,13 @@ Each numbered write is a separate confirmation gate.
 
 ## Expected sizes and cost
 
-- Lexicon to Interprose v4: the planned package
-  `s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/<window>_v1/`
-  (bucket versioning `Enabled`, checked 2026-09-28; the prefix does not exist
-  yet) holds one sanitized Interprose snapshot day of the ten profile source
-  families under `derived/<table>/`, plus the twelve Parquet graph exports v4
-  reads. The window, manifest digest, and version are TBD until the build
-  lands. The `bounded-dev` tier caps it at 50,000 rows and $25.
+- Lexicon to Interprose v4: the package
+  `s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/20260928-dev-stage-sample_v1/`
+  (bucket versioning `Enabled`, checked 2026-09-28) holds a 197-debt DEV Stage
+  sample of the ten profile source families under `stage/<table>/` and the
+  thirteen Parquet graph exports v4 reads under `lexicon/<dataset>/`. Each
+  half has its own `manifest.sha256.json`; the profile pins both digests and
+  `VersionId`s. The `bounded-dev` tier caps it at 50,000 rows and $25.
 - Quiq SMS lifecycle: a full-day export is bounded by the profile's
   `full-day-dev` tier (≤100,000 rows, ≤$50).
 - Transform cost: `resolve-plan` returns `predictedCostUsd` before Glue runs.

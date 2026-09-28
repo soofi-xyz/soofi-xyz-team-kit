@@ -929,13 +929,20 @@ def test_schemas_and_profiles() -> list[dict]:
     v4 = next(p for p in profiles if p["id"] == "lexicon-interprose-v4.json")
     planned_with_manifest = copy.deepcopy(v4)
     package = next(s for s in planned_with_manifest["validationSources"] if s["kind"] == "existing-dev-artifact")
-    package["manifestSha256"] = "a" * 64
+    package["artifactStatus"] = "planned"
+    package["tbd"] = ["manifestSha256"]
     assert_rejected(profile_check, planned_with_manifest, "planned artifact claiming a manifest digest")
 
     planned_without_tbd = copy.deepcopy(v4)
     package = next(s for s in planned_without_tbd["validationSources"] if s["kind"] == "existing-dev-artifact")
-    del package["tbd"]
+    package["artifactStatus"] = "planned"
+    del package["manifestSha256"], package["manifestVersionId"]
     assert_rejected(profile_check, planned_without_tbd, "planned artifact without TBD placeholders")
+
+    ready_without_manifest = copy.deepcopy(v4)
+    package = next(s for s in ready_without_manifest["validationSources"] if s["kind"] == "existing-dev-artifact")
+    del package["manifestVersionId"]
+    assert_rejected(profile_check, ready_without_manifest, "ready artifact without a manifest version")
 
     csv_without_delimiter = copy.deepcopy(v4)
     del csv_without_delimiter["directions"][1]["outputContracts"][0]["format"]["delimiter"]
@@ -975,16 +982,17 @@ def check_v4_profile(profiles: list[dict]) -> None:
     if set(directions) != {"interprose-to-lexicon", "lexicon-to-interprose-v4"}:
         fail("v4 profile must declare the Interprose sample forward step and the v4 projection")
     projection = directions["lexicon-to-interprose-v4"]["mapping"]
-    planned = projection.get("plannedSource", {})
     if (
-        projection.get("status") != "not-registered"
-        or projection.get("expectedId") != "lexicon-to-interprose"
-        or planned.get("generatedArtifact", {}).get("logicalArtifactPath")
+        projection.get("status") != "registered"
+        or projection.get("id") != "lexicon-to-interprose"
+        or projection.get("version") != "4.0.0"
+        or "src/transform/mappings/lexicon-to-interprose/versions/4.0.0" not in projection.get("sourcePaths", [])
+        or projection.get("generatedArtifact", {}).get("logicalArtifactPath")
         != "transform-mappings/lexicon-to-interprose/4.0.0/mapping.json"
-        or planned.get("expectedOutputDatasets") != list(V4_OUTPUTS)
-        or planned.get("outputDatasetMatch") != "exact"
+        or projection.get("expectedOutputDatasets") != list(V4_OUTPUTS)
+        or projection.get("outputDatasetMatch") != "exact"
     ):
-        fail("v4 projection must be the planned lexicon-to-interprose@4.0.0 with exactly three outputs")
+        fail("v4 projection must be the registered lexicon-to-interprose@4.0.0 with exactly three outputs")
     forward = directions["interprose-to-lexicon"]["mapping"]
     if (
         forward.get("status") != "registered"
@@ -1105,15 +1113,29 @@ def check_v4_profile(profiles: list[dict]) -> None:
         if complete != (case["expected"] == "PASS"):
             fail(f"partial-input case {case['id']} expectation contradicts the required inputs")
 
-    package = next(s for s in v4["validationSources"] if s["kind"] == "existing-dev-artifact")
-    if (
-        package["location"]
-        != "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/<window>_v1/"
-        or package["region"] != "us-east-2"
-        or package["artifactStatus"] != "planned"
-        or not package.get("tbd")
-    ):
-        fail("v4 DEV package must be a planned placeholder at the agreed staging prefix")
+    packages = {s["id"]: s for s in v4["validationSources"] if s["kind"] == "existing-dev-artifact"}
+    staged = "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/20260928-dev-stage-sample_v1/"
+    expected_packages = {
+        "lexicon-interprose-v4-dev-stage-sample": (staged + "stage/", ["interprose-to-lexicon"]),
+        "lexicon-interprose-v4-dev-graph-export": (staged + "lexicon/", ["lexicon-to-interprose-v4"]),
+    }
+    if set(packages) != set(expected_packages):
+        fail(f"v4 DEV package must be the staged Interprose sample and graph export: {sorted(packages)}")
+    for package_id, (location, applies_to) in expected_packages.items():
+        package = packages[package_id]
+        if (
+            package["location"] != location
+            or package["region"] != "us-east-2"
+            or package["artifactStatus"] != "ready"
+            or package["appliesTo"] != applies_to
+            or not re.fullmatch(r"[a-f0-9]{64}", package.get("manifestSha256", ""))
+            or not package.get("manifestVersionId")
+            or "tbd" in package
+        ):
+            fail(f"{package_id}: a ready DEV package needs its staged prefix, manifest digest, and version")
+    tests = {s["path"] for s in v4["validationSources"] if s["kind"] == "repository-test"}
+    if "infra/test/spark/test_lexicon_to_interprose.py" not in tests:
+        fail("v4 must execute the candidate's v4 Spark SQL tests")
     text = json.dumps(v4).lower()
     for retired in ("decision_batch", "dsc_client_id", "source_run_id", "product_execution", "lexicon-to-decision", "decision-to-lexicon", "3.0.0"):
         if retired in text:
@@ -1672,9 +1694,9 @@ def test_intent_resolution() -> None:
                 fail(f"{request!r} did not resolve to {V4_KEY}")
             if dataset not in signal_datasets(result, V4_KEY, "output-dataset"):
                 fail(f"{request!r} lacks the {dataset} output-dataset signal")
-        if not {"ProfileRegistrationStatusDrift", "UpstreamSourceUnresolved", "RetiredMappingInRegistry"} <= codes(form):
+        if not {"UpstreamSourceUnresolved", "RetiredMappingInRegistry"} <= codes(form):
             fail(f"v4 resolution findings are incomplete: {codes(form)}")
-        if {"LexiconModelDiffersFromMain", "OutputFormatDrift", "ProfileOutputInputDrift", "ForbiddenConceptInSql",
+        if {"ProfileRegistrationStatusDrift", "LexiconModelDiffersFromMain", "OutputFormatDrift", "ProfileOutputInputDrift", "ForbiddenConceptInSql",
                 "RemovedLexiconConcept", "ForbiddenConceptInLexicon", "ForbiddenPropertyInLexicon"} & codes(form):
             fail(f"clean v4 candidate reported a violation: {codes(form)}")
         retired_found = sorted(f["mapping"] for f in form["findings"] if f["code"] == "RetiredMappingInRegistry")
@@ -1692,7 +1714,7 @@ def test_intent_resolution() -> None:
         if form["workflow"]["persistPolicyDefault"] != "forbidden" or form["workflow"]["persistPolicySource"] != "profile":
             fail("profile-fixed Persist policy was not applied")
         if [(s["mapping"], s["profileStatus"]) for s in form["profileWorkflow"]] != [
-            ("interprose-to-lexicon@1.0.0", "registered"), (V4_KEY, "not-registered"),
+            ("interprose-to-lexicon@1.0.0", "registered"), (V4_KEY, "registered"),
         ] or form["profileWorkflow"][1]["registrySources"] != ["candidate"]:
             fail(f"profile workflow was not surfaced: {form['profileWorkflow']}")
         if form["partialInputPolicy"]["status"] != "supported":
@@ -1713,10 +1735,12 @@ def test_intent_resolution() -> None:
         if schedule["comparedFields"] != ["payment_schedule_id", "payment_plan_id", "amount"] or schedule["coverageTargets"]:
             fail(f"payment_plan_schedule must compare three columns without uncompared enum targets: {schedule}")
         recs = form["datasetRecommendations"]
-        if recs[0]["id"] != "lexicon-interprose-v4-dev-package" or recs[0]["status"] != "planned" or not recs[0].get("tbd"):
-            fail(f"planned v4 package was not recommended with TBD fields: {recs[0]}")
-        if question(form, "test-dataset")["default"] != "prod-derived-full-utc-day":
-            fail("a planned package was offered as the default dataset")
+        if [(r["id"], r["status"]) for r in recs[:2]] != [
+            ("lexicon-interprose-v4-dev-stage-sample", "ready"), ("lexicon-interprose-v4-dev-graph-export", "ready"),
+        ] or any(r.get("tbd") or not r.get("manifestSha256") for r in recs[:2]):
+            fail(f"ready v4 packages were not recommended with their manifests: {recs[:2]}")
+        if question(form, "test-dataset")["default"] != "lexicon-interprose-v4-dev-stage-sample":
+            fail("the ready profile package was not offered as the default dataset")
         proposal = next(r for r in recs if r["id"] == "prod-derived-full-utc-day")
         if not proposal["location"].startswith("s3://<dev-transform-data-bucket>/inputs/lexicon-interprose-prod-derived/"):
             fail(f"proposed dataset location violates the inputs/<language>-<purpose>/ layout: {proposal['location']}")
@@ -1724,8 +1748,31 @@ def test_intent_resolution() -> None:
         if set(states.values()) != {"ACTIVE_ON_MAIN"} or len(states) != len(V4_INPUTS):
             fail(f"v4 graph inputs were not all active on main: {states}")
 
-        # Before the Lexicon branch registers v4, the same request names the planned mapping but never selects it.
-        planned = run("test lexicon to interprose form 1281", lexicon="candidate")
+        # A profile that still declares v4 as planned names it for a request but never selects it.
+        planned_profiles = Path(tmp) / "planned-profiles"
+        shutil.copytree(PROFILES, planned_profiles)
+        planned_v4 = load_json(planned_profiles / "lexicon-interprose-v4.json")
+        projection = next(d for d in planned_v4["directions"] if d["id"] == "lexicon-to-interprose-v4")
+        registered = projection["mapping"]
+        projection["mapping"] = {
+            "status": "not-registered",
+            "expectedId": registered["id"],
+            "owner": "kecleon",
+            "reason": "Regression fixture: the v4 projection before its Lexicon branch registers it.",
+            "plannedSource": {
+                "repository": registered["repository"],
+                "sourcePaths": registered["sourcePaths"],
+                "generatedArtifact": registered["generatedArtifact"],
+                "expectedOutputDatasets": registered["expectedOutputDatasets"],
+                "outputDatasetMatch": registered["outputDatasetMatch"],
+            },
+        }
+        write_json(planned_profiles / "lexicon-interprose-v4.json", planned_v4)
+        planned_args = ("--profiles", str(planned_profiles))
+        planned_drift = run("test lexicon to interprose form 1281", *planned_args)
+        if "ProfileRegistrationStatusDrift" not in codes(planned_drift):
+            fail("a planned profile direction registered by the candidate did not report drift")
+        planned = run("test lexicon to interprose form 1281", *planned_args, lexicon="candidate")
         if planned["status"] != "AMBIGUOUS" or planned["selection"]["selected"] is not None:
             fail("an unregistered planned mapping was selected")
         planned_candidate = next((c for c in planned["candidates"] if c["mapping"] == V4_KEY), None)
@@ -1822,7 +1869,7 @@ def test_intent_resolution() -> None:
             fail("a profile that does not declare every workflow step was selected")
         if not any(f["code"] == "LexiconConceptInactive" and f["concept"] == "postal_mail" for f in email["findings"]):
             fail("a deprecated output of a full-mapping run was not reported")
-        before_v4 = run("test interprose to lexicon round trip form 1281", lexicon="candidate")
+        before_v4 = run("test interprose to lexicon round trip form 1281", *planned_args, lexicon="candidate")
         if [s["mapping"] for s in before_v4["workflow"]["steps"]] != ["interprose-to-lexicon@1.0.0"]:
             fail(f"an unrequested inverse was substituted for the unregistered one: {before_v4['workflow']['steps']}")
         if before_v4["selectedProfile"] != "lexicon-interprose-v4.json" or before_v4["profileWorkflow"][1]["registrySources"]:

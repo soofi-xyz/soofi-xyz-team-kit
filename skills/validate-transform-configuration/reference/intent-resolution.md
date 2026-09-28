@@ -194,6 +194,9 @@ is not registered anywhere yet. The PROD registry was not read.
 | `test decision to lexicon` | `UNKNOWN_LANGUAGE` | `decision` is no longer published; `decision-to-lexicon@1.0.0` and `lexicon-to-decision@1.0.0` are listed as `retired-in-kit` and not offered |
 | `test sms to lexicon` | `NO_MAPPING` | `sms` is `MAPPING_ENDPOINT_ONLY`; candidates `lexicon-to-sms@1.0.0`, `quiq-to-lexicon@1.0.0`, `lexicon-to-interprose@2.0.0`; `sms-to-interprose` is retired |
 
-Once the Lexicon branch registers `4.0.0`, the contract tests assert that the
-form 1281 and payment-plan requests return `RESOLVED` with
-`lexicon-to-interprose@4.0.0` and an `output-dataset` signal.
+Observed again on 2026-09-28 after Lexicon PR #811 deployed to DEV: with the
+PR head as candidate and the DEV registry holding `lexicon-to-interprose@4.0.0`,
+`test lexicon to interprose form 1281` and `test lexicon payment plan to
+interprose` both return `RESOLVED` with `lexicon-to-interprose@4.0.0`, an
+`output-dataset` signal, and profile `lexicon-interprose-v4.json`. The contract
+tests assert this, and keep the planned-profile behavior above as a regression.

@@ -13,7 +13,7 @@
   },
   "transformClassification": {
     "kind": "deterministic",
-    "evidenceBasis": "lexicon-to-interprose@4.0.0 is a planned version-controlled Spark SQL projection with fixed form constants, a declared DSA election rule, and cents conversion; readiness requires the registered mapping, executed SQL digests, and physical CSV outputs.",
+    "evidenceBasis": "lexicon-to-interprose@4.0.0 is a version-controlled Spark SQL projection with fixed form constants, a declared DSA election rule, and cents conversion; readiness requires the registered mapping, executed SQL digests, and physical CSV outputs.",
     "expectedOutputTests": [
       "form-1281-dsa-election",
       "payment-plan-graph-fillable-projection",
@@ -46,7 +46,7 @@
       "dollars to integer cents, ISO-8601 UTC timestamps, DSA election per company_identifier by created_at then effective_at"
     ],
     "mappingExpressions": ["lexicon-to-interprose@4.0.0"],
-    "profileInputs": ["planned DEV package under inputs/lexicon-interprose-v4/<window>_v1/"],
+    "profileInputs": ["DEV package inputs/lexicon-interprose-v4/20260928-dev-stage-sample_v1/ with stage/ and lexicon/ manifests"],
     "vocabularySelections": ["existing Lexicon company, debt, payment_plan, payment_plan_installment, and user_account concepts; no model additions"]
   },
   "productBoundary": {
@@ -182,7 +182,9 @@
         "src/transform/interprose/edges/payment_plan_created_by_user_account.sql",
         "src/transform/interprose/edges/payment_plan_updated_by_user_account.sql",
         "infra/lib/transform-mapping-artifacts.ts",
-        "infra/test/transform-mappings.spec.ts"
+        "infra/test/transform-mappings.spec.ts",
+        "infra/test/spark/materialize-mappings.ts",
+        "infra/test/spark/test_lexicon_to_interprose.py"
       ]
     },
     {
@@ -254,21 +256,22 @@
       "toLanguage": "interprose",
       "required": true,
       "mapping": {
-        "status": "not-registered",
-        "expectedId": "lexicon-to-interprose",
-        "owner": "kecleon",
-        "reason": "lexicon-to-interprose@4.0.0 is being built on a new Lexicon branch; as of 2026-09-28 Lexicon main 6f7a2ebf0877d9a25adf473577e5a711a1262f7b and its open PRs contain no registration, generator entry, or published artifact for it. Source paths below are TBD until that branch exists.",
-        "plannedSource": {
-          "repository": "Spring-Oaks-Capital-LLC/lexicon",
-          "sourcePaths": ["src/transform/mappings/lexicon-to-interprose/versions/4.0.0"],
-          "generatedArtifact": {
-            "generatorPath": "infra/lib/transform-mapping-artifacts.ts",
-            "logicalArtifactPath": "transform-mappings/lexicon-to-interprose/4.0.0/mapping.json",
-            "materializationCommand": "cd infra && npx cdk synth"
-          },
-          "expectedOutputDatasets": ["form_1281", "payment_plan", "payment_plan_schedule"],
-          "outputDatasetMatch": "exact"
-        }
+        "status": "registered",
+        "id": "lexicon-to-interprose",
+        "version": "4.0.0",
+        "repository": "Spring-Oaks-Capital-LLC/lexicon",
+        "sourcePaths": [
+          "src/transform/mappings/lexicon-to-interprose/versions/4.0.0",
+          "infra/lib/transform-mapping-artifacts.ts"
+        ],
+        "artifactPath": "infra/lib/transform-mapping-artifacts.ts",
+        "generatedArtifact": {
+          "generatorPath": "infra/lib/transform-mapping-artifacts.ts",
+          "logicalArtifactPath": "transform-mappings/lexicon-to-interprose/4.0.0/mapping.json",
+          "materializationCommand": "npx tsx infra/test/spark/materialize-mappings.ts <output-directory>"
+        },
+        "expectedOutputDatasets": ["form_1281", "payment_plan", "payment_plan_schedule"],
+        "outputDatasetMatch": "exact"
       },
       "parityDatasets": [
         { "dataset": "form_1281", "fields": ["debtID", "form_config_id", "field_identifier", "value"] },
@@ -378,20 +381,34 @@
       "required": true
     },
     {
-      "id": "lexicon-interprose-v4-dev-package",
+      "id": "lexicon-v4-spark-sql-tests",
+      "kind": "repository-test",
+      "repository": "Spring-Oaks-Capital-LLC/lexicon",
+      "path": "infra/test/spark/test_lexicon_to_interprose.py",
+      "appliesTo": ["lexicon-to-interprose-v4"],
+      "required": true
+    },
+    {
+      "id": "lexicon-interprose-v4-dev-stage-sample",
       "kind": "existing-dev-artifact",
-      "location": "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/<window>_v1/",
+      "location": "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/20260928-dev-stage-sample_v1/stage/",
       "region": "us-east-2",
-      "artifactStatus": "planned",
-      "appliesTo": ["interprose-to-lexicon", "lexicon-to-interprose-v4"],
-      "required": true,
-      "tbd": [
-        "window (one confirmed complete UTC snapshot day)",
-        "derived/ Interprose sample tables and derived/ Parquet graph exports",
-        "manifestSha256",
-        "manifestVersionId",
-        "bucket versioning verification"
-      ]
+      "artifactStatus": "ready",
+      "manifestSha256": "5c0a136e14526f66bc09c62afea0a976d48ca53d8e7aa71f51a783e02bd74545",
+      "manifestVersionId": "YrZBj3p9zZtCu6Jz2sD33NF5bhQgPt5p",
+      "appliesTo": ["interprose-to-lexicon"],
+      "required": true
+    },
+    {
+      "id": "lexicon-interprose-v4-dev-graph-export",
+      "kind": "existing-dev-artifact",
+      "location": "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/20260928-dev-stage-sample_v1/lexicon/",
+      "region": "us-east-2",
+      "artifactStatus": "ready",
+      "manifestSha256": "3463782ed5f9b754b9bf155cc5676003d4efe20d307f22cc761a456006a1327e",
+      "manifestVersionId": "Xthpt4KhWtC9ReGM6FUW8_hDnXuQCWCo",
+      "appliesTo": ["lexicon-to-interprose-v4"],
+      "required": true
     }
   ],
   "evidencePolicy": {
