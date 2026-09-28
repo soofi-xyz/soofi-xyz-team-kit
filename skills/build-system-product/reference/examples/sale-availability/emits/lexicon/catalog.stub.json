@@ -1,0 +1,29 @@
+{
+  "contractVersion": 2,
+  "status": "proposed",
+  "languages": [
+    {
+      "name": "county-sales",
+      "version": "1.0.0",
+      "shape": "tabular",
+      "tables": ["sales"],
+      "notes": "Prepared source objects landed by Connect partner-file-intake."
+    },
+    {
+      "name": "sale-availability",
+      "version": "1.0.0",
+      "shape": "tabular",
+      "tables": ["sale_availability"],
+      "notes": "Curated lookup keyed by parcelId; mirrors the Product response schema."
+    }
+  ],
+  "mappings": [
+    {
+      "id": "county-sales-to-sale-availability",
+      "version": "1.0.0",
+      "engine": "spark-sql",
+      "from": { "name": "county-sales", "version": "1.0.0" },
+      "to": { "name": "sale-availability", "version": "1.0.0" }
+    }
+  ]
+}
