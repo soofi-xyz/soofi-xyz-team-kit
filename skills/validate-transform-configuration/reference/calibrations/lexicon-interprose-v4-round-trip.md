@@ -8,7 +8,9 @@ Use only with `lexicon-interprose-v4.json`. This dossier holds sanitized expecta
 
 - `stage/ingest-a/` and `stage/ingest-b/`: the ten profile source families as two ingests. Ingest A uses the 2026-08-14 `debt_settlement_agency` snapshot; ingest B is current. `stage/manifest.sha256.json` lists key, bytes, SHA-256 and `VersionId` per object.
 - `lexicon/`: the thirteen Parquet graph exports v4 reads, bridged from two ordered `interprose-to-lexicon@1.0.0` runs with Persist's append-only behaviour: an unchanged edge keeps its first `created_at` and endpoints, a changed vertex mints a new content-hashed physical vertex, and `created_at` is the ingest time plus a rank.
-- Coverage: DSA reactivations, renames, new deletions and debts with two DSA edges. DEV Stage has schedule rows for almost no attempted slots, so attempted slots are checked against payment records and `attempted-slot-schedule-closure` stays `BLOCKED` pending an approved read-only PROD extract.
+- Coverage: DSA reactivations, renames, new deletions and debts with two DSA edges, all under one `company_identifier`.
+- Attempted slots: DEV Stage has schedule rows for almost no attempted slots. By owner decision (2026-09-28) the PROD schedule extract is skipped and payment records are the accepted substitute: plan, amount and date against the first attempt, state against the latest outcome.
+- Two DSA identities on one debt: not in the DEV sample. The coverage source is a read-only PROD-derived graph sample selected to include such debts. If PROD has none, the check narrows to multiple edges per debt and the finding is recorded. `form_1281` stays `BLOCKED` until that sample is evaluated.
 - Pinned mapping: `mapping.json` sha256 `5ccdc76f115779d5c0a3ef2fe7cc01f0d950637089b0077330f1e6a85f078cd6`, S3 VersionId `tv86x9ecXJPr4VxdqA7ybSOCm_prq3Vl` (Lexicon PR #811 `50717c3e`).
 
 Classification: `deterministic`. The profile fixes the DSA election rule, form constants, cents conversion, and CSV format. Changing any of them in the mapping is a configuration change. Changing the Lexicon model is forbidden for this profile.

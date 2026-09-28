@@ -189,13 +189,13 @@
     },
     {
       "id": "dsa-multiple-edges-per-debt-coverage",
-      "description": "The sample holds debts with more than one version 2 DEBT_SETTLEMENT_AGENCY edge, including more than one identity, and every such debt matches the independent is_dsa oracle",
+      "description": "The sample holds debts with more than one version 2 DEBT_SETTLEMENT_AGENCY edge, and every such debt matches the independent is_dsa oracle. The two-identity case (one debt, more than one company_identifier) is proven from a read-only PROD-derived graph sample selected to include such debts; if that PROD sample shows none exist, the check narrows to multiple edges per debt with the finding recorded. Until the PROD sample is evaluated, the two-identity case is BLOCKED",
       "phase": 11,
       "failureCode": "CoverageSignalMissing"
     },
     {
       "id": "attempted-slot-schedule-closure",
-      "description": "Every payment_schedule_id referenced by a sampled payment row has its payment_plan_schedule row in the same sample. DEV Stage holds schedule rows for only a handful of attempted slots, so this stays BLOCKED until an approved read-only PROD Interprose extract supplies them; it is never satisfied by payment records",
+      "description": "Owner-accepted substitute (user decision, 2026-09-28): the PROD Interprose payment_plan_schedule extract is skipped, and schedule rows for every attempted slot are not required. attempted-slot-payment-parity is the accepted evidence for attempted slots; this invariant passes when that check passes and every exported slot is backed by a schedule row or a payment attempt",
       "phase": 11,
       "failureCode": "SourceSampleNotJoinClosed"
     },

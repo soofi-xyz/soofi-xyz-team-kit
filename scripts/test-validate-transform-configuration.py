@@ -1147,6 +1147,12 @@ def check_v4_profile(profiles: list[dict]) -> None:
     if not any("5ccdc76f115779d5c0a3ef2fe7cc01f0d950637089b0077330f1e6a85f078cd6" in e and "VersionId" in e
                for e in v4["configurationChoices"]["mappingExpressions"]):
         fail("v4 must pin the mapping by mapping.json digest and S3 VersionId")
+    closure = invariants_by_id(v4)["attempted-slot-schedule-closure"]["description"]
+    if "Owner-accepted substitute" not in closure or "2026-09-28" not in closure or "attempted-slot-payment-parity" not in closure:
+        fail("attempted-slot schedule closure must record the owner-accepted payment-record substitute")
+    two_identity = invariants_by_id(v4)["dsa-multiple-edges-per-debt-coverage"]["description"]
+    if "PROD-derived graph sample" not in two_identity or "narrows to multiple edges per debt" not in two_identity:
+        fail("the two-identity DSA case must name its PROD-derived coverage source and its narrowing rule")
     tests = {s["path"] for s in v4["validationSources"] if s["kind"] == "repository-test"}
     if "infra/test/spark/test_lexicon_to_interprose.py" not in tests:
         fail("v4 must execute the candidate's v4 Spark SQL tests")
