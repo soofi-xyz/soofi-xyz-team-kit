@@ -9,7 +9,7 @@ Use sections 1–9 below only for full certification mode.
 ```text
 Verdict: CERTIFIED | NOT_CERTIFIED | BLOCKED
 Total: n/100
-Certification profile: email-workflow-certification-v1
+Certification profile: email-workflow-certification-v2
 ```
 
 Add one sentence naming the decisive evidence or gap.
@@ -22,9 +22,14 @@ Include:
 - SMS requested ref and reference repository, plus the resolved commit SHA
 - environment and region
 - existing execution ARN when evaluated
+- top-level source construct, logical resource ID, and state machine ARN
+- CloudFormation resource type/status and Step Functions state machine type/status
+- `DescribeExecution.stateMachineArn`, `stateMachineAliasArn`, and `stateMachineVersionArn` when present
+- execution binding result: exact unqualified match, valid alias/version base match, mismatch, or unresolved
+- evidence IDs proving substantive Step Functions sequencing across the major communication boundaries
 - observation timestamp
 
-Never report only a branch name.
+Never report only a branch name. Never treat a workflow name or stack output as proof of resource type.
 
 ## 3. Gates
 
@@ -116,7 +121,7 @@ For focused diagnostic mode, return this shorter shape:
 2. `Scope notice: Partial diagnostic; full certification was not evaluated`
 3. `Overall score: Not calculated`
 4. Requested capability scope and its mapping to existing scorecard dimensions
-5. Email and SMS requested refs and resolved commit SHAs, environment, region, execution ARN when evaluated, and observation timestamp
+5. Email and SMS requested refs and resolved commit SHAs, environment, region, execution ARN when evaluated, and observation timestamp; when orchestration is selected, also include the full source/resource/status/execution-binding/sequencing proof required in certification mode
 6. One row per selected dimension with its original weight, band, `points/weight`, evidence IDs, and reason
 7. Capability findings limited to the requested scope, including observed Email behavior and expected SMS parity behavior
 8. Evidence registry
@@ -131,7 +136,7 @@ For full certification mode, return:
 
 ```json
 {
-  "profile": "email-workflow-certification-v1",
+  "profile": "email-workflow-certification-v2",
   "verdict": "CERTIFIED | NOT_CERTIFIED | BLOCKED",
   "total_points": 0,
   "observed_at": "ISO-8601 UTC",
@@ -144,7 +149,21 @@ For full certification mode, return:
     "sms_commit_sha": "40-character SHA",
     "environment": "dev",
     "region": "us-east-2",
-    "execution_arn": null
+    "execution_arn": null,
+    "orchestrator": {
+      "source_construct": null,
+      "logical_resource_id": null,
+      "cloudformation_resource_type": null,
+      "cloudformation_resource_status": null,
+      "state_machine_arn": null,
+      "state_machine_type": null,
+      "state_machine_status": null,
+      "execution_state_machine_arn": null,
+      "state_machine_alias_arn": null,
+      "state_machine_version_arn": null,
+      "execution_binding": null,
+      "sequencing_evidence_ids": []
+    }
   },
   "gates": [
     {
@@ -180,7 +199,7 @@ For focused diagnostic mode, return:
 
 ```json
 {
-  "profile": "email-workflow-certification-v1",
+  "profile": "email-workflow-certification-v2",
   "mode": "focused_diagnostic",
   "certification_verdict": null,
   "total_points": null,
@@ -195,7 +214,8 @@ For focused diagnostic mode, return:
     "sms_commit_sha": "40-character SHA",
     "environment": "dev",
     "region": "us-east-2",
-    "execution_arn": null
+    "execution_arn": null,
+    "orchestrator": null
   },
   "dimensions": [
     {
@@ -217,7 +237,13 @@ For focused diagnostic mode, return:
 }
 ```
 
-Emit only selected dimensions. Keep `certification_verdict` and `total_points` null.
+Emit only selected dimensions. Keep `certification_verdict` and `total_points` null. Populate `scope.orchestrator` with the full orchestration object used by certification when orchestration is selected; otherwise keep it null. Use `execution_binding` values `exact`, `alias_base_match`, `version_base_match`, `mismatch`, or `unresolved`.
+
+Classify qualifier fields deterministically:
+
+- `exact`: `execution_state_machine_arn` equals the deployed unqualified ARN, and both qualifier fields are null;
+- `alias_base_match`: `state_machine_alias_arn` is present and its unqualified base equals the deployed ARN; `state_machine_version_arn` may also be present when AWS resolves the alias to a version;
+- `version_base_match`: `state_machine_version_arn` is present, `state_machine_alias_arn` is null, and the version ARN's unqualified base equals the deployed ARN.
 
 ## Arithmetic check
 
@@ -227,5 +253,6 @@ Before returning:
 2. verify every point value matches the lookup;
 3. in certification mode, sum points exactly and apply gate precedence;
 4. in certification mode, verify `CERTIFIED` satisfies all thresholds;
-5. in focused mode, verify no subtotal, overall score, gate outcome, or certification verdict value appears;
-6. verify every scored claim cites at least one evidence ID.
+5. in certification mode, verify every required orchestrator identity, health, execution-binding, and sequencing field is resolved before returning `CERTIFIED`; validate qualifier-field presence and nullability against the selected `execution_binding` classification;
+6. in focused mode, verify no subtotal, overall score, gate outcome, or certification verdict value appears;
+7. verify every scored claim cites at least one evidence ID.

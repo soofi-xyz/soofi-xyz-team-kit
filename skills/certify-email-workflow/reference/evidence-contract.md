@@ -27,6 +27,7 @@ Resolve and record:
 - SMS reference SHA;
 - check names, conclusions, and run URLs;
 - changed files and relevant implementation paths;
+- the source-designated top-level state machine construct, its effective `STANDARD` type, and its substantive sequencing definition; collect an exact CloudFormation logical resource ID from a commit-linked synthesized template when one is available, not by guessing from raw CDK construct IDs;
 - contracts, ADRs, operations guides, agent guidance, tests, and deployment workflows;
 - unresolved review findings and release prerequisites.
 
@@ -76,6 +77,8 @@ Use control-plane and PII-safe metadata reads only.
 
 Capture status, timestamps, tags, outputs, and resource identities. Prefer discovery from stack outputs/tags over guessed physical names.
 
+For top-level orchestration proof, record `LogicalResourceId`, `ResourceType`, `ResourceStatus`, and `PhysicalResourceId` from `ListStackResources`. Require `ResourceType == AWS::StepFunctions::StateMachine` and `ResourceStatus` equal to `CREATE_COMPLETE`, `UPDATE_COMPLETE`, or `IMPORT_COMPLETE`; a stack output or workflow-like physical name is not resource-type evidence. Use Gate 1 provenance to bind the deployed stack to pinned source when no commit-linked synthesized template is available.
+
 ### Step Functions
 
 - `ListStateMachines`
@@ -85,6 +88,10 @@ Capture status, timestamps, tags, outputs, and resource identities. Prefer disco
 - `GetExecutionHistory`
 
 Use an existing execution. Never call start, stop, redrive, or callback APIs. Do not print execution input/output if it contains PII; extract only counts, statuses, safe reason codes, policy versions, artifact prefixes, and provenance.
+
+For top-level orchestration proof, record `DescribeStateMachine.stateMachineArn`, `type`, and `status`. Require `type == STANDARD` and `status == ACTIVE`. Inspect the Amazon States Language definition and PII-safe execution-history state/event metadata to prove substantive cross-boundary sequencing; never print execution payloads.
+
+Bind `DescribeExecution.stateMachineArn` to the deployed ARN by exact equality or by documented alias/version qualification. Record `stateMachineAliasArn` and `stateMachineVersionArn` when present, strip only the documented trailing alias or version qualifier, and require the unqualified base to equal the deployed ARN exactly. Do not use generic prefix matching or infer type or ownership from a name. `EXPRESS` is acceptable only for explicitly bounded child workflows.
 
 ### Glue
 
@@ -144,11 +151,24 @@ Prefer CloudFormation templates and resource policies already visible in source.
 
 Do not call `GetSecretValue` or `BatchGetSecretValue`. Existence may be established from source wiring, CloudFormation references, or metadata-only description when explicitly allowed. Never expose secret ARNs when the report does not need them.
 
+## Top-level orchestrator proof
+
+Build one linked proof chain for the resource whose execution owns the end-to-end Email Workflow:
+
+1. Pinned source designates the top-level state machine construct, its effective `STANDARD` type, and Amazon States Language that explicitly sequences the major communication boundaries.
+2. Gate 1 provenance binds the deployed stack to that pinned source revision. A commit-linked synthesized template may additionally map the construct to an exact logical resource ID, but raw CDK source need not expose the synthesized ID.
+3. `ListStackResources` supplies the deployed logical ID and binds `AWS::StepFunctions::StateMachine`, healthy `ResourceStatus`, and physical state machine ARN.
+4. `DescribeStateMachine` binds the same ARN to effective type `STANDARD` and status `ACTIVE`.
+5. `DescribeExecution` binds the evaluated end-to-end execution to the deployed ARN exactly or through a recorded alias/version ARN whose unqualified base is an exact match.
+6. The definition and PII-safe execution-history metadata prove that Step Functions controls the major audience, scheduling, rendering, provider, and lifecycle transitions directly or through bounded child workflows.
+
+Do not substitute documentation, stack-output names, Lambda functions, Glue workflows/jobs, EventBridge or SQS chains, a solver/child state machine, or a ceremonial one-task wrapper for any link. When direct evidence establishes a non-Step-Functions resource, an unhealthy or inactive resource, a top-level `EXPRESS` state machine, an absent deployed resource, an execution-ARN mismatch after valid qualifier normalization, or delegated non-Step-Functions sequencing, record a Gate 2 failure. When the implementation could satisfy the invariant but authorization, discovery, or immutable provenance prevents completing the chain, record a blocker.
+
 ## DEV runtime proof
 
 Require:
 
-- stack and state-machine identity;
+- top-level source construct, logical resource ID, CloudFormation resource type/status, state machine ARN/type/status, alias/version ARNs when present, normalized execution binding, and substantive sequencing evidence;
 - deployed commit SHA, image digest, asset provenance, or equivalent immutable source link;
 - successful end-to-end execution ARN;
 - Glue/provider/lifecycle child identities;

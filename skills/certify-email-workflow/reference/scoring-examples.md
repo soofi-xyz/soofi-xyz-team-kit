@@ -15,7 +15,7 @@ Dimension order:
 
 ## A. Full certified workflow
 
-- Evidence: pinned refs, commit-linked DEV flow, every boundary reconciled, all five gates pass, required scale runs pass, production approval gate exists.
+- Evidence: pinned refs, linked top-level `STANDARD` Step Functions proof, commit-linked DEV flow owned by that exact state machine, every boundary reconciled, all five gates pass, required scale runs pass, production approval gate exists.
 - Bands: `100, 100, 100, 100, 100, 100, 100, 100`
 - Points: `15 + 10 + 15 + 10 + 15 + 15 + 10 + 10 = 100`
 - Verdict: `CERTIFIED`
@@ -81,3 +81,38 @@ Dimension order:
 - Overall score: not calculated.
 
 Do not score the other seven dimensions or evaluate certification gates. This result does not establish end-to-end readiness.
+
+## J. End-to-end behavior uses a non-Step-Functions orchestrator
+
+- Evidence: pinned source and deployed CloudFormation resources show that Lambda, EventBridge, Glue, or another mechanism is the top-level orchestrator. A solver or child Step Functions execution may also exist and the observed business counts may reconcile.
+- Gate: end-to-end DEV runtime `Failed` because the top-level resource is not `AWS::StepFunctions::StateMachine`; the child execution cannot substitute for it.
+- Verdict: `NOT_CERTIFIED` regardless of behavior parity or diagnostic total.
+
+## K. Top-level state machine is EXPRESS or execution belongs to a child
+
+- Evidence: CloudFormation identifies the designated state machine, but `DescribeStateMachine.type` is `EXPRESS`, or the execution binding differs from the designated top-level ARN after valid alias/version normalization.
+- Gate: end-to-end DEV runtime `Failed`. `EXPRESS` is permitted only for an explicitly bounded child, and an execution from a child cannot prove the top-level runtime.
+- Verdict: `NOT_CERTIFIED`.
+
+## L. Focused orchestration diagnostic
+
+- Request: determine whether the Email Workflow is implemented as the required Step Functions orchestrator.
+- Mapping: dimensions 7, `reliability_replay_and_overflow`, and 8, `observability_security_and_evidence`.
+- Evidence: report the source construct, CloudFormation logical ID/type/status, state machine ARN/type/status, alias/version fields, normalized execution binding, and substantive sequencing evidence.
+- Mode: `FOCUSED_DIAGNOSTIC`; report both selected dimensions separately without gates, an aggregate score, or a certification verdict.
+- Finding: state explicitly whether the invariant is proven, contradicted, or blocked. Do not infer it from a workflow name, stack output, or child state machine.
+- Bands: a contradicted architecture is exactly `0%` / `0/10` for both selected dimensions.
+- Blocked runtime: source intent with unavailable runtime proof is exactly `25%` / `3/10` for each selected dimension, with a `Blocked` capability finding.
+- Proven narrow scope: complete orchestration proof with the remaining dimension criteria outside the requested scope is exactly `25%` / `3/10` for each selected dimension, with the requested invariant marked `Proven`. This narrow proof does not establish either whole dimension.
+
+## M. Ceremonial Step Functions wrapper
+
+- Evidence: an active `STANDARD` state machine owns the execution ARN, but its definition or history contains one orchestration task and a Lambda, Glue job, EventBridge/SQS chain, or another mechanism performs the cross-boundary sequencing.
+- Gate: end-to-end DEV runtime `Failed`; resource identity alone does not prove substantive Step Functions orchestration.
+- Verdict: `NOT_CERTIFIED`.
+
+## N. Alias- or version-qualified execution
+
+- Evidence: the execution reports a documented alias or version ARN, the qualifier is recorded, and removing only that qualifier yields the exact active deployed top-level state machine ARN.
+- Gate effect: the execution binding portion of Gate 2 passes. Do not fail a valid qualified execution or accept generic prefix matching.
+- Verdict: determined by the remaining gate and score evidence.

@@ -14,12 +14,13 @@ Operate in one of two modes:
 - **Certification:** evaluate the complete workflow and return a deterministic, evidence-backed `CERTIFIED`, `NOT_CERTIFIED`, or `BLOCKED` verdict plus the diagnostic 100-point score.
 - **Focused diagnostic:** when the operator explicitly requests particular capabilities or dimensions, score only those dimensions and label the result `FOCUSED_DIAGNOSTIC`. Do not return a certification verdict, overall `/100` score, or implication of full-workflow readiness.
 
-Compare channel capabilities and ownership boundaries, not identical files, providers, or algorithms.
+Compare channel capabilities and ownership boundaries, not identical files, providers, or algorithms. Treat the top-level AWS Step Functions orchestration contract as an explicit parity invariant, not an interchangeable implementation detail.
 
 # Success criteria
 
 - The email and SMS revisions are immutable commit SHAs in the report.
 - Certification evaluates the full workflow: audience, reduction, scheduling, rendering, provider execution, feedback, persistence, replay, and observability.
+- Certification proves that the deployed top-level Email Workflow orchestrator is an active `STANDARD` Step Functions state machine that substantively owns the evaluated execution's cross-boundary sequencing.
 - Focused diagnostics identify the selected scorecard dimensions and do not score unselected dimensions.
 - Existing runtime evidence is linked to the evaluated email commit.
 - Every applicable gate and every score cites observed GitHub or AWS evidence.
@@ -36,6 +37,7 @@ Compare channel capabilities and ownership boundaries, not identical files, prov
 6. **Diagnostic scores survive certification gate failures.** A failed gate prevents certification but does not erase useful dimension scores. A blocked evidence stream is not an implementation failure.
 7. **Fixed scoring only.** Use the eight dimensions and exact band-to-point lookup in `parity-scorecard.md`. Do not add dimensions, alter weights, or use free-form points.
 8. **No PII or secrets.** Report counts, hashes, statuses, ARNs, commit SHAs, safe reason codes, and metadata only. Do not print email addresses, message bodies, debt/person identifiers, task tokens, provider credentials, or secret values.
+9. **Prove the top-level orchestrator.** The top-level Email communication orchestrator—the resource whose execution substantively controls the submitted end-to-end DEV run—must be an active, deployed AWS Step Functions state machine of effective type `STANDARD`. Its definition or PII-safe history must show explicit control of the major audience, scheduling, rendering, provider, and lifecycle transitions; a ceremonial wrapper around a monolithic Lambda, Glue job, EventBridge/SQS chain, or other orchestrator does not satisfy this invariant. Neither does a workflow name, ARN-shaped stack output, or solver/child state machine. `EXPRESS` is allowed only for explicitly bounded child workflows. A known absence or mismatch is `Failed` under Gate 2; unavailable runtime proof is `Blocked` only when access or immutable provenance prevents checking an otherwise plausible deployment.
 
 # Inputs
 
@@ -46,7 +48,7 @@ Collect:
 - target environment and AWS region
 - an operator-selected AWS profile, or permission to ask for one
 - optional existing DEV Step Functions execution ARN
-- optional expected stack, workflow, Glue job, and artifact names
+- optional expected stack, top-level logical resource ID, workflow, Glue job, and artifact names
 - optional focused capability or scorecard dimensions; omission means full certification
 
 Do not hardcode a developer-specific profile. Verify the selected profile's account and region before AWS discovery.
@@ -55,10 +57,10 @@ Do not hardcode a developer-specific profile. Verify the selected profile's acco
 
 1. Load `skills/certify-email-workflow/` and every companion skill it requires.
 2. Resolve both repository refs to commit SHAs. If the operator omitted the SMS reference, resolve the current HEAD of `Spring-Oaks-Capital-LLC/sms-workflow@main`. Record both the requested ref and resolved SHA, then read the email PR, checks, contracts, implementation, tests, deployment workflows, and the pinned SMS capability contracts.
-3. Select the mode. Use focused diagnostic mode only for an explicit partial-scope request. Map that scope to one or more existing scorecard dimensions before collecting evidence; do not invent dimensions. Otherwise use certification mode.
+3. Select the mode. Use focused diagnostic mode only for an explicit partial-scope request. Map that scope to one or more existing scorecard dimensions before collecting evidence; do not invent dimensions. Map a direct orchestration/resource-type diagnostic to reliability/replay and observability/security/evidence. Otherwise use certification mode.
 4. State the one-sentence intent. For certification, use the complete workflow intent. For a focused diagnostic, state only the requested capability outcome and its necessary boundaries.
 5. Build an evidence registry using stable IDs such as `GH-01`, `AWS-01`, and `DOC-01`. Record observation time and source revision for every entry.
-6. In certification mode, evaluate all five gates in `gates-and-verdicts.md` before deciding the verdict. In focused mode, evaluate only evidence prerequisites material to the selected dimensions and report limitations without assigning certification-gate outcomes.
+6. In certification mode, evaluate all five gates in `gates-and-verdicts.md` before deciding the verdict. For Gate 2, bind pinned source, the CloudFormation logical resource, the deployed state machine, and the evaluated execution to one top-level orchestrator; verify healthy resource status, effective type, execution binding, and substantive sequencing ownership instead of inferring them from names. Normalize only documented alias/version qualification when comparing execution and deployed state machine ARNs. In focused mode, evaluate only evidence prerequisites material to the selected dimensions and report limitations without assigning certification-gate outcomes.
 7. Collect existing AWS evidence only when relevant to the selected scope. Prefer an operator-supplied execution ARN; otherwise inspect the latest completed DEV execution without starting a new one. Restrict PROD to control-plane discovery.
 8. Run independent read-only capability reviews relevant to the selected scope, in parallel when available:
    - `xatu`: audience contract, email-level eligibility, consent, suppressions, and freshness

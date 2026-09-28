@@ -25,7 +25,22 @@ Mark `Blocked` when the runtime is healthy but cannot be linked to a source revi
 
 ## Gate 2: End-to-end DEV runtime
 
-Pass only when one existing successful DEV run proves:
+This gate has a non-substitutable orchestration invariant. Pass only when all of the following identify the same top-level Email communication orchestrator:
+
+- pinned source designates the top-level state machine construct and its effective `STANDARD` type; when available, a commit-linked synthesized template supplies its logical resource ID and `AWS::StepFunctions::StateMachine` resource type;
+- Gate 1 provenance binds the deployed stack to that pinned source revision;
+- CloudFormation `ListStackResources` supplies the deployed logical resource ID and physical ARN, reports `ResourceType == AWS::StepFunctions::StateMachine`, and reports `ResourceStatus` as `CREATE_COMPLETE`, `UPDATE_COMPLETE`, or `IMPORT_COMPLETE`;
+- Step Functions `DescribeStateMachine` reports the deployed ARN with `type == STANDARD` and `status == ACTIVE`;
+- `DescribeExecution` binds the evaluated end-to-end DEV execution to that deployed state machine, either by exact unqualified ARN or by documented alias/version qualification whose unqualified base exactly matches it;
+- commit-linked Amazon States Language or PII-safe execution history proves that Step Functions explicitly controls the major audience, scheduling, rendering, provider, and lifecycle transitions, directly or through bounded child workflows.
+
+Record `stateMachineAliasArn` and `stateMachineVersionArn` when present. Normalize only the documented trailing alias or version qualifier; generic prefix matching is not evidence.
+
+Names, documentation, stack-output keys, or ARN-shaped strings do not prove the resource type. A solver or another child state machine cannot substitute for the top-level orchestrator. A one-task wrapper that delegates cross-boundary orchestration to a monolithic Lambda, Glue job, EventBridge/SQS chain, or other non-Step-Functions sequencer also does not satisfy the invariant. A bounded child workflow may be `EXPRESS`, but the top-level orchestrator may not.
+
+Mark this gate `Failed` when source or runtime evidence proves that the top-level orchestrator is absent, unhealthy, inactive, is not an `AWS::StepFunctions::StateMachine`, is `EXPRESS`, does not own the evaluated execution after valid alias/version normalization, or is only a ceremonial wrapper. Mark it `Blocked` only when authorization, discovery, or immutable source linkage prevents resolving a resource that could otherwise satisfy the invariant; do not use missing evidence to soften a known mismatch.
+
+After the orchestration invariant passes, require one existing successful DEV run to prove:
 
 ```text
 eligible audience
