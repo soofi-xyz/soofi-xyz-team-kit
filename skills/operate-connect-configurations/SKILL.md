@@ -147,7 +147,7 @@ rm validate.tmp.ts
 
 ## 6. Run it in dev
 
-Follow [dev runtime](reference/dev-runtime.md) for the API, the API key and
+Follow [dev runtime](reference/dev-runtime.md) for the API, SigV4 signing and
 triggers.
 
 1. Confirm the account and region, and that the `Connect-dev` stack is

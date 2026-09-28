@@ -60,7 +60,7 @@ the credentials.
 | `POST /connect/partners/{partner}/lookups/{lookup}` | Synchronous lookup (`kind: lookup` flows) |
 | `POST /connect/partners/{partner}/uploads` | Presigned PUT for a file the product delivers |
 | `GET /connect/jobs/{job_id}` | Job status, errors and manifest pointer |
-| `POST /connect/webhooks/{configuration_id}/{webhook}` | Partner webhook ingress (no API key; the webhook's own auth applies) |
+| `POST /connect/webhooks/{configuration_id}/{webhook}` | Partner webhook ingress (unsigned; the webhook's own auth applies) |
 
 Connect has no delete API: disable activations; flows and configurations stay
 registered.
