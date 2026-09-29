@@ -302,6 +302,53 @@ def test_stage_package(tmp: Path) -> None:
     results.append("stage_evidence_package manifest + refusals")
 
 
+def test_spec_from_intent(tmp: Path) -> None:
+    bin_dir = tmp / "spec-bin"
+    bin_dir.mkdir()
+    shim = bin_dir / "aws"
+    shim.write_text(f"""#!{sys.executable}
+import json, sys
+if sys.argv[1:3] == ["stepfunctions", "list-state-machines"]:
+    print(json.dumps({{"stateMachines": [{{"name": "Example-transform-pipeline", "stateMachineArn": "arn:aws:states:us-east-2:000000000000:stateMachine:Example-transform-pipeline"}}]}}))
+else:
+    sys.exit("unexpected aws call")
+""")
+    shim.chmod(shim.stat().st_mode | stat.S_IEXEC)
+    profiles = tmp / "profiles"
+    profiles.mkdir()
+    silvally_io.write_json(profiles / "example.json", {
+        "directions": [{"id": "example-to-summary", "fromLanguage": "example", "toLanguage": "summary",
+                        "mapping": {"id": "example-to-summary", "version": "0.1.0"},
+                        "outputContracts": [{"dataset": "person_summary", "requiredInputs": ["people"]}]}],
+        "validationSources": [{"id": "example-dev", "kind": "existing-dev-artifact", "location": "s3://example-bucket/inputs/example/v1/",
+                               "appliesTo": ["example-to-summary"], "manifestSha256": "0" * 64, "manifestVersionId": "v1"}],
+        "partialInputPolicy": {"cases": [{"id": "missing-people", "outputDatasets": ["person_summary"], "providedInputs": [], "expected": "REJECTED"}]},
+    })
+    ws = tmp / "spec-ws"
+    silvally_io.write_json(ws / "inputs-manifest.json", [
+        {"kind": "materialized", "name": "candidate", "mappings": [{"mapping": "example-to-summary@0.1.0", "sha256": "a" * 64}]},
+        {"kind": "registry", "name": "dev", "mappings": [{"mapping": "example-to-summary@0.1.0", "sha256": "b" * 64, "versionId": "old"}]},
+    ])
+    silvally_io.write_json(tmp / "intent.json", {"status": "RESOLVED", "selectedProfile": "example.json",
+                                                 "selection": {"selected": "example-to-summary@0.1.0"}})
+    env = {"PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"}
+    out = tmp / "derived-spec.json"
+    run_tool("transform_runs.py", "spec-from-intent", "--intent", str(tmp / "intent.json"), "--workspace", str(ws),
+             "--profiles", str(profiles), "--profile", "example-dev", "--out", str(out), env=env)
+    spec_doc = json.loads(out.read_text())
+    if [c["case"] for c in spec_doc["cases"]] != ["full", "person-summary-only", "missing-people"]:
+        fail(f"derived cases wrong: {[c['case'] for c in spec_doc['cases']]}")
+    if spec_doc["deployment"]["drift"] != "digest-differs" or spec_doc["mappings"]["example-to-summary@0.1.0"]["sha256"] != "a" * 64:
+        fail("a published digest that differs from the candidate build was not reported as drift")
+    run_dir = tmp / "drift-run"
+    run_tool("transform_runs.py", "cards", "--spec", str(out), "--run-dir", str(run_dir))
+    digest = json.loads(sorted((run_dir / "cards").glob("1-*.json"))[0].read_text())["operationDigest"]
+    blocked = run_tool("transform_runs.py", "start", "--run-dir", str(run_dir), "--approver", "t", "--scope", "t", "--approve", digest, check=False)
+    if blocked.returncode == 0 or "DeploymentDrift" not in blocked.stderr:
+        fail("start was not refused under deployment drift")
+    results.append("transform_runs spec-from-intent + drift refusal (shimmed aws)")
+
+
 def main() -> int:
     with tempfile.TemporaryDirectory() as raw:
         tmp = Path(raw)
@@ -313,6 +360,7 @@ def main() -> int:
         test_run_package(tmp)
         test_fetch_registry_with_shim(tmp)
         test_stage_package(tmp)
+        test_spec_from_intent(tmp)
     print("Silvally tool tests passed: " + "; ".join(results))
     return 0
 

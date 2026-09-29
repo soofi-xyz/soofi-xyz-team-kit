@@ -16,6 +16,7 @@ A run spec (JSON) lists the cases to execute:
 
 Commands (all write evidence only under --run-dir):
 
+  spec-from-intent  derive a run spec from resolver output and the selected profile (read-only discovery)
   cards    write one operation card per case with its operation digest and stop (APPROVAL_REQUIRED)
   start    start exactly the cases whose --approve digests match their cards (records the approval first)
   capture  read-only: describe-execution, history, plan.json, output files; reconcile metadata with physical rows
@@ -92,6 +93,8 @@ def cmd_start(args) -> int:
     run_dir = Path(args.run_dir)
     spec = load_spec(str(run_dir / "run-spec.json"))
     approvals = set(args.approve or [])
+    if (spec.get("deployment") or {}).get("drift") and approvals:
+        raise SilvallyError(spec["deployment"]["blocking"])
     started = 0
     for index, case in enumerate(spec["cases"], 1):
         card = card_for(spec, index, case)
@@ -215,9 +218,75 @@ def cmd_cost(args) -> int:
     return 0
 
 
+def cmd_spec_from_intent(args) -> int:
+    """Derive a run spec from resolver output + the selected profile (read-only AWS discovery)."""
+    intent = read_json(args.intent)
+    profile_id = intent.get("selectedProfile")
+    if intent.get("status") != "RESOLVED" or not profile_id:
+        raise SilvallyError("intent is not RESOLVED to one profile; answer the resolver's questions first")
+    profile = read_json(Path(args.profiles) / profile_id)
+    manifest = read_json(Path(args.workspace) / "inputs-manifest.json")
+    mapping_key = intent["selection"]["selected"]
+    mapping_key = mapping_key["mapping"] if isinstance(mapping_key, dict) else mapping_key
+    direction = next(d for d in profile["directions"] if f"{d['mapping'].get('id')}@{d['mapping'].get('version')}" == mapping_key)
+    built = {m["mapping"]: m for e in manifest if e["kind"] == "materialized" for m in e["mappings"]}
+    deployed = {m["mapping"]: m for e in manifest if e["kind"] == "registry" and e["name"] == args.label for m in e["mappings"]}
+    pin = built.get(mapping_key) or deployed.get(mapping_key)
+    if not pin:
+        raise SilvallyError(f"{mapping_key} is neither materialized from the candidate nor published in {args.label}")
+    served = deployed.get(mapping_key)
+    drift = None if served and served["sha256"] == pin["sha256"] else ("absent" if not served else "digest-differs")
+    machines = aws(["stepfunctions", "list-state-machines"], profile=args.profile, region=args.region, environment="prod")["stateMachines"]
+    arn = next((m["stateMachineArn"] for m in machines if m["name"].endswith(args.state_machine_suffix)), None)
+    if not arn:
+        raise SilvallyError(f"no state machine ending {args.state_machine_suffix}")
+    sources = [s for s in profile.get("validationSources", []) if s.get("kind") == "existing-dev-artifact" and direction["id"] in s.get("appliesTo", [])]
+    source = next((s for s in sources if s["id"] == args.source), sources[0] if sources else None)
+    if not source:
+        raise SilvallyError("profile declares no DEV evidence package for this direction")
+    base = source["location"].rstrip("/")
+    contracts = {c["dataset"]: c for c in direction.get("outputContracts", [])}
+    frm, to, version = direction["fromLanguage"], direction["toLanguage"], direction["mapping"]["version"]
+
+    def req(outputs: list[str], tables: list[str]) -> dict:
+        return {"contractVersion": 2, "from": frm, "to": to, "mappingVersion": version, "outputDatasets": outputs,
+                "inputs": [{"table": t, "s3Uri": f"{base}/{t}/"} for t in tables]}
+
+    all_inputs = sorted({t for c in contracts.values() for t in c["requiredInputs"]})
+    cases = [{"case": "full", "mapping": mapping_key, "expected": "PASS", "request": req(sorted(contracts), all_inputs)}]
+    cases += [{"case": f"{name.replace('_', '-')}-only", "mapping": mapping_key, "expected": "PASS",
+               "request": req([name], c["requiredInputs"])} for name, c in sorted(contracts.items())]
+    for neg in (profile.get("partialInputPolicy") or {}).get("cases", []):
+        if neg.get("expected") == "REJECTED":
+            cases.append({"case": neg["id"], "mapping": mapping_key, "expected": "REJECTED", "request": req(neg["outputDatasets"], neg["providedInputs"])})
+    bucket, _ = parse_s3(source["location"])
+    spec = {"stateMachineArn": arn, "outputRoot": args.output_root or f"s3://{bucket}/outputs/silvally-{profile_id.removesuffix('.json')}/",
+            "profile": args.profile, "region": args.region, "costCeilingUsd": args.cost_ceiling,
+            "mappings": {mapping_key: {"sha256": pin["sha256"], "versionId": (served or {}).get("versionId")}},
+            "deployment": {"registry": args.label, "served": bool(served), "drift": drift,
+                           "blocking": "DeploymentDrift: DEV does not serve the pinned mapping; do not start" if drift else None},
+            "evidencePackage": {"id": source["id"], "manifestSha256": source.get("manifestSha256"), "manifestVersionId": source.get("manifestVersionId")},
+            "cases": cases}
+    write_json(args.out, spec)
+    print(json.dumps({"out": args.out, "cases": len(cases), "stateMachine": arn.split(":")[-1], "drift": drift}, indent=1))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
+    p = sub.add_parser("spec-from-intent")
+    p.add_argument("--intent", required=True, help="resolve-transform-intent.py discover output")
+    p.add_argument("--workspace", required=True, help="the resolver's --workspace (inputs-manifest.json)")
+    p.add_argument("--profiles", default=str(Path(__file__).resolve().parent.parent / "reference" / "profiles"))
+    p.add_argument("--label", default="dev", help="registry label the executions run against")
+    p.add_argument("--profile", required=True, help="operator's DEV AWS profile")
+    p.add_argument("--region", default=DEFAULT_REGION)
+    p.add_argument("--source", help="validationSources id to bind (default: first DEV package for the direction)")
+    p.add_argument("--output-root", help="s3:// prefix ending in / (default: the package bucket's outputs/silvally-<profile>/)")
+    p.add_argument("--state-machine-suffix", default="-transform-pipeline")
+    p.add_argument("--cost-ceiling", type=float, default=5)
+    p.add_argument("--out", required=True)
     p = sub.add_parser("cards")
     p.add_argument("--spec", required=True)
     p.add_argument("--run-dir", required=True)
@@ -233,7 +302,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--job-name", required=True, help="Transform Glue job name (see the Transform stack outputs)")
     p.add_argument("--max-runs", type=int, default=2000)
     args = parser.parse_args(argv)
-    return {"cards": cmd_cards, "start": cmd_start, "capture": cmd_capture, "cost": cmd_cost}[args.command](args)
+    return {"spec-from-intent": cmd_spec_from_intent, "cards": cmd_cards, "start": cmd_start, "capture": cmd_capture, "cost": cmd_cost}[args.command](args)
 
 
 if __name__ == "__main__":

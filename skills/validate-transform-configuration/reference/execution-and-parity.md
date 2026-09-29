@@ -63,6 +63,7 @@ root, operator's DEV profile, pinned mapping digests and VersionIds, and one cas
 
 ```bash
 S=skills/validate-transform-configuration/scripts
+python3 $S/transform_runs.py spec-from-intent --intent intent.json --workspace "$WS" --profile <dev-profile> --out run-spec.json
 python3 $S/transform_runs.py cards --spec run-spec.json --run-dir "$RUN"      # APPROVAL_REQUIRED + digests
 python3 $S/transform_runs.py start --run-dir "$RUN" --approve sha256:<digest> \
   --approver "<who>" --scope "<approval in their words>"                      # only matching cards start
@@ -70,7 +71,10 @@ python3 $S/transform_runs.py capture --run-dir "$RUN"                          #
 python3 $S/transform_runs.py cost --run-dir "$RUN" --job-name <transform-glue-job>
 ```
 
-`expected: REJECTED` cases pass only when the execution fails before `RunTransformJob`.
+`spec-from-intent` derives the cases (full, one per output, and the profile's rejected partial-input
+cases) from the resolver output and the selected profile, discovers the state machine read-only, and
+marks `deployment.drift` when the published registry does not serve the pinned digest; `start` then
+refuses. `expected: REJECTED` cases pass only when the execution fails before `RunTransformJob`.
 `capture` flags `mappingPinMatches: false` when the plan's `mapping.json` digest or
 VersionId differs from the pin (deployment drift or a latest-PR-wins overwrite). Compare
 outputs with `compare_datasets.py diff` (regression: `--expect-identical`; parity:
