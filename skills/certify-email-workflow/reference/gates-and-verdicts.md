@@ -25,7 +25,19 @@ Mark `Blocked` when the runtime is healthy but cannot be linked to a source revi
 
 ## Gate 2: End-to-end DEV runtime
 
-This gate has a non-substitutable orchestration invariant. Pass only when all of the following identify the same top-level Email communication orchestrator:
+This gate has non-substitutable control-equivalence and orchestration invariants.
+
+Build every required row in `control-equivalence-map.md` from the pinned SMS and Email revisions. Require exact source, synthesized/deployed CloudFormation, ASL, code-control, ownership, retry, idempotency, persistence, operations, security, and provenance evidence inside each channel. Compare channel-independent controls across channels; do not require identical names, topology, language, or resource count.
+
+Inventory every workflow-owned CloudFormation resource, ASL state, and deployed code entrypoint on both sides using the deterministic closure and identity keys in the map contract. Pass only when every inventory item maps to at least one required row or an `EXTRA_JUSTIFIED` supplemental row, mapped counts equal total counts, and both unmapped lists are empty. A known unexplained or bypassing item fails this gate; inaccessible inventory evidence blocks it only when no independent failure is known.
+
+Pass only when every required row is `REQUIRED_EQUIVALENT` or `CHANNEL_ADAPTED`. Accept `CHANNEL_ADAPTED` only on rows allowed by the map contract, with non-empty row-whitelisted `adapted_fields` and exactly the row's mandatory `non_exempt_controls_proven` keys, each carrying non-empty evidence IDs. Provider APIs, native statuses, quota primitives, rendering formats, and feedback transports may be channel-adapted. Submission identity, ambiguous-outcome protection, correlation, persistence, persistence-failure redrive, replay safety, lifecycle closure, DLQs/alarms, IAM/encryption/PII controls, and provenance may not be exempted.
+
+Treat any required `MISSING` row as `Failed`. Treat a required `BLOCKED` row as `Blocked` only when no required row is `MISSING`. An `EXTRA_JUSTIFIED` row never satisfies or compensates for a required row.
+
+Require existing commit-linked failure evidence for `SEND-02`, `PERSIST-02`, and `REPLAY-01`. For `PERSIST-02`, identify the concrete Chatot-boundary writer and orchestration handoff, then prove that a failed internal write was durably parked and redriven idempotently to exactly one internal fact without repeating provider submission. Slowbro must inspect existing evidence and must not induce a failure.
+
+For `ORCH-01`, pass only when all of the following identify the same top-level Email communication orchestrator:
 
 - pinned source designates the top-level state machine construct and its effective `STANDARD` type; when available, a commit-linked synthesized template supplies its logical resource ID and `AWS::StepFunctions::StateMachine` resource type;
 - Gate 1 provenance binds the deployed stack to that pinned source revision;
@@ -38,7 +50,7 @@ Record `stateMachineAliasArn` and `stateMachineVersionArn` when present. Normali
 
 Names, documentation, stack-output keys, or ARN-shaped strings do not prove the resource type. A solver or another child state machine cannot substitute for the top-level orchestrator. A one-task wrapper that delegates cross-boundary orchestration to a monolithic Lambda, Glue job, EventBridge/SQS chain, or other non-Step-Functions sequencer also does not satisfy the invariant. A bounded child workflow may be `EXPRESS`, but the top-level orchestrator may not.
 
-Mark this gate `Failed` when source or runtime evidence proves that the top-level orchestrator is absent, unhealthy, inactive, is not an `AWS::StepFunctions::StateMachine`, is `EXPRESS`, does not own the evaluated execution after valid alias/version normalization, or is only a ceremonial wrapper. Mark it `Blocked` only when authorization, discovery, or immutable source linkage prevents resolving a resource that could otherwise satisfy the invariant; do not use missing evidence to soften a known mismatch.
+Mark `ORCH-01` as `MISSING` when source or runtime evidence proves that the top-level orchestrator is absent, unhealthy, inactive, is not an `AWS::StepFunctions::StateMachine`, is `EXPRESS`, does not own the evaluated execution after valid alias/version normalization, or is only a ceremonial wrapper. Mark it `BLOCKED` only when authorization, discovery, or immutable source linkage prevents resolving a resource that could otherwise satisfy the invariant; do not use missing evidence to soften a known mismatch.
 
 After the orchestration invariant passes, require one existing successful DEV run to prove:
 

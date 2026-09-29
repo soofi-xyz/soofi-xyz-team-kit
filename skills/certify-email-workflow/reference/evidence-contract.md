@@ -26,7 +26,7 @@ Resolve and record:
 - email PR number and head SHA;
 - SMS reference SHA;
 - check names, conclusions, and run URLs;
-- changed files and relevant implementation paths;
+- changed files and relevant SMS and Email implementation paths, handlers, control symbols, tests, synthesized templates, and artifact digests;
 - the source-designated top-level state machine construct, its effective `STANDARD` type, and its substantive sequencing definition; collect an exact CloudFormation logical resource ID from a commit-linked synthesized template when one is available, not by guessing from raw CDK construct IDs;
 - contracts, ADRs, operations guides, agent guidance, tests, and deployment workflows;
 - unresolved review findings and release prerequisites.
@@ -72,10 +72,11 @@ Use control-plane and PII-safe metadata reads only.
 
 - `DescribeStacks`
 - `DescribeStackEvents`
+- `GetTemplate`
 - `ListStacks`
 - `ListStackResources`
 
-Capture status, timestamps, tags, outputs, and resource identities. Prefer discovery from stack outputs/tags over guessed physical names.
+Capture status, timestamps, tags, outputs, template digests, relevant control properties, and resource identities. Prefer discovery from stack outputs/tags over guessed physical names. Do not print resolved sensitive parameters or dynamic references.
 
 For top-level orchestration proof, record `LogicalResourceId`, `ResourceType`, `ResourceStatus`, and `PhysicalResourceId` from `ListStackResources`. Require `ResourceType == AWS::StepFunctions::StateMachine` and `ResourceStatus` equal to `CREATE_COMPLETE`, `UPDATE_COMPLETE`, or `IMPORT_COMPLETE`; a stack output or workflow-like physical name is not resource-type evidence. Use Gate 1 provenance to bind the deployed stack to pinned source when no commit-linked synthesized template is available.
 
@@ -151,6 +152,23 @@ Prefer CloudFormation templates and resource policies already visible in source.
 
 Do not call `GetSecretValue` or `BatchGetSecretValue`. Existence may be established from source wiring, CloudFormation references, or metadata-only description when explicitly allowed. Never expose secret ARNs when the report does not need them.
 
+## Control-equivalence evidence
+
+Populate every field required by `control-equivalence-map.md` for the pinned SMS and Email revisions. For each row:
+
+1. Inventory every workflow-owned synthesized/deployed CloudFormation resource, ASL state, and deployed code entrypoint using the closure and identity keys in `control-equivalence-map.md`.
+2. Map source paths and symbols to synthesized CloudFormation logical IDs, resource types, relevant properties, ASL states/transitions, handlers, and ownership.
+3. Link synthesized resources to deployed physical identities, healthy status, asset digests, and existing runtime evidence.
+4. Record exact retry/catch/timeout, idempotency, persistence/feedback, operations, security, and provenance controls that apply.
+5. Assign exactly one allowed classification with evidence IDs. For `CHANNEL_ADAPTED`, require a non-empty list of row-allowed `adapted_fields` tokens and exactly the row-specific `non_exempt_controls_proven` key set from the map contract, with every value a non-empty evidence-ID array. Explain every `CHANNEL_ADAPTED`, `EXTRA_JUSTIFIED`, or `BLOCKED` result.
+6. Record total, mapped, and unmapped inventory counts for CloudFormation, ASL, and code on each side. Every item must link to a required row or justified extra.
+
+Require exact identity within each channel's provenance chain. Across channels, allow one-to-many or many-to-one semantic mappings; do not compare names or counts as if they were identities.
+
+Provider SDK/API, native status vocabulary, quota mechanism, rendering format, and feedback transport may support `CHANNEL_ADAPTED`. Never use channel adaptation to omit submission idempotency, ambiguous-outcome protection, provider correlation, unresolved-event durability, internal lifecycle persistence, persistence failure handling, replay safety, closure, operations, security, or provenance.
+
+For `SEND-02`, `PERSIST-02`, and `REPLAY-01`, require existing commit-linked failure evidence. `PERSIST-02` evidence must identify the concrete writer and orchestration handoff, the stable idempotency key, durable pending or DLQ location, redrive entrypoint, exactly one resulting internal fact, zero repeated provider submissions, and final pending/DLQ reconciliation. Use PII-safe counts, hashes, statuses, and references only. Never create the failure during certification.
+
 ## Top-level orchestrator proof
 
 Build one linked proof chain for the resource whose execution owns the end-to-end Email Workflow:
@@ -168,6 +186,8 @@ Do not substitute documentation, stack-output names, Lambda functions, Glue work
 
 Require:
 
+- complete SMS and Email CloudFormation/ASL/code inventory coverage with mapped counts equal to totals and no unmapped items;
+- all required control-map rows with exact SMS and Email source/deployment evidence, classifications, and evidence IDs;
 - top-level source construct, logical resource ID, CloudFormation resource type/status, state machine ARN/type/status, alias/version ARNs when present, normalized execution binding, and substantive sequencing evidence;
 - deployed commit SHA, image digest, asset provenance, or equivalent immutable source link;
 - successful end-to-end execution ARN;
@@ -175,6 +195,7 @@ Require:
 - completion state and timestamps;
 - safe selected, overflow, rendered, submitted, terminal-feedback, and persisted counts;
 - immutable manifest/digest reconciliation;
+- existing failure evidence for submission ambiguity, persistence-write recovery, and replay without repeated provider side effects;
 - metrics and DLQ state for the observed interval.
 
 Nearby CI and deployment timestamps are not enough to link a runtime to a commit.
