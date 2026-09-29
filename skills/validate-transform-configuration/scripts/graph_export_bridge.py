@@ -66,7 +66,7 @@ def iso_millis(ts: dt.datetime) -> str:
 
 def read_neptune(directory: Path) -> dict[str, list[dict]]:
     groups: dict[str, list[dict]] = {}
-    for path in sorted(glob.glob(str(directory / "*.csv"))):
+    for path in sorted(glob.glob(str(directory / "**" / "*.csv"), recursive=True)):
         rows = list(csv.reader(io.StringIO(Path(path).read_text(encoding="utf-8"))))
         if not rows:
             continue

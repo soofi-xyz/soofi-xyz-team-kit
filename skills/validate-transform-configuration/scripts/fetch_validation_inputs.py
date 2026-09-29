@@ -5,9 +5,12 @@ Nothing is read from the operator's existing checkouts. Every command is
 read-only against GitHub and AWS and writes only under --workspace.
 
   fetch_validation_inputs.py repo --workspace WS --slug OWNER/REPO (--ref REF | --pr N) --name lexicon-candidate
-  fetch_validation_inputs.py registry --workspace WS --label dev --profile <dev-profile> [--region us-east-2]
+  fetch_validation_inputs.py registry --workspace WS --label dev --profile <dev-profile> [--region <region>]
   fetch_validation_inputs.py ssm-names --workspace WS --label dev --profile <dev-profile>
-  fetch_validation_inputs.py materialize --workspace WS --name lexicon-candidate --command "npx tsx infra/test/spark/materialize-mappings.ts {out}"
+  fetch_validation_inputs.py materialize --workspace WS --name lexicon-candidate [--command "<repo command with {out}>"]
+
+Defaults (registry URI parameter, parameter path, region, materialization commands)
+come from reference/registry-layout.json or --layout.
 
 Each command prints and appends a JSON record to WS/inputs-manifest.json
 (pinned commit SHAs, SSM parameter values that are locations, file digests).
@@ -23,9 +26,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from silvally_io import DEFAULT_REGION, SilvallyError, aws, parse_s3, read_json, sha256_file, write_json
+from silvally_io import SilvallyError, aws, load_layout, parse_s3, read_json, sha256_file, write_json
 
-REGISTRY_PARAMETER = "/lexicon/transform-mappings-uri"
 ECHO = sys.stdout  # the resolver redirects progress records to stderr
 
 
@@ -85,7 +87,7 @@ def fetch_repo(args) -> dict:
 
 def fetch_registry(args) -> dict:
     workspace = Path(args.workspace)
-    uri = aws(["ssm", "get-parameter", "--name", REGISTRY_PARAMETER], profile=args.profile, region=args.region,
+    uri = aws(["ssm", "get-parameter", "--name", args.parameter], profile=args.profile, region=args.region,
               environment=args.environment)["Parameter"]["Value"].rstrip("/") + "/"
     bucket, prefix = parse_s3(uri)
     target = workspace / f"registry-{args.label}"
@@ -134,6 +136,7 @@ def materialize(args) -> dict:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--layout", help="registry layout JSON (default reference/registry-layout.json)")
     sub = parser.add_subparsers(dest="command", required=True)
     repo = sub.add_parser("repo")
     repo.add_argument("--workspace", required=True)
@@ -148,18 +151,32 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--workspace", required=True)
         p.add_argument("--label", required=True)
         p.add_argument("--profile", required=True, help="operator-chosen AWS profile for that environment")
-        p.add_argument("--region", default=DEFAULT_REGION)
+        p.add_argument("--region", help="default: the layout's repository.defaultRegion")
         p.add_argument("--environment", choices=("dev", "prod"), default="prod",
                        help="prod enforces read-only verbs; dev reads are read-only too")
         if name == "ssm-names":
-            p.add_argument("--path", default="/lexicon")
+            p.add_argument("--path", help="default: the layout's publishedRegistry.parameterPath")
+        else:
+            p.add_argument("--parameter", help="default: the layout's publishedRegistry.uriParameter")
     mat = sub.add_parser("materialize")
     mat.add_argument("--workspace", required=True)
     mat.add_argument("--name", required=True)
-    mat.add_argument("--command", required=True, help="materialization command; {out} is replaced by the output directory")
+    mat.add_argument("--command", dest="materialize_command", help="materialization command; {out} is replaced by the output directory")
     mat.add_argument("--install", action="append", help="setup command run first in the checkout, e.g. 'npm ci'")
     args = parser.parse_args(argv)
-    {"repo": fetch_repo, "registry": fetch_registry, "ssm-names": fetch_ssm_names, "materialize": materialize}[args.command](args)
+    layout = load_layout(args.layout)
+    if args.command in ("registry", "ssm-names"):
+        args.region = args.region or layout["repository"]["defaultRegion"]
+        if args.command == "registry":
+            args.parameter = args.parameter or layout["publishedRegistry"]["uriParameter"]
+        else:
+            args.path = args.path or layout["publishedRegistry"]["parameterPath"]
+    if args.command == "materialize":
+        materialize(argparse.Namespace(workspace=args.workspace, name=args.name,
+                                       command=args.materialize_command or layout["materialize"]["command"],
+                                       install=layout["materialize"]["install"] if args.install is None else args.install))
+        return 0
+    {"repo": fetch_repo, "registry": fetch_registry, "ssm-names": fetch_ssm_names}[args.command](args)
     return 0
 
 

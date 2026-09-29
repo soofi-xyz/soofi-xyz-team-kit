@@ -15,7 +15,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-DEFAULT_REGION = "us-east-2"
+LAYOUT_PATH = Path(__file__).resolve().parent.parent / "reference" / "registry-layout.json"
+DEFAULT_REGION = json.loads(LAYOUT_PATH.read_text())["repository"]["defaultRegion"]
 READ_ONLY_VERBS = re.compile(r"^(get|list|describe|head|scan|query|batch-get|lookup|search|select|filter)\b")
 WRITE_SUBCOMMANDS = {"start-execution", "put-object", "copy-object", "delete-object", "delete-objects", "put-item",
                      "update-item", "delete-item", "put-parameter", "delete-parameter", "start-job-run"}
@@ -107,6 +108,11 @@ def parse_s3(uri: str) -> tuple[str, str]:
     if not match:
         raise SilvallyError(f"not an s3 URI: {uri}")
     return match.group(1), match.group(2)
+
+
+def load_layout(path: Path | str | None = None) -> dict:
+    """The registry layout: repository paths, SSM names, runtime conventions and defaults."""
+    return json.loads(Path(path or LAYOUT_PATH).read_text())
 
 
 def fail(message: str) -> None:

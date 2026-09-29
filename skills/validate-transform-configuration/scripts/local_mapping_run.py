@@ -2,15 +2,18 @@
 """Execute a materialized Transform mapping locally with Spark SQL (synthetic-local, phase 7).
 
   local_mapping_run.py --mapping <dir>/transform-mappings/<id>/<version>/mapping.json \
-      --input vertex-debt=fixtures/vertex-debt --input edge-company-represents-debt=fixtures/edge.parquet \
-      [--output form_1281 ...] --out <dir>
+      --input <table>=<fixture file|dir|glob> [--input ...] [--output <dataset> ...] --out <dir>
 
 For each selected output (default: every output whose requiredInputs are all supplied) it
 registers each declared input as its declared view, verifies every query's SHA-256 against
 mapping.json, runs the SQL with the mapping's sqlOptions, and writes the result with the
-mapping's output format/options (csv, jsonl or parquet). Absent optional graph properties
-(`"optional": true`) become typed nulls, as the Transform runtime does. A missing required
-input or a missing non-optional graph property column fails, as in Transform.
+mapping's output format/options (csv, jsonl or parquet; a per-output format overrides the
+mapping default). Graph outputs are written in the Neptune layout (<out>/vertices/<dataset>/,
+<out>/edges/<dataset>/) that graph_export_bridge.py neptune-csv reads. Absent optional graph
+properties (`"optional": true`) become typed nulls, as the Transform runtime does. A missing
+required input or a missing non-optional graph property column fails, as in Transform.
+--negatives additionally proves, for every selected output and each of its requiredInputs, that a
+request omitting exactly that input is rejected before any query runs (reported as negativeCases).
 
 This proves the SQL and contracts at the local Spark version only; it is not deployed-runtime
 evidence (phase 9 still needs an approved DEV execution). Needs pyspark and Java 17; use the
@@ -66,6 +69,16 @@ def read_input(spark, spec: dict, path: str):
     return frame
 
 
+def missing_inputs(output: dict, supplied: set[str]) -> list[str]:
+    return sorted(set(output.get("requiredInputs", [])) - supplied)
+
+
+def input_digests(path: str) -> list[str]:
+    files = [f for f in sorted(glob.glob(str(Path(path) / "**" / "*"), recursive=True) if Path(path).is_dir() else glob.glob(path))
+             if Path(f).is_file() and not f.endswith(".crc")]
+    return [hashlib.sha256(Path(f).read_bytes()).hexdigest() for f in files]
+
+
 def write_output(frame, output: dict, target: Path) -> dict:
     fmt = output.get("format", "csv")
     options = {k: (str(v).lower() if isinstance(v, bool) else str(v)) for k, v in (output.get("options") or {}).items()}
@@ -81,6 +94,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--input", action="append", default=[], help="TABLE=PATH (file, directory or glob)")
     parser.add_argument("--output", action="append", help="output dataset to run (default: all runnable)")
     parser.add_argument("--out", required=True)
+    parser.add_argument("--negatives", action="store_true", help="also prove each required input's omission is rejected")
     args = parser.parse_args(argv)
 
     mapping_path = Path(args.mapping)
@@ -95,9 +109,15 @@ def main(argv: list[str] | None = None) -> int:
     if not outputs:
         raise SystemExit("no output is runnable with the supplied inputs")
     for o in outputs:
-        missing = set(o.get("requiredInputs", [])) - set(supplied)
+        missing = missing_inputs(o, set(supplied))
         if missing:
-            raise SystemExit(f"output {o['dataset']} requires missing input(s) {sorted(missing)}")
+            raise SystemExit(f"output {o['dataset']} requires missing input(s) {missing}")
+    negatives = []
+    if args.negatives:
+        for o in outputs:
+            for table in o.get("requiredInputs", []):
+                rejected = missing_inputs(o, set(supplied) - {table}) == [table]
+                negatives.append({"dataset": o["dataset"], "missingInput": table, "rejected": rejected})
 
     spark = spark_session()
     ansi = (mapping.get("sqlOptions") or {}).get("ansiEnabled")
@@ -107,7 +127,9 @@ def main(argv: list[str] | None = None) -> int:
         read_input(spark, inputs[table], path).createOrReplaceTempView(inputs[table]["view"])
     default_output = mapping.get("output") or {}
     report = {"mapping": f"{mapping['id']}@{mapping['version']}", "mappingSha256": hashlib.sha256(mapping_path.read_bytes()).hexdigest(),
-              "sparkVersion": spark.version, "outputs": []}
+              "sparkVersion": spark.version, "inputs": {t: input_digests(p) for t, p in supplied.items()}, "outputs": [],
+              "negativeCases": negatives}
+    graph_output = default_output.get("shape") == "graph"
     for output in outputs:
         frame = None
         for query in output["queries"]:
@@ -117,8 +139,13 @@ def main(argv: list[str] | None = None) -> int:
                 raise SystemExit(f"{query['path']}: SHA-256 differs from mapping.json")
             frame = spark.sql(text.decode())
         spec = {**default_output, **{k: v for k, v in output.items() if k in ("format", "options")}}
-        result = write_output(frame, spec, Path(args.out) / output["dataset"])
-        report["outputs"].append({"dataset": output["dataset"], "rows": frame.count(), "columns": frame.columns, **result})
+        target = Path(args.out) / output["dataset"]
+        if graph_output:
+            kind = (output.get("graph") or {}).get("kind") or ("edge" if output["dataset"].startswith("edge") else "vertex")
+            target = Path(args.out) / ("edges" if kind == "edge" else "vertices") / output["dataset"]
+        result = write_output(frame, spec, target)
+        report["outputs"].append({"dataset": output["dataset"], "rows": frame.count(), "columns": frame.columns,
+                                  "location": str(target.relative_to(Path(args.out))), **result})
     (Path(args.out) / "report.json").write_text(json.dumps(report, indent=1) + "\n")
     print(json.dumps(report, indent=1))
     return 0

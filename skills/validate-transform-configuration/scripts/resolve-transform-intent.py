@@ -2,19 +2,23 @@
 """Resolve a short Transform validation request into a read-only intake plan.
 
 Examples:
-  resolve-transform-intent.py parse --request "test lexicon to interprose form 1281"
-  resolve-transform-intent.py discover --request "test lexicon payment plan to interprose" \
-      --workspace "$WS" --candidate-pr 811 --aws dev=<dev-profile>
-  resolve-transform-intent.py discover --request "test lexicon payment plan to interprose" \
+  resolve-transform-intent.py parse --request "test <source> to <target> <output words>"
+  resolve-transform-intent.py discover --request "test <source> to <target>" \
+      --workspace "$WS" --candidate-pr <registry-pr> --aws dev=<dev-profile> [--profiles <profile-dir>]
+  resolve-transform-intent.py discover --request "test <hub> <qualifier> to <target>" \
       --lexicon-root <candidate-checkout> --main-lexicon-root <main-checkout> \
       --registry dev=<registry-dir> --ssm-parameters dev=<ssm-names.json>
-  resolve-transform-intent.py draft-profile --request "test sms to lexicon" ...
+  resolve-transform-intent.py draft-profile --request "test <source> to <target>" ...
+  resolve-transform-intent.py contracts --mapping <id>@<version> --lexicon-root ... --registry ...
+  resolve-transform-intent.py check-profile --profile <profile.json> --lexicon-root ... --registry ...
 
-With --workspace the script fetches whatever is not supplied: pinned Lexicon
-checkouts through gh/git and, for each --aws label=PROFILE, the published
-mapping registry and /lexicon SSM parameter names through read-only AWS CLI
-calls (see fetch_validation_inputs.py). Without --workspace it only reads local
-files. Output is JSON on stdout (or --out); see reference/intent-resolution.md.
+Every repository path, SSM name, hub language and default comes from the
+registry layout (reference/registry-layout.json, or --layout). With --workspace
+the script fetches whatever is not supplied: pinned registry checkouts through
+gh/git and, for each --aws label=PROFILE, the published mapping registry and
+language parameter names through read-only AWS CLI calls (see
+fetch_validation_inputs.py). Without --workspace it only reads local files.
+Output is JSON on stdout (or --out); see reference/intent-resolution.md.
 """
 
 from __future__ import annotations
@@ -29,15 +33,38 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-HUB_LANGUAGE = "lexicon"
 SKILL_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_PROFILES = SKILL_ROOT / "reference" / "profiles"
 DEFAULT_FORBIDDEN = SKILL_ROOT / "reference" / "forbidden-concepts.json"
+DEFAULT_LAYOUT = SKILL_ROOT / "reference" / "registry-layout.json"
 DATA_BUCKET_INPUT_ROOT = "inputs"
-DEFAULT_REGION = "us-east-2"
-DEFAULT_LEXICON_SLUG = "Spring-Oaks-Capital-LLC/lexicon"
-DEFAULT_MATERIALIZE_INSTALL = ("npm ci --no-audit --no-fund", "npm ci --no-audit --no-fund --prefix infra")
-DEFAULT_MATERIALIZE_COMMAND = "npx tsx infra/test/spark/materialize-mappings.ts {out}"
+LAYOUT: dict = json.loads(DEFAULT_LAYOUT.read_text())
+HUB_LANGUAGE: str = LAYOUT["hubLanguage"]
+GRAPH_PREFIX = re.compile(r"^(?:vertex|edge)[-_]")
+
+
+def apply_layout(layout: dict) -> None:
+    """Point every path, parameter and hub-language lookup at one registry layout."""
+    global LAYOUT, HUB_LANGUAGE, GRAPH_PREFIX
+    LAYOUT = layout
+    HUB_LANGUAGE = layout["hubLanguage"]
+    prefixes = "|".join(re.escape(p) for p in layout.get("graphDatasetPrefixes", ["vertex", "edge"]))
+    GRAPH_PREFIX = re.compile(rf"^(?:{prefixes})[-_]")
+
+
+def load_layout(path: str | Path | None) -> dict:
+    layout = json.loads(Path(path).read_text()) if path else json.loads(DEFAULT_LAYOUT.read_text())
+    apply_layout(layout)
+    return layout
+
+
+def concept_model_path(root: Path) -> Path:
+    return root / LAYOUT["conceptModelPath"]
+
+
+def language_definition_path(root: Path, language: str) -> Path:
+    return root / LAYOUT["languageDefinitionPath"].format(language=language)
+
+
 MATERIAL_FACT_IDS = (
     "source-and-target-meaning",
     "required-directions",
@@ -67,7 +94,7 @@ MODE_HINTS = {
 
 
 def normalize_dataset(name: str) -> str:
-    return re.sub(r"^(?:vertex|edge)[-_]", "", name).replace("-", "_").lower()
+    return GRAPH_PREFIX.sub("", name).replace("-", "_").lower()
 
 
 def sha256_file(path: Path) -> str:
@@ -104,7 +131,7 @@ def parse_request(request: str) -> dict:
         return {
             "request": request,
             "status": "UNPARSED",
-            "reason": "Expected '<source> to <target>' (for example 'test lexicon to interprose form 1281').",
+            "reason": "Expected '<source> to <target>' (for example 'test <source language> to <target language> <output words>').",
             "sourceTerms": [],
             "targetTerms": [],
             "qualifiers": [],
@@ -208,9 +235,8 @@ def mapping_from_document(doc: dict, provenance: dict, query_dir: Path | None = 
 
 def load_registry_dir(label: str, root: Path) -> list[Mapping]:
     found = []
-    for path in sorted(root.glob("**/transform-mappings/*/*/mapping.json")) or sorted(
-        root.glob("*/*/mapping.json")
-    ):
+    glob = LAYOUT["publishedRegistry"]["mappingGlob"]
+    for path in sorted(root.glob(f"**/{glob}")) or sorted(root.glob("*/*/mapping.json")):
         doc = json.loads(path.read_text())
         mapping = mapping_from_document(
             doc,
@@ -224,8 +250,7 @@ def load_registry_dir(label: str, root: Path) -> list[Mapping]:
 
 def load_checkout_registrations(label: str, root: Path) -> list[Mapping]:
     found = []
-    base = root / "src" / "transform" / "mappings"
-    for path in sorted(base.glob("**/registration.json")):
+    for path in sorted(root.glob(LAYOUT["registrationGlob"])):
         doc = json.loads(path.read_text())
         mapping = mapping_from_document(
             doc,
@@ -238,10 +263,10 @@ def load_checkout_registrations(label: str, root: Path) -> list[Mapping]:
 
 
 def load_retired_ids(root: Path) -> list[str]:
-    spec = root / "infra" / "test" / "transform-mappings.spec.ts"
-    if not spec.exists():
+    source = LAYOUT.get("retiredMappingIds")
+    if not source or not (root / source["path"]).exists():
         return []
-    match = re.search(r"const retired of \[(.*?)\]", spec.read_text(), re.S)
+    match = re.search(source["listPattern"], (root / source["path"]).read_text(), re.S)
     return re.findall(r'"([a-z0-9-]+)"', match.group(1)) if match else []
 
 
@@ -273,26 +298,26 @@ def load_languages(root: Path | None, ssm_files: dict[str, Path]) -> dict[str, d
     def entry(name: str) -> dict:
         return languages.setdefault(name, {"name": name, "definition": None, "registrySources": []})
 
+    params = LAYOUT["languageParameters"]
     if root is not None:
-        data = root / "src" / "data"
-        lexicons_ts = data / "lexicons.ts"
-        if lexicons_ts.exists():
-            text = lexicons_ts.read_text()
-            block = re.search(r"export const lexicons[^=]*=\s*\{(.*?)\n\};", text, re.S)
-            for key in re.findall(r"^\s{2}(\w+):\s*\{", block.group(1), re.M) if block else []:
-                entry(key)["registrySources"].append("src/data/lexicons.ts")
-        stack = root / "infra" / "lib" / "lexicon-stack.ts"
-        if stack.exists():
-            for param in re.findall(r'parameterName:\s*"(/lexicon/[a-z0-9-]*data-uri)"', stack.read_text()):
+        registry = LAYOUT.get("languageRegistry")
+        if registry and (root / registry["path"]).exists():
+            text = (root / registry["path"]).read_text()
+            block = re.search(registry["blockPattern"], text, re.S)
+            for key in re.findall(registry["keyPattern"], block.group(1), re.M) if block else []:
+                entry(key)["registrySources"].append(registry["path"])
+        declared = params.get("declaredIn")
+        if declared and (root / declared).exists():
+            for param in re.findall(params["declarationPattern"], (root / declared).read_text()):
                 name = ssm_language_name(param)
-                entry(name)["registrySources"].append(f"infra/lib/lexicon-stack.ts:{param}")
+                entry(name)["registrySources"].append(f"{declared}:{param}")
         for name, info in list(languages.items()):
-            candidate = data / f"{name}.json"
+            candidate = language_definition_path(root, name)
             if candidate.exists():
                 doc = json.loads(candidate.read_text())
                 if isinstance(doc.get("vertices"), list):
                     info["definition"] = {
-                        "path": f"src/data/{name}.json",
+                        "path": str(candidate.relative_to(root)),
                         "sha256": sha256_file(candidate),
                         "datasets": {
                             v["type"]: {
@@ -318,21 +343,22 @@ def load_languages(root: Path | None, ssm_files: dict[str, Path]) -> dict[str, d
                         },
                     }
     for label, path in ssm_files.items():
-        for param in path.read_text().split():
-            if re.fullmatch(r"/lexicon/[a-z0-9-]*data-uri", param):
+        for param in re.findall(r"[^\s\",\[\]]+", path.read_text()):
+            if re.fullmatch(params["parameterPattern"], param):
                 entry(ssm_language_name(param))["registrySources"].append(f"ssm:{label}:{param}")
     return languages
 
 
 def ssm_language_name(param: str) -> str:
-    stem = param.removeprefix("/lexicon/").removesuffix("data-uri").rstrip("-")
+    params = LAYOUT["languageParameters"]
+    stem = param.removeprefix(params["prefix"]).removesuffix(params["suffix"]).rstrip("-")
     return stem.replace("-", "_") if stem else HUB_LANGUAGE
 
 
 def load_concepts(root: Path | None) -> dict[str, dict] | None:
     if root is None:
         return None
-    path = root / "src" / "data" / "lexicon.json"
+    path = concept_model_path(root)
     if not path.exists():
         return None
     doc = json.loads(path.read_text())
@@ -352,12 +378,13 @@ def load_concepts(root: Path | None) -> dict[str, dict] | None:
 
 
 def lexicon_sha256(root: Path | None) -> str | None:
-    path = root / "src" / "data" / "lexicon.json" if root else None
+    path = concept_model_path(root) if root else None
     return sha256_file(path) if path and path.exists() else None
 
 
-def load_profiles(root: Path) -> list[dict]:
-    return [json.loads(p.read_text()) for p in sorted(root.glob("*.json"))]
+def load_profiles(roots: list[Path]) -> list[dict]:
+    """Profiles are data supplied by the operator (--profiles DIR, repeatable); none are built in."""
+    return [json.loads(p.read_text()) for root in roots for p in sorted(root.glob("*.json"))]
 
 
 def load_forbidden(path: Path | None) -> dict:
@@ -475,14 +502,17 @@ def discriminating_outputs(candidates: list[Mapping]) -> dict[str, set[str]]:
 
 
 def qualifier_phrases(qualifiers: list[str]) -> set[str]:
-    """Contiguous qualifier word runs joined like dataset names ('form 1281' -> 'form_1281')."""
+    """Contiguous qualifier word runs joined like dataset names ('ledger summaries' -> 'ledger_summary')."""
     phrases = set()
     for start in range(len(qualifiers)):
         for end in range(start + 1, len(qualifiers) + 1):
             words = qualifiers[start:end]
             phrases.add("_".join(words))
-            if len(words[-1]) > 3 and words[-1].endswith("s"):
-                phrases.add("_".join(words[:-1] + [words[-1][:-1]]))
+            last = words[-1]
+            if len(last) > 4 and last.endswith("ies"):
+                phrases.add("_".join(words[:-1] + [last[:-3] + "y"]))
+            elif len(last) > 3 and last.endswith("s"):
+                phrases.add("_".join(words[:-1] + [last[:-1]]))
     return phrases
 
 
@@ -647,7 +677,7 @@ def continuation_steps(registry: Registry, source: str, forward: Mapping) -> dic
 
 
 def main_history_commits(root: Path | None, label: str) -> list[str] | None:
-    """Commits on the pinned main checkout whose lexicon.json diff adds or removes the label.
+    """Commits on the pinned main checkout whose concept-model diff adds or removes the label.
 
     Returns None when the checkout has no full history, so callers cannot mistake
     an unchecked concept for an additive one.
@@ -662,7 +692,7 @@ def main_history_commits(root: Path | None, label: str) -> list[str] | None:
         if shallow != "false":
             return None
         return subprocess.run(
-            ["git", "-C", str(root), "log", "--format=%H", "-S", f'"type": "{label}"', "--", "src/data/lexicon.json"],
+            ["git", "-C", str(root), "log", "--format=%H", "-S", f'"type": "{label}"', "--", LAYOUT["conceptModelPath"]],
             capture_output=True, text=True, check=True, timeout=120,
         ).stdout.split()
     except (OSError, subprocess.SubprocessError):
@@ -774,7 +804,7 @@ def lexicon_model_comparison(registry: Registry) -> dict:
 
 def approved_additions_check(registry: Registry, approved: list[dict]) -> dict:
     """Remove exactly the approved (concept, property) additions from the candidate and compare the rest with main."""
-    paths = [root / "src" / "data" / "lexicon.json" if root else None for root in (registry.candidate_root, registry.main_root)]
+    paths = [concept_model_path(root) if root else None for root in (registry.candidate_root, registry.main_root)]
     if not all(p and p.exists() for p in paths):
         return {"checked": False}
     candidate, main = (json.loads(p.read_text()) for p in paths)
@@ -954,7 +984,8 @@ def output_contract_drift(direction: dict, live: Mapping) -> list[dict]:
                     "missingFromProfile": sorted(actual - expected),
                 })
         fmt = contract["format"]
-        observed = {"type": live.output.get("format"), "delimiter": options.get("delimiter", ","), "header": options.get("header", False)}
+        observed = {"delimiter": options.get("delimiter", ","), "header": options.get("header", False),
+                    **output_format(live, registered or {})}
         mismatched = sorted(k for k in fmt if fmt[k] != observed.get(k))
         if mismatched:
             drift.append({
@@ -1150,7 +1181,7 @@ def question_plan(
     if hints.get("environment") is None:
         questions.append({
             "id": "environment",
-            "prompt": "Which environment should Silvally validate against (us-east-2)?",
+            "prompt": f"Which environment should Silvally validate against ({LAYOUT['repository']['defaultRegion']})?",
             "options": [
                 {"id": "dev", "label": "DEV (default): approval-gated staging and runs"},
                 {"id": "prod-read-only", "label": "PROD read-only: metadata and existing evidence only"},
@@ -1249,7 +1280,7 @@ def load_registry(args) -> Registry:
         drift=drift,
         main_concepts=load_concepts(main_root),
         candidate_concepts=load_concepts(lexicon_root),
-        profiles=load_profiles(Path(args.profiles)),
+        profiles=load_profiles([Path(p) for p in args.profiles or []]),
         registry_labels=labels,
         main_root=main_root,
         candidate_root=lexicon_root,
@@ -1300,7 +1331,7 @@ def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclu
                 "code": "LanguageDefinitionMissing",
                 "language": name,
                 "state": state,
-                "detail": f"'{name}' is used by {languages[name]['usedByMappings']} but has no src/data/{name}.json definition in the inspected Lexicon revision",
+                "detail": f"'{name}' is used by {languages[name]['usedByMappings']} but has no {LAYOUT['languageDefinitionPath'].format(language=name)} definition in the inspected registry revision",
             })
 
     if unknown or selection["status"] == "NO_MAPPING":
@@ -1366,7 +1397,7 @@ def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclu
         findings.append({
             "code": "UpstreamSourceUnresolved",
             "mapping": primary.key,
-            "detail": "No unique <qualifier>-to-lexicon producer feeds this projection; choose an upstream mapping or an existing immutable graph export",
+            "detail": f"No unique <qualifier>-to-{HUB_LANGUAGE} producer feeds this projection; choose an upstream mapping or an existing immutable graph export",
             "candidates": [
                 m.key for m in registry.enabled(target=HUB_LANGUAGE)
                 if discriminating_inputs(registry.enabled(source=HUB_LANGUAGE, target=primary.target)).get(primary.key, set())
@@ -1450,7 +1481,7 @@ def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclu
         findings.append({
             "code": "LexiconModelUnchecked",
             "profile": selected_profile["id"],
-            "detail": "Pass both --lexicon-root and --main-lexicon-root to prove the candidate lexicon.json equals main",
+            "detail": "Pass both --lexicon-root and --main-lexicon-root to prove the candidate concept model equals main",
         })
     optional = [registry.mappings[c["mapping"]] for c in continuation["crossSource"]]
     subsets = profile_output_subsets(selected_profile)
@@ -1549,7 +1580,7 @@ def profile_workflow_steps(registry: Registry, profile: dict | None) -> list[dic
     return steps
 
 
-def draft_profile(request: str, discovery: dict) -> dict:
+def draft_profile(request: str, discovery: dict, registry: Registry | None = None) -> dict:
     digest = hashlib.sha256(request.encode()).hexdigest()[:16]
     status = discovery.get("status")
     resolved = status == "RESOLVED"
@@ -1563,7 +1594,7 @@ def draft_profile(request: str, discovery: dict) -> dict:
         elif fact_id == "required-directions" and resolved:
             state, value = "INFERRED", ", ".join(s["mapping"] for s in discovery["workflow"]["steps"])
         elif fact_id == "configuration-repository-and-ref" and resolved:
-            state, value = "INFERRED", "Spring-Oaks-Capital-LLC/lexicon at the pinned candidate commit"
+            state, value = "INFERRED", f"{LAYOUT['repository']['slug']} at the pinned candidate commit"
         elif fact_id == "sensitivity-and-handling":
             state, value = "INFERRED", "restricted; aggregates and digests only"
         elif fact_id == "configuration-product-boundary":
@@ -1576,7 +1607,7 @@ def draft_profile(request: str, discovery: dict) -> dict:
                 f"Confirm {fact_id.replace('-', ' ')}.",
             )
         facts.append({"id": fact_id, "state": state, "value": value, "evidenceIds": ["intent-resolution"] if value else [], "nextQuestion": question})
-    return {
+    draft = {
         "id": f"transform-configuration-draft-{digest}",
         "contractVersion": 1,
         "intakeState": "NEEDS_INPUT",
@@ -1606,6 +1637,11 @@ def draft_profile(request: str, discovery: dict) -> dict:
         "sensitivity": {"containsRawPii": False, "containsSecrets": False},
         "localLocation": f"local://transform-configuration-intake/draft-{digest}",
     }
+    if resolved and registry is not None:
+        draft["derivedDirections"] = [
+            derive_direction(registry, registry.mappings[s["mapping"]]) for s in discovery["workflow"]["steps"]
+        ]
+    return draft
 
 
 def fact_question(fact_id: str) -> str:
@@ -1617,6 +1653,164 @@ def fact_question(fact_id: str) -> str:
     }.get(fact_id, "")
 
 
+# ---------------------------------------------------------------------------
+# Contract derivation (registration + language definitions) and profile checks
+# ---------------------------------------------------------------------------
+
+
+def output_format(mapping: Mapping, output: dict) -> dict:
+    fmt_type = output.get("format") or mapping.output.get("format")
+    options = {**(mapping.output.get("options") or {}), **(output.get("options") or {})}
+    fmt: dict = {"type": fmt_type}
+    if fmt_type == "csv":
+        fmt["delimiter"] = options.get("delimiter", ",")
+        fmt["header"] = bool(options.get("header", False))
+    return fmt
+
+
+def input_contracts(mapping: Mapping) -> list[dict]:
+    out = []
+    for item in mapping.inputs:
+        graph = item.get("graph") or {}
+        entry: dict = {"table": item["table"], "format": item.get("format", "parquet")}
+        if graph:
+            props = graph.get("properties") or []
+            structural = [graph.get("idColumn", "~id")]
+            if graph.get("kind") == "edge":
+                structural += [graph.get("from", {}).get("column", "~from"), graph.get("to", {}).get("column", "~to")]
+            entry.update({
+                "graphKind": graph.get("kind"),
+                "label": graph.get("label"),
+                "requiredColumns": structural + [p["column"] for p in props if not p.get("optional")],
+                "optionalColumns": [p["column"] for p in props if p.get("optional")],
+            })
+            if graph.get("kind") == "edge":
+                entry["endpoints"] = {"from": graph.get("from", {}).get("dataset"), "to": graph.get("to", {}).get("dataset")}
+        out.append(entry)
+    return out
+
+
+def derive_contracts(registry: Registry, mapping: Mapping) -> dict:
+    """Per-output contracts derived only from the registration and the target language definition."""
+    inputs = {i["table"]: i for i in input_contracts(mapping)}
+    contracts, findings = [], []
+    for output in mapping.outputs:
+        dataset = str(output.get("dataset"))
+        required = list(output.get("requiredInputs") or mapping.input_names)
+        contract: dict = {"dataset": dataset, "requiredInputs": required, "format": output_format(mapping, output)}
+        graph = output.get("graph")
+        if mapping.output.get("shape") == "graph" or graph:
+            contract.update({"shape": "graph", "columnSource": "graph-binding"})
+            if graph:
+                contract["graph"] = {k: graph.get(k) for k in ("kind", "label", "idColumn") if graph.get(k)}
+                if graph.get("kind") == "edge":
+                    contract["graph"]["endpoints"] = {"from": graph.get("from", {}).get("dataset"), "to": graph.get("to", {}).get("dataset")}
+        else:
+            spec = definition_fields(registry, mapping.target, dataset)
+            contract["shape"] = "tabular"
+            if spec is None:
+                contract.update({"columnSource": "undefined", "columns": []})
+                findings.append({"code": "DatasetUndefined", "dataset": dataset, "language": mapping.target})
+            else:
+                contract.update({"columnSource": "language-definition", "columns": list(spec["properties"])})
+                if spec["required"]:
+                    contract["key"] = list(spec["required"])
+        for table in required:
+            endpoints = (inputs.get(table) or {}).get("endpoints") or {}
+            for side, endpoint in endpoints.items():
+                if endpoint and endpoint not in required:
+                    findings.append({"code": "EndpointDatasetNotRequired", "dataset": dataset, "edge": table,
+                                     "side": side, "endpoint": endpoint})
+        unknown = sorted(set(required) - set(inputs))
+        if unknown:
+            findings.append({"code": "RequiredInputUndeclared", "dataset": dataset, "inputs": unknown})
+        contracts.append(contract)
+    return {"mapping": mapping.key, "from": mapping.source, "to": mapping.target,
+            "shape": mapping.output.get("shape"), "inputs": list(inputs.values()),
+            "outputs": contracts, "findings": findings}
+
+
+def derive_direction(registry: Registry, mapping: Mapping) -> dict:
+    """A profile `directions[]` entry regenerated from the registry (no domain knowledge)."""
+    derived = derive_contracts(registry, mapping)
+    return {
+        "id": mapping.id,
+        "fromLanguage": mapping.source,
+        "toLanguage": mapping.target,
+        "required": True,
+        "mapping": {"status": "registered", "id": mapping.id, "version": mapping.version,
+                    "repository": LAYOUT["repository"]["slug"],
+                    "expectedOutputDatasets": mapping.output_names, "outputDatasetMatch": "exact"},
+        "outputContracts": [
+            {k: v for k, v in c.items() if k in ("dataset", "requiredInputs", "format", "columnSource", "columns", "key")}
+            for c in derived["outputs"] if c["shape"] == "tabular"
+        ],
+        "derivationFindings": derived["findings"],
+    }
+
+
+DERIVABLE_FIELDS = ("requiredInputs", "format", "columnSource", "columns", "key")
+
+
+def check_profile(registry: Registry, profile: dict) -> dict:
+    """Compare a profile's directions with their regeneration from the registry.
+
+    A difference is accepted only when the direction's `derivationOverrides` names that
+    (dataset, field); every other difference is undeclared drift, and an override that
+    matches no difference is stale.
+    """
+    report: dict = {"profile": profile.get("id"), "directions": [], "undeclared": [], "staleOverrides": []}
+    for direction in profile.get("directions", []):
+        key = profile_mapping_key(direction.get("mapping", {}))
+        live = registry.mappings.get(key) if key else None
+        entry: dict = {"direction": direction.get("id"), "mapping": key}
+        if live is None:
+            entry["status"] = "NOT_IN_REGISTRY"
+            report["directions"].append(entry)
+            if direction.get("mapping", {}).get("status") == "registered":
+                report["undeclared"].append({"direction": direction.get("id"), "field": "mapping", "detail": f"{key} not in any inspected registry"})
+            continue
+        derived = derive_direction(registry, live)
+        overrides = {(o["dataset"], o["field"]) for o in direction.get("derivationOverrides", [])}
+        used: set = set()
+        differences = []
+        mapping = direction["mapping"]
+        expected = mapping.get("expectedOutputDatasets") or []
+        match = mapping.get("outputDatasetMatch", "exact")
+        live_outputs = derived["mapping"]["expectedOutputDatasets"]
+        if (match == "exact" and sorted(expected) != sorted(live_outputs)) or (match == "includes" and not set(expected) <= set(live_outputs)):
+            differences.append({"dataset": "*", "field": "expectedOutputDatasets", "profile": expected, "derived": live_outputs})
+        derived_contracts = {c["dataset"]: c for c in derived["outputContracts"]}
+        for contract in direction.get("outputContracts", []):
+            dataset = contract["dataset"]
+            regenerated = derived_contracts.get(dataset)
+            if regenerated is None:
+                differences.append({"dataset": dataset, "field": "dataset", "profile": dataset, "derived": None})
+                continue
+            for field_name in DERIVABLE_FIELDS:
+                ours, theirs = contract.get(field_name), regenerated.get(field_name)
+                if field_name == "requiredInputs":
+                    ours, theirs = sorted(ours or []), sorted(theirs or [])
+                if field_name == "key" and ours is None:
+                    continue
+                if ours != theirs:
+                    differences.append({"dataset": dataset, "field": field_name, "profile": contract.get(field_name), "derived": regenerated.get(field_name)})
+        for diff in differences:
+            if (diff["dataset"], diff["field"]) in overrides:
+                diff["declaredOverride"] = True
+                used.add((diff["dataset"], diff["field"]))
+            else:
+                diff["declaredOverride"] = False
+                report["undeclared"].append({"direction": direction.get("id"), **diff})
+        for dataset, field_name in sorted(overrides - used):
+            report["staleOverrides"].append({"direction": direction.get("id"), "dataset": dataset, "field": field_name})
+        entry.update({"status": "CHECKED", "differences": differences, "derivationFindings": derived["derivationFindings"],
+                      "regenerated": derived})
+        report["directions"].append(entry)
+    report["derivedEqualsProfileModuloOverrides"] = not report["undeclared"] and not report["staleOverrides"]
+    return report
+
+
 def fetch_missing_inputs(args) -> None:
     """Populate --lexicon-root/--main-lexicon-root/--registry/--ssm-parameters from GitHub and AWS, read-only."""
     sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -1626,10 +1820,12 @@ def fetch_missing_inputs(args) -> None:
 
     workspace = Path(args.workspace)
     workspace.mkdir(parents=True, exist_ok=True)
+    slug = args.lexicon_slug or LAYOUT["repository"]["slug"]
+    published = LAYOUT["publishedRegistry"]
 
     def repo(name: str, ref: str | None, pr: int | None) -> str:
-        entry = fetch.fetch_repo(argparse.Namespace(workspace=str(workspace), slug=args.lexicon_slug, ref=ref, pr=pr,
-                                                    name=name, depth=200, required_path=["src/data/lexicon.json"]))
+        entry = fetch.fetch_repo(argparse.Namespace(workspace=str(workspace), slug=slug, ref=ref, pr=pr,
+                                                    name=name, depth=200, required_path=[LAYOUT["conceptModelPath"]]))
         return entry["path"]
 
     if not args.lexicon_root:
@@ -1645,8 +1841,8 @@ def fetch_missing_inputs(args) -> None:
         if not profile:
             raise SystemExit(f"--aws expects label=AWS_PROFILE, got {spec!r}")
         common = dict(workspace=str(workspace), label=label, profile=profile, region=args.region, environment="prod")
-        registry = fetch.fetch_registry(argparse.Namespace(**common))
-        ssm = fetch.fetch_ssm_names(argparse.Namespace(**common, path="/lexicon"))
+        registry = fetch.fetch_registry(argparse.Namespace(**common, parameter=published["uriParameter"]))
+        ssm = fetch.fetch_ssm_names(argparse.Namespace(**common, path=published["parameterPath"]))
         args.registry = (args.registry or []) + [f"{label}={registry['path']}"]
         args.ssm_parameters = (args.ssm_parameters or []) + [f"{label}={ssm['path']}"]
 
@@ -1656,46 +1852,65 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     p_parse = sub.add_parser("parse")
     p_parse.add_argument("--request", required=True)
-    for name in ("discover", "draft-profile"):
+    for name in ("discover", "draft-profile", "contracts", "check-profile"):
         p = sub.add_parser(name)
-        p.add_argument("--request", required=True)
-        p.add_argument("--lexicon-root", help="Pinned Lexicon candidate checkout")
-        p.add_argument("--main-lexicon-root", help="Pinned Lexicon main checkout for concept checks")
+        if name in ("discover", "draft-profile"):
+            p.add_argument("--request", required=True)
+        if name == "contracts":
+            p.add_argument("--mapping", required=True, help="exact id@version to derive contracts for")
+        if name == "check-profile":
+            p.add_argument("--profile", required=True, help="profile JSON whose directions are regenerated and compared")
+        p.add_argument("--layout", help="registry layout JSON (default reference/registry-layout.json)")
+        p.add_argument("--lexicon-root", help="Pinned registry candidate checkout")
+        p.add_argument("--main-lexicon-root", help="Pinned registry main checkout for concept checks")
         p.add_argument("--registry", action="append", help="label=DIR of materialized transform-mappings/<id>/<version>/mapping.json")
-        p.add_argument("--ssm-parameters", action="append", help="label=FILE listing /lexicon/* parameter names")
-        p.add_argument("--profiles", default=str(DEFAULT_PROFILES))
-        p.add_argument("--forbidden-concepts", default=str(DEFAULT_FORBIDDEN), help="Shared forbidden Lexicon concepts, properties, and retired mappings")
+        p.add_argument("--ssm-parameters", action="append", help="label=FILE listing language parameter names")
+        p.add_argument("--profiles", action="append", help="directory of validation profiles (repeatable; none by default)")
+        p.add_argument("--forbidden-concepts", default=str(DEFAULT_FORBIDDEN), help="Shared forbidden concepts, properties, and retired mappings")
         p.add_argument("--window", default="<startZ>_<endExclusiveZ>")
         p.add_argument("--out")
         p.add_argument("--workspace", help="Fetch missing inputs read-only (GitHub via gh, AWS via --aws) into this disposable directory")
-        p.add_argument("--lexicon-slug", default=DEFAULT_LEXICON_SLUG)
-        p.add_argument("--candidate-pr", type=int, help="Lexicon pull request whose head is the candidate")
-        p.add_argument("--candidate-ref", help="Lexicon branch, tag or SHA for the candidate (default: default branch)")
-        p.add_argument("--main-ref", help="Lexicon ref used as main (default: default branch)")
-        p.add_argument("--aws", action="append", help="label=AWS_PROFILE; fetches that environment's published registry and /lexicon SSM names")
-        p.add_argument("--region", default=DEFAULT_REGION)
+        p.add_argument("--lexicon-slug", help="registry repository slug (default: the layout's repository.slug)")
+        p.add_argument("--candidate-pr", type=int, help="registry pull request whose head is the candidate")
+        p.add_argument("--candidate-ref", help="registry branch, tag or SHA for the candidate (default: default branch)")
+        p.add_argument("--main-ref", help="registry ref used as main (default: default branch)")
+        p.add_argument("--aws", action="append", help="label=AWS_PROFILE; fetches that environment's published registry and language parameter names")
+        p.add_argument("--region", help="AWS region (default: the layout's repository.defaultRegion)")
         p.add_argument("--materialize-candidate", action="store_true",
                        help="Build generated mapping artifacts in the fetched candidate checkout and add them as registry candidate-build")
-        p.add_argument("--materialize-command", default=DEFAULT_MATERIALIZE_COMMAND)
+        p.add_argument("--materialize-command", help="default: the layout's materialize.command")
         p.add_argument("--materialize-install", action="append", default=None,
-                       help="setup commands run first in the checkout (default: npm ci in the root and infra/)")
+                       help="setup commands run first in the checkout (default: the layout's materialize.install)")
     args = parser.parse_args(argv)
-    if getattr(args, "materialize_candidate", False) and args.materialize_install is None:
-        args.materialize_install = list(DEFAULT_MATERIALIZE_INSTALL)
+    if args.command != "parse":
+        layout = load_layout(args.layout)
+        args.region = args.region or layout["repository"]["defaultRegion"]
+        args.materialize_command = args.materialize_command or layout["materialize"]["command"]
+        if args.materialize_candidate and args.materialize_install is None:
+            args.materialize_install = list(layout["materialize"]["install"])
     if getattr(args, "workspace", None):
         fetch_missing_inputs(args)
     if args.command == "parse":
         output = parse_request(args.request)
     else:
         registry = load_registry(args)
-        output = discover(args.request, registry, args.window)
-        if args.command == "draft-profile":
-            output = draft_profile(args.request, output)
+        if args.command == "contracts":
+            if args.mapping not in registry.mappings:
+                raise SystemExit(f"{args.mapping} is not in any inspected registry")
+            output = derive_contracts(registry, registry.mappings[args.mapping])
+        elif args.command == "check-profile":
+            output = check_profile(registry, json.loads(Path(args.profile).read_text()))
+        else:
+            output = discover(args.request, registry, args.window)
+            if args.command == "draft-profile":
+                output = draft_profile(args.request, output, registry)
     text = json.dumps(output, indent=2, sort_keys=False) + "\n"
     if getattr(args, "out", None):
         Path(args.out).write_text(text)
     else:
         sys.stdout.write(text)
+    if args.command == "check-profile" and not output["derivedEqualsProfileModuloOverrides"]:
+        return 1
     return 0
 
 

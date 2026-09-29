@@ -54,6 +54,7 @@ jobs:
           python3 -m py_compile skills/validate-transform-configuration/scripts/local_mapping_run.py
           python3 -m py_compile skills/validate-transform-configuration/scripts/iceberg_snapshot_read.py
           python3 -m py_compile skills/validate-transform-configuration/scripts/build_run_package.py
+          python3 -m py_compile skills/validate-transform-configuration/scripts/evaluate_run.py
           python3 -m py_compile skills/validate-transform-configuration/scripts/stage_evidence_package.py
           python3 -m py_compile scripts/test-silvally-tools.py
           python3 -m py_compile scripts/check-system-manifest.py

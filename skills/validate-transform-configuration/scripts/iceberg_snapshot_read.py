@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Read-only snapshot read of a Glue/Iceberg table (e.g. PROD Stage) for oracle building.
 
-  iceberg_snapshot_read.py --profile <prod-profile> --table interprose_current.debt_settlement_agency \
-      --columns id,debt_id,dsa_name,reported_date --key-column debt_id --keys-file keys.txt \
+  iceberg_snapshot_read.py --profile <prod-profile> --table <glue_database>.<table> \
+      --columns <col>,<col> --key-column <key column> --keys-file keys.txt \
       --private-dir <dir outside any repo> [--snapshot-id N]
 
 Uses only S3 GetObject/Glue GetTable through pyiceberg (no Athena, no writes). The full
