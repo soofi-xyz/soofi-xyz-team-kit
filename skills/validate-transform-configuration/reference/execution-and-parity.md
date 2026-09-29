@@ -7,9 +7,9 @@ each DEV run, complete the operation card in `intake-questions-and-gates.md`
 and get approval for its digest.
 
 1. **Locate the runtime read-only.** Get the DEV Transform state machine ARN
-   (`aws stepfunctions list-state-machines`, name ending
-   `-transform-pipeline`) and the published registry root
-   (`/lexicon/transform-mappings-uri`). Confirm that each step's deployed
+   (`aws stepfunctions list-state-machines`, name ending with the layout's
+   `transformRuntime.stateMachineSuffix`) and the published registry root
+   (`publishedRegistry.uriParameter`). Confirm that each step's deployed
    `mapping.json` SHA-256 and every query `sha256` match the pinned candidate.
    A mismatch is deployment drift, and the step does not start.
 2. **Build the v2 request** from the registered mapping. Mapping identity is
@@ -22,7 +22,7 @@ and get approval for its digest.
      "to": "<target language>",
      "mappingVersion": "<x.y.z>",
      "inputs": [{ "table": "<declared input table>", "s3Uri": "s3://…/derived/<table>/" }],
-     "output": { "s3Prefix": "s3://<dev-transform-data-bucket>/outputs/silvally/<runId>/" },
+     "output": { "s3Prefix": "s3://<dev-transform-data-bucket>/outputs/silvally-<profile-or-mapping>/<runId>/<case>/" },
      "costCeilingUsd": 5
    }
    ```
@@ -63,24 +63,34 @@ root, operator's DEV profile, pinned mapping digests and VersionIds, and one cas
 
 ```bash
 S=skills/validate-transform-configuration/scripts
-python3 $S/transform_runs.py spec-from-intent --intent intent.json --workspace "$WS" --profile <dev-profile> --out run-spec.json
+python3 $S/transform_runs.py spec-from-intent --intent intent.json --workspace "$WS" --profile <dev-profile> \
+  --bind <name>=s3://<bucket>/<input-prefix>/ [--bind ...] [--profiles <profile-dir>] --out run-spec.json
 python3 $S/transform_runs.py cards --spec run-spec.json --run-dir "$RUN"      # APPROVAL_REQUIRED + digests
 python3 $S/transform_runs.py start --run-dir "$RUN" --approve sha256:<digest> \
   --approver "<who>" --scope "<approval in their words>"                      # only matching cards start
 python3 $S/transform_runs.py capture --run-dir "$RUN"                          # read-only evidence + reconciliation
+python3 $S/transform_runs.py regress --run-dir "$RUN" --baseline "$PREVIOUS_RUN"
 python3 $S/transform_runs.py cost --run-dir "$RUN" --job-name <transform-glue-job>
 ```
 
-`spec-from-intent` derives the cases (full, one per output, and the profile's rejected partial-input
-cases) from the resolver output and the selected profile, discovers the state machine read-only, and
-marks `deployment.drift` when the published registry does not serve the pinned digest; `start` then
-refuses. `expected: REJECTED` cases pass only when the execution fails before `RunTransformJob`.
-`capture` flags `mappingPinMatches: false` when the plan's `mapping.json` digest or
-VersionId differs from the pin (deployment drift or a latest-PR-wins overwrite). Compare
-outputs with `compare_datasets.py diff` (regression: `--expect-identical`; parity:
-`--key` plus `--normalize`), check CSV contracts with `compare_datasets.py format`, prove
-graph closure with `compare_datasets.py closure`, and assemble the package with
-`build_run_package.py`. When a step needs Parquet graph inputs but the previous step wrote
+`spec-from-intent` reads the mapping registration from the workspace and derives every case
+from it: for each binding (a prefix holding one `<table>/` directory per input, listed
+read-only), one case per output whose `requiredInputs` are all present, a full case when one
+binding covers every output, and one rejected case per required input of every output, which
+omits exactly that input. Bindings default to the profile's ready `existing-dev-artifact`
+sources for the direction. Outputs a binding cannot run and a full run no binding supports are
+listed under `skipped`. The spec records each output's registered format, the pinned digest,
+and `deployment.drift` when the published registry does not serve the pinned digest; `start`
+then refuses. `expected: REJECTED` cases pass only when the execution fails before
+`RunTransformJob` and the error names the omitted input. `capture` reads CSV, JSONL or Parquet
+outputs in their registered format, reconciles physical rows and files with `_metadata.json`, and
+flags `mappingPinMatches: false` when the plan's `mapping.json` digest or VersionId differs from
+the pin (deployment drift or a latest-PR-wins overwrite). `regress` matches cases with a previous
+run by mapping, input locations, outputs and expectation (not by case name) and compares row
+counts and content digests. Check outputs with `compare_datasets.py check` (contract format and
+columns, keys, the profile's declarative checks, oracles and allowed losses), prove graph closure
+with `compare_datasets.py closure`, compute phases with `evaluate_run.py`, and assemble the
+package with `build_run_package.py`. When a step needs Parquet graph inputs but the previous step wrote
 Neptune CSV, bridge it with `graph_export_bridge.py neptune-csv` (record synthetic
 `created_at` as a limitation); convert epoch-millis exports with `graph_export_bridge.py iso-dates`.
 
@@ -90,18 +100,19 @@ Derive parity from the pinned language definitions and registrations. Never
 derive it from prose or copy it from a profile. The resolver's
 `parityDerivation` output is the starting set.
 
-- **Round trip** (`X -> lexicon -> X`): for each input table of the forward
+- **Round trip** (`X -> <hub> -> X`): for each input table of the forward
   mapping, compare every non-deprecated property that the dataset declares in
-  `src/data/X.json`. Normalize both sides by the profile's declared rules
+  the definition of `X`. Normalize both sides by the profile's declared rules
   (UTC timestamps, numeric canonical form, and null versus absent only where
   the definition marks the field optional). Then compare multisets of rows keyed
   by the dataset's required identity fields. Report `fieldCount`,
   `mismatchCount`, per-field mismatch counts, and SHA-256 digests of the
   normalized sorted rows on both sides.
-- **Projection or cross-source** (`lexicon -> Y`): for each output dataset,
-  every property declared in `src/data/Y.json` must be present and typed. An
-  oracle (profile invariant or edge-case `expected/`) states the expected value
-  derivation. Compare values field by field against it.
+- **Projection or cross-source** (`<hub> -> Y`): for each output dataset,
+  every property declared in the definition of `Y` must be present and typed. An
+  oracle (the profile's `oracles`, referenced by a `matches-oracle` check) states the
+  expected values; compare them `part-bytes`, `sorted-rows`, or `keyed` by the contract key,
+  where only the profile's `allowedLosses` may explain a difference.
 - **Missing reconstruction**: a forward input that the inverse mapping does not
   output is `RoundTripDatasetGap` (`FAIL`) unless the profile lists it as a
   permitted loss.
@@ -132,14 +143,14 @@ derive it from prose or copy it from a profile. The resolver's
 
 ## Forbidden and removed concepts
 
-For every `* -> lexicon` output and every graph input of `lexicon -> *`,
+For every `* -> <hub>` output and every graph input of `<hub> -> *`,
 normalize the label (drop the `vertex-` or `edge-` prefix and change `-` to
 `_`), then classify it against **current Lexicon `main`**:
 
 | State | Result |
 | --- | --- |
 | `ACTIVE_ON_MAIN` | pass |
-| `ADDED_IN_CANDIDATE` | pass only when `main` history never removed it (`git log -S '"type": "<label>"' -- src/data/lexicon.json` on a full-history `main` clone); record as additive. `historyChecked: false` means the resolver had no full history, so run the check before phase 6 passes |
+| `ADDED_IN_CANDIDATE` | pass only when `main` history never removed it (`git log -S '"type": "<label>"' -- <conceptModelPath>` on a full-history `main` clone); record as additive. `historyChecked: false` means the resolver had no full history, so run the check before phase 6 passes |
 | `REMOVED_ON_MAIN` | `FAIL` (`RemovedLexiconConcept`): absent on `main` but present in its history |
 | `DEPRECATED_ON_MAIN`, `ABSENT` | `FAIL` (`LexiconConceptInactive`) |
 | `FORBIDDEN` (shared `forbidden-concepts.json`, profile `forbiddenConcepts`, or a retired mapping id) | `FAIL` (`RemovedLexiconConcept`) |
@@ -148,7 +159,7 @@ normalize the label (drop the `vertex-` or `edge-` prefix and change `-` to
 
 Independently of mappings, the shared list's labels and scoped properties
 (`concept.property`) must not appear in the candidate or `main`
-`lexicon.json` (`ForbiddenConceptInLexicon`, `ForbiddenPropertyInLexicon`).
+concept model (`ForbiddenConceptInLexicon`, `ForbiddenPropertyInLexicon`).
 Properties marked `sqlScan: true` are also scanned for in SQL.
 
 Also scan every executed SQL body for forbidden labels. A string match in SQL

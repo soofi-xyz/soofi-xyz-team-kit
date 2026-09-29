@@ -191,29 +191,28 @@ Users do not need to know profile IDs, mapping names, or validation modes. Start
 
 ```text
 /silvally I need to test a new transformation
-/silvally Can this data be transformed into Interprose?
+/silvally Can this data be transformed into <target system>?
 /silvally Help me validate the mappings in https://github.com/org/repo/pull/123
 /silvally The sample is at local://samples/input.jsonl
 ```
 
 Silvally performs bounded read-only discovery, selects an existing profile only from a unique evidence-backed match, and asks one focused plain-language question for the next missing fact. It does not execute mappings or issue a readiness verdict until context is complete.
 
-Short end-to-end requests work too. Silvally resolves the languages and exact registered mapping versions from Lexicon, then asks only the questions that remain:
+Short end-to-end requests work too. Silvally resolves the languages, exact registered mapping versions and output names from the registry, then asks only the questions that remain:
 
 ```text
-/silvally test lexicon to interprose form 1281
-/silvally test lexicon payment plan to interprose
-/silvally test interprose to lexicon round trip form 1281
-/silvally test lexicon (sms) to interprose
-/silvally test sms to lexicon
+/silvally test <source> to <target>
+/silvally test <hub> <output words> to <target>
+/silvally test <source> to <hub> round trip
+/silvally test <hub> (<producer>) to <target>
 ```
 
-When no mapping or language definition exists, Silvally says so, lists ranked candidates, and offers next steps. A mapping that a profile declares but no registry holds yet, such as `lexicon-to-interprose@4.0.0`, is listed as planned and never selected. Retired mappings and the Lexicon concepts in `forbidden-concepts.json` are reported, never offered. It validates only; it never fixes mappings.
+When no mapping or language definition exists, Silvally says so, lists ranked candidates, and offers next steps. A mapping that a profile declares but no registry holds yet is listed as planned and never selected. Retired mappings and the concepts in `forbidden-concepts.json` are reported, never offered. Run cases, contracts and parity come from the mapping registration and language definitions; mapping-specific rules are profile data (declarative checks, oracles, allowed losses). It validates only; it never fixes mappings.
 
 Experienced users can provide the full context directly:
 
 ```text
-/silvally Validate lexicon-to-interprose@4.0.0 using lexicon-interprose-v4 in synthetic-local mode
+/silvally Validate <mapping-id>@<version> using profile <profile>.json in synthetic-local mode
 ```
 
 DEV writes, deployments, and Transform runs each require operation-specific approval. PROD remains read-only.

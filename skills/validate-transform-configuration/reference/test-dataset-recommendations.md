@@ -22,15 +22,15 @@ mode and as a first local smoke test.
 
 With read-only PROD metadata, compare the most recent complete UTC days (at
 least 7 candidates). For each day, record row counts per required source family,
-coverage of every enum value the definition declares (for example `outcome` in
-`accepted|rejected`), presence of the profile's `requiredCoverageSignals`, bytes,
+coverage of every enum value the definition declares (the resolver's `coverageTargets`), presence of the profile's `requiredCoverageSignals`, bytes,
 and whether immutable object versions exist. Recommend the most recent day that
 covers everything. If none does, recommend a contiguous range or return
 `BLOCKED`; never pad the data or pick random rows.
 
 ## Storage layout
 
-Stage in the DEV Transform data bucket in `us-east-2`. The bucket must have S3
+Stage in the DEV Transform data bucket in the target region (the layout's default region unless
+the operator says otherwise). The bucket must have S3
 versioning enabled; verify with `get-bucket-versioning` before recommending it.
 
 ```text
@@ -41,11 +41,13 @@ s3://<dev-transform-data-bucket>/inputs/<language>-<purpose>/<window>_<version>/
   expected/<dataset>.jsonl        # edge-case oracle rows (edge-case packages only)
 ```
 
-- `<language>` is the registered source language (`interprose`, `quiq`, …).
-  For a projection out of the hub it is `lexicon-<target>`, unless a qualifier
-  names a registered language. `<purpose>` is `prod-derived`, `edge-cases`, or
-  `synthetic`. A profile may reserve its own prefix, for example
-  `inputs/lexicon-interprose-v4/<window>_v1/`.
+- `<language>` is the registered source language. For a projection out of the hub it is
+  `<hub>-<target>`, unless a qualifier names a registered language. `<purpose>` is
+  `prod-derived`, `edge-cases`, or `synthetic`. A profile may reserve its own prefix
+  (`inputs/<profile-stem>/<window>_v1/`).
+- Each input dataset lives in its own `<table>/` directory under one prefix, so that
+  `transform_runs.py spec-from-intent --bind <name>=<prefix>` can list which outputs the package
+  can run.
 - `<window>` is `YYYY-MM-DDT000000Z_YYYY-MM-DDT000000Z` (half-open) for day
   windows, or `YYYYMMDDTHHMMSSZ-<label>` for curated packages.
 - `<version>` is `v1`, `v2`, …. Never overwrite a prefix. A correction is a new
@@ -94,17 +96,10 @@ it from committed tools plus fresh read-only reads.
 
 ## Expected sizes and cost
 
-- Lexicon to Interprose v4: the package
-  `s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/20260928-dev-stage-sample_v1/`
-  (bucket versioning `Enabled`, checked 2026-09-28) holds a 197-debt DEV Stage
-  sample of the ten profile source families under `stage/<table>/` and the
-  thirteen Parquet graph exports v4 reads under `lexicon/<dataset>/`. Each
-  half has its own `manifest.sha256.json`; the profile pins both digests and
-  `VersionId`s. The `bounded-dev` tier caps it at 50,000 rows and $25.
-- Quiq SMS lifecycle: a full-day export is bounded by the profile's
-  `full-day-dev` tier (≤100,000 rows, ≤$50).
+- A profile's `scaleTiers` bound rows and cost per tier; a calibration dossier records the
+  expected row counts of its packages.
 - Transform cost: `resolve-plan` returns `predictedCostUsd` before Glue runs.
   KiB-to-MiB inputs typically predict well under $1 per execution. Set
   `costCeilingUsd` to the lower of the profile scale tier and the user's
-  ceiling. A three-step round trip plus cross-source run is three executions.
+  ceiling. Rejected missing-input cases stop before Glue and cost nothing beyond the plan step.
 - S3 storage for these packages is negligible. The dominant cost is Glue.

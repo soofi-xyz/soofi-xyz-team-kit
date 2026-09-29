@@ -16,8 +16,8 @@ tool call.
 | `mapping-version` | more than one enabled version and no version hint | each `id@version` with its outputs | the resolver's selection |
 | `upstream-source` | `UpstreamSourceUnresolved` | candidate producers, `existing-graph-export` | the selected profile's first workflow step when it is a candidate, else none |
 | `test-dataset` | always | profile evidence (including `planned` placeholders), then `prod-derived-full-utc-day`, `sanitized-edge-cases`, `synthetic-fixture` | first `ready` profile evidence, else the full UTC day |
-| `direction-mode` | an inverse mapping exists and no mode hint | `round-trip`, `one-way` | `round-trip` for `X -> lexicon`; `one-way` for `lexicon -> Y` |
-| `cross-source-step` | a `lexicon -> Y` mapping consumes forward outputs | each downstream mapping, `none` | none |
+| `direction-mode` | an inverse mapping exists and no mode hint | `round-trip`, `one-way` | `round-trip` for `X -> <hub>`; `one-way` for `<hub> -> Y` |
+| `cross-source-step` | a `<hub> -> Y` mapping consumes forward outputs | each downstream mapping, `none` | none |
 | `persist-policy` | always, unless the profile fixes it | `forbidden`, `required` | `forbidden` |
 
 Rules:
@@ -59,22 +59,22 @@ Render the card verbatim, then compute
 {
   "operation": "start-transform-execution",
   "environment": "dev",
-  "region": "us-east-2",
+  "region": "<region>",
   "accountAlias": "<dev-profile>",
   "reads": [
-    "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/<window>_v1/derived/ (3 graph exports, manifest sha256:…)",
-    "s3://<lexicon-bucket>/transform-mappings/lexicon-to-interprose/4.0.0/mapping.json (sha256:…)"
+    "s3://<dev-transform-data-bucket>/inputs/<package>/<window>_v1/<table>/ (manifest sha256:…)",
+    "s3://<registry-bucket>/transform-mappings/<id>/<version>/mapping.json (sha256:…)"
   ],
   "writes": [
     "s3://<dev-transform-data-bucket>/runs/<executionId>/plan.json",
-    "s3://<dev-transform-data-bucket>/outputs/silvally/<runId>/<executionId>/"
+    "s3://<dev-transform-data-bucket>/outputs/silvally-<profile-or-mapping>/<runId>/<case>/<executionId>/"
   ],
   "runs": "states:StartExecution <state-machine-arn> name=<executionId>",
-  "request": { "contractVersion": 2, "from": "lexicon", "to": "interprose", "mappingVersion": "4.0.0", "outputDatasets": ["form_1281"], "…": "…" },
+  "request": { "contractVersion": 2, "from": "<source>", "to": "<target>", "mappingVersion": "<x.y.z>", "outputDatasets": ["<dataset>"], "…": "…" },
   "costCeilingUsd": 5,
-  "expectedEffect": "one Glue run; form_1281 pipe-delimited CSV with header and _metadata.json",
+  "expectedEffect": "one Glue run; <dataset> in its registered format with _metadata.json",
   "containment": "new unique execution name and output prefix; nothing is overwritten; delete the output prefix to roll back",
-  "evidenceIds": ["exec-v4-form-1281-only"],
+  "evidenceIds": ["exec-<case>"],
   "operationDigest": "sha256:…"
 }
 ```

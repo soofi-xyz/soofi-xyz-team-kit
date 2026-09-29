@@ -14,37 +14,42 @@ person's machine (checkouts, `/tmp` scripts, cached registries, PROD extracts) i
 
 1. **Install the plugin** from the team marketplace (Cursor: Plugins → soofi-xyz-team-kit), or clone
    `soofi-xyz/soofi-xyz-team-kit` and run `scripts/local-cursor-plugin.sh`. Invoke the agent as
-   `/silvally` or ask in plain language ("test lexicon payment plan to interprose").
+   `/silvally` or ask in plain language ("test <source> to <target> <output words>").
 2. **Prerequisites** (checked by the agent; install once):
    - `gh` authenticated (`gh auth status`) with read access to the Lexicon and Transform repositories.
    - AWS CLI v2 with SSO profiles for DEV and, only for read-only oracles, PROD. Profile names are
      yours to choose; pass them explicitly (`--profile`, `--aws dev=<dev-profile>`). Log in with
      `aws sso login --profile <name>`. Never export long-lived keys; tools strip `AWS_*` key variables
      and refuse PROD write verbs.
-   - Node.js 22+ with `npm`/`npx` on `PATH` (only to materialize generated Lexicon mappings with
-     `--materialize-candidate`; the resolver runs `npm ci` and the repository's materializer in the fetched checkout).
+   - Node.js 22+ with `npm`/`npx` on `PATH` (only to materialize generated mappings with
+     `--materialize-candidate`; the resolver runs the layout's `materialize.install` and `materialize.command` in the fetched checkout).
    - Python 3.10+ with `pip install -r scripts/requirements-silvally.txt` in a virtual environment.
      Optional: `requirements-silvally-spark.txt` (Python 3.10, Java 17, Spark 3.3 = Glue 4.0) for
      `synthetic-local` runs, and `requirements-silvally-prod-oracle.txt` for PROD Iceberg oracles.
-3. **First command** (read-only; fetches pinned Lexicon checkouts, the DEV registry and SSM names):
+3. **First command** (read-only; fetches pinned registry checkouts, the DEV registry and language parameter names):
 
    ```bash
    S=skills/validate-transform-configuration/scripts
-   python3 $S/resolve-transform-intent.py discover --request "test lexicon payment plan to interprose" \
-     --workspace "$(mktemp -d)/silvally" --candidate-pr <lexicon-pr> --materialize-candidate \
-     --aws dev=<dev-profile> --out intent.json
+   python3 $S/resolve-transform-intent.py discover --request "test <source> to <target> <output words>" \
+     --workspace "$(mktemp -d)/silvally" --candidate-pr <registry-pr> --materialize-candidate \
+     --aws dev=<dev-profile> [--profiles <profile-dir>] --out intent.json
    ```
 
+   Repository paths, SSM names, the hub language and the default region come from
+   `reference/registry-layout.json`; pass `--layout` for another registry. No profile directory is
+   built in: pass the one you validate with (this kit's schema-valid examples live in `examples/profiles/`).
 4. **Test a new mapping configuration:** materialize it
    (`fetch_validation_inputs.py materialize`), run it locally on a small fixture with
-   `local_mapping_run.py`, and compare against an oracle written from the specification with
-   `compare_datasets.py diff --expect-identical` (the committed `fixtures/new-mapping-example/`
-   shows the whole loop). Then draft or select a profile (`adding-profiles.md`) and let the agent run
-   the 12 phases; DEV executions go through `transform_runs.py` cards and explicit approval.
+   `local_mapping_run.py --negatives`, and check it with `compare_datasets.py check` against contracts
+   from `resolve-transform-intent.py contracts` and an oracle written from the specification. The
+   committed `fixtures/synthetic-registry/` shows the whole loop on a synthetic registry. Then draft
+   or select a profile (`adding-profiles.md`) and let the agent run the 12 phases; DEV executions go
+   through `transform_runs.py` cards and explicit approval.
 5. **Where evidence goes:** a local run directory you choose (outside any repository) holds
-   cards, approvals, captured steps and `run.json`; DEV outputs go only under the profile's
-   `outputs/silvally-<profile>/<runId>/` prefix; restricted PROD rows stay in a mode-0700
-   `--private-dir` that you delete afterwards. Only sanitized aggregates and digests are reported.
+   cards, approvals, captured steps and `run.json`; DEV outputs go only under
+   `outputs/silvally-<profile-or-mapping>/<runId>/` in the bucket of the bound inputs (or `--output-root`);
+   restricted PROD rows stay in a mode-0700 `--private-dir` that you delete afterwards. Only sanitized
+   aggregates and digests are reported.
 
 ## Tools
 
@@ -52,20 +57,53 @@ All tools live in `scripts/`, take every location as an argument, and print JSON
 
 | Tool | Phase | Purpose |
 | --- | --- | --- |
-| `resolve-transform-intent.py` | 1–2, 5–6 | Parse a short request, fetch inputs (`--workspace`), select mappings/profile, derive parity and questions |
-| `fetch_validation_inputs.py` | 2 | Read-only: pin repositories by SHA (`repo`), snapshot the published registry (`registry`), list `/lexicon` SSM names, materialize mappings |
-| `local_mapping_run.py` | 7 | Run a materialized mapping on fixtures with local Spark (typed nulls for optional graph properties) |
-| `compare_datasets.py` | 7, 10–11 | Byte-identity and keyed column diffs, CSV header/delimiter checks, graph ID uniqueness and dangling endpoints |
+| `resolve-transform-intent.py` | 1–2, 5–6 | `discover`: parse a short request, fetch inputs (`--workspace`), select mappings/profile, derive parity and questions. `contracts`: per-output contracts from the registration and language definitions. `draft-profile`: a draft with regenerated `derivedDirections`. `check-profile`: prove a profile equals the registry derivation except its declared `derivationOverrides` |
+| `fetch_validation_inputs.py` | 2 | Read-only: pin repositories by SHA (`repo`), snapshot the published registry (`registry`), list language parameter names, materialize mappings |
+| `local_mapping_run.py` | 7 | Run a materialized mapping on fixtures with local Spark (typed nulls for optional graph properties); `--negatives` proves each required input's omission is rejected |
+| `compare_datasets.py` | 7, 10–11 | Keyed or whole-row diffs (CSV, JSONL, Parquet), part-byte identity, CSV header/delimiter checks, graph closure, and `check`: contracts plus the profile's declarative invariants, oracles and allowed losses |
 | `graph_export_bridge.py` | 7, 11 | Neptune CSV output to Parquet graph exports (optional synthetic `created_at`), epoch-millis to ISO dates |
 | `stage_evidence_package.py` | 4 | Build `manifest.json`, then create-only upload with an approval digest |
-| `transform_runs.py` | 9 | Operation cards, approval-gated `start`, read-only `capture` with physical reconciliation, Glue `cost` |
+| `transform_runs.py` | 9, 11 | Cases derived from the registration, operation cards, approval-gated `start`, read-only `capture`, `regress` against a previous run, Glue `cost` |
 | `iceberg_snapshot_read.py` | 11 | Read-only PROD Iceberg snapshot read for oracles; rows only in a mode-0700 directory |
+| `evaluate_run.py` | 1–12 | Map tool evidence to the 12 phase statuses and compute the verdict |
 | `build_run_package.py` | 12 | Assemble `run.json`, compute the verdict from phases, validate against the run schema |
 
 Tests: `scripts/test-silvally-tools.py` and `scripts/test-validate-transform-configuration.py`
-(both run in the plugin CI). Mapping-specific oracles (for example a DSA election emulator) are
-not generic tools: express them as profile invariants and calibration rules, and rebuild them
-from these tools plus the pinned mapping SQL.
+(both run in the plugin CI) use only the synthetic registry fixture. No tool branches on a mapping,
+language, dataset or environment; mapping-specific semantics are profile data (see below).
+
+## Generic validation flow
+
+The same steps apply to every mapping; each reads its inputs from the registry, the language
+definitions and the selected profile:
+
+1. **Resolve intent** — `discover` matches request words against registered languages, mapping ids and
+   output names (no keyword lists). Cumulative versions resolve to the highest version whose outputs
+   include every other matching version's outputs.
+2. **Discover mapping and languages** — pinned checkouts, published registries, language states,
+   concept and forbidden-content checks, SQL scan.
+3. **Derive contracts** — `contracts` gives per-output required inputs, format (type, delimiter,
+   header), columns and keys from the target definition, graph bindings and endpoint datasets.
+   `check-profile` proves the profile equals this derivation except the `(dataset, field)` pairs its
+   `derivationOverrides` declare, and reports stale overrides.
+4. **Recommend and stage datasets** — `reference/test-dataset-recommendations.md`; `--bind NAME=s3://prefix/`
+   names each input package, and the tools list which outputs each binding can run.
+5. **Approval gates** — one operation card per execution or write.
+6. **Execute** — `spec-from-intent` derives a full case when one binding holds every output's inputs,
+   one case per output per binding, and one rejected case per required input of every output
+   (omitting exactly that input; the rejection must name it and happen before the Transform job).
+7. **Parity** — `compare_datasets.py check`: format and columns from the contract, keys, the profile's
+   declarative invariant checks, oracles (`part-bytes`, `sorted-rows`, `keyed`) and `allowedLosses`;
+   `closure` for graph outputs.
+8. **Regression** — `transform_runs.py regress --baseline <previous run>` matches cases by mapping,
+   input locations and outputs, and compares row counts and content digests.
+9. **Verdict** — `evaluate_run.py`, then `build_run_package.py`.
+
+Mapping-specific semantics (election or precedence rules, unit conversions, reference outputs,
+permitted losses) are expressed only as profile data: invariants with a declarative `check`
+(`column-constraint`, `unique-key`, `row-count`, `columns-exact`, `matches-oracle`), `oracles`,
+`allowedLosses`, `columnConstraints`, and `derivationOverrides`. A rule that cannot be expressed that
+way stays a prose invariant backed by an oracle dataset; it never becomes a code branch.
 
 ## Load first
 
@@ -76,7 +114,7 @@ Read, in order:
 3. `reference/intake-questions-and-gates.md`
 4. `reference/transform-configuration-profile-draft.schema.json`
 5. `reference/transform-configuration-profile.schema.json`
-6. the selected document in `reference/profiles/` after profile matching
+6. the selected profile after profile matching (passed with `--profiles`; examples in `examples/profiles/`)
 7. `reference/test-dataset-recommendations.md`
 8. `reference/validation-phases-and-gates.md`
 9. `reference/evidence-requirements.md`
@@ -84,7 +122,7 @@ Read, in order:
 11. `reference/transform-configuration-run.schema.json`
 12. `reference/known-failure-modes.md`
 13. `reference/validation-report.md`
-14. the selected profile's dossier in `reference/calibrations/` only when calibrating or running its declared scenario
+14. the selected profile's calibration dossier (examples in `examples/calibrations/`) only when calibrating or running its declared scenario
 15. `reference/adding-profiles.md` only when no profile matches or a profile must change
 
 Read `skills/build-transform-product/reference/contracts-and-defaults.md` and `languages-and-mappings.md` for the Transform contract. Load only the product skills and agents named by the profile.
@@ -110,7 +148,7 @@ An experienced request containing all required context takes the fast path witho
 
 A request such as `test <source> to <target>` or `test lexicon <qualifier> to <target>` is a complete trigger for end-to-end validation intake. Follow `reference/intent-resolution.md`:
 
-1. Materialize read-only inputs in an isolated temp directory: the pinned Lexicon candidate and `main` checkouts, each environment's published `transform-mappings/*/*/mapping.json` from `/lexicon/transform-mappings-uri`, and each environment's `/lexicon/*` SSM parameter names (`us-east-2`).
+1. Materialize read-only inputs in an isolated temp directory: the pinned registry candidate and `main` checkouts, each environment's published mapping registry (the layout's `publishedRegistry.uriParameter`), and each environment's language parameter names, in the layout's default region unless `--region` says otherwise.
 2. Run `scripts/resolve-transform-intent.py discover` and pin its SHA-256. Its `status` is one of `RESOLVED`, `AMBIGUOUS`, `NO_MAPPING`, `UNKNOWN_LANGUAGE`, or `UNPARSED`.
 3. Report what was resolved before asking anything: the languages and their states, the selected `id@version` per step, the workflow order, the matched profile, and every finding (profile drift, missing language definitions, removed or added concepts, round-trip gaps).
 4. For `AMBIGUOUS`, `NO_MAPPING`, or `UNKNOWN_LANGUAGE`, say so plainly, list the ranked candidates, and ask `mapping-choice`. Never pick a candidate from business-language similarity. When the user chooses `none`, end intake with next steps and owner handoffs; do not produce a verdict.
@@ -186,13 +224,13 @@ For every required direction:
 For every graph input and output, resolve its vertex or edge label against the
 profile-declared pinned current Lexicon definition (the resolved Lexicon `main`
 SHA), and scan every executed SQL body for forbidden labels. Forbidden labels,
-Decision-era scoped properties that must not appear in `lexicon.json`, and
+scoped properties that must not appear in the concept model, and
 retired mapping versions come from the shared `reference/forbidden-concepts.json`,
 which applies to every profile; a profile's `lexiconConceptPolicy.forbiddenConcepts`
 only adds to it. A retired mapping version still present in a registry is
 reported and never offered or selected. When a profile declares
 `lexiconModelPolicy.candidateLexiconDiff: forbidden`, any byte difference between
-the candidate and `main` `src/data/lexicon.json` is a phase-5 `FAIL`, unless removing
+the candidate and `main` concept model (the layout's `conceptModelPath`) is a phase-5 `FAIL`, unless removing
 exactly the profile's `approvedAdditions` properties leaves the candidate identical to `main`. `lexiconConceptPolicy`
 requires active concepts: an absent or deprecated label, an endpoint that
 resolves to an absent/deprecated vertex, or a candidate that reintroduces a
@@ -325,7 +363,7 @@ Name the owning product/specialist and repository when known. Point only to exac
 
 Trace generated mapping artifacts back to their checked-in registration or generator source. Never recommend editing a materialized artifact, invent a manifest path, or describe an unverified path as “likely.” If the source or test location cannot be verified, leave it unknown and add an `ACCESS_OR_EVIDENCE` remediation for the missing discovery.
 
-Name every contradicted field, dataset, endpoint, option, and mapping identity exactly as it appears in pinned evidence. A generic phrase such as “an endpoint dataset” is not an actionable remediation when the evidence identifies `vertex-payment-plan-installment`; include the exact missing name, the declaration that references it, and the checked-in source that must change. Do not claim a pinned mapping still omits an input when the inspected artifact already contains it; distinguish retained pre-fix failure evidence from the current pinned artifact and state whether the recommendation is already implemented but not yet revalidated.
+Name every contradicted field, dataset, endpoint, option, and mapping identity exactly as it appears in pinned evidence. A generic phrase such as “an endpoint dataset” is not an actionable remediation when the evidence identifies the exact `vertex-<label>` dataset; include the exact missing name, the declaration that references it, and the checked-in source that must change. Do not claim a pinned mapping still omits an input when the inspected artifact already contains it; distinguish retained pre-fix failure evidence from the current pinned artifact and state whether the recommendation is already implemented but not yet revalidated.
 
 Apply these boundary examples consistently:
 

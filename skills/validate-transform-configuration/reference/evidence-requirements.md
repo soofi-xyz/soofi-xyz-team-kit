@@ -36,7 +36,7 @@ Test owns reusable execution/result mechanics; evidence records identify the Tes
 
 ## Sanitization
 
-Permit aggregate counts, schemas, hashes, statuses, durations, costs and safe failure codes. Reject raw records, names, addresses, phone/email values, debt/account/document/client identifiers, document bodies, message content, secret values, credentials, bearer material and signed URLs.
+Permit aggregate counts, schemas, hashes, statuses, durations, costs and safe failure codes. Reject raw records, names, addresses, phone/email values, account, customer, document or other business identifiers, document bodies, message content, secret values, credentials, bearer material and signed URLs.
 
 Hash values only after canonicalization specified by the profile. A hash is not anonymization when its input has a small or guessable domain; do not publish row-level hashes of business identifiers.
 
