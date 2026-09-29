@@ -1,6 +1,6 @@
 ---
 name: operate-marketplace
-description: "Operate the deployed Prism Marketplace catalog API from prismteam-ai/marketplace: configure review settings, register ontology (families, categories, products, configurations, components), publish Build zips and poll reviews, and roll back VALID bundles. Use when registering or publishing products to Prism Marketplace or checking review status."
+description: "Operate the deployed Prism Marketplace catalog API from prismteam-ai/marketplace: configure review settings, register ontology (families, categories, products, configurations, components), check and fix product publish readiness, publish CDK cloud-assembly zips and poll reviews, and roll back VALID bundles. Use when registering or publishing products to Prism Marketplace or checking review status."
 ---
 
 # Operate Prism Marketplace
@@ -68,8 +68,8 @@ Classify the request, then run exactly one primary lane (plus inspect as needed)
 | --- | --- | --- |
 | Settings | First non-skip publish, or review readiness unknown | §1 |
 | Register | New family / category / product / configuration / component | §2 |
-| Readiness | User wants to publish but has no Build-produced `bundle_url` | §3a |
-| Publish | New Build zip, review poll, rollback | §3 |
+| Readiness | User wants to publish but has no `bundle_url`, or asks to make a product publishable | §3a |
+| Publish | New cloud-assembly `bundle_url`, review poll, rollback | §3 |
 | Inspect | Read-only ontology, bundles, reviews, settings status | §4 |
 
 Hand off and stop when:
@@ -121,20 +121,27 @@ certification types.
 
 ## 3a. Publish readiness (product not yet publishable)
 
-Run this before §3 when the user has no Build-produced `bundle_url`, or asks
-what their product needs to publish.
+Run this before §3 when the user has no `bundle_url`, or asks what their
+product needs to publish. The product's own pack and publish steps produce the
+bundle; do not route it through the Build or Comply services.
 
-1. Ask for the product repository if it is not obvious, and check it out
-   read-only at its default branch.
+1. Ask for the product repository if it is not obvious, and check it out at
+   its default branch.
 2. Walk [publish-readiness.md](reference/publish-readiness.md): repository
-   changes (manifest, CDK stacks, Lambda asset policy, pack step, tests) and
-   pipeline requirements (S3 URL, Build and Comply metadata).
+   requirements (manifest, stage-neutral stacks, Lambda bundling, pack and
+   publish steps, tests) and the S3 metadata Marketplace reads.
 3. Report each item as ready, missing, or cannot verify, with evidence, and
    the concrete change for each missing item. Cite
    [Spring-Oaks-Capital-LLC/deploy#3](https://github.com/Spring-Oaks-Capital-LLC/deploy/pull/3)
    as the worked example.
-4. Do not edit the product repository and do not fabricate `service-builder`
-   or `service-comply` metadata. Stop after the report.
+4. When the user asks, make the changes: follow section D of that file on a
+   new branch and open a pull request. Never push to the default branch,
+   merge, deploy, or publish in this lane.
+5. If the zip is ready but there is no `bundle_url`, give the upload and
+   presign steps from section B2 of that file.
+6. Never write a passing `service-comply` verdict without a real scan, never
+   claim `obfuscated: true` without obfuscation, and never name the Build
+   service as issuer of metadata it did not produce.
 
 ## 3. Publish, review, rollback
 
@@ -152,8 +159,9 @@ what their product needs to publish.
    VALID bundles exist → `202`. `400` otherwise.
 
 `skip_review: true` only before the first VALID bundle, and only with explicit
-user acceptance of a draft. Production uploads expect a Build-produced CDK cloud
-assembly zip; invalid artifacts return `422 BuildArtifactInvalid`.
+user acceptance of a draft. Uploads must be a CDK cloud assembly zip with the
+metadata in [publish-readiness.md](reference/publish-readiness.md) section B;
+invalid artifacts return `422 BuildArtifactInvalid`.
 
 Env vars for `publish-product.sh`: `MARKETPLACE_API_KEY`,
 `MARKETPLACE_BUNDLE_URL`, `MARKETPLACE_PRODUCT_NAME`, `MARKETPLACE_COMPONENT_ID`,
