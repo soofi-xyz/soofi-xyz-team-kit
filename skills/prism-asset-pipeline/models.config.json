@@ -1,0 +1,42 @@
+{
+  "_note": "IDs checked against provider docs on 2026-09-28. Geometry is authored as SVG (exact 1 px strokes, round caps). Light is constructed as blurred SVG per the light-layer skill; raster image models are the fallback for light only, never geometry.",
+  "concept": {
+    "runs_in": "skills/prism-asset-pipeline/scripts/ideate.mjs (Anthropic API), not the chat"
+  },
+  "raster": {
+    "default": "gemini",
+    "providers": {
+      "gemini": {
+        "model": "gemini-3-pro-image",
+        "docs": "https://ai.google.dev/gemini-api/docs/models/gemini-3-pro-image",
+        "env": "GEMINI_API_KEY",
+        "use": "variations from reference images"
+      },
+      "openai": {
+        "model": "gpt-image-2.5-sunburst",
+        "also": "gpt-image-2.5-flare",
+        "docs": "https://developers.openai.com/api/docs/models/gpt-image-2.5-sunburst",
+        "env": "OPENAI_API_KEY",
+        "use": "text-brief generations"
+      }
+    }
+  },
+  "vector": {
+    "default": "agent-authored SVG for all geometry",
+    "optional": {
+      "recraft": {
+        "model": "VERIFY: Recraft V4.1 Vector id",
+        "env": "RECRAFT_API_KEY",
+        "use": "illustrative vector only, never primitives"
+      }
+    }
+  },
+  "ideate": {
+    "provider": "anthropic",
+    "model": "latest-opus",
+    "env": "ANTHROPIC_API_KEY",
+    "thinking_budget": 16000,
+    "critic": "gpt-5.5",
+    "_note": "latest-opus resolves to the newest Opus listed by the Anthropic models endpoint; pin an exact id here to freeze it. The critic is a different provider so the author never judges itself."
+  }
+}
