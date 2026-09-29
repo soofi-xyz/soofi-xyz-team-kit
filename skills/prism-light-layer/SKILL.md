@@ -25,5 +25,5 @@ Default: select from `art-direction/backgrounds/`. Construct new only for the ba
 - `through`: bands pass behind the geometry along the fan, brightest behind prism-state elements, absent behind legacy-state elements.
 - `from-focal`: originates at the focal point (e.g., the refraction point) and fans outward.
 
-## Raster fallback
-Only if SVG construction cannot match a reference after 2 attempts: write the light prompt into the run's `readings.json` and run `node <pipeline>/scripts/gen.mjs --reading <run>/readings.json <id>`. Use Concept 04 (`art-direction/references/color-concept-04.png`) and the nearest approved background as tonality references. Prompt describes construction (soft blurred bands, off-white gaps, the fan, exact hex list from tokens), not mood words. Raster output is light only — never geometry.
+## Rays (focus graphics)
+Render focus rays from the reading's `light_prompt` with `gpt-image-2.5-sunburst`: `node <pipeline>/scripts/gen.mjs --reading <run>/readings.json <id>`. Do not attach Color Concept 04 or any other reference image. The prompt names the origin, each named ray's hex pair, the increasing blur, and the off-white gaps, and it asks for no lines, shapes, or text. After the image returns, measure the origin and composite an outline around the glow the ray leaves from. Never flat-fill the shape. The SVG construction above is for the background library, not for these rays.

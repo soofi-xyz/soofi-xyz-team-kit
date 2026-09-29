@@ -1,5 +1,5 @@
 {
-  "_note": "IDs checked against provider docs on 2026-09-28. Geometry is authored as SVG (exact 1 px strokes, round caps). Light is constructed as blurred SVG per the light-layer skill; raster image models are the fallback for light only, never geometry.",
+  "_note": "IDs checked against provider docs on 2026-09-28. Geometry is authored as SVG (1.5 px strokes, round caps). Focus rays are rendered by gpt-image-2.5-sunburst and composited under the SVG. Blurred SVG light is for the background library. An image model never renders geometry.",
   "concept": {
     "runs_in": "skills/prism-asset-pipeline/scripts/ideate.mjs (Anthropic API), not the chat"
   },
@@ -17,7 +17,7 @@
         "also": "gpt-image-2.5-flare",
         "docs": "https://developers.openai.com/api/docs/models/gpt-image-2.5-sunburst",
         "env": "OPENAI_API_KEY",
-        "use": "text-brief generations"
+        "use": "focus rays, composited under SVG geometry"
       }
     }
   },
@@ -25,9 +25,13 @@
     "default": "agent-authored SVG for all geometry",
     "optional": {
       "recraft": {
-        "model": "VERIFY: Recraft V4.1 Vector id",
+        "model": "recraftv4_1_vector",
+        "also": "recraftv4_1_pro_vector",
+        "endpoint": "https://external.api.recraft.ai/v1/images/generations/vector",
         "env": "RECRAFT_API_KEY",
-        "use": "illustrative vector only, never primitives"
+        "docs": "https://www.recraft.ai/docs/api-reference/endpoints",
+        "use": "experimental: full vector compositions for comparison with hand-built SVG",
+        "checked": "2026-09-29"
       }
     }
   },

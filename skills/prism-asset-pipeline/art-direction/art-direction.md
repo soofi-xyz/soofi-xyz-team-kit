@@ -120,7 +120,7 @@ Show new or revised entries as a separate list when presenting concepts. On appr
 
 ### Human and agent marks
 
-The primitives plan is archived in `art-direction/archive/primitives-plan.md`. Geometry is authored as SVG (§5B); an image model renders light only, as a fallback. The lexicon still says a human mark and an agent mark must read as different things.
+The primitives plan is archived in `art-direction/archive/primitives-plan.md`. Geometry is authored as SVG (§5B). Focus rays are rendered by gpt-image-2.5-sunburst and composited under that SVG. The lexicon still says a human mark and an agent mark must read as different things.
 
 ---
 
@@ -133,18 +133,18 @@ The primitives plan is archived in `art-direction/archive/primitives-plan.md`. G
 
 ### B. Focus — makes the claim visible
 - Two layers composited in CSS:
-  1. **Geometry:** crisp marks authored as SVG: exact 1 px strokes (`vector-effect: non-scaling-stroke`), round caps, line color from `system.json` `lines.colors`. Never rendered by an image model, which adds halos and cannot hold line weight.
-  2. **Light:** blurred spectrum from the background library, placed behind or through the geometry.
+  1. **Geometry:** crisp marks authored as SVG: exact 1.5 px strokes (`vector-effect: non-scaling-stroke`), round caps, line color from `system.json` `lines.colors`. Never rendered by an image model, which adds halos and cannot hold line weight.
+  2. **Light:** rays rendered by gpt-image-2.5-sunburst, placed behind the geometry. Blurred SVG light is for the background library.
 - One focus pattern per section, maximum.
 
 ### Pairing geometry and light [proposed]
 The live site pairs the two layers hand in hand: sharp elbow routes (`home.bottleneck-group14`) beside the pinched rays, sharp ticks (`group13`) and soft underlines on the same four problem lines, sharp connectors (`home.outcomes-connector`) between cards with soft glows behind them.
 
 - **Geometry** carries structure: steps, sequence, counts, routes, boundaries, the process as designed or as broken. Narrow, crisp, flat, one solid inner color (flare or sky), rounded ends on every line and dash. Never blurred, never glowing. Angles: one consistent shape system per composition.
-- **Shapes:** only circles, triangles, squares, rectangles, hexagons, and other regular polygons; never irregular trapezoids or freeform polygons. Every shape has rounded corners, except at a transition point where geometry turns into light. Shapes may be outlined or filled with one solid color. Every symbol is built from these shapes. The full system is in `system.json`.
-- **Rendering rule:** anything with a hard edge (a line, a dash, an outline, a filled shape) is one solid flat color. Anything with a gradient or more than one color is diffused light with soft, blurred edges. Never put a crisp edge around a gradient. Lines use only the lighter inner colors, flare (#FBE645) or sky (#9DDEFD); never ember or violet, which read flat as lines. Light is smooth: clean continuous gradients, never grain, noise, speckle, or texture.
+- **Shapes:** only circles, triangles, squares, rectangles, hexagons, and other regular polygons; never irregular trapezoids or freeform polygons. Every shape has rounded corners, except at a transition point where geometry turns into light. Shapes are outlines only, in one flat line color. Never a flat fill. An inner glow or orb may sit inside an outline, and the ray leaves from that glow. Every symbol is built from these shapes. The full system is in `system.json`.
+- **Rendering rule:** anything with a hard edge (a line, a dash, an outline) is one solid flat color. A shape is never flat-filled; presence inside it is a glow or orb. Anything with a gradient or more than one color is diffused light with soft, blurred edges. Never put a crisp edge around a gradient. Lines use only the lighter inner colors, flare (#FBE645) or sky (#9DDEFD); never ember or violet, which read flat as lines. Light is smooth: clean continuous gradients, never grain, noise, speckle, or texture.
 - **Light** carries energy and outcome: capacity, clarity, what the work becomes. Diffused prismatic rays with an inner and an outer color, per the tonality rule above. Never outlined.
-- The two layers meet at one handoff point: a line opens into a ray, a ray passes through or behind a shape, a connector joins two glows. Name that point in the composition.
+- The two layers meet at the shape: it stays an outline, an inner glow or orb sits inside it, and the ray leaves from that glow so the light reads as coming from the shape. Place the outline on the measured origin of the generated ray.
 - When geometry becomes light (a line opening into a ray), it is the same thing changing state, so the geometry takes the light's color. When geometry is a separate thing (a connector between two glows, a boundary the light meets), it may keep its own color.
 - A graphic may be geometry only (a tick, a connector), light only (a page-break wash), or both. Choose by what the copy's claim needs: structure, energy, or the change from one to the other.
 
@@ -157,17 +157,17 @@ The live site pairs the two layers hand in hand: sharp elbow routes (`home.bottl
 A graphic is one designed layout with the page's type, not a mark placed beside a ray.
 
 - **One construction.** Geometry and light are built from the same geometry. The light's origin sits on a point of the geometry (a vertex, an edge, a center), never beside it. The ray's edges continue or run parallel to the geometry's lines, so both share one set of angles (a hexagon's 30° sides give the ray 30° edges). Use the fan angles when the geometry sets no angles of its own.
-- **Line weight.** Lines are the lightest stroke on the page, lighter than the thinnest stroke in the body type: 1 px at 1x (`tokens.json` `geometry_line.weight`). If a line reads as bold at a glance, it is too heavy.
+- **Line weight.** Lines are the lightest stroke on the page, lighter than the thinnest stroke in the body type: 1.5 px at 1x (`tokens.json` `geometry_line.weight`). If a line reads as bold at a glance, it is too heavy.
 - **Type first.** Design the section's layout before the graphic, for each breakpoint: where the headline, body, and CTA sit (left, centered, stacked, split), their widths on a 12-column desktop grid and a 4-column mobile grid, and why that placement serves the section. Record it as `layout` in the readings file, in percent of the frame, and preview it with `node <pipeline>/scripts/sheet.mjs`.
 - **Protect the type.** No saturated light, no line crossings, and no focal event behind the headline or the CTA. A quiet line may pass under body text only at the lightest weight.
 - **Anchor to the type.** Align the focal event to a type anchor, such as the headline's baseline, the CTA's center line, or the text column's edge, so image and type read as one layout. Sit elements on the 8 px grid (`tokens.json` `grid_px`).
-- **Proportion.** Size the geometry and the light against each other and against the text block; the light never dwarfs the headline's line length by accident. Keep at least 40% of the frame as open ground.
+- **Proportion.** Size the geometry and the light against each other and against the text block; the light never dwarfs the headline's line length by accident. Scale per `system.json` `scale`: type is the foreground, light fills 50–75% of the frame and bleeds off an edge, and players (hexagons, rounded squares, circles) stay small, legible but never the focal point. Open ground protects the type zone; elsewhere the light fills the frame.
 - **Reading path.** The eye goes headline, then the focal event, then the CTA. The graphic's direction follows the reading direction (left to right on desktop, top to bottom on mobile) and never pulls the eye off the page before it reaches the CTA.
 
 ### E. Color harmony
 - **Pairs.** Rays use the four pairs from Color Concept 04 (`tokens.json` `light.pairs`): blue/purple, blue/gold, yellow/red, mint/blue. Colors carry no meaning; they are chosen for harmony.
 - **Hero one ray.** The ray that carries the section's claim is the largest, strongest, and nearest the focal point. Other rays support it: fewer, smaller or softer, chosen to sit together the way the four rays do in Concept 04.
-- **Construction.** Each ray is a filled shape in the inner color with a thick stroke in the outer color, blurred (`stroke_ratio`, `blur_ratio`). The blue/gold ray keeps its double stroke and stronger blur, which is what lets gold and blue blend cleanly.
+- **Construction.** Focus rays are a GPT image: already colored at the origin, narrower there, wider and more diffused as they travel, with off-white ground between only the rays the composition names. Concept 04 supplies the pairs and that softness. Do not attach it as an image reference. The filled-shape, thick-stroke, Gaussian-blur construction, including the blue/gold double stroke, is for the background library.
 - **Lines.** See `system.json` `lines`.
 
 ---
@@ -270,4 +270,4 @@ Resolved:
 - The grammar table is not a hard rule. Tier 1 is §4 invariants. Tier 2 is the `system.json` vocabulary.
 - Section graphics are distilled from that section's content.
 - Light direction is the fan in `tokens.json`.
-- The primitives plan and the primitive-based geometry skill are archived in `art-direction/archive/`. Geometry is authored as exact SVG (§5B, `prism-asset-pipeline` "Geometry"); an image model renders light only, as a fallback.
+- The primitives plan and the primitive-based geometry skill are archived in `art-direction/archive/`. Geometry is authored as exact SVG (§5B, `prism-asset-pipeline` "Geometry"). Focus rays are rendered by gpt-image-2.5-sunburst and composited under that SVG.

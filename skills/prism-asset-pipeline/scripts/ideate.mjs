@@ -157,7 +157,7 @@ const decision = parseJson(
     `Section:\n${JSON.stringify(section, null, 2)}\n\nYour candidates:\n${JSON.stringify(ideas.candidates, null, 2)}\n\nBlind critic results:\n${JSON.stringify(critiques, null, 2)}\n\n` +
       `Pick the ${top} strongest by blind_match and headline_fit; drop generic ones; a precedent wins only if clearly higher. Say why the pick beats the runner-up. ` +
       `For each pick, do steps 3 and 4 of the prompt-writer skill for desktop (1536x1024) and mobile (1024x1536), recomposing mobile rather than cropping. Add bindings only where the skill says they matter.\n\n` +
-      `Return JSON only: {"picks": [{"n": 1, "why": ""}], "runner_up": {"n": 0, "why_not": ""}, "readings": [{"n": 1, "breakpoint": "desktop|mobile", "size": "", "structure": "", "concept": "", "claim_shape": "", "pattern_type": "", "visual_alone_test": "", "composition": "", "color": {"pair": ""}, "bindings": [{"word": "", "how": ""}], "prompt": ""}]}`,
+      `Return JSON only: {"picks": [{"n": 1, "why": ""}], "runner_up": {"n": 0, "why_not": ""}, "readings": [{"n": 1, "breakpoint": "desktop|mobile", "size": "", "structure": "", "concept": "", "claim_shape": "", "pattern_type": "", "visual_alone_test": "", "composition": "", "color": {"pair": ""}, "bindings": [{"word": "", "how": ""}], "geometry": "", "light_prompt": ""}]}`,
   ),
 );
 

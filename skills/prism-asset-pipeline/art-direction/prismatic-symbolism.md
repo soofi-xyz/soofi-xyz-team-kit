@@ -24,7 +24,7 @@ Geometry is crisp, narrow, flat, one solid color, never blurred, never gradient.
 
 | Mark | Meaning | How it renders |
 |---|---|---|
-| Dashed line | a process that keeps stopping and starting | narrow sharp dashes at 0° or a fan angle; uneven gaps read as stop-start, even gaps read as a route |
+| Wandering line | a process that is disorganized, starts and stops, or cannot get moving | one continuous solid squiggle, like a stock-price line with no trend; one flat line color, smooth turns, no axis, no fill |
 | Solid hairline | a defined, continuous path | one narrow sharp line |
 | Elbow route | a path between parts that already exist | sharp line turning 90° |
 | Tick | one item counted in a list | short sharp vertical stroke |
@@ -37,9 +37,9 @@ A phenomenon or mark says what kind of thing is happening. A variable says how m
 
 | Variable | Carries | Example binding |
 |---|---|---|
-| Length along the reading direction | duration, time passed | "years" → a dashed run across most of the frame |
-| Count (dashes, ticks, echoes) | attempts, items, repetitions | "keeps restarting" → many stops |
-| Gap regularity | even = a planned route; uneven = interruption | "stalled" → gaps of mixed length |
+| Length along the reading direction | duration, time passed | "years" → the wandering line runs across most of the frame |
+| Count (turns, ticks, echoes) | attempts, items, repetitions | "keeps restarting" → many turns in the squiggle |
+| Gap regularity | even = a planned route; uneven = interruption | a broken solid path, not the wandering line |
 | Continuity | broken = stalled; unbroken = momentum | "finish" → the line runs solid before it opens |
 | Width | scale, reach, impact | a narrow effort becomes a broad result |
 | Layer (geometry or light) | plan and process, or energy and outcome | the plan is a line; the result is light |
@@ -52,14 +52,14 @@ A phenomenon or mark says what kind of thing is happening. A variable says how m
 
 This shows how Miranda reasoned to one answer. It is not a template. Do not reuse its form (a line opening into a ray) for other copy, and treat it as the baseline to beat when this headline is redone.
 
-The reasoning path: read the claim's shape (a change), find the one property that changes (continuity), take the mark whose meaning already matches the before-state (dashed = stop-start), make the after-state the layer that means outcome (light), and let identity decide the color (same project, same color). Apply the path; the form will differ for other copy.
+The reasoning path: read the claim's shape (a change), find the one property that changes (continuity), take the mark whose meaning already matches the before-state (a wandering line: disorganized, starting and stopping, or unable to get moving), make the after-state the layer that means outcome (light), and let identity decide the color (same project, same color). Apply the path; the form will differ for other copy.
 
 This headline is a change, and it carries a specific ("years"), so it uses both a story and bindings. Many headlines use neither.
 
-- Story. Before: the project keeps stopping and starting. Turn: it runs unbroken. After: it is done and has impact.
-- Bindings. "Years overdue" → length plus count: a long dashed run with many stops. "Overdue" → uneven gaps. "Finish" → continuity: a short solid stretch, then the line ends. "The project" → color identity: line and ray share one color, because it is the same project, carried through rather than replaced. Completion → width and layer: the thin line opens into a broad ray of light.
+- Story. Before: the project wanders and cannot get moving. Turn: it runs unbroken. After: it is done and has impact.
+- Bindings. "Years overdue" → length: a long wandering line across most of the frame. "Overdue" → the squiggle, a process that cannot get moving. "Finish" → continuity: the squiggle settles into a short solid stretch, then opens into light. "The project" → color identity: line and ray share one color, because it is the same project, carried through rather than replaced. Completion → width and layer: the thin line opens into a broad ray of light.
 - Why it works. One element per meaning, one property changes at the turn (continuity), and the handoff from geometry to light is where the claim happens. The ray widening past the frame says finishing is a beginning, not a stop.
-- Known miss. When the dashed run is short, blind readers see "an opening" but not "years." The length binding must be exaggerated.
+- Known miss. When the wandering line is short, blind readers see "an opening" but not "years." The length binding must be exaggerated.
 
 The handoff where geometry becomes light (a line opening into a ray) is the strongest place for the claim.
 

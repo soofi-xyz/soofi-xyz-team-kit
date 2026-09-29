@@ -14,7 +14,7 @@ Inputs: the section from `asset_plan.json` (assertion, body, evidence, CTA, job,
 ## 1. Read the section
 1. Read all four parts of the section, not only the headline. Each does a different job:
    - Assertion: the claim the visual must prove. Write it in ≤10 words.
-   - Body: how the copy characterizes each thing. Map its descriptive words to `system.json` vocabulary states and treatments: "rigid" → `states.unfit`; "manual hand-off" → broken `relations.routed`; "reusable" → `relations.repeated_identity`; "slow" → `states.dashed`.
+   - Body: how the copy characterizes each thing. Map its descriptive words to `system.json` vocabulary states and treatments: "rigid" → `states.unfit`; "manual hand-off" → broken `relations.routed`; "reusable" → `relations.repeated_identity`; "slow" → `states.wandering`.
    - Evidence: the concrete parts. A list sets the count of elements (four problems → four marks). The evidence decides what the pieces are; the assertion decides what happens to them.
    - CTA: no visual weight unless the section bookends the page.
 2. Take the pattern type from the plan. It sets what the visual must do:
@@ -44,7 +44,7 @@ Read `art-direction/system.json` first. Every candidate is composed from its voc
 6. Score each 1–5 on: one-glance readability (would a stranger name it in 2 seconds?), fit to the copy, and distinct silhouette from neighboring sections and precedents.
 7. Pick one and say why it beats the runner-up. Record the rest under `rejected` with the score and reason. Show Miranda all eight, one line each, with the pick.
 
-## 3. Composition spec (write before the prompt)
+## 3. Composition spec (write before the two paint artifacts)
 Follow `art-direction.md` §5D (composition) and §5E (color harmony).
 - Type first: design the layout for each breakpoint before any graphic element: where the headline, body, and CTA sit and why. Record it as `layout` (percent of the frame: `{"headline": {"left", "top", "width"}, "body": {...}, "cta": {"left", "top"}}`). Name the type anchor the focal event aligns to. Keep the graphic out of the type's area.
 - One construction: name the point of the geometry the light starts from, and the angles the geometry and the ray's edges share.
@@ -57,12 +57,20 @@ Follow `art-direction.md` §5D (composition) and §5E (color harmony).
 - Breakpoints: write a desktop spec (landscape, `size` `1536x1024`) and a mobile spec (portrait, `size` `1024x1536`). Recompose mobile; never crop desktop. On mobile the headline sits at the top and the reader scrolls down, so the idea reads top to bottom: geometry may run at 90°, and the light opens below the text. Never end a vertical element in a symmetrical downward cone of light; it reads as a rocket launch or upward progress in every test so far. Run the sequence diagonally or keep it horizontal, and let the light leave at an angle. Keep the same pair, the same handoff, and the same meaning on both. Save them as `<id>.desktop` and `<id>.mobile`, and read back both.
 - Layers: say which elements are geometry (sharp, carries structure) and which are light (diffused, carries energy), and name the handoff point where they meet. See "Pairing geometry and light" in `art-direction.md`.
 
-## 4. Prompt order
-1. The story in one sentence, in visual terms only ("A soft band of light circles back on itself three times, then breaks free into a straight, luminous fan.").
-2. Layout from the composition spec, with positions and sizes.
-3. Color: each ray's inner and outer color by token hex, from `tokens.json` `light.pairs`.
-4. Rendering: describe each layer separately. Never ask for grain, noise, or texture; ask for smooth, clean gradients. Geometry: "crisp, narrow, flat, like a precise vector line; no blur, no glow." Light: the shared `Look:` paragraph from the latest readings file.
-5. At most five exclusions. Long negative lists make the image worse.
+## 4. Two paint artifacts
+Write both. Do not combine them into one image prompt.
+
+### Geometry (`geometry`)
+What the SVG draws. Positions in percent of the frame, the line color token, 1.5 px strokes, and which marks wander. Shapes are outlines only, never a flat fill. No light, no blur, no gradient; the inner glow belongs in the light prompt.
+
+### Light prompt (`light_prompt`)
+Sent only to `gpt-image-2.5-sunburst`. Light only.
+1. One sentence of the rays, with no marks in it.
+2. The origin, in percent of the frame, and which side of the frame stays empty background.
+3. Each named ray's inner and outer hex, from `tokens.json` `light.pairs`. The hero is the largest. Name no ray the composition did not name.
+4. A small glow or orb sits at the origin, and the ray leaves from it. The ray is already visibly colored there, starts narrower, and grows wider and more diffused as it travels, leaving the frame. Off-white ground stays between the rays for their whole length. The image has no outlined shapes; the outline is drawn later in SVG.
+5. At most five exclusions: no lines, no shapes, no text, no grain, no texture. Long negative lists make the image worse.
+Do not attach Color Concept 04, or any other image, as a reference. The model copies that picture's single blended field. Take the hex values from the tokens.
 
 ## 5. Blind read-back
 Run `node <pipeline>/scripts/readback.mjs <run>/readings.json <id...>`. A separate model describes the image without the copy, then scores it against the visual-alone test.
@@ -83,6 +91,6 @@ Preview each image with its type: `node <pipeline>/scripts/sheet.mjs <run>/readi
   "story": {"before": "", "turn": "", "after": ""}, "contrast_property": "",
   "bindings": [{"word": "", "meaning": "", "variable": "", "element": "", "how": ""}],
   "visual_alone_test": "", "candidates": [{"idea": "", "phenomenon": "", "readability": 0, "fit": 0, "distinct": 0}],
-  "vocab": {"transformation": "", "supporting": []}, "concept": "", "fit": 0, "composition": {}, "prompt": "", "rejected": []
+  "vocab": {"transformation": "", "supporting": []}, "concept": "", "fit": 0, "composition": {}, "geometry": "", "light_prompt": "", "rejected": []
 }
 ```

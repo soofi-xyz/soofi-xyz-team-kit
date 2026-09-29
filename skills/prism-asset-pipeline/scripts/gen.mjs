@@ -166,7 +166,7 @@ if (readingIndex !== -1) {
     readings
       .filter((reading) => picks.size === 0 || picks.has(reading.id))
       .map(async (reading) => {
-        const png = await openaiGenerate(reading.prompt, reading.size);
+        const png = await openaiGenerate(reading.light_prompt || reading.prompt, reading.size);
         await writeFile(resolve(dirname(readingPath), `${reading.id}.png`), png);
         console.log(`${reading.id}: from reading`);
       }),

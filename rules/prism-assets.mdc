@@ -12,10 +12,10 @@ Hard rules:
 - Reuse lexicon entries when meaning matches; propose new ones when the content requires; flag both for approval.
 - When the copy argues a ceiling against a solution, the visuals must not mirror. The weaker side is visibly constrained.
 - The `eclipse` token is geometry and type only. Never blurred.
-- Geometry is exact SVG: 1 px non-scaling strokes, round caps. Never ask an image model for geometry; raster output is a fallback for light only.
+- Geometry is exact SVG: 1.5 px non-scaling strokes, round caps. Never ask an image model for geometry. Focus rays come from gpt-image-2.5-sunburst and are composited under the SVG.
 - Rendering: anything with a hard edge is one solid flat color; anything with a gradient is diffused light with soft edges. Light is smooth, never grain, noise, or texture.
 - Line color comes from the hero ray (`system.json` `lines.colors`). Never ember or violet.
-- One construction: the light originates on the geometry and shares its angles.
+- One construction: the light originates on the geometry and shares its angles. Shapes are outlines only. An inner glow or orb sits inside the outline, and the ray leaves from that glow. Place the outline on the measured origin. Do not attach Color Concept 04 as a reference image for focus rays. Never flat-fill a shape.
 - Type first: lay out headline, body, and CTA per breakpoint before the graphic. Recompose mobile; never crop desktop.
 - Color harmony: the four Concept 04 pairs, chosen for harmony only; one hero ray, other rays support it.
 - Mobile never ends a vertical element in a symmetric downward cone of light.
