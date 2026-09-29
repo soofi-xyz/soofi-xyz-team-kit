@@ -95,7 +95,7 @@ Meaning is not a locked symbol table. Invariants are hard rules. The lexicon is 
 
 ### Tier 2 — Lexicon
 
-See [`lexicon.json`](lexicon.json). It is seeded from the old grammar table. Every seed entry has `"status": "seed"`.
+See [`system.json`](system.json) `vocabulary`. [`lexicon.json`](lexicon.json) is superseded history; each entry's `maps_to` points to its vocabulary key.
 
 ```json
 {
@@ -116,7 +116,7 @@ For each section, derive mappings from the content:
 
 Within a page, one form means one meaning. Never give an existing form a second meaning. Propose a new form instead.
 
-Show new or revised entries as a separate list when presenting concepts. On approval, write them to `lexicon.json` with the source section.
+Show new or revised entries as a separate list when presenting concepts. On approval, write them to `system.json` `vocabulary` with the source section.
 
 ### Human and agent marks
 
@@ -133,7 +133,7 @@ The primitives plan is archived in `art-direction/archive/primitives-plan.md`. G
 
 ### B. Focus — makes the claim visible
 - Two layers composited in CSS:
-  1. **Geometry:** crisp marks authored as SVG: exact 1 px strokes (`vector-effect: non-scaling-stroke`), round caps, inner colors only. Never rendered by an image model, which adds halos and cannot hold line weight.
+  1. **Geometry:** crisp marks authored as SVG: exact 1 px strokes (`vector-effect: non-scaling-stroke`), round caps, line color from `system.json` `lines.colors`. Never rendered by an image model, which adds halos and cannot hold line weight.
   2. **Light:** blurred spectrum from the background library, placed behind or through the geometry.
 - One focus pattern per section, maximum.
 
@@ -141,6 +141,7 @@ The primitives plan is archived in `art-direction/archive/primitives-plan.md`. G
 The live site pairs the two layers hand in hand: sharp elbow routes (`home.bottleneck-group14`) beside the pinched rays, sharp ticks (`group13`) and soft underlines on the same four problem lines, sharp connectors (`home.outcomes-connector`) between cards with soft glows behind them.
 
 - **Geometry** carries structure: steps, sequence, counts, routes, boundaries, the process as designed or as broken. Narrow, crisp, flat, one solid inner color (flare or sky), rounded ends on every line and dash. Never blurred, never glowing. Angles: one consistent shape system per composition.
+- **Shapes:** only circles, triangles, squares, rectangles, hexagons, and other regular polygons; never irregular trapezoids or freeform polygons. Every shape has rounded corners, except at a transition point where geometry turns into light. Shapes may be outlined or filled with one solid color. Every symbol is built from these shapes. The full system is in `system.json`.
 - **Rendering rule:** anything with a hard edge (a line, a dash, an outline, a filled shape) is one solid flat color. Anything with a gradient or more than one color is diffused light with soft, blurred edges. Never put a crisp edge around a gradient. Lines use only the lighter inner colors, flare (#FBE645) or sky (#9DDEFD); never ember or violet, which read flat as lines. Light is smooth: clean continuous gradients, never grain, noise, speckle, or texture.
 - **Light** carries energy and outcome: capacity, clarity, what the work becomes. Diffused prismatic rays with an inner and an outer color, per the tonality rule above. Never outlined.
 - The two layers meet at one handoff point: a line opens into a ray, a ray passes through or behind a shape, a connector joins two glows. Name that point in the composition.
@@ -163,11 +164,11 @@ A graphic is one designed layout with the page's type, not a mark placed beside 
 - **Proportion.** Size the geometry and the light against each other and against the text block; the light never dwarfs the headline's line length by accident. Keep at least 40% of the frame as open ground.
 - **Reading path.** The eye goes headline, then the focal event, then the CTA. The graphic's direction follows the reading direction (left to right on desktop, top to bottom on mobile) and never pulls the eye off the page before it reaches the CTA.
 
-### E. Color harmony [proposed]
-- **One dominant pair.** A composition uses one pair for at least two thirds of its light. Add a second pair only when the copy has a second contributor or state. Never use more than two pairs.
-- **Neighbors share a color.** gold/red and cyan/orange share ember; cyan/orange and blue/purple share sky. Pairs that share a color may touch and overlap. gold/red and blue/purple never overlap directly, because gold over sky or violet turns green or gray. Keep open ground or a shared neighbor between them.
-- **Multiple rays.** Rays in one composition share one origin or one axis, take their angles from the fan, and keep one color order from top to bottom across the site. The overlap of two rays is a lighter tint of both, never a new hue.
-- **Lines.** Lines use only the lighter inner colors, flare or sky. A line that feeds a ray takes that ray's inner color. Use at most two line colors per composition, one per role.
+### E. Color harmony
+- **Pairs.** Rays use the four pairs from Color Concept 04 (`tokens.json` `light.pairs`): blue/purple, blue/gold, yellow/red, mint/blue. Colors carry no meaning; they are chosen for harmony.
+- **Hero one ray.** The ray that carries the section's claim is the largest, strongest, and nearest the focal point. Other rays support it: fewer, smaller or softer, chosen to sit together the way the four rays do in Concept 04.
+- **Construction.** Each ray is a filled shape in the inner color with a thick stroke in the outer color, blurred (`stroke_ratio`, `blur_ratio`). The blue/gold ray keeps its double stroke and stronger blur, which is what lets gold and blue blend cleanly.
+- **Lines.** See `system.json` `lines`.
 
 ---
 
@@ -266,7 +267,7 @@ Resolved:
 
 - Palette names and hexes are the §3 table. Aqua and indigo are retired. MRNDA White and MRNDA black are excluded.
 - Duplicate `#9DDEFD` swatch is dropped.
-- The grammar table is not a hard rule. Tier 1 is §4 invariants. Tier 2 is `lexicon.json`.
+- The grammar table is not a hard rule. Tier 1 is §4 invariants. Tier 2 is the `system.json` vocabulary.
 - Section graphics are distilled from that section's content.
 - Light direction is the fan in `tokens.json`.
 - The primitives plan and the primitive-based geometry skill are archived in `art-direction/archive/`. Geometry is authored as exact SVG (§5B, `prism-asset-pipeline` "Geometry"); an image model renders light only, as a fallback.

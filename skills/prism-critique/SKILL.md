@@ -12,7 +12,7 @@ Look at each composite preview PNG. Score 1–5 with one line of evidence each.
 | Visual-alone test — ignoring copy, is the brief's conclusion obvious? | ≥4 |
 | Lexicon — consistent with the lexicon; new entries justified | ≥4 |
 | Asymmetry (contrast claims) — legacy side visibly constrained | ≥4 |
-| Palette — every color in the SVG is a token; lines use flare or sky only; one dominant pair | pass |
+| Palette — every color in the SVG is a token; line colors follow `system.json` `lines.colors`; one hero ray; only `system.json` grammar shapes and vocabulary treatments | pass |
 | Construction — light starts on the geometry and shares its angles; ground visible between bands; no adjacent shared stroke | pass |
 | Rendering — hard edges one flat color; gradients diffused; smooth light, no grain | pass |
 | Mobile — recomposed, not cropped; no vertical element ending in a symmetric downward cone | pass |

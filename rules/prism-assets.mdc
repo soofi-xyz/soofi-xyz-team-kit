@@ -4,7 +4,7 @@ globs: skills/prism-*/**, public/assets/**
 alwaysApply: false
 ---
 
-Source of truth: `skills/prism-asset-pipeline/art-direction/art-direction.md`. Tokens: `art-direction/tokens.json`. Lexicon: `art-direction/lexicon.json` (same directory).
+Source of truth: `skills/prism-asset-pipeline/art-direction/art-direction.md`. Tokens: `art-direction/tokens.json`. System and vocabulary: `art-direction/system.json` (same directory); `lexicon.json` is superseded history.
 Workflow entry point: `skills/prism-asset-pipeline/SKILL.md`. Resolve these paths inside the installed plugin, not the workspace.
 
 Hard rules:
@@ -14,10 +14,10 @@ Hard rules:
 - The `eclipse` token is geometry and type only. Never blurred.
 - Geometry is exact SVG: 1 px non-scaling strokes, round caps. Never ask an image model for geometry; raster output is a fallback for light only.
 - Rendering: anything with a hard edge is one solid flat color; anything with a gradient is diffused light with soft edges. Light is smooth, never grain, noise, or texture.
-- Lines use inner colors only: flare or sky. Never ember or violet.
+- Line color comes from the hero ray (`system.json` `lines.colors`). Never ember or violet.
 - One construction: the light originates on the geometry and shares its angles.
 - Type first: lay out headline, body, and CTA per breakpoint before the graphic. Recompose mobile; never crop desktop.
-- Color harmony: one dominant pair; add a second only when the copy needs it; neighboring pairs share a color.
+- Color harmony: the four Concept 04 pairs, chosen for harmony only; one hero ray, other rays support it.
 - Mobile never ends a vertical element in a symmetric downward cone of light.
 - Blurred light only via the construction rules in §2/§3. Visible ground between bands. No two adjacent shapes share a stroke color.
 - No text baked into graphics. Labels are HTML, positioned from anchors in the brief.

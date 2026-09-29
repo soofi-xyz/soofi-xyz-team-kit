@@ -43,7 +43,7 @@ A phenomenon or mark says what kind of thing is happening. A variable says how m
 | Continuity | broken = stalled; unbroken = momentum | "finish" → the line runs solid before it opens |
 | Width | scale, reach, impact | a narrow effort becomes a broad result |
 | Layer (geometry or light) | plan and process, or energy and outcome | the plan is a line; the result is light |
-| Color identity | same thing = same color; a new contributor = a new color | the project keeps its color through the turn |
+| Color identity | same thing = same color; a color change happens only at the prism and means transformation | the project keeps its color through the turn |
 | Position in reading direction | order in time | `before` sits where the eye starts |
 | Angle | 0° steady; a fan angle opens; 90° descends with the scroll on mobile | |
 | Open ground | calm, room for the headline, absence | |

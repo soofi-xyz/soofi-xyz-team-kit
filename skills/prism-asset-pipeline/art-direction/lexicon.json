@@ -9,7 +9,10 @@
       "color_state": "spectrum",
       "rationale": "A bottleneck is light being forced through one point. The published rays do this on the home bottleneck. Do not use pinch for a limit the copy treats as the goal.",
       "status": "seed",
-      "sources": ["art-direction/references/inventory.json#home.bottleneck-rays"]
+      "sources": [
+        "art-direction/references/inventory.json#home.bottleneck-rays"
+      ],
+      "maps_to": "states.pinched"
     },
     {
       "verb": "meet",
@@ -19,7 +22,10 @@
       "color_state": "spectrum",
       "rationale": "Overlap is two fields sharing a dark waist. Meet is not a division of roles.",
       "status": "seed",
-      "sources": ["art-direction/references/inventory.json#ai-native-work.venn-ray"]
+      "sources": [
+        "art-direction/references/inventory.json#ai-native-work.venn-ray"
+      ],
+      "maps_to": "transformations.converge"
     },
     {
       "verb": "rise",
@@ -29,7 +35,10 @@
       "color_state": "spectrum",
       "rationale": "A method moves forward by stages. Rise is not a loop.",
       "status": "seed",
-      "sources": ["art-direction/references/inventory.json#method.hero-rays"]
+      "sources": [
+        "art-direction/references/inventory.json#method.hero-rays"
+      ],
+      "maps_to": "treatments.movement"
     },
     {
       "verb": "route",
@@ -39,7 +48,10 @@
       "color_state": "spectrum",
       "rationale": "Route joins parts that are already there. It does not turn one source into new outputs.",
       "status": "seed",
-      "sources": ["art-direction/references/inventory.json#home.bottleneck-group14"]
+      "sources": [
+        "art-direction/references/inventory.json#home.bottleneck-group14"
+      ],
+      "maps_to": "relations.routed"
     },
     {
       "verb": "split",
@@ -49,7 +61,10 @@
       "color_state": "spectrum",
       "rationale": "Split is refraction: one source comes out as several outputs. It is not a path drawn between parts that already exist.",
       "status": "seed",
-      "sources": ["art-direction/references/inventory.json"]
+      "sources": [
+        "art-direction/references/inventory.json"
+      ],
+      "maps_to": "transformations.disperse"
     },
     {
       "verb": "cycle",
@@ -59,7 +74,10 @@
       "color_state": "spectrum",
       "rationale": "Owned, reused, updated, and retired is a life that comes back around. Rise only goes forward, so it does not cover a lifecycle.",
       "status": "proposed",
-      "sources": ["art-direction/runs/holdout-method/asset_plan.json#agent-resources"]
+      "sources": [
+        "art-direction/runs/holdout-method/asset_plan.json#agent-resources"
+      ],
+      "maps_to": "unmapped"
     },
     {
       "verb": "assign",
@@ -69,7 +87,10 @@
       "color_state": "spectrum",
       "rationale": "A hybrid team gives different work to agents and to humans. That is not an overlap (meet) and not one source becoming outputs (split).",
       "status": "proposed",
-      "sources": ["art-direction/runs/holdout-method/asset_plan.json#hybrid-team"]
+      "sources": [
+        "art-direction/runs/holdout-method/asset_plan.json#hybrid-team"
+      ],
+      "maps_to": "unmapped"
     },
     {
       "verb": "bound",
@@ -79,7 +100,10 @@
       "color_state": "spectrum",
       "rationale": "Manageable adoption is a limit the page wants. Pinch is a constraint as a problem, so it points the wrong way.",
       "status": "proposed",
-      "sources": ["art-direction/runs/holdout-method/asset_plan.json#close"]
+      "sources": [
+        "art-direction/runs/holdout-method/asset_plan.json#close"
+      ],
+      "maps_to": "relations.held_within"
     },
     {
       "verb": null,
@@ -89,7 +113,8 @@
       "color_state": "eclipse, no spectrum",
       "rationale": "None of the seed verbs show a closed before-state. Keep only if a contrast claim needs a form for the old model.",
       "status": "proposed",
-      "sources": []
+      "sources": [],
+      "maps_to": "states.unfit"
     },
     {
       "verb": null,
@@ -99,7 +124,8 @@
       "color_state": "gray",
       "rationale": "Split names the result. It does not name the unordered input. Keep only when the copy is about the input itself.",
       "status": "proposed",
-      "sources": []
+      "sources": [],
+      "maps_to": "transformations.organize (its tangled input)"
     },
     {
       "verb": null,
@@ -109,7 +135,8 @@
       "color_state": "spectrum",
       "rationale": "The verbs name relations, not the two kinds of actor. Keep only when the copy needs a human and an agent as distinct marks.",
       "status": "proposed",
-      "sources": []
+      "sources": [],
+      "maps_to": "elements.rounded_square"
     },
     {
       "verb": null,
@@ -119,7 +146,8 @@
       "color_state": "eclipse",
       "rationale": "The verbs name relations, not the two kinds of actor. Keep only when the copy needs a human and an agent as distinct marks.",
       "status": "proposed",
-      "sources": []
+      "sources": [],
+      "maps_to": "elements.circle"
     },
     {
       "verb": null,
@@ -129,7 +157,8 @@
       "color_state": "eclipse hairline",
       "rationale": "A frame around a system is not pinch, meet, rise, route, or split. Keep only when the copy is about the boundary itself.",
       "status": "proposed",
-      "sources": []
+      "sources": [],
+      "maps_to": "relations.held_within"
     },
     {
       "verb": null,
@@ -139,13 +168,27 @@
       "color_state": "unspecified",
       "rationale": "Route connects parts of a workflow. It does not draw a data model. Keep only when the copy is about the model.",
       "status": "proposed",
-      "sources": []
+      "sources": [],
+      "maps_to": "relations.connected"
     }
   ],
   "dropped_as_covered": [
-    {"concept": "Prism / after", "covered_by": "split"},
-    {"concept": "Structured output", "covered_by": "split"},
-    {"concept": "Workflow", "covered_by": "route"},
-    {"concept": "Transformation", "covered_by": "split"}
-  ]
+    {
+      "concept": "Prism / after",
+      "covered_by": "split"
+    },
+    {
+      "concept": "Structured output",
+      "covered_by": "split"
+    },
+    {
+      "concept": "Workflow",
+      "covered_by": "route"
+    },
+    {
+      "concept": "Transformation",
+      "covered_by": "split"
+    }
+  ],
+  "superseded_by": "system.json vocabulary (2026-09-29). Kept as history and for live-site sources; use system.json for every new graphic."
 }

@@ -114,7 +114,7 @@ const system = [
   `# art-direction.md\n${await art("art-direction.md")}`,
   `# prismatic-symbolism.md\n${await art("prismatic-symbolism.md")}`,
   `# tokens.json\n${await art("tokens.json")}`,
-  `# lexicon.json\n${await art("lexicon.json")}`,
+  `# system.json\n${await art("system.json")}`,
 ].join("\n\n");
 
 const readingsPath = resolve(runDir, "readings.json");

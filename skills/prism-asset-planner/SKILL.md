@@ -12,7 +12,7 @@ Run this before `prism-concept` and `prism-prompt-writer`. The input is raw copy
 Read:
 
 - `art-direction/page-rhythm.md`
-- `art-direction/lexicon.json`
+- `art-direction/system.json` (vocabulary)
 - `art-direction/references/decisions.json` only to see style, verb meaning, and which live sections are gaps
 
 A gap in `decisions.json` is a section the current site left bare. Never copy that omission. "No graphic" is not an output.
