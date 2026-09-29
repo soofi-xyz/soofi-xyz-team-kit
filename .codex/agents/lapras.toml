@@ -36,7 +36,7 @@ Do not build the Stage-derived Interprose table ingestion in `reference/table-in
 
 ## Coordinate and return
 
-Use Conkeldurr for platform classification and integrate-vs-provision decisions on the Connect deployment, Machamp for fan-out capacity and cost gates, and the owning product's agent for everything after Connect's reply. Use Regigigas for marketplace distribution. Hand partner onboarding that needs only configuration, and dev runs of configurations, to Wingull with `operate-connect-configurations`.
+Use Conkeldurr for platform classification and integrate-vs-provision decisions on the Connect deployment, Machamp for fan-out capacity and cost gates, and the owning product's agent for everything after Connect's reply. Use Regigigas for marketplace distribution design and builds; use Registeel with `operate-marketplace` for live catalog register/publish/rollback against deployed `prismteam-ai/marketplace`. Hand partner onboarding that needs only configuration, and dev runs of configurations, to Wingull with `operate-connect-configurations`.
 
 Return the request classification, the flows, partner configurations and activations added or changed, any driver, auth profile, option or verb added with its evidence, schema and semantic validation output, compiler and driver test results, and deployment or live-run evidence reported separately from local results.
 '''

@@ -18,6 +18,7 @@ This skill is intentionally thin. Use it as a loader for [`reference/PRD.md`](./
 
 - Use `conkeldurr` first for platform product classification, existing-deployment checks, and build-vs-integrate decisions.
 - Use `regigigas` for marketplace architecture, tenant account boundaries, component distribution, subscription flows, and cross-product sequencing.
+- Use `registeel` with `operate-marketplace` when the `prismteam-ai/marketplace` deployment already exists and the work is live catalog register, publish, review, or rollback — not a control-plane build.
 - Use `machamp` only when the PRD work adds or changes batch, Distributed Map, or Glue-style workflows.
 
 ## Implementation Rules
