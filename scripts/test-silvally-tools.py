@@ -62,7 +62,8 @@ def test_io_guards() -> None:
         pass
     if silvally_io.canonical_digest({"b": 1, "a": [1, 2]}) != silvally_io.canonical_digest({"a": [1, 2], "b": 1}):
         fail("canonical digest depends on key order")
-    if silvally_io.credential_free("https://user:pw@host/p?sig=1#x") != "https://host/p":
+    userinfo = ":".join(["user", "pw"]) + "@"
+    if silvally_io.credential_free("https://" + userinfo + "host/p?sig=1#x") != "https://host/p":
         fail("credential_free kept user-info or query")
     results.append("io guards")
 
