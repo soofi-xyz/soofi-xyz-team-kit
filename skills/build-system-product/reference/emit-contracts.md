@@ -91,6 +91,17 @@ emits/deploy/
   environment.stub.json      # activationEnabled false; cost ceiling; components[].refs → configRefs
 ```
 
+## System workflow → System service (through a marketplace configuration)
+
+```text
+workflow.json                # System workflow definition v1; configRef kind system-workflow
+```
+
+Zygarde writes it next to the manifest. It is published as a marketplace
+configuration, and deploying that configuration pushes it to the System's
+create-workflow API, which compiles it to Step Functions. Follow
+[System workflow definitions](system-workflow.md).
+
 ## Thin System package → Zygarde (fallback only)
 
 ```text

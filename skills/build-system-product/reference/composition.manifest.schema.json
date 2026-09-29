@@ -105,6 +105,7 @@
               "transform-request",
               "transform-mapping",
               "persist-collection",
+              "system-workflow",
               "system-openapi",
               "system-fixtures",
               "deploy-environment",

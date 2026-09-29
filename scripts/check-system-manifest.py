@@ -28,6 +28,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SKILLS = ROOT / "skills"
 SYSTEM_REFERENCE = SKILLS / "build-system-product" / "reference"
 MANIFEST_SCHEMA = SYSTEM_REFERENCE / "composition.manifest.schema.json"
+SYSTEM_WORKFLOW_SCHEMA = SYSTEM_REFERENCE / "system-workflow.schema.json"
 CONNECT_SCHEMA = SKILLS / "build-connect-product" / "reference" / "contracts" / "flow.schema.json"
 TRANSFORM_SCHEMA = SKILLS / "build-transform-product" / "reference" / "contracts" / "contracts.schema.json"
 EXAMPLES = SYSTEM_REFERENCE / "examples"
@@ -46,6 +47,7 @@ KIND_PRODUCT = {
     "transform-mapping": "transform",
     "persist-collection": "persist",
     "deploy-environment": "deploy",
+    "system-workflow": "system-runtime",
     "system-openapi": "system-runtime",
     "system-fixtures": "system-runtime",
 }
@@ -74,6 +76,7 @@ def _def_validator(schema_path: Path, definition: str) -> Draft202012Validator:
 
 
 MANIFEST_VALIDATOR = Draft202012Validator(_load_json(MANIFEST_SCHEMA))
+SYSTEM_WORKFLOW_VALIDATOR = Draft202012Validator(_load_json(SYSTEM_WORKFLOW_SCHEMA))
 LEAF_VALIDATORS = {
     "connect-partner": _def_validator(CONNECT_SCHEMA, "PartnerConfiguration"),
     "connect-activation": _def_validator(CONNECT_SCHEMA, "Activation"),
@@ -147,6 +150,7 @@ class ManifestCheck:
         self.check_unreferenced_emits()
         self.check_product_emits()
         self.check_leaf_emits()
+        self.check_system_workflows()
         return self.errors
 
     def check_ids(self) -> None:
@@ -370,6 +374,60 @@ class ManifestCheck:
                 for ref in component.get("refs", []):
                     if ref not in self.config_refs:
                         self.fail(where, f"component ref {ref!r} does not exist in configRefs")
+
+
+    def check_system_workflows(self) -> None:
+        """Mirrors the System's deploy-time checks beyond the published JSON Schema."""
+        for name, workflow in self._emits_of("system-workflow").items():
+            where = f"configRefs/{name}"
+            schema_errors = sorted(SYSTEM_WORKFLOW_VALIDATOR.iter_errors(workflow), key=_schema_path)
+            for error in schema_errors:
+                self.fail(where, f"system-workflow contract: {_schema_path(error)}: {error.message}")
+            if schema_errors:
+                continue
+            if workflow["id"] != self.manifest["systemId"]:
+                self.fail(where, f"workflow id {workflow['id']!r} must equal systemId {self.manifest['systemId']!r}")
+            trigger = workflow["trigger"]
+            fields = set(trigger["fields"])
+            for field in workflow["ledgerKey"]:
+                if field not in fields:
+                    self.fail(where, f"ledger key field {field!r} is not a field of trigger {trigger['id']!r}")
+            for field in trigger.get("dataFilter", {}):
+                if field not in fields:
+                    self.fail(where, f"data filter field {field!r} is not a field of trigger {trigger['id']!r}")
+            seen: set[str] = set()
+            self._check_workflow_block(where, "states", workflow["startAt"], workflow["states"], seen)
+
+    def _check_workflow_block(
+        self, where: str, block: str, start_at: str, states: dict, seen: set[str]
+    ) -> None:
+        if start_at not in states:
+            self.fail(where, f"{block}: startAt {start_at!r} is not a state in this block")
+        for state_name, state in states.items():
+            path = f"{block}.{state_name}"
+            if state_name in seen:
+                self.fail(where, f"{path}: state names must be unique across the whole definition")
+            seen.add(state_name)
+            kind = state["type"]
+            targets: list[str] = []
+            if kind == "Choice":
+                targets = [choice["next"] for choice in state["choices"]] + [state["default"]]
+            elif kind not in ("Succeed", "Fail"):
+                if ("next" in state) == ("end" in state):
+                    self.fail(where, f"{path}: set exactly one of next or end")
+                if "next" in state:
+                    targets = [state["next"]]
+            for target in targets:
+                if target not in states:
+                    self.fail(where, f"{path}: {target!r} is not a state in the same block")
+            if kind == "Map":
+                iterator = state["iterator"]
+                self._check_workflow_block(where, f"{path}.iterator", iterator["startAt"], iterator["states"], seen)
+            if kind == "Parallel":
+                for index, branch in enumerate(state["branches"]):
+                    self._check_workflow_block(
+                        where, f"{path}.branches.{index}", branch["startAt"], branch["states"], seen
+                    )
 
 
 def check_manifest(path: Path) -> list[str]:

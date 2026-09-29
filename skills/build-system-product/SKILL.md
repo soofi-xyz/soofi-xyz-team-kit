@@ -33,6 +33,11 @@ platform rebuild contract is [`build-product-service`](../build-product-service/
    (manifest + emits) as a skeleton only.
 6. Check every manifest with `scripts/check-system-manifest.py` before
    handing emits to other agents.
+7. When the System service is the runtime, write the workflow itself as
+   `workflow.json` per [System workflow definitions](reference/system-workflow.md)
+   and [system-workflow.schema.json](reference/system-workflow.schema.json):
+   trigger, ledger key, and product steps with any branching, parallel, or
+   map. The System compiles it; Zygarde never runs inside it.
 
 ## Keep shared skills
 

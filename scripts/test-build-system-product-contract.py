@@ -300,6 +300,112 @@ def assert_emit_contracts() -> None:
     )
 
 
+def sample_workflow() -> dict:
+    return {
+        "definitionVersion": 1,
+        "id": "sale-availability",
+        "description": "Test workflow: run Transform per changed parcel.",
+        "enabled": False,
+        "trigger": {
+            "id": "parcel-changed",
+            "version": "1.0.0",
+            "detailType": "Persist Parcel Changed",
+            "element": {"kind": "vertex", "label": "parcel"},
+            "fields": ["parcel_identifier", "effective_at"],
+        },
+        "ledgerKey": ["parcel_identifier", "effective_at"],
+        "startAt": "Build",
+        "states": {
+            "Build": {
+                "type": "Product",
+                "product": "transform",
+                "operation": "run",
+                "parameters": {"contractVersion": 2, "parcel.$": "$.trigger.parcel_identifier"},
+                "next": "Each",
+            },
+            "Each": {
+                "type": "Map",
+                "itemsPath": "$.steps.Build.output.rows",
+                "maxConcurrency": 2,
+                "iterator": {"startAt": "Check", "states": {"Check": {"type": "Succeed"}}},
+                "next": "Done",
+            },
+            "Done": {"type": "Succeed"},
+        },
+    }
+
+
+def with_workflow(change: Callable[[dict], None] | None = None) -> Mutation:
+    def mutate(package: Path, manifest: dict) -> None:
+        workflow = sample_workflow()
+        if change:
+            change(workflow)
+        write_json(package / "workflow.json", workflow)
+        manifest["products"].append({"product": "system-runtime", "role": "serve"})
+        manifest["configRefs"]["systemWorkflow"] = {
+            "kind": "system-workflow",
+            "path": "workflow.json",
+            "ownerAgent": "zygarde",
+        }
+        manifest["workflow"].append(
+            {
+                "id": "deploy-workflow",
+                "product": "system-runtime",
+                "configRef": "systemWorkflow",
+                "agent": "zygarde",
+                "gate": "workflow-deployed-to-system",
+            }
+        )
+
+    return mutate
+
+
+def assert_system_workflows() -> None:
+    assert_accepts("System workflow with a Map", with_workflow())
+
+    def unknown_state_type(workflow: dict) -> None:
+        workflow["states"]["Build"] = {"type": "Teleport"}
+
+    assert_rejects("System workflow schema", with_workflow(unknown_state_type), "system-workflow contract")
+    assert_rejects(
+        "ledger key field the trigger does not carry",
+        with_workflow(lambda w: w.update(ledgerKey=["debt_identifier"])),
+        "ledger key field 'debt_identifier' is not a field of trigger 'parcel-changed'",
+    )
+    assert_rejects(
+        "transition to a missing state",
+        with_workflow(lambda w: w["states"]["Build"].update(next="Nowhere")),
+        "states.Build: 'Nowhere' is not a state in the same block",
+    )
+
+    def jump_out_of_map(workflow: dict) -> None:
+        workflow["states"]["Each"]["iterator"]["states"]["Check"] = {
+            "type": "Wait",
+            "seconds": 1,
+            "next": "Done",
+        }
+
+    assert_rejects(
+        "Map branch jumping outside itself",
+        with_workflow(jump_out_of_map),
+        "states.Each.iterator.Check: 'Done' is not a state in the same block",
+    )
+
+    def duplicate_name(workflow: dict) -> None:
+        workflow["states"]["Each"]["iterator"] = {"startAt": "Done", "states": {"Done": {"type": "Succeed"}}}
+
+    assert_rejects(
+        "duplicate state names across branches",
+        with_workflow(duplicate_name),
+        "state names must be unique across the whole definition",
+    )
+    assert_rejects(
+        "workflow id different from systemId",
+        with_workflow(lambda w: w.update(id="other-system")),
+        "workflow id 'other-system' must equal systemId 'sale-availability'",
+    )
+
+
 def assert_discovery_parity() -> None:
     for peer in ("lapras", "kecleon", "zygarde"):
         for path in (
@@ -331,6 +437,7 @@ def main() -> int:
     assert_reference_resolution()
     assert_orchestration_rules()
     assert_emit_contracts()
+    assert_system_workflows()
     assert_discovery_parity()
     print("build-system-product contract tests passed")
     return 0

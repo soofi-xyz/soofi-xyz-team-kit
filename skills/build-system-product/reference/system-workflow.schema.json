@@ -1,0 +1,374 @@
+{
+  "$id": "https://soofi.xyz/schemas/system/workflow-definition.v1.schema.json",
+  "title": "SystemWorkflowDefinition",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "definitionVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,62}$"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "trigger": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{1,62}$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "detailType": {
+          "type": "string",
+          "minLength": 1
+        },
+        "element": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": ["edge", "vertex"]
+            },
+            "label": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]*$"
+            }
+          },
+          "required": ["kind", "label"],
+          "additionalProperties": false
+        },
+        "fields": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          }
+        },
+        "dataFilter": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "additionalProperties": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": ["string", "number", "boolean"]
+            }
+          }
+        }
+      },
+      "required": ["id", "version", "detailType", "element", "fields"],
+      "additionalProperties": false
+    },
+    "ledgerKey": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]*$"
+      }
+    },
+    "startAt": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+    },
+    "states": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/__schema0"
+      }
+    }
+  },
+  "required": [
+    "definitionVersion",
+    "id",
+    "description",
+    "enabled",
+    "trigger",
+    "ledgerKey",
+    "startAt",
+    "states"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "__schema0": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "Product"
+            },
+            "product": {
+              "type": "string",
+              "enum": ["transform"]
+            },
+            "operation": {
+              "type": "string",
+              "minLength": 1
+            },
+            "parameters": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {}
+            },
+            "delivers": {
+              "type": "boolean"
+            },
+            "retry": {
+              "type": "object",
+              "properties": {
+                "maxAttempts": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 5
+                },
+                "intervalSeconds": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 300
+                },
+                "backoffRate": {
+                  "type": "number",
+                  "minimum": 1,
+                  "maximum": 5
+                }
+              },
+              "required": ["maxAttempts", "intervalSeconds", "backoffRate"],
+              "additionalProperties": false
+            },
+            "next": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+            },
+            "end": {
+              "type": "boolean",
+              "const": true
+            }
+          },
+          "required": ["type", "product", "operation", "parameters"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "Choice"
+            },
+            "choices": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "variable": {
+                    "type": "string",
+                    "pattern": "^\\$(\\.[A-Za-z_][A-Za-z0-9_]*|\\[\\d+\\])*$"
+                  },
+                  "operator": {
+                    "type": "string",
+                    "enum": [
+                      "StringEquals",
+                      "NumericEquals",
+                      "NumericGreaterThan",
+                      "NumericLessThan",
+                      "BooleanEquals",
+                      "IsPresent"
+                    ]
+                  },
+                  "value": {
+                    "type": ["string", "number", "boolean"]
+                  },
+                  "next": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                  }
+                },
+                "required": ["variable", "operator", "value", "next"],
+                "additionalProperties": false
+              }
+            },
+            "default": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+            }
+          },
+          "required": ["type", "choices", "default"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "Wait"
+            },
+            "seconds": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3600
+            },
+            "next": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+            },
+            "end": {
+              "type": "boolean",
+              "const": true
+            }
+          },
+          "required": ["type", "seconds"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "Succeed"
+            }
+          },
+          "required": ["type"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "Fail"
+            },
+            "error": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+            },
+            "cause": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          },
+          "required": ["type", "error", "cause"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "Map"
+            },
+            "itemsPath": {
+              "type": "string",
+              "pattern": "^\\$(\\.[A-Za-z_][A-Za-z0-9_]*|\\[\\d+\\])*$"
+            },
+            "maxConcurrency": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 40
+            },
+            "iterator": {
+              "type": "object",
+              "properties": {
+                "startAt": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                },
+                "states": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                  },
+                  "additionalProperties": {
+                    "$ref": "#/$defs/__schema0"
+                  }
+                }
+              },
+              "required": ["startAt", "states"],
+              "additionalProperties": false
+            },
+            "next": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+            },
+            "end": {
+              "type": "boolean",
+              "const": true
+            }
+          },
+          "required": ["type", "itemsPath", "maxConcurrency", "iterator"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "Parallel"
+            },
+            "branches": {
+              "minItems": 2,
+              "maxItems": 10,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "startAt": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                  },
+                  "states": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                    },
+                    "additionalProperties": {
+                      "$ref": "#/$defs/__schema0"
+                    }
+                  }
+                },
+                "required": ["startAt", "states"],
+                "additionalProperties": false
+              }
+            },
+            "next": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+            },
+            "end": {
+              "type": "boolean",
+              "const": true
+            }
+          },
+          "required": ["type", "branches"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

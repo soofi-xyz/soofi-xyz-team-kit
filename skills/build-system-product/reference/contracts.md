@@ -44,6 +44,8 @@ Prefer Product kinds for the serve path:
 - Leaf: `lexicon-catalog`, `connect-partner`, `connect-activation`,
   `transform-request`, `transform-mapping`, `persist-collection`,
   `deploy-environment`
+- System service: `system-workflow` — the `workflow.json` the System compiles
+  and runs ([System workflow definitions](system-workflow.md))
 - Fallback: `system-openapi`, `system-fixtures`, `other`
 
 Each kind belongs to one product (`product-*` → `product-orchestration`,
@@ -78,6 +80,16 @@ Allowed `agent` values: `zygarde`, `conkeldurr`, `lapras`, `kecleon`,
    System manifest.
 7. A step's `agent` matches its ref's `ownerAgent` when one is set. Workflow,
    product and success-criterion ids are unique.
+
+## System workflow checks
+
+A `system-workflow` ref validates against
+[`system-workflow.schema.json`](system-workflow.schema.json), and its `id`
+equals `systemId`. Its ledger key and data filter use only fields its trigger
+declares, every transition targets a state in the same block, every
+non-terminal state sets exactly one of `next` or `end`, and state names are
+unique across the definition. The System repeats these checks before it
+compiles a definition.
 
 ## Dependency resolution
 
