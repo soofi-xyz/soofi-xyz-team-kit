@@ -45,14 +45,14 @@
   },
   "configurationChoices": {
     "fieldNames": [
-      "form_1281 columns debtID, form_config_id, field_identifier, value with field_identifier DSA_NAME or DSA_REPRESENTATION; payment_plan and payment_plan_schedule columns from interprose.json in declaration order"
+      "form_1281 columns debtID, form_config_id, field_identifier, value with field_identifier DSA_NAME; payment_plan and payment_plan_schedule columns from interprose.json in declaration order"
     ],
     "schemaShape": [
-      "one form_1281 row per represented debt and field_identifier (DSA_NAME, DSA_REPRESENTATION 'true'); one payment_plan row per payment plan; one payment_plan_schedule row per installment slot"
+      "one form_1281 row per represented debt (field_identifier DSA_NAME); one payment_plan row per payment plan; one payment_plan_schedule row per installment slot"
     ],
     "formats": ["Parquet graph exports in; pipe-delimited CSV with a header row out"],
     "normalizationRules": ["dollars to integer cents, ISO-8601 UTC timestamps, DSA election per company_identifier by created_at then effective_at"],
-    "mappingExpressions": ["lexicon-to-interprose@4.0.0 pinned by mapping.json sha256 90ffdb986c0ee0393bed18b6cc6656912f4c4fdee5f4e3ab15121453aa089ced, S3 VersionId K3CEoN.fFabhKLiaJO51RYnBw5_gdZSK (Lexicon PR #811 4b8d63b1, split); forward interprose-to-lexicon@1.0.0 equals main: mapping.json sha256 e0d7d405bba6424d107ef5c4ded49a8dc9c9b572244c5eb6757e577f22cb2e76, S3 VersionId ZURtOqzlBoPwma9nD4S7aF1atAKI2wZA; Transform main f67430f (Glue script sha256 09a1ad85…)"],
+    "mappingExpressions": ["lexicon-to-interprose@4.0.0 pinned by mapping.json sha256 dae4a372f0678ede2f306c32a4c9413a6419ee56e0a6928e9586e5142f6bcced, S3 VersionId bjdSApk6Fmpet0iBVkRkhLJcr_K01vLP (Lexicon PR #811 87557fe3, form_1281.sql eafa2d59…); forward interprose-to-lexicon@1.0.0 equals main: mapping.json sha256 e0d7d405bba6424d107ef5c4ded49a8dc9c9b572244c5eb6757e577f22cb2e76, S3 VersionId cFfSb7rvbOKUf_eDKV2ztvlInqqTOtUn; Transform main f67430f (Glue script sha256 09a1ad85…)"],
     "profileInputs": ["DEV package inputs/lexicon-interprose-v4/20260928-dev-stage-sample_v2/ with stage/ingest-a, stage/ingest-b and lexicon/ manifests"],
     "vocabularySelections": ["existing Lexicon company, debt, payment_plan, payment_plan_installment, and user_account concepts; no model additions for #811 (the four approved optional company_represents_debt properties are deferred to Lexicon branch feat/dsa-form-1281-facts (follow-up to #811))"]
   },
@@ -125,7 +125,7 @@
     },
     {
       "id": "form-1281-row-shape",
-      "description": "Every form_1281 row has form_config_id '1281' and field_identifier DSA_NAME or DSA_REPRESENTATION, with at most one row per (debtID, field_identifier), both rows present for every represented debt, and DSA_REPRESENTATION only ever 'true'",
+      "description": "Every form_1281 row has form_config_id '1281' and field_identifier DSA_NAME, with exactly one row per represented debt",
       "phase": 11,
       "failureCode": "Form1281ShapeMismatch"
     },
@@ -167,7 +167,7 @@
     },
     {
       "id": "form-1281-expected-absent-fields",
-      "description": "No form_1281 row carries field_identifier REPORTED_DATE, VERIFIED_DATE, DELETE_DATE or DSA_CLIENT_ID_, or DSA_REPRESENTATION 'false'; the date fields are deferred to Lexicon branch feat/dsa-form-1281-facts (follow-up to #811), Claydol owns the client id and never writes a false representation",
+      "description": "No form_1281 row carries field_identifier DSA_REPRESENTATION (neither 'true' nor 'false'), REPORTED_DATE, VERIFIED_DATE, DELETE_DATE or DSA_CLIENT_ID_; the flag and dates are deferred to Lexicon branch feat/dsa-form-1281-facts (follow-up to #811) and Claydol owns the client id",
       "phase": 11,
       "failureCode": "Form1281ShapeMismatch"
     },
@@ -239,19 +239,19 @@
     },
     {
       "id": "form-1281-claydol-field-rules",
-      "description": "form_1281 emits DSA_NAME and DSA_REPRESENTATION 'true' for every debt whose elected identity head is ACTIVE, matching Claydol's representation name and flag; Claydol's REPORTED_DATE, VERIFIED_DATE and DELETE_DATE writes are not mapped for #811 and are deferred to Lexicon branch feat/dsa-form-1281-facts (follow-up to #811)",
+      "description": "form_1281 emits DSA_NAME for every debt whose elected identity head is ACTIVE, matching Claydol's representation name; Claydol's DSA_REPRESENTATION, REPORTED_DATE, VERIFIED_DATE and DELETE_DATE writes are not mapped for #811 and are deferred to Lexicon branch feat/dsa-form-1281-facts (follow-up to #811) (a PROD read-only sample of 200 active DSA debts held DSA_REPRESENTATION true 192, false 3, empty 5, so the flag cannot be derived from the election)",
       "phase": 11,
       "failureCode": "Form1281ShapeMismatch"
     },
     {
       "id": "form-1281-stage-parity",
-      "description": "On the PROD-reconstruct package, DSA_NAME equals the active PROD Stage debt_settlement_agency dsa_name and DSA_REPRESENTATION 'true' is present exactly for those debts, and the package's Stage rows equal PROD Stage at the pinned snapshot; date-field parity is deferred to Lexicon branch feat/dsa-form-1281-facts (follow-up to #811)",
+      "description": "On the PROD-reconstruct package, DSA_NAME equals the active PROD Stage debt_settlement_agency dsa_name for exactly the represented debts, and the package's Stage rows equal PROD Stage at the pinned snapshot; DSA_REPRESENTATION and date-field parity are deferred to Lexicon branch feat/dsa-form-1281-facts (follow-up to #811)",
       "phase": 11,
       "failureCode": "RoundTripColumnMismatch"
     },
     {
       "id": "dsa-representation-source",
-      "description": "For #811 DSA_REPRESENTATION is derived from the election (true exactly when an ACTIVE identity head exists), not from a source column. Sourcing it from Interprose debt_settlement_agency.dsa_representation is deferred to Lexicon branch feat/dsa-form-1281-facts (follow-up to #811) and requires Stage to extract the column; any Claydol-derived oracle there uses only records processed at or before the package extraction time",
+      "description": "DSA_REPRESENTATION is not emitted by #811. It must come from Interprose debt_settlement_agency.dsa_representation, not the election, because PROD holds false and empty values for active representations; that work is deferred to Lexicon branch feat/dsa-form-1281-facts (follow-up to #811) and requires Stage to extract the column; any Claydol-derived oracle there uses only records processed at or before the package extraction time",
       "phase": 11,
       "failureCode": "SourceColumnReconstructed"
     },
@@ -407,11 +407,11 @@
           "format": { "type": "csv", "delimiter": "|", "header": true },
           "columnSource": "consumer-contract",
           "columns": ["debtID", "form_config_id", "field_identifier", "value"],
-          "columnConstraints": [{ "column": "form_config_id", "const": "1281" }, { "column": "field_identifier", "enum": ["DSA_NAME", "DSA_REPRESENTATION"] }],
+          "columnConstraints": [{ "column": "form_config_id", "const": "1281" }, { "column": "field_identifier", "enum": ["DSA_NAME"] }],
           "status": "verified",
           "tbd": [
             "risk finding, owner Lexicon (debt.dsa_company_name) with kecleon: with several ACTIVE identity heads DSA_NAME reproduces the java.util.HashMap iteration order of the Gremlin group() step, not a business rule; recheck against PROD dsa_company_name after any Neptune or TinkerPop change",
-            "deferred, owner Lexicon (feat/dsa-form-1281-facts) with Stage: approved optional company_represents_debt properties reported_at, verified_at, deleted_at, dsa_representation and the REPORTED_DATE and VERIFIED_DATE form fields; they need Stage to extract debt_settlement_agency.dsa_representation and Transform typed-null reading of absent optional graph properties (closed PR #44) before they ship",
+            "deferred, owner Lexicon (feat/dsa-form-1281-facts) with Stage: approved optional company_represents_debt properties reported_at, verified_at, deleted_at, dsa_representation and the DSA_REPRESENTATION, REPORTED_DATE and VERIFIED_DATE form fields; they need Stage to extract debt_settlement_agency.dsa_representation and Transform typed-null reading of absent optional graph properties (closed PR #44) before they ship",
             "open decision for the follow-up, owner Lexicon with Claydol: Claydol inventory writes set REPORTED_DATE without a representation (29 represented debts in the PROD-reconstruct sample)",
             "observation, owner Claydol: in the PROD-reconstruct sample, 22 of 138 Claydol DSA representation writes targeted debts whose Interprose DSA row had been deleted 63 to 982 days before the write; v4 emits no form_1281 row for them"
           ]

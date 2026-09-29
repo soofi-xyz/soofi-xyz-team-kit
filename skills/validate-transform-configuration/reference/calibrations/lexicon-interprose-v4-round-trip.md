@@ -66,7 +66,7 @@ Generate Parquet vertex and edge tables locally from the language definitions. U
 - Election by `effective_at` alone, or by physical company vertex: phase 11 `FAIL` (`DsaElectionMismatch`).
 - `payment_total` written as `1998` or `19.99`: phase 11 `FAIL` (`CentsConversionMismatch`).
 - A payment-plan column outside the declared list is populated: phase 11 `FAIL` (`ProfileParityDrift`).
-- Any `form_1281` row other than `DSA_NAME` and `DSA_REPRESENTATION` `true`, or a represented debt without both rows: phase 11 `FAIL` (`Form1281ShapeMismatch`).
+- Any `form_1281` row other than `DSA_NAME`, or a represented debt without its `DSA_NAME` row: phase 11 `FAIL` (`Form1281ShapeMismatch`).
 - v4 `form_1281` or a full run fails on a graph export that lacks the optional `company_represents_debt` columns: phase 9 `FAIL` (`OptionalPropertyNotMaterialized`). Raw epoch-millis payment inputs failing `cannot cast bigint to date` is the documented ISO input contract (`iso-datetime-inputs-only`), not this failure.
 - A forward SQL reading a Stage column that the target environment's Stage outputs do not carry: phase 8 `FAIL` (`DeployOrderHazard`).
 - A non-empty `payment_method` that differs from the source: phase 11 `FAIL` (`RoundTripColumnMismatch`).
@@ -106,4 +106,9 @@ Generate Parquet vertex and edge tables locally from the language definitions. U
 - Pins (local build equals DEV): v4 `90ffdb98…` (VersionId `K3CEoN.fFabhKLiaJO51RYnBw5_gdZSK`, `form_1281.sql` `5d8c963a…`); forward `e0d7d405…` (VersionId `ZURtOqzlBoPwma9nD4S7aF1atAKI2wZA`); DEV Glue script `09a1ad85…` (Transform main).
 - `form_1281` is `DSA_NAME` plus `DSA_REPRESENTATION` `true`, byte-identical to the `0e3146aa` round. PROD graph sample: `DSA_NAME` equals `dsa_company_name` for 103 of 103, and no row for 166 of 166 `is_dsa` false. Reconstruct: 266 of 266 against PROD Stage.
 - Payment outputs are byte-identical to the previous round, keeping the empty `deactivation_date` on the 28 completed PROD-sample plans.
+
+## DSA_NAME only (#811 `87557fe3`, run `20260929T140056Z`)
+
+- `DSA_REPRESENTATION` is dropped from #811: a PROD read-only sample of 200 active DSA debts held true 192, false 3 and empty 5, so the flag cannot be derived from the election. It moves to `feat/dsa-form-1281-facts` with the date fields.
+- Pins (local build equals DEV): v4 `dae4a372…` (VersionId `bjdSApk6Fmpet0iBVkRkhLJcr_K01vLP`, `form_1281.sql` `eafa2d59…`); forward `e0d7d405…` equals main; DEV Glue script `09a1ad85…`.
 

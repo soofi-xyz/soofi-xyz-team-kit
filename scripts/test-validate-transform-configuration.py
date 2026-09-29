@@ -1031,11 +1031,11 @@ def check_v4_profile(profiles: list[dict]) -> None:
     constraints = {c["column"]: c for c in form["columnConstraints"]}
     if constraints.get("form_config_id", {}).get("const") != "1281" or set(
         constraints.get("field_identifier", {}).get("enum", [])
-    ) != {"DSA_NAME", "DSA_REPRESENTATION"}:
-        fail("form_1281 must emit only DSA_NAME and DSA_REPRESENTATION")
+    ) != {"DSA_NAME"}:
+        fail("form_1281 must emit only DSA_NAME")
     absent = invariants_by_id(v4).get("form-1281-expected-absent-fields", {}).get("description", "")
-    if any(f not in absent for f in ("REPORTED_DATE", "VERIFIED_DATE", "DELETE_DATE", "DSA_CLIENT_ID_", "'false'")):
-        fail("form_1281 must declare the date fields, DSA_CLIENT_ID_ and DSA_REPRESENTATION false expected-absent")
+    if any(f not in absent for f in ("DSA_REPRESENTATION", "REPORTED_DATE", "VERIFIED_DATE", "DELETE_DATE", "DSA_CLIENT_ID_")):
+        fail("form_1281 must declare DSA_REPRESENTATION, the date fields and DSA_CLIENT_ID_ expected-absent")
 
     interprose = {
         "payment_plan": {
@@ -1159,7 +1159,7 @@ def check_v4_profile(profiles: list[dict]) -> None:
             or "tbd" in package
         ):
             fail(f"{package_id}: a ready DEV package needs its staged prefix, manifest digest, and version")
-    if not any("90ffdb986c0ee0393bed18b6cc6656912f4c4fdee5f4e3ab15121453aa089ced" in e and "VersionId" in e
+    if not any("dae4a372f0678ede2f306c32a4c9413a6419ee56e0a6928e9586e5142f6bcced" in e and "VersionId" in e
                for e in v4["configurationChoices"]["mappingExpressions"]):
         fail("v4 must pin the mapping by mapping.json digest and S3 VersionId")
     closure = invariants_by_id(v4)["attempted-slot-schedule-closure"]["description"]
