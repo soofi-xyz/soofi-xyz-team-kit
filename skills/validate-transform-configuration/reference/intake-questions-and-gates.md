@@ -60,7 +60,7 @@ Render the card verbatim, then compute
   "operation": "start-transform-execution",
   "environment": "dev",
   "region": "us-east-2",
-  "accountAlias": "socdev",
+  "accountAlias": "<dev-profile>",
   "reads": [
     "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/<window>_v1/derived/ (3 graph exports, manifest sha256:…)",
     "s3://<lexicon-bucket>/transform-mappings/lexicon-to-interprose/4.0.0/mapping.json (sha256:…)"

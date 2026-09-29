@@ -56,6 +56,30 @@ and get approval for its digest.
    (which will be absent), the plan, and the logs; later steps are not started.
    Only an operator can rerun it, through a new card with a new execution name.
 
+## Tools for this procedure
+
+`scripts/transform_runs.py` implements steps 1–5 from a run spec (state machine ARN, output
+root, operator's DEV profile, pinned mapping digests and VersionIds, and one case per request):
+
+```bash
+S=skills/validate-transform-configuration/scripts
+python3 $S/transform_runs.py cards --spec run-spec.json --run-dir "$RUN"      # APPROVAL_REQUIRED + digests
+python3 $S/transform_runs.py start --run-dir "$RUN" --approve sha256:<digest> \
+  --approver "<who>" --scope "<approval in their words>"                      # only matching cards start
+python3 $S/transform_runs.py capture --run-dir "$RUN"                          # read-only evidence + reconciliation
+python3 $S/transform_runs.py cost --run-dir "$RUN" --job-name <transform-glue-job>
+```
+
+`expected: REJECTED` cases pass only when the execution fails before `RunTransformJob`.
+`capture` flags `mappingPinMatches: false` when the plan's `mapping.json` digest or
+VersionId differs from the pin (deployment drift or a latest-PR-wins overwrite). Compare
+outputs with `compare_datasets.py diff` (regression: `--expect-identical`; parity:
+`--key` plus `--normalize`), check CSV contracts with `compare_datasets.py format`, prove
+graph closure with `compare_datasets.py closure`, and assemble the package with
+`build_run_package.py`. When a step needs Parquet graph inputs but the previous step wrote
+Neptune CSV, bridge it with `graph_export_bridge.py neptune-csv` (record synthetic
+`created_at` as a limitation); convert epoch-millis exports with `graph_export_bridge.py iso-dates`.
+
 ## Field-by-field parity
 
 Derive parity from the pinned language definitions and registrations. Never

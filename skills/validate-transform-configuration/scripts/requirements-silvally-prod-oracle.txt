@@ -1,0 +1,2 @@
+# Optional: read-only PROD Iceberg oracle reads (iceberg_snapshot_read.py).
+pyiceberg[glue,pyarrow]==0.7.1

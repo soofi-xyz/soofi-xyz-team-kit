@@ -1,0 +1,31 @@
+{
+  "id": "example-to-summary",
+  "version": "0.1.0",
+  "status": "ENABLED",
+  "engine": "spark-sql",
+  "from": "example",
+  "to": "summary",
+  "sqlOptions": { "ansiEnabled": true },
+  "inputs": [
+    {
+      "table": "people",
+      "view": "source_people",
+      "format": "jsonl",
+      "options": {},
+      "graph": {
+        "kind": "vertex",
+        "label": "person",
+        "idColumn": "person_id",
+        "properties": [
+          { "column": "family_name", "name": "family_name", "type": "String" },
+          { "column": "balance", "name": "balance", "type": "Double" },
+          { "column": "opted_out", "name": "opted_out", "type": "Bool", "optional": true }
+        ]
+      }
+    }
+  ],
+  "output": { "shape": "tabular", "format": "csv", "options": { "delimiter": "|", "header": true, "quote": "", "escape": "", "nullValue": "" } },
+  "outputs": [
+    { "dataset": "person_summary", "requiredInputs": ["people"], "queries": [{ "path": "queries/person_summary.sql", "sha256": "6a57042eb75f6fe66e655795fd9a80f738cd02b3da6c724bd7a49e06143a2dbe" }], "dependsOn": [] }
+  ]
+}

@@ -122,6 +122,7 @@ main() {
 
   "${python_bin}" "${root}/scripts/check-plugin-clean-room.py" --self-test
   "${python_bin}" "${root}/scripts/test-validate-transform-configuration.py"
+  "${python_bin}" "${root}/scripts/test-silvally-tools.py"
   validate_neutral_references "${root}"
 
   "${python_bin}" - "$root" <<'PY'

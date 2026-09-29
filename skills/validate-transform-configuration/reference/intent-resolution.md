@@ -156,7 +156,20 @@ mapping, or language during a run.
 ## Resolver
 
 `scripts/resolve-transform-intent.py` implements this reference with the Python
-standard library only.
+standard library only. With `--workspace` it fetches what is not supplied,
+read-only: Lexicon candidate (`--candidate-pr` or `--candidate-ref`) and main
+(`--main-ref`, default branch) checkouts pinned by SHA through `gh`/`git`, and for
+each `--aws label=<profile>` the published registry (`/lexicon/transform-mappings-uri`)
+and `/lexicon` SSM names (see `fetch_validation_inputs.py`). The workspace's
+`inputs-manifest.json` records every SHA, registry digest and `VersionId`.
+
+```bash
+python3 skills/validate-transform-configuration/scripts/resolve-transform-intent.py discover \
+  --request "test lexicon payment plan to interprose" \
+  --workspace "$WS" --candidate-pr <lexicon-pr> --aws dev=<dev-profile> --out "$WS/intent.json"
+```
+
+Equivalent with inputs you already materialized:
 
 ```bash
 python3 skills/validate-transform-configuration/scripts/resolve-transform-intent.py discover \

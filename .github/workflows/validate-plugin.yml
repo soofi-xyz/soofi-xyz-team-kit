@@ -31,7 +31,7 @@ jobs:
           node-version: "22.18"
 
       - name: Install validation dependencies
-        run: python -m pip install "jsonschema==4.25.1"
+        run: python -m pip install -r skills/validate-transform-configuration/scripts/requirements-silvally.txt
 
       - name: Check shell scripts
         run: |
@@ -46,6 +46,16 @@ jobs:
           python3 -m py_compile scripts/check-plugin-clean-room.py
           python3 -m py_compile skills/use-oracle/scripts/validate-county-readiness.py
           python3 -m py_compile skills/validate-transform-configuration/scripts/resolve-transform-intent.py
+          python3 -m py_compile skills/validate-transform-configuration/scripts/silvally_io.py
+          python3 -m py_compile skills/validate-transform-configuration/scripts/fetch_validation_inputs.py
+          python3 -m py_compile skills/validate-transform-configuration/scripts/transform_runs.py
+          python3 -m py_compile skills/validate-transform-configuration/scripts/graph_export_bridge.py
+          python3 -m py_compile skills/validate-transform-configuration/scripts/compare_datasets.py
+          python3 -m py_compile skills/validate-transform-configuration/scripts/local_mapping_run.py
+          python3 -m py_compile skills/validate-transform-configuration/scripts/iceberg_snapshot_read.py
+          python3 -m py_compile skills/validate-transform-configuration/scripts/build_run_package.py
+          python3 -m py_compile skills/validate-transform-configuration/scripts/stage_evidence_package.py
+          python3 -m py_compile scripts/test-silvally-tools.py
           python3 -m py_compile scripts/check-system-manifest.py
           python3 -m py_compile scripts/test-build-system-product-contract.py
 

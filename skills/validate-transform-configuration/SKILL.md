@@ -7,6 +7,63 @@ description: "Validate a profile-declared Transform language and directional map
 
 Use this skill as the Transform Configuration Validation Agent's operating procedure. Investigate and validate reusable Transform configuration without turning the agent into a runtime, product, System, Test, storage, model, lexicon, or deployment owner.
 
+## Getting started for teammates
+
+Everything Silvally needs is in this plugin or fetched read-only at run time. Nothing from another
+person's machine (checkouts, `/tmp` scripts, cached registries, PROD extracts) is required.
+
+1. **Install the plugin** from the team marketplace (Cursor: Plugins → soofi-xyz-team-kit), or clone
+   `soofi-xyz/soofi-xyz-team-kit` and run `scripts/local-cursor-plugin.sh`. Invoke the agent as
+   `/silvally` or ask in plain language ("test lexicon payment plan to interprose").
+2. **Prerequisites** (checked by the agent; install once):
+   - `gh` authenticated (`gh auth status`) with read access to the Lexicon and Transform repositories.
+   - AWS CLI v2 with SSO profiles for DEV and, only for read-only oracles, PROD. Profile names are
+     yours to choose; pass them explicitly (`--profile`, `--aws dev=<dev-profile>`). Log in with
+     `aws sso login --profile <name>`. Never export long-lived keys; tools strip `AWS_*` key variables
+     and refuse PROD write verbs.
+   - Python 3.10+ with `pip install -r scripts/requirements-silvally.txt` in a virtual environment.
+     Optional: `requirements-silvally-spark.txt` (Python 3.10, Java 17, Spark 3.3 = Glue 4.0) for
+     `synthetic-local` runs, and `requirements-silvally-prod-oracle.txt` for PROD Iceberg oracles.
+3. **First command** (read-only; fetches pinned Lexicon checkouts, the DEV registry and SSM names):
+
+   ```bash
+   S=skills/validate-transform-configuration/scripts
+   python3 $S/resolve-transform-intent.py discover --request "test lexicon payment plan to interprose" \
+     --workspace "$(mktemp -d)/silvally" --candidate-pr <lexicon-pr> --aws dev=<dev-profile> --out intent.json
+   ```
+
+4. **Test a new mapping configuration:** materialize it
+   (`fetch_validation_inputs.py materialize`), run it locally on a small fixture with
+   `local_mapping_run.py`, and compare against an oracle written from the specification with
+   `compare_datasets.py diff --expect-identical` (the committed `fixtures/new-mapping-example/`
+   shows the whole loop). Then draft or select a profile (`adding-profiles.md`) and let the agent run
+   the 12 phases; DEV executions go through `transform_runs.py` cards and explicit approval.
+5. **Where evidence goes:** a local run directory you choose (outside any repository) holds
+   cards, approvals, captured steps and `run.json`; DEV outputs go only under the profile's
+   `outputs/silvally-<profile>/<runId>/` prefix; restricted PROD rows stay in a mode-0700
+   `--private-dir` that you delete afterwards. Only sanitized aggregates and digests are reported.
+
+## Tools
+
+All tools live in `scripts/`, take every location as an argument, and print JSON aggregates.
+
+| Tool | Phase | Purpose |
+| --- | --- | --- |
+| `resolve-transform-intent.py` | 1–2, 5–6 | Parse a short request, fetch inputs (`--workspace`), select mappings/profile, derive parity and questions |
+| `fetch_validation_inputs.py` | 2 | Read-only: pin repositories by SHA (`repo`), snapshot the published registry (`registry`), list `/lexicon` SSM names, materialize mappings |
+| `local_mapping_run.py` | 7 | Run a materialized mapping on fixtures with local Spark (typed nulls for optional graph properties) |
+| `compare_datasets.py` | 7, 10–11 | Byte-identity and keyed column diffs, CSV header/delimiter checks, graph ID uniqueness and dangling endpoints |
+| `graph_export_bridge.py` | 7, 11 | Neptune CSV output to Parquet graph exports (optional synthetic `created_at`), epoch-millis to ISO dates |
+| `stage_evidence_package.py` | 4 | Build `manifest.json`, then create-only upload with an approval digest |
+| `transform_runs.py` | 9 | Operation cards, approval-gated `start`, read-only `capture` with physical reconciliation, Glue `cost` |
+| `iceberg_snapshot_read.py` | 11 | Read-only PROD Iceberg snapshot read for oracles; rows only in a mode-0700 directory |
+| `build_run_package.py` | 12 | Assemble `run.json`, compute the verdict from phases, validate against the run schema |
+
+Tests: `scripts/test-silvally-tools.py` and `scripts/test-validate-transform-configuration.py`
+(both run in the plugin CI). Mapping-specific oracles (for example a DSA election emulator) are
+not generic tools: express them as profile invariants and calibration rules, and rebuild them
+from these tools plus the pinned mapping SQL.
+
 ## Load first
 
 Read, in order:

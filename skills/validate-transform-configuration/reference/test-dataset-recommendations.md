@@ -76,6 +76,22 @@ Each numbered write is a separate confirmation gate.
 5. Gate: upload `manifest.json` last with `IfNoneMatch: *`, then read it back
    and verify its SHA-256 and `VersionId`.
 
+## Tools
+
+- PROD rows for oracles: `scripts/iceberg_snapshot_read.py` (read-only; pins the snapshot; rows
+  only in a mode-0700 `--private-dir` outside any checkout; prints aggregates). Delete the
+  directory once the oracle aggregates are recorded. Other stores (DynamoDB, Persist Gremlin)
+  are read with the operator's PROD profile and the same rule: aggregates in evidence, rows
+  never committed or uploaded.
+- Package build and upload: `scripts/stage_evidence_package.py manifest`, then `upload` with the
+  printed operation digest after approval. Record the returned manifest SHA-256 and VersionId
+  in the profile's `validationSources`.
+- Graph exports from a forward run: `scripts/graph_export_bridge.py`.
+
+A package itself is not portable evidence of how it was made. Record the generating commands
+and pinned revisions in the package's `evidence/source-manifest.json` so a teammate can rebuild
+it from committed tools plus fresh read-only reads.
+
 ## Expected sizes and cost
 
 - Lexicon to Interprose v4: the package

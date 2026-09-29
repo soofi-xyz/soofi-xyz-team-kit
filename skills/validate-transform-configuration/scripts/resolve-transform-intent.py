@@ -4,13 +4,17 @@
 Examples:
   resolve-transform-intent.py parse --request "test lexicon to interprose form 1281"
   resolve-transform-intent.py discover --request "test lexicon payment plan to interprose" \
-      --lexicon-root /tmp/lexicon-candidate --main-lexicon-root /tmp/lexicon-main \
-      --registry dev=/tmp/registry-dev --ssm-parameters dev=/tmp/ssm-dev.txt
+      --workspace "$WS" --candidate-pr 811 --aws dev=<dev-profile>
+  resolve-transform-intent.py discover --request "test lexicon payment plan to interprose" \
+      --lexicon-root <candidate-checkout> --main-lexicon-root <main-checkout> \
+      --registry dev=<registry-dir> --ssm-parameters dev=<ssm-names.json>
   resolve-transform-intent.py draft-profile --request "test sms to lexicon" ...
 
-The script only reads local files and writes JSON to stdout (or --out). It never
-calls AWS or GitHub; the operator materializes checkouts and registry snapshots
-read-only beforehand, as described in reference/intent-resolution.md.
+With --workspace the script fetches whatever is not supplied: pinned Lexicon
+checkouts through gh/git and, for each --aws label=PROFILE, the published
+mapping registry and /lexicon SSM parameter names through read-only AWS CLI
+calls (see fetch_validation_inputs.py). Without --workspace it only reads local
+files. Output is JSON on stdout (or --out); see reference/intent-resolution.md.
 """
 
 from __future__ import annotations
@@ -31,6 +35,7 @@ DEFAULT_PROFILES = SKILL_ROOT / "reference" / "profiles"
 DEFAULT_FORBIDDEN = SKILL_ROOT / "reference" / "forbidden-concepts.json"
 DATA_BUCKET_INPUT_ROOT = "inputs"
 DEFAULT_REGION = "us-east-2"
+DEFAULT_LEXICON_SLUG = "Spring-Oaks-Capital-LLC/lexicon"
 MATERIAL_FACT_IDS = (
     "source-and-target-meaning",
     "required-directions",
@@ -1589,6 +1594,34 @@ def fact_question(fact_id: str) -> str:
     }.get(fact_id, "")
 
 
+def fetch_missing_inputs(args) -> None:
+    """Populate --lexicon-root/--main-lexicon-root/--registry/--ssm-parameters from GitHub and AWS, read-only."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import fetch_validation_inputs as fetch  # noqa: PLC0415
+
+    workspace = Path(args.workspace)
+    workspace.mkdir(parents=True, exist_ok=True)
+
+    def repo(name: str, ref: str | None, pr: int | None) -> str:
+        entry = fetch.fetch_repo(argparse.Namespace(workspace=str(workspace), slug=args.lexicon_slug, ref=ref, pr=pr,
+                                                    name=name, depth=200, required_path=["src/data/lexicon.json"]))
+        return entry["path"]
+
+    if not args.lexicon_root:
+        args.lexicon_root = repo("lexicon-candidate", args.candidate_ref, args.candidate_pr)
+    if not args.main_lexicon_root:
+        args.main_lexicon_root = repo("lexicon-main", args.main_ref, None)
+    for spec in args.aws or []:
+        label, _, profile = spec.partition("=")
+        if not profile:
+            raise SystemExit(f"--aws expects label=AWS_PROFILE, got {spec!r}")
+        common = dict(workspace=str(workspace), label=label, profile=profile, region=args.region, environment="prod")
+        registry = fetch.fetch_registry(argparse.Namespace(**common))
+        ssm = fetch.fetch_ssm_names(argparse.Namespace(**common, path="/lexicon"))
+        args.registry = (args.registry or []) + [f"{label}={registry['path']}"]
+        args.ssm_parameters = (args.ssm_parameters or []) + [f"{label}={ssm['path']}"]
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -1605,7 +1638,16 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--forbidden-concepts", default=str(DEFAULT_FORBIDDEN), help="Shared forbidden Lexicon concepts, properties, and retired mappings")
         p.add_argument("--window", default="<startZ>_<endExclusiveZ>")
         p.add_argument("--out")
+        p.add_argument("--workspace", help="Fetch missing inputs read-only (GitHub via gh, AWS via --aws) into this disposable directory")
+        p.add_argument("--lexicon-slug", default=DEFAULT_LEXICON_SLUG)
+        p.add_argument("--candidate-pr", type=int, help="Lexicon pull request whose head is the candidate")
+        p.add_argument("--candidate-ref", help="Lexicon branch, tag or SHA for the candidate (default: default branch)")
+        p.add_argument("--main-ref", help="Lexicon ref used as main (default: default branch)")
+        p.add_argument("--aws", action="append", help="label=AWS_PROFILE; fetches that environment's published registry and /lexicon SSM names")
+        p.add_argument("--region", default=DEFAULT_REGION)
     args = parser.parse_args(argv)
+    if getattr(args, "workspace", None):
+        fetch_missing_inputs(args)
     if args.command == "parse":
         output = parse_request(args.request)
     else:

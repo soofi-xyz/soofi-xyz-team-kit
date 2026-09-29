@@ -1,0 +1,3 @@
+# Optional: synthetic-local Spark SQL runs (local_mapping_run.py). Needs Python 3.10 and Java 17.
+# Match the deployed Glue major/minor (Glue 4.0 = Spark 3.3). Transform scripts/setup-spark-tests.sh is equivalent.
+pyspark==3.3.0

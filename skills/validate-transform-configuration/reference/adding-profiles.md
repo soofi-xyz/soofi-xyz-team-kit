@@ -72,6 +72,27 @@ without being committed. Commit it only through a reviewed PR to this kit.
    `CALIBRATION_NAMES` in `scripts/test-validate-transform-configuration.py`.
    Then run `scripts/validate-plugin.sh`.
 
+## Keep profiles portable
+
+- Never put machine-specific paths, local checkout locations, personal AWS profile names or
+  account IDs in a profile. Repositories are slugs plus required paths; evidence is an S3
+  prefix with manifest SHA-256 and VersionId; environments are names the operator maps to
+  their own AWS profiles at run time.
+- Mapping-specific oracles (election rules, reconstructions, cutoffs) belong in the profile's
+  invariants and the calibration dossier as rules and expected aggregates, not as scripts that
+  only exist on one machine.
+
+## Testing a new mapping before it has a profile
+
+1. Materialize the candidate mapping from its pinned repository:
+   `fetch_validation_inputs.py repo ...` then `fetch_validation_inputs.py materialize --command "<repo's materialization command with {out}>"`.
+2. Write a small PII-free fixture and an oracle from the specification (not from the SQL), in
+   the shape of `fixtures/new-mapping-example/`.
+3. Run `local_mapping_run.py --mapping <out>/transform-mappings/<id>/<version>/mapping.json --input <table>=<fixture> --out <dir>`
+   and `compare_datasets.py diff <dir>/<dataset> <oracle> --expect-identical`; add negative
+   cases (missing required input, absent non-optional graph column).
+4. Run `resolve-transform-intent.py draft-profile --workspace ...` and promote the draft (Path 3).
+
 ## Minimal skeleton
 
 Every `<…>` must be replaced with a verified value. The strict schema rejects
