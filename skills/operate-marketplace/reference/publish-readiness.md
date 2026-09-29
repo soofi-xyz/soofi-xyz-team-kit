@@ -251,9 +251,38 @@ Who writes it:
 
 ## B2. Host the bundle and get the presigned URL
 
+Do not ask the user for a bucket name. Resolve the upload bucket in the
+Marketplace account in this order, after the account and region check:
+
+1. A bucket the user named.
+2. The shared bucket recorded in SSM `/marketplace/bundle-upload-bucket`.
+3. Otherwise create `prism-marketplace-bundles-<account>-<region>` and record
+   it in that parameter, so later publishes reuse it:
+
+```bash
+ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+BUCKET=$(aws ssm get-parameter --name /marketplace/bundle-upload-bucket \
+  --query Parameter.Value --output text 2>/dev/null) || {
+  BUCKET="prism-marketplace-bundles-${ACCOUNT}-${AWS_REGION}"
+  aws s3api create-bucket --bucket "$BUCKET" --region "$AWS_REGION" \
+    --create-bucket-configuration LocationConstraint="$AWS_REGION"   # omit for us-east-1
+  aws s3api put-public-access-block --bucket "$BUCKET" --public-access-block-configuration \
+    BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
+  aws s3api put-bucket-encryption --bucket "$BUCKET" --server-side-encryption-configuration \
+    '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
+  aws s3api put-bucket-lifecycle-configuration --bucket "$BUCKET" --lifecycle-configuration \
+    '{"Rules":[{"ID":"expire-bundles","Status":"Enabled","Filter":{"Prefix":""},"Expiration":{"Days":7}}]}'
+  aws s3api put-bucket-policy --bucket "$BUCKET" --policy "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"DenyInsecureTransport\",\"Effect\":\"Deny\",\"Principal\":\"*\",\"Action\":\"s3:*\",\"Resource\":[\"arn:aws:s3:::$BUCKET\",\"arn:aws:s3:::$BUCKET/*\"],\"Condition\":{\"Bool\":{\"aws:SecureTransport\":\"false\"}}}]}"
+  aws ssm put-parameter --name /marketplace/bundle-upload-bucket --type String --value "$BUCKET"
+}
+```
+
+Tell the user which bucket was used and whether it was created. Marketplace
+copies VALID bundles into its own store, so this bucket only holds uploads
+for the length of a review.
+
 ```bash
 export AWS_PROFILE=<selected-profile> AWS_REGION=<region>
-BUCKET=<product-artifacts-bucket>
 KEY=bundles/<component_id>/<component_id>-cloud-assembly.zip
 
 TARGET_ENV=<stage> just pack
@@ -279,8 +308,9 @@ aws s3 presign "s3://$BUCKET/$KEY" --expires-in 7200
   or the review updates live stacks. This matters most for Deploy, which runs
   as `deploy-dev-*` in that account.
 
-Run upload or presign commands only when the user asks, after they confirm AWS
-credentials are ready and name the bucket, account, and region.
+Run bucket, upload, or presign commands only for a publish request, after the
+user confirms AWS credentials are ready and the account and region check
+passes.
 
 ## C. How to report
 
