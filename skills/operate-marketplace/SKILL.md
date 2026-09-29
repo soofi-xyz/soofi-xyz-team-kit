@@ -52,8 +52,15 @@ Organizations tenancy, StackSets, or Account Manager from this skill.
    export MARKETPLACE_API_KEY='<value from the command above>'
    ```
 
-   Ask them to reply once it is set. Confirm only that the variable is present
-   (set or unset, and length if useful). Never echo the value.
+   Ask them to reply once it is set. Confirm only that the variable is present,
+   with exactly this command, and never any other expansion of the variable:
+
+   ```bash
+   if [ -n "${MARKETPLACE_API_KEY:-}" ]; then echo "MARKETPLACE_API_KEY set (${#MARKETPLACE_API_KEY} chars)"; else echo "MARKETPLACE_API_KEY unset"; fi
+   ```
+
+   Pass the key to `curl` only as `-H "x-api-key: $MARKETPLACE_API_KEY"`, never
+   with `-v`, `--trace`, `set -x`, or `env`/`printenv` in the same shell.
 3. Prefer the repo scripts when they fit:
    - `./scripts/demo.sh` — register Prism / Platform / products
    - `./scripts/publish-product.sh` — ensure component, PUT bundle, poll review
