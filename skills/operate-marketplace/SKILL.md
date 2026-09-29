@@ -128,8 +128,8 @@ bundle; do not route it through the Build or Comply services.
 1. Ask for the product repository if it is not obvious, and check it out at
    its default branch.
 2. Walk [publish-readiness.md](reference/publish-readiness.md): repository
-   requirements (manifest, stage-neutral stacks, Lambda bundling, pack and
-   publish steps, tests) and the S3 metadata Marketplace reads.
+   requirements (manifest, stage-neutral stacks, Lambda bundling and
+   obfuscation, pack step, security scan, publish step, tests) and the S3 metadata Marketplace reads.
 3. Report each item as ready, missing, or cannot verify, with evidence, and
    the concrete change for each missing item. Cite
    [Spring-Oaks-Capital-LLC/deploy#3](https://github.com/Spring-Oaks-Capital-LLC/deploy/pull/3)
@@ -139,9 +139,12 @@ bundle; do not route it through the Build or Comply services.
    merge, deploy, or publish in this lane.
 5. If the zip is ready but there is no `bundle_url`, give the upload and
    presign steps from section B2 of that file.
-6. Never write a passing `service-comply` verdict without a real scan, never
-   claim `obfuscated: true` without obfuscation, and never name the Build
+6. Add the real security scan and Lambda obfuscation from that file; the
+   publish step writes `service-comply` and `obfuscated: true` only from
+   their results. Never write a verdict by hand, and never name the Build
    service as issuer of metadata it did not produce.
+7. Pack for review under a stage no live install uses in the Marketplace
+   account (for example `review`).
 
 ## 3. Publish, review, rollback
 

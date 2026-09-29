@@ -85,6 +85,36 @@ Check each item in the product repo at its default branch.
    No `.map` or `.ts` files may appear in staged assets. The Build service's
    `@internal/marketplace-cdk` import rule does not apply when Build is not in
    the pipeline; do not add that package or a stub import.
+3a. **Lambda bundles obfuscated.** Marketplace requires
+   `lambda_asset_policy.obfuscated: true`. Add `javascript-obfuscator` as a dev
+   dependency and run it from an `afterBundling` hook in the same bundling
+   helper, on the esbuild entry file (`index.mjs` for ESM, `index.js` for CJS):
+
+   ```ts
+   bundling: {
+     minify: true, sourceMap: false, sourcesContent: false,
+     commandHooks: {
+       beforeBundling: () => [],
+       beforeInstall: () => [],
+       afterBundling: (_in: string, out: string) => [
+         `npx --no-install javascript-obfuscator ${out}/index.mjs --output ${out}/index.mjs --target node --compact true --source-map false --self-defending false --rename-globals false`,
+       ],
+     },
+   }
+   ```
+
+   Keep `self-defending` and `rename-globals` off; they break Node handlers.
+   The pack step must verify every staged Lambda entry file shows obfuscator
+   output (for example hexadecimal `_0x` identifiers) and fail otherwise, so
+   `obfuscated: true` is checked, not claimed. Run the full unit and
+   integration suites against the obfuscated bundles; deployed Lambdas change
+   too when deploy and pack share the helper.
+
+   Incorrect — the flag is set without an obfuscation step:
+
+   ```ts
+   lambda_asset_policy: { minified: true, obfuscated: true, source_maps: false }
+   ```
 4. **No Docker image assets.** File assets only in `cdk.out/*.assets.json`.
 5. **A pack step** (`just pack`, backed by `scripts/pack-cloud-assembly.ts`)
    that zips only:
@@ -113,9 +143,21 @@ Check each item in the product repo at its default branch.
      "cloudFormationStackNames": ["Connect-dev"]
    }
    ```
-6. **A publish step** (`just publish`) that packs, uploads to S3 with metadata
-   (section B), and prints a presigned URL (section B2).
-7. **Tests** covering the manifest, stack ids, and zip layout.
+6. **A security scan** that produces the `service-comply` verdict:
+   - Dependencies: the repo's package manager audit on production
+     dependencies (`npm audit --omit=dev --json` or `pnpm audit --prod --json`).
+   - Infrastructure: `cdk-nag` `AwsSolutionsChecks` applied as an aspect in
+     the Marketplace entrypoint only, so every pack synth is checked. Each
+     `NagSuppressions` entry needs a written reason; list them in the PR.
+   - Map to one label: any critical or high audit finding, or any nag error →
+     `HIGH`; any moderate finding → `MEDIUM`; only low findings or nag
+     warnings → `LOW`; nothing → `NONE`. Stop before upload on `MEDIUM` or
+     worse and report the findings.
+7. **A publish step** (`just publish`) that packs, runs the scan, writes both
+   metadata tokens from real results (section B), uploads to S3, and prints a
+   presigned URL (section B2).
+8. **Tests** covering the manifest, stack ids, zip layout, obfuscation check,
+   severity mapping, and token payloads.
 
 ## B. Metadata Marketplace reads from the S3 object
 
@@ -147,7 +189,23 @@ Example `service-builder` payload written by the product's publish step:
   "artifact_hash": "sha256:<hash of the zip bytes>",
   "cloud_assembly": { "stacks": ["Connect"], "packed_stage": "dev" },
   "deployment_parameters": {},
-  "lambda_asset_policy": { "minified": true, "obfuscated": false, "source_maps": false }
+  "lambda_asset_policy": { "minified": true, "obfuscated": true, "source_maps": false }
+}
+```
+
+Write `obfuscated: true` only after the pack step's obfuscation check (A3a)
+passed for every Lambda asset; otherwise write `false` and stop.
+
+Example `service-comply` payload from the scan (A6):
+
+```json
+{
+  "issuer": "connect/just-publish",
+  "scanners": ["npm-audit@10.9.2", "cdk-nag@2.35.0"],
+  "severity_label": "LOW",
+  "findings": { "critical": 0, "high": 0, "moderate": 0, "low": 2, "nag_errors": 0, "nag_warnings": 3 },
+  "source_hash": "sha256:<same as service-builder>",
+  "scanned_at": "2026-09-29T18:00:00Z"
 }
 ```
 
@@ -165,13 +223,11 @@ Who writes it:
   publish step writes it. Set `issuer` to the product pipeline (for example
   `connect/just-publish`), never to the Build service. Compute every hash from
   real bytes.
-- **`lambda_asset_policy`**: write the true values. Marketplace currently
-  requires `obfuscated: true`; if the product does not obfuscate, do not write
-  `true` — report that Marketplace must drop the requirement or an obfuscation
-  step must be added.
-- **`service-comply`**: only from a scan that actually ran. Never write a
-  passing verdict by hand. If no scan exists, report that Marketplace must
-  accept bundles without Comply metadata before this product can publish.
+- **`lambda_asset_policy`**: write the true values. `obfuscated: true` only
+  when A3a ran and its check passed.
+- **`service-comply`**: only from the scan in A6, written by the publish step
+  from the scanner output. Never write a verdict by hand or copy one from
+  another bundle.
 
 ## B2. Host the bundle and get the presigned URL
 
@@ -196,6 +252,10 @@ aws s3 presign "s3://$BUCKET/$KEY" --expires-in 7200
 - Treat the presigned URL as a secret while it is valid. Do not commit it.
 - Pack with credentials for the install account when the app pins
   `env.account` at synth time.
+- The sandbox review installs the bundle into the Marketplace account. Pack
+  with a stage no live install uses there (for example `TARGET_ENV=review`),
+  or the review updates live stacks. This matters most for Deploy, which runs
+  as `deploy-dev-*` in that account.
 
 Run upload or presign commands only when the user asks, after they confirm AWS
 credentials are ready and name the bucket, account, and region.
@@ -205,17 +265,18 @@ credentials are ready and name the bucket, account, and region.
 Return a table with one row per item in A and B: `ready`, `missing`, or
 `cannot verify`, with the file path or evidence. List the concrete change for
 each `missing` row, citing Deploy PR #3. End with whether the product can
-publish now, and which blockers are outside the product repo (Marketplace
-Comply or obfuscation requirement, missing sandbox Deploy).
+publish now, and which blockers are outside the product repo (scan findings
+at `MEDIUM` or worse, missing sandbox Deploy or review settings).
 
 ## D. Make the product publishable (only when the user asks)
 
 1. Confirm the target repository and that the user wants a pull request.
 2. Create a branch `feat/marketplace-publishable` from the default branch.
 3. Implement every `missing` item from A: manifest, stage-neutral construct id
-   (update tests that construct the stack), bundling flags, pack script adapted
-   from Deploy's (map construct id to the stage `stackName`), publish target,
-   and tests. Match the repo's package manager, test runner, and style.
+   (update tests that construct the stack), bundling flags, obfuscation hook
+   and check, pack script adapted from Deploy's (map construct id to the stage
+   `stackName`), security scan, publish target, and tests. Match the repo's
+   package manager, test runner, and style.
 4. Run the repo's own checks (format, lint, type-check, tests, `cdk synth`) and
    the pack step locally. Fix failures before opening the PR.
 5. Open the pull request. In the description, list what changed, the check
