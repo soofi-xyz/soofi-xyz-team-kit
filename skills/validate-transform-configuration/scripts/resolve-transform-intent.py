@@ -551,6 +551,13 @@ def select_mapping(registry: Registry, source: str, target: str, qualifiers: lis
         hard = []
     if len(hard) == 1:
         return {"status": "RESOLVED", "selected": hard[0]["mapping"], "candidates": ranked}
+    matched = hard or ([r for r in ranked if r["signals"]] if qualifiers else [])
+    cumulative = cumulative_superset(matched) if not version else None
+    if cumulative:
+        return {"status": "RESOLVED", "selected": cumulative["mapping"], "candidates": ranked,
+                "selectionRule": "cumulative-superset",
+                "reason": (f"{len(matched)} versions of {cumulative['mapping'].split('@')[0]} match; the highest version's outputs "
+                           "include every other matching version's outputs (cumulative versions); request @<version> to pin an older one")}
     return {
         "status": "AMBIGUOUS",
         "selected": None,
@@ -560,6 +567,20 @@ def select_mapping(registry: Registry, source: str, target: str, qualifiers: lis
             + ("no qualifier or version selects exactly one" if not hard else f"{len(hard)} match the qualifier")
         ),
     }
+
+
+def _semver(key: str) -> tuple[int, ...]:
+    return tuple(int(part) for part in key.split("@")[1].split("."))
+
+
+def cumulative_superset(matches: list[dict]) -> dict | None:
+    """Cumulative versions: pick the highest version of one mapping id when its outputs contain every other match's outputs."""
+    if len(matches) < 2 or len({m["mapping"].split("@")[0] for m in matches}) != 1:
+        return None
+    top = max(matches, key=lambda m: _semver(m["mapping"]))
+    if all(set(m.get("outputs", [])) <= set(top.get("outputs", [])) for m in matches):
+        return top
+    return None
 
 
 def nearest_candidates(registry: Registry, source: str | None, target: str | None, terms: list[str]) -> list[dict]:

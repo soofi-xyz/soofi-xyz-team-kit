@@ -45,16 +45,16 @@
   },
   "configurationChoices": {
     "fieldNames": [
-      "form_1281 columns debtID, form_config_id, field_identifier, value with field_identifier DSA_NAME; payment_plan and payment_plan_schedule columns from interprose.json in declaration order"
+      "sms_log columns debt_id, phone_number, msg, sent_date, vendor_result, txt_msg_template_id, vendor_tracking_code, te_id, interaction_identifier (identical to lexicon-to-interprose@2.0.0); form_1281 columns debtID, form_config_id, field_identifier, value with field_identifier DSA_NAME; payment_plan and payment_plan_schedule columns from interprose.json in declaration order"
     ],
     "schemaShape": [
-      "one form_1281 row per represented debt (field_identifier DSA_NAME); one payment_plan row per payment plan; one payment_plan_schedule row per installment slot"
+      "one sms_log row per text message exactly as lexicon-to-interprose@2.0.0; one form_1281 row per represented debt (field_identifier DSA_NAME); one payment_plan row per payment plan; one payment_plan_schedule row per installment slot"
     ],
-    "formats": ["Parquet graph exports in; pipe-delimited CSV with a header row out"],
+    "formats": ["Parquet graph exports plus the hydrated_text_message_artifact JSONL in; pipe-delimited CSV with a header row out (every output, including sms_log, uses the shared mapping output options)"],
     "normalizationRules": ["dollars to integer cents, ISO-8601 UTC timestamps, DSA election per company_identifier by created_at then effective_at"],
-    "mappingExpressions": ["lexicon-to-interprose@4.0.0 pinned by mapping.json sha256 dae4a372f0678ede2f306c32a4c9413a6419ee56e0a6928e9586e5142f6bcced, S3 VersionId bjdSApk6Fmpet0iBVkRkhLJcr_K01vLP (Lexicon PR #811 87557fe3, form_1281.sql eafa2d59…); forward interprose-to-lexicon@1.0.0 equals main: mapping.json sha256 e0d7d405bba6424d107ef5c4ded49a8dc9c9b572244c5eb6757e577f22cb2e76, S3 VersionId cFfSb7rvbOKUf_eDKV2ztvlInqqTOtUn; Transform main f67430f (Glue script sha256 09a1ad85…)"],
+    "mappingExpressions": ["lexicon-to-interprose@4.0.0 pinned by mapping.json sha256 f3649d45657c71caedf3afd0f29c8d21ad95f1ee6ee1a04029f81e3c2d549bf3, S3 VersionId xONXQzNpWENfop42neJKVndx0.W0Oe4W (Lexicon PR #811 015ff00f; outputs sms_log sql 8a4651e1…, form_1281 eafa2d59…, payment_plan 93536bfa…, payment_plan_schedule 5188a76d…; the earlier VersionId .8cc67QKLJgCUkCh2YIU3bLkPB.TJebW held the same bytes before a CI re-upload); lexicon-to-interprose@2.0.0 b9219f31… and @1.0.0 e72706b7… unchanged; forward interprose-to-lexicon@1.0.0 equals main (e0d7d405…); Transform main f67430f (Glue script sha256 09a1ad85…)"],
     "profileInputs": ["DEV package inputs/lexicon-interprose-v4/20260928-dev-stage-sample_v2/ with stage/ingest-a, stage/ingest-b and lexicon/ manifests"],
-    "vocabularySelections": ["existing Lexicon company, debt, payment_plan, payment_plan_installment, and user_account concepts; no model additions for #811 (the four approved optional company_represents_debt properties are deferred to Lexicon branch feat/dsa-form-1281-facts (follow-up to #811))"]
+    "vocabularySelections": ["existing Lexicon company, debt, phone_number, text_message, template, payment_plan, payment_plan_installment, and user_account concepts; no model additions for #811 (the four approved optional company_represents_debt properties are deferred to Lexicon branch feat/dsa-form-1281-facts (follow-up to #811))"]
   },
   "productBoundary": {
     "prohibitedAsConfiguration": [
@@ -82,6 +82,16 @@
     { "name": "edge-payment-plan-created-by-user-account", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
     { "name": "edge-payment-plan-updated-by-user-account", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
     { "name": "interprose-source-sample", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "vertex-phone-number", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "vertex-text-message", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "vertex-template", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "edge-debt-has-text-message", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "edge-phone-number-has-text-message", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "edge-text-message-status-changed", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "edge-text-message-has-rendered-artifact-uri", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "edge-text-message-rendered-from-template", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "hydrated_text_message_artifact", "role": "source", "required": true, "schemaSource": "lexicon-language-definition" },
+    { "name": "sms_log", "role": "target", "required": true, "schemaSource": "consumer-contract" },
     { "name": "form_1281", "role": "target", "required": true, "schemaSource": "consumer-contract" },
     { "name": "payment_plan", "role": "target", "required": true, "schemaSource": "lexicon-language-definition" },
     { "name": "payment_plan_schedule", "role": "target", "required": true, "schemaSource": "lexicon-language-definition" }
@@ -232,6 +242,18 @@
       "failureCode": "RoundTripColumnMismatch"
     },
     {
+      "id": "cumulative-version-convention",
+      "description": "lexicon-to-interprose versions are cumulative: 4.0.0 carries every output of 2.0.0 (sms_log) with byte-identical SQL, identical declared inputs and requiredInputs, and the same shared CSV options, plus form_1281, payment_plan and payment_plan_schedule. 1.0.0 (Parquet) stays a separate version. The pinned lexicon-to-interprose@2.0.0 (b9219f31ccdbd5f32a77776a4ccf1389f7355aae61929399caaf9648c0c75be8) and @1.0.0 (e72706b744d50cda3287256e78e5fef1eb04b15c88ee557039d323f3ddcd3fa8) mapping.json files must stay byte-identical in the candidate build",
+      "phase": 6,
+      "failureCode": "CumulativeVersionDrift"
+    },
+    {
+      "id": "sms-log-reference-parity",
+      "description": "A DEV sms_log-only run of 4.0.0 on the snapshotted inputs of the 2.0.0 reference run (manifest = that run's plan.json, validationSources lexicon-interprose-v4-sms-reference-inputs) reproduces the reference sms_log byte-for-byte: same part count and the same multiset of part SHA-256s; a request without hydrated_text_message_artifact is rejected by resolve-plan",
+      "phase": 11,
+      "failureCode": "RoundTripColumnMismatch"
+    },
+    {
       "id": "iso-datetime-inputs-only",
       "description": "v4 graph inputs carry DateTime as ISO-8601 UTC strings and Date as yyyy-MM-dd; raw Persist epoch-millis exports are an unsupported input contract, fail in the Glue run rather than in resolve-plan, and are recorded as an input finding, not a mapping failure",
       "phase": 9,
@@ -374,10 +396,11 @@
           "logicalArtifactPath": "transform-mappings/lexicon-to-interprose/4.0.0/mapping.json",
           "materializationCommand": "npx tsx infra/test/spark/materialize-mappings.ts <output-directory>"
         },
-        "expectedOutputDatasets": ["form_1281", "payment_plan", "payment_plan_schedule"],
+        "expectedOutputDatasets": ["sms_log", "form_1281", "payment_plan", "payment_plan_schedule"],
         "outputDatasetMatch": "exact"
       },
       "parityDatasets": [
+        { "dataset": "sms_log", "fields": ["debt_id", "phone_number", "msg", "sent_date", "vendor_result", "txt_msg_template_id", "vendor_tracking_code", "te_id", "interaction_identifier"] },
         { "dataset": "form_1281", "fields": ["debtID", "form_config_id", "field_identifier", "value"] },
         {
           "dataset": "payment_plan",
@@ -401,6 +424,18 @@
         }
       ],
       "outputContracts": [
+        {
+          "dataset": "sms_log",
+          "requiredInputs": ["vertex-debt", "vertex-phone-number", "vertex-text-message", "vertex-template", "edge-debt-has-text-message", "edge-phone-number-has-text-message", "edge-text-message-status-changed", "edge-text-message-has-rendered-artifact-uri", "edge-text-message-rendered-from-template", "hydrated_text_message_artifact"],
+          "format": { "type": "csv", "delimiter": "|", "header": true },
+          "columnSource": "consumer-contract",
+          "columns": ["debt_id", "phone_number", "msg", "sent_date", "vendor_result", "txt_msg_template_id", "vendor_tracking_code", "te_id", "interaction_identifier"],
+          "status": "verified",
+          "tbd": [
+            "oracle: lexicon-to-interprose@2.0.0 reference run reverse-sms-full-tzfix-20260924T023400Z-a4fa9e01 (72 parts, 130,321 rows); a 4.0.0 sms_log-only run on the reference run's snapshotted inputs must be byte-identical (same multiset of part SHA-256s)",
+            "no natural row key (interaction_identifier repeats); compare whole rows"
+          ]
+        },
         {
           "dataset": "form_1281",
           "requiredInputs": ["vertex-debt", "vertex-company", "edge-company-represents-debt"],
@@ -550,6 +585,17 @@
       "manifestVersionId": "FqQqgOUhi7gj5NYStSsBhPe1PG0yPFE2",
       "appliesTo": ["lexicon-to-interprose-v4"],
       "required": true
+    },
+    {
+      "id": "lexicon-interprose-v4-sms-reference-inputs",
+      "kind": "existing-dev-artifact",
+      "location": "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/runs/reverse-sms-full-tzfix-20260924T023400Z-a4fa9e01/inputs/",
+      "region": "us-east-2",
+      "artifactStatus": "ready",
+      "manifestSha256": "f7b380c3b62c5de80475b1d4eaaf1e9eee0010ca8fea660f8602deafc4536ec8",
+      "manifestVersionId": "zNYWML65kNztamb6badD8waD3RU4VUG6",
+      "appliesTo": ["lexicon-to-interprose-v4"],
+      "required": true
     }
   ],
   "evidencePolicy": {
@@ -597,6 +643,7 @@
     "comparison": "column-diff",
     "comparisonScope": "inverse-outputs",
     "rowKeys": [
+      { "dataset": "sms_log", "columns": ["debt_id", "phone_number", "msg", "sent_date", "vendor_result", "txt_msg_template_id", "vendor_tracking_code", "te_id", "interaction_identifier"] },
       { "dataset": "form_1281", "columns": ["debtID", "field_identifier"] },
       { "dataset": "payment_plan", "columns": ["payment_plan_id"] },
       { "dataset": "payment_plan_schedule", "columns": ["payment_schedule_id"] }
@@ -629,6 +676,18 @@
       { "repository": "Spring-Oaks-Capital-LLC/transform", "commitSha": "f67430f98634cf3f783d02aa36d907afed766400", "path": "src/lambdas/resolve-plan/index.ts" }
     ],
     "cases": [
+      {
+        "id": "sms-log-only",
+        "outputDatasets": ["sms_log"],
+        "providedInputs": ["vertex-debt", "vertex-phone-number", "vertex-text-message", "vertex-template", "edge-debt-has-text-message", "edge-phone-number-has-text-message", "edge-text-message-status-changed", "edge-text-message-has-rendered-artifact-uri", "edge-text-message-rendered-from-template", "hydrated_text_message_artifact"],
+        "expected": "PASS"
+      },
+      {
+        "id": "sms-log-missing-hydration",
+        "outputDatasets": ["sms_log"],
+        "providedInputs": ["vertex-debt", "vertex-phone-number", "vertex-text-message", "vertex-template", "edge-debt-has-text-message", "edge-phone-number-has-text-message", "edge-text-message-status-changed", "edge-text-message-has-rendered-artifact-uri", "edge-text-message-rendered-from-template"],
+        "expected": "REJECTED"
+      },
       {
         "id": "form-1281-only",
         "outputDatasets": ["form_1281"],

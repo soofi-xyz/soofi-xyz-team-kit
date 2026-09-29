@@ -95,6 +95,14 @@ selected:
   pass that checkout as `--lexicon-root` or its `cdk synth` output as
   `--registry`.
 
+### Cumulative versions
+
+When several enabled versions of one mapping id match a request and no version is requested,
+the resolver selects the highest version if its outputs include every other matching version's
+outputs (`selectionRule: cumulative-superset`), for example `lexicon-to-interprose@4.0.0`
+carrying 2.0.0's `sms_log`. `@<version>` still pins an older version. Versions whose outputs are
+not a subset (for example 1.0.0's Parquet exports) keep the request ambiguous.
+
 ## Workflow derivation
 
 - `X -> lexicon` with an inverse `lexicon -> X`: forward, then inverse

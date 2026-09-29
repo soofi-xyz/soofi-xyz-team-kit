@@ -60,6 +60,7 @@ DOMAIN_BRANCH_TERMS = (
 )
 V4_KEY = "lexicon-to-interprose@4.0.0"
 V4_OUTPUTS = ("form_1281", "payment_plan", "payment_plan_schedule")
+V4_PROFILE_OUTPUTS = ("sms_log", *V4_OUTPUTS)  # cumulative 4.0.0 also carries 2.0.0's sms_log
 MATERIAL_FACT_IDS = (
     "source-and-target-meaning",
     "required-directions",
@@ -953,7 +954,7 @@ def test_schemas_and_profiles() -> list[dict]:
     assert_rejected(profile_check, multi_char_delimiter, "multi-character csv delimiter")
 
     ambiguous_constraint = copy.deepcopy(v4)
-    ambiguous_constraint["directions"][1]["outputContracts"][0]["columnConstraints"][0]["enum"] = ["1281"]
+    next(c for c in ambiguous_constraint["directions"][1]["outputContracts"] if c["dataset"] == "form_1281")["columnConstraints"][0]["enum"] = ["1281"]
     assert_rejected(profile_check, ambiguous_constraint, "column constraint with both const and enum")
 
     unknown_model_policy = copy.deepcopy(v4)
@@ -993,7 +994,7 @@ def check_v4_profile(profiles: list[dict]) -> None:
         or "src/transform/mappings/lexicon-to-interprose/versions/4.0.0" not in projection.get("sourcePaths", [])
         or projection.get("generatedArtifact", {}).get("logicalArtifactPath")
         != "transform-mappings/lexicon-to-interprose/4.0.0/mapping.json"
-        or projection.get("expectedOutputDatasets") != list(V4_OUTPUTS)
+        or projection.get("expectedOutputDatasets") != list(V4_PROFILE_OUTPUTS)
         or projection.get("outputDatasetMatch") != "exact"
     ):
         fail("v4 projection must be the registered lexicon-to-interprose@4.0.0 with exactly three outputs")
@@ -1008,9 +1009,10 @@ def check_v4_profile(profiles: list[dict]) -> None:
         fail("round-trip forward step must be the generated interprose-to-lexicon@1.0.0 subset")
 
     contracts = {c["dataset"]: c for c in directions["lexicon-to-interprose-v4"]["outputContracts"]}
-    if set(contracts) != set(V4_OUTPUTS):
+    if set(contracts) != set(V4_PROFILE_OUTPUTS):
         fail("v4 must declare one output contract per output")
     expected_inputs = {dataset: set(inputs) for dataset, inputs in V4_OUTPUT_INPUTS.items()}
+    expected_inputs["sms_log"] = set(SMS_GRAPH + ["hydrated_text_message_artifact"])
     for dataset, inputs in expected_inputs.items():
         contract = contracts[dataset]
         if set(contract["requiredInputs"]) != inputs:
@@ -1023,7 +1025,9 @@ def check_v4_profile(profiles: list[dict]) -> None:
     declared_sources = {d["name"] for d in v4["datasets"] if d["role"] == "source"}
     if not all_inputs <= declared_sources:
         fail(f"v4 datasets omit graph inputs: {sorted(all_inputs - declared_sources)}")
-    if set(forward["expectedOutputDatasets"]) != all_inputs:
+    # sms_log inputs come from the Quiq SMS lifecycle graph (its oracle is the 2.0.0 reference output), not the Interprose forward subset.
+    forward_inputs = set().union(*(v for k, v in expected_inputs.items() if k != "sms_log"))
+    if set(forward["expectedOutputDatasets"]) != forward_inputs:
         fail("the round-trip forward subset must produce exactly the v4 graph inputs")
     form = contracts["form_1281"]
     if form["columns"] != ["debtID", "form_config_id", "field_identifier", "value"] or form["columnSource"] != "consumer-contract":
@@ -1090,7 +1094,7 @@ def check_v4_profile(profiles: list[dict]) -> None:
         strategy["steps"] != ["interprose-to-lexicon", "lexicon-to-interprose-v4"]
         or strategy["comparison"] != "column-diff"
         or strategy["comparisonScope"] != "inverse-outputs"
-        or {k["dataset"] for k in strategy["rowKeys"]} != set(V4_OUTPUTS)
+        or {k["dataset"] for k in strategy["rowKeys"]} != set(V4_PROFILE_OUTPUTS)
     ):
         fail("v4 round-trip strategy must column-diff every output by row key")
     if v4["lexiconModelPolicy"] != {"candidateLexiconDiff": "forbidden", "path": "src/data/lexicon.json", "modelAdditions": "forbidden"}:
@@ -1111,6 +1115,7 @@ def check_v4_profile(profiles: list[dict]) -> None:
         "form-1281-interprose-debts-only", "dsa-name-matches-prod-index", "payment-plan-keyed-by-identifier", "iso-datetime-inputs-only",
         "form-1281-claydol-field-rules", "form-1281-stage-parity", "dsa-representation-source", "optional-graph-properties-absent",
         "forward-stage-column-deploy-order", "mapping-evidence-pinned-by-digest-and-version-id",
+        "cumulative-version-convention", "sms-log-reference-parity",
     ):
         if required not in invariants:
             fail(f"v4 profile lacks invariant {required}")
@@ -1144,6 +1149,10 @@ def check_v4_profile(profiles: list[dict]) -> None:
             "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/20260928-prod-reconstruct_v1/lexicon/",
             ["lexicon-to-interprose-v4"],
         ),
+        "lexicon-interprose-v4-sms-reference-inputs": (
+            "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/runs/reverse-sms-full-tzfix-20260924T023400Z-a4fa9e01/inputs/",
+            ["lexicon-to-interprose-v4"],
+        ),
     }
     if set(packages) != set(expected_packages):
         fail(f"v4 DEV package must be the staged Interprose sample and graph export: {sorted(packages)}")
@@ -1159,7 +1168,7 @@ def check_v4_profile(profiles: list[dict]) -> None:
             or "tbd" in package
         ):
             fail(f"{package_id}: a ready DEV package needs its staged prefix, manifest digest, and version")
-    if not any("dae4a372f0678ede2f306c32a4c9413a6419ee56e0a6928e9586e5142f6bcced" in e and "VersionId" in e
+    if not any("f3649d45657c71caedf3afd0f29c8d21ad95f1ee6ee1a04029f81e3c2d549bf3" in e and "VersionId" in e
                for e in v4["configurationChoices"]["mappingExpressions"]):
         fail("v4 must pin the mapping by mapping.json digest and S3 VersionId")
     closure = invariants_by_id(v4)["attempted-slot-schedule-closure"]["description"]
@@ -1575,7 +1584,7 @@ def write_checkout(checkout: Path, model: dict) -> None:
 
 
 def build_lexicon_fixture(root: Path) -> dict[str, Path]:
-    names = ("candidate", "candidate-v4", "candidate-drift", "main", "dev", "prod", "v4", "v4-bad", "staging", "history-stage")
+    names = ("candidate", "candidate-v4", "candidate-drift", "main", "dev", "prod", "v4", "v4-bad", "v4-cumulative", "staging", "history-stage")
     paths = {n: root / n for n in names}
     write_checkout(paths["main"], lexicon_model())
     for name in ("candidate", "candidate-v4"):
@@ -1628,6 +1637,11 @@ def build_lexicon_fixture(root: Path) -> dict[str, Path]:
         mid, version = key.split("@")
         write_mapping(paths["dev"], mapping_doc(mid, version, *spec_args))
     write_mapping(paths["v4"], v4_doc(), {"form_1281.sql": FORM_SQL})
+    sms_inputs = SMS_GRAPH + ["hydrated_text_message_artifact"]
+    write_mapping(paths["v4-cumulative"], mapping_doc(
+        "lexicon-to-interprose", "4.0.0", "lexicon", "interprose", list(dict.fromkeys(V4_INPUTS + sms_inputs)),
+        ["sms_log", *V4_OUTPUTS], "tabular", True, output_inputs={**V4_OUTPUT_INPUTS, "sms_log": sms_inputs}, output=V4_OUTPUT,
+    ), {"form_1281.sql": FORM_SQL})
     bad_inputs = dict(V4_OUTPUT_INPUTS, payment_plan=[i for i in PAYMENT_PLAN_GRAPH if i != "edge-payment-plan-has-total-amount"])
     write_mapping(paths["v4-bad"], mapping_doc(
         "lexicon-to-interprose", "4.0.0", "lexicon", "interprose", V4_INPUTS, list(V4_OUTPUTS), "tabular", True,
@@ -1825,6 +1839,14 @@ def test_intent_resolution() -> None:
         if any(o["id"] == V4_KEY for o in question(planned, "mapping-choice")["options"]) or not planned.get("nextSteps"):
             fail("planned mapping must not be selectable and must explain the next step")
 
+        # Cumulative versions: 4.0.0 also serves sms_log, so an SMS request selects the superset version; @2.0.0 still pins 2.0.0.
+        cumulative = run("test lexicon (sms) to interprose", lexicon="candidate", registries=("dev", "prod", "v4-cumulative"))
+        if cumulative["selection"]["selected"] != "lexicon-to-interprose@4.0.0" or cumulative["selection"].get("selectionRule") != "cumulative-superset":
+            fail(f"cumulative superset version was not selected: {cumulative['selection'].get('selected')}")
+        pinned = run("test lexicon (sms) to interprose @2.0.0", lexicon="candidate", registries=("dev", "prod", "v4-cumulative"))
+        if pinned["selection"]["selected"] != "lexicon-to-interprose@2.0.0":
+            fail("an explicit @2.0.0 did not pin the older cumulative version")
+
         # Regression: existing SMS and email behavior is unchanged.
         sms_projection = run("test lexicon (sms) to interprose")
         if sms_projection["selection"]["selected"] != "lexicon-to-interprose@2.0.0":
@@ -1921,7 +1943,7 @@ def test_intent_resolution() -> None:
         # Inverse: registered output contracts that drift from the profile.
         drift = run("test lexicon to interprose form 1281", lexicon="candidate", registries=("dev", "prod", "v4-bad"))
         fmt = [f for f in drift["findings"] if f["code"] == "OutputFormatDrift"]
-        if len(fmt) != 3 or any(f["fields"] != ["delimiter", "header"] for f in fmt):
+        if len(fmt) != len(V4_PROFILE_OUTPUTS) or any(f["fields"] != ["delimiter", "header"] for f in fmt):
             fail(f"comma-delimited headerless outputs were not reported: {fmt}")
         inputs = [f for f in drift["findings"] if f["code"] == "ProfileOutputInputDrift"]
         if [(f["dataset"], f["missingFromRegistry"]) for f in inputs] != [("payment_plan", ["edge-payment-plan-has-total-amount"])]:

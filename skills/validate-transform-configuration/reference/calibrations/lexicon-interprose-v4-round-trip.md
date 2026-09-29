@@ -112,3 +112,10 @@ Generate Parquet vertex and edge tables locally from the language definitions. U
 - `DSA_REPRESENTATION` is dropped from #811: a PROD read-only sample of 200 active DSA debts held true 192, false 3 and empty 5, so the flag cannot be derived from the election. It moves to `feat/dsa-form-1281-facts` with the date fields.
 - Pins (local build equals DEV): v4 `dae4a372…` (VersionId `bjdSApk6Fmpet0iBVkRkhLJcr_K01vLP`, `form_1281.sql` `eafa2d59…`); forward `e0d7d405…` equals main; DEV Glue script `09a1ad85…`.
 
+## Cumulative 4.0.0 with sms_log (#811 `015ff00f`, run `20260929T181723Z`)
+
+- 4.0.0 `mapping.json` `f3649d45…` (DEV VersionId `xONXQzNpWENfop42neJKVndx0.W0Oe4W`; the earlier `.8cc67QKLJgCUkCh2YIU3bLkPB.TJebW` held the same bytes before a CI re-upload). `sms_log` has the same SQL (`8a4651e1…`), inputs, `requiredInputs` and CSV options as 2.0.0. 2.0.0 (`b9219f31…`) and 1.0.0 (`e72706b7…`) are byte-identical to the previous round.
+- `sms_log`-only on the 2.0.0 reference run's snapshotted inputs matches the reference: 72 of 72 parts with the same SHA-256 multiset, 130,321 rows. Without `hydrated_text_message_artifact`, resolve-plan rejects it.
+- form, payment and schedule outputs on v2 and the PROD graph sample are byte-identical to the previous round.
+- No committed package holds both the SMS graph and the DSA/payment graph (they share `vertex-debt` from different sources), so a full four-output run needs a combined package first.
+
