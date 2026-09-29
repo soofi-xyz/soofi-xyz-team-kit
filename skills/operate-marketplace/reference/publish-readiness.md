@@ -98,13 +98,23 @@ Check each item in the product repo at its default branch.
        beforeBundling: () => [],
        beforeInstall: () => [],
        afterBundling: (_in: string, out: string) => [
-         `npx --no-install javascript-obfuscator ${out}/index.mjs --output ${out}/index.mjs --target node --compact true --source-map false --self-defending false --rename-globals false`,
+         `npx --no-install javascript-obfuscator ${out}/index.mjs --output ${out}/index.mjs --seed 20260929 --target node --compact true --source-map false --self-defending false --rename-globals false`,
        ],
      },
    }
    ```
 
+   Always pass a fixed non-zero `--seed`. The default seed is time-based, so
+   every synth changes every Lambda asset hash: each deploy updates every
+   function and two packs of one commit get different hashes. Verify by
+   synthesizing twice and comparing the `cdk.out/asset.*` names.
    Keep `self-defending` and `rename-globals` off; they break Node handlers.
+   The hook only reaches the product's own functions. CDK-provided handlers
+   (for example the `autoDeleteObjects` custom resource) stay unobfuscated and
+   fail the pack check, so disable them in the Marketplace entrypoint and set
+   the affected bucket to `RemovalPolicy.RETAIN`: CloudFormation cannot delete
+   a non-empty bucket, and `DESTROY` without auto-delete makes uninstalling
+   fail. Keep the live entrypoint's behavior unchanged.
    The pack step must verify every staged Lambda entry file shows obfuscator
    output (for example hexadecimal `_0x` identifiers) and fail otherwise, so
    `obfuscated: true` is checked, not claimed. Run the full unit and
@@ -150,6 +160,10 @@ Check each item in the product repo at its default branch.
    - Infrastructure: `cdk-nag` `AwsSolutionsChecks` applied as an aspect in
      the Marketplace entrypoint only, so every pack synth is checked. Each
      `NagSuppressions` entry needs a written reason; list them in the PR.
+     Require a nag report for every stack in `marketplace.product.json`
+     (map each construct id to its `stackName` in `cdk.out/manifest.json`;
+     reports are named `AwsSolutions-<stackName>-NagReport.json`). Fail when
+     any is missing, so a partial assembly cannot understate the severity.
    - Map to one label: any critical or high audit finding, or any nag error →
      `HIGH`; any moderate finding → `MEDIUM`; only low findings or nag
      warnings → `LOW`; nothing → `NONE`. Stop before upload on `MEDIUM` or
@@ -158,8 +172,12 @@ Check each item in the product repo at its default branch.
    metadata tokens from real results (section B), uploads to S3, and prints a
    presigned URL (section B2). It supports a dry-run mode that stops before
    the upload and prints the zip path, size, and decoded token payloads.
-8. **Tests** covering the manifest, stack ids, zip layout, obfuscation check,
-   severity mapping, and token payloads.
+   The script deletes `cdk.out` and runs the Marketplace synth itself; never
+   scan or pack an existing `cdk.out`, or an older assembly gets attributed to
+   the current commit.
+8. **Tests** covering the manifest, stack ids, zip layout, obfuscation check
+   and fixed seed, severity mapping, nag report coverage, bucket removal
+   policy, and token payloads.
 
 ## B. Metadata Marketplace reads from the S3 object
 
@@ -300,7 +318,8 @@ again.
      `{ minified: true, obfuscated: true, source_maps: false }` backed by a
      passing obfuscation check;
    - `service-comply` `severity_label` is below `MEDIUM`;
-   - both tokens together fit in 2 KB of S3 metadata.
+   - both tokens together fit in 2 KB of S3 metadata;
+   - two consecutive Marketplace synths produce identical `asset.*` hashes.
    Fix every failure before opening the PR. The zip is a test output only:
    delete it; never upload or publish it.
 6. Open the pull request. In the description, list what changed, the check
