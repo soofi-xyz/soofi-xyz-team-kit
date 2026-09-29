@@ -138,7 +138,8 @@ bundle; do not route it through the Build or Comply services.
    changes without waiting for a second request: follow section D of that
    file on a new branch and open a pull request. Report only when the user
    asked what is missing. Never push to the default branch, merge, deploy, or
-   publish in this lane.
+   publish in this lane. End the run at the pull request; publishing waits
+   until it merges.
 5. If the zip is ready but there is no `bundle_url`, give the upload and
    presign steps from section B2 of that file.
 6. Add the real security scan and Lambda obfuscation from that file; the
@@ -149,6 +150,10 @@ bundle; do not route it through the Build or Comply services.
    account (for example `review`).
 
 ## 3. Publish, review, rollback
+
+Publish only a bundle packed from the product's merged default branch (a clean
+checkout of a commit on the remote). If the readiness pull request is still
+open, stop and say so. Never pack from an unmerged or locally patched checkout.
 
 1. Resolve `product_id`: `GET /ontology/products/by-name?name={Product}`.
 2. Ensure the component exists (create with §2 step 6 if missing).

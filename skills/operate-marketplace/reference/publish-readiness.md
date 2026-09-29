@@ -246,6 +246,8 @@ aws s3 cp artifacts/<component_id>-cloud-assembly.zip "s3://$BUCKET/$KEY" \
 aws s3 presign "s3://$BUCKET/$KEY" --expires-in 7200
 ```
 
+- Run these from a clean checkout of the merged default branch; `source_hash`
+  must name a commit that exists on the remote.
 - Set metadata at upload time; S3 cannot add it to an existing object.
 - Use an expiry that outlasts the review (Marketplace re-downloads after up to
   ~7.5 minutes of sandbox polling). SSO sessions cap the URL lifetime.
@@ -283,7 +285,26 @@ again.
    `stackName`), security scan, publish target, and tests. Match the repo's
    package manager, test runner, and style.
 4. Run the repo's own checks (format, lint, type-check, tests, `cdk synth`) and
-   the pack step locally. Fix failures before opening the PR.
+   the pack step locally to verify the change. That zip is a test output only:
+   delete it, never upload or publish it. Fix failures before opening the PR.
 5. Open the pull request. In the description, list what changed, the check
    results, and any blocker outside the repo from section B.
-6. Do not deploy, upload, or publish as part of this lane. Do not merge.
+6. Do not deploy, pack for publication, upload, or publish as part of this
+   lane. Do not merge. End the run with the pull request URL and tell the user
+   to publish after it merges.
+
+Incorrect — patching a temporary checkout to get a bundle before review:
+
+```bash
+git clone …/deploy /tmp/deploy && cd /tmp/deploy   # edit files locally
+TARGET_ENV=review just pack && just publish          # bundle from unmerged code
+```
+
+Correct — the pull request carries the change; the bundle comes from `main`
+after merge:
+
+```bash
+gh pr create --base main --head feat/marketplace-publishable …   # this lane ends here
+# later, after merge:
+git clone --branch main …/deploy && cd deploy && TARGET_ENV=review just publish
+```
