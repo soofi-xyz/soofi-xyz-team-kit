@@ -772,7 +772,7 @@ All errors flow through a single `buildStdHttpError(status, ...other)` helper, w
 
 ### 7.2 Authentication + authorisation model
 
-- **API key** (`x-api-key`) — every public route except `GET /information`. API Gateway API keys provide coarse access to the Marketplace API but are not persisted as subscription owners. Rotating an Account-managed service key therefore has no effect on existing subscriptions.
+- **API key** (`x-api-key`) — every public route except `GET /information`. API Gateway API keys provide coarse access to the Marketplace API but are not persisted as subscription owners. Callers authenticate with an Account `account` or `marketplace` key bound to the Marketplace Usage Plan (`Account.md` §2.0 principle 10); tenant `service` keys are not valid here. Rotating an Account-managed key therefore has no effect on existing subscriptions.
 - **Subscription management proof** — subscription-specific read/mutate/replay routes require `X-Marketplace-Subscription-Secret` with the current per-subscription secret and compare its SHA-256 digest to `signing_secret_sha256`. Create and webhook-URL update additionally prove receiver control through the `X-Marketplace-Hook-Secret` handshake. No subscription row stores API Gateway key ids.
 - **HMAC subscription signing** — outbound notifications carry `X-Marketplace-Signature: v1=<hex>`; the secret is per-subscription, rotated by the owner.
 - **Env-admin** is **only** consulted at `PUT /settings` time, to verify that the operator-supplied review/site/quicksight API keys really map to reachable environments. It is no longer in the subscription path.
