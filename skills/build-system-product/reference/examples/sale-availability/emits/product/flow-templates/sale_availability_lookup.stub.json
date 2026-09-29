@@ -1,0 +1,41 @@
+{
+  "name": "sale_availability_lookup",
+  "definition": {
+    "StartAt": "ResolveSaleAvailability",
+    "States": {
+      "ResolveSaleAvailability": {
+        "Type": "StaircaseService",
+        "ResourceDefinition": {
+          "Method": "POST",
+          "Url": "<curated-sale-availability-read-path>",
+          "Body": {
+            "address.$": "$.flow_input.address",
+            "parcelId.$": "$.flow_input.parcelId"
+          }
+        },
+        "Next": "Found"
+      },
+      "Found": {
+        "Type": "Choice",
+        "Choices": [
+          {
+            "Variable": "$.states.ResolveSaleAvailability.output.parcelId",
+            "IsPresent": true,
+            "Next": "Done"
+          }
+        ],
+        "Default": "UnknownIdentifier"
+      },
+      "UnknownIdentifier": {
+        "Type": "Fail",
+        "Error": "UNKNOWN_IDENTIFIER",
+        "Cause": "No curated sale-availability record for the requested address or parcelId."
+      },
+      "Done": {
+        "Type": "Succeed"
+      }
+    }
+  },
+  "output_path": "$.states.ResolveSaleAvailability.output",
+  "persistence_integration": false
+}

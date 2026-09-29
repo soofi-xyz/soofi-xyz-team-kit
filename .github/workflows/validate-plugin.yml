@@ -45,6 +45,8 @@ jobs:
         run: |
           python3 -m py_compile scripts/check-plugin-clean-room.py
           python3 -m py_compile skills/use-oracle/scripts/validate-county-readiness.py
+          python3 -m py_compile scripts/check-system-manifest.py
+          python3 -m py_compile scripts/test-build-system-product-contract.py
 
       - name: Install Oracle runtime dependencies
         # `cd` (not `npm ci --prefix`): some npm releases (observed on 11.13.0)
@@ -63,6 +65,12 @@ jobs:
 
       - name: Check build-portals contract
         run: python3 scripts/test-build-portals-contract.py
+
+      - name: Check System composition manifests
+        run: python3 scripts/check-system-manifest.py
+
+      - name: Check build-system-product contract
+        run: python3 scripts/test-build-system-product-contract.py
 
       - name: Check Hoopa sanitization heuristics
         run: python3 scripts/check-build-portals-sanitization.py

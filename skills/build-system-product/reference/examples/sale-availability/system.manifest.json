@@ -1,0 +1,198 @@
+{
+  "contractVersion": 1,
+  "systemId": "sale-availability",
+  "productName": "sale-availability",
+  "title": "Sale availability lookup",
+  "outcome": "Given an address or parcelId, return sale availability and evidence from curated Connect/Transform artifacts via a Product invocation. Unknown identifiers fail closed. No scrape-on-request.",
+  "orchestration": {
+    "mode": "product-service",
+    "invocationMode": "single",
+    "notes": "Serve through Product APIs once a deployment is integrated or provisioned. Template-backed flow only."
+  },
+  "products": [
+    {
+      "product": "product-orchestration",
+      "role": "serve",
+      "notes": "Product definition, schemas, flow template, and product flow (flow_template_name required)."
+    },
+    {
+      "product": "lexicon",
+      "role": "configure",
+      "notes": "Publish source and sale-availability languages plus mapping."
+    },
+    {
+      "product": "connect",
+      "role": "execute",
+      "notes": "Land prepared source objects with the existing partner-file-intake flow; partner configuration + activation only, no new verbs."
+    },
+    {
+      "product": "transform",
+      "role": "execute",
+      "notes": "Translate source language to sale-availability language (contractVersion 2)."
+    },
+    {
+      "product": "deploy",
+      "role": "activate",
+      "notes": "Keep activationEnabled false until authorized."
+    }
+  ],
+  "configRefs": {
+    "productDefinition": {
+      "kind": "product-definition",
+      "path": "emits/product/product.definition.stub.json",
+      "ownerAgent": "conkeldurr"
+    },
+    "productFlowTemplate": {
+      "kind": "product-flow-template",
+      "path": "emits/product/flow-templates/sale_availability_lookup.stub.json",
+      "ownerAgent": "machamp"
+    },
+    "productFlow": {
+      "kind": "product-flow",
+      "path": "emits/product/product-flows/default.stub.json",
+      "ownerAgent": "conkeldurr"
+    },
+    "productInvocation": {
+      "kind": "product-invocation",
+      "path": "emits/product/invocation.contract.md",
+      "ownerAgent": "zygarde"
+    },
+    "lexiconCatalog": {
+      "kind": "lexicon-catalog",
+      "path": "emits/lexicon/catalog.stub.json",
+      "ownerAgent": "conkeldurr"
+    },
+    "connectPartner": {
+      "kind": "connect-partner",
+      "path": "emits/connect/partner.stub.json",
+      "ownerAgent": "lapras"
+    },
+    "connectActivation": {
+      "kind": "connect-activation",
+      "path": "emits/connect/activation.stub.json",
+      "ownerAgent": "lapras"
+    },
+    "transformRequest": {
+      "kind": "transform-request",
+      "path": "emits/transform/request.stub.json",
+      "ownerAgent": "kecleon"
+    },
+    "deployEnvironment": {
+      "kind": "deploy-environment",
+      "path": "emits/deploy/environment.stub.json",
+      "ownerAgent": "conkeldurr"
+    }
+  },
+  "workflow": [
+    {
+      "id": "publish-lexicon",
+      "product": "lexicon",
+      "configRef": "lexiconCatalog",
+      "agent": "conkeldurr",
+      "gate": "languages-and-mapping-proposed"
+    },
+    {
+      "id": "register-source",
+      "product": "connect",
+      "configRef": "connectPartner",
+      "agent": "lapras",
+      "gate": "partner-configuration-accepted"
+    },
+    {
+      "id": "schedule-intake",
+      "product": "connect",
+      "configRef": "connectActivation",
+      "agent": "lapras",
+      "gate": "activation-registered-disabled"
+    },
+    {
+      "id": "translate",
+      "product": "transform",
+      "configRef": "transformRequest",
+      "agent": "kecleon",
+      "gate": "curated-sale-availability-artifacts-written"
+    },
+    {
+      "id": "configure-product",
+      "product": "product-orchestration",
+      "configRef": "productDefinition",
+      "agent": "conkeldurr",
+      "gate": "product-schemas-accepted"
+    },
+    {
+      "id": "compile-flow-template",
+      "product": "product-orchestration",
+      "configRef": "productFlowTemplate",
+      "agent": "machamp",
+      "gate": "flow-template-compiled"
+    },
+    {
+      "id": "bind-product-flow",
+      "product": "product-orchestration",
+      "configRef": "productFlow",
+      "agent": "conkeldurr",
+      "gate": "flow-template-name-bound"
+    },
+    {
+      "id": "invoke-contract",
+      "product": "product-orchestration",
+      "configRef": "productInvocation",
+      "agent": "zygarde",
+      "gate": "invocation-contract-documented"
+    },
+    {
+      "id": "deploy-stub",
+      "product": "deploy",
+      "configRef": "deployEnvironment",
+      "agent": "conkeldurr",
+      "gate": "synth-with-activation-disabled"
+    }
+  ],
+  "successCriteria": [
+    {
+      "id": "manifest-valid",
+      "description": "scripts/check-system-manifest.py passes: schema, references, emit contracts.",
+      "verify": "schema"
+    },
+    {
+      "id": "template-backed-flow",
+      "description": "Every product flow stub sets flow_template_name to an emitted template; no legacy default connector pipeline.",
+      "verify": "schema"
+    },
+    {
+      "id": "invocation-known-key",
+      "description": "Known address/parcelId invocation returns availability + evidence (deferred until Product + leaf wiring).",
+      "verify": "deferred"
+    },
+    {
+      "id": "unknown-id-closed",
+      "description": "Unknown address/parcelId fails closed with typed error (deferred).",
+      "verify": "deferred"
+    },
+    {
+      "id": "no-scrape",
+      "description": "Request path does not perform live website scraping.",
+      "verify": "manual"
+    }
+  ],
+  "dependencies": {
+    "repos": [
+      "StaircaseAPI/product",
+      "elephant-xyz/lexicon",
+      "elephant-xyz/connect",
+      "elephant-xyz/transform"
+    ],
+    "env": [
+      {
+        "name": "ELEPHANT_LEXICON_ROOT",
+        "purpose": "Local or checkout path to Elephant Lexicon for catalog resolution."
+      }
+    ],
+    "notes": "Primary runtime is Product (StaircaseAPI/product / build-product-service). Thin System package is out of scope unless orchestration.mode is thin-package-deferred."
+  },
+  "deploy": {
+    "activationEnabled": false,
+    "costCeilingUsd": 25,
+    "notes": "Do not enable activation without account/region authorization and product wiring evidence."
+  }
+}
