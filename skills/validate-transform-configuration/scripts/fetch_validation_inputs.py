@@ -37,8 +37,14 @@ def record(workspace: Path, entry: dict) -> dict:
     return entry
 
 
+GIT_AUTH = ["-c", "credential.helper=", "-c", "credential.helper=!gh auth git-credential"]
+
+
 def run(command: list[str], cwd: Path | None = None) -> str:
-    result = subprocess.run(command, cwd=cwd, capture_output=True, text=True)
+    if command[0] == "git":
+        command = ["git", *GIT_AUTH, *command[1:]]
+    env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GCM_INTERACTIVE": "never"}
+    result = subprocess.run(command, cwd=cwd, capture_output=True, text=True, env=env, stdin=subprocess.DEVNULL)
     if result.returncode != 0:
         raise SilvallyError(f"{' '.join(command[:3])} failed: {result.stderr.strip()[-400:]}")
     return result.stdout.strip()
@@ -65,7 +71,6 @@ def fetch_repo(args) -> dict:
         target.mkdir(parents=True, exist_ok=True)
         run(["git", "init", "-q"], cwd=target)
         run(["git", "remote", "add", "origin", f"https://github.com/{args.slug}.git"], cwd=target)
-        run(["git", "config", "credential.helper", "!gh auth git-credential"], cwd=target)
     run(["git", "fetch", "-q", "--depth", str(args.depth), "origin", sha], cwd=target)
     run(["git", "checkout", "-q", "--detach", sha], cwd=target)
     head = run(["git", "rev-parse", "HEAD"], cwd=target)
