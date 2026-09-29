@@ -156,7 +156,8 @@ Check each item in the product repo at its default branch.
      worse and report the findings.
 7. **A publish step** (`just publish`) that packs, runs the scan, writes both
    metadata tokens from real results (section B), uploads to S3, and prints a
-   presigned URL (section B2).
+   presigned URL (section B2). It supports a dry-run mode that stops before
+   the upload and prints the zip path, size, and decoded token payloads.
 8. **Tests** covering the manifest, stack ids, zip layout, obfuscation check,
    severity mapping, and token payloads.
 
@@ -284,14 +285,35 @@ again.
    and check, pack script adapted from Deploy's (map construct id to the stage
    `stackName`), security scan, publish target, and tests. Match the repo's
    package manager, test runner, and style.
-4. Run the repo's own checks (format, lint, type-check, tests, `cdk synth`) and
-   the pack step locally to verify the change. That zip is a test output only:
-   delete it, never upload or publish it. Fix failures before opening the PR.
-5. Open the pull request. In the description, list what changed, the check
-   results, and any blocker outside the repo from section B.
-6. Do not deploy, pack for publication, upload, or publish as part of this
-   lane. Do not merge. End the run with the pull request URL and tell the user
-   to publish after it merges.
+4. Run the repo's own checks (format, lint, type-check, tests, `cdk synth`).
+5. Verify the bundle is good to go, locally and without uploading. Run the
+   publish step in dry-run mode (pack, obfuscation check, scan, token
+   generation; no S3 upload) under the review stage, then check the result
+   against Marketplace's own rules in `lambda/services/bundle-review.ts`:
+   - zip under 256 MiB, not ZIP64, contains `marketplace.product.json`,
+     `build/build.manifest.json`, `cdk.out/manifest.json`, and every template
+     has `Resources`;
+   - manifest `component_id` equals the Marketplace component and `stacks[]`
+     match the assembly;
+   - both tokens decode; `service-builder` has every required field, its
+     `artifact_hash` equals the zip's sha256, and `lambda_asset_policy` is
+     `{ minified: true, obfuscated: true, source_maps: false }` backed by a
+     passing obfuscation check;
+   - `service-comply` `severity_label` is below `MEDIUM`;
+   - both tokens together fit in 2 KB of S3 metadata.
+   Fix every failure before opening the PR. The zip is a test output only:
+   delete it; never upload or publish it.
+6. Open the pull request. In the description, list what changed, the check
+   results, the verified bundle facts (size, stacks, scan severity,
+   obfuscation check), and any blocker outside the repo.
+7. Do not deploy, upload, or publish as part of this lane. Do not merge. End
+   the run with:
+
+   ```text
+   <Product> pull request is ready: <PR URL>
+   The bundle built from it passed Marketplace's checks locally (<size>, scan <severity>, obfuscation verified).
+   Merge the pull request, then ask Registeel to publish <Product> from main.
+   ```
 
 Incorrect — patching a temporary checkout to get a bundle before review:
 

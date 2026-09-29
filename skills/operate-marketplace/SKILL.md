@@ -136,7 +136,8 @@ bundle; do not route it through the Build or Comply services.
    as the worked example.
 4. When the user asked to publish and the product is not ready, make the
    changes without waiting for a second request: follow section D of that
-   file on a new branch and open a pull request. Report only when the user
+   file on a new branch, verify the bundle it builds passes Marketplace's
+   checks locally without uploading it, and open a pull request. Report only when the user
    asked what is missing. Never push to the default branch, merge, deploy, or
    publish in this lane. End the run at the pull request; publishing waits
    until it merges.
