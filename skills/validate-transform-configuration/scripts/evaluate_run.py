@@ -4,6 +4,7 @@
   evaluate_run.py --intent intent.json [--workspace WS] [--profile P.json] [--profile-check pc.json]
       [--contracts contracts.json] [--run-dir RUN] [--checks checks.json ...] [--regression regression.json]
       [--local-report report.json ...] [--closure closure.json ...] [--attest PHASE=EVIDENCE_ID ...]
+      [--answer QUESTION_ID=CHOICE ...]
       --mode synthetic-local|observed-dev --out phases.json
 
 Each phase is PASS, FAIL or BLOCKED from the evidence supplied:
@@ -21,7 +22,8 @@ Each phase is PASS, FAIL or BLOCKED from the evidence supplied:
   11 parity       contract/invariant/oracle checks, derived-parity entries and the regression comparison
   12 package      the package itself (PASS when phases 1-11 are evaluated)
 
-Findings attached to mappings outside the run are recorded as informational. In synthetic-local mode
+An operator answer to a resolver question (for example upstream-source=existing-graph-export) resolves the
+finding that asked it. Findings attached to mappings outside the run are recorded as informational. In synthetic-local mode
 phases 8 and 9 are satisfied by the local execution and the verdict is scoped to that mode.
 """
 
@@ -81,6 +83,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--local-package", action="append", default=[],
                         help="SOURCE_ID=DIR: verify a local package's manifest.json digest and listed objects against the profile")
     parser.add_argument("--attest", action="append", default=[], help="PHASE=EVIDENCE_ID for evidence the tools cannot observe")
+    parser.add_argument("--answer", action="append", default=[], help="QUESTION_ID=CHOICE the operator confirmed for a resolver question")
     parser.add_argument("--mode", choices=("synthetic-local", "observed-dev"), required=True)
     parser.add_argument("--out", required=True)
     args = parser.parse_args(argv)
@@ -135,6 +138,8 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 phases.set(4, "BLOCKED", f"binding {name} is not under a manifested validationSource")
 
+    answers = dict(a.split("=", 1) for a in args.answer)
+    answered = {"UpstreamSourceUnresolved": "upstream-source"}
     findings = list(intent.get("findings", []))
     if args.contracts:
         contracts = read_json(args.contracts)
@@ -144,6 +149,10 @@ def main(argv: list[str] | None = None) -> int:
         mapping = finding.get("mapping")
         if placement is None or (mapping and mapping not in run_keys):
             informational.append(finding.get("code"))
+            continue
+        question = answered.get(finding.get("code"))
+        if question and question in answers:
+            phases.set(placement[0], "PASS", f"{finding['code']} answered: {question}={answers[question]}", f"answer-{question}")
             continue
         phases.set(placement[0], placement[1], f"{finding['code']} {mapping or ''} {finding.get('dataset') or finding.get('concept') or ''}".strip())
     for key, checks in (intent.get("conceptChecks") or {}).items():

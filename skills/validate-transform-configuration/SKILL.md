@@ -97,7 +97,8 @@ definitions and the selected profile:
    `closure` for graph outputs.
 8. **Regression** — `transform_runs.py regress --baseline <previous run>` matches cases by mapping,
    input locations and outputs, and compares row counts and content digests.
-9. **Verdict** — `evaluate_run.py`, then `build_run_package.py`.
+9. **Verdict** — `evaluate_run.py` (with `--answer` for each resolver question the operator answered),
+   then `build_run_package.py`.
 
 Mapping-specific semantics (election or precedence rules, unit conversions, reference outputs,
 permitted losses) are expressed only as profile data: invariants with a declarative `check`

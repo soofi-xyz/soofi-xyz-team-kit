@@ -306,6 +306,15 @@ def test_evaluate_rules(tmp: Path) -> None:
         fail("a finding on a mapping outside the run was not kept informational")
     if phases[4]["status"] != "BLOCKED" or phases[11]["status"] != "BLOCKED":
         fail("missing package or parity evidence did not block")
+    intent["findings"] = [{"code": "UpstreamSourceUnresolved", "mapping": "canon-to-omega@2.0.0"}]
+    silvally_io.write_json(work / "intent.json", intent)
+    for answer, expected in ((None, "BLOCKED"), ("upstream-source=existing-graph-export", "PASS")):
+        extra = ["--answer", answer] if answer else []
+        run_tool("evaluate_run.py", "--intent", str(work / "intent.json"), *extra, "--mode", "synthetic-local",
+                 "--out", str(work / "answered.json"), check=False)
+        status = next(p["status"] for p in json.loads((work / "answered.json").read_text())["phases"] if p["number"] == 6)
+        if status != expected:
+            fail(f"an upstream-source answer of {answer!r} left phase 6 {status}, expected {expected}")
     results.append("evaluate_run phase rules")
 
 
