@@ -1,0 +1,194 @@
+{
+  "source": "art-direction/references/inventory.json. Seed verbs are the comprehension graphics. A verb is never used against its direction. Fit below 4 proposes a new entry instead of forcing a seed verb.",
+  "entries": [
+    {
+      "verb": "pinch",
+      "concept": "constraint, bottleneck",
+      "direction": "constraint as a problem",
+      "form": "Rays converge to a point",
+      "color_state": "spectrum",
+      "rationale": "A bottleneck is light being forced through one point. The published rays do this on the home bottleneck. Do not use pinch for a limit the copy treats as the goal.",
+      "status": "seed",
+      "sources": [
+        "art-direction/references/inventory.json#home.bottleneck-rays"
+      ],
+      "maps_to": "states.pinched"
+    },
+    {
+      "verb": "meet",
+      "concept": "overlap, two things combining",
+      "direction": "two things combining at a shared waist",
+      "form": "Two lobes meeting at a dark waist",
+      "color_state": "spectrum",
+      "rationale": "Overlap is two fields sharing a dark waist. Meet is not a division of roles.",
+      "status": "seed",
+      "sources": [
+        "art-direction/references/inventory.json#ai-native-work.venn-ray"
+      ],
+      "maps_to": "transformations.converge"
+    },
+    {
+      "verb": "rise",
+      "concept": "progression, stages",
+      "direction": "forward through stages",
+      "form": "Notched triangles stepping upward",
+      "color_state": "spectrum",
+      "rationale": "A method moves forward by stages. Rise is not a loop.",
+      "status": "seed",
+      "sources": [
+        "art-direction/references/inventory.json#method.hero-rays"
+      ],
+      "maps_to": "treatments.movement"
+    },
+    {
+      "verb": "route",
+      "concept": "paths connecting existing parts",
+      "direction": "paths between parts that already exist",
+      "form": "Elbow lines joining separate parts",
+      "color_state": "spectrum",
+      "rationale": "Route joins parts that are already there. It does not turn one source into new outputs.",
+      "status": "seed",
+      "sources": [
+        "art-direction/references/inventory.json#home.bottleneck-group14"
+      ],
+      "maps_to": "relations.routed"
+    },
+    {
+      "verb": "split",
+      "concept": "one source becomes several outputs",
+      "direction": "one source becomes several outputs",
+      "form": "One beam dividing into separate outputs",
+      "color_state": "spectrum",
+      "rationale": "Split is refraction: one source comes out as several outputs. It is not a path drawn between parts that already exist.",
+      "status": "seed",
+      "sources": [
+        "art-direction/references/inventory.json"
+      ],
+      "maps_to": "transformations.disperse"
+    },
+    {
+      "verb": "cycle",
+      "concept": "lifecycle, states that recur",
+      "direction": "a thing returns through its states",
+      "form": "A closed loop of stages, not a staircase",
+      "color_state": "spectrum",
+      "rationale": "Owned, reused, updated, and retired is a life that comes back around. Rise only goes forward, so it does not cover a lifecycle.",
+      "status": "proposed",
+      "sources": [
+        "art-direction/runs/holdout-method/asset_plan.json#agent-resources"
+      ],
+      "maps_to": "unmapped"
+    },
+    {
+      "verb": "assign",
+      "concept": "work given to distinct roles",
+      "direction": "roles stay distinct and each receives a job",
+      "form": "Separate marks, each holding a different part of the work",
+      "color_state": "spectrum",
+      "rationale": "A hybrid team gives different work to agents and to humans. That is not an overlap (meet) and not one source becoming outputs (split).",
+      "status": "proposed",
+      "sources": [
+        "art-direction/runs/holdout-method/asset_plan.json#hybrid-team"
+      ],
+      "maps_to": "unmapped"
+    },
+    {
+      "verb": "bound",
+      "concept": "a chosen limit that keeps a system manageable",
+      "direction": "constraint as the goal",
+      "form": "A limit held around the light, not rays forced through a problem point",
+      "color_state": "spectrum",
+      "rationale": "Manageable adoption is a limit the page wants. Pinch is a constraint as a problem, so it points the wrong way.",
+      "status": "proposed",
+      "sources": [
+        "art-direction/runs/holdout-method/asset_plan.json#close"
+      ],
+      "maps_to": "relations.held_within"
+    },
+    {
+      "verb": null,
+      "concept": "Legacy / before",
+      "direction": "the closed before-state, as a problem",
+      "form": "Rigid, heavy blocks; no connections except through people",
+      "color_state": "eclipse, no spectrum",
+      "rationale": "None of the seed verbs show a closed before-state. Keep only if a contrast claim needs a form for the old model.",
+      "status": "proposed",
+      "sources": [],
+      "maps_to": "states.unfit"
+    },
+    {
+      "verb": null,
+      "concept": "Messy input",
+      "direction": "unordered input, before it is organized",
+      "form": "Scattered, irregular marks",
+      "color_state": "gray",
+      "rationale": "Split names the result. It does not name the unordered input. Keep only when the copy is about the input itself.",
+      "status": "proposed",
+      "sources": [],
+      "maps_to": "transformations.organize (its tangled input)"
+    },
+    {
+      "verb": null,
+      "concept": "Agent",
+      "direction": "marks one kind of actor",
+      "form": "Unspecified. Must differ from the human mark in grayscale at 24px, come from the logo prism, sit on the 8px grid, and connect to a route.",
+      "color_state": "spectrum",
+      "rationale": "The verbs name relations, not the two kinds of actor. Keep only when the copy needs a human and an agent as distinct marks.",
+      "status": "proposed",
+      "sources": [],
+      "maps_to": "elements.rounded_square"
+    },
+    {
+      "verb": null,
+      "concept": "Human",
+      "direction": "marks one kind of actor",
+      "form": "Unspecified. Must read as a person without a literal figure or icon, differ from the agent mark in grayscale at 24px, sit on the 8px grid, and connect to a route.",
+      "color_state": "eclipse",
+      "rationale": "The verbs name relations, not the two kinds of actor. Keep only when the copy needs a human and an agent as distinct marks.",
+      "status": "proposed",
+      "sources": [],
+      "maps_to": "elements.circle"
+    },
+    {
+      "verb": null,
+      "concept": "Governance",
+      "direction": "a boundary drawn around a system",
+      "form": "Enclosing frame",
+      "color_state": "eclipse hairline",
+      "rationale": "A frame around a system is not pinch, meet, rise, route, or split. Keep only when the copy is about the boundary itself.",
+      "status": "proposed",
+      "sources": [],
+      "maps_to": "relations.held_within"
+    },
+    {
+      "verb": null,
+      "concept": "Data model",
+      "direction": "relationships shown as a graph",
+      "form": "A graph of relationships, never a table",
+      "color_state": "unspecified",
+      "rationale": "Route connects parts of a workflow. It does not draw a data model. Keep only when the copy is about the model.",
+      "status": "proposed",
+      "sources": [],
+      "maps_to": "relations.connected"
+    }
+  ],
+  "dropped_as_covered": [
+    {
+      "concept": "Prism / after",
+      "covered_by": "split"
+    },
+    {
+      "concept": "Structured output",
+      "covered_by": "split"
+    },
+    {
+      "concept": "Workflow",
+      "covered_by": "route"
+    },
+    {
+      "concept": "Transformation",
+      "covered_by": "split"
+    }
+  ],
+  "superseded_by": "system.json vocabulary (2026-09-29). Kept as history and for live-site sources; use system.json for every new graphic."
+}

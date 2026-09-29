@@ -1,0 +1,414 @@
+{
+  "note": "Records of the live site. A gap is a section that shipped as type only. Do not learn the omission. Graphics here are evidence of style and of verb meaning. Their goal labels use the retired vocabulary (page break, comprehension). Choose goals with the planner rules, from the section's own assertion.",
+  "decisions": [
+    {
+      "page": "home",
+      "section": "hero",
+      "copy": "Redesign work for the age of AI agents. AI tools are spreading. Work still gets stuck in the same handoffs. Prism helps leadership teams build agent fluency, identify workflow bottlenecks, and create a governed operating model for human-agent work.",
+      "decision": "graphic",
+      "assets": [
+        {
+          "id": "home.hero-glow",
+          "goal": "page break",
+          "pattern": "background",
+          "verb": null,
+          "placement": "behind the hero"
+        },
+        {
+          "id": "home.hero-beam",
+          "goal": "page break",
+          "pattern": "background",
+          "verb": null,
+          "placement": "behind the hero, indigo wash under the glow"
+        }
+      ]
+    },
+    {
+      "page": "home",
+      "section": "problem",
+      "copy": "AI tools do not make an organization AI-native. Most enterprises already have AI tools and pilots underway. But the structure of work often stays the same. That is not transformation. It is the old model moving faster. Manual handoffs. Approval chasing. Status checking. Context transfer.",
+      "decision": "graphic",
+      "assets": [
+        {
+          "id": "home.bottleneck-group14",
+          "goal": "comprehension",
+          "pattern": "distinguishing",
+          "verb": "route",
+          "placement": "between the four cards, tablet and up"
+        },
+        {
+          "id": "home.bottleneck-group13",
+          "goal": "comprehension",
+          "pattern": "distinguishing",
+          "verb": "route",
+          "placement": "between the four cards on small screens; desktop file is the pinch mark, not this job"
+        },
+        {
+          "id": "home.problem-underline",
+          "goal": "emphasis",
+          "pattern": "focus",
+          "verb": null,
+          "placement": "under the line",
+          "attaches_to": [
+            "Manual handoffs",
+            "Approval chasing",
+            "Status checking",
+            "Context transfer"
+          ]
+        }
+      ]
+    },
+    {
+      "page": "home",
+      "section": "bottleneck",
+      "copy": "Your people are not the bottleneck. Your workflow is. Legacy workflows turn people into connectors between systems, teams, and decisions.",
+      "decision": "graphic",
+      "assets": [
+        {
+          "id": "home.bottleneck-rays",
+          "goal": "comprehension",
+          "pattern": "background",
+          "verb": "pinch",
+          "placement": "behind the section, desktop"
+        },
+        {
+          "id": "home.mobile-light-rays",
+          "goal": "page break",
+          "pattern": "background",
+          "verb": "pinch",
+          "placement": "behind the section, mobile"
+        }
+      ]
+    },
+    {
+      "page": "home",
+      "section": "plan",
+      "copy": "Start with one governed agent. Build fluency. Find bottlenecks. Redesign work with governance.",
+      "decision": "gap in current site",
+      "reason": "The live page shipped this section as type only. That is a gap, not a rule."
+    },
+    {
+      "page": "home",
+      "section": "what-changes",
+      "copy": "Move from agent experimentation to managed agent adoption. The goal is not more agents. The goal is a managed agent workforce.",
+      "decision": "gap in current site",
+      "reason": "The live page shipped this section as type only. That is a gap, not a rule."
+    },
+    {
+      "page": "home",
+      "section": "produces",
+      "copy": "Concrete artifacts, not generic AI enablement. First governed agent and registry entry. Bottleneck map. Human-agent workflow design. Agent Resources blueprint. Governance seed and scale path. Fit decision.",
+      "decision": "graphic",
+      "assets": [
+        {
+          "id": "home.outcomes-left-glow",
+          "goal": "page break",
+          "pattern": "background",
+          "verb": null,
+          "placement": "behind the section, left"
+        },
+        {
+          "id": "home.outcomes-right-glow",
+          "goal": "page break",
+          "pattern": "background",
+          "verb": null,
+          "placement": "behind the section, right"
+        },
+        {
+          "id": "home.outcomes-connector",
+          "goal": "emphasis",
+          "pattern": "focus",
+          "verb": null,
+          "placement": "between each artifact card"
+        }
+      ]
+    },
+    {
+      "page": "home",
+      "section": "not-outsourced",
+      "copy": "Prism is not for outsourced transformation.",
+      "decision": "gap in current site",
+      "reason": "The live page shipped this section as type only. That is a gap, not a rule."
+    },
+    {
+      "page": "home",
+      "section": "framework",
+      "copy": "Learn about the Prism framework.",
+      "decision": "gap in current site",
+      "reason": "The live page shipped this section as type only. That is a gap, not a rule."
+    },
+    {
+      "page": "home",
+      "section": "cta",
+      "copy": "Ready to lead how work changes? Start with a Starter Exercise and give your leadership team a practical path from AI tools to AI-native work.",
+      "decision": "graphic",
+      "assets": [
+        {
+          "id": "home.cta-glow",
+          "goal": "page break",
+          "pattern": "background",
+          "verb": null,
+          "placement": "behind the closing CTA"
+        }
+      ]
+    },
+    {
+      "page": "ai-native-work",
+      "section": "hero",
+      "copy": "AI transformation is not a tool rollout. Tools make individuals faster. They do not redesign how work moves through the enterprise.",
+      "decision": "graphic",
+      "assets": [
+        {
+          "id": "ai-native-work.hero-ray",
+          "goal": "page break",
+          "pattern": "background",
+          "verb": null,
+          "placement": "behind the hero, mobile and tablet only"
+        }
+      ]
+    },
+    {
+      "page": "ai-native-work",
+      "section": "copilots-and-agents",
+      "copy": "Copilots help with tasks. Agents coordinate workflows.",
+      "decision": "graphic",
+      "assets": [
+        {
+          "id": "ai-native-work.venn-ray",
+          "goal": "comprehension",
+          "pattern": "distinguishing",
+          "verb": "meet",
+          "placement": "behind the contrast, mobile and tablet only"
+        }
+      ]
+    },
+    {
+      "page": "ai-native-work",
+      "section": "offramp",
+      "copy": "Faster cars do not solve an offramp problem.",
+      "decision": "graphic",
+      "assets": [
+        {
+          "id": "ai-native-work.offramp-gradient",
+          "goal": "page break",
+          "pattern": "background",
+          "verb": null,
+          "placement": "behind the section"
+        }
+      ]
+    },
+    {
+      "page": "ai-native-work",
+      "section": "hybrid-team",
+      "copy": "The future team is hybrid. Humans own judgment, trust, empathy, leadership, exceptions, and accountability. Agents handle repeatable coordination, monitoring, routing, retrieval, synthesis, and execution.",
+      "decision": "graphic",
+      "assets": [
+        {
+          "id": "ai-native-work.agent-card-glow",
+          "goal": "emphasis",
+          "pattern": "focus",
+          "verb": null,
+          "placement": "behind a card, desktop file only"
+        }
+      ]
+    },
+    {
+      "page": "ai-native-work",
+      "section": "close",
+      "copy": "Leaders must own the operating model.",
+      "decision": "graphic",
+      "assets": [
+        {
+          "id": "ai-native-work.bottom-glow",
+          "goal": "page break",
+          "pattern": "background",
+          "verb": null,
+          "placement": "behind the close"
+        },
+        {
+          "id": "home.cta-glow",
+          "goal": "page break",
+          "pattern": "background",
+          "verb": null,
+          "placement": "shared CTA bookend"
+        }
+      ]
+    },
+    {
+      "page": "about",
+      "section": "hero",
+      "copy": "A method for leaders building human-agent organizations.",
+      "decision": "graphic",
+      "assets": [
+        {
+          "id": "about.hero-ray",
+          "goal": "page break",
+          "pattern": "background",
+          "verb": null,
+          "placement": "behind the hero"
+        },
+        {
+          "id": "about.hero-glow",
+          "goal": "page break",
+          "pattern": "background",
+          "verb": null,
+          "placement": "indigo wash behind the hero"
+        }
+      ]
+    },
+    {
+      "page": "about",
+      "section": "why-prism-exists",
+      "copy": "AI adoption has outpaced the operating model around it.",
+      "decision": "graphic",
+      "assets": [
+        {
+          "id": "about.mid-ray",
+          "goal": "page break",
+          "pattern": "background",
+          "verb": null,
+          "placement": "behind the middle section"
+        },
+        {
+          "id": "about.mid-glow",
+          "goal": "page break",
+          "pattern": "background",
+          "verb": null,
+          "placement": "indigo wash behind the middle section"
+        }
+      ]
+    },
+    {
+      "page": "about",
+      "section": "operating-model",
+      "copy": "Prism turns agent fluency into operating-model change.",
+      "decision": "gap in current site",
+      "reason": "The live page shipped this section as type only. That is a gap, not a rule."
+    },
+    {
+      "page": "about",
+      "section": "cta",
+      "copy": "Ready to establish practical governance?",
+      "decision": "graphic",
+      "assets": [
+        {
+          "id": "about.cta-glow",
+          "goal": "page break",
+          "pattern": "background",
+          "verb": null,
+          "placement": "behind the CTA"
+        },
+        {
+          "id": "home.cta-glow",
+          "goal": "page break",
+          "pattern": "background",
+          "verb": null,
+          "placement": "shared CTA bookend"
+        }
+      ]
+    },
+    {
+      "page": "workshops",
+      "section": "hero",
+      "copy": "Start with one governed agent.",
+      "decision": "graphic",
+      "assets": [
+        {
+          "id": "workshops.hero-ray",
+          "goal": "page break",
+          "pattern": "background",
+          "verb": null,
+          "placement": "behind the hero"
+        },
+        {
+          "id": "workshops.hero-glow",
+          "goal": "page break",
+          "pattern": "background",
+          "verb": null,
+          "placement": "indigo wash behind the hero"
+        }
+      ]
+    },
+    {
+      "page": "workshops",
+      "section": "questions",
+      "copy": "The exercise surfaces the questions every organization has to answer before agent adoption scales.",
+      "decision": "gap in current site",
+      "reason": "The live page shipped this section as type only. That is a gap, not a rule."
+    },
+    {
+      "page": "workshops",
+      "section": "cta",
+      "copy": "Schedule a Starter Exercise.",
+      "decision": "graphic",
+      "assets": [
+        {
+          "id": "workshops.cta-glow",
+          "goal": "page break",
+          "pattern": "background",
+          "verb": null,
+          "placement": "behind the CTA"
+        },
+        {
+          "id": "home.cta-glow",
+          "goal": "page break",
+          "pattern": "background",
+          "verb": null,
+          "placement": "shared CTA bookend"
+        }
+      ]
+    },
+    {
+      "page": "contact",
+      "section": "form",
+      "copy": "Let's find out if Prism is the right fit.",
+      "decision": "graphic",
+      "assets": [
+        {
+          "id": "contact.form-glow",
+          "goal": "page break",
+          "pattern": "background",
+          "verb": null,
+          "placement": "behind the form. The unsuffixed file does not ship."
+        }
+      ]
+    },
+    {
+      "page": "litepaper",
+      "section": "hero",
+      "copy": "From AI pressure to human-agent operating models.",
+      "decision": "graphic",
+      "assets": [
+        {
+          "id": "litepaper.top-ray",
+          "goal": "page break",
+          "pattern": "background",
+          "verb": null,
+          "placement": "behind the hero"
+        }
+      ]
+    },
+    {
+      "page": "litepaper",
+      "section": "body",
+      "copy": "Why Tool Adoption Is Not Transformation. The Bottleneck Problem. Hybrid Teams and Agent Resources. Progressive Agent Governance.",
+      "decision": "gap in current site",
+      "reason": "The live page shipped this section as type only. That is a gap, not a rule."
+    },
+    {
+      "page": "litepaper",
+      "section": "close",
+      "copy": "The answer is not another tool rollout.",
+      "decision": "graphic",
+      "assets": [
+        {
+          "id": "litepaper.bottom-glow",
+          "goal": "page break",
+          "pattern": "background",
+          "verb": null,
+          "placement": "behind the close"
+        }
+      ]
+    }
+  ]
+}

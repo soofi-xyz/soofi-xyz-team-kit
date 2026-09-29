@@ -1,0 +1,46 @@
+{
+  "_note": "IDs checked against provider docs on 2026-09-28. Geometry is authored as SVG (1.5 px strokes, round caps). Focus rays are rendered by gpt-image-2.5-sunburst and composited under the SVG. Blurred SVG light is for the background library. An image model never renders geometry.",
+  "concept": {
+    "runs_in": "skills/prism-asset-pipeline/scripts/ideate.mjs (Anthropic API), not the chat"
+  },
+  "raster": {
+    "default": "gemini",
+    "providers": {
+      "gemini": {
+        "model": "gemini-3-pro-image",
+        "docs": "https://ai.google.dev/gemini-api/docs/models/gemini-3-pro-image",
+        "env": "GEMINI_API_KEY",
+        "use": "variations from reference images"
+      },
+      "openai": {
+        "model": "gpt-image-2.5-sunburst",
+        "also": "gpt-image-2.5-flare",
+        "docs": "https://developers.openai.com/api/docs/models/gpt-image-2.5-sunburst",
+        "env": "OPENAI_API_KEY",
+        "use": "focus rays, composited under SVG geometry"
+      }
+    }
+  },
+  "vector": {
+    "default": "agent-authored SVG for all geometry",
+    "optional": {
+      "recraft": {
+        "model": "recraftv4_1_vector",
+        "also": "recraftv4_1_pro_vector",
+        "endpoint": "https://external.api.recraft.ai/v1/images/generations/vector",
+        "env": "RECRAFT_API_KEY",
+        "docs": "https://www.recraft.ai/docs/api-reference/endpoints",
+        "use": "experimental: full vector compositions for comparison with hand-built SVG",
+        "checked": "2026-09-29"
+      }
+    }
+  },
+  "ideate": {
+    "provider": "anthropic",
+    "model": "latest-opus",
+    "env": "ANTHROPIC_API_KEY",
+    "thinking_budget": 16000,
+    "critic": "gpt-5.5",
+    "_note": "latest-opus resolves to the newest Opus listed by the Anthropic models endpoint; pin an exact id here to freeze it. The critic is a different provider so the author never judges itself."
+  }
+}

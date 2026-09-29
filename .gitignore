@@ -11,3 +11,7 @@ skills/use-oracle/runtime/cdk.context.json
 .DS_Store
 __pycache__/
 *.pyc
+
+# Local Prism run history from before the plugin move (generated images, readings, sheets).
+# Shipped art direction lives in skills/prism-asset-pipeline/art-direction/; new runs go to $PRISM_RUNS_DIR.
+/art-direction/

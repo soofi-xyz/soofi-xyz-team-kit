@@ -1,0 +1,30 @@
+---
+description: Prism asset agent (ampharos) — hard rules for any prismteam.ai graphic, SVG, or art-direction work
+globs: skills/prism-*/**, public/assets/**
+alwaysApply: false
+---
+
+Source of truth: `skills/prism-asset-pipeline/art-direction/art-direction.md`. Tokens: `art-direction/tokens.json`. System and vocabulary: `art-direction/system.json` (same directory); `lexicon.json` is superseded history.
+Workflow entry point: `skills/prism-asset-pipeline/SKILL.md`. Resolve these paths inside the installed plugin, not the workspace.
+
+Hard rules:
+- Every visual must pass the visual-alone test: a reader gets the section's assertion from the graphic without the copy.
+- Reuse lexicon entries when meaning matches; propose new ones when the content requires; flag both for approval.
+- When the copy argues a ceiling against a solution, the visuals must not mirror. The weaker side is visibly constrained.
+- The `eclipse` token is geometry and type only. Never blurred.
+- Geometry is exact SVG: 1.5 px non-scaling strokes, round caps. Never ask an image model for geometry. Focus rays come from gpt-image-2.5-sunburst and are composited under the SVG.
+- Rendering: anything with a hard edge is one solid flat color; anything with a gradient is diffused light with soft edges. Light is smooth, never grain, noise, or texture.
+- Line color comes from the hero ray (`system.json` `lines.colors`). Never ember or violet.
+- One construction: the light originates on the geometry and shares its angles. Shapes are outlines only. An inner glow or orb sits inside the outline, and the ray leaves from that glow. Place the outline on the measured origin. Do not attach Color Concept 04 as a reference image for focus rays. Never flat-fill a shape.
+- Type first: lay out headline, body, and CTA per breakpoint before the graphic. Recompose mobile; never crop desktop.
+- Color harmony: the four Concept 04 pairs, chosen for harmony only; one hero ray, other rays support it.
+- Mobile never ends a vertical element in a symmetric downward cone of light.
+- Blurred light only via the construction rules in §2/§3. Visible ground between bands. No two adjacent shapes share a stroke color.
+- No text baked into graphics. Labels are HTML, positioned from anchors in the brief.
+- SVG filter IDs are prefixed `<section_id>-` and unique document-wide.
+- No hardcoded hex. Read tokens.
+- A graphic uses only the color pairs it already has. One mark uses one pair. Do not default to the full palette.
+- Never infer construction, coordinates, or font metrics. Ask.
+- Never write to `public/` without explicit approval.
+- Never write generated runs into the plugin tree; use `$PRISM_RUNS_DIR` (default `~/.prism-assets/runs`).
+- When Miranda corrects an output, update the skill or brief that caused it.

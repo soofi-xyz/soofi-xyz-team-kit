@@ -1,0 +1,649 @@
+{
+  "_note": "The Prism visual system. Every phase reads this file; nothing outside it is drawn without a proposed addition Miranda approves. Status per block: locked | draft | pending.",
+  "version": "0.1.0",
+  "pattern": {
+    "status": "locked",
+    "name": "prism",
+    "meaning": "Light passing through structure: one input broken into organized, legible parts.",
+    "layers": {
+      "geometry": "the problem state and the structure: the work as designed or as broken",
+      "light": "Prism's effect: energy, outcome, what the work becomes"
+    },
+    "handoff": "Where geometry becomes light is where the claim happens. Light originates on a point of the geometry and shares its angles."
+  },
+  "object_system": {
+    "status": "locked",
+    "kind": "geometric",
+    "never": [
+      "people",
+      "faces",
+      "hands",
+      "literal objects",
+      "icons",
+      "letters or numbers inside graphics"
+    ]
+  },
+  "shapes": {
+    "status": "locked",
+    "allowed": [
+      "circle",
+      "triangle",
+      "square",
+      "rectangle",
+      "hexagon",
+      "other regular polygons"
+    ],
+    "banned": [
+      "irregular trapezoids",
+      "freeform or random polygons"
+    ],
+    "corners": "Every shape has rounded corners, except at a transition point where geometry turns into light.",
+    "fill": "Shapes are outlines only, one flat line color. Never a flat fill. Presence is an inner glow or orb inside the outline, and that glow is what the ray leaves from.",
+    "symbols": "Every symbol is built from the allowed shapes; no bespoke silhouettes.",
+    "angles": "One consistent shape system per composition; the light's edges share its angles. Fan angles (tokens.json fan) are the default for light direction."
+  },
+  "lines": {
+    "status": "locked",
+    "weight": "1.5 px at 1x (non-scaling stroke); the lightest stroke on the page. 1 px read too faint in pale sky or gold on mist.",
+    "caps": "round",
+    "colors": {
+      "blue/gold": "flare #FBE645 (outer)",
+      "mint/blue": "sky #9DDEFD (outer)",
+      "blue/purple": "sky #9DDEFD (inner; the outer violet reads flat)",
+      "yellow/red": "flare #FBE645 (proposed: the outer ember reads flat and the solar inner is too pale to see)"
+    },
+    "rule": "One solid flat color per line, taken from the hero ray: its outer color when that is a light color, otherwise the fallback listed in colors. Never ember or violet. Never blurred or gradient."
+  },
+  "text_treatment": {
+    "status": "pending",
+    "_note": "A separate layer the agent controls for type and UI: emphasis, arrows, slashes, dashes, ticks, connectors. Standard underlines are not used for emphasis. Members to be defined by Miranda.",
+    "banned": [
+      "standard underline for emphasis"
+    ],
+    "members": []
+  },
+  "color": {
+    "status": "locked",
+    "source": "tokens.json light.pairs (from Figma Color Concept 04)",
+    "pairs": [
+      "blue/purple (sky/violet)",
+      "blue/gold (sky/flare)",
+      "yellow/red (solar/ember)",
+      "mint/blue (mint/sky)"
+    ],
+    "meaning": "none. Colors are chosen for harmony, not meaning.",
+    "rules": [
+      "A ray's inner and outer colors always come from one pair.",
+      "Hero one ray: the ray that carries the section's claim is the largest, strongest, and nearest the focal point.",
+      "Other rays support it: fewer, smaller or softer, and chosen to sit harmoniously next to the hero, the way the four rays sit together in Color Concept 04.",
+      "Concept 04 supplies the pairs and the softness. Focus rays are a GPT image, not a blurred SVG shape. The blurred-SVG construction (filled inner, thick outer stroke, Gaussian blur, and the blue/gold double stroke) is for the background library.",
+      "Leave clean ground between rays."
+    ]
+  },
+  "light": {
+    "status": "locked",
+    "rules": [
+      "Anything multicolor or gradient is diffused, never crisp-edged.",
+      "Smooth gradients: no grain, noise, speckle, or texture.",
+      "A ray starts narrower at its origin and grows wider and more diffused as it travels, and it still leaves the frame. It is already visibly colored at the origin.",
+      "The image contains only the hero ray and the supporting rays named in the composition, with off-white ground between them for their whole length.",
+      "Rays are rendered by gpt-image-2.5-sunburst from a light-only prompt and composited under the SVG. Do not attach Color Concept 04, or any other image, as a reference. Geometry is never rendered by an image model. Blurred SVG light is for the background library, not focus rays."
+    ]
+  },
+  "composition": {
+    "status": "draft",
+    "source": "art-direction.md §5D",
+    "rules": [
+      "The composition fills the frame: lines may enter from a frame edge and run across it, and light runs off the far edges.",
+      "Keep lines clear of the type: they pass below or beside the headline and body, never through them.",
+      "The shape stays an outline. An inner glow or orb sits inside it, and the ray leaves from that glow, so the light reads as coming from the shape. The outline is never flat-filled.",
+      "After the ray image returns, measure its origin and place the SVG on that measurement.",
+      "Rays are separated by clean ground; they never merge into one wash."
+    ]
+  },
+  "feedback_insights": [
+    "Miranda prefers lines and grids as precise, rhythmic structure (often equidistant).",
+    "An outlined shape with an inner glow acts as the protagonist inside line structures. Flat fills read as dull.",
+    "One clear transition point where geometry becomes light.",
+    "Real light behavior (refraction, convergence, long-exposure trails) over narrative or UI metaphors.",
+    "Avoid progress-bar stations, falling particles, and rotation sequences; they read as UI or clutter.",
+    "The mark must communicate the word's literal quality first (movement must look like motion), then the business meaning.",
+    "GPT image (gpt-image-2.5-sunburst) renders the rays better than blurred SVG or Recraft. Use it for light; keep lines and players as exact SVG.",
+    "Attaching Color Concept 04 as an image reference makes the model copy its single blended field. Use it for pairs and softness only."
+  ],
+  "held_for_later": {
+    "speed": "A row of the same shape, each stretched more in the direction of travel than the last, until the final one becomes a streak of light."
+  },
+  "keyword_process": "For each keyword, generate 7 options internally, score them against the feedback insights, and show Miranda only the top 3, with a recommended pick.",
+  "grammar": {
+    "status": "locked",
+    "_note": "What each element means. Every mark uses these meanings; never give a shape a second meaning.",
+    "shapes": {
+      "hexagon": {
+        "means": "a unit: a unit of work, a product, or the item being worked on (interchangeable; context tells them apart)",
+        "lit": "in use, present: an inner glow or orb inside the outline",
+        "outlined": "an empty slot or work not yet done: outline only"
+      },
+      "rounded_square": {
+        "means": "the prism and the agent: the actor that transforms the work, mirroring the logo",
+        "use": "One agent: a rounded square at a transition point, with work passing through it. The agent network: several rounded squares joined by lines, with light moving between them."
+      },
+      "circle": {
+        "means": "human interaction: approvals, sign-offs, decisions, guidance",
+        "lit": "a decision made: an inner glow or orb inside the outline",
+        "outlined": "a decision or review still pending: outline only"
+      },
+      "triangle": {
+        "means": "unassigned",
+        "rule": "Propose a meaning only when a keyword genuinely needs it; Miranda decides. Never apply arbitrarily."
+      },
+      "large_rounded_outline": {
+        "means": "unassigned",
+        "rule": "Propose a meaning only when a keyword genuinely needs it; Miranda decides. Never apply arbitrarily."
+      }
+    },
+    "lines": {
+      "solid": "a relationship or a defined path",
+      "wandering": "a process that is disorganized, starts and stops, or cannot get moving",
+      "elbow": "a hand-off route between parts",
+      "equidistant_parallel": "separate streams of work",
+      "grid": "structure, a standard, a system"
+    },
+    "light": "the outcome: value, energy, what the work becomes",
+    "modifiers": {
+      "filled_vs_outlined": "an inner glow or orb means real, present, active; an empty outline means potential, empty, planned. Never a flat fill.",
+      "main_actor_color": "the protagonist outline is sky #9DDEFD. Presence is an inner glow or orb, never a flat fill.",
+      "aligned_vs_misaligned": "order vs problem state",
+      "complete_vs_broken": "finished vs broken",
+      "repetition": "scale, volume"
+    },
+    "transformation_rule": "Transformation is shown only by a color change or by geometry turning into diffused light, never by one shape becoming another shape. A color change happens only at a transition point (the rounded-square prism); everywhere else the same thing keeps the same color."
+  },
+  "keywords_history": {
+    "status": "draft",
+    "source": "Soofi, 'Why the Next Systems Integrator Is an Agent Network'",
+    "_note": "Each keyword gets one locked visual signal, chosen by Miranda from sketched options. signal stays null until then.",
+    "prism": [
+      {
+        "word": "translate",
+        "meaning": "business language, data, and process turned into system form",
+        "signal": {
+          "status": "chosen",
+          "options": [
+            {
+              "name": "same row, new color",
+              "form": "A row of hexagons passes through a rounded-square prism and leaves it in exactly the same positions and spacing, in a new color (or opening into light). The constant (count, position, shape) shows the meaning is kept; the color change at the prism shows the transformation."
+            },
+            {
+              "name": "bent, not changed",
+              "form": "Parallel hairlines meet a focal point and leave it at a new angle, the way light refracts in a prism."
+            }
+          ],
+          "open": "Decide first what is being translated. These work for individual items; a system or a process needs its own variant (to design).",
+          "notes": [
+            "Grammar update: never change shape to show transformation."
+          ]
+        }
+      },
+      {
+        "word": "reuse",
+        "meaning": "repeated patterns become products instead of being rebuilt",
+        "signal": {
+          "status": "chosen",
+          "form": "Three separate hexagon line grids, each a different overall shape (for example a long strip, a compact cluster, a stepped layout), all using the same hexagon cell and orientation. Each grid has one empty cell, and the same outlined hexagon with an inner glow sits in that cell in all three, in a different position in each grid.",
+          "reads_as": "We fit our reusable parts into several different structures.",
+          "notes": [
+            "The grids must differ in overall shape but share the cell, or it reads as one repeated pattern.",
+            "The empty cell must read as missing from the grid, so the lit hexagon reads as fitting in."
+          ]
+        }
+      },
+      {
+        "word": "compose",
+        "meaning": "a system is built by combining known products",
+        "signal": {
+          "status": "chosen",
+          "form": "Several separate hairlines, evenly spaced, run into one small rounded square (the prism) and one broad diffused ray leaves it. The prism is the inflection point.",
+          "reads_as": "Separate products come together into one outcome.",
+          "notes": [
+            "The number of lines is the number of parts being composed (3 to 5).",
+            "Lines take the inner color of the ray they become.",
+            "Keep it distinct from translate's bent lines: in compose the lines converge and become light; in translate they stay lines and change direction.",
+            "Grammar update: the convergence point is the rounded-square prism, mirroring the logo."
+          ]
+        }
+      },
+      {
+        "word": "compound",
+        "meaning": "every engagement strengthens the network",
+        "signal": {
+          "status": "proposed",
+          "form": "A grid of small outlined hexagons starting from one hexagon with an inner glow at the bottom left. The first three or more columns hold one square each, then growth takes off (for example 1, 1, 1, 2, 4, 8), each new hexagon joined to an existing one by horizontal or vertical connector lines on the grid. Light builds where the grid is densest and opens off the upper right.",
+          "reads_as": "Slow start, then each engagement builds on the last and growth accelerates.",
+          "notes": [
+            "Keep connections on the grid (0 and 90 degrees, elbows); diagonal branching reads as a family tree or a virus.",
+            "Cap the growth so it stays a progression, not texture."
+          ],
+          "confirm": "Miranda's idea; confirm when we reach compound."
+        }
+      },
+      {
+        "word": "network",
+        "meaning": "data as a graph of objects and relationships, not a table",
+        "signal": {
+          "status": "chosen",
+          "form": "Small outlined circles as nodes, joined many-to-many by hairlines (each node linked to several others, not a chain, tree, or grid). Soft diffused light glows along the connections, not on the nodes.",
+          "reads_as": "The value is in the relationships.",
+          "notes": [
+            "Light must sit clearly on the lines, not as a general glow over the area.",
+            "No single central node; that reads as hub and spoke."
+          ]
+        }
+      },
+      {
+        "word": "movement",
+        "meaning": "moving between states creates information",
+        "signal": {
+          "status": "chosen",
+          "form": "A small outlined hexagon (a unit of work), with an inner glow, at the leading position. Behind it, a long diffused light streak follows its path like a long-exposure light trail, fading toward where it started. The path may curve or turn at right angles.",
+          "reads_as": "The work is moving, and its movement leaves light behind: the trail is the information created.",
+          "notes": [
+            "Motion must read at a glance: sharp leading edge, soft trailing light.",
+            "The handoff from geometry to light happens through motion, not at a fixed point."
+          ]
+        }
+      },
+      {
+        "word": "memory",
+        "meaning": "chain of custody: who touched it, what changed, what was corrected",
+        "signal": {
+          "status": "chosen",
+          "form": "An outlined hexagon with an inner glow (the unit of work) on the right linked by one continuous hairline, through evenly spaced small circles (one per hand-off), back to an origin point on the left that glows softly.",
+          "reads_as": "Every step is traceable back to where it started: chain of custody."
+        }
+      },
+      {
+        "word": "explicit",
+        "meaning": "context taken out of people's heads and modeled",
+        "signal": null
+      },
+      {
+        "word": "govern",
+        "meaning": "auditable and disciplined without losing speed",
+        "signal": null
+      },
+      {
+        "word": "canonical",
+        "meaning": "one normalized structure and shared vocabulary",
+        "signal": null
+      },
+      {
+        "word": "custom-fit",
+        "meaning": "flexible like custom software, repeatable like packaged software",
+        "signal": null
+      },
+      {
+        "word": "manufacture",
+        "meaning": "integration as standards-driven production",
+        "signal": null
+      }
+    ],
+    "problem": [
+      {
+        "word": "fragmented",
+        "meaning": "disconnected systems and definitions",
+        "signal": null
+      },
+      {
+        "word": "brittle",
+        "meaning": "integrations that break",
+        "signal": null
+      },
+      {
+        "word": "rigid",
+        "meaning": "off-the-shelf software forces the business to adapt",
+        "signal": null
+      },
+      {
+        "word": "slow",
+        "meaning": "custom builds are slow, expensive, and risky",
+        "signal": null
+      },
+      {
+        "word": "manual handoff",
+        "meaning": "humans carrying context between systems",
+        "signal": null
+      },
+      {
+        "word": "starting over",
+        "meaning": "every client, integration, and workflow rebuilt from scratch",
+        "signal": null
+      },
+      {
+        "word": "hidden context",
+        "meaning": "knowledge in memory, Slack, and spreadsheets",
+        "signal": null
+      },
+      {
+        "word": "incomplete",
+        "meaning": "models that hold records but not meaning",
+        "signal": null
+      }
+    ],
+    "contrasts": [
+      "COTS (rigid) vs custom (slow) vs Prism (custom-fit from reusable parts)",
+      "data as a table vs data as a network",
+      "activity as exhaust vs activity as information",
+      "swapping tools vs fixing the model"
+    ],
+    "later": [
+      "Discover",
+      "Connect",
+      "Transform",
+      "Lexicon",
+      "Model",
+      "Rule",
+      "Persist",
+      "Schedule",
+      "Report",
+      "Predict",
+      "Test",
+      "Deploy",
+      "Marketplace",
+      "System"
+    ],
+    "core": [
+      {
+        "word": "agent",
+        "meaning": "agents configure, operate, change, and govern products; together they are the agent network that is Prism",
+        "signal": {
+          "status": "chosen",
+          "form": "The rounded-square prism is the agent. One agent: a rounded square at a transition point with work passing through it. The network: several rounded squares joined by lines, light moving between them."
+        }
+      },
+      {
+        "word": "disperse",
+        "meaning": "one whole broken into distinct, organized parts: the pervasive prism concept",
+        "signal": {
+          "status": "chosen",
+          "form": "One broad pale ray enters a rounded-square prism and leaves as several distinct rays from the four Concept 04 pairs, fanning at the logo's fan angles with clean ground between them; one of them is the hero ray."
+        }
+      }
+    ]
+  },
+  "vocabulary": {
+    "_note": "Words map to treatments, not pictures. A treatment applies to any element in any composition; a section combines one transformation with up to two relations, treatments, or states. Examples show one use, never the only use.",
+    "elements": {
+      "hexagon": {
+        "means": "a unit: any discrete piece the system handles: a unit of work, a product, or the item being worked on (a document, a record, a customer)",
+        "words": [
+          "work",
+          "product",
+          "project",
+          "capability",
+          "document",
+          "record",
+          "customer",
+          "data",
+          "object"
+        ]
+      },
+      "circle": {
+        "means": "human interaction: approvals, sign-offs, decisions, guidance",
+        "words": [
+          "human",
+          "Operational Architect",
+          "approval",
+          "sign-off",
+          "decision",
+          "review",
+          "guidance"
+        ]
+      },
+      "rounded_square": {
+        "means": "the prism and the agent",
+        "words": [
+          "agent",
+          "Prism",
+          "agent network (several, linked)"
+        ]
+      },
+      "line": {
+        "means": "a relationship or a path",
+        "words": [
+          "relationship",
+          "path",
+          "stream"
+        ]
+      },
+      "light": {
+        "means": "the outcome",
+        "words": [
+          "outcome",
+          "value",
+          "result"
+        ]
+      }
+    },
+    "states": {
+      "filled_vs_outlined": {
+        "treatment": "An inner glow or orb inside the outline means real, present, active. An empty outline means potential, empty, planned. Never a flat fill."
+      },
+      "complete_vs_broken": {
+        "treatment": "complete = finished; missing sides or gaps = broken",
+        "words": [
+          "brittle",
+          "incomplete",
+          "finish"
+        ]
+      },
+      "aligned_vs_misaligned": {
+        "treatment": "on the grid = ordered; off the grid = disordered",
+        "words": [
+          "fragmented",
+          "ordered"
+        ]
+      },
+      "wandering": {
+        "treatment": "One continuous solid squiggle, like a stock-price line with no trend: the process is disorganized, starts and stops, or cannot get moving. One flat line color, smooth turns, no axis, no fill.",
+        "words": [
+          "disorganized",
+          "slow",
+          "stalled",
+          "overdue"
+        ]
+      },
+      "lit_vs_unlit": {
+        "treatment": "Where light falls, elements show crisp and complete; outside the light they are absent or only faintly suggested.",
+        "words": [
+          "explicit",
+          "discover",
+          "visible",
+          "hidden context (unlit)"
+        ]
+      },
+      "pinched": {
+        "treatment": "Lines or light forced through one narrow point anywhere except the prism: a bottleneck, the problem state. Convergence into the prism is compose, the solution.",
+        "words": [
+          "bottleneck",
+          "constraint",
+          "pressure"
+        ],
+        "from_lexicon": "pinch"
+      },
+      "unfit": {
+        "treatment": "An outlined element, with an inner glow, that does not fit the slot or structure it sits in.",
+        "words": [
+          "rigid",
+          "COTS",
+          "legacy"
+        ],
+        "from_lexicon": "Legacy / before"
+      }
+    },
+    "treatments": {
+      "speed": {
+        "treatment": "The element stays crisp at the front; behind it, a copy of itself is motion-blurred along the direction of travel only (one-axis blur), in its own color, fading out within one or two element-widths. One or two translucent copies may sit inside the blur.",
+        "words": [
+          "speed",
+          "fast"
+        ],
+        "replaces": "the old echo symbol ('the same thing, only faster')",
+        "reads_as": "rate: how fast it is going now"
+      },
+      "movement": {
+        "treatment": "The element leaves one continuous diffused light trail along its full path, including curves and right-angle turns, in the hero ray's colors. Long: it covers the distance traveled.",
+        "words": [
+          "movement",
+          "state change",
+          "workflow"
+        ],
+        "reads_as": "journey: it changed state over time and distance"
+      },
+      "_stacking": "Speed and movement stack: a light trail along the path plus short copies directly behind the element reads as moving fast through the process."
+    },
+    "relations": {
+      "connected": {
+        "treatment": "Hexagons (units) joined many-to-many by lines, each linked to several others (not a chain, tree, or grid); light sits on the links, not the units.",
+        "words": [
+          "network",
+          "relationships",
+          "graph",
+          "ontology",
+          "connect"
+        ]
+      },
+      "traced": {
+        "treatment": "An element linked by one continuous line back to a softly glowing origin, through the stops where it was touched: circles where a human approved or decided, rounded squares where an agent acted.",
+        "words": [
+          "memory",
+          "chain of custody",
+          "evidence",
+          "history",
+          "source of truth",
+          "persist"
+        ]
+      },
+      "repeated_identity": {
+        "treatment": "The same outlined element, with an inner glow, appears in several different structures, keeping its color.",
+        "words": [
+          "reuse",
+          "product",
+          "certified pattern",
+          "marketplace"
+        ]
+      },
+      "growing": {
+        "treatment": "Repetition that starts slowly from one origin and accelerates, each new element joined to an existing one.",
+        "words": [
+          "compound",
+          "scale",
+          "learn"
+        ],
+        "status": "proposed"
+      },
+      "held_within": {
+        "treatment": "Elements sit inside a ray of light; the ray is the scope they operate within. The ray comes from the agent (rounded square) or along the fan angles by default, not straight down, so it reads as scope, not a spotlight.",
+        "words": [
+          "govern",
+          "governance",
+          "registry",
+          "certified",
+          "scope"
+        ]
+      },
+      "routed": {
+        "treatment": "Elbow lines (right-angle turns) joining parts that already exist; a hand-off route. Broken elbows are a manual hand-off.",
+        "words": [
+          "route",
+          "workflow",
+          "hand-off",
+          "manual hand-off (broken)"
+        ],
+        "from_lexicon": "route"
+      }
+    },
+    "transformations": {
+      "_rule": "Transformation is a color change or geometry becoming diffused light, only at the rounded-square prism; never a shape becoming another shape.",
+      "pass_through": {
+        "treatment": "Elements pass through the prism and keep their arrangement; their color changes or they open into light.",
+        "words": [
+          "translate",
+          "transform",
+          "model"
+        ]
+      },
+      "converge": {
+        "treatment": "Evenly spaced lines run into the prism and leave as one diffused ray.",
+        "words": [
+          "compose",
+          "system",
+          "integrate"
+        ]
+      },
+      "disperse": {
+        "treatment": "One pale ray enters the prism and leaves as several distinct rays on the fan angles, one of them the hero.",
+        "words": [
+          "disperse",
+          "decompose",
+          "report",
+          "predict",
+          "outputs"
+        ]
+      },
+      "bend": {
+        "treatment": "Lines meet the prism and leave at a new angle.",
+        "words": [
+          "translate (alternate)",
+          "redirect"
+        ]
+      },
+      "organize": {
+        "treatment": "Tangled lines converge at the prism and leave as evenly spaced, ordered lines, which then open into light.",
+        "words": [
+          "canonical",
+          "normalize",
+          "standardize",
+          "organize",
+          "manufacture"
+        ]
+      }
+    },
+    "pending": [],
+    "unmapped": {
+      "_note": "Proposed lexicon entries with no vocabulary treatment yet. Propose one (7 options, top 3, as treatments) only when a section needs it.",
+      "cycle": "lifecycle, states that recur",
+      "assign": "work given to distinct roles (agents and humans each holding a different part)"
+    },
+    "lexicon_map": {
+      "pinch": "states.pinched",
+      "meet": "transformations.converge",
+      "rise": "treatments.movement",
+      "route": "relations.routed",
+      "split": "transformations.disperse",
+      "bound": "relations.held_within",
+      "Legacy / before": "states.unfit",
+      "Messy input": "transformations.organize (its tangled input)",
+      "Agent": "elements.rounded_square",
+      "Human": "elements.circle",
+      "Governance": "relations.held_within",
+      "Data model": "relations.connected",
+      "cycle": "unmapped",
+      "assign": "unmapped"
+    }
+  },
+  "definition_of_done": "Asked 'what is the system?', Ampharos returns this file: pattern, object system, shapes and grammar, lines, color, light, composition, and the vocabulary mapping every keyword to an element, state, treatment, relation, or transformation.",
+  "scale": {
+    "status": "draft",
+    "hierarchy": "Type is the foreground and the largest element. Light is the field: it fills most of the frame. Players (hexagons, rounded squares, circles, lines) are small: legible, never the hard focal point.",
+    "players": {
+      "hexagon_height": "5 to 7 percent of the frame height on desktop; 4 to 6 percent of the frame width on mobile",
+      "rounded_square": "about 70 percent of the hexagon height",
+      "circle": "40 to 60 percent of the hexagon height",
+      "minimum": "large enough that 1 px lines read at 1x (about 24 px)"
+    },
+    "light": "The light field covers 50 to 75 percent of the frame and bleeds off at least one edge. Supporting rays help fill the frame around the hero ray.",
+    "open_ground": "Open ground protects the type zone. Elsewhere, the light fills the frame.",
+    "focal": "The focal event is the handoff where light begins, not the players."
+  }
+}
