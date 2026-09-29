@@ -1,0 +1,385 @@
+{
+  "id": "synthetic-alpha-omega.json",
+  "contractVersion": 1,
+  "terminologyAliases": {
+    "member": [
+      "member",
+      "members"
+    ],
+    "ledger": [
+      "ledger",
+      "ledgers"
+    ]
+  },
+  "roles": {
+    "source": "synthetic alpha member and ledger tables",
+    "target": "synthetic omega member and ledger reports"
+  },
+  "transformClassification": {
+    "kind": "deterministic",
+    "evidenceBasis": "Spark SQL over declared inputs with a specification-written oracle",
+    "expectedOutputTests": [
+      "member-report-oracle",
+      "ledger-summary-oracle"
+    ],
+    "negativeTests": [
+      "missing-required-input"
+    ]
+  },
+  "configurationChoices": {
+    "fieldNames": [],
+    "schemaShape": [],
+    "formats": [
+      "csv-semicolon-header",
+      "jsonl"
+    ],
+    "normalizationRules": [],
+    "mappingExpressions": [
+      "alpha-to-canon@1.0.0",
+      "canon-to-omega@2.0.0"
+    ],
+    "profileInputs": [],
+    "vocabularySelections": []
+  },
+  "productBoundary": {
+    "prohibitedAsConfiguration": [
+      "representation-family",
+      "identity-scheme",
+      "executable-code-path",
+      "dependency-type",
+      "storage-engine-mode",
+      "failure-semantics"
+    ],
+    "onDetection": "block-and-handoff"
+  },
+  "datasets": [
+    {
+      "name": "members",
+      "role": "source",
+      "required": true,
+      "schemaSource": "lexicon-language-definition"
+    },
+    {
+      "name": "ledgers",
+      "role": "source",
+      "required": true,
+      "schemaSource": "lexicon-language-definition"
+    },
+    {
+      "name": "rates",
+      "role": "source",
+      "required": true,
+      "schemaSource": "lexicon-language-definition"
+    },
+    {
+      "name": "member_report",
+      "role": "target",
+      "required": true,
+      "schemaSource": "lexicon-language-definition"
+    },
+    {
+      "name": "ledger_summary",
+      "role": "target",
+      "required": true,
+      "schemaSource": "lexicon-language-definition"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "member-report-unique",
+      "description": "One member_report row per member",
+      "phase": 11,
+      "failureCode": "DuplicateKey",
+      "check": {
+        "kind": "unique-key",
+        "dataset": "member_report",
+        "key": [
+          "member_id"
+        ]
+      }
+    },
+    {
+      "id": "member-report-tier-values",
+      "description": "tier is empty or one of the source enum values",
+      "phase": 11,
+      "failureCode": "ColumnConstraintViolation",
+      "check": {
+        "kind": "column-constraint",
+        "dataset": "member_report",
+        "column": "tier",
+        "pattern": "^(gold|silver|)$"
+      }
+    },
+    {
+      "id": "member-report-oracle",
+      "description": "member_report equals the specification oracle except permitted losses",
+      "phase": 11,
+      "failureCode": "RoundTripColumnMismatch",
+      "check": {
+        "kind": "matches-oracle",
+        "dataset": "member_report",
+        "oracle": "member-report-spec"
+      }
+    },
+    {
+      "id": "ledger-summary-oracle",
+      "description": "ledger_summary equals the specification oracle",
+      "phase": 11,
+      "failureCode": "RegressionMismatch",
+      "check": {
+        "kind": "matches-oracle",
+        "dataset": "ledger_summary",
+        "oracle": "ledger-summary-spec"
+      }
+    },
+    {
+      "id": "ledger-summary-rows",
+      "description": "Every keyed member has a ledger_summary row",
+      "phase": 11,
+      "failureCode": "RowCountMismatch",
+      "check": {
+        "kind": "row-count",
+        "dataset": "ledger_summary",
+        "equals": 3
+      }
+    }
+  ],
+  "repositories": [
+    {
+      "slug": "example-org/synthetic-registry",
+      "purpose": "synthetic registry fixture",
+      "role": "configuration-source",
+      "revisionPolicy": "commit-sha",
+      "candidateDiscovery": "requested-ref-then-matching-open-pr-then-default-branch",
+      "requiredPaths": [
+        "languages/alpha.json",
+        "languages/omega.json"
+      ]
+    }
+  ],
+  "discoveryProbes": [
+    {
+      "id": "resolve-active-mappings",
+      "kind": "configuration",
+      "description": "Resolve exact enabled directional mappings and digests",
+      "readOnly": true
+    }
+  ],
+  "directions": [
+    {
+      "id": "alpha-to-canon",
+      "fromLanguage": "alpha",
+      "toLanguage": "canon",
+      "required": true,
+      "mapping": {
+        "status": "registered",
+        "id": "alpha-to-canon",
+        "version": "1.0.0",
+        "repository": "example-org/synthetic-registry",
+        "sourcePaths": [
+          "mappings/alpha-to-canon/1.0.0/registration.json"
+        ],
+        "artifactPath": "mappings/alpha-to-canon/1.0.0/registration.json",
+        "expectedOutputDatasets": [
+          "vertex-member",
+          "vertex-ledger",
+          "edge-member-has-ledger"
+        ],
+        "outputDatasetMatch": "exact"
+      }
+    },
+    {
+      "id": "canon-to-omega",
+      "fromLanguage": "canon",
+      "toLanguage": "omega",
+      "required": true,
+      "mapping": {
+        "status": "registered",
+        "id": "canon-to-omega",
+        "version": "2.0.0",
+        "repository": "example-org/synthetic-registry",
+        "sourcePaths": [
+          "mappings/canon-to-omega/2.0.0/registration.json"
+        ],
+        "artifactPath": "mappings/canon-to-omega/2.0.0/registration.json",
+        "expectedOutputDatasets": [
+          "member_report",
+          "ledger_summary"
+        ],
+        "outputDatasetMatch": "exact"
+      },
+      "outputContracts": [
+        {
+          "dataset": "member_report",
+          "requiredInputs": [
+            "vertex-member"
+          ],
+          "format": {
+            "type": "csv",
+            "delimiter": ";",
+            "header": true
+          },
+          "columnSource": "language-definition",
+          "columns": [
+            "member_id",
+            "display_name",
+            "tier"
+          ],
+          "key": [
+            "member_id"
+          ],
+          "status": "verified"
+        },
+        {
+          "dataset": "ledger_summary",
+          "requiredInputs": [
+            "vertex-member",
+            "vertex-ledger",
+            "edge-member-has-ledger"
+          ],
+          "format": {
+            "type": "jsonl"
+          },
+          "columnSource": "language-definition-subset",
+          "columns": [
+            "member_id",
+            "ledger_count",
+            "total_units"
+          ],
+          "key": [
+            "member_id"
+          ],
+          "status": "verified"
+        }
+      ],
+      "derivationOverrides": [
+        {
+          "dataset": "ledger_summary",
+          "field": "columnSource",
+          "reason": "the projection does not fill last_activity"
+        },
+        {
+          "dataset": "ledger_summary",
+          "field": "columns",
+          "reason": "the projection does not fill last_activity"
+        }
+      ]
+    }
+  ],
+  "validationWorkflow": {
+    "steps": [
+      {
+        "sequence": 1,
+        "id": "forward",
+        "direction": "alpha-to-canon",
+        "inputSource": "profile-evidence"
+      },
+      {
+        "sequence": 2,
+        "id": "projection",
+        "direction": "canon-to-omega",
+        "inputSource": "previous-step-output"
+      }
+    ],
+    "persistPolicy": "forbidden"
+  },
+  "validationSources": [
+    {
+      "id": "synthetic-inputs",
+      "kind": "sanitized-evidence-package",
+      "location": "local://synthetic-registry/inputs/",
+      "manifestSha256": "515cbce0c9b8e889ee5d53bb1415c8430f14efdc17fc91b13b4374220bda8643",
+      "appliesTo": [
+        "alpha-to-canon"
+      ],
+      "required": true
+    }
+  ],
+  "oracles": [
+    {
+      "id": "member-report-spec",
+      "dataset": "member_report",
+      "location": "local://synthetic-registry/expected/member_report",
+      "comparison": "keyed",
+      "key": [
+        "member_id"
+      ],
+      "allowedLosses": [
+        "tier-outside-enum"
+      ],
+      "description": "member_report written from the specification: every keyed member with its source tier"
+    },
+    {
+      "id": "ledger-summary-spec",
+      "dataset": "ledger_summary",
+      "location": "local://synthetic-registry/expected/ledger_summary",
+      "comparison": "sorted-rows",
+      "description": "ledger_summary written from the specification: ledger count and rate-weighted units per member"
+    }
+  ],
+  "allowedLosses": [
+    {
+      "id": "tier-outside-enum",
+      "dataset": "member_report",
+      "column": "tier",
+      "kind": "emptied",
+      "reason": "the forward mapping keeps only tiers the alpha definition enumerates"
+    }
+  ],
+  "evidencePolicy": {
+    "sensitivity": "restricted",
+    "sanitization": "aggregates-and-digests-only",
+    "allowed": [
+      "counts",
+      "schemas",
+      "sha256",
+      "statuses",
+      "durations",
+      "costs",
+      "credential-free-locations"
+    ],
+    "prohibited": [
+      "raw-pii",
+      "business-identifiers",
+      "secret-values",
+      "credentials",
+      "signed-urls",
+      "source-rows"
+    ]
+  },
+  "graph": {
+    "required": true,
+    "identityRules": [
+      "~id is unique per dataset"
+    ],
+    "endpointRules": [
+      "Dangling endpoint count must equal zero"
+    ]
+  },
+  "adapters": [],
+  "consumers": [
+    {
+      "name": "synthetic-report-reader",
+      "owner": "kecleon",
+      "contract": "omega member_report and ledger_summary"
+    }
+  ],
+  "parityPolicy": {
+    "fieldSource": "language-definition-and-registration",
+    "declaredFields": "minimum",
+    "undefinedDatasets": "block"
+  },
+  "scaleTiers": [
+    {
+      "id": "synthetic",
+      "maximumRows": 100,
+      "maximumCostUsd": 0,
+      "evidenceRequired": true
+    }
+  ],
+  "approvals": {
+    "devWrites": "explicit",
+    "prodWrites": "forbidden",
+    "perOperation": true
+  }
+}

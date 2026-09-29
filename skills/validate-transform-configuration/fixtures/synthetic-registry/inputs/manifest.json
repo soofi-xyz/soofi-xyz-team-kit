@@ -1,0 +1,22 @@
+{
+ "objects": [
+  {
+   "key": "ledgers/part-00000.csv",
+   "bytes": 65,
+   "sha256": "93a173c6ce3602d2cbda326fb799769675d3999dd7ec57cb8eefcdd267a06f21",
+   "dataset": "ledgers"
+  },
+  {
+   "key": "members/part-00000.jsonl",
+   "bytes": 241,
+   "sha256": "fbd69e0a95d406143378ed461d4f2d75c61ddcdff5d377bd9c1a85024f578d63",
+   "dataset": "members"
+  },
+  {
+   "key": "rates/part-00000.parquet",
+   "bytes": 893,
+   "sha256": "b4fa225ded6d1d40d3563029f2e59787235e0d6da417acbdcc8b84227f4d3714",
+   "dataset": "rates"
+  }
+ ]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "forbidden-concepts.json",
+  "contractVersion": 1,
+  "evidence": {
+    "lexiconRepository": "example-org/synthetic-registry",
+    "mainCommitSha": "0000000000000000000000000000000000000001",
+    "observedAt": "2099-01-01",
+    "derivation": "Synthetic fixture: one removed concept, one scoped property and one retired mapping version."
+  },
+  "concepts": [{ "label": "member_legacy_link", "kind": "edge", "reason": "Synthetic removed concept" }],
+  "properties": [{ "concept": "member", "property": "legacy_code", "sqlScan": true, "reason": "Synthetic reverted property" }],
+  "retiredMappings": [{ "mapping": "alpha-to-omega@0.9.0", "reason": "Synthetic retired direct mapping" }]
+}

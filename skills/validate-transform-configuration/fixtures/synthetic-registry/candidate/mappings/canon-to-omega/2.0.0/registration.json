@@ -1,0 +1,122 @@
+{
+  "id": "canon-to-omega",
+  "version": "2.0.0",
+  "status": "ENABLED",
+  "engine": "spark-sql",
+  "from": "canon",
+  "to": "omega",
+  "sqlOptions": {
+    "ansiEnabled": true
+  },
+  "inputs": [
+    {
+      "table": "vertex-member",
+      "view": "source_vertex_member",
+      "format": "parquet",
+      "options": {},
+      "graph": {
+        "kind": "vertex",
+        "label": "member",
+        "idColumn": "~id",
+        "properties": [
+          {
+            "column": "display_name:String",
+            "name": "display_name",
+            "type": "String"
+          },
+          {
+            "column": "tier:String",
+            "name": "tier",
+            "type": "String"
+          },
+          {
+            "column": "nickname:String",
+            "name": "nickname",
+            "type": "String",
+            "optional": true
+          }
+        ]
+      }
+    },
+    {
+      "table": "vertex-ledger",
+      "view": "source_vertex_ledger",
+      "format": "parquet",
+      "options": {},
+      "graph": {
+        "kind": "vertex",
+        "label": "ledger",
+        "idColumn": "~id",
+        "properties": [
+          {
+            "column": "units:Long",
+            "name": "units",
+            "type": "Long"
+          }
+        ]
+      }
+    },
+    {
+      "table": "edge-member-has-ledger",
+      "view": "source_edge_member_has_ledger",
+      "format": "parquet",
+      "options": {},
+      "graph": {
+        "kind": "edge",
+        "label": "member_has_ledger",
+        "idColumn": "~id",
+        "from": {
+          "column": "~from",
+          "dataset": "vertex-member"
+        },
+        "to": {
+          "column": "~to",
+          "dataset": "vertex-ledger"
+        },
+        "properties": []
+      }
+    }
+  ],
+  "output": {
+    "shape": "tabular",
+    "format": "csv",
+    "options": {
+      "delimiter": ";",
+      "header": true,
+      "quote": "",
+      "escape": "",
+      "nullValue": ""
+    }
+  },
+  "outputs": [
+    {
+      "dataset": "member_report",
+      "requiredInputs": [
+        "vertex-member"
+      ],
+      "queries": [
+        {
+          "path": "queries/member_report.sql",
+          "sha256": "df07737fa683bb8a2237f99f52f08c9b3fc888ed469308d2e22769e2f78a8215"
+        }
+      ],
+      "dependsOn": []
+    },
+    {
+      "dataset": "ledger_summary",
+      "requiredInputs": [
+        "vertex-member",
+        "vertex-ledger",
+        "edge-member-has-ledger"
+      ],
+      "format": "jsonl",
+      "queries": [
+        {
+          "path": "queries/ledger_summary.sql",
+          "sha256": "bcb13407feccbe545fb17c3e141f54b068ceb16eb93bd25f587661082f3960c8"
+        }
+      ],
+      "dependsOn": []
+    }
+  ]
+}
