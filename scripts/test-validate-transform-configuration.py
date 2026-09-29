@@ -1031,11 +1031,11 @@ def check_v4_profile(profiles: list[dict]) -> None:
     constraints = {c["column"]: c for c in form["columnConstraints"]}
     if constraints.get("form_config_id", {}).get("const") != "1281" or set(
         constraints.get("field_identifier", {}).get("enum", [])
-    ) != {"DSA_NAME", "REPORTED_DATE", "DSA_REPRESENTATION", "VERIFIED_DATE"}:
-        fail("form_1281 must emit the Claydol form 1281 fields")
+    ) != {"DSA_NAME", "DSA_REPRESENTATION"}:
+        fail("form_1281 must emit only DSA_NAME and DSA_REPRESENTATION")
     absent = invariants_by_id(v4).get("form-1281-expected-absent-fields", {}).get("description", "")
-    if "DSA_CLIENT_ID_" not in absent or "DELETE_DATE" not in absent or "'false'" not in absent:
-        fail("form_1281 must declare DSA_CLIENT_ID_, DELETE_DATE and DSA_REPRESENTATION false expected-absent")
+    if any(f not in absent for f in ("REPORTED_DATE", "VERIFIED_DATE", "DELETE_DATE", "DSA_CLIENT_ID_", "'false'")):
+        fail("form_1281 must declare the date fields, DSA_CLIENT_ID_ and DSA_REPRESENTATION false expected-absent")
 
     interprose = {
         "payment_plan": {
@@ -1093,12 +1093,8 @@ def check_v4_profile(profiles: list[dict]) -> None:
         or {k["dataset"] for k in strategy["rowKeys"]} != set(V4_OUTPUTS)
     ):
         fail("v4 round-trip strategy must column-diff every output by row key")
-    model_policy = {k: v for k, v in v4["lexiconModelPolicy"].items() if k != "approvedAdditions"}
-    if model_policy != {"candidateLexiconDiff": "forbidden", "path": "src/data/lexicon.json", "modelAdditions": "forbidden"}:
-        fail("v4 must forbid any lexicon.json diff against main beyond approved additions")
-    approved = {(a["concept"], a["property"]) for a in v4["lexiconModelPolicy"].get("approvedAdditions", [])}
-    if approved != {("company_represents_debt", p) for p in ("reported_at", "verified_at", "deleted_at", "dsa_representation")}:
-        fail(f"v4 approved Lexicon additions must be the four form 1281 edge properties: {sorted(approved)}")
+    if v4["lexiconModelPolicy"] != {"candidateLexiconDiff": "forbidden", "path": "src/data/lexicon.json", "modelAdditions": "forbidden"}:
+        fail("v4 must forbid any lexicon.json diff against main and declare no approved additions")
 
     invariants = invariants_by_id(v4)
     election = invariants.get("dsa-election-matches-is-dsa", {}).get("description", "")
@@ -1163,7 +1159,7 @@ def check_v4_profile(profiles: list[dict]) -> None:
             or "tbd" in package
         ):
             fail(f"{package_id}: a ready DEV package needs its staged prefix, manifest digest, and version")
-    if not any("4152746b173520fdde8f36a93e09eb4fb5ee89eefb678fe916a53a7db903fc38" in e and "VersionId" in e
+    if not any("90ffdb986c0ee0393bed18b6cc6656912f4c4fdee5f4e3ab15121453aa089ced" in e and "VersionId" in e
                for e in v4["configurationChoices"]["mappingExpressions"]):
         fail("v4 must pin the mapping by mapping.json digest and S3 VersionId")
     closure = invariants_by_id(v4)["attempted-slot-schedule-closure"]["description"]
@@ -1970,16 +1966,24 @@ def test_intent_resolution() -> None:
         def reword_debt(model: dict) -> None:
             next(v for v in model["vertices"] if v["type"] == "debt")["comment"] = "changed outside the approved additions"
 
+        approved_profiles = Path(tmp) / "approved-profiles"
+        shutil.copytree(PROFILES, approved_profiles)
+        approved_v4 = load_json(approved_profiles / "lexicon-interprose-v4.json")
+        approved_v4["lexiconModelPolicy"]["approvedAdditions"] = [
+            {"concept": "company_represents_debt", "property": p, "approval": "Regression fixture: approved optional edge property"} for p in approved_props
+        ]
+        write_json(approved_profiles / "lexicon-interprose-v4.json", approved_v4)
+        approved_args = ("--profiles", str(approved_profiles))
         approved_candidate("candidate-approved", [])
         approved_candidate("candidate-approved-plus", ["unapproved_flag"])
         approved_candidate("candidate-approved-reworded", [], reword_debt)
-        approved_ok = run("test lexicon to interprose form 1281", lexicon="candidate-approved")
+        approved_ok = run("test lexicon to interprose form 1281", *approved_args, lexicon="candidate-approved")
         if "LexiconModelApprovedAdditions" not in codes(approved_ok) or "LexiconModelDiffersFromMain" in codes(approved_ok):
             fail(f"approved Lexicon additions were not accepted: {codes(approved_ok)}")
         if approved_ok["lexiconModel"]["approvedAdditions"]["approvedMissing"]:
             fail("approved additions present in the candidate were reported missing")
         for name in ("candidate-approved-plus", "candidate-approved-reworded"):
-            if "LexiconModelDiffersFromMain" not in codes(run("test lexicon to interprose form 1281", lexicon=name)):
+            if "LexiconModelDiffersFromMain" not in codes(run("test lexicon to interprose form 1281", *approved_args, lexicon=name)):
                 fail(f"{name}: a change beyond the approved additions was accepted")
         unchecked = run("test lexicon to interprose form 1281", "--main-lexicon-root", "")
         if "LexiconModelUnchecked" not in codes(unchecked):

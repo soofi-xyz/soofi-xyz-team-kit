@@ -60,13 +60,13 @@ Generate Parquet vertex and edge tables locally from the language definitions. U
 
 ## Regression expectations
 
-- Any `lexicon.json` diff against `main` beyond `lexiconModelPolicy.approvedAdditions`: phase 5 `FAIL` (`LexiconModelDiffersFromMain`).
+- Any `lexicon.json`, Stage column manifest or forward SQL diff against `main` for #811: phase 5 `FAIL` (`LexiconModelDiffersFromMain`). The four approved edge properties belong to the follow-up branch `feat/dsa-form-1281-facts`.
 - A forbidden label or property in the model, a graph input, or the SQL: phase 5/6 `FAIL`.
 - Registered `requiredInputs` or CSV options differ from `outputContracts`: phase 6 `FAIL`.
 - Election by `effective_at` alone, or by physical company vertex: phase 11 `FAIL` (`DsaElectionMismatch`).
 - `payment_total` written as `1998` or `19.99`: phase 11 `FAIL` (`CentsConversionMismatch`).
 - A payment-plan column outside the declared list is populated: phase 11 `FAIL` (`ProfileParityDrift`).
-- Any `DSA_CLIENT_ID_` or `DELETE_DATE` row, `DSA_REPRESENTATION` other than `true`, or `DSA_REPRESENTATION` without `REPORTED_DATE`, in `form_1281`: phase 11 `FAIL` (`Form1281ShapeMismatch`).
+- Any `form_1281` row other than `DSA_NAME` and `DSA_REPRESENTATION` `true`, or a represented debt without both rows: phase 11 `FAIL` (`Form1281ShapeMismatch`).
 - v4 `form_1281` or a full run fails on a graph export that lacks the optional `company_represents_debt` columns: phase 9 `FAIL` (`OptionalPropertyNotMaterialized`). Raw epoch-millis payment inputs failing `cannot cast bigint to date` is the documented ISO input contract (`iso-datetime-inputs-only`), not this failure.
 - A forward SQL reading a Stage column that the target environment's Stage outputs do not carry: phase 8 `FAIL` (`DeployOrderHazard`).
 - A non-empty `payment_method` that differs from the source: phase 11 `FAIL` (`RoundTripColumnMismatch`).
@@ -99,4 +99,11 @@ Generate Parquet vertex and edge tables locally from the language definitions. U
 - Deploy order: the forward SQL emits `dsa_representation` as NULL, and the Stage column manifest equals `main`. It runs on current DEV Stage columns locally (Spark 3.3) and in DEV (`cc-limited-run7`: 39 DSA edges, 0 with `dsa_representation`).
 - PROD-reconstruct graph: 709 rows, exact for 340 of 340 debts (DSA_NAME 266, REPORTED_DATE 114, DSA_REPRESENTATION 114, VERIFIED_DATE 215). With `dsa_representation` as the forward emits it: 481 rows, DSA_NAME 266 and VERIFIED_DATE 215 only (documented limitation).
 - Legacy exports without the new columns (v2, PROD sample iso and raw): `form_1281` passes and equals the typed-null diagnostic. Payment outputs are byte-identical to the previous round. Raw payment runs still fail on epoch-millis dates (ISO input contract).
+
+## Split #811 (`4b8d63b1`, run `20260929T125429Z`)
+
+- #811 no longer changes the model: `lexicon.json`, the Stage column manifest and the forward SQL equal `main` (`2efa32a1`). The four approved edge properties, `REPORTED_DATE`/`VERIFIED_DATE`, and Transform typed-null reading (closed #44) are deferred to `feat/dsa-form-1281-facts`; the earlier sections above record their evidence.
+- Pins (local build equals DEV): v4 `90ffdb98…` (VersionId `K3CEoN.fFabhKLiaJO51RYnBw5_gdZSK`, `form_1281.sql` `5d8c963a…`); forward `e0d7d405…` (VersionId `ZURtOqzlBoPwma9nD4S7aF1atAKI2wZA`); DEV Glue script `09a1ad85…` (Transform main).
+- `form_1281` is `DSA_NAME` plus `DSA_REPRESENTATION` `true`, byte-identical to the `0e3146aa` round. PROD graph sample: `DSA_NAME` equals `dsa_company_name` for 103 of 103, and no row for 166 of 166 `is_dsa` false. Reconstruct: 266 of 266 against PROD Stage.
+- Payment outputs are byte-identical to the previous round, keeping the empty `deactivation_date` on the 28 completed PROD-sample plans.
 
