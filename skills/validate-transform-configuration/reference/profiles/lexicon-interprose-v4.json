@@ -45,14 +45,14 @@
   },
   "configurationChoices": {
     "fieldNames": [
-      "form_1281 columns debtID, form_config_id, field_identifier, value with field_identifier DSA_NAME, REPORTED_DATE, DSA_REPRESENTATION, VERIFIED_DATE or DELETE_DATE; payment_plan and payment_plan_schedule columns from interprose.json in declaration order"
+      "form_1281 columns debtID, form_config_id, field_identifier, value with field_identifier DSA_NAME, REPORTED_DATE, DSA_REPRESENTATION or VERIFIED_DATE; payment_plan and payment_plan_schedule columns from interprose.json in declaration order"
     ],
     "schemaShape": [
       "one form_1281 row per debt and emitted field_identifier, following Claydol form 1281 writes; one payment_plan row per payment plan; one payment_plan_schedule row per installment slot"
     ],
     "formats": ["Parquet graph exports in; pipe-delimited CSV with a header row out"],
     "normalizationRules": ["dollars to integer cents, ISO-8601 UTC timestamps, DSA election per company_identifier by created_at then effective_at"],
-    "mappingExpressions": ["lexicon-to-interprose@4.0.0 pinned by mapping.json sha256 1050611b9bb521e00581e2aa6fe71d7625e118e1438fe39e7ec4a1235a77a7d8, S3 VersionId Ko5886TiHSl9ax7iIm6l_5xr0cAfffUd; forward interprose-to-lexicon@1.0.0 mapping.json sha256 b378371147d90f88f2b64d6f4b002bf27417da4e315b7afa88f3ea7ac89a4805, S3 VersionId Gesii87aUnenVBfQKTYFXuiqCwdH95cE"],
+    "mappingExpressions": ["lexicon-to-interprose@4.0.0 pinned by mapping.json sha256 4152746b173520fdde8f36a93e09eb4fb5ee89eefb678fe916a53a7db903fc38, S3 VersionId JSpktgsE._kDpzAwp_DI0QK1tK2Z_TEr; forward interprose-to-lexicon@1.0.0 mapping.json sha256 a4635c70d3b40ac3701064b94c47df0f61c13bb4b3aac6a1d2f5362a4e3d660a, S3 VersionId kj5tHm7RGE0SYQhVMYBwKPJNsm68xYpQ; Lexicon PR #811 15905c1a with Transform PR #44 0684acbc (Glue script sha256 7e07c8c14fc9ff9b…) for optional graph properties"],
     "profileInputs": ["DEV package inputs/lexicon-interprose-v4/20260928-dev-stage-sample_v2/ with stage/ingest-a, stage/ingest-b and lexicon/ manifests"],
     "vocabularySelections": ["existing Lexicon company, debt, payment_plan, payment_plan_installment, and user_account concepts; the only model additions are the four approved optional company_represents_debt properties"]
   },
@@ -125,7 +125,7 @@
     },
     {
       "id": "form-1281-row-shape",
-      "description": "Every form_1281 row has form_config_id '1281' and field_identifier DSA_NAME, REPORTED_DATE, DSA_REPRESENTATION, VERIFIED_DATE or DELETE_DATE, with at most one row per (debtID, field_identifier); DSA_REPRESENTATION is only ever 'true'",
+      "description": "Every form_1281 row has form_config_id '1281' and field_identifier DSA_NAME, REPORTED_DATE, DSA_REPRESENTATION or VERIFIED_DATE, with at most one row per (debtID, field_identifier); DSA_REPRESENTATION is only ever 'true' and appears exactly when REPORTED_DATE appears for the same debt",
       "phase": 11,
       "failureCode": "Form1281ShapeMismatch"
     },
@@ -167,7 +167,7 @@
     },
     {
       "id": "form-1281-expected-absent-fields",
-      "description": "No form_1281 row carries field_identifier DSA_CLIENT_ID_ or DSA_REPRESENTATION 'false'; Claydol owns the client id and never writes a false representation",
+      "description": "No form_1281 row carries field_identifier DSA_CLIENT_ID_ or DELETE_DATE, or DSA_REPRESENTATION 'false'; Claydol owns the client id and never writes a false representation, and the team does not require DELETE_DATE",
       "phase": 11,
       "failureCode": "Form1281ShapeMismatch"
     },
@@ -239,7 +239,7 @@
     },
     {
       "id": "form-1281-claydol-field-rules",
-      "description": "form_1281 reproduces Claydol form 1281 writes from the elected identity head: DSA_NAME for every represented debt; REPORTED_DATE (reported_at) and DSA_REPRESENTATION 'true' only when that head's dsa_representation is true; VERIFIED_DATE when that head's verified_at is present; for a debt with no ACTIVE head, DELETE_DATE from the newest head's deleted_at. Differences from Claydol inventory writes that set REPORTED_DATE without a representation are recorded, not silently accepted",
+      "description": "form_1281 reproduces Claydol form 1281 writes from the elected identity head: DSA_NAME for every represented debt; REPORTED_DATE (reported_at) and DSA_REPRESENTATION 'true' together, only when that head's dsa_representation is true and reported_at is present; VERIFIED_DATE when that head's verified_at is present; nothing for a debt with no ACTIVE head (DELETE_DATE is not mapped; deleted_at stays on the edge). Claydol inventory writes that set REPORTED_DATE without a representation are an open policy decision, recorded rather than silently accepted",
       "phase": 11,
       "failureCode": "Form1281ShapeMismatch"
     },
@@ -257,7 +257,7 @@
     },
     {
       "id": "optional-graph-properties-absent",
-      "description": "v4 runs on graph exports whose company_represents_debt dataset lacks the optional reported_at, verified_at, deleted_at and dsa_representation columns (every edge ingested before the change); absent optional properties behave as typed nulls and the election and DSA_NAME output are unchanged",
+      "description": "v4 runs on graph exports whose company_represents_debt dataset lacks the optional reported_at, verified_at and dsa_representation columns (every edge ingested before the change): v4 declares them optional and Transform (PR #44 and later) reads absent optional graph property columns as typed nulls, and the election and DSA_NAME output are unchanged",
       "phase": 9,
       "failureCode": "OptionalPropertyNotMaterialized"
     },
@@ -407,14 +407,14 @@
           "format": { "type": "csv", "delimiter": "|", "header": true },
           "columnSource": "consumer-contract",
           "columns": ["debtID", "form_config_id", "field_identifier", "value"],
-          "columnConstraints": [{ "column": "form_config_id", "const": "1281" }, { "column": "field_identifier", "enum": ["DSA_NAME", "REPORTED_DATE", "DSA_REPRESENTATION", "VERIFIED_DATE", "DELETE_DATE"] }],
+          "columnConstraints": [{ "column": "form_config_id", "const": "1281" }, { "column": "field_identifier", "enum": ["DSA_NAME", "REPORTED_DATE", "DSA_REPRESENTATION", "VERIFIED_DATE"] }],
           "status": "verified",
           "tbd": [
             "risk finding, owner Lexicon (debt.dsa_company_name) with kecleon: with several ACTIVE identity heads DSA_NAME reproduces the java.util.HashMap iteration order of the Gremlin group() step, not a business rule; recheck against PROD dsa_company_name after any Neptune or TinkerPop change",
             "REPORTED_DATE and DSA_REPRESENTATION are validated against dsa_representation reconstructed from Claydol records until PROD Stage extracts debt_settlement_agency.dsa_representation",
-            "blocking at 1050611b, owner kecleon (Transform) with the graph-export owner: the Transform Glue runtime rejects a graph dataset that lacks any declared property column, so v4 form_1281 and full runs fail on the v2 and PROD graph samples and on every current PROD graph export (graph_call_outputs.company_represents_debt has none of the four columns); optional-graph-properties-absent needs typed-null materialization of absent optional graph properties or exports that carry the columns",
-            "risk, owner Lexicon with Claydol: a represented debt whose head has dsa_representation true but no reported_at gets DSA_REPRESENTATION without REPORTED_DATE, a body Claydol never sends because it requires REPORTED_DATE (2 of 340 debts in the PROD-reconstruct sample)",
-            "observation, owner Claydol: in the PROD-reconstruct sample, 22 of 138 Claydol DSA representation writes targeted debts whose Interprose DSA row had been deleted 63 to 982 days before the write; v4 follows Stage and emits DELETE_DATE for them"
+            "limitation, owner Stage with a follow-up Lexicon PR: the forward mapping emits dsa_representation empty until Stage extracts debt_settlement_agency.dsa_representation (deploy-order fix), so in normal pipelines form_1281 carries only DSA_NAME and VERIFIED_DATE; REPORTED_DATE and DSA_REPRESENTATION are proven only on the PROD-reconstruct graph",
+            "open decision, owner Lexicon with Claydol: Claydol inventory writes set REPORTED_DATE without a representation (29 represented debts in the PROD-reconstruct sample); v4 emits REPORTED_DATE only with DSA_REPRESENTATION",
+            "observation, owner Claydol: in the PROD-reconstruct sample, 22 of 138 Claydol DSA representation writes targeted debts whose Interprose DSA row had been deleted 63 to 982 days before the write; v4 emits no form_1281 row for them because DELETE_DATE is not mapped"
           ]
         },
         {

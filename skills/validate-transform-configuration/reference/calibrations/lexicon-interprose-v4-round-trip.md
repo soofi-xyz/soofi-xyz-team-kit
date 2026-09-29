@@ -66,8 +66,8 @@ Generate Parquet vertex and edge tables locally from the language definitions. U
 - Election by `effective_at` alone, or by physical company vertex: phase 11 `FAIL` (`DsaElectionMismatch`).
 - `payment_total` written as `1998` or `19.99`: phase 11 `FAIL` (`CentsConversionMismatch`).
 - A payment-plan column outside the declared list is populated: phase 11 `FAIL` (`ProfileParityDrift`).
-- Any `DSA_CLIENT_ID_` row, or `DSA_REPRESENTATION` other than `true`, in `form_1281`: phase 11 `FAIL` (`Form1281ShapeMismatch`).
-- v4 `form_1281` or a full run fails on a graph export that lacks the four optional `company_represents_debt` columns: phase 9 `FAIL` (`OptionalPropertyNotMaterialized`).
+- Any `DSA_CLIENT_ID_` or `DELETE_DATE` row, `DSA_REPRESENTATION` other than `true`, or `DSA_REPRESENTATION` without `REPORTED_DATE`, in `form_1281`: phase 11 `FAIL` (`Form1281ShapeMismatch`).
+- v4 `form_1281` or a full run fails on a graph export that lacks the optional `company_represents_debt` columns: phase 9 `FAIL` (`OptionalPropertyNotMaterialized`). Raw epoch-millis payment inputs failing `cannot cast bigint to date` is the documented ISO input contract (`iso-datetime-inputs-only`), not this failure.
 - A forward SQL reading a Stage column that the target environment's Stage outputs do not carry: phase 8 `FAIL` (`DeployOrderHazard`).
 - A non-empty `payment_method` that differs from the source: phase 11 `FAIL` (`RoundTripColumnMismatch`).
 - A request for `payment_plan_schedule` without `edge-payment-plan-installment-status-changed` is not rejected before Glue starts: phase 9 `FAIL`.
@@ -91,4 +91,12 @@ Generate Parquet vertex and edge tables locally from the language definitions. U
 - PROD-reconstruct package: the forward rerun matches the implementer's output except for per-run random edge `~id`s; the `lexicon/` bridge carries the same edge and company facts. v4 `form_1281` (785 rows) is byte-identical to the implementer's and exact against PROD Stage for 340 of 340 debts. This requires Claydol records cut off at the package extraction time (`18:43:31Z`); one later Claydol write adds one debt.
 - v2 and PROD-sample graph exports: v4 `form_1281` and full runs fail (`lacks property column 'reported_at:Date'`). Payment-only and schedule-only runs pass. `payment_plan_schedule` is unchanged. `payment_plan` changes only `deactivation_date`: 28 PROD-sample plans, all now empty and all with a COMPLETED event. Rerunning with the four columns added as typed nulls (diagnostic only) leaves `DSA_NAME` and the represented-debt set unchanged.
 - Deploy order in DEV: since `18:50Z` the published `interprose/edges/company_represents_debt.sql` (`72e5bb92…`) reads `dsa.dsa_representation`, but no DEV Stage output carries the column. Spark 3.3 fails with `Column 'dsa.dsa_representation' does not exist`. No live DEV forward run failed yet, because none has run on that SQL. DEV mapping objects flip between PR deploys (latest PR wins).
+
+## Lexicon `15905c1a` with Transform `0684acbc` (run `20260929T112816Z`)
+
+- Pins, reproduced locally and served in DEV: v4 `4152746b…` (VersionId `JSpktgsE._kDpzAwp_DI0QK1tK2Z_TEr`, `form_1281.sql` `b3886776…`); forward `a4635c70…` (VersionId `kj5tHm7RGE0SYQhVMYBwKPJNsm68xYpQ`); DEV Glue script `7e07c8c1…` equals Transform #44.
+- `lexicon.json` equals `main` plus the four approved optional properties. `DELETE_DATE` is removed from v4 only; `deleted_at` stays on the edge.
+- Deploy order: the forward SQL emits `dsa_representation` as NULL, and the Stage column manifest equals `main`. It runs on current DEV Stage columns locally (Spark 3.3) and in DEV (`cc-limited-run7`: 39 DSA edges, 0 with `dsa_representation`).
+- PROD-reconstruct graph: 709 rows, exact for 340 of 340 debts (DSA_NAME 266, REPORTED_DATE 114, DSA_REPRESENTATION 114, VERIFIED_DATE 215). With `dsa_representation` as the forward emits it: 481 rows, DSA_NAME 266 and VERIFIED_DATE 215 only (documented limitation).
+- Legacy exports without the new columns (v2, PROD sample iso and raw): `form_1281` passes and equals the typed-null diagnostic. Payment outputs are byte-identical to the previous round. Raw payment runs still fail on epoch-millis dates (ISO input contract).
 
