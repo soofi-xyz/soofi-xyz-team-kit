@@ -11,18 +11,20 @@ Treat that repo's `requirements/openapi.yaml`, `README.md`, and `AGENTS.md` as t
 contract. Endpoint shapes and error tags are summarized in
 [api-contract.md](reference/api-contract.md).
 
-Do not use this skill to redesign multi-tenant Organizations, StackSets, or
-Account Manager — that is `regigigas` + `build-saas-marketplace`. This product's
-v1 surface is **catalog register + publish + review + rollback**. It does not
-deploy into subscriber accounts. Do not invent subscriptions, prices, or site
-publication APIs — `AGENTS.md` forbids them.
+This product's v1 surface is **catalog register + publish + review + rollback**.
+It does not deploy into subscriber accounts. Do not invent subscriptions, prices,
+or site publication APIs — the product `AGENTS.md` forbids them. Do not redesign
+Organizations tenancy, StackSets, or Account Manager from this skill.
 
 ## Prerequisites
 
-1. Resolve the base URL. Default DEV:
-   `https://zj4wz2hu85.execute-api.us-east-2.amazonaws.com/dev/marketplace`
-   Override with `MARKETPLACE_BASE_URL` only when the user names another host.
+1. Resolve the base URL. Prefer `MARKETPLACE_BASE_URL` when set. Otherwise read the
+   `ApiUrl` output of the deployed Marketplace stack (DEV example:
+   `https://706p38drc8.execute-api.us-east-2.amazonaws.com/dev/marketplace`).
    The path must end with `/marketplace` (no trailing slash when concatenating).
+   Repo scripts default to an older host and refuse any path that is not
+   `/dev/marketplace` — pass `MARKETPLACE_BASE_URL` explicitly when the stack
+   output differs.
 2. Require `MARKETPLACE_API_KEY` (shared usage-plan `x-api-key`). Marketplace
    does not mint keys. Never echo or commit the value.
 3. Prefer the repo scripts for DEV when they fit:
@@ -47,11 +49,10 @@ Hand off and stop when:
 
 | Finding | Owner |
 | --- | --- |
-| Marketplace Lambda/CDK/OpenAPI defect | `regigigas` with evidence; Marketplace repo PR |
-| Integrate-vs-provision on the Marketplace deployment | `conkeldurr` |
-| Need customers, environments, or API key minting | Tenant Account Manager product — not this API |
+| Marketplace Lambda/CDK/OpenAPI defect | Stop; report evidence for a Marketplace repo change |
+| Need customers, environments, or API key minting | Not this API |
 | Need to install a bundle into an account | Deploy / Puller — not Marketplace |
-| Need Organizations / StackSets control-plane design | `regigigas` + `build-saas-marketplace` |
+| Need Organizations / StackSets control-plane design | Out of scope for this skill |
 | Need subscriptions / prices / site publication | Out of scope for this product; do not invent routes |
 
 ## 1. Review settings (once per stage before non-skip publish)
