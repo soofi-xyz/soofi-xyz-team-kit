@@ -8,14 +8,14 @@ Dimension order:
 2. recipient identity — 10
 3. scheduling/capacity — 15
 4. rendering/handoff — 10
-5. SES backlog/send — 15
+5. provider backlog/send — 15
 6. feedback/lifecycle — 15
 7. reliability/replay — 10
 8. observability/security/evidence — 10
 
 ## A. Full certified workflow
 
-- Evidence: pinned refs, linked top-level `STANDARD` Step Functions proof, commit-linked DEV flow owned by that exact state machine, every boundary reconciled, all five gates pass, required scale runs pass, production approval gate exists.
+- Evidence: pinned refs, complete CloudFormation/ASL/code inventory coverage on both channels, every required control row is `REQUIRED_EQUIVALENT` or `CHANNEL_ADAPTED`, linked top-level `STANDARD` Step Functions proof, commit-linked DEV flow owned by that exact state machine, every boundary reconciled, all five gates pass, required scale and failure runs pass, production approval gate exists.
 - Bands: `100, 100, 100, 100, 100, 100, 100, 100`
 - Points: `15 + 10 + 15 + 10 + 15 + 15 + 10 + 10 = 100`
 - Verdict: `CERTIFIED`
@@ -23,6 +23,7 @@ Dimension order:
 ## B. Solver implemented; delivery lifecycle missing
 
 - Evidence: Filter contract, deterministic reduction, scheduling, overflow, and small solver run exist. Rendering, backlog, SES submission, feedback, and persistence do not.
+- Control map: `RENDER-01`, `SEND-01`, `SEND-02`, `FEEDBACK-01`, `FEEDBACK-02`, `PERSIST-01`, and `PERSIST-02` are `MISSING`.
 - Bands: `25, 50, 50, 0, 0, 0, 50, 25`
 - Points: `4 + 5 + 8 + 0 + 0 + 0 + 5 + 3 = 25`
 - Gates: end-to-end DEV runtime `Failed`; compliance freshness may also fail.
@@ -116,3 +117,55 @@ Do not score the other seven dimensions or evaluate certification gates. This re
 - Evidence: the execution reports a documented alias or version ARN, the qualifier is recorded, and removing only that qualifier yields the exact active deployed top-level state machine ARN.
 - Gate effect: the execution binding portion of Gate 2 passes. Do not fail a valid qualified execution or accept generic prefix matching.
 - Verdict: determined by the remaining gate and score evidence.
+
+## O. SES-native implementation maps to Quiq controls
+
+- Evidence: Email uses SES configuration sets and EventBridge while SMS uses Quiq feedback ingress. Both prove stable submission identity, ambiguous-outcome handling, correlation, normalized feedback, unresolved-event durability, and lifecycle closure.
+- Control map: provider-mechanism rows may be `CHANNEL_ADAPTED` only with non-empty row-whitelisted `adapted_fields` and exactly the row-mandated, evidence-backed `non_exempt_controls_proven` keys.
+- Gate effect: channel adaptation does not lower Gate 2 or the score by itself.
+
+## P. Persistence redrive is missing
+
+- Evidence: successful internal writes exist, but no durable failed-write parking, idempotent redrive, single-fact proof, or provider-resubmission guard exists.
+- Control map: `PERSIST-02` is `MISSING`; dimensions 6 and 7 are `0%`.
+- Gate: end-to-end DEV runtime `Failed`.
+- Verdict: `NOT_CERTIFIED`.
+
+## Q. Reporting substitutes for internal closure
+
+- Evidence: provider outcomes reach an external report, but no named internal writer closes lifecycle state in the internal system of record.
+- Control map: `PERSIST-01` is `MISSING`. Reporting is not an internal persistence substitute.
+- Gate: end-to-end DEV runtime `Failed`.
+- Verdict: `NOT_CERTIFIED`.
+
+## R. Map evidence is inaccessible
+
+- Evidence: source suggests equivalent controls, but authorization or immutable deployment provenance prevents resolving required deployed fields.
+- Control map: affected required rows are `BLOCKED`, not `MISSING`, unless independent evidence proves absence.
+- Gate: `Blocked` when no required row is `MISSING`.
+- Verdict: `BLOCKED`.
+
+## S. Additional SES controls
+
+- Evidence: Email adds SES suppression or configuration resources beyond the SMS topology while preserving every required control.
+- Control map: supplemental rows are `EXTRA_JUSTIFIED` with their purpose recorded.
+- Scoring: extras add no points and cannot replace required rows.
+
+## T. Different topology proves equivalent controls
+
+- Evidence: SMS uses separate queues and workers while Email combines bounded functions, but both inventories have complete coverage and both sides have exact source-to-deployment identity and prove the same retry, idempotency, persistence, operations, and security invariants.
+- Control map: required rows are `REQUIRED_EQUIVALENT` or, for provider mechanics only, `CHANNEL_ADAPTED`.
+- Result: different names and resource counts do not cause failure.
+
+## U. Persistence replay repeats provider submission
+
+- Evidence: redriving a failed internal persistence write re-enters provider submission or can emit another provider attempt.
+- Control map: `PERSIST-02` and `REPLAY-01` are `MISSING`.
+- Gate: end-to-end DEV runtime `Failed`.
+- Verdict: `NOT_CERTIFIED`.
+
+## V. Channel adaptation masks a missing safety control
+
+- Evidence: a row is labeled `CHANNEL_ADAPTED`, but `adapted_fields` is empty or contains an unlisted token, or `non_exempt_controls_proven` differs from the row's exact required key set or contains an empty evidence list.
+- Control map: reject the channel-adapted classification and mark the affected required control `MISSING` when the control is known absent, or `BLOCKED` only when access/provenance prevents resolution.
+- Gate: apply normal Gate 2 precedence; provider differences never excuse missing safety controls.
