@@ -36,6 +36,8 @@ DEFAULT_FORBIDDEN = SKILL_ROOT / "reference" / "forbidden-concepts.json"
 DATA_BUCKET_INPUT_ROOT = "inputs"
 DEFAULT_REGION = "us-east-2"
 DEFAULT_LEXICON_SLUG = "Spring-Oaks-Capital-LLC/lexicon"
+DEFAULT_MATERIALIZE_INSTALL = ("npm ci --no-audit --no-fund", "npm ci --no-audit --no-fund --prefix infra")
+DEFAULT_MATERIALIZE_COMMAND = "npx tsx infra/test/spark/materialize-mappings.ts {out}"
 MATERIAL_FACT_IDS = (
     "source-and-target-meaning",
     "required-directions",
@@ -1599,6 +1601,8 @@ def fetch_missing_inputs(args) -> None:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import fetch_validation_inputs as fetch  # noqa: PLC0415
 
+    fetch.ECHO = sys.stderr
+
     workspace = Path(args.workspace)
     workspace.mkdir(parents=True, exist_ok=True)
 
@@ -1611,6 +1615,10 @@ def fetch_missing_inputs(args) -> None:
         args.lexicon_root = repo("lexicon-candidate", args.candidate_ref, args.candidate_pr)
     if not args.main_lexicon_root:
         args.main_lexicon_root = repo("lexicon-main", args.main_ref, None)
+    if getattr(args, "materialize_candidate", False):
+        entry = fetch.materialize(argparse.Namespace(workspace=str(workspace), name="lexicon-candidate",
+                                                     command=args.materialize_command, install=args.materialize_install))
+        args.registry = (args.registry or []) + [f"candidate-build={entry['path']}"]
     for spec in args.aws or []:
         label, _, profile = spec.partition("=")
         if not profile:
@@ -1645,7 +1653,14 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--main-ref", help="Lexicon ref used as main (default: default branch)")
         p.add_argument("--aws", action="append", help="label=AWS_PROFILE; fetches that environment's published registry and /lexicon SSM names")
         p.add_argument("--region", default=DEFAULT_REGION)
+        p.add_argument("--materialize-candidate", action="store_true",
+                       help="Build generated mapping artifacts in the fetched candidate checkout and add them as registry candidate-build")
+        p.add_argument("--materialize-command", default=DEFAULT_MATERIALIZE_COMMAND)
+        p.add_argument("--materialize-install", action="append", default=None,
+                       help="setup commands run first in the checkout (default: npm ci in the root and infra/)")
     args = parser.parse_args(argv)
+    if getattr(args, "materialize_candidate", False) and args.materialize_install is None:
+        args.materialize_install = list(DEFAULT_MATERIALIZE_INSTALL)
     if getattr(args, "workspace", None):
         fetch_missing_inputs(args)
     if args.command == "parse":

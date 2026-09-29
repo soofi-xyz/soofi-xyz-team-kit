@@ -162,11 +162,17 @@ read-only: Lexicon candidate (`--candidate-pr` or `--candidate-ref`) and main
 each `--aws label=<profile>` the published registry (`/lexicon/transform-mappings-uri`)
 and `/lexicon` SSM names (see `fetch_validation_inputs.py`). The workspace's
 `inputs-manifest.json` records every SHA, registry digest and `VersionId`.
+Generated mappings (for example Lexicon's `lexicon-to-interprose` versions built by
+`infra/lib/transform-mapping-artifacts.ts`) have no checked-in `registration.json`; add
+`--materialize-candidate` to build them in the fetched checkout (Node.js 22+) and load them as
+registry `candidate-build`. A published registry that lacks the candidate version (pruned by
+another deploy) is then visible as a digest difference instead of an absent mapping.
 
 ```bash
 python3 skills/validate-transform-configuration/scripts/resolve-transform-intent.py discover \
   --request "test lexicon payment plan to interprose" \
-  --workspace "$WS" --candidate-pr <lexicon-pr> --aws dev=<dev-profile> --out "$WS/intent.json"
+  --workspace "$WS" --candidate-pr <lexicon-pr> --materialize-candidate --aws dev=<dev-profile> \
+  --out "$WS/intent.json"
 ```
 
 Equivalent with inputs you already materialized:

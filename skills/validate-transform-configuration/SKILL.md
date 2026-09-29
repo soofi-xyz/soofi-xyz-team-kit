@@ -21,6 +21,8 @@ person's machine (checkouts, `/tmp` scripts, cached registries, PROD extracts) i
      yours to choose; pass them explicitly (`--profile`, `--aws dev=<dev-profile>`). Log in with
      `aws sso login --profile <name>`. Never export long-lived keys; tools strip `AWS_*` key variables
      and refuse PROD write verbs.
+   - Node.js 22+ with `npm`/`npx` on `PATH` (only to materialize generated Lexicon mappings with
+     `--materialize-candidate`; the resolver runs `npm ci` and the repository's materializer in the fetched checkout).
    - Python 3.10+ with `pip install -r scripts/requirements-silvally.txt` in a virtual environment.
      Optional: `requirements-silvally-spark.txt` (Python 3.10, Java 17, Spark 3.3 = Glue 4.0) for
      `synthetic-local` runs, and `requirements-silvally-prod-oracle.txt` for PROD Iceberg oracles.
@@ -29,7 +31,8 @@ person's machine (checkouts, `/tmp` scripts, cached registries, PROD extracts) i
    ```bash
    S=skills/validate-transform-configuration/scripts
    python3 $S/resolve-transform-intent.py discover --request "test lexicon payment plan to interprose" \
-     --workspace "$(mktemp -d)/silvally" --candidate-pr <lexicon-pr> --aws dev=<dev-profile> --out intent.json
+     --workspace "$(mktemp -d)/silvally" --candidate-pr <lexicon-pr> --materialize-candidate \
+     --aws dev=<dev-profile> --out intent.json
    ```
 
 4. **Test a new mapping configuration:** materialize it

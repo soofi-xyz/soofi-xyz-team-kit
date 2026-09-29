@@ -20,11 +20,13 @@ import json
 import os
 import shlex
 import subprocess
+import sys
 from pathlib import Path
 
 from silvally_io import DEFAULT_REGION, SilvallyError, aws, parse_s3, read_json, sha256_file, write_json
 
 REGISTRY_PARAMETER = "/lexicon/transform-mappings-uri"
+ECHO = sys.stdout  # the resolver redirects progress records to stderr
 
 
 def record(workspace: Path, entry: dict) -> dict:
@@ -33,7 +35,7 @@ def record(workspace: Path, entry: dict) -> dict:
     entries = [e for e in entries if not (e.get("kind") == entry["kind"] and e.get("name") == entry.get("name"))]
     entries.append(entry)
     write_json(manifest, entries)
-    print(json.dumps(entry, indent=1))
+    print(json.dumps(entry, indent=1), file=ECHO)
     return entry
 
 
@@ -122,9 +124,9 @@ def materialize(args) -> dict:
     out = workspace / f"{args.name}-materialized"
     if args.install:
         for step in args.install:
-            subprocess.run(shlex.split(step), cwd=checkout, check=True)
+            subprocess.run(shlex.split(step), cwd=checkout, check=True, stdout=sys.stderr, stdin=subprocess.DEVNULL)
     command = [part.replace("{out}", str(out)) for part in shlex.split(args.command)]
-    subprocess.run(command, cwd=checkout, check=True, env={**os.environ})
+    subprocess.run(command, cwd=checkout, check=True, env={**os.environ}, stdout=sys.stderr, stdin=subprocess.DEVNULL)
     mappings = [{"mapping": f"{m.parent.parent.name}@{m.parent.name}", "sha256": sha256_file(m)}
                 for m in sorted(out.rglob("mapping.json"))]
     return record(workspace, {"kind": "materialized", "name": args.name, "path": str(out), "mappings": mappings})
