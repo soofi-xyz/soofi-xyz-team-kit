@@ -1,11 +1,12 @@
 ---
 name: operate-marketplace
-description: "Operate the deployed Marketplace catalog API from prismteam-ai/marketplace: configure review settings, register ontology (families, categories, products, configurations, components), publish Build zips and poll reviews, and roll back VALID bundles. Use when registering or publishing products to Marketplace or checking review status."
+description: "Operate the deployed Prism Marketplace catalog API from prismteam-ai/marketplace: configure review settings, register ontology (families, categories, products, configurations, components), publish Build zips and poll reviews, and roll back VALID bundles. Use when registering or publishing products to Prism Marketplace or checking review status."
 ---
 
-# Operate Marketplace
+# Operate Prism Marketplace
 
-Use `registeel`. Marketplace is deployed; this skill drives its live HTTP API.
+Use `registeel`. Prism Marketplace is deployed; this skill drives its live HTTP API.
+Call the target "Prism Marketplace" in all output; do not label it by stage.
 Authoritative product: [`prismteam-ai/marketplace`](https://github.com/prismteam-ai/marketplace).
 Treat that repo's `requirements/openapi.yaml`, `README.md`, and `AGENTS.md` as the
 contract. Endpoint shapes and error tags are summarized in
@@ -18,18 +19,43 @@ Organizations tenancy, StackSets, or Account Manager from this skill.
 
 ## Prerequisites
 
-1. Resolve the base URL. Prefer `MARKETPLACE_BASE_URL` when set. Otherwise read the
-   `ApiUrl` output of the deployed Marketplace stack (DEV example:
-   `https://706p38drc8.execute-api.us-east-2.amazonaws.com/dev/marketplace`).
+1. Use this Prism Marketplace base URL:
+   `https://706p38drc8.execute-api.us-east-2.amazonaws.com/dev/marketplace`.
    The path must end with `/marketplace` (no trailing slash when concatenating).
-   Repo scripts default to an older host and refuse any path that is not
-   `/dev/marketplace` — pass `MARKETPLACE_BASE_URL` explicitly when the stack
-   output differs.
-2. Require `MARKETPLACE_API_KEY` (shared usage-plan `x-api-key`). Marketplace
-   does not mint keys. Never echo or commit the value.
-3. Prefer the repo scripts for DEV when they fit:
-   - `./scripts/demo.sh` — register Prism / Platform / products (refuses
-     non-`/dev/marketplace`)
+   Honor `MARKETPLACE_BASE_URL` only when the user sets a different one.
+   Repo scripts default to an older host and refuse bases outside their allowed
+   path — pass this URL as `MARKETPLACE_BASE_URL` when running them.
+2. Require `MARKETPLACE_API_KEY` (shared usage-plan `x-api-key`). Prism
+   Marketplace does not mint keys. It uses the key named `shared-environment`
+   on the usage plan stored at SSM `/account/shared-usage-plan-id` in
+   `us-east-2`. If the variable is unset, stop and give these steps, then wait.
+   Do not run the lookup yourself, do not print the value, and do not ask the
+   user to paste it into chat.
+
+   Get it in their own terminal (prints only there). Use the AWS profile already
+   selected for this account (`AWS_PROFILE=<selected-profile>`), region
+   `us-east-2`:
+
+   ```bash
+   export AWS_REGION=us-east-2
+   aws apigateway get-usage-plan-keys \
+     --usage-plan-id "$(aws ssm get-parameter --name /account/shared-usage-plan-id --query Parameter.Value --output text)" \
+     --query "items[?name=='shared-environment'].value | [0]" \
+     --output text
+   ```
+
+   Set it for the process that launches Cursor, then fully quit and reopen Cursor
+   so the agent can see it. An export in a terminal started after Cursor will
+   not reach the agent.
+
+   ```bash
+   export MARKETPLACE_API_KEY='<value from the command above>'
+   ```
+
+   Ask them to reply once it is set. Confirm only that the variable is present
+   (set or unset, and length if useful). Never echo the value.
+3. Prefer the repo scripts when they fit:
+   - `./scripts/demo.sh` — register Prism / Platform / products
    - `./scripts/publish-product.sh` — ensure component, PUT bundle, poll review
 4. For manual calls, send `x-api-key` and `content-type: application/json` on
    every request.
@@ -42,6 +68,7 @@ Classify the request, then run exactly one primary lane (plus inspect as needed)
 | --- | --- | --- |
 | Settings | First non-skip publish, or review readiness unknown | §1 |
 | Register | New family / category / product / configuration / component | §2 |
+| Readiness | User wants to publish but has no Build-produced `bundle_url` | §3a |
 | Publish | New Build zip, review poll, rollback | §3 |
 | Inspect | Read-only ontology, bundles, reviews, settings status | §4 |
 
@@ -92,6 +119,23 @@ delete bottom-up.
 System is a **product** name, not a catalog type. Do not invent Agent or
 certification types.
 
+## 3a. Publish readiness (product not yet publishable)
+
+Run this before §3 when the user has no Build-produced `bundle_url`, or asks
+what their product needs to publish.
+
+1. Ask for the product repository if it is not obvious, and check it out
+   read-only at its default branch.
+2. Walk [publish-readiness.md](reference/publish-readiness.md): repository
+   changes (manifest, CDK stacks, Lambda asset policy, pack step, tests) and
+   pipeline requirements (S3 URL, Build and Comply metadata).
+3. Report each item as ready, missing, or cannot verify, with evidence, and
+   the concrete change for each missing item. Cite
+   [Spring-Oaks-Capital-LLC/deploy#3](https://github.com/Spring-Oaks-Capital-LLC/deploy/pull/3)
+   as the worked example.
+4. Do not edit the product repository and do not fabricate `service-builder`
+   or `service-comply` metadata. Stop after the report.
+
 ## 3. Publish, review, rollback
 
 1. Resolve `product_id`: `GET /ontology/products/by-name?name={Product}`.
@@ -132,8 +176,8 @@ components or is referenced as `configured_product_id`.
 
 ## Safety
 
-- Prefer `/dev/marketplace`. Require explicit user confirmation and a matching
-  base URL for any production write.
+- Use `https://706p38drc8.execute-api.us-east-2.amazonaws.com/dev/marketplace`.
+  If the user names a different base URL, confirm it before any write.
 - Never print secrets (`MARKETPLACE_API_KEY`, `review_api_key`).
 - Do not claim Marketplace deployed a stack into a tenant — it only stores
   reviewed bundles.
@@ -141,7 +185,7 @@ components or is referenced as `configured_product_id`.
 
 ## Return
 
-Report: lane chosen; base URL stage; entities touched (names + ids); publish
+Report: lane chosen; Prism Marketplace as the target; entities touched (names + ids); publish
 `review_id` / final `bundle_status` / hosted `bundle_url` when relevant;
 Persist confirmation only if `demo.sh` or an equivalent check was run; and any
 handoff outside Marketplace.
