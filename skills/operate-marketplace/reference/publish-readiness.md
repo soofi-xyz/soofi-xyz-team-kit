@@ -7,9 +7,10 @@ tags: marketplace, publish, cloud-assembly, readiness, product-repo
 # Product publish readiness
 
 Use this when a user wants to publish a product to Prism Marketplace and has no
-`bundle_url` yet. First inspect the product repository and report the gaps
-(section C). When the user asks, make the repository changes on a new branch and
-open a pull request (section D). Never push to the default branch.
+`bundle_url` yet. Inspect the product repository and find the gaps (section C).
+If the user asked to publish, make the repository changes on a new branch and
+open a pull request (section D) in the same run; if they only asked what is
+missing, report. Never push to the default branch.
 
 Reference implementation: [Spring-Oaks-Capital-LLC/deploy#3](https://github.com/Spring-Oaks-Capital-LLC/deploy/pull/3)
 ("Make Deploy Marketplace-publishable"). Reuse its manifest shape and
@@ -268,9 +269,13 @@ each `missing` row, citing Deploy PR #3. End with whether the product can
 publish now, and which blockers are outside the product repo (scan findings
 at `MEDIUM` or worse, missing sandbox Deploy or review settings).
 
-## D. Make the product publishable (only when the user asks)
+## D. Make the product publishable
 
-1. Confirm the target repository and that the user wants a pull request.
+Run this whenever the user asked to publish and section C found `missing`
+items. A publish request is the request for this pull request; do not ask
+again.
+
+1. Use the repository and branch the user named (else its default branch).
 2. Create a branch `feat/marketplace-publishable` from the default branch.
 3. Implement every `missing` item from A: manifest, stage-neutral construct id
    (update tests that construct the stack), bundling flags, obfuscation hook

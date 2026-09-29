@@ -134,9 +134,11 @@ bundle; do not route it through the Build or Comply services.
    the concrete change for each missing item. Cite
    [Spring-Oaks-Capital-LLC/deploy#3](https://github.com/Spring-Oaks-Capital-LLC/deploy/pull/3)
    as the worked example.
-4. When the user asks, make the changes: follow section D of that file on a
-   new branch and open a pull request. Never push to the default branch,
-   merge, deploy, or publish in this lane.
+4. When the user asked to publish and the product is not ready, make the
+   changes without waiting for a second request: follow section D of that
+   file on a new branch and open a pull request. Report only when the user
+   asked what is missing. Never push to the default branch, merge, deploy, or
+   publish in this lane.
 5. If the zip is ready but there is no `bundle_url`, give the upload and
    presign steps from section B2 of that file.
 6. Add the real security scan and Lambda obfuscation from that file; the
