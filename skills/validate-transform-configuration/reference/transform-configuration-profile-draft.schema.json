@@ -24,7 +24,9 @@
       "type": "string",
       "pattern": "^transform-configuration-draft-[a-f0-9]{12,64}$"
     },
-    "contractVersion": { "const": 1 },
+    "contractVersion": {
+      "const": 1
+    },
     "intakeState": {
       "enum": [
         "DISCOVERING",
@@ -43,21 +45,35 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["profileId", "disposition", "hardSignals", "reason"],
+        "required": [
+          "profileId",
+          "disposition",
+          "hardSignals",
+          "reason"
+        ],
         "properties": {
           "profileId": {
             "type": "string",
             "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*\\.json$"
           },
           "disposition": {
-            "enum": ["CANDIDATE", "SELECTED", "REJECTED"]
+            "enum": [
+              "CANDIDATE",
+              "SELECTED",
+              "REJECTED"
+            ]
           },
           "hardSignals": {
             "type": "array",
             "uniqueItems": true,
-            "items": { "$ref": "#/$defs/evidenceId" }
+            "items": {
+              "$ref": "#/$defs/evidenceId"
+            }
           },
-          "reason": { "type": "string", "minLength": 3 }
+          "reason": {
+            "type": "string",
+            "minLength": 3
+          }
         }
       }
     },
@@ -67,7 +83,9 @@
           "type": "string",
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*\\.json$"
         },
-        { "type": "null" }
+        {
+          "type": "null"
+        }
       ]
     },
     "discoveryTrace": {
@@ -75,7 +93,12 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["kind", "subject", "result", "evidenceIds"],
+        "required": [
+          "kind",
+          "subject",
+          "result",
+          "evidenceIds"
+        ],
         "properties": {
           "kind": {
             "enum": [
@@ -88,12 +111,20 @@
               "profile"
             ]
           },
-          "subject": { "type": "string", "minLength": 1 },
-          "result": { "type": "string", "minLength": 1 },
+          "subject": {
+            "type": "string",
+            "minLength": 1
+          },
+          "result": {
+            "type": "string",
+            "minLength": 1
+          },
           "evidenceIds": {
             "type": "array",
             "uniqueItems": true,
-            "items": { "$ref": "#/$defs/evidenceId" }
+            "items": {
+              "$ref": "#/$defs/evidenceId"
+            }
           }
         }
       }
@@ -105,7 +136,13 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "state", "value", "evidenceIds", "nextQuestion"],
+        "required": [
+          "id",
+          "state",
+          "value",
+          "evidenceIds",
+          "nextQuestion"
+        ],
         "properties": {
           "id": {
             "enum": [
@@ -122,15 +159,34 @@
             ]
           },
           "state": {
-            "enum": ["CONFIRMED", "INFERRED", "AMBIGUOUS", "MISSING"]
+            "enum": [
+              "CONFIRMED",
+              "INFERRED",
+              "AMBIGUOUS",
+              "MISSING"
+            ]
           },
-          "value": { "type": ["string", "null"], "maxLength": 4000 },
+          "value": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 4000
+          },
           "evidenceIds": {
             "type": "array",
             "uniqueItems": true,
-            "items": { "$ref": "#/$defs/evidenceId" }
+            "items": {
+              "$ref": "#/$defs/evidenceId"
+            }
           },
-          "nextQuestion": { "type": ["string", "null"], "maxLength": 1000 }
+          "nextQuestion": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 1000
+          }
         }
       }
     },
@@ -139,17 +195,33 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "classification", "reason", "evidenceIds"],
+        "required": [
+          "id",
+          "classification",
+          "reason",
+          "evidenceIds"
+        ],
         "properties": {
-          "id": { "$ref": "#/$defs/evidenceId" },
-          "classification": {
-            "enum": ["CONFIGURATION", "PRODUCT_CHANGE", "UNRESOLVED"]
+          "id": {
+            "$ref": "#/$defs/evidenceId"
           },
-          "reason": { "type": "string", "minLength": 3 },
+          "classification": {
+            "enum": [
+              "CONFIGURATION",
+              "PRODUCT_CHANGE",
+              "UNRESOLVED"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 3
+          },
           "evidenceIds": {
             "type": "array",
             "uniqueItems": true,
-            "items": { "$ref": "#/$defs/evidenceId" }
+            "items": {
+              "$ref": "#/$defs/evidenceId"
+            }
           }
         }
       }
@@ -172,19 +244,72 @@
         ]
       }
     },
-    "promotionEligible": { "type": "boolean" },
+    "promotionEligible": {
+      "type": "boolean"
+    },
     "sensitivity": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["containsRawPii", "containsSecrets"],
+      "required": [
+        "containsRawPii",
+        "containsSecrets"
+      ],
       "properties": {
-        "containsRawPii": { "const": false },
-        "containsSecrets": { "const": false }
+        "containsRawPii": {
+          "const": false
+        },
+        "containsSecrets": {
+          "const": false
+        }
       }
     },
     "localLocation": {
       "type": "string",
       "pattern": "^local://transform-configuration-intake/[a-z0-9][a-z0-9-]*$"
+    },
+    "derivedDirections": {
+      "type": "array",
+      "description": "Profile directions regenerated from the registry by draft-profile (registration + language definitions only).",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "fromLanguage",
+          "toLanguage",
+          "mapping",
+          "outputContracts"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "fromLanguage": {
+            "type": "string"
+          },
+          "toLanguage": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "mapping": {
+            "type": "object"
+          },
+          "outputContracts": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "derivationFindings": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
     }
   },
   "$defs": {

@@ -31,7 +31,9 @@
       "type": "string",
       "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*\\.json$"
     },
-    "contractVersion": { "const": 1 },
+    "contractVersion": {
+      "const": 1
+    },
     "terminologyAliases": {
       "type": "object",
       "minProperties": 1,
@@ -39,16 +41,28 @@
         "type": "array",
         "minItems": 1,
         "uniqueItems": true,
-        "items": { "type": "string", "minLength": 2 }
+        "items": {
+          "type": "string",
+          "minLength": 2
+        }
       }
     },
     "roles": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["source", "target"],
+      "required": [
+        "source",
+        "target"
+      ],
       "properties": {
-        "source": { "type": "string", "minLength": 2 },
-        "target": { "type": "string", "minLength": 2 }
+        "source": {
+          "type": "string",
+          "minLength": 2
+        },
+        "target": {
+          "type": "string",
+          "minLength": 2
+        }
       }
     },
     "transformClassification": {
@@ -56,36 +70,71 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "evidenceBasis", "expectedOutputTests", "negativeTests"],
+          "required": [
+            "kind",
+            "evidenceBasis",
+            "expectedOutputTests",
+            "negativeTests"
+          ],
           "properties": {
-            "kind": { "const": "deterministic" },
-            "evidenceBasis": { "type": "string", "minLength": 10 },
+            "kind": {
+              "const": "deterministic"
+            },
+            "evidenceBasis": {
+              "type": "string",
+              "minLength": 10
+            },
             "expectedOutputTests": {
               "type": "array",
               "minItems": 1,
-              "items": { "$ref": "#/$defs/kebab" }
+              "items": {
+                "$ref": "#/$defs/kebab"
+              }
             },
             "negativeTests": {
               "type": "array",
               "minItems": 1,
-              "items": { "$ref": "#/$defs/kebab" }
+              "items": {
+                "$ref": "#/$defs/kebab"
+              }
             }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "evidenceBasis", "confidenceOutput", "thresholds", "humanReviewPolicy"],
+          "required": [
+            "kind",
+            "evidenceBasis",
+            "confidenceOutput",
+            "thresholds",
+            "humanReviewPolicy"
+          ],
           "properties": {
-            "kind": { "const": "non-deterministic" },
-            "evidenceBasis": { "type": "string", "minLength": 10 },
-            "confidenceOutput": { "type": "string", "minLength": 3 },
+            "kind": {
+              "const": "non-deterministic"
+            },
+            "evidenceBasis": {
+              "type": "string",
+              "minLength": 10
+            },
+            "confidenceOutput": {
+              "type": "string",
+              "minLength": 3
+            },
             "thresholds": {
               "type": "array",
               "minItems": 1,
-              "items": { "type": "number", "minimum": 0, "maximum": 1 }
+              "items": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
             },
-            "humanReviewPolicy": { "type": "string", "minLength": 10 }
+            "humanReviewPolicy": {
+              "type": "string",
+              "minLength": 10
+            }
           }
         }
       ]
@@ -103,19 +152,36 @@
         "vocabularySelections"
       ],
       "properties": {
-        "fieldNames": { "$ref": "#/$defs/stringList" },
-        "schemaShape": { "$ref": "#/$defs/stringList" },
-        "formats": { "$ref": "#/$defs/stringList" },
-        "normalizationRules": { "$ref": "#/$defs/stringList" },
-        "mappingExpressions": { "$ref": "#/$defs/stringList" },
-        "profileInputs": { "$ref": "#/$defs/stringList" },
-        "vocabularySelections": { "$ref": "#/$defs/stringList" }
+        "fieldNames": {
+          "$ref": "#/$defs/stringList"
+        },
+        "schemaShape": {
+          "$ref": "#/$defs/stringList"
+        },
+        "formats": {
+          "$ref": "#/$defs/stringList"
+        },
+        "normalizationRules": {
+          "$ref": "#/$defs/stringList"
+        },
+        "mappingExpressions": {
+          "$ref": "#/$defs/stringList"
+        },
+        "profileInputs": {
+          "$ref": "#/$defs/stringList"
+        },
+        "vocabularySelections": {
+          "$ref": "#/$defs/stringList"
+        }
       }
     },
     "productBoundary": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["prohibitedAsConfiguration", "onDetection"],
+      "required": [
+        "prohibitedAsConfiguration",
+        "onDetection"
+      ],
       "properties": {
         "prohibitedAsConfiguration": {
           "type": "array",
@@ -132,18 +198,24 @@
             ]
           }
         },
-        "onDetection": { "const": "block-and-handoff" }
+        "onDetection": {
+          "const": "block-and-handoff"
+        }
       }
     },
     "datasets": {
       "type": "array",
       "minItems": 1,
-      "items": { "$ref": "#/$defs/dataset" }
+      "items": {
+        "$ref": "#/$defs/dataset"
+      }
     },
     "invariants": {
       "type": "array",
       "minItems": 1,
-      "items": { "$ref": "#/$defs/invariant" }
+      "items": {
+        "$ref": "#/$defs/invariant"
+      }
     },
     "repositories": {
       "type": "array",
@@ -160,8 +232,14 @@
           "requiredPaths"
         ],
         "properties": {
-          "slug": { "type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" },
-          "purpose": { "type": "string", "minLength": 3 },
+          "slug": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+          },
+          "purpose": {
+            "type": "string",
+            "minLength": 3
+          },
           "role": {
             "enum": [
               "configuration-source",
@@ -169,7 +247,9 @@
               "domain-contract"
             ]
           },
-          "revisionPolicy": { "const": "commit-sha" },
+          "revisionPolicy": {
+            "const": "commit-sha"
+          },
           "candidateDiscovery": {
             "enum": [
               "requested-ref-then-default-branch",
@@ -180,7 +260,9 @@
             "type": "array",
             "minItems": 1,
             "uniqueItems": true,
-            "items": { "$ref": "#/$defs/repositoryPath" }
+            "items": {
+              "$ref": "#/$defs/repositoryPath"
+            }
           }
         }
       }
@@ -191,12 +273,32 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "kind", "description", "readOnly"],
+        "required": [
+          "id",
+          "kind",
+          "description",
+          "readOnly"
+        ],
         "properties": {
-          "id": { "$ref": "#/$defs/kebab" },
-          "kind": { "enum": ["repository", "configuration", "deployment", "runtime", "consumer"] },
-          "description": { "type": "string", "minLength": 3 },
-          "readOnly": { "const": true }
+          "id": {
+            "$ref": "#/$defs/kebab"
+          },
+          "kind": {
+            "enum": [
+              "repository",
+              "configuration",
+              "deployment",
+              "runtime",
+              "consumer"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "minLength": 3
+          },
+          "readOnly": {
+            "const": true
+          }
         }
       }
     },
@@ -206,28 +308,91 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "fromLanguage", "toLanguage", "required", "mapping"],
+        "required": [
+          "id",
+          "fromLanguage",
+          "toLanguage",
+          "required",
+          "mapping"
+        ],
         "properties": {
-          "id": { "$ref": "#/$defs/kebab" },
-          "fromLanguage": { "$ref": "#/$defs/kebab" },
-          "toLanguage": { "$ref": "#/$defs/kebab" },
-          "required": { "type": "boolean" },
-          "mapping": { "$ref": "#/$defs/mappingSource" },
+          "id": {
+            "$ref": "#/$defs/kebab"
+          },
+          "fromLanguage": {
+            "$ref": "#/$defs/kebab"
+          },
+          "toLanguage": {
+            "$ref": "#/$defs/kebab"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "mapping": {
+            "$ref": "#/$defs/mappingSource"
+          },
           "parityFields": {
             "type": "array",
             "uniqueItems": true,
-            "items": { "type": "string", "minLength": 1 }
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
           },
           "parityDatasets": {
             "type": "array",
             "minItems": 1,
             "uniqueItems": true,
-            "items": { "$ref": "#/$defs/parityDataset" }
+            "items": {
+              "$ref": "#/$defs/parityDataset"
+            }
           },
           "outputContracts": {
             "type": "array",
             "minItems": 1,
-            "items": { "$ref": "#/$defs/outputContract" }
+            "items": {
+              "$ref": "#/$defs/outputContract"
+            }
+          },
+          "derivationOverrides": {
+            "type": "array",
+            "minItems": 1,
+            "description": "Output-contract fields this profile intentionally declares instead of deriving from the registration and language definitions; check-profile accepts a difference only for these (dataset, field) pairs.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "dataset",
+                "field",
+                "reason"
+              ],
+              "properties": {
+                "dataset": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/datasetName"
+                    },
+                    {
+                      "const": "*"
+                    }
+                  ]
+                },
+                "field": {
+                  "enum": [
+                    "expectedOutputDatasets",
+                    "requiredInputs",
+                    "format",
+                    "columnSource",
+                    "columns",
+                    "key"
+                  ]
+                },
+                "reason": {
+                  "type": "string",
+                  "minLength": 10
+                }
+              }
+            }
           }
         }
       }
@@ -235,11 +400,27 @@
     "lexiconModelPolicy": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["candidateLexiconDiff", "path", "modelAdditions"],
+      "required": [
+        "candidateLexiconDiff",
+        "path",
+        "modelAdditions"
+      ],
       "properties": {
-        "candidateLexiconDiff": { "enum": ["forbidden", "allowed"] },
-        "path": { "$ref": "#/$defs/repositoryPath" },
-        "modelAdditions": { "enum": ["forbidden", "allowed"] },
+        "candidateLexiconDiff": {
+          "enum": [
+            "forbidden",
+            "allowed"
+          ]
+        },
+        "path": {
+          "$ref": "#/$defs/repositoryPath"
+        },
+        "modelAdditions": {
+          "enum": [
+            "forbidden",
+            "allowed"
+          ]
+        },
         "approvedAdditions": {
           "type": "array",
           "minItems": 1,
@@ -247,11 +428,24 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["concept", "property", "approval"],
+            "required": [
+              "concept",
+              "property",
+              "approval"
+            ],
             "properties": {
-              "concept": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
-              "property": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
-              "approval": { "type": "string", "minLength": 10 }
+              "concept": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "property": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "approval": {
+                "type": "string",
+                "minLength": 10
+              }
             }
           }
         }
@@ -272,48 +466,105 @@
         "permittedLosses"
       ],
       "properties": {
-        "kind": { "enum": ["source-sample-reprojection", "forward-inverse"] },
-        "description": { "type": "string", "minLength": 10 },
-        "sourceLanguage": { "$ref": "#/$defs/kebab" },
-        "steps": { "$ref": "#/$defs/kebabList" },
-        "comparison": { "const": "column-diff" },
-        "comparisonScope": { "enum": ["inverse-outputs", "all-forward-inputs"] },
+        "kind": {
+          "enum": [
+            "source-sample-reprojection",
+            "forward-inverse"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "minLength": 10
+        },
+        "sourceLanguage": {
+          "$ref": "#/$defs/kebab"
+        },
+        "steps": {
+          "$ref": "#/$defs/kebabList"
+        },
+        "comparison": {
+          "const": "column-diff"
+        },
+        "comparisonScope": {
+          "enum": [
+            "inverse-outputs",
+            "all-forward-inputs"
+          ]
+        },
         "rowKeys": {
           "type": "array",
           "minItems": 1,
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["dataset", "columns"],
+            "required": [
+              "dataset",
+              "columns"
+            ],
             "properties": {
-              "dataset": { "$ref": "#/$defs/datasetName" },
-              "columns": { "$ref": "#/$defs/nonEmptyStringList" }
+              "dataset": {
+                "$ref": "#/$defs/datasetName"
+              },
+              "columns": {
+                "$ref": "#/$defs/nonEmptyStringList"
+              }
             }
           }
         },
-        "normalization": { "$ref": "#/$defs/nonEmptyStringList" },
-        "permittedLosses": { "$ref": "#/$defs/stringList" },
-        "tbd": { "$ref": "#/$defs/nonEmptyStringList" }
+        "normalization": {
+          "$ref": "#/$defs/nonEmptyStringList"
+        },
+        "permittedLosses": {
+          "$ref": "#/$defs/stringList"
+        },
+        "tbd": {
+          "$ref": "#/$defs/nonEmptyStringList"
+        }
       }
     },
     "partialInputPolicy": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "mechanism", "evidence", "cases"],
+      "required": [
+        "status",
+        "mechanism",
+        "evidence"
+      ],
       "properties": {
-        "status": { "enum": ["supported", "unsupported", "unverified"] },
-        "mechanism": { "type": "string", "minLength": 10 },
+        "status": {
+          "enum": [
+            "supported",
+            "unsupported",
+            "unverified"
+          ]
+        },
+        "mechanism": {
+          "type": "string",
+          "minLength": 10
+        },
         "evidence": {
           "type": "array",
           "minItems": 1,
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["repository", "commitSha", "path"],
+            "required": [
+              "repository",
+              "commitSha",
+              "path"
+            ],
             "properties": {
-              "repository": { "type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" },
-              "commitSha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
-              "path": { "$ref": "#/$defs/repositoryPath" }
+              "repository": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+              },
+              "commitSha": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "path": {
+                "$ref": "#/$defs/repositoryPath"
+              }
             }
           }
         },
@@ -322,21 +573,41 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["id", "outputDatasets", "providedInputs", "expected"],
+            "required": [
+              "id",
+              "outputDatasets",
+              "providedInputs",
+              "expected"
+            ],
             "properties": {
-              "id": { "$ref": "#/$defs/kebab" },
-              "outputDatasets": { "$ref": "#/$defs/datasetNameList" },
-              "providedInputs": { "$ref": "#/$defs/datasetNameList" },
-              "expected": { "enum": ["PASS", "REJECTED"] }
+              "id": {
+                "$ref": "#/$defs/kebab"
+              },
+              "outputDatasets": {
+                "$ref": "#/$defs/datasetNameList"
+              },
+              "providedInputs": {
+                "$ref": "#/$defs/datasetNameList"
+              },
+              "expected": {
+                "enum": [
+                  "PASS",
+                  "REJECTED"
+                ]
+              }
             }
-          }
+          },
+          "description": "Optional extra cases; spec-from-intent already derives one positive case per output and one REJECTED case per required input."
         }
       }
     },
     "validationWorkflow": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["steps", "persistPolicy"],
+      "required": [
+        "steps",
+        "persistPolicy"
+      ],
       "properties": {
         "steps": {
           "type": "array",
@@ -344,11 +615,23 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["sequence", "id", "direction", "inputSource"],
+            "required": [
+              "sequence",
+              "id",
+              "direction",
+              "inputSource"
+            ],
             "properties": {
-              "sequence": { "type": "integer", "minimum": 1 },
-              "id": { "$ref": "#/$defs/kebab" },
-              "direction": { "$ref": "#/$defs/kebab" },
+              "sequence": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "id": {
+                "$ref": "#/$defs/kebab"
+              },
+              "direction": {
+                "$ref": "#/$defs/kebab"
+              },
               "inputSource": {
                 "enum": [
                   "profile-evidence",
@@ -359,7 +642,12 @@
             }
           }
         },
-        "persistPolicy": { "enum": ["required", "forbidden"] }
+        "persistPolicy": {
+          "enum": [
+            "required",
+            "forbidden"
+          ]
+        }
       }
     },
     "validationSources": {
@@ -380,8 +668,12 @@
               "required"
             ],
             "properties": {
-              "id": { "$ref": "#/$defs/kebab" },
-              "kind": { "const": "existing-dev-artifact" },
+              "id": {
+                "$ref": "#/$defs/kebab"
+              },
+              "kind": {
+                "const": "existing-dev-artifact"
+              },
               "location": {
                 "type": "string",
                 "pattern": "^s3://[^?#@]+/$"
@@ -390,37 +682,77 @@
                 "type": "string",
                 "pattern": "^[a-z]{2}-[a-z]+-[0-9]$"
               },
-              "artifactStatus": { "enum": ["planned", "staging", "ready"] },
+              "artifactStatus": {
+                "enum": [
+                  "planned",
+                  "staging",
+                  "ready"
+                ]
+              },
               "manifestSha256": {
                 "type": "string",
                 "pattern": "^[a-f0-9]{64}$"
               },
-              "manifestVersionId": { "type": "string", "minLength": 1 },
-              "appliesTo": { "$ref": "#/$defs/kebabList" },
-              "required": { "const": true },
-              "tbd": { "$ref": "#/$defs/nonEmptyStringList" }
+              "manifestVersionId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "appliesTo": {
+                "$ref": "#/$defs/kebabList"
+              },
+              "required": {
+                "const": true
+              },
+              "tbd": {
+                "$ref": "#/$defs/nonEmptyStringList"
+              }
             },
             "allOf": [
               {
                 "if": {
-                  "properties": { "artifactStatus": { "const": "ready" } },
-                  "required": ["artifactStatus"]
+                  "properties": {
+                    "artifactStatus": {
+                      "const": "ready"
+                    }
+                  },
+                  "required": [
+                    "artifactStatus"
+                  ]
                 },
                 "then": {
-                  "required": ["manifestSha256", "manifestVersionId"]
+                  "required": [
+                    "manifestSha256",
+                    "manifestVersionId"
+                  ]
                 }
               },
               {
                 "if": {
-                  "properties": { "artifactStatus": { "const": "planned" } },
-                  "required": ["artifactStatus"]
+                  "properties": {
+                    "artifactStatus": {
+                      "const": "planned"
+                    }
+                  },
+                  "required": [
+                    "artifactStatus"
+                  ]
                 },
                 "then": {
-                  "required": ["tbd"],
+                  "required": [
+                    "tbd"
+                  ],
                   "not": {
                     "anyOf": [
-                      { "required": ["manifestSha256"] },
-                      { "required": ["manifestVersionId"] }
+                      {
+                        "required": [
+                          "manifestSha256"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "manifestVersionId"
+                        ]
+                      }
                     ]
                   }
                 }
@@ -439,15 +771,25 @@
               "required"
             ],
             "properties": {
-              "id": { "$ref": "#/$defs/kebab" },
-              "kind": { "const": "repository-test" },
+              "id": {
+                "$ref": "#/$defs/kebab"
+              },
+              "kind": {
+                "const": "repository-test"
+              },
               "repository": {
                 "type": "string",
                 "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
               },
-              "path": { "$ref": "#/$defs/repositoryPath" },
-              "appliesTo": { "$ref": "#/$defs/kebabList" },
-              "required": { "const": true }
+              "path": {
+                "$ref": "#/$defs/repositoryPath"
+              },
+              "appliesTo": {
+                "$ref": "#/$defs/kebabList"
+              },
+              "required": {
+                "const": true
+              }
             }
           },
           {
@@ -462,19 +804,30 @@
               "required"
             ],
             "properties": {
-              "id": { "$ref": "#/$defs/kebab" },
-              "kind": { "const": "sanitized-evidence-package" },
+              "id": {
+                "$ref": "#/$defs/kebab"
+              },
+              "kind": {
+                "const": "sanitized-evidence-package"
+              },
               "location": {
                 "type": "string",
-                "pattern": "^s3://[^?#@]+/$"
+                "pattern": "^(?:s3://[^?#@]+/|local://[a-z0-9][a-z0-9/_-]*/)$"
               },
               "manifestSha256": {
                 "type": "string",
                 "pattern": "^[a-f0-9]{64}$"
               },
-              "manifestVersionId": { "type": "string", "minLength": 1 },
-              "appliesTo": { "$ref": "#/$defs/kebabList" },
-              "required": { "const": true }
+              "manifestVersionId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "appliesTo": {
+                "$ref": "#/$defs/kebabList"
+              },
+              "required": {
+                "const": true
+              }
             }
           },
           {
@@ -489,12 +842,25 @@
               "required"
             ],
             "properties": {
-              "id": { "$ref": "#/$defs/kebab" },
-              "kind": { "const": "not-available" },
-              "reason": { "type": "string", "minLength": 10 },
-              "owner": { "$ref": "#/$defs/kebab" },
-              "appliesTo": { "$ref": "#/$defs/kebabList" },
-              "required": { "const": true }
+              "id": {
+                "$ref": "#/$defs/kebab"
+              },
+              "kind": {
+                "const": "not-available"
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 10
+              },
+              "owner": {
+                "$ref": "#/$defs/kebab"
+              },
+              "appliesTo": {
+                "$ref": "#/$defs/kebabList"
+              },
+              "required": {
+                "const": true
+              }
             }
           }
         ]
@@ -503,40 +869,95 @@
     "evidencePolicy": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["sensitivity", "sanitization", "allowed", "prohibited"],
+      "required": [
+        "sensitivity",
+        "sanitization",
+        "allowed",
+        "prohibited"
+      ],
       "properties": {
-        "sensitivity": { "enum": ["public", "internal", "confidential", "restricted"] },
-        "sanitization": { "const": "aggregates-and-digests-only" },
+        "sensitivity": {
+          "enum": [
+            "public",
+            "internal",
+            "confidential",
+            "restricted"
+          ]
+        },
+        "sanitization": {
+          "const": "aggregates-and-digests-only"
+        },
         "allowed": {
           "type": "array",
           "minItems": 1,
-          "items": { "enum": ["counts", "schemas", "sha256", "statuses", "durations", "costs", "credential-free-locations"] }
+          "items": {
+            "enum": [
+              "counts",
+              "schemas",
+              "sha256",
+              "statuses",
+              "durations",
+              "costs",
+              "credential-free-locations"
+            ]
+          }
         },
         "prohibited": {
           "type": "array",
           "minItems": 4,
-          "items": { "enum": ["raw-pii", "business-identifiers", "secret-values", "credentials", "signed-urls", "source-rows"] }
+          "items": {
+            "enum": [
+              "raw-pii",
+              "business-identifiers",
+              "secret-values",
+              "credentials",
+              "signed-urls",
+              "source-rows"
+            ]
+          }
         }
       }
     },
     "graph": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["required", "identityRules", "endpointRules"],
+      "required": [
+        "required",
+        "identityRules",
+        "endpointRules"
+      ],
       "properties": {
-        "required": { "type": "boolean" },
-        "identityRules": { "type": "array", "items": { "type": "string", "minLength": 3 } },
-        "endpointRules": { "type": "array", "items": { "type": "string", "minLength": 3 } }
+        "required": {
+          "type": "boolean"
+        },
+        "identityRules": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 3
+          }
+        },
+        "endpointRules": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 3
+          }
+        }
       }
     },
     "adapters": {
       "type": "array",
-      "items": { "$ref": "#/$defs/boundary" }
+      "items": {
+        "$ref": "#/$defs/boundary"
+      }
     },
     "consumers": {
       "type": "array",
       "minItems": 1,
-      "items": { "$ref": "#/$defs/boundary" }
+      "items": {
+        "$ref": "#/$defs/boundary"
+      }
     },
     "lexiconConceptPolicy": {
       "type": "object",
@@ -549,25 +970,51 @@
         "forbiddenConcepts"
       ],
       "properties": {
-        "currentDefinitionRequired": { "const": true },
-        "rejectAbsent": { "const": true },
-        "rejectDeprecated": { "const": true },
-        "reintroductionRequiresModelingApproval": { "const": true },
+        "currentDefinitionRequired": {
+          "const": true
+        },
+        "rejectAbsent": {
+          "const": true
+        },
+        "rejectDeprecated": {
+          "const": true
+        },
+        "reintroductionRequiresModelingApproval": {
+          "const": true
+        },
         "forbiddenConcepts": {
           "type": "array",
           "uniqueItems": true,
-          "items": { "$ref": "#/$defs/datasetName" }
+          "items": {
+            "$ref": "#/$defs/datasetName"
+          }
         }
       }
     },
     "parityPolicy": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["fieldSource", "declaredFields", "undefinedDatasets"],
+      "required": [
+        "fieldSource",
+        "declaredFields",
+        "undefinedDatasets"
+      ],
       "properties": {
-        "fieldSource": { "const": "language-definition-and-registration" },
-        "declaredFields": { "enum": ["minimum", "exact"] },
-        "undefinedDatasets": { "enum": ["block", "consumer-contract"] }
+        "fieldSource": {
+          "const": "language-definition-and-registration"
+        },
+        "declaredFields": {
+          "enum": [
+            "minimum",
+            "exact"
+          ]
+        },
+        "undefinedDatasets": {
+          "enum": [
+            "block",
+            "consumer-contract"
+          ]
+        }
       }
     },
     "sourceWindowPolicy": {
@@ -581,20 +1028,31 @@
         "requiredCoverageSignals"
       ],
       "properties": {
-        "kind": { "const": "prod-derived-complete-utc-days" },
-        "minimumCompleteUtcDays": { "type": "integer", "minimum": 1 },
-        "allowLongerRange": { "type": "boolean" },
+        "kind": {
+          "const": "prod-derived-complete-utc-days"
+        },
+        "minimumCompleteUtcDays": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "allowLongerRange": {
+          "type": "boolean"
+        },
         "requiredSourceFamilies": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": { "$ref": "#/$defs/datasetName" }
+          "items": {
+            "$ref": "#/$defs/datasetName"
+          }
         },
         "requiredCoverageSignals": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": { "$ref": "#/$defs/kebab" }
+          "items": {
+            "$ref": "#/$defs/kebab"
+          }
         }
       }
     },
@@ -604,33 +1062,149 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "maximumRows", "maximumCostUsd", "evidenceRequired"],
+        "required": [
+          "id",
+          "maximumRows",
+          "maximumCostUsd",
+          "evidenceRequired"
+        ],
         "properties": {
-          "id": { "$ref": "#/$defs/kebab" },
-          "maximumRows": { "type": "integer", "minimum": 1 },
-          "maximumCostUsd": { "type": "number", "minimum": 0 },
-          "evidenceRequired": { "type": "boolean" }
+          "id": {
+            "$ref": "#/$defs/kebab"
+          },
+          "maximumRows": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "maximumCostUsd": {
+            "type": "number",
+            "minimum": 0
+          },
+          "evidenceRequired": {
+            "type": "boolean"
+          }
         }
       }
     },
     "approvals": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["devWrites", "prodWrites", "perOperation"],
+      "required": [
+        "devWrites",
+        "prodWrites",
+        "perOperation"
+      ],
       "properties": {
-        "devWrites": { "const": "explicit" },
-        "prodWrites": { "const": "forbidden" },
-        "perOperation": { "const": true }
+        "devWrites": {
+          "const": "explicit"
+        },
+        "prodWrites": {
+          "const": "forbidden"
+        },
+        "perOperation": {
+          "const": true
+        }
+      }
+    },
+    "oracles": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Expected-output datasets referenced by matches-oracle checks.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "dataset",
+          "location",
+          "comparison",
+          "description"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/kebab"
+          },
+          "dataset": {
+            "$ref": "#/$defs/datasetName"
+          },
+          "location": {
+            "type": "string",
+            "pattern": "^(?:s3|local)://[^?#@]+$"
+          },
+          "comparison": {
+            "enum": [
+              "part-bytes",
+              "sorted-rows",
+              "keyed"
+            ]
+          },
+          "key": {
+            "$ref": "#/$defs/nonEmptyStringList"
+          },
+          "ignoreColumns": {
+            "$ref": "#/$defs/nonEmptyStringList"
+          },
+          "allowedLosses": {
+            "$ref": "#/$defs/kebabList"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 10
+          }
+        }
+      }
+    },
+    "allowedLosses": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Permitted differences a keyed oracle comparison may explain.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "dataset",
+          "column",
+          "kind",
+          "reason"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/kebab"
+          },
+          "dataset": {
+            "$ref": "#/$defs/datasetName"
+          },
+          "column": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "enum": [
+              "emptied",
+              "any"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 10
+          }
+        }
       }
     }
   },
   "$defs": {
-    "kebab": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "kebab": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
     "kebabList": {
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,
-      "items": { "$ref": "#/$defs/kebab" }
+      "items": {
+        "$ref": "#/$defs/kebab"
+      }
     },
     "datasetName": {
       "type": "string",
@@ -640,7 +1214,9 @@
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,
-      "items": { "$ref": "#/$defs/datasetName" }
+      "items": {
+        "$ref": "#/$defs/datasetName"
+      }
     },
     "repositoryPath": {
       "type": "string",
@@ -662,8 +1238,12 @@
             "expectedOutputDatasets"
           ],
           "properties": {
-            "status": { "const": "registered" },
-            "id": { "$ref": "#/$defs/kebab" },
+            "status": {
+              "const": "registered"
+            },
+            "id": {
+              "$ref": "#/$defs/kebab"
+            },
             "version": {
               "type": "string",
               "pattern": "^\\d+\\.\\d+\\.\\d+$"
@@ -676,14 +1256,22 @@
               "type": "array",
               "minItems": 1,
               "uniqueItems": true,
-              "items": { "$ref": "#/$defs/repositoryPath" }
+              "items": {
+                "$ref": "#/$defs/repositoryPath"
+              }
             },
-            "artifactPath": { "$ref": "#/$defs/repositoryPath" },
+            "artifactPath": {
+              "$ref": "#/$defs/repositoryPath"
+            },
             "generatedArtifact": {
               "$ref": "#/$defs/plannedMappingSource/properties/generatedArtifact"
             },
-            "expectedOutputDatasets": { "$ref": "#/$defs/datasetNameList" },
-            "outputDatasetMatch": { "$ref": "#/$defs/outputDatasetMatch" }
+            "expectedOutputDatasets": {
+              "$ref": "#/$defs/datasetNameList"
+            },
+            "outputDatasetMatch": {
+              "$ref": "#/$defs/outputDatasetMatch"
+            }
           }
         },
         {
@@ -696,11 +1284,22 @@
             "reason"
           ],
           "properties": {
-            "status": { "const": "not-registered" },
-            "expectedId": { "$ref": "#/$defs/kebab" },
-            "owner": { "$ref": "#/$defs/kebab" },
-            "reason": { "type": "string", "minLength": 10 },
-            "plannedSource": { "$ref": "#/$defs/plannedMappingSource" }
+            "status": {
+              "const": "not-registered"
+            },
+            "expectedId": {
+              "$ref": "#/$defs/kebab"
+            },
+            "owner": {
+              "$ref": "#/$defs/kebab"
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 10
+            },
+            "plannedSource": {
+              "$ref": "#/$defs/plannedMappingSource"
+            }
           }
         }
       ]
@@ -708,14 +1307,22 @@
     "parityDataset": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["dataset", "fields"],
+      "required": [
+        "dataset",
+        "fields"
+      ],
       "properties": {
-        "dataset": { "$ref": "#/$defs/datasetName" },
+        "dataset": {
+          "$ref": "#/$defs/datasetName"
+        },
         "fields": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": { "type": "string", "minLength": 1 }
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     },
@@ -737,7 +1344,9 @@
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": { "$ref": "#/$defs/repositoryPath" }
+          "items": {
+            "$ref": "#/$defs/repositoryPath"
+          }
         },
         "generatedArtifact": {
           "type": "object",
@@ -748,103 +1357,424 @@
             "materializationCommand"
           ],
           "properties": {
-            "generatorPath": { "$ref": "#/$defs/repositoryPath" },
-            "logicalArtifactPath": { "$ref": "#/$defs/repositoryPath" },
-            "materializationCommand": { "type": "string", "minLength": 3 }
+            "generatorPath": {
+              "$ref": "#/$defs/repositoryPath"
+            },
+            "logicalArtifactPath": {
+              "$ref": "#/$defs/repositoryPath"
+            },
+            "materializationCommand": {
+              "type": "string",
+              "minLength": 3
+            }
           }
         },
-        "expectedOutputDatasets": { "$ref": "#/$defs/datasetNameList" },
-        "outputDatasetMatch": { "$ref": "#/$defs/outputDatasetMatch" }
+        "expectedOutputDatasets": {
+          "$ref": "#/$defs/datasetNameList"
+        },
+        "outputDatasetMatch": {
+          "$ref": "#/$defs/outputDatasetMatch"
+        }
       }
     },
     "outputDatasetMatch": {
       "description": "exact: registered outputs equal expectedOutputDatasets; includes: registered outputs contain them (a profile that consumes a subset of a large generated mapping)",
-      "enum": ["exact", "includes"]
+      "enum": [
+        "exact",
+        "includes"
+      ]
     },
     "outputContract": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["dataset", "requiredInputs", "format", "columnSource", "columns", "status"],
+      "required": [
+        "dataset",
+        "requiredInputs",
+        "format",
+        "columnSource",
+        "columns",
+        "status"
+      ],
       "properties": {
-        "dataset": { "$ref": "#/$defs/datasetName" },
-        "requiredInputs": { "$ref": "#/$defs/datasetNameList" },
+        "dataset": {
+          "$ref": "#/$defs/datasetName"
+        },
+        "requiredInputs": {
+          "$ref": "#/$defs/datasetNameList"
+        },
         "format": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["type"],
+          "required": [
+            "type"
+          ],
           "properties": {
-            "type": { "enum": ["csv", "jsonl", "parquet", "xlsx"] },
-            "delimiter": { "type": "string", "minLength": 1, "maxLength": 1 },
-            "header": { "type": "boolean" }
+            "type": {
+              "enum": [
+                "csv",
+                "jsonl",
+                "parquet",
+                "xlsx"
+              ]
+            },
+            "delimiter": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1
+            },
+            "header": {
+              "type": "boolean"
+            }
           },
-          "if": { "properties": { "type": { "const": "csv" } } },
-          "then": { "required": ["type", "delimiter", "header"] }
+          "if": {
+            "properties": {
+              "type": {
+                "const": "csv"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "type",
+              "delimiter",
+              "header"
+            ]
+          }
         },
-        "columnSource": { "enum": ["language-definition-subset", "consumer-contract"] },
+        "columnSource": {
+          "enum": [
+            "language-definition",
+            "language-definition-subset",
+            "consumer-contract"
+          ]
+        },
         "columns": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": { "type": "string", "minLength": 1 }
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         },
         "columnConstraints": {
           "type": "array",
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["column"],
+            "required": [
+              "column"
+            ],
             "properties": {
-              "column": { "type": "string", "minLength": 1 },
-              "const": { "type": "string" },
-              "enum": { "$ref": "#/$defs/nonEmptyStringList" }
+              "column": {
+                "type": "string",
+                "minLength": 1
+              },
+              "const": {
+                "type": "string"
+              },
+              "enum": {
+                "$ref": "#/$defs/nonEmptyStringList"
+              },
+              "pattern": {
+                "type": "string",
+                "minLength": 1
+              },
+              "nonEmpty": {
+                "const": true
+              }
             },
-            "oneOf": [{ "required": ["const"] }, { "required": ["enum"] }]
+            "oneOf": [
+              {
+                "required": [
+                  "const"
+                ]
+              },
+              {
+                "required": [
+                  "enum"
+                ]
+              },
+              {
+                "required": [
+                  "pattern"
+                ]
+              },
+              {
+                "required": [
+                  "nonEmpty"
+                ]
+              }
+            ]
           }
         },
-        "status": { "enum": ["planned", "verified"] },
-        "tbd": { "$ref": "#/$defs/nonEmptyStringList" }
+        "status": {
+          "enum": [
+            "planned",
+            "verified"
+          ]
+        },
+        "tbd": {
+          "$ref": "#/$defs/nonEmptyStringList"
+        },
+        "key": {
+          "$ref": "#/$defs/nonEmptyStringList"
+        }
       }
     },
     "stringList": {
       "type": "array",
-      "items": { "type": "string", "minLength": 1 }
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
     },
     "nonEmptyStringList": {
       "type": "array",
       "minItems": 1,
-      "items": { "type": "string", "minLength": 1 }
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
     },
     "dataset": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "role", "required", "schemaSource"],
+      "required": [
+        "name",
+        "role",
+        "required",
+        "schemaSource"
+      ],
       "properties": {
-        "name": { "$ref": "#/$defs/datasetName" },
-        "role": { "enum": ["source", "target", "intermediate", "readback"] },
-        "required": { "type": "boolean" },
-        "schemaSource": { "enum": ["lexicon-language-definition", "consumer-contract"] }
+        "name": {
+          "$ref": "#/$defs/datasetName"
+        },
+        "role": {
+          "enum": [
+            "source",
+            "target",
+            "intermediate",
+            "readback"
+          ]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "schemaSource": {
+          "enum": [
+            "lexicon-language-definition",
+            "consumer-contract"
+          ]
+        }
       }
     },
     "invariant": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "description", "phase", "failureCode"],
+      "required": [
+        "id",
+        "description",
+        "phase",
+        "failureCode"
+      ],
       "properties": {
-        "id": { "$ref": "#/$defs/kebab" },
-        "description": { "type": "string", "minLength": 5 },
-        "phase": { "type": "integer", "minimum": 1, "maximum": 12 },
-        "failureCode": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$" }
+        "id": {
+          "$ref": "#/$defs/kebab"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 5
+        },
+        "phase": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 12
+        },
+        "failureCode": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Za-z0-9]+$"
+        },
+        "check": {
+          "$ref": "#/$defs/declarativeCheck"
+        }
       }
     },
     "boundary": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "owner", "contract"],
+      "required": [
+        "name",
+        "owner",
+        "contract"
+      ],
       "properties": {
-        "name": { "$ref": "#/$defs/kebab" },
-        "owner": { "$ref": "#/$defs/kebab" },
-        "contract": { "type": "string", "minLength": 3 }
+        "name": {
+          "$ref": "#/$defs/kebab"
+        },
+        "owner": {
+          "$ref": "#/$defs/kebab"
+        },
+        "contract": {
+          "type": "string",
+          "minLength": 3
+        }
       }
+    },
+    "declarativeCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "dataset"
+      ],
+      "description": "A mapping-neutral check interpreted by compare_datasets.py check; domain meaning lives only in the values.",
+      "properties": {
+        "kind": {
+          "enum": [
+            "column-constraint",
+            "unique-key",
+            "row-count",
+            "columns-exact",
+            "matches-oracle"
+          ]
+        },
+        "dataset": {
+          "$ref": "#/$defs/datasetName"
+        },
+        "column": {
+          "type": "string",
+          "minLength": 1
+        },
+        "const": {
+          "type": "string"
+        },
+        "enum": {
+          "$ref": "#/$defs/nonEmptyStringList"
+        },
+        "pattern": {
+          "type": "string",
+          "minLength": 1
+        },
+        "nonEmpty": {
+          "const": true
+        },
+        "key": {
+          "$ref": "#/$defs/nonEmptyStringList"
+        },
+        "columns": {
+          "$ref": "#/$defs/nonEmptyStringList"
+        },
+        "min": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "equals": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "oracle": {
+          "$ref": "#/$defs/kebab"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "column-constraint"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "column"
+            ],
+            "oneOf": [
+              {
+                "required": [
+                  "const"
+                ]
+              },
+              {
+                "required": [
+                  "enum"
+                ]
+              },
+              {
+                "required": [
+                  "pattern"
+                ]
+              },
+              {
+                "required": [
+                  "nonEmpty"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "unique-key"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "key"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "matches-oracle"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "oracle"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "row-count"
+              }
+            }
+          },
+          "then": {
+            "anyOf": [
+              {
+                "required": [
+                  "min"
+                ]
+              },
+              {
+                "required": [
+                  "max"
+                ]
+              },
+              {
+                "required": [
+                  "equals"
+                ]
+              }
+            ]
+          }
+        }
+      ]
     }
   }
 }
