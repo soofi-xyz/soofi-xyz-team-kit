@@ -13,10 +13,6 @@ Choose a builder to implement or fix a product, or a configurer to use an existi
 
 In Copilot, select `soofi-xyz-team-kit:<agent>`. In Codex, request the named custom agent.
 
-Work proceeds in usable feature increments. After each piece, run its configuration,
-inspect the AWS execution/logs, and share the result before the next piece begins.
-See the [guided workflow](./skills/guide-product-work/SKILL.md) for details.
-
 ## Product agents
 
 <!-- product-catalog:start -->
