@@ -427,6 +427,10 @@ class Registry:
     def known_languages(self) -> set[str]:
         return set(self.languages) | self.endpoint_languages()
 
+    @property
+    def has_published(self) -> bool:
+        return any(p.get("kind") == "published-registry" for m in self.mappings.values() for p in m.provenance)
+
     def enabled(self, source: str | None = None, target: str | None = None) -> list[Mapping]:
         return sorted(
             (
@@ -573,19 +577,26 @@ def select_mapping(registry: Registry, source: str, target: str, qualifiers: lis
         })
     if version:
         hard = [r for r in ranked if any(s["kind"] == "version-hint" for s in r["signals"])]
+        if len(hard) == 1:
+            return {"status": "RESOLVED", "selected": hard[0]["mapping"], "candidates": ranked,
+                    "versionSelection": version_selection(ranked, hard[0], version, "explicit-version")}
     elif len(ranked) == 1:
         hard = ranked
     elif qualifiers:
         hard = [r for r in ranked if any(s["hard"] for s in r["signals"])]
     else:
         hard = []
+    if not version and registry.has_published and (hard or not qualifiers):
+        return latest_published(ranked, hard or ranked, source, target)
     if len(hard) == 1:
-        return {"status": "RESOLVED", "selected": hard[0]["mapping"], "candidates": ranked}
+        return {"status": "RESOLVED", "selected": hard[0]["mapping"], "candidates": ranked,
+                "versionSelection": version_selection(ranked, hard[0], version, "explicit-version" if version else "single-match")}
     matched = hard or ([r for r in ranked if r["signals"]] if qualifiers else [])
     cumulative = cumulative_superset(matched) if not version else None
     if cumulative:
         return {"status": "RESOLVED", "selected": cumulative["mapping"], "candidates": ranked,
                 "selectionRule": "cumulative-superset",
+                "versionSelection": version_selection(ranked, cumulative, None, "cumulative-superset"),
                 "reason": (f"{len(matched)} versions of {cumulative['mapping'].split('@')[0]} match; the highest version's outputs "
                            "include every other matching version's outputs (cumulative versions); request @<version> to pin an older one")}
     return {
@@ -601,6 +612,53 @@ def select_mapping(registry: Registry, source: str, target: str, qualifiers: lis
 
 def _semver(key: str) -> tuple[int, ...]:
     return tuple(int(part) for part in key.split("@")[1].split("."))
+
+
+def published_labels(candidate: dict) -> list[str]:
+    return sorted({p["label"] for p in candidate.get("provenance", []) if p.get("kind") == "published-registry"})
+
+
+def version_selection(ranked: list[dict], chosen: dict, requested: str | None, rule: str) -> dict:
+    """Which version was chosen, from which candidates and by which rule; the pin is the chosen mapping.json digest."""
+    mapping_id = chosen["mapping"].split("@")[0]
+    same_id = sorted((r for r in ranked if r["mapping"].split("@")[0] == mapping_id), key=lambda r: _semver(r["mapping"]))
+    pin = next((p for p in chosen.get("provenance", []) if p.get("kind") == "published-registry"), None) \
+        or next(iter(chosen.get("provenance", [])), {})
+    return {
+        "requested": requested,
+        "mappingId": mapping_id,
+        "candidates": [{"version": r["mapping"].split("@")[1], "publishedIn": published_labels(r)} for r in same_id],
+        "chosen": chosen["mapping"],
+        "rule": rule,
+        "pin": {"source": pin.get("kind"), "label": pin.get("label"), "path": pin.get("path"), "sha256": pin.get("sha256")},
+    }
+
+
+def latest_published(ranked: list[dict], pool: list[dict], source: str, target: str) -> dict:
+    """No @version: the highest semver among the published ENABLED versions of one mapping id."""
+    published = [r for r in pool if published_labels(r)]
+    unpublished = sorted(r["mapping"] for r in pool if not published_labels(r))
+    if not published:
+        return {"status": "NO_MAPPING", "selected": None, "candidates": ranked, "unpublished": unpublished,
+                "reason": f"no published ENABLED {source}->{target} version; add @x.y.z to validate a checked-in registration"}
+    ids = sorted({r["mapping"].split("@")[0] for r in published})
+    if len(ids) > 1:
+        return {"status": "AMBIGUOUS", "selected": None, "candidates": ranked,
+                "reason": f"{len(ids)} different published {source}->{target} mapping ids ({', '.join(ids)}); choose one"}
+    chosen = max(published, key=lambda r: _semver(r["mapping"]))
+    selection = version_selection(pool, chosen, None, "latest-published-semver")
+    versions = [c["version"] for c in selection["candidates"] if c["publishedIn"]]
+    ignored = [c["version"] for c in selection["candidates"] if not c["publishedIn"]]
+    if len(versions) == 1 and not ignored:
+        selection["rule"] = "single-match"
+        return {"status": "RESOLVED", "selected": chosen["mapping"], "candidates": ranked, "versionSelection": selection}
+    scope = " matching the request" if len(pool) < len(ranked) else ""
+    notice = f"Resolved {chosen['mapping']} — latest published of {', '.join(versions)}{scope}; add @x.y.z to pick another."
+    if ignored:
+        notice += f" Not published, so not considered: {', '.join(ignored)}."
+    selection["notice"] = notice
+    return {"status": "RESOLVED", "selected": chosen["mapping"], "candidates": ranked,
+            "selectionRule": "latest-published-semver", "reason": notice, "versionSelection": selection}
 
 
 def cumulative_superset(matches: list[dict]) -> dict | None:
@@ -1191,7 +1249,7 @@ def question_plan(
             "default": "dev",
         })
     versions = [c for c in selection.get("candidates", [])]
-    if len(versions) > 1 and hints.get("version") is None:
+    if len(versions) > 1 and hints.get("version") is None and selection.get("selectionRule") != "latest-published-semver":
         questions.append({
             "id": "mapping-version",
             "prompt": f"Silvally selected {selection['selected']}. Confirm the mapping version:",
@@ -1312,6 +1370,10 @@ def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclu
     unknown = [n for n in (source, target) if languages[n]["state"] == "UNKNOWN"]
     selection = select_mapping(registry, source, target, qualifiers, parsed["hints"]["version"])
     result["selection"] = selection
+    if selection.get("versionSelection"):
+        result["versionSelection"] = selection["versionSelection"]
+        if selection["versionSelection"].get("notice"):
+            result["notice"] = selection["versionSelection"]["notice"]
     result["lexiconModel"] = lexicon_model_comparison(registry)
     findings = base_findings(registry)
     phrases = qualifier_phrases(qualifiers)
@@ -1337,6 +1399,8 @@ def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclu
     if unknown or selection["status"] == "NO_MAPPING":
         status = "UNKNOWN_LANGUAGE" if unknown else "NO_MAPPING"
         candidates = nearest_candidates(registry, source, target, [source, target, *qualifiers]) + planned
+        candidates = [{"mapping": key, "from": source, "to": target, "reasons": ["registered-not-published"], "score": 10}
+                      for key in selection.get("unpublished", [])] + candidates
         request_terms = {t for t in (source, target, *qualifiers) if t and t != HUB_LANGUAGE}
         for candidate in candidates:
             if candidate.get("mapping"):
@@ -1637,6 +1701,8 @@ def draft_profile(request: str, discovery: dict, registry: Registry | None = Non
         "sensitivity": {"containsRawPii": False, "containsSecrets": False},
         "localLocation": f"local://transform-configuration-intake/draft-{digest}",
     }
+    if discovery.get("versionSelection"):
+        draft["versionSelection"] = discovery["versionSelection"]
     if resolved and registry is not None:
         draft["derivedDirections"] = [
             derive_direction(registry, registry.mappings[s["mapping"]]) for s in discovery["workflow"]["steps"]

@@ -291,13 +291,21 @@ def test_synthetic_end_to_end(tmp: Path) -> None:
                    "phases 1-11 PASS, BLOCKED on the final PROD-derived validation")
 
 
+VERSION_SELECTION = {"requested": None, "mappingId": "canon-to-omega", "candidates": [{"version": "1.0.0", "publishedIn": ["dev"]},
+                     {"version": "2.0.0", "publishedIn": ["dev"]}], "chosen": "canon-to-omega@2.0.0", "rule": "latest-published-semver",
+                     "notice": "Resolved canon-to-omega@2.0.0 — latest published of 1.0.0, 2.0.0; add @x.y.z to pick another.",
+                     "pin": {"source": "published-registry", "label": "dev", "path": "transform-mappings/canon-to-omega/2.0.0/mapping.json",
+                             "sha256": "c" * 64}}
+
+
 def test_evaluate_rules(tmp: Path) -> None:
     work = tmp / "evaluate"
     work.mkdir()
     intent = {"status": "RESOLVED", "selectedProfile": PROFILE.name, "primaryDirection": {"to": "omega", "outputShape": "tabular"},
               "workflow": {"steps": [{"mapping": "canon-to-omega@2.0.0"}], "persistPolicyDefault": "forbidden"},
               "findings": [{"code": "EndpointDatasetNotRequired", "mapping": "canon-to-omega@2.0.0", "dataset": "ledger_summary"},
-                           {"code": "RetiredMappingInRegistry", "mapping": "alpha-to-omega@0.9.0"}]}
+                           {"code": "RetiredMappingInRegistry", "mapping": "alpha-to-omega@0.9.0"}],
+              "versionSelection": VERSION_SELECTION}
     silvally_io.write_json(work / "intent.json", intent)
     silvally_io.write_json(work / "report.json", {"mapping": "canon-to-omega@2.0.0", "sparkVersion": "3.3.0", "outputs": [],
                                                  "negativeCases": [{"dataset": "member_report", "missingInput": "vertex-member", "rejected": False}]})
@@ -307,6 +315,9 @@ def test_evaluate_rules(tmp: Path) -> None:
     verdict = json.loads((work / "phases.json").read_text())["verdict"]
     if phases[6]["status"] != "FAIL" or phases[9]["status"] != "FAIL" or verdict != "NOT_READY":
         fail("an endpoint finding or an accepted missing-input run did not fail its phase")
+    evaluated = json.loads((work / "phases.json").read_text())
+    if evaluated.get("versionSelection") != VERSION_SELECTION or VERSION_SELECTION["notice"] not in " ".join(phases[1]["reasons"]):
+        fail("evaluate_run did not carry the defaulted version selection and its notice into phase 1")
     if "RetiredMappingInRegistry" not in json.loads((work / "phases.json").read_text())["informationalFindings"]:
         fail("a finding on a mapping outside the run was not kept informational")
     if phases[4]["status"] != "BLOCKED" or phases[11]["status"] != "BLOCKED":
@@ -541,6 +552,16 @@ def test_run_package(tmp: Path) -> None:
     built = run_tool("build_run_package.py", "--run-dir", str(final_dir), "--package-spec", str(final_spec), *local, check=False)
     if built.returncode != 0 or json.loads(built.stdout)["verdict"] != "READY":
         fail(f"a final PROD-derived package was not READY: {built.stderr[-800:]}")
+    final["versionSelection"] = VERSION_SELECTION
+    final_spec.write_text(json.dumps(final))
+    built = run_tool("build_run_package.py", "--run-dir", str(final_dir), "--package-spec", str(final_spec), *local, check=False)
+    if built.returncode != 0 or json.loads((final_dir / "run.json").read_text()).get("versionSelection") != VERSION_SELECTION:
+        fail(f"the run package did not record the version selection: {built.stderr[-800:]}")
+    final["versionSelection"] = {**VERSION_SELECTION, "pin": {"source": "published-registry"}}
+    final_spec.write_text(json.dumps(final))
+    if run_tool("build_run_package.py", "--run-dir", str(final_dir), "--package-spec", str(final_spec), *local, check=False).returncode == 0:
+        fail("a run package whose version selection has no digest pin was accepted")
+    final["versionSelection"] = VERSION_SELECTION
     final["finalValidation"]["executionApprovalDigests"] = ["sha256:" + "9" * 64]
     final_spec.write_text(json.dumps(final))
     if run_tool("build_run_package.py", "--run-dir", str(final_dir), "--package-spec", str(final_spec), *local, check=False).returncode == 0:
@@ -552,7 +573,7 @@ def test_run_package(tmp: Path) -> None:
     wrong = run_tool("build_run_package.py", "--run-dir", str(run_dir), "--package-spec", str(spec_path), *local, check=False)
     if wrong.returncode == 0:
         fail("a READY verdict with a FAIL phase was accepted")
-    results.append("build_run_package verdict + schema")
+    results.append("build_run_package verdict + schema + versionSelection")
 
 
 def test_fetch_registry_with_shim(tmp: Path) -> None:

@@ -1347,6 +1347,92 @@ def test_registry_sources(tmp: Path) -> None:
         fail(f"parity for an undefined target language was not blocked: {blocked}")
 
 
+def publish(root: Path, doc: dict) -> Path:
+    path = root / "transform-mappings" / doc["id"] / doc["version"] / "mapping.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(doc))
+    return path
+
+
+def test_version_default(tmp: Path) -> None:
+    reg = Registry(tmp, "version-default")
+    docs = {v: json.loads(reg.registration(f"canon-to-omega@{v}").read_text()) for v in ("1.0.0", "2.0.0")}
+    published = tmp / "version-published"
+    for version, base in (("1.0.0", "1.0.0"), ("2.0.0", "2.0.0"), ("9.0.0", "2.0.0"), ("10.0.0", "2.0.0")):
+        pinned = publish(published, {**docs[base], "version": version})
+    reg.registries = [f"dev={published}"]
+    latest = reg.discover("test canon to omega")
+    selection = latest.get("versionSelection") or {}
+    if latest["status"] != "RESOLVED" or latest["selection"]["selected"] != "canon-to-omega@10.0.0":
+        fail(f"several published versions did not default to the highest semver (10.0.0 > 9.0.0): {latest['selection'].get('selected')}")
+    if selection.get("rule") != "latest-published-semver" or selection.get("requested") is not None:
+        fail(f"the defaulted version was not recorded as latest-published-semver: {selection}")
+    expected_notice = "Resolved canon-to-omega@10.0.0 — latest published of 1.0.0, 2.0.0, 9.0.0, 10.0.0; add @x.y.z to pick another."
+    if latest.get("notice") != expected_notice or selection.get("notice") != expected_notice:
+        fail(f"the defaulted version was not announced upfront: {latest.get('notice')!r}")
+    if selection["pin"] != {"source": "published-registry", "label": "dev", "path": str(pinned.relative_to(published)),
+                            "sha256": hashlib.sha256(pinned.read_bytes()).hexdigest()}:
+        fail(f"the defaulted version was not pinned to its published mapping.json digest: {selection['pin']}")
+    if any(q["id"] in {"mapping-version", "mapping-choice"} for q in latest["questions"]):
+        fail("a defaulted version was asked again instead of announced")
+    draft = reg.run("draft-profile", "--request", "test canon to omega")
+    if draft.get("versionSelection") != selection:
+        fail("the draft profile did not record the version selection")
+    if Draft202012Validator:
+        for schema_path in (DRAFT_PROFILE_SCHEMA, RUN_SCHEMA):
+            defs = json.loads(schema_path.read_text())["$defs"]
+            checker = Draft202012Validator({"$ref": "#/$defs/versionSelection", "$defs": defs}, format_checker=FormatChecker())
+            if list(checker.iter_errors(selection)):
+                fail(f"{schema_path.name} rejects the resolver's versionSelection: {[e.message for e in checker.iter_errors(selection)]}")
+            for label, bad in (("a defaulted version without a notice", {k: v for k, v in selection.items() if k != "notice"}),
+                               ("a defaulted version claiming a requested version", {**selection, "requested": "1.0.0"}),
+                               ("a defaulted version pinned to an unpublished registration",
+                                {**selection, "pin": {**selection["pin"], "source": "checked-in-registration"}}),
+                               ("a version selection without a digest pin", {**selection, "pin": {"source": "published-registry"}})):
+                if checker.is_valid(bad):
+                    fail(f"{schema_path.name} accepted {label}")
+
+    single = Registry(tmp, "version-single")
+    single_published = tmp / "version-single-published"
+    for base in ("1.0.0", "2.0.0"):
+        publish(single_published, docs[base])
+    single.registries = [f"dev={single_published}"]
+    one = single.discover("test canon (alpha) to omega ledger summary")
+    if one["selection"]["selected"] != "canon-to-omega@2.0.0" or one["versionSelection"]["rule"] != "single-match" or "notice" in one:
+        fail(f"a request matching one published version announced a version default: {one.get('versionSelection')}")
+
+    explicit = reg.discover("test canon to omega@1.0.0")
+    if (explicit["selection"]["selected"] != "canon-to-omega@1.0.0" or explicit["versionSelection"]["rule"] != "explicit-version"
+            or explicit["versionSelection"]["requested"] != "1.0.0" or "notice" in explicit):
+        fail(f"an explicit @version did not win over the latest published version: {explicit.get('versionSelection')}")
+
+    unpublished_newer = Registry(tmp, "version-unpublished-newer")
+    only_v1 = tmp / "version-only-v1"
+    publish(only_v1, docs["1.0.0"])
+    unpublished_newer.registries = [f"dev={only_v1}"]
+    older = unpublished_newer.discover("test canon to omega")
+    if older["selection"]["selected"] != "canon-to-omega@1.0.0" or "Not published, so not considered: 2.0.0." not in older.get("notice", ""):
+        fail(f"an unpublished checked-in version was defaulted to, or not named in the notice: {older.get('notice')}")
+
+    none_published = Registry(tmp, "version-none-published")
+    other = tmp / "version-other-published"
+    publish(other, json.loads(none_published.registration("canon-to-sigma@1.0.0").read_text()))
+    none_published.registries = [f"dev={other}"]
+    missing = none_published.discover("test canon to omega")
+    if missing["status"] != "NO_MAPPING" or not {"canon-to-omega@1.0.0", "canon-to-omega@2.0.0"} <= set(offered(missing)):
+        fail(f"no published version did not give NO_MAPPING with the registrations offered by version: {missing['status']} {offered(missing)}")
+
+    two_ids = Registry(tmp, "version-two-ids")
+    two_published = tmp / "version-two-ids-published"
+    publish(two_published, docs["2.0.0"])
+    twin = {**docs["1.0.0"], "id": "canon-to-omega-twin", "version": "3.0.0"}
+    two_ids.registries = [f"dev={two_published}"]
+    publish(two_published, twin)
+    ambiguous = two_ids.discover("test canon to omega")
+    if ambiguous["status"] != "AMBIGUOUS" or "canon-to-omega-twin@3.0.0" not in offered(ambiguous) or "notice" in ambiguous:
+        fail(f"different published mapping ids for one request were defaulted instead of asked: {ambiguous['status']} {offered(ambiguous)}")
+
+
 def test_contracts_and_profile_check(tmp: Path) -> None:
     reg = Registry(tmp, "contracts")
     derived = reg.run("contracts", "--mapping", "canon-to-omega@2.0.0")
@@ -1436,6 +1522,7 @@ def main() -> int:
         test_concepts_and_forbidden_content(tmp)
         test_profile_drift_and_model_policy(tmp)
         test_registry_sources(tmp)
+        test_version_default(tmp)
         test_contracts_and_profile_check(tmp)
     print("Silvally contract and resolver tests passed")
     return 0

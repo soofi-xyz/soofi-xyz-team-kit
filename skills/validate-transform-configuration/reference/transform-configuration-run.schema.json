@@ -581,7 +581,8 @@
         }
       }
     },
-    "verdict": { "enum": ["READY", "NOT_READY", "BLOCKED"] }
+    "verdict": { "enum": ["READY", "NOT_READY", "BLOCKED"] },
+    "versionSelection": { "$ref": "#/$defs/versionSelection" }
   },
   "allOf": [
     {
@@ -681,6 +682,156 @@
     }
   ],
   "$defs": {
+    "versionSelection": {
+      "description": "How the mapping version was chosen. Without @x.y.z the rule is latest-published-semver: the highest semantic version among the published ENABLED versions of one mapping id, announced by notice. The chosen mapping.json is pinned by SHA-256.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requested",
+        "mappingId",
+        "candidates",
+        "chosen",
+        "rule",
+        "pin"
+      ],
+      "properties": {
+        "requested": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "mappingId": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "candidates": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "version",
+              "publishedIn"
+            ],
+            "properties": {
+              "version": {
+                "type": "string",
+                "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+              },
+              "publishedIn": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "uniqueItems": true
+              }
+            }
+          }
+        },
+        "chosen": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*@[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "rule": {
+          "enum": [
+            "explicit-version",
+            "latest-published-semver",
+            "single-match",
+            "cumulative-superset"
+          ]
+        },
+        "notice": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pin": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source",
+            "sha256"
+          ],
+          "properties": {
+            "source": {
+              "enum": [
+                "published-registry",
+                "checked-in-registration"
+              ]
+            },
+            "label": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "path": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "rule": {
+                "const": "latest-published-semver"
+              }
+            },
+            "required": [
+              "rule"
+            ]
+          },
+          "then": {
+            "required": [
+              "notice"
+            ],
+            "properties": {
+              "requested": {
+                "type": "null"
+              },
+              "pin": {
+                "properties": {
+                  "source": {
+                    "const": "published-registry"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "rule": {
+                "const": "explicit-version"
+              }
+            },
+            "required": [
+              "rule"
+            ]
+          },
+          "then": {
+            "properties": {
+              "requested": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ]
+    },
     "kebab": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
     "sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
     "mappingKey": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*@[0-9]+\\.[0-9]+\\.[0-9]+$" },

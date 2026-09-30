@@ -112,6 +112,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if intent.get("status") == "RESOLVED" and (intent.get("selectedProfile") or profile):
         phases.set(1, "PASS", f"resolved {sorted(run_keys)}; profile {intent.get('selectedProfile') or profile.get('id')}", "intent-resolution")
+        if (intent.get("versionSelection") or {}).get("notice"):
+            phases.set(1, "PASS", intent["versionSelection"]["notice"], "version-selection")
     else:
         phases.set(1, "BLOCKED", f"resolver status {intent.get('status')}; no selected profile")
 
@@ -299,6 +301,8 @@ def main(argv: list[str] | None = None) -> int:
            "phases": [{"number": n, "name": PHASE_NAMES[n], "status": phases.status[n], "reasons": phases.reasons[n],
                        "evidenceIds": sorted(set(e for e in phases.evidence[n] if e)) or [f"phase-{n}"]} for n in PHASE_NAMES],
            "informationalFindings": sorted(set(informational))}
+    if intent.get("versionSelection"):
+        out["versionSelection"] = intent["versionSelection"]
     write_json(args.out, out)
     print(json.dumps({"verdict": verdict, "phases": {n: phases.status[n] for n in PHASE_NAMES}}))
     return 0 if verdict == "READY" else 1

@@ -7,7 +7,7 @@ RUN is a transform_runs.py run directory (steps.json, approvals/, cost.json). Th
 spec supplies what only the validator can judge: profile identity, discoveryTrace,
 configurationPackage, environment, sensitivity, graph, runtime, persistCanary,
 exporterHydration, roundTrip, phases, boundaryDecisions, failures, remediations and
-optional extra datasets. This tool adds executionSteps, approvals, dataset evidence from
+optional extra datasets and versionSelection (copied from the resolver). This tool adds executionSteps, approvals, dataset evidence from
 captured outputs and cost, computes the verdict from phase statuses (any FAIL -> NOT_READY,
 else any BLOCKED/APPROVAL_REQUIRED -> BLOCKED, else READY), rejects a verdict that
 disagrees, refuses READY unless finalValidation proves approved DEV executions on the
@@ -140,7 +140,7 @@ def main(argv: list[str] | None = None) -> int:
            "cost": {"ceilingUsd": spec.get("costCeilingUsd", cost.get("ceilingUsd", 0)), "estimatedUsd": spec.get("estimatedUsd", 0),
                     "actualUsd": cost.get("actualUsd")},
            "failures": spec.get("failures", []), "remediations": spec.get("remediations", []), "verdict": computed}
-    for optional in ("intentResolution", "parityDerivation", "sourceWindowSelection", "finalValidation"):
+    for optional in ("intentResolution", "parityDerivation", "sourceWindowSelection", "finalValidation", "versionSelection"):
         if optional in spec:
             run[optional] = spec[optional]
     gaps = final_validation_gaps(run) if computed == "READY" else []
