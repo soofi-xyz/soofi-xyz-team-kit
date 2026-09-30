@@ -3,6 +3,10 @@ name: operate-connect-configurations
 description: "Onboard a partner exchange onto the deployed Connect service as configuration: understand the partner's data, locate production credentials, get dev credentials, select a safe test sample, write the flow, partner configuration, activation and job request, prove them on the dev stack, and hand them to the consuming product. Use when adding a partner, a partner API call, webhook, SFTP or bucket intake, file delivery, or lookup to Connect, or when testing or using an existing Connect configuration."
 ---
 
+Use [the Connect capability map](../guide-product-work/reference/iterations/connect.md). Derive the feature pieces from scope and dependencies, then apply the work below within each piece; require a user-run configuration, AWS inspection and feedback before starting the next implementation piece.
+
+Follow [guide-product-work](../guide-product-work/SKILL.md). Wingull configures Connect; Lapras owns missing capabilities and defects.
+
 # Operate Connect Configurations
 
 Use `wingull`. Connect is deployed; this skill turns a partner exchange into

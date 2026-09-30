@@ -14,11 +14,14 @@ This skill is intentionally thin. Use it as a loader for [`reference/PRD.md`](./
 2. Read [`../apply-engineering-guidelines/SKILL.md`](../apply-engineering-guidelines/SKILL.md) for Golden Path constraints.
 3. Read Marketplace and Deployer PRDs whenever Build work touches bundle provenance, release review, artifact consumption, deployer contracts, or CDK cloud assembly deployment.
 
-## Use With Plugin Agents
+## Product ownership
 
-- Use `conkeldurr` first for platform product classification, existing-deployment checks, and build-vs-integrate decisions.
-- Use `regigigas` when Build artifacts must be registered, reviewed, released, subscribed, or deployed through the marketplace ecosystem.
-- Use `machamp` for CodeBuild workflows, validation gates, artifact publishing, cost controls, throttling, idempotency, and workflow verification.
+Use the catalog in [guide-product-work](../guide-product-work/SKILL.md).
+Build has no separately assigned agent in this kit. Execute this supporting
+skill directly only within the requested scope. Do not assign this work to
+Conkeldurr (Persist) or Zygarde (System), and do not call retired specialists.
+Use relevant supporting skills directly. Use Registeel only for current
+Marketplace publication and Regigigas for Marketplace implementation changes.
 
 ## Implementation Rules
 

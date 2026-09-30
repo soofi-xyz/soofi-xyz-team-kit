@@ -1,5 +1,11 @@
 # Transform operations and verification
 
+Apply only the lane authorized by the request. Silvally owns mapping authoring
+and tests; Kecleon owns engine changes. For a test-only request, inspect and run
+the existing mapping without publishing, editing or deploying changes. Report
+defects. The engine implementation/deployment sections below apply only to an
+explicit engine-change task, not to a configurer trying to make a test pass.
+
 Use [PRD.md](PRD.md) as the product contract. Discover the target checkout,
 deployment and supported request versions before operating a service. Keep
 project-specific observations in the task's evidence, outside this reusable spec.
@@ -25,10 +31,11 @@ state transitions, permissions, pricing model, deployment and recovery commands.
    plan. Verify S3/KMS access and output scope. Submit with a fresh execution name
    and run prefix only within the existing authorization.
 
-Publish compatible language/mapping configuration through Lexicon and verify the
-published artifacts before execution. Change the engine only when capabilities
-or contracts require it. Deploy code/infrastructure through the target's CDK/CI
-flow. A local SQL edit is not a published configuration release.
+For an authorized configuration change, publish compatible language/mapping
+configuration through Lexicon and verify the published artifacts. For test-only
+work, verify the existing published artifacts without changing them. Hand missing
+engine capabilities to Kecleon; only the builder deploys the requested engine
+change through the target's CDK/CI flow. A local SQL edit is not a published release.
 
 ## 2. Admission, execution and recovery
 

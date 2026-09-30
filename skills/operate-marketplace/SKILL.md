@@ -3,6 +3,10 @@ name: operate-marketplace
 description: "Operate the deployed Prism Marketplace catalog API from prismteam-ai/marketplace: configure review settings, register ontology (families, categories, products, configurations, components), check and fix product publish readiness, publish CDK cloud-assembly zips and poll reviews, and roll back VALID bundles. Use when registering or publishing products to Prism Marketplace or checking review status."
 ---
 
+Use [the Marketplace capability map](../guide-product-work/reference/iterations/marketplace.md). Derive the feature pieces from scope and dependencies, then apply the work below within each piece; require a user-run configuration, AWS inspection and feedback before starting the next implementation piece.
+
+Follow [guide-product-work](../guide-product-work/SKILL.md). Registeel configures Marketplace; Regigigas owns service implementation changes.
+
 # Operate Prism Marketplace
 
 Use `registeel`. Prism Marketplace is deployed; this skill drives its live HTTP API.
@@ -20,20 +24,22 @@ Organizations tenancy, StackSets, or Account Manager from this skill.
 ## Prerequisites
 
 1. Use this Prism Marketplace base URL:
-   `https://706p38drc8.execute-api.us-east-2.amazonaws.com/dev/marketplace`.
+   `https://1ubssdfzw2.execute-api.us-east-2.amazonaws.com/dev/marketplace`.
+   It runs in the Marketplace account `848665034107`, `us-east-2`.
    The path must end with `/marketplace` (no trailing slash when concatenating).
    Honor `MARKETPLACE_BASE_URL` only when the user sets a different one.
    Repo scripts default to an older host and refuse bases outside their allowed
    path — pass this URL as `MARKETPLACE_BASE_URL` when running them.
 2. Require `MARKETPLACE_API_KEY` (shared usage-plan `x-api-key`). Prism
    Marketplace does not mint keys. It uses the key named `shared-environment`
-   on the usage plan stored at SSM `/account/shared-usage-plan-id` in
-   `us-east-2`. If the variable is unset, stop and give these steps, then wait.
+   on the usage plan stored at SSM `/account/shared-usage-plan-id` in the
+   Marketplace account `848665034107`, `us-east-2`. If the variable is unset,
+   stop and give these steps, then wait.
    Do not run the lookup yourself, do not print the value, and do not ask the
    user to paste it into chat.
 
-   Get it in their own terminal (prints only there). Use the AWS profile already
-   selected for this account (`AWS_PROFILE=<selected-profile>`), region
+   Get it in their own terminal (prints only there). Use an AWS profile for
+   account `848665034107` (`AWS_PROFILE=<selected-profile>`), region
    `us-east-2`:
 
    ```bash
@@ -91,11 +97,31 @@ Hand off and stop when:
 
 ## 1. Review settings (once per stage before non-skip publish)
 
-1. `PUT /settings` with `{ "review_api_key": "...", "review_environment_hosts": ["https://<deploy-api>/dev"] }`.
-2. `GET /settings/status` — require `status.component_publication.is_operational: true` before publishing with `skip_review: false`.
-3. Do not print `review_api_key`. SSM paths on the Marketplace side are
+The sandbox review runs on a separate review Deploy in account `257779860257`
+(`us-east-2`), not in the Marketplace account. Its API is
+`https://bnxj2o10y7.execute-api.us-east-2.amazonaws.com/dev`, and it accepts
+IAM-signed calls from the Marketplace account. Check status first; these
+settings are usually already in place.
+
+1. `GET /settings/status` — if `status.component_publication.is_operational`
+   is `true`, skip to publishing.
+2. Otherwise `PUT /settings` with
+   `{ "review_api_key": "...", "review_environment_hosts": ["https://bnxj2o10y7.execute-api.us-east-2.amazonaws.com/dev"] }`.
+   Marketplace probes each host with an IAM-signed call before saving; a
+   `422 ReviewEnvironmentInvalid` means the review Deploy is unreachable or
+   does not trust the Marketplace account. Marketplace only stores
+   `review_api_key` and requires it to be non-empty; Deploy authorizes review
+   calls with IAM, not with this key.
+3. Require `is_operational: true` before publishing with `skip_review: false`.
+4. Do not print `review_api_key`. SSM paths on the Marketplace side are
    `/marketplace/{stage}/review-api-key` and
    `/marketplace/{stage}/review-environment-hosts`.
+
+The review account is new. If a review fails at the sandbox deploy with
+CodeBuild `AccountLimitExceededException` ("Cannot have more than 0 builds in
+queue"), report it as a blocker outside Marketplace: the account owner must ask
+AWS Support to raise the CodeBuild limit in `257779860257`. Service Quotas can
+show 60 while this hidden new-account limit still applies.
 
 ## 2. Register ontology
 
@@ -154,8 +180,9 @@ bundle; do not route it through the Build or Comply services.
    publish step writes `service-comply` and `obfuscated: true` only from
    their results. Never write a verdict by hand, and never name the Build
    service as issuer of metadata it did not produce.
-7. Pack for review under a stage no live install uses in the Marketplace
-   account (for example `review`).
+7. Pack for review under a stage no live install uses in the review account
+   `257779860257` (for example `review`), with that account's credentials
+   when the app pins `env.account` at synth.
 
 ## 3. Publish, review, rollback
 
@@ -202,7 +229,7 @@ components or is referenced as `configured_product_id`.
 
 ## Safety
 
-- Use `https://706p38drc8.execute-api.us-east-2.amazonaws.com/dev/marketplace`.
+- Use `https://1ubssdfzw2.execute-api.us-east-2.amazonaws.com/dev/marketplace`.
   If the user names a different base URL, confirm it before any write.
 - Never print secrets (`MARKETPLACE_API_KEY`, `review_api_key`).
 - Do not claim Marketplace deployed a stack into a tenant — it only stores
@@ -215,3 +242,8 @@ Report: lane chosen; Prism Marketplace as the target; entities touched (names + 
 `review_id` / final `bundle_status` / hosted `bundle_url` when relevant;
 Persist confirmation only if `demo.sh` or an equivalent check was run; and any
 handoff outside Marketplace.
+
+This install does not deliver catalog graph facts to Persist yet: the
+Marketplace account has no Persist or `socap-engagement-events` bus. Do not
+report catalog changes as persisted, and expect `demo.sh`'s Persist check to
+fail until that is connected.

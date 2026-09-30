@@ -5,20 +5,29 @@ repository**. This skill supplies instructions, contracts and examples. Create
 and test the modules described below in that repository; no product runtime,
 bootstrap generator or deployable stack ships with this skill.
 
+Deliver [user-tested feature increments](../../guide-product-work/reference/iterations/transform.md).
+The module inventory below describes the eventual product, not permission to
+build every capability before the first AWS test. For each iteration, implement
+the minimum path through these modules, deploy it within authorization, then
+have the person run its configuration and inspect the execution/Glue logs.
+Wait for their feedback before adding the next capability.
+
 ## 1. Intake and shared dependencies
 
 Use this initial instruction:
 
 > Use Kecleon to implement Transform in this empty repository. Follow its build
-> guide, contracts and acceptance cases. Keep the shared skills. Implement and
-> verify the local data flow first, then prepare the AWS stack using the supplied
-> environment facts and existing authorization.
+> guide, contracts and acceptance cases. Keep the shared skills. Derive runnable
+> feature increments from the requested capabilities; verify each locally and
+> in the authorized AWS environment,
+> then have me use and inspect it before implementing the next increment.
 
 Reuse the session's target directory and constraints. Choose the baseline below
 for routine engineering decisions. Ask only for unavailable business or deployment
 facts: source/target schemas and rules, account/region/stage, storage scopes,
 Lexicon catalog, budget/pricing and alert/metrics integrations. Continue local
-implementation with the example configuration while external facts are missing.
+work on the current increment while external facts are missing; leave its AWS
+checkpoint pending and do not implement later increments around that blocker.
 Do not infer real business rules from a language's name.
 
 Read these existing shared skills; keep them shared:
@@ -61,10 +70,13 @@ in the credential provider chain and ignore local environments, data, build
 outputs and dependency directories in Git. The local example's prices and AWS
 identities are fixture values. Local execution must require no cloud credentials.
 
-## 3. Implement in this order
+## 3. Module boundaries within each iteration
 
 Use these paths for a new repository. In an existing product, map the same
 responsibilities to its modules before editing.
+Slice the responsibilities and exit checks by the current iteration. Bring the
+minimal handler, diagnostics and AWS stack into iteration 1; do not wait for the
+entire format/graph/failure matrix before the first usable deployed conversion.
 
 | Step / module to create | Implement | Exit check |
 | --- | --- | --- |
@@ -117,7 +129,9 @@ ESLint, Prettier and Vitest commands. Define the CLI interfaces as follows:
 | `npm run check-deploy` | Validate AWS environment, selected identity, region, price freshness and required integrations |
 | `npm run deploy` | Run check-deploy then CDK deploy with the same environment; write local stack outputs |
 
-After implementation, run from the target repository:
+For each increment, run the relevant commands from the target repository and
+preserve existing regression coverage. Expand acceptance with that increment's
+capabilities; run the complete scoped matrix after all selected feature checkpoints:
 
 ```bash
 python3.11 -m venv .venv

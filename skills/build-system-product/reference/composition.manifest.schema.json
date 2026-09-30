@@ -18,8 +18,8 @@
   "properties": {
     "contractVersion": {
       "type": "integer",
-      "const": 1,
-      "description": "System composition contract version. Only 1 is accepted."
+      "const": 2,
+      "description": "System composition contract version. Use 2 for canonical product ownership."
     },
     "systemId": {
       "type": "string",
@@ -51,15 +51,14 @@
           "product": {
             "type": "string",
             "enum": [
-              "product-orchestration",
-              "lexicon",
+              "system",
+              "model",
               "connect",
               "transform",
-              "translate",
               "persist",
               "deploy",
-              "system-runtime",
-              "batch"
+              "rule",
+              "schedule"
             ]
           },
           "role": {
@@ -104,8 +103,7 @@
               "connect-activation",
               "transform-request",
               "transform-mapping",
-              "persist-collection",
-              "system-openapi",
+              "persist-ingest",
               "system-fixtures",
               "deploy-environment",
               "other"
@@ -124,11 +122,12 @@
           "ownerAgent": {
             "type": "string",
             "enum": [
-              "conkeldurr",
-              "lapras",
-              "kecleon",
-              "zygarde",
-              "machamp"
+              "celebi",
+              "wingull",
+              "silvally",
+              "uxie",
+              "meditite",
+              "registeel"
             ]
           }
         }
@@ -155,15 +154,14 @@
           "product": {
             "type": "string",
             "enum": [
-              "product-orchestration",
-              "lexicon",
+              "system",
+              "model",
               "connect",
               "transform",
-              "translate",
               "persist",
               "deploy",
-              "system-runtime",
-              "batch"
+              "rule",
+              "schedule"
             ]
           },
           "configRef": {
@@ -173,11 +171,12 @@
           "agent": {
             "type": "string",
             "enum": [
-              "conkeldurr",
-              "lapras",
-              "kecleon",
-              "zygarde",
-              "machamp"
+              "celebi",
+              "wingull",
+              "silvally",
+              "uxie",
+              "meditite",
+              "registeel"
             ]
           },
           "gate": {
@@ -290,7 +289,7 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 128,
-      "description": "Product service name when different from systemId."
+      "description": "Named outcome in the System service; retain this field for package compatibility."
     },
     "orchestration": {
       "type": "object",
@@ -298,11 +297,7 @@
       "properties": {
         "mode": {
           "type": "string",
-          "enum": [
-            "product-service",
-            "thin-package-deferred"
-          ],
-          "description": "Default product-service. thin-package-deferred requires deferred Product cutover criteria."
+          "const": "system-service"
         },
         "invocationMode": {
           "type": "string",

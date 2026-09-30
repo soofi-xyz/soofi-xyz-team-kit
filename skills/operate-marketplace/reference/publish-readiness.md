@@ -252,7 +252,9 @@ Who writes it:
 ## B2. Host the bundle and get the presigned URL
 
 Do not ask the user for a bucket name. Resolve the upload bucket in the
-Marketplace account in this order, after the account and region check:
+Marketplace account `848665034107` in this order, after the account and region
+check. When the pack step needed review-account credentials, switch back to a
+Marketplace-account profile before these bucket and upload commands:
 
 1. A bucket the user named.
 2. The shared bucket recorded in SSM `/marketplace/bundle-upload-bucket`.
@@ -303,10 +305,12 @@ aws s3 presign "s3://$BUCKET/$KEY" --expires-in 7200
 - Treat the presigned URL as a secret while it is valid. Do not commit it.
 - Pack with credentials for the install account when the app pins
   `env.account` at synth time.
-- The sandbox review installs the bundle into the Marketplace account. Pack
-  with a stage no live install uses there (for example `TARGET_ENV=review`),
-  or the review updates live stacks. This matters most for Deploy, which runs
-  as `deploy-dev-*` in that account.
+- The sandbox review installs the bundle into the review account
+  `257779860257`, not the Marketplace account `848665034107`. A review bundle
+  whose app pins `env.account` must be packed with review-account credentials.
+  Pack with a stage no live install uses there (for example
+  `TARGET_ENV=review`), or the review updates live stacks. This matters most
+  for Deploy, whose review install runs as `deploy-dev-*` in that account.
 
 Run bucket, upload, or presign commands only for a publish request, after the
 user confirms AWS credentials are ready and the account and region check

@@ -94,7 +94,7 @@ The following `CDM` series remain required for the evaluator:
 Add these without changing decisions or allowing telemetry failures to replace a
 valid response. Resolve whether deploy-injected Persist discovery still needs the
 proposed persist-url cache dimension. Coordinate metric registration/dashboards
-with Porygon. Treat the 300 ms warm p95 as an open measured requirement, not an
+with the metrics supporting skill. Treat the 300 ms warm p95 as an open measured requirement, not an
 assertion established by provisioned concurrency.
 
 ## Evidence to return

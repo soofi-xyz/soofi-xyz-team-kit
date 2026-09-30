@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Contract tests for skills/build-system-product and the zygarde agent.
+"""Contract tests for skills/build-system-product and System configuration ownership.
 
 Run standalone from the plugin repo root:
 
@@ -80,7 +80,7 @@ def assert_worked_example() -> None:
         fail(f"worked example must validate: {errors}")
     manifest = read_json(EXAMPLE_DIR / MANIFEST_NAME)
     products = {item["product"] for item in manifest["products"]}
-    for product in ("product-orchestration", "lexicon", "connect", "transform", "deploy"):
+    for product in ("system", "model", "connect", "transform", "deploy"):
         if product not in products:
             fail(f"worked example must compose {product}")
     emitted = {path.parent.name for path in (EXAMPLE_DIR / "emits").glob("*/*")}
@@ -94,7 +94,7 @@ def assert_schema_rejections() -> None:
     assert_rejects("empty successCriteria", lambda _p, m: m.update(successCriteria=[]), "should be non-empty")
     assert_rejects("missing dependencies", lambda _p, m: m.pop("dependencies"), "'dependencies' is a required property")
     assert_rejects("unversioned", lambda _p, m: m.pop("contractVersion"), "'contractVersion' is a required property")
-    assert_rejects("future version", lambda _p, m: m.update(contractVersion=2), "1 was expected")
+    assert_rejects("future version", lambda _p, m: m.update(contractVersion=3), "2 was expected")
     assert_rejects(
         "activation enabled",
         lambda _p, m: m["deploy"].update(activationEnabled=True),
@@ -115,8 +115,8 @@ def assert_reference_resolution() -> None:
     )
     assert_rejects(
         "undeclared workflow product",
-        lambda _p, m: m.update(products=[p for p in m["products"] if p["product"] != "deploy"]),
-        "product 'deploy' is not declared in products",
+        lambda _p, m: m.update(products=[p for p in m["products"] if p["product"] != "connect"]),
+        "product 'connect' is not declared in products",
     )
     assert_rejects(
         "unused product",
@@ -129,12 +129,12 @@ def assert_reference_resolution() -> None:
     )
     assert_rejects(
         "agent does not own ref",
-        lambda _p, m: step(m, "translate").update(agent="lapras"),
-        "agent 'lapras' does not own configRef 'transformRequest'",
+        lambda _p, m: step(m, "translate").update(agent="wingull"),
+        "agent 'wingull' does not own configRef 'transformRequest'",
     )
     assert_rejects(
         "ref kind belongs to another product",
-        lambda _p, m: step(m, "translate").update(configRef="connectPartner", agent="lapras"),
+        lambda _p, m: step(m, "translate").update(configRef="connectPartner", agent="wingull"),
         "belongs to 'connect', not 'transform'",
     )
     assert_rejects(
@@ -176,12 +176,12 @@ def assert_reference_resolution() -> None:
         orphan_persist(p, m)
         m["products"].append({"product": "persist", "role": "execute"})
         m["configRefs"]["persistCollection"] = {
-            "kind": "persist-collection",
+            "kind": "persist-ingest",
             "path": "emits/persist/collections.stub.md",
-            "ownerAgent": "conkeldurr",
+            "ownerAgent": "uxie",
         }
         m["workflow"].append(
-            {"id": "load-collection", "product": "persist", "configRef": "persistCollection", "agent": "conkeldurr", "gate": "collection-contract-agreed"}
+            {"id": "load-collection", "product": "persist", "configRef": "persistCollection", "agent": "uxie", "gate": "collection-contract-agreed"}
         )
 
     assert_accepts("Persist declared as product, configRef and workflow step", declared_persist)
@@ -209,28 +209,30 @@ def assert_orchestration_rules() -> None:
         "requires a product-waterfall ref",
     )
     assert_rejects(
-        "product-service mode without Product",
+        "System mode without System",
         lambda _p, m: (
-            m.update(products=[p for p in m["products"] if p["product"] != "product-orchestration"]),
-            m.update(workflow=[s for s in m["workflow"] if s["product"] != "product-orchestration"]),
+            m.update(products=[p for p in m["products"] if p["product"] != "system"]),
+            m.update(workflow=[s for s in m["workflow"] if s["product"] != "system"]),
         ),
-        "requires product-orchestration",
+        "requires system",
     )
 
-    def thin_package(criteria_deferred: bool) -> Mutation:
-        def mutate(_p: Path, m: dict) -> None:
-            m["orchestration"]["mode"] = "thin-package-deferred"
-            m["products"].append({"product": "system-runtime", "role": "serve"})
-            m["configRefs"]["openapi"] = {"kind": "system-openapi", "path": "emits/product/invocation.contract.md", "ownerAgent": "zygarde"}
-            m["workflow"].append({"id": "thin-serve", "product": "system-runtime", "configRef": "openapi", "agent": "zygarde", "gate": "fixtures-served"})
-            if not criteria_deferred:
-                for item in m["successCriteria"]:
-                    item["verify"] = "manual"
+    assert_rejects(
+        "custom thin package cannot replace System",
+        lambda _p, m: m["orchestration"].update(mode="thin-package-deferred"),
+        "'system-service' was expected",
+    )
+    assert_rejects(
+        "legacy version needs explicit migration",
+        lambda _p, m: m.update(contractVersion=1),
+        "2 was expected",
+    )
+    def unrelated_owner(_p: Path, m: dict) -> None:
+        step(m, "translate")["agent"] = "uxie"
+        m["configRefs"]["transformRequest"]["ownerAgent"] = "uxie"
 
-        return mutate
-
-    assert_accepts("thin package with deferred Product cutover", thin_package(True))
-    assert_rejects("thin package without deferred cutover", thin_package(False), "deferred criterion naming the Product cutover")
+    assert_rejects("matching ref cannot transfer product ownership", unrelated_owner,
+                   "is not the assigned configurer for 'transform'")
     for label, text in (
         ("jdbc", "jdbc:postgresql://db/elephant"),
         ("spark sql", "select parcel_id from sales"),
@@ -298,31 +300,12 @@ def assert_emit_contracts() -> None:
         lambda p, _m: edit_emit(p, "emits/deploy/environment.stub.json", lambda d: d["components"][0]["refs"].append("ghost")),
         "component ref 'ghost' does not exist in configRefs",
     )
+    assert_rejects(
+        "deploy emit cannot reintroduce an obsolete product",
+        lambda p, _m: edit_emit(p, "emits/deploy/environment.stub.json", lambda d: d["components"][0].update(product="product-orchestration")),
+        "component product 'product-orchestration' is not declared in products",
+    )
 
-
-def assert_discovery_parity() -> None:
-    for peer in ("lapras", "kecleon", "zygarde"):
-        for path in (
-            ROOT / "agents" / f"{peer}.md",
-            ROOT / "agents-copilot" / f"{peer}.agent.md",
-            ROOT / ".codex" / "agents" / f"{peer}.toml",
-        ):
-            if not path.is_file():
-                fail(f"{path.relative_to(ROOT)} must exist")
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    for token in ("[`zygarde`](./agents/zygarde.md)", "[`build-system-product`](./skills/build-system-product/)"):
-        if token not in readme:
-            fail(f"README must list {token}")
-    for router in ("arceus", "conkeldurr"):
-        text = (ROOT / "agents" / f"{router}.md").read_text(encoding="utf-8")
-        if "`zygarde`" not in text:
-            fail(f"agents/{router}.md must route System composition to zygarde")
-    agent = (ROOT / "agents" / "zygarde.md").read_text(encoding="utf-8")
-    if "skills/build-system-product/SKILL.md" not in agent:
-        fail("zygarde must load build-system-product")
-    prd = (SKILL_DIR / "reference" / "PRD.md").read_text(encoding="utf-8")
-    if "does **not** mean a deployable Product or System" not in prd:
-        fail("PRD must state that no System runtime exists because the skill is present")
 
 
 def main() -> int:
@@ -331,7 +314,6 @@ def main() -> int:
     assert_reference_resolution()
     assert_orchestration_rules()
     assert_emit_contracts()
-    assert_discovery_parity()
     print("build-system-product contract tests passed")
     return 0
 

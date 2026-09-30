@@ -1,7 +1,11 @@
 ---
 name: build-connect-product
-description: "Build Connect, the only layer that talks to external systems, as configurable blocks: generic verbs (LIST, FETCH, PUT, MOVE, CALL, POLL, WAIT_FOR_WEBHOOK, DECRYPT) over typed connections (http, sftp, azure_blob, s3, drop_zone), shared options (ledger, pagination, file landing), partner configurations, activations (schedule, drop zone, webhook) and a job API, compiled to Step Functions. Use for partner APIs, webhooks, partner file intake or delivery, and adding partners, drivers or verbs."
+description: "Build Connect, the only layer that talks to external systems, as configurable blocks: generic verbs (LIST, FETCH, PUT, MOVE, CALL, POLL, WAIT_FOR_WEBHOOK, DECRYPT) over typed connections (http, sftp, azure_blob, s3, drop_zone), shared options (ledger, pagination, file landing), partner configurations, activations (schedule, drop zone, webhook) and a job API, compiled to Step Functions. Use for Connect engine changes, drivers and verbs; use Wingull for partner configurations."
 ---
+
+Use [the Connect capability map](../guide-product-work/reference/iterations/connect.md). Derive the feature pieces from scope and dependencies, then apply the work below within each piece; require a user-run configuration, AWS inspection and feedback before starting the next implementation piece.
+
+Follow [guide-product-work](../guide-product-work/SKILL.md). Lapras builds the engine; Wingull owns partner and flow configuration using existing capabilities.
 
 # Build Connect Product
 
@@ -33,8 +37,9 @@ Classify every request before designing anything:
 
 | Request | Deliver |
 | --- | --- |
-| New partner of a known kind | Partner configuration + activation. No code |
-| Known partner, new interaction | New flow from existing verbs and options |
+| Existing driver/compiler defect | Lapras: reproduce, fix the engine and run relevant regression checks |
+| New partner of a known kind | Hand to Wingull: partner configuration + activation. No engine code |
+| Known partner, new interaction | Hand to Wingull: new flow from existing verbs and options |
 | New storage system or auth scheme | One driver or auth profile, with conformance tests |
 | New verb or option | Only with at least two use cases that cannot be composed from the catalog; record the evidence |
 | Parsing, classification, graph writes, events, internal calls | Not Connect. Hand back to the product owner |

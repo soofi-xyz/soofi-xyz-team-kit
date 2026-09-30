@@ -41,13 +41,13 @@ the evaluation mechanism and contains no catalog of specific business rules.
 
 ## Agent coordination
 
-- Use Conkeldurr for separate Persist/Lexicon/platform changes.
-- Use Machamp for batch execution, recovery and load management.
-- Use Porygon for metric definitions and reconciliation.
-- Use Xatu and Oranguru for communication audience and runtime handoffs; use Abra
+- Use Conkeldurr for Persist engine changes and Uxie for Persist configuration. Resolve Model and other product ownership from the catalog.
+- Use the batch supporting skill for batch execution, recovery and load management.
+- Use the metrics supporting skill for metric definitions and reconciliation.
+- Use the audience supporting skill and the runtime supporting skill for communication audience and runtime handoffs; use the solver supporting skill
   for solver design. See [consumer boundaries](performance-and-consumers.md).
-- Use Regigigas for marketplace packaging and tenant installation.
-- Start with Arceus when product ownership is unknown. Keep newly learned generic
+- Use Registeel for current Marketplace publication and Regigigas for Marketplace engine changes. Resolve Deploy work separately.
+- Start with the product catalog when product ownership is unknown. Keep newly learned generic
   contracts here; keep customer configuration in its owning repository.
 
 ## Reuse and invocation

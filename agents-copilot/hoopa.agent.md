@@ -149,7 +149,8 @@ Hoopa owns intake, portal spec, repo creation, stage order, stop rules, and the 
 | Figma design extraction and frontend adaptation | Figma MCP + `sylveon` patterns | `skills/figma-to-code/` |
 | Responsive design tests across breakpoints | `smeargle` patterns | `skills/responsive-design-tests/` |
 | Deterministic Lambda template, secrets, IAM, logs, metrics, alarms | `skills/build-portals/rules/02-deterministic-lambda-template.md` | — |
-| Persist / Lexicon platform | `conkeldurr` | Target-repo persist client plus `skills/build-persist-service/` |
+| Persist | `conkeldurr` for engine changes; `uxie` for configuration | Target-repo persist client plus the matching Persist skill |
+| Model / Lexicon support | `mew` | Read its existing model/vocabulary guidance; resolve product ownership through the catalog |
 | Data/report query authoring or correction (including Gremlin and SQL) | **User-provided Hoothoot output only**; Hoopa must stop and ask the user to use Hoothoot | — |
 | Scenario-derived full-flow tests and evidence | Existing-repo Playwright/BrowserStack configs, or generated-repo configs for new repos | `skills/unified-portal-smoke-testing/` |
 

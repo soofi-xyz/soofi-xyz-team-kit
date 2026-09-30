@@ -1,92 +1,55 @@
-# System composition — product contract
+# System product scope
 
-Build a **System** as a versioned business outcome delivered by configuring
-the platform **Product** orchestration service so it composes leaf Products
-(Lexicon, Connect, Transform, Persist, Deploy, and related capabilities).
+Build **System**, the reusable orchestration service. Zygarde owns its engine;
+Celebi configures business outcomes. The supplied 2026-09-30 comparison maps
+Staircase Product to Prism System and describes a TypeScript/CDK service under
+`/system`. Verify the target repository before asserting any deployed capability.
 
-This matches how [StaircaseAPI/product](https://github.com/StaircaseAPI/product)
-works in production: a named Product with schemas/OpenAPI, Product Flow
-Templates that compile to Step Functions, template-backed Product Flows,
-optional waterfalls, and invocations. Presence of Zygarde /
-`build-system-product` does **not** mean a deployable Product or System
-package already exists in the caller's account.
+## Scope
 
-Platform rebuild/integrate decisions for the Product *service* itself belong
-to Conkeldurr + [`build-product-service`](../../build-product-service/SKILL.md).
-Zygarde configures **outcomes on top of** that service.
+Include named definitions, input/output schemas, reusable flow templates compiled
+to Step Functions, template-backed flows, optional waterfalls and invocations.
+Include correlation, telemetry, retries and failure reporting required to run
+those flows. Every executable flow must specify `flow_template_name` or the
+verified equivalent field in the target contract.
 
-## 1. Ownership and boundaries
+Exclude reports, SMS, email, blobs, widgets, short links, partner ordering and
+marketplace packaging from this version. Historical Product features are not
+implicit requirements. Product-shaped wire fields can remain for compatibility;
+those fields do not create a separate Product service in the catalog.
 
-```text
-Business outcome
-  → Zygarde composition.manifest
-  → Product emits (definition, schemas, flow template DSL, flows, waterfall, invocation)
-  → leaf emits (Lexicon / Connect / Transform / Persist / Deploy)
-  → Conkeldurr applies Product configs (or provisions Product once)
-  → Lapras / Kecleon / Persist implement leaf wiring
-  → POST /products/{name}/invocations satisfies success criteria
-```
+## Boundaries
 
-| Owns | Does not own |
-| --- | --- |
-| Outcome statement and success criteria | Product template compiler / Dynamo topology |
-| Composition manifest and emit stubs | JDBC/Spark Connect adapters |
-| Product-shaped config (schemas, template DSL, waterfall) | Transform Glue engines |
-| Mapping outcome → Product name + flows | Lexicon store / IPFS internals |
-| Failure taxonomy for unknown inputs / failed waterfall | Marketplace catalog ownership |
-| Optional thin package when Product is unavailable | Live website scraping unless an adapter exists |
+System orchestrates; leaf products perform their own work. Use Connect for
+external exchanges, Transform for conversions, Persist for graph storage and
+Rule for evaluation. Keep Model's vocabulary and unassigned products explicit
+as dependencies. Do not invent a new Spark engine or one-off Lambda pipeline
+when the framework lacks a capability; fix System through Zygarde.
 
-## 2. Prism placement
+## Guided build and definition of done
 
-| Layer | Role | Kit mapping |
-| --- | --- | --- |
-| Leaf Products | Acquire, translate, persist, deploy | Lapras, Kecleon, Lexicon, Persist, Deploy |
-| **Product service** | Configurable orchestration of leaf Products | `build-product-service` / StaircaseAPI/product |
-| **System (this skill)** | One business outcome as Product configuration + leaf emits | Zygarde |
+1. Explain one outcome and show the product boundaries in a small diagram.
+2. Derive usable feature increments and their dependencies from
+   [the System capability map](../../guide-product-work/reference/iterations/system.md).
+   Keep at least four for a full build; do not treat that floor as the target count.
+   Demonstrate the relevant [mock scenario](mock-scenarios.md) for each increment.
+3. Build only that iteration's framework capability and configure a runnable
+   example on it. Compile templates instead of hard-coding each example pipeline.
+4. Have the person invoke that configuration, inspect its Step Functions state
+   and correlated logs, and explain the result. Fix/retest the current piece and
+   wait for this feedback before implementing the next iteration.
+5. Cover every selected feature with configuration variants and failure/recovery
+   cases. The scenario pack's four configurations cover only part of System;
+   add cases for missing capabilities and record each feature's checkpoint.
+   Rerun cumulative acceptance; early PoCs alone do not prove framework behavior.
+6. Introduce real services when the mock suite passes and the integration is in
+   scope. Report real leaf readiness independently of framework acceptance.
 
-Do not invent a fourth Spark pipeline under System. Do not collapse System
-work into Connect or Transform skills alone. Do not rebuild Product under a
-new name when an existing Product deployment can host the outcome.
+Configuration validation, local fixture checks, CDK synthesis, deployed mock
+acceptance and real integration are distinct outcomes. A configuration with
+`verify: deferred` can be a valid draft but cannot substantiate completion.
 
-## 3. Canonical runtime (from Staircase Product)
-
-1. **Product definition** — `name`, request/response (or `product_schema`),
-   examples, optional status mapping, OpenAPI settings.
-2. **Product Flow Template** — DSL with `StaircaseService` (and Choice / Map /
-   Parallel / Wait / Fail / Succeed / SendCallback / PatchEvent /
-   DownloadPublicContent) compiled to a Step Functions state machine.
-3. **Product Flow** — binds `flow_template_name` (required for execution) plus
-   selection metadata (tags, active, marketplace ids).
-4. **Waterfall** (optional) — ordered `{flow_name, order}` failover across
-   Product Flows — not steps inside a single template.
-5. **Invocation** — `invocation_mode` `single` or `waterfall`; correlates via
-   `transaction_id` / collection ids; callbacks and status are first-class.
-
-Cross-service composition uses relative platform URLs (for example Connect
-`connector-jobs/...`, Language/Translate, Persist collections, nested Product
-routes), not embedded secrets.
-
-See [product-runtime.md](product-runtime.md) and
-[implementation-evidence.md](implementation-evidence.md).
-
-## 4. Non-goals
-
-- Reimplementing Product, Connect, or Transform engines in this skill
-- Reviving the legacy mortgage-default connector pipeline without templates
-- Live scrape-on-request as the default path
-- Claiming AWS pilot or Marketplace readiness from composition alone
-- Duplicating a Product deployment when integrate-via-API is possible
-
-## 5. Success definition
-
-Composition is done when:
-
-1. `scripts/check-system-manifest.py` accepts the manifest: schema, semantic
-   rules and dependency resolution in [contracts.md](contracts.md).
-2. Product emits cover definition + at least one flow template + one
-   template-backed flow (waterfall optional but documented).
-3. Leaf `configRefs` name owners (Lapras / Kecleon / Conkeldurr / Machamp).
-4. Success criteria are testable as Product invocations or explicitly deferred.
-
-A separate thin System package is a **fallback**, not the default, and must
-name a follow-on cutover to Product when used.
+The kit's [composition contract](contracts.md) is a review artifact, not the
+System HTTP request schema. Use the actual target service contract when applying
+it. Preserve backward compatibility deliberately; do not blindly rename deployed
+fields when normalizing catalog terminology.

@@ -63,7 +63,7 @@ Every batch workflow MUST have a **cost prediction step** as its first step. Rea
 
 ### 4. Emit Business Metrics
 
-Every workflow MUST emit metrics on data processed. Prefer **per-worker-unit metrics** — each Lambda invocation or Glue task emits its own metrics as it processes items. This is preferred over a single metric emitted at the end of the entire workflow execution, because it gives real-time visibility into progress and failures. Follow the `apply-engineering-guidelines` skill's `observability-metrics` rule — see [observability-metrics.md](../../apply-engineering-guidelines/rules/observability-metrics.md).
+Every workflow MUST emit metrics on data processed. Prefer **per-worker-unit metrics** — each Lambda invocation or Glue task emits its own metrics as it processes items. This is preferred over a single metric emitted at the end of the entire workflow execution, because it gives real-time visibility into progress and failures. Follow the `apply-engineering-guidelines` skill's `observability-metrics` rule — see [observability-metrics.md](../apply-engineering-guidelines/rules/observability-metrics.md).
 
 ### 5. Idempotency and Recoverability
 

@@ -20,7 +20,7 @@ When invoked:
    - `docs-researcher` for current Amazon OpenSearch, Bedrock, embedding provider, and webhook documentation.
    - `machamp` for historical backfill strategy, cost gate, throttling, idempotency, and replay.
    - `alakazam` for RAG retrieval architecture, OpenSearch replay, confidence policy, and production retrieval review.
-   - `conkeldurr` only when platform-product or tenant-local deployment decisions are involved.
+   - `conkeldurr` for Persist engine dependencies or `uxie` for Persist configuration; resolve other product ownership through `skills/guide-product-work/reference/product-catalog.json`.
 9. Move the local SQLite/libSQL model to AWS deliberately: export `rag_sources`, `rag_chunks`, and `rag_links`; validate JSONL; map chunks into OpenSearch documents; preserve embedding dimensions and versions; store durable source/link/idempotency state; and compare golden local queries against OpenSearch before switching reads.
 10. Load all historical data next. Use the batch workflow skill to choose Step Functions Distributed Map, Glue PySpark, or Glue plus Step Functions. Include a cost gate, small test batch, idempotent IDs, failed-record handling, metrics, and replay commands.
 11. Add incremental ingestion after historical backfill. Use source-specific webhooks when available; otherwise use a scheduled poller. Verify signatures, persist raw events, dedupe, fetch full source records when needed, update chunks/links/embeddings/OpenSearch, and route failures through SQS/DLQ behavior.
