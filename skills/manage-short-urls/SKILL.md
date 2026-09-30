@@ -4,6 +4,13 @@ description: "Designing, rebuilding, and operating the short-URL service — tok
 disable-model-invocation: true
 ---
 
+> Retained supporting procedure. Historical specialists named below are preserved
+> in `archive/agents/` and are not installed agents. For explicitly requested work,
+> execute this procedure directly; treat those names as historical role references,
+> not delegation targets. Resolve current product ownership through
+> [the product workflow](../guide-product-work/SKILL.md). Do not restore an agent
+> or change a product's ownership implicitly.
+
 # Manage Short URLs
 
 Use this skill for any first-party short-URL / link-shortener / click-telemetry service. The service is generic: it wraps URLs, stores the durable short URL artifact in Persist, resolves tokens through graph queries, redirects clicks, and emits graph facts for click telemetry.

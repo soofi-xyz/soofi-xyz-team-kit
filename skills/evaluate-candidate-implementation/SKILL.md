@@ -4,6 +4,13 @@ description: "Phase 3 of candidate test-task evaluation — score implementation
 disable-model-invocation: true
 ---
 
+> Retained supporting procedure. Historical specialists named below are preserved
+> in `archive/agents/` and are not installed agents. For explicitly requested work,
+> execute this procedure directly; treat those names as historical role references,
+> not delegation targets. Resolve current product ownership through
+> [the product workflow](../guide-product-work/SKILL.md). Do not restore an agent
+> or change a product's ownership implicitly.
+
 # Evaluate Candidate Implementation
 
 ## When to Use This Skill

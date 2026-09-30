@@ -4,6 +4,12 @@ description: "Implementing or changing the Translate service from its PRD — re
 disable-model-invocation: true
 ---
 
+> Historical Translate compatibility material. Current product work uses Transform:
+> Kecleon builds its engine and Silvally configures mappings. Read this procedure
+> only for an explicitly requested legacy integration or migration; do not build
+> a second current Translate product or delegate to historical agents below.
+
+
 # Build Translate Service
 
 This skill is intentionally thin. Use it as a loader for [`reference/PRD.md`](./reference/PRD.md), not as a requirements copy.
@@ -16,8 +22,8 @@ This skill is intentionally thin. Use it as a loader for [`reference/PRD.md`](./
 
 ## Use With Plugin Agents
 
-- Use `conkeldurr` first for platform product classification, existing-deployment checks, and build-vs-integrate decisions.
-- Use `machamp` for Step Functions workflows, execution telemetry, cost gates, throttling, idempotency, and workflow verification.
+- Resolve current Transform ownership through the product catalog; legacy deployment work requires an explicit compatibility scope.
+- Use the `build-batch-workflows` supporting skill directly for Step Functions workflows, execution telemetry, cost gates, throttling, idempotency, and workflow verification.
 - Use `regigigas` only when Translate or mapping packs must be packaged, released, subscribed, or deployed through the marketplace ecosystem.
 
 ## Implementation Rules

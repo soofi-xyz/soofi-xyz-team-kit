@@ -3,6 +3,13 @@ name: build-county-transform
 description: "Build or repair a county transform end to end: capture sample pages, turn them into lexicon records with exact source-request provenance, prove every record validates against the live lexicon and every field on the page was extracted, then open the transform pull request. Use when onboarding a county's appraiser, permit, or registry source, when validation or coverage fails on an existing transform, or when asked whether a county's transform is complete."
 metadata: {"author":"elephant-xyz"}
 ---
+
+> Retained supporting procedure. Historical specialists named below are preserved
+> in `archive/agents/` and are not installed agents. For explicitly requested work,
+> execute this procedure directly; treat those names as historical role references,
+> not delegation targets. Resolve current product ownership through
+> [the product workflow](../guide-product-work/SKILL.md). Do not restore an agent
+> or change a product's ownership implicitly.
 # Build County Transform
 
 A county transform turns captured source pages into the per-property lexicon output that

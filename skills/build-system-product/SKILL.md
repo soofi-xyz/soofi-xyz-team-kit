@@ -1,70 +1,60 @@
 ---
 name: build-system-product
-description: "Compose a business outcome as Product configuration (schemas, flow templates, flows, waterfall, invocations) plus Lexicon/Connect/Transform/Persist emits — aligned with StaircaseAPI/product. Use with zygarde; does not implement Product or Connect/Transform engines."
+description: "Build or maintain the System orchestration framework with TypeScript, CDK and Step Functions. Use Zygarde for runtime changes and a guided mock-first build; use Celebi for outcome configuration."
 ---
 
-# Build System Product
+Use [the System capability map](../guide-product-work/reference/iterations/system.md). Derive the feature pieces from scope and dependencies, then apply the work below within each piece; require a user-run configuration, AWS inspection and feedback before starting the next implementation piece.
 
-Use `zygarde` for System composition. A System is a versioned business
-outcome delivered primarily by configuring the **Product** orchestration
-service (named Product + schemas + flow templates + flows + optional
-waterfall + invocations) so it composes leaf Products such as Lexicon,
-Connect, Transform, and Persist.
+# Build System
 
-This skill contains instructions, contracts, and examples only. Implement
-configs and any package code in the user's target repository when they
-request that build. The reference implementation is
-[StaircaseAPI/product](https://github.com/StaircaseAPI/product); the
-platform rebuild contract is [`build-product-service`](../build-product-service/SKILL.md).
+Use `zygarde` to build the reusable **System** service. Use `celebi` with
+[configure-system-product](../configure-system-product/SKILL.md) for a business
+outcome on an existing deployment. Follow
+[guide-product-work](../guide-product-work/SKILL.md) for interactive stages.
 
 ## Read by task
 
-1. Read [the product contract](reference/PRD.md) for ownership, Prism
-   placement, and non-goals.
-2. Read [Product runtime mapping](reference/product-runtime.md) and
-   [implementation evidence](reference/implementation-evidence.md) before
-   inventing a custom serve path.
-3. Read [contracts](reference/contracts.md) and validate against
-   [composition.manifest.schema.json](reference/composition.manifest.schema.json).
-4. For emits into a target repo, follow [from-scratch](reference/from-scratch.md)
-   and [emit-contracts](reference/emit-contracts.md).
-5. Use [worked-example-sale-availability](reference/worked-example-sale-availability.md)
-   and [examples/sale-availability/](reference/examples/sale-availability/)
-   (manifest + emits) as a skeleton only.
-6. Check every manifest with `scripts/check-system-manifest.py` before
-   handing emits to other agents.
+1. Read [current scope](reference/PRD.md) and [runtime mapping](reference/product-runtime.md).
+2. For a new build, follow [the staged build](reference/from-scratch.md) and
+   [three mock scenarios](reference/mock-scenarios.md).
+3. For fixtures and configurations, use [contracts](reference/contracts.md),
+   [emit shapes](reference/emit-contracts.md) and the version 2
+   [manifest schema](reference/composition.manifest.schema.json).
+4. Use [sale availability](reference/worked-example-sale-availability.md) as a
+   configuration example, not a statement of deployment or product readiness.
+5. Apply [engineering guidelines](../apply-engineering-guidelines/SKILL.md).
 
-## Keep shared skills
+## Ownership
 
-- Apply [engineering guidelines](../apply-engineering-guidelines/SKILL.md).
-- Use [Product service](../build-product-service/SKILL.md) via Conkeldurr
-  (Machamp for flow-template / Step Functions / waterfall verification) for
-  the orchestration runtime — integrate an existing deployment before
-  provisioning a duplicate.
-- Use [Lexicon](../build-lexicon-product/SKILL.md),
-  [Connect ingestion](../build-connect-product/SKILL.md),
-  [Transform](../build-transform-product/SKILL.md), and Persist skills for
-  leaf Products the flow template calls.
-- Use [batch workflows](../build-batch-workflows/SKILL.md) when capacity sits
-  outside Product waterfalls.
-- Use Regigigas only when Marketplace packaging/subscription is requested.
+Build System's definitions, schemas, flow-template compiler, template-backed
+flows, waterfalls, invocations, correlation, retries and telemetry. Use the
+current `/system` runtime; do not require a second historical Product service.
+Every executable flow names a template. Do not port the historical reports,
+SMS/email, blobs, widgets, short links, partner ordering or marketplace packaging.
 
-## Invariants
+Compose leaf products through their supported boundaries. Keep Connect with
+Lapras/Wingull, Transform with Kecleon/Silvally, Persist with Conkeldurr/Uxie and
+Rule with Gallade/Meditite. Resolve other ownership from the product catalog.
+Never invent leaf engines inside System or call archived specialists.
 
-- **Outcome unit is a Product configuration**, not a new Spark job and not
-  (by default) a one-off HTTP microservice.
-- **Template-backed flows only** — every executable Product Flow references a
-  Flow Template (`flow_template_name`). Do not revive the legacy default
-  connector pipeline.
-- **System composes; leaf Products execute.** Zygarde emits manifests and
-  stubs; Conkeldurr/Lapras/Kecleon/Machamp implement engines and platform.
-- **Pin configuration.** Fail unknown products, missing `configRefs`, or
-  unversioned manifests. `contractVersion` is `1`.
-- **Cross-service calls** in templates use relative platform URLs (Connect,
-  Translate/Language, Persist, nested Product) with correlation ids — not
-  inlined credentials.
-- **Do not claim** live Product/System readiness from this skill alone.
+## Acceptance
 
-Return composition artifacts and evidence levels separately: manifest
-validity, Product emit completeness, leaf implementation status, and live
-invocation status.
+Derive usable feature increments from the System capability map and the requested
+scope. Keep template invocation, binding reuse, sequencing, branching, retry
+policy, waterfalls and lifecycle behavior separately inspectable where selected.
+Split further by complexity; do not force every outcome into the same count.
+For each piece, demonstrate relevant mock behavior, implement only that increment,
+and have the person run its framework configuration and inspect execution/logs.
+Wait for their observation before implementing the next piece. Use the scenario
+pack where applicable and add tests for uncovered capabilities. Four fixture
+configurations are examples, not four implementation stages or full coverage of
+all System features. Rerun cumulative acceptance for the entire selected scope.
+Add real integrations only after mock acceptance within scope.
+
+Run `python3 scripts/check-system-manifest.py` for artifact validation. This
+checks configuration structure only. Do not treat it as a runtime test or count
+unexecuted/deferred scenarios as acceptance. Build product code in the target
+repository; this kit supplies the workflow, contracts and test scenarios.
+
+Return framework changes, test results, progress through the shared stages,
+observed mock acceptance, real-integration evidence and remaining gaps.

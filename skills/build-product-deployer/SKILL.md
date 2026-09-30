@@ -14,11 +14,14 @@ This skill is intentionally thin. Use it as a loader for [`reference/PRD.md`](./
 2. Read [`../apply-engineering-guidelines/SKILL.md`](../apply-engineering-guidelines/SKILL.md) for Golden Path constraints.
 3. Read the Bootstrap, Marketplace, and Puller PRDs whenever Deployer work touches first install, deploy-by-token, subscription-triggered deploys, or terminal callbacks.
 
-## Use With Plugin Agents
+## Product ownership
 
-- Use `conkeldurr` first for platform product classification, existing-deployment checks, and build-vs-integrate decisions.
-- Use `regigigas` for marketplace deployment architecture, bundle distribution, tenant rollout, and cross-product sequencing.
-- Use `machamp` when the PRD work changes Step Functions orchestration, long-running operations, retries, or concurrency controls.
+Use the catalog in [guide-product-work](../guide-product-work/SKILL.md).
+Deploy has no separately assigned agent in this kit. Execute this supporting
+skill directly only within the requested scope. Do not assign this work to
+Conkeldurr (Persist) or Zygarde (System), and do not call retired specialists.
+Use relevant supporting skills directly. Use Registeel only for current
+Marketplace publication and Regigigas for Marketplace implementation changes.
 
 ## Implementation Rules
 

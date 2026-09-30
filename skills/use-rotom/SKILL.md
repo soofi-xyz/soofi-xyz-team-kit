@@ -3,6 +3,13 @@ name: use-rotom
 description: "Operate and extend the rotom-agent Google Chat runtime for formal weekly stakeholder progress emails grounded in Asana facts and saved template memory."
 ---
 
+> Retained supporting procedure. Historical specialists named below are preserved
+> in `archive/agents/` and are not installed agents. For explicitly requested work,
+> execute this procedure directly; treat those names as historical role references,
+> not delegation targets. Resolve current product ownership through
+> [the product workflow](../guide-product-work/SKILL.md). Do not restore an agent
+> or change a product's ownership implicitly.
+
 # Use Rotom
 
 Rotom is the company Google Chat bot for drafting **formal weekly stakeholder progress emails**.

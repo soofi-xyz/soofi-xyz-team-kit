@@ -3,6 +3,13 @@ name: unified-portal-smoke-testing
 description: "Create and run scenario-derived unified-portal integration tests on feature and approved development deployments, including isolated CORS-disabled Chrome diagnostics, checkpoint screenshots, and Asana evidence sheets."
 ---
 
+> Retained supporting procedure. Historical specialists named below are preserved
+> in `archive/agents/` and are not installed agents. For explicitly requested work,
+> execute this procedure directly; treat those names as historical role references,
+> not delegation targets. Resolve current product ownership through
+> [the product workflow](../guide-product-work/SKILL.md). Do not restore an agent
+> or change a product's ownership implicitly.
+
 # Unified Portal Smoke Testing
 
 Use this skill when Hoopa changes a unified-portal user journey or integration

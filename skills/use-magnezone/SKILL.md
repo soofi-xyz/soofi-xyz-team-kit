@@ -3,6 +3,13 @@ name: use-magnezone
 description: "Operate and extend the magnezone-agent relationship-intelligence scaffold for Google Chat, web query, Google Workspace event ingestion, and OpenClaw-aware deployment."
 ---
 
+> Retained supporting procedure. Historical specialists named below are preserved
+> in `archive/agents/` and are not installed agents. For explicitly requested work,
+> execute this procedure directly; treat those names as historical role references,
+> not delegation targets. Resolve current product ownership through
+> [the product workflow](../guide-product-work/SKILL.md). Do not restore an agent
+> or change a product's ownership implicitly.
+
 # Use Magnezone
 
 Magnezone is the company relationship-intelligence scaffold in

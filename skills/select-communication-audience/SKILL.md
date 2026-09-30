@@ -3,6 +3,13 @@ name: select-communication-audience
 description: "Defining audience selection and eligibility for communications — filter boundaries, intake contracts, input schemas, and packaging eligible populations for downstream runtimes."
 ---
 
+> Retained supporting procedure. Historical specialists named below are preserved
+> in `archive/agents/` and are not installed agents. For explicitly requested work,
+> execute this procedure directly; treat those names as historical role references,
+> not delegation targets. Resolve current product ownership through
+> [the product workflow](../guide-product-work/SKILL.md). Do not restore an agent
+> or change a product's ownership implicitly.
+
 # Select Communication Audience
 
 Use this skill when deciding who is allowed to enter a communication process and how that eligible population is handed to the runtime.

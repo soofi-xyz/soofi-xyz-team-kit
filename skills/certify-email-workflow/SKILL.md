@@ -3,6 +3,13 @@ name: certify-email-workflow
 description: "Certifies Email Workflow through an exact CloudFormation and code-control map against pinned SMS revisions, allowing only provider-specific channel adaptations. Use for focused diagnostics, workflow readiness, handoff quality, or production certification."
 ---
 
+> Retained supporting procedure. Historical specialists named below are preserved
+> in `archive/agents/` and are not installed agents. For explicitly requested work,
+> execute this procedure directly; treat those names as historical role references,
+> not delegation targets. Resolve current product ownership through
+> [the product workflow](../guide-product-work/SKILL.md). Do not restore an agent
+> or change a product's ownership implicitly.
+
 # Certify Email Workflow
 
 Use this skill to certify an existing end-to-end Email Workflow or diagnose explicitly selected capabilities. Do not use it to implement or repair the workflow.

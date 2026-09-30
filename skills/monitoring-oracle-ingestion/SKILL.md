@@ -3,6 +3,13 @@ name: monitoring-oracle-ingestion
 description: Monitor the bundled AWS ingestion tracks for appraisal, permits, and corporate data, including queue health, artifact counts, and ETAs. Use for AWS-mode Oracle ingestion status.
 ---
 
+> Retained supporting procedure. Historical specialists named below are preserved
+> in `archive/agents/` and are not installed agents. For explicitly requested work,
+> execute this procedure directly; treat those names as historical role references,
+> not delegation targets. Resolve current product ownership through
+> [the product workflow](../guide-product-work/SKILL.md). Do not restore an agent
+> or change a product's ownership implicitly.
+
 # Monitoring Oracle Ingestion
 
 Use this skill to produce repeatable status/ETA updates for the bundled AWS data tracks:

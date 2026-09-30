@@ -3,6 +3,13 @@ name: manage-communication-activity
 description: "Managing the communication send lifecycle — provider setup, routing, execution handoff, delivery updates, response ingestion, and activity closure for SMS or email."
 ---
 
+> Retained supporting procedure. Historical specialists named below are preserved
+> in `archive/agents/` and are not installed agents. For explicitly requested work,
+> execute this procedure directly; treat those names as historical role references,
+> not delegation targets. Resolve current product ownership through
+> [the product workflow](../guide-product-work/SKILL.md). Do not restore an agent
+> or change a product's ownership implicitly.
+
 # Manage Communication Activity
 
 Use this skill for the communication-activity loop after the audience has been chosen and the runtime has produced execution artifacts.

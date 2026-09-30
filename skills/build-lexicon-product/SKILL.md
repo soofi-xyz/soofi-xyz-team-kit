@@ -15,12 +15,14 @@ This skill is intentionally thin. Use it as a loader for [`reference/PRD.md`](./
 3. Read lexicon, Rules, Persist, Translate, and metrics skills whenever Lexicon work touches graph ontology changes, ruleset artifacts, validation contracts, mapping artifacts, or CloudWatch metric registration.
 4. Read [`build-transform-product`](../build-transform-product/SKILL.md) when registering Transform languages (the Lexicon language definition is their schema), directional SQL mappings or generic catalog publication. Keep configuration authoring/publication here and coordinate Python/PySpark execution with `kecleon`; use its explicit graph ID/endpoint bindings for graph mappings.
 
-## Use With Plugin Agents
+## Product ownership
 
-- Use `conkeldurr` first for platform product classification, existing-deployment checks, and build-vs-integrate decisions.
-- Use `unown` when Lexicon work changes vertices, edges, properties, enums, formats, or immutability rules.
-- Use `porygon` when Lexicon work changes metric definitions or dashboard-facing metric semantics.
-- Use `regigigas` only when Lexicon must be packaged, released, subscribed, or deployed through the marketplace ecosystem.
+Use the catalog in [guide-product-work](../guide-product-work/SKILL.md).
+Model vocabulary publication has no separately assigned agent in this kit. Execute this supporting
+skill directly only within the requested scope. Do not assign this work to
+Conkeldurr (Persist) or Zygarde (System), and do not call retired specialists.
+Use relevant supporting skills directly. Use Registeel only for current
+Marketplace publication and Regigigas for Marketplace implementation changes.
 
 ## Implementation Rules
 

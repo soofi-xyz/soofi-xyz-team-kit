@@ -4,6 +4,13 @@ description: "Load county artifacts into the internal reconciliation store and c
 metadata: {"author":"elephant-xyz"}
 ---
 
+> Retained supporting procedure. Historical specialists named below are preserved
+> in `archive/agents/` and are not installed agents. For explicitly requested work,
+> execute this procedure directly; treat those names as historical role references,
+> not delegation targets. Resolve current product ownership through
+> [the product workflow](../guide-product-work/SKILL.md). Do not restore an agent
+> or change a product's ownership implicitly.
+
 # Query DB Loading and Matching
 
 Use the Query DB only as an internal working store for ingest reconciliation, identity

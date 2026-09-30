@@ -1,8 +1,10 @@
+> Historical Staircase evidence only. Use `PRD.md` for current System scope and the target revision for deployed behavior. Do not restore excluded Product features from this reference.
+
 # Implementation evidence — StaircaseAPI/product
 
 Observed reference for System composition. Distinguish **shipped behavior**
 in [StaircaseAPI/product](https://github.com/StaircaseAPI/product) from the
-Soofi **target** Product PRD (`build-product-service`), which requires
+former Soofi Product PRD (now preserved under `build-product-service/reference/legacy/`), which requires
 template-backed flows only and collapses legacy dual services into one CDK app.
 
 This file is evidence for Zygarde authors. It is not authorization to call a
@@ -30,7 +32,7 @@ StaircaseAPI/product/
   flow_templates_module/sources/common_steps.py  # StaircaseService runtime step
 ```
 
-## Behaviors to preserve in composition design
+## Historical behaviors (not current System requirements) in composition design
 
 1. **Configuration over code** — new business outcomes are Product + flow
    configs, not new microservices by default.
@@ -42,16 +44,17 @@ StaircaseAPI/product/
    request/response across services.
 5. **OpenAPI owned by Product** — service swagger plus per-product schema merge.
 
-## Target vs legacy (important)
+## Former target versus legacy (historical)
 
-| Topic | Observed legacy | Soofi Product PRD target |
+| Topic | Observed legacy | Former Soofi Product PRD target |
 | --- | --- | --- |
 | Executable flows | Template **or** mortgage-default SM | **Template only** (`flow_template_name` required) |
 | Packaging | Python + Serverless, split modules | TypeScript + CDK, one app |
 | Connector pipeline | Hard-wired translate→connector→translate | Express via Flow Template DSL |
 
-When emitting for Soofi/Elephant, follow the **target** column. Use legacy
-fixtures only as DSL shape examples (for example
+Use this table only to understand the former migration. For current builds,
+follow `PRD.md` and verify the target runtime. Legacy fixtures are DSL shape
+examples only (for example
 `valid_flow_template.json` Language → Connector → Translate → email-on-failure).
 
 ## Example template shape (evidence)

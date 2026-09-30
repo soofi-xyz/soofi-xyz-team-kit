@@ -3,6 +3,12 @@ name: use-translate-service
 description: "Calling a deployed Translate service as a consumer — registering languages and mappings, request and response shapes, validation, preview, and executions. Not for changing the Translate codebase."
 ---
 
+> Historical Translate compatibility material. Current product work uses Transform:
+> Kecleon builds its engine and Silvally configures mappings. Read this procedure
+> only for an explicitly requested legacy integration or migration; do not build
+> a second current Translate product or delegate to historical agents below.
+
+
 # Use Translate Service
 
 User-facing skill for **calling a deployed Translate service**. It covers concepts and the exact JSON shapes a caller must send and read.

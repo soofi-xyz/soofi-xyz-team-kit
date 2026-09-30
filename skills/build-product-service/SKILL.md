@@ -1,32 +1,31 @@
 ---
 name: build-product-service
-description: "Implementing or changing the Product service from its PRD — products, schemas, flows, invocations, reports, messaging, widgets, telemetry. Read reference/PRD.md first."
+description: "Compatibility entrypoint for historical Product service work. Build the current scoped System framework with Zygarde; configure outcomes with Celebi."
 disable-model-invocation: true
 ---
 
-# Build Product Service
+# Build System
 
-This skill is intentionally thin. Use it as a loader for [`reference/PRD.md`](./reference/PRD.md), not as a requirements copy.
+Use `zygarde` for the reusable product implementation and `celebi` for
+configuration on an existing deployment. Follow
+[guide-product-work](../guide-product-work/SKILL.md) and
+[engineering guidelines](../apply-engineering-guidelines/SKILL.md).
 
-## Required Reading
+Use [build-system-product](../build-system-product/SKILL.md) as the active build workflow. Do not restore the historical full Product feature set.
 
-1. Read [`reference/PRD.md`](./reference/PRD.md) before planning or coding.
-2. Read [`../apply-engineering-guidelines/SKILL.md`](../apply-engineering-guidelines/SKILL.md) for Golden Path constraints.
-3. Read Connect, Translate, Persist, Marketplace, and Deployer PRDs whenever Product work touches partner flow calls, translation, graph persistence, catalog validation, or marketplace deployment.
+Read [the current scope](reference/PRD.md) before implementation. Discover the
+target repository, revision and environment. Reuse an existing service when
+appropriate; agent availability does not prove deployment or feature support.
 
-## Use With Plugin Agents
+Separate historical requirements, current implementation and live evidence.
+Where references conflict, inspect the target contract and tests and record the
+resolution. Do not silently restore obsolete features or remove working behavior.
 
-- Use `conkeldurr` first for platform product classification, existing-deployment checks, and build-vs-integrate decisions.
-- Use `machamp` for Product Flow Template compilation, Step Functions workflows, reports, waterfalls, retries, idempotency, and workflow verification.
-- Use `regigigas` only when Product must be packaged, released, subscribed, or deployed through the marketplace ecosystem.
+Use supporting skills directly for workflow capacity, metrics and model reasoning.
+Resolve other products through the catalog. Do not use a general platform owner.
+Use Registeel for Marketplace publication; keep deployment prerequisites explicit.
 
-## Implementation Rules
-
-- Treat the PRD as the single source of truth for routes, template contracts, product-flow contracts, data contracts, resource shapes, IAM scopes, env vars, error tags, workflows, and verification.
-- Do not implement from this `SKILL.md` alone.
-- For an existing Product deployment, integrate through the PRD's public API, webhook, widget, report, SMS, email, and invocation contracts instead of provisioning a duplicate service.
-- If any old skill or rule file conflicts with the PRD, the PRD wins; update stale guidance instead of layering compatibility shims.
-
-## Expected Output
-
-Return the product fit, existing-vs-new deployment verdict, PRD sections used, files/stacks/contracts to change, companion agents/skills loaded, and the PRD verification path.
+Derive the scoped feature plan from the shared workflow and product capability
+map. Require a user-run configuration and AWS inspection after every piece. Return the
+implementation changes, verification results, human observations, current stage
+and any remaining runtime or integration gaps.

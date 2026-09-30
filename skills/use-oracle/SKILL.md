@@ -3,6 +3,13 @@ name: use-oracle
 description: "Operate Oracle county mining and Atlas publication, improve HOA name/fee/frequency accuracy against NetSuite-paid truth, or return one property's raw official response without transformation."
 ---
 
+> Retained supporting procedure. Historical specialists named below are preserved
+> in `archive/agents/` and are not installed agents. For explicitly requested work,
+> execute this procedure directly; treat those names as historical role references,
+> not delegation targets. Resolve current product ownership through
+> [the product workflow](../guide-product-work/SKILL.md). Do not restore an agent
+> or change a product's ownership implicitly.
+
 # Use Oracle
 
 Drive the bundled ingestion runtime and the Elephant CLI. Keep ingestion,

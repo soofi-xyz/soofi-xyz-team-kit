@@ -1,0 +1,1187 @@
+{
+  "catalogVersion": 1,
+  "source": {
+    "meeting": "Builder Story Planning, 2026-09-30",
+    "spreadsheet": "staircase-products export, supplied 2026-09-30",
+    "precedence": "User follow-up retains Conkeldurr for Persist, assigns Zygarde to System and excludes the API documentation workstream."
+  },
+  "workflowSkill": "guide-product-work",
+  "products": [
+    {
+      "id": "access",
+      "name": "Access",
+      "legacyNames": [],
+      "sourceRows": [
+        2
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "console",
+      "name": "Console",
+      "legacyNames": [],
+      "sourceRows": [
+        3
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "environment",
+      "name": "Environment",
+      "legacyNames": [
+        "Bootstrap"
+      ],
+      "sourceRows": [
+        4
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": [
+        "Keep Environment as the product identity. Bootstrap is its changed setup implementation. No product agent is assigned yet."
+      ]
+    },
+    {
+      "id": "finance",
+      "name": "Finance",
+      "legacyNames": [],
+      "sourceRows": [
+        5
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "host",
+      "name": "Host",
+      "legacyNames": [],
+      "sourceRows": [
+        6
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "marketplace",
+      "name": "Marketplace",
+      "legacyNames": [],
+      "sourceRows": [
+        7
+      ],
+      "status": "assigned",
+      "summary": "Marketplace catalogs products and reviews, publishes and rolls back bundles.",
+      "agents": {
+        "build": "regigigas",
+        "configure": "registeel"
+      },
+      "skills": {
+        "build": "build-saas-marketplace",
+        "configure": "operate-marketplace"
+      },
+      "notes": [
+        "Regigigas is narrowed to the current Marketplace builder role. Puller is deployment/subscription implementation attributed to Marketplace and Deploy, not another product."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/marketplace.md"
+    },
+    {
+      "id": "setup",
+      "name": "Setup",
+      "legacyNames": [],
+      "sourceRows": [
+        8
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "assess",
+      "name": "Assess",
+      "legacyNames": [],
+      "sourceRows": [
+        9
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "build",
+      "name": "Build",
+      "legacyNames": [],
+      "sourceRows": [
+        10
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "code",
+      "name": "Code",
+      "legacyNames": [],
+      "sourceRows": [
+        11
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "comply",
+      "name": "Comply",
+      "legacyNames": [],
+      "sourceRows": [
+        12
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "deploy",
+      "name": "Deploy",
+      "legacyNames": [],
+      "sourceRows": [
+        13
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": [
+        "Reconcile the current stateless SigV4 run interface with historical deployment instructions. Attribute subscriber installation state explicitly; do not turn the Puller package into a separate product."
+      ]
+    },
+    {
+      "id": "health",
+      "name": "Health",
+      "legacyNames": [],
+      "sourceRows": [
+        14
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "pipeline",
+      "name": "Pipeline",
+      "legacyNames": [],
+      "sourceRows": [
+        15
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "asset",
+      "name": "Asset",
+      "legacyNames": [],
+      "sourceRows": [
+        16
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "credit",
+      "name": "Credit",
+      "legacyNames": [],
+      "sourceRows": [
+        17
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "employment",
+      "name": "Employment",
+      "legacyNames": [],
+      "sourceRows": [
+        18
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "identity",
+      "name": "Identity",
+      "legacyNames": [],
+      "sourceRows": [
+        19
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "income",
+      "name": "Income",
+      "legacyNames": [],
+      "sourceRows": [
+        20
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "tax",
+      "name": "Tax",
+      "legacyNames": [],
+      "sourceRows": [
+        21
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "appraisal",
+      "name": "Appraisal",
+      "legacyNames": [],
+      "sourceRows": [
+        22
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "listing",
+      "name": "Listing",
+      "legacyNames": [],
+      "sourceRows": [
+        23
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "property",
+      "name": "Property",
+      "legacyNames": [],
+      "sourceRows": [
+        24
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "valuation",
+      "name": "Valuation",
+      "legacyNames": [],
+      "sourceRows": [
+        25
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "compliance",
+      "name": "Compliance",
+      "legacyNames": [],
+      "sourceRows": [
+        26
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "fraud",
+      "name": "Fraud",
+      "legacyNames": [],
+      "sourceRows": [
+        27
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "government",
+      "name": "Government",
+      "legacyNames": [],
+      "sourceRows": [
+        28
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "insurance",
+      "name": "Insurance",
+      "legacyNames": [],
+      "sourceRows": [
+        29
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "rating",
+      "name": "Rating",
+      "legacyNames": [],
+      "sourceRows": [
+        30
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "document",
+      "name": "Document",
+      "legacyNames": [],
+      "sourceRows": [
+        31
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "electronic",
+      "name": "Electronic",
+      "legacyNames": [],
+      "sourceRows": [
+        32
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "fee",
+      "name": "Fee",
+      "legacyNames": [],
+      "sourceRows": [
+        33
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "model",
+      "name": "Model",
+      "legacyNames": [
+        "Lexicon"
+      ],
+      "sourceRows": [
+        34,
+        57
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": [
+        "Merge spreadsheet rows 34 and 57 into one Model product. Lexicon names the universal vocabulary; Model owns governed modeling. Mew is preserved as historical modeling expertise, not an assigned runtime configurer."
+      ]
+    },
+    {
+      "id": "notary",
+      "name": "Notary",
+      "legacyNames": [],
+      "sourceRows": [
+        35
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "price",
+      "name": "Price",
+      "legacyNames": [],
+      "sourceRows": [
+        36
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "signature",
+      "name": "Signature",
+      "legacyNames": [],
+      "sourceRows": [
+        37
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "title",
+      "name": "Title",
+      "legacyNames": [],
+      "sourceRows": [
+        38
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "approval",
+      "name": "Approval",
+      "legacyNames": [],
+      "sourceRows": [
+        39
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "boarding",
+      "name": "Boarding",
+      "legacyNames": [],
+      "sourceRows": [
+        40
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "closing",
+      "name": "Closing",
+      "legacyNames": [],
+      "sourceRows": [
+        41
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "los",
+      "name": "LOS",
+      "legacyNames": [],
+      "sourceRows": [
+        42
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "pos",
+      "name": "POS",
+      "legacyNames": [],
+      "sourceRows": [
+        43
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "servicing",
+      "name": "Servicing",
+      "legacyNames": [],
+      "sourceRows": [
+        44
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "content",
+      "name": "Content",
+      "legacyNames": [],
+      "sourceRows": [
+        45
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "transform",
+      "name": "Transform",
+      "legacyNames": [
+        "Language",
+        "Translate"
+      ],
+      "sourceRows": [
+        46
+      ],
+      "status": "assigned",
+      "summary": "Transform converts registered source languages into target languages.",
+      "agents": {
+        "build": "kecleon",
+        "configure": "silvally"
+      },
+      "skills": {
+        "build": "build-transform-product",
+        "configure": "configure-transform-product"
+      },
+      "notes": [
+        "Resolve the spreadsheet test-only/configuration mismatch: Silvally authors and tests mappings; Kecleon owns engine implementation. Preserve test-only intent when the user only requests evaluation."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/transform.md"
+    },
+    {
+      "id": "ml",
+      "name": "ML",
+      "legacyNames": [],
+      "sourceRows": [
+        47
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "persist",
+      "name": "Persist",
+      "legacyNames": [
+        "Persistence"
+      ],
+      "sourceRows": [
+        48
+      ],
+      "status": "assigned",
+      "summary": "Persist stores graph facts and serves queries, indexes and triggers.",
+      "agents": {
+        "build": "conkeldurr",
+        "configure": "uxie"
+      },
+      "skills": {
+        "build": "build-persist-service",
+        "configure": "configure-persist-product"
+      },
+      "notes": [
+        "User override: retain Conkeldurr for Persist only. Uxie configures existing deployments."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/persist.md"
+    },
+    {
+      "id": "rule",
+      "name": "Rule",
+      "legacyNames": [],
+      "sourceRows": [
+        49
+      ],
+      "status": "assigned",
+      "summary": "Rule selects entities and evaluates governed predicates.",
+      "agents": {
+        "build": "gallade",
+        "configure": "meditite"
+      },
+      "skills": {
+        "build": "build-rules-product",
+        "configure": "configure-rule-product"
+      },
+      "notes": [],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/rule.md"
+    },
+    {
+      "id": "site",
+      "name": "Site",
+      "legacyNames": [],
+      "sourceRows": [
+        50
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "turker",
+      "name": "Turker",
+      "legacyNames": [],
+      "sourceRows": [
+        51
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "connect",
+      "name": "Connect",
+      "legacyNames": [
+        "Connection"
+      ],
+      "sourceRows": [
+        52
+      ],
+      "status": "assigned",
+      "summary": "Connect exchanges files and requests with external partners.",
+      "agents": {
+        "build": "lapras",
+        "configure": "wingull"
+      },
+      "skills": {
+        "build": "build-connect-product",
+        "configure": "operate-connect-configurations"
+      },
+      "notes": [],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/connect.md"
+    },
+    {
+      "id": "job",
+      "name": "Job",
+      "legacyNames": [],
+      "sourceRows": [
+        53
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "system",
+      "name": "System",
+      "legacyNames": [
+        "Product",
+        "Product orchestration"
+      ],
+      "sourceRows": [
+        54
+      ],
+      "status": "assigned",
+      "summary": "System orchestrates business outcomes through reusable configured flows.",
+      "agents": {
+        "build": "zygarde",
+        "configure": "celebi"
+      },
+      "skills": {
+        "build": "build-system-product",
+        "configure": "configure-system-product"
+      },
+      "notes": [
+        "User override: Zygarde builds System; Celebi configures outcomes. Current scope is the orchestration core, not all historical Product features."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/system.md"
+    },
+    {
+      "id": "workflow",
+      "name": "Workflow",
+      "legacyNames": [],
+      "sourceRows": [
+        55
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "discover",
+      "name": "Discover",
+      "legacyNames": [],
+      "sourceRows": [
+        56
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "schedule",
+      "name": "Schedule",
+      "legacyNames": [],
+      "sourceRows": [
+        58
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "report",
+      "name": "Report",
+      "legacyNames": [],
+      "sourceRows": [
+        59
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "predict",
+      "name": "Predict",
+      "legacyNames": [],
+      "sourceRows": [
+        60
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    }
+  ],
+  "archivedAgents": [
+    "abra",
+    "alakazam",
+    "arceus",
+    "ash",
+    "audino",
+    "braviary",
+    "castform",
+    "chatot",
+    "delibird",
+    "ditto",
+    "donphan",
+    "eevee",
+    "espeon",
+    "hoopa",
+    "hypno",
+    "kirlia",
+    "klefki",
+    "linoone",
+    "lucario",
+    "machamp",
+    "magnezone",
+    "meowth",
+    "metagross",
+    "mew",
+    "noctowl",
+    "oracle",
+    "oranguru",
+    "pelipper",
+    "porygon",
+    "rotom",
+    "slowbro",
+    "slowking",
+    "smeargle",
+    "sylveon",
+    "watchog",
+    "wigglytuff",
+    "xatu"
+  ]
+}

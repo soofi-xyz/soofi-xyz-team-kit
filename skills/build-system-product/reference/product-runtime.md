@@ -1,80 +1,22 @@
-# Product runtime mapping
+# System runtime mapping
 
-Map System composition fields onto the Product service model used by
-[StaircaseAPI/product](https://github.com/StaircaseAPI/product) and specified
-for rebuilds in [`build-product-service`](../../build-product-service/reference/PRD.md).
+Use System as the current product and `/system` as the reported Prism base path.
+Discover the actual deployment and caller contract. Historical implementation
+[evidence](implementation-evidence.md) explains the origin of the configuration
+shape; it does not certify the current runtime.
 
-## Mental model
-
-```text
-System outcome (systemId)
-  = Product (name ≈ systemId or explicit productName)
-      + request/response JSON Schemas (+ OpenAPI view)
-      + Product Flow Template(s)  → compile → Step Functions
-      + Product Flow(s)           → require flow_template_name
-      + optional Waterfall        → ordered flow failover
-      + Invocations               → invocation_mode single | waterfall
-```
-
-Leaf Products are **callees** inside the template (Connect jobs, Translate/
-Language, Persist collections, reports/SMS/email Product routes), not a
-replacement for Product.
-
-## Manifest → Product artifacts
-
-| Manifest / emit | Product surface |
+| Concept | Responsibility |
 | --- | --- |
-| `systemId` / `title` | Product `name` (and metadata description) |
-| Outcome request/response | `request_schema` / `response_schema` or `product_schema` |
-| `configRefs` openapi | Product OpenAPI / custom endpoints |
-| Flow template emit | `PUT .../flow-templates/{template_name}` DSL body |
-| Product flow emit | `POST .../product_flows` with `flow_template_name` |
-| Waterfall emit | `PUT .../waterfall` `{ waterfall: [{ flow_name, order, stop_on_status }] }` |
-| Invocation success criteria | `POST .../invocations` contract + status checks |
-| Leaf Connect/Transform/Lexicon | `StaircaseService` URLs + flow metadata — engines stay with Lapras/Kecleon/Conkeldurr |
+| Named definition and schemas | Establish an outcome's inputs and outputs. |
+| Flow template | Define reusable orchestration compiled to Step Functions. |
+| Flow | Bind a template and its supported configuration. |
+| Waterfall | Order alternative flows; it is not the steps within a template. |
+| Invocation | Execute and correlate the configured outcome. |
 
-## Flow Template DSL (composition primitive)
+Zygarde owns the compiler and execution framework. Celebi authors configurations.
+Keep engine fixtures with the builder and particular business mappings with
+configurers. Preserve exact supported wire fields from the target revision.
 
-Authors use Product DSL states. The critical composition step is
-`StaircaseService`:
-
-- Calls `https://{tenant DomAIN}/{relative URL}` with `x-api-key`
-- Injects JSONPaths from `$.flow_input`, `$.product`, `$.product_flow`,
-  `$.states.<Step>.output...`
-- Optional `CallbackSettings` → wait-for-task-token webhook completion
-
-Other DSL types: `Choice`, `Map`, `Parallel`, `Wait`, `Fail`, `Succeed`,
-`SendCallback`, `PatchEvent`, `DownloadPublicContent`.
-
-**Target platform rule (Soofi PRD):** every executable Product Flow must set
-`flow_template_name`. Do not design Systems that depend on the legacy shared
-default connector state machine.
-
-## Waterfall vs template steps
-
-| Concern | Where it lives |
-| --- | --- |
-| Ordered failover across alternate flows/vendors | Product **waterfall** |
-| Branching / map / parallel / retries inside one flow | Flow **template** DSL |
-| Batch Distributed Map / cost gates outside Product | Machamp + batch skill |
-
-## When a thin System package is allowed
-
-Use a fixture-backed TypeScript package only if:
-
-1. No Product deployment can be integrated or provisioned in-session, and
-2. The manifest marks Product orchestration as `deferred` with an owner, and
-3. Success criteria say Product cutover is follow-on.
-
-Otherwise serve through Product invocations.
-
-## Agent split
-
-| Work | Agent / skill |
-| --- | --- |
-| Outcome composition + emits | Zygarde / this skill |
-| Product platform integrate vs provision | Conkeldurr / `build-product-service` |
-| Template compile, SFN, waterfall verify | Machamp (with Product PRD) |
-| Connect leaf | Lapras |
-| Transform leaf | Kecleon |
-| Lexicon leaf | Conkeldurr + `build-lexicon-product` |
+Do not bring back the old default connector pipeline, unrelated Product features,
+or a deferred custom microservice in place of the System framework. When a
+capability is missing, identify the gap and route it to Zygarde.

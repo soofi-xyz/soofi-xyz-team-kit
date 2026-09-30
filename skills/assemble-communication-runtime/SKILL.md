@@ -3,6 +3,13 @@ name: assemble-communication-runtime
 description: "Assembling end-to-end communication runtimes from reusable audience, template, and activity capabilities — workflow composition, data contracts, scoring, allocation, validation."
 ---
 
+> Retained supporting procedure. Historical specialists named below are preserved
+> in `archive/agents/` and are not installed agents. For explicitly requested work,
+> execute this procedure directly; treat those names as historical role references,
+> not delegation targets. Resolve current product ownership through
+> [the product workflow](../guide-product-work/SKILL.md). Do not restore an agent
+> or change a product's ownership implicitly.
+
 # Assemble Communication Runtime
 
 Use this skill when turning reusable communication capabilities into the deterministic worker system that actually runs the service.

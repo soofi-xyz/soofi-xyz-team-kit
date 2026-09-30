@@ -4,6 +4,10 @@ description: "Designing, integrating, or operating a generic Rule Filter product
 disable-model-invocation: true
 ---
 
+Use [the Rule capability map](../guide-product-work/reference/iterations/rule.md). Derive the feature pieces from scope and dependencies, then apply the work below within each piece; require a user-run configuration, AWS inspection and feedback before starting the next implementation piece.
+
+Follow [guide-product-work](../guide-product-work/SKILL.md). Gallade builds Rule; Meditite owns selector, ruleset and evaluation configuration.
+
 # Build Rules Product
 
 Use `gallade` as the Rule Filter owner. Require a query selecting the entities to
@@ -47,7 +51,7 @@ contracts or code are relevant.
    Filter-phase regression beyond a predeclared measurement tolerance.
 5. Follow [engineering guidelines](../apply-engineering-guidelines/SKILL.md) for
    implementation. Reuse discovered infrastructure and public data interfaces.
-6. Use Xatu/Oranguru for communication handoffs, Abra for solvers, Machamp for
-   workflows, Porygon for metrics, Conkeldurr for Persist/Lexicon changes and
-   Regigigas for distribution. Link their existing contracts rather than copying
-   consumer-specific behavior into this product.
+6. Use the supporting batch, metric and consumer skills directly. Route Persist
+   engine changes to Conkeldurr and Persist configuration to Uxie; Transform
+   engine changes to Kecleon and mappings to Silvally. Use Registeel for current
+   Marketplace publication. Resolve unassigned products through the catalog.

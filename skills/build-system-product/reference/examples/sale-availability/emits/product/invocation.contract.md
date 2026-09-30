@@ -1,25 +1,9 @@
-# Invocation contract — sale-availability
+# Sale availability invocation fixture
 
-`POST /products/sale-availability/invocations`
+Resolve the current System base URL and exact invocation shape from the target
+revision. The named outcome is `sale-availability`. Submit a known address or
+parcel ID and compare availability plus evidence. An unknown identifier must
+fail closed. This draft supplies no live endpoint or execution evidence.
 
-| Field | Value |
-| --- | --- |
-| `invocation_mode` | `single` |
-| `product_flow_name` | `default` (optional; the default product flow is selected otherwise) |
-| `data` | Exactly one of `address` or `parcelId`, validated against the Product request schema |
-| `callback_url` | Optional |
-
-## Status gates
-
-| Case | Expected result | Success criterion |
-| --- | --- | --- |
-| Known `parcelId` or `address` | Invocation `COMPLETED`; output matches the response schema with at least one evidence entry | `invocation-known-key` |
-| Unknown identifier | Invocation `FAILED` with error `UNKNOWN_IDENTIFIER`; no partial output | `unknown-id-closed` |
-| Both or neither identifier | `400` from request-schema validation before any flow starts | `manifest-valid` |
-
-The request path reads curated artifacts only. It never calls Connect or a
-public website during an invocation (`no-scrape`).
-
-Both invocation criteria stay `deferred` until a Product deployment accepts the
-definition, template and flow, and Connect/Transform have produced curated
-artifacts.
+Run first with mocked leaf services; record request, actual response and workflow
+trace. Only then test real integrations within the authorized scope.

@@ -4,6 +4,13 @@ description: "Changing or operating Lucario's M2D failed-document replay, run st
 disable-model-invocation: true
 ---
 
+> Retained supporting procedure. Historical specialists named below are preserved
+> in `archive/agents/` and are not installed agents. For explicitly requested work,
+> execute this procedure directly; treat those names as historical role references,
+> not delegation targets. Resolve current product ownership through
+> [the product workflow](../guide-product-work/SKILL.md). Do not restore an agent
+> or change a product's ownership implicitly.
+
 # Lucario: M2D Failed Document Replay
 
 ## Purpose

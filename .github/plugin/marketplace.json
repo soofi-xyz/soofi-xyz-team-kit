@@ -5,13 +5,13 @@
   },
   "metadata": {
     "description": "Company-wide plugins for AI-assisted development.",
-    "version": "0.66.0"
+    "version": "0.68.0"
   },
   "plugins": [
     {
       "name": "soofi-xyz-team-kit",
-      "description": "Company-wide project subagents and skills for AI-assisted development, including local and AWS RAG, platform services, reporting, frontend, communication, batch, and deployment specialists.",
-      "version": "0.66.0",
+      "description": "Product builders and configurers with guided workflows for Connect, Transform, Persist, Rule, System and Marketplace, plus reusable supporting skills.",
+      "version": "0.68.0",
       "author": {
         "name": "Soofi XYZ"
       },

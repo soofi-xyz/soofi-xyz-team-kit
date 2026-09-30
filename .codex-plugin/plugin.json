@@ -1,7 +1,7 @@
 {
   "name": "soofi-xyz-team-kit",
-  "description": "Company-wide project subagents and skills for AI-assisted development, including local and AWS RAG, platform services, reporting, frontend, communication, batch, and deployment specialists.",
-  "version": "0.66.0",
+  "description": "Product builders and configurers with guided workflows for Connect, Transform, Persist, Rule, System and Marketplace, plus reusable supporting skills.",
+  "version": "0.68.0",
   "author": {
     "name": "Soofi XYZ"
   },
@@ -20,8 +20,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Soofi XYZ",
-    "shortDescription": "Company-wide Codex skills for Soofi XYZ engineering workflows.",
-    "longDescription": "Company-wide project skills for AI-assisted development, including local and AWS RAG, platform services, reporting, frontend, communication, batch, and deployment workflows.",
+    "shortDescription": "Build and configure Soofi products with guided workflows.",
+    "longDescription": "Product builders and configurers with guided workflows for Connect, Transform, Persist, Rule, System and Marketplace, plus reusable supporting skills.",
     "developerName": "Soofi XYZ",
     "category": "Productivity",
     "capabilities": [
@@ -30,9 +30,9 @@
     ],
     "websiteURL": "https://github.com/soofi-xyz/cursor-plugin",
     "defaultPrompt": [
-      "Use arceus to choose the right specialist.",
-      "Build a Soofi platform service.",
-      "Review a frontend change against design guidance."
+      "Use Conkeldurr to build or fix Persist.",
+      "Use Zygarde to build System through guided mock scenarios.",
+      "Use Celebi to configure a System outcome."
     ],
     "brandColor": "#111827"
   }
