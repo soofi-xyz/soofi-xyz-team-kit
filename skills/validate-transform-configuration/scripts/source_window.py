@@ -12,10 +12,15 @@
       --out confirmed.json
       Record the window the user explicitly confirmed: the recommendation, or a longer contiguous range of
       complete candidates when allowLongerRange is true. Run it only after the user's own answer.
-  source_window.py data-days --slice-days counts.json (--day YYYY-MM-DD | --most-recent) [--now ISO] --out days.json
+  source_window.py data-days --slice-days counts.json (--day YYYY-MM-DD | --most-recent) [--now ISO]
+      [--data-through SLICE=ISO ...] --out days.json
       Check that every slice has real PROD rows on the confirmed day; an EMPTY slice gets the nearest UTC day
       with rows to suggest to the user. --most-recent applies the owner decision "most recent full UTC day
-      with real data per slice" instead of a confirmation question. Never substitutes synthetic data.
+      with real data per slice" instead of a confirmation question. --data-through is a slice's PROD-actual
+      data cutoff (prod_actuals.py table-summary dataThrough): days ending after it are not eligible, the
+      most recent covered day is chosen instead and the stale mirror is recorded as a data-platform handoff.
+      Counts come from bounded newest-first reads (prod_actuals.py probe-days, iceberg_snapshot_read.py
+      byUtcDay), never a whole-lookback Lambda scan. Never substitutes synthetic data.
 
 Candidates are sanitized aggregates gathered with read-only PROD metadata calls: one object per complete UTC
 day with start, endExclusive, sourceFamiliesPresent, coverageSignals, rowCount, byteCount, estimatedCostUsd and
@@ -175,27 +180,37 @@ def validate_confirmed(selection: dict | None, policy: dict | None) -> tuple[str
     return "PASS", f"confirmed PROD-derived window [{window['start']}, {window['endExclusive']}) of {int(days)} complete UTC day(s)"
 
 
-def data_days(slice_days: dict, day: str | None, most_recent: bool, now: datetime) -> dict:
+def data_days(slice_days: dict, day: str | None, most_recent: bool, now: datetime, data_through: dict | None = None) -> dict:
     """Per-slice real-data check of a UTC day, or the most recent complete UTC day with data per slice.
 
     slice_days maps slice -> {"YYYY-MM-DD": rows} from sanitized read-only PROD counts. A slice without
-    rows on the day is EMPTY with the nearest UTC day that has rows (ties go to the earlier day).
+    rows on the day is EMPTY with the nearest UTC day that has rows (ties go to the earlier day). data_through
+    maps slice -> the PROD actual's data cutoff; a day that ends after it has no actual and is not eligible.
     """
     today = now.strftime("%Y-%m-%d")
     out = {}
     for name, counts in sorted(slice_days.items()):
-        days = sorted(d for d, rows in counts.items() if rows and d < today)
+        cutoff = parse_utc((data_through or {})[name]) if name in (data_through or {}) else None
+        covered = (lambda d: cutoff is None or parse_utc(d + "T00:00:00Z") + timedelta(days=1) <= cutoff)
+        days = sorted(d for d, rows in counts.items() if rows and d < today and covered(d))
+        stale = cutoff is not None and any(rows and d < today and not covered(d) for d, rows in counts.items())
         if most_recent:
             chosen = days[-1] if days else None
             out[name] = {"day": chosen, "rows": counts.get(chosen, 0) if chosen else 0,
                          "status": "HAS_DATA" if chosen else "EMPTY", "nearestDayWithData": chosen}
-            continue
-        rows = counts.get(day, 0)
-        target = datetime.fromisoformat(day)
-        nearest = min(days, key=lambda d: (abs((datetime.fromisoformat(d) - target).days), d)) if days else None
-        out[name] = {"day": day, "rows": rows, "status": "HAS_DATA" if rows else "EMPTY",
-                     "nearestDayWithData": day if rows else nearest}
-    empty = sorted(n for n, s in out.items() if s["status"] == "EMPTY")
+        else:
+            rows = counts.get(day, 0)
+            target = datetime.fromisoformat(day)
+            nearest = min(days, key=lambda d: (abs((datetime.fromisoformat(d) - target).days), d)) if days else None
+            status = "HAS_DATA" if rows and covered(day) else ("STALE_ACTUAL" if rows else "EMPTY")
+            out[name] = {"day": day, "rows": rows, "status": status,
+                         "nearestDayWithData": day if status == "HAS_DATA" else nearest}
+        if cutoff is not None:
+            out[name]["dataThrough"] = iso(cutoff)
+            if stale or out[name]["status"] == "STALE_ACTUAL":
+                out[name]["handoff"] = {"code": "ProdMirrorStale", "owner": "data platform (the mirror's ETL)",
+                                        "detail": f"the PROD actual's data stops at {iso(cutoff)}; later days have no actual"}
+    empty = sorted(n for n, s in out.items() if s["status"] != "HAS_DATA")
     return {"status": "EMPTY_SLICES" if empty else "OK", "emptySlices": empty,
             "selection": "most-recent-full-utc-day-with-data-per-slice" if most_recent else "confirmed-day",
             "slices": out, "evidenceIds": ["prod-slice-day-counts"]}
@@ -228,18 +243,23 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--end-exclusive", required=True)
     c.add_argument("--out", required=True)
     d = sub.add_parser("data-days")
-    d.add_argument("--slice-days", required=True, help='{"<slice>": {"YYYY-MM-DD": rows}} from read-only PROD counts')
+    d.add_argument("--slice-days", required=True, action="append",
+                   help='{"<slice>": {"YYYY-MM-DD": rows}} from read-only PROD counts (repeatable; one file per probe is merged)')
     group = d.add_mutually_exclusive_group(required=True)
     group.add_argument("--day", help="the confirmed UTC day (YYYY-MM-DD)")
     group.add_argument("--most-recent", action="store_true",
                        help="owner decision: the most recent complete UTC day with real data, per slice")
     d.add_argument("--now", help="evaluation time (ISO, UTC); default is the current time")
+    d.add_argument("--data-through", action="append", default=[],
+                   help="SLICE=ISO: the slice's PROD-actual data cutoff; later days are not eligible")
     d.add_argument("--out", required=True)
     args = parser.parse_args(argv)
 
     if args.command == "data-days":
         now = parse_utc(args.now) if args.now else datetime.now(timezone.utc)
-        result = data_days(read_json(args.slice_days), args.day, args.most_recent, now)
+        cutoffs = dict(v.split("=", 1) for v in args.data_through)
+        merged = {name: counts for path in args.slice_days for name, counts in read_json(path).items()}
+        result = data_days(merged, args.day, args.most_recent, now, cutoffs)
         write_json(args.out, result)
         print(json.dumps(result, indent=1))
         return 0 if result["status"] == "OK" else 1

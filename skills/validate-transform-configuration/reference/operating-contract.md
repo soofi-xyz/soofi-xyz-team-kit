@@ -53,7 +53,9 @@ prohibited. Then stage the confirmed window into DEV and execute the mapping
 there — first a canary of 10 real events per slice, compared with what PROD
 actually did, then, after the user approves (or the owner pre-approved a
 passing canary), the full window — each staging copy and each execution under
-its own approval digest. Nothing runs locally and Silvally never uses
+its own approval digest (or the owner's blanket approval of this run's DEV writes,
+still recorded per card digest). Each slice has its own canary gate, window and
+verdict. Nothing runs locally and Silvally never uses
 synthetic data; when a slice has no data on the day, suggest the nearest UTC
 day with data. When no PROD actual exists for a slice, say so and fall back to
 schema, row-count and reject-reason checks.

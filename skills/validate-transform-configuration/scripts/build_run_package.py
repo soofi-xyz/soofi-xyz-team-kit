@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Assemble and validate the transform-configuration-run package (run.json).
 
-  build_run_package.py --run-dir RUN --package-spec package-spec.json [--out RUN/run.json]
+  build_run_package.py --run-dir RUN [--run-dir RUN ...] --package-spec package-spec.json [--out RUN/run.json]
+      [--canary-run-dir RUN ...] [--evaluation phases.json] [--profile-doc profile.json]
 
 RUN is a transform_runs.py run directory (steps.json, approvals/, cost.json). The package
 spec supplies what only the validator can judge: profile identity, discoveryTrace,
@@ -15,7 +16,11 @@ owner's "most recent full UTC day with real data per slice"), a passing DEV cana
 (or owner pre-approved) full-window DEV run, and a comparison against PROD actuals for every slice,
 requires a remediation for every FAIL/BLOCKED phase, and validates the result against
 reference/transform-configuration-run.schema.json (needs jsonschema). --canary-run-dir adds the
-canary executions as executionSteps with stage canary.
+canary executions as executionSteps with stage canary; both flags repeat (one run directory per slice).
+--evaluation copies evaluate_run.py's phases, finalValidation, per-slice verdicts, owner decisions and
+product-change flags into the package when the spec does not state them. --profile-doc derives the profile
+identity (id, revision, sha256) from the profile document itself, so a promoted run-scoped profile
+(resolve-transform-intent.py promote-run-profile) identifies the package without a published profile.
 """
 
 from __future__ import annotations
@@ -24,11 +29,13 @@ import argparse
 import glob
 import hashlib
 import json
+import re
 from pathlib import Path
 
 from silvally_io import SilvallyError, read_json, sha256_file, write_json
 
 SCHEMA = Path(__file__).resolve().parent.parent / "reference" / "transform-configuration-run.schema.json"
+KEBAB = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
 def verdict_of(phases: list[dict]) -> str:
@@ -72,7 +79,30 @@ def final_validation_gaps(run: dict) -> list[str]:
         gaps.append("the full-window run has no passing DEV execution steps")
     elif {s["approvalOperationDigest"] for s in steps} - set(final.get("executionApprovalDigests") or []):
         gaps.append("an execution step lacks its own approval digest in finalValidation")
+    not_ready = [v["slice"] for v in run.get("sliceVerdicts") or [] if v["verdict"] != "READY"]
+    if not_ready:
+        gaps.append(f"slices {not_ready} are not READY")
     return gaps
+
+
+def profile_identity(path: str) -> dict:
+    doc = read_json(path)
+    revision = doc.get("revision") or ("run-scoped" if doc.get("kind") == "run-scoped-profile" else "local")
+    return {"id": doc["id"], "revision": revision, "sha256": "sha256:" + sha256_file(path)}
+
+
+def from_evaluation(spec: dict, evaluation: dict) -> dict:
+    spec = dict(spec)
+    spec.setdefault("phases", [{"number": p["number"], "status": p["status"],
+                                "evidenceIds": [e for e in p["evidenceIds"] if KEBAB.match(e)] or [f"phase-{p['number']}"]}
+                               for p in evaluation["phases"]])
+    for key in ("finalValidation", "ownerDecisions", "acceptedProductChanges", "versionSelection", "productChangeFlags"):
+        if key in evaluation and key not in spec:
+            spec[key] = evaluation[key]
+    if evaluation.get("slices") and "sliceVerdicts" not in spec:
+        spec["sliceVerdicts"] = [{"slice": name, "verdict": r["verdict"], "window": r.get("window"), "canaryGate": r["canaryGate"]}
+                                 for name, r in sorted(evaluation["slices"].items())]
+    return spec
 
 
 def execution_steps(run_dir: Path, steps: list[dict], spec: dict, stage: str, start: int = 1) -> list[dict]:
@@ -99,17 +129,31 @@ def execution_steps(run_dir: Path, steps: list[dict], spec: dict, stage: str, st
     return out
 
 
+def sequence(runs: list[tuple[Path, list[dict], str]], spec: dict) -> list[dict]:
+    out = []
+    for directory, steps, stage in runs:
+        out += execution_steps(directory, steps, spec, stage, len(out) + 1)
+    return out
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--run-dir", required=True)
+    parser.add_argument("--run-dir", required=True, action="append", help="full-window run directory (repeatable, one per slice)")
     parser.add_argument("--package-spec", required=True)
     parser.add_argument("--out")
-    parser.add_argument("--canary-run-dir", help="the captured canary-stage run directory")
+    parser.add_argument("--canary-run-dir", action="append", default=[], help="captured canary-stage run directory (repeatable)")
+    parser.add_argument("--evaluation", help="evaluate_run.py output: phases, finalValidation and per-slice verdicts")
+    parser.add_argument("--profile-doc", help="the selected or run-scoped profile document; its identity is derived")
     args = parser.parse_args(argv)
-    run_dir = Path(args.run_dir)
+    run_dirs = [Path(d) for d in args.run_dir]
     spec = read_json(args.package_spec)
-    steps = read_json(run_dir / "steps.json") if (run_dir / "steps.json").exists() else []
-    cost = read_json(run_dir / "cost.json") if (run_dir / "cost.json").exists() else {"actualUsd": None}
+    if args.evaluation:
+        spec = from_evaluation(spec, read_json(args.evaluation))
+    if args.profile_doc and "profile" not in spec:
+        spec["profile"] = profile_identity(args.profile_doc)
+    full = [(d, read_json(d / "steps.json") if (d / "steps.json").exists() else []) for d in run_dirs]
+    steps = [s for _, st in full for s in st]
+    cost = read_json(run_dirs[0] / "cost.json") if (run_dirs[0] / "cost.json").exists() else {"actualUsd": None}
 
     datasets = list(spec.get("datasets", []))
     for s in steps:
@@ -118,15 +162,14 @@ def main(argv: list[str] | None = None) -> int:
                 datasets.append({"name": o["dataset"], "schemaSha256": "sha256:" + hashlib.sha256(o["headers"][0].encode()).hexdigest(),
                                  "rowCount": o["physicalRows"], "contentSha256": "sha256:" + o["contentSha256"],
                                  "location": s["outputPrefix"] + f"tables/{o['dataset']}/"})
-    canary_dir = Path(args.canary_run_dir) if args.canary_run_dir else None
-    canary_steps = read_json(canary_dir / "steps.json") if canary_dir and (canary_dir / "steps.json").exists() else []
+    canary = [(Path(d), read_json(Path(d) / "steps.json") if (Path(d) / "steps.json").exists() else []) for d in args.canary_run_dir]
     approvals = []
-    for f in sorted(glob.glob(str(run_dir / "approvals" / "*.json"))
-                    + (glob.glob(str(canary_dir / "approvals" / "*.json")) if canary_dir else [])):
-        if f.endswith(".started.json"):
-            continue
-        a = read_json(f)["approval"]
-        approvals.append({"operationDigest": a["operationDigest"], "environment": "dev", "status": a["status"], "recordedAt": a["recordedAt"]})
+    for directory in [d for d, _ in canary] + run_dirs:
+        for f in sorted(glob.glob(str(directory / "approvals" / "*.json"))):
+            if f.endswith(".started.json"):
+                continue
+            a = read_json(f)["approval"]
+            approvals.append({"operationDigest": a["operationDigest"], "environment": "dev", "status": a["status"], "recordedAt": a["recordedAt"]})
 
     computed = verdict_of(spec["phases"])
     if spec.get("verdict") and spec["verdict"] != computed:
@@ -137,16 +180,16 @@ def main(argv: list[str] | None = None) -> int:
 
     keys = ("profile", "discoveryTrace", "configurationPackage", "environment", "sensitivity", "graph", "runtime",
             "persistCanary", "exporterHydration", "roundTrip")
-    run = {"id": spec.get("id") or "validation-" + hashlib.sha256(str(run_dir.resolve().name).encode()).hexdigest()[:16],
+    run = {"id": spec.get("id") or "validation-" + hashlib.sha256(str(run_dirs[0].resolve().name).encode()).hexdigest()[:16],
            "contractVersion": 1, **{k: spec[k] for k in keys}, "datasets": datasets,
-           "executionSteps": (execution_steps(canary_dir, canary_steps, spec, "canary") if canary_dir else [])
-           + execution_steps(run_dir, steps, spec, "full", len(canary_steps) + 1), "phases": spec["phases"],
+           "executionSteps": sequence([(d, st, "canary") for d, st in canary] + [(d, st, "full") for d, st in full], spec),
+           "phases": spec["phases"],
            "boundaryDecisions": spec["boundaryDecisions"], "approvals": approvals,
            "cost": {"ceilingUsd": spec.get("costCeilingUsd", cost.get("ceilingUsd", 0)), "estimatedUsd": spec.get("estimatedUsd", 0),
                     "actualUsd": cost.get("actualUsd")},
            "failures": spec.get("failures", []), "remediations": spec.get("remediations", []), "verdict": computed}
     for optional in ("intentResolution", "parityDerivation", "sourceWindowSelection", "finalValidation", "versionSelection",
-                     "ownerDecisions", "acceptedProductChanges", "prodActuals"):
+                     "ownerDecisions", "acceptedProductChanges", "prodActuals", "sliceVerdicts", "productChangeFlags"):
         if optional in spec:
             run[optional] = spec[optional]
     gaps = final_validation_gaps(run) if computed == "READY" else []
@@ -158,7 +201,7 @@ def main(argv: list[str] | None = None) -> int:
     except ImportError as error:
         raise SystemExit("jsonschema is required to validate run.json (scripts/requirements-silvally.txt)") from error
     jsonschema.Draft202012Validator(read_json(SCHEMA), format_checker=jsonschema.FormatChecker()).validate(run)
-    target = Path(args.out) if args.out else run_dir / "run.json"
+    target = Path(args.out) if args.out else run_dirs[0] / "run.json"
     write_json(target, run)
     print(json.dumps({"runPackage": str(target), "verdict": computed, "executionSteps": len(run["executionSteps"]),
                       "approvals": len(approvals), "sha256": sha256_file(target)}))

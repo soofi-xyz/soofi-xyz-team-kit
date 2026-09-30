@@ -73,7 +73,12 @@ Each numbered write is a separate confirmation gate.
 2. Keep the rows in a mode-0700 private directory outside any repository.
    For the canary, `prod_actuals.py canary-sample` selects the events and
    `prod_actuals.py inputs` writes their real inputs (with `--bind` for a field
-   the PROD run resolved).
+   the PROD run resolved). For graph-input slices, `graph_inputs.py gremlin` builds
+   the Transform graph datasets for those events' keys from a bounded read-only
+   PROD Persist read, with zero dangling endpoints (`--as-of` for a stale actual).
+   Slices with sensitive fields (SMS phone numbers and message bodies) are staged
+   only under the owner's `sensitiveFieldStaging` decision, with real values
+   unmodified.
 3. Build `derived/`, `evidence/source-manifest.json`, and `manifest.json` in
    that directory (`stage_evidence_package.py manifest`). Verify every row
    against the language definition's required fields and types. Nothing is
@@ -87,7 +92,9 @@ Each numbered write is a separate confirmation gate.
 - What PROD actually did: `scripts/prod_actuals.py` (Lambda outcomes from a PROD state machine's
   execution logs) and `scripts/iceberg_snapshot_read.py` (a PROD Iceberg table by key or window
   column; pins the snapshot). Both are read-only, keep rows only in a mode-0700 `--private-dir`
-  outside any checkout and print aggregates; delete the directory once the comparison is recorded. Other stores (DynamoDB, Persist Gremlin)
+  outside any checkout and print aggregates. Use the run's `private/` from `run_workspace.py new`
+  and remove it with `run_workspace.py cleanup --run-dir <run>` once the comparison is recorded;
+  cleanup touches only that run. Other stores (DynamoDB, Persist Gremlin)
   are read with the operator's PROD profile and the same rule: aggregates in evidence, rows
   never committed or uploaded.
 - Package build and upload: `scripts/stage_evidence_package.py manifest`, then `upload` with the

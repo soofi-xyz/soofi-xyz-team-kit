@@ -4,8 +4,12 @@
   stage_evidence_package.py manifest --dir PKG --prefix s3://<dev-transform-data-bucket>/inputs/<name>/<window>_v1/
       Writes PKG/manifest.json (key, bytes, sha256, rows for csv/jsonl, dataset per top-level directory)
       and prints the upload operation card with its operation digest (APPROVAL_REQUIRED).
-  stage_evidence_package.py upload --dir PKG --prefix ... --profile <dev-profile> --approve sha256:...
-      Re-derives the card, refuses a changed card or a non-matching digest, uploads every object with
+  stage_evidence_package.py upload --dir PKG --prefix ... --profile <dev-profile> (--approve sha256:... |
+      --owner-decisions decisions.json) [--slice NAME [--catalog prod-actuals.json]]
+      Re-derives the card, refuses a changed card or a non-matching digest (or, with the owner's
+      blanketDevWrites decision, records that blanket approval against this card's digest), refuses a
+      slice whose catalog declares sensitiveFields unless the owner decided sensitiveFieldStaging:
+      stage-real-values-to-dev, uploads every object with
       put-object --if-none-match '*' (never overwrites), uploads manifest.json last, reads it back and
       prints its sha256, VersionId and the approved operation digest. Record the identity in the profile's
       validationSources and keep the printed JSON: evaluate_run.py --staging-upload needs it for the final
@@ -20,7 +24,11 @@ import argparse
 import json
 from pathlib import Path
 
-from silvally_io import DEFAULT_REGION, SilvallyError, aws, canonical_digest, parse_s3, sha256_file, write_json
+from silvally_io import DEFAULT_REGION, SilvallyError, aws, canonical_digest, parse_s3, read_json, sha256_file, write_json
+
+DEFAULT_CATALOG = Path(__file__).resolve().parent.parent / "reference" / "prod-actuals.json"
+BLANKET_DEV_WRITES = "staging-and-executions-for-this-run"
+SENSITIVE_DECISION = "stage-real-values-to-dev"
 
 
 def rows_of(path: Path) -> int | None:
@@ -60,8 +68,17 @@ def cmd_upload(args) -> int:
     stored = json.loads((directory / "manifest.json").read_text())
     if stored != manifest:
         raise SilvallyError("package changed since the manifest was built; rebuild and re-approve")
-    if args.approve != card["operationDigest"]:
+    decisions = read_json(args.owner_decisions) if args.owner_decisions else {}
+    blanket = decisions.get("blanketDevWrites") == BLANKET_DEV_WRITES
+    if args.approve is None and not blanket:
+        raise SilvallyError("pass --approve with this card's digest, or --owner-decisions carrying blanketDevWrites")
+    if args.approve is not None and args.approve != card["operationDigest"]:
         raise SilvallyError("approval digest does not match this upload card")
+    if args.slice:
+        sensitive = ((read_json(args.catalog).get("slices") or {}).get(args.slice) or {}).get("sensitiveFields")
+        if sensitive and decisions.get("sensitiveFieldStaging") != SENSITIVE_DECISION:
+            raise SilvallyError(f"SensitiveStagingDecisionRequired: slice {args.slice} stages {sensitive.get('inputs')}; the owner "
+                                "must decide sensitiveFieldStaging: stage-real-values-to-dev")
     bucket, key_prefix = parse_s3(args.prefix)
     for obj in manifest["objects"] + [{"key": "manifest.json"}]:
         aws(["s3api", "put-object", "--bucket", bucket, "--key", key_prefix + obj["key"], "--body", str(directory / obj["key"]),
@@ -71,7 +88,8 @@ def cmd_upload(args) -> int:
     aws(["s3", "cp", args.prefix + "manifest.json", str(back), "--quiet"], profile=args.profile, region=args.region, environment="prod", output_json=False)
     result = {"manifest": args.prefix + "manifest.json", "manifestSha256": sha256_file(back), "manifestVersionId": head.get("VersionId"),
               "matchesLocal": sha256_file(back) == sha256_file(directory / "manifest.json"),
-              "approvalOperationDigest": card["operationDigest"]}
+              "approvalOperationDigest": card["operationDigest"],
+              "approvalKind": "operation" if args.approve else "owner-blanket-dev-writes", "slice": args.slice}
     back.unlink()
     print(json.dumps(result, indent=1))
     return 0 if result["matchesLocal"] else 1
@@ -87,7 +105,10 @@ def main(argv: list[str] | None = None) -> int:
         if name == "upload":
             p.add_argument("--profile", required=True)
             p.add_argument("--region", default=DEFAULT_REGION)
-            p.add_argument("--approve", required=True)
+            p.add_argument("--approve", help="the upload card's operation digest")
+            p.add_argument("--owner-decisions", help="ownerDecisions JSON: blanketDevWrites, sensitiveFieldStaging")
+            p.add_argument("--slice", help="the package slice this package stages (recorded; checked for sensitive fields)")
+            p.add_argument("--catalog", default=str(DEFAULT_CATALOG), help="PROD-actuals catalog with each slice's sensitiveFields")
     args = parser.parse_args(argv)
     return {"manifest": cmd_manifest, "upload": cmd_upload}[args.command](args)
 

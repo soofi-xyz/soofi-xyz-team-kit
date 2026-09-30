@@ -3,15 +3,19 @@
 
   iceberg_snapshot_read.py --profile <prod-profile> --table <glue_database>.<table> --columns <col>,<col> \
       (--key-column <key column> --keys-file keys.txt | --window-column <col> --start ISO --end-exclusive ISO) \
-      --private-dir <dir outside any repo> [--snapshot-id N]
+      --private-dir <dir outside any repo> [--snapshot-id N] [--data-max-column <stage timestamp column>]
 
 Uses only S3 GetObject/Glue GetTable through pyiceberg (no Athena, no writes). The snapshot is
 scanned and filtered in memory by --keys-file or by the UTC window, because pyiceberg In() filters
 were observed to drop matching rows. Matching rows are written to --private-dir (mode 0700,
 refused inside a git checkout) as rows.json and rows.jsonl, the PROD actual that
 prod_actuals.py table-summary and compare read; stdout carries only aggregates: snapshot id and
-timestamp, table row count, matched rows and whether the snapshot covers the window. Delete the
-private directory after the comparison; never commit or upload it.
+timestamp, table row count, matched rows, rows per UTC day of a window read (the day-selection counts for
+source_window.py data-days: read a bounded lookback window once, newest day first) and whether the snapshot
+covers the window. --data-max-column records the table's maximum value of that column (for example
+_stage_output_timestamp) as dataMax: the DATA's freshness, which prod_actuals.py table-summary requires because a
+mirror can re-commit snapshots while its data stops. Delete the private directory after the comparison; never
+commit or upload it.
 
 Requires pyiceberg[glue,pyarrow]==0.7.1 (see scripts/requirements-silvally.txt).
 """
@@ -25,8 +29,9 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
+from prod_actuals import parse_loose
 from silvally_io import DEFAULT_REGION, SilvallyError, private_dir, write_json
-from source_window import parse_utc
+from source_window import iso, parse_utc
 
 
 def inside_git(path: Path) -> bool:
@@ -69,6 +74,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--start")
     parser.add_argument("--end-exclusive")
     parser.add_argument("--snapshot-id", type=int)
+    parser.add_argument("--data-max-column", help="record the table-wide maximum of this data/stage timestamp column as dataMax")
     parser.add_argument("--private-dir", required=True)
     args = parser.parse_args(argv)
     if bool(args.window_column) == bool(args.keys_file) or (args.keys_file and not args.key_column) or (
@@ -96,6 +102,8 @@ def main(argv: list[str] | None = None) -> int:
     selector = args.key_column or args.window_column
     if selector not in columns:
         columns += (selector,)
+    if args.data_max_column and args.data_max_column not in columns:
+        columns += (args.data_max_column,)
     data = table.scan(selected_fields=columns, snapshot_id=snapshot.snapshot_id).to_arrow()
     if args.keys_file:
         keys = {line.strip() for line in Path(args.keys_file).read_text().splitlines() if line.strip()}
@@ -103,8 +111,12 @@ def main(argv: list[str] | None = None) -> int:
     else:
         start, end = parse_utc(args.start), parse_utc(args.end_exclusive)
         rows = [r for r in data.to_pylist() if in_window(r[args.window_column], start, end)]
+    data_max = None
+    if args.data_max_column:
+        stamps = [parse_loose(v) for v in data.column(args.data_max_column).to_pylist()]
+        data_max = iso(max(s for s in stamps if s is not None)) if any(stamps) else None
     write_json(out / "rows.json", {"table": args.table, "snapshotId": snapshot.snapshot_id,
-                                   "snapshotTimestampMs": snapshot.timestamp_ms, "rows": rows})
+                                   "snapshotTimestampMs": snapshot.timestamp_ms, "dataMax": data_max, "rows": rows})
     (out / "rows.jsonl").write_text("".join(json.dumps(r, sort_keys=True, default=str) + "\n" for r in rows), encoding="utf-8")
     per_key = Counter(str(r[selector]) for r in rows) if args.keys_file else Counter()
     summary = {"table": args.table, "snapshotId": snapshot.snapshot_id, "snapshotTimestampMs": snapshot.timestamp_ms,
@@ -116,6 +128,10 @@ def main(argv: list[str] | None = None) -> int:
     else:
         summary["window"] = {"column": args.window_column, "start": args.start, "endExclusive": args.end_exclusive,
                              "snapshotCoversWindow": snapshot.timestamp_ms >= end.timestamp() * 1000}
+        days = Counter(parse_loose(r[args.window_column]).strftime("%Y-%m-%d") for r in rows if parse_loose(r[args.window_column]))
+        summary["byUtcDay"] = dict(sorted(days.items(), reverse=True))
+    if args.data_max_column:
+        summary["dataMax"] = {"column": args.data_max_column, "value": data_max}
     write_json(out / "summary.json", summary)
     print(json.dumps(summary, indent=1))
     return 0

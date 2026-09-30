@@ -254,7 +254,10 @@ def evaluate_check(check: dict, rows: list[dict], columns: list[str], contract: 
         bad = constraint_violations(rows, check)
         return {"status": "PASS" if bad == 0 else "FAIL", "violations": bad}
     if kind == "unique-key":
-        keys = [tuple(r.get(k, "") for k in check["key"]) for r in rows]
+        key = check.get("key") or contract.get("key")
+        if not key:
+            return {"status": "NOT_APPLICABLE", "detail": "dataset declares no key (no required fields)"}
+        keys = [tuple(r.get(k, "") for k in key) for r in rows]
         dup = len(keys) - len(set(keys))
         return {"status": "PASS" if dup == 0 else "FAIL", "duplicateKeys": dup}
     if kind == "row-count":

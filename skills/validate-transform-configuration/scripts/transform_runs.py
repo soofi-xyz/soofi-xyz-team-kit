@@ -20,23 +20,28 @@ Commands (all write evidence only under --run-dir):
   spec-from-intent  derive a run spec from resolver output and the mapping registration (read-only discovery):
                     per input binding, one case per output whose requiredInputs are all present, a full case
                     when one binding covers every output, and (default) one REJECTED case per required input
-                    of every output, each omitting exactly that input
+                    of every output, each omitting exactly that input. An omission that would leave no input
+                    (`inputs: []`) is skipped and recorded: Transform's request schema refuses an empty input
+                    list before planning, so that case says nothing about the mapping. --slice restricts the
+                    spec to named package slices (one run directory per slice and window).
   cards    write one operation card per case with its operation digest and stop (APPROVAL_REQUIRED)
-  start    start exactly the cases whose --approve digests match their cards (records the approval first)
+  start    start exactly the cases whose --approve digests match their cards (records the approval first), or
+           every card of the run when --owner-decisions carries blanketDevWrites (recorded per card digest)
   capture  read-only: describe-execution, history, plan.json, output files; reconcile metadata with physical rows
   regress  compare this run's captured outputs with a baseline run directory, case by case (same inputs and outputs)
   cost     read-only: Glue DPU-hours of this run's job runs and the USD estimate
-  canary-gate   summarize a captured canary-stage run and its PROD-actuals comparisons for the user:
-                CANARY_FAILED (stop; never offer the full run), AWAITING_APPROVAL, or PRE_APPROVED when the
-                owner pre-approved the full run for a passing canary
+  canary-gate   summarize a captured canary-stage run and its PROD-actuals comparisons for the user, per slice
+                with --slice: CANARY_FAILED (stop; never offer that slice's full run), AWAITING_APPROVAL, or
+                PRE_APPROVED when the owner pre-approved the full run for a passing canary
   approve-full  record the user's explicit approval of an AWAITING_APPROVAL gate
 
 `stage` is canary (the fixed sample of 10 real events per slice) or full (the whole confirmed window). `start`
-refuses a full-stage run without an APPROVED or PRE_APPROVED canary gate, and every spec refuses a job ceiling
-above `ownerCostCeilingUsd` when the owner set one.
+refuses a full-stage run without an APPROVED or PRE_APPROVED canary gate of the same slice, and every spec refuses
+a job ceiling above `ownerCostCeilingUsd` when the owner set one.
 
-`expected` is PASS (execution must succeed) or REJECTED (the plan must be rejected before the Transform job
-starts; when `missingInput` is set, the error must name it).
+`expected` is PASS (execution must succeed) or REJECTED (the request must be refused before the Transform job
+starts). A refusal whose error does not name `missingInput` still passes; it is recorded as the Transform
+PRODUCT_CHANGE flag `transform-reject-error-unnamed` (error-message quality is Transform's, never a canary failure).
 """
 
 from __future__ import annotations
@@ -52,6 +57,9 @@ from pathlib import Path
 from silvally_io import DEFAULT_REGION, SilvallyError, aws, canonical_digest, load_layout, parse_s3, read_json, write_json
 
 RUNTIME = load_layout()["transformRuntime"]
+BLANKET_DEV_WRITES = "staging-and-executions-for-this-run"
+UNNAMED_REJECT_FLAG = {"id": "transform-reject-error-unnamed", "classification": "PRODUCT_CHANGE", "owner": "Kecleon",
+                       "detail": "Transform refused the request before planning, but its error does not name the omitted input"}
 
 
 def load_spec(path: str) -> dict:
@@ -82,6 +90,12 @@ def gate_digest(gate: dict) -> str:
     return canonical_digest({k: v for k, v in gate.items() if k not in {"status", "approval", "gateDigest"}})
 
 
+def case_slices(spec: dict) -> dict[str, str | None]:
+    """step case name -> the package slice it belongs to (a spec restricted to one slice labels every case)."""
+    default = spec["slices"][0] if len(spec.get("slices") or []) == 1 else None
+    return {c["case"]: c.get("slice") or default for c in spec["cases"]}
+
+
 def cmd_canary_gate(args) -> int:
     """Summarize the DEV canary for the user and decide whether a full-window run may be offered."""
     run_dir = Path(args.canary_run_dir)
@@ -90,6 +104,12 @@ def cmd_canary_gate(args) -> int:
         raise SilvallyError("canary-gate reads a canary-stage run directory")
     steps = read_json(run_dir / "steps.json") if (run_dir / "steps.json").exists() else []
     comparisons = [read_json(p) for p in args.comparison]
+    if args.slice:
+        slices = case_slices(spec)
+        steps = [s for s in steps if slices.get(s["step"].split("-", 1)[-1]) in (args.slice, None)]
+        other = sorted({c.get("slice") for c in comparisons} - {args.slice})
+        if other:
+            raise SilvallyError(f"the {args.slice} gate was given comparisons of other slices {other}")
     decisions = read_json(args.owner_decisions) if args.owner_decisions else {}
     approved = [s["step"] for s in steps if (run_dir / "approvals" / f"{s['step']}.json").exists()]
     failed = ([f"{s['step']} {s['status']}" for s in steps if s.get("verdict") != "PASS" or s["status"] == "RUNNING"]
@@ -97,7 +117,9 @@ def cmd_canary_gate(args) -> int:
               + [f"{s['step']} has no approval" for s in steps if s["step"] not in approved])
     if not steps:
         failed.append("no captured canary execution")
-    gate = {"kind": "canary-gate", "canaryRunId": spec["runId"], "stage": "canary",
+    if not comparisons:
+        failed.append("no canary comparison against the PROD actual")
+    gate = {"kind": "canary-gate", "canaryRunId": spec["runId"], "stage": "canary", "slice": args.slice,
             "executions": [{"step": s["step"], "executionArn": s.get("executionArn"), "status": s["status"], "verdict": s.get("verdict"),
                             "inputs": [i["s3Uri"] for c in spec["cases"] if c["case"] == s["step"].split("-", 1)[-1]
                                        for i in c["request"].get("inputs", [])],
@@ -107,6 +129,7 @@ def cmd_canary_gate(args) -> int:
                              "checks": [{k: v for k, v in x.items() if k in {"id", "kind", "status", "devRows", "prodRows", "onlyDev",
                                                                              "onlyProd", "mismatchedByColumn", "devRejects", "prodFailures"}}
                                         for x in c.get("checks", [])]} for c in comparisons],
+            "productChangeFlags": sorted({s["productChangeFlag"]["id"] for s in steps if s.get("productChangeFlag")}),
             "failures": failed}
     if failed:
         gate["status"] = "CANARY_FAILED"
@@ -141,6 +164,9 @@ def assert_full_run_allowed(spec: dict, gate_path: str | None) -> dict | None:
     gate = read_json(gate_path)
     if gate.get("status") not in {"APPROVED", "PRE_APPROVED"} or gate.get("gateDigest") != gate_digest(gate):
         raise SilvallyError(f"CanaryGateNotApproved: canary gate status {gate.get('status')}; never proceed to the full run")
+    uncovered = sorted(set(spec.get("slices") or []) - {gate["slice"]}) if gate.get("slice") else []
+    if uncovered:
+        raise SilvallyError(f"CanaryGateNotApproved: the gate covers slice {gate['slice']}, not {uncovered}")
     return gate
 
 
@@ -171,9 +197,22 @@ def card_for(spec: dict, index: int, case: dict) -> dict:
     return card
 
 
+def assert_own_run_dir(run_dir: Path, spec: dict) -> None:
+    """A run directory belongs to exactly one run: never mix evidence with another run or session."""
+    if not run_dir.exists() or not any(run_dir.iterdir()):
+        return
+    existing = run_dir / "run-spec.json"
+    if not existing.exists():
+        raise SilvallyError(f"RunDirectoryNotEmpty: {run_dir} holds files of another session; use a new run directory "
+                            "(run_workspace.py new)")
+    if read_json(existing).get("runId") != spec["runId"]:
+        raise SilvallyError(f"RunDirectoryReused: {run_dir} belongs to run {read_json(existing).get('runId')}; use a new run directory")
+
+
 def cmd_cards(args) -> int:
     spec = load_spec(args.spec)
     run_dir = Path(args.run_dir)
+    assert_own_run_dir(run_dir, spec)
     for index, case in enumerate(spec["cases"], 1):
         card = card_for(spec, index, case)
         write_json(run_dir / "cards" / f"{index}-{case['case']}.json", {**card, "status": "APPROVAL_REQUIRED"})
@@ -200,6 +239,10 @@ def cmd_start(args) -> int:
     spec = load_spec(str(run_dir / "run-spec.json"))
     assert_dev_transform(spec)
     approvals = set(args.approve or [])
+    decisions = read_json(args.owner_decisions) if args.owner_decisions else {}
+    blanket = decisions.get("blanketDevWrites") == BLANKET_DEV_WRITES
+    if args.owner_decisions and not blanket:
+        raise SilvallyError("--owner-decisions has no blanketDevWrites decision; approve each card digest with --approve")
     cards = []
     for index, case in enumerate(spec["cases"], 1):
         card = card_for(spec, index, case)
@@ -207,6 +250,8 @@ def cmd_start(args) -> int:
         if stored["operationDigest"] != card["operationDigest"]:
             raise SilvallyError(f"{index}-{case['case']}: card changed since it was presented; re-run cards")
         cards.append((index, case, card))
+    if blanket:
+        approvals |= {card["operationDigest"] for _, _, card in cards}
     unmatched = approvals - {card["operationDigest"] for _, _, card in cards}
     if unmatched:
         raise SilvallyError(f"approval digests match no card: {sorted(unmatched)}")
@@ -220,7 +265,7 @@ def cmd_start(args) -> int:
         if card["operationDigest"] not in approvals:
             continue
         approval = {"operationDigest": card["operationDigest"], "environment": "dev", "status": "APPROVED",
-                    "approver": args.approver, "scope": args.scope,
+                    "kind": "owner-blanket-dev-writes" if blanket else "operation", "approver": args.approver, "scope": args.scope,
                     "recordedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
         write_json(run_dir / "approvals" / f"{index}-{case['case']}.json", {**card, "approval": approval})
         result = aws(["stepfunctions", "start-execution", "--state-machine-arn", spec["stateMachineArn"],
@@ -264,10 +309,10 @@ def summarize_output(files: list[str], fmt: dict) -> dict:
     return out
 
 
-def rejection_ok(describe: dict, states: list[str], error: str | None, missing: str | None) -> bool:
-    if describe["status"] != "FAILED" or "RunTransformJob" in states:
-        return False
-    return missing is None or (error is not None and missing in error)
+def rejection_ok(describe: dict, states: list[str], error: str | None, missing: str | None) -> tuple[bool, bool]:
+    """(refused before the Transform job started, the error names the omitted input)."""
+    refused = describe["status"] == "FAILED" and "RunTransformJob" not in states
+    return refused, refused and (missing is None or (error is not None and missing in error))
 
 
 def cmd_capture(args) -> int:
@@ -303,12 +348,21 @@ def cmd_capture(args) -> int:
         except ValueError:
             error = cause[:300] or None
         expected = case.get("expected", "PASS")
-        ok = describe["status"] == "SUCCEEDED" if expected == "PASS" else rejection_ok(describe, states, error, case.get("missingInput"))
+        named = True
+        if expected == "PASS":
+            ok = describe["status"] == "SUCCEEDED"
+        else:
+            ok, named = rejection_ok(describe, states, error, case.get("missingInput"))
         entry = {"step": f"{index}-{case['case']}", "executionArn": describe["executionArn"], "status": describe["status"],
                  "expected": expected, "verdict": "PASS" if ok else "FAIL", "states": states, "error": error,
                  "start": describe.get("startDate"), "stop": describe.get("stopDate")}
+        if case.get("slice"):
+            entry["slice"] = case["slice"]
         if case.get("missingInput"):
             entry["missingInput"] = case["missingInput"]
+            entry["errorNamesMissingInput"] = named
+            if ok and not named:
+                entry["productChangeFlag"] = UNNAMED_REJECT_FLAG
         if plan:
             entry["planMapping"] = {k: plan["mapping"]["rule"].get(k) for k in ("sha256", "versionId")} | {"id": plan["mapping"]["id"], "version": plan["mapping"]["version"]}
             entry["executedSql"] = [{"dataset": q["dataset"], "sha256": q.get("querySha256"), "versionId": q.get("queryVersionId")} for q in plan.get("queries", [])]
@@ -467,15 +521,34 @@ def derive_cases(mapping: dict, key: str, bindings: dict[str, str], present: dic
     if not slice_specs and not any(c["case"].endswith("-full") for c in cases) and len(outputs) > 1:
         skipped.append({"case": "full", "reason": "no binding holds every output's requiredInputs; full run not derivable"})
     if negatives:
+        slice_of = {d: s["id"] for s in slice_specs for d in s["outputDatasets"]}
         for dataset in selected:
             name = first_binding.get(dataset)
             if name is None:
                 continue
             for missing in outputs[dataset]:
-                cases.append({"case": f"neg-{dataset.replace('_', '-')}-without-{missing}", "mapping": key, "expected": "REJECTED",
-                              "missingInput": missing, "binding": name,
-                              "request": req([dataset], [t for t in outputs[dataset] if t != missing], bindings[name])})
+                label = f"neg-{dataset.replace('_', '-')}-without-{missing}"
+                remaining = [t for t in outputs[dataset] if t != missing]
+                if not remaining:
+                    skipped.append({"case": label, "reason": "OmissionLeavesNoInputs: omitting the only required input sends "
+                                    "inputs: [], which Transform's request schema refuses before planning; the case proves "
+                                    "nothing about the mapping"})
+                    continue
+                case = {"case": label, "mapping": key, "expected": "REJECTED", "missingInput": missing, "binding": name,
+                        "request": req([dataset], remaining, bindings[name])}
+                if dataset in slice_of:
+                    case["slice"] = slice_of[dataset]
+                cases.append(case)
     return cases, skipped
+
+
+def output_filter(values: list[str] | None, registered: list[str]) -> list[str] | None:
+    """--outputs accepts repeated and comma-separated names; an unknown name is an error, never an empty selection."""
+    names = [n.strip() for v in values or [] for n in v.split(",") if n.strip()]
+    unknown = sorted(set(names) - set(registered))
+    if unknown:
+        raise SilvallyError(f"--outputs names unregistered outputs {unknown}; registered: {sorted(registered)}")
+    return names or None
 
 
 def cmd_spec_from_intent(args) -> int:
@@ -506,7 +579,13 @@ def cmd_spec_from_intent(args) -> int:
     bindings = {n: (u if u.endswith("/") else u + "/") for n, u in bindings.items()}
     present = {n: present_tables(u, args.profile, args.region) for n, u in bindings.items()}
     slices = [s for s in (intent.get("slices") or []) if s.get("outputDatasets")]
-    outputs_filter = args.outputs or ([d for s in slices for d in s["outputDatasets"]] or None)
+    if args.slice:
+        unknown = sorted(set(args.slice) - {s["id"] for s in slices})
+        if unknown:
+            raise SilvallyError(f"--slice {unknown} is not a slice of the resolved request {[s['id'] for s in slices]}")
+        slices = [s for s in slices if s["id"] in args.slice]
+    registered = [o["dataset"] for o in mapping["outputs"]]
+    outputs_filter = output_filter(args.outputs, registered) or ([d for s in slices for d in s["outputDatasets"]] or None)
     cases, skipped = derive_cases(mapping, mapping_key, bindings, present, outputs_filter,
                                   args.negatives == "all", slices=slices)
     machines = aws(["stepfunctions", "list-state-machines"], profile=args.profile, region=args.region, environment="prod")["stateMachines"]
@@ -529,6 +608,8 @@ def cmd_spec_from_intent(args) -> int:
             "deployment": {"registry": args.label, "served": bool(served), "drift": drift,
                            "blocking": "DeploymentDrift: the environment does not serve the pinned mapping; do not start" if drift else None},
             "skipped": skipped, "cases": cases}
+    if slices:
+        spec["slices"] = [s["id"] for s in slices]
     if args.run_id:
         spec["runId"] = args.run_id
     if args.owner_cost_ceiling is not None:
@@ -549,7 +630,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--mapping", help="id@version to run (default: the resolver's selection)")
     p.add_argument("--profiles", action="append", help="profile directory; supplies default bindings from validationSources")
     p.add_argument("--bind", action="append", help="NAME=s3://prefix/ holding one <table>/ directory per mapping input (repeatable)")
-    p.add_argument("--outputs", action="append", help="restrict to these output datasets (default: all registered outputs)")
+    p.add_argument("--outputs", action="append",
+                   help="restrict to these output datasets, repeated or comma-separated (default: all registered outputs)")
+    p.add_argument("--slice", action="append", help="restrict to this named package slice of the request (repeatable)")
     p.add_argument("--negatives", choices=("all", "none"), default="all", help="one REJECTED case per required input of each output")
     p.add_argument("--label", default="dev", help="registry label the executions run against")
     p.add_argument("--profile", required=True, help="operator's DEV AWS profile")
@@ -571,8 +654,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--approver", required=True)
     p.add_argument("--scope", required=True, help="the approval scope in the approver's words")
     p.add_argument("--canary-gate", help="canary-gate record (APPROVED or PRE_APPROVED); required for a full-stage run")
+    p.add_argument("--owner-decisions", help="ownerDecisions JSON; blanketDevWrites approves every card of this run (recorded per digest)")
     p = sub.add_parser("canary-gate")
     p.add_argument("--canary-run-dir", required=True, help="the captured canary run directory")
+    p.add_argument("--slice", help="gate one package slice: only its executions and comparison count")
     p.add_argument("--comparison", action="append", required=True, help="prod_actuals.py compare result for the canary (per slice)")
     p.add_argument("--owner-decisions", help="the resolver's ownerDecisions JSON (preApproveFullRunOnCanaryPass)")
     p.add_argument("--out", required=True)

@@ -25,7 +25,7 @@
     },
     "m2d": {
       "id": "m2d",
-      "outputDatasets": ["document", "document_rejects"],
+      "outputDatasets": ["document_registration", "document_registration_rejects"],
       "introducedIn": "5.0.0"
     }
   }

@@ -30,6 +30,11 @@ Ask the questions, then promote it: fill every strict-schema field, set
 `transform-configuration-profile.schema.json`. A promoted draft may run once
 without being committed. Commit it only through a reviewed PR to this kit.
 
+For an unattended request whose slices the catalogs already describe, `resolve-transform-intent.py
+promote-run-profile` promotes a run-scoped profile from the owner decisions and the resolved intent
+instead of asking (see `intent-resolution.md`, "Run-scoped profile"). It is valid for that run only
+and is never committed; it stays unpromoted when any fact is unknown.
+
 ## Path 3: author a committed profile
 
 1. Name it `<domain>-<purpose>.json`, with `id` equal to the filename.

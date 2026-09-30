@@ -1,2 +1,4 @@
-# Optional: read-only PROD Iceberg oracle reads (iceberg_snapshot_read.py).
+# Optional: read-only PROD Iceberg oracle reads (iceberg_snapshot_read.py) and bounded PROD Persist Gremlin
+# reads for graph inputs (graph_inputs.py gremlin signs with botocore, which pyiceberg[glue] installs).
 pyiceberg[glue,pyarrow]==0.7.1
+botocore>=1.34

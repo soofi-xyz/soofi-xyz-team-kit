@@ -504,9 +504,27 @@
         "preApproveFullRunOnCanaryPass": { "type": "boolean" },
         "acceptProductChanges": { "type": "boolean" },
         "costCeilingUsd": { "type": "number", "minimum": 0 },
-        "windowSelection": { "const": "most-recent-full-utc-day-with-data-per-slice" }
+        "windowSelection": { "const": "most-recent-full-utc-day-with-data-per-slice" },
+        "blanketDevWrites": { "const": "staging-and-executions-for-this-run" },
+        "sensitiveFieldStaging": { "const": "stage-real-values-to-dev" }
       }
     },
+    "sliceVerdicts": {
+      "type": "array",
+      "description": "Per named package slice: its own window, canary gate and verdict. The run verdict is READY only when every slice is READY.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["slice", "verdict", "canaryGate"],
+        "properties": {
+          "slice": { "type": "string", "minLength": 1 },
+          "verdict": { "enum": ["READY", "NOT_READY", "BLOCKED"] },
+          "window": { "oneOf": [{ "$ref": "#/$defs/utcWindow" }, { "type": "null" }] },
+          "canaryGate": { "enum": ["ABSENT", "CANARY_FAILED", "AWAITING_APPROVAL", "APPROVED", "PRE_APPROVED"] }
+        }
+      }
+    },
+    "productChangeFlags": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/kebab" } },
     "acceptedProductChanges": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/kebab" } },
     "prodActuals": {
       "type": "array",

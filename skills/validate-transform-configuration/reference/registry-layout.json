@@ -34,7 +34,17 @@
   "graphDatasetPrefixes": ["vertex", "edge"],
   "materialize": {
     "install": ["npm ci --no-audit --no-fund", "npm ci --no-audit --no-fund --prefix infra"],
-    "command": "npx tsx infra/test/spark/materialize-mappings.ts {out}"
+    "command": "npx tsx infra/test/spark/materialize-mappings.ts {out}",
+    "node": {
+      "minimumMajor": 18,
+      "recommended": "22.18",
+      "reason": "tsx (the materialize command) needs Node.js 18+; CI uses 22.18. Older supported majors work but npm may print EBADENGINE warnings, so they are warned about, not blocked."
+    }
+  },
+  "persist": {
+    "apiUrlParameter": "persist-api-url",
+    "gremlinPath": "/persist/gremlin",
+    "service": "execute-api"
   },
   "transformRuntime": {
     "stateMachineSuffix": "-transform-pipeline",

@@ -45,7 +45,10 @@ Rules:
 - Owner decisions stated up front in the request (`ownerDecisions`: full-run
   pre-approval for a passing canary, acceptance of Transform product changes
   as out of scope, a per-job cost ceiling, the most recent full UTC day with
-  real data per slice) answer the matching question; do not ask it again.
+  real data per slice, blanket approval of this run's DEV writes, staging real
+  sensitive values to DEV) answer the matching question; do not ask it again.
+- The canary gate is per slice: one slice's failed canary stops only that
+  slice, and each slice gets its own window and verdict.
 - The user's answers become `CONFIRMED` material facts. Silvally never marks a
   fact `CONFIRMED` from a default the user did not see.
 
@@ -53,6 +56,9 @@ Rules:
 
 Present one operation card and stop with `APPROVAL_REQUIRED` before **each** of
 these. Approval of one card never covers another, a retry, or a changed card.
+The only exception is the owner's `blanketDevWrites` decision, which approves
+this run's DEV staging and execution cards; each approval still records the
+card's own digest, and it never covers a PROD operation.
 
 | Operation | Typical command | Environment |
 | --- | --- | --- |

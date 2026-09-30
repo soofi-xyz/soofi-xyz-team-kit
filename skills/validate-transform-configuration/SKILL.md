@@ -24,8 +24,9 @@ person's machine (checkouts, `/tmp` scripts, cached registries, PROD extracts) i
      yours to choose; pass them explicitly (`--profile`, `--aws dev=<dev-profile>`). Log in with
      `aws sso login --profile <name>`. Never export long-lived keys; tools strip `AWS_*` key variables
      and refuse PROD write verbs.
-   - Node.js 22+ with `npm`/`npx` on `PATH` (only to materialize generated mappings with
+   - Node.js 18 or later with `npm`/`npx` on `PATH` (only to materialize generated mappings with
      `--materialize-candidate`; the resolver runs the layout's `materialize.install` and `materialize.command` in the fetched checkout).
+     18 is the minimum `tsx` needs; 22.18 is what CI uses. Below 18 the fetch fails; from 18 up to 22.18 it only warns.
    - Python 3.10+ with `pip install -r scripts/requirements-silvally.txt` in a virtual environment,
      plus `requirements-silvally-prod-oracle.txt` to read PROD Iceberg tables as PROD actuals.
      Nothing runs a mapping locally: no Spark, Java or local Transform is needed.
@@ -46,11 +47,13 @@ person's machine (checkouts, `/tmp` scripts, cached registries, PROD extracts) i
    canary of 10 real events per slice, compared with what PROD actually did, then — only after the
    user approves — the whole confirmed window. DEV executions go through `transform_runs.py` cards and
    explicit approval. There is no local or synthetic mode.
-5. **Where evidence goes:** a local run directory you choose (outside any repository) holds
-   cards, approvals, captured steps and `run.json`; DEV outputs go only under
-   `outputs/silvally-<profile-or-mapping>/<runId>/` in the bucket of the bound inputs (or `--output-root`);
-   restricted PROD rows stay in a mode-0700 `--private-dir` that you delete afterwards. Only sanitized
-   aggregates and digests are reported.
+5. **Where evidence goes:** `run_workspace.py new --root <dir outside any repository> --label <mapping>` creates a
+   unique run directory (`<label>-<UTC stamp>-<random>`) with a mode-0700 `private/`. It holds cards, approvals,
+   captured steps and `run.json`. `transform_runs.py cards` refuses a directory that already holds another run's
+   cards. DEV outputs go only under `outputs/silvally-<profile-or-mapping>/<runId>/` in the bucket of the bound
+   inputs (or `--output-root`). Restricted PROD rows stay in that run's `private/`. `run_workspace.py cleanup
+   --run-dir <run>` deletes only that run's `private/`, never a sibling run or a directory without its marker.
+   Only sanitized aggregates and digests are reported.
 
 ## Tools
 
@@ -58,15 +61,17 @@ All tools live in `scripts/`, take every location as an argument, and print JSON
 
 | Tool | Phase | Purpose |
 | --- | --- | --- |
-| `resolve-transform-intent.py` | 1–2, 5–6 | `discover`: parse a short request, fetch inputs (`--workspace`), select mappings/profile, derive parity and questions. `contracts`: per-output contracts from the registration and language definitions. `draft-profile`: a draft with regenerated `derivedDirections`. `check-profile`: prove a profile equals the registry derivation except its declared `derivationOverrides` |
+| `resolve-transform-intent.py` | 1–2, 5–6 | `discover`: parse a short request, fetch inputs (`--workspace`), select mappings/profile, derive parity and questions, and record owner decisions. `contracts`: per-output contracts from the registration and language definitions. `draft-profile`: a draft with regenerated `derivedDirections`. `promote-run-profile`: an unattended run's run-scoped profile from the owner decisions and the resolved intent (fail-closed). `check-profile`: prove a profile equals the registry derivation except its declared `derivationOverrides` |
+| `run_workspace.py` | all | `new`: a unique run directory with a marker and a mode-0700 `private/`. `cleanup`: remove only that run's `private/` |
 | `fetch_validation_inputs.py` | 2 | Read-only: pin repositories by SHA (`repo`), snapshot the published registry (`registry`), list language parameter names, materialize mappings |
-| `source_window.py` | 1 | `policy`: the profile's `sourceWindowPolicy`, or one derived with recorded defaults. `recommend`: mark sanitized per-UTC-day PROD metadata candidates complete and recommend the most recent complete window. `confirm`: record the user's explicit day-or-range answer. `data-days`: per-slice real-data check of the day, with the nearest UTC day that has data for an empty slice, or the owner's most recent full UTC day with data per slice |
-| `prod_actuals.py` | 7, 9, 11 | Read-only PROD actuals: `lambda-outcomes` (what a PROD state machine's Lambda accepted or rejected per event, from its execution logs), `table-summary` (a PROD Iceberg read, with snapshot freshness), `none` (no actual exists: explicit fallback). `canary-sample` (deterministic 10 events per slice, mixing outcomes), `inputs` (the selected events' real inputs for DEV staging), `compare` (DEV outputs against the PROD actual) |
-| `iceberg_snapshot_read.py` | 7 | Read-only PROD Iceberg snapshot read by key or by window column; rows only in a mode-0700 directory |
-| `stage_evidence_package.py` | 4 | Build `manifest.json`, then create-only DEV upload with an approval digest |
-| `transform_runs.py` | 9–11 | Cases derived from the registration, `--stage canary|full`, operation cards, approval-gated DEV `start`, read-only `capture`, `canary-gate` (summarize the canary and ask), `approve-full`, `regress`, Glue `cost` |
+| `source_window.py` | 1 | `policy`: the profile's `sourceWindowPolicy`, or one derived with recorded defaults. `recommend`: mark sanitized per-UTC-day PROD metadata candidates complete and recommend the most recent complete window. `confirm`: record the user's explicit day-or-range answer. `data-days`: per-slice real-data check of the day, with the nearest UTC day that has data for an empty slice, or the owner's most recent full UTC day with data per slice. `--data-through SLICE=ISO` skips days the PROD actual does not yet cover |
+| `prod_actuals.py` | 7, 9, 11 | Read-only PROD actuals: `probe-days` (newest-first bounded scan for the most recent UTC day with Lambda events), `lambda-outcomes` (what a PROD state machine's Lambda accepted or rejected per event, from its execution logs), `table-summary` (a PROD Iceberg read, fresh only when its data timestamp reaches the window end), `none` (no actual exists: explicit fallback). `canary-sample` (deterministic 10 events per slice, mixing outcomes), `keys`, `inputs` (the selected events' real inputs for DEV staging), `compare` (DEV outputs against the PROD actual, with key coverage) |
+| `graph_inputs.py` | 7, 9 | Default upstream source for graph-input slices: a bounded read-only PROD Persist Gremlin read (`gremlin`) or an existing export (`export`) of the catalog's root and hops for the slice's keys, written as Transform graph datasets, with a 0-dangling-endpoint check and `--as-of` |
+| `iceberg_snapshot_read.py` | 7 | Read-only PROD Iceberg snapshot read by key or by window column, with per-UTC-day counts and `--data-max-column`; rows only in a mode-0700 directory |
+| `stage_evidence_package.py` | 4 | Build `manifest.json`, then create-only DEV upload with an approval digest (`--approve`) or the owner's blanket DEV approval (`--owner-decisions`) |
+| `transform_runs.py` | 9–11 | Cases derived from the registration (`--slice`, `--outputs a,b`), `--stage canary|full`, operation cards, approval-gated DEV `start`, read-only `capture`, `canary-gate --slice` (summarize one slice's canary and ask), `approve-full`, `regress`, Glue `cost` |
 | `compare_datasets.py` | 11 | Keyed or whole-row diffs (CSV, JSONL, Parquet), part-byte identity, CSV header/delimiter checks, graph closure, and `check`: contracts plus the profile's declarative invariants, oracles and allowed losses |
-| `evaluate_run.py` | 1–12 | Map tool evidence to the 12 phase statuses and compute the verdict; phase 12 is the final PROD-derived validation |
+| `evaluate_run.py` | 1–12 | Map tool evidence to the 12 phase statuses per slice and compute each slice's verdict plus the overall verdict; phase 12 is the final PROD-derived validation |
 | `build_run_package.py` | 12 | Assemble `run.json`, compute the verdict from phases, refuse `READY` without a passing canary, an approved full run and a PROD-actuals baseline, validate against the run schema |
 
 Tests: `scripts/test-silvally-tools.py` and `scripts/test-validate-transform-configuration.py`
@@ -99,16 +104,19 @@ definitions and the selected profile:
 6. **Canary** — `canary-sample` picks 10 real events per slice deterministically (mixing outcomes such
    as accepted and rejected), `inputs` writes their real inputs, approved staging to DEV, then
    `spec-from-intent --stage canary`, cards, approved `start`, `capture`, and `prod_actuals.py compare`.
-7. **Canary gate** — `transform_runs.py canary-gate` shows the execution ids, S3 inputs and outputs,
-   row counts and comparison, and asks the user before the full window. A failed canary stops the run
-   (`NOT_READY`/`BLOCKED`); the full run is not offered.
+7. **Canary gate** — `transform_runs.py canary-gate --slice <slice>` shows one slice's execution ids, S3
+   inputs and outputs, row counts and comparison, and asks the user before that slice's full window. A
+   failed canary stops that slice (`NOT_READY`/`BLOCKED`) and its full run is not offered; the other
+   slices continue on their own gates.
 8. **Full window** — after `approve-full` (or the owner's pre-approval of a passing canary):
    approved staging of the whole window, `spec-from-intent --stage full`, cards, `start --canary-gate`,
    `capture`, `prod_actuals.py compare`, `compare_datasets.py check`, `closure` for graph outputs, and
    `transform_runs.py regress --baseline <previous run>`.
 9. **Verdict** — `evaluate_run.py` (with `--answer` for each resolver question the operator answered,
-   `--source-window`/`--slice-days`, `--prod-actuals`, `--canary-*`, `--actuals-comparison`,
-   `--staging-upload`), then `build_run_package.py`.
+   `--source-window`/`--slice-days`, `--prod-actuals`, repeatable `SLICE=` `--canary-*` and `--run-dir`,
+   `--actuals-comparison`, `--staging-upload`), then `build_run_package.py`. Each slice gets its own window,
+   canary gate and verdict (`slices` in the evaluation, `sliceVerdicts` in `run.json`). The overall verdict is
+   `READY` only when every slice is `READY`.
 
 Mapping-specific semantics (election or precedence rules, unit conversions, reference outputs,
 permitted losses) are expressed only as profile data: invariants with a declarative `check`
@@ -212,15 +220,23 @@ Preserve complete relational and join closure across every profile-declared sour
 The baseline is what PROD actually did in the window, per slice, read-only. `reference/prod-actuals.json` catalogs where each package slice's actual lives and how its fields line up with the mapping's outputs (a profile may name its own catalog with `prodActuals`):
 
 - `state-machine-lambda-outcomes`: `prod_actuals.py lambda-outcomes` filters a PROD state machine's execution log group for the named Lambda's scheduled input and its `LambdaFunctionSucceeded` (accepted, with its output) or `LambdaFunctionFailed`/`TimedOut` (an expected reject) per event. When the mapping resolves a field the input lacks, the canary input takes the value the PROD Lambda logged (`prod_actuals.py inputs --bind`).
-- `iceberg-table`: `iceberg_snapshot_read.py --window-column` reads the PROD Iceberg mirror for the window and `prod_actuals.py table-summary` records the snapshot; a snapshot older than the window end is `STALE`, so suggest the most recent day the snapshot covers.
+- `iceberg-table`: `iceberg_snapshot_read.py --window-column --data-max-column <dataTimestampColumn>` reads the PROD Iceberg mirror for the window and `prod_actuals.py table-summary --catalog` records it. Freshness comes from the newest data timestamp (for example `_stage_output_timestamp`), not the snapshot commit: a mirror re-committed daily can still stop receiving data. When the data ends before the window end, the summary is `STALE` with `mostRecentCoveredDay` and a `ProdMirrorStale` handoff to the data platform; run the slice on that covered day (`source_window.py data-days --data-through`).
 - `none`: no PROD actual exists for the slice. `prod_actuals.py none` records it, and the comparison falls back to schema, row-count and reject-reason checks; the report says so explicitly. Never invent a local oracle.
+
+For `state-machine-lambda-outcomes`, `prod_actuals.py probe-days` scans UTC days newest first, reading a bounded number of pages per day, and stops at the first day with events; `lambda-outcomes` then reads only that day.
+
+Keys come from the catalog, never from a guess. A key field may declare a `fallback` (a composite key) and `normalize` rules, and `compare` reports `keyCoverage` so a sparsely populated key is visible. Each catalog slice documents its key choice: for example a population `rowFilter` that keeps only the rows where the natural key is populated, with a composite fallback key and normalized values for the rest; a current-state-by-key comparison for an actual that records a state per entity; and an ordered list of event fields for the canary key. `reference/prod-actuals.json` records the rationale for each.
+
+### Graph inputs
+
+When a slice's inputs are graph datasets, the default upstream source is `graph_inputs.py gremlin`: a bounded, read-only PROD Persist Gremlin read (SigV4 to the layout's `persist-api-url` + `/persist/gremlin`). It starts from the canary or window keys, follows the catalog's `graphInputs` hops and writes Transform graph datasets (`~id`, `~label`, `~from`, `~to`, `prop:Type`). Every query is checked read-only and every value is quoted from a safe character set. The read stops with `GraphReadUnbounded` above `--max-elements`. Edges whose endpoints were not read are dropped, and `danglingEndpointCount` must be 0. `--as-of` excludes elements created after a stale actual's data cutoff. `graph_inputs.py export` reads an existing immutable export instead.
 
 ### Canary first, then ask
 
 1. `prod_actuals.py canary-sample` selects **10 real events per slice**, deterministically: group by outcome, order each group by event time and the SHA-256 of the event key, and take them round-robin so the canary mixes outcomes (for example accepted and rejected) when the window has both.
 2. `prod_actuals.py inputs` writes those events' real inputs; stage them to DEV under their own approval digest (`stage_evidence_package.py`).
 3. Run the canary in DEV (`transform_runs.py spec-from-intent --stage canary`, `cards`, approved `start`, `capture`) and compare it with the PROD actual (`prod_actuals.py compare`).
-4. `transform_runs.py canary-gate` shows the user the execution ids, S3 inputs and outputs, row counts and the comparison, and stops with `APPROVAL_REQUIRED`. Ask before the full window; never auto-proceed. Record the answer with `approve-full`.
+4. `transform_runs.py canary-gate --slice <slice>` shows the user that slice's execution ids, S3 inputs and outputs, row counts and the comparison, and stops with `APPROVAL_REQUIRED`. Ask before the full window; never auto-proceed. Record the answer with `approve-full`. A gate applies only to its slice; `start` refuses a full run whose gate belongs to another slice.
 5. When the canary comparison fails, the gate is `CANARY_FAILED`: stop with `NOT_READY` (a contradicted comparison) or `BLOCKED`, report the mismatches, and do not suggest or start the full run. `transform_runs.py start` refuses a full-stage run without an `APPROVED` or `PRE_APPROVED` gate.
 6. After approval, stage the whole window, run it in DEV (`--stage full`, `start --canary-gate`), capture it, and compare it with the PROD actual, the contracts, closure and regression.
 
@@ -234,8 +250,12 @@ An owner can let an unattended run finish by stating decisions in the request; t
 - "accept Transform product changes as out of scope" (`acceptProductChanges`): each `PRODUCT_CHANGE` is flagged for Kecleon, recorded as `ownerAccepted`, and no longer blocks `READY`.
 - "cost ceiling $N per job" (`costCeilingUsd`): no job may exceed it (`CostCeilingExceeded`).
 - "most recent full UTC day with real data per slice" (`windowSelection`): each slice runs on its own most recent complete UTC day with data instead of one confirmed window.
+- "approve all DEV writes for this run" (`blanketDevWrites`): every DEV staging copy and execution card of this run is approved without a per-card question. Each approval still records the card's digest with `kind: owner-blanket-dev-writes`.
+- "stage real phone numbers and message bodies to DEV" (`sensitiveFieldStaging`): slices whose catalog lists `sensitiveFields` (SMS) stage the real values unmodified in DEV and compare them directly. Without it, `graph_inputs.py` and `stage_evidence_package.py` refuse such a slice before any PROD read (`SensitiveStagingDecisionRequired`).
 
-Without these decisions the defaults stay: ask before the full run, and `BLOCKED` on any unaccepted `PRODUCT_CHANGE`.
+Without these decisions the defaults stay: ask about each DEV write, ask before the full run, ask before staging sensitive fields, and `BLOCKED` on any unaccepted `PRODUCT_CHANGE`.
+
+With `windowSelection` given, `promote-run-profile` promotes a run-scoped profile (`kind: run-scoped-profile`) from the owner decisions and the resolved intent for slices the catalog knows, so an unattended request such as `validate lexicon to interprose for sms, dsa and m2d, approve all DEV writes, stage real phone numbers and message bodies to DEV, if the canary passes run the full window, most recent full UTC day with real data per slice` can reach a per-slice verdict. It stays fail-closed: an unknown slice, a missing window decision or an unresolved fact leaves the draft unpromoted with its questions.
 
 When PROD metadata access, the window confirmation, a PROD actual, a staging or execution approval, the canary gate or DEV access is unavailable, the verdict is `BLOCKED`, never `READY`. Hand off exactly what is missing: the PROD read-only access, the confirmation question, the canary result awaiting approval, or the pending operation card and its digest.
 

@@ -88,12 +88,17 @@ python3 $S/transform_runs.py cost --run-dir "$RUN" --job-name <transform-glue-jo
 from it: for each binding (a prefix holding one `<table>/` directory per input, listed
 read-only), one case per output whose `requiredInputs` are all present, a full case when one
 binding covers every output, and one rejected case per required input of every output, which
-omits exactly that input. Bindings default to the profile's ready `existing-dev-artifact`
+omits exactly that input. When omitting the input would leave the case with no inputs at all, the
+negative is not run and is listed under `skipped` with `OmissionLeavesNoInputs`. `--slice` limits the
+spec to one package slice's outputs, and `--outputs` takes comma-separated or repeated dataset names
+and rejects unknown names. Bindings default to the profile's ready `existing-dev-artifact`
 sources for the direction. Outputs a binding cannot run and a full run no binding supports are
 listed under `skipped`. The spec records each output's registered format, the pinned digest,
 and `deployment.drift` when the published registry does not serve the pinned digest; `start`
-then refuses. `expected: REJECTED` cases pass only when the execution fails before
-`RunTransformJob` and the error names the omitted input. `capture` reads CSV, JSONL or Parquet
+then refuses. `expected: REJECTED` cases pass when the execution fails before
+`RunTransformJob`. When the error does not name the omitted input, the case still passes and
+carries a `transform-reject-error-unnamed` PRODUCT_CHANGE flag for Kecleon; it never fails the
+canary gate. `capture` reads CSV, JSONL or Parquet
 outputs in their registered format, reconciles physical rows and files with `_metadata.json`, and
 flags `mappingPinMatches: false` when the plan's `mapping.json` digest or VersionId differs from
 the pin (deployment drift or a latest-PR-wins overwrite). `regress` matches cases with a previous
@@ -117,7 +122,15 @@ side, `fieldMap` from output column to actual path, optional `rowFilter` and `re
   the SHA-256 the mapping records). Rows only in DEV, rows only in PROD and per-column mismatches
   are counted (`ProdActualsMismatch`, `ProdRejectMismatch`).
 - `iceberg-table`: DEV rows and the PROD table's rows in the window are matched by key and
-  compared over `fieldMap`, after `rowFilter`.
+  compared over `fieldMap`, after `rowFilter`. The key may fall back to other fields and normalize
+  values (`key.fallback`, `key.normalize`); `keyCoverage` reports how many rows each side keyed.
+  `comparison.actualScope: current-state-by-key` compares the current state per key (for example
+  `active` or `deleted` per entity).
+
+Datasets whose language definition declares no required fields (a log or a rejects dataset
+where several rows may share a value) have no unique key. `compare_datasets.py check` then skips
+the duplicate-key check, and a profile `unique-key` invariant without a key is `NOT_APPLICABLE`.
+Rejects are compared as a set: every PROD failure must appear among the DEV rejects.
 - `none`: no PROD actual exists; state it and compare schema, row counts and reject reasons
   only.
 

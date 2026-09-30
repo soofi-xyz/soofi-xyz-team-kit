@@ -21,7 +21,9 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shlex
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -120,10 +122,30 @@ def fetch_ssm_names(args) -> dict:
     return record(workspace, {"kind": "ssm-names", "name": args.label, "path": str(target), "count": len(names)})
 
 
+def check_node(requirement: dict | None) -> dict:
+    """Refuse a Node.js below the layout's minimum major; warn (never block) below the recommended version."""
+    if not requirement:
+        return {}
+    result = subprocess.run(["node", "--version"], capture_output=True, text=True, check=False) if shutil.which("node") else None
+    if result is None or result.returncode != 0:
+        raise SystemExit(f"Node.js {requirement['minimumMajor']}+ with npm/npx is required to materialize mappings; "
+                         f"{requirement['recommended']} is recommended")
+    version = result.stdout.strip().lstrip("v")
+    parts = tuple(int(p) for p in re.findall(r"\d+", version)[:3])
+    if parts[0] < requirement["minimumMajor"]:
+        raise SystemExit(f"Node.js {version} is below the minimum {requirement['minimumMajor']}: {requirement['reason']}")
+    recommended = tuple(int(p) for p in requirement["recommended"].split("."))
+    if parts[:len(recommended)] < recommended:
+        print(f"warning: Node.js {version} is below the recommended {requirement['recommended']}; continuing "
+              "(npm may print EBADENGINE warnings; the materialized mapping digests are what count)", file=sys.stderr)
+    return {"node": version, "recommended": requirement["recommended"], "belowRecommended": parts[:len(recommended)] < recommended}
+
+
 def materialize(args) -> dict:
     workspace = Path(args.workspace)
     checkout = workspace / args.name
     out = workspace / f"{args.name}-materialized"
+    node = check_node(getattr(args, "node", None))
     if args.install:
         for step in args.install:
             subprocess.run(shlex.split(step), cwd=checkout, check=True, stdout=sys.stderr, stdin=subprocess.DEVNULL)
@@ -131,7 +153,7 @@ def materialize(args) -> dict:
     subprocess.run(command, cwd=checkout, check=True, env={**os.environ}, stdout=sys.stderr, stdin=subprocess.DEVNULL)
     mappings = [{"mapping": f"{m.parent.parent.name}@{m.parent.name}", "sha256": sha256_file(m)}
                 for m in sorted(out.rglob("mapping.json"))]
-    return record(workspace, {"kind": "materialized", "name": args.name, "path": str(out), "mappings": mappings})
+    return record(workspace, {"kind": "materialized", "name": args.name, "path": str(out), "mappings": mappings, **node})
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -174,7 +196,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "materialize":
         materialize(argparse.Namespace(workspace=args.workspace, name=args.name,
                                        command=args.materialize_command or layout["materialize"]["command"],
-                                       install=layout["materialize"]["install"] if args.install is None else args.install))
+                                       install=layout["materialize"]["install"] if args.install is None else args.install,
+                                       node=layout["materialize"].get("node")))
         return 0
     {"repo": fetch_repo, "registry": fetch_registry, "ssm-names": fetch_ssm_names}[args.command](args)
     return 0

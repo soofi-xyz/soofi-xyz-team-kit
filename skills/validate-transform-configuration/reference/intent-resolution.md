@@ -128,8 +128,10 @@ publication from changing a run in progress.
 `validate <from> to <to> for <slice>, <slice> and <slice>` selects one catalog package
 (`reference/package-slices.json`) and one `outputDatasets` set per named slice. Slice words are
 stripped before language match. The workflow is one-way: one step per slice, same mapping, no
-undifferentiated full-package run, and no producer chain from a slice word. Hub→Y still asks for
-an upstream source (default: existing graph export). A pinned `@x.y.z` that lacks a slice output
+undifferentiated full-package run, and no producer chain from a slice word. When every requested
+slice has a catalogued `graphInputs` plan in `reference/prod-actuals.json`, the upstream source
+defaults to the bounded read-only PROD Persist Gremlin build (`graph_inputs.py gremlin`), recorded
+as `UpstreamSourceDefaulted`; otherwise Hub→Y still asks for an upstream source. Each slice's output datasets come from `package-slices.json`. A pinned `@x.y.z` that lacks a slice output
 is `SliceOutputsMissing`.
 
 ### Owner decisions
@@ -143,9 +145,23 @@ and carried into the `discover` result so an unattended run can finish:
 | `acceptProductChanges` | "accept Transform product changes as out of scope" | unresolved `PRODUCT_CHANGE` items stay flagged for Kecleon, recorded `ownerAccepted`, and do not block `READY` |
 | `costCeilingUsd` | "cost ceiling $5 per job" | `transform_runs.py` refuses any case above the ceiling (`CostCeilingExceeded`) |
 | `windowSelection: most-recent-full-utc-day-with-data-per-slice` | "most recent full UTC day with real data per slice" | each slice uses its own most recent complete UTC day with data, recorded in `finalValidation.sliceWindows` |
+| `blanketDevWrites: staging-and-executions-for-this-run` | "approve all DEV writes for this run" | every DEV staging copy and execution card of this run is approved; each approval records the card digest with `kind: owner-blanket-dev-writes` |
+| `sensitiveFieldStaging: stage-real-values-to-dev` | "stage real phone numbers and message bodies to DEV" | slices with catalogued `sensitiveFields` stage the real values unmodified in DEV and compare them directly |
 
-Without them the defaults hold: ask before the full run, and `BLOCKED` on any unaccepted
-`PRODUCT_CHANGE`. Silvally never assumes a decision the owner did not state.
+Without them the defaults hold: ask about each DEV write, ask before the full run, ask before
+staging sensitive fields, and `BLOCKED` on any unaccepted `PRODUCT_CHANGE`. Silvally never
+assumes a decision the owner did not state.
+
+### Run-scoped profile
+
+`resolve-transform-intent.py promote-run-profile --intent intent.json --draft draft.json` promotes
+an unattended run's draft to a run-scoped profile (`kind: run-scoped-profile`, id
+`run-scoped-<mapping>-<digest>`) when the owner chose `windowSelection` and every requested slice
+is known to `package-slices.json` and the PROD actuals catalog. The profile carries the directions,
+the derived source-window policy, the owner decisions and the resolved answers, and is valid only
+for that run: `evaluate_run.py` accepts it for phase 1, and `build_run_package.py --profile-doc`
+records it with revision `run-scoped`. Anything still unknown (an unknown slice, no window
+decision, an unresolved material fact) leaves the draft unpromoted with its questions.
 
 ### Cumulative versions
 

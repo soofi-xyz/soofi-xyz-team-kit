@@ -11,6 +11,7 @@ Examples:
   resolve-transform-intent.py draft-profile --request "test <source> to <target>" ...
   resolve-transform-intent.py contracts --mapping <id>@<version> --lexicon-root ... --registry ...
   resolve-transform-intent.py check-profile --profile <profile.json> --lexicon-root ... --registry ...
+  resolve-transform-intent.py promote-run-profile --draft draft.json --intent intent.json --out run-profile.json
 
 Every repository path, SSM name, hub language and default comes from the
 registry layout (reference/registry-layout.json, or --layout). With --workspace
@@ -90,6 +91,7 @@ ENV_HINT = re.compile(r"\b(?:in|on|against)\s+(dev|prod|production|development)\
 FOR_SLICES = re.compile(r"\bfor\s+(.+)$")
 SLICE_JOINERS = {"and", "or", "plus"}
 DEFAULT_SLICES = SKILL_ROOT / "reference" / "package-slices.json"
+DEFAULT_ACTUALS = SKILL_ROOT / "reference" / "prod-actuals.json"
 BUILTIN_SLICE_KEYS = ("sms", "dsa", "m2d")
 MODE_HINTS = {
     "round-trip": re.compile(r"\bround[\s-]?trip\b|\broundtrip\b"),
@@ -106,6 +108,18 @@ OWNER_DECISIONS = {
     "costCeilingUsd": re.compile(r"\bcost\s+ceiling\s+(?:of\s+)?(?:usd\s*)?\$?\s*(\d+(?:\.\d+)?)(?:\s*usd)?(?:\s+per\s+(?:job|run|execution))?"),
     "windowSelection": re.compile(r"\b(?:use\s+)?(?:the\s+)?most\s+recent\s+(?:full|complete)\s+utc\s+day\s+with\s+(?:real\s+)?data"
                                   r"(?:\s+per\s+slice)?"),
+    "blanketDevWrites": re.compile(
+        r"\b(?:all\s+)?dev\s+writes?\s+(?:\([^)]*\)\s+)?(?:are\s+)?(?:pre[\s-]?)?approved\b[^.;\n]*"
+        r"|\b(?:pre[\s-]?)?approve[sd]?\s+(?:all\s+)?dev\s+writes?\b[^.;\n]*"),
+    "sensitiveFieldStaging": re.compile(
+        r"\b(?:approve[sd]?\s+)?stag(?:e|ing)\s+(?:of\s+)?(?:the\s+)?(?:real\s+)?(?:sensitive\s+fields?|pii"
+        r"|phone\s+numbers?(?:\s+and\s+(?:sms\s+)?message\s+bodies)?)\s+(?:to|in)\s+dev\b[^.;\n]*"
+        r"|\bsensitive[\s-]fields?\s+staging\s+(?:to\s+dev\s+)?(?:is\s+)?approved\b[^.;\n]*"),
+}
+OWNER_DECISION_VALUES = {
+    "windowSelection": "most-recent-full-utc-day-with-data-per-slice",
+    "blanketDevWrites": "staging-and-executions-for-this-run",
+    "sensitiveFieldStaging": "stage-real-values-to-dev",
 }
 OWNER_PREFIX = re.compile(r"\bowner\s+decisions?\s*:?")
 
@@ -120,8 +134,8 @@ def extract_owner_decisions(text: str) -> tuple[str, dict]:
             continue
         if name == "costCeilingUsd":
             decisions[name] = float(match.group(1))
-        elif name == "windowSelection":
-            decisions[name] = "most-recent-full-utc-day-with-data-per-slice"
+        elif name in OWNER_DECISION_VALUES:
+            decisions[name] = OWNER_DECISION_VALUES[name]
         else:
             decisions[name] = True
         spans.append(match.span())
@@ -143,6 +157,11 @@ def normalize_dataset(name: str) -> str:
 
 def sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def load_actuals_catalog(path: Path | str | None = None) -> dict:
+    source = Path(path) if path else DEFAULT_ACTUALS
+    return json.loads(source.read_text()) if source.exists() else {"slices": {}}
 
 
 def load_slice_catalog(path: Path | str | None = None) -> dict:
@@ -1503,8 +1522,9 @@ def pick_version_for_slices(selection: dict, registry: Registry, slices: list[di
 
 
 def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclusiveZ>",
-             slice_catalog: dict | None = None) -> dict:
+             slice_catalog: dict | None = None, actuals: dict | None = None) -> dict:
     catalog = slice_catalog if slice_catalog is not None else load_slice_catalog()
+    actuals = actuals if actuals is not None else load_actuals_catalog()
     parsed = parse_request(request, catalog)
     result: dict = {"parsed": parsed, "intakeState": "NEEDS_INPUT", "registrySources": registry.registry_labels,
                     "ownerDecisions": parsed["hints"]["ownerDecisions"]}
@@ -1660,7 +1680,17 @@ def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclu
         mode = parsed["hints"]["mode"] or "one-way"
         steps = [primary]
         continuation = {"inverse": [], "crossSource": []}
-        if primary.source == HUB_LANGUAGE:
+        builders = {spec["id"]: ((actuals or {}).get("slices") or {}).get(spec["id"], {}).get("inputBuilder")
+                    for spec in result["slices"]}
+        if primary.source == HUB_LANGUAGE and all(builders.values()):
+            result["upstreamSource"] = {"kind": "prod-derived-input-builders", "slices": builders,
+                                        "detail": "graph slices read a bounded read-only PROD Persist Gremlin neighbourhood "
+                                                  "of the window's keys (graph_inputs.py); event slices take the PROD "
+                                                  "Lambda's real inputs (prod_actuals.py inputs)"}
+            findings.append({"code": "UpstreamSourceDefaulted", "mapping": primary.key, "severity": "informational",
+                             "detail": "every named slice has a catalogued PROD-derived input builder; no answer is needed",
+                             "slices": builders})
+        elif primary.source == HUB_LANGUAGE:
             findings.append({
                 "code": "UpstreamSourceUnresolved",
                 "mapping": primary.key,
@@ -1983,6 +2013,91 @@ def draft_source_window_policy(discovery: dict, registry: Registry) -> dict | No
             "evidenceIds": ["intent-resolution"]}
 
 
+RUN_SCOPED_REQUIRED_DECISIONS = ("windowSelection",)
+
+
+def promote_run_profile(draft: dict, intent: dict, slice_catalog: dict, actuals: dict) -> dict:
+    """Promote a draft to a run-scoped profile for a catalogued package from resolved intent and owner decisions.
+
+    Fail-closed: every material fact must be resolved by the resolved intent, the package and PROD-actuals
+    catalogs or an up-front owner decision; otherwise the result is BLOCKED with the facts still unknown.
+    """
+    decisions = dict(intent.get("ownerDecisions") or {})
+    slices = [s["id"] for s in intent.get("slices") or []]
+    package = slice_catalog.get("package") or {}
+    mapping = (intent.get("primaryDirection") or {}).get("mapping") or (intent.get("selection") or {}).get("selected")
+    catalogued = (actuals.get("slices") or {})
+    reasons = []
+    if intent.get("status") != "RESOLVED":
+        reasons.append(f"the resolver status is {intent.get('status')}, not RESOLVED")
+    if not slices:
+        reasons.append("run-scoped promotion covers named package slices of a catalogued package only")
+    if mapping and package.get("mappingId") and mapping.split("@")[0] != package["mappingId"]:
+        reasons.append(f"{mapping} is not the catalogued package {package['mappingId']}")
+    unknown = [s for s in slices if s not in (slice_catalog.get("slices") or {}) or s not in catalogued]
+    if unknown:
+        reasons.append(f"slices {unknown} have no package-slice or PROD-actuals catalog entry")
+    missing = [d for d in RUN_SCOPED_REQUIRED_DECISIONS if d not in decisions]
+    if missing:
+        reasons.append(f"owner decisions {missing} were not given up front (answer the window question instead)")
+    if any(f.get("code") == "UpstreamSourceUnresolved" for f in intent.get("findings", [])):
+        reasons.append("UpstreamSourceUnresolved: a slice has no catalogued PROD-derived input builder")
+    if not draft.get("derivedDirections") or not draft.get("derivedSourceWindowPolicy"):
+        reasons.append("the draft has no registry-derived directions or source window policy")
+    sensitive = sorted(s for s in slices if catalogued.get(s, {}).get("sensitiveFields"))
+    ceiling = decisions.get("costCeilingUsd")
+    resolved = {
+        "environment-region-and-mode": (f"DEV in {LAYOUT['repository']['defaultRegion']} (PROD read-only), observed-dev; "
+                                        "PROD Transform is never invoked", ["intent-resolution"]),
+        "sample-or-evidence-source": ("real PROD-derived data only: " + ", ".join(
+            f"{s} = most recent complete UTC day with data, baseline {catalogued[s]['baselineKind']}, inputs from "
+            f"{catalogued[s].get('inputBuilder')}" for s in slices if s in catalogued), ["owner-decisions", "prod-actuals-catalog"]),
+        "sensitivity-and-handling": ("restricted; aggregates and digests only in evidence" + (
+            f"; slices {sensitive} stage real sensitive fields to DEV only under the owner's sensitiveFieldStaging decision "
+            f"(given: {decisions.get('sensitiveFieldStaging', 'no; those slices block until it is')})" if sensitive else ""),
+            ["owner-decisions", "prod-actuals-catalog"]),
+        "required-fields-and-permitted-losses": ("every fieldMap column of each slice's PROD-actuals catalog entry plus the "
+                                                 "registry-derived output contracts; no permitted losses", ["prod-actuals-catalog"]),
+        "consumer-and-readback": ("the target system's own records of the same events, read back read-only as PROD actuals",
+                                  ["prod-actuals-catalog"]),
+        "success-scale-and-cost": (f"canary of 10 real events per slice matching PROD actuals, then the full window; per-job "
+                                   f"cost ceiling {ceiling if ceiling is not None else 5} USD"
+                                   + ("" if ceiling is not None else " (recorded default)"), ["owner-decisions"]),
+    }
+    facts = []
+    for fact in draft["materialFacts"]:
+        if fact["state"] in {"MISSING", "AMBIGUOUS"} and fact["id"] in resolved and not reasons:
+            value, evidence = resolved[fact["id"]]
+            fact = {**fact, "state": "INFERRED", "value": value, "evidenceIds": evidence, "nextQuestion": None}
+        facts.append(fact)
+    still = [f["id"] for f in facts if f["state"] in {"MISSING", "AMBIGUOUS"}]
+    if still:
+        reasons.append(f"material facts still unknown: {still}")
+    if reasons:
+        return {"status": "BLOCKED", "promotionEligible": False, "reasons": reasons}
+    digest = hashlib.sha256(json.dumps([draft["id"], mapping, slices, decisions], sort_keys=True).encode()).hexdigest()[:12]
+    promoted = {**draft, "materialFacts": facts, "unresolvedFacts": [], "promotionEligible": True, "intakeState": "CONTEXT_COMPLETE"}
+    shape = (intent.get("primaryDirection") or {}).get("outputShape")
+    return {
+        "status": "PROMOTED",
+        "id": f"run-scoped-{mapping.split('@')[0]}-{digest}",
+        "kind": "run-scoped-profile",
+        "contractVersion": 1,
+        "scope": "this validation run only; never published as a profile",
+        "mapping": mapping,
+        "slices": slices,
+        "ownerDecisions": decisions,
+        "answers": {"upstream-source": "prod-derived-input-builders"} if intent.get("upstreamSource") else {},
+        "directions": draft["derivedDirections"],
+        "sourceWindowPolicy": draft["derivedSourceWindowPolicy"],
+        "graph": {"required": shape == "graph"},
+        "validationWorkflow": {"persistPolicy": "forbidden"},
+        "promotion": {"basis": ["resolved-intent", "owner-decisions", "package-slices-catalog", "prod-actuals-catalog"],
+                      "sensitiveSlices": sensitive},
+        "draft": promoted,
+    }
+
+
 def fact_question(fact_id: str) -> str:
     return {
         "environment-region-and-mode": "environment",
@@ -2130,8 +2245,10 @@ def check_profile(registry: Registry, profile: dict) -> dict:
                 ours, theirs = contract.get(field_name), regenerated.get(field_name)
                 if field_name == "requiredInputs":
                     ours, theirs = sorted(ours or []), sorted(theirs or [])
-                if field_name == "key" and ours is None:
-                    continue
+                if field_name == "key":
+                    ours, theirs = ours or None, theirs or None
+                    if ours is None:
+                        continue
                 if ours != theirs:
                     differences.append({"dataset": dataset, "field": field_name, "profile": contract.get(field_name), "derived": regenerated.get(field_name)})
         for diff in differences:
@@ -2173,7 +2290,8 @@ def fetch_missing_inputs(args) -> None:
         args.main_lexicon_root = repo("lexicon-main", args.main_ref, None)
     if getattr(args, "materialize_candidate", False):
         entry = fetch.materialize(argparse.Namespace(workspace=str(workspace), name="lexicon-candidate",
-                                                     command=args.materialize_command, install=args.materialize_install))
+                                                     command=args.materialize_command, install=args.materialize_install,
+                                                     node=LAYOUT["materialize"].get("node")))
         args.registry = (args.registry or []) + [f"candidate-build={entry['path']}"]
     for spec in args.aws or []:
         label, _, profile = spec.partition("=")
@@ -2192,11 +2310,18 @@ def main(argv: list[str] | None = None) -> int:
     p_parse = sub.add_parser("parse")
     p_parse.add_argument("--request", required=True)
     p_parse.add_argument("--slice-catalog", help="package-slices JSON (default: reference/package-slices.json)")
+    p_promote = sub.add_parser("promote-run-profile", help="promote a draft to a run-scoped profile for a catalogued package")
+    p_promote.add_argument("--draft", required=True, help="draft-profile output")
+    p_promote.add_argument("--intent", required=True, help="discover output (with ownerDecisions)")
+    p_promote.add_argument("--slice-catalog", help="package-slices JSON (default: reference/package-slices.json)")
+    p_promote.add_argument("--prod-actuals-catalog", help="PROD-actuals catalog (default: reference/prod-actuals.json)")
+    p_promote.add_argument("--out")
     for name in ("discover", "draft-profile", "contracts", "check-profile"):
         p = sub.add_parser(name)
         if name in ("discover", "draft-profile"):
             p.add_argument("--request", required=True)
         p.add_argument("--slice-catalog", help="package-slices JSON (default: reference/package-slices.json)")
+        p.add_argument("--prod-actuals-catalog", help="PROD-actuals catalog (default: reference/prod-actuals.json)")
         if name == "contracts":
             p.add_argument("--mapping", required=True, help="exact id@version to derive contracts for")
         if name == "check-profile":
@@ -2223,6 +2348,12 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--materialize-install", action="append", default=None,
                        help="setup commands run first in the checkout (default: the layout's materialize.install)")
     args = parser.parse_args(argv)
+    if args.command == "promote-run-profile":
+        output = promote_run_profile(json.loads(Path(args.draft).read_text()), json.loads(Path(args.intent).read_text()),
+                                     load_slice_catalog(args.slice_catalog), load_actuals_catalog(args.prod_actuals_catalog))
+        text = json.dumps(output, indent=2) + "\n"
+        Path(args.out).write_text(text) if args.out else sys.stdout.write(text)
+        return 0 if output["status"] == "PROMOTED" else 1
     if args.command != "parse":
         layout = load_layout(args.layout)
         args.region = args.region or layout["repository"]["defaultRegion"]
@@ -2243,7 +2374,7 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "check-profile":
             output = check_profile(registry, json.loads(Path(args.profile).read_text()))
         else:
-            output = discover(args.request, registry, args.window, catalog)
+            output = discover(args.request, registry, args.window, catalog, load_actuals_catalog(args.prod_actuals_catalog))
             if args.command == "draft-profile":
                 output = draft_profile(args.request, output, registry)
     text = json.dumps(output, indent=2, sort_keys=False) + "\n"

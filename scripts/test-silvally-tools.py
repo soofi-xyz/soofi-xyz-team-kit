@@ -128,13 +128,25 @@ def test_transform_runs_cards(tmp: Path) -> None:
     if changed.returncode == 0 or "card changed" not in changed.stderr:
         fail("a card that changed after presentation was not refused")
     rejected = {"status": "FAILED"}
-    if not transform_runs.rejection_ok(rejected, ["ResolvePlan"], "Required input dataset 'vertex-member' is missing", "vertex-member"):
+    if transform_runs.rejection_ok(rejected, ["ResolvePlan"], "Required input dataset 'vertex-member' is missing", "vertex-member") != (True, True):
         fail("a pre-job rejection naming the omitted input was not accepted")
-    if transform_runs.rejection_ok(rejected, ["ResolvePlan"], "Some other failure", "vertex-member"):
-        fail("a rejection for an unrelated reason satisfied a missing-input case")
-    if transform_runs.rejection_ok(rejected, ["ResolvePlan", "RunTransformJob"], "vertex-member", "vertex-member"):
+    if transform_runs.rejection_ok(rejected, ["ValidateRequest"], "ZodError: inputs invalid", "vertex-member") != (True, False):
+        fail("a pre-job rejection with a generic error must pass (Transform error-message quality is only a flag)")
+    if transform_runs.rejection_ok(rejected, ["ResolvePlan", "RunTransformJob"], "vertex-member", "vertex-member")[0]:
         fail("a failure after the Transform job started satisfied a rejection case")
-    results.append("transform_runs approval gate + rejection semantics")
+    if transform_runs.rejection_ok({"status": "SUCCEEDED"}, ["ResolvePlan"], None, "vertex-member")[0]:
+        fail("a succeeded execution satisfied a rejection case")
+    silvally_io.write_json(tmp / "other-spec.json", {**json.loads(spec(tmp).read_text()), "runId": "20990102T000000Z"})
+    reused = run_tool("transform_runs.py", "cards", "--spec", str(tmp / "other-spec.json"), "--run-dir", str(run_dir), check=False)
+    if reused.returncode == 0 or "RunDirectoryReused" not in reused.stderr:
+        fail("a run directory of another run was reused")
+    stray = tmp / "stray-run"
+    stray.mkdir()
+    (stray / "prior-session.txt").write_text("x")
+    leftover = run_tool("transform_runs.py", "cards", "--spec", str(spec(tmp)), "--run-dir", str(stray), check=False)
+    if leftover.returncode == 0 or "RunDirectoryNotEmpty" not in leftover.stderr:
+        fail("a run directory holding another session's files was used")
+    results.append("transform_runs approval gate + rejection semantics + run-directory ownership")
 
 
 def test_compare(tmp: Path) -> None:
@@ -174,7 +186,20 @@ def test_compare(tmp: Path) -> None:
     report = json.loads(closure.stdout)
     if closure.returncode == 0 or report["danglingEndpointCount"] != 1 or report["endpointCount"] != 4:
         fail(f"graph closure did not count the dangling endpoint: {report}")
-    results.append("compare_datasets diff/parts/format/closure (csv + jsonl)")
+    keyless = tmp / "keyless"
+    keyless.mkdir()
+    (keyless / "part-00000.json").write_text('{"body": "a"}\n{"body": "a"}\n')
+    contracts = tmp / "keyless-contracts.json"
+    contracts.write_text(json.dumps({"mapping": "m@1.0.0", "outputs": [
+        {"dataset": "log_rows", "shape": "tabular", "columnSource": "language-definition", "columns": ["body"], "format": {"type": "jsonl"}}]}))
+    keyless_profile = tmp / "keyless-profile.json"
+    keyless_profile.write_text(json.dumps({"invariants": [{"id": "log-unique", "failureCode": "DuplicateKey",
+                                                           "check": {"kind": "unique-key", "dataset": "log_rows"}}]}))
+    checked = json.loads(run_tool("compare_datasets.py", "check", "--contracts", str(contracts), "--profile", str(keyless_profile),
+                                  "--dataset", f"log_rows={keyless}", check=False).stdout)
+    if checked["status"] != "PASS" or any(c["kind"] == "unique-key" and c["status"] != "NOT_APPLICABLE" for c in checked["checks"]):
+        fail(f"a dataset that declares no key failed the duplicate-key check: {checked}")
+    results.append("compare_datasets diff/parts/format/closure (csv + jsonl); keyless datasets skip the unique-key check")
 
 
 def resolve(tmp: Path, command: str, *extra: str) -> dict:
@@ -824,10 +849,12 @@ else:
     doc = json.loads(out.read_text())
     cases = {c["case"]: c for c in doc["cases"]}
     expected_positive = {"full-full", "full-member-report-only", "full-ledger-summary-only", "members-only-member-report-only"}
-    expected_negative = {"neg-member-report-without-vertex-member", "neg-ledger-summary-without-vertex-member",
-                         "neg-ledger-summary-without-vertex-ledger", "neg-ledger-summary-without-edge-member-has-ledger"}
+    expected_negative = {"neg-ledger-summary-without-vertex-member", "neg-ledger-summary-without-vertex-ledger",
+                         "neg-ledger-summary-without-edge-member-has-ledger"}
     if set(cases) != expected_positive | expected_negative:
         fail(f"derived cases wrong: {sorted(cases)}")
+    if not any(s.get("case") == "neg-member-report-without-vertex-member" and "OmissionLeavesNoInputs" in s["reason"] for s in doc["skipped"]):
+        fail("omitting the only required input (inputs: []) was not skipped and recorded")
     negative = cases["neg-ledger-summary-without-vertex-ledger"]
     if negative["missingInput"] != "vertex-ledger" or {i["table"] for i in negative["request"]["inputs"]} != {"vertex-member", "edge-member-has-ledger"}:
         fail("a negative case must omit exactly its missing input")
@@ -863,6 +890,27 @@ else:
         fail("the members slice did not request only its datasets")
     if slice_cases["full-ledgers"]["request"]["outputDatasets"] != ["ledger_summary"]:
         fail("the ledgers slice did not request only its datasets")
+    one_slice = tmp / "one-slice-spec.json"
+    run_tool("transform_runs.py", "spec-from-intent", "--intent", str(tmp / "slice-intent.json"), "--workspace", str(ws),
+             "--profile", "example-dev", "--bind", "full=s3://example-bucket/inputs/full/", "--slice", "ledgers",
+             "--run-id", "20990101T000000Z", "--out", str(one_slice), env=env)
+    one = json.loads(one_slice.read_text())
+    if one["slices"] != ["ledgers"] or {c.get("slice") for c in one["cases"]} != {"ledgers"} or \
+            not any(c["expected"] == "REJECTED" for c in one["cases"]):
+        fail(f"a one-slice spec did not label every case (negatives included) with its slice: {one['cases']}")
+    for outputs, expected in ((["member_report,ledger_summary"], 2), (["member_report", "ledger_summary"], 2), (["member_report"], 1)):
+        target = tmp / "outputs-spec.json"
+        run_tool("transform_runs.py", "spec-from-intent", "--intent", str(tmp / "intent.json"), "--workspace", str(ws), "--profile",
+                 "example-dev", "--bind", "full=s3://example-bucket/inputs/full/", "--negatives", "none",
+                 *[a for o in outputs for a in ("--outputs", o)], "--run-id", "20990101T000000Z", "--out", str(target), env=env)
+        produced = {d for c in json.loads(target.read_text())["cases"] for d in c["request"]["outputDatasets"]}
+        if len(produced) != expected:
+            fail(f"--outputs {outputs} selected {sorted(produced)}")
+    unknown = run_tool("transform_runs.py", "spec-from-intent", "--intent", str(tmp / "intent.json"), "--workspace", str(ws), "--profile",
+                       "example-dev", "--bind", "full=s3://example-bucket/inputs/full/", "--outputs", "member_report,nope",
+                       "--out", str(tmp / "unknown-spec.json"), env=env, check=False)
+    if unknown.returncode == 0 or "unregistered outputs ['nope']" not in unknown.stderr:
+        fail("an unknown --outputs name did not fail")
     prod_spec = json.loads(out.read_text())
     prod_spec["environment"] = "prod"
     prod_spec["deployment"] = {"registry": "dev", "drift": None}
@@ -896,6 +944,364 @@ def test_regress(tmp: Path) -> None:
     results.append("transform_runs regress by case signature")
 
 
+def test_per_slice_evaluation(tmp: Path) -> None:
+    """Each slice has its own window, canary gate, full run and verdict; the overall verdict needs every slice READY."""
+    work = tmp / "per-slice"
+    root = "s3://example-dev-bucket/outputs/silvally-test/"
+    days = {"members": "2099-01-06", "ledgers": "2099-01-04"}
+    token = {n: f"{d}T000000Z_2099-01-{int(d[-2:]) + 1:02d}T000000Z" for n, d in days.items()}
+    silvally_io.write_json(work / "intent.json", {
+        "status": "RESOLVED", "selectedProfile": PROFILE.name, "primaryDirection": {"to": "omega", "outputShape": "tabular"},
+        "workflow": {"steps": [{"mapping": "canon-to-omega@2.0.0"}]}, "findings": [],
+        "conceptChecks": {"canon-to-omega@2.0.0": [{"state": "active"}]},
+        "sqlScan": {"canon-to-omega@2.0.0": {"queriesScanned": 2, "forbiddenLabels": []}},
+        "slices": [{"id": "members", "outputDatasets": ["member_report"]}, {"id": "ledgers", "outputDatasets": ["ledger_summary"]}],
+        "ownerDecisions": {"windowSelection": "most-recent-full-utc-day-with-data-per-slice", "preApproveFullRunOnCanaryPass": True}})
+    silvally_io.write_json(work / "ws" / "inputs-manifest.json", [{"kind": "repository", "name": "r", "commitSha": "c" * 40,
+                                                                  "requiredPathsVerified": True}])
+    silvally_io.write_json(work / "days.json", source_window.data_days({"members": {days["members"]: 5}, "ledgers": {days["ledgers"]: 3}},
+                                                                        None, True, source_window.parse_utc("2099-01-08T06:00:00Z")))
+    args = ["--intent", str(work / "intent.json"), "--profile", str(PROFILE), "--workspace", str(work / "ws"),
+            "--slice-days", str(work / "days.json"), "--catalog", str(work / "no-catalog.json"), "--mode", "observed-dev"]
+
+    def slice_run(name: str, canary_ok: bool, full: bool, flag: bool = False) -> list[str]:
+        out = []
+        for stage in ("canary", "full") if full else ("canary",):
+            directory = work / f"{name}-{stage}"
+            cases = [{"case": f"{name}-{stage}", "slice": name}, {"case": f"neg-{name}", "slice": name}]
+            silvally_io.write_json(directory / "run-spec.json", {"stage": stage, "profile": "example-dev", "outputRoot": root,
+                                                                 "slices": [name], "cases": cases,
+                                                                 "bindings": {name: f"s3://example-dev-bucket/inputs/{token[name]}_{stage}_{name}_v1/"}})
+            ok = canary_ok or stage == "full"
+            steps = [{"step": f"1-{name}-{stage}", "status": "SUCCEEDED", "verdict": "PASS" if ok else "FAIL", "mappingPinMatches": True},
+                     {"step": f"2-neg-{name}", "status": "FAILED", "verdict": "PASS", "expected": "REJECTED",
+                      **({"productChangeFlag": {"id": "transform-reject-error-unnamed"}} if flag else {})}]
+            silvally_io.write_json(directory / "steps.json", steps)
+            for i, step in enumerate(steps):
+                digest = "sha256:" + hashlib_hex(f"{name}{stage}{i}")
+                silvally_io.write_json(directory / "approvals" / f"{step['step']}.json", {"approval": {
+                    "operationDigest": digest, "status": "APPROVED", "kind": "owner-blanket-dev-writes", "recordedAt": "2099-01-08T07:00:00Z"}})
+            out += [f"--{'canary-run-dir' if stage == 'canary' else 'run-dir'}", f"{name}={directory}"]
+            report = {"slice": name, "baselineKind": "iceberg-table", "status": "PASS" if ok else "FAIL",
+                      "checks": [{"id": f"prod-actuals-{name}", "status": "PASS" if ok else "FAIL"}]}
+            silvally_io.write_json(work / f"{name}-{stage}-compare.json", report)
+            out += [f"--{'canary-comparison' if stage == 'canary' else 'actuals-comparison'}", str(work / f"{name}-{stage}-compare.json")]
+        gate = {"slice": name, "status": "PRE_APPROVED" if canary_ok else "CANARY_FAILED", "approval": {"kind": "owner-pre-approval"}}
+        silvally_io.write_json(work / f"{name}-gate.json", gate)
+        silvally_io.write_json(work / f"{name}-sample.json", {"slice": name, "eventsSelected": 10, "selectionDigest": "sha256:" + "1" * 64})
+        silvally_io.write_json(work / f"{name}-actuals.json", {"slice": name, "baselineKind": "iceberg-table", "status": "AVAILABLE"})
+        silvally_io.write_json(work / f"{name}-upload.json", {"slice": name, "manifest": f"s3://example-dev-bucket/inputs/{token[name]}_v1/manifest.json",
+                                                             "manifestSha256": "b" * 64, "matchesLocal": True, "approvalKind": "owner-blanket-dev-writes",
+                                                             "approvalOperationDigest": "sha256:" + hashlib_hex(name)})
+        return out + ["--canary-gate", str(work / f"{name}-gate.json"), "--canary-sample", str(work / f"{name}-sample.json"),
+                      "--prod-actuals", str(work / f"{name}-actuals.json"), "--staging-upload", str(work / f"{name}-upload.json")]
+
+    def evaluate(label: str, extra: list[str], decisions: dict) -> dict:
+        silvally_io.write_json(work / f"{label}-decisions.json", decisions)
+        run_tool("evaluate_run.py", *args, *extra, "--owner-decisions", str(work / f"{label}-decisions.json"),
+                 "--out", str(work / f"{label}.json"), check=False)
+        return json.loads((work / f"{label}.json").read_text())
+
+    base = {"windowSelection": "most-recent-full-utc-day-with-data-per-slice", "preApproveFullRunOnCanaryPass": True,
+            "blanketDevWrites": "staging-and-executions-for-this-run"}
+    both = evaluate("both", slice_run("members", True, True, flag=True) + slice_run("ledgers", True, True), base)
+    if both["verdict"] != "READY" or both["slices"]["members"]["verdict"] != "READY" or both["slices"]["ledgers"]["window"]["start"] != "2099-01-04T00:00:00Z":
+        fail(f"two passing slices on their own windows were not READY: {[(p['number'], p['reasons']) for p in both['phases'] if p['status'] != 'PASS']}")
+    if both["productChangeFlags"] != ["transform-reject-error-unnamed"]:
+        fail("a negative refused with a generic error was not flagged as a Transform product change")
+    mixed = evaluate("mixed", slice_run("members", True, True) + slice_run("ledgers", False, False), base)
+    reasons = " ".join(r for p in mixed["phases"] for r in p["reasons"])
+    if mixed["slices"]["members"]["verdict"] != "READY" or mixed["slices"]["ledgers"]["verdict"] == "READY" or mixed["verdict"] == "READY":
+        fail(f"a failed canary of one slice changed another slice's verdict or passed overall: {mixed['slices']}")
+    if "[members] FAIL" in reasons or "was started although" in reasons:
+        fail("a slice whose own gate was PRE_APPROVED was failed for another slice's canary")
+    unapproved = evaluate("no-blanket", slice_run("members", True, True) + slice_run("ledgers", True, True),
+                          {k: v for k, v in base.items() if k != "blanketDevWrites"})
+    if unapproved["verdict"] == "READY" or "blanket DEV approval the owner did not give" not in json.dumps(unapproved["phases"]):
+        fail("blanket DEV approvals without the owner's decision were accepted")
+    catalog = tmp / "sensitive-catalog.json"
+    silvally_io.write_json(catalog, {"slices": {"members": {"sensitiveFields": {"inputs": ["vertex-member.name"]}}}})
+    args[args.index("--catalog") + 1] = str(catalog)
+    sensitive = evaluate("sensitive", slice_run("members", True, True) + slice_run("ledgers", True, True), base)
+    if sensitive["slices"]["members"]["verdict"] != "BLOCKED" or "SensitiveStagingDecisionRequired" not in json.dumps(sensitive["phases"]) \
+            or sensitive["slices"]["ledgers"]["verdict"] != "READY":
+        fail("a sensitive slice without the owner's staging decision was not blocked on its own")
+    allowed = evaluate("sensitive-ok", slice_run("members", True, True) + slice_run("ledgers", True, True),
+                       {**base, "sensitiveFieldStaging": "stage-real-values-to-dev"})
+    if allowed["verdict"] != "READY":
+        fail("the owner's sensitive-field staging decision did not let the sensitive slice reach READY")
+    results.append("evaluate_run per-slice gates, windows and verdicts; blanket DEV approvals; sensitive staging decision; "
+                   "unnamed-reject product-change flag")
+
+
+def hashlib_hex(value: str) -> str:
+    return __import__("hashlib").sha256(value.encode()).hexdigest()
+
+
+GRAPH_CONTRACTS = {"inputs": [
+    {"table": "vertex-member", "graphKind": "vertex", "label": "member", "requiredColumns": ["~id", "member_id:String", "name:String"],
+     "optionalColumns": []},
+    {"table": "vertex-ledger", "graphKind": "vertex", "label": "ledger", "requiredColumns": ["~id", "amount:Double"], "optionalColumns": []},
+    {"table": "edge-member-has-ledger", "graphKind": "edge", "label": "member_has_ledger",
+     "requiredColumns": ["~id", "~from", "~to", "created_at:DateTime", "rank:Int"], "optionalColumns": [],
+     "endpoints": {"from": "vertex-member", "to": "vertex-ledger"}},
+    {"table": "edge-ledger-has-artifact", "graphKind": "edge", "label": "ledger_has_artifact",
+     "requiredColumns": ["~id", "~from", "~to", "uri:String", "content_sha256:String", "body_selector:String", "effective_at:DateTime"],
+     "optionalColumns": [], "endpoints": {"from": "vertex-ledger", "to": "vertex-ledger"}},
+    {"table": "hydrated_artifact", "format": "jsonl"}]}
+
+
+def test_graph_inputs(tmp: Path) -> None:
+    import graph_inputs
+    body = b'{"body": "hello"}'
+    digest = hashlib_hex(body.decode())
+    vertices = {"m1": {"id": "m1", "label": "member", "member_id": "M1", "name": "Ann"},
+                "m2": {"id": "m2", "label": "member", "member_id": "M2", "name": "Bob"},
+                "l1": {"id": "l1", "label": "ledger", "amount": 1.5}, "l2": {"id": "l2", "label": "ledger", "amount": 2.0}}
+    edges = [{"id": "e1", "label": "member_has_ledger", "OUT": {"id": "m1"}, "IN": {"id": "l1"}, "created_at": 4070908800000, "rank": "1"},
+             {"id": "e2", "label": "member_has_ledger", "OUT": {"id": "m2"}, "IN": {"id": "l2"}, "created_at": "2099-02-01T00:00:00Z", "rank": 2},
+             {"id": "a1", "label": "ledger_has_artifact", "OUT": {"id": "l1"}, "IN": {"id": "l1"}, "uri": "s3://prod-bucket/a1",
+              "content_sha256": digest, "body_selector": "JSON_BODY", "effective_at": "2099-01-06T10:00:00Z"},
+             {"id": "a2", "label": "ledger_has_artifact", "OUT": {"id": "l2"}, "IN": {"id": "l2"}, "uri": "s3://prod-bucket/a2",
+              "content_sha256": digest, "body_selector": "TEXT", "effective_at": "2099-01-05T10:00:00Z"}]
+    queries = []
+
+    def query(gremlin: str) -> list:
+        queries.append(gremlin)
+        graph_inputs.assert_read_only(gremlin)
+        if gremlin.startswith("g.V().hasLabel('member')"):
+            wanted = set(re.findall(r"'([^']+)'", gremlin.split("within(")[1]))
+            return [v for v in vertices.values() if v.get("member_id") in wanted]
+        ids = set(re.findall(r"'([^']+)'", gremlin.split(")")[0]))
+        label = re.search(r"(?:outE|inE)\('([^']+)'\)", gremlin).group(1)
+        side, other = ("OUT", "IN") if ".outE(" in gremlin else ("IN", "OUT")
+        return [{"e": e, "v": vertices[e[other]["id"]]} for e in edges if e["label"] == label and e[side]["id"] in ids]
+
+    import re
+    catalog = tmp / "graph-catalog.json"
+    plan = {"root": {"dataset": "vertex-member", "keyProperty": "member_id", "actualKey": "member_id"},
+            "hops": [{"edge": "edge-member-has-ledger", "from": "vertex-member", "direction": "out"},
+                     {"edge": "edge-ledger-has-artifact", "from": "vertex-ledger", "direction": "out", "window": "effective_at", "prune": True}]}
+    hydration = {"dataset": "hydrated_artifact", "edge": "edge-ledger-has-artifact",
+                 "columns": {"artifact_uri": "uri", "content_sha256": "content_sha256", "body_selector": "body_selector"},
+                 "uriColumn": "artifact_uri", "sha256Column": "content_sha256", "selectorColumn": "body_selector", "bodyColumn": "msg"}
+    silvally_io.write_json(catalog, {"slices": {"members": {"graphInputs": plan, "hydration": hydration,
+                                                            "sensitiveFields": {"inputs": ["hydrated_artifact.msg"]}}}})
+    silvally_io.write_json(tmp / "graph-contracts.json", GRAPH_CONTRACTS)
+    (tmp / "graph-events.jsonl").write_text('{"member_id": "M1"}\n{"member_id": "M2"}\n{"member_id": "M1"}\n')
+
+    def build(label: str, decisions: dict | None, **extra) -> dict:
+        silvally_io.write_json(tmp / f"graph-{label}-decisions.json", decisions or {})
+        ns = __import__("argparse").Namespace(
+            command="gremlin", contracts=str(tmp / "graph-contracts.json"), catalog=str(catalog), slice="members",
+            events=str(tmp / "graph-events.jsonl"), keys_file=None, profile="example-prod", region="xx-test-1",
+            window_start=extra.get("start"), window_end_exclusive=extra.get("end"), as_of=extra.get("as_of"),
+            owner_decisions=str(tmp / f"graph-{label}-decisions.json"), max_elements=extra.get("max_elements", 1000),
+            private_dir=str(tmp / f"graph-{label}-private"), out_dir=str(tmp / f"graph-{label}-pkg"), out=str(tmp / f"graph-{label}.json"))
+        return graph_inputs.build(ns, source=graph_inputs.GremlinSource(query), fetch=lambda uri: body)
+
+    try:
+        build("undecided", {})
+        fail("a sensitive slice was built without the owner's sensitive-field staging decision")
+    except silvally_io.SilvallyError as error:
+        if "SensitiveStagingDecisionRequired" not in str(error) or queries:
+            fail("the sensitive-field refusal did not happen before any PROD read")
+    decided = {"sensitiveFieldStaging": "stage-real-values-to-dev"}
+    summary = build("window", decided, start="2099-01-06T00:00:00Z", end="2099-01-07T00:00:00Z")
+    rows = {d: s["rows"] for d, s in summary["datasets"].items()}
+    if summary["status"] != "BUILT" or summary["danglingEndpointCount"] != 0 or rows != {
+            "vertex-member": 2, "vertex-ledger": 1, "edge-member-has-ledger": 1, "edge-ledger-has-artifact": 1, "hydrated_artifact": 1}:
+        fail(f"the windowed, pruned graph build is wrong: {summary}")
+    import pyarrow.parquet as pq
+    edge = pq.read_table(tmp / "graph-window-pkg" / "edge-member-has-ledger" / "part-00000.parquet").to_pylist()[0]
+    if edge != {"~id": "e1", "~label": "member_has_ledger", "~from": "m1", "~to": "l1", "created_at:DateTime": "2099-01-01T00:00:00.000Z", "rank:Int": 1}:
+        fail(f"graph values were not copied into the Transform column shape: {edge}")
+    hydrated = json.loads((tmp / "graph-window-pkg" / "hydrated_artifact" / "part-00000.jsonl").read_text())
+    if hydrated["msg"] != "hello" or hydrated["artifact_uri"] != "s3://prod-bucket/a1":
+        fail(f"the artifact body was not hydrated with its selector: {hydrated}")
+    as_of = build("asof", decided, as_of="2099-01-15T00:00:00Z")
+    if as_of["droppedAfterAsOf"].get("edge-member-has-ledger") != 1 or as_of["datasets"]["edge-member-has-ledger"]["rows"] != 1:
+        fail(f"--as-of did not drop the edge created after the cutoff: {as_of}")
+    try:
+        build("bounded", decided, max_elements=2)
+        fail("a graph read above --max-elements was accepted")
+    except silvally_io.SilvallyError as error:
+        if "GraphReadUnbounded" not in str(error):
+            raise
+    for bad in ("x') .drop() //", "a b"):
+        try:
+            graph_inputs.quote(bad)
+            fail(f"an unsafe key {bad!r} entered a Gremlin query")
+        except silvally_io.SilvallyError:
+            pass
+    try:
+        graph_inputs.assert_read_only("g.V('a').drop()")
+        fail("a mutating Gremlin step was sent")
+    except silvally_io.SilvallyError:
+        pass
+    if graph_inputs.results_of({"data": {"results": [1]}}) != [1] or graph_inputs.results_of({"result": {"data": [2]}}) != [2]:
+        fail("Persist Gremlin response shapes were not recognized")
+    results.append("graph_inputs bounded read-only Gremlin build: window + prune, as-of cutoff, closure, hydration, bounds, "
+                   "sensitive-field decision, injection and mutation refusals")
+
+
+def test_prod_actuals_catalog(tmp: Path) -> None:
+    catalog = json.loads((SKILL / "reference" / "prod-actuals.json").read_text())
+    dsa = [{"last_update": f"2099-01-06T{h:02d}:00:00Z", "debt_id": f"d{h}", "delete_date": "2099-01-06" if h % 3 == 0 else None}
+           for h in range(12)]
+    chosen = prod_actuals.canary_select(dsa, "last_update", "debt_id", "delete_date", 10, "presence", catalog["slices"]["dsa"]["canary"]["outcomeLabels"])
+    outcomes = {prod_actuals.outcome_of(e, "delete_date", "presence", {"absent": "active", "present": "deleted"}) for e in chosen}
+    if outcomes != {"active", "deleted"}:
+        fail(f"the DSA canary did not group by active versus deleted: {outcomes}")
+    m2d = {"input": {"s3Key": "raw/k"}, "outcome": "rejected"}
+    if prod_actuals.key_of(m2d, catalog["slices"]["m2d"]["canary"]["eventKeyField"]) != "raw/k" or \
+            prod_actuals.key_of({"input": {"classifiedKey": "c/k", "s3Key": "raw/k"}}, ["input.classifiedKey", "input.s3Key"]) != "c/k":
+        fail("the M2D canary key does not fall back from input.classifiedKey to input.s3Key")
+    events = tmp / "sms-events.jsonl"
+    rows = [{"sent_date": "2099-01-06 10:00:00", "vendor_tracking_code": f"t{i}", "txt_msg_vendor_id": 67, "vendor_result": "OK",
+             "debt_id": f"d{i}", "phone_number": "(555) 010-0000", "msg": "m", "txt_msg_template_id": "", "txt_msg_log_id": i} for i in range(3)]
+    rows += [{"sent_date": "2099-01-06 11:00:00", "vendor_tracking_code": None, "txt_msg_vendor_id": 34, "vendor_result": "Sent",
+              "debt_id": "x", "txt_msg_log_id": 9}]
+    rows += [{"sent_date": "2099-01-06 12:00:00", "vendor_tracking_code": None, "txt_msg_vendor_id": 67, "vendor_result": "OPTED_OUT",
+              "debt_id": "d9", "phone_number": "5550100000", "msg": "stop", "txt_msg_template_id": "", "txt_msg_log_id": 12}]
+    prod_actuals.write_jsonl(events, rows)
+    sample = json.loads(run_tool("prod_actuals.py", "canary-sample", "--events", str(events), "--slice", "sms", "--catalog",
+                                 str(SKILL / "reference" / "prod-actuals.json"), "--private-out", str(tmp / "sms-private" / "sel.jsonl"),
+                                 "--out", str(tmp / "sms-sample.json")).stdout)
+    if sample["eventsInPopulation"] != 4 or sample["eventsSelected"] != 4 or sample["eventsWithoutKey"] != 0:
+        fail(f"the SMS canary did not keep the QUIQ vendor population with the fallback key: {sample}")
+    dev = tmp / "dev-sms"
+    dev.mkdir()
+    header = "debt_id|phone_number|msg|sent_date|vendor_result|txt_msg_template_id|vendor_tracking_code|te_id|interaction_identifier"
+    body = [f"d{i}|5550100000|m|2099-01-06T10:00:00.000Z|OK||t{i}|x|y" for i in range(3)]
+    body += ["d9|5550100000|stop|2099-01-06T12:00:00.000Z|OPTED_OUT||||z", "d7|5550100000|m|2099-01-06T13:00:00.000Z|OK||t7|x|y"]
+    (dev / "part-00000.csv").write_text(header + "\n" + "\n".join(body) + "\n")
+
+    def compare(label: str, *extra: str) -> dict:
+        run_tool("prod_actuals.py", "compare", "--catalog", str(SKILL / "reference" / "prod-actuals.json"), "--slice", "sms",
+                 "--actual", str(events), "--dataset", f"{catalog['slices']['sms']['outputDatasets'][0]}={dev}", *extra, "--out", str(tmp / f"sms-{label}.json"), check=False)
+        return json.loads((tmp / f"sms-{label}.json").read_text())["checks"][0]
+    full = compare("full")
+    if full["status"] != "FAIL" or full["onlyDev"] != 1 or full["keyCoverage"]["prodFallback"] != 1 or full["mismatchedByColumn"]:
+        fail(f"the SMS comparison did not key by tracking code with the composite fallback and normalized dates/phones: {full}")
+    canary = compare("canary", "--dev-scope", "actual-keys")
+    if canary["status"] != "PASS" or canary["devRowsOutOfScope"] != 1:
+        fail(f"the canary comparison did not restrict DEV rows to the sampled events: {canary}")
+    silvally_io.write_json(tmp / "rows.json", {"snapshotTimestampMs": 4071081600000 + 86400000 * 30, "dataMax": "2099-01-05_12-20-52",
+                                               "rows": [{"debt_id": "d1"}]})
+    run_tool("prod_actuals.py", "table-summary", "--rows", str(tmp / "rows.json"), "--slice", "dsa", "--catalog",
+             str(SKILL / "reference" / "prod-actuals.json"), "--end-exclusive", "2099-01-07T00:00:00Z", "--out", str(tmp / "stale.json"), check=False)
+    stale = json.loads((tmp / "stale.json").read_text())
+    if stale["status"] != "STALE" or stale["mostRecentCoveredDay"] != "2099-01-04" or stale["handoff"]["code"] != "ProdMirrorStale":
+        fail(f"a re-committed snapshot with stale data was not STALE with the covered day and a handoff: {stale}")
+    silvally_io.write_json(tmp / "rows-nodata.json", {"snapshotTimestampMs": 4102444800000, "rows": [{"debt_id": "d1"}]})
+    run_tool("prod_actuals.py", "table-summary", "--rows", str(tmp / "rows-nodata.json"), "--slice", "dsa", "--catalog",
+             str(SKILL / "reference" / "prod-actuals.json"), "--end-exclusive", "2099-01-07T00:00:00Z", "--out", str(tmp / "unproven.json"), check=False)
+    if json.loads((tmp / "unproven.json").read_text())["status"] != "STALE":
+        fail("snapshot freshness alone satisfied a catalog that declares a data timestamp column")
+    covered = source_window.data_days({"dsa": {"2099-01-04": 3, "2099-01-05": 7, "2099-01-06": 2}}, None, True,
+                                      source_window.parse_utc("2099-01-08T06:00:00Z"), {"dsa": "2099-01-05T12:20:52Z"})
+    if covered["slices"]["dsa"]["day"] != "2099-01-04" or "handoff" not in covered["slices"]["dsa"]:
+        fail(f"the per-slice day ignored the PROD actual's data cutoff: {covered}")
+    probes = tmp / "probe-count"
+    env = aws_shim(tmp / "probe-bin", f"""
+count = {str(probes)!r}
+import os
+n = int(open(count).read()) if os.path.exists(count) else 0
+open(count, "w").write(str(n + 1))
+assert "--no-paginate" in args, args
+start = int(args[args.index("--start-time") + 1])
+has = start == 4070822400000
+print(json.dumps({{"events": [{{"message": "{{}}"}}] if has else [], "nextToken": None}}))""")
+    run_tool("prod_actuals.py", "probe-days", "--profile", "example-prod", "--region", "xx-test-1", "--log-group", "lg", "--function-name", "f",
+             "--slice", "m2d", "--now", "2099-01-03T06:00:00Z", "--out", str(tmp / "probe.json"), env=env)
+    probed = json.loads((tmp / "probe.json").read_text())
+    if probed != {"m2d": {"2099-01-02": 0, "2099-01-01": 0, "2098-12-31": 1}} or open(probes).read() != "3":
+        fail(f"probe-days did not stop at the newest day with data: {probed}")
+    results.append("prod_actuals catalog: DSA active/deleted outcomes, M2D key fallback, SMS vendor population + composite key + "
+                   "normalization + canary scope, data freshness with covered day, newest-first day probe")
+
+
+def test_unattended_intake(tmp: Path) -> None:
+    work = tmp / "unattended"
+    work.mkdir()
+    catalog = work / "actuals.json"
+    silvally_io.write_json(catalog, {"slices": {"members": {"inputBuilder": "graph_inputs.py", "baselineKind": "iceberg-table"},
+                                                "ledgers": {"inputBuilder": "graph_inputs.py", "baselineKind": "iceberg-table"}}})
+    request = ("validate canon to omega for members and ledgers; owner decisions: most recent full UTC day with data per slice; "
+               "full run pre-approved if the canary passes; DEV writes approved; stage real phone numbers and message bodies to DEV")
+    common = ["--request", request, "--slice-catalog", str(FIXTURE / "package-slices.json"), "--prod-actuals-catalog", str(catalog)]
+    intent = resolve(work, "discover", *common)
+    decisions = intent["ownerDecisions"]
+    if decisions.get("blanketDevWrites") != "staging-and-executions-for-this-run" or decisions.get("sensitiveFieldStaging") != "stage-real-values-to-dev":
+        fail(f"the blanket DEV-write and sensitive-staging decisions were not parsed: {decisions}")
+    codes = {f["code"] for f in intent["findings"]}
+    if "UpstreamSourceUnresolved" in codes or "UpstreamSourceDefaulted" not in codes or \
+            any(q["id"] == "upstream-source" for q in intent["questions"]):
+        fail(f"catalogued input builders did not become the default upstream source: {codes}")
+    draft = resolve(work, "draft-profile", *common)
+    silvally_io.write_json(work / "intent.json", intent)
+    silvally_io.write_json(work / "draft.json", draft)
+    promote = ["resolve-transform-intent.py", "promote-run-profile", "--draft", str(work / "draft.json"), "--slice-catalog",
+               str(FIXTURE / "package-slices.json"), "--prod-actuals-catalog", str(catalog)]
+    run_tool(*promote, "--intent", str(work / "intent.json"), "--out", str(work / "profile.json"))
+    profile = json.loads((work / "profile.json").read_text())
+    if profile["status"] != "PROMOTED" or profile["draft"]["promotionEligible"] is not True or profile["draft"]["unresolvedFacts"]:
+        fail(f"owner decisions and resolved intent did not promote a run-scoped profile: {profile}")
+    import jsonschema
+    jsonschema.validate(profile["draft"], json.loads((SKILL / "reference" / "transform-configuration-profile-draft.schema.json").read_text()))
+    silvally_io.write_json(work / "no-window.json", {**intent, "ownerDecisions": {k: v for k, v in decisions.items() if k != "windowSelection"}})
+    blocked = run_tool(*promote, "--intent", str(work / "no-window.json"), "--out", str(work / "blocked.json"), check=False)
+    if blocked.returncode == 0 or json.loads((work / "blocked.json").read_text())["status"] != "BLOCKED":
+        fail("a run-scoped profile was promoted without the owner's window decision")
+    silvally_io.write_json(work / "unknown.json", {**intent, "slices": [*intent["slices"], {"id": "other", "outputDatasets": []}]})
+    if run_tool(*promote, "--intent", str(work / "unknown.json"), "--out", str(work / "unknown-out.json"), check=False).returncode == 0:
+        fail("a run-scoped profile was promoted for an uncatalogued slice")
+    run_tool("evaluate_run.py", "--intent", str(work / "intent.json"), "--profile", str(work / "profile.json"), "--out", str(work / "phases.json"),
+             check=False)
+    phase1 = json.loads((work / "phases.json").read_text())["phases"][0]
+    if "run-scoped profile" not in " ".join(phase1["reasons"]) or "no selected or promoted profile" in " ".join(phase1["reasons"]):
+        fail(f"phase 1 did not accept the promoted run-scoped profile: {phase1}")
+    identity = build_run_package.profile_identity(str(work / "profile.json"))
+    if identity["id"] != profile["id"] or identity["revision"] != "run-scoped":
+        fail(f"the run package cannot identify the run-scoped profile: {identity}")
+    results.append("unattended intake: owner decisions (blanket DEV writes, sensitive staging), default upstream source, "
+                   "run-scoped promotion (fail-closed), phase 1 and run-package identity")
+
+
+def test_run_workspace(tmp: Path) -> None:
+    root = tmp / "runs"
+    first = json.loads(run_tool("run_workspace.py", "new", "--root", str(root), "--label", "lexicon interprose").stdout)
+    second = json.loads(run_tool("run_workspace.py", "new", "--root", str(root), "--label", "lexicon interprose").stdout)
+    if first["runDir"] == second["runDir"] or not first["runId"].startswith("lexicon-interprose-"):
+        fail("two runs shared a run directory")
+    for run in (first, second):
+        (Path(run["privateDir"]) / "rows.jsonl").write_text("{}\n")
+    run_tool("run_workspace.py", "cleanup", "--run-dir", first["runDir"])
+    if Path(first["privateDir"]).exists() or not (Path(second["privateDir"]) / "rows.jsonl").exists():
+        fail("cleanup removed another run's private rows or kept its own")
+    if run_tool("run_workspace.py", "cleanup", "--run-dir", str(root), check=False).returncode == 0:
+        fail("cleanup ran on a directory that is not a run directory")
+    results.append("run_workspace unique run directories and run-scoped cleanup")
+
+
+def test_stage_decisions(tmp: Path) -> None:
+    pkg = tmp / "sens-pkg"
+    (pkg / "vertex-contact").mkdir(parents=True)
+    (pkg / "vertex-contact" / "part-00000.jsonl").write_text('{"x": 1}\n')
+    prefix = "s3://example-bucket/inputs/x/2099-01-06T000000Z_2099-01-07T000000Z_canary_sms_v1/"
+    run_tool("stage_evidence_package.py", "manifest", "--dir", str(pkg), "--prefix", prefix)
+    silvally_io.write_json(tmp / "blanket.json", {"blanketDevWrites": "staging-and-executions-for-this-run"})
+    refused = run_tool("stage_evidence_package.py", "upload", "--dir", str(pkg), "--prefix", prefix, "--profile", "example-dev",
+                       "--owner-decisions", str(tmp / "blanket.json"), "--slice", "sms", check=False)
+    if refused.returncode == 0 or "SensitiveStagingDecisionRequired" not in refused.stderr:
+        fail("SMS inputs were staged without the owner's sensitive-field staging decision")
+    unapproved = run_tool("stage_evidence_package.py", "upload", "--dir", str(pkg), "--prefix", prefix, "--profile", "example-dev", check=False)
+    if unapproved.returncode == 0 or "--approve" not in unapproved.stderr:
+        fail("an upload without a card approval or a blanket decision was accepted")
+    results.append("stage_evidence_package blanket DEV approval and sensitive-field refusal")
+
+
 def main() -> int:
     with tempfile.TemporaryDirectory() as raw:
         tmp = Path(raw)
@@ -913,6 +1319,12 @@ def main() -> int:
         test_stage_package(tmp)
         test_spec_from_intent(tmp)
         test_regress(tmp)
+        test_per_slice_evaluation(tmp)
+        test_graph_inputs(tmp)
+        test_prod_actuals_catalog(tmp)
+        test_unattended_intake(tmp)
+        test_run_workspace(tmp)
+        test_stage_decisions(tmp)
     print("Silvally tool tests passed: " + "; ".join(results))
     return 0
 

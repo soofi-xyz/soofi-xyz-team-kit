@@ -1,7 +1,7 @@
 {
   "id": "prod-actuals.json",
-  "contractVersion": 1,
-  "description": "What PROD actually did for each named package slice, read-only, used as the comparison baseline for the DEV canary and the full-window DEV run. Each slice names one baseline source. A slice with baselineKind none falls back to schema, row-count and reject-reason checks, and the report says so. Silvally never builds a local oracle in place of a missing actual.",
+  "contractVersion": 2,
+  "description": "What PROD actually did for each named package slice, read-only, used as the comparison baseline for the DEV canary and the full-window DEV run, and how each slice's real PROD-derived inputs are built. Each slice names one baseline source. A slice with baselineKind none falls back to schema, row-count and reject-reason checks, and the report says so. Silvally never builds a local oracle in place of a missing actual.",
   "package": {
     "from": "lexicon",
     "to": "interprose",
@@ -14,11 +14,19 @@
       "source": {
         "region": "us-east-2",
         "table": "interprose_current.txt_msg_log",
-        "meaning": "Interprose's own SMS log rows (the legacy SMS pipeline's result as Interprose recorded it), mirrored read-only by Stage ETL",
+        "meaning": "Interprose's own SMS log rows, mirrored read-only by Stage ETL",
         "windowColumn": "sent_date",
-        "freshness": "the table's current snapshot must be committed at or after the window end; otherwise the slice has no actual for that window and the nearest earlier covered UTC day is suggested"
+        "dataTimestampColumn": "_stage_output_timestamp",
+        "freshness": "the table's maximum _stage_output_timestamp must reach the window end (a re-committed snapshot is not enough); otherwise the slice uses the most recent UTC day its data covers and the stale mirror is a data-platform handoff"
       },
-      "key": {"dataset": ["vendor_tracking_code"], "actual": ["vendor_tracking_code"]},
+      "rowFilter": {"actual": {"txt_msg_vendor_id": "67"}},
+      "key": {
+        "dataset": ["vendor_tracking_code"],
+        "actual": ["vendor_tracking_code"],
+        "fallback": {"dataset": ["debt_id", "phone_number", "sent_date"], "actual": ["debt_id", "phone_number", "sent_date"]},
+        "rationale": "sms_log emits only provider QUIQ status edges (sms_log.sql: provider = 'QUIQ'), with vendor_tracking_code = provider_tracking_code, plus debt_id, phone_number, msg, sent_date, vendor_result, txt_msg_template_id, te_id and interaction_identifier. txt_msg_log mixes every SMS vendor: on 2026-09-04..06 every row that carried vendor_tracking_code had txt_msg_vendor_id 67 (3/3, 16/16, 1/1) and no txt_msg_vendor_id 34 row carried one, so the 2.5% population of the whole table is the legacy vendor's rows, which sms_log never produces. The comparison population is therefore txt_msg_vendor_id 67 (rowFilter.actual), keyed by vendor_tracking_code; a row without a tracking code (for example an opt-in or opt-out status) is keyed by the always-populated composite debt_id, phone_number, sent_date. compare reports keyCoverage, so a wrong vendor id or an unpopulated key fails visibly instead of silently."
+      },
+      "normalize": {"sent_date": "utc-timestamp", "phone_number": "digits"},
       "fieldMap": {
         "debt_id": "debt_id",
         "phone_number": "phone_number",
@@ -28,7 +36,38 @@
         "txt_msg_template_id": "txt_msg_template_id",
         "vendor_tracking_code": "vendor_tracking_code"
       },
-      "canary": {"eventTimeField": "sent_date", "eventKeyField": "vendor_tracking_code", "outcomeField": "vendor_result"}
+      "canary": {
+        "eventTimeField": "sent_date",
+        "eventKeyField": ["vendor_tracking_code", "txt_msg_log_id"],
+        "outcomeField": "vendor_result",
+        "population": {"txt_msg_vendor_id": "67"}
+      },
+      "comparison": {"canaryDevScope": "actual-keys", "fullDevScope": "all"},
+      "inputBuilder": "graph_inputs.py",
+      "graphInputs": {
+        "root": {"dataset": "vertex-debt", "keyProperty": "debt_identifier", "actualKey": "debt_id"},
+        "hops": [
+          {"edge": "edge-debt-has-text-message", "from": "vertex-debt", "direction": "out"},
+          {"edge": "edge-text-message-status-changed", "from": "vertex-text-message", "direction": "out", "window": "effective_at", "prune": true},
+          {"edge": "edge-phone-number-has-text-message", "from": "vertex-text-message", "direction": "in"},
+          {"edge": "edge-text-message-rendered-from-template", "from": "vertex-text-message", "direction": "out"},
+          {"edge": "edge-text-message-has-rendered-artifact-uri", "from": "vertex-text-message", "direction": "out"}
+        ]
+      },
+      "hydration": {
+        "dataset": "hydrated_text_message_artifact",
+        "edge": "edge-text-message-has-rendered-artifact-uri",
+        "columns": {"artifact_uri": "uri", "content_type": "content_type", "content_sha256": "content_sha256", "body_selector": "body_selector"},
+        "uriColumn": "artifact_uri",
+        "sha256Column": "content_sha256",
+        "selectorColumn": "body_selector",
+        "bodyColumn": "msg"
+      },
+      "sensitiveFields": {
+        "inputs": ["vertex-phone-number.phone_number", "hydrated_text_message_artifact.msg"],
+        "outputs": ["phone_number", "msg"],
+        "decision": "ownerDecisions.sensitiveFieldStaging = stage-real-values-to-dev: the real values are staged to DEV unmodified and compared directly. Without it the slice stops with SensitiveStagingDecisionRequired (ask the owner)."
+      }
     },
     "dsa": {
       "outputDatasets": ["form_1281"],
@@ -38,15 +77,36 @@
         "table": "interprose_current.debt_settlement_agency",
         "meaning": "Interprose's debt settlement agency rows; an active row (empty delete_date) is the DSA_NAME Interprose actually holds for that debt",
         "windowColumn": "last_update",
-        "freshness": "the table's current snapshot must be committed at or after the window end"
+        "dataTimestampColumn": "_stage_output_timestamp",
+        "freshness": "the table's maximum _stage_output_timestamp must reach the window end (a re-committed snapshot is not enough)"
       },
       "key": {"dataset": ["debtID"], "actual": ["debt_id"]},
       "fieldMap": {"debtID": "debt_id", "value": "dsa_name"},
       "rowFilter": {"dataset": {"field_identifier": "DSA_NAME"}, "actual": {"delete_date": ""}},
-      "canary": {"eventTimeField": "last_update", "eventKeyField": "debt_id", "outcomeField": "delete_date"}
+      "canary": {
+        "eventTimeField": "last_update",
+        "eventKeyField": "debt_id",
+        "outcomeField": "delete_date",
+        "outcomeMode": "presence",
+        "outcomeLabels": {"absent": "active", "present": "deleted"}
+      },
+      "comparison": {
+        "actualScope": "current-state-by-key",
+        "detail": "form_1281 emits each debt's current DSA_NAME, so the window only selects debts: read the actual by key (prod_actuals.py keys, then iceberg_snapshot_read.py --key-column debt_id --keys-file) for the canary or window debts and compare the active row per debt. A debt with only deleted rows must produce no DEV row.",
+        "canaryDevScope": "all",
+        "fullDevScope": "all"
+      },
+      "inputBuilder": "graph_inputs.py",
+      "graphInputs": {
+        "root": {"dataset": "vertex-debt", "keyProperty": "debt_identifier", "actualKey": "debt_id"},
+        "hops": [
+          {"edge": "edge-company-represents-debt", "from": "vertex-debt", "direction": "in"}
+        ],
+        "asOf": "when the actual's dataThrough precedes the graph's current state, build with --as-of <dataThrough> so edges created after the mirror stopped do not show as mismatches"
+      }
     },
     "m2d": {
-      "outputDatasets": ["document", "document_rejects"],
+      "outputDatasets": ["document_registration", "document_registration_rejects"],
       "baselineKind": "state-machine-lambda-outcomes",
       "source": {
         "region": "us-east-2",
@@ -55,7 +115,8 @@
         "executionLogGroup": "/aws/vendedlogs/states/m2d-pipeline-prod-use2-document-processing",
         "lambdaLogGroup": "/aws/lambda/m2d-pipeline-prod-use2-interprose-upload",
         "meaning": "EXPRESS executions have no execution history API; their logging level ALL with includeExecutionData records every LambdaFunctionScheduled input and LambdaFunctionSucceeded or LambdaFunctionFailed result. A succeeded output is the registration Interprose accepted; a failure is an expected reject",
-        "inputField": "LambdaFunctionScheduled details.input: the upload step Parameters, which is also the DEV classification_event input row"
+        "inputField": "LambdaFunctionScheduled details.input: the upload step Parameters, which is also the DEV classification_event input row",
+        "daySelection": "prod_actuals.py probe-days (newest-first, bounded pages per day), then lambda-outcomes for the chosen day only"
       },
       "key": {"dataset": ["remote_s3_uri"], "actual": ["remoteS3Uri"]},
       "fieldMap": {
@@ -66,8 +127,11 @@
         "remote_s3_region": "interproseResponse.remoteS3Region"
       },
       "debtBinding": "a debt-resolved event is compared against the debtID the PROD Lambda logged, not one Silvally derives",
-      "rejects": {"dataset": "document_rejects", "key": "s3_key_sha256", "actualOutcome": "rejected"},
-      "canary": {"eventTimeField": "eventTime", "eventKeyField": "remoteS3Uri", "outcomeField": "outcome"}
+      "rejects": {"dataset": "document_registration_rejects", "key": "s3_key_sha256", "actualOutcome": "rejected",
+                  "actualKeyFields": ["input.classifiedKey", "input.s3Key"]},
+      "canary": {"eventTimeField": "eventTime", "eventKeyField": ["input.classifiedKey", "input.s3Key"], "outcomeField": "outcome"},
+      "comparison": {"canaryDevScope": "all", "fullDevScope": "all"},
+      "inputBuilder": "prod_actuals.py inputs"
     }
   }
 }
