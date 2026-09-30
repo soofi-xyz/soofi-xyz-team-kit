@@ -1,5 +1,14 @@
 # Marketplace Puller Service — Product Requirements Document (PRD)
 
+Use this reference for subscriber-side state and reconciliation mechanics after
+checking the target revision. Puller remains separate from the stateless Deploy
+service and owns install history/keys. The [current Deploy contract](../../build-product-deployer/reference/PRD.md)
+takes precedence over token-deploy, callback and uninstall route examples below;
+discover supported run/status and recovery behavior rather than recreating those
+routes in Deploy. Route integration work through the catalog's Marketplace and
+Deploy pairs, and first installation through Environment.
+
+
 Authoritative blueprint for building the **Marketplace Puller** product. It captures the full feature set, data contracts, runtime behaviour, and infrastructure topology that the service must enforce. The implementation language is **TypeScript everywhere**; infrastructure is **AWS CDK only**, deployed to the installer-supplied tenant AWS region, per the Golden Path engineering standards.
 
 ---

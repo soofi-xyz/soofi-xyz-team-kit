@@ -8,10 +8,13 @@ references, workflow ownership, success criteria, dependencies and inactive depl
 posture. The runtime mode is `system-service`. Do not invent another Product
 runtime or an alternative thin-package execution mode.
 
-Use canonical product IDs. Keep Model or Deploy `reference-only` when their work
-is an external prerequisite and no product agent is assigned. Registered Lexicon
-language/mapping artifacts are Transform configuration; they do not imply that
-Model has a deployed runtime. Do not assign Model/Deploy work to Persist.
+Use canonical product IDs and catalog-assigned roles. Keep Model or Deploy
+`reference-only` when only their external artifacts/results are prerequisites,
+rather than executable steps in this composition. Assigned agents do not prove
+a deployed API or compatible System leaf contract. Route Model configuration to
+Jirachi and Deploy runs to Skarmory only after verifying both. Registered Lexicon
+language/mapping artifacts may be Transform configuration without invoking Model.
+Do not assign Model/Deploy work to Persist.
 
 Every workflow step names a declared product, a resolving configRef and the
 assigned configurer for that product. Artifact ownership must agree with workflow

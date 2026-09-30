@@ -1,8 +1,9 @@
 # Deploy implementation scope
 
-Use **Deploy** as the product name. No dedicated product agents are assigned yet;
-follow this skill directly for explicitly requested work and identify ownership
-as unassigned. Conkeldurr owns Persist and Zygarde owns System, not Deploy.
+Use **Deploy** as the product name, Corviknight as builder and Skarmory as
+configurer. Follow the [capability map](../../guide-product-work/reference/iterations/deploy.md)
+and [synthetic test data](test-data.md) for feature increments and user/AWS checks.
+Conkeldurr owns Persist and Zygarde owns System, not Deploy.
 
 The supplied 2026-09-30 comparison describes a small, stateless IAM SigV4 run
 service: `POST /deploy/run` and run-status retrieval. Inspect the target revision
@@ -18,3 +19,11 @@ products before changing their integration. Physical packages may stay separate.
 Use the selected AWS profile and confirm account/region. Validate Build artifact
 compatibility, idempotency, failure reporting and state boundaries. Test in the
 authorized environment and distinguish synthesis from a completed deployment.
+
+Expose the authenticated HTTP run boundary and observable status/results. Verify
+caller permissions and artifact/target scope before writes; test terminal results
+against CloudFormation events. Reuse current execution machinery. Keep run
+diagnostics separate from subscriber desired state, installation history and keys.
+Do not add old review, token-deploy or rollback routes without a scoped requirement.
+Use fakes first, then the actual test API with controlled adapters and authorized
+live effects. Wait for user observations inside each selected capability piece.
