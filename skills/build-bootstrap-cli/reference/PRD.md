@@ -105,6 +105,10 @@ type BootstrapManifest = {
   service_api_key_id: string;
   service_api_key_rotated_at?: string;
   service_usage_plan_ssm_param?: string; // defaults to /account/shared-usage-plan-id
+  marketplace_api_key_id: string;
+  // Tenant-account SecureString Account populated with the Marketplace key
+  // during provisioning. Bootstrap passes the name, never the value.
+  marketplace_api_key_ssm_param?: string; // defaults to /account/current-marketplace-api-key
   marketplace_api_url: string;
   // Tenant-account SSM parameter populated by Bootstrap after it creates
   // the shared API Gateway custom domain.
@@ -120,7 +124,7 @@ type BootstrapManifest = {
 };
 ```
 
-The manifest is non-secret. If Account cannot return `aws_account_id`, `subdomain`, `fqdn`, `hosted_zone_id`, a regional certificate for the selected deployment region, `service_api_key_id`, `account_domain_config_ssm_param`, or system-component coordinates, the CLI fails before any AWS write. `service_usage_plan_ssm_param` defaults to `/account/shared-usage-plan-id` and `env_parameters_ssm_param` defaults to `/account/env-parameters` when omitted for older manifests.
+The manifest is non-secret. If Account cannot return `aws_account_id`, `subdomain`, `fqdn`, `hosted_zone_id`, a regional certificate for the selected deployment region, `service_api_key_id`, `marketplace_api_key_id`, `account_domain_config_ssm_param`, or system-component coordinates, the CLI fails before any AWS write. `plan` also fails when the SecureString at `marketplace_api_key_ssm_param ?? "/account/current-marketplace-api-key"` does not exist in the tenant account (checked with `ssm:DescribeParameters`, never by reading the value). `service_usage_plan_ssm_param` defaults to `/account/shared-usage-plan-id` and `env_parameters_ssm_param` defaults to `/account/env-parameters` when omitted for older manifests.
 
 ### 2.3 Marketplace Contract
 
@@ -172,8 +176,11 @@ For Bootstrap, Puller `custom_parameters` must include:
   MarketplaceHost: string;
   TenantAwsAccountId: string;
   SharedUsagePlanIdSsmParam: string;
+  MarketplaceApiKeySsmParam: string; // manifest.marketplace_api_key_ssm_param ?? "/account/current-marketplace-api-key"
 }
 ```
+
+Bootstrap never passes a plaintext Marketplace key to the Puller. The Puller reads the Account-managed SecureString named by `MarketplaceApiKeySsmParam`.
 
 ---
 
