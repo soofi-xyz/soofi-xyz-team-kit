@@ -150,10 +150,7 @@ def render(catalog: dict) -> str:
             continue
         build, configure = (product["agents"][role] for role in ("build", "configure"))
         rows.append(f"| **{product['name']}** | {product['summary']} | [`{build}`](./agents/{build}.md) | [`{configure}`](./agents/{configure}.md) |")
-    unassigned = ", ".join(p["name"] for p in catalog["products"] if p["status"] == "unassigned")
-    rows += ["", "**Catalog products awaiting scoped ownership:** " + unassigned + ".",
-             "", "Unassigned means no dedicated builder/configurer pair is assigned in this catalog. Retained specialists remain available; assignment does not establish deployment.",
-             "", END]
+    rows += ["", END]
     return "\n".join(rows)
 
 
