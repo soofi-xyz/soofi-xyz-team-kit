@@ -26,6 +26,3 @@ bundle, demonstrate the review lifecycle, implement one increment, and verify
 with the person. Test registration conflicts, invalid artifacts, review failure,
 success, duplicate publication, rollback and notification delivery as applicable.
 Keep catalog acceptance separate from installation in a subscriber environment.
-
-[Historical architecture](legacy/PRD.md) is migration context only. The rule files
-from that architecture are not prerequisites for a current Prism build.

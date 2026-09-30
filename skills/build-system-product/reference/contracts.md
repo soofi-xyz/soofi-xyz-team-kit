@@ -1,9 +1,7 @@
 # System composition artifacts
 
-Use contract version **2** for new compositions. Version 1 used the historical
-Product-service naming and umbrella owners; it is preserved under `legacy/` for
-explicit migration analysis only. The checker rejects v1 rather than silently
-reinterpreting its ownership or execution mode.
+Use contract version **2** for compositions. The checker rejects unsupported
+versions rather than silently reinterpreting their ownership or execution mode.
 
 A composition manifest declares `systemId`, outcome, products, configuration
 references, workflow ownership, success criteria, dependencies and inactive deploy

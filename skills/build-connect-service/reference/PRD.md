@@ -41,7 +41,3 @@ limits, upload checksums and observability when verified in the target service.
 Test worker/compiler behavior, auth failures, callback signatures, duplicate and
 early webhooks, retries, partial jobs and local partner fakes. Follow the product's
 existing dev acceptance suite and shared interactive workflow.
-
-[Historical requirements](legacy/PRD.md) are migration context only. Do not rebuild
-the `/connector-jobs/vendors` routes, credential vault, health-posting service or
-API-key callback model by default.

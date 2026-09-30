@@ -1,9 +1,8 @@
 # System runtime mapping
 
 Use System as the current product and `/system` as the reported Prism base path.
-Discover the actual deployment and caller contract. Historical implementation
-[evidence](implementation-evidence.md) explains the origin of the configuration
-shape; it does not certify the current runtime.
+Discover the actual deployment and caller contract in the target repository.
+Verify supported configuration shapes and runtime behavior against that revision.
 
 | Concept | Responsibility |
 | --- | --- |

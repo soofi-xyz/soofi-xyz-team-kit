@@ -18,7 +18,3 @@ products before changing their integration. Physical packages may stay separate.
 Use the selected AWS profile and confirm account/region. Validate Build artifact
 compatibility, idempotency, failure reporting and state boundaries. Test in the
 authorized environment and distinguish synthesis from a completed deployment.
-
-[Historical requirements](legacy/PRD.md) describe the old `/infra-deployer`, API-key,
-token deployment and callback surfaces. Read them only for an explicitly required
-compatibility migration; do not recreate the old feature set by default.

@@ -114,7 +114,7 @@ def validate(catalog: dict, root: Path = ROOT) -> list[str]:
         errors.append(f"installed agents differ from featured and retained inventory: {sorted(installed ^ expected_agents)}")
 
     # Follow references from every installed agent, including those omitted from
-    # the README. Historical product specifications remain outside this graph.
+    # the README, and check every local Markdown reference they load.
     pending = list((root / "agents").glob("*.md"))
     for product in catalog.get("products", []):
         for skill in product.get("skills", {}).values():
@@ -132,7 +132,7 @@ def validate(catalog: dict, root: Path = ROOT) -> list[str]:
             if target == "unown":
                 errors.append(f"{path.relative_to(root)}: unavailable agent handoff to {target}")
         for target in re.findall(r"\]\(([^)]+\.md)(?:#[^)]*)?\)", content):
-            if "://" in target or "legacy/" in target or "archive/" in target:
+            if "://" in target:
                 continue
             linked = (path.parent / target).resolve()
             if not linked.is_file():

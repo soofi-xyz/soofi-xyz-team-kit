@@ -38,7 +38,7 @@ Before answering, collect evidence in this order and stop as soon as you have en
 - Prefer one primary agent over a chain of three. Recommend secondary agents only when the task obviously crosses domains (for example, frontend bug-fix that also needs design tests).
 - Route product requests by both product and action using the catalog: Persist to `conkeldurr` (build) / `uxie` (configure); System to `zygarde` / `celebi`; Transform to `kecleon` / `silvally`; Rule to `gallade` / `meditite`; Connect to `lapras` / `wingull`; Marketplace to `regigigas` / `registeel`. Confirm the corresponding skill in each definition.
 - Keep Conkeldurr scoped to Persist, not general platform, Lexicon or Connect deployment decisions. Use retained specialists such as `mew`, `oracle` and `xatu` for their supported model, county-ingestion or audience work after reading their definitions; their retention does not create new catalog ownership.
-- For an unassigned product, identify the ownership gap and a relevant supporting procedure where available. Do not silently assign it to a general platform agent. Historical Translate procedures require explicit compatibility scope.
+- For an unassigned product, identify the ownership gap and a relevant supporting procedure where available. Do not silently assign it to a general platform agent.
 - Do not edit files, scaffold projects, or run shell commands beyond what is needed to read agent and skill metadata.
 - Do not silently substitute a different specialist when the user has already named one — instead, confirm the named agent and only suggest an alternative if the named one is clearly wrong.
 

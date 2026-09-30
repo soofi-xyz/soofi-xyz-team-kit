@@ -153,8 +153,8 @@ The reusable skills and bundled runtime remain at their existing paths. Retained
 specialists are callable through their agent definitions, and supporting skills
 can also be used directly when relevant.
 Resolve current product ownership through the catalog before a cross-product
-handoff. Legacy Translate and broad Staircase Product requirements apply only
-to explicitly requested compatibility work.
+handoff. Use the current product instructions; consult Git history when a
+comparison with an earlier version is needed.
 
 ## Skills
 
@@ -184,8 +184,7 @@ to explicitly requested compatibility work.
 | [`build-marketplace-puller`](./skills/build-marketplace-puller/) | Implementing or changing the Marketplace Puller from its PRD — subscription intake, desired-state reconciliation, drift repair, deployer handoff. Read reference/PRD.md first. |
 | [`build-persist-service`](./skills/build-persist-service/) | Build or maintain the Persist graph service, ingestion, queries, indexes and triggers. Use Conkeldurr; use Uxie for particular configurations. |
 | [`build-portals`](./skills/build-portals/) | Portal delivery and maintenance playbook for creating new repositories or incrementally changing existing portal frontend, backend, infrastructure, tests, and deployments through pull requests. |
-| [`build-product-deployer`](./skills/build-product-deployer/) | Implementing or changing the Deployer service from its PRD — tenant-local deployment execution, bundle contracts, callbacks, status inspection. Read reference/PRD.md first. |
-| [`build-product-service`](./skills/build-product-service/) | Compatibility entrypoint for historical Product service work. Build the current scoped System framework with Zygarde; configure outcomes with Celebi. |
+| [`build-product-deployer`](./skills/build-product-deployer/) | Build or maintain the stateless Deploy run service, Build artifact integration and run-status inspection. Verify the target service contract first. |
 | [`build-rag-systems`](./skills/build-rag-systems/) | Building production retrieval (RAG) systems — knowledge bases, retrieval quality, confidence policy, historical ingestion, refresh, and migrating local prototypes to the cloud. |
 | [`build-rules-product`](./skills/build-rules-product/) | Designing, integrating, or operating a generic Rule Filter product — entity-selection queries, predicates, candidates, projections, batch/direct evaluation, snapshots, reports, and capacity. |
 | [`build-saas-marketplace`](./skills/build-saas-marketplace/) | Build or maintain Prism Marketplace catalog registration, bundle publication, review and rollback. Use Regigigas; use Registeel for catalog operations. |
@@ -194,7 +193,6 @@ to explicitly requested compatibility work.
 | [`build-tenant-account-manager`](./skills/build-tenant-account-manager/) | Implementing or changing the Account service from its PRD — customer identity, credentials, tenant provisioning, domains, bootstrap manifest. Read reference/PRD.md first. |
 | [`build-tenant-domain-router`](./skills/build-tenant-domain-router/) | Building or changing the Tenant Domain Router — root-domain ownership, per-tenant subdomains, certificates, and the endpoint-attachment contract other products consume. |
 | [`build-transform-product`](./skills/build-transform-product/) | Implement the Transform product: from/to data languages registered in Lexicon (the definition is the schema), mappings that own formats and output shape, Python/PySpark execution, Parquet/JSONL/CSV/Excel, typed tables, graph vertex/edge ID mappings, and TypeScript CDK orchestration. |
-| [`build-translate-service`](./skills/build-translate-service/) | Implementing or changing the Translate service from its PRD — registered languages, versioned mappings, validation, preview, asynchronous executions. Read reference/PRD.md first. |
 | [`certify-email-workflow`](./skills/certify-email-workflow/) | Certifies Email Workflow through an exact CloudFormation and code-control map against pinned SMS revisions, allowing only provider-specific channel adaptations. Use for focused diagnostics, workflow readiness, handoff quality, or production certification. |
 | [`configure-persist-product`](./skills/configure-persist-product/) | Configure and test a particular ingestion, query, governed index or trigger on an existing Persist deployment. Use Uxie; hand service implementation changes to Conkeldurr. |
 | [`configure-rule-product`](./skills/configure-rule-product/) | Configure selection, rules, candidate scopes and projections on an existing Rule service and verify expected decisions. Use Meditite; use Gallade for engine changes. |
@@ -242,7 +240,6 @@ to explicitly requested compatibility work.
 | [`use-neutral-lexicon`](./skills/use-neutral-lexicon/) | Queries bundled neutral lexicon references for exact schema lookup and modeling precedent. Use when Mew must return entity properties, enums, indexes, relationships, lifecycle, identity, or modeling-paradigm patterns without loading full reference files. |
 | [`use-oracle`](./skills/use-oracle/) | Operate Oracle county mining and Atlas publication, improve HOA name/fee/frequency accuracy against NetSuite-paid truth, or return one property's raw official response without transformation. |
 | [`use-rotom`](./skills/use-rotom/) | Operate and extend the rotom-agent Google Chat runtime for formal weekly stakeholder progress emails grounded in Asana facts and saved template memory. |
-| [`use-translate-service`](./skills/use-translate-service/) | Calling a deployed Translate service as a consumer — registering languages and mappings, request and response shapes, validation, preview, and executions. Not for changing the Translate codebase. |
 
 ## License
 

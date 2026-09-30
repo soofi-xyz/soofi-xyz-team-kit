@@ -48,7 +48,8 @@ Follow these conventions whenever you touch files in this repo.
   map. Keep unassigned products visible without inventing agents or deployments.
 - Run `python3 scripts/product_catalog.py sync` after catalog changes. The README
   product map is generated between markers; do not edit that block manually.
-- Keep historical requirements explicitly separate from current scope. The kit
+- Keep product instructions current; use Git history for superseded documents
+  instead of shipping archive copies or unused compatibility entrypoints. The kit
   refactor does not authorize changes to deployed services or new API documentation.
 
 ## Skills (`skills/<name>/SKILL.md`)
