@@ -28,9 +28,6 @@ In Copilot, select `soofi-xyz-team-kit:<agent>`. In Codex, request the named cus
 
 <!-- product-catalog:end -->
 
-See the [full product catalog](./skills/guide-product-work/reference/product-catalog.json)
-for other products and ownership. Other specialists remain installed in [`agents/`](./agents/).
-
 ## Installation and updates
 
 <details>
