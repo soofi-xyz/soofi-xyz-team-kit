@@ -14,7 +14,8 @@ Nothing here names a real language, mapping, dataset or environment.
   ledger references an unknown member; `nickname` is an optional graph property absent from every row).
 - `expected/`: oracles written from the specification, not from the SQL.
 - `profiles/synthetic-alpha-omega.json`: a strict profile with one declared derivation override,
-  one allowed loss, two oracles and declarative checks.
+  one allowed loss, two oracles, declarative checks and a `sourceWindowPolicy` derived at intake
+  with recorded defaults.
 
 End to end (local Spark 3.3 and Java 17), from `skills/validate-transform-configuration`:
 
@@ -39,3 +40,9 @@ python3 $S/evaluate_run.py --intent $W/intent.json --profile $F/profiles/synthet
   --contracts $W/contracts.json --checks $W/checks.json --local-report $W/step1/report.json --local-report $W/step2/report.json \
   --closure $W/closure.json --local-package synthetic-inputs=$F/inputs --mode synthetic-local --out $W/phases.json
 ```
+
+This run passes phases 1–11 (`modeScopedResult: PASS`) and ends `BLOCKED` on phase 12 with
+`FinalProdDerivedValidationRequired`: a synthetic fixture is an earlier phase, never `READY`. A real
+profile continues with `source_window.py recommend` on read-only PROD metadata, the user's
+confirmation (`source_window.py confirm`), an approved DEV staging of the window and approved
+`observed-dev` executions, then `evaluate_run.py --source-window ... --staging-upload ...`.

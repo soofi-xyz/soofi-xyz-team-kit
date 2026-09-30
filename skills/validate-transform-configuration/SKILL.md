@@ -1,6 +1,6 @@
 ---
 name: validate-transform-configuration
-description: "Validate a profile-declared Transform language and directional mapping end to end with immutable, sanitized evidence, explicit approval before each DEV write, read-only PROD checks, round-trip proof, and fail-closed verdicts."
+description: "Validate a profile-declared Transform language and directional mapping end to end with immutable, sanitized evidence, explicit approval before each DEV write, read-only PROD checks, round-trip proof, a mandatory final DEV run on a user-confirmed PROD-derived source window, and fail-closed verdicts."
 ---
 
 # Validate Transform Configuration
@@ -65,8 +65,9 @@ All tools live in `scripts/`, take every location as an argument, and print JSON
 | `stage_evidence_package.py` | 4 | Build `manifest.json`, then create-only upload with an approval digest |
 | `transform_runs.py` | 9, 11 | Cases derived from the registration, operation cards, approval-gated `start`, read-only `capture`, `regress` against a previous run, Glue `cost` |
 | `iceberg_snapshot_read.py` | 11 | Read-only PROD Iceberg snapshot read for oracles; rows only in a mode-0700 directory |
-| `evaluate_run.py` | 1–12 | Map tool evidence to the 12 phase statuses and compute the verdict |
-| `build_run_package.py` | 12 | Assemble `run.json`, compute the verdict from phases, validate against the run schema |
+| `source_window.py` | 1, 3 | `policy`: the profile's `sourceWindowPolicy`, or one derived with recorded defaults. `recommend`: mark sanitized per-UTC-day PROD metadata candidates complete and recommend the most recent complete window. `confirm`: record the user's explicit day-or-range answer |
+| `evaluate_run.py` | 1–12 | Map tool evidence to the 12 phase statuses and compute the verdict; phase 12 is the final PROD-derived validation |
+| `build_run_package.py` | 12 | Assemble `run.json`, compute the verdict from phases, refuse `READY` without a passing `finalValidation`, validate against the run schema |
 
 Tests: `scripts/test-silvally-tools.py` and `scripts/test-validate-transform-configuration.py`
 (both run in the plugin CI) use only the synthetic registry fixture. No tool branches on a mapping,
@@ -97,8 +98,11 @@ definitions and the selected profile:
    `closure` for graph outputs.
 8. **Regression** — `transform_runs.py regress --baseline <previous run>` matches cases by mapping,
    input locations and outputs, and compares row counts and content digests.
-9. **Verdict** — `evaluate_run.py` (with `--answer` for each resolver question the operator answered),
-   then `build_run_package.py`.
+9. **Final PROD-derived validation** — `source_window.py recommend` on read-only PROD metadata, one
+   confirmation question, `confirm`, approved staging of that window, then steps 5–8 again in
+   `observed-dev` on the staged window. Synthetic runs stop before this step and stay `BLOCKED`.
+10. **Verdict** — `evaluate_run.py` (with `--answer` for each resolver question the operator answered,
+    `--source-window` and `--staging-upload`), then `build_run_package.py`.
 
 Mapping-specific semantics (election or precedence rules, unit conversions, reference outputs,
 permitted losses) are expressed only as profile data: invariants with a declarative `check`
@@ -138,7 +142,7 @@ A profile ID is not required from the user. Select or build the profile through 
 4. Treat business phrases as candidate hints only. If zero or multiple profiles remain, create a sanitized local draft conforming to `transform-configuration-profile-draft.schema.json`.
 5. Record every material fact as `CONFIRMED`, `INFERRED`, `AMBIGUOUS`, or `MISSING`, with evidence IDs and the next plain-language question where needed. Never invent mapping IDs, canonical meanings, fields, identities, consumers, or product behavior.
 6. Ask one focused question at a time, prioritizing: business meaning and direction; required directions; repository/ref; environment/mode; evidence and sensitive-data handling; consumer/readback; field preservation and permitted losses; measurable success and bounds.
-7. Promote the draft to the strict profile schema only when all material facts are resolved and `promotionEligible` is true.
+7. Promote the draft to the strict profile schema only when all material facts are resolved and `promotionEligible` is true. Promotion copies `derivedSourceWindowPolicy` into the required `sourceWindowPolicy` unless the user supplied a stricter one.
 8. Begin the 12-phase validation workflow only after promotion.
 
 Use intake states `DISCOVERING`, `NEEDS_INPUT`, `CONTEXT_COMPLETE`, and `VALIDATING`. They are not validation statuses. During incomplete intake, do not run mapping tests, invoke Test, request DEV approval, produce a validation-run artifact, or calculate `READY`, `NOT_READY`, or `BLOCKED`.
@@ -176,30 +180,54 @@ Resolve through supplied context, discovery, or focused questions:
 - repositories and requested refs;
 - source and target language names and requested direction;
 - optional existing execution IDs and artifact locations;
-- mode: `synthetic-local`, `bounded-dev-dry-run`, `observed-dev`, or `observed-prod-read-only`.
+- mode: `synthetic-local`, `bounded-dev-dry-run`, `observed-dev`, or `observed-prod-read-only`. Only `observed-dev` on a confirmed PROD-derived window can reach `READY`; the other modes are earlier phases or read-only checks.
 
 Resolve every repository ref to a commit SHA and every configuration/deployment artifact to an immutable digest before evaluation. Branches and `latest` aliases may be discovery inputs but never evidence identities.
 
-## Confirm PROD-derived source windows
+## Final PROD-derived validation (mandatory for READY)
 
-When a profile declares `sourceWindowPolicy` and validation will copy or derive
-DEV evidence from PROD, inspect only sanitized read-only PROD metadata first.
-Compare recent complete UTC-day candidates using the profile's required source
-families and coverage signals, plus bounded rows, bytes, cost and immutable
-evidence availability. Never choose random rows or a partial day.
+Every run that aims for `READY` ends with a **final PROD-derived validation**:
+the pinned mapping executes in DEV, under operation-specific approvals, against
+a user-confirmed complete-UTC-day window derived read-only from PROD and staged
+into DEV under its own approval digest, and passes every parity and closure
+gate. `synthetic-local` and synthetic or edge-case DEV runs are earlier proof;
+they never yield `READY`. Phase 12 records the final validation, and
+`evaluate_run.py` and `build_run_package.py` refuse `READY` without it
+(`FinalProdDerivedValidationRequired`).
+
+Every promoted profile carries a `sourceWindowPolicy`. When a profile or draft
+lacks one, derive it during intake without being asked: `draft-profile` emits
+`derivedSourceWindowPolicy`, and `source_window.py policy` derives one from the
+profile's source-role datasets and the resolver's `coverageTargets`. Record the
+defaults it applies (`minimumCompleteUtcDays: 1`, `allowLongerRange: true`) in
+`recordedDefaults` and show them to the user before promotion.
+
+Once intake is complete, proactively inspect only sanitized read-only PROD
+metadata. Compare at least 7 recent complete UTC-day candidates using the
+policy's required source families and coverage signals, plus bounded rows,
+bytes, cost and immutable evidence availability, with
+`source_window.py recommend`. Never choose random rows or a partial day.
 
 Recommend one half-open UTC window `[start, endExclusive)` covering at least
 `minimumCompleteUtcDays`; allow the user to choose a longer contiguous range
 when `allowLongerRange` is true. Ask one explicit day-or-range confirmation
 question and stop before staging. Do not infer confirmation from a general
-request to validate, a cost ceiling or an earlier approval. Record every
-candidate and the confirmed window in `sourceWindowSelection`.
+request to validate, a cost ceiling or an earlier approval. Record the user's
+answer with `source_window.py confirm`, and every candidate and the confirmed
+window in `sourceWindowSelection`.
 
 Preserve complete relational and join closure across every profile-declared
 source family and authoritative endpoint. If no candidate proves completeness,
 return `BLOCKED`; do not pad fixtures, select the least-incomplete day or copy
-PROD data to discover what is missing. PROD remains read-only and each later
-DEV staging operation requires its own approval digest.
+PROD data to discover what is missing. PROD remains read-only. Each DEV staging
+copy of the window and each DEV execution requires its own approval digest;
+keep the `stage_evidence_package.py upload` record and pass it with
+`--staging-upload`, plus `--source-window`, to `evaluate_run.py --mode observed-dev`.
+
+When PROD metadata access, the window confirmation, a staging or execution
+approval, or DEV access is unavailable, the verdict is `BLOCKED`, never `READY`.
+Hand off exactly what is missing: the PROD read-only access or metadata, the
+confirmation question, or the pending operation card and its digest.
 
 ## Resolve configuration sources automatically
 
@@ -291,7 +319,7 @@ Run the same 12 phases for every profile:
 
 Use only `PASS`, `FAIL`, `BLOCKED`, or `APPROVAL_REQUIRED` for phase/gate status. A required phase passes only when every required invariant in the profile has admissible evidence.
 
-In `synthetic-local` mode, automatically run all read-only work available from the pinned configuration candidate: profile/schema validation, mapping materialization, repository tests, sanitized fixture validation, deployed Spark-version compatibility, each required forward mapping, every declared inverse/cross-source mapping, expected-output comparisons, and negative cases. Report the exact repository SHAs, mapping identities, fixture manifest digest, commands, counts, and mismatches. Do not stop after typecheck/lint/general unit tests when a mapping execution remains untested.
+In `synthetic-local` mode, automatically run all read-only work available from the pinned configuration candidate: profile/schema validation, mapping materialization, repository tests, sanitized fixture validation, deployed Spark-version compatibility, each required forward mapping, every declared inverse/cross-source mapping, expected-output comparisons, and negative cases. Report the exact repository SHAs, mapping identities, fixture manifest digest, commands, counts, and mismatches. Do not stop after typecheck/lint/general unit tests when a mapping execution remains untested. A passing `synthetic-local` run is reported as `modeScopedResult: PASS` with verdict `BLOCKED` until the final PROD-derived validation passes; continue to the source-window recommendation instead of stopping.
 
 Do not treat an absent system-wide `pyspark` or `spark-submit` binary as an immediate blocker. First inspect the pinned Transform runtime for its declared local Spark setup and test entrypoints. When present, run the bounded setup inside the isolated checkout, verify the resulting Spark major/minor version against the profile/runtime target, and use that environment for mapping-specific fixture execution. This is a local dependency setup, not a DEV write. Return `BLOCKED` only when the pinned runtime has no compatible setup path or that bounded setup fails with recorded evidence.
 
@@ -378,7 +406,7 @@ Apply these boundary examples consistently:
 - `APPROVAL_REQUIRED` whenever the next required proof is a DEV write without operation-specific approval.
 - `NOT_READY` if any required gate is `FAIL`.
 - `BLOCKED` if no required gate failed and at least one is `BLOCKED` or `APPROVAL_REQUIRED`.
-- `READY` only when all required gates are `PASS`.
+- `READY` only when every required gate is `PASS` **and** phase 12 records a passing final PROD-derived validation: the mapping executed in DEV, under operation-specific approvals, against a user-confirmed complete-UTC-day window derived read-only from PROD and staged into DEV under its own approval digest, with every parity and closure gate passing. Synthetic-local and synthetic DEV runs never yield `READY`; without PROD metadata access, window confirmation or approval the verdict is `BLOCKED` with `FinalProdDerivedValidationRequired`.
 
 Never retry paid or mutating work blindly. Inspect the failed phase and partial artifacts first; a retry is a new operation and needs new approval.
 
@@ -397,7 +425,8 @@ Validate the final artifact against `transform-configuration-run.schema.json`, t
 - every failure, blocker, and approval gate has one actionable remediation with correct boundary classification and rerun evidence;
 - transform classification has the required deterministic or non-deterministic evidence;
 - the reusable package identifies product/languages/mapping/Lexicon/dependencies/Test evidence/deployment and Marketplace-registration readiness;
-- the artifact and human report agree on statuses and verdict.
+- the artifact and human report agree on statuses and verdict;
+- a `READY` package has `sourceWindowSelection.status: CONFIRMED`, `runtime.executionMode: observed-dev`, passing DEV `executionSteps` and a passing `finalValidation` listing the staging and execution approval digests;
 - early `NOT_READY` packages use explicit `UNAVAILABLE` evidence objects instead
   of fabricated runtime, graph, dataset hashes, counts or locations; `READY`
   packages contain no unavailable evidence.

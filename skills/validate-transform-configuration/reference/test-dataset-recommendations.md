@@ -9,23 +9,28 @@ cases.
 | Id | Content | Proves | Does not prove |
 | --- | --- | --- | --- |
 | profile evidence | `validationSources` entries of the matched profile (`existing-dev-artifact`, `sanitized-evidence-package`) | whatever the manifest covers; reusable across runs | anything when `artifactStatus` is `planned` (location reserved, `tbd` lists what is missing) or `staging`, or when the manifest digest does not verify |
-| `prod-derived-full-utc-day` | one complete half-open UTC day `[D, D+1)` of every source family the forward mapping reads, derived from PROD and sanitized | real cardinality, join closure, enum coverage, and scale at the bounded tier | rare rejected or negative paths that did not occur that day |
+| `prod-derived-full-utc-day` | one complete half-open UTC day `[D, D+1)` (or the confirmed longer range) of every source family the forward mapping reads, derived from PROD and sanitized | real cardinality, join closure, enum coverage, and scale at the bounded tier; **required for the final validation and for `READY`** | rare rejected or negative paths that did not occur that day |
 | `sanitized-edge-cases` | small hand-selected package: rejected outcomes, nulls in optional fields, all-rows-omit-optional-key, conflicting or stale events, UTC boundary timestamps, duplicate idempotency keys, missing endpoints | negative and inverse behavior with an expected-outcome oracle | volume and realistic distribution |
-| `synthetic-fixture` | rows generated locally from the language definition's properties and enums | shape, typing, and local Spark execution | anything about production data; never sufficient for `READY` alone |
+| `synthetic-fixture` | rows generated locally from the language definition's properties and enums | shape, typing, and local Spark execution | anything about production data; never sufficient for `READY` |
 
 Default recommendation: profile evidence when `ready`; otherwise the full UTC
-day plus the edge-case package. A `planned` entry is shown with its `tbd`
+day plus the edge-case package. Whatever is chosen for earlier phases, the
+final validation always runs on the confirmed PROD-derived window; profile
+evidence qualifies only when it is that window's manifested staging. A `planned` entry is shown with its `tbd`
 fields and is never the default. Use the synthetic fixture for `synthetic-local`
 mode and as a first local smoke test.
 
 ## Choosing the UTC day
 
-With read-only PROD metadata, compare the most recent complete UTC days (at
-least 7 candidates). For each day, record row counts per required source family,
+Do this proactively for every run aiming for `READY`, without waiting to be
+asked. With read-only PROD metadata, compare the most recent complete UTC days (at
+least 7 candidates) and pass the sanitized aggregates to
+`scripts/source_window.py recommend`. For each day, record row counts per required source family,
 coverage of every enum value the definition declares (the resolver's `coverageTargets`), presence of the profile's `requiredCoverageSignals`, bytes,
 and whether immutable object versions exist. Recommend the most recent day that
 covers everything. If none does, recommend a contiguous range or return
-`BLOCKED`; never pad the data or pick random rows.
+`BLOCKED`; never pad the data or pick random rows. Ask the `source-window`
+question and record the user's answer with `source_window.py confirm`.
 
 ## Storage layout
 

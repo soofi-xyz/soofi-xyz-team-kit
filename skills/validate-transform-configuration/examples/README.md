@@ -10,6 +10,9 @@ elsewhere.
 - Each profile's registered directions must regenerate from the registry:
   `resolve-transform-intent.py check-profile --profile <file> ...` reports every difference, and
   only the pairs listed in a direction's `derivationOverrides` may differ.
+- Every profile carries the required `sourceWindowPolicy` for the mandatory final PROD-derived
+  validation; `origin` says whether it was declared or derived at intake, and `recordedDefaults`
+  lists every value that was defaulted rather than chosen.
 - `calibrations/*.md` hold sanitized expectations (row counts, digests, pinned revisions) for a
   profile's declared scenarios. They are evidence notes, not runtime inputs.
 

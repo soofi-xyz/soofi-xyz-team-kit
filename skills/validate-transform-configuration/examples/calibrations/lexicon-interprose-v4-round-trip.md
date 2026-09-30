@@ -58,6 +58,16 @@ Generate Parquet vertex and edge tables locally from the language definitions. U
 3. Check the first line of every CSV part file. It must be the declared columns joined by `|`.
 4. Round trip: take a sanitized Interprose sample, run `interprose-to-lexicon@1.0.0` with `outputDatasets` limited to the thirteen graph datasets, run v4, then column-diff by the declared row keys.
 
+## Final PROD-derived validation
+
+The synthetic graph export above is an earlier phase. It proves shape, negatives and wiring, and its
+evaluation ends `BLOCKED` with `FinalProdDerivedValidationRequired`. `READY` needs the final run:
+compare at least 7 recent complete UTC days of every declared source family from read-only PROD metadata against the
+profile's `sourceWindowPolicy` (declared by the profile, minimum one day, no longer range), ask the user to confirm the recommended window, stage the
+sanitized window into DEV under its own approval digest, execute every workflow step in
+`observed-dev` under per-execution approvals, and pass the regression expectations below on that
+window. If PROD metadata access or the confirmation is missing, the verdict stays `BLOCKED`.
+
 ## Regression expectations
 
 - Any `lexicon.json`, Stage column manifest or forward SQL diff against `main` for #811: phase 5 `FAIL` (`LexiconModelDiffersFromMain`). The four approved edge properties belong to the follow-up branch `feat/dsa-form-1281-facts`.

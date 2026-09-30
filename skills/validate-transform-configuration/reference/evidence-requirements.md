@@ -22,7 +22,8 @@ Lower levels cannot replace a required higher level. Workflow `SUCCEEDED` alone 
 - Repository: slug and 40-character commit SHA.
 - Configuration: exact profile, language definitions, mapping manifests and SQL SHA-256. For a registry object, also record its S3 `VersionId` from the execution plan; an unmerged `id@version` can be re-uploaded with different content, so the version string alone is not an identity.
 - Environment: sanitized account hash, region and write policy.
-- PROD-derived source window: sanitized recent complete-UTC-day comparisons, required source-family and coverage-signal results, row/byte/cost bounds, immutable-evidence status, recommended half-open window and explicit user confirmation before DEV staging.
+- PROD-derived source window (every run aiming for `READY`): the profile's `sourceWindowPolicy` with its origin and recorded defaults, sanitized recent complete-UTC-day comparisons, required source-family and coverage-signal results, row/byte/cost bounds, immutable-evidence status, recommended half-open window and explicit user confirmation before DEV staging.
+- Final PROD-derived validation: `finalValidation` with the confirmed window, the approval digest of every DEV staging copy of it, the staged manifest SHA-256s, the approval digest of every DEV execution on it and `prodAccess: read-only`. Synthetic-local, bounded dry-run or synthetic DEV evidence cannot stand in for it.
 - Deployment: immutable package/template/image digest and linked source revision.
 - Dataset: derived schema digest, row count, deterministic content hash and credential-free physical location.
 - Graph: ID uniqueness, endpoint count, endpoint membership and dangling count.

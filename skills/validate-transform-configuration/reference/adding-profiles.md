@@ -69,7 +69,12 @@ without being committed. Commit it only through a reviewed PR to this kit.
 6. Add `validationSources`: the registry's mapping contract test as a `repository-test`,
    plus `existing-dev-artifact` or `sanitized-evidence-package` entries that follow
    `test-dataset-recommendations.md`.
-7. Add `sourceWindowPolicy` when validation copies or derives data from PROD.
+7. Add the required `sourceWindowPolicy` for the mandatory final PROD-derived validation: the
+   source families the first workflow step reads, the coverage signals a complete day must show,
+   `minimumCompleteUtcDays` and `allowLongerRange`, plus `origin` (`profile-declared` or
+   `derived-at-intake`), `recordedDefaults` for every value you did not choose explicitly, and
+   `evidenceIds`. Start from `draft-profile`'s `derivedSourceWindowPolicy` or
+   `source_window.py policy --profile <profile>`; a profile without the policy cannot be promoted.
 8. Declare mapping-specific semantics as data, never as code:
    - `derivationOverrides`: each `(dataset, field)` the profile intentionally declares instead of
      deriving (for example consumer-contract `columns` for a dataset the target language does not
@@ -105,7 +110,9 @@ without being committed. Commit it only through a reviewed PR to this kit.
    derive contracts with `resolve-transform-intent.py contracts --mapping <id>@<version>`, and run
    `compare_datasets.py check --contracts ... --dataset <dataset>=<dir>/<dataset> --oracle <id>=<oracle>`.
 4. Run `resolve-transform-intent.py draft-profile ...`, promote the draft (Path 3), and check it
-   with `check-profile`; `evaluate_run.py --mode synthetic-local` then computes the phases.
+   with `check-profile`; `evaluate_run.py --mode synthetic-local` then computes phases 1–11 as an
+   earlier proof (`modeScopedResult`). The verdict stays `BLOCKED` until the final PROD-derived
+   validation runs in `observed-dev` on a confirmed window.
 
 ## Minimal skeleton
 
@@ -133,6 +140,7 @@ the skeleton as written.
   "adapters": [],
   "consumers": [{ "name": "<consumer>", "owner": "<agent>", "contract": "<contract>" }],
   "parityPolicy": { "fieldSource": "language-definition-and-registration", "declaredFields": "minimum", "undefinedDatasets": "block" },
+  "sourceWindowPolicy": { "kind": "prod-derived-complete-utc-days", "minimumCompleteUtcDays": 1, "allowLongerRange": true, "requiredSourceFamilies": ["<dataset>"], "requiredCoverageSignals": ["<dataset>-rows-present"], "origin": "derived-at-intake", "recordedDefaults": { "minimumCompleteUtcDays": 1, "allowLongerRange": true }, "evidenceIds": ["profile-source-datasets"] },
   "scaleTiers": [{ "id": "synthetic", "maximumRows": 100, "maximumCostUsd": 0, "evidenceRequired": true }],
   "approvals": { "devWrites": "explicit", "prodWrites": "forbidden", "perOperation": true }
 }

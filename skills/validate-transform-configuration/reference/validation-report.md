@@ -2,10 +2,11 @@
 
 Render the validated Transform configuration/readiness package into this order:
 
-1. **Configuration-readiness verdict** — `READY`, `NOT_READY`, or `BLOCKED`; one-sentence reason. State explicitly that this is not platform or product approval.
-2. **Scope and discovery** — profile, all required directions, environment, mode and consumers; repositories searched, required paths, candidate-selection method, matching pull requests, selected commit SHAs and rejected candidates. For PROD-derived DEV validation, include the sanitized complete-UTC-day candidate comparison, recommended half-open window, minimum-day policy, confirmation status and evidence IDs before any staging approval.
+1. **Configuration-readiness verdict** — `READY`, `NOT_READY`, or `BLOCKED`; one-sentence reason. State explicitly that this is not platform or product approval. For `READY`, name the confirmed PROD-derived window the final DEV run used; for a run without it, state `FinalProdDerivedValidationRequired` and what is still needed.
+2. **Scope and discovery** — profile, all required directions, environment, mode and consumers; repositories searched, required paths, candidate-selection method, matching pull requests, selected commit SHAs and rejected candidates. Include the source-window policy (declared or derived, with recorded defaults), the sanitized complete-UTC-day candidate comparison, recommended half-open window, minimum-day policy, confirmation status and evidence IDs before any staging approval.
 3. **Reusable package** — package version; Transform product/version; every source/target language and mapping digest; Lexicon digest; dependencies; Test evidence; Deploy-owned environment digest; Marketplace-registration readiness.
-4. **Phase results** — all 12 phases in order with status, evidence IDs and concise reason.
+4. **Phase results** — all 12 phases in order with status, evidence IDs and concise reason, plus the earlier synthetic or dry-run results as `modeScopedResult`.
+   **Final PROD-derived validation** — confirmed window, staging approval digests and manifest SHA-256s, DEV execution approval digests, and the phase 9–11 results on that window; or why it is `BLOCKED`.
 5. **Boundary decisions** — every proposal labeled `CONFIGURATION` or `PRODUCT_CHANGE`, with evidence, state and owner handoff.
 6. **Dataset reconciliation** — sanitized schema digests, counts, hashes and credential-free locations.
 7. **Graph and Persist** — identities, endpoint closure, canary and readback, or explicit not-required rationale; preserve Model/Persist ownership.
@@ -24,6 +25,7 @@ Render the validated Transform configuration/readiness package into this order:
 - Do not include raw rows, PII, business identifiers, secret values, credentials or signed URLs.
 - Do not call `APPROVAL_REQUIRED` a failure. It yields a blocked validation until approved evidence exists.
 - Do not imply PROD readiness from DEV evidence. PROD remains read-only and receives a handoff.
+- Never report `READY` from synthetic-local, dry-run or synthetic DEV evidence; only the final DEV run on the confirmed PROD-derived window can support it.
 - Do not hide failed gates behind an overall narrative; any required `FAIL` means `NOT_READY`.
 - Do not classify by repository alone. Mapping declarations stored in Lexicon remain Transform configuration; executable reader/schema/failure behavior remains a Transform product change.
 - Recommend fixes without editing code, weakening validation, or claiming the recommendation has passed.

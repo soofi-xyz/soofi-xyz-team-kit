@@ -34,14 +34,21 @@ closure directly from Transform artifacts and record Persist as not required.
 
 Reject mutable evidence as proof. A branch, pull request, tag, `latest` object, undocumented deployment timestamp, or successful status without an immutable binding cannot validate behavior; a pull request is only a discovery selector and its resolved head SHA is the evidence identity.
 
-For PROD-derived DEV validation, let the selected profile opt in through
-`sourceWindowPolicy`. Before any copy, use read-only sanitized metadata to
-compare recent complete UTC days, require all declared source families and
-coverage signals, and recommend at least the configured minimum number of
-complete days. Ask the user to confirm the recommended half-open UTC window or
-a longer permitted range. No staging approval substitutes for this explicit
-source-window confirmation. Preserve relational/join closure and authoritative
-endpoint coverage; random-row and partial-day samples are prohibited.
+Every run that aims for `READY` ends with a final PROD-derived validation.
+Every promoted profile carries a `sourceWindowPolicy`; when a profile or draft
+lacks one, derive it at intake from the source-role datasets and coverage
+targets and record every default applied (for example
+`minimumCompleteUtcDays: 1`). Without being asked, use read-only sanitized
+metadata to compare recent complete UTC days, require all declared source
+families and coverage signals, and recommend at least the configured minimum
+number of complete days. Ask the user to confirm the recommended half-open UTC
+window or a longer permitted range. No staging approval substitutes for this
+explicit source-window confirmation. Preserve relational/join closure and
+authoritative endpoint coverage; random-row and partial-day samples are
+prohibited. Then stage the confirmed window into DEV and execute the mapping
+there, each staging copy and each execution under its own approval digest.
+Synthetic-local and synthetic DEV runs are earlier phases and are never
+sufficient for `READY`.
 
 ## Configuration/product decision
 
@@ -71,7 +78,7 @@ Every phase and gate has one status:
 - `BLOCKED`: access, ambiguity, or missing evidence prevents a conclusion.
 - `APPROVAL_REQUIRED`: the next required proof is a DEV external write without matching approval.
 
-Any `FAIL` yields `NOT_READY`. Otherwise any `BLOCKED` or `APPROVAL_REQUIRED` yields `BLOCKED`. Only all required `PASS` statuses yield `READY`.
+Any `FAIL` yields `NOT_READY`. Otherwise any `BLOCKED` or `APPROVAL_REQUIRED` yields `BLOCKED`. `READY` requires every required status to be `PASS` **and** phase 12 to record a passing final PROD-derived validation: the mapping executed in DEV, under operation-specific approvals, against a user-confirmed complete-UTC-day window derived read-only from PROD and staged into DEV under its own approval digest, with every parity and closure gate passing. When PROD metadata access, the confirmation or an approval is unavailable, the verdict is `BLOCKED` with `FinalProdDerivedValidationRequired` and a handoff naming what is needed.
 
 ## Write and environment policy
 

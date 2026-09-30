@@ -19,6 +19,16 @@ Create 23 fixture media entries representing API-fetched documents, cross-accoun
 
 Expected passing evidence after replacing the invalid fixture with a new manifest: 23 manifest entries, 23 hydrated objects, 22 unique content digests, 23 metadata records, complete linkage, zero dangling endpoints and preserved provenance revisions.
 
+## Final PROD-derived validation
+
+The synthetic dataset above is an earlier phase. It proves shape, negatives and wiring, and its
+evaluation ends `BLOCKED` with `FinalProdDerivedValidationRequired`. `READY` needs the final run:
+compare at least 7 recent complete UTC days of `document-manifests` from read-only PROD metadata against the
+profile's `sourceWindowPolicy` (derived at intake with recorded defaults), ask the user to confirm the recommended window, stage the
+sanitized window into DEV under its own approval digest, execute every workflow step in
+`observed-dev` under per-execution approvals, and pass the regression expectations below on that
+window. If PROD metadata access or the confirmation is missing, the verdict stays `BLOCKED`.
+
 ## Regression expectations
 
 - Mutable or overwritten manifest: phase 6 `FAIL`.

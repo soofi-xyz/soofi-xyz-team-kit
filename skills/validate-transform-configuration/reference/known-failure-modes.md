@@ -29,5 +29,9 @@
 | Retry reuses partial outputs or a changed plan | Require a fresh execution identity and operation-specific approval after inspecting partials | `BLOCKED` until authorized; never blind retry |
 | Secret, PII, ID, or credential-bearing URL enters evidence | Scan and reject before artifact publication | `FAIL`; redact and recollect, never preserve the value |
 | PROD proof requires a write | Stop and produce a specialist/operator handoff | `BLOCKED`; PROD remains read-only |
+| `READY` is claimed from synthetic-local, dry-run or synthetic DEV evidence | Require phase 12 `finalValidation` with observed-dev executions on the confirmed PROD-derived window | `BLOCKED` with `FinalProdDerivedValidationRequired`; run the final PROD-derived validation |
+| Profile has no `sourceWindowPolicy`, so the final run is skipped | Derive the policy at intake (`draft-profile`, `source_window.py policy`) and record its defaults | Promotion blocked until the policy is present; never skip the final run |
+| PROD metadata access is missing or no candidate day is complete | Compare at least 7 complete UTC days read-only with `source_window.py recommend` | `BLOCKED` with an access or data handoff; never pad, sample random rows or pick a partial day |
+| Final DEV run reads inputs outside the confirmed window | Every binding must lie under the confirmed window's staging prefix | `BLOCKED` (`FinalWindowBindingMismatch`); restage under approval and rerun |
 
 Do not convert a detected failure into a warning. Re-validate against new immutable artifacts after the owning specialist supplies the missing proof.

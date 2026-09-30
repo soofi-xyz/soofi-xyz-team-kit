@@ -19,16 +19,26 @@ tool call.
 | `direction-mode` | an inverse mapping exists and no mode hint | `round-trip`, `one-way` | `round-trip` for `X -> <hub>`; `one-way` for `<hub> -> Y` |
 | `cross-source-step` | a `<hub> -> Y` mapping consumes forward outputs | each downstream mapping, `none` | none |
 | `persist-policy` | always, unless the profile fixes it | `forbidden`, `required` | `forbidden` |
+| `source-window` | always before the final PROD-derived validation, after the read-only candidate comparison | recommended window, longer complete range (when allowed), `stop` | none; the user must choose |
 
 Rules:
 
 - `prod-read-only` limits the run to metadata and existing sanitized evidence.
-  It can never select staging, deployment, or execution.
+  It can never select staging, deployment, or execution, so it ends `BLOCKED`
+  with the source-window recommendation as its handoff, never `READY`.
 - A profile's `validationWorkflow.persistPolicy` overrides the question, and a
   user answer cannot weaken it. When the profile says `forbidden`, skip the
   question.
-- A `sourceWindowPolicy` adds the separate day-or-range confirmation question
-  before any staging. Neither `test-dataset` nor a staging approval answers it.
+- Every run aiming for `READY` asks the separate `source-window` day-or-range
+  confirmation question before any staging, after Silvally has compared recent
+  complete UTC days read-only (`source_window.py recommend`). Options are the
+  recommended window first, a longer contiguous complete range when
+  `allowLongerRange` is true, and `stop` (the run ends `BLOCKED`). Neither
+  `test-dataset`, `environment: synthetic-local` nor a staging approval
+  answers it, and there is no default.
+- Choosing `synthetic-local`, `synthetic-fixture` or `sanitized-edge-cases`
+  selects an earlier phase only. Say so when asking, and continue to the
+  final PROD-derived validation afterwards.
 - The user's answers become `CONFIRMED` material facts. Silvally never marks a
   fact `CONFIRMED` from a default the user did not see.
 
@@ -39,7 +49,7 @@ these. Approval of one card never covers another, a retry, or a changed card.
 
 | Operation | Typical command | Environment |
 | --- | --- | --- |
-| staging copy of a sanitized package | `aws s3 cp` / `put-object` under `inputs/<language>-<purpose>/<window>_<version>/` | DEV |
+| staging copy of a sanitized package (including the confirmed PROD-derived window) | `stage_evidence_package.py upload` / `put-object` under `inputs/<language>-<purpose>/<window>_<version>/` | DEV |
 | manifest publication | `put-object` of `manifest.json` with `IfNoneMatch: *` | DEV |
 | DEV deployment of a pinned candidate | the owning repository's documented deploy command (for example `npm run cdk:deploy`) | DEV only; Deploy owns the result |
 | Transform execution | `aws stepfunctions start-execution` on the DEV Transform state machine | DEV |

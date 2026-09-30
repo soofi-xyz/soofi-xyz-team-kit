@@ -18,6 +18,16 @@ Create 86 lifecycle events across a UTC day boundary, including offset-change ti
 
 Expected passing evidence: 86 hydrated inputs, 86 canonical lifecycle facts, 86 reverse rows, nine of nine fields compared, zero unexpected mismatches, zero dangling message endpoints and identical manifest/object hashes.
 
+## Final PROD-derived validation
+
+The synthetic dataset above is an earlier phase. It proves shape, negatives and wiring, and its
+evaluation ends `BLOCKED` with `FinalProdDerivedValidationRequired`. `READY` needs the final run:
+compare at least 7 recent complete UTC days of `quiq-events` from read-only PROD metadata against the
+profile's `sourceWindowPolicy` (derived at intake with recorded defaults), ask the user to confirm the recommended window, stage the
+sanitized window into DEV under its own approval digest, execute every workflow step in
+`observed-dev` under per-execution approvals, and pass the regression expectations below on that
+window. If PROD metadata access or the confirmation is missing, the verdict stays `BLOCKED`.
+
 ## Regression expectations
 
 - Unsupported JSON/CSV mapping option: phase 6 `FAIL`.
