@@ -34,7 +34,9 @@ Organizations tenancy, StackSets, or Account Manager from this skill.
    Marketplace does not mint keys. It uses the key named `shared-environment`
    on the usage plan stored at SSM `/account/shared-usage-plan-id` in the
    Marketplace account `848665034107`, `us-east-2`. If the variable is unset,
-   stop and give these steps, then wait.
+   or the key check below returns `401` or `403`, stop and give these steps,
+   then wait. A rejected key is usually a leftover from an older Marketplace
+   install; tell the user so and include the step to clear it.
    Do not run the lookup yourself, do not print the value, and do not ask the
    user to paste it into chat.
 
@@ -58,12 +60,26 @@ Organizations tenancy, StackSets, or Account Manager from this skill.
    export MARKETPLACE_API_KEY='<value from the command above>'
    ```
 
+   If an old value keeps coming back, remove it where it was set (a shell
+   profile such as `~/.zshrc`, or `launchctl unsetenv MARKETPLACE_API_KEY`)
+   before setting the new one.
+
    Ask them to reply once it is set. Confirm only that the variable is present,
    with exactly this command, and never any other expansion of the variable:
 
    ```bash
    if [ -n "${MARKETPLACE_API_KEY:-}" ]; then echo "MARKETPLACE_API_KEY set (${#MARKETPLACE_API_KEY} chars)"; else echo "MARKETPLACE_API_KEY unset"; fi
    ```
+
+   Then confirm the key is accepted with this read-only call before any other
+   request; it prints only the HTTP status:
+
+   ```bash
+   curl -s -o /dev/null -w '%{http_code}\n' -H "x-api-key: $MARKETPLACE_API_KEY" "${MARKETPLACE_BASE_URL:-https://1ubssdfzw2.execute-api.us-east-2.amazonaws.com/dev/marketplace}/settings/status"
+   ```
+
+   `200` means the key works. `401` or `403` means the key is missing, stale, or
+   for a different Marketplace: stop and give the get-and-set steps above.
 
    Pass the key to `curl` only as `-H "x-api-key: $MARKETPLACE_API_KEY"`, never
    with `-v`, `--trace`, `set -x`, or `env`/`printenv` in the same shell.
