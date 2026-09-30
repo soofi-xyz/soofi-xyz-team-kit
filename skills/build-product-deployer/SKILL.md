@@ -1,10 +1,10 @@
 ---
 name: build-product-deployer
-description: "Implementing or changing the Deployer service from its PRD — tenant-local deployment execution, bundle contracts, callbacks, status inspection. Read reference/PRD.md first."
+description: "Build or maintain the stateless Deploy run service, Build artifact integration and run-status inspection. Read reference/PRD.md and verify the target service contract first."
 disable-model-invocation: true
 ---
 
-# Build Product Deployer
+# Build Deploy
 
 This skill is intentionally thin. Use it as a loader for [`reference/PRD.md`](./reference/PRD.md), not as a requirements copy.
 
@@ -12,20 +12,22 @@ This skill is intentionally thin. Use it as a loader for [`reference/PRD.md`](./
 
 1. Read [`reference/PRD.md`](./reference/PRD.md) before planning or coding.
 2. Read [`../apply-engineering-guidelines/SKILL.md`](../apply-engineering-guidelines/SKILL.md) for Golden Path constraints.
-3. Read the Bootstrap, Marketplace, and Puller PRDs whenever Deployer work touches first install, deploy-by-token, subscription-triggered deploys, or terminal callbacks.
+3. Read the Marketplace and Puller PRDs when work touches artifact publication or subscriber installation state. Verify their supported integration with the target Deploy service.
 
-## Use With Plugin Agents
+## Product ownership
 
-- Use `conkeldurr` first for platform product classification, existing-deployment checks, and build-vs-integrate decisions.
-- Use `regigigas` for marketplace deployment architecture, bundle distribution, tenant rollout, and cross-product sequencing.
-- Use `machamp` when the PRD work changes Step Functions orchestration, long-running operations, retries, or concurrency controls.
+Use the catalog in [guide-product-work](../guide-product-work/SKILL.md).
+Deploy has no separately assigned agent in this kit. Execute this supporting
+skill directly only within the requested scope. Do not assign this work to
+Conkeldurr (Persist) or Zygarde (System).
+Use relevant supporting skills directly. Use Registeel only for current
+Marketplace publication and Regigigas for Marketplace implementation changes.
 
 ## Implementation Rules
 
 - Treat the PRD as the single source of truth for routes, bundle contracts, resource shapes, IAM scopes, env vars, error tags, workflows, callbacks, and verification.
 - Do not implement from this `SKILL.md` alone.
-- For an existing Deployer deployment, integrate through the PRD's public API and callback/status contracts instead of provisioning a duplicate service.
-- If any old skill or rule file conflicts with the PRD, the PRD wins; update stale guidance instead of layering compatibility shims.
+- For an existing Deploy service, verify and use its run/status contract instead of provisioning a duplicate service.
 
 ## Expected Output
 

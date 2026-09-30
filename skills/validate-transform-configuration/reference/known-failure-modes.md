@@ -17,10 +17,10 @@
 | Optional JSON property is omitted and Transform schema inference drops/mistypes it | Derive the expected schema from the language definition and check DEV outputs on a real window where the field is absent | `FAIL`; Kecleon fixes schema-bound reading |
 | Same unmerged `id@version` re-uploaded or pruned by another branch deploy | Compare each plan's `mapping.json`/query SHA-256 and `VersionId` with the pinned candidate, and recheck the registry at verdict time | `BLOCKED`; never reuse evidence from an earlier upload; Deploy/Conkeldurr republishes |
 | Deployment drift or latest-PR-wins race | Compare deployed package/template/configuration digests with the evaluated commit and mapping | `FAIL`; deployment owner/Kecleon owns a pinned release |
-| Persist and Lexicon revisions disagree | Bind Persist canary validation and readback to the same language-definition digest | `FAIL`; Conkeldurr with Mew/Unown |
+| Persist and Lexicon revisions disagree | Bind Persist canary validation and readback to the same language-definition digest | `FAIL`; Conkeldurr with Mew and the Lexicon modeling owner |
 | Mapping or same-PR schema revives a concept removed/deprecated by pinned current Lexicon | Resolve every graph label/endpoint against current Lexicon and inspect immutable removal history; require explicit modeling approval for reintroduction | `FAIL` with `RemovedLexiconConcept`; route to the modeling owner without Silvally choosing a replacement |
 | Export window uses local time or shifts day boundaries | Assert UTC source watermark and inclusive/exclusive bounds around offset transitions | `FAIL`; product owner |
-| Graph edge points at an absent/differently normalized vertex | Distributed anti-join endpoints against declared vertex IDs | `FAIL`; Kecleon for bindings, Mew/Unown for proven model gaps |
+| Graph edge points at an absent/differently normalized vertex | Distributed anti-join endpoints against declared vertex IDs | `FAIL`; Kecleon for bindings, Mew and the Lexicon modeling owner for proven model gaps |
 | Hashes differ because ordering/canonicalization is unstable | Apply profile canonicalization, sort only declared unordered sets, preserve array order | `FAIL`; Kecleon or product owner |
 | Artifact pointer exists but content was not hydrated | Compare immutable manifest object/count/hash set with physical readback | `FAIL`; adapter/product owner |
 | Mutable manifests or branch refs are treated as evidence | Reject refs without commit SHA/version/content digest | `FAIL`; release owner |

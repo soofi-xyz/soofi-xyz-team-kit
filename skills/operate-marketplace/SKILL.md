@@ -3,6 +3,10 @@ name: operate-marketplace
 description: "Operate the deployed Prism Marketplace catalog API from prismteam-ai/marketplace: configure review settings, register ontology (families, categories, products, configurations, components), publish Build zips and poll reviews, and roll back VALID bundles. Use when registering or publishing products to Prism Marketplace or checking review status."
 ---
 
+Use [the Marketplace capability map](../guide-product-work/reference/iterations/marketplace.md). Derive the feature pieces from scope and dependencies, then apply the work below within each piece; require a user-run configuration, AWS inspection and feedback before starting the next implementation piece.
+
+Follow [guide-product-work](../guide-product-work/SKILL.md). Registeel configures Marketplace; Regigigas owns service implementation changes.
+
 # Operate Prism Marketplace
 
 Use `registeel`. Prism Marketplace is deployed; this skill drives its live HTTP API.

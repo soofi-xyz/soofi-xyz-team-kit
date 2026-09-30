@@ -390,7 +390,7 @@ Challenge terminology and ownership before assuming a schema or product boundary
 
 - Kecleon: Transform implementation, mappings, formats, Spark, graph bindings, deployment code.
 - Mew: exact schema lookup and modeling.
-- Unown: proven Lexicon schema modifications.
+- Lexicon modeling owner: proven Lexicon schema modifications.
 - Conkeldurr: Persist, Lexicon publication, platform integration.
 - Machamp: scale, throughput, throttling, and cost.
 - Profile-named product agent: domain invariants, adapters, and consumers.
@@ -401,7 +401,7 @@ Validation remains separate from implementation. End a failed run with findings 
 
 - Transform executes mappings; Silvally authors/refines configuration and evaluates readiness.
 - Test owns reusable test execution and result mechanics. Assemble test cases and oracles, coordinate/invoke approved checks, and consume Test evidence only.
-- Lexicon owns canonical meanings, aliases, and identity inputs. Request proven gaps through Mew/Unown.
+- Lexicon owns canonical meanings, aliases, and identity inputs. Request proven gaps through Mew and the Lexicon modeling owner.
 - Model owns RDF/Merkle-DAG bindings, native addresses, and cross-family equivalence.
 - Persist owns placement, storage-engine behavior, receipt/readback, retention, and custody. Validate outputs through documented Persist surfaces.
 - Deploy owns deployment, rollback, and environment records. Treat versions/digests as preconditions and evidence.

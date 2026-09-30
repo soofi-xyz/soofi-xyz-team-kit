@@ -120,7 +120,7 @@ unavailable evidence.
 - Deploy owns deployment, rollback, and environment records.
 - System composition remains out of scope.
 - Kecleon owns Transform implementation and deployment changes.
-- Mew owns exact schema lookup; Unown owns approved Lexicon schema changes.
+- Mew owns exact schema lookup; the Lexicon modeling owner owns approved Lexicon schema changes.
 - Conkeldurr owns Persist, Lexicon publication and platform integration.
 - Machamp owns scale and cost design.
 - The profile's product owner validates adapter, consumer and domain invariants.

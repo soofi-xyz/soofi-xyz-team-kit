@@ -8,17 +8,22 @@ disable-model-invocation: true
 
 This skill is intentionally thin. Use it as a loader for [`reference/PRD.md`](./reference/PRD.md), not as a requirements copy.
 
+Treat Puller as a subscriber-side implementation belonging to Marketplace and Deploy, not a separately advertised product. Use these historical mechanics only after resolving the current ownership and state contract.
+
 ## Required Reading
 
 1. Read [`reference/PRD.md`](./reference/PRD.md) before planning or coding.
 2. Read [`../apply-engineering-guidelines/SKILL.md`](../apply-engineering-guidelines/SKILL.md) for Golden Path constraints.
 3. Read the Marketplace and Deployer PRDs whenever Puller work touches subscriptions, bundle discovery, deployment callbacks, dependency deployment, or reconciliation.
 
-## Use With Plugin Agents
+## Product ownership
 
-- Use `conkeldurr` first for platform product classification, existing-deployment checks, and build-vs-integrate decisions.
-- Use `regigigas` for marketplace ecosystem sequencing, tenant rollout, subscription semantics, and cross-product responsibilities.
-- Use `machamp` only when the PRD work adds or changes batch, scheduler, or workflow orchestration concerns.
+Use the catalog in [guide-product-work](../guide-product-work/SKILL.md).
+Marketplace/Deploy subscriber implementation has no separately assigned agent in this kit. Execute this supporting
+skill directly only within the requested scope. Do not assign this work to
+Conkeldurr (Persist) or Zygarde (System), and do not call retired specialists.
+Use relevant supporting skills directly. Use Registeel only for current
+Marketplace publication and Regigigas for Marketplace implementation changes.
 
 ## Implementation Rules
 

@@ -23,7 +23,34 @@ Follow these conventions whenever you touch files in this repo.
 - Each source agent MUST have a matching materialized Copilot file at `agents-copilot/<name>.agent.md`.
 - Each source agent MUST have a matching materialized Codex file at `.codex/agents/<name>.toml`.
 - After adding, removing, renaming, or editing agents, run `scripts/sync-copilot-agents.sh sync` and `scripts/sync-codex-agents.sh sync` to refresh generated targets.
-- Add a row to the Agents table in `README.md` when adding or renaming an agent.
+- Add a row to the Agents table in `README.md` when adding or renaming a featured product agent. Keep retained specialists installed without adding them to that table.
+
+## Product ownership and guided work
+
+- Use `skills/guide-product-work/reference/product-catalog.json` for canonical
+  product identities and build/configure assignments. Keep one distinct agent
+  per assigned role; do not add a cross-product platform owner.
+- Require `product` and `role` (`build` or `configure`) in featured product agent frontmatter.
+  Conkeldurr builds Persist; Zygarde builds System. Keep configuration separate.
+- Load `skills/guide-product-work/SKILL.md` from every featured product agent. Preserve its
+  feature-based decomposition, user-run configuration and AWS inspection
+  checkpoints, and evidence distinctions. Treat four as a floor for full-product
+  work, not a fixed count; scope narrow work to relevant feature pieces. Do not
+  infer an expert/autonomy shortcut. Each assigned product must have a catalog
+  `iterationGuide`, loaded by both agents and their primary skills; add the
+  product-specific capability map when assigning another product.
+- Keep retained specialists in `agents/` and both generated agent directories.
+  Record them in the catalog's `retainedAgents` inventory; omit them from the
+  README product roster. README visibility does not determine installation or
+  availability. Retention does not assign a new product owner. Discover agents
+  from their source files and route product work through the catalog.
+- Add products and scope changes to the catalog before adding names to the public
+  map. Keep unassigned products visible without inventing agents or deployments.
+- Run `python3 scripts/product_catalog.py sync` after catalog changes. The README
+  product map is generated between markers; do not edit that block manually.
+- Keep product instructions current; use Git history for superseded documents
+  instead of shipping archive copies or unused compatibility entrypoints. The kit
+  refactor does not authorize changes to deployed services or new API documentation.
 
 ## Skills (`skills/<name>/SKILL.md`)
 
@@ -93,7 +120,7 @@ soofi-xyz-plugin-kit/
 ├── .cursor-plugin/
 │   └── plugin.json                   # Cursor plugin manifest
 ├── plugin.json                       # GitHub Copilot CLI plugin manifest
-├── agents/                           # Source agent definitions
+├── agents/                           # Featured product agents and retained specialists
 ├── agents-copilot/                   # Materialized `.agent.md` copies for Copilot CLI
 ├── plugins/
 │   └── soofi-xyz-team-kit/           # Codex marketplace plugin folder with symlinked manifest and skills
@@ -111,6 +138,9 @@ Run the plugin validation script before preparing a PR. It checks that Copilot a
 
 ```bash
 scripts/validate-plugin.sh
+python3 scripts/test-product-catalog.py
+python3 scripts/test-build-system-product-contract.py
+python3 scripts/test-system-acceptance.py
 ```
 
 If you touched `skills/use-oracle/runtime/`, also install and test it (Node **22.18+**), and
@@ -145,7 +175,7 @@ After every meaningful change to agents, skills, rules, docs, manifests, hooks, 
 1. Run **Developer: Reload Window** in Cursor. If the plugin is not detected, fully restart Cursor.
 2. Open **Settings > Plugins** and confirm `soofi-xyz-team-kit-local` is installed.
 3. Disable or remove other `soofi-xyz-team-kit` plugin installs while testing if duplicate agent or skill names appear.
-4. Run a smoke prompt such as `/arceus Reply with exactly: ok`, then test the changed agent or skill directly.
+4. Run a smoke prompt such as `/conkeldurr Reply with exactly: ok`, then test the changed agent or skill directly.
 
 When preparing or creating a PR, delete the local test copy so the review is not tied to a developer-only install:
 
@@ -162,7 +192,7 @@ copilot plugin marketplace remove soofi-xyz
 copilot plugin marketplace add ./
 copilot plugin install soofi-xyz-team-kit@soofi-xyz
 copilot plugin list
-copilot --agent soofi-xyz-team-kit:arceus -p "Reply with exactly: ok" --allow-all-tools --no-remote
+copilot --agent soofi-xyz-team-kit:conkeldurr -p "Reply with exactly: ok" --allow-all-tools --no-remote
 ```
 
 For development-only direct install checks, use `copilot plugin install ./`. The installed CLI may reject bare `.` even though docs show local paths generally.
