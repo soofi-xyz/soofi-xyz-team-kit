@@ -1,0 +1,198 @@
+{
+  "schemaVersion": "elephant.hoa-web-evidence-fixtures.v1",
+  "description": "Synthetic regression cases for HOA web evidence scope, address validation, fee-period conversion, NetSuite gap scoring, and diagnosis.",
+  "cases": [
+    {
+      "id": "explicit-annual-must-stay-annual",
+      "requestedAddress": "100 Example Cove Ln, Jacksonville, FL 32218",
+      "observedAddress": "100 Example Cove Ln, Jacksonville, FL 32218",
+      "scope": "exact_property",
+      "observations": [
+        {
+          "amountRaw": "$690",
+          "amountUsd": 690,
+          "frequencyRaw": "Annually",
+          "expectedFrequencyCanonical": "Annually",
+          "expectedAnnualizedUsd": 690
+        }
+      ],
+      "expectedDiagnostic": "confirmed_match"
+    },
+    {
+      "id": "missing-frequency-must-not-default-monthly",
+      "requestedAddress": "200 Example Dr, Orlando, FL 32826",
+      "observedAddress": "200 Example Dr, Orlando, FL 32826",
+      "scope": "exact_property",
+      "observations": [
+        {
+          "amountRaw": "$96",
+          "amountUsd": 96,
+          "frequencyRaw": null,
+          "expectedFrequencyCanonical": null,
+          "expectedAnnualizedUsd": null
+        }
+      ],
+      "expectedDiagnostic": "insufficient_evidence"
+    },
+    {
+      "id": "same-community-other-property-is-discovery-only",
+      "requestedAddress": "300 Example Way, Parrish, FL 34219",
+      "observedAddress": "304 Example Way, Parrish, FL 34219",
+      "scope": "same_community_other_property",
+      "observations": [
+        {
+          "amountRaw": "$115",
+          "amountUsd": 115,
+          "frequencyRaw": "Annually",
+          "expectedFrequencyCanonical": "Annually",
+          "expectedAnnualizedUsd": 115
+        }
+      ],
+      "expectedPropertyStamp": null,
+      "expectedDiagnostic": "insufficient_evidence"
+    },
+    {
+      "id": "equivalent-monthly-and-semiannual-representations",
+      "requestedAddress": "400 Example Pl, Orlando, FL 32826",
+      "observedAddress": "400 Example Pl, Orlando, FL 32826",
+      "scope": "exact_property",
+      "observations": [
+        {
+          "amountRaw": "$65",
+          "amountUsd": 65,
+          "frequencyRaw": "Monthly",
+          "expectedFrequencyCanonical": "Monthly",
+          "expectedAnnualizedUsd": 780
+        },
+        {
+          "amountRaw": "$390",
+          "amountUsd": 390,
+          "frequencyRaw": "Semi-Annually",
+          "expectedFrequencyCanonical": "Bi-Annually",
+          "expectedAnnualizedUsd": 780
+        }
+      ],
+      "expectedDiagnostic": "equivalent_period_representation"
+    },
+    {
+      "id": "same-amount-different-period-is-frequency-conflict",
+      "requestedAddress": "500 Example Trl, Jacksonville, FL 32225",
+      "observedAddress": "500 Example Trl, Jacksonville, FL 32225",
+      "scope": "exact_property",
+      "observations": [
+        {
+          "amountRaw": "$400",
+          "amountUsd": 400,
+          "frequencyRaw": "Annually",
+          "expectedFrequencyCanonical": "Annually",
+          "expectedAnnualizedUsd": 400
+        },
+        {
+          "amountRaw": "$400",
+          "amountUsd": 400,
+          "frequencyRaw": "Monthly",
+          "expectedFrequencyCanonical": "Monthly",
+          "expectedAnnualizedUsd": 4800
+        }
+      ],
+      "expectedDiagnostic": "source_conflict"
+    },
+    {
+      "id": "master-and-sub-association-fees-stay-separate",
+      "requestedAddress": "600 Example Ct Unit 12, Maitland, FL 32751",
+      "observedAddress": "600 Example Ct Unit 12, Maitland, FL 32751",
+      "scope": "exact_property",
+      "observations": [
+        {
+          "associationCandidate": "Example Master Association",
+          "amountRaw": "$50",
+          "amountUsd": 50,
+          "frequencyRaw": "Monthly",
+          "expectedFrequencyCanonical": "Monthly",
+          "expectedAnnualizedUsd": 600
+        },
+        {
+          "associationCandidate": "Example Condominium Association",
+          "amountRaw": "$300",
+          "amountUsd": 300,
+          "frequencyRaw": "Quarterly",
+          "expectedFrequencyCanonical": "Quarterly",
+          "expectedAnnualizedUsd": 1200
+        }
+      ],
+      "expectedCombinedAnnualizedUsd": 1800,
+      "expectedPublishTuple": null,
+      "expectedDiagnostic": "association_scope_difference"
+    },
+    {
+      "id": "raw-correct-output-wrong-is-transformation-problem",
+      "requestedAddress": "700 Example Rd, Fleming Island, FL 32003",
+      "observedAddress": "700 Example Rd, Fleming Island, FL 32003",
+      "scope": "exact_property",
+      "rawObservation": {
+        "amountUsd": 246,
+        "frequencyRaw": "Semi-Annually"
+      },
+      "transformedOutput": {
+        "amountUsd": 246,
+        "frequencyCanonical": "Annually"
+      },
+      "expectedDiagnostic": "transformation_problem"
+    },
+    {
+      "id": "exact-source-supports-control-not-scraper-error",
+      "requestedAddress": "800 Example St, Homestead, FL 33033",
+      "observedAddress": "800 Example St, Homestead, FL 33033",
+      "scope": "exact_property",
+      "rawObservation": {
+        "amountUsd": 256,
+        "frequencyRaw": "Monthly"
+      },
+      "controlOutput": {
+        "amountUsd": 256,
+        "frequencyCanonical": "Monthly"
+      },
+      "comparisonValue": {
+        "amountUsd": 239,
+        "frequencyCanonical": "Monthly"
+      },
+      "expectedDiagnostic": "temporal_scope_difference"
+    },
+    {
+      "id": "same-amount-unique-alternative-period-is-review-candidate",
+      "amountUsd": 690,
+      "storedFrequency": "Monthly",
+      "actualDay": 1.89,
+      "storedFrequencyErrorGreaterThan": 0.075,
+      "expectedCandidateFrequency": "Annually",
+      "expectedCandidateErrorAtMost": 0.02,
+      "requiresExactPropertyPeriodEvidenceBeforeApply": true
+    },
+    {
+      "id": "netsuite-gap-below-threshold-is-not-targeted",
+      "actualDay": 1,
+      "prismDay": 1.074,
+      "expectedFeeGapPct": 0.074,
+      "expectedReviewGap": false
+    },
+    {
+      "id": "netsuite-gap-above-threshold-is-targeted",
+      "actualDay": 1,
+      "prismDay": 1.076,
+      "expectedFeeGapPct": 0.076,
+      "expectedReviewGap": true
+    },
+    {
+      "id": "missing-prism-fee-is-targeted",
+      "actualDay": 1,
+      "prismDay": null,
+      "expectedReviewGap": true
+    },
+    {
+      "id": "nonpositive-prism-fee-is-targeted",
+      "actualDay": 1,
+      "prismDay": 0,
+      "expectedReviewGap": true
+    }
+  ]
+}

@@ -7,6 +7,40 @@ overlay, working table, or public pointer.
 This enrichment does not set Chapter 720 membership (`hoa_flag`). Keep membership on its
 authoritative source track.
 
+## Keep official identity and web observations separate
+
+This file owns official HOA/company/manager identity resolution. Public-web HOA
+name, fee, and frequency capture follows
+[`hoa-web-ingestion.md`](./hoa-web-ingestion.md) and may propose candidates only
+after its address and evidence-scope gates pass.
+
+- Use the exact address rendered on the source page to validate a
+  property-level match.
+- Treat association-level and same-community/different-property pages as
+  discovery evidence, never as proof that the target property owes that
+  association or fee.
+- Preserve raw web payloads and every amount/frequency tuple before conversion.
+- Never default a missing frequency to monthly.
+- Keep master and sub-association observations separate. Sum only when exact-
+  property evidence proves both apply concurrently.
+- Resolve a web association candidate through the same fail-closed CTMH/Sunbiz
+  identity rules below. Web text is not corporate-status proof and cannot
+  override an official not-unique result.
+- Diagnose whether a discrepancy entered in the source payload
+  (`input_problem`) or was introduced by parsing/defaulting/annualization
+  (`transformation_problem`) before fixing code or data.
+- Treat NetSuite as truth for paid daily cost, using
+  `-unit_holding_hoa_dues_cost`; never use `actual_dip`. Target missing,
+  nonpositive, or greater-than-7.5% Prism fee gaps for review.
+- Run the explicit monthly / quarterly / semiannual / annual query matrix from
+  `hoa-web-ingestion.md` only for unresolved, conflicting, or non-improving
+  rows. Keep all raw tuples, reject snippet-only and neighboring-property
+  values, and apply a tuple only when source evidence passes and it improves
+  the NetSuite absolute error.
+- Run the full target cohort as an unpublished shadow ingest and require both
+  coverage and NetSuite paid-HOA accuracy to improve before generating the
+  validated HOA data group for the Atlas publication path.
+
 ## Source order
 
 Use:
