@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parent.parent
 SCANNED_FILES = (
-    ROOT / "archive" / "agents" / "hoopa.md",
+    ROOT / "agents" / "hoopa.md",
     ROOT / "agents-copilot" / "hoopa.agent.md",
     ROOT / ".codex" / "agents" / "hoopa.toml",
 )
@@ -154,7 +154,7 @@ def added_diff_content() -> str:
 
 def relative_targets() -> list[str]:
     return [
-        "archive/agents/hoopa.md",
+        "agents/hoopa.md",
         "agents-copilot/hoopa.agent.md",
         ".codex/agents/hoopa.toml",
         "skills/build-portals",

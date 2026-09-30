@@ -23,24 +23,27 @@ Follow these conventions whenever you touch files in this repo.
 - Each source agent MUST have a matching materialized Copilot file at `agents-copilot/<name>.agent.md`.
 - Each source agent MUST have a matching materialized Codex file at `.codex/agents/<name>.toml`.
 - After adding, removing, renaming, or editing agents, run `scripts/sync-copilot-agents.sh sync` and `scripts/sync-codex-agents.sh sync` to refresh generated targets.
-- Add a row to the Agents table in `README.md` when adding or renaming an agent.
+- Add a row to the Agents table in `README.md` when adding or renaming a featured product agent. Keep retained specialists installed without adding them to that table.
 
 ## Product ownership and guided work
 
 - Use `skills/guide-product-work/reference/product-catalog.json` for canonical
   product identities and build/configure assignments. Keep one distinct agent
   per assigned role; do not add a cross-product platform owner.
-- Require `product` and `role` (`build` or `configure`) in active agent frontmatter.
+- Require `product` and `role` (`build` or `configure`) in featured product agent frontmatter.
   Conkeldurr builds Persist; Zygarde builds System. Keep configuration separate.
-- Load `skills/guide-product-work/SKILL.md` from every active agent. Preserve its
+- Load `skills/guide-product-work/SKILL.md` from every featured product agent. Preserve its
   feature-based decomposition, user-run configuration and AWS inspection
   checkpoints, and evidence distinctions. Treat four as a floor for full-product
   work, not a fixed count; scope narrow work to relevant feature pieces. Do not
   infer an expert/autonomy shortcut. Each assigned product must have a catalog
   `iterationGuide`, loaded by both agents and their primary skills; add the
   product-specific capability map when assigning another product.
-- Preserve retired definitions in `archive/agents/`, outside discovered component
-  paths. Rewrite live handoffs; do not edit generated agent targets directly.
+- Keep retained specialists in `agents/` and both generated agent directories.
+  Record them in the catalog's `retainedAgents` inventory; omit them from the
+  README product roster. README visibility does not determine installation or
+  availability. Retention does not assign a new product owner. Discover agents
+  from their source files and route product work through the catalog.
 - Add products and scope changes to the catalog before adding names to the public
   map. Keep unassigned products visible without inventing agents or deployments.
 - Run `python3 scripts/product_catalog.py sync` after catalog changes. The README
@@ -116,8 +119,7 @@ soofi-xyz-plugin-kit/
 ├── .cursor-plugin/
 │   └── plugin.json                   # Cursor plugin manifest
 ├── plugin.json                       # GitHub Copilot CLI plugin manifest
-├── agents/                           # Active product agent definitions
-├── archive/agents/                   # Historical definitions, not installed
+├── agents/                           # Featured product agents and retained specialists
 ├── agents-copilot/                   # Materialized `.agent.md` copies for Copilot CLI
 ├── plugins/
 │   └── soofi-xyz-team-kit/           # Codex marketplace plugin folder with symlinked manifest and skills

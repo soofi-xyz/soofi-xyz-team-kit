@@ -28,7 +28,7 @@ except ModuleNotFoundError:
 
 ROOT = Path(__file__).resolve().parent.parent
 SKILL_DIR = ROOT / "skills" / "build-portals"
-HOOPA_AGENT = ROOT / "archive" / "agents" / "hoopa.md"
+HOOPA_AGENT = ROOT / "agents" / "hoopa.md"
 SKILL_MD = SKILL_DIR / "SKILL.md"
 INTAKE_RULES = SKILL_DIR / "rules" / "01-intake-and-portal-spec.md"
 SCHEMA_PATH = SKILL_DIR / "reference" / "portal-spec.schema.json"

@@ -116,12 +116,14 @@ feature rather than inflating the piece count. See the
 [shared workflow](./skills/guide-product-work/SKILL.md) and the product's
 `iterationGuide` in the catalog.
 
-## Agents
+## Product agents
 
 The [product catalog](./skills/guide-product-work/reference/product-catalog.json)
 records the supplied Staircase/Prism mapping and current role assignments.
 Each assigned product has a separate builder and configurer. Conkeldurr owns
 Persist; Zygarde owns System. Configurers include authoring and testing.
+This table features the product roster. Other existing specialists remain
+installed and available from `agents/`; omission from this table does not remove them.
 
 <!-- product-catalog:start -->
 
@@ -136,7 +138,7 @@ Persist; Zygarde owns System. Configurers include authoring and testing.
 
 **Catalog products awaiting scoped ownership:** Access, Console, Environment, Finance, Host, Setup, Assess, Build, Code, Comply, Deploy, Health, Pipeline, Asset, Credit, Employment, Identity, Income, Tax, Appraisal, Listing, Property, Valuation, Compliance, Fraud, Government, Insurance, Rating, Document, Electronic, Fee, Model, Notary, Price, Signature, Title, Approval, Boarding, Closing, LOS, POS, Servicing, Content, ML, Site, Turker, Job, Workflow, Discover, Schedule, Report, Predict.
 
-Unassigned means no installed product agent is promised. It does not mean the product is absent or deployed.
+Unassigned means no dedicated builder/configurer pair is assigned in this catalog. Retained specialists remain available; assignment does not establish deployment.
 
 <!-- product-catalog:end -->
 
@@ -145,12 +147,11 @@ Marketplace/Deploy implementation concern, not a separate product. Model's two
 source rows are consolidated; Lexicon remains the universal vocabulary. Retain
 historical aliases only for compatibility, not as competing product names.
 
-## Supporting skills and historical specialists
+## Supporting skills
 
-[Historical agents](./archive/README.md) are preserved outside the installed
-roster. The reusable skills and bundled Oracle runtime remain at their existing
-paths. Use supporting procedures directly when relevant; historical agent names
-inside retained material do not authorize delegation to unavailable agents.
+The reusable skills and bundled runtime remain at their existing paths. Retained
+specialists are callable through their agent definitions, and supporting skills
+can also be used directly when relevant.
 Resolve current product ownership through the catalog before a cross-product
 handoff. Legacy Translate and broad Staircase Product requirements apply only
 to explicitly requested compatibility work.

@@ -32,13 +32,32 @@ class CatalogTests(unittest.TestCase):
         p["agents"]["build"], p["agents"]["configure"] = p["agents"]["configure"], p["agents"]["build"]
         self.assertTrue(any("frontmatter disagrees" in e for e in catalog.validate(self.data)))
 
-    def test_missing_or_archived_agent_cannot_be_assigned(self):
-        for name in ("not-installed", "arceus"):
-            with self.subTest(name=name):
-                data = copy.deepcopy(self.data)
-                data["products"][0]["status"] = "assigned"
-                data["products"][0]["agents"] = {"build": name, "configure": "missing-configurer"}
-                self.assertTrue(any("missing agent" in e for e in catalog.validate(data)))
+    def test_missing_agent_cannot_be_assigned(self):
+        self.product("persist")["agents"]["build"] = "not-installed"
+        self.assertTrue(any("missing agent not-installed" in e for e in catalog.validate(self.data)))
+
+    def test_retained_specialists_remain_available_outside_the_readme_roster(self):
+        self.assertTrue({"arceus", "oracle", "hoopa", "mew"} <= set(self.data["retainedAgents"]))
+        rendered = catalog.render(self.data)
+        for name in self.data["retainedAgents"]:
+            with self.subTest(agent=name):
+                self.assertTrue((catalog.ROOT / "agents" / f"{name}.md").is_file())
+                self.assertNotIn(f"(./agents/{name}.md)", rendered)
+        self.assertIn("(./agents/conkeldurr.md)", rendered)
+
+    def test_retained_specialist_cannot_silently_replace_product_owner(self):
+        self.product("persist")["agents"]["build"] = "arceus"
+        errors = catalog.validate(self.data)
+        self.assertTrue(any("frontmatter disagrees" in e for e in errors))
+        self.assertTrue(any("also listed as retained" in e for e in errors))
+
+    def test_retained_inventory_cannot_reference_an_uninstalled_agent(self):
+        self.data["retainedAgents"].append("not-installed")
+        self.assertTrue(any("missing installed retained agent: not-installed" in e for e in catalog.validate(self.data)))
+
+    def test_installed_agent_cannot_disappear_from_inventory(self):
+        self.data["retainedAgents"].remove("oracle")
+        self.assertTrue(any("installed agents differ" in e and "oracle" in e for e in catalog.validate(self.data)))
 
     def test_alias_cannot_create_a_second_model_product(self):
         duplicate = copy.deepcopy(self.product("model"))
@@ -60,11 +79,10 @@ class CatalogTests(unittest.TestCase):
         self.product("persist")["iterationGuide"] = "../../external.md"
         self.assertTrue(any("persist: iterationGuide" in e for e in catalog.validate(self.data)))
 
-    def test_retired_handoff_in_active_dependency_is_rejected(self):
+    def test_unavailable_handoff_in_dependency_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             shutil.copytree(catalog.ROOT / "agents", root / "agents")
-            shutil.copytree(catalog.ROOT / "archive/agents", root / "archive/agents")
             # Only the required lightweight skill entrypoints are needed here.
             for name in {self.data["workflowSkill"], *(
                 skill for p in self.data["products"] for skill in p["skills"].values() if skill
@@ -73,8 +91,8 @@ class CatalogTests(unittest.TestCase):
                 target.parent.mkdir(parents=True)
                 target.write_text(f"---\nname: {name}\ndescription: Test fixture\n---\n")
             target = root / "skills/build-persist-service/SKILL.md"
-            target.write_text(target.read_text() + "Use `machamp` for this work.\n")
-            self.assertTrue(any("retired agent handoff to machamp" in e for e in catalog.validate(self.data, root)))
+            target.write_text(target.read_text() + "Use `unown` for this work.\n")
+            self.assertTrue(any("unavailable agent handoff to unown" in e for e in catalog.validate(self.data, root)))
 
 
 if __name__ == "__main__":

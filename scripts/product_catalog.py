@@ -87,18 +87,34 @@ def validate(catalog: dict, root: Path = ROOT) -> list[str]:
                 errors.append(f"{pid}: missing {role} skill {skill!r}")
             elif f"../{workflow}/reference/iterations/{pid}.md" not in (root / "skills" / skill / "SKILL.md").read_text():
                 errors.append(f"{pid}: {role} skill does not load product iteration plan")
-    active = {p.stem for p in (root / "agents").glob("*.md")}
-    if active != set(owners):
-        errors.append(f"active agents differ from assigned roles: {sorted(active ^ set(owners))}")
-    archived = set(catalog.get("archivedAgents", []))
-    if archived & active:
-        errors.append(f"archived agents are still active: {sorted(archived & active)}")
-    actual_archive = {p.stem for p in (root / "archive" / "agents").glob("*.md")}
-    if archived != actual_archive:
-        errors.append("archived agent inventory differs from preserved files")
+    installed = {p.stem for p in (root / "agents").glob("*.md")}
+    retained_names = catalog.get("retainedAgents", [])
+    retained = set(retained_names)
+    if len(retained) != len(retained_names):
+        errors.append("retained agent inventory contains duplicates")
+    if "archivedAgents" in catalog:
+        errors.append("use retainedAgents for installed specialists outside the README roster")
+    if retained & set(owners):
+        errors.append(f"featured product owners are also listed as retained: {sorted(retained & set(owners))}")
+    for agent in sorted(retained):
+        if not isinstance(agent, str) or not NAME.fullmatch(agent):
+            errors.append(f"invalid retained agent name: {agent!r}")
+            continue
+        path = root / "agents" / f"{agent}.md"
+        if not path.is_file():
+            errors.append(f"missing installed retained agent: {agent}")
+        else:
+            fields = metadata(path)
+            if fields.get("name") != agent:
+                errors.append(f"{agent}: retained agent name disagrees with its file")
+            if fields.get("product") or fields.get("role"):
+                errors.append(f"{agent}: retained specialist cannot claim an uncataloged product role")
+    expected_agents = set(owners) | retained
+    if installed != expected_agents:
+        errors.append(f"installed agents differ from featured and retained inventory: {sorted(installed ^ expected_agents)}")
 
-    # Follow local Markdown references from active instructions. Historical
-    # references are intentionally outside this active dependency graph.
+    # Follow references from every installed agent, including those omitted from
+    # the README. Historical product specifications remain outside this graph.
     pending = list((root / "agents").glob("*.md"))
     for product in catalog.get("products", []):
         for skill in product.get("skills", {}).values():
@@ -113,8 +129,8 @@ def validate(catalog: dict, root: Path = ROOT) -> list[str]:
         content = path.read_text()
         for match in re.finditer(r"\b(?:use|via|to|with|ask|invoke|delegate to)\s+[`*]*([a-z][a-z0-9-]*)[`*]*\b", content, re.I):
             target = match.group(1).lower()
-            if target in archived or target == "unown":
-                errors.append(f"{path.relative_to(root)}: retired agent handoff to {target}")
+            if target == "unown":
+                errors.append(f"{path.relative_to(root)}: unavailable agent handoff to {target}")
         for target in re.findall(r"\]\(([^)]+\.md)(?:#[^)]*)?\)", content):
             if "://" in target or "legacy/" in target or "archive/" in target:
                 continue
@@ -136,7 +152,7 @@ def render(catalog: dict) -> str:
         rows.append(f"| **{product['name']}** | {product['summary']} | [`{build}`](./agents/{build}.md) | [`{configure}`](./agents/{configure}.md) |")
     unassigned = ", ".join(p["name"] for p in catalog["products"] if p["status"] == "unassigned")
     rows += ["", "**Catalog products awaiting scoped ownership:** " + unassigned + ".",
-             "", "Unassigned means no installed product agent is promised. It does not mean the product is absent or deployed.",
+             "", "Unassigned means no dedicated builder/configurer pair is assigned in this catalog. Retained specialists remain available; assignment does not establish deployment.",
              "", END]
     return "\n".join(rows)
 
@@ -163,7 +179,8 @@ def main() -> int:
         print("\n".join(errors))
         return 1
     print(f"product catalog {args.command}: {len(catalog['products'])} products, "
-          f"{sum(p['status'] == 'assigned' for p in catalog['products'])} assigned pairs")
+          f"{sum(p['status'] == 'assigned' for p in catalog['products'])} featured pairs, "
+          f"{len(catalog.get('retainedAgents', []))} retained agents")
     return 0
 
 

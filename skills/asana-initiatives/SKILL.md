@@ -4,13 +4,6 @@ description: "Extending the Hypno initiative-portfolio chat bot and its personal
 disable-model-invocation: true
 ---
 
-> Retained supporting procedure. Historical specialists named below are preserved
-> in `archive/agents/` and are not installed agents. For explicitly requested work,
-> execute this procedure directly; treat those names as historical role references,
-> not delegation targets. Resolve current product ownership through
-> [the product workflow](../guide-product-work/SKILL.md). Do not restore an agent
-> or change a product's ownership implicitly.
-
 # Asana Initiatives (Hypno Runtime)
 
 Guide for designing and extending the **hypno-agent** runtime — a Google Chat assistant for Asana initiative portfolio operations on Vercel.

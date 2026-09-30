@@ -3,13 +3,6 @@ name: county-readiness-preflight
 description: "Fail-closed county readiness validator. Use before county-seed-data, county-ingest-run, onboard-county, or any pilot or full ingest. At the start of every new county, validates skills/use-oracle/runtime/docs/<county>-sources.yaml for GIS vs tax-roll, permit-jurisdiction classification, destination proof, records-request recipients, and BBB advertised-count traps."
 ---
 
-> Retained supporting procedure. Historical specialists named below are preserved
-> in `archive/agents/` and are not installed agents. For explicitly requested work,
-> execute this procedure directly; treat those names as historical role references,
-> not delegation targets. Resolve current product ownership through
-> [the product workflow](../guide-product-work/SKILL.md). Do not restore an agent
-> or change a product's ownership implicitly.
-
 # County Readiness Preflight
 
 This skill is the **hard gate** in front of seed, pilot, and full ingest for **every**

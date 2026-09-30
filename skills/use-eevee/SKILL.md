@@ -3,13 +3,6 @@ name: use-eevee
 description: "Drafting editorial content in the organization's voice — pitches, propositions, website copy, papers, and decks grounded in the curated knowledge base."
 ---
 
-> Retained supporting procedure. Historical specialists named below are preserved
-> in `archive/agents/` and are not installed agents. For explicitly requested work,
-> execute this procedure directly; treat those names as historical role references,
-> not delegation targets. Resolve current product ownership through
-> [the product workflow](../guide-product-work/SKILL.md). Do not restore an agent
-> or change a product's ownership implicitly.
-
 # Use Eevee from Cursor
 
 Eevee is a RAG-backed editorial agent. This skill governs how to operate it from Cursor:

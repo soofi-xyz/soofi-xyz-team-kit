@@ -4,12 +4,6 @@ description: "Verify and bootstrap the local pipeline stack required for county 
 metadata: {"author":"elephant-xyz"}
 ---
 
-> Retained supporting procedure. Historical specialists named below are preserved
-> in `archive/agents/` and are not installed agents. For explicitly requested work,
-> execute this procedure directly; treat those names as historical role references,
-> not delegation targets. Resolve current product ownership through
-> [the product workflow](../guide-product-work/SKILL.md). Do not restore an agent
-> or change a product's ownership implicitly.
 # Bootstrap Oracle Infra
 
 Everything runs locally: Docker Compose (Restate + Postgres) plus one Node

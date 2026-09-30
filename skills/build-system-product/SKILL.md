@@ -35,7 +35,8 @@ SMS/email, blobs, widgets, short links, partner ordering or marketplace packagin
 Compose leaf products through their supported boundaries. Keep Connect with
 Lapras/Wingull, Transform with Kecleon/Silvally, Persist with Conkeldurr/Uxie and
 Rule with Gallade/Meditite. Resolve other ownership from the product catalog.
-Never invent leaf engines inside System or call archived specialists.
+Use retained specialists for supporting work without reassigning product ownership.
+Never invent leaf engines inside System.
 
 ## Acceptance
 

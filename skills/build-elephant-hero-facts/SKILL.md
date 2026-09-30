@@ -4,13 +4,6 @@ description: "Build the Watchog hero-facts service — dataset change detection,
 disable-model-invocation: true
 ---
 
-> Retained supporting procedure. Historical specialists named below are preserved
-> in `archive/agents/` and are not installed agents. For explicitly requested work,
-> execute this procedure directly; treat those names as historical role references,
-> not delegation targets. Resolve current product ownership through
-> [the product workflow](../guide-product-work/SKILL.md). Do not restore an agent
-> or change a product's ownership implicitly.
-
 # Build Elephant Hero Facts
 
 Step-by-step guide for building the **Watchog** hero-facts service: a recurring, evidence-grounded pipeline that turns published Elephant open property data into accurate homepage-hero facts, gated by human approval in Asana and published to the website through a content-only GitHub pull request.

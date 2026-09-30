@@ -1145,7 +1145,7 @@
       "notes": []
     }
   ],
-  "archivedAgents": [
+  "retainedAgents": [
     "abra",
     "alakazam",
     "arceus",

@@ -25,7 +25,9 @@ not permission to use a general platform agent.
   runtime results separate. An agent assignment does not establish deployment.
 - Route a missing capability to that product's builder with a reproducible
   example. Continue independent configuration work but do not fabricate support.
-- Reuse shared engineering skills directly. Do not delegate to archived agents.
+- Reuse shared engineering skills and retained specialists when their scope fits.
+  Discover installed agents from `agents/`; the README features only the product
+  roster. A retained specialist does not replace the catalog's product owner.
 - Read only reference sections relevant to the requested lane. A reference's
   build/deploy procedure does not authorize those actions during a test-only or
   configuration task. Reuse supplied facts and existing authorization when a
