@@ -1,0 +1,30 @@
+# Environment capability map
+
+Use Torterra to implement Environment and Shaymin to configure existing
+capabilities. Follow the [shared workflow](../../SKILL.md). These 6 areas are a
+starting inventory, not a fixed iteration count. Order dependencies and split
+independently useful features further. Use at least four pieces for a full-product
+build; narrow work selects only relevant pieces. Keep automated tests and user/AWS
+feedback inside each piece, not as a final testing phase.
+
+| Feature ID / usable capability | Dependency | Builder increment / configurer exercise | AWS inspection and acceptance |
+| --- | --- | --- | --- |
+| `plan` — inspect and validate a setup plan | Verified Account and Marketplace read contracts | Deliver authenticated plan/read-back using manifest and pinned bundle inputs; compare complete/incomplete manifests, two regions and a caller from another account. Keep planning side-effect free. | Trace the API validation and dependency reads; confirm selected account/region, pinned versions and zero provisioning writes. |
+| `shared-routing` — prepare shared endpoint resources | Valid plan and Account DNS/certificate inventory | Deliver idempotent shared API Gateway domain, usage-plan binding and supported routing metadata. Exercise an existing domain, missing regional certificate and path collision. Account retains DNS/ACM ownership. | Inspect the correlated workflow, API Gateway resources and non-secret SSM outputs; verify retries reuse resources and collisions leave existing mappings intact. |
+| `first-deploy` — close the cold-start gap | Validated plan and shared prerequisites | Deliver the constrained Bootstrap adapter for the first Deploy install and Environment API status/read-back. Compare an absent Deploy service, an already healthy one and failed first install. Reuse artifact validation without creating a second deployment engine. | Inspect authorized CloudFormation events and API health/status. Record how first-install output becomes visible to the Environment API; a CLI-only result leaves HTTP acceptance pending. |
+| `subscriber-handoff` — make the environment self-deploying | Healthy Deploy API and pinned subscriber bundle | Deliver subscriber installation through current Deploy and readiness verification. Vary supported bundle versions and inject unhealthy subscriber output. Keep subscriber keys/history outside Deploy. | Follow Environment request to Deploy run and subscriber health/read-back. Confirm an accepted Deploy run is not reported as a ready environment. |
+| `product-endpoints` — attach and inspect product routes | Shared routing and an installed test product | Deliver supported endpoint registration/read-back and conflict handling for product-owned mappings. Exercise distinct paths, a duplicate claim and an unauthorized owner. Reuse Account domain metadata. | Inspect route ownership, API Gateway mapping and a test API request; verify conflicts do not overwrite an existing product endpoint. |
+| `resume` — recover interrupted setup | The selected setup capabilities | Deliver status, resumable progress and recovery for interrupted setup without replaying completed effects. Exercise pre/post-install failure and changed manifest/bundle input. Resume only under the discovered contract. | Compare original and resumed runs, effect counts and readiness. Verify resume metadata excludes keys, credentials and signed URLs; report cleanup of only owned test resources. |
+
+Read [the product contract](../../../build-bootstrap-cli/reference/PRD.md) and
+[synthetic test data](../../../build-bootstrap-cli/reference/test-data.md).
+Discover actual routes, auth, statuses and test adapters from the target revision.
+Exercise each piece through the HTTP API, including submission/status/results for
+async work. Direct AWS inspection supports evidence; it does not replace API use.
+Start with faked dependencies, then run the real test-stack API/workflow using those
+fakes. Use live dependencies only within authorized scope. Give one invocation and
+at most three AWS inspection steps, collect the person’s redacted ID and observation,
+and wait for that feedback before implementing or configuring the next piece.
+Keep local tests, synthesis, deployed mocked execution and live effects distinct.
+
+Keep identity, underlying AWS account provisioning, DNS/certificate inventory and service keys with Account. Consume Marketplace bundles and let Deploy execute product installations after its first install. Treat Bootstrap as an Environment adapter, not another product.
