@@ -23,7 +23,9 @@
       ending after it are not eligible, and whenever it is before the end of the requested (or most recent
       complete) UTC day the stale mirror is recorded as a ProdMirrorStale data-platform handoff. A slice whose
       actual days never meet an input day records an UpstreamInputEmpty handoff. --lookback-days bounds the days
-      that may be chosen (the most recent N complete UTC days); --catalog adds the slice's recorded
+      that may be chosen: the N complete UTC days before the slice's anchor, which is today, or for a stale actual
+      the day its --data-through cutoff falls on (counted back from the cutoff so the most recent covered day stays
+      reachable), moved back at most 30 days; each slice records its lookback. --catalog adds the slice's recorded
       blockedHandoffs to a slice that has no eligible day. Counts come from bounded newest-first reads
       (prod_actuals.py probe-days, iceberg_snapshot_read.py byUtcDay with the catalog rowFilter as --where, and for
       graph inputs graph_inputs.py edge-days), never a whole-lookback Lambda scan. Never substitutes synthetic data.
@@ -42,6 +44,7 @@ from datetime import datetime, timedelta, timezone
 from silvally_io import SilvallyError, read_json, write_json
 
 DEFAULTS = {"minimumCompleteUtcDays": 1, "allowLongerRange": True}
+MAX_STALE_ANCHOR_DAYS = 30
 CANDIDATE_KEYS = ("start", "endExclusive", "complete", "sourceFamiliesPresent", "coverageSignals", "rowCount",
                   "byteCount", "estimatedCostUsd", "immutableEvidence")
 
@@ -186,6 +189,17 @@ def validate_confirmed(selection: dict | None, policy: dict | None) -> tuple[str
     return "PASS", f"confirmed PROD-derived window [{window['start']}, {window['endExclusive']}) of {int(days)} complete UTC day(s)"
 
 
+def lookback_anchor(today: str, cutoff: datetime | None) -> dict:
+    """The exclusive end of a slice's lookback: today, or the day a stale actual's data cutoff falls on (every earlier
+    day is fully covered), never more than MAX_STALE_ANCHOR_DAYS before today."""
+    if cutoff is None or cutoff.strftime("%Y-%m-%d") >= today:
+        return {"anchor": today, "anchoredAt": "today"}
+    floor = (datetime.fromisoformat(today) - timedelta(days=MAX_STALE_ANCHOR_DAYS)).strftime("%Y-%m-%d")
+    day = cutoff.strftime("%Y-%m-%d")
+    return {"anchor": max(day, floor), "anchoredAt": "data-cutoff" if day >= floor else "max-stale-anchor",
+            "maxStaleAnchorDays": MAX_STALE_ANCHOR_DAYS}
+
+
 def data_days(slice_days: dict, day: str | None, most_recent: bool, now: datetime, data_through: dict | None = None,
               input_days: dict | None = None, lookback_days: int | None = None, catalog: dict | None = None) -> dict:
     """Per-slice real-data check of a UTC day, or the most recent complete UTC day with data per slice.
@@ -197,15 +211,18 @@ def data_days(slice_days: dict, day: str | None, most_recent: bool, now: datetim
     the nearest eligible UTC day (ties go to the earlier day). data_through maps slice -> the PROD actual's data
     cutoff; a day that ends after it is not eligible, and whenever the cutoff is before the end of the requested
     day (or of the most recent complete UTC day) the stale mirror is recorded as a data-platform handoff.
-    lookback_days limits eligible days to the most recent N complete UTC days; catalog adds each slice's recorded
-    blockedHandoffs when it has no eligible day.
+    lookback_days limits eligible days to the N complete UTC days before the slice's lookback anchor: today, or, when
+    the actual is stale, the day its data cutoff falls on (the lookback is counted back from the cutoff, so a stale
+    mirror's most recent covered day stays reachable), moved back at most MAX_STALE_ANCHOR_DAYS before today. catalog
+    adds each slice's recorded blockedHandoffs when it has no eligible day.
     """
     today = now.strftime("%Y-%m-%d")
-    oldest = (datetime.fromisoformat(today) - timedelta(days=lookback_days)).strftime("%Y-%m-%d") if lookback_days else ""
     requested = day or (datetime.fromisoformat(today) - timedelta(days=1)).strftime("%Y-%m-%d")
     out = {}
     for name, counts in sorted(slice_days.items()):
         cutoff = parse_utc((data_through or {})[name]) if name in (data_through or {}) else None
+        anchor = lookback_anchor(today, cutoff)
+        oldest = (datetime.fromisoformat(anchor["anchor"]) - timedelta(days=lookback_days)).strftime("%Y-%m-%d") if lookback_days else ""
         inputs = (input_days or {}).get(name)
         covered = (lambda d: cutoff is None or parse_utc(d + "T00:00:00Z") + timedelta(days=1) <= cutoff)
         fed = (lambda d: inputs is None or bool(inputs.get(d)))
@@ -225,6 +242,8 @@ def data_days(slice_days: dict, day: str | None, most_recent: bool, now: datetim
                 "HAS_DATA" if fed(day) else "INPUT_EMPTY")
             out[name] = {"day": day, "rows": rows, "status": status,
                          "nearestDayWithData": day if status == "HAS_DATA" else nearest}
+        if lookback_days:
+            out[name]["lookback"] = {**anchor, "days": lookback_days, "oldestEligibleDay": oldest}
         handoffs = []
         if inputs is not None:
             fed_days = sorted(d for d, n in inputs.items() if n)
@@ -291,7 +310,8 @@ def main(argv: list[str] | None = None) -> int:
                    help="SLICE=ISO: the slice's PROD-actual data cutoff; later days are not eligible")
     d.add_argument("--input-days", action="append", default=[],
                    help='{"<slice>": {"YYYY-MM-DD": rows}} of the slice\'s Transform inputs (repeatable); a day needs rows on both sides')
-    d.add_argument("--lookback-days", type=int, help="only the most recent N complete UTC days are eligible (a bounded choice)")
+    d.add_argument("--lookback-days", type=int, help="only the N complete UTC days before the anchor are eligible: today, or a stale "
+                                                     "actual's data cutoff day (at most 30 days back)")
     d.add_argument("--catalog", help="PROD-actuals catalog; a slice without an eligible day also gets its blockedHandoffs")
     d.add_argument("--out", required=True)
     args = parser.parse_args(argv)

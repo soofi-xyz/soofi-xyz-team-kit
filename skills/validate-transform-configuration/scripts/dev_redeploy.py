@@ -6,7 +6,10 @@
       [--slug OWNER/REPO --head-sha <pinned candidate commit>] --out check.json
       Read-only: download the served transform-mappings/<id>/<version>/mapping.json and compare its SHA-256 with the
       pin. SERVED (equal), PRUNED (absent) or DIGEST_DIFFERS. With --slug and --head-sha the newest successful run of
-      the layout's DEV deploy workflow (gh, read-only) classifies a mismatch:
+      the layout's DEV deploy workflow (gh, read-only) classifies a mismatch. The newest run is chosen from every run
+      of that workflow across all branches created within devDeploy.runListHorizonDays (default 30, GitHub's re-run
+      horizon; the listing grows past runListLimit instead of truncating), completed with conclusion success and the
+      layout's event, ordered by completion (updatedAt), then creation, attempt and run id:
         DeploymentRace  another head deployed after the pin (latest-PR-wins prune or overwrite): BLOCKED, recoverable
                         with the owner's devRedeployPinned decision;
         DeploymentDrift the pinned head's own deploy is the newest and still does not serve the pin: the candidate or
@@ -17,7 +20,8 @@
       find the newest run of the layout's devDeploy.workflowFile for the pinned head SHA (gh run list --commit) and
       re-run it in full (gh run rerun <id>); a run still in progress is waited for, not re-run. The operation card and
       its owner approval are recorded under RUN/deployments/. With --wait, poll the run to completion and then the
-      served digest until it equals the pin. At most maxRedeploys (layout devDeploy, default 2; the owner may lower or
+      served digest until it equals the pin; with --workspace, then refresh that workspace's registry snapshot of the
+      mapping (read-only: mapping.json and its inputs-manifest.json record with the served VersionId). At most maxRedeploys (layout devDeploy, default 2; the owner may lower or
       raise it with "up to N times") re-runs per run directory; the next prune is BLOCKED with a DeploymentRace
       handoff (make the DEV registry additive across PR deploys, or hold other DEV deploys during validation).
 
@@ -33,6 +37,7 @@ import os
 import subprocess
 import tempfile
 import time
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from silvally_io import DEFAULT_REGION, SilvallyError, aws, canonical_digest, load_layout, parse_s3, read_json, sha256_file, write_json
@@ -69,8 +74,10 @@ def registry_uri(args) -> str:
     return entry["location"].rstrip("/") + "/"
 
 
-def served_status(location: str, mapping: str, pin: str, profile: str, region: str = DEFAULT_REGION) -> dict:
-    """Read-only: the served mapping.json of id@version under the registry location, compared with the pinned digest."""
+def served_status(location: str, mapping: str, pin: str, profile: str, region: str = DEFAULT_REGION,
+                  keep: Path | None = None) -> dict:
+    """Read-only: the served mapping.json of id@version under the registry location, compared with the pinned digest.
+    keep receives a copy of the served file (the workspace registry snapshot)."""
     mapping_id, version = mapping.split("@")
     bucket, prefix = parse_s3(location.rstrip("/") + "/")
     key = f"{prefix}{mapping_id}/{version}/mapping.json"
@@ -86,23 +93,58 @@ def served_status(location: str, mapping: str, pin: str, profile: str, region: s
         aws(["s3", "cp", f"s3://{bucket}/{key}", str(target), "--quiet"], profile=profile, region=region,
             environment="prod", output_json=False)
         served = sha256_file(target)
+        if keep is not None:
+            keep.parent.mkdir(parents=True, exist_ok=True)
+            keep.write_bytes(target.read_bytes())
     return {**record, "status": "SERVED" if served == pin else "DIGEST_DIFFERS", "served": served,
             "versionId": head.get("VersionId"), "lastModified": head.get("LastModified")}
 
 
-def deploy_runs(slug: str, workflow: str, extra: list[str]) -> list[dict]:
-    fields = "databaseId,headSha,headBranch,status,conclusion,createdAt,updatedAt,attempt,event,workflowName"
-    return json.loads(gh(["run", "list", "-R", slug, "--workflow", workflow, *extra, "--limit", "30", "--json", fields]) or "[]")
+RUN_FIELDS = "databaseId,headSha,headBranch,status,conclusion,createdAt,updatedAt,attempt,event,workflowName"
+
+
+def deploy_runs(slug: str, workflow: str, extra: list[str], limit: int = 30) -> list[dict]:
+    return json.loads(gh(["run", "list", "-R", slug, "--workflow", workflow, *extra, "--limit", str(limit), "--json", RUN_FIELDS]) or "[]")
+
+
+def list_all_runs(slug: str, deploy: dict, now: datetime | None = None) -> tuple[list[dict], dict]:
+    """Every run of the DEV deploy workflow created within the re-run horizon, across all branches.
+
+    gh run list pages internally up to --limit and orders by creation, so a run created long ago and re-run recently can
+    fall behind newer creations; the created filter bounds the listing to the horizon in which GitHub still allows a
+    re-run, and the limit grows until the listing is shorter than it (never a silently truncated page)."""
+    horizon = deploy.get("runListHorizonDays", 30)
+    since = ((now or datetime.now(timezone.utc)) - timedelta(days=horizon)).strftime("%Y-%m-%d")
+    limit = deploy.get("runListLimit", 1000)
+    while True:
+        runs = deploy_runs(slug, deploy["workflowFile"], ["--created", f">={since}"], limit)
+        if len(runs) < limit:
+            return runs, {"createdSince": since, "limit": limit, "listed": len(runs)}
+        if limit >= deploy.get("runListMaxLimit", 8000):
+            raise SilvallyError(f"more than {limit} {deploy['workflowFile']} runs since {since}; the newest DEV deploy cannot be "
+                                "determined from a truncated listing")
+        limit *= 2
+
+
+def newest_successful_deploy(runs: list[dict], deploy: dict) -> dict | None:
+    """The newest completed, successful DEV deploy run: latest completion (updatedAt), then creation, attempt and run id,
+    so the same listing always selects the same run whatever order gh returned it in."""
+    done = [r for r in runs if r.get("status") == "completed" and r.get("conclusion") == "success"
+            and (not deploy.get("event") or r.get("event") == deploy["event"])
+            and "prod" not in str(r.get("workflowName") or "").lower()]
+    return max(done, key=lambda r: (r.get("updatedAt") or r.get("createdAt") or "", r.get("createdAt") or "",
+                                    r.get("attempt") or 0, r.get("databaseId") or 0), default=None)
 
 
 def classify(check: dict, slug: str, head_sha: str, deploy: dict) -> dict:
     """Who deployed last decides whether a mismatch is a recoverable race or a wrong candidate."""
     if check["status"] == "SERVED":
         return {**check, "classification": None}
-    done = [r for r in deploy_runs(slug, deploy["workflowFile"], ["--status", "success"]) if r.get("event") == deploy["event"]]
-    newest = max(done, key=lambda r: r.get("updatedAt") or r.get("createdAt") or "", default=None)
-    base = {**check, "repository": slug, "headSha": head_sha,
-            "newestDeploy": {k: newest.get(k) for k in ("databaseId", "headSha", "headBranch", "updatedAt", "attempt")} if newest else None}
+    runs, listing = list_all_runs(slug, deploy)
+    newest = newest_successful_deploy(runs, deploy)
+    base = {**check, "repository": slug, "headSha": head_sha, "deployListing": listing,
+            "newestDeploy": {k: newest.get(k) for k in ("databaseId", "headSha", "headBranch", "createdAt", "updatedAt", "attempt")}
+            if newest else None}
     if newest and newest.get("headSha") != head_sha:
         return {**base, "classification": "DeploymentRace", "verdict": "BLOCKED", "recoverable": True,
                 "detail": (f"the newest successful DEV deploy is another head ({newest.get('headBranch')}); the pinned "
@@ -111,6 +153,27 @@ def classify(check: dict, slug: str, head_sha: str, deploy: dict) -> dict:
             "detail": ("the pinned head's own DEV deploy is the newest and does not serve the pinned digest: the candidate "
                        "or its build differs from what the registry publishes (hand to Kecleon / the registry owner)")
             if newest else "no successful DEV deploy of the pinned head was found; the candidate was never published"}
+
+
+def refresh_snapshot(workspace: str, label: str, check: dict, profile: str, region: str) -> dict:
+    """Read-only on AWS: after a redeploy, replace the workspace's registry snapshot of the redeployed id@version (its
+    mapping.json and the inputs-manifest.json record with the served VersionId), so a later spec-from-intent pins what
+    DEV serves now instead of the pre-redeploy snapshot."""
+    manifest_path = Path(workspace) / "inputs-manifest.json"
+    manifest = read_json(manifest_path)
+    entry = next((e for e in manifest if e.get("kind") == "registry" and e.get("name") == label), None)
+    if not entry:
+        raise SilvallyError(f"no registry {label} in {manifest_path}")
+    mapping_id, version = check["mapping"].split("@")
+    keep = Path(entry["path"]) / mapping_id / version / "mapping.json" if entry.get("path") else None
+    served = served_status(check["registry"], check["mapping"], check["pin"], profile, region, keep=keep)
+    if served["status"] != "SERVED":
+        return {**served, "snapshot": "unchanged"}
+    record = {"mapping": check["mapping"], "sha256": served["served"], "versionId": served.get("versionId"),
+              "lastModified": served.get("lastModified"), "refreshedAt": served["checkedAt"]}
+    entry["mappings"] = [m for m in entry.get("mappings", []) if m.get("mapping") != check["mapping"]] + [record]
+    write_json(manifest_path, manifest)
+    return {**served, "snapshot": str(manifest_path)}
 
 
 def refuse_prod(deploy: dict, run: dict | None = None) -> None:
@@ -203,6 +266,8 @@ def cmd_redeploy(args) -> int:
             result["status"] = "SERVED" if served and served["status"] == "SERVED" else "BLOCKED"
             if result["status"] == "BLOCKED":
                 result["blocking"] = "DeploymentRace: the redeployed run succeeded but DEV still does not serve the pin"
+            elif args.workspace:
+                result["snapshotRefresh"] = refresh_snapshot(args.workspace, args.label, check, args.profile, args.region)
     write_json(run_dir / "deployments" / f"redeploy-{attempt}.result.json", result)
     write_json(args.out, result)
     print(json.dumps(result, indent=1))
@@ -236,6 +301,8 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--timeout-minutes", type=float)
     r.add_argument("--poll-seconds", type=float)
     r.add_argument("--poll-attempts", type=int)
+    r.add_argument("--workspace", help="the resolver's workspace; once served, its registry snapshot of the mapping is refreshed")
+    r.add_argument("--label", default="dev", help="registry label of the refreshed snapshot")
     r.add_argument("--out", required=True)
     args = parser.parse_args(argv)
     if args.command == "redeploy" and args.wait and not args.profile:

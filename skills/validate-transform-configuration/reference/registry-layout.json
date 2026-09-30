@@ -39,6 +39,8 @@
     "mechanism": "gh-run-rerun",
     "forbiddenWorkflowFiles": ["ci-cd-prod.yml"],
     "maxRedeploys": 2,
+    "runListHorizonDays": 30,
+    "runListLimit": 1000,
     "runTimeoutMinutes": 45,
     "servedPollSeconds": 30,
     "servedPollAttempts": 20

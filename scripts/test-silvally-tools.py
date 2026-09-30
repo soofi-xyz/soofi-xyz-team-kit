@@ -1616,7 +1616,7 @@ save()""")
                        "request": {"outputDatasets": ["member_report"], "inputs": [{"table": "vertex-member", "s3Uri": "s3://b/in/vertex-member/"}]}}]}
     for label, served in (("live-served", True), ("live-pruned", False)):
         silvally_io.write_json(work / f"{label}.json", spec)
-        run_tool("transform_runs.py", "cards", "--spec", str(work / f"{label}.json"), "--run-dir", str(work / label))
+        run_tool("transform_runs.py", "cards", "--spec", str(work / f"{label}.json"), "--run-dir", str(work / label), env=env)
         state_doc = json.loads(state.read_text())
         silvally_io.write_json(state, {**state_doc, "served": served})
         started = run_tool("transform_runs.py", "start", "--run-dir", str(work / label), "--approver", "owner", "--scope", "blanket",
@@ -1805,6 +1805,379 @@ def test_owner_intake_defaults(tmp: Path) -> None:
                    "stated policy default (owner may require a canary, the profile wins), defaults stated up front")
 
 
+class patched_path:
+    """Put a shim directory first on PATH for in-process calls of the tools' functions."""
+
+    def __init__(self, env: dict):
+        self.path = env["PATH"]
+
+    def __enter__(self):
+        self.saved = os.environ["PATH"]
+        os.environ["PATH"] = self.path
+
+    def __exit__(self, *exc):
+        os.environ["PATH"] = self.saved
+
+
+def test_redeploy_pin_refresh(tmp: Path) -> None:
+    """A spec built before a redeploy has a null pin versionId: it matches on the SHA-256, and cards refresh the pin."""
+    import dev_redeploy
+    work = tmp / "pin-refresh"
+    plan = {"sha256": "a" * 64, "versionId": "v-redeployed"}
+    for pin, served, expected in (({"sha256": "a" * 64, "versionId": None}, None, True), ({"sha256": "a" * 64}, None, True),
+                                  ({"sha256": "a" * 64, "versionId": "v-before"}, "v-redeployed", True),
+                                  ({"sha256": "a" * 64, "versionId": "v-before"}, None, False),
+                                  ({"sha256": "b" * 64, "versionId": None}, None, False)):
+        if transform_runs.pin_matches(plan, pin, served) is not expected:
+            fail(f"pin_matches({pin}, served={served}) is not {expected}")
+    served_doc = work / "served-mapping.json"
+    served_doc.parent.mkdir(parents=True)
+    served_doc.write_text('{"id": "canon-to-omega", "version": "2.0.0"}')
+    pin = silvally_io.sha256_file(served_doc)
+    env = aws_shim(work / "bin", f"""
+key = "transform-mappings/canon-to-omega/2.0.0/mapping.json"
+if args[:2] == ["s3api", "list-objects-v2"]:
+    print(json.dumps({{"Contents": [{{"Key": key}}]}}))
+elif args[:2] == ["s3api", "head-object"]:
+    print(json.dumps({{"VersionId": "v-redeployed", "LastModified": "2026-09-30T21:38:45+00:00"}}))
+elif args[:2] == ["s3", "cp"]:
+    shutil.copy({str(served_doc)!r}, args[3])
+else:
+    sys.exit("unexpected aws call: " + " ".join(args))""")
+    registry = "s3://example-dev-registry/transform-mappings/"
+    spec = {"runId": "20260930T213000Z", "stateMachineArn": "arn:aws:states:xx-test-1:000000000000:stateMachine:dev-transform-pipeline",
+            "outputRoot": "s3://example-dev-bucket/outputs/silvally-test/", "profile": "example-dev", "region": "xx-test-1", "stage": "canary",
+            "mappings": {"canon-to-omega@2.0.0": {"sha256": pin, "versionId": None}},
+            "deployment": {"registry": "dev", "served": False, "drift": "absent", "location": registry,
+                           "blocking": "DeploymentDrift: the environment does not serve the pinned mapping"},
+            "cases": [{"case": "m2d", "mapping": "canon-to-omega@2.0.0", "expected": "PASS",
+                       "request": {"outputDatasets": ["member_report"], "inputs": [{"table": "vertex-member", "s3Uri": "s3://b/in/vertex-member/"}]}}]}
+    silvally_io.write_json(work / "spec.json", spec)
+    run_tool("transform_runs.py", "cards", "--spec", str(work / "spec.json"), "--run-dir", str(work / "run"), env=env)
+    stored = json.loads((work / "run" / "run-spec.json").read_text())
+    card = json.loads((work / "run" / "cards" / "1-m2d.json").read_text())
+    if stored["mappings"]["canon-to-omega@2.0.0"]["versionId"] != "v-redeployed" or stored["deployment"]["drift"] is not None \
+            or card["mappingPin"]["versionId"] != "v-redeployed" or not (work / "run" / "deployment-checks" / "refresh-canon-to-omega-2.0.0.json").exists():
+        fail(f"cards did not refresh a pre-redeploy pin from what DEV serves: {stored['mappings']} {stored['deployment']}")
+    ws = work / "ws"
+    silvally_io.write_json(ws / "inputs-manifest.json", [{"kind": "registry", "name": "dev", "location": registry, "path": str(ws / "registry-dev"),
+                                                          "mappings": [{"mapping": "canon-to-omega@1.0.0", "sha256": "c" * 64}]}])
+    check = {"mapping": "canon-to-omega@2.0.0", "registry": registry, "pin": pin}
+    with patched_path(env):
+        refreshed = dev_redeploy.refresh_snapshot(str(ws), "dev", check, "example-dev", "xx-test-1")
+    records = {m["mapping"]: m for m in json.loads((ws / "inputs-manifest.json").read_text())[0]["mappings"]}
+    if refreshed["status"] != "SERVED" or records["canon-to-omega@2.0.0"]["versionId"] != "v-redeployed" or "canon-to-omega@1.0.0" not in records \
+            or silvally_io.sha256_file(ws / "registry-dev" / "canon-to-omega" / "2.0.0" / "mapping.json") != pin:
+        fail(f"the workspace registry snapshot was not refreshed after the redeploy: {records}")
+    results.append("pin refresh: a null pin versionId matches on SHA-256, the VersionId served before StartExecution is accepted, "
+                   "cards and the redeploy refresh the pin and the workspace snapshot read-only")
+
+
+def test_package_spec_generation(tmp: Path) -> None:
+    """build_run_package derives the package spec from the run's records; --package-spec only overrides."""
+    work = tmp / "package-gen"
+    root = work / "canon-to-omega-20260930T211141Z-abc123"
+    silvally_io.write_json(root / ".silvally-run.json", {"label": "canon-to-omega"})
+    candidate, main, pin = "a" * 40, "b" * 40, "3" * 64
+    arn = "arn:aws:states:us-east-2:000000000000:stateMachine:Example-transform-pipeline"
+    dirs = {}
+    for label, stage, digest_char in (("canary-dsa", "canary", "d"), ("full-dsa", "full", "f")):
+        directory = dirs[label] = root / label
+        step = "1-dsa"
+        silvally_io.write_json(directory / "run-spec.json", {"runId": f"abc123-{label}", "stateMachineArn": arn, "region": "us-east-2",
+                                                              "stage": stage, "slices": ["dsa"],
+                                                              "mappings": {"canon-to-omega@2.0.0": {"sha256": pin, "versionId": None}}})
+        silvally_io.write_json(directory / "steps.json", [{"step": step, "status": "SUCCEEDED", "verdict": "PASS",
+                                                           "executionArn": f"{arn.replace(':stateMachine:', ':execution:')}:silvally-{label}",
+                                                           "outputPrefix": f"s3://example-dev-bucket/outputs/{label}/",
+                                                           "outputs": [{"dataset": "ledger_summary", "physicalRows": 33, "contentSha256": "8" * 64,
+                                                                        "headers": ["member_id|ledger_name"]}] if stage == "full" else []}])
+        silvally_io.write_json(directory / "approvals" / f"{step}.json", {"operationDigest": "sha256:" + digest_char * 64,
+                                                                         "mappingPin": {"mapping": "canon-to-omega@2.0.0"},
+                                                                         "approval": {"operationDigest": "sha256:" + digest_char * 64, "status": "APPROVED",
+                                                                                      "recordedAt": "2026-09-30T22:00:00Z"}})
+        silvally_io.write_json(directory / "steps" / step / "history.json", {"events": []})
+        silvally_io.write_json(directory / "cost.json", {"actualUsd": 0.05, "ceilingUsd": 10})
+    silvally_io.write_json(root / "ws" / "inputs-manifest.json", [
+        {"kind": "repository", "name": "registry-candidate", "slug": "Example-Org/registry", "commitSha": candidate, "selectionMethod": "pull-request",
+         "pullRequestNumber": 814, "path": str(root / "ws" / "registry-candidate"), "requiredPathsVerified": True, "missingRequiredPaths": []},
+        {"kind": "repository", "name": "registry-main", "slug": "Example-Org/registry", "commitSha": main, "selectionMethod": "default-branch",
+         "path": str(root / "ws" / "registry-main"), "requiredPathsVerified": True, "missingRequiredPaths": []}])
+    languages = {n: {"definition": {"path": f"src/data/{n}.json", "sha256": c * 64}} for n, c in (("canon", "4"), ("omega", "5"))}
+    silvally_io.write_json(root / "intent.json", {"status": "RESOLVED", "languages": languages, "selection": {"selected": "canon-to-omega@2.0.0"},
+                                                  "primaryDirection": {"from": "canon", "to": "omega"},
+                                                  "slices": [{"id": "sms", "outputDatasets": ["member_report"]}, {"id": "dsa", "outputDatasets": ["ledger_summary"]}],
+                                                  "workflow": {"persistPolicyDefault": "forbidden"},
+                                                  "versionSelection": {**VERSION_SELECTION, "pin": {**VERSION_SELECTION["pin"], "sha256": pin}}})
+    silvally_io.write_json(root / "run-profile.json", {"id": "run-scoped-canon-to-omega-76ff2f7703a0", "kind": "run-scoped-profile",
+                                                       "graph": {"required": False}, "validationWorkflow": {"persistPolicy": "forbidden"},
+                                                       "promotion": {"sensitiveSlices": ["sms"]},
+                                                       "directions": [{"id": "canon-to-omega", "fromLanguage": "canon", "toLanguage": "omega"}]})
+    phases = {n: "PASS" for n in range(1, 13)}
+    sms = {n: "BLOCKED" for n in (1, 7, 9, 10, 11, 12)}
+    phases.update(sms)
+    reasons = {1: ["BLOCKED: [sms] UpstreamInputEmpty: sms has PROD-actual rows but no Transform input rows on any day with actual data"],
+               7: ["BLOCKED: [sms] ProdActualsUnavailable: no PROD-actuals baseline"],
+               10: ["BLOCKED: [sms] FullRunNotStarted: no canary ran (cause: phase 1 BLOCKED)"],
+               11: ["BLOCKED: [sms] no approved full-window run to compare"]}
+    evaluation = {"mode": "observed-dev", "mappings": ["canon-to-omega@2.0.0"], "verdict": "BLOCKED",
+                  "slices": {"dsa": {"verdict": "READY", "window": None, "canaryGate": "PRE_APPROVED", "phases": {str(n): "PASS" for n in range(1, 13)}},
+                             "sms": {"verdict": "BLOCKED", "window": None, "canaryGate": "ABSENT",
+                                     "phases": {str(n): sms.get(n, "PASS") for n in range(1, 13)}}},
+                  "ownerDecisions": {"acceptProductChanges": True, "windowSelection": "most-recent-full-utc-day-with-data-per-slice"},
+                  "acceptedProductChanges": ["generic-zoderror-on-empty-inputs"], "productChangeFlags": [],
+                  "informationalFindings": ["ProdMirrorStale", "SmsStatusProviderNull", "UpstreamInputEmpty"],
+                  "phases": [{"number": n, "name": f"phase {n}", "status": phases[n], "reasons": reasons.get(n, []),
+                              "evidenceIds": ["canary-comparison" if n == 9 else f"phase-{n}"]} for n in range(1, 13)]}
+    silvally_io.write_json(root / "evaluation.json", evaluation)
+    silvally_io.write_json(root / "data-days.json", {"slices": {"sms": {"status": "INPUT_EMPTY", "handoffs": [
+        {"code": "UpstreamInputEmpty", "owner": "the slice's upstream producer (Persist ingestion)", "detail": "no UTC day has both PROD-actual rows and Transform input rows"},
+        {"code": "ProdMirrorStale", "owner": "data platform (the mirror's ETL)", "detail": "the PROD actual's data stops at 2026-09-06T05:31:00Z"}]}}})
+    base = ["--run-dir", str(dirs["full-dsa"]), "--canary-run-dir", str(dirs["canary-dsa"]), "--evaluation", str(root / "evaluation.json"),
+            "--intent", str(root / "intent.json"), "--workspace", str(root / "ws"), "--profile-doc", str(root / "run-profile.json"),
+            "--handoffs", str(root / "data-days.json"), "--layout", str(FIXTURE / "layout.json"), "--out", str(root / "run.json")]
+    incomplete = run_tool("build_run_package.py", *base, check=False)
+    if incomplete.returncode == 0 or "PackageSpecIncomplete" not in incomplete.stderr or "--transform-revision" not in incomplete.stderr:
+        fail(f"a package without the Transform provenance was not PackageSpecIncomplete naming the flags: {incomplete.stderr[-400:]}")
+    provenance = ["--transform-revision", "c" * 40, "--transform-deployment-digest", "9" * 64, "--spark-version", "3.3"]
+    built = run_tool("build_run_package.py", *base, *provenance, "--write-package-spec", str(root / "package-spec.json"), check=False)
+    if built.returncode != 0:
+        fail(f"the package spec was not generated from the run's records: {built.stderr[-800:]}")
+    run = json.loads((root / "run.json").read_text())
+    package = run["configurationPackage"]
+    codes = {r["findingCode"]: r for r in run["remediations"]}
+    trace = {t["selectedCommitSha"]: t for t in run["discoveryTrace"]}
+    if run["verdict"] != "BLOCKED" or trace[candidate]["selectionMethod"] != "requested-ref" or trace[candidate]["pullRequestNumber"] != 814 \
+            or trace[main]["selectionMethod"] != "default-branch":
+        fail(f"discoveryTrace was not derived from the pinned repositories: {run['discoveryTrace']}")
+    if package["id"] != "canon-to-omega-dsa-sms" or package["deployedDigest"] != "sha256:" + pin \
+            or [d["id"] for d in package["directions"]] != ["canon-to-omega-dsa", "canon-to-omega-sms"] \
+            or package["directions"][0]["sourceLanguage"] != {"id": "canon", "revision": candidate, "sha256": "sha256:" + "4" * 64} \
+            or package["lexicon"]["revision"] != main or package["transformProduct"]["sha256"] != "sha256:" + "9" * 64:
+        fail(f"configurationPackage was not derived from the intent and pins: {package}")
+    if run["environment"]["accountHash"] != "sha256:" + silvally_io.sha256_bytes(b"000000000000") or run["environment"]["region"] != "us-east-2" \
+            or run["sensitivity"]["classification"] != "restricted" or run["runtime"]["executionMode"] != "observed-dev" \
+            or run["persistCanary"]["required"] or not run["id"].startswith("validation-"):
+        fail(f"environment, sensitivity, runtime or Persist policy were not derived: {run['environment']} {run['runtime']}")
+    if set(codes) != {"UpstreamInputEmpty", "ProdMirrorStale", "SmsStatusProviderNull"} or codes["UpstreamInputEmpty"]["rerunPhases"] != [1, 7, 9, 10, 11, 12] \
+            or codes["UpstreamInputEmpty"]["rerunDirections"] != ["canon-to-omega-sms"] or codes["ProdMirrorStale"]["status"] != "BLOCKED":
+        fail(f"remediations were not derived from the recorded handoffs of the blocked slice: {run['remediations']}")
+    failures = {(f["phase"], f["code"]) for f in run["failures"]}
+    if (1, "UpstreamInputEmpty") not in failures or (11, "PhaseBlocked") not in failures:
+        fail(f"failures were not derived from the evaluation's reasons: {failures}")
+    decisions = {d["id"]: d for d in run["boundaryDecisions"]}
+    if not decisions.get("generic-zoderror-on-empty-inputs", {}).get("ownerAccepted") or not json.loads((root / "package-spec.json").read_text()).get("remediations"):
+        fail(f"accepted product changes or the effective spec were not recorded: {decisions}")
+    override = {"remediations": [{**codes["UpstreamInputEmpty"], "owner": "Persist SMS ingestion (text-message status producer)"}],
+                "configurationPackage": {"marketplaceRegistrationReady": False, "testEvidenceIds": ["registry-pr-814-ci"]}}
+    silvally_io.write_json(root / "override.json", override)
+    run_tool("build_run_package.py", *base, *provenance, "--package-spec", str(root / "override.json"))
+    overridden = json.loads((root / "run.json").read_text())
+    if [r["owner"] for r in overridden["remediations"]] != ["Persist SMS ingestion (text-message status producer)"] \
+            or overridden["configurationPackage"]["testEvidenceIds"] != ["registry-pr-814-ci"] \
+            or overridden["configurationPackage"]["deployedDigest"] != "sha256:" + pin:
+        fail("an override did not replace its keys (merging configurationPackage key by key)")
+    unexplained = dict(evaluation, informationalFindings=[])
+    silvally_io.write_json(root / "unexplained.json", unexplained)
+    bare = [a if a != str(root / "evaluation.json") else str(root / "unexplained.json") for a in base if a not in ("--handoffs", str(root / "data-days.json"))]
+    stopped = run_tool("build_run_package.py", *bare, *provenance, check=False)
+    if stopped.returncode == 0 or "no recorded handoff explains" not in stopped.stderr:
+        fail(f"a blocked package without a recorded handoff invented a remediation: {stopped.stderr[-400:]}")
+    results.append("build_run_package generates the package spec from the run directories, workspace, intent, run-scoped profile, "
+                   "evaluation and recorded handoffs; Transform provenance is never invented; --package-spec overrides")
+
+
+def test_newest_dev_deploy(tmp: Path) -> None:
+    """The newest successful DEV deploy is deterministic: full listing, completion order, success and event filters."""
+    import random
+    import dev_redeploy
+    fixture = json.loads((FIXTURE / "gh-run-list-dev-deploys.json").read_text())
+    deploy = {**json.loads((SKILL / "reference" / "registry-layout.json").read_text())["devDeploy"]}
+    picks = set()
+    for seed in range(6):
+        shuffled = list(fixture)
+        random.Random(seed).shuffle(shuffled)
+        picks.add(dev_redeploy.newest_successful_deploy(shuffled, deploy)["databaseId"])
+    if picks != {1650}:
+        fail(f"the newest successful DEV deploy depends on listing order or ignores completion time: {picks}")
+    only_old = [r for r in fixture if r["databaseId"] in (1200, 1700, 1690)]
+    if dev_redeploy.newest_successful_deploy(only_old, deploy)["databaseId"] != 1200:
+        fail("in-progress or failed runs were chosen over the only successful deploy")
+    calls = tmp / "gh-calls.json"
+    env = gh_shim(tmp / "gh-list-bin", f"""
+calls = json.load(open({str(calls)!r})) if os.path.exists({str(calls)!r}) else []
+calls.append(args)
+json.dump(calls, open({str(calls)!r}, "w"))
+runs = json.load(open({str(FIXTURE / "gh-run-list-dev-deploys.json")!r}))
+print(json.dumps(runs[:int(args[args.index("--limit") + 1])]))""")
+    from datetime import datetime, timezone
+    now = datetime(2026, 9, 30, 23, 0, tzinfo=timezone.utc)
+    with patched_path(env):
+        runs, listing = dev_redeploy.list_all_runs("example-org/registry", {**deploy, "runListLimit": 3}, now)
+    made = json.loads(calls.read_text())
+    if len(runs) != len(fixture) or [c[c.index("--limit") + 1] for c in made] != ["3", "6", "12"] \
+            or any("--status" in c or c[c.index("--created") + 1] != ">=2026-08-31" for c in made) or listing["listed"] != len(fixture):
+        fail(f"the DEV deploy listing was truncated, status-filtered server-side or not bounded by creation: {made} {listing}")
+    try:
+        with patched_path(env):
+            dev_redeploy.list_all_runs("example-org/registry", {**deploy, "runListLimit": 2, "runListMaxLimit": 4}, now)
+        fail("a listing still truncated at the maximum limit was accepted")
+    except silvally_io.SilvallyError:
+        pass
+    results.append("newest DEV deploy: full creation-bounded listing across branches, completed successful runs of the layout's event, "
+                   "ordered by completion then creation, attempt and id; the same run whatever the listing order")
+
+
+def test_regress_by_input_content(tmp: Path) -> None:
+    """Runs stage to new prefixes; regress matches by mapping digest, slice, outputs, expectation and input content."""
+    work = tmp / "regress-content"
+    manifest = {"prefix": "s3://example-dev-bucket/inputs/pkg_v1/", "objects": [
+        {"key": "derived/vertex-member/part-00000.jsonl", "dataset": "vertex-member", "bytes": 10, "sha256": "1" * 64, "rows": 3},
+        {"key": "derived/vertex-ledger/part-00000.jsonl", "dataset": "vertex-ledger", "bytes": 10, "sha256": "2" * 64, "rows": 2}]}
+    silvally_io.write_json(work / "manifest.json", manifest)
+    env = aws_shim(work / "bin", f"""
+if args[:2] == ["s3", "cp"] and args[2] == "s3://example-dev-bucket/inputs/pkg_v1/manifest.json":
+    shutil.copy({str(work / "manifest.json")!r}, args[3])
+else:
+    sys.exit(1)""")
+    with patched_path(env):
+        found = transform_runs.binding_manifest("s3://example-dev-bucket/inputs/pkg_v1/derived/", "example-dev", "xx-test-1")
+    content = transform_runs.input_content("s3://example-dev-bucket/inputs/pkg_v1/derived/", ["vertex-ledger", "vertex-member"], found)
+    moved = transform_runs.input_content("s3://other/p2/derived/", ["vertex-ledger", "vertex-member"], ("s3://other/p2/", manifest))
+    if not found or not content or content != moved or transform_runs.input_content("s3://x/derived/", ["vertex-missing"], ("s3://x/", manifest)):
+        fail(f"input content digests were not read from the package manifest or depend on the prefix: {content} {moved}")
+
+    def run(directory: Path, prefix: str, inputs: dict | None, rows: int = 33) -> None:
+        tables = ["vertex-ledger", "vertex-member"]
+        case = {"case": "dsa", "mapping": "canon-to-omega@2.0.0", "expected": "PASS", "slice": "dsa",
+                "request": {"outputDatasets": ["ledger_summary"], "inputs": [{"table": t, "s3Uri": f"{prefix}{t}/"} for t in tables]}}
+        if inputs:
+            case["inputContent"] = inputs
+        silvally_io.write_json(directory / "run-spec.json", {"slices": ["dsa"], "cases": [case],
+                                                             "mappings": {"canon-to-omega@2.0.0": {"sha256": "3" * 64}}})
+        silvally_io.write_json(directory / "steps.json", [{"step": "1-dsa", "verdict": "PASS",
+                                                           "outputs": [{"dataset": "ledger_summary", "physicalRows": rows, "contentSha256": "e" * 64}]}])
+    run(work / "base", "s3://b/inputs/2026-09-05_dsa_run1_v1/", content)
+    run(work / "same", "s3://b/inputs/2026-09-05_dsa_run2_v1/", content)
+    run(work / "other", "s3://b/inputs/2026-09-05_dsa_run3_v1/", {**content, "vertex-member": "sha256:" + "7" * 64})
+    run(work / "unknown", "s3://b/inputs/2026-09-05_dsa_run4_v1/", None)
+    run(work / "changed", "s3://b/inputs/2026-09-05_dsa_run5_v1/", content, rows=34)
+
+    def regress(label: str) -> dict:
+        result = run_tool("transform_runs.py", "regress", "--run-dir", str(work / label), "--baseline", str(work / "base"), "--slice", "dsa", check=False)
+        return json.loads((work / label / "regression-dsa.json").read_text()) | {"exit": result.returncode}
+    same, other, unknown, changed = (regress(x) for x in ("same", "other", "unknown", "changed"))
+    if same["status"] != "PASS" or len(same["identical"]) != 1:
+        fail(f"a content-identical case under a new prefix was not compared: {same}")
+    if other["status"] != "NOT_APPLICABLE" or "InputContentDiffers" not in other["reason"]:
+        fail(f"other input content was not NOT_APPLICABLE with its reason: {other}")
+    if unknown["status"] != "NOT_APPLICABLE" or "matches only by S3 prefix" not in unknown["reason"]:
+        fail(f"a case without input content digests did not say why it cannot match: {unknown}")
+    if changed["status"] != "FAIL" or changed["exit"] == 0:
+        fail(f"a content-identical case with other output rows was not a regression: {changed}")
+    results.append("regress matches content-identical cases across new prefixes (manifest digests per input table), "
+                   "NOT_APPLICABLE with InputContentDiffers otherwise")
+
+
+def test_current_state_key_read(tmp: Path) -> None:
+    """A current-state-by-key actual: keys come from the window, their state is read as of the mirror's data cutoff."""
+    import iceberg_snapshot_read as isr
+    base = {"window_column": None, "start": None, "end_exclusive": None, "key_column": "member_id", "keys_file": str(tmp / "keys.txt"),
+            "data_max_column": "_stage_output_timestamp", "current_state_as_of": "2026-09-06T12:20:52Z", "allow_full_scan": False}
+    isr.check_read_mode(argparse_namespace(**base))
+    for label, patch, text in (("with a window", {"window_column": "last_update", "start": "a", "end_exclusive": "b"}, "no --window-column"),
+                               ("without keys", {"keys_file": None}, "--keys-file"),
+                               ("without the data column", {"data_max_column": None}, "--data-max-column"),
+                               ("plain key read", {"current_state_as_of": None}, "--current-state-as-of")):
+        try:
+            isr.check_read_mode(argparse_namespace(**{**base, **patch}))
+            fail(f"a key read {label} was accepted")
+        except silvally_io.SilvallyError as error:
+            if text not in str(error):
+                fail(f"the {label} refusal does not name {text}: {error}")
+    (tmp / "keys.txt").write_text("900000101\n")
+    rows = [{"member_id": "900000101", "ledger_name": "Old Agency", "delete_date": "2026-08-01", "last_update": "2026-07-10T00:00:00Z",
+             "_stage_output_timestamp": "2026-07-10T01:00:00Z"},
+            {"member_id": "900000101", "ledger_name": "New Agency", "delete_date": "", "last_update": "2026-09-05T08:00:00Z",
+             "_stage_output_timestamp": "2026-09-05T09:00:00Z"},
+            {"member_id": "900000101", "ledger_name": "After Cutoff", "delete_date": "", "last_update": "2026-09-07T08:00:00Z",
+             "_stage_output_timestamp": "2026-09-07T09:00:00Z"},
+            {"member_id": "900000202", "ledger_name": "Unselected", "delete_date": "", "last_update": "2026-09-05T08:00:00Z",
+             "_stage_output_timestamp": "2026-09-05T09:00:00Z"}]
+
+    class Arrow:
+        def __init__(self, data):
+            self.data, self.num_rows = data, len(data)
+
+        def to_pylist(self):
+            return self.data
+
+        def column(self, name):
+            return Arrow([r[name] for r in self.data])
+
+    class Table:
+        scans = []
+
+        class Snapshot:
+            snapshot_id, timestamp_ms = 7, 1790000000000
+
+        class Field:
+            def __init__(self, name):
+                self.name, self.field_type = name, "string"
+
+        def snapshot_by_id(self, _):
+            return self.Snapshot()
+
+        def current_snapshot(self):
+            return self.Snapshot()
+
+        def schema(self):
+            return type("Schema", (), {"fields": [self.Field(n) for n in rows[0]]})()
+
+        def scan(self, **kwargs):
+            self.scans.append(kwargs)
+            return type("Scan", (), {"to_arrow": lambda _: Arrow(rows)})()
+    args = argparse_namespace(**base, snapshot_id=None, table="example_mirror.ledger_state", columns="member_id,ledger_name,delete_date")
+    read = isr.read_snapshot(Table(), args, {})
+    kept = [r["ledger_name"] for r in read["rowsDocument"]["rows"]]
+    if kept != ["Old Agency", "New Agency"] or read["summary"]["currentStateAsOf"]["readMode"] != "current-state-by-key" \
+            or read["summary"]["keysMatched"] != 1 or "window" in read["summary"] or "row_filter" in Table.scans[0]:
+        fail(f"the current-state read did not keep every row of the selected keys up to the data cutoff: {kept} {read['summary']}")
+    catalog = json.loads((SKILL / "reference" / "prod-actuals.json").read_text())
+    key_read = catalog["slices"]["dsa"]["comparison"]["keyRead"]
+    if "--current-state-as-of" not in key_read["readState"] or "--window-column" not in key_read["selectKeys"]:
+        fail(f"the DSA catalog does not state the two-step key read: {key_read}")
+    results.append("current-state-by-key: keys selected from the window, every row of those keys read as of the mirror's data cutoff "
+                   "(not limited to window rows), refusals name the missing inputs, catalog states both steps")
+
+
+def test_stale_lookback_anchor(tmp: Path) -> None:
+    """A stale mirror's lookback counts back from its data cutoff, so its most recent covered day stays reachable."""
+    del tmp
+    now = source_window.parse_utc("2026-09-30T21:00:00Z")
+    actual = {"sms": {"2026-09-01": 3, "2026-09-04": 5, "2026-09-05": 16, "2026-09-06": 1}}
+    inputs = {"sms": {"2026-09-05": 2, "2026-09-20": 40}}
+    picked = source_window.data_days(actual, None, True, now, {"sms": "2026-09-06T05:31:00Z"}, inputs, 14)["slices"]["sms"]
+    if picked["day"] != "2026-09-05" or picked["status"] != "HAS_DATA" or picked["lookback"]["anchor"] != "2026-09-06" \
+            or picked["lookback"]["anchoredAt"] != "data-cutoff" or picked["lookback"]["oldestEligibleDay"] != "2026-08-23":
+        fail(f"the lookback was not anchored at the stale mirror's data cutoff: {picked}")
+    if not any(h["code"] == "ProdMirrorStale" for h in picked.get("handoffs", [])):
+        fail("the stale mirror handoff was dropped when the anchored lookback found a day")
+    fresh = source_window.data_days({"sms": {"2026-09-29": 4}}, None, True, now, {"sms": "2026-09-30T20:00:00Z"},
+                                    {"sms": {"2026-09-29": 1}}, 14)["slices"]["sms"]
+    if fresh["day"] != "2026-09-29" or fresh["lookback"]["anchoredAt"] != "today":
+        fail(f"a fresh actual's lookback did not end today: {fresh}")
+    ancient = source_window.data_days({"sms": {"2026-08-10": 4}}, None, True, now, {"sms": "2026-08-11T00:00:00Z"},
+                                      {"sms": {"2026-08-10": 1}}, 5)["slices"]["sms"]
+    if ancient["day"] is not None or ancient["lookback"]["anchoredAt"] != "max-stale-anchor" or ancient["lookback"]["anchor"] != "2026-08-31":
+        fail(f"the stale anchor moved back more than {source_window.MAX_STALE_ANCHOR_DAYS} days: {ancient}")
+    rule = json.loads((SKILL / "reference" / "prod-actuals.json").read_text())["slices"]["sms"]["daySelection"]
+    if "data cutoff" not in rule["rule"] or "--end-day <anchor - 1 day>" not in rule["inputDays"]:
+        fail(f"the SMS day selection does not anchor its lookback at the cutoff: {rule}")
+    results.append("stale lookback: counted back from the mirror's data cutoff (at most 30 days back), recorded per slice, "
+                   "catalog input-day counts use the same anchor")
+
+
 def argparse_namespace(**values):
     import argparse
     return argparse.Namespace(**{"profile": "example-prod", "region": "xx-test-1", "retries": 0, "backoff_seconds": 0,
@@ -1838,6 +2211,12 @@ def main() -> int:
         test_redeploy_pinned(tmp)
         test_day_selection_inputs(tmp)
         test_owner_intake_defaults(tmp)
+        test_redeploy_pin_refresh(tmp)
+        test_package_spec_generation(tmp)
+        test_newest_dev_deploy(tmp)
+        test_regress_by_input_content(tmp)
+        test_current_state_key_read(tmp)
+        test_stale_lookback_anchor(tmp)
     print("Silvally tool tests passed: " + "; ".join(results))
     return 0
 

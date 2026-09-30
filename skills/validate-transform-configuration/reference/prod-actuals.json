@@ -62,10 +62,10 @@
         }
       },
       "daySelection": {
-        "rule": "the most recent complete UTC day with BOTH txt_msg_vendor_id 67 rows in the mirror AND provider QUIQ status edges in PROD Persist, within a 14-day lookback",
-        "actualDays": "iceberg_snapshot_read.py --table interprose_current.txt_msg_log --window-column sent_date --start <lookback start> --end-exclusive <today> --where txt_msg_vendor_id=67 --data-max-column _stage_output_timestamp (byUtcDay, bounded to the lookback)",
-        "inputDays": "graph_inputs.py edge-days --slice sms --lookback-days 14 (per-day count of provider QUIQ edge-text-message-status-changed edges)",
-        "choose": "source_window.py data-days --most-recent --lookback-days 14 --slice-days <actual days> --input-days <input days> --data-through sms=<dataMax> --catalog reference/prod-actuals.json",
+        "rule": "the most recent complete UTC day with BOTH txt_msg_vendor_id 67 rows in the mirror AND provider QUIQ status edges in PROD Persist, within a 14-day lookback counted back from the lookback anchor: today, or, when the mirror is stale, the day its data cutoff (dataMax of _stage_output_timestamp) falls on, so the mirror's most recent covered day stays reachable; the anchor moves back at most 30 days",
+        "actualDays": "iceberg_snapshot_read.py --table interprose_current.txt_msg_log --window-column sent_date --start <today - 44 days> --end-exclusive <today> --where txt_msg_vendor_id=67 --data-max-column _stage_output_timestamp (byUtcDay; one read bounded to the 14-day lookback plus the 30-day maximum anchor shift)",
+        "inputDays": "graph_inputs.py edge-days --slice sms --lookback-days 14 --end-day <anchor - 1 day> (per-day count of provider QUIQ edge-text-message-status-changed edges over the same anchored lookback; the anchor is the dataMax day when stale, else today)",
+        "choose": "source_window.py data-days --most-recent --lookback-days 14 --slice-days <actual days> --input-days <input days> --data-through sms=<dataMax> --catalog reference/prod-actuals.json (records each slice's lookback anchor)",
         "noDay": "BLOCKED: the slice reports UpstreamInputEmpty (and ProdMirrorStale when the mirror stops first) plus this entry's blockedHandoffs"
       },
       "hydration": {
@@ -121,6 +121,11 @@
       "comparison": {
         "actualScope": "current-state-by-key",
         "detail": "form_1281 emits each debt's current DSA_NAME, so the window only selects debts: read the actual by key (prod_actuals.py keys, then iceberg_snapshot_read.py --key-column debt_id --keys-file) for the canary or window debts and compare the active row per debt. A debt with only deleted rows must produce no DEV row.",
+        "keyRead": {
+          "selectKeys": "iceberg_snapshot_read.py --table interprose_current.debt_settlement_agency --window-column last_update --start <day> --end-exclusive <day + 1> --data-max-column _stage_output_timestamp, then prod_actuals.py canary-sample (canary) or the whole window's rows, then prod_actuals.py keys --field debt_id: the window selects the debts",
+          "readState": "iceberg_snapshot_read.py --table interprose_current.debt_settlement_agency --key-column debt_id --keys-file keys.txt --current-state-as-of <dataMax of the selection read> --data-max-column _stage_output_timestamp (no --window-column): every row of each selected debt whose _stage_output_timestamp is at or before the mirror's data cutoff, not only the window's rows, so a DSA set before the window or deleted after it counts",
+          "asOf": "the mirror's data cutoff (prod_actuals.py table-summary dataThrough); the graph inputs use the same cutoff (graph_inputs.py --as-of)"
+        },
         "canaryDevScope": "all",
         "fullDevScope": "all"
       },

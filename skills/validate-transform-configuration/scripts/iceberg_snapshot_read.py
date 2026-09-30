@@ -5,16 +5,21 @@
       --window-column <col> --start ISO --end-exclusive ISO [--key-column <key column> --keys-file keys.txt] \
       [--where <col>=<value> ...] --private-dir <dir outside any repo> [--snapshot-id N] \
       [--data-max-column <stage timestamp column>] [--allow-full-scan]
+  iceberg_snapshot_read.py ... --key-column <key> --keys-file keys.txt --current-state-as-of <data cutoff ISO> \
+      --data-max-column <stage timestamp column> --private-dir <dir>      (current-state-by-key; no window)
 
 Uses only S3 GetObject/Glue GetTable through pyiceberg (no Athena, no writes). The read is bounded to the selected
 UTC day(s): --window-column with --start/--end-exclusive is pushed down to the scan as a range predicate on that
 column (partition and file pruning through Iceberg column bounds), widened by one day on each side so a string or
 local-time column cannot lose boundary rows, and then applied exactly in memory. A key read (--keys-file, for the
-canary sample or the full window's actual keys) takes the same window, so it reads only the selected day(s) and not
-the whole table. --where col=value adds equality predicates (for example the catalog slice's rowFilter.actual),
+canary sample or the full window's actual keys) of an event actual takes the same window, so it reads only the selected
+day(s) and not the whole table. A current-state-by-key actual (catalog comparison.actualScope) is read in two steps:
+select the keys from the window (a window read, then prod_actuals.py keys), then read each selected key's current state
+with --current-state-as-of <the mirror's data cutoff> --key-column --keys-file --data-max-column and no window: every
+row of those keys whose data timestamp is at or before the cutoff, not only the window's rows. --where col=value adds equality predicates (for example the catalog slice's rowFilter.actual),
 pushed down and re-checked in memory, so byUtcDay counts only the comparison population. Key lists are filtered in
 memory, because pyiceberg In() filters were observed to drop matching rows. A read without a window is refused unless
---allow-full-scan is given explicitly. Window columns of type timestamptz, timestamp, date or string can be pushed
+it is a key-bounded --current-state-as-of read or --allow-full-scan is given explicitly. Window columns of type timestamptz, timestamp, date or string can be pushed
 down; any other type needs --allow-full-scan.
 
 Matching rows are written to --private-dir (mode 0700, refused inside a git checkout) as rows.json and rows.jsonl, the
@@ -136,6 +141,27 @@ def data_max(table, snapshot_id: int, column: str) -> tuple[str | None, str]:
     return (iso(max(stamps)) if stamps else None), "single-column-scan"
 
 
+def check_read_mode(args) -> None:
+    """A window read, a key read inside the window, or a key-bounded current-state read as of the data cutoff."""
+    if args.current_state_as_of:
+        if args.window_column or not (args.key_column and args.keys_file and args.data_max_column):
+            raise SilvallyError("--current-state-as-of reads the selected keys' current state: pass --key-column, --keys-file and "
+                                "--data-max-column, and no --window-column (select the keys from the window first)")
+        parse_utc(args.current_state_as_of)
+        return
+    if not (args.window_column or args.keys_file) or (args.keys_file and not args.key_column) or (
+            args.window_column and not (args.start and args.end_exclusive)):
+        raise SilvallyError("pass --window-column with --start and --end-exclusive, optionally with --key-column and --keys-file")
+    if not args.window_column and not args.allow_full_scan:
+        raise SilvallyError("a key read without --window-column scans the whole table; pass the selected day(s) as the window, "
+                            "--current-state-as-of <data cutoff> for a current-state-by-key actual, or --allow-full-scan explicitly")
+
+
+def as_of_matches(row: dict, column: str, as_of: datetime) -> bool:
+    moment = parse_loose(row.get(column))
+    return moment is not None and moment <= as_of
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--profile", required=True)
@@ -151,14 +177,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--allow-full-scan", action="store_true", help="explicitly read the whole snapshot without a window")
     parser.add_argument("--snapshot-id", type=int)
     parser.add_argument("--data-max-column", help="record the table-wide maximum of this data/stage timestamp column as dataMax")
+    parser.add_argument("--current-state-as-of",
+                        help="ISO data cutoff: read every row of the --keys-file keys whose --data-max-column is at or before it, "
+                             "whatever its window-column value (a current-state-by-key actual); no --window-column")
     parser.add_argument("--private-dir", required=True)
     args = parser.parse_args(argv)
-    if not (args.window_column or args.keys_file) or (args.keys_file and not args.key_column) or (
-            args.window_column and not (args.start and args.end_exclusive)):
-        raise SilvallyError("pass --window-column with --start and --end-exclusive, optionally with --key-column and --keys-file")
-    if not args.window_column and not args.allow_full_scan:
-        raise SilvallyError("a key read without --window-column scans the whole table; pass the selected day(s) as the window "
-                            "(or --allow-full-scan explicitly)")
+    check_read_mode(args)
     where = parse_where(args.where)
 
     out = Path(args.private_dir).resolve()
@@ -190,7 +214,8 @@ def read_snapshot(table, args, where: dict[str, str]) -> dict:
     """The bounded read itself; returns the sanitized summary and the private rows document."""
     snapshot = table.snapshot_by_id(args.snapshot_id) if args.snapshot_id else table.current_snapshot()
     columns = tuple(c.strip() for c in args.columns.split(","))
-    for extra in (args.key_column, args.window_column, *where):
+    as_of_column = args.data_max_column if getattr(args, "current_state_as_of", None) else None
+    for extra in (args.key_column, args.window_column, as_of_column, *where):
         if extra and extra not in columns:
             columns += (extra,)
     start = parse_utc(args.start) if args.window_column else None
@@ -200,10 +225,14 @@ def read_snapshot(table, args, where: dict[str, str]) -> dict:
         predicates = row_filter_spec(types, None, None, None, where)
     else:
         predicates = row_filter_spec(types, args.window_column, start, end, where)
-    data = table.scan(row_filter=build_expression(predicates), selected_fields=columns, snapshot_id=snapshot.snapshot_id).to_arrow()
+    pushed = {"row_filter": build_expression(predicates)} if predicates else {}
+    data = table.scan(**pushed, selected_fields=columns, snapshot_id=snapshot.snapshot_id).to_arrow()
     rows = [r for r in data.to_pylist() if where_matches(r, where)]
     if args.window_column:
         rows = [r for r in rows if in_window(r[args.window_column], start, end)]
+    if as_of_column:
+        as_of = parse_utc(args.current_state_as_of)
+        rows = [r for r in rows if as_of_matches(r, as_of_column, as_of)]
     keys = set()
     if args.keys_file:
         keys = {line.strip() for line in Path(args.keys_file).read_text().splitlines() if line.strip()}
@@ -215,6 +244,10 @@ def read_snapshot(table, args, where: dict[str, str]) -> dict:
                "columns": list(columns), "privateRowsFile": "rows.json and rows.jsonl (mode-0700 directory; do not commit)"}
     if where:
         summary["where"] = where
+    if as_of_column:
+        summary["currentStateAsOf"] = {"readMode": "current-state-by-key", "column": as_of_column, "asOf": args.current_state_as_of,
+                                       "detail": "every row of the selected keys with a data timestamp at or before the cutoff, "
+                                                 "not limited to the window's rows"}
     if args.keys_file:
         per_key = Counter(str(r[args.key_column]) for r in rows)
         summary.update({"keysRequested": len(keys), "keysMatched": len(per_key),

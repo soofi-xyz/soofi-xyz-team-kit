@@ -23,8 +23,13 @@ Commands (all write evidence only under --run-dir):
                     of every output, each omitting exactly that input. An omission that would leave no input
                     (`inputs: []`) is skipped and recorded: Transform's request schema refuses an empty input
                     list before planning, so that case says nothing about the mapping. --slice restricts the
-                    spec to named package slices (one run directory per slice and window).
-  cards    write one operation card per case with its operation digest and stop (APPROVAL_REQUIRED)
+                    spec to named package slices (one run directory per slice and window). Each case records
+                    inputContent: per input table, the digest of its objects in the binding's manifest.json.
+                    With a registry location the pins are refreshed read-only from what DEV serves now (after a
+                    redeploy the workspace snapshot is stale)
+  cards    refresh the pins read-only from the served registry (deployment-checks/refresh-*.json; a redeploy after the
+           spec was built changes the VersionId), write one operation card per case with its operation digest and
+           stop (APPROVAL_REQUIRED)
   start    start exactly the cases whose --approve digests match their cards (records the approval first), or
            every card of the run when --owner-decisions carries blanketDevWrites (recorded per card digest). When the
            spec records the registry location, the served mapping.json SHA-256 is re-read right before each
@@ -33,9 +38,11 @@ Commands (all write evidence only under --run-dir):
   capture  read-only: describe-execution, history, plan.json, output files; reconcile metadata with physical rows.
            Output rows go to <run>/private/outputs/<runId>/<case>/ (removed by run_workspace.py cleanup; the step
            records it as privateOutputDir); only sanitized summaries (steps.json, _metadata.json) stay in RUN
-  regress  compare this run's captured outputs with a baseline run directory, case by case (same inputs and outputs),
-           per slice with --slice. Status PASS, FAIL, or NOT_APPLICABLE with the reason when no case is comparable
-           (for example MappingRepublished: the same version republished with another digest and output names)
+  regress  compare this run's captured outputs with a baseline run directory, case by case, per slice with --slice.
+           Cases match by mapping id@version and digest, slice, output datasets, expectation and input CONTENT (the
+           manifest file digests per input table), never by S3 prefix (every run stages to a new prefix). Status PASS,
+           FAIL, or NOT_APPLICABLE with the reason when no content-identical case exists (for example
+           MappingRepublished: the same version republished with another digest and output names)
   cost     read-only: Glue DPU-hours of this run's job runs and the USD estimate
   canary-gate   summarize a captured canary-stage run and its PROD-actuals comparisons for the user, per slice
                 with --slice: CANARY_FAILED (stop; never offer that slice's full run), AWAITING_APPROVAL, or
@@ -58,6 +65,7 @@ import copy
 import glob
 import hashlib
 import json
+import tempfile
 import time
 from pathlib import Path
 
@@ -222,6 +230,8 @@ def cmd_cards(args) -> int:
     spec = load_spec(args.spec)
     run_dir = Path(args.run_dir)
     assert_own_run_dir(run_dir, spec)
+    for check in refresh_pins(spec, run_dir):
+        print(f"REFRESHED {check['mapping']} {check['status']} versionId={check.get('versionId')}")
     for index, case in enumerate(spec["cases"], 1):
         card = card_for(spec, index, case)
         write_json(run_dir / "cards" / f"{index}-{case['case']}.json", {**card, "status": "APPROVAL_REQUIRED"})
@@ -300,6 +310,39 @@ def assert_served(spec: dict, run_dir: Path, index: int, case: dict) -> None:
         raise SilvallyError(f"DeploymentRace: DEV {check['status'].lower().replace('_', ' ')} {case['mapping']} right before "
                             "StartExecution; classify it with dev_redeploy.py check --slug --head-sha and, with the owner's "
                             "devRedeployPinned decision, republish it with dev_redeploy.py redeploy, then start again")
+
+
+def pin_matches(plan_mapping: dict, pin: dict, served_version: str | None = None) -> bool:
+    """The plan executed the pinned mapping.json: the same SHA-256 and, when the pin records one, the same S3 VersionId
+    (or the VersionId served right before this StartExecution, after a redeploy republished the same bytes). A null or
+    absent pin versionId is not pinned: a spec built before a redeploy matches on the SHA-256 alone."""
+    if plan_mapping.get("sha256") != pin.get("sha256"):
+        return False
+    return not pin.get("versionId") or plan_mapping.get("versionId") in {pin["versionId"], served_version}
+
+
+def refresh_pins(spec: dict, run_dir: Path | None = None) -> list[dict]:
+    """Read-only: re-read every pinned mapping.json served under the registry location, so a spec built before a
+    dev_redeploy.py redeploy carries the republished VersionId and no stale spec-time drift. A served pin takes the served
+    VersionId; a pin that is not served keeps its record and `start` still refuses it live."""
+    deployment = spec.get("deployment") or {}
+    if not deployment.get("location"):
+        return []
+    checks = []
+    for key, pin in sorted(spec["mappings"].items()):
+        try:
+            check = served_status(deployment["location"], key, pin["sha256"], spec["profile"], spec.get("region", DEFAULT_REGION))
+        except SilvallyError as error:
+            check = {"mapping": key, "status": "UNCHECKED", "error": str(error)[-300:],
+                     "checkedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+        checks.append(check)
+        if run_dir is not None:
+            write_json(run_dir / "deployment-checks" / f"refresh-{key.replace('@', '-')}.json", check)
+        if check["status"] == "SERVED":
+            pin["versionId"] = check.get("versionId")
+    if all(c["status"] == "SERVED" for c in checks):
+        deployment.update({"served": True, "drift": None, "blocking": None, "refreshedAt": checks[-1]["checkedAt"]})
+    return checks
 
 
 def data_files(directory: Path) -> list[str]:
@@ -409,8 +452,9 @@ def cmd_capture(args) -> int:
         if plan:
             entry["planMapping"] = {k: plan["mapping"]["rule"].get(k) for k in ("sha256", "versionId")} | {"id": plan["mapping"]["id"], "version": plan["mapping"]["version"]}
             entry["executedSql"] = [{"dataset": q["dataset"], "sha256": q.get("querySha256"), "versionId": q.get("queryVersionId")} for q in plan.get("queries", [])]
-            pin = spec["mappings"][case["mapping"]]
-            entry["mappingPinMatches"] = entry["planMapping"]["sha256"] == pin["sha256"] and entry["planMapping"]["versionId"] == pin.get("versionId", entry["planMapping"]["versionId"])
+            check_path = run_dir / "deployment-checks" / f"{index}-{case['case']}.json"
+            served = read_json(check_path).get("versionId") if check_path.exists() else None
+            entry["mappingPinMatches"] = pin_matches(entry["planMapping"], spec["mappings"][case["mapping"]], served)
         prefix = f"{spec['outputRoot']}{spec['runId']}/{case['case']}/{name}/"
         if describe["status"] == "SUCCEEDED":
             out_dir = private_dir(rows_root) / case["case"]
@@ -441,14 +485,55 @@ def cmd_capture(args) -> int:
     return 0
 
 
-def case_signature(case: dict) -> tuple:
+def binding_manifest(base: str, profile: str, region: str) -> tuple[str, dict] | None:
+    """Read-only: the staged package manifest.json at the binding prefix or one of its two parent prefixes."""
+    prefix = base
+    for _ in range(3):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "manifest.json"
+            aws(["s3", "cp", prefix + "manifest.json", str(target), "--quiet"], profile=profile, region=region,
+                environment="prod", output_json=False, check=False)
+            if target.exists():
+                return prefix, read_json(target)
+        bucket, key = parse_s3(prefix)
+        if not key.strip("/"):
+            return None
+        parent = key.rstrip("/").rsplit("/", 1)[0] + "/" if "/" in key.rstrip("/") else ""
+        prefix = f"s3://{bucket}/{parent}"
+    return None
+
+
+def input_content(base: str, tables: list[str], found: tuple[str, dict] | None) -> dict[str, str] | None:
+    """Per input table, a digest of its objects (path below <table>/ and SHA-256) in the package manifest, or None
+    when the manifest does not list every table. Two runs staged from the same rows share it under different prefixes."""
+    if not found:
+        return None
+    root, manifest = found
+    below = base[len(root):] if base.startswith(root) else None
+    if below is None:
+        return None
+    out = {}
+    for table in tables:
+        lead = f"{below}{table}/"
+        objects = sorted((o["key"][len(lead):], o["sha256"]) for o in manifest.get("objects", []) if o["key"].startswith(lead))
+        if not objects:
+            return None
+        out[table] = canonical_digest(objects)
+    return out
+
+
+def case_signature(spec: dict, case: dict, slice_name: str | None) -> tuple:
+    """What makes two cases comparable: mapping id@version and digest, slice, outputs, expectation and input content.
+    An input without a content digest falls back to its S3 prefix, which a later run never reuses."""
     request = case["request"]
-    return (case["mapping"], frozenset(i["s3Uri"] for i in request.get("inputs", [])),
+    content = case.get("inputContent") or {}
+    inputs = frozenset((i["table"], content.get(i["table"]) or "s3:" + i["s3Uri"]) for i in request.get("inputs", []))
+    return (case["mapping"], ((spec.get("mappings") or {}).get(case["mapping"]) or {}).get("sha256"), slice_name, inputs,
             tuple(sorted(request.get("outputDatasets") or [])), case.get("expected", "PASS"))
 
 
-def not_comparable_reason(specs: dict, steps: dict) -> str:
-    """Why no current case has a baseline counterpart: a republished mapping version, renamed outputs, other inputs."""
+def not_comparable_reason(specs: dict, steps: dict, signatures: dict) -> str:
+    """Why no current case has a baseline counterpart: a republished mapping version, renamed outputs, other input content."""
     reasons = []
     for key in sorted(set(specs["current"]["mappings"]) & set(specs["baseline"]["mappings"])):
         mine, theirs = specs["current"]["mappings"][key].get("sha256"), specs["baseline"]["mappings"][key].get("sha256")
@@ -458,19 +543,26 @@ def not_comparable_reason(specs: dict, steps: dict) -> str:
     if outputs["current"] != outputs["baseline"]:
         reasons.append(f"OutputNamesDiffer: baseline outputs {outputs['baseline']}, current {outputs['current']}")
     if not reasons:
-        reasons.append("NoMatchingCase: no current case has the same mapping, input URIs, outputs and expectation as a baseline case")
+        without_inputs = {label: {s[:3] + s[4:] for s in signatures[label]} for label in signatures}
+        unknown = any(v.startswith("s3:") for label in signatures for s in signatures[label] for _, v in s[3])
+        if without_inputs["current"] & without_inputs["baseline"]:
+            reasons.append("InputContentDiffers: cases with the same mapping, slice, outputs and expectation read other input content"
+                           + (" (a case without inputContent matches only by S3 prefix, and every run stages a new prefix)" if unknown else ""))
+        else:
+            reasons.append("NoMatchingCase: no current case has the same mapping digest, slice, outputs, expectation and input content "
+                           "as a baseline case")
     return "; ".join(reasons)
 
 
 def cmd_regress(args) -> int:
-    """Case-by-case comparison with a baseline run: same mapping, input URIs, outputs and expectation."""
+    """Case-by-case comparison with a baseline run: same mapping digest, slice, outputs, expectation and input content."""
     runs, specs, all_steps = {}, {}, {}
     for label, directory in (("current", Path(args.run_dir)), ("baseline", Path(args.baseline))):
         spec = read_json(directory / "run-spec.json")
         steps = {s["step"]: s for s in read_json(directory / "steps.json")}
         slices = case_slices(spec)
         cases = [(i, c) for i, c in enumerate(spec["cases"], 1) if not args.slice or slices.get(c["case"]) in (args.slice, None)]
-        runs[label] = {case_signature(c): steps.get(f"{i}-{c['case']}") for i, c in cases}
+        runs[label] = {case_signature(spec, c, args.slice or slices.get(c["case"])): steps.get(f"{i}-{c['case']}") for i, c in cases}
         specs[label], all_steps[label] = spec, [s for s in runs[label].values() if s]
     report = {"slice": args.slice, "identical": [], "changed": [], "newCases": [], "baselineOnly": []}
     for signature, step in runs["current"].items():
@@ -494,7 +586,7 @@ def cmd_regress(args) -> int:
         report["status"] = "PASS"
     else:
         report["status"] = "NOT_APPLICABLE"
-        report["reason"] = not_comparable_reason(specs, all_steps)
+        report["reason"] = not_comparable_reason(specs, all_steps, {label: set(runs[label]) for label in runs})
     report["pass"] = report["status"] != "FAIL"
     target = Path(args.out) if args.out else Path(args.run_dir) / (f"regression-{args.slice}.json" if args.slice else "regression.json")
     write_json(target, report)
@@ -661,6 +753,11 @@ def cmd_spec_from_intent(args) -> int:
     outputs_filter = output_filter(args.outputs, registered) or ([d for s in slices for d in s["outputDatasets"]] or None)
     cases, skipped = derive_cases(mapping, mapping_key, bindings, present, outputs_filter,
                                   args.negatives == "all", slices=slices)
+    manifests = {n: binding_manifest(u, args.profile, args.region) for n, u in bindings.items() if any(c["binding"] == n for c in cases)}
+    for case in cases:
+        content = input_content(bindings[case["binding"]], [i["table"] for i in case["request"]["inputs"]], manifests.get(case["binding"]))
+        if content:
+            case["inputContent"] = content
     machines = aws(["stepfunctions", "list-state-machines"], profile=args.profile, region=args.region, environment="prod")["stateMachines"]
     suffix = args.state_machine_suffix or RUNTIME["stateMachineSuffix"]
     arn = next((m["stateMachineArn"] for m in machines if m["name"].endswith(suffix)), None)
@@ -691,6 +788,8 @@ def cmd_spec_from_intent(args) -> int:
     if args.owner_cost_ceiling is not None:
         spec["ownerCostCeilingUsd"] = args.owner_cost_ceiling
     check_cost_ceiling(spec)
+    refresh_pins(spec)
+    drift = spec["deployment"]["drift"]
     write_json(args.out, spec)
     print(json.dumps({"out": args.out, "cases": len(cases), "negatives": sum(c["expected"] == "REJECTED" for c in cases),
                       "stateMachine": arn.split(":")[-1], "drift": drift, "skipped": skipped}, indent=1))

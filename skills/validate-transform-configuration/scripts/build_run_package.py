@@ -1,14 +1,25 @@
 #!/usr/bin/env python3
 """Assemble and validate the transform-configuration-run package (run.json).
 
-  build_run_package.py --run-dir RUN [--run-dir RUN ...] --package-spec package-spec.json [--out RUN/run.json]
-      [--canary-run-dir RUN ...] [--evaluation phases.json] [--profile-doc profile.json]
+  build_run_package.py --run-dir RUN [--run-dir RUN ...] --evaluation evaluation.json --intent intent.json
+      --workspace WS --profile-doc profile.json [--canary-run-dir RUN ...] [--handoffs data-days.json ...]
+      [--graph-inputs summary.json ...] [--catalog prod-actuals.json]
+      [--transform-revision SHA --transform-deployment-digest SHA256 --spark-version X.Y]
+      [--package-spec override.json] [--write-package-spec RUN/package-spec.json] [--out RUN/run.json]
 
-RUN is a transform_runs.py run directory (steps.json, approvals/, cost.json). The package
-spec supplies what only the validator can judge: profile identity, discoveryTrace,
-configurationPackage, environment, sensitivity, graph, runtime, persistCanary,
-exporterHydration, roundTrip, phases, boundaryDecisions, failures, remediations and
-optional extra datasets and versionSelection (copied from the resolver). This tool adds executionSteps, approvals, dataset evidence from
+RUN is a transform_runs.py run directory (steps.json, approvals/, cost.json). The package spec (profile identity,
+discoveryTrace, configurationPackage, environment, sensitivity, graph, runtime, persistCanary, exporterHydration,
+roundTrip, phases, boundaryDecisions, failures, remediations) is generated from the run directories and the run's own
+records: the resolver's --workspace inputs-manifest.json (pinned repositories) and --intent (languages, slices, pin,
+versionSelection), the selected or run-scoped --profile-doc, evaluate_run.py's --evaluation (phases, per-slice
+verdicts, finalValidation, owner decisions, product-change flags), the run-spec (DEV account and region),
+graph_inputs.py summaries, and the remediation handoffs recorded by source_window.py data-days (--handoffs) and the
+catalog's blockedHandoffs. What no record holds is never invented: the Transform revision, its deployed Glue script
+digest and the Spark version come from --transform-revision, --transform-deployment-digest and --spark-version (without
+them runtime is UNAVAILABLE, which cannot be READY), and a FAIL/BLOCKED phase whose cause has no recorded handoff
+stops with PackageSpecIncomplete naming the codes. --package-spec is an optional override: its top-level keys replace
+the generated ones (configurationPackage is merged key by key), for example remediations the records do not hold.
+--write-package-spec keeps the effective spec for review. This tool adds executionSteps, approvals, dataset evidence from
 captured outputs and cost, computes the verdict from phase statuses (any FAIL -> NOT_READY,
 else any BLOCKED/APPROVAL_REQUIRED -> BLOCKED, else READY), rejects a verdict that
 disagrees, refuses READY unless finalValidation proves a real-data window (user-confirmed, or the
@@ -32,10 +43,17 @@ import json
 import re
 from pathlib import Path
 
-from silvally_io import SilvallyError, read_json, sha256_file, write_json
+from run_workspace import MARKER as RUN_MARKER
+from silvally_io import SilvallyError, load_layout, read_json, sha256_bytes, sha256_file, write_json
 
 SCHEMA = Path(__file__).resolve().parent.parent / "reference" / "transform-configuration-run.schema.json"
+DEFAULT_CATALOG = Path(__file__).resolve().parent.parent / "reference" / "prod-actuals.json"
 KEBAB = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+REASON = re.compile(r"^(?P<status>FAIL|BLOCKED|APPROVAL_REQUIRED): (?:\[(?P<slice>[^\]]+)\] )?(?:(?P<code>[A-Z][A-Za-z0-9]+): )?(?P<message>.+)$")
+GENERATED_KEYS = ("profile", "discoveryTrace", "configurationPackage", "environment", "sensitivity", "graph", "runtime",
+                  "persistCanary", "exporterHydration", "roundTrip", "boundaryDecisions", "failures", "remediations")
+SELECTION_METHODS = {"pull-request": "requested-ref", "requested-ref": "requested-ref", "default-branch": "default-branch",
+                     "matching-open-pull-request": "matching-open-pull-request"}
 
 
 def verdict_of(phases: list[dict]) -> str:
@@ -105,6 +123,255 @@ def from_evaluation(spec: dict, evaluation: dict) -> dict:
     return spec
 
 
+def kebab(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
+
+
+def digest(value: str | None) -> str | None:
+    return None if value is None else (value if value.startswith("sha256:") else "sha256:" + value)
+
+
+class SpecGenerator:
+    """Derive each package-spec key from the run's own records; a key no record supports raises SilvallyError."""
+
+    def __init__(self, args, run_dirs: list[Path], evaluation: dict):
+        self.args, self.run_dirs, self.evaluation = args, run_dirs, evaluation
+        self.intent = read_json(args.intent) if args.intent else None
+        self.profile_doc = read_json(args.profile_doc) if args.profile_doc else {}
+        self.manifest = read_json(Path(args.workspace) / "inputs-manifest.json") if args.workspace else None
+        self.catalog = read_json(args.catalog or DEFAULT_CATALOG)
+        self.handoff_docs = [read_json(p) for p in args.handoffs]
+        self.graph_summaries = [read_json(p) for p in args.graph_inputs]
+        dirs = [*run_dirs, *(Path(d) for d in args.canary_run_dir)]
+        self.run_spec = next((read_json(d / "run-spec.json") for d in dirs if (d / "run-spec.json").exists()), {})
+        self.override_package: dict = {}
+
+    def need(self, value, flag: str):
+        if not value:
+            raise SilvallyError(f"needs {flag}")
+        return value
+
+    @property
+    def repositories(self) -> list[dict]:
+        repos = [e for e in self.need(self.manifest, "--workspace") if e.get("kind") == "repository"]
+        return self.need(repos, "a pinned repository in the workspace inputs-manifest.json")
+
+    @property
+    def mapping_key(self) -> str:
+        keys = self.evaluation.get("mappings") or [((self.need(self.intent, "--intent").get("selection") or {}).get("selected"))]
+        return self.need(keys[0], "the evaluated mapping (--evaluation mappings or --intent selection)")
+
+    @property
+    def slices(self) -> list[str]:
+        return sorted(self.evaluation.get("slices") or {}) or [s["id"] for s in (self.intent or {}).get("slices") or []]
+
+    def direction_ids(self, slices: list[str] | None = None) -> list[str]:
+        mapping_id = self.mapping_key.split("@")[0]
+        chosen = self.slices if slices is None else slices
+        return [kebab(f"{mapping_id}-{s}") for s in chosen] or [kebab(mapping_id)]
+
+    def commits(self) -> tuple[dict, dict]:
+        candidate = next((e for e in self.repositories if e.get("selectionMethod") != "default-branch"), self.repositories[0])
+        main = next((e for e in self.repositories if e.get("selectionMethod") == "default-branch"
+                     and e.get("slug") == candidate.get("slug")), candidate)
+        return candidate, main
+
+    def profile(self) -> dict:
+        return profile_identity(self.need(self.args.profile_doc, "--profile-doc"))
+
+    def discoveryTrace(self) -> list[dict]:
+        trace = []
+        for e in self.repositories:
+            if e.get("requiredPathsVerified") is not True:
+                raise SilvallyError(f"repository {e.get('name')} has unverified required paths {e.get('missingRequiredPaths')}")
+            trace.append({"repository": e["slug"], "selectionMethod": SELECTION_METHODS.get(e.get("selectionMethod"), "requested-ref"),
+                          "materialization": "isolated-checkout" if e.get("path") else "github-api",
+                          "selectedCommitSha": e["commitSha"], "pullRequestNumber": e.get("pullRequestNumber"),
+                          "requiredPathsVerified": True, "rejectedCandidateCommitShas": e.get("rejectedCandidateCommitShas", [])})
+        return trace
+
+    def transform_product(self) -> dict:
+        if self.override_package.get("transformProduct"):
+            return self.override_package["transformProduct"]
+        revision, deployed = self.args.transform_revision, digest(self.args.transform_deployment_digest)
+        if not (revision and deployed):
+            raise SilvallyError("the Transform revision and its deployed Glue script digest are in no run record: pass "
+                                "--transform-revision and --transform-deployment-digest (or configurationPackage.transformProduct)")
+        return {"name": "Transform", "version": revision, "sha256": deployed}
+
+    def configurationPackage(self) -> dict:
+        intent = self.need(self.intent, "--intent")
+        mapping_id, version = self.mapping_key.split("@")
+        candidate, main = self.commits()
+        languages = intent.get("languages") or {}
+
+        def language(name: str, revision: str) -> dict:
+            definition = (languages.get(name) or {}).get("definition") or {}
+            return {"id": name, "revision": revision, "sha256": digest(self.need(definition.get("sha256"), f"a pinned {name} definition in --intent"))}
+        pin = ((intent.get("versionSelection") or {}).get("pin") or {}).get("sha256") \
+            or ((self.run_spec.get("mappings") or {}).get(self.mapping_key) or {}).get("sha256")
+        mapping = {"id": self.mapping_key, "revision": candidate["commitSha"], "sha256": digest(self.need(pin, "the mapping pin"))}
+        source, target = intent["primaryDirection"]["from"], intent["primaryDirection"]["to"]
+        hub = load_layout(self.args.layout)["hubLanguage"]
+        evidence = sorted({e for p in self.evaluation.get("phases", []) if p["number"] in (9, 10, 11) and p["status"] == "PASS"
+                           for e in p.get("evidenceIds", []) if KEBAB.match(e)}) or ["intent-resolution"]
+        accepted = set(self.evaluation.get("acceptedProductChanges") or [])
+        slices = self.slices
+        return {"id": kebab("-".join([mapping_id, *slices])), "version": version, "transformProduct": self.transform_product(),
+                "directions": [{"id": d, "sourceLanguage": language(source, candidate["commitSha"]),
+                                "targetLanguage": language(target, candidate["commitSha"]), "mapping": mapping,
+                                "evidenceIds": ["intent-resolution"] + ([kebab(f"{s}-slice")] if s else [])}
+                               for d, s in zip(self.direction_ids(), slices or [None])],
+                "lexicon": language(hub, main["commitSha"]),
+                "sourceRevisions": [{"slug": s, "commitSha": c} for s, c in dict.fromkeys((e["slug"], e["commitSha"]) for e in self.repositories)],
+                "dependencies": [{"product": "Lexicon", "version": main["commitSha"], "sha256": language(hub, main["commitSha"])["sha256"],
+                                  "role": "concept model and language definitions"}],
+                "testEvidenceIds": evidence, "deployedDigest": mapping["sha256"],
+                "unresolvedProductChangeHandoffs": sorted(kebab(f) for f in self.evaluation.get("productChangeFlags") or [] if f not in accepted),
+                "marketplaceRegistrationReady": False}
+
+    def environment(self) -> dict:
+        arn = self.need(self.run_spec.get("stateMachineArn"), "a run-spec.json with the DEV state machine")
+        return {"name": "dev", "accountHash": "sha256:" + sha256_bytes(arn.split(":")[4].encode()),
+                "region": self.run_spec.get("region") or arn.split(":")[3], "writePolicy": "approval-required"}
+
+    def sensitivity(self) -> dict:
+        sensitive = set((self.profile_doc.get("promotion") or {}).get("sensitiveSlices") or []) | {
+            s for s in self.slices if ((self.catalog.get("slices") or {}).get(s) or {}).get("sensitiveFields")}
+        return {"classification": "restricted" if sensitive else "confidential", "sanitization": "aggregates-and-digests-only",
+                "containsRawPii": False, "containsSecrets": False}
+
+    def graph(self) -> dict:
+        if self.graph_summaries:
+            return {"required": True, "identityUnique": all(s.get("status") == "BUILT" for s in self.graph_summaries),
+                    "endpointCount": sum((s.get("rootsFound") or 0) + sum(h.get("endpointVertices") or 0 for h in s.get("hops", []))
+                                         for s in self.graph_summaries),
+                    "danglingEndpointCount": sum(s.get("danglingEndpointCount") or 0 for s in self.graph_summaries)}
+        if (self.profile_doc.get("graph") or {}).get("required"):
+            return {"availability": "UNAVAILABLE", "subject": "graph", "reason": "the profile requires graph evidence but no "
+                    "graph_inputs.py summary was supplied (--graph-inputs)", "evidenceIds": ["graph-inputs"]}
+        return {"required": False, "identityUnique": True, "endpointCount": 0, "danglingEndpointCount": 0}
+
+    def runtime(self) -> dict:
+        a = self.args
+        if a.transform_revision and a.transform_deployment_digest and a.spark_version:
+            return {"sparkVersion": a.spark_version, "transformRevision": a.transform_revision,
+                    "deploymentDigest": digest(a.transform_deployment_digest), "executionMode": self.evaluation.get("mode") or "observed-dev"}
+        return {"availability": "UNAVAILABLE", "subject": "runtime", "reason": "the Transform revision, deployed Glue script digest "
+                "and Spark version were not supplied (--transform-revision, --transform-deployment-digest, --spark-version)",
+                "evidenceIds": ["runtime-provenance"]}
+
+    def persistCanary(self) -> dict:
+        policy = (self.profile_doc.get("validationWorkflow") or {}).get("persistPolicy") \
+            or ((self.intent or {}).get("workflow") or {}).get("persistPolicyDefault") or "forbidden"
+        if policy == "forbidden":
+            return {"required": False, "status": "PASS", "evidenceIds": ["persist-policy-forbidden"]}
+        return {"required": True, "status": "BLOCKED", "evidenceIds": ["persist-canary-not-recorded"]}
+
+    def exporterHydration(self) -> dict:
+        return {"required": False, "status": "PASS", "evidenceIds": ["exporter-hydration-not-required"]}
+
+    def roundTrip(self) -> dict:
+        directions = [d for d in self.profile_doc.get("directions", []) if d.get("required", True)]
+        pairs = {(d.get("fromLanguage"), d.get("toLanguage")) for d in directions}
+        if any((b, a) in pairs for a, b in pairs):
+            return {"required": True, "status": "BLOCKED", "evidenceIds": ["round-trip-not-recorded"], "comparedFields": 0, "mismatchCount": 0}
+        return {"required": False, "status": "PASS", "evidenceIds": ["one-way-package"], "comparedFields": 0, "mismatchCount": 0}
+
+    def boundaryDecisions(self) -> list[dict]:
+        accepted = set(self.evaluation.get("acceptedProductChanges") or [])
+        decisions = [{"id": kebab(f"{self.mapping_key.split('@')[0]}-configuration"),
+                      "proposedChange": f"Validate {self.mapping_key} as mapping configuration within existing Transform behavior",
+                      "classification": "CONFIGURATION", "evidenceIds": ["intent-resolution"], "resolved": True, "handoffOwner": None}]
+        for change in sorted(accepted | set(self.evaluation.get("productChangeFlags") or [])):
+            decisions.append({"id": kebab(change), "proposedChange": f"Transform product change {change}, flagged for Kecleon",
+                              "classification": "PRODUCT_CHANGE", "evidenceIds": ["owner-accepted-product-change" if change in accepted else "plans"],
+                              "resolved": False, "handoffOwner": "kecleon", "ownerAccepted": change in accepted})
+        return decisions
+
+    def reasons(self) -> list[dict]:
+        out = []
+        for phase in self.evaluation.get("phases", []):
+            for reason in phase.get("reasons", []):
+                match = REASON.match(reason)
+                if match:
+                    out.append({"phase": phase["number"], **match.groupdict()})
+        return out
+
+    def failures(self) -> list[dict]:
+        seen, out = set(), []
+        for r in self.reasons():
+            code = r["code"] or ("PhaseFailed" if r["status"] == "FAIL" else "PhaseBlocked")
+            message = (f"[{r['slice']}] " if r["slice"] else "") + r["message"]
+            if (r["phase"], code, message) not in seen:
+                seen.add((r["phase"], code, message))
+                out.append({"phase": r["phase"], "code": code, "message": message})
+        return out
+
+    def remediations(self) -> list[dict]:
+        """One remediation per recorded handoff of a slice that is not READY: data-days handoffs, then the catalog's
+        blockedHandoffs whose code the evaluation reported."""
+        reported = set(self.evaluation.get("informationalFindings") or []) | {r["code"] for r in self.reasons() if r["code"]}
+        slices = self.evaluation.get("slices") or {}
+        found: dict[str, dict] = {}
+        for name, result in sorted(slices.items()):
+            if result.get("verdict") == "READY":
+                continue
+            recorded = [h for doc in self.handoff_docs for h in (((doc.get("slices") or {}).get(name) or {}).get("handoffs") or [])]
+            recorded += [h for h in ((self.catalog.get("slices") or {}).get(name) or {}).get("blockedHandoffs") or [] if h["code"] in reported]
+            open_phases = sorted(int(n) for n, s in (result.get("phases") or {}).items() if s not in (None, "PASS"))
+            for h in recorded:
+                entry = found.setdefault(h["code"], {"handoff": h, "slices": [], "phases": set()})
+                if name not in entry["slices"]:
+                    entry["slices"].append(name)
+                entry["phases"] |= set(open_phases)
+        status = {p["number"]: p["status"] for p in self.evaluation.get("phases", [])}
+        evidence = {p["number"]: [e for e in p.get("evidenceIds", []) if KEBAB.match(e)] for p in self.evaluation.get("phases", [])}
+        out = []
+        for code, entry in found.items():
+            h, phases = entry["handoff"], sorted(entry["phases"]) or [1]
+            out.append({"id": kebab(f"{'-'.join(entry['slices'])}-{code}"), "findingCode": code,
+                        "status": "FAIL" if any(status.get(p) == "FAIL" for p in phases) else "BLOCKED",
+                        "classification": h.get("classification", "ACCESS_OR_EVIDENCE"), "owner": h["owner"],
+                        "repository": h.get("repository"),
+                        "locations": h.get("locations") or [f"{self.catalog.get('id', 'prod-actuals.json')}#slices.{s}" for s in entry["slices"]],
+                        "locationEvidenceIds": evidence.get(phases[0]) or [f"phase-{phases[0]}"],
+                        "recommendedChange": h["detail"],
+                        "regressionEvidence": [f"evaluate_run.py reports phases {phases} PASS for slice(s) {entry['slices']}"],
+                        "rerunPhases": phases, "rerunDirections": self.direction_ids(entry["slices"])})
+        open_codes = sorted({f["code"] for f in self.failures()})
+        if open_codes and not out:
+            raise SilvallyError(f"no recorded handoff explains {open_codes}: pass --handoffs (source_window.py data-days output) or "
+                                "remediations in --package-spec")
+        return out
+
+
+def generate_spec(args, run_dirs: list[Path], override: dict) -> dict:
+    """The effective package spec: override keys first, then evaluation keys, then every derivable key."""
+    evaluation = read_json(args.evaluation) if args.evaluation else {}
+    spec = from_evaluation(dict(override), evaluation) if evaluation else dict(override)
+    generator, missing = SpecGenerator(args, run_dirs, evaluation), []
+    generator.override_package = spec.get("configurationPackage") or {}
+    for key in GENERATED_KEYS:
+        if key in spec and key != "configurationPackage":
+            continue
+        try:
+            value = getattr(generator, key)()
+        except (SilvallyError, KeyError, TypeError) as error:
+            if key not in spec:
+                missing.append(f"{key} ({error})")
+            continue
+        spec[key] = {**value, **spec[key]} if key in spec else value
+    if "phases" not in spec:
+        missing.append("phases (needs --evaluation)")
+    if missing:
+        raise SilvallyError("PackageSpecIncomplete: " + "; ".join(missing))
+    if "id" not in spec:
+        root = next((p for p in [run_dirs[0].resolve(), *run_dirs[0].resolve().parents] if (p / RUN_MARKER).exists()), run_dirs[0].resolve())
+        spec["id"] = "validation-" + hashlib.sha256(root.name.encode()).hexdigest()[:24]
+    return spec
+
+
 def execution_steps(run_dir: Path, steps: list[dict], spec: dict, stage: str, start: int = 1) -> list[dict]:
     manifests = spec.get("inputManifests", {})
     out = []
@@ -152,18 +419,26 @@ def sequence(runs: list[tuple[Path, list[dict], str]], spec: dict) -> list[dict]
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--run-dir", required=True, action="append", help="full-window run directory (repeatable, one per slice)")
-    parser.add_argument("--package-spec", required=True)
+    parser.add_argument("--package-spec", help="optional override: its keys replace the generated ones")
+    parser.add_argument("--write-package-spec", help="write the effective (generated plus override) package spec here")
     parser.add_argument("--out")
     parser.add_argument("--canary-run-dir", action="append", default=[], help="captured canary-stage run directory (repeatable)")
     parser.add_argument("--evaluation", help="evaluate_run.py output: phases, finalValidation and per-slice verdicts")
     parser.add_argument("--profile-doc", help="the selected or run-scoped profile document; its identity is derived")
+    parser.add_argument("--intent", help="resolve-transform-intent.py discover output (languages, slices, pin, versionSelection)")
+    parser.add_argument("--workspace", help="the resolver's workspace (inputs-manifest.json: pinned repositories)")
+    parser.add_argument("--catalog", help="PROD-actuals catalog (default reference/prod-actuals.json): blockedHandoffs, sensitiveFields")
+    parser.add_argument("--handoffs", action="append", default=[], help="source_window.py data-days output with per-slice handoffs (repeatable)")
+    parser.add_argument("--graph-inputs", action="append", default=[], help="graph_inputs.py summary (repeatable)")
+    parser.add_argument("--transform-revision", help="Transform commit SHA the DEV pipeline runs")
+    parser.add_argument("--transform-deployment-digest", help="SHA-256 of the deployed Transform Glue script")
+    parser.add_argument("--spark-version", help="Spark version of the DEV Transform Glue job, for example 3.3")
+    parser.add_argument("--layout", help="registry layout JSON (default reference/registry-layout.json)")
     args = parser.parse_args(argv)
     run_dirs = [Path(d) for d in args.run_dir]
-    spec = read_json(args.package_spec)
-    if args.evaluation:
-        spec = from_evaluation(spec, read_json(args.evaluation))
-    if args.profile_doc and "profile" not in spec:
-        spec["profile"] = profile_identity(args.profile_doc)
+    spec = generate_spec(args, run_dirs, read_json(args.package_spec) if args.package_spec else {})
+    if args.write_package_spec:
+        write_json(args.write_package_spec, spec)
     full = [(d, read_json(d / "steps.json") if (d / "steps.json").exists() else []) for d in run_dirs]
     steps = [s for _, st in full for s in st]
     cost, by_run = package_cost([(Path(d), "canary") for d in args.canary_run_dir] + [(d, "full") for d in run_dirs])
@@ -175,6 +450,9 @@ def main(argv: list[str] | None = None) -> int:
                 datasets.append({"name": o["dataset"], "schemaSha256": "sha256:" + hashlib.sha256(o["headers"][0].encode()).hexdigest(),
                                  "rowCount": o["physicalRows"], "contentSha256": "sha256:" + o["contentSha256"],
                                  "location": s["outputPrefix"] + f"tables/{o['dataset']}/"})
+    if not datasets:
+        datasets.append({"availability": "UNAVAILABLE", "subject": "datasets", "reason": "no captured DEV output dataset in the run directories",
+                         "evidenceIds": ["capture"]})
     canary = [(Path(d), read_json(Path(d) / "steps.json") if (Path(d) / "steps.json").exists() else []) for d in args.canary_run_dir]
     approvals = []
     for directory in [d for d, _ in canary] + run_dirs:
