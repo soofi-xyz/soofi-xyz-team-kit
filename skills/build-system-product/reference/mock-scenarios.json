@@ -1,0 +1,155 @@
+{
+  "scenarioVersion": 3,
+  "scenarios": [
+    {
+      "id": "connect-transform-persist",
+      "cases": [
+        {
+          "id": "success",
+          "request": {
+            "sourceId": "fixture-1",
+            "rawAmount": "12.50"
+          },
+          "expectedResponse": {
+            "status": "SUCCEEDED",
+            "id": "fixture-1",
+            "amount": 12.5,
+            "stored": true
+          },
+          "expectedSteps": [
+            "Connect",
+            "Transform",
+            "Persist"
+          ],
+          "configuration": "baseline",
+          "featureId": "flow-composition"
+        },
+        {
+          "id": "replay",
+          "request": {
+            "sourceId": "fixture-1",
+            "rawAmount": "12.50",
+            "replay": true
+          },
+          "expectedResponse": {
+            "status": "SUCCEEDED",
+            "id": "fixture-1",
+            "duplicateWrites": 0
+          },
+          "expectedSteps": [
+            "Connect",
+            "Transform",
+            "Persist"
+          ],
+          "configuration": "baseline",
+          "featureId": "invocation-lifecycle"
+        },
+        {
+          "id": "alternate-binding",
+          "configuration": "alternate-transform",
+          "request": {
+            "sourceId": "fixture-alternate",
+            "rawAmount": "12.50"
+          },
+          "expectedResponse": {
+            "status": "SUCCEEDED",
+            "id": "fixture-alternate",
+            "amount": 25,
+            "stored": true
+          },
+          "expectedSteps": [
+            "Connect",
+            "Transform",
+            "Persist"
+          ],
+          "featureId": "template-bindings"
+        }
+      ]
+    },
+    {
+      "id": "rule-schedule-persist",
+      "cases": [
+        {
+          "id": "eligible",
+          "request": {
+            "sourceId": "fixture-2",
+            "eligible": true
+          },
+          "expectedResponse": {
+            "status": "SUCCEEDED",
+            "scheduled": 1,
+            "stored": true
+          },
+          "expectedSteps": [
+            "Connect",
+            "Transform",
+            "Rule",
+            "Schedule",
+            "Persist"
+          ],
+          "configuration": "rule-gate",
+          "featureId": "conditional-branches"
+        },
+        {
+          "id": "rejected",
+          "request": {
+            "sourceId": "fixture-3",
+            "eligible": false
+          },
+          "expectedResponse": {
+            "status": "REJECTED",
+            "scheduled": 0,
+            "stored": false
+          },
+          "expectedSteps": [
+            "Connect",
+            "Transform",
+            "Rule"
+          ],
+          "configuration": "rule-gate",
+          "featureId": "conditional-branches"
+        }
+      ]
+    },
+    {
+      "id": "waterfall-fallback",
+      "cases": [
+        {
+          "id": "fallback",
+          "request": {
+            "primaryFails": true,
+            "fallbackFails": false
+          },
+          "expectedResponse": {
+            "status": "SUCCEEDED",
+            "source": "fallback",
+            "attempts": 2
+          },
+          "expectedSteps": [
+            "PrimaryFlow",
+            "FallbackFlow"
+          ],
+          "configuration": "waterfall",
+          "featureId": "waterfalls"
+        },
+        {
+          "id": "all-failed",
+          "request": {
+            "primaryFails": true,
+            "fallbackFails": true
+          },
+          "expectedResponse": {
+            "status": "FAILED",
+            "attempts": 2
+          },
+          "expectedSteps": [
+            "PrimaryFlow",
+            "FallbackFlow"
+          ],
+          "configuration": "waterfall",
+          "featureId": "waterfalls"
+        }
+      ]
+    }
+  ]
+}

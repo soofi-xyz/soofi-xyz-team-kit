@@ -33,21 +33,20 @@ TRANSFORM_SCHEMA = SKILLS / "build-transform-product" / "reference" / "contracts
 EXAMPLES = SYSTEM_REFERENCE / "examples"
 
 KIND_PRODUCT = {
-    "product-definition": "product-orchestration",
-    "product-schema": "product-orchestration",
-    "product-flow-template": "product-orchestration",
-    "product-flow": "product-orchestration",
-    "product-waterfall": "product-orchestration",
-    "product-invocation": "product-orchestration",
-    "lexicon-catalog": "lexicon",
+    "product-definition": "system",
+    "product-schema": "system",
+    "product-flow-template": "system",
+    "product-flow": "system",
+    "product-waterfall": "system",
+    "product-invocation": "system",
+    "lexicon-catalog": "transform",
     "connect-partner": "connect",
     "connect-activation": "connect",
     "transform-request": "transform",
     "transform-mapping": "transform",
-    "persist-collection": "persist",
+    "persist-ingest": "persist",
     "deploy-environment": "deploy",
-    "system-openapi": "system-runtime",
-    "system-fixtures": "system-runtime",
+    "system-fixtures": "system",
 }
 SERVE_KINDS = ("product-definition", "product-flow-template", "product-flow")
 REMOTE = re.compile(r"^[a-z][a-z0-9+.-]*://")
@@ -161,10 +160,15 @@ class ManifestCheck:
 
     def check_workflow(self) -> None:
         declared = {item["product"]: item["role"] for item in self.manifest["products"]}
+        catalog = _load_json(SKILLS / "guide-product-work" / "reference" / "product-catalog.json")
+        configurers = {p["id"]: p["agents"]["configure"] for p in catalog["products"]}
         used: set[str] = set()
         for index, step in enumerate(self.manifest["workflow"]):
             where = f"workflow/{index}"
             used.add(step["product"])
+            expected_agent = configurers.get(step["product"])
+            if step["agent"] != expected_agent:
+                self.fail(where, f"{step['agent']!r} is not the assigned configurer for {step['product']!r}")
             if step["product"] not in declared:
                 self.fail(where, f"product {step['product']!r} is not declared in products")
             ref = self.config_refs.get(step["configRef"])
@@ -194,30 +198,17 @@ class ManifestCheck:
         roles = {item["product"]: item["role"] for item in manifest["products"]}
         kinds = {ref["kind"] for ref in self.config_refs.values()}
         orchestration = manifest.get("orchestration", {})
-        mode = orchestration.get("mode", "product-service")
-        product_serves = roles.get("product-orchestration") in ("serve", "execute")
+        mode = orchestration.get("mode", "system-service")
+        product_serves = roles.get("system") in ("serve", "execute")
 
-        if mode == "product-service" and "product-orchestration" not in roles:
-            self.fail("products", "orchestration mode product-service requires product-orchestration")
+        if mode == "system-service" and "system" not in roles:
+            self.fail("products", "orchestration mode system-service requires system")
         if product_serves:
             for kind in SERVE_KINDS:
                 if kind not in kinds:
-                    self.fail("configRefs", f"product-orchestration serves but no {kind} ref is declared")
+                    self.fail("configRefs", f"system serves but no {kind} ref is declared")
         if orchestration.get("invocationMode") == "waterfall" and "product-waterfall" not in kinds:
             self.fail("configRefs", "invocationMode waterfall requires a product-waterfall ref")
-
-        thin = mode == "thin-package-deferred" or (roles.get("system-runtime") == "serve" and not product_serves)
-        if thin:
-            if "system-runtime" not in roles:
-                self.fail("products", "thin-package-deferred requires a system-runtime product")
-            if not any(
-                item.get("verify") == "deferred" and "product" in item["description"].lower()
-                for item in manifest["successCriteria"]
-            ):
-                self.fail(
-                    "successCriteria",
-                    "a thin System package needs a deferred criterion naming the Product cutover",
-                )
 
     def check_dependencies(self) -> None:
         dependencies = self.manifest["dependencies"]
@@ -250,6 +241,9 @@ class ManifestCheck:
                 self.fail(where, f"path {path!r} must stay inside the composition package")
                 continue
             target = (base / path).resolve()
+            if not target.is_relative_to(base):
+                self.fail(where, f"path {path!r} resolves outside the composition package")
+                continue
             if not target.exists():
                 self.fail(where, f"path {path!r} does not resolve to a file next to the manifest")
                 continue
@@ -367,6 +361,9 @@ class ManifestCheck:
             if environment.get("activationEnabled") is not False:
                 self.fail(where, "deploy environment must keep activationEnabled false")
             for component in environment.get("components", []):
+                declared = {item["product"] for item in self.manifest["products"]}
+                if component.get("product") not in declared:
+                    self.fail(where, f"component product {component.get('product')!r} is not declared in products")
                 for ref in component.get("refs", []):
                     if ref not in self.config_refs:
                         self.fail(where, f"component ref {ref!r} does not exist in configRefs")

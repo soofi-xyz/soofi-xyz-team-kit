@@ -3,6 +3,10 @@ name: build-transform-product
 description: "Implement the Transform product: from/to data languages registered in Lexicon (the definition is the schema), mappings that own formats and output shape, Python/PySpark execution, Parquet/JSONL/CSV/Excel, typed tables, graph vertex/edge ID mappings, and TypeScript CDK orchestration."
 ---
 
+Use [the Transform capability map](../guide-product-work/reference/iterations/transform.md). Derive the feature pieces from scope and dependencies, then apply the work below within each piece; require a user-run configuration, AWS inspection and feedback before starting the next implementation piece.
+
+Follow [guide-product-work](../guide-product-work/SKILL.md). Kecleon builds the engine; Silvally authors, publishes and tests particular mappings.
+
 # Build Transform Product
 
 Use `kecleon` to implement a reusable Transform service. Require explicit source
@@ -76,5 +80,5 @@ Return the resolved pair/mapping, definitions/formats, graph role bindings when
 applicable, implementation/migration changes, publication/deployment status and
 verification evidence. Mark unsupported deployment capabilities explicitly.
 For from-scratch work, include the actual toolchain, acceptance evidence and
-synthesis result. Continue through the build and checks; a prose specification
+synthesis result. Continue through the agreed build stage and checks; a prose specification
 alone is not completion. Require live evidence before claiming AWS readiness.

@@ -1,16 +1,14 @@
 # Connect — AWS runtime
 
-Build the block architecture on the runtime the
-[Connect service PRD](../../build-connect-service/reference/PRD.md) already
-defines: API Gateway job API, the flow compiler workflow, worker Lambdas,
-EventBridge Connections, the webhook ingress, the Transfer Family SFTP poller
-and the static-IP egress. Treat v3 as a new compiler front-end and new drivers
-inside that service. Do not provision a second Connect.
+Use the current [Connect scope](../../build-connect-service/reference/PRD.md)
+and inspect the target revision. Reuse its deployment. The 2026-09-30 comparison
+reports runtime compilation in the API Lambda, worker-family execution, SigV4
+and imported Transfer Family connectors.
 
-Use the PRD for routes, stacks, IAM scoping, env vars, error catalogue and
-operational playbook. Use this skill for the flow spec, verbs, drivers,
-options, triggers and the external-only boundary. Where they conflict for v3
-flows, this skill wins; keep v2 behavior for v2 flows until they are migrated.
+The table below preserves design targets. Native HTTP tasks, EventBridge
+Connections, static-IP egress and Fargate Runner are not established as shipped.
+Do not require or expose them without implementation evidence or an explicit
+engine-change request. Follow the target worker/compiler conformance tests.
 
 ## 1. Compilation targets
 
@@ -34,7 +32,7 @@ flows, this skill wins; keep v2 behavior for v2 flows until they are migrated.
 
 Inject into every compiled flow: auth resolution per connection, default and
 flow-wide Retry/Catch, per-item error capture, ledger commit/release, result
-manifest write, `ReplyBack` / `ReplyBackError`, health metric and dry-run
+manifest write, `ReplyBack` / `ReplyBackError`, supported operational metrics and dry-run
 short-circuit.
 
 ## 2. Triggers
@@ -70,8 +68,7 @@ products copy what they need to keep.
 - Grant each driver worker only its verbs' permissions on the Connect bucket
   prefixes and the secrets named by the connections it serves.
 - Scope STS `AssumeRole` to role ARNs registered in partner configurations.
-- Keep the static-IP NAT path for partners that allow-list egress IPs; route
-  SFTP through Transfer Family only.
+- Treat static-IP egress as an explicit engine capability gap unless verified in the target; route SFTP through supported Transfer Family connectors.
 - Never grant Connect roles access to Persist, product buckets, product queues
   or EventBridge buses other than the scheduler group it owns.
 

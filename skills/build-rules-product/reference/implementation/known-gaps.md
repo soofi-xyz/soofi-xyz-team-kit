@@ -29,7 +29,7 @@ references; they are not required to explain the generic mechanism.
 The focused references now describe context-selected rules, phone/email AND
 semantics, SMS invocation requirements, reduced default statistics, CSV outputs,
 capacity control, shared snapshots and opt-in Persist writeback. Gallade owns the
-product; Xatu owns downstream handoff criteria. Do not reintroduce the old
+product; the audience supporting skill owns downstream handoff criteria. Do not reintroduce the old
 read-only-graph or no-DynamoDB/EventBridge assertions.
 
 ## Implementation and verification backlog
@@ -41,19 +41,19 @@ Priorities reflect contract/operating impact; latency optimization needs measure
 | Priority / ID | Gap and evidence in Filter | Owner, effort / risk | Closure evidence |
 | --- | --- | --- | --- |
 | P1 / discovery | `lib/filter-stack.ts` publishes only legacy batch SSM; canonical sync SSM already exists | Gallade; S / low | Add canonical batch alias without replacing the workflow; old/new callers resolve the same ARN |
-| P1 / sync-contract | `src/evaluate-debt.ts` treats explicit `ruleset_id` as a label; non-phone catalog-ID selection is absent | Gallade + Xatu; M / medium | Publish a compatible selector/label contract; test existing subset callers, unknown IDs, response identity and intended scope |
-| P1 / sync-observability | `src/evaluate-debt.ts` logs/returns latency but lacks promised latency/count/error/cache metrics | Gallade + Porygon; M / low | Terminal/error/cache measurements tested and registered; dashboard evidence; telemetry cannot corrupt decisions |
+| P1 / sync-contract | `src/evaluate-debt.ts` treats explicit `ruleset_id` as a label; non-phone catalog-ID selection is absent | Gallade + the audience supporting skill; M / medium | Publish a compatible selector/label contract; test existing subset callers, unknown IDs, response identity and intended scope |
+| P1 / sync-observability | `src/evaluate-debt.ts` logs/returns latency but lacks promised latency/count/error/cache metrics | Gallade + the metrics supporting skill; M / low | Terminal/error/cache measurements tested and registered; dashboard evidence; telemetry cannot corrupt decisions |
 | P1 / sync-latency | CDK uses 32000 ms Persist / 45 s Lambda; prior requirement was 220 ms Persist / <=300 ms warm p95 | Gallade + Persist owner; measurement S, optimization TBD / medium | Measure representative warm p95 and Persist contribution; either meet the target or explicitly revise it with consumer acceptance |
-| P1 / writeback-e2e | `test/e2e/eligibility.e2e.test.ts` omits writeback opt-in, counts historical edges globally and permits zero facts | Gallade + Machamp; M / low | Explicit phone-only opt-in fixture, correlated ingest completion, expected debt/phone/UTC-date facts and idempotent replay; missing expected facts fail |
+| P1 / writeback-e2e | `test/e2e/eligibility.e2e.test.ts` omits writeback opt-in, counts historical edges globally and permits zero facts | Gallade + the batch supporting skill; M / low | Explicit phone-only opt-in fixture, correlated ingest completion, expected debt/phone/UTC-date facts and idempotent replay; missing expected facts fail |
 | P1 / input-api-iam | Batch/Glue S3 and execute-api grants remain broad; evaluator S3 is already prefix-scoped | Gallade; M / medium | Authorized inputs/rules/async results/writeback still work; unrelated prefixes/APIs denied; install parameters validated |
-| P1 / redrive-capacity | Native redrive skips completed AcquireCapacity after the original lease may have been released (`docs/capacity-controller.md`) | Gallade + Machamp; M / high | Preserve failed-state/Map-child redrive while proving reacquisition or equivalent enforced capacity accounting |
+| P1 / redrive-capacity | Native redrive skips completed AcquireCapacity after the original lease may have been released (`docs/capacity-controller.md`) | Gallade + the batch supporting skill; M / high | Preserve failed-state/Map-child redrive while proving reacquisition or equivalent enforced capacity accounting |
 | P2 / marketplace | `marketplace.product.json`, `marketplace/app.ts`, tenant installer parameters are absent | Gallade + Regigigas; L / medium | Build-produced cloud assembly passes tenant install, prerequisites, asset and existing-install migration tests |
 | P2 / region-runtime | `bin/app.ts`, graph clients and ingest constants pin us-east-2; Lambdas use Node 22 | Gallade; M / medium | Deployment/signing follow verified tenant region; Node 24 ESM/parser/WASM tests and synth pass |
-| P2 / naming | Package, tags, metrics, prefixes and stack identity remain Filter | Gallade + Regigigas/Porygon; M / medium | Consumer inventory, compatible migration, retained-resource diff, both-generation discovery/output/metric checks |
-| P2 / snapshot-activation | Snapshot flags are CI/CDK-time values (`bin/app.ts`, stack); source docs also lag PROD CI enablement | Gallade + Machamp; M / medium | Validated runtime activation/rollback without redeploy; freshly verified environment flags and updated repo instructions |
+| P2 / naming | Package, tags, metrics, prefixes and stack identity remain Filter | Gallade + Regigigas/the metrics supporting skill; M / medium | Consumer inventory, compatible migration, retained-resource diff, both-generation discovery/output/metric checks |
+| P2 / snapshot-activation | Snapshot flags are CI/CDK-time values (`bin/app.ts`, stack); source docs also lag PROD CI enablement | Gallade + the batch supporting skill; M / medium | Validated runtime activation/rollback without redeploy; freshly verified environment flags and updated repo instructions |
 | P2 / rules-cache | Sync cache uses URI/context + TTL, not version/ETag invalidation (`src/ruleset-loader.ts`) | Gallade; M / medium | Agree staleness/replay requirements; versioned rules or validated invalidation prevents unacceptable stale decisions without breaking latency |
-| P2 / channel-evidence | Xatu suppression requirements have not been verified against live Lexicon/SMS/email fixtures | Gallade + Xatu + Lexicon owner; M / low | Pinned deployed rules/context and positive/negative suppression matrix; no claim of missing live rules from this code audit alone |
-| P2 / metrics-integration | Capacity runbook records Lexicon/Main Dashboard integration as cross-repo follow-up | Porygon + Gallade; M / low | Registered metric definitions and visible shared dashboard series for the actual environment |
+| P2 / channel-evidence | the audience supporting skill suppression requirements have not been verified against live Lexicon/SMS/email fixtures | Gallade + the audience supporting skill + Lexicon owner; M / low | Pinned deployed rules/context and positive/negative suppression matrix; no claim of missing live rules from this code audit alone |
+| P2 / metrics-integration | Capacity runbook records Lexicon/Main Dashboard integration as cross-repo follow-up | the metrics supporting skill + Gallade; M / low | Registered metric definitions and visible shared dashboard series for the actual environment |
 | P3 / commands | `just check` / `just cdk:synth` from old PRD are absent; real recipes are documented in verification | Gallade; S / low | Agreed aliases or updated shared command contract; actual commands run successfully |
 
 ## Dependency order

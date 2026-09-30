@@ -72,6 +72,11 @@ jobs:
       - name: Check build-system-product contract
         run: python3 scripts/test-build-system-product-contract.py
 
+      - name: Check product ownership and guided acceptance
+        run: |
+          python3 scripts/test-product-catalog.py
+          python3 scripts/test-system-acceptance.py
+
       - name: Check Hoopa sanitization heuristics
         run: python3 scripts/check-build-portals-sanitization.py
 

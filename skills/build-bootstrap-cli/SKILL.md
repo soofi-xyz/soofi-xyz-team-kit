@@ -4,9 +4,11 @@ description: "Implementing or changing the Bootstrap CLI from its PRD — initia
 disable-model-invocation: true
 ---
 
-# Build Bootstrap CLI
+# Environment Setup (Bootstrap CLI)
 
 This skill is intentionally thin. Use it as a loader for [`reference/PRD.md`](./reference/PRD.md), not as a requirements copy.
+
+Bootstrap is an implementation of Environment setup, not an additional catalog product. Reconcile historical account-creation behavior with the requested environment before building.
 
 ## Required Reading
 
@@ -14,11 +16,14 @@ This skill is intentionally thin. Use it as a loader for [`reference/PRD.md`](./
 2. Read [`../apply-engineering-guidelines/SKILL.md`](../apply-engineering-guidelines/SKILL.md) for Golden Path constraints.
 3. Read the Account, Marketplace, Deployer, and Puller PRDs whenever Bootstrap work touches their APIs, bundles, installation handoffs, or health checks.
 
-## Use With Plugin Agents
+## Product ownership
 
-- Use `conkeldurr` first for platform product classification, existing-deployment checks, and build-vs-integrate decisions.
-- Use `regigigas` for marketplace bootstrap sequencing, tenant onboarding, system-component installation order, and cross-product responsibilities.
-- Use `machamp` only when the PRD work adds or changes long-running workflow orchestration outside the CLI's local resume-state model.
+Use the catalog in [guide-product-work](../guide-product-work/SKILL.md).
+Environment has no separately assigned agent in this kit. Execute this supporting
+skill directly only within the requested scope. Do not assign this work to
+Conkeldurr (Persist) or Zygarde (System), and do not call retired specialists.
+Use relevant supporting skills directly. Use Registeel only for current
+Marketplace publication and Regigigas for Marketplace implementation changes.
 
 ## Implementation Rules
 
