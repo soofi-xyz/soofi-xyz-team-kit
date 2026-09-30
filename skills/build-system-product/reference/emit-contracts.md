@@ -1,47 +1,69 @@
-# Emit contracts for product agents
+# Emit contracts for System
 
-Zygarde emits **reviewable stubs**. Agents turn stubs into real configs in
-their target repositories or via Product APIs. Paths are relative to the
-composition package root when one exists.
+Zygarde writes deployable System configuration packages, not loose Product
+stubs. Paths are relative to `configurations/<systemId>/`.
 
-[`examples/sale-availability/emits/`](examples/sale-availability/emits/) is a
-complete, checked set of these stubs. Placeholders use `<angle-brackets>`
-wherever the owning agent must supply a tenant value.
+[`examples/sale-availability/`](examples/sale-availability/) is a complete,
+checked package. Placeholders use `<angle-brackets>` wherever the owning agent
+must supply a tenant value.
 
-## Product orchestration → Conkeldurr + `build-product-service` (Machamp verify)
-
-Emit:
+## System configuration package
 
 ```text
-emits/product/
-  product.definition.stub.json   # name, request_schema, response_schema, metadata
-  flow-templates/
-    <template_name>.stub.json    # DSL definition (+ persistence_integration / output_path)
-  product-flows/
-    <flow_name>.stub.json        # flow_template_name required; tags/active/metadata
-  waterfall.stub.json            # optional { "waterfall": [{ "flow_name", "order", "stop_on_status" }] }
-  invocation.contract.md         # invocation_mode single | waterfall; required fields; status gates
+composition.manifest.json
+product.definition.json
+schemas/
+  request.schema.json
+  response.schema.json
+flow-templates/
+  <template_name>.json
+product-flows/
+  <flow_name>.json
+waterfall.json                 # omit when invocation mode is single
+invocation.contract.md
+emits/
+  lexicon/
+  connect/
+  transform/
+  persist/
+  deploy/
 ```
 
 **Rules**
 
-- Field names follow the target
-  [Product PRD](../../build-product-service/reference/PRD.md) §3.2–3.6, not
-  Staircase legacy (`single`, not `single_flow`; waterfall `order`, not
-  `priority`).
-- Every executable flow stub sets `flow_template_name` to an emitted
-  template's `name`.
-- `StaircaseService` field names in template stubs are drafts; Machamp
-  confirms them against the Product template validator at compile.
-- Template steps that call peers use relative URLs (Connect / Language /
-  Persist / Product), not secrets.
-- Prefer citing shapes from
-  [implementation-evidence.md](implementation-evidence.md) and the Product
-  PRD; do not paste tenant hostnames.
+- `composition.manifest.json` uses `orchestration.mode: system-service`.
+- `product.definition.json` names the Product and supplies schemas matching
+  both `product-schema` refs.
+- Every executable Product Flow sets `flow_template_name` and defaults to
+  inactive.
+- Every waterfall entry names an existing Product Flow and uses a unique
+  positive `order`.
+- Template peer calls use relative URLs and runtime-injected credentials.
+- All config refs resolve inside the package or to a pinned public contract.
+- Do not place account ids, secret ARNs, API keys, or developer AWS profiles
+  in a package.
 
-Integrate an existing Product deployment before provisioning a new one.
+## Base service emits
 
-## Lexicon → Conkeldurr (`build-lexicon-product`)
+For a new System repository, emit:
+
+```text
+bin/app.ts
+lib/system-data-stack.ts
+lib/system-workflow-stack.ts
+lib/system-api-stack.ts
+src/configuration/
+src/domain/
+src/handlers/
+src/runtime/
+src/workflow/
+test/
+```
+
+The stacks must synthesize in data → workflow → API order. Configuration
+loading must fail synth on malformed or unresolved packages.
+
+## Lexicon → Conkeldurr/Mew
 
 ```text
 emits/lexicon/
@@ -78,7 +100,7 @@ emits/transform/
 
 ```text
 emits/persist/
-  collections.stub.md        # transaction/collection correlation expectations
+  collections.ref.md
 ```
 
 Register it as a `persist-collection` configRef with a `persist` product and
@@ -91,24 +113,15 @@ emits/deploy/
   environment.stub.json      # activationEnabled false; cost ceiling; components[].refs → configRefs
 ```
 
-## Thin System package → Zygarde (fallback only)
-
-```text
-systems/<id>/system.manifest.json
-systems/<id>/openapi.yaml
-systems/<id>/fixtures/
-```
-
-Allowed only when orchestration mode is `thin-package-deferred`.
-
 ## Handoff checklist
 
 | Emit | Owner | Done when |
 | --- | --- | --- |
-| Product definition/template/flow | Conkeldurr (+ Machamp verify) | APIs accept config or PR merged |
+| Base System | Zygarde | tests and all stacks synthesize |
+| Product definition/template/flow | Zygarde | package validates and template compiles |
 | Lexicon | Conkeldurr | Catalog/mapping path exists |
 | Connect | Lapras | Partner configuration + activation accepted by the Connect API |
 | Transform | Kecleon | Mapping enabled + acceptance |
 | Persist | Conkeldurr | Collection contract agreed |
 | Deploy | Conkeldurr | Synth with activation off |
-| Manifest | Zygarde | `scripts/check-system-manifest.py` passes |
+| Manifest | Zygarde | both manifest validators pass; refs resolve; evidence is stated |

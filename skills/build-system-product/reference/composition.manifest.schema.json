@@ -6,20 +6,29 @@
   "additionalProperties": false,
   "required": [
     "contractVersion",
+    "configurationVersion",
     "systemId",
+    "productName",
     "outcome",
+    "orchestration",
     "products",
     "configRefs",
     "workflow",
     "successCriteria",
     "dependencies",
-    "deploy"
+    "deploy",
+    "evidence"
   ],
   "properties": {
     "contractVersion": {
       "type": "integer",
       "const": 1,
       "description": "System composition contract version. Only 1 is accepted."
+    },
+    "configurationVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Semantic version of this System configuration package."
     },
     "systemId": {
       "type": "string",
@@ -51,7 +60,6 @@
           "product": {
             "type": "string",
             "enum": [
-              "product-orchestration",
               "lexicon",
               "connect",
               "transform",
@@ -93,6 +101,7 @@
           "kind": {
             "type": "string",
             "enum": [
+              "system-configuration",
               "product-definition",
               "product-schema",
               "product-flow-template",
@@ -155,7 +164,6 @@
           "product": {
             "type": "string",
             "enum": [
-              "product-orchestration",
               "lexicon",
               "connect",
               "transform",
@@ -286,23 +294,57 @@
         }
       }
     },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "level",
+        "artifacts"
+      ],
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": [
+            "spec",
+            "synth",
+            "deployed",
+            "live"
+          ]
+        },
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          }
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 2000
+        }
+      }
+    },
     "productName": {
       "type": "string",
       "minLength": 1,
       "maxLength": 128,
-      "description": "Product service name when different from systemId."
+      "description": "Named Product hosted by the System service."
     },
     "orchestration": {
       "type": "object",
       "additionalProperties": false,
+      "required": [
+        "mode",
+        "invocationMode"
+      ],
       "properties": {
         "mode": {
           "type": "string",
           "enum": [
-            "product-service",
-            "thin-package-deferred"
+            "system-service"
           ],
-          "description": "Default product-service. thin-package-deferred requires deferred Product cutover criteria."
+          "description": "System is the Product-derived orchestration runtime."
         },
         "invocationMode": {
           "type": "string",

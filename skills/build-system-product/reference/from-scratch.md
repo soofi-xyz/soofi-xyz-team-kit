@@ -1,61 +1,84 @@
-# Recreate a System outcome (Product-shaped)
+# Build System from scratch
 
-Use this guide when composing a business outcome. Prefer configuring the
-**Product** service; keep leaf Product engines with their specialists.
+Use this guide to create the Base System repository or add a configuration to
+an existing System deployment.
 
 ## 1. Intake
 
-> Use Zygarde to compose this outcome as a Product configuration. Follow
-> `build-system-product`. Read Product runtime mapping and StaircaseAPI/product
-> evidence. Keep `build-product-service` for platform integrate-vs-provision.
-> Template-backed flows only.
+> Use Zygarde with `build-system-product`. Treat Staircase Product as behavioral
+> evidence and build the target with TypeScript/AWS CDK. Template-backed flows
+> only.
 
 Collect:
 
-- Outcome statement and callers (sync API? async invocation? waterfall?)
-- Whether Product is already deployed (integrate) or must be provisioned
+- Whether the request is Base System work, configuration work, or both
+- Outcome statement and callers
 - Leaf Products needed (Lexicon, Connect, Transform, Persist)
 - Success criteria and failure modes
 
-## 2. Emit sequence
+## 2. Base service sequence
 
-1. **Draft manifest** — validate against `composition.manifest.schema.json`.
-   Set `orchestration.mode` to `product-service` unless Product is unavailable.
-2. **Product emits** — definition + schemas + flow template DSL + product flow
-   (`flow_template_name`) + optional waterfall + invocation contract.
-3. **Leaf emits** — Lexicon / Connect / Transform / Persist stubs the template
-   will call.
-4. **Deploy posture** — inactive activation; no hardcoded AWS profile names.
-5. **Apply** — Conkeldurr applies Product configs (Machamp verifies compile /
-   waterfall). Lapras/Kecleon implement leaf wiring.
-6. **Verify** — schema-valid manifest; template compiles; invocation criteria
-   listed; evidence levels separated.
+1. Scaffold strict TypeScript, CDK v2, Node.js Lambda, Vitest, ESLint,
+   Prettier, and repeatable `just` commands.
+2. Create `SystemDataStack`, `SystemWorkflowStack`, and `SystemApiStack` with
+   explicit dependencies.
+3. Implement Product/schemas, Flow Templates, Product Flows, waterfalls, and
+   invocation/status APIs under `/system`.
+4. Implement the DSL compiler and callback/correlation lifecycle.
+5. Add configuration discovery/validation and idempotent deployment seeding.
+6. Add CDK assertions and handler/domain tests; strict synth all stacks.
 
-## 3. Optional target package layout
+## 3. Configuration sequence
 
-When storing emits in git (not required to be named `system`):
+1. Draft `composition.manifest.json` with `orchestration.mode` set to
+   `system-service`.
+2. Add Product definition and request/response schemas.
+3. Add one or more Flow Templates and Product Flows. Set
+   `flow_template_name` on every flow.
+4. Add a waterfall only for alternate-flow failover.
+5. Add leaf references and owner handoffs.
+6. Keep activation false; validate paths and manifest before synth.
+
+## 4. Repository layout
 
 ```text
-systems/<systemId>/
-  system.manifest.json
-  emits/product/...
-  emits/lexicon|connect|transform|persist|deploy/...
-  fixtures/                    # only if thin-package-deferred
+bin/app.ts
+lib/
+  system-data-stack.ts
+  system-workflow-stack.ts
+  system-api-stack.ts
+src/
+  configuration/
+  domain/
+  handlers/
+  runtime/
+  workflow/
+configurations/<systemId>/
+  composition.manifest.json
+  product.definition.json
+  schemas/
+  flow-templates/
+  product-flows/
+  waterfall.json
+  invocation.contract.md
+  emits/
+test/
 ```
 
-## 4. Shared dependencies
+## 5. Shared dependencies
 
 | Dependency | Use |
 | --- | --- |
 | [Engineering](../../apply-engineering-guidelines/SKILL.md) | Quality defaults |
-| [Product service](../../build-product-service/SKILL.md) | Orchestration platform |
 | [Lexicon](../../build-lexicon-product/SKILL.md) | Languages/mappings |
 | [Connect](../../build-connect-product/SKILL.md) | Source / connector jobs |
 | [Transform](../../build-transform-product/SKILL.md) | Spark language pairs |
 | [Batch](../../build-batch-workflows/SKILL.md) | Capacity outside waterfalls |
 
-## 5. Stop conditions
+## 6. Stop conditions
 
 - Manifest invalid → fix before handoffs.
-- No Product and user refuses thin package → stop and ask to provision Product.
+- Flow omits `flow_template_name` → reject it.
+- Template includes an absolute host or secret → reject it.
 - Missing leaf engine → do not invent under System; open Lapras/Kecleon work.
+- No deployment authorization → stop at tested synth and report `Synth`.

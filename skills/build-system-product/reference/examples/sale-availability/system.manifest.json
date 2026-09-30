@@ -1,19 +1,20 @@
 {
   "contractVersion": 1,
+  "configurationVersion": "1.0.0",
   "systemId": "sale-availability",
   "productName": "sale-availability",
   "title": "Sale availability lookup",
   "outcome": "Given an address or parcelId, return sale availability and evidence from curated Connect/Transform artifacts via a Product invocation. Unknown identifiers fail closed. No scrape-on-request.",
   "orchestration": {
-    "mode": "product-service",
+    "mode": "system-service",
     "invocationMode": "single",
-    "notes": "Serve through Product APIs once a deployment is integrated or provisioned. Template-backed flow only."
+    "notes": "Serve through the Base System /system API. Template-backed flow only."
   },
   "products": [
     {
-      "product": "product-orchestration",
+      "product": "system-runtime",
       "role": "serve",
-      "notes": "Product definition, schemas, flow template, and product flow (flow_template_name required)."
+      "notes": "System hosts the Product definition, schemas, Flow Template, and Product Flow."
     },
     {
       "product": "lexicon",
@@ -39,22 +40,32 @@
   "configRefs": {
     "productDefinition": {
       "kind": "product-definition",
-      "path": "emits/product/product.definition.stub.json",
-      "ownerAgent": "conkeldurr"
+      "path": "product.definition.json",
+      "ownerAgent": "zygarde"
+    },
+    "requestSchema": {
+      "kind": "product-schema",
+      "path": "schemas/request.schema.json",
+      "ownerAgent": "zygarde"
+    },
+    "responseSchema": {
+      "kind": "product-schema",
+      "path": "schemas/response.schema.json",
+      "ownerAgent": "zygarde"
     },
     "productFlowTemplate": {
       "kind": "product-flow-template",
-      "path": "emits/product/flow-templates/sale_availability_lookup.stub.json",
-      "ownerAgent": "machamp"
+      "path": "flow-templates/sale-availability-lookup.json",
+      "ownerAgent": "zygarde"
     },
     "productFlow": {
       "kind": "product-flow",
-      "path": "emits/product/product-flows/default.stub.json",
-      "ownerAgent": "conkeldurr"
+      "path": "product-flows/default.json",
+      "ownerAgent": "zygarde"
     },
     "productInvocation": {
       "kind": "product-invocation",
-      "path": "emits/product/invocation.contract.md",
+      "path": "invocation.contract.md",
       "ownerAgent": "zygarde"
     },
     "lexiconCatalog": {
@@ -114,28 +125,28 @@
     },
     {
       "id": "configure-product",
-      "product": "product-orchestration",
+      "product": "system-runtime",
       "configRef": "productDefinition",
-      "agent": "conkeldurr",
+      "agent": "zygarde",
       "gate": "product-schemas-accepted"
     },
     {
       "id": "compile-flow-template",
-      "product": "product-orchestration",
+      "product": "system-runtime",
       "configRef": "productFlowTemplate",
-      "agent": "machamp",
+      "agent": "zygarde",
       "gate": "flow-template-compiled"
     },
     {
       "id": "bind-product-flow",
-      "product": "product-orchestration",
+      "product": "system-runtime",
       "configRef": "productFlow",
-      "agent": "conkeldurr",
+      "agent": "zygarde",
       "gate": "flow-template-name-bound"
     },
     {
       "id": "invoke-contract",
-      "product": "product-orchestration",
+      "product": "system-runtime",
       "configRef": "productInvocation",
       "agent": "zygarde",
       "gate": "invocation-contract-documented"
@@ -161,7 +172,7 @@
     },
     {
       "id": "invocation-known-key",
-      "description": "Known address/parcelId invocation returns availability + evidence (deferred until Product + leaf wiring).",
+      "description": "Known address/parcelId invocation returns availability + evidence (deferred until System + leaf wiring).",
       "verify": "deferred"
     },
     {
@@ -177,6 +188,7 @@
   ],
   "dependencies": {
     "repos": [
+      "prismteam-ai/system",
       "StaircaseAPI/product",
       "elephant-xyz/lexicon",
       "elephant-xyz/connect",
@@ -188,11 +200,18 @@
         "purpose": "Local or checkout path to Elephant Lexicon for catalog resolution."
       }
     ],
-    "notes": "Primary runtime is Product (StaircaseAPI/product / build-product-service). Thin System package is out of scope unless orchestration.mode is thin-package-deferred."
+    "notes": "Primary runtime is Base System. Staircase Product is behavioral evidence only."
   },
   "deploy": {
     "activationEnabled": false,
     "costCeilingUsd": 25,
-    "notes": "Do not enable activation without account/region authorization and product wiring evidence."
+    "notes": "Do not enable activation without account/region authorization and System plus leaf wiring evidence."
+  },
+  "evidence": {
+    "level": "spec",
+    "artifacts": [
+      "system.manifest.json"
+    ],
+    "notes": "Example contract only; no synth, deployment, or live invocation is claimed."
   }
 }

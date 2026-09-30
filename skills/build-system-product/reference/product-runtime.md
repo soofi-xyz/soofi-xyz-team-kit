@@ -1,80 +1,91 @@
-# Product runtime mapping
+# System runtime mapping from Staircase Product
 
-Map System composition fields onto the Product service model used by
-[StaircaseAPI/product](https://github.com/StaircaseAPI/product) and specified
-for rebuilds in [`build-product-service`](../../build-product-service/reference/PRD.md).
+Map the domain model in
+[StaircaseAPI/product](https://github.com/StaircaseAPI/product) onto the Base
+System target. Preserve behavior while changing service identity and
+implementation technology.
 
-## Mental model
+## Service mapping
 
 ```text
-System outcome (systemId)
-  = Product (name ≈ systemId or explicit productName)
-      + request/response JSON Schemas (+ OpenAPI view)
-      + Product Flow Template(s)  → compile → Step Functions
-      + Product Flow(s)           → require flow_template_name
-      + optional Waterfall        → ordered flow failover
-      + Invocations               → invocation_mode single | waterfall
+Staircase Product                         Prism System
+Python + Serverless                      TypeScript + AWS CDK
+/product                                 /system
+product + flow-template modules          one CDK app, three ordered stacks
+Product configuration                    Product configuration
+Flow Template DSL                        same DSL contract
+compiled Step Functions                  compiled Step Functions
+single | waterfall invocation            single | waterfall invocation
 ```
 
-Leaf Products are **callees** inside the template (Connect jobs, Translate/
-Language, Persist collections, reports/SMS/email Product routes), not a
-replacement for Product.
+System keeps Product as the inner business noun. The outer deployed product is
+**System**; each hosted business outcome remains a named Product.
 
-## Manifest → Product artifacts
+## Configuration mapping
 
-| Manifest / emit | Product surface |
+| Configuration artifact | System API/runtime surface |
 | --- | --- |
-| `systemId` / `title` | Product `name` (and metadata description) |
-| Outcome request/response | `request_schema` / `response_schema` or `product_schema` |
-| `configRefs` openapi | Product OpenAPI / custom endpoints |
-| Flow template emit | `PUT .../flow-templates/{template_name}` DSL body |
-| Product flow emit | `POST .../product_flows` with `flow_template_name` |
-| Waterfall emit | `PUT .../waterfall` `{ waterfall: [{ flow_name, order, stop_on_status }] }` |
-| Invocation success criteria | `POST .../invocations` contract + status checks |
-| Leaf Connect/Transform/Lexicon | `StaircaseService` URLs + flow metadata — engines stay with Lapras/Kecleon/Conkeldurr |
+| `product.definition.json` | Product row and request/response schema refs |
+| `schemas/*.schema.json` | request/response validation and OpenAPI metadata |
+| `flow-templates/<name>.json` | compile/upsert workflow and state machine |
+| `product-flows/<name>.json` | executable binding requiring `flow_template_name` |
+| `waterfall.json` | ordered alternate-flow failover |
+| `invocation.contract.md` | start/status/callback acceptance |
+| `composition.manifest.json` | bundle identity, leaf refs, gates, and evidence |
 
-## Flow Template DSL (composition primitive)
+The public route for a configured outcome is
+`POST /system/products/{product_name}/invocations`.
 
-Authors use Product DSL states. The critical composition step is
+## Flow Template contract
+
+The compiler accepts:
+
+- `StaircaseService`
+- `Choice`, `Map`, `Parallel`, `Wait`, `Fail`, `Succeed`
+- `SendCallback`, `PatchEvent`, `DownloadPublicContent`
+
 `StaircaseService`:
 
-- Calls `https://{tenant DomAIN}/{relative URL}` with `x-api-key`
-- Injects JSONPaths from `$.flow_input`, `$.product`, `$.product_flow`,
-  `$.states.<Step>.output...`
-- Optional `CallbackSettings` → wait-for-task-token webhook completion
+- stores a relative service URL, HTTP method, body, headers, and JSONPath
+  substitutions;
+- receives tenant host and API credentials at invocation time;
+- reads from `$.flow_input`, `$.product`, `$.product_flow`, and prior state
+  outputs;
+- carries `transaction_id`, invocation id, collection ids, and callback token;
+- supports bounded retries/catches and callback waits.
 
-Other DSL types: `Choice`, `Map`, `Parallel`, `Wait`, `Fail`, `Succeed`,
-`SendCallback`, `PatchEvent`, `DownloadPublicContent`.
+Reject absolute service URLs and secret-bearing headers in configuration.
 
-**Target platform rule (Soofi PRD):** every executable Product Flow must set
-`flow_template_name`. Do not design Systems that depend on the legacy shared
-default connector state machine.
+## Compile and invoke
 
-## Waterfall vs template steps
+1. Template upsert validates the DSL and persists an immutable revision.
+2. The compile workflow produces ASL and creates or updates the template state
+   machine.
+3. Upsert status records the compiled ARN or a typed compile failure.
+4. Product Flow create/update verifies the named template has compiled.
+5. Invocation resolves either one Product Flow or the configured waterfall.
+6. The execution writes durable status and emits correlation/telemetry.
+7. A callback route resumes only the matching invocation and state token.
 
-| Concern | Where it lives |
-| --- | --- |
-| Ordered failover across alternate flows/vendors | Product **waterfall** |
-| Branching / map / parallel / retries inside one flow | Flow **template** DSL |
-| Batch Distributed Map / cost gates outside Product | Machamp + batch skill |
+No code path may infer a legacy connector pipeline from vendor metadata.
 
-## When a thin System package is allowed
+## Waterfall boundary
 
-Use a fixture-backed TypeScript package only if:
+Use the Flow Template for branching, maps, parallel work, retries, waits, and
+callbacks within one implementation. Use the waterfall only for ordered
+failover among alternate Product Flows. Advance after a terminal failed result;
+stop on the first completed result.
 
-1. No Product deployment can be integrated or provisioned in-session, and
-2. The manifest marks Product orchestration as `deferred` with an owner, and
-3. Success criteria say Product cutover is follow-on.
+## Configuration deployment
 
-Otherwise serve through Product invocations.
+The same application supports API-managed and checked-in configurations.
+Checked-in bundles are validated before synth and seeded idempotently during
+deployment. Seeding must use the same domain validation as API writes, and
+deleting a file must not silently delete live configuration.
 
-## Agent split
+## Agent boundary
 
-| Work | Agent / skill |
-| --- | --- |
-| Outcome composition + emits | Zygarde / this skill |
-| Product platform integrate vs provision | Conkeldurr / `build-product-service` |
-| Template compile, SFN, waterfall verify | Machamp (with Product PRD) |
-| Connect leaf | Lapras |
-| Transform leaf | Kecleon |
-| Lexicon leaf | Conkeldurr + `build-lexicon-product` |
+Zygarde owns Base System and configurations. Lapras owns Connect adapters,
+Kecleon owns Transform mappings, Conkeldurr/Mew own Lexicon and Persist
+contracts, and Machamp supports workflow/capacity analysis when a configuration
+exceeds ordinary System execution.

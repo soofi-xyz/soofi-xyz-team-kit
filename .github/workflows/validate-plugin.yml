@@ -44,6 +44,7 @@ jobs:
       - name: Check Python syntax
         run: |
           python3 -m py_compile scripts/check-plugin-clean-room.py
+          python3 -m py_compile skills/build-system-product/scripts/validate-manifest.py
           python3 -m py_compile skills/use-oracle/scripts/validate-county-readiness.py
           python3 -m py_compile scripts/check-system-manifest.py
           python3 -m py_compile scripts/test-build-system-product-contract.py

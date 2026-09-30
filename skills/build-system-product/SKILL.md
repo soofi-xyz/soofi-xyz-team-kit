@@ -1,70 +1,76 @@
 ---
 name: build-system-product
-description: "Compose a business outcome as Product configuration (schemas, flow templates, flows, waterfall, invocations) plus Lexicon/Connect/Transform/Persist emits — aligned with StaircaseAPI/product. Use with zygarde; does not implement Product or Connect/Transform engines."
+description: "Build or extend the Product-derived TypeScript/AWS CDK System service and its versioned configurations: schemas, flow templates, flows, waterfalls, invocations, and leaf-product references. Use with zygarde."
 ---
 
 # Build System Product
 
-Use `zygarde` for System composition. A System is a versioned business
-outcome delivered primarily by configuring the **Product** orchestration
-service (named Product + schemas + flow templates + flows + optional
-waterfall + invocations) so it composes leaf Products such as Lexicon,
-Connect, Transform, and Persist.
+Use `zygarde` to build the **System service** and author configurations hosted
+by it. System is the TypeScript/AWS CDK successor to the core orchestration
+behavior in [StaircaseAPI/product](https://github.com/StaircaseAPI/product):
+named Products, JSON Schemas, Product Flow Templates compiled to Step
+Functions, template-backed Product Flows, waterfalls, and invocations.
 
-This skill contains instructions, contracts, and examples only. Implement
-configs and any package code in the user's target repository when they
-request that build. The reference implementation is
-[StaircaseAPI/product](https://github.com/StaircaseAPI/product); the
-platform rebuild contract is [`build-product-service`](../build-product-service/SKILL.md).
+Staircase Product is behavioral evidence. Do not copy its Python/Serverless
+packaging or its legacy default connector pipeline. Build the target with
+TypeScript, AWS CDK v2, Node.js Lambda, and a `/system` API.
 
 ## Read by task
 
-1. Read [the product contract](reference/PRD.md) for ownership, Prism
-   placement, and non-goals.
-2. Read [Product runtime mapping](reference/product-runtime.md) and
+1. Read [the System contract](reference/PRD.md) before planning service code.
+2. Read [runtime mapping](reference/product-runtime.md) and
    [implementation evidence](reference/implementation-evidence.md) before
-   inventing a custom serve path.
+   translating Staircase behavior.
 3. Read [contracts](reference/contracts.md) and validate against
    [composition.manifest.schema.json](reference/composition.manifest.schema.json).
-4. For emits into a target repo, follow [from-scratch](reference/from-scratch.md)
-   and [emit-contracts](reference/emit-contracts.md).
+4. Follow [from-scratch](reference/from-scratch.md) for repository scaffolding
+   and [emit-contracts](reference/emit-contracts.md) for configuration paths.
 5. Use [worked-example-sale-availability](reference/worked-example-sale-availability.md)
    and [examples/sale-availability/](reference/examples/sale-availability/)
    (manifest + emits) as a skeleton only.
-6. Check every manifest with `scripts/check-system-manifest.py` before
-   handing emits to other agents.
+6. Check every manifest with
+   `skills/build-system-product/scripts/validate-manifest.py` and
+   `scripts/check-system-manifest.py` before handing emits to other agents.
 
-## Keep shared skills
+## Build sequence
 
-- Apply [engineering guidelines](../apply-engineering-guidelines/SKILL.md).
-- Use [Product service](../build-product-service/SKILL.md) via Conkeldurr
-  (Machamp for flow-template / Step Functions / waterfall verification) for
-  the orchestration runtime — integrate an existing deployment before
-  provisioning a duplicate.
-- Use [Lexicon](../build-lexicon-product/SKILL.md),
-  [Connect ingestion](../build-connect-product/SKILL.md),
-  [Transform](../build-transform-product/SKILL.md), and Persist skills for
-  leaf Products the flow template calls.
-- Use [batch workflows](../build-batch-workflows/SKILL.md) when capacity sits
-  outside Product waterfalls.
-- Use Regigigas only when Marketplace packaging/subscription is requested.
+1. Classify the task as base service, configuration, or both.
+2. For base service work, create ordered `SystemDataStack`,
+   `SystemWorkflowStack`, and `SystemApiStack`.
+3. Implement Product definitions/schemas, Flow Template upsert and compile,
+   template-backed Product Flows, waterfall ordering, invocation start/status,
+   correlation, and callbacks.
+4. Load checked-in `configurations/<id>/` bundles, validate them before synth,
+   seed them idempotently, and keep activation false by default.
+5. Verify format, lint, types, tests, strict CDK synth, and manifest validation.
 
 ## Invariants
 
-- **Outcome unit is a Product configuration**, not a new Spark job and not
-  (by default) a one-off HTTP microservice.
+- **System is the runtime.** Do not require a separate Product deployment and
+  do not delegate System platform internals to another agent.
 - **Template-backed flows only** — every executable Product Flow references a
   Flow Template (`flow_template_name`). Do not revive the legacy default
   connector pipeline.
-- **System composes; leaf Products execute.** Zygarde emits manifests and
-  stubs; Conkeldurr/Lapras/Kecleon/Machamp implement engines and platform.
+- **Three-stack boundary** — data first, workflows second, API last. Keep stack
+  dependencies explicit and keep unrelated optional routes isolated.
+- **System composes; leaf Products execute.** Keep Connect adapters, Transform
+  jobs, Lexicon publication, Persist storage, and Deploy control planes out of
+  System.
 - **Pin configuration.** Fail unknown products, missing `configRefs`, or
   unversioned manifests. `contractVersion` is `1`.
-- **Cross-service calls** in templates use relative platform URLs (Connect,
-  Translate/Language, Persist, nested Product) with correlation ids — not
-  inlined credentials.
-- **Do not claim** live Product/System readiness from this skill alone.
+- **Secure defaults.** Encrypt retained data, enable PITR, use TTL for
+  idempotency/status records, require API keys, and grant least privilege.
+- **Cross-service calls** use relative platform URLs with correlation ids; do
+  not embed hostnames, API keys, account ids, or developer AWS profiles.
+- **Evidence is explicit.** Report spec, synth, deployed, and live separately.
 
-Return composition artifacts and evidence levels separately: manifest
-validity, Product emit completeness, leaf implementation status, and live
-invocation status.
+Apply [engineering guidelines](../apply-engineering-guidelines/SKILL.md). Use
+[Lexicon](../build-lexicon-product/SKILL.md),
+[Connect](../build-connect-product/SKILL.md), and
+[Transform](../build-transform-product/SKILL.md) for leaf contracts. Use
+[batch workflows](../build-batch-workflows/SKILL.md) only when capacity sits
+outside System waterfalls. Use Regigigas only when Marketplace packaging is
+explicitly requested.
+
+Return changed paths, stack topology, configuration ids, manifest validation,
+test/synth results, deferred leaf work, and the achieved evidence level.

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "minProperties": 1,
+  "maxProperties": 1,
+  "properties": {
+    "address": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 300
+    },
+    "parcelId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    }
+  }
+}

@@ -20,6 +20,7 @@ from typing import Any
 
 try:
     from jsonschema import Draft202012Validator
+    from jsonschema.exceptions import SchemaError
 except ModuleNotFoundError:
     print("missing dependency: install jsonschema", file=sys.stderr)
     raise SystemExit(2)
@@ -33,12 +34,13 @@ TRANSFORM_SCHEMA = SKILLS / "build-transform-product" / "reference" / "contracts
 EXAMPLES = SYSTEM_REFERENCE / "examples"
 
 KIND_PRODUCT = {
-    "product-definition": "product-orchestration",
-    "product-schema": "product-orchestration",
-    "product-flow-template": "product-orchestration",
-    "product-flow": "product-orchestration",
-    "product-waterfall": "product-orchestration",
-    "product-invocation": "product-orchestration",
+    "system-configuration": "system-runtime",
+    "product-definition": "system-runtime",
+    "product-schema": "system-runtime",
+    "product-flow-template": "system-runtime",
+    "product-flow": "system-runtime",
+    "product-waterfall": "system-runtime",
+    "product-invocation": "system-runtime",
     "lexicon-catalog": "lexicon",
     "connect-partner": "connect",
     "connect-activation": "connect",
@@ -49,7 +51,12 @@ KIND_PRODUCT = {
     "system-openapi": "system-runtime",
     "system-fixtures": "system-runtime",
 }
-SERVE_KINDS = ("product-definition", "product-flow-template", "product-flow")
+SERVE_KINDS = (
+    "product-definition",
+    "product-flow-template",
+    "product-flow",
+    "product-invocation",
+)
 REMOTE = re.compile(r"^[a-z][a-z0-9+.-]*://")
 REPO = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 ENV_NAME = re.compile(r"^[A-Z][A-Z0-9_]*$")
@@ -97,8 +104,8 @@ def _schema_path(error) -> str:
     return "/".join(str(part) for part in error.absolute_path) or "(root)"
 
 
-def _duplicates(values: list[str]) -> list[str]:
-    seen: set[str] = set()
+def _duplicates(values: list[Any]) -> list[Any]:
+    seen: set[Any] = set()
     return sorted({value for value in values if value in seen or seen.add(value)})
 
 
@@ -191,33 +198,25 @@ class ManifestCheck:
 
     def check_orchestration(self) -> None:
         manifest = self.manifest
-        roles = {item["product"]: item["role"] for item in manifest["products"]}
+        serving_systems = [
+            item
+            for item in manifest["products"]
+            if item["product"] == "system-runtime" and item["role"] == "serve"
+        ]
         kinds = {ref["kind"] for ref in self.config_refs.values()}
         orchestration = manifest.get("orchestration", {})
-        mode = orchestration.get("mode", "product-service")
-        product_serves = roles.get("product-orchestration") in ("serve", "execute")
 
-        if mode == "product-service" and "product-orchestration" not in roles:
-            self.fail("products", "orchestration mode product-service requires product-orchestration")
-        if product_serves:
-            for kind in SERVE_KINDS:
-                if kind not in kinds:
-                    self.fail("configRefs", f"product-orchestration serves but no {kind} ref is declared")
+        if orchestration.get("mode") != "system-service":
+            self.fail("orchestration/mode", "System configurations must use system-service")
+        if len(serving_systems) != 1:
+            self.fail("products", "exactly one system-runtime must have role serve")
+        for kind in SERVE_KINDS:
+            if kind not in kinds:
+                self.fail("configRefs", f"system-runtime serves but no {kind} ref is declared")
+        if sum(1 for ref in self.config_refs.values() if ref["kind"] == "product-schema") < 2:
+            self.fail("configRefs", "system-runtime requires request and response product-schema refs")
         if orchestration.get("invocationMode") == "waterfall" and "product-waterfall" not in kinds:
             self.fail("configRefs", "invocationMode waterfall requires a product-waterfall ref")
-
-        thin = mode == "thin-package-deferred" or (roles.get("system-runtime") == "serve" and not product_serves)
-        if thin:
-            if "system-runtime" not in roles:
-                self.fail("products", "thin-package-deferred requires a system-runtime product")
-            if not any(
-                item.get("verify") == "deferred" and "product" in item["description"].lower()
-                for item in manifest["successCriteria"]
-            ):
-                self.fail(
-                    "successCriteria",
-                    "a thin System package needs a deferred criterion naming the Product cutover",
-                )
 
     def check_dependencies(self) -> None:
         dependencies = self.manifest["dependencies"]
@@ -294,6 +293,12 @@ class ManifestCheck:
                     f"product definition name {definition.get('name')!r} does not match {product_name!r}",
                 )
 
+        for name, schema in self._emits_of("product-schema").items():
+            try:
+                Draft202012Validator.check_schema(schema)
+            except SchemaError as exc:
+                self.fail(f"configRefs/{name}", f"invalid product JSON Schema: {exc}")
+
         template_names: set[str] = set()
         for name, template in self._emits_of("product-flow-template").items():
             where = f"configRefs/{name}"
@@ -317,14 +322,24 @@ class ManifestCheck:
                 self.fail(where, "product flow must set flow_template_name")
             elif template not in template_names:
                 self.fail(where, f"flow_template_name {template!r} does not match an emitted flow template")
+            if flow.get("active") is not False:
+                self.fail(where, "product flow must default active to false")
 
         for name, waterfall in self._emits_of("product-waterfall").items():
+            orders: list[int] = []
             for index, entry in enumerate(waterfall.get("waterfall", [])):
                 if entry.get("flow_name") not in flow_names:
                     self.fail(
                         f"configRefs/{name}",
                         f"waterfall/{index} flow_name {entry.get('flow_name')!r} does not match an emitted product flow",
                     )
+                order = entry.get("order")
+                if not isinstance(order, int) or order < 1:
+                    self.fail(f"configRefs/{name}", f"waterfall/{index} order must be a positive integer")
+                else:
+                    orders.append(order)
+            for order in _duplicates(orders):
+                self.fail(f"configRefs/{name}", f"waterfall order {order!r} is duplicated")
 
     def check_leaf_emits(self) -> None:
         for kind, validator in LEAF_VALIDATORS.items():

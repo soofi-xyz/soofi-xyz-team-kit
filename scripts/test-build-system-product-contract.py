@@ -80,13 +80,23 @@ def assert_worked_example() -> None:
         fail(f"worked example must validate: {errors}")
     manifest = read_json(EXAMPLE_DIR / MANIFEST_NAME)
     products = {item["product"] for item in manifest["products"]}
-    for product in ("product-orchestration", "lexicon", "connect", "transform", "deploy"):
+    for product in ("system-runtime", "lexicon", "connect", "transform", "deploy"):
         if product not in products:
             fail(f"worked example must compose {product}")
     emitted = {path.parent.name for path in (EXAMPLE_DIR / "emits").glob("*/*")}
-    for layer in ("product", "lexicon", "connect", "transform", "deploy"):
+    for layer in ("lexicon", "connect", "transform", "deploy"):
         if layer not in emitted:
             fail(f"worked example must ship emits/{layer}/ drafts")
+    for relative in (
+        "product.definition.json",
+        "schemas/request.schema.json",
+        "schemas/response.schema.json",
+        "flow-templates/sale-availability-lookup.json",
+        "product-flows/default.json",
+        "invocation.contract.md",
+    ):
+        if not (EXAMPLE_DIR / relative).is_file():
+            fail(f"worked example must ship {relative}")
 
 
 def assert_schema_rejections() -> None:
@@ -94,7 +104,13 @@ def assert_schema_rejections() -> None:
     assert_rejects("empty successCriteria", lambda _p, m: m.update(successCriteria=[]), "should be non-empty")
     assert_rejects("missing dependencies", lambda _p, m: m.pop("dependencies"), "'dependencies' is a required property")
     assert_rejects("unversioned", lambda _p, m: m.pop("contractVersion"), "'contractVersion' is a required property")
+    assert_rejects(
+        "configuration unversioned",
+        lambda _p, m: m.pop("configurationVersion"),
+        "'configurationVersion' is a required property",
+    )
     assert_rejects("future version", lambda _p, m: m.update(contractVersion=2), "1 was expected")
+    assert_rejects("missing evidence", lambda _p, m: m.pop("evidence"), "'evidence' is a required property")
     assert_rejects(
         "activation enabled",
         lambda _p, m: m["deploy"].update(activationEnabled=True),
@@ -209,28 +225,13 @@ def assert_orchestration_rules() -> None:
         "requires a product-waterfall ref",
     )
     assert_rejects(
-        "product-service mode without Product",
+        "System without serving runtime",
         lambda _p, m: (
-            m.update(products=[p for p in m["products"] if p["product"] != "product-orchestration"]),
-            m.update(workflow=[s for s in m["workflow"] if s["product"] != "product-orchestration"]),
+            m.update(products=[p for p in m["products"] if p["product"] != "system-runtime"]),
+            m.update(workflow=[s for s in m["workflow"] if s["product"] != "system-runtime"]),
         ),
-        "requires product-orchestration",
+        "exactly one system-runtime must have role serve",
     )
-
-    def thin_package(criteria_deferred: bool) -> Mutation:
-        def mutate(_p: Path, m: dict) -> None:
-            m["orchestration"]["mode"] = "thin-package-deferred"
-            m["products"].append({"product": "system-runtime", "role": "serve"})
-            m["configRefs"]["openapi"] = {"kind": "system-openapi", "path": "emits/product/invocation.contract.md", "ownerAgent": "zygarde"}
-            m["workflow"].append({"id": "thin-serve", "product": "system-runtime", "configRef": "openapi", "agent": "zygarde", "gate": "fixtures-served"})
-            if not criteria_deferred:
-                for item in m["successCriteria"]:
-                    item["verify"] = "manual"
-
-        return mutate
-
-    assert_accepts("thin package with deferred Product cutover", thin_package(True))
-    assert_rejects("thin package without deferred cutover", thin_package(False), "deferred criterion naming the Product cutover")
     for label, text in (
         ("jdbc", "jdbc:postgresql://db/elephant"),
         ("spark sql", "select parcel_id from sales"),
@@ -246,26 +247,31 @@ def assert_orchestration_rules() -> None:
 def assert_emit_contracts() -> None:
     assert_rejects(
         "flow without template",
-        lambda p, _m: edit_emit(p, "emits/product/product-flows/default.stub.json", lambda d: d.pop("flow_template_name")),
+        lambda p, _m: edit_emit(p, "product-flows/default.json", lambda d: d.pop("flow_template_name")),
         "product flow must set flow_template_name",
     )
     assert_rejects(
         "flow names unknown template",
-        lambda p, _m: edit_emit(p, "emits/product/product-flows/default.stub.json", lambda d: d.update(flow_template_name="other")),
+        lambda p, _m: edit_emit(p, "product-flows/default.json", lambda d: d.update(flow_template_name="other")),
         "does not match an emitted flow template",
+    )
+    assert_rejects(
+        "flow defaults active",
+        lambda p, _m: edit_emit(p, "product-flows/default.json", lambda d: d.update(active=True)),
+        "product flow must default active to false",
     )
     assert_rejects(
         "template transition to unknown state",
         lambda p, _m: edit_emit(
             p,
-            "emits/product/flow-templates/sale_availability_lookup.stub.json",
+            "flow-templates/sale-availability-lookup.json",
             lambda d: d["definition"]["States"]["ResolveSaleAvailability"].update(Next="Nowhere"),
         ),
         "transition to unknown state 'Nowhere'",
     )
     assert_rejects(
         "product definition name mismatch",
-        lambda p, _m: edit_emit(p, "emits/product/product.definition.stub.json", lambda d: d.update(name="other")),
+        lambda p, _m: edit_emit(p, "product.definition.json", lambda d: d.update(name="other")),
         "does not match 'sale-availability'",
     )
     assert_rejects(
@@ -321,8 +327,8 @@ def assert_discovery_parity() -> None:
     if "skills/build-system-product/SKILL.md" not in agent:
         fail("zygarde must load build-system-product")
     prd = (SKILL_DIR / "reference" / "PRD.md").read_text(encoding="utf-8")
-    if "does **not** mean a deployable Product or System" not in prd:
-        fail("PRD must state that no System runtime exists because the skill is present")
+    if "does not depend on a separate Product deployment" not in prd:
+        fail("PRD must state that System owns the Product-derived runtime")
 
 
 def main() -> int:

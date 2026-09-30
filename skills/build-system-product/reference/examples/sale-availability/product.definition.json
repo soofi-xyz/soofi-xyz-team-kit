@@ -2,7 +2,7 @@
   "name": "sale-availability",
   "metadata": {
     "description": "Sale availability and evidence for a property identified by address or parcelId, served from curated Connect/Transform artifacts.",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "product_category": "property-data",
     "product_family": "system"
   },
@@ -13,42 +13,79 @@
     "minProperties": 1,
     "maxProperties": 1,
     "properties": {
-      "address": { "type": "string", "minLength": 5, "maxLength": 300 },
-      "parcelId": { "type": "string", "minLength": 1, "maxLength": 64 }
+      "address": {
+        "type": "string",
+        "minLength": 5,
+        "maxLength": 300
+      },
+      "parcelId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64
+      }
     }
   },
   "response_schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
     "additionalProperties": false,
-    "required": ["parcelId", "availability", "evidence"],
+    "required": [
+      "parcelId",
+      "availability",
+      "evidence"
+    ],
     "properties": {
-      "parcelId": { "type": "string" },
-      "availability": { "enum": ["available", "unavailable", "unknown"] },
+      "parcelId": {
+        "type": "string"
+      },
+      "availability": {
+        "enum": [
+          "available",
+          "unavailable",
+          "unknown"
+        ]
+      },
       "evidence": {
         "type": "array",
         "minItems": 1,
         "items": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["source", "observedAt"],
+          "required": [
+            "source",
+            "observedAt"
+          ],
           "properties": {
-            "source": { "type": "string" },
-            "observedAt": { "type": "string", "format": "date-time" },
-            "artifact": { "type": "string" }
+            "source": {
+              "type": "string"
+            },
+            "observedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "artifact": {
+              "type": "string"
+            }
           }
         }
       }
     }
   },
   "request_examples": {
-    "byParcel": { "parcelId": "<parcel-id>" }
+    "byParcel": {
+      "parcelId": "<parcel-id>"
+    }
   },
   "response_examples": {
     "byParcel": {
       "parcelId": "<parcel-id>",
       "availability": "available",
-      "evidence": [{ "source": "<source-language>", "observedAt": "2026-01-01T00:00:00Z" }]
+      "evidence": [
+        {
+          "source": "<source-language>",
+          "observedAt": "2026-01-01T00:00:00Z"
+        }
+      ]
     }
   },
   "invocation_parameters_mapping": [],

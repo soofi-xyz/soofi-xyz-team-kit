@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "parcelId",
+    "availability",
+    "evidence"
+  ],
+  "properties": {
+    "parcelId": {
+      "type": "string"
+    },
+    "availability": {
+      "enum": [
+        "available",
+        "unavailable",
+        "unknown"
+      ]
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source",
+          "observedAt"
+        ],
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "observedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "artifact": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

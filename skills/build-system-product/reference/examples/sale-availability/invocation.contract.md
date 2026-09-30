@@ -1,11 +1,11 @@
 # Invocation contract — sale-availability
 
-`POST /products/sale-availability/invocations`
+`POST /system/products/sale-availability/invocations`
 
 | Field | Value |
 | --- | --- |
 | `invocation_mode` | `single` |
-| `product_flow_name` | `default` (optional; the default product flow is selected otherwise) |
+| `product_flow_name` | `default` (optional; the default Product Flow is selected otherwise) |
 | `data` | Exactly one of `address` or `parcelId`, validated against the Product request schema |
 | `callback_url` | Optional |
 
@@ -20,6 +20,5 @@
 The request path reads curated artifacts only. It never calls Connect or a
 public website during an invocation (`no-scrape`).
 
-Both invocation criteria stay `deferred` until a Product deployment accepts the
-definition, template and flow, and Connect/Transform have produced curated
-artifacts.
+Both invocation criteria stay `deferred` until System accepts the definition,
+template, and flow, and Connect/Transform have produced curated artifacts.

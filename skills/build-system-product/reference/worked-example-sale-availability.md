@@ -1,27 +1,29 @@
 # Worked example — sale-availability (skeleton)
 
-Skeleton composition for a sale-availability outcome delivered as a **Product**
-configuration that composes curated Connect → Transform (or fixture) data —
-aligned with [StaircaseAPI/product](https://github.com/StaircaseAPI/product).
+Skeleton configuration hosted by **System** for a sale-availability outcome.
+It composes curated Connect → Transform data using the Product domain model
+observed in [StaircaseAPI/product](https://github.com/StaircaseAPI/product).
 
-Kit-only example: does not create `elephant-xyz/system`, does not scrape on
-request, and does not claim AWS readiness.
+Kit-only example: it does not scrape on request and does not claim AWS
+readiness.
 
 ## Outcome
 
 Given `address` or `parcelId`, return availability plus evidence. Unknown ids
-fail closed. Prefer `POST /products/sale-availability/invocations` once Product
-is available.
+fail closed. Invoke through
+`POST /system/products/sale-availability/invocations`.
 
 ## Package
 
 ```text
 examples/sale-availability/
   system.manifest.json
-  emits/product/product.definition.stub.json
-  emits/product/flow-templates/sale_availability_lookup.stub.json
-  emits/product/product-flows/default.stub.json
-  emits/product/invocation.contract.md
+  product.definition.json
+  schemas/request.schema.json
+  schemas/response.schema.json
+  flow-templates/sale-availability-lookup.json
+  product-flows/default.json
+  invocation.contract.md
   emits/lexicon/catalog.stub.json
   emits/connect/partner.stub.json
   emits/connect/activation.stub.json
@@ -29,16 +31,16 @@ examples/sale-availability/
   emits/deploy/environment.stub.json
 ```
 
-`python3 scripts/check-system-manifest.py` validates the manifest and every
-stub it references. The Connect stubs validate against Connect's
-`flow.schema.json` and the Transform request against Transform's
-`contracts.schema.json`.
+The skill-local validator checks the manifest schema and System invariants;
+`python3 scripts/check-system-manifest.py` also resolves every referenced
+artifact. The Connect stubs validate against Connect's `flow.schema.json` and
+the Transform request against Transform's `contracts.schema.json`.
 
 ## Intended shape
 
 | Layer | Agent | Role |
 | --- | --- | --- |
-| Product orchestration | Conkeldurr (+ Machamp) | Product definition, schemas, flow template, flow, optional waterfall |
+| System runtime | Zygarde | Product definition, schemas, Flow Template, Product Flow, invocation |
 | Lexicon | Conkeldurr | Languages + mapping for sale-availability fields |
 | Connect | Lapras | Partner configuration + disabled activation on the existing `partner-file-intake` flow |
 | Transform | Kecleon | Source language → sale-availability language |
@@ -46,14 +48,14 @@ stub it references. The Connect stubs validate against Connect's
 
 ### Flow template sketch
 
-1. Validate request against Product request schema.
+1. Validate request against the System-hosted Product request schema.
 2. `StaircaseService` (or leaf batch precompute) resolve curated artifact /
    Transform output for the key.
 3. Map to response schema; on miss → Fail closed.
 4. Optional Persist collection write for audit.
 
-Precompute via Connect/Transform batch is valid: the Product flow then becomes
-a lookup over curated artifacts (still Product-shaped, not a new ETL engine).
+Precompute via Connect/Transform batch is valid: the System flow then becomes a
+lookup over curated artifacts, not a new ETL engine.
 
 ## Non-goals
 
@@ -63,5 +65,6 @@ a lookup over curated artifacts (still Product-shaped, not a new ETL engine).
 
 ## Follow-on
 
-Apply emits to a Product deployment; wire real Connect/Transform refs; keep
-activation off until pilot evidence exists.
+Add the package under `configurations/sale-availability/`, wire real
+Connect/Transform refs, compile its Flow Template, and keep activation off
+until pilot evidence exists.

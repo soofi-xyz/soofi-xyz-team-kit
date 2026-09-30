@@ -1,92 +1,165 @@
-# System composition — product contract
+# Base System product contract
 
-Build a **System** as a versioned business outcome delivered by configuring
-the platform **Product** orchestration service so it composes leaf Products
-(Lexicon, Connect, Transform, Persist, Deploy, and related capabilities).
+Build **System** as the Product-derived orchestration service for Prism.
+System owns the reusable runtime and hosts many versioned business
+configurations. It does not depend on a separate Product deployment.
 
-This matches how [StaircaseAPI/product](https://github.com/StaircaseAPI/product)
-works in production: a named Product with schemas/OpenAPI, Product Flow
-Templates that compile to Step Functions, template-backed Product Flows,
-optional waterfalls, and invocations. Presence of Zygarde /
-`build-system-product` does **not** mean a deployable Product or System
-package already exists in the caller's account.
+[StaircaseAPI/product](https://github.com/StaircaseAPI/product) is the
+behavioral reference. It proves the domain model and execution semantics, but
+its Python/Serverless packaging is not the target. System uses TypeScript,
+AWS CDK v2, Node.js Lambda, and the `/system` base path.
 
-Platform rebuild/integrate decisions for the Product *service* itself belong
-to Conkeldurr + [`build-product-service`](../../build-product-service/SKILL.md).
-Zygarde configures **outcomes on top of** that service.
+## 1. Mission
 
-## 1. Ownership and boundaries
+System must let an operator:
+
+1. Create a named Product with request and response JSON Schemas.
+2. upsert a Product Flow Template expressed in the supported DSL and compile
+   it to an AWS Step Functions state machine.
+3. bind the template to an executable Product Flow. `flow_template_name` is
+   required.
+4. configure an optional ordered waterfall of Product Flows.
+5. invoke one flow or the waterfall and inspect durable status.
+6. ship the same artifacts in a checked-in `configurations/<id>/` bundle.
+
+New outcomes are configuration, not new orchestration microservices.
+
+## 2. Ownership
+
+Zygarde owns:
+
+- the Base System CDK application and its three ordered stacks;
+- Product, schema, Flow Template, Product Flow, waterfall, and invocation
+  contracts;
+- Flow Template compilation and invocation lifecycle;
+- checked-in configuration discovery, validation, and idempotent seeding;
+- API, storage, encryption, idempotency, status, telemetry, and tests.
+
+System calls but does not implement:
+
+- Lexicon languages or mappings;
+- Connect partner adapters and credentials;
+- Transform Spark jobs;
+- Persist graph/collection engines;
+- Deploy or Marketplace control planes.
+
+Delegate those leaf capabilities to their owning agents and skills.
+
+## 3. API surface
+
+Expose an API-key-protected REST API under `/system`:
+
+- `POST/GET /products`
+- `GET/PATCH/DELETE /products/{product_name}`
+- `GET /products/{product_name}/request-schema`
+- `GET /products/{product_name}/response-schema`
+- `PUT/GET/DELETE /products/{product_name}/flow-templates/{template_name}`
+- `GET /products/{product_name}/flow-templates`
+- `POST/GET /products/{product_name}/product_flows`
+- `GET/PATCH/DELETE /products/{product_name}/product_flows/{flow_name}`
+- `PUT/GET/DELETE /products/{product_name}/waterfall`
+- `POST /products/{product_name}/invocations`
+- `GET /products/{product_name}/invocations/{invocation_id}`
+- `POST /flow-invocations/{invocation_id}/states/{step_name}/webhooks`
+
+Return stable typed error tags for validation, conflict, not found, inactive
+configuration, compile failure, and invocation failure.
+
+## 4. CDK architecture
+
+Deploy one CDK application in this order:
 
 ```text
-Business outcome
-  → Zygarde composition.manifest
-  → Product emits (definition, schemas, flow template DSL, flows, waterfall, invocation)
-  → leaf emits (Lexicon / Connect / Transform / Persist / Deploy)
-  → Conkeldurr applies Product configs (or provisions Product once)
-  → Lapras / Kecleon / Persist implement leaf wiring
-  → POST /products/{name}/invocations satisfies success criteria
+SystemDataStack
+  ├── KMS key
+  ├── ProductsTable
+  ├── FlowTemplatesTable
+  ├── IdempotencyTable
+  ├── ProductsBucket
+  └── FlowTemplatesBucket
+
+SystemWorkflowStack
+  ├── template upsert/compile workflow
+  ├── template invocation workflow support
+  ├── waterfall invocation workflow
+  └── status/callback workers
+
+SystemApiStack
+  ├── REST API at /system
+  ├── CRUD and invocation Lambdas
+  ├── Flow Template step Lambdas
+  └── logs, alarms, and outputs
 ```
 
-| Owns | Does not own |
-| --- | --- |
-| Outcome statement and success criteria | Product template compiler / Dynamo topology |
-| Composition manifest and emit stubs | JDBC/Spark Connect adapters |
-| Product-shaped config (schemas, template DSL, waterfall) | Transform Glue engines |
-| Mapping outcome → Product name + flows | Lexicon store / IPFS internals |
-| Failure taxonomy for unknown inputs / failed waterfall | Marketplace catalog ownership |
-| Optional thin package when Product is unavailable | Live website scraping unless an adapter exists |
+Declare `SystemWorkflowStack` dependent on `SystemDataStack` and
+`SystemApiStack` dependent on `SystemWorkflowStack`. Pass resources through
+typed stack props; do not use hard-coded CloudFormation export names.
 
-## 2. Prism placement
+All retained buckets and tables use encryption. Tables use on-demand billing
+and PITR; transient idempotency/status records use TTL. Lambda roles receive
+only the resources and actions needed by their handler.
 
-| Layer | Role | Kit mapping |
-| --- | --- | --- |
-| Leaf Products | Acquire, translate, persist, deploy | Lapras, Kecleon, Lexicon, Persist, Deploy |
-| **Product service** | Configurable orchestration of leaf Products | `build-product-service` / StaircaseAPI/product |
-| **System (this skill)** | One business outcome as Product configuration + leaf emits | Zygarde |
+## 5. Runtime model
 
-Do not invent a fourth Spark pipeline under System. Do not collapse System
-work into Connect or Transform skills alone. Do not rebuild Product under a
-new name when an existing Product deployment can host the outcome.
+Support these Flow Template states:
 
-## 3. Canonical runtime (from Staircase Product)
+- `StaircaseService`
+- `Choice`, `Map`, `Parallel`, `Wait`, `Fail`, `Succeed`
+- `SendCallback`, `PatchEvent`, `DownloadPublicContent`
 
-1. **Product definition** — `name`, request/response (or `product_schema`),
-   examples, optional status mapping, OpenAPI settings.
-2. **Product Flow Template** — DSL with `StaircaseService` (and Choice / Map /
-   Parallel / Wait / Fail / Succeed / SendCallback / PatchEvent /
-   DownloadPublicContent) compiled to a Step Functions state machine.
-3. **Product Flow** — binds `flow_template_name` (required for execution) plus
-   selection metadata (tags, active, marketplace ids).
-4. **Waterfall** (optional) — ordered `{flow_name, order}` failover across
-   Product Flows — not steps inside a single template.
-5. **Invocation** — `invocation_mode` `single` or `waterfall`; correlates via
-   `transaction_id` / collection ids; callbacks and status are first-class.
+`StaircaseService` calls a relative platform route, carries correlation data,
+supports JSONPath input/output injection, and can wait for a callback token.
+Never store a hostname or API key in a template.
 
-Cross-service composition uses relative platform URLs (for example Connect
-`connector-jobs/...`, Language/Translate, Persist collections, nested Product
-routes), not embedded secrets.
+A Product Flow is executable only when it references an existing compiled
+template. There is no fallback default connector state machine.
 
-See [product-runtime.md](product-runtime.md) and
-[implementation-evidence.md](implementation-evidence.md).
+A waterfall is ordered `{order, flow_name}` failover. Branching and retries
+inside a flow belong in the template; alternate-flow failover belongs in the
+waterfall.
 
-## 4. Non-goals
+## 6. Configuration bundles
 
-- Reimplementing Product, Connect, or Transform engines in this skill
-- Reviving the legacy mortgage-default connector pipeline without templates
-- Live scrape-on-request as the default path
-- Claiming AWS pilot or Marketplace readiness from composition alone
-- Duplicating a Product deployment when integrate-via-API is possible
+Use:
 
-## 5. Success definition
+```text
+configurations/<systemId>/
+  composition.manifest.json
+  product.definition.json
+  schemas/
+    request.schema.json
+    response.schema.json
+  flow-templates/
+    <template>.json
+  product-flows/
+    <flow>.json
+  waterfall.json              # only when used
+  invocation.contract.md
+  emits/
+    lexicon|connect|transform|persist|deploy/
+```
 
-Composition is done when:
+Validate every bundle before synth. Seed valid bundles idempotently. Keep every
+Product Flow inactive until activation is explicitly authorized.
 
-1. `scripts/check-system-manifest.py` accepts the manifest: schema, semantic
-   rules and dependency resolution in [contracts.md](contracts.md).
-2. Product emits cover definition + at least one flow template + one
-   template-backed flow (waterfall optional but documented).
-3. Leaf `configRefs` name owners (Lapras / Kecleon / Conkeldurr / Machamp).
-4. Success criteria are testable as Product invocations or explicitly deferred.
+## 7. Deferred features
 
-A separate thin System package is a **fallback**, not the default, and must
-name a follow-on cutover to Product when used.
+Base System does not initially implement Staircase Product reports, SMS,
+email, blobs, widgets, short links, partner ordering, or Marketplace
+publication. Keep route composition isolated so those capabilities can be
+added without breaking core orchestration.
+
+## 8. Acceptance
+
+Base System is ready for handoff when:
+
+1. strict synth produces all three stacks in dependency order;
+2. CDK assertions prove encryption, retention, PITR, TTL, API-key protection,
+   and least-privilege resource grants;
+3. Product CRUD, schema validation, template compile, flow binding, waterfall,
+   invocation start/status, and callback tests pass;
+4. the reference configuration passes
+   `skills/build-system-product/scripts/validate-manifest.py` and
+   `scripts/check-system-manifest.py`, including local path and leaf-contract
+   resolution;
+5. evidence is reported as spec, synth, deployed, or live without inflation.

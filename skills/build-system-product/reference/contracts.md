@@ -1,6 +1,6 @@
-# Composition contracts
+# System configuration contracts
 
-Machine contract for System composition. Validate every emitted
+Machine contract for a System-hosted Product configuration. Validate every
 `composition.manifest.json` against
 [composition.manifest.schema.json](composition.manifest.schema.json).
 
@@ -9,46 +9,47 @@ Machine contract for System composition. Validate every emitted
 | Field | Purpose |
 | --- | --- |
 | `contractVersion` | Integer; this skill uses `1` only. Reject unversioned manifests. |
+| `configurationVersion` | Semantic version of this configuration package. |
 | `systemId` | Stable kebab-case id (e.g. `sale-availability`). |
+| `productName` | Product name exposed by System. |
 | `outcome` | Human outcome statement the System must deliver. |
-| `products` | Participating layers — include `product-orchestration` for serve path. |
+| `orchestration` | `system-service` and invocation mode. |
+| `products` | Participating layers — include `system-runtime` as serve path. |
 | `configRefs` | Map of logical names → path/URI stubs agents consume. |
 | `workflow` | Ordered steps: who runs, which configRef, success gate. |
 | `successCriteria` | Testable checks (invocation status, schema, fixture, deferred). |
 | `dependencies` | Upstream repos, catalog URIs, env vars. |
 | `deploy` | Activation default (`inactive`), cost ceiling notes. |
-
-Optional: `productName` (Product service name; defaults to `systemId` with
-underscores allowed only when documented), `orchestration` summary block.
+| `evidence` | Highest proven level and supporting artifact paths. |
 
 ## Product ids (`products[].product`)
 
 | Id | Meaning |
 | --- | --- |
-| `product-orchestration` | Product service config (definition, templates, flows, waterfall, invocations) |
+| `system-runtime` | Base System config/runtime (definition, templates, flows, waterfall, invocations) |
 | `lexicon` | Governed languages/mappings |
 | `connect` | External-system access: partner configurations + activations over existing Connect flows |
 | `transform` | Language translation (Spark Transform) |
 | `persist` | Graph/collections when invocations need Persist |
 | `deploy` | Platform activation / CDK |
-| `system-runtime` | Thin fallback package only when Product is deferred |
 | `batch` | Capacity outside Product waterfalls |
 | `translate` | Platform Translate/Language service when distinct from Transform |
 
 ## Config ref kinds
 
-Prefer Product kinds for the serve path:
+Use Product-shaped kinds for System's inner configuration model:
 
 - `product-definition`, `product-schema`, `product-flow-template`,
   `product-flow`, `product-waterfall`, `product-invocation`
+- Aggregate: `system-configuration`
 - Leaf: `lexicon-catalog`, `connect-partner`, `connect-activation`,
   `transform-request`, `transform-mapping`, `persist-collection`,
   `deploy-environment`
-- Fallback: `system-openapi`, `system-fixtures`, `other`
+- Supporting: `system-openapi`, `system-fixtures`, `other`
 
-Each kind belongs to one product (`product-*` → `product-orchestration`,
-`connect-*` → `connect`, `system-*` → `system-runtime`, and so on); a workflow
-step may only use refs of its own product. `other` is unrestricted.
+Each kind belongs to one product (`product-*` and `system-*` →
+`system-runtime`, `connect-*` → `connect`, and so on); a workflow step may
+only use refs of its own product. `other` is unrestricted.
 
 `path` is either relative to the manifest (must exist, must not leave the
 package) or a remote `scheme://` URI, which must carry
@@ -67,17 +68,19 @@ Allowed `agent` values: `zygarde`, `conkeldurr`, `lapras`, `kecleon`,
    `workflow[].product` is declared in `products`.
 2. Every `products[].product` appears in at least one workflow step unless
    `role` is `reference-only`.
-3. If `product-orchestration` is present with role `serve` or `execute`,
-   require configRefs for definition + flow-template + product-flow (waterfall
-   optional). `invocationMode: waterfall` requires a `product-waterfall` ref.
-   The default `product-service` mode requires `product-orchestration`.
-4. If only `system-runtime` serves (or mode is `thin-package-deferred`),
-   require a successCriterion with `verify: deferred` naming Product cutover.
+3. Require exactly one `system-runtime` with role `serve`.
+4. Require configRefs for Product definition, request and response schemas,
+   Flow Template, Product Flow, and invocation contract.
 5. `deploy.activationEnabled` is `false` by default.
 6. Do not place Spark SQL, JDBC strings, secret ARNs, or API keys in the
    System manifest.
 7. A step's `agent` matches its ref's `ownerAgent` when one is set. Workflow,
    product and success-criterion ids are unique.
+8. Every Product Flow sets `flow_template_name`, defaults to inactive, and
+   names an emitted Flow Template.
+9. Every waterfall names emitted Product Flows and has unique positive
+   `order` values.
+10. `evidence.level` may only claim work actually verified.
 
 ## Dependency resolution
 
@@ -107,11 +110,12 @@ A composition with unresolved dependencies is rejected:
 ## Check
 
 ```bash
+python3 skills/build-system-product/scripts/validate-manifest.py path/to/system.manifest.json
 python3 scripts/check-system-manifest.py path/to/system.manifest.json
 ```
 
-The script lives in the team kit and needs `jsonschema`. With no arguments it
-checks the kit's worked examples; CI runs it together with
+The scripts live in the team kit and need `jsonschema`. With no arguments they
+check the kit's worked example; CI also runs
 `scripts/test-build-system-product-contract.py`.
 
 See [emit-contracts.md](emit-contracts.md) and [product-runtime.md](product-runtime.md).

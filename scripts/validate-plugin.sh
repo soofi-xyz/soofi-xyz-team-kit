@@ -116,6 +116,7 @@ main() {
   fi
 
   "${python_bin}" "${root}/skills/use-oracle/scripts/validate-county-readiness.py" --self-test
+  "${python_bin}" "${root}/skills/build-system-product/scripts/validate-manifest.py"
 
   bash -n "${root}/skills/use-oracle/scripts/oracle-paths.sh"
   "${root}/skills/use-oracle/scripts/oracle-paths.test.sh"
