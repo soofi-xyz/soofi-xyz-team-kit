@@ -61,7 +61,9 @@ that side cannot be derived from Lexicon (see `execution-and-parity.md`).
 
 1. List `ENABLED` mappings with `from == source` and `to == target`.
 2. One candidate: `RESOLVED`.
-3. Several versions: a version hint selects exactly one. Otherwise a qualifier
+3. Several versions: a version hint selects exactly one. With a published registry
+   inspected and no version hint, the latest published version of one mapping id is
+   selected (see Version default). Otherwise a qualifier
    selects a version only through a **hard chain signal** on that version's
    *discriminating* inputs, which are the inputs not shared by every competing
    version:
@@ -94,9 +96,32 @@ selected:
   pass that checkout as `--lexicon-root` or its `cdk synth` output as
   `--registry`.
 
+### Version default
+
+With a published registry inspected (`--registry` or `--workspace --aws`) and no `@x.y.z`, the
+resolver takes the versions the request matches (every enabled `from -> to` version, or those a
+qualifier hard-matches) and keeps only those present in a published registry:
+
+- one mapping id: select its highest semantic version (`10.0.0` over `9.0.0`), rule
+  `latest-published-semver`, and return `notice`:
+  `Resolved <id>@<x.y.z> — latest published of <v1>, <v2>, ...; add @x.y.z to pick another.`
+  Checked-in versions that are not published are ignored and named in the notice. `mapping-version`
+  is not asked. When only one published version matches and none is ignored, the rule is
+  `single-match` and there is no notice.
+- several mapping ids: `AMBIGUOUS`; the user chooses.
+- none published: `NO_MAPPING`; the checked-in registrations are offered as
+  `registered-not-published`, and `@x.y.z` pins one.
+
+`versionSelection` records `requested`, `candidates` (each version with the registries publishing it),
+`chosen`, `rule` (`explicit-version`, `latest-published-semver`, `single-match`,
+`cumulative-superset`) and `pin` (the chosen `mapping.json` source, path and SHA-256). The draft,
+`evaluate_run.py` and the run package carry it; the pin and the fetched S3 version id keep a later
+publication from changing a run in progress. An explicit `@x.y.z` always wins, including an
+unpublished checked-in version.
+
 ### Cumulative versions
 
-When several enabled versions of one mapping id match a request and no version is requested,
+Without a published registry, when several enabled versions of one mapping id match a request and no version is requested,
 the resolver selects the highest version if its outputs include every other matching version's
 outputs (`selectionRule: cumulative-superset`), for example a `2.0.0` that still carries every
 `1.0.0` output. `@<version>` still pins an older version. Versions whose outputs are not a subset
@@ -222,6 +247,10 @@ The synthetic registry in `fixtures/synthetic-registry/` (hub `canon`; languages
 | `test canon to omega member report` | `RESOLVED` | `canon-to-omega@2.0.0` by `cumulative-superset`; `UpstreamSourceUnresolved` asks for the producer |
 | `test canon to omega@1.0.0` | `RESOLVED` | the pinned older version |
 | `test canon to omega` | `AMBIGUOUS` | both versions offered with their outputs |
+| `test canon to omega`, published `1.0.0`, `2.0.0`, `9.0.0`, `10.0.0` | `RESOLVED` | `canon-to-omega@10.0.0` by `latest-published-semver`, with `notice` |
+| `test canon to omega`, published `1.0.0` only | `RESOLVED` | `canon-to-omega@1.0.0`; the notice names unpublished `2.0.0` |
+| `test canon to omega`, nothing published for the pair | `NO_MAPPING` | both registrations offered as `registered-not-published` |
+| `test canon to omega`, two published mapping ids | `AMBIGUOUS` | both ids offered |
 | `test alpha to omega` | `NO_MAPPING` | ranked candidates; the retired `alpha-to-omega@0.9.0` is listed, never offered |
 | `test alhpa to canon` | `UNKNOWN_LANGUAGE` | `spelling-close-to-alhpa` candidate `alpha` |
 | `test canon to omega sigma` | `AMBIGUOUS` | two target languages on one side |

@@ -13,7 +13,7 @@ tool call.
 | --- | --- | --- | --- |
 | `mapping-choice` | status `AMBIGUOUS`, `NO_MAPPING`, or `UNKNOWN_LANGUAGE` | ranked candidates plus `none` (stop and report the gap) | none; the user must choose |
 | `environment` | no `in dev`/`in prod` hint | `dev`, `prod-read-only`, `synthetic-local` | `dev` |
-| `mapping-version` | more than one enabled version and no version hint | each `id@version` with its outputs | the resolver's selection |
+| `mapping-version` | more than one enabled version, no version hint, and the version was not defaulted by `latest-published-semver` (its `notice` is shown instead) | each `id@version` with its outputs | the resolver's selection |
 | `upstream-source` | `UpstreamSourceUnresolved` | candidate producers, `existing-graph-export` | the selected profile's first workflow step when it is a candidate, else none |
 | `test-dataset` | always | profile evidence (including `planned` placeholders), then `prod-derived-full-utc-day`, `sanitized-edge-cases`, `synthetic-fixture` | first `ready` profile evidence, else the full UTC day |
 | `direction-mode` | an inverse mapping exists and no mode hint | `round-trip`, `one-way` | `round-trip` for `X -> <hub>`; `one-way` for `<hub> -> Y` |

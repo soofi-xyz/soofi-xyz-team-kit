@@ -25,7 +25,9 @@ Require a profile ID equal to its filename, environment, region, optional reques
 - every selected repository candidate to a 40-character commit SHA after verifying all required paths;
 - profile, language definition, mapping, SQL, plan, deployment and output artifacts to SHA-256 digests;
 - every declared language to exactly one version;
-- every required direction to its exact enabled mapping identity and version.
+- every required direction to its exact enabled mapping identity and version. Without `@x.y.z`,
+  the version is the latest published semantic version of that mapping id, announced by the
+  resolver's `notice`, recorded as `versionSelection`, and pinned by `mapping.json` SHA-256.
 
 Execute `validationWorkflow.steps` in sequence. A `previous-step-output` input
 binds only to the preceding step's committed, physically verified Transform

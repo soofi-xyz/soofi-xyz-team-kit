@@ -79,8 +79,10 @@ The same steps apply to every mapping; each reads its inputs from the registry, 
 definitions and the selected profile:
 
 1. **Resolve intent** — `discover` matches request words against registered languages, mapping ids and
-   output names (no keyword lists). Cumulative versions resolve to the highest version whose outputs
-   include every other matching version's outputs.
+   output names (no keyword lists). Without `@x.y.z`, several published versions of one mapping id
+   resolve to the latest published semantic version, announced by the resolver's `notice` and recorded as
+   `versionSelection`; without a published registry, cumulative versions resolve to the highest version whose
+   outputs include every other matching version's outputs.
 2. **Discover mapping and languages** — pinned checkouts, published registries, language states,
    concept and forbidden-content checks, SQL scan.
 3. **Derive contracts** — `contracts` gives per-output required inputs, format (type, delimiter,
@@ -155,9 +157,9 @@ A request such as `test <source> to <target>` or `test lexicon <qualifier> to <t
 
 1. Materialize read-only inputs in an isolated temp directory: the pinned registry candidate and `main` checkouts, each environment's published mapping registry (the layout's `publishedRegistry.uriParameter`), and each environment's language parameter names, in the layout's default region unless `--region` says otherwise.
 2. Run `scripts/resolve-transform-intent.py discover` and pin its SHA-256. Its `status` is one of `RESOLVED`, `AMBIGUOUS`, `NO_MAPPING`, `UNKNOWN_LANGUAGE`, or `UNPARSED`.
-3. Report what was resolved before asking anything: the languages and their states, the selected `id@version` per step, the workflow order, the matched profile, and every finding (profile drift, missing language definitions, removed or added concepts, round-trip gaps).
+3. When the resolver returns a `notice` (a defaulted version), state it verbatim as the first line of the reply. Report what was resolved before asking anything: the languages and their states, the selected `id@version` per step, the workflow order, the matched profile, and every finding (profile drift, missing language definitions, removed or added concepts, round-trip gaps).
 4. For `AMBIGUOUS`, `NO_MAPPING`, or `UNKNOWN_LANGUAGE`, say so plainly, list the ranked candidates, and ask `mapping-choice`. Never pick a candidate from business-language similarity. When the user chooses `none`, end intake with next steps and owner handoffs; do not produce a verdict.
-5. For `RESOLVED`, ask the resolver's remaining `questions[]` through the structured question tool, using the defaults in `reference/intake-questions-and-gates.md`: DEV (PROD read-only), mapping version, test dataset, round-trip or one-way, optional cross-source step, and Persist policy (default `forbidden`).
+5. For `RESOLVED`, ask the resolver's remaining `questions[]` through the structured question tool, using the defaults in `reference/intake-questions-and-gates.md`: DEV (PROD read-only), mapping version (not asked when the version was defaulted), test dataset, round-trip or one-way, optional cross-source step, and Persist policy (default `forbidden`).
 6. Recommend datasets and storage from `reference/test-dataset-recommendations.md`.
 7. With no matched profile, emit a local draft with `draft-profile`, then promote it before validating.
 
