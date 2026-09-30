@@ -443,7 +443,20 @@
       "properties": {
         "ceilingUsd": { "type": "number", "minimum": 0 },
         "estimatedUsd": { "type": "number", "minimum": 0 },
-        "actualUsd": { "type": ["number", "null"], "minimum": 0 }
+        "actualUsd": { "type": ["number", "null"], "minimum": 0, "description": "Sum of cost.json actualUsd over every canary and full-window run directory of the package; null when any run directory has no cost.json." },
+        "actualUsdByRun": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["runId", "stage", "actualUsd"],
+            "properties": {
+              "runId": { "type": "string", "minLength": 1 },
+              "stage": { "enum": ["canary", "full"] },
+              "actualUsd": { "type": ["number", "null"], "minimum": 0 }
+            }
+          }
+        }
       }
     },
     "failures": {

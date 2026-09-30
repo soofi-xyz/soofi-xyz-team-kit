@@ -67,7 +67,21 @@
         "inputs": ["vertex-phone-number.phone_number", "hydrated_text_message_artifact.msg"],
         "outputs": ["phone_number", "msg"],
         "decision": "ownerDecisions.sensitiveFieldStaging = stage-real-values-to-dev: the real values are staged to DEV unmodified and compared directly. Without it the slice stops with SensitiveStagingDecisionRequired (ask the owner)."
-      }
+      },
+      "prodTransformRuns": {
+        "status": "NONE",
+        "checked": "2026-09-30, read-only: every execution of the PROD Transform state machine (us-east-2 TransformPipelineStack-transform-pipeline, 141 executions from 2026-09-21) and every run plan under its data bucket's runs/ (149 plans)",
+        "finding": "PROD Transform has executed only interprose-to-graph@1.0.0; no lexicon-to-interprose version, and so no sms_log output, has ever run in PROD. A PROD Transform run cannot stand in as the SMS actual; the Interprose mirror is the only actual.",
+        "recheck": "list runs/<execution>/plan.json in the PROD Transform data bucket and match mapping.id lexicon-to-interprose with sms_log among the outputs"
+      },
+      "blockedHandoffs": [
+        {"code": "ProdMirrorStale", "owner": "data platform (Stage ETL mirror)", "detail": "interprose_current.txt_msg_log data ends 2026-09-06 although the table is re-committed; refresh the mirror so a day after the Persist SMS status edges begin is covered"},
+        {"code": "SmsStatusProviderNull", "owner": "Persist SMS ingestion (text-message status producer)", "detail": "PROD Persist edge-text-message-status-changed edges start 2026-09-13 and carry provider null; sms_log.sql keeps only provider = 'QUIQ', so no day has both a mirror row and an emitted sms_log row. Populate provider QUIQ on the status edges (or change the carried query's filter, a mapping CONFIGURATION decision)"},
+        {"code": "ArtifactDigestMismatch", "owner": "rendered message-body artifact producer", "detail": "hydration of edge-text-message-has-rendered-artifact-uri found objects whose SHA-256 differs from the edge's content_sha256; fix the artifact or the recorded digest so message bodies can be verified"}
+      ],
+      "knownRisks": [
+        {"code": "CarriedQueryProviderCoverage", "classification": "data/mapping-coverage risk", "detail": "the carried sms_log query filters provider = 'QUIQ' while current PROD status edges have provider null: on today's PROD graph the query emits no rows, and an unchanged query cannot prove it covers real SMS traffic until provider is populated"}
+      ]
     },
     "dsa": {
       "outputDatasets": ["form_1281"],

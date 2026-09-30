@@ -42,9 +42,15 @@
 | PROD metadata access is missing or no candidate day is complete | Compare at least 7 complete UTC days read-only with `source_window.py recommend` | `BLOCKED` with an access or data handoff; never pad, sample random rows or pick a partial day |
 | Canary or full DEV run reads inputs outside the confirmed window | Every binding must lie under the confirmed window's staging prefix | `BLOCKED` (`FinalWindowBindingMismatch`); restage under approval and rerun |
 
-Do not convert a detected failure into a warning. Re-validate against new immutable artifacts after the owning specialist supplies the missing proof.
 | A PROD mirror is re-committed daily but its data stopped | `prod_actuals.py table-summary --catalog` compares the newest data timestamp with the window end | `STALE` with `mostRecentCoveredDay`; run the slice on that day and hand `ProdMirrorStale` to the data platform |
 | A rejected negative's error does not name the omitted input | `transform_runs.py capture` (`errorNamesMissingInput: false`) | the case passes; `transform-reject-error-unnamed` PRODUCT_CHANGE flag for Kecleon |
 | A negative would omit the only input | `spec-from-intent` | not run; `skipped` with `OmissionLeavesNoInputs` |
 | A graph input build would read unbounded PROD data or leave dangling edges | `graph_inputs.py` (`GraphReadUnbounded`, `danglingEndpointCount`) | `BLOCKED`; narrow the keys or window |
 | A sensitive slice is staged without the owner's decision | `graph_inputs.py`, `stage_evidence_package.py` (`SensitiveStagingDecisionRequired`) | refused before any PROD read; ask the owner |
+| PROD Persist answers a large Gremlin page with HTTP 503 or a timeout | `graph_inputs.py gremlin --batch-size` (default 10), retries with backoff, page split | one merged, deduplicated dataset per table; `PersistUnavailable` only when a single-id page still fails; never hand-split the window into separate runs |
+| A slice's PROD-actual days never meet its input days (a stale mirror, inputs that start later) | `source_window.py data-days --data-through --input-days`; `graph_inputs.py` `INPUT_EMPTY` | `BLOCKED` with `UpstreamInputEmpty` and `ProdMirrorStale` handoffs; phase 10 names that cause, never a canary that did not run |
+| Comparison evidence without a slice is applied to every slice | `compare_datasets.py check`/`closure` require `--slice`; `evaluate_run.py` counts evidence only for the slice it names | unsliced evidence of a multi-slice request is listed under `ignoredEvidence` |
+| The same mapping version was republished with another digest and output names | `transform_runs.py regress --slice` | `NOT_APPLICABLE` with `MappingRepublished`/`OutputNamesDiffer`; the PROD-actuals comparison stays the gate |
+| Captured DEV output rows land outside the run's `private/` | `transform_runs.py capture` writes rows only to `<run>/private/outputs/<runId>/` | `run_workspace.py cleanup` removes them; sanitized summaries stay |
+
+Do not convert a detected failure into a warning. Re-validate against new immutable artifacts after the owning specialist supplies the missing proof.

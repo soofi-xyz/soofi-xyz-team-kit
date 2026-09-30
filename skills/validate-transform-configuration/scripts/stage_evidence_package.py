@@ -2,8 +2,9 @@
 """Build and upload an immutable DEV evidence package (create-only, manifest last).
 
   stage_evidence_package.py manifest --dir PKG --prefix s3://<dev-transform-data-bucket>/inputs/<name>/<window>_v1/
-      Writes PKG/manifest.json (key, bytes, sha256, rows for csv/jsonl, dataset per top-level directory)
-      and prints the upload operation card with its operation digest (APPROVAL_REQUIRED).
+      Writes PKG/manifest.json (key, bytes, sha256, rows for csv/jsonl, and the dataset: the directory that
+      holds the object, so derived/<dataset>/<file> is <dataset>) and prints the upload operation card with its
+      operation digest and manifestCanonicalSha256 (SHA-256 of the manifest's canonical JSON) (APPROVAL_REQUIRED).
   stage_evidence_package.py upload --dir PKG --prefix ... --profile <dev-profile> (--approve sha256:... |
       --owner-decisions decisions.json) [--slice NAME [--catalog prod-actuals.json]]
       Re-derives the card, refuses a changed card or a non-matching digest (or, with the owner's
@@ -11,7 +12,8 @@
       slice whose catalog declares sensitiveFields unless the owner decided sensitiveFieldStaging:
       stage-real-values-to-dev, uploads every object with
       put-object --if-none-match '*' (never overwrites), uploads manifest.json last, reads it back and
-      prints its sha256, VersionId and the approved operation digest. Record the identity in the profile's
+      prints manifestFileSha256 (SHA-256 of the uploaded manifest.json bytes), its VersionId, the card's
+      manifestCanonicalSha256 and the approved operation digest. Record the identity in the profile's
       validationSources and keep the printed JSON: evaluate_run.py --staging-upload needs it for the final
       PROD-derived validation.
 
@@ -38,18 +40,26 @@ def rows_of(path: Path) -> int | None:
     return None
 
 
+def dataset_of(rel: str) -> str:
+    """The dataset directory that holds the object (derived/<dataset>/<file> is <dataset>, Hive partition directories
+    such as day=2026-09-01 are skipped); a top-level file is its stem."""
+    names = [p for p in Path(rel).parent.parts if "=" not in p]
+    return names[-1] if names else Path(rel).stem
+
+
 def build(directory: Path, prefix: str) -> tuple[dict, dict]:
     if not prefix.startswith("s3://") or not prefix.endswith("/"):
         raise SilvallyError("--prefix must be an s3:// prefix ending in /")
     objects = []
     for path in sorted(p for p in directory.rglob("*") if p.is_file() and p.name != "manifest.json"):
         rel = path.relative_to(directory).as_posix()
-        objects.append({"key": rel, "dataset": rel.split("/")[0], "bytes": path.stat().st_size, "sha256": sha256_file(path), "rows": rows_of(path)})
+        objects.append({"key": rel, "dataset": dataset_of(rel), "bytes": path.stat().st_size, "sha256": sha256_file(path),
+                        "rows": rows_of(path)})
     if not objects:
         raise SilvallyError("package directory is empty")
     manifest = {"prefix": prefix, "objects": objects}
     card = {"operation": "s3:PutObject (create-only, If-None-Match *), manifest last", "environment": "dev", "prefix": prefix,
-            "objects": [(o["key"], o["sha256"]) for o in objects], "manifestSha256": canonical_digest(manifest),
+            "objects": [(o["key"], o["sha256"]) for o in objects], "manifestCanonicalSha256": canonical_digest(manifest),
             "containment": "new keys only; nothing overwritten; no deletes"}
     card["operationDigest"] = canonical_digest(card)
     return manifest, card
@@ -86,7 +96,8 @@ def cmd_upload(args) -> int:
     head = aws(["s3api", "head-object", "--bucket", bucket, "--key", key_prefix + "manifest.json"], profile=args.profile, region=args.region, environment="prod")
     back = directory.parent / f".{directory.name}-manifest-readback.json"
     aws(["s3", "cp", args.prefix + "manifest.json", str(back), "--quiet"], profile=args.profile, region=args.region, environment="prod", output_json=False)
-    result = {"manifest": args.prefix + "manifest.json", "manifestSha256": sha256_file(back), "manifestVersionId": head.get("VersionId"),
+    result = {"manifest": args.prefix + "manifest.json", "manifestFileSha256": sha256_file(back), "manifestVersionId": head.get("VersionId"),
+              "manifestCanonicalSha256": card["manifestCanonicalSha256"],
               "matchesLocal": sha256_file(back) == sha256_file(directory / "manifest.json"),
               "approvalOperationDigest": card["operationDigest"],
               "approvalKind": "operation" if args.approve else "owner-blanket-dev-writes", "slice": args.slice}

@@ -288,7 +288,7 @@
       "id": "prod-derived-inputs",
       "kind": "sanitized-evidence-package",
       "location": "s3://example-dev-bucket/inputs/alpha-prod-derived/",
-      "manifestSha256": "515cbce0c9b8e889ee5d53bb1415c8430f14efdc17fc91b13b4374220bda8643",
+      "manifestFileSha256": "515cbce0c9b8e889ee5d53bb1415c8430f14efdc17fc91b13b4374220bda8643",
       "appliesTo": [
         "alpha-to-canon"
       ],

@@ -1275,13 +1275,13 @@ def dataset_recommendations(source: str, profile: dict | None, window: str) -> l
     recs = []
     for source_entry in (profile or {}).get("validationSources", []):
         if source_entry.get("kind") in {"existing-dev-artifact", "sanitized-evidence-package"}:
-            status = source_entry.get("artifactStatus", "ready" if source_entry.get("manifestSha256") else "unknown")
+            status = source_entry.get("artifactStatus", "ready" if source_entry.get("manifestFileSha256") else "unknown")
             rec = {
                 "id": source_entry["id"],
                 "kind": source_entry["kind"],
                 "location": source_entry["location"],
                 "status": status,
-                "manifestSha256": source_entry.get("manifestSha256"),
+                "manifestFileSha256": source_entry.get("manifestFileSha256"),
                 "note": (
                     "Existing profile evidence; verify manifest digest and version before use."
                     if status == "ready"

@@ -4,12 +4,17 @@
   graph_inputs.py gremlin --contracts contracts.json --catalog prod-actuals.json --slice NAME
       (--events selected.jsonl | --keys-file keys.txt) --profile <prod-profile> [--region R]
       [--window-start ISO --window-end-exclusive ISO] [--as-of ISO] [--owner-decisions decisions.json]
-      [--max-elements 50000] --private-dir DIR --out-dir PKG --out summary.json
+      [--max-elements 50000] [--batch-size 10] [--retries 4] [--backoff-seconds 2] [--timeout-seconds 60]
+      --private-dir DIR --out-dir PKG --out summary.json
       Read the slice's graph neighbourhood through the PROD Persist Gremlin API (SigV4 execute-api POST to the
       layout's persist.gremlinPath under the URL in SSM persist.apiUrlParameter): the root vertices whose key
       property equals the canary's or window's keys, then each catalog hop (one edge label from an already
       collected vertex dataset, with its other endpoint). Only read traversals are sent; every id and key is
-      validated before it enters a query; queries are batched and the total element count is capped.
+      validated before it enters a query; the total element count is capped. Keys and ids are sent in pages of
+      --batch-size (PROD Persist answers a few-dozen-debt traversal with HTTP 503 after ~30 s); a 429/5xx or a
+      timeout is retried with exponential backoff, and a page that still fails is split in half until it
+      succeeds or is a single id. Every page is merged into ONE dataset per table (deduplicated by ~id; the
+      same id with different content fails), so a whole window is one input, never hand-split runs.
   graph_inputs.py export --export-dir DIR (same selection arguments, no --profile)
       The same selection over an existing immutable graph export already copied read-only into DIR
       (<dataset>/part-*.parquet in Transform input shape).
@@ -29,6 +34,9 @@ against the edge's digest, and the edge's selector (TEXT, JSON_BODY or $.path) e
 A slice that declares `sensitiveFields` is built only when the owner decided `sensitiveFieldStaging:
 stage-real-values-to-dev`; the real values are then staged to DEV unmodified and compared directly.
 
+A root dataset or windowed edge dataset left with no rows is status INPUT_EMPTY (inputEmpty.code
+UpstreamInputEmpty): pass the summary to evaluate_run.py --graph-inputs so the slice reports the real cause.
+
 Rows stay in --private-dir and --out-dir (mode 0700, outside any repository); stdout carries counts only.
 Stage --out-dir with stage_evidence_package.py under its own approval (or the owner's blanketDevWrites).
 """
@@ -40,6 +48,9 @@ import glob
 import hashlib
 import json
 import re
+import socket
+import time
+import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -50,7 +61,12 @@ from silvally_io import DEFAULT_REGION, SilvallyError, aws, load_layout, private
 SAFE_VALUE = re.compile(r"^[A-Za-z0-9_.:@/+=\-]{1,256}$")
 MUTATING_STEPS = re.compile(r"\b(addV|addE|property|drop|mergeV|mergeE|sideEffect|inject|io|call)\s*\(")
 SENSITIVE_DECISION = "stage-real-values-to-dev"
-BATCH = 100
+DEFAULT_BATCH_SIZE = 10
+TRANSIENT_HTTP = {429, 500, 502, 503, 504}
+
+
+class TransientPersistError(SilvallyError):
+    """A Persist answer worth retrying: 429/5xx or a timeout."""
 
 
 def quote(value: str) -> str:
@@ -76,7 +92,7 @@ def results_of(payload) -> list:
     raise SilvallyError(f"unrecognized Persist Gremlin response keys {sorted(payload) if isinstance(payload, dict) else type(payload).__name__}")
 
 
-def persist_query_fn(profile: str, region: str):
+def persist_query_fn(profile: str, region: str, timeout: float = 60):
     """A read-only query function over the PROD Persist Gremlin API, signed with the operator's profile."""
     persist = load_layout()["persist"]
     base = aws(["ssm", "get-parameter", "--name", persist["apiUrlParameter"]], profile=profile, region=region,
@@ -95,8 +111,15 @@ def persist_query_fn(profile: str, region: str):
         request = AWSRequest(method="POST", url=url, data=body, headers={"Content-Type": "application/json"})
         SigV4Auth(credentials, persist.get("service", "execute-api"), region).add_auth(request)
         signed = urllib.request.Request(url, data=body.encode(), headers=dict(request.headers), method="POST")
-        with urllib.request.urlopen(signed, timeout=120) as response:
-            return results_of(json.loads(response.read()))
+        try:
+            with urllib.request.urlopen(signed, timeout=timeout) as response:
+                return results_of(json.loads(response.read()))
+        except urllib.error.HTTPError as error:
+            if error.code in TRANSIENT_HTTP:
+                raise TransientPersistError(f"HTTP {error.code}") from error
+            raise SilvallyError(f"PersistQueryFailed: HTTP {error.code}") from error
+        except (urllib.error.URLError, TimeoutError, socket.timeout) as error:
+            raise TransientPersistError(f"timeout or connection error ({type(error).__name__})") from error
     return query
 
 
@@ -115,25 +138,50 @@ def element(raw: dict) -> dict:
 
 
 class GremlinSource:
-    def __init__(self, query):
-        self.query = query
+    """Paged reads: pages of batch_size values, retried with backoff, split in half when a page keeps failing."""
+
+    def __init__(self, query, batch_size: int = DEFAULT_BATCH_SIZE, retries: int = 4, backoff: float = 2.0, sleep=time.sleep):
+        if batch_size < 1:
+            raise SilvallyError("--batch-size must be at least 1")
+        self.query, self.batch_size, self.retries, self.backoff, self.sleep = query, batch_size, retries, backoff, sleep
+        self.stats = {"batchSize": batch_size, "queries": 0, "retries": 0, "splits": 0}
+
+    def attempt(self, gremlin: str) -> list:
+        for n in range(self.retries + 1):
+            self.stats["queries"] += 1
+            try:
+                return self.query(gremlin)
+            except TransientPersistError:
+                if n == self.retries:
+                    raise
+                self.stats["retries"] += 1
+                self.sleep(self.backoff * 2 ** n)
+        return []
+
+    def paged(self, values: list[str], render) -> list:
+        out = []
+        pending = [values[i:i + self.batch_size] for i in range(0, len(values), self.batch_size)]
+        while pending:
+            page = pending.pop(0)
+            try:
+                out += self.attempt(render(",".join(quote(v) for v in page)))
+            except TransientPersistError as error:
+                if len(page) == 1:
+                    raise SilvallyError(f"PersistUnavailable: a single-id page still failed after {self.retries} retries ({error})") from error
+                self.stats["splits"] += 1
+                half = len(page) // 2
+                pending[:0] = [page[:half], page[half:]]
+        return out
 
     def roots(self, label: str, prop: str, keys: list[str]) -> list[dict]:
-        found = []
-        for i in range(0, len(keys), BATCH):
-            chunk = ",".join(quote(k) for k in keys[i:i + BATCH])
-            found += [element(r) for r in self.query(f"g.V().hasLabel({quote(label)}).has({quote(prop)}, within({chunk})).elementMap()")]
-        return found
+        rows = self.paged(keys, lambda chunk: f"g.V().hasLabel({quote(label)}).has({quote(prop)}, within({chunk})).elementMap()")
+        return [element(r) for r in rows]
 
     def hop(self, ids: list[str], edge_label: str, direction: str) -> list[tuple[dict, dict]]:
         step, other = ("outE", "inV") if direction == "out" else ("inE", "outV")
-        pairs = []
-        for i in range(0, len(ids), BATCH):
-            chunk = ",".join(quote(v) for v in ids[i:i + BATCH])
-            rows = self.query(f"g.V({chunk}).{step}({quote(edge_label)}).as('e').{other}().as('v')"
-                              ".select('e','v').by(elementMap()).by(elementMap())")
-            pairs += [(element(r["e"]), element(r["v"])) for r in rows]
-        return pairs
+        rows = self.paged(ids, lambda chunk: f"g.V({chunk}).{step}({quote(edge_label)}).as('e').{other}().as('v')"
+                                             ".select('e','v').by(elementMap()).by(elementMap())")
+        return [(element(r["e"]), element(r["v"])) for r in rows]
 
 
 class ExportSource:
@@ -199,13 +247,28 @@ def in_window(value, start: datetime | None, end: datetime | None) -> bool:
     return moment is not None and (start is None or moment >= start) and (end is None or moment < end)
 
 
+def merge(items: dict, found: dict, stats: dict) -> None:
+    """Add one element to its dataset; a repeat is deduplicated, the same id with other content fails."""
+    existing = items.get(found["id"])
+    if existing is None:
+        items[found["id"]] = found
+    elif existing == found:
+        stats["duplicatesMerged"] += 1
+    else:
+        raise SilvallyError(f"ConflictingDuplicate: two pages returned ~id {found['id']} with different content "
+                            "(the graph changed during the read); rebuild the dataset")
+
+
 def collect(source, contracts: dict, plan: dict, keys: list[str], window: tuple, max_elements: int) -> tuple[dict, dict]:
-    """Root vertices and hop edges per dataset: {dataset: {id: element}}, plus per-hop counts."""
+    """Root vertices and hop edges per dataset: {dataset: {id: element}} merged over every page, plus counts."""
     inputs = {c["table"]: c for c in contracts["inputs"]}
     root = plan["root"]
     root_label = inputs[root["dataset"]]["label"]
-    data: dict[str, dict] = {root["dataset"]: {e["id"]: e for e in source.roots(root_label, root["keyProperty"], keys)}}
-    stats = {"roots": len(data[root["dataset"]]), "keysRequested": len(keys), "hops": []}
+    stats = {"keysRequested": len(keys), "hops": [], "duplicatesMerged": 0}
+    data: dict[str, dict] = {root["dataset"]: {}}
+    for found in source.roots(root_label, root["keyProperty"], keys):
+        merge(data[root["dataset"]], found, stats)
+    stats["roots"] = len(data[root["dataset"]])
     for hop in plan.get("hops", []):
         contract = inputs[hop["edge"]]
         endpoints = contract["endpoints"]
@@ -219,8 +282,8 @@ def collect(source, contracts: dict, plan: dict, keys: list[str], window: tuple,
         if hop.get("window"):
             pairs = [(e, v) for e, v in pairs if in_window(e["properties"].get(hop["window"]), *window)]
         for edge, vertex in pairs:
-            data[hop["edge"]][edge["id"]] = edge
-            data[other].setdefault(vertex["id"], vertex)
+            merge(data[hop["edge"]], edge, stats)
+            merge(data[other], vertex, stats)
         if hop.get("prune"):
             side = "OUT" if hop["direction"] == "out" else "IN"
             kept = {e[side] for e in data[hop["edge"]].values()}
@@ -364,7 +427,8 @@ def build(args, source=None, fetch=None) -> dict:
     window = (parse_loose(args.window_start), parse_loose(args.window_end_exclusive))
     if source is None:
         source = (ExportSource(args.export_dir, contracts) if args.command == "export"
-                  else GremlinSource(persist_query_fn(args.profile, args.region)))
+                  else GremlinSource(persist_query_fn(args.profile, args.region, args.timeout_seconds),
+                                     args.batch_size, args.retries, args.backoff_seconds))
     data, stats = collect(source, contracts, plan, keys, window, args.max_elements)
     dropped = apply_as_of(data, contracts, parse_loose(args.as_of)) if args.as_of else {}
     dangling = close_endpoints(data, contracts)
@@ -390,8 +454,15 @@ def build(args, source=None, fetch=None) -> dict:
                "prodAccess": "read-only", "rootKeys": len(keys), "rootsFound": stats["roots"], "hops": stats["hops"],
                "window": {"start": args.window_start, "endExclusive": args.window_end_exclusive} if args.window_start else None,
                "asOf": args.as_of, "droppedAfterAsOf": dropped, "danglingEndpointCount": dangling, "datasets": datasets,
-               "sensitiveFieldStaging": decisions.get("sensitiveFieldStaging") if sensitive else "not-applicable",
-               "status": "FAIL" if dangling or failures else "BUILT"}
+               "paging": {**getattr(source, "stats", {}), "duplicatesMerged": stats["duplicatesMerged"],
+                          "mergedInto": "one dataset per table"},
+               "sensitiveFieldStaging": decisions.get("sensitiveFieldStaging") if sensitive else "not-applicable"}
+    windowed = {h["edge"] for h in plan.get("hops", []) if h.get("window")}
+    empty = [d for d, s in datasets.items() if not s["rows"] and (d == plan["root"]["dataset"] or d in windowed)]
+    if empty:
+        summary["inputEmpty"] = {"code": "UpstreamInputEmpty", "datasets": sorted(empty),
+                                 "detail": "the PROD graph has no root vertex for the keys, or no windowed edge in the window"}
+    summary["status"] = "FAIL" if dangling or failures else ("INPUT_EMPTY" if empty else "BUILT")
     write_json(args.out, summary)
     return summary
 
@@ -410,6 +481,11 @@ def main(argv: list[str] | None = None) -> int:
         if name == "gremlin":
             p.add_argument("--profile", required=True, help="operator's PROD read-only profile")
             p.add_argument("--region", default=DEFAULT_REGION)
+            p.add_argument("--batch-size", type=int, default=DEFAULT_BATCH_SIZE,
+                           help="keys or ids per Gremlin page (default 10; PROD Persist times out on a few dozen debts)")
+            p.add_argument("--retries", type=int, default=4, help="retries of a page on HTTP 429/5xx or a timeout")
+            p.add_argument("--backoff-seconds", type=float, default=2.0, help="first retry delay; doubles per retry")
+            p.add_argument("--timeout-seconds", type=float, default=60.0, help="per-request timeout")
         else:
             p.add_argument("--export-dir", required=True, help="an immutable export copied read-only: <dataset>/part-*.parquet")
             p.add_argument("--profile", help="PROD read-only profile, needed only to hydrate artifacts")

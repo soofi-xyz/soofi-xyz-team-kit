@@ -690,7 +690,7 @@
                   "ready"
                 ]
               },
-              "manifestSha256": {
+              "manifestFileSha256": {
                 "type": "string",
                 "pattern": "^[a-f0-9]{64}$"
               },
@@ -722,7 +722,7 @@
                 },
                 "then": {
                   "required": [
-                    "manifestSha256",
+                    "manifestFileSha256",
                     "manifestVersionId"
                   ]
                 }
@@ -746,7 +746,7 @@
                     "anyOf": [
                       {
                         "required": [
-                          "manifestSha256"
+                          "manifestFileSha256"
                         ]
                       },
                       {
@@ -801,7 +801,7 @@
               "id",
               "kind",
               "location",
-              "manifestSha256",
+              "manifestFileSha256",
               "appliesTo",
               "required"
             ],
@@ -816,7 +816,7 @@
                 "type": "string",
                 "pattern": "^s3://[^?#@]+/$"
               },
-              "manifestSha256": {
+              "manifestFileSha256": {
                 "type": "string",
                 "pattern": "^[a-f0-9]{64}$"
               },

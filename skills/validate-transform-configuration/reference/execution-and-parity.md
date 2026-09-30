@@ -69,9 +69,9 @@ python3 $S/transform_runs.py spec-from-intent --stage canary --intent intent.jso
 python3 $S/transform_runs.py cards --spec canary-spec.json --run-dir "$CANARY"  # APPROVAL_REQUIRED + digests
 python3 $S/transform_runs.py start --run-dir "$CANARY" --approve sha256:<digest> \
   --approver "<who>" --scope "<approval in their words>"                      # only matching cards start
-python3 $S/transform_runs.py capture --run-dir "$CANARY"                       # read-only evidence + reconciliation
+python3 $S/transform_runs.py capture --run-dir "$CANARY"                       # read-only; rows under <run>/private/outputs/
 python3 $S/prod_actuals.py compare --catalog <prod-actuals.json> --slice <slice> --actual <private events> \
-  --dataset <dataset>=<captured output> --out canary-<slice>.json
+  --dataset <dataset>=<run>/private/outputs/<runId>/<case>/tables/<dataset>/ --out canary-<slice>.json
 python3 $S/transform_runs.py canary-gate --canary-run-dir "$CANARY" --comparison canary-<slice>.json \
   [--owner-decisions decisions.json] --out gate.json                          # show it and ask
 python3 $S/transform_runs.py approve-full --gate gate.json --approver "<who>" --scope "<their answer>"
@@ -80,7 +80,7 @@ python3 $S/transform_runs.py spec-from-intent --stage full ... --bind <name>=s3:
 python3 $S/transform_runs.py cards --spec full-spec.json --run-dir "$RUN"
 python3 $S/transform_runs.py start --run-dir "$RUN" --canary-gate gate.json --approve sha256:<digest> --approver "<who>" --scope "<…>"
 python3 $S/transform_runs.py capture --run-dir "$RUN"
-python3 $S/transform_runs.py regress --run-dir "$RUN" --baseline "$PREVIOUS_RUN"
+python3 $S/transform_runs.py regress --run-dir "$RUN" --baseline "$PREVIOUS_RUN" --slice <slice>  # per slice
 python3 $S/transform_runs.py cost --run-dir "$RUN" --job-name <transform-glue-job>
 ```
 
@@ -103,7 +103,10 @@ outputs in their registered format, reconciles physical rows and files with `_me
 flags `mappingPinMatches: false` when the plan's `mapping.json` digest or VersionId differs from
 the pin (deployment drift or a latest-PR-wins overwrite). `regress` matches cases with a previous
 run by mapping, input locations, outputs and expectation (not by case name) and compares row
-counts and content digests. Check outputs with `compare_datasets.py check` (contract format and
+counts and content digests; with no comparable case (for example the same version republished with
+another digest and output names) it reports `NOT_APPLICABLE` with the reason instead of passing silently.
+`capture` writes output rows only under the enclosing run's `private/outputs/<runId>/` (removed by
+`run_workspace.py cleanup`) and keeps sanitized summaries (`steps.json`, `_metadata.json`) in the run directory. Check outputs with `compare_datasets.py check --slice` (contract format and
 columns, keys, the profile's declarative checks, oracles and allowed losses), compare them with
 what PROD actually did with `prod_actuals.py compare`, prove graph closure with
 `compare_datasets.py closure`, compute phases with `evaluate_run.py`, and assemble the package

@@ -7,18 +7,23 @@
       [--source-window confirmed.json] [--slice-days days.json] [--prod-actuals summary.json ...]
       [--canary-run-dir [SLICE=]RUN ...] [--canary-sample summary.json ...] [--canary-comparison checks.json ...]
       [--canary-gate [SLICE=]gate.json ...] [--run-dir [SLICE=]RUN ...] [--checks checks.json ...]
-      [--actuals-comparison checks.json ...] [--closure closure.json ...] [--regression regression.json]
-      [--staging-upload upload.json ...] [--mode observed-dev|bounded-dev-dry-run] --out phases.json
+      [--actuals-comparison checks.json ...] [--closure closure.json ...] [--regression [SLICE=]regression.json ...]
+      [--graph-inputs summary.json ...] [--staging-upload upload.json ...] [--mode observed-dev|bounded-dev-dry-run]
+      --out phases.json
 
 Every input is real data from a PROD-derived UTC window; there is no local or synthetic mode. Named package
 slices are evaluated independently: each has its own window, canary, canary gate, full run, comparison and
-verdict, and the overall verdict is READY only when every slice is READY. Run directories and gates take a
-SLICE= prefix (or carry the slice in their run spec or gate); evidence files carry their `slice`. Evidence
-without a slice applies to every slice. Each phase is PASS, FAIL, BLOCKED or APPROVAL_REQUIRED:
+verdict, and the overall verdict is READY only when every slice is READY. Run directories, gates and regression
+reports take a SLICE= prefix (or carry the slice in their run spec, gate or report); evidence files carry their
+`slice`. Comparison evidence (canary and full comparisons, checks, closure, regression) counts only for the slice it
+names; unsliced comparison evidence counts only for a single-slice request and is otherwise listed as ignored.
+A slice that stops before its full run reports the real cause (for example UpstreamInputEmpty from data-days
+--input-days or graph_inputs.py INPUT_EMPTY), not a canary failure that never happened. Each phase is PASS,
+FAIL, BLOCKED or APPROVAL_REQUIRED:
 
   1  intake       resolver RESOLVED with a selected profile or a promoted run-scoped profile; the window is
                   user-confirmed (source_window.py confirm) or chosen by the owner decision "most recent full UTC
-                  day with real data per slice"; no slice is empty or beyond its PROD actual's data cutoff
+                  day with real data per slice"; no slice is empty, beyond its PROD actual's data cutoff, or without input rows
   2  discovery    every fetched repository pinned by commit with required paths verified
   3  safety       explicit operator profile, DEV-only writes, each DEV staging upload under its own approval digest
                   (or the owner's blanketDevWrites, recorded per digest), a slice's sensitive fields staged only
@@ -100,6 +105,14 @@ class Phases:
                 result = worse(result, status)
         return result
 
+    def first_blocker(self, phases: tuple[int, ...], slice: str | None) -> str | None:
+        """The first non-PASS reason of these phases that applies to the slice (the real cause of a later stop)."""
+        for wanted in phases:
+            for number, status, reason, _, scope in self.entries:
+                if number == wanted and status != "PASS" and (scope is ALL or scope == slice):
+                    return f"phase {number} {status}: {reason}"
+        return None
+
     def reasons(self, phase: int) -> list[str]:
         return [f"{status}: {reason}" for number, status, reason, _, _ in self.entries if number == phase]
 
@@ -162,6 +175,13 @@ def in_slice(record: dict, name: str | None) -> bool:
     return name is ALL or record.get("slice") in (None, "*", name)
 
 
+def evidence_in_slice(record: dict, name: str | None, slice_ids: list[str]) -> bool:
+    """Comparison evidence belongs to the slice it names; unsliced ('*' or absent) evidence counts only when the
+    request has at most one slice, so one slice's comparison never stands in for another's."""
+    scope = record.get("slice")
+    return name is ALL or scope == name or (scope in (None, "*") and len(slice_ids) <= 1)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--intent", required=True)
@@ -184,8 +204,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--run-dir", action="append", default=[], help="[SLICE=]full-window run directory (repeatable)")
     parser.add_argument("--checks", action="append", default=[], help="compare_datasets.py check result for the full run")
     parser.add_argument("--actuals-comparison", action="append", default=[], help="prod_actuals.py compare result for the full run")
-    parser.add_argument("--closure", action="append", default=[])
-    parser.add_argument("--regression")
+    parser.add_argument("--closure", action="append", default=[], help="compare_datasets.py closure --slice --out result")
+    parser.add_argument("--regression", action="append", default=[],
+                        help="[SLICE=]transform_runs.py regress --slice result (repeatable, one baseline per slice)")
+    parser.add_argument("--graph-inputs", action="append", default=[],
+                        help="graph_inputs.py summary of a slice's canary or window inputs (INPUT_EMPTY names the real cause)")
     parser.add_argument("--staging-upload", action="append", default=[],
                         help="stage_evidence_package.py upload result for a canary or full-window DEV package")
     parser.add_argument("--mode", choices=("observed-dev", "bounded-dev-dry-run"), default="observed-dev")
@@ -227,8 +250,7 @@ def main(argv: list[str] | None = None) -> int:
                 tokens[name] = window_token(slice_window(entry))
                 phases.set(1, "PASS", f"owner decision: most recent full UTC day with real data: {entry['day']}",
                            "owner-window-selection", name)
-            if entry.get("handoff"):
-                informational.append(entry["handoff"]["code"])
+            informational += [h["code"] for h in entry.get("handoffs", [])]
     else:
         status, reason = validate_confirmed(selection, (profile or {}).get("sourceWindowPolicy"))
         phases.set(1, status, reason, "source-window-selection" if status == "PASS" else None)
@@ -236,13 +258,21 @@ def main(argv: list[str] | None = None) -> int:
             windows.append({"slice": "*", **selection["confirmedWindow"]})
             tokens[ALL] = window_token(selection["confirmedWindow"])
     if days:
+        if days.get("selection") != "most-recent-full-utc-day-with-data-per-slice":
+            for entry in days.get("slices", {}).values():
+                informational += [h["code"] for h in entry.get("handoffs", [])]
         for name in days.get("emptySlices", []):
             entry = days["slices"][name]
             nearest = entry.get("nearestDayWithData")
-            what = ("its PROD actual's data stops at " + entry.get("dataThrough", "?")) if entry["status"] == "STALE_ACTUAL" \
-                else f"no real PROD data on {entry['day']}"
-            phases.set(1, "BLOCKED", f"EmptySliceWindow: {name} has {what}; "
-                       + (f"nearest UTC day with data is {nearest}" if nearest else "no UTC day with data was found"), slice=name)
+            code, what = {
+                "STALE_ACTUAL": ("ProdMirrorStale", "its PROD actual's data stops at " + entry.get("dataThrough", "?")),
+                "INPUT_EMPTY": ("UpstreamInputEmpty", "PROD-actual rows but no Transform input rows on "
+                                + (entry.get("day") or "any day with actual data")
+                                + (f" (input days {entry['inputDays']['first']}..{entry['inputDays']['last']})" if entry.get("inputDays") else "")),
+            }.get(entry["status"], ("EmptySliceWindow", f"no real PROD data on {entry.get('day') or 'any complete UTC day'}"))
+            phases.set(1, "BLOCKED", f"{code}: {name} has {what}; "
+                       + (f"nearest UTC day with data on both sides is {nearest}" if nearest else "no UTC day with data on both sides was found"),
+                       slice=name)
         for name in sorted(set(slice_ids) - set(days.get("slices", {}))):
             phases.set(1, "BLOCKED", "EmptySliceWindow: no real-data day check", slice=name)
     elif slice_ids:
@@ -387,6 +417,17 @@ def main(argv: list[str] | None = None) -> int:
     canary_approvals, full_approvals = [], []
     fallback = {n for n, b in baselines.items() if b["status"] == "NONE"}
     per_slice_gate = {}
+    for path in args.graph_inputs:
+        built = read_json(path)
+        name = built.get("slice")
+        if built.get("status") == "INPUT_EMPTY":
+            empty = built.get("inputEmpty") or {}
+            phases.set(9, "BLOCKED", f"{empty.get('code', 'UpstreamInputEmpty')}: the PROD graph inputs have no rows in "
+                       f"{empty.get('datasets')} ({empty.get('detail', '')}); nothing to run", Path(path).stem, name)
+        elif built.get("status") != "BUILT":
+            phases.set(9, "FAIL", f"graph inputs {built.get('status')}: {built.get('danglingEndpointCount')} dangling endpoints, "
+                       f"hydration failures {[(d, s.get('hydrationFailures')) for d, s in built.get('datasets', {}).items() if s.get('hydrationFailures')]}",
+                       slice=name)
     for name in scopes:
         for run in canary_runs:
             if run["spec"].get("stage") not in (None, "canary"):
@@ -401,7 +442,7 @@ def main(argv: list[str] | None = None) -> int:
                        f"{sample.get('byOutcome') or ''}", "canary-sample", name)
         if name is not ALL and not any(s["slice"] == name for s in samples):
             phases.set(9, "BLOCKED", "CanaryRequired: no canary sample", slice=name)
-        reports = [r for r in canary_reports if in_slice(r, name)]
+        reports = [r for r in canary_reports if evidence_in_slice(r, name, slice_ids)]
         if reports:
             status, failing = comparison_status(reports)
             phases.set(9, status, "canary compared with PROD actuals" + (f"; not passing {failing}" if failing else ""),
@@ -414,7 +455,10 @@ def main(argv: list[str] | None = None) -> int:
         full_steps = [(run, [s for s in run["steps"] if in_slice(s, name)]) for run in full_runs]
         started = any(steps for _, steps in full_steps)
         if phases.status(9, name) != "PASS":
-            phases.set(10, "BLOCKED", "FullRunNotStarted: the canary did not pass; the full-window run is not offered", slice=name)
+            canary_ran = any(in_slice(s, name) for run in canary_runs for s in run["steps"])
+            cause = phases.first_blocker((1, 3, 7, 9) if not canary_ran else (9,), name)
+            phases.set(10, "BLOCKED", ("FullRunNotStarted: the canary did not pass; the full-window run is not offered" if canary_ran
+                                       else "FullRunNotStarted: no canary ran") + (f" (cause: {cause})" if cause else ""), slice=name)
             if started:
                 phases.set(10, "FAIL", "a full-window run was started although this slice's canary did not pass", slice=name)
         elif not gate or gate.get("status") not in APPROVED_GATES:
@@ -433,7 +477,7 @@ def main(argv: list[str] | None = None) -> int:
             if not started:
                 phases.set(10, "BLOCKED", "no captured full-window execution", slice=name)
 
-        reports = [r for r in full_reports if in_slice(r, name)]
+        reports = [r for r in full_reports if evidence_in_slice(r, name, slice_ids)]
         if reports:
             status, failing = comparison_status(reports)
             phases.set(11, status, "full window compared with PROD actuals" + (f"; not passing {failing}" if failing else ""),
@@ -447,9 +491,23 @@ def main(argv: list[str] | None = None) -> int:
             phases.set(11, "BLOCKED", "no approved full-window run to compare", slice=name)
     for name in (set(baselines) - fallback) - {r.get("slice") for r in full_reports} - set(slice_ids):
         phases.set(11, "BLOCKED", f"ProdActualsComparisonMissing: slice {name} has a PROD actual but no full-window comparison")
-    if fallback and not args.checks:
-        for name in fallback:
-            phases.set(11, "BLOCKED", "no PROD actual and no schema/row-count checks", slice=None if name == "*" else name)
+    def evidence_scope(report: dict, path: str, kind: str):
+        """(True, slice-or-ALL) for evidence that names its slice; unsliced evidence of a multi-slice request is ignored."""
+        scope = report.get("slice")
+        if scope not in (None, "*"):
+            return True, scope
+        if len(slice_ids) <= 1:
+            return True, ALL
+        informational.append("UnslicedComparisonEvidenceIgnored")
+        ignored.append(f"{kind} {Path(path).name}: no slice; re-run it with --slice")
+        return False, None
+
+    ignored: list[str] = []
+    checks = [(p, read_json(p)) for p in args.checks]
+    checked = {s for p, r in checks for ok, s in [evidence_scope(r, p, "checks")] if ok}
+    for name in fallback:
+        if not (checked & {name, ALL}):
+            phases.set(11, "BLOCKED", "no PROD actual and no schema/row-count checks for this slice", slice=None if name == "*" else name)
     for entry in intent.get("parityDerivation", []):
         if entry.get("status") in ("FAIL", "BLOCKED"):
             covered = any(c["dataset"] == entry["dataset"] and c["kind"] == "columns-match-contract" and c["status"] == "PASS"
@@ -457,26 +515,41 @@ def main(argv: list[str] | None = None) -> int:
             owner = next((s["id"] for s in intent.get("slices") or [] if entry["dataset"] in s["outputDatasets"]), None)
             phases.set(11, "PASS" if covered else entry["status"], f"{entry['dataset']}: {entry.get('finding')}"
                        + (" resolved by a declared consumer contract" if covered else ""), "checks" if covered else None, owner)
-    for path in args.checks:
-        report = read_json(path)
+    for path, report in checks:
+        applies, scope = evidence_scope(report, path, "checks")
+        if not applies:
+            continue
         failing = [c["id"] for c in report["checks"] if c["status"] in ("FAIL", "BLOCKED")]
         status = "FAIL" if any(c["status"] == "FAIL" for c in report["checks"]) else ("BLOCKED" if failing else "PASS")
         phases.set(11, status, f"{Path(path).name}: {len(report['checks'])} schema/contract checks" + (f"; not passing {failing}" if failing else ""),
-                   Path(path).stem, report.get("slice"))
+                   Path(path).stem, scope)
     for path in args.closure:
         report = read_json(path)
+        applies, scope = evidence_scope(report, path, "closure")
+        if not applies:
+            continue
         ok = report["danglingEndpointCount"] == 0 and report["identityUnique"]
         phases.set(11, "PASS" if ok else "FAIL", f"closure: {report['endpointCount']} endpoints, {report['danglingEndpointCount']} dangling",
-                   Path(path).stem, report.get("slice"))
+                   Path(path).stem, scope)
     graph_outputs = profile and (profile.get("graph") or {}).get("required") and any(
         d.get("toLanguage") == intent.get("primaryDirection", {}).get("to") for d in profile.get("directions", []))
     shape = intent.get("primaryDirection", {}).get("outputShape")
     if not args.closure and (shape == "graph" or (graph_outputs and shape != "tabular")):
         phases.set(11, "BLOCKED", "graph output without closure evidence")
-    if args.regression:
-        report = read_json(args.regression)
-        phases.set(11, "PASS" if report["pass"] else "FAIL",
-                   f"regression: {len(report['identical'])} identical, {len(report['changed'])} changed, {len(report['newCases'])} new", "regression")
+    for prefix, path in scoped(args.regression):
+        report = read_json(path)
+        report = {**report, "slice": prefix or report.get("slice")}
+        applies, scope = evidence_scope(report, path, "regression")
+        if not applies:
+            continue
+        counts = f"{len(report['identical'])} identical, {len(report['changed'])} changed, {len(report['newCases'])} new"
+        status = report.get("status") or ("PASS" if report["pass"] else "FAIL")
+        if status == "NOT_APPLICABLE":
+            informational.append("RegressionNotApplicable")
+            phases.set(11, "PASS", f"regression NOT_APPLICABLE: {report.get('reason') or 'no comparable baseline case'} ({counts}); "
+                       "the PROD-actuals comparison is the gate", "regression", scope)
+        else:
+            phases.set(11, status, f"regression {status}: {counts}", "regression", scope)
     if phases.status(11) is None:
         phases.set(11, "BLOCKED", "no comparison evidence")
 
@@ -513,7 +586,7 @@ def main(argv: list[str] | None = None) -> int:
              "sliceWindows": windows,
              "stagingApprovalDigests": sorted({u["approvalOperationDigest"] for u in uploads if u.get("approvalOperationDigest")}),
              "executionApprovalDigests": sorted(set(canary_approvals) | set(full_approvals)),
-             "inputManifestSha256s": sorted({"sha256:" + u["manifestSha256"] for u in uploads if u.get("manifestSha256")}),
+             "inputManifestSha256s": sorted({"sha256:" + u["manifestFileSha256"] for u in uploads if u.get("manifestFileSha256")}),
              "canary": {"status": phases.status(9), "eventsPerSlice": CANARY_EVENTS_PER_SLICE,
                         "executionApprovalDigests": sorted(set(canary_approvals))},
              "fullRunApproval": {"status": next(iter(gate_statuses)) if len(gate_statuses) == 1 else
@@ -530,6 +603,8 @@ def main(argv: list[str] | None = None) -> int:
            "phases": [{"number": n, "name": PHASE_NAMES[n], "status": phases.status(n), "reasons": phases.reasons(n),
                        "evidenceIds": phases.evidence(n) or [f"phase-{n}"]} for n in PHASE_NAMES],
            "informationalFindings": sorted(set(informational))}
+    if ignored:
+        out["ignoredEvidence"] = ignored
     if profile:
         out["profile"] = {"id": profile.get("id"), "kind": profile.get("kind", "profile")}
     if intent.get("versionSelection"):

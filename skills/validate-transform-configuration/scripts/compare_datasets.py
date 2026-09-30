@@ -14,6 +14,8 @@
            `resolve-transform-intent.py contracts`; a profile direction's outputContracts
            override the derived fields it declares in derivationOverrides and add
            columnConstraints/key. No check is specific to any mapping.
+           check and closure require --slice and record it: evaluate_run.py never applies
+           evidence of one slice (or of no slice) to another.
 
 A dataset is a file, a directory of part-* files, or a glob. CSV uses --delimiter (default ',',
 the Transform default; pass the registered delimiter). Parquet needs pyarrow. Output is JSON
@@ -202,7 +204,11 @@ def cmd_closure(args) -> int:
     report["danglingEndpointCount"] = dangling_total
     report["identityUnique"] = all(v["unique"] for v in list(report["vertices"].values()) + list(report["edges"].values()))
     report["endpointCount"] = sum(e["endpoints"] for e in report["edges"].values())
-    print(json.dumps(report, indent=1))
+    report["slice"] = args.slice
+    text = json.dumps(report, indent=1)
+    if args.out:
+        Path(args.out).write_text(text + "\n")
+    print(text)
     return 0 if dangling_total == 0 and report["identityUnique"] else 1
 
 
@@ -356,7 +362,7 @@ def cmd_check(args) -> int:
         outcome = evaluate_check({**check, "_dataset_path": path}, rows, columns, contracts[dataset], oracles, oracle_paths, losses, args.delimiter)
         record(invariant["id"], dataset, check["kind"], invariant["failureCode"], outcome)
     statuses = {r["status"] for r in results}
-    summary = {"mapping": derived.get("mapping"), "checks": results,
+    summary = {"mapping": derived.get("mapping"), "slice": args.slice, "checks": results,
                "status": "FAIL" if "FAIL" in statuses else ("BLOCKED" if "BLOCKED" in statuses else "PASS")}
     text = json.dumps(summary, indent=1)
     if args.out:
@@ -386,7 +392,10 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("closure")
     p.add_argument("--vertex", action="append", default=[], help="name=PATH")
     p.add_argument("--edge", action="append", default=[], help="name=PATH:FROM_VERTEX_NAME:TO_VERTEX_NAME")
+    p.add_argument("--slice", required=True, help="the package slice this evidence belongs to ('*' only for a single-slice request)")
+    p.add_argument("--out")
     p = sub.add_parser("check")
+    p.add_argument("--slice", required=True, help="the package slice this evidence belongs to ('*' only for a single-slice request)")
     p.add_argument("--contracts", required=True, help="resolve-transform-intent.py contracts output for the mapping")
     p.add_argument("--profile", help="profile JSON: overrides, columnConstraints, invariants with check, oracles, allowedLosses")
     p.add_argument("--dataset", action="append", required=True, help="DATASET=PATH of a captured output")

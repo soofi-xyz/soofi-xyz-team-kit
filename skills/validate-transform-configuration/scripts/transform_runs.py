@@ -27,8 +27,12 @@ Commands (all write evidence only under --run-dir):
   cards    write one operation card per case with its operation digest and stop (APPROVAL_REQUIRED)
   start    start exactly the cases whose --approve digests match their cards (records the approval first), or
            every card of the run when --owner-decisions carries blanketDevWrites (recorded per card digest)
-  capture  read-only: describe-execution, history, plan.json, output files; reconcile metadata with physical rows
-  regress  compare this run's captured outputs with a baseline run directory, case by case (same inputs and outputs)
+  capture  read-only: describe-execution, history, plan.json, output files; reconcile metadata with physical rows.
+           Output rows go to <run>/private/outputs/<runId>/<case>/ (removed by run_workspace.py cleanup; the step
+           records it as privateOutputDir); only sanitized summaries (steps.json, _metadata.json) stay in RUN
+  regress  compare this run's captured outputs with a baseline run directory, case by case (same inputs and outputs),
+           per slice with --slice. Status PASS, FAIL, or NOT_APPLICABLE with the reason when no case is comparable
+           (for example MappingRepublished: the same version republished with another digest and output names)
   cost     read-only: Glue DPU-hours of this run's job runs and the USD estimate
   canary-gate   summarize a captured canary-stage run and its PROD-actuals comparisons for the user, per slice
                 with --slice: CANARY_FAILED (stop; never offer that slice's full run), AWAITING_APPROVAL, or
@@ -54,7 +58,8 @@ import json
 import time
 from pathlib import Path
 
-from silvally_io import DEFAULT_REGION, SilvallyError, aws, canonical_digest, load_layout, parse_s3, read_json, write_json
+from run_workspace import MARKER as RUN_MARKER
+from silvally_io import DEFAULT_REGION, SilvallyError, aws, canonical_digest, load_layout, parse_s3, private_dir, read_json, write_json
 
 RUNTIME = load_layout()["transformRuntime"]
 BLANKET_DEV_WRITES = "staging-and-executions-for-this-run"
@@ -315,6 +320,24 @@ def rejection_ok(describe: dict, states: list[str], error: str | None, missing: 
     return refused, refused and (missing is None or (error is not None and missing in error))
 
 
+def capture_rows_dir(run_dir: Path, spec: dict, explicit: str | None) -> Path:
+    """Where captured DEV output rows go: <run>/private/outputs/<runId>/ of the enclosing run_workspace.py run,
+    so run_workspace.py cleanup removes them; only sanitized summaries stay in the run directory. An explicit
+    --private-dir must lie inside some run's private/ directory."""
+    if explicit:
+        target = Path(explicit).expanduser().resolve()
+        owner = next((p.parent for p in [target, *target.parents] if p.name == "private" and (p.parent / RUN_MARKER).exists()), None)
+        if owner is None:
+            raise SilvallyError("captured DEV output rows are restricted: --private-dir must lie inside a run_workspace.py "
+                                "run's private/ directory (removed by cleanup)")
+        return target
+    marker = next((p for p in [run_dir.resolve(), *run_dir.resolve().parents] if (p / RUN_MARKER).exists()), None)
+    if marker is None:
+        raise SilvallyError("CapturePrivateDirRequired: the run directory is not inside a run_workspace.py run; "
+                            "pass --private-dir <run>/private/...")
+    return marker / "private" / "outputs" / spec["runId"]
+
+
 def cmd_capture(args) -> int:
     run_dir = Path(args.run_dir)
     spec = load_spec(str(run_dir / "run-spec.json"))
@@ -322,6 +345,7 @@ def cmd_capture(args) -> int:
     arn_prefix = spec["stateMachineArn"].replace(":stateMachine:", ":execution:")
     bucket, _ = parse_s3(spec["outputRoot"])
     formats = spec.get("outputFormats", {})
+    rows_root = capture_rows_dir(run_dir, spec, args.private_dir)
     summary = []
     for index, case in enumerate(spec["cases"], 1):
         if not (run_dir / "approvals" / f"{index}-{case['case']}.started.json").exists():
@@ -370,9 +394,12 @@ def cmd_capture(args) -> int:
             entry["mappingPinMatches"] = entry["planMapping"]["sha256"] == pin["sha256"] and entry["planMapping"]["versionId"] == pin.get("versionId", entry["planMapping"]["versionId"])
         prefix = f"{spec['outputRoot']}{spec['runId']}/{case['case']}/{name}/"
         if describe["status"] == "SUCCEEDED":
-            out_dir = run_dir / "out" / case["case"]
+            out_dir = private_dir(rows_root) / case["case"]
             aws(["s3", "sync", prefix, str(out_dir), "--quiet"], profile=profile, region=region, environment="prod", output_json=False)
             meta = read_json(out_dir / "_metadata.json") if (out_dir / "_metadata.json").exists() else {}
+            if meta:
+                write_json(step_dir / "_metadata.json", meta)
+            entry["privateOutputDir"] = str(out_dir)
             outputs = []
             for dataset in meta.get("datasets", []):
                 files = data_files(out_dir / RUNTIME["outputTablesDir"] / dataset["dataset"])
@@ -401,14 +428,32 @@ def case_signature(case: dict) -> tuple:
             tuple(sorted(request.get("outputDatasets") or [])), case.get("expected", "PASS"))
 
 
+def not_comparable_reason(specs: dict, steps: dict) -> str:
+    """Why no current case has a baseline counterpart: a republished mapping version, renamed outputs, other inputs."""
+    reasons = []
+    for key in sorted(set(specs["current"]["mappings"]) & set(specs["baseline"]["mappings"])):
+        mine, theirs = specs["current"]["mappings"][key].get("sha256"), specs["baseline"]["mappings"][key].get("sha256")
+        if mine != theirs:
+            reasons.append(f"MappingRepublished: {key} was republished (baseline digest {str(theirs)[:12]}, current {str(mine)[:12]})")
+    outputs = {label: sorted({o["dataset"] for s in steps[label] for o in s.get("outputs", [])}) for label in steps}
+    if outputs["current"] != outputs["baseline"]:
+        reasons.append(f"OutputNamesDiffer: baseline outputs {outputs['baseline']}, current {outputs['current']}")
+    if not reasons:
+        reasons.append("NoMatchingCase: no current case has the same mapping, input URIs, outputs and expectation as a baseline case")
+    return "; ".join(reasons)
+
+
 def cmd_regress(args) -> int:
     """Case-by-case comparison with a baseline run: same mapping, input URIs, outputs and expectation."""
-    runs = {}
+    runs, specs, all_steps = {}, {}, {}
     for label, directory in (("current", Path(args.run_dir)), ("baseline", Path(args.baseline))):
         spec = read_json(directory / "run-spec.json")
         steps = {s["step"]: s for s in read_json(directory / "steps.json")}
-        runs[label] = {case_signature(c): steps.get(f"{i}-{c['case']}") for i, c in enumerate(spec["cases"], 1)}
-    report = {"identical": [], "changed": [], "newCases": [], "baselineOnly": []}
+        slices = case_slices(spec)
+        cases = [(i, c) for i, c in enumerate(spec["cases"], 1) if not args.slice or slices.get(c["case"]) in (args.slice, None)]
+        runs[label] = {case_signature(c): steps.get(f"{i}-{c['case']}") for i, c in cases}
+        specs[label], all_steps[label] = spec, [s for s in runs[label].values() if s]
+    report = {"slice": args.slice, "identical": [], "changed": [], "newCases": [], "baselineOnly": []}
     for signature, step in runs["current"].items():
         base = runs["baseline"].get(signature)
         if step is None:
@@ -424,10 +469,19 @@ def cmd_regress(args) -> int:
                                "contentEqual": mine.get(d) == theirs.get(d)} for d in sorted(set(mine) | set(theirs))}}
         report["identical" if same else "changed"].append(row)
     report["baselineOnly"] = sorted(s["step"] for sig, s in runs["baseline"].items() if s and sig not in runs["current"])
-    report["pass"] = not report["changed"]
-    write_json(Path(args.run_dir) / "regression.json", report)
-    print(json.dumps({"identical": len(report["identical"]), "changed": len(report["changed"]),
-                      "newCases": len(report["newCases"]), "baselineOnly": len(report["baselineOnly"]), "pass": report["pass"]}))
+    if report["changed"]:
+        report["status"] = "FAIL"
+    elif report["identical"]:
+        report["status"] = "PASS"
+    else:
+        report["status"] = "NOT_APPLICABLE"
+        report["reason"] = not_comparable_reason(specs, all_steps)
+    report["pass"] = report["status"] != "FAIL"
+    target = Path(args.out) if args.out else Path(args.run_dir) / (f"regression-{args.slice}.json" if args.slice else "regression.json")
+    write_json(target, report)
+    print(json.dumps({"slice": args.slice, "status": report["status"], "identical": len(report["identical"]),
+                      "changed": len(report["changed"]), "newCases": len(report["newCases"]),
+                      "baselineOnly": len(report["baselineOnly"]), **({"reason": report["reason"]} if "reason" in report else {})}))
     return 0 if report["pass"] else 1
 
 
@@ -667,9 +721,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--scope", required=True, help="the user's approval of the full-window run, in their words")
     p = sub.add_parser("capture")
     p.add_argument("--run-dir", required=True)
+    p.add_argument("--private-dir", help="where output rows go (default: <run>/private/outputs/<runId>/ of the enclosing run)")
     p = sub.add_parser("regress")
     p.add_argument("--run-dir", required=True)
     p.add_argument("--baseline", required=True, help="an earlier run directory (run-spec.json + steps.json)")
+    p.add_argument("--slice", help="compare only this package slice's cases (the report records the slice)")
+    p.add_argument("--out", help="default: RUN/regression[-<slice>].json")
     p = sub.add_parser("cost")
     p.add_argument("--run-dir", required=True)
     p.add_argument("--job-name", required=True, help="Transform Glue job name (see the Transform stack outputs)")

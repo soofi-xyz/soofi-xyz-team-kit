@@ -908,7 +908,7 @@
       "location": "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/20260928-dev-stage-sample_v2/stage/",
       "region": "us-east-2",
       "artifactStatus": "ready",
-      "manifestSha256": "8152e4c5ececf5b95904c7d600525c5b65d3061d42d4a9a3da1a0f57e6f369ec",
+      "manifestFileSha256": "8152e4c5ececf5b95904c7d600525c5b65d3061d42d4a9a3da1a0f57e6f369ec",
       "manifestVersionId": ".iFrC8KQfTZvAgdvPljB5CBC0_D3qmrI",
       "appliesTo": [
         "interprose-to-lexicon"
@@ -921,7 +921,7 @@
       "location": "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/20260928-dev-stage-sample_v2/lexicon/",
       "region": "us-east-2",
       "artifactStatus": "ready",
-      "manifestSha256": "d1315b1fadf2b446c05ccbf07c311a2cee4da9f3d03b3d4fa9984a89b67aa2a7",
+      "manifestFileSha256": "d1315b1fadf2b446c05ccbf07c311a2cee4da9f3d03b3d4fa9984a89b67aa2a7",
       "manifestVersionId": "f.nCL3tWciEeNaJpbX4vDGf02ujz81W8",
       "appliesTo": [
         "lexicon-to-interprose-v4"
@@ -934,7 +934,7 @@
       "location": "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/20260928-prod-graph-sample_v1/",
       "region": "us-east-2",
       "artifactStatus": "ready",
-      "manifestSha256": "8ff49b3a6453a80d9612df6598f2eea7ad27bbd037e8ebaf2dadc922a85c05ed",
+      "manifestFileSha256": "8ff49b3a6453a80d9612df6598f2eea7ad27bbd037e8ebaf2dadc922a85c05ed",
       "manifestVersionId": "3BVPzzwYFFEdjIeaBnYPq6qlHcYFnbLe",
       "appliesTo": [
         "lexicon-to-interprose-v4"
@@ -947,7 +947,7 @@
       "location": "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/20260928-prod-reconstruct_v1/stage/",
       "region": "us-east-2",
       "artifactStatus": "ready",
-      "manifestSha256": "81cdf121e96c365527b2e2dc5f4ac1f59f05c978856257c1cb43ff2dae92bc0a",
+      "manifestFileSha256": "81cdf121e96c365527b2e2dc5f4ac1f59f05c978856257c1cb43ff2dae92bc0a",
       "manifestVersionId": "MOXmiRbg4EWjwuZsmNkERQcv9.3DleE0",
       "appliesTo": [
         "interprose-to-lexicon"
@@ -960,7 +960,7 @@
       "location": "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/inputs/lexicon-interprose-v4/20260928-prod-reconstruct_v1/lexicon/",
       "region": "us-east-2",
       "artifactStatus": "ready",
-      "manifestSha256": "9811bd2bcb15c6f3668d669b2850d109f0ee2579e4036d5df348de4788defe70",
+      "manifestFileSha256": "9811bd2bcb15c6f3668d669b2850d109f0ee2579e4036d5df348de4788defe70",
       "manifestVersionId": "FqQqgOUhi7gj5NYStSsBhPe1PG0yPFE2",
       "appliesTo": [
         "lexicon-to-interprose-v4"
@@ -973,7 +973,7 @@
       "location": "s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/runs/reverse-sms-full-tzfix-20260924T023400Z-a4fa9e01/inputs/",
       "region": "us-east-2",
       "artifactStatus": "ready",
-      "manifestSha256": "f7b380c3b62c5de80475b1d4eaaf1e9eee0010ca8fea660f8602deafc4536ec8",
+      "manifestFileSha256": "f7b380c3b62c5de80475b1d4eaaf1e9eee0010ca8fea660f8602deafc4536ec8",
       "manifestVersionId": "zNYWML65kNztamb6badD8waD3RU4VUG6",
       "appliesTo": [
         "lexicon-to-interprose-v4"

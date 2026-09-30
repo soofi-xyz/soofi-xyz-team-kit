@@ -261,7 +261,7 @@ def profile_errors(value: dict) -> list[str]:
             errors.append("missing forbidden Lexicon concepts")
     for source in value.get("validationSources", []):
         if source.get("artifactStatus") == "planned":
-            if "manifestSha256" in source or "manifestVersionId" in source:
+            if "manifestFileSha256" in source or "manifestVersionId" in source:
                 errors.append("planned artifact claims a manifest")
             if not source.get("tbd"):
                 errors.append("planned artifact without TBD placeholders")
@@ -938,10 +938,10 @@ def test_schemas_and_profiles() -> None:
             "evidence": [{"repository": "example/transform", "commitSha": "main", "path": "src/plan.ts"}]})),
         ("planned artifact claiming a manifest digest", lambda p: p["validationSources"].append({
             "id": "planned", "kind": "existing-dev-artifact", "location": "s3://example-bucket/inputs/x/", "region": "xx-test-1",
-            "artifactStatus": "planned", "tbd": ["manifest"], "manifestSha256": "0" * 64, "appliesTo": ["alpha-to-canon"], "required": True})),
+            "artifactStatus": "planned", "tbd": ["manifest"], "manifestFileSha256": "0" * 64, "appliesTo": ["alpha-to-canon"], "required": True})),
         ("ready artifact without a manifest version", lambda p: p["validationSources"].append({
             "id": "ready", "kind": "existing-dev-artifact", "location": "s3://example-bucket/inputs/x/", "region": "xx-test-1",
-            "artifactStatus": "ready", "manifestSha256": "0" * 64, "appliesTo": ["alpha-to-canon"], "required": True})),
+            "artifactStatus": "ready", "manifestFileSha256": "0" * 64, "appliesTo": ["alpha-to-canon"], "required": True})),
     ]
     for label, fn in cases:
         assert_rejected(profile_check, mutated(fn), label)

@@ -122,11 +122,24 @@ def execution_steps(run_dir: Path, steps: list[dict], spec: dict, stage: str, st
                  "logLocations": spec.get("logGroups", []) + [f"/aws-glue/jobs/{k}:{g}" for g in glue for k in ("output", "error")]}
         if (run_dir / "steps" / s["step"] / "plan.json").exists():
             entry["planSha256"] = "sha256:" + sha256_file(run_dir / "steps" / s["step"] / "plan.json")
-        meta = run_dir / "out" / case / "_metadata.json"
+        meta = run_dir / "steps" / s["step"] / "_metadata.json"
         if meta.exists():
             entry["metadataSha256"] = "sha256:" + sha256_file(meta)
         out.append(entry)
     return out
+
+
+def package_cost(runs: list[tuple[Path, str]]) -> tuple[dict, list[dict]]:
+    """actualUsd summed over every run directory's cost.json; null when any run has no measured cost."""
+    by_run, ceiling = [], 0.0
+    for directory, stage in runs:
+        cost = read_json(directory / "cost.json") if (directory / "cost.json").exists() else {}
+        spec = read_json(directory / "run-spec.json") if (directory / "run-spec.json").exists() else {}
+        by_run.append({"runId": str(spec.get("runId") or directory.name), "stage": stage, "actualUsd": cost.get("actualUsd")})
+        ceiling += cost.get("ceilingUsd") or 0
+    known = [r["actualUsd"] for r in by_run]
+    total = round(sum(known), 3) if known and None not in known else None
+    return {"actualUsd": total, "ceilingUsd": ceiling}, by_run
 
 
 def sequence(runs: list[tuple[Path, list[dict], str]], spec: dict) -> list[dict]:
@@ -153,7 +166,7 @@ def main(argv: list[str] | None = None) -> int:
         spec["profile"] = profile_identity(args.profile_doc)
     full = [(d, read_json(d / "steps.json") if (d / "steps.json").exists() else []) for d in run_dirs]
     steps = [s for _, st in full for s in st]
-    cost = read_json(run_dirs[0] / "cost.json") if (run_dirs[0] / "cost.json").exists() else {"actualUsd": None}
+    cost, by_run = package_cost([(Path(d), "canary") for d in args.canary_run_dir] + [(d, "full") for d in run_dirs])
 
     datasets = list(spec.get("datasets", []))
     for s in steps:
@@ -186,7 +199,7 @@ def main(argv: list[str] | None = None) -> int:
            "phases": spec["phases"],
            "boundaryDecisions": spec["boundaryDecisions"], "approvals": approvals,
            "cost": {"ceilingUsd": spec.get("costCeilingUsd", cost.get("ceilingUsd", 0)), "estimatedUsd": spec.get("estimatedUsd", 0),
-                    "actualUsd": cost.get("actualUsd")},
+                    "actualUsd": cost.get("actualUsd"), "actualUsdByRun": by_run},
            "failures": spec.get("failures", []), "remediations": spec.get("remediations", []), "verdict": computed}
     for optional in ("intentResolution", "parityDerivation", "sourceWindowSelection", "finalValidation", "versionSelection",
                      "ownerDecisions", "acceptedProductChanges", "prodActuals", "sliceVerdicts", "productChangeFlags"):
