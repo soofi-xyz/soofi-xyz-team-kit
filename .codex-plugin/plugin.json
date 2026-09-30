@@ -1,7 +1,7 @@
 {
   "name": "soofi-xyz-team-kit",
-  "description": "Product builders and configurers with guided workflows for Connect, Transform, Persist, Rule, System and Marketplace, plus reusable supporting skills.",
-  "version": "0.68.3",
+  "description": "Product builders and configurers with guided workflows for Account, Connect, Transform, Persist, Rule, System and Marketplace, plus reusable supporting skills.",
+  "version": "0.69.0",
   "author": {
     "name": "Soofi XYZ"
   },
@@ -21,7 +21,7 @@
   "interface": {
     "displayName": "Soofi XYZ",
     "shortDescription": "Build and configure Soofi products with guided workflows.",
-    "longDescription": "Product builders and configurers with guided workflows for Connect, Transform, Persist, Rule, System and Marketplace, plus reusable supporting skills.",
+    "longDescription": "Product builders and configurers with guided workflows for Account, Connect, Transform, Persist, Rule, System and Marketplace, plus reusable supporting skills.",
     "developerName": "Soofi XYZ",
     "category": "Productivity",
     "capabilities": [

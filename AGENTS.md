@@ -32,6 +32,7 @@ Follow these conventions whenever you touch files in this repo.
   per assigned role; do not add a cross-product platform owner.
 - Require `product` and `role` (`build` or `configure`) in featured product agent frontmatter.
   Conkeldurr builds Persist; Zygarde builds System. Keep configuration separate.
+  Kangaskhan builds Account; Blissey configures it through the existing HTTP API.
 - Load `skills/guide-product-work/SKILL.md` from every featured product agent. Preserve its
   feature-based decomposition, user-run configuration and AWS inspection
   checkpoints, and evidence distinctions. Treat four as a floor for full-product

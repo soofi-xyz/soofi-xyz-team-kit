@@ -19,6 +19,7 @@ In Copilot, select `soofi-xyz-team-kit:<agent>`. In Codex, request the named cus
 
 | Product | What it does | Build and maintain | Configure and test |
 | --- | --- | --- | --- |
+| **Account** | Account manages identities, keys, provisioning, domains and maintenance access. | [`kangaskhan`](./agents/kangaskhan.md) | [`blissey`](./agents/blissey.md) |
 | **Marketplace** | Marketplace catalogs products and reviews, publishes and rolls back bundles. | [`regigigas`](./agents/regigigas.md) | [`registeel`](./agents/registeel.md) |
 | **Transform** | Transform converts registered source languages into target languages. | [`kecleon`](./agents/kecleon.md) | [`silvally`](./agents/silvally.md) |
 | **Persist** | Persist stores graph facts and serves queries, indexes and triggers. | [`conkeldurr`](./agents/conkeldurr.md) | [`uxie`](./agents/uxie.md) |

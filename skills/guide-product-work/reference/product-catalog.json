@@ -3,10 +3,33 @@
   "source": {
     "meeting": "Builder Story Planning, 2026-09-30",
     "spreadsheet": "staircase-products export, supplied 2026-09-30",
-    "precedence": "User follow-up retains Conkeldurr for Persist, assigns Zygarde to System and excludes the API documentation workstream."
+    "precedence": "User follow-up retains Conkeldurr for Persist, assigns Zygarde to System and excludes the API documentation workstream. A later user request assigns Account its own builder/configurer pair."
   },
   "workflowSkill": "guide-product-work",
   "products": [
+    {
+      "id": "account",
+      "name": "Account",
+      "legacyNames": [
+        "Account Manager",
+        "Tenant Account Manager"
+      ],
+      "sourceRows": [],
+      "status": "assigned",
+      "summary": "Account manages identities, keys, provisioning, domains and maintenance access.",
+      "agents": {
+        "build": "kangaskhan",
+        "configure": "blissey"
+      },
+      "skills": {
+        "build": "build-tenant-account-manager",
+        "configure": "configure-account-product"
+      },
+      "notes": [
+        "Added by explicit user request after the supplied spreadsheet; no source row is claimed. Kangaskhan builds the Account API; Blissey configures existing deployments. Account provisioning does not own product installation or partner credentials."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/account.md"
+    },
     {
       "id": "access",
       "name": "Access",
