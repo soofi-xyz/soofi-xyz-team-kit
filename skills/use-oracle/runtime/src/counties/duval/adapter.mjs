@@ -26,7 +26,9 @@
  */
 
 import AdmZipCtor from "adm-zip";
+import { createHash } from "node:crypto";
 import { mkdir, readdir, readFile, writeFile, access, copyFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runCountyTransform } from "../../core/transform-runner.mjs";
@@ -61,6 +63,8 @@ export const REQUIRED_DATA_ARTIFACTS = Object.freeze(["property.json", "address.
 export const MIN_TRANSFORMED_ZIP_BYTES = 200;
 export const ZIP_LOCAL_FILE_MAGIC = Buffer.from([0x50, 0x4b, 0x03, 0x04]);
 export const DEFAULT_JOB_ID = "duval-ingest";
+export const RAW_CAPTURE_BODY_FILENAME = "response-body.html";
+export const RAW_CAPTURE_RECEIPT_FILENAME = "raw-capture-receipt.json";
 
 const COJ_FETCH_HEADERS = {
   Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -278,6 +282,114 @@ export async function fetchCojDetailHtml(url) {
     throw new Error(`COJ detail HTTP ${response.status} for ${url}`);
   }
   return response.text();
+}
+
+/**
+ * Require raw captures to stay in OS-temporary storage or the runtime's
+ * gitignored `.scratch/` directory. This prevents a live response from being
+ * written into a trackable source or fixture path.
+ *
+ * @param {string} outputDir - Requested capture directory.
+ * @returns {string} Absolute, validated output directory.
+ */
+export function requireRawCaptureOutputDir(outputDir) {
+  const candidate = path.resolve(toText(outputDir));
+  const runtimeRoot = path.resolve(RUNTIME_ROOT);
+  const tempRoot = path.resolve(tmpdir());
+  const scratchRoot = path.resolve(RUNTIME_ROOT, ".scratch");
+  const isWithin = (root) =>
+    candidate === root || candidate.startsWith(`${root}${path.sep}`);
+  const insideRuntime = isWithin(runtimeRoot);
+  const allowed =
+    (insideRuntime && isWithin(scratchRoot)) ||
+    (!insideRuntime && isWithin(tempRoot));
+  if (!allowed) {
+    throw new Error(
+      `Raw capture output must be under the OS temp directory (${tempRoot}) ` +
+        `or the runtime gitignored scratch directory (${scratchRoot})`,
+    );
+  }
+  return candidate;
+}
+
+/**
+ * Capture one Duval appraisal response without transforming it. The HTTP body
+ * is read as bytes, validated against the requested RE number using an
+ * in-memory decoded copy, and written byte-for-byte. Request/response metadata
+ * and the body digest are written to a separate receipt.
+ *
+ * @param {{
+ *   seedRow: Record<string, string>,
+ *   outputDir: string,
+ *   fetchImpl?: typeof fetch,
+ *   capturedAt?: string,
+ * }} options - One seed row, safe scratch directory, and injectable test seams.
+ * @returns {Promise<{
+ *   bodyPath: string,
+ *   receiptPath: string,
+ *   receipt: Record<string, unknown>,
+ * }>} Raw-body and receipt paths.
+ */
+export async function captureRawProperty({
+  seedRow,
+  outputDir,
+  fetchImpl = globalThis.fetch,
+  capturedAt = new Date().toISOString(),
+}) {
+  const safeOutputDir = requireRawCaptureOutputDir(outputDir);
+  const requestUrl = toCojCaptureUrl(seedRow);
+  if (typeof fetchImpl !== "function") {
+    throw new Error("Raw capture requires a fetch implementation");
+  }
+
+  const response = await fetchImpl(requestUrl, {
+    headers: COJ_FETCH_HEADERS,
+    redirect: "follow",
+  });
+  if (!response.ok) {
+    throw new Error(`COJ detail HTTP ${response.status} for ${requestUrl}`);
+  }
+
+  const body = Buffer.from(await response.arrayBuffer());
+  const observedIdentifier = assertHtmlMatchesRequestedRe(
+    body.toString("utf8"),
+    seedRow.source_identifier,
+  );
+  const bodySha256 = createHash("sha256").update(body).digest("hex");
+  const bodyPath = path.join(safeOutputDir, RAW_CAPTURE_BODY_FILENAME);
+  const receiptPath = path.join(
+    safeOutputDir,
+    RAW_CAPTURE_RECEIPT_FILENAME,
+  );
+  const receipt = {
+    schemaVersion: "elephant.raw-capture.v1",
+    county: COUNTY_KEY,
+    parcelId: toText(seedRow.parcel_id) || toText(seedRow.source_identifier),
+    requestIdentifier: toText(seedRow.source_identifier),
+    capturedAt,
+    request: {
+      method: toText(seedRow.method) || "GET",
+      url: requestUrl,
+    },
+    response: {
+      finalUrl: toText(response.url) || requestUrl,
+      status: response.status,
+      statusText: toText(response.statusText),
+      contentType: response.headers.get("content-type"),
+      byteLength: body.length,
+      sha256: bodySha256,
+    },
+    validation: {
+      kind: "coj_re_number",
+      observedIdentifier,
+      matched: true,
+    },
+  };
+
+  await mkdir(safeOutputDir, { recursive: true });
+  await writeFile(bodyPath, body);
+  await writeFile(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, "utf8");
+  return { bodyPath, receiptPath, receipt };
 }
 
 /**
@@ -620,6 +732,7 @@ export const duvalAdapter = {
   transformsDir: TRANSFORMS_DIR,
   flowPath: FLOW_PATH,
   buildSeed: buildDuvalSeedFiles,
+  captureRawProperty,
   captureAndTransform,
   validateRun,
   buildReconciliationArtifacts,
