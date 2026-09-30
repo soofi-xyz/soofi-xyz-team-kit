@@ -1,36 +1,54 @@
 ---
 name: build-lexicon-product
-description: "Implementing or changing the Lexicon product from its PRD — governed vocabulary, rulesets, metric definitions, artifact publication, schema browsing. Read reference/PRD.md first."
+description: "Build or maintain the Model HTTP API and its vocabulary lookup, candidate validation, governed changes, ruleset definitions, mapping registrations, metric definitions and versioned releases. Use Dialga; use Jirachi for existing-service configuration."
 disable-model-invocation: true
 ---
 
-# Build Lexicon Product
+# Build Model
 
-This skill is intentionally thin. Use it as a loader for [`reference/PRD.md`](./reference/PRD.md), not as a requirements copy.
+Use `dialga`. Load [guide-product-work](../guide-product-work/SKILL.md),
+[the Model capability map](../guide-product-work/reference/iterations/model.md)
+and [engineering guidelines](../apply-engineering-guidelines/SKILL.md).
+Use `jirachi` with [configure-model-product](../configure-model-product/SKILL.md)
+for operations through an existing deployment.
 
-## Required Reading
+## Scope and contract
 
-1. Read [`reference/PRD.md`](./reference/PRD.md) before planning or coding.
-2. Read [`../apply-engineering-guidelines/SKILL.md`](../apply-engineering-guidelines/SKILL.md) for Golden Path constraints.
-3. Read lexicon, Rules, Persist, Translate, and metrics skills whenever Lexicon work touches graph ontology changes, ruleset artifacts, validation contracts, mapping artifacts, or CloudWatch metric registration.
-4. Read [`build-transform-product`](../build-transform-product/SKILL.md) when registering Transform languages (the Lexicon language definition is their schema), directional SQL mappings or generic catalog publication. Keep configuration authoring/publication here and coordinate Python/PySpark execution with `kecleon`; use its explicit graph ID/endpoint bindings for graph mappings.
+Read [the product contract](reference/PRD.md) and
+[synthetic test data and dependency fakes](reference/test-data.md) before coding.
+Discover the target repository/revision, supported contract, deployment and
+selected AWS profile; verify the account and region. Record discrepancies between
+the specification and observed implementation without inventing deployed routes.
 
-## Product ownership
+Deliver an HTTP API with explicit authentication, caller/resource authorization,
+request validation, correlated errors and observable results. Expose submission,
+status and results for async capabilities. Reuse execution logic behind CLI,
+workflow and API adapters; a direct workflow call does not complete API acceptance.
+No separate API-documentation workstream is added.
 
-Use the catalog in [guide-product-work](../guide-product-work/SKILL.md).
-Model vocabulary publication has no separately assigned agent in this kit. Execute this supporting
-skill directly only within the requested scope. Do not assign this work to
-Conkeldurr (Persist) or Zygarde (System), and do not call retired specialists.
-Use relevant supporting skills directly. Use Registeel only for current
-Marketplace publication and Regigigas for Marketplace implementation changes.
+Deliver the Model HTTP API while preserving verified Lexicon S3/SSM consumer contracts and release identifiers. Existing artifact/UI surfaces do not prove an API exists. Keep canonical changes reviewed and versioned: API operations may submit/validate candidates and initiate approved publication but must not silently mutate canonical artifacts or bypass source review. Preserve immutable facts, property/index distinctions and consumer compatibility.
 
-## Implementation Rules
+Keep Persist storage/validation execution with Conkeldurr/Uxie, Rule evaluation with Gallade/Meditite and Transform mapping execution with Kecleon/Silvally. Silvally authors concrete Transform configurations; Model owns shared definition validation and governed publication. Use Mew for vocabulary lookup/modeling advice without changing its retained specialist role.
 
-- Treat the PRD as the single source of truth for artifact contracts, S3 object shapes, SSM parameters, release metadata, resource shapes, IAM scopes, env vars, metrics, error tags, and verification.
-- Do not implement from this `SKILL.md` alone.
-- For an existing Lexicon deployment, integrate through the PRD's S3/SSM artifact contract instead of provisioning a duplicate product.
-- If any old skill or rule file conflicts with the PRD, the PRD wins; update stale guidance instead of layering compatibility shims.
+## Build each feature piece
 
-## Expected Output
+1. Select and order the capability map's logical features. Use at least four
+   increments for a full-product build; scope narrow fixes to relevant pieces.
+   Bring the minimal API and authorized test deployment into the first usable
+   increment so the person can try it before further implementation.
+2. Show the next feature with synthetic data, then implement only that piece.
+   Mock external dependencies and effects first. Use the linked fixture matrix
+   to test baseline, a supported variant, invalid/unauthorized input and relevant
+   replay, timeout and recovery paths. Verify effects, redaction and HTTP results.
+3. Make the piece runnable through the API in the authorized test environment.
+   Give one invocation, expected output and at most three AWS inspection steps
+   using actual resource names. Have the user run the baseline and variant and
+   return request/execution IDs and observations. Wait for their evidence before
+   implementing the next piece; fix a failed current check before advancing.
+4. Finish selected pieces with cumulative acceptance and requested, authorized
+   live dependencies. Keep local unit tests, synthesis, deployed mocked runs and
+   real effects distinct. Never claim a mock dependency proves its live service.
 
-Return the product fit, existing-vs-new deployment verdict, PRD sections used, files/stacks/contracts to change, companion agents/skills loaded, and the PRD verification path.
+Return changes, supported API/configuration examples, automated and user evidence,
+AWS observations, cleanup and remaining gaps. Keep reusable product code in its
+target repository; this kit contains guidance and synthetic inputs.

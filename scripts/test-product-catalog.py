@@ -66,7 +66,7 @@ class CatalogTests(unittest.TestCase):
         self.assertTrue(any("ambiguous" in e for e in catalog.validate(self.data)))
 
     def test_unassigned_product_cannot_promise_an_agent(self):
-        self.product("environment")["agents"]["build"] = "conkeldurr"
+        self.product("access")["agents"]["build"] = "conkeldurr"
         self.assertTrue(any("unassigned product has an active" in e for e in catalog.validate(self.data)))
 
     def test_assigned_product_requires_its_own_iteration_plan(self):
