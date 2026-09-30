@@ -1,5 +1,5 @@
 {
-  "id": "synthetic-alpha-omega.json",
+  "id": "test-alpha-omega.json",
   "contractVersion": 1,
   "terminologyAliases": {
     "member": [
@@ -12,8 +12,8 @@
     ]
   },
   "roles": {
-    "source": "synthetic alpha member and ledger tables",
-    "target": "synthetic omega member and ledger reports"
+    "source": "test alpha member and ledger tables",
+    "target": "test omega member and ledger reports"
   },
   "transformClassification": {
     "kind": "deterministic",
@@ -146,8 +146,8 @@
   ],
   "repositories": [
     {
-      "slug": "example-org/synthetic-registry",
-      "purpose": "synthetic registry fixture",
+      "slug": "example-org/test-registry",
+      "purpose": "test registry",
       "role": "configuration-source",
       "revisionPolicy": "commit-sha",
       "candidateDiscovery": "requested-ref-then-matching-open-pr-then-default-branch",
@@ -175,7 +175,7 @@
         "status": "registered",
         "id": "alpha-to-canon",
         "version": "1.0.0",
-        "repository": "example-org/synthetic-registry",
+        "repository": "example-org/test-registry",
         "sourcePaths": [
           "mappings/alpha-to-canon/1.0.0/registration.json"
         ],
@@ -197,7 +197,7 @@
         "status": "registered",
         "id": "canon-to-omega",
         "version": "2.0.0",
-        "repository": "example-org/synthetic-registry",
+        "repository": "example-org/test-registry",
         "sourcePaths": [
           "mappings/canon-to-omega/2.0.0/registration.json"
         ],
@@ -285,9 +285,9 @@
   },
   "validationSources": [
     {
-      "id": "synthetic-inputs",
+      "id": "prod-derived-inputs",
       "kind": "sanitized-evidence-package",
-      "location": "local://synthetic-registry/inputs/",
+      "location": "s3://example-dev-bucket/inputs/alpha-prod-derived/",
       "manifestSha256": "515cbce0c9b8e889ee5d53bb1415c8430f14efdc17fc91b13b4374220bda8643",
       "appliesTo": [
         "alpha-to-canon"
@@ -299,7 +299,7 @@
     {
       "id": "member-report-spec",
       "dataset": "member_report",
-      "location": "local://synthetic-registry/expected/member_report",
+      "location": "s3://example-dev-bucket/oracles/member_report",
       "comparison": "keyed",
       "key": [
         "member_id"
@@ -312,7 +312,7 @@
     {
       "id": "ledger-summary-spec",
       "dataset": "ledger_summary",
-      "location": "local://synthetic-registry/expected/ledger_summary",
+      "location": "s3://example-dev-bucket/oracles/ledger_summary",
       "comparison": "sorted-rows",
       "description": "ledger_summary written from the specification: ledger count and rate-weighted units per member"
     }
@@ -359,7 +359,7 @@
   "adapters": [],
   "consumers": [
     {
-      "name": "synthetic-report-reader",
+      "name": "test-report-reader",
       "owner": "kecleon",
       "contract": "omega member_report and ledger_summary"
     }
@@ -394,7 +394,7 @@
   },
   "scaleTiers": [
     {
-      "id": "synthetic",
+      "id": "canary",
       "maximumRows": 100,
       "maximumCostUsd": 0,
       "evidenceRequired": true

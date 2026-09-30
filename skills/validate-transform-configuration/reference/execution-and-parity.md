@@ -63,12 +63,23 @@ root, operator's DEV profile, pinned mapping digests and VersionIds, and one cas
 
 ```bash
 S=skills/validate-transform-configuration/scripts
-python3 $S/transform_runs.py spec-from-intent --intent intent.json --workspace "$WS" --profile <dev-profile> \
-  --bind <name>=s3://<bucket>/<input-prefix>/ [--bind ...] [--profiles <profile-dir>] --out run-spec.json
-python3 $S/transform_runs.py cards --spec run-spec.json --run-dir "$RUN"      # APPROVAL_REQUIRED + digests
-python3 $S/transform_runs.py start --run-dir "$RUN" --approve sha256:<digest> \
+# canary: 10 real events per slice from the confirmed window, staged under approval
+python3 $S/transform_runs.py spec-from-intent --stage canary --intent intent.json --workspace "$WS" --profile <dev-profile> \
+  --bind <name>=s3://<bucket>/<canary-prefix>/ [--profiles <profile-dir>] [--owner-cost-ceiling <usd>] --out canary-spec.json
+python3 $S/transform_runs.py cards --spec canary-spec.json --run-dir "$CANARY"  # APPROVAL_REQUIRED + digests
+python3 $S/transform_runs.py start --run-dir "$CANARY" --approve sha256:<digest> \
   --approver "<who>" --scope "<approval in their words>"                      # only matching cards start
-python3 $S/transform_runs.py capture --run-dir "$RUN"                          # read-only evidence + reconciliation
+python3 $S/transform_runs.py capture --run-dir "$CANARY"                       # read-only evidence + reconciliation
+python3 $S/prod_actuals.py compare --catalog <prod-actuals.json> --slice <slice> --actual <private events> \
+  --dataset <dataset>=<captured output> --out canary-<slice>.json
+python3 $S/transform_runs.py canary-gate --canary-run-dir "$CANARY" --comparison canary-<slice>.json \
+  [--owner-decisions decisions.json] --out gate.json                          # show it and ask
+python3 $S/transform_runs.py approve-full --gate gate.json --approver "<who>" --scope "<their answer>"
+# full window, only after an APPROVED or PRE_APPROVED gate
+python3 $S/transform_runs.py spec-from-intent --stage full ... --bind <name>=s3://<bucket>/<window-prefix>/ --out full-spec.json
+python3 $S/transform_runs.py cards --spec full-spec.json --run-dir "$RUN"
+python3 $S/transform_runs.py start --run-dir "$RUN" --canary-gate gate.json --approve sha256:<digest> --approver "<who>" --scope "<…>"
+python3 $S/transform_runs.py capture --run-dir "$RUN"
 python3 $S/transform_runs.py regress --run-dir "$RUN" --baseline "$PREVIOUS_RUN"
 python3 $S/transform_runs.py cost --run-dir "$RUN" --job-name <transform-glue-job>
 ```
@@ -88,11 +99,30 @@ flags `mappingPinMatches: false` when the plan's `mapping.json` digest or Versio
 the pin (deployment drift or a latest-PR-wins overwrite). `regress` matches cases with a previous
 run by mapping, input locations, outputs and expectation (not by case name) and compares row
 counts and content digests. Check outputs with `compare_datasets.py check` (contract format and
-columns, keys, the profile's declarative checks, oracles and allowed losses), prove graph closure
-with `compare_datasets.py closure`, compute phases with `evaluate_run.py`, and assemble the
-package with `build_run_package.py`. When a step needs Parquet graph inputs but the previous step wrote
-Neptune CSV, bridge it with `graph_export_bridge.py neptune-csv` (record synthetic
-`created_at` as a limitation); convert epoch-millis exports with `graph_export_bridge.py iso-dates`.
+columns, keys, the profile's declarative checks, oracles and allowed losses), compare them with
+what PROD actually did with `prod_actuals.py compare`, prove graph closure with
+`compare_datasets.py closure`, compute phases with `evaluate_run.py`, and assemble the package
+with `build_run_package.py`. When a later step needs inputs in another shape than the previous
+step wrote, that conversion belongs in a registered mapping run by DEV Transform; Silvally does
+not convert data locally.
+
+## Comparison with PROD actuals
+
+The baseline is what PROD did with the same real events, per slice, catalogued in
+`reference/prod-actuals.json` (`slices.<slice>`: `baselineKind`, where it is read, the key on each
+side, `fieldMap` from output column to actual path, optional `rowFilter` and `rejects`):
+
+- `state-machine-lambda-outcomes`: a DEV output row must exist for each PROD-accepted event with
+  equal mapped fields, and each PROD-rejected event must appear in the rejects dataset (keyed by
+  the SHA-256 the mapping records). Rows only in DEV, rows only in PROD and per-column mismatches
+  are counted (`ProdActualsMismatch`, `ProdRejectMismatch`).
+- `iceberg-table`: DEV rows and the PROD table's rows in the window are matched by key and
+  compared over `fieldMap`, after `rowFilter`.
+- `none`: no PROD actual exists; state it and compare schema, row counts and reject reasons
+  only.
+
+`--allow-column COLUMN=REASON` excludes a column from value comparison and records the reason;
+use it only for a documented owner exception, never to make a failing comparison pass.
 
 ## Field-by-field parity
 
@@ -188,7 +218,7 @@ execution (profile drift, `HubOutputNotGraph`, `LanguageDefinitionMissing`,
 or `BLOCKED` findings with remediation handoffs. Execution does not override
 them.
 
-Keep the evidence package outside the repositories, in a local run directory
+Keep the evidence package outside the repositories, in a private run directory
 or an approved DEV `evidence/` prefix:
 
 ```text

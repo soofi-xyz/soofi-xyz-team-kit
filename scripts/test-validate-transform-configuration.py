@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Contract, safety, routing, and resolver tests for Silvally.
 
-Every mapping, language, dataset and field used here comes from the synthetic registry fixture
-(fixtures/synthetic-registry) or is built in a temporary copy of it. Example profiles under
+Every mapping, language, dataset and field used here comes from the test registry
+(scripts/testdata/silvally-registry) or is built in a temporary copy of it. Example profiles under
 examples/profiles are only schema-checked, and their identifiers are used solely to prove that no
 core file or test mentions them.
 """
@@ -36,8 +36,8 @@ PROFILE_SCHEMA = REFERENCE / "transform-configuration-profile.schema.json"
 RUN_SCHEMA = REFERENCE / "transform-configuration-run.schema.json"
 EXAMPLES = SKILL / "examples"
 EXAMPLE_PROFILES = EXAMPLES / "profiles"
-FIXTURE = SKILL / "fixtures" / "synthetic-registry"
-FIXTURE_PROFILE = FIXTURE / "profiles" / "synthetic-alpha-omega.json"
+FIXTURE = ROOT / "scripts" / "testdata" / "silvally-registry"
+FIXTURE_PROFILE = FIXTURE / "profiles" / "test-alpha-omega.json"
 LAYOUT = REFERENCE / "registry-layout.json"
 RESOLVER = SKILL / "scripts" / "resolve-transform-intent.py"
 SHORT_REQUEST_REFERENCES = (
@@ -367,11 +367,13 @@ def run_errors(value: dict) -> list[str]:
         if not mapping_key.fullmatch(step.get("mapping", "")):
             errors.append("execution step mapping must be an exact id@version")
         location = step.get("outputLocation")
-        if location is not None and not re.fullmatch(r"(?:s3://[^?#@]+/|local://[a-z0-9][a-z0-9/_-]*)", location):
+        if location is not None and not re.fullmatch(r"s3://[^?#@]+/", location):
             errors.append("execution step output location must be credential-free")
         for log in step.get("logLocations", []):
-            if not re.fullmatch(r"(?:[A-Za-z0-9_./#-]+(?::[A-Za-z0-9_.#$\[\]-][A-Za-z0-9_./#$\[\]-]*)?|local://[a-z0-9][a-z0-9/_-]*)", log):
-                errors.append("execution step log location must be a log group or local path")
+            if not re.fullmatch(r"[A-Za-z0-9_./#-]+(?::[A-Za-z0-9_.#$\[\]-][A-Za-z0-9_./#$\[\]-]*)?", log):
+                errors.append("execution step log location must be a log group")
+        if step.get("environment") != "dev" or step.get("stage") not in {"canary", "full"}:
+            errors.append("execution step must be a DEV canary or full-window step")
     for entry in value.get("parityDerivation", []):
         if not mapping_key.fullmatch(entry.get("comparedBy", "")):
             errors.append("parity derivation must name an exact mapping")
@@ -390,7 +392,7 @@ def run_errors(value: dict) -> list[str]:
                 errors.append("incomplete unavailable dataset evidence")
             continue
         location = dataset.get("location", "")
-        if not re.fullmatch(r"(?:local|s3)://[^?#@]+", location):
+        if not re.fullmatch(r"s3://[^?#@]+", location):
             errors.append("unsafe location")
     phases = value.get("phases", [])
     if [phase.get("number") for phase in phases] != list(range(1, 13)):
@@ -402,6 +404,7 @@ def run_errors(value: dict) -> list[str]:
         decision for decision in value.get("boundaryDecisions", [])
         if decision.get("classification") == "PRODUCT_CHANGE"
         and decision.get("resolved") is False
+        and decision.get("ownerAccepted") is not True
     ]
     if value.get("verdict") == "READY" and unresolved:
         errors.append("ready with unresolved product change")
@@ -418,10 +421,19 @@ def run_errors(value: dict) -> list[str]:
         final = value.get("finalValidation") or {}
         selection = value.get("sourceWindowSelection") or {}
         steps = value.get("executionSteps") or []
-        if final.get("status") != "PASS" or selection.get("status") != "CONFIRMED":
+        per_slice = ((value.get("ownerDecisions") or {}).get("windowSelection") == "most-recent-full-utc-day-with-data-per-slice"
+                     and final.get("sliceWindows"))
+        if final.get("status") != "PASS" or (selection.get("status") != "CONFIRMED" and not per_slice):
             errors.append("ready without a passing final PROD-derived validation on a confirmed window")
-        elif final.get("sourceWindow") != selection.get("confirmedWindow"):
+        elif not per_slice and final.get("sourceWindow") != selection.get("confirmedWindow"):
             errors.append("final validation window differs from the confirmed window")
+        if (final.get("canary") or {}).get("status") != "PASS" or not any(s.get("stage") == "canary" for s in steps):
+            errors.append("ready without a passing DEV canary")
+        if (final.get("fullRunApproval") or {}).get("status") not in {"APPROVED", "PRE_APPROVED"} or not any(
+                s.get("stage") == "full" for s in steps):
+            errors.append("ready without an approved full-window run")
+        if not final.get("baseline") or any(b.get("status") not in {"AVAILABLE", "NONE"} for b in final["baseline"]):
+            errors.append("ready without a PROD-actuals baseline per slice")
         if value.get("runtime", {}).get("executionMode") != "observed-dev":
             errors.append("ready from a non-observed-dev execution mode")
         if not final.get("stagingApprovalDigests") or not final.get("executionApprovalDigests"):
@@ -567,7 +579,7 @@ def valid_run() -> dict:
             },
         ],
         "configurationPackage": {
-            "id": "synthetic-transform-configuration",
+            "id": "test-transform-configuration",
             "version": "1.0.0",
             "transformProduct": {
                 "name": "Transform",
@@ -636,11 +648,11 @@ def valid_run() -> dict:
         },
         "datasets": [
             {
-                "name": "synthetic-output",
+                "name": "test-output",
                 "schemaSha256": digest,
                 "rowCount": 37,
                 "contentSha256": digest,
-                "location": "local://synthetic/output",
+                "location": "s3://example-dev-bucket/outputs/silvally-test/20990102T000000Z/full/tables/test-output/",
             }
         ],
         "graph": {
@@ -670,15 +682,25 @@ def valid_run() -> dict:
         "finalValidation": {
             "kind": "prod-derived-dev", "status": "PASS", "prodAccess": "read-only",
             "sourceWindow": {"start": "2099-01-01T00:00:00Z", "endExclusive": "2099-01-02T00:00:00Z", "completeUtcDays": 1},
-            "stagingApprovalDigests": ["sha256:" + "e" * 64], "executionApprovalDigests": ["sha256:" + "f" * 64],
+            "stagingApprovalDigests": ["sha256:" + "e" * 64], "executionApprovalDigests": ["sha256:" + "d" * 64, "sha256:" + "f" * 64],
             "inputManifestSha256s": [digest], "evidenceIds": ["final-prod-derived-validation"],
+            "canary": {"status": "PASS", "eventsPerSlice": 10, "executionApprovalDigests": ["sha256:" + "d" * 64]},
+            "fullRunApproval": {"status": "APPROVED", "kind": "user"},
+            "baseline": [{"slice": "members", "baselineKind": "iceberg-table", "status": "AVAILABLE"}],
         },
         "executionSteps": [{
-            "sequence": 1, "mapping": "source-to-target@1.0.0", "environment": "dev", "status": "PASS",
+            "sequence": 1, "stage": "canary", "mapping": "source-to-target@1.0.0", "environment": "dev", "status": "PASS",
+            "approvalOperationDigest": "sha256:" + "d" * 64,
+            "executionArn": "arn:aws:states:xx-test-1:000000000000:execution:transform:silvally-canary-1",
+            "inputManifestSha256": digest,
+            "outputLocation": "s3://example-dev-bucket/outputs/silvally-test/20990102T000000Z_canary/full/",
+            "executedSqlSha256s": [digest], "logLocations": ["/aws-glue/jobs/output"],
+        }, {
+            "sequence": 2, "stage": "full", "mapping": "source-to-target@1.0.0", "environment": "dev", "status": "PASS",
             "approvalOperationDigest": "sha256:" + "f" * 64,
             "executionArn": "arn:aws:states:xx-test-1:000000000000:execution:transform:silvally-final-1",
             "inputManifestSha256": digest,
-            "outputLocation": "s3://example-dev-bucket/outputs/silvally-synthetic/20990102T000000Z/full/",
+            "outputLocation": "s3://example-dev-bucket/outputs/silvally-test/20990102T000000Z/full/",
             "executedSqlSha256s": [digest], "logLocations": ["/aws-glue/jobs/output"],
         }],
         "persistCanary": proof,
@@ -753,20 +775,40 @@ def test_schemas_and_profiles() -> None:
     blocked_final["verdict"] = "BLOCKED"
     blocked_final["phases"][11]["status"] = "BLOCKED"
     blocked_final["finalValidation"].update({"status": "BLOCKED", "sourceWindow": None, "stagingApprovalDigests": [],
-                                             "executionApprovalDigests": [], "inputManifestSha256s": []})
+                                             "executionApprovalDigests": [], "inputManifestSha256s": [],
+                                             "canary": {"status": "BLOCKED", "eventsPerSlice": 10, "executionApprovalDigests": []},
+                                             "fullRunApproval": {"status": "ABSENT", "kind": None}, "baseline": []})
     blocked_final["executionSteps"] = []
-    blocked_final["runtime"]["executionMode"] = "synthetic-local"
+    blocked_final["runtime"]["executionMode"] = "bounded-dev-dry-run"
     blocked_final["remediations"] = [{
         "id": "run-final-prod-derived-validation", "findingCode": "FinalProdDerivedValidationRequired", "status": "BLOCKED",
         "classification": "ACCESS_OR_EVIDENCE", "owner": "Silvally operator", "repository": None,
         "locations": ["sourceWindowSelection"], "locationEvidenceIds": ["prod-source-window-metadata"],
-        "recommendedChange": "Confirm the recommended PROD-derived window, approve its DEV staging and executions, then rerun.",
+        "recommendedChange": "Confirm the recommended PROD-derived window, run the DEV canary, approve the full-window run, then rerun.",
         "regressionEvidence": ["Approved DEV executions on the confirmed window pass phases 1-11."],
         "rerunPhases": [1, 3, 4, 9, 10, 11, 12], "rerunDirections": ["source-to-target"],
     }]
     assert_valid(run_check, blocked_final, "valid BLOCKED run awaiting the final PROD-derived validation")
+    per_slice = copy.deepcopy(run)
+    per_slice.pop("sourceWindowSelection")
+    per_slice["ownerDecisions"] = {"windowSelection": "most-recent-full-utc-day-with-data-per-slice", "preApproveFullRunOnCanaryPass": True}
+    per_slice["finalValidation"]["sliceWindows"] = [{"slice": "members", **run["finalValidation"]["sourceWindow"]}]
+    per_slice["finalValidation"]["fullRunApproval"] = {"status": "PRE_APPROVED", "kind": "owner-pre-approval"}
+    assert_valid(run_check, per_slice, "READY on the owner's per-slice window with owner pre-approval")
     for label, mutate in (
-        ("READY from synthetic-local evidence", lambda r: r["runtime"].__setitem__("executionMode", "synthetic-local")),
+        ("READY from a dry run", lambda r: r["runtime"].__setitem__("executionMode", "bounded-dev-dry-run")),
+        ("a local execution mode", lambda r: r["runtime"].__setitem__("executionMode", "synthetic-local")),
+        ("READY without a DEV canary step", lambda r: r["executionSteps"].pop(0)),
+        ("READY without a full-window step", lambda r: r["executionSteps"].pop(1)),
+        ("READY with a failed canary", lambda r: r["finalValidation"]["canary"].__setitem__("status", "FAIL")),
+        ("READY without full-run approval", lambda r: r["finalValidation"].__setitem__("fullRunApproval", {"status": "AWAITING_APPROVAL", "kind": None})),
+        ("READY after a failed canary gate", lambda r: r["finalValidation"].__setitem__("fullRunApproval", {"status": "CANARY_FAILED", "kind": None})),
+        ("READY without a PROD-actuals baseline", lambda r: r["finalValidation"].__setitem__("baseline", [])),
+        ("READY on a stale PROD-actuals baseline", lambda r: r["finalValidation"]["baseline"][0].__setitem__("status", "STALE")),
+        ("a canary larger than 10 events per slice", lambda r: r["finalValidation"]["canary"].__setitem__("eventsPerSlice", 50)),
+        ("a local output location", lambda r: r["executionSteps"][1].__setitem__("outputLocation", "local://test/output")),
+        ("a local dataset location", lambda r: r["datasets"][0].__setitem__("location", "local://test/output")),
+        ("a local environment", lambda r: r["environment"].update({"name": "local", "writePolicy": "local-only"})),
         ("READY without final validation", lambda r: r.pop("finalValidation")),
         ("READY with a blocked final validation", lambda r: r["finalValidation"].__setitem__("status", "BLOCKED")),
         ("READY without a source window selection", lambda r: r.pop("sourceWindowSelection")),
@@ -774,7 +816,7 @@ def test_schemas_and_profiles() -> None:
         ("READY without a staging approval digest", lambda r: r["finalValidation"].__setitem__("stagingApprovalDigests", [])),
         ("READY without an execution approval digest", lambda r: r["finalValidation"].__setitem__("executionApprovalDigests", [])),
         ("READY without DEV executions", lambda r: r.__setitem__("executionSteps", [])),
-        ("READY with a synthetic-local execution step", lambda r: r["executionSteps"][0].__setitem__("environment", "synthetic-local")),
+        ("READY with a non-DEV execution step", lambda r: r["executionSteps"][0].__setitem__("environment", "local")),
         ("READY with an unapproved execution step", lambda r: r["executionSteps"][0].__setitem__("approvalOperationDigest", None)),
         ("READY on a window other than the confirmed one", lambda r: r["finalValidation"]["sourceWindow"].update(
             {"start": "2098-12-31T00:00:00Z", "endExclusive": "2099-01-01T00:00:00Z"})),
@@ -853,6 +895,11 @@ def test_schemas_and_profiles() -> None:
                                             "handoffOwner": "Lexicon"})
     unresolved["configurationPackage"]["unresolvedProductChangeHandoffs"] = ["identity-scheme-change"]
     assert_rejected(run_check, unresolved, "READY with unresolved product change")
+    accepted = copy.deepcopy(run)
+    accepted["boundaryDecisions"].append({**unresolved["boundaryDecisions"][-1], "ownerAccepted": True})
+    accepted["ownerDecisions"] = {"acceptProductChanges": True}
+    accepted["acceptedProductChanges"] = ["identity-scheme-change"]
+    assert_valid(run_check, accepted, "READY with an owner-accepted, flagged product change")
 
     no_window = copy.deepcopy(base)
     no_window.pop("sourceWindowPolicy")
@@ -949,7 +996,7 @@ def test_core_and_references() -> None:
         "test", "deploy", "system", "runtime",
         "open pull requests", "current workspace", "requiredpaths",
         "generic repository test suite", "incomplete discovery",
-        "absent system-wide", "declared local spark setup",
+        "canary", "prod actuals", "nothing runs a mapping locally",
         "mapping `configuration` defect", "typed-null materialization",
         "never guess a path", "generated mapping artifacts",
         "name every contradicted field", "already implemented but not yet revalidated",
@@ -1165,7 +1212,7 @@ def test_parse() -> None:
     if (parsed["status"] != "PARSED" or parsed["sourceTerms"] != ["canon"] or parsed["qualifiers"] != ["alpha", "beta"]
             or parsed["targetTerms"] != ["omega", "ledger", "summaries"]):
         fail(f"short-request grammar mis-parsed terms: {parsed}")
-    if parsed["hints"] != {"version": "2.0.0", "environment": "prod", "mode": "round-trip"}:
+    if parsed["hints"] != {"version": "2.0.0", "environment": "prod", "mode": "round-trip", "ownerDecisions": {}}:
         fail(f"short-request hints mis-parsed: {parsed['hints']}")
     if parsed.get("slices"):
         fail(f"a request without a for-clause produced slices: {parsed.get('slices')}")
@@ -1184,6 +1231,28 @@ def test_parse() -> None:
         fail(f"the first-class lazy slice phrase was not parsed: {lazy}")
     if lazy["sourceTerms"] != ["lexicon"] or lazy["targetTerms"] != ["interprose"]:
         fail(f"the lazy slice phrase did not keep the package language pair: {lazy}")
+    for verb in ("test", "check", "/silvally test", "/silvally check", "/silvally validate"):
+        synonym = resolver.parse_request(f"{verb} lexicon to interprose for sms, dsa and m2d")
+        if {k: synonym[k] for k in ("status", "sourceTerms", "targetTerms", "slices", "hints")} != {
+                k: lazy[k] for k in ("status", "sourceTerms", "targetTerms", "slices", "hints")}:
+            fail(f"{verb!r} was not handled exactly like validate: {synonym}")
+    owner = resolver.parse_request(
+        "test lexicon to interprose for sms, dsa and m2d; if the canary passes, run the full window; "
+        "accept Transform product changes as out of scope; cost ceiling $3 per job; "
+        "use the most recent full UTC day with real data per slice")
+    if owner["slices"] != ["sms", "dsa", "m2d"] or owner["targetTerms"] != ["interprose"]:
+        fail(f"owner decisions leaked into the request terms: {owner}")
+    if owner["hints"]["ownerDecisions"] != {"preApproveFullRunOnCanaryPass": True, "acceptProductChanges": True, "costCeilingUsd": 3.0,
+                                            "windowSelection": "most-recent-full-utc-day-with-data-per-slice"}:
+        fail(f"up-front owner decisions were not recognized: {owner['hints']['ownerDecisions']}")
+    comma = resolver.parse_request(
+        "check lexicon to interprose for sms, dsa and m2d, accept Transform product changes as out of scope, "
+        "use the most recent full UTC day with real data per slice")
+    if comma["slices"] != ["sms", "dsa", "m2d"] or comma["hints"]["ownerDecisions"] != {
+            "acceptProductChanges": True, "windowSelection": "most-recent-full-utc-day-with-data-per-slice"}:
+        fail(f"comma-separated owner decisions were not all recognized: {comma}")
+    if lazy["hints"]["ownerDecisions"] != {}:
+        fail("owner decisions were invented for a request that gave none")
     other = resolver.parse_request("validate quiq to lexicon")
     if other["slices"] or other["sourceTerms"] != ["quiq"] or other["targetTerms"] != ["lexicon"]:
         fail(f"a different language pair was treated as package slices: {other}")

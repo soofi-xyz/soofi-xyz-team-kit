@@ -68,7 +68,7 @@
     },
     {
       "slug": "Spring-Oaks-Capital-LLC/transform",
-      "purpose": "Transform Spark runtime compatibility",
+      "purpose": "Transform runtime provenance and CI results (read-only)",
       "role": "product-runtime",
       "revisionPolicy": "commit-sha",
       "candidateDiscovery": "requested-ref-then-default-branch",
@@ -215,7 +215,7 @@
     "evidenceIds": ["profile-source-datasets"]
   },
   "scaleTiers": [
-    { "id": "synthetic", "maximumRows": 100, "maximumCostUsd": 0, "evidenceRequired": true },
+    { "id": "canary", "maximumRows": 10, "maximumCostUsd": 5, "evidenceRequired": true },
     { "id": "full-day-dev", "maximumRows": 100000, "maximumCostUsd": 50, "evidenceRequired": true }
   ],
   "approvals": { "devWrites": "explicit", "prodWrites": "forbidden", "perOperation": true }

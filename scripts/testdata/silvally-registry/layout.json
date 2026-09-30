@@ -1,8 +1,8 @@
 {
   "id": "layout.json",
   "contractVersion": 1,
-  "description": "Synthetic registry layout: a hub language, paths and parameter names that differ from any real registry.",
-  "repository": { "slug": "example-org/synthetic-registry", "defaultRegion": "xx-test-1" },
+  "description": "Test registry layout: a hub language, paths and parameter names that differ from any real registry.",
+  "repository": { "slug": "example-org/test-registry", "defaultRegion": "xx-test-1" },
   "hubLanguage": "canon",
   "conceptModelPath": "languages/canon.json",
   "languageDefinitionPath": "languages/{language}.json",

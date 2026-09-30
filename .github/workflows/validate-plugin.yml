@@ -49,9 +49,8 @@ jobs:
           python3 -m py_compile skills/validate-transform-configuration/scripts/silvally_io.py
           python3 -m py_compile skills/validate-transform-configuration/scripts/fetch_validation_inputs.py
           python3 -m py_compile skills/validate-transform-configuration/scripts/transform_runs.py
-          python3 -m py_compile skills/validate-transform-configuration/scripts/graph_export_bridge.py
           python3 -m py_compile skills/validate-transform-configuration/scripts/compare_datasets.py
-          python3 -m py_compile skills/validate-transform-configuration/scripts/local_mapping_run.py
+          python3 -m py_compile skills/validate-transform-configuration/scripts/prod_actuals.py
           python3 -m py_compile skills/validate-transform-configuration/scripts/iceberg_snapshot_read.py
           python3 -m py_compile skills/validate-transform-configuration/scripts/build_run_package.py
           python3 -m py_compile skills/validate-transform-configuration/scripts/evaluate_run.py

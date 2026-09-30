@@ -1,6 +1,6 @@
 ---
 name: validate-transform-configuration
-description: "Validate a profile-declared Transform language and directional mapping end to end with immutable, sanitized evidence, explicit approval before each DEV write, read-only PROD checks, round-trip proof, a mandatory final DEV run on a user-confirmed PROD-derived source window, and fail-closed verdicts."
+description: "Validate a profile-declared Transform language and directional mapping end to end on real PROD-derived data only: a deterministic 10-events-per-slice DEV canary compared with what PROD actually did, then (after the user's approval) the full confirmed window in DEV, with immutable sanitized evidence, explicit approval before each DEV write, read-only PROD, and fail-closed verdicts."
 ---
 
 # Validate Transform Configuration
@@ -15,20 +15,20 @@ person's machine (checkouts, `/tmp` scripts, cached registries, PROD extracts) i
 1. **Install the plugin** from the team marketplace (Cursor: Plugins → soofi-xyz-team-kit), or clone
    `soofi-xyz/soofi-xyz-team-kit` and run `scripts/local-cursor-plugin.sh`. Invoke the agent as
    `/silvally` or ask in plain language ("test <source> to <target> <output words>", or
-   "validate <source> to <target> for <slice>, <slice> and <slice>" for named package slices).
-   Slice words are not languages. PROD Transform is never invoked; unpublished-in-PROD is not a
+   "validate <source> to <target> for <slice>, <slice> and <slice>" for named package slices;
+   `test`, `validate` and `check` are the same request). Slice words are not languages. PROD Transform is never invoked; unpublished-in-PROD is not a
    mapping `NOT_READY`.
 2. **Prerequisites** (checked by the agent; install once):
    - `gh` authenticated (`gh auth status`) with read access to the Lexicon and Transform repositories.
-   - AWS CLI v2 with SSO profiles for DEV and, only for read-only oracles, PROD. Profile names are
+   - AWS CLI v2 with SSO profiles for DEV and, read-only, PROD (source windows and PROD actuals). Profile names are
      yours to choose; pass them explicitly (`--profile`, `--aws dev=<dev-profile>`). Log in with
      `aws sso login --profile <name>`. Never export long-lived keys; tools strip `AWS_*` key variables
      and refuse PROD write verbs.
    - Node.js 22+ with `npm`/`npx` on `PATH` (only to materialize generated mappings with
      `--materialize-candidate`; the resolver runs the layout's `materialize.install` and `materialize.command` in the fetched checkout).
-   - Python 3.10+ with `pip install -r scripts/requirements-silvally.txt` in a virtual environment.
-     Optional: `requirements-silvally-spark.txt` (Python 3.10, Java 17, Spark 3.3 = Glue 4.0) for
-     `synthetic-local` runs, and `requirements-silvally-prod-oracle.txt` for PROD Iceberg oracles.
+   - Python 3.10+ with `pip install -r scripts/requirements-silvally.txt` in a virtual environment,
+     plus `requirements-silvally-prod-oracle.txt` to read PROD Iceberg tables as PROD actuals.
+     Nothing runs a mapping locally: no Spark, Java or local Transform is needed.
 3. **First command** (read-only; fetches pinned registry checkouts, the DEV registry and language parameter names):
 
    ```bash
@@ -41,13 +41,11 @@ person's machine (checkouts, `/tmp` scripts, cached registries, PROD extracts) i
    Repository paths, SSM names, the hub language and the default region come from
    `reference/registry-layout.json`; pass `--layout` for another registry. No profile directory is
    built in: pass the one you validate with (this kit's schema-valid examples live in `examples/profiles/`).
-4. **Test a new mapping configuration:** materialize it
-   (`fetch_validation_inputs.py materialize`), run it locally on a small fixture with
-   `local_mapping_run.py --negatives`, and check it with `compare_datasets.py check` against contracts
-   from `resolve-transform-intent.py contracts` and an oracle written from the specification. The
-   committed `fixtures/synthetic-registry/` shows the whole loop on a synthetic registry. Then draft
-   or select a profile (`adding-profiles.md`) and let the agent run the 12 phases; DEV executions go
-   through `transform_runs.py` cards and explicit approval.
+4. **Test a mapping configuration:** draft or select a profile (`adding-profiles.md`) and let the
+   agent run the 12 phases. Every execution is a DEV Transform run on real PROD-derived data: first a
+   canary of 10 real events per slice, compared with what PROD actually did, then — only after the
+   user approves — the whole confirmed window. DEV executions go through `transform_runs.py` cards and
+   explicit approval. There is no local or synthetic mode.
 5. **Where evidence goes:** a local run directory you choose (outside any repository) holds
    cards, approvals, captured steps and `run.json`; DEV outputs go only under
    `outputs/silvally-<profile-or-mapping>/<runId>/` in the bucket of the bound inputs (or `--output-root`);
@@ -62,19 +60,19 @@ All tools live in `scripts/`, take every location as an argument, and print JSON
 | --- | --- | --- |
 | `resolve-transform-intent.py` | 1–2, 5–6 | `discover`: parse a short request, fetch inputs (`--workspace`), select mappings/profile, derive parity and questions. `contracts`: per-output contracts from the registration and language definitions. `draft-profile`: a draft with regenerated `derivedDirections`. `check-profile`: prove a profile equals the registry derivation except its declared `derivationOverrides` |
 | `fetch_validation_inputs.py` | 2 | Read-only: pin repositories by SHA (`repo`), snapshot the published registry (`registry`), list language parameter names, materialize mappings |
-| `local_mapping_run.py` | 7 | Run a materialized mapping on fixtures with local Spark (typed nulls for optional graph properties); `--negatives` proves each required input's omission is rejected |
-| `compare_datasets.py` | 7, 10–11 | Keyed or whole-row diffs (CSV, JSONL, Parquet), part-byte identity, CSV header/delimiter checks, graph closure, and `check`: contracts plus the profile's declarative invariants, oracles and allowed losses |
-| `graph_export_bridge.py` | 7, 11 | Neptune CSV output to Parquet graph exports (optional synthetic `created_at`), epoch-millis to ISO dates |
-| `stage_evidence_package.py` | 4 | Build `manifest.json`, then create-only upload with an approval digest |
-| `transform_runs.py` | 9, 11 | Cases derived from the registration, operation cards, approval-gated `start`, read-only `capture`, `regress` against a previous run, Glue `cost` |
-| `iceberg_snapshot_read.py` | 11 | Read-only PROD Iceberg snapshot read for oracles; rows only in a mode-0700 directory |
-| `source_window.py` | 1, 3 | `policy`: the profile's `sourceWindowPolicy`, or one derived with recorded defaults. `recommend`: mark sanitized per-UTC-day PROD metadata candidates complete and recommend the most recent complete window. `confirm`: record the user's explicit day-or-range answer |
+| `source_window.py` | 1 | `policy`: the profile's `sourceWindowPolicy`, or one derived with recorded defaults. `recommend`: mark sanitized per-UTC-day PROD metadata candidates complete and recommend the most recent complete window. `confirm`: record the user's explicit day-or-range answer. `data-days`: per-slice real-data check of the day, with the nearest UTC day that has data for an empty slice, or the owner's most recent full UTC day with data per slice |
+| `prod_actuals.py` | 7, 9, 11 | Read-only PROD actuals: `lambda-outcomes` (what a PROD state machine's Lambda accepted or rejected per event, from its execution logs), `table-summary` (a PROD Iceberg read, with snapshot freshness), `none` (no actual exists: explicit fallback). `canary-sample` (deterministic 10 events per slice, mixing outcomes), `inputs` (the selected events' real inputs for DEV staging), `compare` (DEV outputs against the PROD actual) |
+| `iceberg_snapshot_read.py` | 7 | Read-only PROD Iceberg snapshot read by key or by window column; rows only in a mode-0700 directory |
+| `stage_evidence_package.py` | 4 | Build `manifest.json`, then create-only DEV upload with an approval digest |
+| `transform_runs.py` | 9–11 | Cases derived from the registration, `--stage canary|full`, operation cards, approval-gated DEV `start`, read-only `capture`, `canary-gate` (summarize the canary and ask), `approve-full`, `regress`, Glue `cost` |
+| `compare_datasets.py` | 11 | Keyed or whole-row diffs (CSV, JSONL, Parquet), part-byte identity, CSV header/delimiter checks, graph closure, and `check`: contracts plus the profile's declarative invariants, oracles and allowed losses |
 | `evaluate_run.py` | 1–12 | Map tool evidence to the 12 phase statuses and compute the verdict; phase 12 is the final PROD-derived validation |
-| `build_run_package.py` | 12 | Assemble `run.json`, compute the verdict from phases, refuse `READY` without a passing `finalValidation`, validate against the run schema |
+| `build_run_package.py` | 12 | Assemble `run.json`, compute the verdict from phases, refuse `READY` without a passing canary, an approved full run and a PROD-actuals baseline, validate against the run schema |
 
 Tests: `scripts/test-silvally-tools.py` and `scripts/test-validate-transform-configuration.py`
-(both run in the plugin CI) use only the synthetic registry fixture. No tool branches on a mapping,
-language, dataset or environment; mapping-specific semantics are profile data (see below).
+(both run in the plugin CI) unit-test these tools against a fake aws CLI and the test registry in
+`scripts/testdata/silvally-registry`; nothing in them runs a mapping. No tool branches on a mapping,
+language, dataset or environment; mapping-specific semantics are profile or catalog data (see below).
 
 ## Generic validation flow
 
@@ -92,22 +90,25 @@ definitions and the selected profile:
    header), columns and keys from the target definition, graph bindings and endpoint datasets.
    `check-profile` proves the profile equals this derivation except the `(dataset, field)` pairs its
    `derivationOverrides` declare, and reports stale overrides.
-4. **Recommend and stage datasets** — `reference/test-dataset-recommendations.md`; `--bind NAME=s3://prefix/`
-   names each input package, and the tools list which outputs each binding can run.
-5. **Approval gates** — one operation card per execution or write.
-6. **Execute** — `spec-from-intent` derives a full case when one binding holds every output's inputs,
-   one case per output per binding, and one rejected case per required input of every output
-   (omitting exactly that input; the rejection must name it and happen before the Transform job).
-7. **Parity** — `compare_datasets.py check`: format and columns from the contract, keys, the profile's
-   declarative invariant checks, oracles (`part-bytes`, `sorted-rows`, `keyed`) and `allowedLosses`;
-   `closure` for graph outputs.
-8. **Regression** — `transform_runs.py regress --baseline <previous run>` matches cases by mapping,
-   input locations and outputs, and compares row counts and content digests.
-9. **Final PROD-derived validation** — `source_window.py recommend` on read-only PROD metadata, one
-   confirmation question, `confirm`, approved staging of that window, then steps 5–8 again in
-   `observed-dev` on the staged window. Synthetic runs stop before this step and stay `BLOCKED`.
-10. **Verdict** — `evaluate_run.py` (with `--answer` for each resolver question the operator answered,
-    `--source-window` and `--staging-upload`), then `build_run_package.py`.
+4. **Confirm a real window** — `source_window.py recommend` on read-only PROD metadata, one
+   confirmation question (or the owner's up-front "most recent full UTC day with real data per
+   slice"), `confirm`, then `data-days` so no slice is silently empty on it.
+5. **Read what PROD actually did** — `prod_actuals.py` per slice from `reference/prod-actuals.json`
+   (or the profile's `prodActuals` catalog). No actual → `none`, and the comparison falls back to
+   schema, row-count and reject-reason checks, stated in the report.
+6. **Canary** — `canary-sample` picks 10 real events per slice deterministically (mixing outcomes such
+   as accepted and rejected), `inputs` writes their real inputs, approved staging to DEV, then
+   `spec-from-intent --stage canary`, cards, approved `start`, `capture`, and `prod_actuals.py compare`.
+7. **Canary gate** — `transform_runs.py canary-gate` shows the execution ids, S3 inputs and outputs,
+   row counts and comparison, and asks the user before the full window. A failed canary stops the run
+   (`NOT_READY`/`BLOCKED`); the full run is not offered.
+8. **Full window** — after `approve-full` (or the owner's pre-approval of a passing canary):
+   approved staging of the whole window, `spec-from-intent --stage full`, cards, `start --canary-gate`,
+   `capture`, `prod_actuals.py compare`, `compare_datasets.py check`, `closure` for graph outputs, and
+   `transform_runs.py regress --baseline <previous run>`.
+9. **Verdict** — `evaluate_run.py` (with `--answer` for each resolver question the operator answered,
+   `--source-window`/`--slice-days`, `--prod-actuals`, `--canary-*`, `--actuals-comparison`,
+   `--staging-upload`), then `build_run_package.py`.
 
 Mapping-specific semantics (election or precedence rules, unit conversions, reference outputs,
 permitted losses) are expressed only as profile data: invariants with a declarative `check`
@@ -125,7 +126,7 @@ Read, in order:
 4. `reference/transform-configuration-profile-draft.schema.json`
 5. `reference/transform-configuration-profile.schema.json`
 6. the selected profile after profile matching (passed with `--profiles`; examples in `examples/profiles/`)
-7. `reference/test-dataset-recommendations.md`
+7. `reference/test-dataset-recommendations.md` and `reference/prod-actuals.json`
 8. `reference/validation-phases-and-gates.md`
 9. `reference/evidence-requirements.md`
 10. `reference/execution-and-parity.md`
@@ -162,8 +163,8 @@ A request such as `test <source> to <target>` or `test lexicon <qualifier> to <t
 2. Run `scripts/resolve-transform-intent.py discover` and pin its SHA-256. Its `status` is one of `RESOLVED`, `AMBIGUOUS`, `NO_MAPPING`, `UNKNOWN_LANGUAGE`, or `UNPARSED`.
 3. When the resolver returns a `notice` (a defaulted version), state it verbatim as the first line of the reply. Report what was resolved before asking anything: the languages and their states, the selected `id@version` per step, the workflow order, the matched profile, and every finding (profile drift, missing language definitions, removed or added concepts, round-trip gaps).
 4. For `AMBIGUOUS`, `NO_MAPPING`, or `UNKNOWN_LANGUAGE`, say so plainly, list the ranked candidates, and ask `mapping-choice`. Never pick a candidate from business-language similarity. When the user chooses `none`, end intake with next steps and owner handoffs; do not produce a verdict.
-5. For `RESOLVED`, ask the resolver's remaining `questions[]` through the structured question tool, using the defaults in `reference/intake-questions-and-gates.md`: DEV (PROD read-only), mapping version (not asked when the version was defaulted), test dataset, round-trip or one-way, optional cross-source step, and Persist policy (default `forbidden`).
-6. Recommend datasets and storage from `reference/test-dataset-recommendations.md`.
+5. For `RESOLVED`, ask the resolver's remaining `questions[]` through the structured question tool, using the defaults in `reference/intake-questions-and-gates.md`: DEV (PROD read-only), mapping version (not asked when the version was defaulted), round-trip or one-way, optional cross-source step, and Persist policy (default `forbidden`). The data is always the confirmed PROD-derived window; it is not a question. Owner decisions stated in the request (`ownerDecisions`) are not asked again.
+6. Recommend the canary and full-window packages and their DEV storage from `reference/test-dataset-recommendations.md`.
 7. With no matched profile, emit a local draft with `draft-profile`, then promote it before validating.
 
 The resolver is discovery evidence, not a verdict. Its findings enter phases 5–6 and are re-verified against pinned sources.
@@ -185,54 +186,58 @@ Resolve through supplied context, discovery, or focused questions:
 - repositories and requested refs;
 - source and target language names and requested direction;
 - optional existing execution IDs and artifact locations;
-- mode: `synthetic-local`, `bounded-dev-dry-run`, `observed-dev`, or `observed-prod-read-only`. Only `observed-dev` on a confirmed PROD-derived window can reach `READY`; the other modes are earlier phases or read-only checks.
+- mode: `bounded-dev-dry-run`, `observed-dev`, or `observed-prod-read-only`. Only `observed-dev` on a confirmed PROD-derived window, canary first, can reach `READY`; the other modes prove the approval gates or read-only checks. There is no local or synthetic mode, and Silvally never falls back to synthetic data.
+- owner decisions given up front (see below), otherwise the interactive defaults.
 
 Resolve every repository ref to a commit SHA and every configuration/deployment artifact to an immutable digest before evaluation. Branches and `latest` aliases may be discovery inputs but never evidence identities.
 
 ## Final PROD-derived validation (mandatory for READY)
 
-Every run that aims for `READY` ends with a **final PROD-derived validation**:
-the pinned mapping executes in DEV, under operation-specific approvals, against
-a user-confirmed complete-UTC-day window derived read-only from PROD and staged
-into DEV under its own approval digest, and passes every parity and closure
-gate. `synthetic-local` and synthetic or edge-case DEV runs are earlier proof;
-they never yield `READY`. Phase 12 records the final validation, and
-`evaluate_run.py` and `build_run_package.py` refuse `READY` without it
-(`FinalProdDerivedValidationRequired`).
+Silvally validates on **real data only**. Every input comes from a PROD-derived window that the user confirmed (or the owner chose up front); nothing runs locally, and Silvally never substitutes synthetic rows, fixtures or invented edge cases. `READY` requires the final PROD-derived validation: a passing DEV canary, a user-approved (or owner pre-approved) full-window DEV run, and a comparison of both against what PROD actually did. Phase 12 records it, and `evaluate_run.py` and `build_run_package.py` refuse `READY` without it (`FinalProdDerivedValidationRequired`).
 
-Every promoted profile carries a `sourceWindowPolicy`. When a profile or draft
-lacks one, derive it during intake without being asked: `draft-profile` emits
-`derivedSourceWindowPolicy`, and `source_window.py policy` derives one from the
-profile's source-role datasets and the resolver's `coverageTargets`. Record the
-defaults it applies (`minimumCompleteUtcDays: 1`, `allowLongerRange: true`) in
-`recordedDefaults` and show them to the user before promotion.
+### Window
 
-Once intake is complete, proactively inspect only sanitized read-only PROD
-metadata. Compare at least 7 recent complete UTC-day candidates using the
-policy's required source families and coverage signals, plus bounded rows,
-bytes, cost and immutable evidence availability, with
-`source_window.py recommend`. Never choose random rows or a partial day.
+Every promoted profile carries a `sourceWindowPolicy`. When a profile or draft lacks one, derive it during intake without being asked: `draft-profile` emits `derivedSourceWindowPolicy`, and `source_window.py policy` derives one from the profile's source-role datasets and the resolver's `coverageTargets`. Record the defaults it applies (`minimumCompleteUtcDays: 1`, `allowLongerRange: true`) in `recordedDefaults` and show them to the user before promotion.
 
-Recommend one half-open UTC window `[start, endExclusive)` covering at least
-`minimumCompleteUtcDays`; allow the user to choose a longer contiguous range
-when `allowLongerRange` is true. Ask one explicit day-or-range confirmation
-question and stop before staging. Do not infer confirmation from a general
-request to validate, a cost ceiling or an earlier approval. Record the user's
-answer with `source_window.py confirm`, and every candidate and the confirmed
-window in `sourceWindowSelection`.
+Once intake is complete, proactively inspect only sanitized read-only PROD metadata. Compare at least 7 recent complete UTC-day candidates using the policy's required source families and coverage signals, plus bounded rows, bytes, cost and immutable evidence availability, with `source_window.py recommend`. Never choose random rows or a partial day.
 
-Preserve complete relational and join closure across every profile-declared
-source family and authoritative endpoint. If no candidate proves completeness,
-return `BLOCKED`; do not pad fixtures, select the least-incomplete day or copy
-PROD data to discover what is missing. PROD remains read-only. Each DEV staging
-copy of the window and each DEV execution requires its own approval digest;
-keep the `stage_evidence_package.py upload` record and pass it with
-`--staging-upload`, plus `--source-window`, to `evaluate_run.py --mode observed-dev`.
+Recommend one half-open UTC window `[start, endExclusive)` covering at least `minimumCompleteUtcDays`; allow the user to choose a longer contiguous range when `allowLongerRange` is true. Ask one explicit day-or-range confirmation question and stop before staging. Do not infer confirmation from a general request to validate, a cost ceiling or an earlier approval. Record the user's answer with `source_window.py confirm`, and every candidate and the confirmed window in `sourceWindowSelection`.
 
-When PROD metadata access, the window confirmation, a staging or execution
-approval, or DEV access is unavailable, the verdict is `BLOCKED`, never `READY`.
-Hand off exactly what is missing: the PROD read-only access or metadata, the
-confirmation question, or the pending operation card and its digest.
+Then count each slice's real PROD events on that day (read-only) and run `source_window.py data-days`. When a slice has no data on the confirmed day, say so and suggest the nearest UTC day with real data that `data-days` reports; the phase stays `BLOCKED` (`EmptySliceWindow`) until the user picks a day. Never skip a slice silently and never fill it with synthetic data.
+
+Preserve complete relational and join closure across every profile-declared source family and authoritative endpoint. If no candidate proves completeness, return `BLOCKED`; do not pad inputs, select the least-incomplete day or copy PROD data to discover what is missing. PROD remains read-only.
+
+### PROD actuals
+
+The baseline is what PROD actually did in the window, per slice, read-only. `reference/prod-actuals.json` catalogs where each package slice's actual lives and how its fields line up with the mapping's outputs (a profile may name its own catalog with `prodActuals`):
+
+- `state-machine-lambda-outcomes`: `prod_actuals.py lambda-outcomes` filters a PROD state machine's execution log group for the named Lambda's scheduled input and its `LambdaFunctionSucceeded` (accepted, with its output) or `LambdaFunctionFailed`/`TimedOut` (an expected reject) per event. When the mapping resolves a field the input lacks, the canary input takes the value the PROD Lambda logged (`prod_actuals.py inputs --bind`).
+- `iceberg-table`: `iceberg_snapshot_read.py --window-column` reads the PROD Iceberg mirror for the window and `prod_actuals.py table-summary` records the snapshot; a snapshot older than the window end is `STALE`, so suggest the most recent day the snapshot covers.
+- `none`: no PROD actual exists for the slice. `prod_actuals.py none` records it, and the comparison falls back to schema, row-count and reject-reason checks; the report says so explicitly. Never invent a local oracle.
+
+### Canary first, then ask
+
+1. `prod_actuals.py canary-sample` selects **10 real events per slice**, deterministically: group by outcome, order each group by event time and the SHA-256 of the event key, and take them round-robin so the canary mixes outcomes (for example accepted and rejected) when the window has both.
+2. `prod_actuals.py inputs` writes those events' real inputs; stage them to DEV under their own approval digest (`stage_evidence_package.py`).
+3. Run the canary in DEV (`transform_runs.py spec-from-intent --stage canary`, `cards`, approved `start`, `capture`) and compare it with the PROD actual (`prod_actuals.py compare`).
+4. `transform_runs.py canary-gate` shows the user the execution ids, S3 inputs and outputs, row counts and the comparison, and stops with `APPROVAL_REQUIRED`. Ask before the full window; never auto-proceed. Record the answer with `approve-full`.
+5. When the canary comparison fails, the gate is `CANARY_FAILED`: stop with `NOT_READY` (a contradicted comparison) or `BLOCKED`, report the mismatches, and do not suggest or start the full run. `transform_runs.py start` refuses a full-stage run without an `APPROVED` or `PRE_APPROVED` gate.
+6. After approval, stage the whole window, run it in DEV (`--stage full`, `start --canary-gate`), capture it, and compare it with the PROD actual, the contracts, closure and regression.
+
+Each DEV staging copy and each DEV execution requires its own approval digest; keep the `stage_evidence_package.py upload` records and pass them with `--staging-upload`, plus `--source-window` (or `--slice-days`), to `evaluate_run.py --mode observed-dev`.
+
+### Owner decisions given up front
+
+An owner can let an unattended run finish by stating decisions in the request; the resolver records them as `ownerDecisions`:
+
+- "if the canary passes, run the full window" (`preApproveFullRunOnCanaryPass`): the gate becomes `PRE_APPROVED` for a passing canary only; a failed canary still stops.
+- "accept Transform product changes as out of scope" (`acceptProductChanges`): each `PRODUCT_CHANGE` is flagged for Kecleon, recorded as `ownerAccepted`, and no longer blocks `READY`.
+- "cost ceiling $N per job" (`costCeilingUsd`): no job may exceed it (`CostCeilingExceeded`).
+- "most recent full UTC day with real data per slice" (`windowSelection`): each slice runs on its own most recent complete UTC day with data instead of one confirmed window.
+
+Without these decisions the defaults stay: ask before the full run, and `BLOCKED` on any unaccepted `PRODUCT_CHANGE`.
+
+When PROD metadata access, the window confirmation, a PROD actual, a staging or execution approval, the canary gate or DEV access is unavailable, the verdict is `BLOCKED`, never `READY`. Hand off exactly what is missing: the PROD read-only access, the confirmation question, the canary result awaiting approval, or the pending operation card and its digest.
 
 ## Resolve configuration sources automatically
 
@@ -276,7 +281,7 @@ when the current Lexicon or its history removed the concept.
 
 Do not substitute aliases invented from prose for the profile's exact language, mapping, dataset, or field names. Do not report `NOT_READY` for missing configuration until all declared repositories and candidate rules were exhausted. Incomplete discovery is `BLOCKED`; a contradiction in a resolved candidate is `NOT_READY`.
 
-Execute every required `repository-test` from `validationSources` in its pinned repository using that repository's documented package manager and runtime. Verify every `sanitized-evidence-package` manifest digest before reading bounded fixtures. A generic repository test suite is supporting evidence only; it cannot replace execution of each required directional mapping.
+Read every required `repository-test` from `validationSources` as the result of the pinned commit's CI run (read-only through `gh`); never run it locally. Verify every `sanitized-evidence-package` manifest digest before reading it. A generic repository test suite is supporting evidence only; it cannot replace a DEV execution of each required directional mapping on real data.
 
 For an `existing-dev-artifact`, require the declared region and credential-free
 S3 prefix. A `staging` artifact is discovery context only and blocks runtime
@@ -296,7 +301,7 @@ Record one evidence-backed boundary decision for every proposed change:
 - `CONFIGURATION`: source/target field names, schema shape, formats, normalization rules, mapping expressions, profile inputs, or client/domain vocabulary selections within existing product contracts.
 - `PRODUCT_CHANGE`: executable code paths, business identity schemes, dependency types, representation families/bindings, storage-engine behavior, or failure semantics.
 
-Continue configuration work only for `CONFIGURATION`. For `PRODUCT_CHANGE`, identify the owning product/builder, create a handoff, and stop the affected path as `BLOCKED` until it is resolved in a pinned product revision. Never hide a product change behind a profile flag.
+Continue configuration work only for `CONFIGURATION`. For `PRODUCT_CHANGE`, identify the owning product/builder (Kecleon for Transform), create a handoff, and stop the affected path as `BLOCKED` until it is resolved in a pinned product revision, unless the owner accepted Transform product changes as out of scope up front; then record it `ownerAccepted`, keep it flagged in the report, and continue. Silvally never changes Transform. Never hide a product change behind a profile flag.
 
 Classify the transform itself:
 
@@ -315,18 +320,18 @@ Run the same 12 phases for every profile:
 4. Evidence registry
 5. Language and dataset model
 6. Configuration/product boundary and directional mapping
-7. Static and Spark proof
+7. PROD actuals baseline
 8. Release and deployment provenance
-9. Transform runtime proof
-10. Persist canary and graph closure
-11. Export, hydration, and round-trip parity
+9. DEV canary on real events
+10. Canary gate and full-window DEV run
+11. Comparison with PROD actuals
 12. Report, handoff, and verdict
 
 Use only `PASS`, `FAIL`, `BLOCKED`, or `APPROVAL_REQUIRED` for phase/gate status. A required phase passes only when every required invariant in the profile has admissible evidence.
 
-In `synthetic-local` mode, automatically run all read-only work available from the pinned configuration candidate: profile/schema validation, mapping materialization, repository tests, sanitized fixture validation, deployed Spark-version compatibility, each required forward mapping, every declared inverse/cross-source mapping, expected-output comparisons, and negative cases. Report the exact repository SHAs, mapping identities, fixture manifest digest, commands, counts, and mismatches. Do not stop after typecheck/lint/general unit tests when a mapping execution remains untested. A passing `synthetic-local` run is reported as `modeScopedResult: PASS` with verdict `BLOCKED` until the final PROD-derived validation passes; continue to the source-window recommendation instead of stopping.
+Phase 1 also records the confirmed real window (or the owner's per-slice selection) and the per-slice real-data check. Phase 7 reads what PROD actually did. Phase 9 runs the canary of 10 real events per slice in DEV and compares it with the PROD actual. Phase 10 is the canary gate — the user's approval, or the owner's pre-approval of a passing canary — and the full-window DEV run. Phase 11 compares the full window with the PROD actual (or the stated fallback), the contracts, graph closure and regression. See `reference/validation-phases-and-gates.md`.
 
-Do not treat an absent system-wide `pyspark` or `spark-submit` binary as an immediate blocker. First inspect the pinned Transform runtime for its declared local Spark setup and test entrypoints. When present, run the bounded setup inside the isolated checkout, verify the resulting Spark major/minor version against the profile/runtime target, and use that environment for mapping-specific fixture execution. This is a local dependency setup, not a DEV write. Return `BLOCKED` only when the pinned runtime has no compatible setup path or that bounded setup fails with recorded evidence.
+Nothing is executed locally: no local Spark, no local replay of a Lambda or state machine, no parity harness and no fixture runs. Read-only work (profile and schema checks, mapping materialization, contract derivation, SQL scans, repository CI results) needs no execution; every mapping execution is an approved DEV Transform run.
 
 ## Approval protocol
 
@@ -339,9 +344,9 @@ Before each DEV external write:
 5. proceed only after explicit approval matching that digest;
 6. record the approver, time, scope, and result without secret or PII content.
 
-Do not reuse approval for another write or a changed operation. In `synthetic-local` and `bounded-dev-dry-run`, never execute the write: prove that the run stops at the gate. PROD is always read-only and always hands mutation work to a specialist.
+Do not reuse approval for another write or a changed operation. In `bounded-dev-dry-run`, never execute the write: prove that the run stops at the gate. PROD is always read-only, PROD Transform is never invoked, and mutation work is handed to a specialist.
 
-Gated DEV operations include staging copies, manifest publication, DEV deployment of a pinned candidate through the owning repository's documented command, every Step Functions/Glue Transform execution, cost-approval callbacks, and Persist canaries. Each one gets its own operation card listing exactly what is read, written, and run (`reference/intake-questions-and-gates.md`). A DEV deployment is Deploy-owned evidence: Silvally records its digests but does not own rollback.
+Gated DEV operations include the canary gate before the full-window run, staging copies, manifest publication, DEV deployment of a pinned candidate through the owning repository's documented command, every Step Functions/Glue Transform execution, cost-approval callbacks, and Persist canaries. Each one gets its own operation card listing exactly what is read, written, and run (`reference/intake-questions-and-gates.md`). A DEV deployment is Deploy-owned evidence: Silvally records its digests but does not own rollback.
 
 ## Execution capture
 
@@ -391,7 +396,7 @@ Classify the remediation:
 
 - `CONFIGURATION`: mapping registrations, declared inputs/outputs, required inputs, SQL expressions, fields, formats, normalization, options, or profile values within existing product behavior.
 - `PRODUCT_CHANGE`: executable runtime paths, schema-reading behavior, identity algorithms, dependency types, representation bindings, storage behavior, or failure semantics.
-- `ACCESS_OR_EVIDENCE`: authentication, authorization, missing immutable fixtures, unavailable deployment provenance, or an approval gate.
+- `ACCESS_OR_EVIDENCE`: authentication, authorization, missing immutable evidence packages or PROD actuals, unavailable deployment provenance, or an approval gate.
 
 Name the owning product/specialist and repository when known. Point only to exact files, mappings, datasets, and contracts verified at the pinned revision, and attach the evidence IDs that prove each location exists. State the smallest safe change, the regression case that must be added, the expected evidence, and which phases/directions must rerun. Do not implement a recommendation during an independent validation run.
 
@@ -402,7 +407,7 @@ Name every contradicted field, dataset, endpoint, option, and mapping identity e
 Apply these boundary examples consistently:
 
 - When graph-edge metadata names a source or target vertex dataset but a mapping omits that dataset from its inputs or an output's `requiredInputs`, classify the repair as `CONFIGURATION`. Recommend declaring the endpoint dataset and proving registered-runtime endpoint closure.
-- When a language declares an optional JSON property but Transform drops the column when every row omits the key, classify the repair as `PRODUCT_CHANGE`. Recommend schema-bound reading or equivalent typed-null materialization and a Spark regression where the property is absent from every row.
+- When a language declares an optional JSON property but Transform drops the column when every row omits the key, classify the repair as `PRODUCT_CHANGE`. Recommend schema-bound reading or equivalent typed-null materialization and a Transform regression where the property is absent from every row.
 
 ## Stop and verdict rules
 
@@ -411,7 +416,7 @@ Apply these boundary examples consistently:
 - `APPROVAL_REQUIRED` whenever the next required proof is a DEV write without operation-specific approval.
 - `NOT_READY` if any required gate is `FAIL`.
 - `BLOCKED` if no required gate failed and at least one is `BLOCKED` or `APPROVAL_REQUIRED`.
-- `READY` only when every required gate is `PASS` **and** phase 12 records a passing final PROD-derived validation: the mapping executed in DEV, under operation-specific approvals, against a user-confirmed complete-UTC-day window derived read-only from PROD and staged into DEV under its own approval digest, with every parity and closure gate passing. Synthetic-local and synthetic DEV runs never yield `READY`; without PROD metadata access, window confirmation or approval the verdict is `BLOCKED` with `FinalProdDerivedValidationRequired`.
+- `READY` only when every required gate is `PASS` **and** phase 12 records a passing final PROD-derived validation: a confirmed real window (or the owner's per-slice selection), a DEV canary of 10 real events per slice that matched what PROD did, the user's approval (or the owner's pre-approval) of the full-window run, and a full-window DEV run under operation-specific approvals that matches the PROD actuals (or the stated fallback) with every contract and closure gate passing. Without PROD access, window confirmation, a canary pass or the full-run approval the verdict is `BLOCKED` with `FinalProdDerivedValidationRequired`; a failed canary is `NOT_READY` or `BLOCKED` and never leads to the full run.
 
 Never retry paid or mutating work blindly. Inspect the failed phase and partial artifacts first; a retry is a new operation and needs new approval.
 
@@ -431,7 +436,7 @@ Validate the final artifact against `transform-configuration-run.schema.json`, t
 - transform classification has the required deterministic or non-deterministic evidence;
 - the reusable package identifies product/languages/mapping/Lexicon/dependencies/Test evidence/deployment and Marketplace-registration readiness;
 - the artifact and human report agree on statuses and verdict;
-- a `READY` package has `sourceWindowSelection.status: CONFIRMED`, `runtime.executionMode: observed-dev`, passing DEV `executionSteps` and a passing `finalValidation` listing the staging and execution approval digests;
+- a `READY` package has `sourceWindowSelection.status: CONFIRMED` (or the owner's per-slice `sliceWindows`), `runtime.executionMode: observed-dev`, passing DEV canary and full `executionSteps`, and a passing `finalValidation` listing the staging and execution approval digests, the canary, the full-run approval and the PROD-actuals baseline per slice;
 - early `NOT_READY` packages use explicit `UNAVAILABLE` evidence objects instead
   of fabricated runtime, graph, dataset hashes, counts or locations; `READY`
   packages contain no unavailable evidence.

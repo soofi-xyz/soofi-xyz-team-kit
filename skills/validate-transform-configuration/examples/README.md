@@ -13,6 +13,9 @@ elsewhere.
 - Every profile carries the required `sourceWindowPolicy` for the mandatory final PROD-derived
   validation; `origin` says whether it was declared or derived at intake, and `recordedDefaults`
   lists every value that was defaulted rather than chosen.
+- Validation always runs on real PROD-derived data: a DEV canary of 10 real events per slice,
+  then, after approval, the full window, both compared with the PROD actuals. Profiles declare no
+  local, fixture or synthetic data.
 - `calibrations/*.md` hold sanitized expectations (row counts, digests, pinned revisions) for a
   profile's declared scenarios. They are evidence notes, not runtime inputs.
 

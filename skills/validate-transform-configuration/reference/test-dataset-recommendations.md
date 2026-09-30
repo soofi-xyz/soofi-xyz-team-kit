@@ -1,24 +1,23 @@
 # Test dataset recommendations
 
-Recommend datasets before asking `test-dataset`. Combine them: runtime proof
-needs production-shaped coverage, and negative proof needs deliberate edge
-cases.
+Silvally uses real data only. Every package is derived read-only from PROD for
+a confirmed UTC window, staged to DEV under approval, and executed by DEV
+Transform. There are no synthetic, fixture or hand-written edge-case packages,
+and Silvally never falls back to them — not even when a window is empty.
 
-## Dataset tiers
+## Packages
 
 | Id | Content | Proves | Does not prove |
 | --- | --- | --- | --- |
-| profile evidence | `validationSources` entries of the matched profile (`existing-dev-artifact`, `sanitized-evidence-package`) | whatever the manifest covers; reusable across runs | anything when `artifactStatus` is `planned` (location reserved, `tbd` lists what is missing) or `staging`, or when the manifest digest does not verify |
-| `prod-derived-full-utc-day` | one complete half-open UTC day `[D, D+1)` (or the confirmed longer range) of every source family the forward mapping reads, derived from PROD and sanitized | real cardinality, join closure, enum coverage, and scale at the bounded tier; **required for the final validation and for `READY`** | rare rejected or negative paths that did not occur that day |
-| `sanitized-edge-cases` | small hand-selected package: rejected outcomes, nulls in optional fields, all-rows-omit-optional-key, conflicting or stale events, UTC boundary timestamps, duplicate idempotency keys, missing endpoints | negative and inverse behavior with an expected-outcome oracle | volume and realistic distribution |
-| `synthetic-fixture` | rows generated locally from the language definition's properties and enums | shape, typing, and local Spark execution | anything about production data; never sufficient for `READY` |
+| profile evidence | `validationSources` entries of the matched profile (`existing-dev-artifact`, `sanitized-evidence-package`) | whatever the manifest covers, when it is the confirmed window's manifested staging | anything when `artifactStatus` is `planned` (location reserved, `tbd` lists what is missing) or `staging`, or when the manifest digest does not verify |
+| `prod-derived-canary` | 10 real events per slice from the confirmed window, chosen by `prod_actuals.py canary-sample` (grouped by outcome, ordered by event time and key SHA-256, taken round-robin so accepted and rejected outcomes both appear when the window has both) | the mapping's behavior on real accepted and rejected events against what PROD did, cheaply, before the full run | volume, cardinality and rare paths outside the sample |
+| `prod-derived-full-utc-day` | one complete half-open UTC day `[D, D+1)` (or the confirmed longer range) of every source family the forward mapping reads | real cardinality, join closure, enum coverage, and scale at the bounded tier; **required for the final validation and for `READY`**, and run only after the canary passed and the user approved | rejected or negative paths that did not occur in the window |
 
-Default recommendation: profile evidence when `ready`; otherwise the full UTC
-day plus the edge-case package. Whatever is chosen for earlier phases, the
-final validation always runs on the confirmed PROD-derived window; profile
-evidence qualifies only when it is that window's manifested staging. A `planned` entry is shown with its `tbd`
-fields and is never the default. Use the synthetic fixture for `synthetic-local`
-mode and as a first local smoke test.
+Always recommend the canary first and the full window second. Profile evidence
+qualifies only when it is that window's manifested staging. A `planned` entry
+is shown with its `tbd` fields and is never the default. When the chosen day
+has no real data for a slice, say so and suggest the nearest UTC day with data
+(`source_window.py data-days`); never substitute another kind of package.
 
 ## Choosing the UTC day
 
@@ -43,18 +42,16 @@ s3://<dev-transform-data-bucket>/inputs/<language>-<purpose>/<window>_<version>/
   manifest.json                   # written last, with IfNoneMatch: *
   derived/<dataset>/<dataset>.jsonl|parquet|csv
   evidence/source-manifest.json   # sanitized PROD source identities: counts, digests, version ids
-  expected/<dataset>.jsonl        # edge-case oracle rows (edge-case packages only)
 ```
 
 - `<language>` is the registered source language. For a projection out of the hub it is
   `<hub>-<target>`, unless a qualifier names a registered language. `<purpose>` is
-  `prod-derived`, `edge-cases`, or `synthetic`. A profile may reserve its own prefix
+  `prod-derived`; the canary package uses `<window>_canary_<version>`. A profile may reserve its own prefix
   (`inputs/<profile-stem>/<window>_v1/`).
 - Each input dataset lives in its own `<table>/` directory under one prefix, so that
   `transform_runs.py spec-from-intent --bind <name>=<prefix>` can list which outputs the package
   can run.
-- `<window>` is `YYYY-MM-DDT000000Z_YYYY-MM-DDT000000Z` (half-open) for day
-  windows, or `YYYYMMDDTHHMMSSZ-<label>` for curated packages.
+- `<window>` is `YYYY-MM-DDT000000Z_YYYY-MM-DDT000000Z` (half-open).
 - `<version>` is `v1`, `v2`, …. Never overwrite a prefix. A correction is a new
   version.
 - Each table directory holds exactly one format, the one the mapping declares
@@ -73,27 +70,29 @@ Each numbered write is a separate confirmation gate.
 
 1. Read PROD source metadata and bounded rows under the operator's PROD
    read-only profile. Write nothing in PROD.
-2. Sanitize locally. Replace business identifiers and PII with keyed,
-   deterministic pseudonyms that preserve joins, and drop free text. Keep
-   enum, boolean, count, and timestamp semantics.
-3. Build `derived/`, `evidence/source-manifest.json`, and `manifest.json`
-   locally. Verify every row against the language definition's required fields
-   and types.
+2. Keep the rows in a mode-0700 private directory outside any repository.
+   For the canary, `prod_actuals.py canary-sample` selects the events and
+   `prod_actuals.py inputs` writes their real inputs (with `--bind` for a field
+   the PROD run resolved).
+3. Build `derived/`, `evidence/source-manifest.json`, and `manifest.json` in
+   that directory (`stage_evidence_package.py manifest`). Verify every row
+   against the language definition's required fields and types. Nothing is
+   executed on these rows outside DEV Transform.
 4. Gate: upload `derived/` and `evidence/` to the new DEV prefix.
 5. Gate: upload `manifest.json` last with `IfNoneMatch: *`, then read it back
    and verify its SHA-256 and `VersionId`.
 
 ## Tools
 
-- PROD rows for oracles: `scripts/iceberg_snapshot_read.py` (read-only; pins the snapshot; rows
-  only in a mode-0700 `--private-dir` outside any checkout; prints aggregates). Delete the
-  directory once the oracle aggregates are recorded. Other stores (DynamoDB, Persist Gremlin)
+- What PROD actually did: `scripts/prod_actuals.py` (Lambda outcomes from a PROD state machine's
+  execution logs) and `scripts/iceberg_snapshot_read.py` (a PROD Iceberg table by key or window
+  column; pins the snapshot). Both are read-only, keep rows only in a mode-0700 `--private-dir`
+  outside any checkout and print aggregates; delete the directory once the comparison is recorded. Other stores (DynamoDB, Persist Gremlin)
   are read with the operator's PROD profile and the same rule: aggregates in evidence, rows
   never committed or uploaded.
 - Package build and upload: `scripts/stage_evidence_package.py manifest`, then `upload` with the
   printed operation digest after approval. Record the returned manifest SHA-256 and VersionId
   in the profile's `validationSources`.
-- Graph exports from a forward run: `scripts/graph_export_bridge.py`.
 
 A package itself is not portable evidence of how it was made. Record the generating commands
 and pinned revisions in the package's `evidence/source-manifest.json` so a teammate can rebuild
@@ -105,6 +104,6 @@ it from committed tools plus fresh read-only reads.
   expected row counts of its packages.
 - Transform cost: `resolve-plan` returns `predictedCostUsd` before Glue runs.
   KiB-to-MiB inputs typically predict well under $1 per execution. Set
-  `costCeilingUsd` to the lower of the profile scale tier and the user's
-  ceiling. Rejected missing-input cases stop before Glue and cost nothing beyond the plan step.
+  `costCeilingUsd` to the lower of the profile scale tier and the user's (or
+  the owner's per-job) ceiling. The canary costs one small execution per slice. Rejected missing-input cases stop before Glue and cost nothing beyond the plan step.
 - S3 storage for these packages is negligible. The dominant cost is Glue.

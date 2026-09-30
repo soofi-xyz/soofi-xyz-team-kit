@@ -12,14 +12,15 @@ tool call.
 | Id | When asked | Options | Default |
 | --- | --- | --- | --- |
 | `mapping-choice` | status `AMBIGUOUS`, `NO_MAPPING`, or `UNKNOWN_LANGUAGE` | ranked candidates plus `none` (stop and report the gap) | none; the user must choose |
-| `environment` | no `in dev`/`in prod` hint | `dev`, `prod-read-only`, `synthetic-local` | `dev` |
+| `environment` | no `in dev`/`in prod` hint | `dev`, `prod-read-only` | `dev` |
 | `mapping-version` | more than one enabled version, no version hint, and the version was not defaulted by `latest-published-semver` (its `notice` is shown instead) | each `id@version` with its outputs | the resolver's selection |
 | `upstream-source` | `UpstreamSourceUnresolved` | candidate producers, `existing-graph-export` | the selected profile's first workflow step when it is a candidate, else none |
-| `test-dataset` | always | profile evidence (including `planned` placeholders), then `prod-derived-full-utc-day`, `sanitized-edge-cases`, `synthetic-fixture` | first `ready` profile evidence, else the full UTC day |
 | `direction-mode` | an inverse mapping exists and no mode hint | `round-trip`, `one-way` | `round-trip` for `X -> <hub>`; `one-way` for `<hub> -> Y` |
 | `cross-source-step` | a `<hub> -> Y` mapping consumes forward outputs | each downstream mapping, `none` | none |
 | `persist-policy` | always, unless the profile fixes it | `forbidden`, `required` | `forbidden` |
-| `source-window` | always before the final PROD-derived validation, after the read-only candidate comparison | recommended window, longer complete range (when allowed), `stop` | none; the user must choose |
+| `source-window` | before any staging, after the read-only candidate comparison, unless the owner chose the most recent full UTC day with real data per slice | recommended window, longer complete range (when allowed), `stop` | none; the user must choose |
+| `empty-slice` | a slice has no real PROD data on the chosen day | the nearest UTC day with data (from `source_window.py data-days`), `stop` | none; the user must choose |
+| `canary-gate` | after the DEV canary passed its comparison with the PROD actual, unless the owner pre-approved the full run | `run-full-window`, `stop` | none; the user must choose |
 
 Rules:
 
@@ -33,12 +34,18 @@ Rules:
   confirmation question before any staging, after Silvally has compared recent
   complete UTC days read-only (`source_window.py recommend`). Options are the
   recommended window first, a longer contiguous complete range when
-  `allowLongerRange` is true, and `stop` (the run ends `BLOCKED`). Neither
-  `test-dataset`, `environment: synthetic-local` nor a staging approval
-  answers it, and there is no default.
-- Choosing `synthetic-local`, `synthetic-fixture` or `sanitized-edge-cases`
-  selects an earlier phase only. Say so when asking, and continue to the
-  final PROD-derived validation afterwards.
+  `allowLongerRange` is true, and `stop` (the run ends `BLOCKED`). A staging
+  approval does not answer it, and there is no default.
+- The data is always the confirmed PROD-derived window; there is no dataset
+  question and no local or synthetic option.
+- The `canary-gate` question shows the canary's execution ids, S3 inputs and
+  outputs, row counts and comparison, and waits. Never auto-proceed. When the
+  canary comparison failed, do not ask it: report `NOT_READY` (or `BLOCKED`)
+  and do not suggest the full run.
+- Owner decisions stated up front in the request (`ownerDecisions`: full-run
+  pre-approval for a passing canary, acceptance of Transform product changes
+  as out of scope, a per-job cost ceiling, the most recent full UTC day with
+  real data per slice) answer the matching question; do not ask it again.
 - The user's answers become `CONFIRMED` material facts. Silvally never marks a
   fact `CONFIRMED` from a default the user did not see.
 
@@ -49,15 +56,16 @@ these. Approval of one card never covers another, a retry, or a changed card.
 
 | Operation | Typical command | Environment |
 | --- | --- | --- |
-| staging copy of a sanitized package (including the confirmed PROD-derived window) | `stage_evidence_package.py upload` / `put-object` under `inputs/<language>-<purpose>/<window>_<version>/` | DEV |
+| staging copy of the canary or the full confirmed PROD-derived window | `stage_evidence_package.py upload` / `put-object` under `inputs/<language>-<purpose>/<window>_<version>/` | DEV |
 | manifest publication | `put-object` of `manifest.json` with `IfNoneMatch: *` | DEV |
 | DEV deployment of a pinned candidate | the owning repository's documented deploy command (for example `npm run cdk:deploy`) | DEV only; Deploy owns the result |
-| Transform execution | `aws stepfunctions start-execution` on the DEV Transform state machine | DEV |
+| Transform execution (canary, then full window) | `transform_runs.py start` (`aws stepfunctions start-execution` on the DEV Transform state machine); a full-stage start also needs an approved `--canary-gate` | DEV |
 | cost-approval callback | `aws stepfunctions send-task-success` for a paused cost gate | DEV |
 | Persist canary | the documented Persist ingest surface, bounded | DEV, only when `persistPolicy` is `required` |
 
-Local work (materializing checkouts, `cdk synth`, Spark tests, running the
-resolver, and reading S3 or SSM) needs no card. PROD mutation has no card; it is
+Read-only work (materializing checkouts, running the resolver, reading CI
+results, and reading S3, SSM, CloudWatch Logs or Iceberg) needs no card; it
+never executes a mapping. PROD mutation has no card; it is
 always refused and handed off.
 
 ## Operation card

@@ -24,7 +24,7 @@ python3 skills/validate-transform-configuration/scripts/resolve-transform-intent
 
 The draft conforms to `transform-configuration-profile-draft.schema.json`. Facts
 derived from the registry are `INFERRED`, and everything else is `MISSING` with
-the next question. Keep the draft local (`local://transform-configuration-intake/…`).
+the next question. Keep the draft private (`local://transform-configuration-intake/…`); it is never executed.
 Ask the questions, then promote it: fill every strict-schema field, set
 `promotionEligible`, and validate against
 `transform-configuration-profile.schema.json`. A promoted draft may run once
@@ -104,15 +104,13 @@ without being committed. Commit it only through a reviewed PR to this kit.
 
 1. Materialize the candidate mapping from its pinned repository:
    `fetch_validation_inputs.py repo ...` then `fetch_validation_inputs.py materialize --command "<repo's materialization command with {out}>"`.
-2. Write a small PII-free fixture and an oracle from the specification (not from the SQL), in
-   the shape of `fixtures/synthetic-registry/` (inputs, `expected/`, a manifest).
-3. Run `local_mapping_run.py --mapping <mapping.json> --input <table>=<fixture> --negatives --out <dir>`,
-   derive contracts with `resolve-transform-intent.py contracts --mapping <id>@<version>`, and run
-   `compare_datasets.py check --contracts ... --dataset <dataset>=<dir>/<dataset> --oracle <id>=<oracle>`.
-4. Run `resolve-transform-intent.py draft-profile ...`, promote the draft (Path 3), and check it
-   with `check-profile`; `evaluate_run.py --mode synthetic-local` then computes phases 1–11 as an
-   earlier proof (`modeScopedResult`). The verdict stays `BLOCKED` until the final PROD-derived
-   validation runs in `observed-dev` on a confirmed window.
+2. Derive contracts with `resolve-transform-intent.py contracts --mapping <id>@<version>` and
+   write oracles from the specification (not from the SQL) where no PROD actual exists.
+3. Run `resolve-transform-intent.py draft-profile ...`, promote the draft (Path 3), and check it
+   with `check-profile`.
+4. Validate it like any other profile: a confirmed real PROD-derived window, the DEV canary,
+   the canary gate, then the full-window DEV run compared with PROD actuals. Nothing runs
+   locally and no synthetic data is used; the verdict stays `BLOCKED` until that run passes.
 
 ## Minimal skeleton
 
@@ -141,7 +139,7 @@ the skeleton as written.
   "consumers": [{ "name": "<consumer>", "owner": "<agent>", "contract": "<contract>" }],
   "parityPolicy": { "fieldSource": "language-definition-and-registration", "declaredFields": "minimum", "undefinedDatasets": "block" },
   "sourceWindowPolicy": { "kind": "prod-derived-complete-utc-days", "minimumCompleteUtcDays": 1, "allowLongerRange": true, "requiredSourceFamilies": ["<dataset>"], "requiredCoverageSignals": ["<dataset>-rows-present"], "origin": "derived-at-intake", "recordedDefaults": { "minimumCompleteUtcDays": 1, "allowLongerRange": true }, "evidenceIds": ["profile-source-datasets"] },
-  "scaleTiers": [{ "id": "synthetic", "maximumRows": 100, "maximumCostUsd": 0, "evidenceRequired": true }],
+  "scaleTiers": [{ "id": "canary", "maximumRows": 10, "maximumCostUsd": 1, "evidenceRequired": true }],
   "approvals": { "devWrites": "explicit", "prodWrites": "forbidden", "perOperation": true }
 }
 ```

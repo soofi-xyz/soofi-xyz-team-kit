@@ -68,7 +68,7 @@
     },
     {
       "slug": "Spring-Oaks-Capital-LLC/transform",
-      "purpose": "Transform Spark runtime compatibility",
+      "purpose": "Transform runtime provenance and CI results (read-only)",
       "role": "product-runtime",
       "revisionPolicy": "commit-sha",
       "candidateDiscovery": "requested-ref-then-default-branch",
@@ -137,7 +137,7 @@
     {
       "id": "m2d-transform-evidence",
       "kind": "not-available",
-      "reason": "The profile remains a calibration contract until registered mappings and sanitized immutable fixtures exist.",
+      "reason": "The profile remains a calibration contract until registered mappings and sanitized immutable DEV evidence exist.",
       "owner": "lucario",
       "appliesTo": ["media-manifest-to-document-graph", "document-graph-to-media-readback"],
       "required": true
@@ -174,7 +174,7 @@
     "evidenceIds": ["profile-source-datasets"]
   },
   "scaleTiers": [
-    { "id": "synthetic", "maximumRows": 25, "maximumCostUsd": 0, "evidenceRequired": true },
+    { "id": "canary", "maximumRows": 10, "maximumCostUsd": 5, "evidenceRequired": true },
     { "id": "sample-media-dev", "maximumRows": 250, "maximumCostUsd": 25, "evidenceRequired": true }
   ],
   "approvals": { "devWrites": "explicit", "prodWrites": "forbidden", "perOperation": true }

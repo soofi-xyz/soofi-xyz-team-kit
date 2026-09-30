@@ -95,6 +95,46 @@ MODE_HINTS = {
     "round-trip": re.compile(r"\bround[\s-]?trip\b|\broundtrip\b"),
     "one-way": re.compile(r"\bone[\s-]?way\b|\bforward only\b"),
 }
+OWNER_DECISIONS = {
+    "preApproveFullRunOnCanaryPass": re.compile(
+        r"\b(?:pre[\s-]?approve[sd]?|approve[sd]?)\s+(?:the\s+)?full(?:[\s-]window)?\s+(?:dev\s+)?run\b[^.;\n]*"
+        r"|\bfull(?:[\s-]window)?\s+(?:dev\s+)?run\s+(?:is\s+)?pre[\s-]?approved\b[^.;\n]*"
+        r"|\bif\s+the\s+canary\s+pass(?:es)?,?\s+(?:then\s+)?(?:run|proceed\s+(?:to|with)|start)\s+(?:the\s+)?full\b[^.;\n]*"),
+    "acceptProductChanges": re.compile(
+        r"\baccept(?:s|ed)?\s+(?:all\s+)?(?:transform\s+)?product[\s_-]?changes?\b[^.;\n]*"
+        r"|\bproduct[\s_-]?changes?\s+(?:items\s+)?(?:are\s+)?(?:accepted|out\s+of\s+scope)\b[^.;\n]*"),
+    "costCeilingUsd": re.compile(r"\bcost\s+ceiling\s+(?:of\s+)?(?:usd\s*)?\$?\s*(\d+(?:\.\d+)?)(?:\s*usd)?(?:\s+per\s+(?:job|run|execution))?"),
+    "windowSelection": re.compile(r"\b(?:use\s+)?(?:the\s+)?most\s+recent\s+(?:full|complete)\s+utc\s+day\s+with\s+(?:real\s+)?data"
+                                  r"(?:\s+per\s+slice)?"),
+}
+OWNER_PREFIX = re.compile(r"\bowner\s+decisions?\s*:?")
+
+
+def extract_owner_decisions(text: str) -> tuple[str, dict]:
+    """Up-front owner decisions that let an unattended run finish; absent ones keep the interactive defaults."""
+    decisions: dict = {}
+    spans: list[tuple[int, int]] = []
+    for name, pattern in OWNER_DECISIONS.items():
+        match = pattern.search(text)
+        if not match:
+            continue
+        if name == "costCeilingUsd":
+            decisions[name] = float(match.group(1))
+        elif name == "windowSelection":
+            decisions[name] = "most-recent-full-utc-day-with-data-per-slice"
+        else:
+            decisions[name] = True
+        spans.append(match.span())
+    merged: list[list[int]] = []
+    for start, end in sorted(spans):
+        if merged and start <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], end)
+        else:
+            merged.append([start, end])
+    for start, end in reversed(merged):
+        text = text[:start] + " " + text[end:]
+    text = OWNER_PREFIX.sub(" ", text)
+    return re.split(r"[;\n]|\.(?=\s|$)", text, maxsplit=1)[0].strip(" ,"), decisions
 
 
 def normalize_dataset(name: str) -> str:
@@ -139,7 +179,8 @@ def extract_package_slices(text: str, catalog: dict) -> tuple[str, list[str]]:
 def parse_request(request: str, slice_catalog: dict | None = None) -> dict:
     text = request.strip().lower()
     text = re.sub(r"^/?silvally\b", "", text).strip()
-    hints: dict = {"version": None, "environment": None, "mode": None}
+    text, owner_decisions = extract_owner_decisions(text)
+    hints: dict = {"version": None, "environment": None, "mode": None, "ownerDecisions": owner_decisions}
     version = VERSION_HINT.search(text)
     if version:
         hints["version"] = version.group(1)
@@ -1234,22 +1275,16 @@ def dataset_recommendations(source: str, profile: dict | None, window: str) -> l
     language = source.replace("_", "-")
     recs.extend([
         {
+            "id": "prod-derived-canary",
+            "kind": "proposed-prod-derived",
+            "location": f"s3://<dev-transform-data-bucket>/{DATA_BUCKET_INPUT_ROOT}/{language}-prod-derived/{window}_canary_v1/",
+            "note": "10 real events per slice from the confirmed PROD UTC window, chosen deterministically; staged to DEV after approval and run first.",
+        },
+        {
             "id": "prod-derived-full-utc-day",
             "kind": "proposed-prod-derived",
             "location": f"s3://<dev-transform-data-bucket>/{DATA_BUCKET_INPUT_ROOT}/{language}-prod-derived/{window}_v1/",
-            "note": "One complete half-open UTC day read from PROD, sanitized, manifested with SHA-256, then written to DEV after approval.",
-        },
-        {
-            "id": "sanitized-edge-cases",
-            "kind": "proposed-edge-case-package",
-            "location": f"s3://<dev-transform-data-bucket>/{DATA_BUCKET_INPUT_ROOT}/{language}-edge-cases/<yyyymmddThhmmssZ>_v1/",
-            "note": "Rejected, negative, null, boundary and conflicting-event rows with an expected-outcome oracle.",
-        },
-        {
-            "id": "synthetic-fixture",
-            "kind": "proposed-synthetic-fixture",
-            "location": f"local://transform-configuration-intake/{language}-synthetic-v1",
-            "note": "Local-only rows generated from the language definition; no AWS write; proves shape, not production coverage.",
+            "note": "The whole confirmed UTC window read from PROD, manifested with SHA-256, written to DEV after approval; runs only after the canary passes and the full run is approved.",
         },
     ])
     return recs
@@ -1301,7 +1336,6 @@ def question_plan(
             "options": [
                 {"id": "dev", "label": "DEV (default): approval-gated staging and runs"},
                 {"id": "prod-read-only", "label": "PROD read-only: metadata and existing evidence only"},
-                {"id": "synthetic-local", "label": "Local synthetic only: no AWS writes"},
             ],
             "allowMultiple": False,
             "default": "dev",
@@ -1328,15 +1362,6 @@ def question_plan(
             "allowMultiple": False,
             "default": upstream_default if upstream_default in set(upstream_candidates) | {"existing-graph-export"} else None,
         })
-    ready = [r["id"] for r in recommendations if r.get("status") == "ready"]
-    proposed = [r["id"] for r in recommendations if r["kind"] == "proposed-prod-derived"]
-    questions.append({
-        "id": "test-dataset",
-        "prompt": "Which test dataset should Silvally use?",
-        "options": [{"id": r["id"], "label": f"{r['id']}: {r['note']}"} for r in recommendations],
-        "allowMultiple": True,
-        "default": (ready or proposed or [None])[0],
-    })
     if continuation and continuation["inverse"] and hints.get("mode") is None:
         questions.append({
             "id": "direction-mode",
@@ -1481,7 +1506,8 @@ def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclu
              slice_catalog: dict | None = None) -> dict:
     catalog = slice_catalog if slice_catalog is not None else load_slice_catalog()
     parsed = parse_request(request, catalog)
-    result: dict = {"parsed": parsed, "intakeState": "NEEDS_INPUT", "registrySources": registry.registry_labels}
+    result: dict = {"parsed": parsed, "intakeState": "NEEDS_INPUT", "registrySources": registry.registry_labels,
+                    "ownerDecisions": parsed["hints"]["ownerDecisions"]}
     if parsed["status"] != "PARSED":
         result.update({"status": "UNPARSED", "questions": [], "nextStep": parsed["reason"]})
         return result

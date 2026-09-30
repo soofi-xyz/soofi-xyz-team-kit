@@ -30,9 +30,9 @@ Classification: `deterministic`. The profile fixes the DSA election rule, form c
 - Transform `main` `f67430f98634cf3f783d02aa36d907afed766400`: `outputDatasets` request selection in `src/shared/contracts.ts` and required-input enforcement in `src/lambdas/resolve-plan/index.ts`.
 - `form_1281` columns come from the profile's consumer contract. The candidate also declares it in `interprose.json`. v4 emits only `DSA_NAME` and `DSA_REPRESENTATION`; `REPORTED_DATE` and `DSA_CLIENT_ID_` are expected-absent.
 
-## Synthetic graph export
+## Behaviors to find in the real window
 
-Generate Parquet vertex and edge tables locally from the language definitions. Use fixture-only tokens, and retain only counts, schemas, and SHA-256 digests.
+The canary selection and the full window are real PROD-derived graph exports; nothing is generated. For each behavior below, report whether the window contains it and whether DEV matched the PROD actual. A behavior absent from the window is reported as not covered, never simulated. Retain only counts, schemas, and SHA-256 digests.
 
 | Case | Graph facts | Expected output |
 | --- | --- | --- |
@@ -60,13 +60,17 @@ Generate Parquet vertex and edge tables locally from the language definitions. U
 
 ## Final PROD-derived validation
 
-The synthetic graph export above is an earlier phase. It proves shape, negatives and wiring, and its
-evaluation ends `BLOCKED` with `FinalProdDerivedValidationRequired`. `READY` needs the final run:
-compare at least 7 recent complete UTC days of every declared source family from read-only PROD metadata against the
-profile's `sourceWindowPolicy` (declared by the profile, minimum one day, no longer range), ask the user to confirm the recommended window, stage the
-sanitized window into DEV under its own approval digest, execute every workflow step in
-`observed-dev` under per-execution approvals, and pass the regression expectations below on that
-window. If PROD metadata access or the confirmation is missing, the verdict stays `BLOCKED`.
+Everything runs on real data. Compare at least 7 recent complete UTC days of every declared source family from
+read-only PROD metadata against the profile's `sourceWindowPolicy` (declared by the profile, minimum one day, no longer range) and ask the user
+to confirm the recommended window (or use the owner's "most recent full UTC day with real data
+per slice"). If a slice has no data that day, say so and suggest the nearest UTC day with data.
+Stage a canary of 10 real events per slice (mixed outcomes) into DEV under its own approval
+digest, run it in `observed-dev`, and compare it with what PROD actually did (the slice's PROD
+actual in `reference/prod-actuals.json`). Show the execution ids, S3 inputs and outputs, row
+counts and the comparison, and ask before the full window unless the owner pre-approved a
+passing canary. A failed canary stops the validation. After approval, stage and run the full
+window and pass the regression expectations below against the PROD actuals. If PROD access,
+the confirmation, the canary gate or an approval is missing, the verdict stays `BLOCKED`.
 
 ## Regression expectations
 
@@ -106,7 +110,7 @@ window. If PROD metadata access or the confirmation is missing, the verdict stay
 
 - Pins, reproduced locally and served in DEV: v4 `4152746b…` (VersionId `JSpktgsE._kDpzAwp_DI0QK1tK2Z_TEr`, `form_1281.sql` `b3886776…`); forward `a4635c70…` (VersionId `kj5tHm7RGE0SYQhVMYBwKPJNsm68xYpQ`); DEV Glue script `7e07c8c1…` equals Transform #44.
 - `lexicon.json` equals `main` plus the four approved optional properties. `DELETE_DATE` is removed from v4 only; `deleted_at` stays on the edge.
-- Deploy order: the forward SQL emits `dsa_representation` as NULL, and the Stage column manifest equals `main`. It runs on current DEV Stage columns locally (Spark 3.3) and in DEV (`cc-limited-run7`: 39 DSA edges, 0 with `dsa_representation`).
+- Deploy order: the forward SQL emits `dsa_representation` as NULL, and the Stage column manifest equals `main`. It ran on current DEV Stage columns in an earlier local check (historical; local runs are no longer evidence) and in DEV (`cc-limited-run7`: 39 DSA edges, 0 with `dsa_representation`).
 - PROD-reconstruct graph: 709 rows, exact for 340 of 340 debts (DSA_NAME 266, REPORTED_DATE 114, DSA_REPRESENTATION 114, VERIFIED_DATE 215). With `dsa_representation` as the forward emits it: 481 rows, DSA_NAME 266 and VERIFIED_DATE 215 only (documented limitation).
 - Legacy exports without the new columns (v2, PROD sample iso and raw): `form_1281` passes and equals the typed-null diagnostic. Payment outputs are byte-identical to the previous round. Raw payment runs still fail on epoch-millis dates (ISO input contract).
 

@@ -12,6 +12,10 @@
       --out confirmed.json
       Record the window the user explicitly confirmed: the recommendation, or a longer contiguous range of
       complete candidates when allowLongerRange is true. Run it only after the user's own answer.
+  source_window.py data-days --slice-days counts.json (--day YYYY-MM-DD | --most-recent) [--now ISO] --out days.json
+      Check that every slice has real PROD rows on the confirmed day; an EMPTY slice gets the nearest UTC day
+      with rows to suggest to the user. --most-recent applies the owner decision "most recent full UTC day
+      with real data per slice" instead of a confirmation question. Never substitutes synthetic data.
 
 Candidates are sanitized aggregates gathered with read-only PROD metadata calls: one object per complete UTC
 day with start, endExclusive, sourceFamiliesPresent, coverageSignals, rowCount, byteCount, estimatedCostUsd and
@@ -171,6 +175,37 @@ def validate_confirmed(selection: dict | None, policy: dict | None) -> tuple[str
     return "PASS", f"confirmed PROD-derived window [{window['start']}, {window['endExclusive']}) of {int(days)} complete UTC day(s)"
 
 
+def data_days(slice_days: dict, day: str | None, most_recent: bool, now: datetime) -> dict:
+    """Per-slice real-data check of a UTC day, or the most recent complete UTC day with data per slice.
+
+    slice_days maps slice -> {"YYYY-MM-DD": rows} from sanitized read-only PROD counts. A slice without
+    rows on the day is EMPTY with the nearest UTC day that has rows (ties go to the earlier day).
+    """
+    today = now.strftime("%Y-%m-%d")
+    out = {}
+    for name, counts in sorted(slice_days.items()):
+        days = sorted(d for d, rows in counts.items() if rows and d < today)
+        if most_recent:
+            chosen = days[-1] if days else None
+            out[name] = {"day": chosen, "rows": counts.get(chosen, 0) if chosen else 0,
+                         "status": "HAS_DATA" if chosen else "EMPTY", "nearestDayWithData": chosen}
+            continue
+        rows = counts.get(day, 0)
+        target = datetime.fromisoformat(day)
+        nearest = min(days, key=lambda d: (abs((datetime.fromisoformat(d) - target).days), d)) if days else None
+        out[name] = {"day": day, "rows": rows, "status": "HAS_DATA" if rows else "EMPTY",
+                     "nearestDayWithData": day if rows else nearest}
+    empty = sorted(n for n, s in out.items() if s["status"] == "EMPTY")
+    return {"status": "EMPTY_SLICES" if empty else "OK", "emptySlices": empty,
+            "selection": "most-recent-full-utc-day-with-data-per-slice" if most_recent else "confirmed-day",
+            "slices": out, "evidenceIds": ["prod-slice-day-counts"]}
+
+
+def slice_window(entry: dict) -> dict:
+    start = parse_utc(entry["day"] + "T00:00:00Z")
+    return {"start": iso(start), "endExclusive": iso(start + timedelta(days=1)), "completeUtcDays": 1}
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -192,8 +227,22 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--start", required=True)
     c.add_argument("--end-exclusive", required=True)
     c.add_argument("--out", required=True)
+    d = sub.add_parser("data-days")
+    d.add_argument("--slice-days", required=True, help='{"<slice>": {"YYYY-MM-DD": rows}} from read-only PROD counts')
+    group = d.add_mutually_exclusive_group(required=True)
+    group.add_argument("--day", help="the confirmed UTC day (YYYY-MM-DD)")
+    group.add_argument("--most-recent", action="store_true",
+                       help="owner decision: the most recent complete UTC day with real data, per slice")
+    d.add_argument("--now", help="evaluation time (ISO, UTC); default is the current time")
+    d.add_argument("--out", required=True)
     args = parser.parse_args(argv)
 
+    if args.command == "data-days":
+        now = parse_utc(args.now) if args.now else datetime.now(timezone.utc)
+        result = data_days(read_json(args.slice_days), args.day, args.most_recent, now)
+        write_json(args.out, result)
+        print(json.dumps(result, indent=1))
+        return 0 if result["status"] == "OK" else 1
     if args.command == "policy":
         policy = derive_policy(read_json(args.profile), read_json(args.intent) if args.intent else None)
         if args.out:

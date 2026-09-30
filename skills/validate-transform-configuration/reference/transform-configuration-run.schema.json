@@ -53,11 +53,7 @@
           "type": "object",
           "additionalProperties": false,
           "required": ["name", "version", "sha256"],
-          "properties": {
-            "name": { "const": "Transform" },
-            "version": { "type": "string", "minLength": 1 },
-            "sha256": { "$ref": "#/$defs/sha256" }
-          }
+          "properties": { "name": { "const": "Transform" }, "version": { "type": "string", "minLength": 1 }, "sha256": { "$ref": "#/$defs/sha256" } }
         },
         "directions": {
           "type": "array",
@@ -65,23 +61,13 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-              "id",
-              "sourceLanguage",
-              "targetLanguage",
-              "mapping",
-              "evidenceIds"
-            ],
+            "required": ["id", "sourceLanguage", "targetLanguage", "mapping", "evidenceIds"],
             "properties": {
               "id": { "$ref": "#/$defs/kebab" },
               "sourceLanguage": { "$ref": "#/$defs/digestedIdentity" },
               "targetLanguage": { "$ref": "#/$defs/digestedIdentity" },
               "mapping": { "$ref": "#/$defs/digestedIdentity" },
-              "evidenceIds": {
-                "type": "array",
-                "minItems": 1,
-                "items": { "$ref": "#/$defs/kebab" }
-              }
+              "evidenceIds": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/kebab" } }
             }
           }
         },
@@ -113,18 +99,9 @@
             }
           }
         },
-        "testEvidenceIds": {
-          "type": "array",
-          "minItems": 1,
-          "items": { "$ref": "#/$defs/kebab" }
-        },
-        "deployedDigest": {
-          "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }]
-        },
-        "unresolvedProductChangeHandoffs": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/kebab" }
-        },
+        "testEvidenceIds": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/kebab" } },
+        "deployedDigest": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
+        "unresolvedProductChangeHandoffs": { "type": "array", "items": { "$ref": "#/$defs/kebab" } },
         "marketplaceRegistrationReady": { "type": "boolean" }
       }
     },
@@ -144,41 +121,13 @@
           "rejectedCandidateCommitShas"
         ],
         "properties": {
-          "repository": {
-            "type": "string",
-            "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
-          },
-          "selectionMethod": {
-            "enum": [
-              "requested-ref",
-              "matching-open-pull-request",
-              "default-branch"
-            ]
-          },
-          "materialization": {
-            "enum": [
-              "matching-local-checkout",
-              "isolated-checkout",
-              "github-api"
-            ]
-          },
-          "selectedCommitSha": {
-            "type": "string",
-            "pattern": "^[a-f0-9]{40}$"
-          },
-          "pullRequestNumber": {
-            "type": ["integer", "null"],
-            "minimum": 1
-          },
+          "repository": { "type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" },
+          "selectionMethod": { "enum": ["requested-ref", "matching-open-pull-request", "default-branch"] },
+          "materialization": { "enum": ["matching-local-checkout", "isolated-checkout", "github-api"] },
+          "selectedCommitSha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+          "pullRequestNumber": { "type": ["integer", "null"], "minimum": 1 },
           "requiredPathsVerified": { "const": true },
-          "rejectedCandidateCommitShas": {
-            "type": "array",
-            "uniqueItems": true,
-            "items": {
-              "type": "string",
-              "pattern": "^[a-f0-9]{40}$"
-            }
-          }
+          "rejectedCandidateCommitShas": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-f0-9]{40}$" } }
         }
       }
     },
@@ -187,10 +136,10 @@
       "additionalProperties": false,
       "required": ["name", "accountHash", "region", "writePolicy"],
       "properties": {
-        "name": { "enum": ["local", "dev", "prod"] },
+        "name": { "enum": ["dev", "prod"] },
         "accountHash": { "$ref": "#/$defs/sha256" },
         "region": { "type": "string", "pattern": "^[a-z]{2}-[a-z]+-[0-9]$" },
-        "writePolicy": { "enum": ["local-only", "approval-required", "read-only"] }
+        "writePolicy": { "enum": ["approval-required", "read-only"] }
       }
     },
     "sensitivity": {
@@ -204,11 +153,7 @@
         "containsSecrets": { "const": false }
       }
     },
-    "datasets": {
-      "type": "array",
-      "minItems": 1,
-      "items": { "$ref": "#/$defs/datasetEvidence" }
-    },
+    "datasets": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/datasetEvidence" } },
     "graph": { "$ref": "#/$defs/graphEvidence" },
     "runtime": { "$ref": "#/$defs/runtimeEvidence" },
     "sourceWindowSelection": {
@@ -224,9 +169,7 @@
         "evidenceIds"
       ],
       "properties": {
-        "status": {
-          "enum": ["NEEDS_CONFIRMATION", "CONFIRMED", "BLOCKED"]
-        },
+        "status": { "enum": ["NEEDS_CONFIRMATION", "CONFIRMED", "BLOCKED"] },
         "minimumCompleteUtcDays": { "type": "integer", "minimum": 1 },
         "allowLongerRange": { "type": "boolean" },
         "candidateComparisons": {
@@ -249,23 +192,11 @@
               "start": { "type": "string", "format": "date-time" },
               "endExclusive": { "type": "string", "format": "date-time" },
               "complete": { "type": "boolean" },
-              "sourceFamiliesPresent": {
-                "type": "array",
-                "uniqueItems": true,
-                "items": {
-                  "type": "string",
-                  "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*$"
-                }
-              },
+              "sourceFamiliesPresent": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*$" } },
               "coverageSignals": {
                 "type": "object",
                 "minProperties": 1,
-                "additionalProperties": {
-                  "oneOf": [
-                    { "type": "boolean" },
-                    { "type": "integer", "minimum": 0 }
-                  ]
-                }
+                "additionalProperties": { "oneOf": [{ "type": "boolean" }, { "type": "integer", "minimum": 0 }] }
               },
               "rowCount": { "type": "integer", "minimum": 0 },
               "byteCount": { "type": "integer", "minimum": 0 },
@@ -274,24 +205,9 @@
             }
           }
         },
-        "recommendedWindow": {
-          "oneOf": [
-            { "$ref": "#/$defs/utcWindow" },
-            { "type": "null" }
-          ]
-        },
-        "confirmedWindow": {
-          "oneOf": [
-            { "$ref": "#/$defs/utcWindow" },
-            { "type": "null" }
-          ]
-        },
-        "evidenceIds": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": { "$ref": "#/$defs/kebab" }
-        }
+        "recommendedWindow": { "oneOf": [{ "$ref": "#/$defs/utcWindow" }, { "type": "null" }] },
+        "confirmedWindow": { "oneOf": [{ "$ref": "#/$defs/utcWindow" }, { "type": "null" }] },
+        "evidenceIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/kebab" } }
       }
     },
     "finalValidation": {
@@ -305,38 +221,65 @@
         "stagingApprovalDigests",
         "executionApprovalDigests",
         "inputManifestSha256s",
-        "evidenceIds"
+        "evidenceIds",
+        "canary",
+        "fullRunApproval",
+        "baseline"
       ],
       "properties": {
         "kind": { "const": "prod-derived-dev" },
         "status": { "enum": ["PASS", "FAIL", "BLOCKED", "APPROVAL_REQUIRED"] },
         "prodAccess": { "const": "read-only" },
-        "sourceWindow": {
-          "oneOf": [
-            { "$ref": "#/$defs/utcWindow" },
-            { "type": "null" }
-          ]
-        },
-        "stagingApprovalDigests": {
+        "sourceWindow": { "oneOf": [{ "$ref": "#/$defs/utcWindow" }, { "type": "null" }] },
+        "stagingApprovalDigests": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/sha256" } },
+        "executionApprovalDigests": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/sha256" } },
+        "inputManifestSha256s": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/sha256" } },
+        "evidenceIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/kebab" } },
+        "sliceWindows": {
           "type": "array",
-          "uniqueItems": true,
-          "items": { "$ref": "#/$defs/sha256" }
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["slice", "start", "endExclusive", "completeUtcDays"],
+            "properties": {
+              "slice": { "type": "string", "minLength": 1 },
+              "start": { "type": "string", "format": "date-time" },
+              "endExclusive": { "type": "string", "format": "date-time" },
+              "completeUtcDays": { "type": "integer", "minimum": 1 }
+            }
+          }
         },
-        "executionApprovalDigests": {
-          "type": "array",
-          "uniqueItems": true,
-          "items": { "$ref": "#/$defs/sha256" }
+        "canary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "eventsPerSlice", "executionApprovalDigests"],
+          "properties": {
+            "status": { "enum": ["PASS", "FAIL", "BLOCKED", "APPROVAL_REQUIRED"] },
+            "eventsPerSlice": { "const": 10 },
+            "executionApprovalDigests": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/sha256" } }
+          }
         },
-        "inputManifestSha256s": {
-          "type": "array",
-          "uniqueItems": true,
-          "items": { "$ref": "#/$defs/sha256" }
+        "fullRunApproval": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "kind"],
+          "properties": {
+            "status": { "enum": ["ABSENT", "CANARY_FAILED", "AWAITING_APPROVAL", "APPROVED", "PRE_APPROVED"] },
+            "kind": { "enum": ["user", "owner-pre-approval", null] }
+          }
         },
-        "evidenceIds": {
+        "baseline": {
           "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": { "$ref": "#/$defs/kebab" }
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["slice", "baselineKind", "status"],
+            "properties": {
+              "slice": { "type": "string", "minLength": 1 },
+              "baselineKind": { "type": "string", "minLength": 1 },
+              "status": { "enum": ["AVAILABLE", "NONE", "EMPTY", "STALE"] }
+            }
+          }
         }
       }
     },
@@ -375,32 +318,35 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["sequence", "mapping", "environment", "status", "approvalOperationDigest", "inputManifestSha256", "outputLocation", "executedSqlSha256s", "logLocations"],
+        "required": [
+          "sequence",
+          "stage",
+          "mapping",
+          "environment",
+          "status",
+          "approvalOperationDigest",
+          "inputManifestSha256",
+          "outputLocation",
+          "executedSqlSha256s",
+          "logLocations"
+        ],
         "properties": {
           "sequence": { "type": "integer", "minimum": 1 },
           "mapping": { "$ref": "#/$defs/mappingKey" },
-          "environment": { "enum": ["dev", "synthetic-local"] },
+          "environment": { "const": "dev" },
           "status": { "enum": ["PASS", "FAIL", "BLOCKED", "APPROVAL_REQUIRED"] },
           "approvalOperationDigest": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
-          "executionArn": {
-            "type": ["string", "null"],
-            "pattern": "^arn:aws:states:[a-z0-9-]+:[0-9]{12}:execution:[A-Za-z0-9_-]+:[A-Za-z0-9_.-]+$"
-          },
+          "executionArn": { "type": ["string", "null"], "pattern": "^arn:aws:states:[a-z0-9-]+:[0-9]{12}:execution:[A-Za-z0-9_-]+:[A-Za-z0-9_.-]+$" },
           "inputManifestSha256": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
-          "outputLocation": {
-            "type": ["string", "null"],
-            "pattern": "^(?:s3://[^?#@]+/|local://[a-z0-9][a-z0-9/_-]*)$"
-          },
+          "outputLocation": { "type": ["string", "null"], "pattern": "^s3://[^?#@]+/$" },
           "planSha256": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
           "metadataSha256": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
           "executedSqlSha256s": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/sha256" } },
           "logLocations": {
             "type": "array",
-            "items": {
-              "type": "string",
-              "pattern": "^(?:[A-Za-z0-9_./#-]+(?::[A-Za-z0-9_.#$\\[\\]-][A-Za-z0-9_./#$\\[\\]-]*)?|local://[a-z0-9][a-z0-9/_-]*)$"
-            }
-          }
+            "items": { "type": "string", "pattern": "^[A-Za-z0-9_./#-]+(?::[A-Za-z0-9_.#$\\[\\]-][A-Za-z0-9_./#$\\[\\]-]*)?$" }
+          },
+          "stage": { "enum": ["canary", "full"] }
         }
       }
     },
@@ -427,12 +373,18 @@
       "minItems": 12,
       "maxItems": 12,
       "prefixItems": [
-        { "$ref": "#/$defs/phase1" }, { "$ref": "#/$defs/phase2" },
-        { "$ref": "#/$defs/phase3" }, { "$ref": "#/$defs/phase4" },
-        { "$ref": "#/$defs/phase5" }, { "$ref": "#/$defs/phase6" },
-        { "$ref": "#/$defs/phase7" }, { "$ref": "#/$defs/phase8" },
-        { "$ref": "#/$defs/phase9" }, { "$ref": "#/$defs/phase10" },
-        { "$ref": "#/$defs/phase11" }, { "$ref": "#/$defs/phase12" }
+        { "$ref": "#/$defs/phase1" },
+        { "$ref": "#/$defs/phase2" },
+        { "$ref": "#/$defs/phase3" },
+        { "$ref": "#/$defs/phase4" },
+        { "$ref": "#/$defs/phase5" },
+        { "$ref": "#/$defs/phase6" },
+        { "$ref": "#/$defs/phase7" },
+        { "$ref": "#/$defs/phase8" },
+        { "$ref": "#/$defs/phase9" },
+        { "$ref": "#/$defs/phase10" },
+        { "$ref": "#/$defs/phase11" },
+        { "$ref": "#/$defs/phase12" }
       ],
       "items": false
     },
@@ -447,19 +399,25 @@
           "id": { "$ref": "#/$defs/kebab" },
           "proposedChange": { "type": "string", "minLength": 5 },
           "classification": { "enum": ["CONFIGURATION", "PRODUCT_CHANGE"] },
-          "evidenceIds": {
-            "type": "array",
-            "minItems": 1,
-            "items": { "$ref": "#/$defs/kebab" }
-          },
+          "evidenceIds": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/kebab" } },
           "resolved": { "type": "boolean" },
-          "handoffOwner": { "type": ["string", "null"], "minLength": 2 }
+          "handoffOwner": { "type": ["string", "null"], "minLength": 2 },
+          "ownerAccepted": {
+            "type": "boolean",
+            "description": "The owner accepted this PRODUCT_CHANGE as out of scope up front; it stays flagged for Kecleon."
+          }
         },
         "allOf": [
           {
-            "if": { "properties": { "classification": { "const": "PRODUCT_CHANGE" } } },
-            "then": { "properties": { "handoffOwner": { "type": "string", "minLength": 2 } } },
-            "else": { "properties": { "handoffOwner": { "type": "null" } } }
+            "if": {
+              "properties": { "classification": { "const": "PRODUCT_CHANGE" } }
+            },
+            "then": {
+              "properties": { "handoffOwner": { "type": "string", "minLength": 2 } }
+            },
+            "else": {
+              "properties": { "handoffOwner": { "type": "null" } }
+            }
           }
         ]
       }
@@ -522,123 +480,117 @@
         ],
         "properties": {
           "id": { "$ref": "#/$defs/kebab" },
-          "findingCode": {
-            "type": "string",
-            "pattern": "^[A-Z][A-Za-z0-9]+$"
-          },
+          "findingCode": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$" },
           "status": { "enum": ["FAIL", "BLOCKED", "APPROVAL_REQUIRED"] },
-          "classification": {
-            "enum": [
-              "CONFIGURATION",
-              "PRODUCT_CHANGE",
-              "ACCESS_OR_EVIDENCE"
-            ]
-          },
+          "classification": { "enum": ["CONFIGURATION", "PRODUCT_CHANGE", "ACCESS_OR_EVIDENCE"] },
           "owner": { "type": "string", "minLength": 2 },
-          "repository": {
-            "oneOf": [
-              {
-                "type": "string",
-                "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
-              },
-              { "type": "null" }
-            ]
-          },
-          "locations": {
-            "type": "array",
-            "minItems": 1,
-            "uniqueItems": true,
-            "items": { "type": "string", "minLength": 1 }
-          },
-          "locationEvidenceIds": {
-            "type": "array",
-            "minItems": 1,
-            "uniqueItems": true,
-            "items": { "$ref": "#/$defs/kebab" }
-          },
+          "repository": { "oneOf": [{ "type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" }, { "type": "null" }] },
+          "locations": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+          "locationEvidenceIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/kebab" } },
           "recommendedChange": { "type": "string", "minLength": 10 },
-          "regressionEvidence": {
-            "type": "array",
-            "minItems": 1,
-            "items": { "type": "string", "minLength": 3 }
-          },
-          "rerunPhases": {
-            "type": "array",
-            "minItems": 1,
-            "uniqueItems": true,
-            "items": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 12
-            }
-          },
-          "rerunDirections": {
-            "type": "array",
-            "minItems": 1,
-            "uniqueItems": true,
-            "items": { "$ref": "#/$defs/kebab" }
-          }
+          "regressionEvidence": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 3 } },
+          "rerunPhases": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "integer", "minimum": 1, "maximum": 12 } },
+          "rerunDirections": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/kebab" } }
         }
       }
     },
     "verdict": { "enum": ["READY", "NOT_READY", "BLOCKED"] },
-    "versionSelection": { "$ref": "#/$defs/versionSelection" }
+    "versionSelection": { "$ref": "#/$defs/versionSelection" },
+    "ownerDecisions": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Decisions the owner gave up front in the request.",
+      "properties": {
+        "preApproveFullRunOnCanaryPass": { "type": "boolean" },
+        "acceptProductChanges": { "type": "boolean" },
+        "costCeilingUsd": { "type": "number", "minimum": 0 },
+        "windowSelection": { "const": "most-recent-full-utc-day-with-data-per-slice" }
+      }
+    },
+    "acceptedProductChanges": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/kebab" } },
+    "prodActuals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["slice", "baselineKind", "status"],
+        "properties": {
+          "slice": { "type": "string", "minLength": 1 },
+          "baselineKind": { "type": "string", "minLength": 1 },
+          "status": { "enum": ["AVAILABLE", "NONE", "EMPTY", "STALE"] }
+        }
+      }
+    }
   },
   "allOf": [
     {
-      "if": { "properties": { "verdict": { "const": "READY" } } },
+      "if": {
+        "properties": { "verdict": { "const": "READY" } }
+      },
       "then": {
-        "required": ["sourceWindowSelection", "finalValidation", "executionSteps"],
+        "required": ["finalValidation", "executionSteps"],
         "properties": {
-          "sourceWindowSelection": {
-            "properties": {
-              "status": { "const": "CONFIRMED" },
-              "confirmedWindow": { "$ref": "#/$defs/utcWindow" }
-            }
-          },
           "finalValidation": {
             "properties": {
               "status": { "const": "PASS" },
-              "sourceWindow": { "$ref": "#/$defs/utcWindow" },
               "stagingApprovalDigests": { "minItems": 1 },
               "executionApprovalDigests": { "minItems": 1 },
-              "inputManifestSha256s": { "minItems": 1 }
+              "inputManifestSha256s": { "minItems": 1 },
+              "canary": {
+                "properties": { "status": { "const": "PASS" } }
+              },
+              "fullRunApproval": {
+                "properties": { "status": { "enum": ["APPROVED", "PRE_APPROVED"] } }
+              },
+              "baseline": {
+                "minItems": 1,
+                "items": {
+                  "properties": { "status": { "enum": ["AVAILABLE", "NONE"] } }
+                }
+              }
             }
           },
           "executionSteps": {
             "minItems": 1,
             "items": {
-              "properties": {
-                "environment": { "const": "dev" },
-                "status": { "const": "PASS" },
-                "approvalOperationDigest": { "$ref": "#/$defs/sha256" }
+              "properties": { "environment": { "const": "dev" }, "status": { "const": "PASS" }, "approvalOperationDigest": { "$ref": "#/$defs/sha256" } }
+            },
+            "allOf": [
+              {
+                "contains": {
+                  "properties": { "stage": { "const": "canary" } },
+                  "required": ["stage"]
+                }
+              },
+              {
+                "contains": {
+                  "properties": { "stage": { "const": "full" } },
+                  "required": ["stage"]
+                }
               }
-            }
+            ]
           },
           "boundaryDecisions": {
             "not": {
               "contains": {
                 "type": "object",
-                "properties": {
-                  "classification": { "const": "PRODUCT_CHANGE" },
-                  "resolved": { "const": false }
-                },
-                "required": ["classification", "resolved"]
+                "properties": { "classification": { "const": "PRODUCT_CHANGE" }, "resolved": { "const": false } },
+                "required": ["classification", "resolved"],
+                "not": {
+                  "properties": { "ownerAccepted": { "const": true } },
+                  "required": ["ownerAccepted"]
+                }
               }
             }
           },
           "configurationPackage": {
-            "properties": {
-              "unresolvedProductChangeHandoffs": { "maxItems": 0 }
-            }
+            "properties": { "unresolvedProductChangeHandoffs": { "maxItems": 0 } }
           },
           "datasets": {
             "not": {
               "contains": {
                 "type": "object",
-                "properties": {
-                  "availability": { "const": "UNAVAILABLE" }
-                },
+                "properties": { "availability": { "const": "UNAVAILABLE" } },
                 "required": ["availability"]
               }
             }
@@ -646,38 +598,51 @@
           "graph": {
             "not": {
               "type": "object",
-              "properties": {
-                "availability": { "const": "UNAVAILABLE" }
-              },
+              "properties": { "availability": { "const": "UNAVAILABLE" } },
               "required": ["availability"]
             }
           },
           "runtime": {
             "not": {
               "type": "object",
-              "properties": {
-                "availability": { "const": "UNAVAILABLE" }
-              },
+              "properties": { "availability": { "const": "UNAVAILABLE" } },
               "required": ["availability"]
             },
             "required": ["executionMode"],
+            "properties": { "executionMode": { "const": "observed-dev" } }
+          }
+        },
+        "anyOf": [
+          {
+            "required": ["sourceWindowSelection"],
             "properties": {
-              "executionMode": { "const": "observed-dev" }
+              "sourceWindowSelection": {
+                "properties": { "status": { "const": "CONFIRMED" }, "confirmedWindow": { "$ref": "#/$defs/utcWindow" } }
+              },
+              "finalValidation": {
+                "properties": { "sourceWindow": { "$ref": "#/$defs/utcWindow" } }
+              }
+            }
+          },
+          {
+            "required": ["ownerDecisions"],
+            "properties": {
+              "ownerDecisions": { "required": ["windowSelection"] },
+              "finalValidation": {
+                "required": ["sliceWindows"],
+                "properties": { "sliceWindows": { "minItems": 1 } }
+              }
             }
           }
-        }
+        ]
       }
     },
     {
       "if": {
-        "properties": {
-          "verdict": { "enum": ["NOT_READY", "BLOCKED"] }
-        }
+        "properties": { "verdict": { "enum": ["NOT_READY", "BLOCKED"] } }
       },
       "then": {
-        "properties": {
-          "remediations": { "minItems": 1 }
-        }
+        "properties": { "remediations": { "minItems": 1 } }
       }
     }
   ],
@@ -686,172 +651,71 @@
       "description": "How the mapping version was chosen. Without @x.y.z the default is the highest selectable semantic version (DEV-published, candidate-build, or checked-in). PROD catalog membership never selects or rejects a version. The chosen mapping.json is pinned by SHA-256.",
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "requested",
-        "mappingId",
-        "candidates",
-        "chosen",
-        "rule",
-        "pin"
-      ],
+      "required": ["requested", "mappingId", "candidates", "chosen", "rule", "pin"],
       "properties": {
-        "requested": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
-        },
-        "mappingId": {
-          "type": "string",
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
-        },
+        "requested": { "type": ["string", "null"], "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "mappingId": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
         "candidates": {
           "type": "array",
           "minItems": 1,
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-              "version",
-              "publishedIn"
-            ],
+            "required": ["version", "publishedIn"],
             "properties": {
-              "version": {
-                "type": "string",
-                "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
-              },
-              "publishedIn": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "uniqueItems": true
-              }
+              "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+              "publishedIn": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
             }
           }
         },
-        "chosen": {
-          "type": "string",
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*@[0-9]+\\.[0-9]+\\.[0-9]+$"
-        },
-        "rule": {
-          "enum": [
-            "explicit-version",
-            "latest-published-semver",
-            "latest-candidate-semver",
-            "single-match",
-            "cumulative-superset"
-          ]
-        },
-        "notice": {
-          "type": "string",
-          "minLength": 1
-        },
+        "chosen": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*@[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "rule": { "enum": ["explicit-version", "latest-published-semver", "latest-candidate-semver", "single-match", "cumulative-superset"] },
+        "notice": { "type": "string", "minLength": 1 },
         "pin": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "source",
-            "sha256"
-          ],
+          "required": ["source", "sha256"],
           "properties": {
-            "source": {
-              "enum": [
-                "published-registry",
-                "checked-in-registration",
-                "candidate-build"
-              ]
-            },
-            "label": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "path": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "sha256": {
-              "type": "string",
-              "pattern": "^[a-f0-9]{64}$"
-            }
+            "source": { "enum": ["published-registry", "checked-in-registration", "candidate-build"] },
+            "label": { "type": ["string", "null"] },
+            "path": { "type": ["string", "null"] },
+            "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
           }
         }
       },
       "allOf": [
         {
           "if": {
-            "properties": {
-              "rule": {
-                "const": "latest-published-semver"
-              }
-            },
-            "required": [
-              "rule"
-            ]
+            "properties": { "rule": { "const": "latest-published-semver" } },
+            "required": ["rule"]
           },
           "then": {
-            "required": [
-              "notice"
-            ],
+            "required": ["notice"],
             "properties": {
-              "requested": {
-                "type": "null"
-              },
+              "requested": { "type": "null" },
               "pin": {
-                "properties": {
-                  "source": {
-                    "const": "published-registry"
-                  }
-                }
+                "properties": { "source": { "const": "published-registry" } }
               }
             }
           }
         },
         {
           "if": {
-            "properties": {
-              "rule": {
-                "const": "latest-candidate-semver"
-              }
-            },
-            "required": [
-              "rule"
-            ]
+            "properties": { "rule": { "const": "latest-candidate-semver" } },
+            "required": ["rule"]
           },
           "then": {
-            "required": [
-              "notice"
-            ],
-            "properties": {
-              "requested": {
-                "type": "null"
-              }
-            }
+            "required": ["notice"],
+            "properties": { "requested": { "type": "null" } }
           }
         },
         {
           "if": {
-            "properties": {
-              "rule": {
-                "const": "explicit-version"
-              }
-            },
-            "required": [
-              "rule"
-            ]
+            "properties": { "rule": { "const": "explicit-version" } },
+            "required": ["rule"]
           },
           "then": {
-            "properties": {
-              "requested": {
-                "type": "string"
-              }
-            }
+            "properties": { "requested": { "type": "string" } }
           }
         }
       ]
@@ -867,12 +731,7 @@
         "availability": { "const": "UNAVAILABLE" },
         "subject": { "type": "string", "minLength": 1 },
         "reason": { "type": "string", "minLength": 3 },
-        "evidenceIds": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": { "$ref": "#/$defs/kebab" }
-        }
+        "evidenceIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/kebab" } }
       }
     },
     "datasetEvidence": {
@@ -880,25 +739,13 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "name",
-            "schemaSha256",
-            "rowCount",
-            "contentSha256",
-            "location"
-          ],
+          "required": ["name", "schemaSha256", "rowCount", "contentSha256", "location"],
           "properties": {
-            "name": {
-              "type": "string",
-              "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*$"
-            },
+            "name": { "type": "string", "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*$" },
             "schemaSha256": { "$ref": "#/$defs/sha256" },
             "rowCount": { "type": "integer", "minimum": 0 },
             "contentSha256": { "$ref": "#/$defs/sha256" },
-            "location": {
-              "type": "string",
-              "pattern": "^(local|s3)://[^?#@]+$"
-            }
+            "location": { "type": "string", "pattern": "^s3://[^?#@]+$" }
           }
         },
         { "$ref": "#/$defs/unavailableEvidence" }
@@ -909,12 +756,7 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "required",
-            "identityUnique",
-            "endpointCount",
-            "danglingEndpointCount"
-          ],
+          "required": ["required", "identityUnique", "endpointCount", "danglingEndpointCount"],
           "properties": {
             "required": { "type": "boolean" },
             "identityUnique": { "type": "boolean" },
@@ -930,30 +772,12 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "sparkVersion",
-            "transformRevision",
-            "deploymentDigest",
-            "executionMode"
-          ],
+          "required": ["sparkVersion", "transformRevision", "deploymentDigest", "executionMode"],
           "properties": {
-            "sparkVersion": {
-              "type": "string",
-              "pattern": "^[0-9]+\\.[0-9]+(?:\\.[0-9]+)?$"
-            },
-            "transformRevision": {
-              "type": "string",
-              "pattern": "^[a-f0-9]{40}$"
-            },
+            "sparkVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+(?:\\.[0-9]+)?$" },
+            "transformRevision": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
             "deploymentDigest": { "$ref": "#/$defs/sha256" },
-            "executionMode": {
-              "enum": [
-                "synthetic-local",
-                "bounded-dev-dry-run",
-                "observed-dev",
-                "observed-prod-read-only"
-              ]
-            }
+            "executionMode": { "enum": ["bounded-dev-dry-run", "observed-dev", "observed-prod-read-only"] }
           }
         },
         { "$ref": "#/$defs/unavailableEvidence" }
@@ -999,17 +823,101 @@
         "evidenceIds": { "type": "array", "items": { "$ref": "#/$defs/kebab" } }
       }
     },
-    "phase1": { "allOf": [{ "$ref": "#/$defs/phase" }, { "properties": { "number": { "const": 1 } } }] },
-    "phase2": { "allOf": [{ "$ref": "#/$defs/phase" }, { "properties": { "number": { "const": 2 } } }] },
-    "phase3": { "allOf": [{ "$ref": "#/$defs/phase" }, { "properties": { "number": { "const": 3 } } }] },
-    "phase4": { "allOf": [{ "$ref": "#/$defs/phase" }, { "properties": { "number": { "const": 4 } } }] },
-    "phase5": { "allOf": [{ "$ref": "#/$defs/phase" }, { "properties": { "number": { "const": 5 } } }] },
-    "phase6": { "allOf": [{ "$ref": "#/$defs/phase" }, { "properties": { "number": { "const": 6 } } }] },
-    "phase7": { "allOf": [{ "$ref": "#/$defs/phase" }, { "properties": { "number": { "const": 7 } } }] },
-    "phase8": { "allOf": [{ "$ref": "#/$defs/phase" }, { "properties": { "number": { "const": 8 } } }] },
-    "phase9": { "allOf": [{ "$ref": "#/$defs/phase" }, { "properties": { "number": { "const": 9 } } }] },
-    "phase10": { "allOf": [{ "$ref": "#/$defs/phase" }, { "properties": { "number": { "const": 10 } } }] },
-    "phase11": { "allOf": [{ "$ref": "#/$defs/phase" }, { "properties": { "number": { "const": 11 } } }] },
-    "phase12": { "allOf": [{ "$ref": "#/$defs/phase" }, { "properties": { "number": { "const": 12 } } }] }
+    "phase1": {
+      "allOf": [
+        { "$ref": "#/$defs/phase" },
+        {
+          "properties": { "number": { "const": 1 } }
+        }
+      ]
+    },
+    "phase2": {
+      "allOf": [
+        { "$ref": "#/$defs/phase" },
+        {
+          "properties": { "number": { "const": 2 } }
+        }
+      ]
+    },
+    "phase3": {
+      "allOf": [
+        { "$ref": "#/$defs/phase" },
+        {
+          "properties": { "number": { "const": 3 } }
+        }
+      ]
+    },
+    "phase4": {
+      "allOf": [
+        { "$ref": "#/$defs/phase" },
+        {
+          "properties": { "number": { "const": 4 } }
+        }
+      ]
+    },
+    "phase5": {
+      "allOf": [
+        { "$ref": "#/$defs/phase" },
+        {
+          "properties": { "number": { "const": 5 } }
+        }
+      ]
+    },
+    "phase6": {
+      "allOf": [
+        { "$ref": "#/$defs/phase" },
+        {
+          "properties": { "number": { "const": 6 } }
+        }
+      ]
+    },
+    "phase7": {
+      "allOf": [
+        { "$ref": "#/$defs/phase" },
+        {
+          "properties": { "number": { "const": 7 } }
+        }
+      ]
+    },
+    "phase8": {
+      "allOf": [
+        { "$ref": "#/$defs/phase" },
+        {
+          "properties": { "number": { "const": 8 } }
+        }
+      ]
+    },
+    "phase9": {
+      "allOf": [
+        { "$ref": "#/$defs/phase" },
+        {
+          "properties": { "number": { "const": 9 } }
+        }
+      ]
+    },
+    "phase10": {
+      "allOf": [
+        { "$ref": "#/$defs/phase" },
+        {
+          "properties": { "number": { "const": 10 } }
+        }
+      ]
+    },
+    "phase11": {
+      "allOf": [
+        { "$ref": "#/$defs/phase" },
+        {
+          "properties": { "number": { "const": 11 } }
+        }
+      ]
+    },
+    "phase12": {
+      "allOf": [
+        { "$ref": "#/$defs/phase" },
+        {
+          "properties": { "number": { "const": 12 } }
+        }
+      ]
+    }
   }
 }

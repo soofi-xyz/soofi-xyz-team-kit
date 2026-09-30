@@ -26,6 +26,14 @@ Commands (all write evidence only under --run-dir):
   capture  read-only: describe-execution, history, plan.json, output files; reconcile metadata with physical rows
   regress  compare this run's captured outputs with a baseline run directory, case by case (same inputs and outputs)
   cost     read-only: Glue DPU-hours of this run's job runs and the USD estimate
+  canary-gate   summarize a captured canary-stage run and its PROD-actuals comparisons for the user:
+                CANARY_FAILED (stop; never offer the full run), AWAITING_APPROVAL, or PRE_APPROVED when the
+                owner pre-approved the full run for a passing canary
+  approve-full  record the user's explicit approval of an AWAITING_APPROVAL gate
+
+`stage` is canary (the fixed sample of 10 real events per slice) or full (the whole confirmed window). `start`
+refuses a full-stage run without an APPROVED or PRE_APPROVED canary gate, and every spec refuses a job ceiling
+above `ownerCostCeilingUsd` when the owner set one.
 
 `expected` is PASS (execution must succeed) or REJECTED (the plan must be rejected before the Transform job
 starts; when `missingInput` is set, the error must name it).
@@ -56,7 +64,84 @@ def load_spec(path: str) -> dict:
     spec.setdefault("runId", time.strftime("%Y%m%dT%H%M%SZ", time.gmtime()))
     spec.setdefault("region", DEFAULT_REGION)
     spec.setdefault("costCeilingUsd", 5)
+    spec.setdefault("stage", "full")
+    check_cost_ceiling(spec)
     return spec
+
+
+def check_cost_ceiling(spec: dict) -> None:
+    ceiling = spec.get("ownerCostCeilingUsd")
+    if ceiling is None:
+        return
+    over = [c["case"] for c in spec["cases"] if (c.get("request") or {}).get("costCeilingUsd", spec["costCeilingUsd"]) > ceiling]
+    if spec["costCeilingUsd"] > ceiling or over:
+        raise SilvallyError(f"CostCeilingExceeded: a job ceiling is above the owner's {ceiling} USD per job ({over or 'costCeilingUsd'})")
+
+
+def gate_digest(gate: dict) -> str:
+    return canonical_digest({k: v for k, v in gate.items() if k not in {"status", "approval", "gateDigest"}})
+
+
+def cmd_canary_gate(args) -> int:
+    """Summarize the DEV canary for the user and decide whether a full-window run may be offered."""
+    run_dir = Path(args.canary_run_dir)
+    spec = load_spec(str(run_dir / "run-spec.json"))
+    if spec["stage"] != "canary":
+        raise SilvallyError("canary-gate reads a canary-stage run directory")
+    steps = read_json(run_dir / "steps.json") if (run_dir / "steps.json").exists() else []
+    comparisons = [read_json(p) for p in args.comparison]
+    decisions = read_json(args.owner_decisions) if args.owner_decisions else {}
+    approved = [s["step"] for s in steps if (run_dir / "approvals" / f"{s['step']}.json").exists()]
+    failed = ([f"{s['step']} {s['status']}" for s in steps if s.get("verdict") != "PASS" or s["status"] == "RUNNING"]
+              + [f"comparison {c.get('slice')} {c['status']}" for c in comparisons if c["status"] != "PASS"]
+              + [f"{s['step']} has no approval" for s in steps if s["step"] not in approved])
+    if not steps:
+        failed.append("no captured canary execution")
+    gate = {"kind": "canary-gate", "canaryRunId": spec["runId"], "stage": "canary",
+            "executions": [{"step": s["step"], "executionArn": s.get("executionArn"), "status": s["status"], "verdict": s.get("verdict"),
+                            "inputs": [i["s3Uri"] for c in spec["cases"] if c["case"] == s["step"].split("-", 1)[-1]
+                                       for i in c["request"].get("inputs", [])],
+                            "outputPrefix": s.get("outputPrefix"),
+                            "rows": {o["dataset"]: o.get("physicalRows") for o in s.get("outputs", [])}} for s in steps],
+            "comparisons": [{"slice": c.get("slice"), "baselineKind": c.get("baselineKind"), "status": c["status"],
+                             "checks": [{k: v for k, v in x.items() if k in {"id", "kind", "status", "devRows", "prodRows", "onlyDev",
+                                                                             "onlyProd", "mismatchedByColumn", "devRejects", "prodFailures"}}
+                                        for x in c.get("checks", [])]} for c in comparisons],
+            "failures": failed}
+    if failed:
+        gate["status"] = "CANARY_FAILED"
+    elif decisions.get("preApproveFullRunOnCanaryPass"):
+        gate["status"] = "PRE_APPROVED"
+        gate["approval"] = {"kind": "owner-pre-approval", "recordedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+    else:
+        gate["status"] = "AWAITING_APPROVAL"
+    gate["gateDigest"] = gate_digest(gate)
+    write_json(args.out, gate)
+    print(json.dumps(gate, indent=1))
+    return 0 if gate["status"] != "CANARY_FAILED" else 1
+
+
+def cmd_approve_full(args) -> int:
+    gate = read_json(args.gate)
+    if gate.get("status") != "AWAITING_APPROVAL" or gate.get("gateDigest") != gate_digest(gate):
+        raise SilvallyError(f"only an unchanged AWAITING_APPROVAL canary gate can be approved (status {gate.get('status')})")
+    gate["status"] = "APPROVED"
+    gate["approval"] = {"kind": "user", "approver": args.approver, "scope": args.scope, "operationDigest": gate["gateDigest"],
+                        "recordedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+    write_json(args.gate, gate)
+    print(json.dumps({"status": gate["status"], "gateDigest": gate["gateDigest"]}))
+    return 0
+
+
+def assert_full_run_allowed(spec: dict, gate_path: str | None) -> dict | None:
+    if spec["stage"] != "full":
+        return None
+    if not gate_path:
+        raise SilvallyError("CanaryRequired: a full-window run needs a passed DEV canary and an approved --canary-gate")
+    gate = read_json(gate_path)
+    if gate.get("status") not in {"APPROVED", "PRE_APPROVED"} or gate.get("gateDigest") != gate_digest(gate):
+        raise SilvallyError(f"CanaryGateNotApproved: canary gate status {gate.get('status')}; never proceed to the full run")
+    return gate
 
 
 def execution_name(spec: dict, index: int, case: dict) -> str:
@@ -77,7 +162,7 @@ def card_for(spec: dict, index: int, case: dict) -> dict:
         "reads": [i["s3Uri"] for i in request.get("inputs", [])],
         "mappingPin": {"mapping": case["mapping"], **pin},
         "writes": [request["output"]["s3Prefix"] + name + "/", "Transform-owned runs/<execution>/ plan and reservation"],
-        "costCeilingUsd": request["costCeilingUsd"], "expected": case.get("expected", "PASS"),
+        "costCeilingUsd": request["costCeilingUsd"], "expected": case.get("expected", "PASS"), "stage": spec.get("stage", "full"),
         "containment": "new unique execution name and output prefix; nothing overwritten; no deletes; Persist not invoked",
     }
     if case.get("missingInput"):
@@ -115,14 +200,23 @@ def cmd_start(args) -> int:
     spec = load_spec(str(run_dir / "run-spec.json"))
     assert_dev_transform(spec)
     approvals = set(args.approve or [])
-    if (spec.get("deployment") or {}).get("drift") and approvals:
-        raise SilvallyError(spec["deployment"]["blocking"])
-    started = 0
+    cards = []
     for index, case in enumerate(spec["cases"], 1):
         card = card_for(spec, index, case)
         stored = read_json(run_dir / "cards" / f"{index}-{case['case']}.json")
         if stored["operationDigest"] != card["operationDigest"]:
             raise SilvallyError(f"{index}-{case['case']}: card changed since it was presented; re-run cards")
+        cards.append((index, case, card))
+    unmatched = approvals - {card["operationDigest"] for _, _, card in cards}
+    if unmatched:
+        raise SilvallyError(f"approval digests match no card: {sorted(unmatched)}")
+    if (spec.get("deployment") or {}).get("drift") and approvals:
+        raise SilvallyError(spec["deployment"]["blocking"])
+    gate = assert_full_run_allowed(spec, args.canary_gate) if approvals else None
+    if gate:
+        write_json(run_dir / "canary-gate.json", gate)
+    started = 0
+    for index, case, card in cards:
         if card["operationDigest"] not in approvals:
             continue
         approval = {"operationDigest": card["operationDigest"], "environment": "dev", "status": "APPROVED",
@@ -135,9 +229,6 @@ def cmd_start(args) -> int:
         write_json(run_dir / "approvals" / f"{index}-{case['case']}.started.json", result)
         print(f"STARTED {card['executionName']}")
         started += 1
-    unmatched = approvals - {card_for(spec, i, c)["operationDigest"] for i, c in enumerate(spec["cases"], 1)}
-    if unmatched:
-        raise SilvallyError(f"approval digests match no card: {sorted(unmatched)}")
     print(f"started {started} execution(s)")
     return 0
 
@@ -431,7 +522,7 @@ def cmd_spec_from_intent(args) -> int:
         options = {**(mapping["output"].get("options") or {}), **(o.get("options") or {})}
         formats[o["dataset"]] = {"type": fmt_type, **({"delimiter": options.get("delimiter", ","), "header": bool(options.get("header", False))} if fmt_type == "csv" else {})}
     spec = {"stateMachineArn": arn, "outputRoot": args.output_root or f"s3://{bucket}/outputs/silvally-{label}/",
-            "profile": args.profile, "region": args.region, "costCeilingUsd": args.cost_ceiling,
+            "profile": args.profile, "region": args.region, "costCeilingUsd": args.cost_ceiling, "stage": args.stage,
             "mappings": {mapping_key: {"sha256": pin["sha256"], "versionId": (served or {}).get("versionId")}},
             "outputFormats": formats, "bindings": bindings,
             "presentInputs": {n: sorted(t) for n, t in present.items()},
@@ -440,6 +531,9 @@ def cmd_spec_from_intent(args) -> int:
             "skipped": skipped, "cases": cases}
     if args.run_id:
         spec["runId"] = args.run_id
+    if args.owner_cost_ceiling is not None:
+        spec["ownerCostCeilingUsd"] = args.owner_cost_ceiling
+    check_cost_ceiling(spec)
     write_json(args.out, spec)
     print(json.dumps({"out": args.out, "cases": len(cases), "negatives": sum(c["expected"] == "REJECTED" for c in cases),
                       "stateMachine": arn.split(":")[-1], "drift": drift, "skipped": skipped}, indent=1))
@@ -464,6 +558,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--output-root", help="s3:// prefix ending in / (default: <first binding bucket>/outputs/silvally-<profile-or-mapping>/)")
     p.add_argument("--state-machine-suffix", help="default: the layout's transformRuntime.stateMachineSuffix")
     p.add_argument("--cost-ceiling", type=float, default=5)
+    p.add_argument("--owner-cost-ceiling", type=float, help="owner's per-job costCeilingUsd decision; no case may exceed it")
+    p.add_argument("--stage", choices=("canary", "full"), default="full",
+                   help="canary: the fixed 10-events-per-slice sample; full: the whole confirmed window (needs --canary-gate at start)")
     p.add_argument("--out", required=True)
     p = sub.add_parser("cards")
     p.add_argument("--spec", required=True)
@@ -473,6 +570,16 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--approve", action="append", help="operation digest the approver accepted (repeatable)")
     p.add_argument("--approver", required=True)
     p.add_argument("--scope", required=True, help="the approval scope in the approver's words")
+    p.add_argument("--canary-gate", help="canary-gate record (APPROVED or PRE_APPROVED); required for a full-stage run")
+    p = sub.add_parser("canary-gate")
+    p.add_argument("--canary-run-dir", required=True, help="the captured canary run directory")
+    p.add_argument("--comparison", action="append", required=True, help="prod_actuals.py compare result for the canary (per slice)")
+    p.add_argument("--owner-decisions", help="the resolver's ownerDecisions JSON (preApproveFullRunOnCanaryPass)")
+    p.add_argument("--out", required=True)
+    p = sub.add_parser("approve-full")
+    p.add_argument("--gate", required=True)
+    p.add_argument("--approver", required=True)
+    p.add_argument("--scope", required=True, help="the user's approval of the full-window run, in their words")
     p = sub.add_parser("capture")
     p.add_argument("--run-dir", required=True)
     p = sub.add_parser("regress")
@@ -484,7 +591,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--max-runs", type=int, default=2000)
     args = parser.parse_args(argv)
     return {"spec-from-intent": cmd_spec_from_intent, "cards": cmd_cards, "start": cmd_start, "capture": cmd_capture,
-            "regress": cmd_regress, "cost": cmd_cost}[args.command](args)
+            "regress": cmd_regress, "cost": cmd_cost, "canary-gate": cmd_canary_gate,
+            "approve-full": cmd_approve_full}[args.command](args)
 
 
 if __name__ == "__main__":

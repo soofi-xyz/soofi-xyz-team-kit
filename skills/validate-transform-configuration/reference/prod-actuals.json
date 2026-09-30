@@ -1,0 +1,73 @@
+{
+  "id": "prod-actuals.json",
+  "contractVersion": 1,
+  "description": "What PROD actually did for each named package slice, read-only, used as the comparison baseline for the DEV canary and the full-window DEV run. Each slice names one baseline source. A slice with baselineKind none falls back to schema, row-count and reject-reason checks, and the report says so. Silvally never builds a local oracle in place of a missing actual.",
+  "package": {
+    "from": "lexicon",
+    "to": "interprose",
+    "mappingId": "lexicon-to-interprose"
+  },
+  "slices": {
+    "sms": {
+      "outputDatasets": ["sms_log"],
+      "baselineKind": "iceberg-table",
+      "source": {
+        "region": "us-east-2",
+        "table": "interprose_current.txt_msg_log",
+        "meaning": "Interprose's own SMS log rows (the legacy SMS pipeline's result as Interprose recorded it), mirrored read-only by Stage ETL",
+        "windowColumn": "sent_date",
+        "freshness": "the table's current snapshot must be committed at or after the window end; otherwise the slice has no actual for that window and the nearest earlier covered UTC day is suggested"
+      },
+      "key": {"dataset": ["vendor_tracking_code"], "actual": ["vendor_tracking_code"]},
+      "fieldMap": {
+        "debt_id": "debt_id",
+        "phone_number": "phone_number",
+        "msg": "msg",
+        "sent_date": "sent_date",
+        "vendor_result": "vendor_result",
+        "txt_msg_template_id": "txt_msg_template_id",
+        "vendor_tracking_code": "vendor_tracking_code"
+      },
+      "canary": {"eventTimeField": "sent_date", "eventKeyField": "vendor_tracking_code", "outcomeField": "vendor_result"}
+    },
+    "dsa": {
+      "outputDatasets": ["form_1281"],
+      "baselineKind": "iceberg-table",
+      "source": {
+        "region": "us-east-2",
+        "table": "interprose_current.debt_settlement_agency",
+        "meaning": "Interprose's debt settlement agency rows; an active row (empty delete_date) is the DSA_NAME Interprose actually holds for that debt",
+        "windowColumn": "last_update",
+        "freshness": "the table's current snapshot must be committed at or after the window end"
+      },
+      "key": {"dataset": ["debtID"], "actual": ["debt_id"]},
+      "fieldMap": {"debtID": "debt_id", "value": "dsa_name"},
+      "rowFilter": {"dataset": {"field_identifier": "DSA_NAME"}, "actual": {"delete_date": ""}},
+      "canary": {"eventTimeField": "last_update", "eventKeyField": "debt_id", "outcomeField": "delete_date"}
+    },
+    "m2d": {
+      "outputDatasets": ["document", "document_rejects"],
+      "baselineKind": "state-machine-lambda-outcomes",
+      "source": {
+        "region": "us-east-2",
+        "lambdaFunctionName": "m2d-pipeline-prod-use2-interprose-upload",
+        "stateMachine": "DocumentProcessingStateMachine (EXPRESS; upload steps SliceUploadToInterprose and UploadToInterproseQC invoke lambdaFunctionName directly)",
+        "executionLogGroup": "/aws/vendedlogs/states/m2d-pipeline-prod-use2-document-processing",
+        "lambdaLogGroup": "/aws/lambda/m2d-pipeline-prod-use2-interprose-upload",
+        "meaning": "EXPRESS executions have no execution history API; their logging level ALL with includeExecutionData records every LambdaFunctionScheduled input and LambdaFunctionSucceeded or LambdaFunctionFailed result. A succeeded output is the registration Interprose accepted; a failure is an expected reject",
+        "inputField": "LambdaFunctionScheduled details.input: the upload step Parameters, which is also the DEV classification_event input row"
+      },
+      "key": {"dataset": ["remote_s3_uri"], "actual": ["remoteS3Uri"]},
+      "fieldMap": {
+        "debt_id": "debtID",
+        "filename": "interproseFilename",
+        "description": "interproseResponse.description",
+        "remote_s3_uri": "remoteS3Uri",
+        "remote_s3_region": "interproseResponse.remoteS3Region"
+      },
+      "debtBinding": "a debt-resolved event is compared against the debtID the PROD Lambda logged, not one Silvally derives",
+      "rejects": {"dataset": "document_rejects", "key": "s3_key_sha256", "actualOutcome": "rejected"},
+      "canary": {"eventTimeField": "eventTime", "eventKeyField": "remoteS3Uri", "outcomeField": "outcome"}
+    }
+  }
+}

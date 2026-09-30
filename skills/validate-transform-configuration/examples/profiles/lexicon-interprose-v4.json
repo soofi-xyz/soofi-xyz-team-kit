@@ -501,7 +501,7 @@
     },
     {
       "slug": "Spring-Oaks-Capital-LLC/transform",
-      "purpose": "Transform Spark runtime, v2 request contract, and partial-output planning",
+      "purpose": "Transform runtime, v2 request contract, and partial-output planning; CI results read-only",
       "role": "product-runtime",
       "revisionPolicy": "commit-sha",
       "candidateDiscovery": "requested-ref-then-default-branch",
@@ -1167,9 +1167,9 @@
   },
   "scaleTiers": [
     {
-      "id": "synthetic",
-      "maximumRows": 100,
-      "maximumCostUsd": 0,
+      "id": "canary",
+      "maximumRows": 30,
+      "maximumCostUsd": 5,
       "evidenceRequired": true
     },
     {

@@ -791,7 +791,8 @@
               "required": {
                 "const": true
               }
-            }
+            },
+            "description": "A repository test whose result is read from the pinned commit's CI run (read-only); Silvally never runs it locally."
           },
           {
             "type": "object",
@@ -813,7 +814,7 @@
               },
               "location": {
                 "type": "string",
-                "pattern": "^(?:s3://[^?#@]+/|local://[a-z0-9][a-z0-9/_-]*/)$"
+                "pattern": "^s3://[^?#@]+/$"
               },
               "manifestSha256": {
                 "type": "string",
@@ -1084,6 +1085,13 @@
           "items": {
             "$ref": "#/$defs/kebab"
           }
+        },
+        "selection": {
+          "enum": [
+            "user-confirmed",
+            "most-recent-full-utc-day-with-data-per-slice"
+          ],
+          "description": "user-confirmed (default) asks the user to confirm the recommended window; the per-slice form applies only when the owner chose it up front."
         }
       }
     },
@@ -1140,7 +1148,7 @@
     "oracles": {
       "type": "array",
       "minItems": 1,
-      "description": "Expected-output datasets referenced by matches-oracle checks.",
+      "description": "Expected-output datasets referenced by matches-oracle checks: PROD actuals already materialized in DEV S3, never locally computed rows.",
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -1160,7 +1168,7 @@
           },
           "location": {
             "type": "string",
-            "pattern": "^(?:s3|local)://[^?#@]+$"
+            "pattern": "^s3://[^?#@]+$"
           },
           "comparison": {
             "enum": [
@@ -1222,6 +1230,32 @@
           }
         }
       }
+    },
+    "canaryPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "eventsPerSlice",
+        "selection",
+        "mixOutcomes"
+      ],
+      "description": "The DEV canary run before the full window: real events from the confirmed window, chosen deterministically.",
+      "properties": {
+        "eventsPerSlice": {
+          "const": 10
+        },
+        "selection": {
+          "const": "outcome-round-robin-by-time-then-key-sha256"
+        },
+        "mixOutcomes": {
+          "type": "boolean"
+        }
+      }
+    },
+    "prodActuals": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Id of the package entry in reference/prod-actuals.json whose slices define what PROD actually produced."
     }
   },
   "$defs": {

@@ -4,7 +4,7 @@ Silvally accepts requests as short as `test <source> to <target>`,
 `test <hub> <output words> to <target>`, or `test <hub> (<producer>) to <target>`. This
 reference defines how such a request becomes an exact `(source language, target language,
 direction, mapping id@version)` plan. It is read-only discovery; no step here
-writes outside a disposable local directory. The resolver knows no language, mapping or
+writes outside a private evidence directory. The resolver knows no language, mapping or
 dataset in advance: every word is matched against what the inspected registry declares.
 
 ## Grammar
@@ -15,7 +15,11 @@ verb      := test | validate | check | verify | run | try | prove
 hints     := @<x.y.z> | v<x.y.z>        mapping version
            | in dev | in prod           environment (prod is always read-only)
            | round trip | one way       direction mode
+           | owner decisions             see "Owner decisions" below
 ```
+
+`test`, `validate` and `check` are the same request: `test lexicon to interprose for sms, dsa
+and m2d`, `check …` and `validate …` resolve to the same plan, with or without `/silvally`.
 
 - A side naming the hub language (the layout's `hubLanguage`) plus other words treats those
   words as **qualifiers** (`<hub> <output words>`, `<hub> (<producer>)`, `<target> <output words>`):
@@ -127,6 +131,21 @@ stripped before language match. The workflow is one-way: one step per slice, sam
 undifferentiated full-package run, and no producer chain from a slice word. Hub→Y still asks for
 an upstream source (default: existing graph export). A pinned `@x.y.z` that lacks a slice output
 is `SliceOutputsMissing`.
+
+### Owner decisions
+
+Decisions the owner states up front in the request are parsed into `hints.ownerDecisions`
+and carried into the `discover` result so an unattended run can finish:
+
+| Decision | Example wording | Effect |
+| --- | --- | --- |
+| `preApproveFullRunOnCanaryPass` | "if the canary passes, run the full window" | a passing canary gate is `PRE_APPROVED`; a failed canary still stops |
+| `acceptProductChanges` | "accept Transform product changes as out of scope" | unresolved `PRODUCT_CHANGE` items stay flagged for Kecleon, recorded `ownerAccepted`, and do not block `READY` |
+| `costCeilingUsd` | "cost ceiling $5 per job" | `transform_runs.py` refuses any case above the ceiling (`CostCeilingExceeded`) |
+| `windowSelection: most-recent-full-utc-day-with-data-per-slice` | "most recent full UTC day with real data per slice" | each slice uses its own most recent complete UTC day with data, recorded in `finalValidation.sliceWindows` |
+
+Without them the defaults hold: ask before the full run, and `BLOCKED` on any unaccepted
+`PRODUCT_CHANGE`. Silvally never assumes a decision the owner did not state.
 
 ### Cumulative versions
 
@@ -247,12 +266,12 @@ checked against `main` history. Pin the resolver's SHA-256 as
 
 ## Example resolutions
 
-The synthetic registry in `fixtures/synthetic-registry/` (hub `canon`; languages `alpha`,
+The test registry in `scripts/testdata/silvally-registry/` (hub `canon`; languages `alpha`,
 `omega`, `sigma`) produces these results; the contract tests assert them.
 
 | Request | Status | Plan or candidates |
 | --- | --- | --- |
-| `test canon (alpha) to omega ledger summary` | `RESOLVED` | `alpha-to-canon@1.0.0` then `canon-to-omega@2.0.0` (`output-dataset` signal on the only version that outputs `ledger_summary`); fixture profile selected |
+| `test canon (alpha) to omega ledger summary` | `RESOLVED` | `alpha-to-canon@1.0.0` then `canon-to-omega@2.0.0` (`output-dataset` signal on the only version that outputs `ledger_summary`); test profile selected |
 | `test canon to omega member report` | `RESOLVED` | `canon-to-omega@2.0.0` by `cumulative-superset`; `UpstreamSourceUnresolved` asks for the producer |
 | `test canon to omega@1.0.0` | `RESOLVED` | the pinned older version |
 | `test canon to omega` | `AMBIGUOUS` | both versions offered with their outputs |

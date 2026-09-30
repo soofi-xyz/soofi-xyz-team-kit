@@ -10,10 +10,12 @@ exporterHydration, roundTrip, phases, boundaryDecisions, failures, remediations 
 optional extra datasets and versionSelection (copied from the resolver). This tool adds executionSteps, approvals, dataset evidence from
 captured outputs and cost, computes the verdict from phase statuses (any FAIL -> NOT_READY,
 else any BLOCKED/APPROVAL_REQUIRED -> BLOCKED, else READY), rejects a verdict that
-disagrees, refuses READY unless finalValidation proves approved DEV executions on the
-user-confirmed PROD-derived source window (sourceWindowSelection CONFIRMED, executionMode
-observed-dev), requires a remediation for every FAIL/BLOCKED phase, and validates the result
-against reference/transform-configuration-run.schema.json (needs jsonschema).
+disagrees, refuses READY unless finalValidation proves a real-data window (user-confirmed, or the
+owner's "most recent full UTC day with real data per slice"), a passing DEV canary, an approved
+(or owner pre-approved) full-window DEV run, and a comparison against PROD actuals for every slice,
+requires a remediation for every FAIL/BLOCKED phase, and validates the result against
+reference/transform-configuration-run.schema.json (needs jsonschema). --canary-run-dir adds the
+canary executions as executionSteps with stage canary.
 """
 
 from __future__ import annotations
@@ -39,39 +41,50 @@ def verdict_of(phases: list[dict]) -> str:
 
 
 def final_validation_gaps(run: dict) -> list[str]:
-    """Reasons a package cannot be READY: READY requires the final PROD-derived DEV validation."""
+    """Reasons a package cannot be READY: READY requires the canary-first PROD-derived DEV validation."""
     final = run.get("finalValidation") or {}
     selection = run.get("sourceWindowSelection") or {}
+    decisions = run.get("ownerDecisions") or {}
     runtime = run.get("runtime") or {}
     steps = run.get("executionSteps") or []
+    full = [s for s in steps if s.get("stage", "full") == "full"]
+    canary = [s for s in steps if s.get("stage") == "canary"]
     gaps = []
     if final.get("status") != "PASS":
         gaps.append("finalValidation is absent or not PASS")
-    if selection.get("status") != "CONFIRMED" or not selection.get("confirmedWindow"):
-        gaps.append("no user-confirmed PROD-derived source window")
-    elif final.get("sourceWindow") != selection["confirmedWindow"]:
-        gaps.append("finalValidation window differs from the confirmed window")
+    per_slice = decisions.get("windowSelection") == "most-recent-full-utc-day-with-data-per-slice" and final.get("sliceWindows")
+    if not per_slice:
+        if selection.get("status") != "CONFIRMED" or not selection.get("confirmedWindow"):
+            gaps.append("no user-confirmed PROD-derived source window")
+        elif final.get("sourceWindow") != selection["confirmedWindow"]:
+            gaps.append("finalValidation window differs from the confirmed window")
     if runtime.get("executionMode") != "observed-dev":
         gaps.append("runtime executionMode is not observed-dev")
     if not final.get("stagingApprovalDigests"):
         gaps.append("no approval digest for the DEV staging of the window")
-    if not steps or any(s["environment"] != "dev" or s["status"] != "PASS" for s in steps):
-        gaps.append("the final run has no passing DEV execution steps")
+    if (final.get("canary") or {}).get("status") != "PASS" or not canary or any(s["status"] != "PASS" for s in canary):
+        gaps.append("no passing DEV canary")
+    if (final.get("fullRunApproval") or {}).get("status") not in {"APPROVED", "PRE_APPROVED"}:
+        gaps.append("the full-window run was not approved after the canary")
+    if not final.get("baseline") or any(b["status"] not in {"AVAILABLE", "NONE"} for b in final["baseline"]):
+        gaps.append("no usable PROD-actuals baseline for every slice")
+    if not full or any(s["environment"] != "dev" or s["status"] != "PASS" for s in full):
+        gaps.append("the full-window run has no passing DEV execution steps")
     elif {s["approvalOperationDigest"] for s in steps} - set(final.get("executionApprovalDigests") or []):
         gaps.append("an execution step lacks its own approval digest in finalValidation")
     return gaps
 
 
-def execution_steps(run_dir: Path, steps: list[dict], spec: dict) -> list[dict]:
+def execution_steps(run_dir: Path, steps: list[dict], spec: dict, stage: str, start: int = 1) -> list[dict]:
     manifests = spec.get("inputManifests", {})
     out = []
-    for i, s in enumerate(steps, 1):
+    for i, s in enumerate(steps, start):
         case = s["step"].split("-", 1)[1]
         approval = read_json(run_dir / "approvals" / f"{s['step']}.json")
         glue = sorted({e.get("taskSucceededEventDetails", {}).get("output") and json.loads(e["taskSucceededEventDetails"]["output"]).get("Id")
                        for e in read_json(run_dir / "steps" / s["step"] / "history.json").get("events", [])
                        if e.get("taskSucceededEventDetails", {}).get("resourceType") == "glue"} - {None, ""})
-        entry = {"sequence": i, "mapping": approval["mappingPin"]["mapping"], "environment": "dev",
+        entry = {"sequence": i, "stage": stage, "mapping": approval["mappingPin"]["mapping"], "environment": "dev",
                  "status": s.get("verdict", "BLOCKED") if s["status"] != "RUNNING" else "BLOCKED",
                  "approvalOperationDigest": approval["operationDigest"], "executionArn": s.get("executionArn"),
                  "inputManifestSha256": manifests.get(case), "outputLocation": s.get("outputPrefix"),
@@ -91,8 +104,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--run-dir", required=True)
     parser.add_argument("--package-spec", required=True)
     parser.add_argument("--out")
-    parser.add_argument("--local-output", action="append", help="DATASET=PATH of a synthetic-local CSV output to record as dataset evidence")
-    parser.add_argument("--local-label", default="synthetic-local", help="logical label used in local:// dataset locations")
+    parser.add_argument("--canary-run-dir", help="the captured canary-stage run directory")
     args = parser.parse_args(argv)
     run_dir = Path(args.run_dir)
     spec = read_json(args.package_spec)
@@ -106,19 +118,11 @@ def main(argv: list[str] | None = None) -> int:
                 datasets.append({"name": o["dataset"], "schemaSha256": "sha256:" + hashlib.sha256(o["headers"][0].encode()).hexdigest(),
                                  "rowCount": o["physicalRows"], "contentSha256": "sha256:" + o["contentSha256"],
                                  "location": s["outputPrefix"] + f"tables/{o['dataset']}/"})
-    for local in args.local_output or []:
-        name, _, path = local.partition("=")
-        files = sorted(glob.glob(str(Path(path) / "part-*"))) if Path(path).is_dir() else [path]
-        header, rows = None, []
-        for f in files:
-            lines = Path(f).read_text(encoding="utf-8").split("\n")
-            header = header or lines[0]
-            rows += [line for line in lines[1:] if line]
-        datasets.append({"name": name, "schemaSha256": "sha256:" + hashlib.sha256((header or "").encode()).hexdigest(),
-                         "rowCount": len(rows), "contentSha256": "sha256:" + hashlib.sha256("\n".join(sorted(rows)).encode()).hexdigest(),
-                         "location": f"local://{args.local_label}/{name}"})
+    canary_dir = Path(args.canary_run_dir) if args.canary_run_dir else None
+    canary_steps = read_json(canary_dir / "steps.json") if canary_dir and (canary_dir / "steps.json").exists() else []
     approvals = []
-    for f in sorted(glob.glob(str(run_dir / "approvals" / "*.json"))):
+    for f in sorted(glob.glob(str(run_dir / "approvals" / "*.json"))
+                    + (glob.glob(str(canary_dir / "approvals" / "*.json")) if canary_dir else [])):
         if f.endswith(".started.json"):
             continue
         a = read_json(f)["approval"]
@@ -135,12 +139,14 @@ def main(argv: list[str] | None = None) -> int:
             "persistCanary", "exporterHydration", "roundTrip")
     run = {"id": spec.get("id") or "validation-" + hashlib.sha256(str(run_dir.resolve().name).encode()).hexdigest()[:16],
            "contractVersion": 1, **{k: spec[k] for k in keys}, "datasets": datasets,
-           "executionSteps": execution_steps(run_dir, steps, spec), "phases": spec["phases"],
+           "executionSteps": (execution_steps(canary_dir, canary_steps, spec, "canary") if canary_dir else [])
+           + execution_steps(run_dir, steps, spec, "full", len(canary_steps) + 1), "phases": spec["phases"],
            "boundaryDecisions": spec["boundaryDecisions"], "approvals": approvals,
            "cost": {"ceilingUsd": spec.get("costCeilingUsd", cost.get("ceilingUsd", 0)), "estimatedUsd": spec.get("estimatedUsd", 0),
                     "actualUsd": cost.get("actualUsd")},
            "failures": spec.get("failures", []), "remediations": spec.get("remediations", []), "verdict": computed}
-    for optional in ("intentResolution", "parityDerivation", "sourceWindowSelection", "finalValidation", "versionSelection"):
+    for optional in ("intentResolution", "parityDerivation", "sourceWindowSelection", "finalValidation", "versionSelection",
+                     "ownerDecisions", "acceptedProductChanges", "prodActuals"):
         if optional in spec:
             run[optional] = spec[optional]
     gaps = final_validation_gaps(run) if computed == "READY" else []
