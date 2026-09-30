@@ -33,6 +33,11 @@ Follow these conventions whenever you touch files in this repo.
 - Require `product` and `role` (`build` or `configure`) in featured product agent frontmatter.
   Conkeldurr builds Persist; Zygarde builds System. Keep configuration separate.
   Kangaskhan builds Account; Blissey configures it through the existing HTTP API.
+- Require an HTTP API for assigned product capabilities, including submission,
+  status and results for async work. CLI/workflow/artifact adapters support that
+  surface; they do not replace API acceptance. Verify existing deployments rather
+  than assuming an assignment means the API exists. Keep Environment cold-start
+  Bootstrap and Model consumer artifacts within their documented boundaries.
 - Load `skills/guide-product-work/SKILL.md` from every featured product agent. Preserve its
   feature-based decomposition, user-run configuration and AWS inspection
   checkpoints, and evidence distinctions. Treat four as a floor for full-product
