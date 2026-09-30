@@ -22,7 +22,7 @@ DEFAULT_MANIFEST = (
     / "reference"
     / "examples"
     / "sale-availability"
-    / "system.manifest.json"
+    / "composition.manifest.json"
 )
 REQUIRED_KINDS = {
     "product-definition",

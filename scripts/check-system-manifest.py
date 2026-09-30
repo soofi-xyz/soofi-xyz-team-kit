@@ -3,10 +3,10 @@
 
 Run from the plugin repo root, or point it at manifests in a target repo:
 
-    python3 scripts/check-system-manifest.py [path/to/system.manifest.json ...]
+    python3 scripts/check-system-manifest.py [path/to/composition.manifest.json ...]
 
 With no arguments it checks every
-skills/build-system-product/reference/examples/*/system.manifest.json.
+skills/build-system-product/reference/examples/*/composition.manifest.json.
 Exit status is 1 when any manifest is rejected.
 """
 
@@ -42,11 +42,9 @@ KIND_PRODUCT = {
     "product-waterfall": "system-runtime",
     "product-invocation": "system-runtime",
     "lexicon-catalog": "lexicon",
-    "connect-partner": "connect",
-    "connect-activation": "connect",
+    "connect-source": "connect",
     "transform-request": "transform",
     "transform-mapping": "transform",
-    "persist-collection": "persist",
     "deploy-environment": "deploy",
     "system-openapi": "system-runtime",
     "system-fixtures": "system-runtime",
@@ -82,11 +80,11 @@ def _def_validator(schema_path: Path, definition: str) -> Draft202012Validator:
 
 MANIFEST_VALIDATOR = Draft202012Validator(_load_json(MANIFEST_SCHEMA))
 LEAF_VALIDATORS = {
-    "connect-partner": _def_validator(CONNECT_SCHEMA, "PartnerConfiguration"),
-    "connect-activation": _def_validator(CONNECT_SCHEMA, "Activation"),
+    "connect-source": _def_validator(CONNECT_SCHEMA, "PartnerConfiguration"),
     "transform-request": _def_validator(TRANSFORM_SCHEMA, "Request"),
     "transform-mapping": _def_validator(TRANSFORM_SCHEMA, "Mapping"),
 }
+ACTIVATION_VALIDATOR = _def_validator(CONNECT_SCHEMA, "Activation")
 
 
 def _strings(value: Any):
@@ -284,6 +282,17 @@ class ManifestCheck:
             if ref["kind"] == kind and isinstance(self.emits.get(name), dict)
         }
 
+    def _activation_emits(self) -> dict[str, Any]:
+        # The runtime schema has no activation kind. Activation stubs use kind
+        # "other" and a filename containing "activation".
+        return {
+            name: self.emits[name]
+            for name, ref in self.config_refs.items()
+            if ref["kind"] == "other"
+            and "activation" in Path(ref["path"]).name
+            and isinstance(self.emits.get(name), dict)
+        }
+
     def check_product_emits(self) -> None:
         product_name = self.manifest.get("productName", self.manifest["systemId"])
         for name, definition in self._emits_of("product-definition").items():
@@ -347,8 +356,12 @@ class ManifestCheck:
                 for error in sorted(validator.iter_errors(document), key=_schema_path):
                     self.fail(f"configRefs/{name}", f"{kind} contract: {_schema_path(error)}: {error.message}")
 
-        partners = {doc.get("configuration_id") for doc in self._emits_of("connect-partner").values()}
-        for name, activation in self._emits_of("connect-activation").items():
+        for name, document in self._activation_emits().items():
+            for error in sorted(ACTIVATION_VALIDATOR.iter_errors(document), key=_schema_path):
+                self.fail(f"configRefs/{name}", f"activation contract: {_schema_path(error)}: {error.message}")
+
+        partners = {doc.get("configuration_id") for doc in self._emits_of("connect-source").values()}
+        for name, activation in self._activation_emits().items():
             where = f"configRefs/{name}"
             if partners and activation.get("configuration_id") not in partners:
                 self.fail(where, f"configuration_id {activation.get('configuration_id')!r} matches no emitted partner")
@@ -392,7 +405,7 @@ def check_manifest(path: Path) -> list[str]:
 
 
 def main(argv: list[str]) -> int:
-    paths = [Path(arg) for arg in argv] or sorted(EXAMPLES.glob("*/system.manifest.json"))
+    paths = [Path(arg) for arg in argv] or sorted(EXAMPLES.glob("*/composition.manifest.json"))
     if not paths:
         print("no System manifests found", file=sys.stderr)
         return 1

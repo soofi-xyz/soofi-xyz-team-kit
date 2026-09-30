@@ -17,7 +17,7 @@ fail closed. Invoke through
 
 ```text
 examples/sale-availability/
-  system.manifest.json
+  composition.manifest.json
   product.definition.json
   schemas/request.schema.json
   schemas/response.schema.json

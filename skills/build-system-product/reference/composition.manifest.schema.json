@@ -109,11 +109,9 @@
               "product-waterfall",
               "product-invocation",
               "lexicon-catalog",
-              "connect-partner",
-              "connect-activation",
+              "connect-source",
               "transform-request",
               "transform-mapping",
-              "persist-collection",
               "system-openapi",
               "system-fixtures",
               "deploy-environment",
@@ -349,7 +347,7 @@
         "invocationMode": {
           "type": "string",
           "enum": [
-            "single",
+            "single_flow",
             "waterfall"
           ]
         },

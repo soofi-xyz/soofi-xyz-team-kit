@@ -1,8 +1,11 @@
 # Base System product contract
 
-Build **System** as the Product-derived orchestration service for Prism.
-System owns the reusable runtime and hosts many versioned business
-configurations. It does not depend on a separate Product deployment.
+The System runtime already exists at
+[prismteam-ai/system](https://github.com/prismteam-ai/system). It is the
+Product-derived orchestration service for Prism. System owns the reusable
+runtime and hosts many versioned business configurations. It does not depend on a separate Product deployment.
+
+Zygarde authors those configurations. Zygarde does not rebuild the runtime.
 
 [StaircaseAPI/product](https://github.com/StaircaseAPI/product) is the
 behavioral reference. It proves the domain model and execution semantics, but
@@ -26,14 +29,18 @@ New outcomes are configuration, not new orchestration microservices.
 
 ## 2. Ownership
 
-Zygarde owns:
+The runtime in `prismteam-ai/system` owns:
 
-- the Base System CDK application and its three ordered stacks;
+- the CDK application and its three ordered stacks;
 - Product, schema, Flow Template, Product Flow, waterfall, and invocation
-  contracts;
+  APIs;
 - Flow Template compilation and invocation lifecycle;
 - checked-in configuration discovery, validation, and idempotent seeding;
 - API, storage, encryption, idempotency, status, telemetry, and tests.
+
+Zygarde owns the configuration package that this runtime loads: the manifest,
+Product definition and schemas, Flow Templates, Product Flows, optional
+waterfall, invocation contract, and leaf references.
 
 System calls but does not implement:
 
@@ -67,7 +74,7 @@ configuration, compile failure, and invocation failure.
 
 ## 4. CDK architecture
 
-Deploy one CDK application in this order:
+The runtime deploys one CDK application in this order:
 
 ```text
 SystemDataStack
@@ -151,15 +158,13 @@ added without breaking core orchestration.
 
 ## 8. Acceptance
 
-Base System is ready for handoff when:
+A configuration is ready for handoff when:
 
-1. strict synth produces all three stacks in dependency order;
-2. CDK assertions prove encryption, retention, PITR, TTL, API-key protection,
-   and least-privilege resource grants;
-3. Product CRUD, schema validation, template compile, flow binding, waterfall,
-   invocation start/status, and callback tests pass;
-4. the reference configuration passes
-   `skills/build-system-product/scripts/validate-manifest.py` and
-   `scripts/check-system-manifest.py`, including local path and leaf-contract
-   resolution;
-5. evidence is reported as spec, synth, deployed, or live without inflation.
+1. `skills/build-system-product/scripts/validate-manifest.py` and
+   `scripts/check-system-manifest.py` pass, including local path and
+   leaf-contract resolution;
+2. `orchestration.invocationMode` is `single_flow` or `waterfall`, and every
+   config ref kind is one the runtime schema accepts;
+3. every Product Flow names a template and stays inactive;
+4. evidence is reported as spec, deployed, or live without claiming a runtime
+   synth this configuration did not run.

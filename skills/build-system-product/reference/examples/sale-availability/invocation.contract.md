@@ -4,7 +4,7 @@
 
 | Field | Value |
 | --- | --- |
-| `invocation_mode` | `single` |
+| `invocation_mode` | `single_flow` |
 | `product_flow_name` | `default` (optional; the default Product Flow is selected otherwise) |
 | `data` | Exactly one of `address` or `parcelId`, validated against the Product request schema |
 | `callback_url` | Optional |

@@ -7,7 +7,7 @@
   "outcome": "Given an address or parcelId, return sale availability and evidence from curated Connect/Transform artifacts via a Product invocation. Unknown identifiers fail closed. No scrape-on-request.",
   "orchestration": {
     "mode": "system-service",
-    "invocationMode": "single",
+    "invocationMode": "single_flow",
     "notes": "Serve through the Base System /system API. Template-backed flow only."
   },
   "products": [
@@ -74,12 +74,12 @@
       "ownerAgent": "conkeldurr"
     },
     "connectPartner": {
-      "kind": "connect-partner",
+      "kind": "connect-source",
       "path": "emits/connect/partner.stub.json",
       "ownerAgent": "lapras"
     },
     "connectActivation": {
-      "kind": "connect-activation",
+      "kind": "other",
       "path": "emits/connect/activation.stub.json",
       "ownerAgent": "lapras"
     },
@@ -210,7 +210,7 @@
   "evidence": {
     "level": "spec",
     "artifacts": [
-      "system.manifest.json"
+      "composition.manifest.json"
     ],
     "notes": "Example contract only; no synth, deployment, or live invocation is claimed."
   }

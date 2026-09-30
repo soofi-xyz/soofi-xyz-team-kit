@@ -19,7 +19,7 @@ flow-templates/
   <template_name>.json
 product-flows/
   <flow_name>.json
-waterfall.json                 # omit when invocation mode is single
+waterfall.json                 # omit when invocationMode is single_flow
 invocation.contract.md
 emits/
   lexicon/
@@ -43,25 +43,8 @@ emits/
 - Do not place account ids, secret ARNs, API keys, or developer AWS profiles
   in a package.
 
-## Base service emits
-
-For a new System repository, emit:
-
-```text
-bin/app.ts
-lib/system-data-stack.ts
-lib/system-workflow-stack.ts
-lib/system-api-stack.ts
-src/configuration/
-src/domain/
-src/handlers/
-src/runtime/
-src/workflow/
-test/
-```
-
-The stacks must synthesize in data → workflow → API order. Configuration
-loading must fail synth on malformed or unresolved packages.
+The System service already exists in `prismteam-ai/system`. Do not emit its
+CDK stacks, compiler, or API from this skill.
 
 ## Lexicon → Conkeldurr/Mew
 
@@ -79,8 +62,8 @@ existing deployment, never a request to provision Lexicon.
 
 ```text
 emits/connect/
-  partner.stub.json          # PartnerConfiguration for an existing flow
-  activation.stub.json       # Activation pinned to flow_name + flow_version; enabled false
+  partner.stub.json          # kind connect-source; PartnerConfiguration for an existing flow
+  activation.stub.json       # kind other; Activation pinned to flow_name + flow_version; enabled false
 ```
 
 Reuse a catalog flow (for example `partner-file-intake`) before asking for a
@@ -103,8 +86,9 @@ emits/persist/
   collections.ref.md
 ```
 
-Register it as a `persist-collection` configRef with a `persist` product and
-workflow step whenever a flow template reads or writes Persist.
+Register it as a configRef of kind `other` with a `persist` product and
+workflow step whenever a flow template reads or writes Persist. The runtime
+schema has no separate persist-collection kind.
 
 ## Deploy → Conkeldurr
 
@@ -117,8 +101,7 @@ emits/deploy/
 
 | Emit | Owner | Done when |
 | --- | --- | --- |
-| Base System | Zygarde | tests and all stacks synthesize |
-| Product definition/template/flow | Zygarde | package validates and template compiles |
+| Product definition/template/flow | Zygarde | package validates against the runtime schema |
 | Lexicon | Conkeldurr | Catalog/mapping path exists |
 | Connect | Lapras | Partner configuration + activation accepted by the Connect API |
 | Transform | Kecleon | Mapping enabled + acceptance |

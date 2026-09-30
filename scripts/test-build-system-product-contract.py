@@ -19,7 +19,7 @@ from typing import Any, Callable
 ROOT = Path(__file__).resolve().parent.parent
 SKILL_DIR = ROOT / "skills" / "build-system-product"
 EXAMPLE_DIR = SKILL_DIR / "reference" / "examples" / "sale-availability"
-MANIFEST_NAME = "system.manifest.json"
+MANIFEST_NAME = "composition.manifest.json"
 
 _spec = importlib.util.spec_from_file_location("check_system_manifest", ROOT / "scripts" / "check-system-manifest.py")
 checker = importlib.util.module_from_spec(_spec)
@@ -192,7 +192,7 @@ def assert_reference_resolution() -> None:
         orphan_persist(p, m)
         m["products"].append({"product": "persist", "role": "execute"})
         m["configRefs"]["persistCollection"] = {
-            "kind": "persist-collection",
+            "kind": "other",
             "path": "emits/persist/collections.stub.md",
             "ownerAgent": "conkeldurr",
         }
@@ -287,7 +287,7 @@ def assert_emit_contracts() -> None:
     assert_rejects(
         "connect activation breaks Connect contract",
         lambda p, _m: edit_emit(p, "emits/connect/activation.stub.json", lambda d: d.pop("subscriber")),
-        "connect-activation contract",
+        "activation contract",
     )
     assert_rejects(
         "connect activation enabled while deploy inactive",

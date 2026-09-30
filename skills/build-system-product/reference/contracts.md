@@ -42,9 +42,8 @@ Use Product-shaped kinds for System's inner configuration model:
 - `product-definition`, `product-schema`, `product-flow-template`,
   `product-flow`, `product-waterfall`, `product-invocation`
 - Aggregate: `system-configuration`
-- Leaf: `lexicon-catalog`, `connect-partner`, `connect-activation`,
-  `transform-request`, `transform-mapping`, `persist-collection`,
-  `deploy-environment`
+- Leaf: `lexicon-catalog`, `connect-source`, `transform-request`,
+  `transform-mapping`, `deploy-environment`
 - Supporting: `system-openapi`, `system-fixtures`, `other`
 
 Each kind belongs to one product (`product-*` and `system-*` →
@@ -95,11 +94,13 @@ A composition with unresolved dependencies is rejected:
 - Every product flow sets `flow_template_name` to an emitted template's
   `name`; template transitions target existing states; waterfall
   `flow_name`s match emitted flows.
-- Connect partner and activation stubs validate against
+- A Connect source stub uses kind `connect-source` and validates against
   [`flow.schema.json`](../../build-connect-product/reference/contracts/flow.schema.json)
-  (`PartnerConfiguration`, `Activation`); the activation's
-  `configuration_id` matches an emitted partner and stays `enabled: false`
-  while deploy activation is off.
+  (`PartnerConfiguration`). The runtime schema has no activation kind, so an
+  activation stub uses kind `other` and a filename containing `activation`;
+  it validates as `Activation`, its `configuration_id` matches an emitted
+  source, and it stays `enabled: false` while deploy activation is off.
+  A Persist collection reference also uses kind `other`.
 - Transform request/mapping stubs validate against
   [`contracts.schema.json`](../../build-transform-product/reference/contracts/contracts.schema.json);
   the request's `from` → `to` pair has a mapping in the emitted Lexicon
@@ -110,8 +111,8 @@ A composition with unresolved dependencies is rejected:
 ## Check
 
 ```bash
-python3 skills/build-system-product/scripts/validate-manifest.py path/to/system.manifest.json
-python3 scripts/check-system-manifest.py path/to/system.manifest.json
+python3 skills/build-system-product/scripts/validate-manifest.py path/to/composition.manifest.json
+python3 scripts/check-system-manifest.py path/to/composition.manifest.json
 ```
 
 The scripts live in the team kit and need `jsonschema`. With no arguments they

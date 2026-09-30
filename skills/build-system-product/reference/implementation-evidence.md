@@ -70,7 +70,9 @@ hardcode Staircase hostnames.
 
 ## Target CDK evidence
 
-The target topology comes from the canonical Product rebuild contract:
+This topology is already implemented in `prismteam-ai/system`. Zygarde does
+not recreate it. The target topology comes from the canonical Product rebuild
+contract:
 
 ```text
 SystemDataStack

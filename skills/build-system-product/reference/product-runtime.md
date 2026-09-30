@@ -15,7 +15,7 @@ product + flow-template modules          one CDK app, three ordered stacks
 Product configuration                    Product configuration
 Flow Template DSL                        same DSL contract
 compiled Step Functions                  compiled Step Functions
-single | waterfall invocation            single | waterfall invocation
+single_flow | waterfall invocation     single_flow | waterfall invocation
 ```
 
 System keeps Product as the inner business noun. The outer deployed product is
@@ -85,7 +85,7 @@ deleting a file must not silently delete live configuration.
 
 ## Agent boundary
 
-Zygarde owns Base System and configurations. Lapras owns Connect adapters,
+The runtime already exists in `prismteam-ai/system`. Zygarde owns configurations for that runtime and does not rebuild it. Lapras owns Connect adapters,
 Kecleon owns Transform mappings, Conkeldurr/Mew own Lexicon and Persist
 contracts, and Machamp supports workflow/capacity analysis when a configuration
 exceeds ordinary System execution.
