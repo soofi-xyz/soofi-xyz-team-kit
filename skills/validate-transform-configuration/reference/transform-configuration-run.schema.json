@@ -519,7 +519,13 @@
         "costCeilingUsd": { "type": "number", "minimum": 0 },
         "windowSelection": { "const": "most-recent-full-utc-day-with-data-per-slice" },
         "blanketDevWrites": { "const": "staging-and-executions-for-this-run" },
-        "sensitiveFieldStaging": { "const": "stage-real-values-to-dev" }
+        "sensitiveFieldStaging": { "const": "stage-real-values-to-dev" },
+        "devRedeployPinned": {
+          "const": "rerun-pr-dev-workflow-for-pinned-head",
+          "description": "When DEV no longer serves the pinned candidate (pruned or replaced by another PR's latest-PR-wins DEV deploy), re-run the pinned head's own DEV CI/CD workflow run; never PROD. blanketDevWrites does not cover it."
+        },
+        "devRedeployMaxAttempts": { "type": "integer", "minimum": 1, "maximum": 5 },
+        "persistPolicy": { "const": "required" }
       }
     },
     "sliceVerdicts": {

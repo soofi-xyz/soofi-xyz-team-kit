@@ -115,12 +115,21 @@ OWNER_DECISIONS = {
         r"\b(?:approve[sd]?\s+)?stag(?:e|ing)\s+(?:of\s+)?(?:the\s+)?(?:real\s+)?(?:sensitive\s+fields?|pii"
         r"|phone\s+numbers?(?:\s+and\s+(?:sms\s+)?message\s+bodies)?)\s+(?:to|in)\s+dev\b[^.;\n]*"
         r"|\bsensitive[\s-]fields?\s+staging\s+(?:to\s+dev\s+)?(?:is\s+)?approved\b[^.;\n]*"),
+    "devRedeployPinned": re.compile(
+        r"\b(?:re[\s-]?deploy|re[\s-]?publish)\s+(?:the\s+)?pinned\s+(?:candidate|mapping|version)?\s*(?:to|in)\s+dev\b[^.;\n]*"
+        r"|\bdev\s+re[\s-]?deploy(?:s|ment)?\s+(?:of\s+the\s+pinned\s+(?:candidate|mapping)\s+)?(?:is\s+|are\s+)?(?:pre[\s-]?)?approved\b[^.;\n]*"),
+    "persistPolicy": re.compile(
+        r"\b(?:require|allow|approve)[sd]?\s+(?:a\s+)?(?:bounded\s+)?(?:dev\s+)?persist\s+canary\b[^.;\n]*"),
 }
 OWNER_DECISION_VALUES = {
     "windowSelection": "most-recent-full-utc-day-with-data-per-slice",
     "blanketDevWrites": "staging-and-executions-for-this-run",
     "sensitiveFieldStaging": "stage-real-values-to-dev",
+    "devRedeployPinned": "rerun-pr-dev-workflow-for-pinned-head",
+    "persistPolicy": "required",
 }
+REDEPLOY_LIMIT = re.compile(r"\b(?:up\s+to|at\s+most)\s+(\d+)\s+(?:times|redeploys?)\b")
+CANDIDATE_BUILD_LABEL = "candidate-build"
 OWNER_PREFIX = re.compile(r"\bowner\s+decisions?\s*:?")
 
 
@@ -138,6 +147,8 @@ def extract_owner_decisions(text: str) -> tuple[str, dict]:
             decisions[name] = OWNER_DECISION_VALUES[name]
         else:
             decisions[name] = True
+        if name == "devRedeployPinned" and REDEPLOY_LIMIT.search(match.group(0)):
+            decisions["devRedeployMaxAttempts"] = int(REDEPLOY_LIMIT.search(match.group(0)).group(1))
         spans.append(match.span())
     merged: list[list[int]] = []
     for start, end in sorted(spans):
@@ -327,13 +338,15 @@ def mapping_from_document(doc: dict, provenance: dict, query_dir: Path | None = 
 
 
 def load_registry_dir(label: str, root: Path) -> list[Mapping]:
+    """A registry directory; the candidate's own materialized build is candidate-build provenance, not a published registry."""
     found = []
+    kind = CANDIDATE_BUILD_LABEL if label == CANDIDATE_BUILD_LABEL else "published-registry"
     glob = LAYOUT["publishedRegistry"]["mappingGlob"]
     for path in sorted(root.glob(f"**/{glob}")) or sorted(root.glob("*/*/mapping.json")):
         doc = json.loads(path.read_text())
         mapping = mapping_from_document(
             doc,
-            {"kind": "published-registry", "label": label, "path": str(path.relative_to(root)), "sha256": sha256_file(path)},
+            {"kind": kind, "label": label, "path": str(path.relative_to(root)), "sha256": sha256_file(path)},
             path.parent / "queries",
         )
         if mapping:
@@ -522,7 +535,7 @@ class Registry:
 
     @property
     def has_published(self) -> bool:
-        return any(p.get("kind") == "published-registry" for m in self.mappings.values() for p in m.provenance)
+        return any(p.get("kind") in {"published-registry", CANDIDATE_BUILD_LABEL} for m in self.mappings.values() for p in m.provenance)
 
     def enabled(self, source: str | None = None, target: str | None = None) -> list[Mapping]:
         return sorted(
@@ -708,7 +721,7 @@ def _semver(key: str) -> tuple[int, ...]:
 
 
 PROD_REGISTRY_LABELS = {"prod", "production"}
-CANDIDATE_PROVENANCE = {"checked-in-registration", "candidate-build"}
+CANDIDATE_PROVENANCE = {"checked-in-registration", CANDIDATE_BUILD_LABEL}
 
 
 def published_labels(candidate: dict) -> list[str]:
@@ -1323,7 +1336,6 @@ def question_plan(
     upstream_candidates: list[str] | None = None,
     upstream_default: str | None = None,
     default_mode: str = "round-trip",
-    persist_policy: str | None = None,
 ) -> list[dict]:
     questions = []
     if status in {"AMBIGUOUS", "NO_MAPPING", "UNKNOWN_LANGUAGE"}:
@@ -1403,18 +1415,6 @@ def question_plan(
             "allowMultiple": True,
             "default": None,
         })
-    if persist_policy is not None:
-        return questions
-    questions.append({
-        "id": "persist-policy",
-        "prompt": "May the validation write a bounded canary to Persist?",
-        "options": [
-            {"id": "forbidden", "label": "Forbidden (default): prove graph closure from Transform outputs only"},
-            {"id": "required", "label": "Required: bounded DEV canary and readback, each write approval-gated"},
-        ],
-        "allowMultiple": False,
-        "default": "forbidden",
-    })
     return questions
 
 
@@ -1521,6 +1521,22 @@ def pick_version_for_slices(selection: dict, registry: Registry, slices: list[di
     return selection, findings
 
 
+def environment_fact(hints: dict) -> dict | None:
+    """DEV confirmed by the request (in dev / in prod) or implied by the owner's blanketDevWrites; otherwise it is asked."""
+    region = LAYOUT["repository"]["defaultRegion"]
+    if hints.get("environment") is None and hints["ownerDecisions"].get("blanketDevWrites"):
+        hints["environment"] = "dev"
+        source, evidence = "ownerDecisions.blanketDevWrites", "owner-decision-blanket-dev-writes"
+    elif hints.get("environment") == "dev":
+        source, evidence = ("request (in prod: PROD read-only)" if hints.get("prodCatalogReadOnly") else "request"), "request-environment-hint"
+    else:
+        return None
+    return {"id": "environment", "label": "Environment", "value": "dev", "state": "CONFIRMED", "source": source,
+            "evidenceIds": [evidence],
+            "statement": (f"DEV in {region} (PROD read-only; PROD Transform is never invoked) — confirmed by "
+                          + ("the owner's blanketDevWrites decision for this test." if evidence.startswith("owner") else "the request."))}
+
+
 def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclusiveZ>",
              slice_catalog: dict | None = None, actuals: dict | None = None) -> dict:
     catalog = slice_catalog if slice_catalog is not None else load_slice_catalog()
@@ -1539,6 +1555,10 @@ def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclu
             "PROD Transform is never invoked. Catalog and source-window inspection may be "
             "read-only PROD; execution proof is DEV."
         )
+    environment = environment_fact(parsed["hints"])
+    if environment:
+        result["confirmedFacts"] = [environment]
+        result["defaultsNotice"] = defaults_notice(result["confirmedFacts"])
     source, source_quals, source_conflict = split_terms(registry, parsed["sourceTerms"])
     target, target_quals, target_conflict = split_terms(registry, parsed["targetTerms"])
     qualifiers = [q for q in parsed["qualifiers"] + source_quals + target_quals if q not in {source, target}]
@@ -1852,6 +1872,20 @@ def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclu
         proposal_language = next((q for q in qualifiers if q in registry.known_languages()), f"{HUB_LANGUAGE}-{forward.target}")
     recommendations = dataset_recommendations(proposal_language, selected_profile, window)
     persist_policy = (selected_profile or {}).get("validationWorkflow", {}).get("persistPolicy")
+    decided_persist = parsed["hints"]["ownerDecisions"].get("persistPolicy")
+    persist_effective = persist_policy or decided_persist or "forbidden"
+    persist_source = "profile" if persist_policy else ("owner-decision" if decided_persist else "policy-default")
+    persist_fact = {
+        "id": "persist-policy", "label": "Persist", "value": persist_effective, "state": "CONFIRMED", "source": persist_source,
+        "evidenceIds": [{"profile": "selected-profile", "owner-decision": "owner-decision-persist-policy",
+                         "policy-default": "transform-validation-policy-default"}[persist_source]],
+        "statement": (f"{persist_effective} — " + {
+            "profile": "fixed by the selected profile's validationWorkflow.persistPolicy.",
+            "owner-decision": "the owner allowed a bounded DEV Persist canary; each write stays approval-gated.",
+            "policy-default": ("the stated policy default for Transform validation: graph closure is proven from Transform "
+                               "outputs and nothing is written to Persist (say \"allow a bounded Persist canary\" to change it)."),
+        }[persist_source]),
+    }
     profile_workflow = profile_workflow_steps(registry, selected_profile)
     result.update({
         "status": "RESOLVED",
@@ -1874,8 +1908,8 @@ def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclu
                 for i, m in enumerate(steps)
             ],
             "optionalCrossSource": continuation["crossSource"],
-            "persistPolicyDefault": persist_policy or "forbidden",
-            "persistPolicySource": "profile" if persist_policy else "default",
+            "persistPolicyDefault": persist_effective,
+            "persistPolicySource": persist_source,
         },
         "profileWorkflow": profile_workflow,
         "profileMatches": profiles,
@@ -1897,9 +1931,15 @@ def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclu
             else next((s["mapping"] for s in profile_workflow if s["mapping"] != primary.key), None)
         ),
         default_mode="one-way" if (result.get("slices") or primary.source == HUB_LANGUAGE) else "round-trip",
-        persist_policy=persist_policy,
     )
+    result["confirmedFacts"] = [*result.get("confirmedFacts", []), persist_fact]
+    result["defaultsNotice"] = defaults_notice(result["confirmedFacts"])
     return result
+
+
+def defaults_notice(facts: list[dict]) -> str:
+    """The up-front statement of every fact confirmed without a question, with where it came from."""
+    return " ".join(f"{f['label']}: {f['statement']}" for f in facts)
 
 
 def profile_workflow_steps(registry: Registry, profile: dict | None) -> list[dict]:
@@ -1927,6 +1967,7 @@ def draft_profile(request: str, discovery: dict, registry: Registry | None = Non
     status = discovery.get("status")
     resolved = status == "RESOLVED"
     selected = discovery.get("selectedProfile")
+    env_fact = next((f for f in discovery.get("confirmedFacts", []) if f["id"] == "environment"), None)
     facts = []
     for fact_id in MATERIAL_FACT_IDS:
         state, value, question = "MISSING", None, None
@@ -1937,6 +1978,9 @@ def draft_profile(request: str, discovery: dict, registry: Registry | None = Non
             state, value = "INFERRED", ", ".join(s["mapping"] for s in discovery["workflow"]["steps"])
         elif fact_id == "configuration-repository-and-ref" and resolved:
             state, value = "INFERRED", f"{LAYOUT['repository']['slug']} at the pinned candidate commit"
+        elif fact_id == "environment-region-and-mode" and env_fact:
+            state, value = "CONFIRMED", (f"DEV in {LAYOUT['repository']['defaultRegion']} (PROD read-only), observed-dev; "
+                                         f"PROD Transform is never invoked; source {env_fact['source']}")
         elif fact_id == "sensitivity-and-handling":
             state, value = "INFERRED", "restricted; aggregates and digests only"
         elif fact_id == "configuration-product-boundary":
@@ -1948,7 +1992,8 @@ def draft_profile(request: str, discovery: dict, registry: Registry | None = Non
                 (q["prompt"] for q in discovery.get("questions", []) if fact_question(fact_id) == q["id"]),
                 f"Confirm {fact_id.replace('-', ' ')}.",
             )
-        facts.append({"id": fact_id, "state": state, "value": value, "evidenceIds": ["intent-resolution"] if value else [], "nextQuestion": question})
+        evidence = (env_fact["evidenceIds"] if state == "CONFIRMED" and env_fact else ["intent-resolution"]) if value else []
+        facts.append({"id": fact_id, "state": state, "value": value, "evidenceIds": evidence, "nextQuestion": question})
     draft = {
         "id": f"transform-configuration-draft-{digest}",
         "contractVersion": 1,
@@ -2091,7 +2136,7 @@ def promote_run_profile(draft: dict, intent: dict, slice_catalog: dict, actuals:
         "directions": draft["derivedDirections"],
         "sourceWindowPolicy": draft["derivedSourceWindowPolicy"],
         "graph": {"required": shape == "graph"},
-        "validationWorkflow": {"persistPolicy": "forbidden"},
+        "validationWorkflow": {"persistPolicy": (intent.get("workflow") or {}).get("persistPolicyDefault") or "forbidden"},
         "promotion": {"basis": ["resolved-intent", "owner-decisions", "package-slices-catalog", "prod-actuals-catalog"],
                       "sensitiveSlices": sensitive},
         "draft": promoted,
@@ -2292,7 +2337,7 @@ def fetch_missing_inputs(args) -> None:
         entry = fetch.materialize(argparse.Namespace(workspace=str(workspace), name="lexicon-candidate",
                                                      command=args.materialize_command, install=args.materialize_install,
                                                      node=LAYOUT["materialize"].get("node")))
-        args.registry = (args.registry or []) + [f"candidate-build={entry['path']}"]
+        args.registry = (args.registry or []) + [f"{CANDIDATE_BUILD_LABEL}={entry['path']}"]
     for spec in args.aws or []:
         label, _, profile = spec.partition("=")
         if not profile:

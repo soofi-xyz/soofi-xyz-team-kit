@@ -22,7 +22,8 @@ Render the validated Transform configuration/readiness package into this order:
 ## Reporting rules
 
 - Put the verdict first and make it identical to the artifact.
-- When `versionSelection.rule` is `latest-published-semver`, repeat its `notice` with the configuration identity.
+- When `versionSelection.rule` is `latest-published-semver` or `latest-candidate-semver`, repeat its `notice` with the configuration identity, and state the resolver's `defaultsNotice` (the confirmed environment and Persist policy with their sources).
+- List every DEV redeploy (`dev_redeploy.py` card, run id, attempt, served digest after it) and every `DeploymentRace` or `DeploymentDrift` with its handoff.
 - Distinguish observed runtime behavior from static/test evidence.
 - Show numbers for counts, mismatches, endpoints and costs.
 - Do not include raw rows, PII, business identifiers, secret values, credentials or signed URLs.

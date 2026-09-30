@@ -90,8 +90,10 @@ Each numbered write is a separate confirmation gate.
 ## Tools
 
 - What PROD actually did: `scripts/prod_actuals.py` (Lambda outcomes from a PROD state machine's
-  execution logs) and `scripts/iceberg_snapshot_read.py` (a PROD Iceberg table by key or window
-  column; pins the snapshot). Both are read-only, keep rows only in a mode-0700 `--private-dir`
+  execution logs) and `scripts/iceberg_snapshot_read.py` (a PROD Iceberg table for the selected
+  day(s) only: the window, and the catalog `rowFilter` as `--where`, are pushed down to the scan, a
+  canary key read takes the same window, and a whole-table read needs an explicit `--allow-full-scan`;
+  pins the snapshot). Both are read-only, keep rows only in a mode-0700 `--private-dir`
   outside any checkout and print aggregates. Use the run's `private/` from `run_workspace.py new`
   and remove it with `run_workspace.py cleanup --run-dir <run>` once the comparison is recorded;
   cleanup touches only that run. Other stores (DynamoDB, Persist Gremlin)

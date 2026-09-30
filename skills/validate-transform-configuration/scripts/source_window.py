@@ -13,7 +13,8 @@
       Record the window the user explicitly confirmed: the recommendation, or a longer contiguous range of
       complete candidates when allowLongerRange is true. Run it only after the user's own answer.
   source_window.py data-days --slice-days counts.json (--day YYYY-MM-DD | --most-recent) [--now ISO]
-      [--data-through SLICE=ISO ...] [--input-days input-counts.json ...] --out days.json
+      [--data-through SLICE=ISO ...] [--input-days input-counts.json ...] [--lookback-days N]
+      [--catalog prod-actuals.json] --out days.json
       Check that every slice has real PROD rows on the confirmed day on both sides: the PROD actual
       (--slice-days) and, with --input-days, the slice's Transform inputs. An EMPTY, STALE_ACTUAL or
       INPUT_EMPTY slice gets the nearest UTC day with both to suggest to the user. --most-recent applies the
@@ -21,9 +22,11 @@
       --data-through is a slice's PROD-actual data cutoff (prod_actuals.py table-summary dataThrough): days
       ending after it are not eligible, and whenever it is before the end of the requested (or most recent
       complete) UTC day the stale mirror is recorded as a ProdMirrorStale data-platform handoff. A slice whose
-      actual days never meet an input day records an UpstreamInputEmpty handoff.
-      Counts come from bounded newest-first reads (prod_actuals.py probe-days, iceberg_snapshot_read.py
-      byUtcDay), never a whole-lookback Lambda scan. Never substitutes synthetic data.
+      actual days never meet an input day records an UpstreamInputEmpty handoff. --lookback-days bounds the days
+      that may be chosen (the most recent N complete UTC days); --catalog adds the slice's recorded
+      blockedHandoffs to a slice that has no eligible day. Counts come from bounded newest-first reads
+      (prod_actuals.py probe-days, iceberg_snapshot_read.py byUtcDay with the catalog rowFilter as --where, and for
+      graph inputs graph_inputs.py edge-days), never a whole-lookback Lambda scan. Never substitutes synthetic data.
 
 Candidates are sanitized aggregates gathered with read-only PROD metadata calls: one object per complete UTC
 day with start, endExclusive, sourceFamiliesPresent, coverageSignals, rowCount, byteCount, estimatedCostUsd and
@@ -184,7 +187,7 @@ def validate_confirmed(selection: dict | None, policy: dict | None) -> tuple[str
 
 
 def data_days(slice_days: dict, day: str | None, most_recent: bool, now: datetime, data_through: dict | None = None,
-              input_days: dict | None = None) -> dict:
+              input_days: dict | None = None, lookback_days: int | None = None, catalog: dict | None = None) -> dict:
     """Per-slice real-data check of a UTC day, or the most recent complete UTC day with data per slice.
 
     slice_days maps slice -> {"YYYY-MM-DD": rows} of the PROD actual, input_days the same for the slice's
@@ -194,8 +197,11 @@ def data_days(slice_days: dict, day: str | None, most_recent: bool, now: datetim
     the nearest eligible UTC day (ties go to the earlier day). data_through maps slice -> the PROD actual's data
     cutoff; a day that ends after it is not eligible, and whenever the cutoff is before the end of the requested
     day (or of the most recent complete UTC day) the stale mirror is recorded as a data-platform handoff.
+    lookback_days limits eligible days to the most recent N complete UTC days; catalog adds each slice's recorded
+    blockedHandoffs when it has no eligible day.
     """
     today = now.strftime("%Y-%m-%d")
+    oldest = (datetime.fromisoformat(today) - timedelta(days=lookback_days)).strftime("%Y-%m-%d") if lookback_days else ""
     requested = day or (datetime.fromisoformat(today) - timedelta(days=1)).strftime("%Y-%m-%d")
     out = {}
     for name, counts in sorted(slice_days.items()):
@@ -203,7 +209,7 @@ def data_days(slice_days: dict, day: str | None, most_recent: bool, now: datetim
         inputs = (input_days or {}).get(name)
         covered = (lambda d: cutoff is None or parse_utc(d + "T00:00:00Z") + timedelta(days=1) <= cutoff)
         fed = (lambda d: inputs is None or bool(inputs.get(d)))
-        actual_days = sorted(d for d, rows in counts.items() if rows and d < today and covered(d))
+        actual_days = sorted(d for d, rows in counts.items() if rows and oldest <= d < today and covered(d))
         days = [d for d in actual_days if fed(d)]
         if most_recent:
             chosen = days[-1] if days else None
@@ -236,12 +242,15 @@ def data_days(slice_days: dict, day: str | None, most_recent: bool, now: datetim
                 handoffs.append({"code": "ProdMirrorStale", "owner": "data platform (the mirror's ETL)",
                                  "detail": f"the PROD actual's data stops at {iso(cutoff)}, before the end of {requested}; "
                                            "later days have no actual"})
+        if out[name]["status"] != "HAS_DATA":
+            known = {h["code"] for h in handoffs}
+            handoffs += [h for h in ((catalog or {}).get("slices", {}).get(name, {}).get("blockedHandoffs") or []) if h["code"] not in known]
         if handoffs:
             out[name]["handoffs"] = handoffs
     empty = sorted(n for n, s in out.items() if s["status"] != "HAS_DATA")
     return {"status": "EMPTY_SLICES" if empty else "OK", "emptySlices": empty,
             "selection": "most-recent-full-utc-day-with-data-per-slice" if most_recent else "confirmed-day",
-            "requestedDay": requested, "slices": out, "evidenceIds": ["prod-slice-day-counts"]}
+            "requestedDay": requested, "lookbackDays": lookback_days, "slices": out, "evidenceIds": ["prod-slice-day-counts"]}
 
 
 def slice_window(entry: dict) -> dict:
@@ -282,6 +291,8 @@ def main(argv: list[str] | None = None) -> int:
                    help="SLICE=ISO: the slice's PROD-actual data cutoff; later days are not eligible")
     d.add_argument("--input-days", action="append", default=[],
                    help='{"<slice>": {"YYYY-MM-DD": rows}} of the slice\'s Transform inputs (repeatable); a day needs rows on both sides')
+    d.add_argument("--lookback-days", type=int, help="only the most recent N complete UTC days are eligible (a bounded choice)")
+    d.add_argument("--catalog", help="PROD-actuals catalog; a slice without an eligible day also gets its blockedHandoffs")
     d.add_argument("--out", required=True)
     args = parser.parse_args(argv)
 
@@ -290,7 +301,8 @@ def main(argv: list[str] | None = None) -> int:
         cutoffs = dict(v.split("=", 1) for v in args.data_through)
         merged = {name: counts for path in args.slice_days for name, counts in read_json(path).items()}
         inputs = {name: counts for path in args.input_days for name, counts in read_json(path).items()}
-        result = data_days(merged, args.day, args.most_recent, now, cutoffs, inputs or None)
+        result = data_days(merged, args.day, args.most_recent, now, cutoffs, inputs or None, args.lookback_days,
+                           read_json(args.catalog) if args.catalog else None)
         write_json(args.out, result)
         print(json.dumps(result, indent=1))
         return 0 if result["status"] == "OK" else 1

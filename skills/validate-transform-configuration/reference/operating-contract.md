@@ -28,7 +28,9 @@ Require a profile ID equal to its filename, environment, region, optional reques
 - every required direction to its exact enabled mapping identity and version. Without `@x.y.z`,
   the version is the latest selectable semantic version of that mapping id (DEV-published,
   candidate-build, or checked-in), announced by the resolver's `notice`, recorded as
-  `versionSelection`, and pinned by `mapping.json` SHA-256. Absence from the PROD catalog is
+  `versionSelection` (`latest-published-semver` only when a DEV registry publishes it, otherwise
+  `latest-candidate-semver`; the materialized candidate-build is not a published registry), and pinned
+  by `mapping.json` SHA-256. Absence from the PROD catalog is
   observational only and is not `NOT_READY`. PROD Transform is never invoked.
 
 Execute `validationWorkflow.steps` in sequence. A `previous-step-output` input
@@ -94,7 +96,13 @@ Any `FAIL` yields `NOT_READY`. Otherwise any `BLOCKED` or `APPROVAL_REQUIRED` yi
 
 Local work is limited to read-only discovery and a private evidence directory; nothing executes a mapping locally. Every DEV external write requires a fresh explicit approval bound to a digest of the exact operation, target, bounded input, expected effect, cost ceiling and containment. Approval must be recorded before execution and cannot be reused.
 
-PROD is read-only and PROD Transform is never invoked. Collect control-plane metadata, execution logs, Iceberg snapshots and sanitized existing evidence only. Any required PROD mutation becomes a handoff; never execute it.
+PROD is read-only and PROD Transform is never invoked. Collect control-plane metadata, execution logs, Iceberg snapshots and sanitized existing evidence only. Any required PROD mutation becomes a handoff; never execute it. PROD reads are bounded: an Iceberg actual is read only for the selected day(s) (window pushed down to the scan), and graph input days are counted with one bounded `count()` per day.
+
+The environment is DEV. It is asked unless the request says `in dev`/`in prod` or the owner gave `blanketDevWrites` for a test or validate request; then it is `CONFIRMED` with that source. Persist is `forbidden` for Transform validation as a stated policy default (a profile's `persistPolicy` or the owner's "allow a bounded Persist canary" changes it), recorded `CONFIRMED` with its source and shown up front in the resolver's `defaultsNotice`, never asked and never inferred.
+
+### Pinned candidate not served in DEV
+
+DEV mapping deploys are latest-PR-wins. Before the canary, right before each `StartExecution` and at verdict time, the served `mapping.json` SHA-256 must equal the pin (`dev_redeploy.py check`, `transform_runs.py start`, `evaluate_run.py --deployment-check`). A pin pruned or replaced by another head's DEV deploy is a `DeploymentRace`: `BLOCKED`, never `FAIL`. With the owner decision `devRedeployPinned` (absent: ask), Silvally republishes the pinned candidate only through the registry repository's documented DEV deploy path (the layout's `devDeploy`: for Lexicon, a full re-run of the newest `DEV CI/CD` workflow run of the pinned head SHA), polls until the served digest equals the pin and runs immediately; at most `maxRedeploys` (default 2) per run, then `BLOCKED` with a `DeploymentRace` handoff (make the DEV registry additive across PR deploys, or hold other DEV deploys). `blanketDevWrites` never covers a deployment, and nothing is ever deployed to PROD. When the pinned head's own deploy is the newest and still serves other content, the candidate is wrong: `DeploymentDrift`, `FAIL`, never redeployed.
 
 ## Evidence boundary
 

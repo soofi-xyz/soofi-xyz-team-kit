@@ -8,7 +8,8 @@
       [--canary-run-dir [SLICE=]RUN ...] [--canary-sample summary.json ...] [--canary-comparison checks.json ...]
       [--canary-gate [SLICE=]gate.json ...] [--run-dir [SLICE=]RUN ...] [--checks checks.json ...]
       [--actuals-comparison checks.json ...] [--closure closure.json ...] [--regression [SLICE=]regression.json ...]
-      [--graph-inputs summary.json ...] [--staging-upload upload.json ...] [--mode observed-dev|bounded-dev-dry-run]
+      [--graph-inputs summary.json ...] [--staging-upload upload.json ...] [--deployment-check [SLICE=]check.json ...]
+      [--mode observed-dev|bounded-dev-dry-run]
       --out phases.json
 
 Every input is real data from a PROD-derived UTC window; there is no local or synthetic mode. Named package
@@ -34,7 +35,10 @@ FAIL, BLOCKED or APPROVAL_REQUIRED:
                   PRODUCT_CHANGE item: BLOCKED unless the owner accepted it as out of scope (then recorded)
   7  actuals      one PROD-actuals baseline per slice: AVAILABLE, or NONE (schema, row-count and reject-reason
                   fallback, stated in the report); EMPTY, STALE or TRUNCATED baselines are BLOCKED
-  8  provenance   every plan's mapping digest matches the pin and the environment serves it
+  8  provenance   every plan's mapping digest matches the pin and the environment serves it; a run whose spec records
+                  the registry location also needs a verdict-time dev_redeploy.py check (--deployment-check): SERVED
+                  passes, a DeploymentRace (pruned or replaced by another PR's DEV deploy) is BLOCKED, a
+                  DeploymentDrift (the pinned head's own deploy serves other content) is FAIL
   9  canary       the slice's DEV canary (at most 10 real events, deterministic sample) executed under approval
                   and its comparison against the PROD actual passed
   10 full run     the slice's canary gate was approved by the user (or pre-approved by the owner for a passing
@@ -211,6 +215,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="graph_inputs.py summary of a slice's canary or window inputs (INPUT_EMPTY names the real cause)")
     parser.add_argument("--staging-upload", action="append", default=[],
                         help="stage_evidence_package.py upload result for a canary or full-window DEV package")
+    parser.add_argument("--deployment-check", action="append", default=[],
+                        help="[SLICE=]dev_redeploy.py check result taken at verdict time (repeatable)")
     parser.add_argument("--mode", choices=("observed-dev", "bounded-dev-dry-run"), default="observed-dev")
     parser.add_argument("--out", required=True)
     args = parser.parse_args(argv)
@@ -398,12 +404,29 @@ def main(argv: list[str] | None = None) -> int:
 
     for label, run in [("canary", r) for r in canary_runs] + [("full", r) for r in full_runs]:
         deployment = run["spec"].get("deployment") or {}
-        if deployment.get("drift"):
+        if deployment.get("drift") and not deployment.get("location"):
             phases.set(8, "BLOCKED", f"DeploymentDrift ({label}): {deployment['drift']}", slice=run["slice"])
         mismatched = [s["step"] for s in run["steps"] if s.get("mappingPinMatches") is False]
         if run["steps"]:
             phases.set(8, "FAIL" if mismatched else "PASS", f"{label}: {sum('mappingPinMatches' in s for s in run['steps'])} plans bound "
                        "to the pinned digest" + (f"; mismatched {mismatched}" if mismatched else ""), "plans", run["slice"])
+    verdict_checks = {name: read_json(path) for name, path in scoped(args.deployment_check)}
+    for label, run in [("canary", r) for r in canary_runs] + [("full", r) for r in full_runs]:
+        if not (run["spec"].get("deployment") or {}).get("location"):
+            continue
+        check = verdict_checks.get(run["slice"]) or verdict_checks.get(None)
+        if not check:
+            phases.set(8, "BLOCKED", f"DeploymentUnverifiedAtVerdict ({label}): re-check the served digest with dev_redeploy.py check",
+                       slice=run["slice"])
+        elif check["status"] == "SERVED":
+            phases.set(8, "PASS", f"{label}: DEV still serves the pinned {check['mapping']} at verdict time", "deployment-check",
+                       run["slice"])
+        elif check.get("classification") == "DeploymentDrift":
+            phases.set(8, "FAIL", f"DeploymentDrift ({label}): {check.get('detail')}", slice=run["slice"])
+        else:
+            phases.set(8, "BLOCKED", f"DeploymentRace ({label}): DEV {check['status'].lower().replace('_', ' ')} the pinned "
+                       f"{check['mapping']} at verdict time; {check.get('detail') or 'classify with --slug --head-sha'}",
+                       slice=run["slice"])
     if phases.status(8) is None:
         phases.set(8, "BLOCKED", "no captured plans")
 

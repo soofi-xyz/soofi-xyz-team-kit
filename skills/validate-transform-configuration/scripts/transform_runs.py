@@ -26,7 +26,10 @@ Commands (all write evidence only under --run-dir):
                     spec to named package slices (one run directory per slice and window).
   cards    write one operation card per case with its operation digest and stop (APPROVAL_REQUIRED)
   start    start exactly the cases whose --approve digests match their cards (records the approval first), or
-           every card of the run when --owner-decisions carries blanketDevWrites (recorded per card digest)
+           every card of the run when --owner-decisions carries blanketDevWrites (recorded per card digest). When the
+           spec records the registry location, the served mapping.json SHA-256 is re-read right before each
+           StartExecution (deployment-checks/) and a pruned or replaced pin stops the start (DeploymentRace); after
+           dev_redeploy.py republishes it, the same spec starts again
   capture  read-only: describe-execution, history, plan.json, output files; reconcile metadata with physical rows.
            Output rows go to <run>/private/outputs/<runId>/<case>/ (removed by run_workspace.py cleanup; the step
            records it as privateOutputDir); only sanitized summaries (steps.json, _metadata.json) stay in RUN
@@ -58,6 +61,7 @@ import json
 import time
 from pathlib import Path
 
+from dev_redeploy import served_status
 from run_workspace import MARKER as RUN_MARKER
 from silvally_io import DEFAULT_REGION, SilvallyError, aws, canonical_digest, load_layout, parse_s3, private_dir, read_json, write_json
 
@@ -260,8 +264,10 @@ def cmd_start(args) -> int:
     unmatched = approvals - {card["operationDigest"] for _, _, card in cards}
     if unmatched:
         raise SilvallyError(f"approval digests match no card: {sorted(unmatched)}")
-    if (spec.get("deployment") or {}).get("drift") and approvals:
-        raise SilvallyError(spec["deployment"]["blocking"])
+    deployment = spec.get("deployment") or {}
+    live = bool(deployment.get("location")) and bool(approvals)
+    if deployment.get("drift") and approvals and not live:
+        raise SilvallyError(deployment["blocking"])
     gate = assert_full_run_allowed(spec, args.canary_gate) if approvals else None
     if gate:
         write_json(run_dir / "canary-gate.json", gate)
@@ -272,6 +278,8 @@ def cmd_start(args) -> int:
         approval = {"operationDigest": card["operationDigest"], "environment": "dev", "status": "APPROVED",
                     "kind": "owner-blanket-dev-writes" if blanket else "operation", "approver": args.approver, "scope": args.scope,
                     "recordedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+        if live:
+            assert_served(spec, run_dir, index, case)
         write_json(run_dir / "approvals" / f"{index}-{case['case']}.json", {**card, "approval": approval})
         result = aws(["stepfunctions", "start-execution", "--state-machine-arn", spec["stateMachineArn"],
                       "--name", card["executionName"], "--input", json.dumps(card["request"])],
@@ -281,6 +289,17 @@ def cmd_start(args) -> int:
         started += 1
     print(f"started {started} execution(s)")
     return 0
+
+
+def assert_served(spec: dict, run_dir: Path, index: int, case: dict) -> None:
+    """Right before StartExecution: DEV must still serve the pinned mapping.json (latest-PR-wins deploys prune it)."""
+    pin = spec["mappings"][case["mapping"]]["sha256"]
+    check = served_status(spec["deployment"]["location"], case["mapping"], pin, spec["profile"], spec.get("region", DEFAULT_REGION))
+    write_json(run_dir / "deployment-checks" / f"{index}-{case['case']}.json", check)
+    if check["status"] != "SERVED":
+        raise SilvallyError(f"DeploymentRace: DEV {check['status'].lower().replace('_', ' ')} {case['mapping']} right before "
+                            "StartExecution; classify it with dev_redeploy.py check --slug --head-sha and, with the owner's "
+                            "devRedeployPinned decision, republish it with dev_redeploy.py redeploy, then start again")
 
 
 def data_files(directory: Path) -> list[str]:
@@ -660,7 +679,10 @@ def cmd_spec_from_intent(args) -> int:
             "outputFormats": formats, "bindings": bindings,
             "presentInputs": {n: sorted(t) for n, t in present.items()},
             "deployment": {"registry": args.label, "served": bool(served), "drift": drift,
-                           "blocking": "DeploymentDrift: the environment does not serve the pinned mapping; do not start" if drift else None},
+                           "location": next((e.get("location") for e in manifest if e.get("kind") == "registry"
+                                             and e.get("name") == args.label), None),
+                           "blocking": ("DeploymentDrift: the environment does not serve the pinned mapping; do not start"
+                                        " (with a registry location, start re-checks it live)") if drift else None},
             "skipped": skipped, "cases": cases}
     if slices:
         spec["slices"] = [s["id"] for s in slices]

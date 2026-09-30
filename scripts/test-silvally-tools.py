@@ -1524,6 +1524,293 @@ else:
                    "capture rows; real stop cause; slice-scoped evidence; per-slice NOT_APPLICABLE regression; summed cost")
 
 
+def gh_shim(directory: Path, body: str) -> dict:
+    directory.mkdir(parents=True, exist_ok=True)
+    shim = directory / "gh"
+    shim.write_text(f"#!{sys.executable}\nimport json, os, sys\nargs = sys.argv[1:]\n{body}\n")
+    shim.chmod(shim.stat().st_mode | stat.S_IEXEC)
+    return {"PATH": f"{directory}{os.pathsep}{os.environ['PATH']}"}
+
+
+def test_redeploy_pinned(tmp: Path) -> None:
+    """A pruned pin is a DeploymentRace: republished only under devRedeployPinned, re-checked before each start and at verdict."""
+    import dev_redeploy
+    work = tmp / "redeploy"
+    state = work / "state.json"
+    pinned_doc = work / "pinned-mapping.json"
+    pinned_doc.parent.mkdir(parents=True, exist_ok=True)
+    pinned_doc.write_text('{"id": "canon-to-omega", "version": "2.0.0"}')
+    pin = silvally_io.sha256_file(pinned_doc)
+    head, other = "a" * 40, "b" * 40
+    silvally_io.write_json(state, {"served": False, "reruns": 0, "newest": other, "calls": []})
+    common = f"""
+state = json.load(open({str(state)!r}))
+state["calls"].append(args)
+def save():
+    json.dump(state, open({str(state)!r}, "w"))
+"""
+    aws_env = aws_shim(work / "aws-bin", common + f"""
+import shutil
+key = "transform-mappings/canon-to-omega/2.0.0/mapping.json"
+if args[:2] == ["s3api", "list-objects-v2"]:
+    print(json.dumps({{"Contents": [{{"Key": key}}]}} if state["served"] else {{}}))
+elif args[:2] == ["s3api", "head-object"]:
+    print(json.dumps({{"VersionId": "v" + str(state["reruns"]), "LastModified": "2099-01-01T00:00:00Z"}}))
+elif args[:2] == ["s3", "cp"]:
+    shutil.copy({str(pinned_doc)!r}, args[3])
+elif args[:2] == ["stepfunctions", "start-execution"]:
+    print(json.dumps({{"executionArn": "arn:aws:states:xx-test-1:000000000000:execution:x:y"}}))
+else:
+    sys.exit("unexpected aws call: " + " ".join(args))
+save()""")
+    gh_env = gh_shim(work / "gh-bin", common + f"""
+if args[:2] == ["run", "list"] and "--commit" in args:
+    print(json.dumps([{{"databaseId": 11, "headSha": {head!r}, "status": "completed", "conclusion": "success", "event": "pull_request",
+                       "createdAt": "2099-01-01T00:00:00Z", "workflowName": "DEV CI/CD"}},
+                      {{"databaseId": 7, "headSha": {head!r}, "status": "completed", "conclusion": "failure", "event": "pull_request",
+                       "createdAt": "2098-12-31T00:00:00Z", "workflowName": "DEV CI/CD"}}]))
+elif args[:2] == ["run", "list"]:
+    print(json.dumps([{{"databaseId": 20, "headSha": state["newest"], "headBranch": "other-pr", "status": "completed",
+                       "conclusion": "success", "event": "pull_request", "updatedAt": "2099-01-02T00:00:00Z"}}]))
+elif args[:2] == ["run", "rerun"]:
+    state["reruns"] += 1
+    state["served"] = True
+    state["newest"] = {head!r}
+elif args[:2] == ["run", "view"]:
+    print(json.dumps({{"status": "completed", "conclusion": "success", "attempt": state["reruns"] + 1, "headSha": {head!r}}}))
+else:
+    sys.exit("unexpected gh call: " + " ".join(args))
+save()""")
+    env = {"PATH": f"{work / 'aws-bin'}{os.pathsep}{work / 'gh-bin'}{os.pathsep}{os.environ['PATH']}"}
+    del aws_env, gh_env
+    registry = "s3://example-dev-registry/transform-mappings/"
+    check = ["dev_redeploy.py", "check", "--registry-uri", registry, "--mapping", "canon-to-omega@2.0.0", "--pin", pin,
+             "--profile", "example-dev", "--slug", "example-org/registry", "--head-sha", head]
+    pruned = run_tool(*check, "--out", str(work / "check.json"), env=env, check=False)
+    race = json.loads((work / "check.json").read_text())
+    if pruned.returncode == 0 or race["status"] != "PRUNED" or race["classification"] != "DeploymentRace" or not race["recoverable"]:
+        fail(f"a version pruned by another PR's DEV deploy was not a recoverable DeploymentRace: {race}")
+    run_dir = work / "run"
+    redeploy = ["dev_redeploy.py", "redeploy", "--check", str(work / "check.json"), "--run-dir", str(run_dir), "--wait",
+                "--profile", "example-dev", "--poll-seconds", "0", "--poll-attempts", "2", "--out", str(work / "redeploy.json")]
+    silvally_io.write_json(work / "blanket.json", {"blanketDevWrites": "staging-and-executions-for-this-run"})
+    refused = run_tool(*redeploy, "--owner-decisions", str(work / "blanket.json"), env=env, check=False)
+    if refused.returncode == 0 or "DevRedeployDecisionRequired" not in refused.stderr or json.loads(state.read_text())["reruns"]:
+        fail("blanketDevWrites was accepted as approval to redeploy the pinned candidate")
+    silvally_io.write_json(work / "decisions.json", {"devRedeployPinned": "rerun-pr-dev-workflow-for-pinned-head"})
+    done = json.loads(run_tool(*redeploy, "--owner-decisions", str(work / "decisions.json"), env=env).stdout)
+    card = json.loads((run_dir / "deployments" / "redeploy-1.json").read_text())
+    calls = json.loads(state.read_text())["calls"]
+    if done["status"] != "SERVED" or done["runId"] != 11 or ["run", "rerun", "11", "-R", "example-org/registry"] not in calls:
+        fail(f"the newest DEV workflow run of the pinned head was not re-run and polled until served: {done}")
+    if card["approval"]["kind"] != "owner-dev-redeploy-pinned" or card["workflow"] != "ci-cd-dev.yml" \
+            or silvally_io.canonical_digest({k: v for k, v in card.items() if k not in ("operationDigest", "approval")}) != card["operationDigest"]:
+        fail(f"the redeploy card or its owner approval was not recorded: {card}")
+
+    # The served digest is re-read right before each StartExecution; a spec-time drift no longer blocks once it is served.
+    spec = {"runId": "20990101T000000Z", "stateMachineArn": "arn:aws:states:xx-test-1:000000000000:stateMachine:dev-transform-pipeline",
+            "outputRoot": "s3://example-dev-bucket/outputs/silvally-test/", "profile": "example-dev", "region": "xx-test-1",
+            "mappings": {"canon-to-omega@2.0.0": {"sha256": pin}}, "stage": "canary",
+            "deployment": {"registry": "dev", "served": False, "drift": "absent", "location": registry, "blocking": "DeploymentDrift: x"},
+            "cases": [{"case": "full", "mapping": "canon-to-omega@2.0.0", "expected": "PASS",
+                       "request": {"outputDatasets": ["member_report"], "inputs": [{"table": "vertex-member", "s3Uri": "s3://b/in/vertex-member/"}]}}]}
+    for label, served in (("live-served", True), ("live-pruned", False)):
+        silvally_io.write_json(work / f"{label}.json", spec)
+        run_tool("transform_runs.py", "cards", "--spec", str(work / f"{label}.json"), "--run-dir", str(work / label))
+        state_doc = json.loads(state.read_text())
+        silvally_io.write_json(state, {**state_doc, "served": served})
+        started = run_tool("transform_runs.py", "start", "--run-dir", str(work / label), "--approver", "owner", "--scope", "blanket",
+                           "--owner-decisions", str(work / "blanket.json"), env=env, check=False)
+        checks = sorted((work / label / "deployment-checks").glob("*.json"))
+        if served and (started.returncode != 0 or "STARTED" not in started.stdout or json.loads(checks[0].read_text())["status"] != "SERVED"):
+            fail(f"a served pin did not start after the spec-time drift: {started.stderr[-300:]}")
+        if not served and (started.returncode == 0 or "DeploymentRace" not in started.stderr
+                           or (work / label / "approvals").exists() and list((work / label / "approvals").glob("*.started.json"))):
+            fail("a pin pruned right before StartExecution was started")
+
+    # Verdict time: served passes phase 8, a race blocks it, the pinned head's own mismatching deploy fails it.
+    captured = work / "captured"
+    silvally_io.write_json(captured / "run-spec.json", {**spec, "slices": ["members"]})
+    silvally_io.write_json(captured / "steps.json", [{"step": "1-full", "status": "SUCCEEDED", "verdict": "PASS", "mappingPinMatches": True}])
+    silvally_io.write_json(work / "intent.json", {"status": "RESOLVED", "slices": [{"id": "members", "outputDatasets": ["member_report"]}],
+                                                  "findings": [], "ownerDecisions": {}})
+    served_check = {**race, "status": "SERVED", "served": pin, "classification": None}
+    drift_check = {**race, "status": "DIGEST_DIFFERS", "served": "c" * 64, "classification": "DeploymentDrift", "detail": "own deploy differs"}
+    for label, check_doc, expected in (("none", None, "BLOCKED"), ("served", served_check, "PASS"), ("race", race, "BLOCKED"),
+                                       ("drift", drift_check, "FAIL")):
+        extra = []
+        if check_doc:
+            silvally_io.write_json(work / f"verdict-{label}.json", check_doc)
+            extra = ["--deployment-check", f"members={work / f'verdict-{label}.json'}"]
+        run_tool("evaluate_run.py", "--intent", str(work / "intent.json"), "--canary-run-dir", f"members={captured}", *extra,
+                 "--out", str(work / f"eval-{label}.json"), check=False)
+        phase8 = next(p for p in json.loads((work / f"eval-{label}.json").read_text())["phases"] if p["number"] == 8)
+        text = " ".join(phase8["reasons"])
+        if phase8["status"] != expected or (label == "none" and "DeploymentUnverifiedAtVerdict" not in text) \
+                or (label == "race" and "DeploymentRace" not in text) or (label == "drift" and "DeploymentDrift" not in text):
+            fail(f"verdict-time deployment check {label} gave phase 8 {phase8}")
+
+    # The pinned head's own deploy serving other content is a FAIL, never redeployed; the redeploy budget is bounded.
+    silvally_io.write_json(state, {**json.loads(state.read_text()), "served": False, "newest": head})
+    run_tool(*check, "--out", str(work / "own.json"), env=env, check=False)
+    own = json.loads((work / "own.json").read_text())
+    if own["classification"] != "DeploymentDrift" or own["verdict"] != "FAIL":
+        fail(f"a pin missing after the pinned head's own deploy was not a DeploymentDrift FAIL: {own}")
+    silvally_io.write_json(work / "own.json", own)
+    wrong = run_tool("dev_redeploy.py", "redeploy", "--check", str(work / "own.json"), "--owner-decisions", str(work / "decisions.json"),
+                     "--run-dir", str(run_dir), "--out", str(work / "x.json"), env=env, check=False)
+    if wrong.returncode == 0 or "only a DeploymentRace" not in wrong.stderr:
+        fail("a DeploymentDrift was redeployed")
+    silvally_io.write_json(state, {**json.loads(state.read_text()), "newest": other})
+    run_tool(*check, "--out", str(work / "check.json"), env=env, check=False)
+    second = run_tool("dev_redeploy.py", "redeploy", "--check", str(work / "check.json"), "--owner-decisions", str(work / "decisions.json"),
+                      "--run-dir", str(run_dir), "--out", str(work / "second.json"), env=env)
+    silvally_io.write_json(state, {**json.loads(state.read_text()), "served": False, "newest": other})
+    third = run_tool("dev_redeploy.py", "redeploy", "--check", str(work / "check.json"), "--owner-decisions", str(work / "decisions.json"),
+                     "--run-dir", str(run_dir), "--out", str(work / "third.json"), env=env, check=False)
+    blocked = json.loads((work / "third.json").read_text())
+    if json.loads(second.stdout)["attempt"] != 2 or third.returncode == 0 or blocked["status"] != "BLOCKED" \
+            or blocked["handoff"]["code"] != "DeploymentRace" or not (run_dir / "deployments" / "deployment-race.json").exists():
+        fail(f"a third prune within one run was redeployed instead of a DeploymentRace handoff: {blocked}")
+    prod_layout = json.loads((SKILL / "reference" / "registry-layout.json").read_text())
+    prod_layout["devDeploy"]["workflowFile"] = "ci-cd-prod.yml"
+    silvally_io.write_json(work / "prod-layout.json", prod_layout)
+    prod = run_tool("dev_redeploy.py", "--layout", str(work / "prod-layout.json"), "redeploy", "--check", str(work / "check.json"),
+                    "--owner-decisions", str(work / "decisions.json"), "--run-dir", str(work / "prod-run"), "--out", str(work / "p.json"),
+                    env=env, check=False)
+    if prod.returncode == 0 or "PROD is never deployed" not in prod.stderr:
+        fail("a PROD workflow was accepted as the DEV redeploy path")
+    if dev_redeploy.REDEPLOY_DECISION != "rerun-pr-dev-workflow-for-pinned-head":
+        fail("the redeploy decision value changed without the schema")
+    results.append("devRedeployPinned: pruned pin is a recoverable DeploymentRace, re-run of the pinned head's DEV workflow only under "
+                   "the owner decision (not blanketDevWrites), polled until served, live re-check before each StartExecution and at "
+                   "verdict, DeploymentDrift FAIL never redeployed, bounded redeploys then DeploymentRace handoff, PROD refused")
+
+
+def test_day_selection_inputs(tmp: Path) -> None:
+    """Per-day windowed-edge counts feed data-days so the chosen day has both actual and input rows within a bounded lookback."""
+    import graph_inputs
+    import iceberg_snapshot_read
+    work = tmp / "day-select"
+    work.mkdir()
+    contracts = {"inputs": [{"table": "vertex-member", "graphKind": "vertex", "label": "member"},
+                            {"table": "edge-member-has-ledger", "graphKind": "edge", "label": "member_has_ledger",
+                             "endpoints": {"from": "vertex-member", "to": "vertex-ledger"}}]}
+    catalog = {"slices": {"members": {
+        "graphInputs": {"root": {"dataset": "vertex-member", "keyProperty": "member_id", "actualKey": "member_id"},
+                        "hops": [{"edge": "edge-member-has-ledger", "from": "vertex-member", "direction": "out", "window": "effective_at"}],
+                        "dayCounts": {"edge": "edge-member-has-ledger", "window": "effective_at", "has": {"provider": "ACME"}}},
+        "blockedHandoffs": [{"code": "ProviderNull", "owner": "producer", "detail": "status edges carry no provider"}]}}}
+    silvally_io.write_json(work / "contracts.json", contracts)
+    silvally_io.write_json(work / "catalog.json", catalog)
+    queries = []
+    per_day = {"2099-01-06": 0, "2099-01-05": 4, "2099-01-04": 2}
+
+    class Source:
+        stats = {"queries": 0}
+
+        def attempt(self, gremlin: str) -> list:
+            queries.append(gremlin)
+            day = gremlin.split("gte(datetime('")[1][:10]
+            return [per_day.get(day, 0)]
+    args = argparse_namespace(contracts=str(work / "contracts.json"), catalog=str(work / "catalog.json"), slice="members",
+                              end_day="2099-01-06", lookback_days=3, out=str(work / "input-days.json"))
+    summary = graph_inputs.edge_days(args, source=Source())
+    expected = ("g.E().hasLabel('member_has_ledger').has('provider', 'ACME').has('effective_at', gte(datetime('2099-01-06T00:00:00Z')))"
+                ".has('effective_at', lt(datetime('2099-01-07T00:00:00Z'))).count()")
+    if queries[0] != expected or len(queries) != 3 or summary["byUtcDay"] != per_day:
+        fail(f"edge-days did not send one bounded, filtered count per UTC day newest first: {queries[:1]} {summary['byUtcDay']}")
+    if json.loads((work / "input-days.json").read_text()) != {"members": per_day}:
+        fail("edge-days output is not the data-days --input-days shape")
+    for bad in (0, 32):
+        try:
+            graph_inputs.edge_days(argparse_namespace(**{**vars(args), "lookback_days": bad}), source=Source())
+            fail(f"an unbounded edge-days lookback ({bad}) was accepted")
+        except silvally_io.SilvallyError:
+            pass
+    now = source_window.parse_utc("2099-01-07T06:00:00Z")
+    actual = {"members": {"2099-01-06": 9, "2099-01-04": 3, "2098-12-20": 5}}
+    picked = source_window.data_days(actual, None, True, now, input_days={"members": per_day}, lookback_days=14,
+                                     catalog=catalog)["slices"]["members"]
+    if picked["day"] != "2099-01-04" or picked["status"] != "HAS_DATA" or picked["inputRows"] != 2 or "handoffs" in picked:
+        fail(f"day selection did not pick the most recent day with both actual and input rows: {picked}")
+    none = source_window.data_days(actual, None, True, now, input_days={"members": {"2098-12-20": 1}}, lookback_days=14,
+                                   catalog=catalog)["slices"]["members"]
+    if none["status"] != "INPUT_EMPTY" or none["day"] is not None or [h["code"] for h in none["handoffs"]] != ["UpstreamInputEmpty", "ProviderNull"]:
+        fail(f"a day outside the bounded lookback was chosen or the recorded handoffs were missing: {none}")
+
+    types = {"sent": "timestamptz", "day": "date", "text": "string", "naive": "timestamp", "n": "long", "vendor": "string"}
+    start, end = source_window.parse_utc("2099-01-06T00:00:00Z"), source_window.parse_utc("2099-01-07T00:00:00Z")
+    spec = iceberg_snapshot_read.row_filter_spec(types, "text", start, end, {"vendor": "67"})
+    if spec != [(">=", "text", "2099-01-05"), ("<", "text", "2099-01-08"), ("==", "vendor", "67")]:
+        fail(f"a string window was not pushed down as widened date bounds with the equality filter: {spec}")
+    if iceberg_snapshot_read.window_bounds("timestamptz", start, end) != ("2099-01-05T00:00:00+00:00", "2099-01-08T00:00:00+00:00"):
+        fail("a timestamptz window was not pushed down as UTC instants")
+    try:
+        iceberg_snapshot_read.window_bounds("long", start, end)
+        fail("a window on a column that cannot be pushed down was accepted without --allow-full-scan")
+    except silvally_io.SilvallyError:
+        pass
+    if iceberg_snapshot_read.where_matches({"vendor": 34}, {"vendor": "67"}) or not iceberg_snapshot_read.where_matches({"vendor": 67}, {"vendor": "67"}):
+        fail("the in-memory equality re-check is wrong")
+    unbounded = run_tool("iceberg_snapshot_read.py", "--profile", "p", "--table", "d.t", "--columns", "a", "--key-column", "a",
+                         "--keys-file", str(work / "keys.txt"), "--private-dir", str(work / "rows"), check=False)
+    if unbounded.returncode == 0 or "scans the whole table" not in unbounded.stderr:
+        fail("a key read without the selected day(s) was allowed to scan the whole table")
+    results.append("day selection: bounded per-day windowed-edge counts with the output query's filter, two-sided most recent day "
+                   "within the lookback plus recorded handoffs, Iceberg window and equality pushdown with a full-scan refusal")
+
+
+def test_owner_intake_defaults(tmp: Path) -> None:
+    work = tmp / "owner-defaults"
+    (work / "no-profiles").mkdir(parents=True)
+    no_profiles = [a if a != str(FIXTURE / "profiles") else str(work / "no-profiles") for a in RESOLVER_ARGS]
+
+    def discover(request: str, command: str = "discover", args: list[str] = no_profiles) -> dict:
+        out = work / f"{command}.json"
+        run_tool("resolve-transform-intent.py", command, *args, "--request", request, "--out", str(out))
+        return json.loads(out.read_text())
+    base = "test canon (alpha) to omega ledger summary"
+    request = f"{base}, approve all DEV writes for this run, redeploy the pinned candidate to DEV if it is pruned, up to 3 times"
+    intent = discover(request)
+    decisions = intent["ownerDecisions"]
+    facts = {f["id"]: f for f in intent.get("confirmedFacts", [])}
+    ids = {q["id"] for q in intent["questions"]}
+    if intent["status"] != "RESOLVED" or intent.get("selectedProfile"):
+        fail(f"the owner-defaults request did not resolve without a profile: {intent['status']} {intent.get('selectedProfile')}")
+    if decisions.get("devRedeployPinned") != "rerun-pr-dev-workflow-for-pinned-head" or decisions.get("devRedeployMaxAttempts") != 3:
+        fail(f"the devRedeployPinned decision and its bound were not parsed: {decisions}")
+    if {"environment", "persist-policy"} & ids:
+        fail(f"environment or Persist was asked although the owner decisions and the stated policy answer them: {ids}")
+    if facts.get("environment", {}).get("source") != "ownerDecisions.blanketDevWrites" or facts["environment"]["state"] != "CONFIRMED":
+        fail(f"the DEV environment was not CONFIRMED from blanketDevWrites: {facts.get('environment')}")
+    if facts.get("persist-policy", {}).get("value") != "forbidden" or facts["persist-policy"]["source"] != "policy-default":
+        fail(f"the Persist policy default was not CONFIRMED as a stated policy: {facts.get('persist-policy')}")
+    if "confirmed by the owner's blanketDevWrites" not in intent.get("defaultsNotice", "") or "stated policy default" not in intent["defaultsNotice"]:
+        fail(f"the confirmed defaults were not stated up front: {intent.get('defaultsNotice')!r}")
+    draft = discover(request, "draft-profile")
+    env_fact = next(f for f in draft["materialFacts"] if f["id"] == "environment-region-and-mode")
+    if env_fact["state"] != "CONFIRMED" or env_fact["evidenceIds"] != ["owner-decision-blanket-dev-writes"]:
+        fail(f"the draft did not record the confirmed environment and its source: {env_fact}")
+    plain = discover(base)
+    if "environment" not in {q["id"] for q in plain["questions"]} or "persist-policy" in {q["id"] for q in plain["questions"]}:
+        fail("without blanketDevWrites the environment must still be asked (and Persist never is)")
+    required = discover(f"{base}, allow a bounded Persist canary")
+    if required["workflow"]["persistPolicyDefault"] != "required" or required["workflow"]["persistPolicySource"] != "owner-decision":
+        fail(f"an owner's Persist canary decision was not recorded: {required['workflow']}")
+    profiled = discover(f"{base}, allow a bounded Persist canary", args=RESOLVER_ARGS)
+    if profiled["workflow"]["persistPolicyDefault"] != "forbidden" or profiled["workflow"]["persistPolicySource"] != "profile":
+        fail(f"an owner decision weakened the profile's Persist policy: {profiled['workflow']}")
+    results.append("owner intake defaults: devRedeployPinned with its bound, DEV CONFIRMED from blanketDevWrites, Persist forbidden as a "
+                   "stated policy default (owner may require a canary, the profile wins), defaults stated up front")
+
+
+def argparse_namespace(**values):
+    import argparse
+    return argparse.Namespace(**{"profile": "example-prod", "region": "xx-test-1", "retries": 0, "backoff_seconds": 0,
+                                 "timeout_seconds": 1, **values})
+
+
 def main() -> int:
     with tempfile.TemporaryDirectory() as raw:
         tmp = Path(raw)
@@ -1548,6 +1835,9 @@ def main() -> int:
         test_run_workspace(tmp)
         test_stage_decisions(tmp)
         test_unattended_run_findings(tmp)
+        test_redeploy_pinned(tmp)
+        test_day_selection_inputs(tmp)
+        test_owner_intake_defaults(tmp)
     print("Silvally tool tests passed: " + "; ".join(results))
     return 0
 

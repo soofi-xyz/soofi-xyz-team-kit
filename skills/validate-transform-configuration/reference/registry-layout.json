@@ -31,6 +31,18 @@
     "parameterPath": "/lexicon",
     "mappingGlob": "transform-mappings/*/*/mapping.json"
   },
+  "devDeploy": {
+    "description": "The registry repository's documented DEV deploy path. Lexicon has no workflow_dispatch: its DEV CI/CD workflow runs on pull_request only and deploys the PR's registry (DEPLOY_LEXICON_ONLY=true, just deploy), replacing the shared DEV registry (latest-PR-wins). Republishing a pinned candidate is a full re-run of the newest run of that workflow for the pinned head SHA.",
+    "workflowFile": "ci-cd-dev.yml",
+    "workflowName": "DEV CI/CD",
+    "event": "pull_request",
+    "mechanism": "gh-run-rerun",
+    "forbiddenWorkflowFiles": ["ci-cd-prod.yml"],
+    "maxRedeploys": 2,
+    "runTimeoutMinutes": 45,
+    "servedPollSeconds": 30,
+    "servedPollAttempts": 20
+  },
   "graphDatasetPrefixes": ["vertex", "edge"],
   "materialize": {
     "install": ["npm ci --no-audit --no-fund", "npm ci --no-audit --no-fund --prefix infra"],

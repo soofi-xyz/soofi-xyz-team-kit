@@ -15,6 +15,14 @@
       timeout is retried with exponential backoff, and a page that still fails is split in half until it
       succeeds or is a single id. Every page is merged into ONE dataset per table (deduplicated by ~id; the
       same id with different content fails), so a whole window is one input, never hand-split runs.
+  graph_inputs.py edge-days --contracts contracts.json --catalog prod-actuals.json --slice NAME --profile <prod-profile>
+      [--end-day YYYY-MM-DD] [--lookback-days 14] [--region R] --out input-days.json
+      Phase 1, before any day is chosen: per-UTC-day counts of the slice's windowed edge in PROD Persist, one bounded
+      read-only count() traversal per day (newest first, at most 31 days). The catalog's graphInputs.dayCounts names
+      the edge, its window property, equality filters that the mapping's SQL applies (for example a provider value the
+      output query keeps) and the literal form of the window values (datetime, epoch-millis or iso-string); without it the first
+      windowed hop is counted unfiltered. --out is {"<slice>": {"YYYY-MM-DD": edges}}, the input side of
+      source_window.py data-days --input-days, so an empty input day is caught before the canary.
   graph_inputs.py export --export-dir DIR (same selection arguments, no --profile)
       The same selection over an existing immutable graph export already copied read-only into DIR
       (<dataset>/part-*.parquet in Transform input shape).
@@ -467,9 +475,73 @@ def build(args, source=None, fetch=None) -> dict:
     return summary
 
 
+MAX_LOOKBACK_DAYS = 31
+LITERALS = {
+    "datetime": lambda moment: f"datetime({quote(moment.strftime('%Y-%m-%dT%H:%M:%SZ'))})",
+    "epoch-millis": lambda moment: str(int(moment.timestamp() * 1000)),
+    "iso-string": lambda moment: quote(moment.strftime("%Y-%m-%dT%H:%M:%SZ")),
+}
+
+
+def day_count_plan(contracts: dict, spec: dict) -> dict:
+    """The windowed edge to count per day: the catalog's graphInputs.dayCounts, else the first windowed hop."""
+    plan = spec.get("graphInputs") or {}
+    counts = plan.get("dayCounts") or next(({"edge": h["edge"], "window": h["window"]} for h in plan.get("hops", []) if h.get("window")), None)
+    if not counts:
+        raise SilvallyError("the slice declares no windowed graph edge (graphInputs.dayCounts or a hop with window)")
+    contract = next((c for c in contracts["inputs"] if c["table"] == counts["edge"]), None)
+    if not contract or contract.get("graphKind") != "edge":
+        raise SilvallyError(f"{counts['edge']} is not an edge input of the mapping contracts")
+    literal = counts.get("literal", "datetime")
+    if literal not in LITERALS:
+        raise SilvallyError(f"unknown dayCounts literal {literal}; use one of {sorted(LITERALS)}")
+    return {"dataset": counts["edge"], "label": contract["label"], "window": counts["window"], "has": dict(counts.get("has") or {}),
+            "literal": literal}
+
+
+def day_count_query(plan: dict, start: datetime, end: datetime) -> str:
+    render = LITERALS[plan["literal"]]
+    filters = "".join(f".has({quote(k)}, {quote(str(v))})" for k, v in sorted(plan["has"].items()))
+    return assert_read_only(f"g.E().hasLabel({quote(plan['label'])}){filters}"
+                            f".has({quote(plan['window'])}, gte({render(start)})).has({quote(plan['window'])}, lt({render(end)})).count()")
+
+
+def edge_days(args, source=None) -> dict:
+    """{slice: {day: count}} of the windowed edge, one bounded count per UTC day, newest first."""
+    from datetime import timedelta
+    if not 1 <= args.lookback_days <= MAX_LOOKBACK_DAYS:
+        raise SilvallyError(f"--lookback-days must be 1..{MAX_LOOKBACK_DAYS} (a bounded read)")
+    plan = day_count_plan(read_json(args.contracts), read_json(args.catalog)["slices"][args.slice])
+    today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    end_day = parse_loose(args.end_day + "T00:00:00Z") if args.end_day else today - timedelta(days=1)
+    source = source or GremlinSource(persist_query_fn(args.profile, args.region, args.timeout_seconds), 1, args.retries, args.backoff_seconds)
+    counts = {}
+    for offset in range(args.lookback_days):
+        start = end_day - timedelta(days=offset)
+        rows = source.attempt(day_count_query(plan, start, start + timedelta(days=1)))
+        counts[start.strftime("%Y-%m-%d")] = int(rows[0]) if rows else 0
+    write_json(args.out, {args.slice: counts})
+    return {"slice": args.slice, "source": "prod-persist-gremlin", "prodAccess": "read-only", "edge": plan["dataset"],
+            "window": plan["window"], "filters": plan["has"], "literal": plan["literal"], "lookbackDays": args.lookback_days,
+            "byUtcDay": counts, "daysWithEdges": sum(1 for n in counts.values() if n), "out": args.out,
+            "queries": getattr(source, "stats", {}).get("queries")}
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
+    days = sub.add_parser("edge-days")
+    days.add_argument("--contracts", required=True, help="resolve-transform-intent.py contracts output for the mapping")
+    days.add_argument("--catalog", required=True, help="reference/prod-actuals.json or a profile's equivalent")
+    days.add_argument("--slice", required=True)
+    days.add_argument("--profile", required=True, help="operator's PROD read-only profile")
+    days.add_argument("--region", default=DEFAULT_REGION)
+    days.add_argument("--end-day", help="newest UTC day counted (default: yesterday, the most recent complete UTC day)")
+    days.add_argument("--lookback-days", type=int, default=14)
+    days.add_argument("--retries", type=int, default=4)
+    days.add_argument("--backoff-seconds", type=float, default=2.0)
+    days.add_argument("--timeout-seconds", type=float, default=60.0)
+    days.add_argument("--out", required=True, help='{"<slice>": {"YYYY-MM-DD": edges}} for source_window.py data-days --input-days')
     for name in ("gremlin", "export"):
         p = sub.add_parser(name)
         p.add_argument("--contracts", required=True, help="resolve-transform-intent.py contracts output for the mapping")
@@ -499,6 +571,9 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--out-dir", required=True, help="package directory: one <dataset>/ per graph input")
         p.add_argument("--out", required=True)
     args = parser.parse_args(argv)
+    if args.command == "edge-days":
+        print(json.dumps(edge_days(args), indent=1))
+        return 0
     summary = build(args)
     print(json.dumps(summary, indent=1))
     return 0 if summary["status"] == "BUILT" else 1

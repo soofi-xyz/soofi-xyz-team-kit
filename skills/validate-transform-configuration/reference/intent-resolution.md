@@ -109,7 +109,9 @@ candidate-build, and checked-in registrations. PROD catalog membership never sel
 version; `UnpublishedInProd` is informational and is not a mapping `NOT_READY`.
 
 - one mapping id: select its highest semantic version (`10.0.0` over `9.0.0`). DEV-published
-  versions use `latest-published-semver`; a candidate-only pick uses `latest-candidate-semver`.
+  versions use `latest-published-semver`; a candidate-only pick (checked-in registration or the
+  materialized `candidate-build`, which is candidate provenance and never a published registry)
+  uses `latest-candidate-semver`, with the pin's `source: candidate-build` for a generated mapping.
   Return `notice`:
   `Resolved <id>@<x.y.z> — latest of <v1>, <v2>, ...; add @x.y.z to pick another.`
   `mapping-version` is not asked. When only one published version matches and none is ignored, the
@@ -198,7 +200,10 @@ as its first step therefore does not capture unrelated round trips through that 
 
 The selected profile then shapes the plan. Its `validationWorkflow` appears as
 `profileWorkflow`, and its first step becomes the `upstream-source` default. A
-fixed `persistPolicy` removes the Persist question. For a direction declared
+fixed `persistPolicy` sets the Persist policy (otherwise it is `forbidden` as the stated policy
+default, or `required` by the owner's decision); Persist is never asked, and `confirmedFacts` plus
+`defaultsNotice` state it with its source. The owner's `blanketDevWrites` likewise confirms the
+environment as DEV. For a direction declared
 with `outputDatasetMatch: includes`, concept checks cover only the declared
 outputs; the rest are recorded as `NOT_SELECTED`, because the run selects them
 through the request's `outputDatasets`. The candidate `lexicon.json` is

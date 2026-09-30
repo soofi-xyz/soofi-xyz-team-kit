@@ -1509,6 +1509,31 @@ def test_version_default(tmp: Path) -> None:
     if "Not in a DEV catalog" not in (older.get("notice") or ""):
         fail(f"a candidate-only default did not announce DEV proof: {older.get('notice')!r}")
 
+    built = Registry(tmp, "version-candidate-build")
+    dev_dir, build_dir = tmp / "version-cb-dev", tmp / "version-cb-build"
+    for version in ("1.0.0", "2.0.0"):
+        publish(dev_dir, docs[version])
+        publish(build_dir, docs[version])
+    newest_build = publish(build_dir, {**docs["2.0.0"], "version": "5.0.0"})
+    built.registries = [f"dev={dev_dir}", f"candidate-build={build_dir}"]
+    generated = built.discover("test canon to omega")
+    gen_selection = generated.get("versionSelection") or {}
+    if generated["selection"]["selected"] != "canon-to-omega@5.0.0" or gen_selection.get("rule") != "latest-candidate-semver":
+        fail(f"a version only in the materialized candidate-build was recorded as published: {gen_selection}")
+    if gen_selection["pin"] != {"source": "candidate-build", "label": "candidate-build", "path": str(newest_build.relative_to(build_dir)),
+                                "sha256": hashlib.sha256(newest_build.read_bytes()).hexdigest()}:
+        fail(f"a candidate-build default was not pinned to its materialized mapping.json: {gen_selection['pin']}")
+    if next(c for c in gen_selection["candidates"] if c["version"] == "5.0.0")["publishedIn"] != [] \
+            or "candidate-build" in next(c for c in gen_selection["candidates"] if c["version"] == "2.0.0")["publishedIn"]:
+        fail(f"candidate-build was listed as a published registry: {gen_selection['candidates']}")
+    if "Not in a DEV catalog" not in (generated.get("notice") or ""):
+        fail(f"a candidate-build default did not announce DEV proof: {generated.get('notice')!r}")
+    if Draft202012Validator:
+        defs = json.loads(RUN_SCHEMA.read_text())["$defs"]
+        checker = Draft202012Validator({"$ref": "#/$defs/versionSelection", "$defs": defs}, format_checker=FormatChecker())
+        if list(checker.iter_errors(gen_selection)):
+            fail(f"the run schema rejects a candidate-build versionSelection: {[e.message for e in checker.iter_errors(gen_selection)]}")
+
     none_published = Registry(tmp, "version-none-published")
     other = tmp / "version-other-published"
     publish(other, json.loads(none_published.registration("canon-to-sigma@1.0.0").read_text()))

@@ -52,7 +52,21 @@
           {"edge": "edge-phone-number-has-text-message", "from": "vertex-text-message", "direction": "in"},
           {"edge": "edge-text-message-rendered-from-template", "from": "vertex-text-message", "direction": "out"},
           {"edge": "edge-text-message-has-rendered-artifact-uri", "from": "vertex-text-message", "direction": "out"}
-        ]
+        ],
+        "dayCounts": {
+          "edge": "edge-text-message-status-changed",
+          "window": "effective_at",
+          "has": {"provider": "QUIQ"},
+          "literal": "datetime",
+          "rationale": "sms_log.sql emits a row only for a status edge with provider = 'QUIQ', so an input day counts only when it has such edges; graph_inputs.py edge-days counts them per UTC day"
+        }
+      },
+      "daySelection": {
+        "rule": "the most recent complete UTC day with BOTH txt_msg_vendor_id 67 rows in the mirror AND provider QUIQ status edges in PROD Persist, within a 14-day lookback",
+        "actualDays": "iceberg_snapshot_read.py --table interprose_current.txt_msg_log --window-column sent_date --start <lookback start> --end-exclusive <today> --where txt_msg_vendor_id=67 --data-max-column _stage_output_timestamp (byUtcDay, bounded to the lookback)",
+        "inputDays": "graph_inputs.py edge-days --slice sms --lookback-days 14 (per-day count of provider QUIQ edge-text-message-status-changed edges)",
+        "choose": "source_window.py data-days --most-recent --lookback-days 14 --slice-days <actual days> --input-days <input days> --data-through sms=<dataMax> --catalog reference/prod-actuals.json",
+        "noDay": "BLOCKED: the slice reports UpstreamInputEmpty (and ProdMirrorStale when the mirror stops first) plus this entry's blockedHandoffs"
       },
       "hydration": {
         "dataset": "hydrated_text_message_artifact",

@@ -11,7 +11,11 @@ and get approval for its digest.
    `transformRuntime.stateMachineSuffix`) and the published registry root
    (`publishedRegistry.uriParameter`). Confirm that each step's deployed
    `mapping.json` SHA-256 and every query `sha256` match the pinned candidate.
-   A mismatch is deployment drift, and the step does not start.
+   A mismatch stops the step: `dev_redeploy.py check` classifies it as a `DeploymentRace`
+   (another head's latest-PR-wins DEV deploy pruned or replaced it; `BLOCKED`, republished only
+   under the owner's `devRedeployPinned`) or `DeploymentDrift` (the pinned head's own deploy
+   serves other content; `FAIL`). `transform_runs.py start` re-reads the served digest right before
+   each `StartExecution`.
 2. **Build the v2 request** from the registered mapping. Mapping identity is
    derived from `from` and `to`:
 
@@ -94,8 +98,11 @@ spec to one package slice's outputs, and `--outputs` takes comma-separated or re
 and rejects unknown names. Bindings default to the profile's ready `existing-dev-artifact`
 sources for the direction. Outputs a binding cannot run and a full run no binding supports are
 listed under `skipped`. The spec records each output's registered format, the pinned digest,
-and `deployment.drift` when the published registry does not serve the pinned digest; `start`
-then refuses. `expected: REJECTED` cases pass when the execution fails before
+`deployment.location` (the registry root) and `deployment.drift` when the published registry does not
+serve the pinned digest at spec time. With a location, `start` re-reads the served digest right before
+each `StartExecution` and refuses a pruned or replaced pin (`DeploymentRace`); a spec-time drift no
+longer blocks once `dev_redeploy.py redeploy` made it served again. Without a location, `start` refuses
+on the spec-time drift. `expected: REJECTED` cases pass when the execution fails before
 `RunTransformJob`. When the error does not name the omitted input, the case still passes and
 carries a `transform-reject-error-unnamed` PRODUCT_CHANGE flag for Kecleon; it never fails the
 canary gate. `capture` reads CSV, JSONL or Parquet
