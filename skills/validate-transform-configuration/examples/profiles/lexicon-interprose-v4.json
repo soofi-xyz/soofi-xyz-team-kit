@@ -1158,6 +1158,11 @@
       "dsa-multiple-edges-per-debt",
       "attempted-slot-schedule-closure",
       "immutable-evidence"
+    ],
+    "origin": "profile-declared",
+    "recordedDefaults": {},
+    "evidenceIds": [
+      "profile-declared-source-window"
     ]
   },
   "scaleTiers": [

@@ -36,6 +36,7 @@ import transform_runs  # noqa: E402
 import compare_datasets  # noqa: E402
 import build_run_package  # noqa: E402
 import fetch_validation_inputs  # noqa: E402
+import source_window  # noqa: E402
 
 results: list[str] = []
 
@@ -265,8 +266,11 @@ def test_synthetic_end_to_end(tmp: Path) -> None:
                           "--local-package", f"synthetic-inputs={FIXTURE / 'inputs'}", "--mode", "synthetic-local",
                           "--out", str(work / "phases.json"), check=False)
     phases = json.loads((work / "phases.json").read_text())
-    if evaluation.returncode != 0 or phases["verdict"] != "READY":
-        fail(f"synthetic validation is not READY: {[(p['number'], p['status'], p['reasons']) for p in phases['phases'] if p['status'] != 'PASS']}")
+    not_passing = [(p["number"], p["status"], p["reasons"]) for p in phases["phases"] if p["status"] != "PASS"]
+    if phases["modeScopedResult"] != "PASS" or [n for n, _, _ in not_passing] != [12]:
+        fail(f"synthetic validation did not pass phases 1-11: {not_passing}")
+    if evaluation.returncode == 0 or phases["verdict"] != "BLOCKED" or "FinalProdDerivedValidationRequired" not in not_passing[0][2][0]:
+        fail("a synthetic-local run was not BLOCKED on the missing final PROD-derived validation")
     negatives = json.loads((work / "step2" / "report.json").read_text())["negativeCases"]
     if len(negatives) != 4 or not all(n["rejected"] for n in negatives):
         fail("every required input of every projection output must yield one rejected negative case")
@@ -283,7 +287,8 @@ def test_synthetic_end_to_end(tmp: Path) -> None:
                       "--oracle", f"member-report-spec={FIXTURE / 'expected' / 'member_report.csv'}", check=False)
     if strict.returncode == 0 or broken["status"] != "PASS":
         fail("an undeclared loss passed the oracle comparison")
-    results.append("synthetic registry end to end: resolve, check-profile, 2 local runs, 10 negatives, closure, checks, READY")
+    results.append("synthetic registry end to end: resolve, check-profile, 2 local runs, 10 negatives, closure, checks; "
+                   "phases 1-11 PASS, BLOCKED on the final PROD-derived validation")
 
 
 def test_evaluate_rules(tmp: Path) -> None:
@@ -316,6 +321,149 @@ def test_evaluate_rules(tmp: Path) -> None:
         if status != expected:
             fail(f"an upstream-source answer of {answer!r} left phase 6 {status}, expected {expected}")
     results.append("evaluate_run phase rules")
+
+
+WINDOW = {"start": "2099-01-06T00:00:00Z", "endExclusive": "2099-01-07T00:00:00Z", "completeUtcDays": 1}
+WINDOW_TOKEN = "2099-01-06T000000Z_2099-01-07T000000Z"
+
+
+def day_candidates(days: int = 7, overrides: dict | None = None) -> list[dict]:
+    out = []
+    for d in range(days):
+        start = f"2099-01-{d + 1:02d}T00:00:00Z"
+        end = f"2099-01-{d + 2:02d}T00:00:00Z"
+        out.append({"start": start, "endExclusive": end, "sourceFamiliesPresent": ["ledgers", "members", "rates"],
+                    "coverageSignals": {"ledgers-rows-present": 6, "members-rows-present": 4, "rates-rows-present": 3},
+                    "rowCount": 13, "byteCount": 2048, "estimatedCostUsd": 0.02, "immutableEvidence": True, **(overrides or {}).get(d, {})})
+    return out
+
+
+def test_source_window(tmp: Path) -> None:
+    profile = json.loads(PROFILE.read_text())
+    bare = {k: v for k, v in profile.items() if k != "sourceWindowPolicy"}
+    derived = source_window.derive_policy(bare, None)
+    if derived != profile["sourceWindowPolicy"]:
+        fail(f"a profile without a policy did not derive the recorded default policy: {derived}")
+    intent = {"parityDerivation": [{"dataset": "members", "coverageTargets": [{"field": "tier", "values": ["gold", "silver"]}]}]}
+    if "members-tier-values-covered" not in source_window.derive_policy(bare, intent)["requiredCoverageSignals"]:
+        fail("enum coverage targets did not become required coverage signals")
+    policy = profile["sourceWindowPolicy"]
+    now = source_window.parse_utc("2099-01-08T06:00:00Z")
+    partial_today = {"start": "2099-01-08T00:00:00Z", "endExclusive": "2099-01-09T00:00:00Z"}
+    candidates = day_candidates(overrides={6: {"sourceFamiliesPresent": ["ledgers", "members"]}}) + [
+        {**day_candidates(1)[0], **partial_today}]
+    selection, summary = source_window.recommend(policy, candidates, now, None, None, 7)
+    if selection["status"] != "NEEDS_CONFIRMATION" or selection["recommendedWindow"] != WINDOW or selection["confirmedWindow"] is not None:
+        fail(f"the most recent complete UTC day was not recommended: {summary}")
+    if {c["start"] for c in selection["candidateComparisons"] if not c["complete"]} != {"2099-01-07T00:00:00Z", "2099-01-08T00:00:00Z"}:
+        fail("a day missing a source family or a day that has not ended was treated as complete")
+    for label, cands, kwargs in (
+        ("fewer than seven candidates", day_candidates(3), {}),
+        ("no immutable evidence", day_candidates(overrides={d: {"immutableEvidence": False} for d in range(7)}), {}),
+        ("unmet coverage signal", day_candidates(overrides={d: {"coverageSignals": {"ledgers-rows-present": 0}} for d in range(7)}), {}),
+        ("above the row bound", day_candidates(), {"max_rows": 5}),
+        ("above the cost ceiling", day_candidates(), {"cost_ceiling": 0.01}),
+    ):
+        blocked, _ = source_window.recommend(policy, cands, now, kwargs.get("max_rows"), kwargs.get("cost_ceiling"), 7)
+        if blocked["status"] != "BLOCKED" or blocked["recommendedWindow"] is not None:
+            fail(f"{label}: an incomplete source window was recommended")
+    confirmed = source_window.confirm(selection, policy, WINDOW["start"], WINDOW["endExclusive"])
+    if confirmed["status"] != "CONFIRMED" or confirmed["confirmedWindow"] != WINDOW or source_window.window_token(WINDOW) != WINDOW_TOKEN:
+        fail("the user's confirmation of the recommended window was not recorded")
+    longer = source_window.confirm(selection, policy, "2099-01-04T00:00:00Z", WINDOW["endExclusive"])
+    if longer["confirmedWindow"]["completeUtcDays"] != 3:
+        fail("a longer contiguous complete range was not accepted when allowLongerRange is true")
+    for label, start, end, pol in (
+        ("partial day", "2099-01-06T00:00:00Z", "2099-01-06T12:00:00Z", policy),
+        ("range including an incomplete day", "2099-01-06T00:00:00Z", "2099-01-08T00:00:00Z", policy),
+        ("longer range when forbidden", "2099-01-05T00:00:00Z", WINDOW["endExclusive"], {**policy, "allowLongerRange": False}),
+    ):
+        try:
+            source_window.confirm(selection, pol, start, end)
+        except silvally_io.SilvallyError:
+            continue
+        fail(f"{label} was confirmed")
+    try:
+        source_window.confirm(confirmed, policy, WINDOW["start"], WINDOW["endExclusive"])
+        fail("an already confirmed selection was confirmed again")
+    except silvally_io.SilvallyError:
+        pass
+    for sel, expected in ((None, "BLOCKED"), (selection, "BLOCKED"), ({**selection, "status": "BLOCKED"}, "BLOCKED"), (confirmed, "PASS")):
+        if source_window.validate_confirmed(sel, policy)[0] != expected:
+            fail(f"validate_confirmed({sel and sel['status']}) is not {expected}")
+    if source_window.validate_confirmed(confirmed, None)[0] != "BLOCKED":
+        fail("a profile without a source window policy did not block")
+    silvally_io.write_json(tmp / "window-selection.json", selection)
+    silvally_io.write_json(tmp / "window-confirmed.json", confirmed)
+    results.append("source_window policy derivation, recommendation, confirmation and refusals")
+
+
+def final_run_fixture(work: Path, *, binding_token: str = WINDOW_TOKEN, approved: bool = True) -> list[str]:
+    """An observed-dev run whose evidence covers phases 1-11 on the confirmed window; returns evaluate_run arguments."""
+    work.mkdir(parents=True, exist_ok=True)
+    root = "s3://example-dev-bucket/outputs/silvally-synthetic/"
+    prefix = f"s3://example-dev-bucket/inputs/alpha-prod-derived/{binding_token}_v1/"
+    profile = json.loads(PROFILE.read_text())
+    profile["validationSources"] = [{**profile["validationSources"][0], "location": prefix, "manifestSha256": "b" * 64}]
+    silvally_io.write_json(work / "profile.json", profile)
+    silvally_io.write_json(work / "intent.json", {
+        "status": "RESOLVED", "selectedProfile": PROFILE.name, "primaryDirection": {"to": "omega", "outputShape": "tabular"},
+        "workflow": {"steps": [{"mapping": "canon-to-omega@2.0.0"}], "persistPolicyDefault": "forbidden"}, "findings": [],
+        "conceptChecks": {"canon-to-omega@2.0.0": [{"state": "active"}]},
+        "sqlScan": {"canon-to-omega@2.0.0": {"queriesScanned": 2, "forbiddenLabels": []}}})
+    silvally_io.write_json(work / "ws" / "inputs-manifest.json", [{"kind": "repository", "name": "registry", "commitSha": "c" * 40,
+                                                                  "requiredPathsVerified": True}])
+    run_dir = work / "run"
+    silvally_io.write_json(run_dir / "run-spec.json", {"profile": "example-dev", "region": "xx-test-1", "outputRoot": root,
+                                                       "bindings": {"synthetic-inputs": prefix}})
+    silvally_io.write_json(run_dir / "steps.json", [{"step": "1-full", "status": "SUCCEEDED", "verdict": "PASS", "expected": "PASS",
+                                                     "mappingPinMatches": True,
+                                                     "executionArn": "arn:aws:states:xx-test-1:000000000000:execution:t:silvally-1"}])
+    silvally_io.write_json(run_dir / "approvals" / "1-full.json", {"operationDigest": "sha256:" + "f" * 64, "approval": {
+        "operationDigest": "sha256:" + "f" * 64, "environment": "dev", "status": "APPROVED" if approved else "APPROVAL_REQUIRED",
+        "recordedAt": "2099-01-08T07:00:00Z"}})
+    silvally_io.write_json(work / "upload.json", {"manifest": prefix + "manifest.json", "manifestSha256": "b" * 64,
+                                                  "manifestVersionId": "v1", "matchesLocal": True,
+                                                  "approvalOperationDigest": "sha256:" + "e" * 64})
+    silvally_io.write_json(work / "checks.json", {"checks": [{"id": "member-report-contract", "dataset": "member_report",
+                                                              "kind": "columns-match-contract", "status": "PASS"}]})
+    return ["--intent", str(work / "intent.json"), "--profile", str(work / "profile.json"), "--workspace", str(work / "ws"),
+            "--run-dir", str(run_dir), "--checks", str(work / "checks.json"), "--attest", "7=repository-tests",
+            "--staging-upload", str(work / "upload.json"), "--mode", "observed-dev"]
+
+
+def test_final_prod_derived_validation(tmp: Path) -> None:
+    work = tmp / "final"
+    confirmed = tmp / "window-confirmed.json"
+
+    def evaluate(label: str, args: list[str]) -> dict:
+        out = tmp / f"final-{label}.json"
+        run_tool("evaluate_run.py", *args, "--out", str(out), check=False)
+        return json.loads(out.read_text())
+
+    ready = evaluate("ready", [*final_run_fixture(work / "ready"), "--source-window", str(confirmed)])
+    if ready["verdict"] != "READY" or ready["finalValidation"]["status"] != "PASS" or ready["finalValidation"]["sourceWindow"] != WINDOW:
+        fail(f"a complete final PROD-derived run was not READY: {[(p['number'], p['reasons']) for p in ready['phases'] if p['status'] != 'PASS']}")
+    if ready["finalValidation"]["stagingApprovalDigests"] != ["sha256:" + "e" * 64] or ready["finalValidation"]["executionApprovalDigests"] != ["sha256:" + "f" * 64]:
+        fail("the final validation did not record its staging and execution approval digests")
+    cases = (
+        ("no-window", final_run_fixture(work / "no-window"), {1: "BLOCKED", 12: "BLOCKED"}),
+        ("unconfirmed", [*final_run_fixture(work / "unconfirmed"), "--source-window", str(tmp / "window-selection.json")], {1: "BLOCKED", 12: "BLOCKED"}),
+        ("other-window", [*final_run_fixture(work / "other", binding_token="2099-01-01T000000Z_2099-01-02T000000Z"),
+                          "--source-window", str(confirmed)], {3: "FAIL", 4: "BLOCKED"}),
+        ("unapproved-execution", [*final_run_fixture(work / "unapproved", approved=False), "--source-window", str(confirmed)],
+         {9: "BLOCKED", 12: "BLOCKED"}),
+    )
+    for label, args, expected in cases:
+        result = evaluate(label, args)
+        statuses = {p["number"]: p["status"] for p in result["phases"]}
+        if result["verdict"] == "READY" or any(statuses[n] != s for n, s in expected.items()):
+            fail(f"{label}: expected {expected}, got verdict {result['verdict']} and {statuses}")
+    no_upload = [a for a in final_run_fixture(work / "no-upload") if a not in ("--staging-upload", str(work / "no-upload" / "upload.json"))]
+    result = evaluate("no-upload", [*no_upload, "--source-window", str(confirmed)])
+    if result["verdict"] == "READY" or {p["number"]: p["status"] for p in result["phases"]}[3] != "BLOCKED":
+        fail("a final run without an approved staging upload record was not BLOCKED")
+    results.append("evaluate_run final PROD-derived validation: READY only on the confirmed, approved, staged window")
 
 
 def test_run_package(tmp: Path) -> None:
@@ -353,11 +501,50 @@ def test_run_package(tmp: Path) -> None:
                                "evidenceIds": ["synthetic-local"], "resolved": True, "handoffOwner": None}],
     })
     local = ["--local-output", f"member_report={FIXTURE / 'expected' / 'member_report.csv'}"]
+    synthetic_ready = run_tool("build_run_package.py", "--run-dir", str(run_dir), "--package-spec", str(spec_path), *local, check=False)
+    if synthetic_ready.returncode == 0 or "READY requires the final PROD-derived DEV validation" not in synthetic_ready.stderr:
+        fail("an all-PASS synthetic-local package was accepted as READY without the final PROD-derived validation")
+    doc = json.loads(spec_path.read_text())
+    doc["phases"][11]["status"] = "BLOCKED"
+    doc["remediations"] = [{"id": "run-final-prod-derived-validation", "findingCode": "FinalProdDerivedValidationRequired",
+                            "status": "BLOCKED", "classification": "ACCESS_OR_EVIDENCE", "owner": "Silvally operator", "repository": None,
+                            "locations": ["sourceWindowSelection"], "locationEvidenceIds": ["synthetic-local"],
+                            "recommendedChange": "Confirm the PROD-derived window, approve staging and executions, then rerun.",
+                            "regressionEvidence": ["Approved DEV executions on the confirmed window pass."],
+                            "rerunPhases": [1, 3, 4, 9, 11, 12], "rerunDirections": ["canon-to-omega"]}]
+    spec_path.write_text(json.dumps(doc))
     result = run_tool("build_run_package.py", "--run-dir", str(run_dir), "--package-spec", str(spec_path), *local, check=False)
-    if result.returncode != 0:
-        fail(f"a schema-valid synthetic package was rejected: {result.stderr[-800:]}")
-    if json.loads(result.stdout)["verdict"] != "READY":
-        fail("synthetic package verdict is not READY")
+    if result.returncode != 0 or json.loads(result.stdout)["verdict"] != "BLOCKED":
+        fail(f"a synthetic-local package awaiting the final validation was not BLOCKED: {result.stderr[-800:]}")
+
+    final_dir = tmp / "pkg-final"
+    digest_e, digest_f = "sha256:" + "e" * 64, "sha256:" + "f" * 64
+    silvally_io.write_json(final_dir / "steps.json", [{"step": "1-full", "status": "SUCCEEDED", "verdict": "PASS",
+                                                       "executionArn": "arn:aws:states:xx-test-1:000000000000:execution:t:silvally-1",
+                                                       "outputPrefix": "s3://example-dev-bucket/outputs/silvally-synthetic/1/full/", "outputs": []}])
+    silvally_io.write_json(final_dir / "approvals" / "1-full.json", {"operationDigest": digest_f, "mappingPin": {"mapping": "canon-to-omega@2.0.0"},
+                                                                     "approval": {"operationDigest": digest_f, "status": "APPROVED",
+                                                                                  "recordedAt": "2099-01-08T07:00:00Z"}})
+    silvally_io.write_json(final_dir / "steps" / "1-full" / "history.json", {"events": []})
+    final = json.loads(spec_path.read_text())
+    final.pop("remediations")
+    final["phases"][11]["status"] = "PASS"
+    final["inputManifests"] = {"full": "sha256:" + "b" * 64}
+    final["runtime"]["executionMode"] = "observed-dev"
+    final["environment"] = {"name": "dev", "accountHash": "sha256:" + "0" * 64, "region": "xx-test-1", "writePolicy": "approval-required"}
+    final["sourceWindowSelection"] = json.loads((tmp / "window-confirmed.json").read_text())
+    final["finalValidation"] = {"kind": "prod-derived-dev", "status": "PASS", "prodAccess": "read-only", "sourceWindow": WINDOW,
+                                "stagingApprovalDigests": [digest_e], "executionApprovalDigests": [digest_f],
+                                "inputManifestSha256s": ["sha256:" + "b" * 64], "evidenceIds": ["final-prod-derived-validation"]}
+    final_spec = tmp / "package-spec-final.json"
+    final_spec.write_text(json.dumps(final))
+    built = run_tool("build_run_package.py", "--run-dir", str(final_dir), "--package-spec", str(final_spec), *local, check=False)
+    if built.returncode != 0 or json.loads(built.stdout)["verdict"] != "READY":
+        fail(f"a final PROD-derived package was not READY: {built.stderr[-800:]}")
+    final["finalValidation"]["executionApprovalDigests"] = ["sha256:" + "9" * 64]
+    final_spec.write_text(json.dumps(final))
+    if run_tool("build_run_package.py", "--run-dir", str(final_dir), "--package-spec", str(final_spec), *local, check=False).returncode == 0:
+        fail("a READY package whose execution approval is missing from finalValidation was accepted")
     doc = json.loads(spec_path.read_text())
     doc["phases"][8]["status"] = "FAIL"
     doc["verdict"] = "READY"
@@ -502,6 +689,8 @@ def main() -> int:
         test_bridge(tmp)
         test_synthetic_end_to_end(tmp)
         test_evaluate_rules(tmp)
+        test_source_window(tmp)
+        test_final_prod_derived_validation(tmp)
         test_run_package(tmp)
         test_fetch_registry_with_shim(tmp)
         test_stage_package(tmp)

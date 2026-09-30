@@ -7,7 +7,9 @@
   stage_evidence_package.py upload --dir PKG --prefix ... --profile <dev-profile> --approve sha256:...
       Re-derives the card, refuses a changed card or a non-matching digest, uploads every object with
       put-object --if-none-match '*' (never overwrites), uploads manifest.json last, reads it back and
-      prints its sha256 and VersionId — the identity to record in the profile's validationSources.
+      prints its sha256, VersionId and the approved operation digest. Record the identity in the profile's
+      validationSources and keep the printed JSON: evaluate_run.py --staging-upload needs it for the final
+      PROD-derived validation.
 
 Only sanitized/derived data belongs in a package; see test-dataset-recommendations.md.
 """
@@ -68,7 +70,8 @@ def cmd_upload(args) -> int:
     back = directory.parent / f".{directory.name}-manifest-readback.json"
     aws(["s3", "cp", args.prefix + "manifest.json", str(back), "--quiet"], profile=args.profile, region=args.region, environment="prod", output_json=False)
     result = {"manifest": args.prefix + "manifest.json", "manifestSha256": sha256_file(back), "manifestVersionId": head.get("VersionId"),
-              "matchesLocal": sha256_file(back) == sha256_file(directory / "manifest.json")}
+              "matchesLocal": sha256_file(back) == sha256_file(directory / "manifest.json"),
+              "approvalOperationDigest": card["operationDigest"]}
     back.unlink()
     print(json.dumps(result, indent=1))
     return 0 if result["matchesLocal"] else 1

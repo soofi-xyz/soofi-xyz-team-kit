@@ -56,6 +56,7 @@ jobs:
           python3 -m py_compile skills/validate-transform-configuration/scripts/build_run_package.py
           python3 -m py_compile skills/validate-transform-configuration/scripts/evaluate_run.py
           python3 -m py_compile skills/validate-transform-configuration/scripts/stage_evidence_package.py
+          python3 -m py_compile skills/validate-transform-configuration/scripts/source_window.py
           python3 -m py_compile scripts/test-silvally-tools.py
           python3 -m py_compile scripts/check-system-manifest.py
           python3 -m py_compile scripts/test-build-system-product-contract.py

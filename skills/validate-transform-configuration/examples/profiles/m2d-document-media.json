@@ -163,6 +163,16 @@
     { "name": "m2d-preprocessing", "owner": "lucario", "contract": "Owns archive unpacking, text extraction, classification and run tracking" },
     { "name": "persist-classification-readback", "owner": "conkeldurr", "contract": "Owns existing classification reuse and graph readback" }
   ],
+  "sourceWindowPolicy": {
+    "kind": "prod-derived-complete-utc-days",
+    "minimumCompleteUtcDays": 1,
+    "allowLongerRange": true,
+    "requiredSourceFamilies": ["document-manifests"],
+    "requiredCoverageSignals": ["document-manifests-rows-present"],
+    "origin": "derived-at-intake",
+    "recordedDefaults": { "minimumCompleteUtcDays": 1, "allowLongerRange": true },
+    "evidenceIds": ["profile-source-datasets"]
+  },
   "scaleTiers": [
     { "id": "synthetic", "maximumRows": 25, "maximumCostUsd": 0, "evidenceRequired": true },
     { "id": "sample-media-dev", "maximumRows": 250, "maximumCostUsd": 25, "evidenceRequired": true }

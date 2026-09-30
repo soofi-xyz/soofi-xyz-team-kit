@@ -231,7 +231,14 @@ def profile_errors(value: dict) -> list[str]:
     if set(value.get("configurationChoices", {})) != allowed_choices:
         errors.append("product boundary disguised as configuration")
     source_window = value.get("sourceWindowPolicy")
-    if source_window is not None:
+    if source_window is None:
+        errors.append("missing sourceWindowPolicy for the final PROD-derived validation")
+    else:
+        if source_window.get("origin") not in {"profile-declared", "derived-at-intake"}:
+            errors.append("source window policy origin")
+        for key, default in (source_window.get("recordedDefaults") or {}).items():
+            if source_window.get(key) != default:
+                errors.append(f"source window recorded default {key} disagrees with the policy")
         if source_window.get("kind") != "prod-derived-complete-utc-days":
             errors.append("source window policy kind")
         if source_window.get("minimumCompleteUtcDays", 0) < 1:
@@ -407,6 +414,22 @@ def run_errors(value: dict) -> list[str]:
         or value.get("runtime", {}).get("availability") == "UNAVAILABLE"
     ):
         errors.append("ready with unavailable evidence")
+    if value.get("verdict") == "READY":
+        final = value.get("finalValidation") or {}
+        selection = value.get("sourceWindowSelection") or {}
+        steps = value.get("executionSteps") or []
+        if final.get("status") != "PASS" or selection.get("status") != "CONFIRMED":
+            errors.append("ready without a passing final PROD-derived validation on a confirmed window")
+        elif final.get("sourceWindow") != selection.get("confirmedWindow"):
+            errors.append("final validation window differs from the confirmed window")
+        if value.get("runtime", {}).get("executionMode") != "observed-dev":
+            errors.append("ready from a non-observed-dev execution mode")
+        if not final.get("stagingApprovalDigests") or not final.get("executionApprovalDigests"):
+            errors.append("ready without staging and execution approval digests")
+        if not steps or any(step.get("environment") != "dev" or step.get("status") != "PASS" for step in steps):
+            errors.append("ready without passing DEV execution steps")
+        elif {step.get("approvalOperationDigest") for step in steps} - set(final.get("executionApprovalDigests") or []):
+            errors.append("execution step without its own approval digest")
     source_window = value.get("sourceWindowSelection")
     if source_window is not None:
         minimum_days = source_window.get("minimumCompleteUtcDays", 0)
@@ -628,8 +651,34 @@ def valid_run() -> dict:
             "sparkVersion": "3.3.0",
             "transformRevision": "c" * 40,
             "deploymentDigest": digest,
-            "executionMode": "synthetic-local",
+            "executionMode": "observed-dev",
         },
+        "sourceWindowSelection": {
+            "status": "CONFIRMED", "minimumCompleteUtcDays": 1, "allowLongerRange": True,
+            "candidateComparisons": [{
+                "start": "2099-01-01T00:00:00Z", "endExclusive": "2099-01-02T00:00:00Z", "complete": True,
+                "sourceFamiliesPresent": ["members", "ledgers", "rates"],
+                "coverageSignals": {"members-rows-present": 4, "ledgers-rows-present": 6, "rates-rows-present": 3},
+                "rowCount": 13, "byteCount": 4096, "estimatedCostUsd": 0.05, "immutableEvidence": True,
+            }],
+            "recommendedWindow": {"start": "2099-01-01T00:00:00Z", "endExclusive": "2099-01-02T00:00:00Z", "completeUtcDays": 1},
+            "confirmedWindow": {"start": "2099-01-01T00:00:00Z", "endExclusive": "2099-01-02T00:00:00Z", "completeUtcDays": 1},
+            "evidenceIds": ["prod-source-window-metadata", "source-window-user-confirmation"],
+        },
+        "finalValidation": {
+            "kind": "prod-derived-dev", "status": "PASS", "prodAccess": "read-only",
+            "sourceWindow": {"start": "2099-01-01T00:00:00Z", "endExclusive": "2099-01-02T00:00:00Z", "completeUtcDays": 1},
+            "stagingApprovalDigests": ["sha256:" + "e" * 64], "executionApprovalDigests": ["sha256:" + "f" * 64],
+            "inputManifestSha256s": [digest], "evidenceIds": ["final-prod-derived-validation"],
+        },
+        "executionSteps": [{
+            "sequence": 1, "mapping": "source-to-target@1.0.0", "environment": "dev", "status": "PASS",
+            "approvalOperationDigest": "sha256:" + "f" * 64,
+            "executionArn": "arn:aws:states:xx-test-1:000000000000:execution:transform:silvally-final-1",
+            "inputManifestSha256": digest,
+            "outputLocation": "s3://example-dev-bucket/outputs/silvally-synthetic/20990102T000000Z/full/",
+            "executedSqlSha256s": [digest], "logLocations": ["/aws-glue/jobs/output"],
+        }],
         "persistCanary": proof,
         "exporterHydration": proof,
         "roundTrip": {
@@ -697,8 +746,42 @@ def test_schemas_and_profiles() -> None:
     assert_rejected(draft_check, invented_selection, "profile selection without hard evidence")
 
     run = valid_run()
-    assert_valid(run_check, run, "valid synthetic run")
-    prod_derived = copy.deepcopy(run)
+    assert_valid(run_check, run, "valid READY run with the final PROD-derived validation")
+    blocked_final = copy.deepcopy(run)
+    blocked_final["verdict"] = "BLOCKED"
+    blocked_final["phases"][11]["status"] = "BLOCKED"
+    blocked_final["finalValidation"].update({"status": "BLOCKED", "sourceWindow": None, "stagingApprovalDigests": [],
+                                             "executionApprovalDigests": [], "inputManifestSha256s": []})
+    blocked_final["executionSteps"] = []
+    blocked_final["runtime"]["executionMode"] = "synthetic-local"
+    blocked_final["remediations"] = [{
+        "id": "run-final-prod-derived-validation", "findingCode": "FinalProdDerivedValidationRequired", "status": "BLOCKED",
+        "classification": "ACCESS_OR_EVIDENCE", "owner": "Silvally operator", "repository": None,
+        "locations": ["sourceWindowSelection"], "locationEvidenceIds": ["prod-source-window-metadata"],
+        "recommendedChange": "Confirm the recommended PROD-derived window, approve its DEV staging and executions, then rerun.",
+        "regressionEvidence": ["Approved DEV executions on the confirmed window pass phases 1-11."],
+        "rerunPhases": [1, 3, 4, 9, 10, 11, 12], "rerunDirections": ["source-to-target"],
+    }]
+    assert_valid(run_check, blocked_final, "valid BLOCKED run awaiting the final PROD-derived validation")
+    for label, mutate in (
+        ("READY from synthetic-local evidence", lambda r: r["runtime"].__setitem__("executionMode", "synthetic-local")),
+        ("READY without final validation", lambda r: r.pop("finalValidation")),
+        ("READY with a blocked final validation", lambda r: r["finalValidation"].__setitem__("status", "BLOCKED")),
+        ("READY without a source window selection", lambda r: r.pop("sourceWindowSelection")),
+        ("READY with an unconfirmed window", lambda r: r["sourceWindowSelection"].update({"status": "NEEDS_CONFIRMATION", "confirmedWindow": None})),
+        ("READY without a staging approval digest", lambda r: r["finalValidation"].__setitem__("stagingApprovalDigests", [])),
+        ("READY without an execution approval digest", lambda r: r["finalValidation"].__setitem__("executionApprovalDigests", [])),
+        ("READY without DEV executions", lambda r: r.__setitem__("executionSteps", [])),
+        ("READY with a synthetic-local execution step", lambda r: r["executionSteps"][0].__setitem__("environment", "synthetic-local")),
+        ("READY with an unapproved execution step", lambda r: r["executionSteps"][0].__setitem__("approvalOperationDigest", None)),
+        ("READY on a window other than the confirmed one", lambda r: r["finalValidation"]["sourceWindow"].update(
+            {"start": "2098-12-31T00:00:00Z", "endExclusive": "2099-01-01T00:00:00Z"})),
+        ("final validation claiming PROD writes", lambda r: r["finalValidation"].__setitem__("prodAccess", "read-write")),
+    ):
+        bad = copy.deepcopy(run)
+        mutate(bad)
+        assert_rejected(run_check, bad, label)
+    prod_derived = copy.deepcopy(blocked_final)
     prod_derived["sourceWindowSelection"] = {
         "status": "NEEDS_CONFIRMATION", "minimumCompleteUtcDays": 1, "allowLongerRange": True,
         "candidateComparisons": [{
@@ -769,6 +852,12 @@ def test_schemas_and_profiles() -> None:
     unresolved["configurationPackage"]["unresolvedProductChangeHandoffs"] = ["identity-scheme-change"]
     assert_rejected(run_check, unresolved, "READY with unresolved product change")
 
+    no_window = copy.deepcopy(base)
+    no_window.pop("sourceWindowPolicy")
+    assert_rejected(profile_check, no_window, "profile without a source window policy")
+    wrong_default = copy.deepcopy(base)
+    wrong_default["sourceWindowPolicy"]["minimumCompleteUtcDays"] = 3
+    assert_rejected(profile_check, wrong_default, "source window default recorded differently from the policy")
     for setting in ("representationFamily", "identityScheme", "executableCodePath", "dependencyType", "storageEngineMode", "failureSemantics"):
         bad = copy.deepcopy(base)
         bad["configurationChoices"][setting] = ["not-configuration"]
@@ -867,6 +956,8 @@ def test_core_and_references() -> None:
         "removedlexiconconcept", "pinned current lexicon",
         "absent or deprecated", "reintroduction", "explicit pinned modeling approval",
         "derivationoverrides", "check-profile", "one rejected case per required input", "registry-layout.json",
+        "final prod-derived validation", "finalprodderivedvalidationrequired", "derivedsourcewindowpolicy",
+        "recordeddefaults", "own approval digest", "never `ready`", "source_window.py",
     ):
         if token not in core:
             fail(f"core routing/safety contract missing {token!r}")
@@ -1300,6 +1391,11 @@ def test_contracts_and_profile_check(tmp: Path) -> None:
     regenerated = {d["mapping"]["id"]: d for d in draft["derivedDirections"]}
     if set(regenerated) != {"alpha-to-canon", "canon-to-omega"} or len(regenerated["canon-to-omega"]["outputContracts"]) != 2:
         fail("draft-profile did not regenerate every workflow direction")
+    window_policy = draft.get("derivedSourceWindowPolicy") or {}
+    if window_policy.get("requiredSourceFamilies") != ["ledgers", "members", "rates"] or window_policy.get("origin") != "derived-at-intake" \
+            or window_policy.get("recordedDefaults") != {"minimumCompleteUtcDays": 1, "allowLongerRange": True} \
+            or not {"members-rows-present", "ledgers-rows-present", "rates-rows-present"} <= set(window_policy.get("requiredCoverageSignals", [])):
+        fail(f"draft-profile did not derive the PROD-derived source window policy from the workflow inputs: {window_policy}")
     none = clean.run("draft-profile", "--request", "test canon to omega", profiles=tmp / "none")
     if "derivedDirections" in none or none["selectedProfile"] is not None:
         fail("an ambiguous request produced derived directions or a selected profile")

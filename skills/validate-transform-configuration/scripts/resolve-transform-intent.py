@@ -1641,7 +1641,32 @@ def draft_profile(request: str, discovery: dict, registry: Registry | None = Non
         draft["derivedDirections"] = [
             derive_direction(registry, registry.mappings[s["mapping"]]) for s in discovery["workflow"]["steps"]
         ]
+        policy = draft_source_window_policy(discovery, registry)
+        if policy:
+            draft["derivedSourceWindowPolicy"] = policy
     return draft
+
+
+def draft_source_window_policy(discovery: dict, registry: Registry) -> dict | None:
+    """The PROD-derived source window every promoted profile needs, derived from the workflow's external inputs.
+
+    Source families are the inputs of steps that do not read a previous step's output; coverage signals are one
+    rows-present signal per family plus one per enum field the language definition declares for that family.
+    Defaults are recorded so the operator sees and can change them before promotion.
+    """
+    kebab = lambda value: "-".join(p for p in str(value).lower().replace("_", "-").split("-") if p)  # noqa: E731
+    families = sorted({name for s in discovery["workflow"]["steps"] if s.get("inputSource") != "previous-step-output"
+                       for name in registry.mappings[s["mapping"]].input_names})
+    if not families:
+        return None
+    signals = {f"{kebab(f)}-rows-present" for f in families}
+    for entry in discovery.get("parityDerivation", []):
+        if entry.get("dataset") in families:
+            signals |= {f"{kebab(entry['dataset'])}-{kebab(t['field'])}-values-covered" for t in entry.get("coverageTargets", [])}
+    defaults = {"minimumCompleteUtcDays": 1, "allowLongerRange": True}
+    return {"kind": "prod-derived-complete-utc-days", **defaults, "requiredSourceFamilies": families,
+            "requiredCoverageSignals": sorted(signals), "origin": "derived-at-intake", "recordedDefaults": defaults,
+            "evidenceIds": ["intent-resolution"]}
 
 
 def fact_question(fact_id: str) -> str:

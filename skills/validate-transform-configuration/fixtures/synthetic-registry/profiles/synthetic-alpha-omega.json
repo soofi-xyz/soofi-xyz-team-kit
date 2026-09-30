@@ -369,6 +369,29 @@
     "declaredFields": "minimum",
     "undefinedDatasets": "block"
   },
+  "sourceWindowPolicy": {
+    "kind": "prod-derived-complete-utc-days",
+    "minimumCompleteUtcDays": 1,
+    "allowLongerRange": true,
+    "requiredSourceFamilies": [
+      "ledgers",
+      "members",
+      "rates"
+    ],
+    "requiredCoverageSignals": [
+      "ledgers-rows-present",
+      "members-rows-present",
+      "rates-rows-present"
+    ],
+    "origin": "derived-at-intake",
+    "recordedDefaults": {
+      "minimumCompleteUtcDays": 1,
+      "allowLongerRange": true
+    },
+    "evidenceIds": [
+      "profile-source-datasets"
+    ]
+  },
   "scaleTiers": [
     {
       "id": "synthetic",

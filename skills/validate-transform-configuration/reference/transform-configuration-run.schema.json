@@ -294,6 +294,52 @@
         }
       }
     },
+    "finalValidation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "status",
+        "prodAccess",
+        "sourceWindow",
+        "stagingApprovalDigests",
+        "executionApprovalDigests",
+        "inputManifestSha256s",
+        "evidenceIds"
+      ],
+      "properties": {
+        "kind": { "const": "prod-derived-dev" },
+        "status": { "enum": ["PASS", "FAIL", "BLOCKED", "APPROVAL_REQUIRED"] },
+        "prodAccess": { "const": "read-only" },
+        "sourceWindow": {
+          "oneOf": [
+            { "$ref": "#/$defs/utcWindow" },
+            { "type": "null" }
+          ]
+        },
+        "stagingApprovalDigests": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/sha256" }
+        },
+        "executionApprovalDigests": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/sha256" }
+        },
+        "inputManifestSha256s": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/sha256" }
+        },
+        "evidenceIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/kebab" }
+        }
+      }
+    },
     "persistCanary": { "$ref": "#/$defs/proof" },
     "exporterHydration": { "$ref": "#/$defs/proof" },
     "roundTrip": {
@@ -541,7 +587,33 @@
     {
       "if": { "properties": { "verdict": { "const": "READY" } } },
       "then": {
+        "required": ["sourceWindowSelection", "finalValidation", "executionSteps"],
         "properties": {
+          "sourceWindowSelection": {
+            "properties": {
+              "status": { "const": "CONFIRMED" },
+              "confirmedWindow": { "$ref": "#/$defs/utcWindow" }
+            }
+          },
+          "finalValidation": {
+            "properties": {
+              "status": { "const": "PASS" },
+              "sourceWindow": { "$ref": "#/$defs/utcWindow" },
+              "stagingApprovalDigests": { "minItems": 1 },
+              "executionApprovalDigests": { "minItems": 1 },
+              "inputManifestSha256s": { "minItems": 1 }
+            }
+          },
+          "executionSteps": {
+            "minItems": 1,
+            "items": {
+              "properties": {
+                "environment": { "const": "dev" },
+                "status": { "const": "PASS" },
+                "approvalOperationDigest": { "$ref": "#/$defs/sha256" }
+              }
+            }
+          },
           "boundaryDecisions": {
             "not": {
               "contains": {
@@ -586,6 +658,10 @@
                 "availability": { "const": "UNAVAILABLE" }
               },
               "required": ["availability"]
+            },
+            "required": ["executionMode"],
+            "properties": {
+              "executionMode": { "const": "observed-dev" }
             }
           }
         }

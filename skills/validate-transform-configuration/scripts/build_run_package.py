@@ -10,7 +10,9 @@ exporterHydration, roundTrip, phases, boundaryDecisions, failures, remediations 
 optional extra datasets. This tool adds executionSteps, approvals, dataset evidence from
 captured outputs and cost, computes the verdict from phase statuses (any FAIL -> NOT_READY,
 else any BLOCKED/APPROVAL_REQUIRED -> BLOCKED, else READY), rejects a verdict that
-disagrees, requires a remediation for every FAIL/BLOCKED phase, and validates the result
+disagrees, refuses READY unless finalValidation proves approved DEV executions on the
+user-confirmed PROD-derived source window (sourceWindowSelection CONFIRMED, executionMode
+observed-dev), requires a remediation for every FAIL/BLOCKED phase, and validates the result
 against reference/transform-configuration-run.schema.json (needs jsonschema).
 """
 
@@ -34,6 +36,30 @@ def verdict_of(phases: list[dict]) -> str:
     if statuses & {"BLOCKED", "APPROVAL_REQUIRED"}:
         return "BLOCKED"
     return "READY"
+
+
+def final_validation_gaps(run: dict) -> list[str]:
+    """Reasons a package cannot be READY: READY requires the final PROD-derived DEV validation."""
+    final = run.get("finalValidation") or {}
+    selection = run.get("sourceWindowSelection") or {}
+    runtime = run.get("runtime") or {}
+    steps = run.get("executionSteps") or []
+    gaps = []
+    if final.get("status") != "PASS":
+        gaps.append("finalValidation is absent or not PASS")
+    if selection.get("status") != "CONFIRMED" or not selection.get("confirmedWindow"):
+        gaps.append("no user-confirmed PROD-derived source window")
+    elif final.get("sourceWindow") != selection["confirmedWindow"]:
+        gaps.append("finalValidation window differs from the confirmed window")
+    if runtime.get("executionMode") != "observed-dev":
+        gaps.append("runtime executionMode is not observed-dev")
+    if not final.get("stagingApprovalDigests"):
+        gaps.append("no approval digest for the DEV staging of the window")
+    if not steps or any(s["environment"] != "dev" or s["status"] != "PASS" for s in steps):
+        gaps.append("the final run has no passing DEV execution steps")
+    elif {s["approvalOperationDigest"] for s in steps} - set(final.get("executionApprovalDigests") or []):
+        gaps.append("an execution step lacks its own approval digest in finalValidation")
+    return gaps
 
 
 def execution_steps(run_dir: Path, steps: list[dict], spec: dict) -> list[dict]:
@@ -114,9 +140,13 @@ def main(argv: list[str] | None = None) -> int:
            "cost": {"ceilingUsd": spec.get("costCeilingUsd", cost.get("ceilingUsd", 0)), "estimatedUsd": spec.get("estimatedUsd", 0),
                     "actualUsd": cost.get("actualUsd")},
            "failures": spec.get("failures", []), "remediations": spec.get("remediations", []), "verdict": computed}
-    for optional in ("intentResolution", "parityDerivation", "sourceWindowSelection"):
+    for optional in ("intentResolution", "parityDerivation", "sourceWindowSelection", "finalValidation"):
         if optional in spec:
             run[optional] = spec[optional]
+    gaps = final_validation_gaps(run) if computed == "READY" else []
+    if gaps:
+        raise SilvallyError("READY requires the final PROD-derived DEV validation: " + "; ".join(gaps)
+                            + " (set phase 12 BLOCKED with FinalProdDerivedValidationRequired instead)")
     try:
         import jsonschema
     except ImportError as error:

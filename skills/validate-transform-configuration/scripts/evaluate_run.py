@@ -4,15 +4,18 @@
   evaluate_run.py --intent intent.json [--workspace WS] [--profile P.json] [--profile-check pc.json]
       [--contracts contracts.json] [--run-dir RUN] [--checks checks.json ...] [--regression regression.json]
       [--local-report report.json ...] [--closure closure.json ...] [--attest PHASE=EVIDENCE_ID ...]
-      [--answer QUESTION_ID=CHOICE ...]
+      [--answer QUESTION_ID=CHOICE ...] [--source-window confirmed.json] [--staging-upload upload.json ...]
       --mode synthetic-local|observed-dev --out phases.json
 
 Each phase is PASS, FAIL or BLOCKED from the evidence supplied:
 
-  1  intake       resolver status RESOLVED and one selected (or supplied) profile
+  1  intake       resolver status RESOLVED, one selected (or supplied) profile and, in observed-dev, the
+                  user-confirmed PROD-derived source window (source_window.py confirm)
   2  discovery    every fetched repository pinned by commit with required paths verified
-  3  safety       explicit operator profile, DEV-only writes, no PROD write verbs (enforced by the tools)
-  4  evidence     every run binding lies under a profile validationSource with a manifest digest
+  3  safety       explicit operator profile, DEV-only writes, no PROD write verbs (enforced by the tools), and
+                  every DEV staging upload of the window's package made with its own approval digest
+  4  evidence     every run binding lies under a profile validationSource with a manifest digest and, in
+                  observed-dev, under the confirmed window's staging prefix (or the run's own output root)
   5  model        concept, forbidden-content and Lexicon-model findings of the resolver
   6  mapping      profile drift, SQL scan, endpoint/required-input findings, check-profile result
   7  spark        local Spark reports (local_mapping_run.py) or an --attest for repository tests
@@ -20,11 +23,14 @@ Each phase is PASS, FAIL or BLOCKED from the evidence supplied:
   9  runtime      every executed case met its expectation and reconciled physically
   10 graph        graph closure evidence for graph outputs; not required for tabular outputs without Persist
   11 parity       contract/invariant/oracle checks, derived-parity entries and the regression comparison
-  12 package      the package itself (PASS when phases 1-11 are evaluated)
+  12 package      final PROD-derived validation: PASS only for an observed-dev run whose approved executions
+                  read the confirmed PROD-derived window staged under approval; otherwise BLOCKED
 
-An operator answer to a resolver question (for example upstream-source=existing-graph-export) resolves the
-finding that asked it. Findings attached to mappings outside the run are recorded as informational. In synthetic-local mode
-phases 8 and 9 are satisfied by the local execution and the verdict is scoped to that mode.
+READY requires phase 12 PASS, so a synthetic-local run (or an observed-dev run without a confirmed
+PROD-derived window) can never be READY. Its phases 1-11 are summarized as modeScopedResult. An operator
+answer to a resolver question (for example upstream-source=existing-graph-export) resolves the finding that
+asked it. Findings attached to mappings outside the run are recorded as informational. In synthetic-local mode
+phases 8 and 9 are satisfied by the local execution.
 """
 
 from __future__ import annotations
@@ -34,6 +40,7 @@ import json
 from pathlib import Path
 
 from silvally_io import read_json, sha256_file, write_json
+from source_window import validate_confirmed, window_token
 
 PHASE_NAMES = {
     1: "Intake and terminology", 2: "Repository and environment discovery", 3: "Safety and access preflight",
@@ -68,6 +75,12 @@ class Phases:
             self.evidence[phase].append(evidence)
 
 
+def execution_approval(run_dir: str | None, step: str) -> str | None:
+    path = Path(run_dir) / "approvals" / f"{step}.json" if run_dir else None
+    approval = read_json(path).get("approval") or {} if path and path.exists() else {}
+    return approval.get("operationDigest") if approval.get("status") == "APPROVED" else None
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--intent", required=True)
@@ -84,6 +97,9 @@ def main(argv: list[str] | None = None) -> int:
                         help="SOURCE_ID=DIR: verify a local package's manifest.json digest and listed objects against the profile")
     parser.add_argument("--attest", action="append", default=[], help="PHASE=EVIDENCE_ID for evidence the tools cannot observe")
     parser.add_argument("--answer", action="append", default=[], help="QUESTION_ID=CHOICE the operator confirmed for a resolver question")
+    parser.add_argument("--source-window", help="sourceWindowSelection JSON written by source_window.py confirm")
+    parser.add_argument("--staging-upload", action="append", default=[],
+                        help="stage_evidence_package.py upload result for the confirmed window's DEV package")
     parser.add_argument("--mode", choices=("synthetic-local", "observed-dev"), required=True)
     parser.add_argument("--out", required=True)
     args = parser.parse_args(argv)
@@ -98,6 +114,12 @@ def main(argv: list[str] | None = None) -> int:
         phases.set(1, "PASS", f"resolved {sorted(run_keys)}; profile {intent.get('selectedProfile') or profile.get('id')}", "intent-resolution")
     else:
         phases.set(1, "BLOCKED", f"resolver status {intent.get('status')}; no selected profile")
+
+    selection = read_json(args.source_window) if args.source_window else None
+    window_status, window_reason = validate_confirmed(selection, (profile or {}).get("sourceWindowPolicy"))
+    token = window_token(selection["confirmedWindow"]) if window_status == "PASS" else None
+    if args.mode == "observed-dev" or selection:
+        phases.set(1, window_status, window_reason, "source-window-selection" if window_status == "PASS" else None)
 
     if args.workspace and (Path(args.workspace) / "inputs-manifest.json").exists():
         repos = [e for e in read_json(Path(args.workspace) / "inputs-manifest.json") if e["kind"] == "repository"]
@@ -115,6 +137,16 @@ def main(argv: list[str] | None = None) -> int:
         phases.set(3, "PASS", f"explicit operator profile, region {spec.get('region')}, writes only under {spec['outputRoot']}", "run-spec")
     else:
         phases.set(3, "BLOCKED", "no run spec with an explicit operator profile")
+    uploads = [read_json(path) for path in args.staging_upload]
+    for upload in uploads:
+        if not upload.get("approvalOperationDigest") or not upload.get("matchesLocal"):
+            phases.set(3, "FAIL", f"staging upload {upload.get('manifest')} lacks its approval digest or a matching manifest readback")
+        elif token and token not in upload.get("manifest", ""):
+            phases.set(3, "FAIL", f"FinalWindowBindingMismatch: staging upload {upload['manifest']} is outside the confirmed window")
+        else:
+            phases.set(3, "PASS", f"staged {upload['manifest']} under approval {upload['approvalOperationDigest']}", "staging-upload")
+    if args.mode == "observed-dev" and not uploads:
+        phases.set(3, "BLOCKED", "FinalStagingUnproven: no approved DEV staging upload record for the confirmed window's package")
 
     sources_by_id = {s["id"]: s for s in (profile or {}).get("validationSources", [])}
     for package in args.local_package:
@@ -137,6 +169,8 @@ def main(argv: list[str] | None = None) -> int:
                 phases.set(4, "PASS", f"binding {name} under manifested source {source['id']}", source["id"])
             else:
                 phases.set(4, "BLOCKED", f"binding {name} is not under a manifested validationSource")
+            if args.mode == "observed-dev" and not prefix.startswith(spec.get("outputRoot", "\0")) and not (token and token in prefix):
+                phases.set(4, "BLOCKED", f"FinalWindowBindingMismatch: binding {name} is not under the confirmed PROD-derived window")
 
     answers = dict(a.split("=", 1) for a in args.answer)
     answered = {"UpstreamSourceUnresolved": "upstream-source"}
@@ -196,6 +230,8 @@ def main(argv: list[str] | None = None) -> int:
         for s in steps:
             status = "BLOCKED" if s["status"] == "RUNNING" else ("PASS" if s.get("verdict") == "PASS" else "FAIL")
             phases.set(9, status, f"{s['step']} {s['status']} (expected {s.get('expected')})", s.get("executionArn"))
+            if execution_approval(args.run_dir, s["step"]) is None:
+                phases.set(9, "BLOCKED", f"{s['step']} has no recorded operation-specific approval")
 
     graph_outputs = profile and (profile.get("graph") or {}).get("required") and any(
         d.get("toLanguage") == intent.get("primaryDirection", {}).get("to") for d in profile.get("directions", []))
@@ -236,10 +272,30 @@ def main(argv: list[str] | None = None) -> int:
     for n in range(1, 12):
         if phases.status[n] is None:
             phases.set(n, "BLOCKED", "no evidence supplied")
-    phases.set(12, "PASS", "package assembled from phases 1-11", "evaluate-run")
-    statuses = {phases.status[n] for n in range(1, 12)}
+    scoped = {phases.status[n] for n in range(1, 12)}
+    mode_scoped = "FAIL" if "FAIL" in scoped else ("BLOCKED" if "BLOCKED" in scoped else "PASS")
+    approvals = [a for a in (execution_approval(args.run_dir, s["step"]) for s in steps) if a]
+    final = {"kind": "prod-derived-dev", "status": "BLOCKED", "prodAccess": "read-only",
+             "sourceWindow": selection["confirmedWindow"] if token else None,
+             "stagingApprovalDigests": sorted({u["approvalOperationDigest"] for u in uploads if u.get("approvalOperationDigest")}),
+             "executionApprovalDigests": sorted(set(approvals)),
+             "inputManifestSha256s": sorted({"sha256:" + u["manifestSha256"] for u in uploads if u.get("manifestSha256")}),
+             "evidenceIds": ["final-prod-derived-validation"]}
+    if args.mode == "synthetic-local":
+        phases.set(12, "BLOCKED", "FinalProdDerivedValidationRequired: synthetic-local proves earlier phases only; READY needs a "
+                   "final observed-dev run on a confirmed PROD-derived source window")
+    elif not (token and uploads and steps and len(approvals) == len(steps)):
+        phases.set(12, "BLOCKED", "FinalProdDerivedValidationRequired: the final run lacks a confirmed window, an approved staging "
+                   "upload of it, or approved executions")
+    elif mode_scoped != "PASS":
+        phases.set(12, mode_scoped, "final PROD-derived validation did not pass phases 1-11")
+    else:
+        phases.set(12, "PASS", f"final PROD-derived validation: {len(steps)} approved DEV execution(s) on {window_reason}", "final-prod-derived-validation")
+    final["status"] = phases.status[12]
+    statuses = {phases.status[n] for n in PHASE_NAMES}
     verdict = "NOT_READY" if "FAIL" in statuses else ("BLOCKED" if "BLOCKED" in statuses else "READY")
-    out = {"mode": args.mode, "mappings": sorted(run_keys), "verdict": verdict,
+    out = {"mode": args.mode, "mappings": sorted(run_keys), "verdict": verdict, "modeScopedResult": mode_scoped,
+           "finalValidation": final,
            "phases": [{"number": n, "name": PHASE_NAMES[n], "status": phases.status[n], "reasons": phases.reasons[n],
                        "evidenceIds": sorted(set(e for e in phases.evidence[n] if e)) or [f"phase-{n}"]} for n in PHASE_NAMES],
            "informationalFindings": sorted(set(informational))}

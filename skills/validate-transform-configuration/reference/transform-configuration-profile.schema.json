@@ -23,6 +23,7 @@
     "graph",
     "adapters",
     "consumers",
+    "sourceWindowPolicy",
     "scaleTiers",
     "approvals"
   ],
@@ -1025,11 +1026,41 @@
         "minimumCompleteUtcDays",
         "allowLongerRange",
         "requiredSourceFamilies",
-        "requiredCoverageSignals"
+        "requiredCoverageSignals",
+        "origin",
+        "recordedDefaults",
+        "evidenceIds"
       ],
       "properties": {
         "kind": {
           "const": "prod-derived-complete-utc-days"
+        },
+        "origin": {
+          "enum": [
+            "profile-declared",
+            "derived-at-intake"
+          ]
+        },
+        "recordedDefaults": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "minimumCompleteUtcDays": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "allowLongerRange": {
+              "type": "boolean"
+            }
+          }
+        },
+        "evidenceIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/kebab"
+          }
         },
         "minimumCompleteUtcDays": {
           "type": "integer",

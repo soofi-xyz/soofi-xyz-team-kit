@@ -204,6 +204,16 @@
     "declaredFields": "minimum",
     "undefinedDatasets": "block"
   },
+  "sourceWindowPolicy": {
+    "kind": "prod-derived-complete-utc-days",
+    "minimumCompleteUtcDays": 1,
+    "allowLongerRange": true,
+    "requiredSourceFamilies": ["quiq-events"],
+    "requiredCoverageSignals": ["quiq-events-rows-present"],
+    "origin": "derived-at-intake",
+    "recordedDefaults": { "minimumCompleteUtcDays": 1, "allowLongerRange": true },
+    "evidenceIds": ["profile-source-datasets"]
+  },
   "scaleTiers": [
     { "id": "synthetic", "maximumRows": 100, "maximumCostUsd": 0, "evidenceRequired": true },
     { "id": "full-day-dev", "maximumRows": 100000, "maximumCostUsd": 50, "evidenceRequired": true }

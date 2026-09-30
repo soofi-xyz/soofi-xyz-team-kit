@@ -267,6 +267,60 @@
       "type": "string",
       "pattern": "^local://transform-configuration-intake/[a-z0-9][a-z0-9-]*$"
     },
+    "derivedSourceWindowPolicy": {
+      "type": "object",
+      "description": "PROD-derived source window policy derived by draft-profile from the workflow's external inputs; promotion copies it into sourceWindowPolicy with its recorded defaults.",
+      "required": [
+        "kind",
+        "minimumCompleteUtcDays",
+        "allowLongerRange",
+        "requiredSourceFamilies",
+        "requiredCoverageSignals",
+        "origin",
+        "recordedDefaults",
+        "evidenceIds"
+      ],
+      "properties": {
+        "kind": {
+          "const": "prod-derived-complete-utc-days"
+        },
+        "minimumCompleteUtcDays": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "allowLongerRange": {
+          "type": "boolean"
+        },
+        "requiredSourceFamilies": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "requiredCoverageSignals": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/evidenceId"
+          }
+        },
+        "origin": {
+          "const": "derived-at-intake"
+        },
+        "recordedDefaults": {
+          "type": "object"
+        },
+        "evidenceIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/evidenceId"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
     "derivedDirections": {
       "type": "array",
       "description": "Profile directions regenerated from the registry by draft-profile (registration + language definitions only).",
