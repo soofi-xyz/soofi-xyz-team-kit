@@ -1,6 +1,6 @@
 ---
 name: use-oracle
-description: "Operate Oracle county mining and the single Atlas publication path: capture, reconcile internally, validate lexicon groups, build CARs and tables, register the county in Atlas, and verify the global Atlas index."
+description: "Operate Oracle county mining and the single Atlas publication path, or return one property's raw official source response without transformation."
 ---
 
 # Use Oracle
@@ -36,8 +36,9 @@ product checks. Atlas archives and CLI-exported tables are the MCP/public source
 4. [`reference/roof-age-and-identity-reingest.md`](./reference/roof-age-and-identity-reingest.md)
 5. [`reference/hoa-property-management.md`](./reference/hoa-property-management.md)
 6. [`reference/self-contained-ingestion.md`](./reference/self-contained-ingestion.md)
-7. [`reference/failure-modes.md`](./reference/failure-modes.md)
-8. [`reference/durable-orchestration.md`](./reference/durable-orchestration.md)
+7. [`reference/raw-property-capture.md`](./reference/raw-property-capture.md)
+8. [`reference/failure-modes.md`](./reference/failure-modes.md)
+9. [`reference/durable-orchestration.md`](./reference/durable-orchestration.md)
 
 ## Choose the ingestion stack
 
@@ -49,6 +50,27 @@ Select one bundled runtime mode before capture:
 Do not require a sibling source checkout. Do not mix local Restate handlers with AWS
 workers. Stack choice affects capture and internal loading only; publication always uses
 the Atlas sequence above.
+
+## Raw single-property response
+
+When the user asks for the full/direct web output for one property and says not to
+transform it, use
+[`reference/raw-property-capture.md`](./reference/raw-property-capture.md). This is a
+bounded diagnostic route, not an ingest or publication run.
+
+- Resolve the address to one official county parcel/request identifier. Never guess.
+- Require readiness PASS and an adapter that explicitly supports raw capture.
+- Run `elephant-county capture-raw` with exactly one seed row and a temporary or
+  gitignored scratch directory.
+- Preserve and return the HTTP body byte-for-byte. Keep URL, timestamp, status,
+  digest, and parcel-validation result in the separate receipt.
+- Stop on blocked/challenged content, CAPTCHA, unsuccessful HTTP status, or parcel
+  mismatch.
+- Do not transform, reconcile, load Query DB, hash, export, register, or publish.
+
+The command calls the selected county adapter directly and does not start local Restate
+handlers or AWS workers. Identify the configured stack as usual, but do not mix either
+orchestration path into this diagnostic.
 
 ## Ingest and reconcile
 

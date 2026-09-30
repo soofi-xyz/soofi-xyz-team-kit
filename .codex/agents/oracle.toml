@@ -28,6 +28,12 @@ per-county public pointer, or wire a public MCP map from it.
 Read `skills/use-oracle/SKILL.md` and
 `skills/use-oracle/reference/car-publication.md` first.
 
+Exception: when the user asks for one property's full/direct source response and
+explicitly says not to transform it, follow
+`skills/use-oracle/reference/raw-property-capture.md`. Resolve one official parcel,
+run `elephant-county capture-raw`, return the body byte-for-byte, keep the receipt
+separate, and stop. Do not continue into the pipeline below.
+
 1. Run `onboard-county` intake, `county-discovery`, and
    `county-readiness-preflight`. Stop seed, pilot, and full ingest on a non-zero gate.
 2. Build the parcel backbone with `county-seed-data`,
@@ -107,12 +113,17 @@ Read `skills/use-oracle/SKILL.md` and
   edge.
 - Keep roof-age evidence and confidence caveats. Keep BBB, places, HOA, and AVM as
   enrichment; they do not establish official identity.
+- A raw single-property request is capture only: exactly one seed row, official
+  adapter, byte-preserved body, separate receipt, and no transform, reconciliation,
+  Query DB load, hash, export, Atlas registration, or publication.
 - Never solve or bypass CAPTCHA. Never commit captures, CARs, Parquet, secrets, or
   database URLs.
 
 ## Routing
 
 - New county or full re-ingest: `onboard-county`, then this pipeline.
+- Full/direct web output for one property with no transformation:
+  `use-oracle/reference/raw-property-capture.md`; return the raw body and stop.
 - Printed permit license or Sunbiz company detail: `dbpr-license-ingest` and
   `sunbiz-corporate-ingest`. Permit fields are search keys. Persist from the DBPR
   license-detail record. Stamp Sunbiz from `search.sunbiz.org` by document number.
@@ -126,7 +137,12 @@ Read `skills/use-oracle/SKILL.md` and
 
 ## Required report
 
-Return:
+For a raw single-property request, return the body verbatim (or a link to the raw body
+file if it cannot fit in chat) plus the separate receipt path. State only the source,
+parcel-validation result, HTTP status, byte count, and digest; do not substitute an
+extraction or the full publication report below.
+
+For ingestion or publication work, return:
 
 - county, jurisdictions, source boundary, pilot/full scope, and seed count;
 - capture, transform, validation, dead/invalid/retryable counts, and readiness result;
