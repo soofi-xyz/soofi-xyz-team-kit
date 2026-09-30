@@ -990,7 +990,7 @@ def test_core_and_references() -> None:
         if obsolete_role in naming_corpus:
             fail(f"Silvally retains obsolete role wording {obsolete_role!r}")
     for token in (
-        "kecleon", "mew", "unown", "conkeldurr", "machamp",
+        "kecleon", "mew", "lexicon modeling owner", "conkeldurr", "machamp",
         "explicit approval", "prod", "read-only", "fail closed",
         "ready", "not_ready", "blocked", "configuration", "product_change",
         "test", "deploy", "system", "runtime",
@@ -1099,7 +1099,7 @@ def test_golden_routes_and_dry_run() -> None:
     scenarios = [
         ("ambiguous terminology", "BLOCKED", "terminology"),
         ("transform mapping defect", "NOT_READY", "Kecleon"),
-        ("lexicon model gap", "NOT_READY", "Unown"),
+        ("lexicon model gap", "NOT_READY", "Lexicon modeling owner"),
         ("persist canary mismatch", "NOT_READY", "Conkeldurr"),
         ("scale cost unknown", "BLOCKED", "Machamp"),
         ("dev write pending", "BLOCKED", "APPROVAL_REQUIRED"),
