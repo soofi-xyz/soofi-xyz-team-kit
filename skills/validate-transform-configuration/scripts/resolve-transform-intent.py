@@ -87,6 +87,10 @@ FILLER = {
 ARROWS = re.compile(r"\s*(?:->|=>|→|\binto\b|\bto\b)\s*")
 VERSION_HINT = re.compile(r"(?:@|\bv(?:ersion)?\s*)(\d+\.\d+\.\d+)")
 ENV_HINT = re.compile(r"\b(?:in|on|against)\s+(dev|prod|production|development)\b")
+FOR_SLICES = re.compile(r"\bfor\s+(.+)$")
+SLICE_JOINERS = {"and", "or", "plus"}
+DEFAULT_SLICES = SKILL_ROOT / "reference" / "package-slices.json"
+BUILTIN_SLICE_KEYS = ("sms", "dsa", "m2d")
 MODE_HINTS = {
     "round-trip": re.compile(r"\bround[\s-]?trip\b|\broundtrip\b"),
     "one-way": re.compile(r"\bone[\s-]?way\b|\bforward only\b"),
@@ -101,12 +105,38 @@ def sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def load_slice_catalog(path: Path | str | None = None) -> dict:
+    source = Path(path) if path else DEFAULT_SLICES
+    if not source.exists():
+        return {"package": {}, "aliases": {k: k for k in BUILTIN_SLICE_KEYS},
+                "slices": {k: {"id": k, "outputDatasets": [], "introducedIn": "0.0.0"} for k in BUILTIN_SLICE_KEYS}}
+    return json.loads(source.read_text())
+
+
+def extract_package_slices(text: str, catalog: dict) -> tuple[str, list[str]]:
+    """Turn '… for sms, dsa and m2d' into slice ids. Slice words are not languages."""
+    match = FOR_SLICES.search(text)
+    if not match:
+        return text, []
+    aliases = dict(catalog.get("aliases") or {})
+    known = set(catalog.get("slices") or {}) | set(aliases)
+    if not known:
+        known = set(BUILTIN_SLICE_KEYS)
+    words = [w for w in re.split(r"[^a-z0-9_]+", match.group(1)) if w and w not in SLICE_JOINERS and w not in FILLER]
+    mapped = [aliases.get(w, w) for w in words]
+    if not mapped or any(name not in known for name in mapped):
+        return text, []
+    # preserve order, drop duplicates
+    slices = list(dict.fromkeys(mapped))
+    return text[:match.start()].strip(), slices
+
+
 # ---------------------------------------------------------------------------
 # Parsing
 # ---------------------------------------------------------------------------
 
 
-def parse_request(request: str) -> dict:
+def parse_request(request: str, slice_catalog: dict | None = None) -> dict:
     text = request.strip().lower()
     text = re.sub(r"^/?silvally\b", "", text).strip()
     hints: dict = {"version": None, "environment": None, "mode": None}
@@ -125,6 +155,7 @@ def parse_request(request: str) -> dict:
     text = re.sub(r"\bend[\s-]to[\s-]end\b", " ", text)
     for verb in VERBS:
         text = re.sub(rf"^\s*{verb}\b", " ", text).strip()
+    text, slices = extract_package_slices(text, slice_catalog or load_slice_catalog())
 
     parts = ARROWS.split(text, maxsplit=1)
     if len(parts) != 2:
@@ -135,6 +166,7 @@ def parse_request(request: str) -> dict:
             "sourceTerms": [],
             "targetTerms": [],
             "qualifiers": [],
+            "slices": slices,
             "hints": hints,
         }
 
@@ -156,6 +188,7 @@ def parse_request(request: str) -> dict:
         "sourceTerms": source_words,
         "targetTerms": target_words,
         "qualifiers": source_qualifiers + target_qualifiers,
+        "slices": slices,
         "hints": hints,
     }
 
@@ -614,8 +647,22 @@ def _semver(key: str) -> tuple[int, ...]:
     return tuple(int(part) for part in key.split("@")[1].split("."))
 
 
+PROD_REGISTRY_LABELS = {"prod", "production"}
+CANDIDATE_PROVENANCE = {"checked-in-registration", "candidate-build"}
+
+
 def published_labels(candidate: dict) -> list[str]:
     return sorted({p["label"] for p in candidate.get("provenance", []) if p.get("kind") == "published-registry"})
+
+
+def selection_labels(candidate: dict) -> list[str]:
+    """Registries that may default a version. PROD catalog is observational only."""
+    return [label for label in published_labels(candidate) if label not in PROD_REGISTRY_LABELS]
+
+
+def is_default_selectable(candidate: dict) -> bool:
+    kinds = {p.get("kind") for p in candidate.get("provenance", [])}
+    return bool(selection_labels(candidate)) or bool(kinds & CANDIDATE_PROVENANCE)
 
 
 def version_selection(ranked: list[dict], chosen: dict, requested: str | None, rule: str) -> dict:
@@ -635,30 +682,41 @@ def version_selection(ranked: list[dict], chosen: dict, requested: str | None, r
 
 
 def latest_published(ranked: list[dict], pool: list[dict], source: str, target: str) -> dict:
-    """No @version: the highest semver among the published ENABLED versions of one mapping id."""
-    published = [r for r in pool if published_labels(r)]
-    unpublished = sorted(r["mapping"] for r in pool if not published_labels(r))
-    if not published:
-        return {"status": "NO_MAPPING", "selected": None, "candidates": ranked, "unpublished": unpublished,
-                "reason": f"no published ENABLED {source}->{target} version; add @x.y.z to validate a checked-in registration"}
-    ids = sorted({r["mapping"].split("@")[0] for r in published})
+    """No @version: the highest semver among DEV-published, candidate-build, and checked-in versions.
+
+    PROD catalog membership never selects or rejects a version. A PR mapping that
+    is absent from PROD is expected and stays RESOLVED so validation can continue
+    to DEV execution proof.
+    """
+    eligible = [r for r in pool if is_default_selectable(r)]
+    if not eligible:
+        prod_only = [r for r in pool if set(published_labels(r)) <= PROD_REGISTRY_LABELS and published_labels(r)]
+        if prod_only:
+            eligible = prod_only
+        else:
+            return {"status": "NO_MAPPING", "selected": None, "candidates": ranked,
+                    "unpublished": sorted(r["mapping"] for r in pool),
+                    "reason": f"no ENABLED {source}->{target} mapping in DEV, a candidate checkout, or a published registry"}
+    ids = sorted({r["mapping"].split("@")[0] for r in eligible})
     if len(ids) > 1:
         return {"status": "AMBIGUOUS", "selected": None, "candidates": ranked,
-                "reason": f"{len(ids)} different published {source}->{target} mapping ids ({', '.join(ids)}); choose one"}
-    chosen = max(published, key=lambda r: _semver(r["mapping"]))
-    selection = version_selection(pool, chosen, None, "latest-published-semver")
-    versions = [c["version"] for c in selection["candidates"] if c["publishedIn"]]
-    ignored = [c["version"] for c in selection["candidates"] if not c["publishedIn"]]
-    if len(versions) == 1 and not ignored:
+                "reason": f"{len(ids)} different {source}->{target} mapping ids ({', '.join(ids)}); choose one"}
+    chosen = max(eligible, key=lambda r: _semver(r["mapping"]))
+    published_non_prod = bool(selection_labels(chosen))
+    rule = "latest-published-semver" if published_non_prod else "latest-candidate-semver"
+    selection = version_selection(pool, chosen, None, rule)
+    versions = [c["version"] for c in selection["candidates"]]
+    if len(versions) == 1 and published_non_prod:
         selection["rule"] = "single-match"
         return {"status": "RESOLVED", "selected": chosen["mapping"], "candidates": ranked, "versionSelection": selection}
     scope = " matching the request" if len(pool) < len(ranked) else ""
-    notice = f"Resolved {chosen['mapping']} — latest published of {', '.join(versions)}{scope}; add @x.y.z to pick another."
-    if ignored:
-        notice += f" Not published, so not considered: {', '.join(ignored)}."
+    notice = f"Resolved {chosen['mapping']} — latest of {', '.join(versions)}{scope}; add @x.y.z to pick another."
+    if not published_non_prod:
+        notice += " Not in a DEV catalog; continuing to DEV execution proof from the pinned candidate."
     selection["notice"] = notice
+    selection["rule"] = rule
     return {"status": "RESOLVED", "selected": chosen["mapping"], "candidates": ranked,
-            "selectionRule": "latest-published-semver", "reason": notice, "versionSelection": selection}
+            "selectionRule": rule, "reason": notice, "versionSelection": selection}
 
 
 def cumulative_superset(matches: list[dict]) -> dict | None:
@@ -1249,7 +1307,9 @@ def question_plan(
             "default": "dev",
         })
     versions = [c for c in selection.get("candidates", [])]
-    if len(versions) > 1 and hints.get("version") is None and selection.get("selectionRule") != "latest-published-semver":
+    if len(versions) > 1 and hints.get("version") is None and selection.get("selectionRule") not in {
+        "latest-published-semver", "latest-candidate-semver",
+    }:
         questions.append({
             "id": "mapping-version",
             "prompt": f"Silvally selected {selection['selected']}. Confirm the mapping version:",
@@ -1266,7 +1326,7 @@ def question_plan(
                 {"id": "existing-graph-export", "label": "Use an existing immutable DEV graph export (manifest + SHA-256 required)"},
             ],
             "allowMultiple": False,
-            "default": upstream_default if upstream_default in upstream_candidates else None,
+            "default": upstream_default if upstream_default in set(upstream_candidates) | {"existing-graph-export"} else None,
         })
     ready = [r["id"] for r in recommendations if r.get("status") == "ready"]
     proposed = [r["id"] for r in recommendations if r["kind"] == "proposed-prod-derived"]
@@ -1346,12 +1406,93 @@ def load_registry(args) -> Registry:
     )
 
 
-def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclusiveZ>") -> dict:
-    parsed = parse_request(request)
+def slice_records(catalog: dict, names: list[str]) -> list[dict]:
+    declared = catalog.get("slices") or {}
+    out = []
+    for name in names:
+        spec = declared.get(name) or {"id": name, "outputDatasets": [], "introducedIn": "0.0.0"}
+        out.append({
+            "id": spec.get("id", name),
+            "outputDatasets": list(spec.get("outputDatasets") or []),
+            "introducedIn": spec.get("introducedIn"),
+        })
+    return out
+
+
+def pick_version_for_slices(selection: dict, registry: Registry, slices: list[dict]) -> tuple[dict, list[dict]]:
+    """Keep the latest version that emits every named slice's datasets; otherwise keep the default."""
+    required = {dataset for spec in slices for dataset in spec["outputDatasets"]}
+    if not required:
+        return selection, []
+    candidates = [c for c in (selection.get("candidates") or []) if c.get("mapping")]
+    if selection.get("selected"):
+        mapping_id = selection["selected"].split("@")[0]
+        pool = [c for c in candidates if c["mapping"].split("@")[0] == mapping_id]
+    else:
+        ids = {c["mapping"].split("@")[0] for c in candidates}
+        if len(ids) != 1:
+            return selection, []
+        pool = [c for c in candidates if c["mapping"].split("@")[0] == next(iter(ids))]
+    covering = [c for c in pool if required <= set(c.get("outputs") or [])]
+    findings = []
+    requested = (selection.get("versionSelection") or {}).get("requested")
+    if requested:
+        chosen = next((c for c in pool if c["mapping"].endswith(f"@{requested}")), None)
+        if chosen and required <= set(chosen.get("outputs") or []):
+            return selection, findings
+        if selection.get("selected"):
+            findings.append({
+                "code": "SliceOutputsMissing",
+                "mapping": selection["selected"],
+                "slices": [spec["id"] for spec in slices],
+                "datasets": sorted(required),
+                "detail": "the selected version does not declare every named slice's outputs",
+            })
+        return selection, findings
+    if covering:
+        chosen = max(covering, key=lambda r: _semver(r["mapping"]))
+        if selection.get("status") != "RESOLVED" or chosen["mapping"] != selection.get("selected"):
+            rule = "latest-published-semver" if selection_labels(chosen) else "latest-candidate-semver"
+            notice = (
+                f"Resolved {chosen['mapping']} — latest of the versions that emit every named slice; "
+                "add @x.y.z to pick another."
+            )
+            selection = {
+                **selection,
+                "status": "RESOLVED",
+                "selected": chosen["mapping"],
+                "selectionRule": rule,
+                "reason": notice,
+                "versionSelection": version_selection(candidates or pool, chosen, None, rule),
+            }
+            selection["versionSelection"]["notice"] = notice
+    elif selection.get("selected"):
+        findings.append({
+            "code": "SliceOutputsMissing",
+            "mapping": selection["selected"],
+            "slices": [spec["id"] for spec in slices],
+            "datasets": sorted(required),
+            "detail": "the selected version does not declare every named slice's outputs",
+        })
+    return selection, findings
+
+
+def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclusiveZ>",
+             slice_catalog: dict | None = None) -> dict:
+    catalog = slice_catalog if slice_catalog is not None else load_slice_catalog()
+    parsed = parse_request(request, catalog)
     result: dict = {"parsed": parsed, "intakeState": "NEEDS_INPUT", "registrySources": registry.registry_labels}
     if parsed["status"] != "PARSED":
         result.update({"status": "UNPARSED", "questions": [], "nextStep": parsed["reason"]})
         return result
+    if parsed["hints"].get("environment") == "prod":
+        parsed["hints"]["environment"] = "dev"
+        parsed["hints"]["prodCatalogReadOnly"] = True
+        result["prodTransform"] = "forbidden"
+        result["notice"] = (
+            "PROD Transform is never invoked. Catalog and source-window inspection may be "
+            "read-only PROD; execution proof is DEV."
+        )
     source, source_quals, source_conflict = split_terms(registry, parsed["sourceTerms"])
     target, target_quals, target_conflict = split_terms(registry, parsed["targetTerms"])
     qualifiers = [q for q in parsed["qualifiers"] + source_quals + target_quals if q not in {source, target}]
@@ -1368,14 +1509,59 @@ def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclu
         return result
 
     unknown = [n for n in (source, target) if languages[n]["state"] == "UNKNOWN"]
+    requested_slices = slice_records(catalog, parsed.get("slices") or [])
+    package = catalog.get("package") or {}
+    findings_early: list[dict] = []
+    if requested_slices and package.get("from") == source and package.get("to") == target:
+        if parsed["hints"].get("mode") is None:
+            parsed["hints"]["mode"] = "one-way"
+        result["slices"] = requested_slices
+    elif requested_slices:
+        result["slices"] = []
+        findings_early.append({
+            "code": "PackageSlicePairMismatch",
+            "detail": "named slices apply only to the catalog package language pair; they were ignored",
+            "slices": [spec["id"] for spec in requested_slices],
+        })
+    else:
+        result["slices"] = []
     selection = select_mapping(registry, source, target, qualifiers, parsed["hints"]["version"])
+    if result.get("slices"):
+        selection, slice_findings = pick_version_for_slices(selection, registry, result["slices"])
+    else:
+        slice_findings = []
     result["selection"] = selection
     if selection.get("versionSelection"):
         result["versionSelection"] = selection["versionSelection"]
         if selection["versionSelection"].get("notice"):
             result["notice"] = selection["versionSelection"]["notice"]
     result["lexiconModel"] = lexicon_model_comparison(registry)
-    findings = base_findings(registry)
+    findings = base_findings(registry) + findings_early + slice_findings
+    chosen_key = selection.get("selected")
+    chosen = next((c for c in selection.get("candidates") or [] if c.get("mapping") == chosen_key), None)
+    prod_inspected = any(label in PROD_REGISTRY_LABELS for label in registry.registry_labels)
+    if chosen_key and chosen and prod_inspected and not (set(published_labels(chosen)) & PROD_REGISTRY_LABELS):
+        findings.append({
+            "code": "UnpublishedInProd",
+            "mapping": chosen_key,
+            "severity": "informational",
+            "detail": (
+                "PROD catalog lacks this version; expected for a PR or unpublished mapping. "
+                "This is not a mapping NOT_READY. Continue to DEV execution proof "
+                "(UTC-day confirmation and DEV write approval)."
+            ),
+        })
+        extra = " Unpublished in PROD (expected for a PR mapping); continuing to DEV execution proof."
+        if extra not in (result.get("notice") or ""):
+            result["notice"] = ((result.get("notice") or selection.get("reason") or "") + extra).strip()
+            if result.get("versionSelection"):
+                result["versionSelection"]["notice"] = result["notice"]
+    if parsed["hints"].get("prodCatalogReadOnly"):
+        findings.append({
+            "code": "ProdTransformForbidden",
+            "severity": "informational",
+            "detail": "PROD Transform is never invoked (no StartExecution, Glue job, or write). Execution proof is DEV.",
+        })
     phrases = qualifier_phrases(qualifiers)
     planned = planned_candidates(registry, source, target, phrases)
     findings.extend({
@@ -1440,13 +1626,35 @@ def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclu
 
     primary = registry.mappings[selection["selected"]]
     selected_summary = next(c for c in selection["candidates"] if c["mapping"] == primary.key)
+    sliced = bool(result.get("slices"))
+    if sliced and parsed["hints"].get("mode") is None:
+        parsed["hints"]["mode"] = "one-way"
     upstream: list[str] = []
-    if primary.source == HUB_LANGUAGE:
+    if sliced:
+        mode = parsed["hints"]["mode"] or "one-way"
+        steps = [primary]
+        continuation = {"inverse": [], "crossSource": []}
+        if primary.source == HUB_LANGUAGE:
+            findings.append({
+                "code": "UpstreamSourceUnresolved",
+                "mapping": primary.key,
+                "detail": (
+                    "Named package slices are one-way projections from an existing graph; "
+                    "choose an existing immutable graph export or an upstream producer. "
+                    "Slice words are not producer languages."
+                ),
+                "candidates": [
+                    m.key for m in registry.enabled(target=HUB_LANGUAGE)
+                    if discriminating_inputs(registry.enabled(source=HUB_LANGUAGE, target=primary.target)).get(primary.key, set())
+                    & {normalize_dataset(n) for n in m.output_names}
+                ],
+            })
+    elif primary.source == HUB_LANGUAGE:
         upstream = sorted({
             s["via"] for s in selected_summary["signals"] if s["kind"] == "chain-producer"
         })
     mode = parsed["hints"]["mode"]
-    if primary.source == HUB_LANGUAGE and len(upstream) == 1:
+    if not sliced and primary.source == HUB_LANGUAGE and len(upstream) == 1:
         # Cross-source request: the qualifier's producer feeds the hub projection.
         producer = registry.mappings[upstream[0]]
         continuation = continuation_steps(registry, producer.source, producer)
@@ -1455,7 +1663,7 @@ def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclu
             steps += [registry.mappings[k] for k in continuation["inverse"][-1:]]
         steps.append(primary)
         continuation = {"inverse": continuation["inverse"] if mode is None else [], "crossSource": []}
-    elif primary.source == HUB_LANGUAGE:
+    elif not sliced and primary.source == HUB_LANGUAGE:
         steps = [primary]
         continuation = {"inverse": [], "crossSource": []}
         findings.append({
@@ -1468,7 +1676,7 @@ def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclu
                 & {normalize_dataset(n) for n in m.output_names}
             ],
         })
-    else:
+    elif not sliced:
         continuation = continuation_steps(registry, source, primary)
         steps = [primary]
         inverse_keys = continuation["inverse"]
@@ -1594,6 +1802,17 @@ def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclu
         "primaryDirection": primary.summary(),
         "workflow": {
             "steps": [
+                {
+                    "sequence": i + 1,
+                    "mapping": primary.key,
+                    "from": primary.source,
+                    "to": primary.target,
+                    "slice": spec["id"],
+                    "outputDatasets": spec["outputDatasets"],
+                    "inputSource": "profile-evidence",
+                }
+                for i, spec in enumerate(result["slices"])
+            ] if result.get("slices") else [
                 {"sequence": i + 1, "mapping": m.key, "from": m.source, "to": m.target,
                  "inputSource": "profile-evidence" if i == 0 else "previous-step-output"}
                 for i, m in enumerate(steps)
@@ -1617,8 +1836,11 @@ def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclu
     result["questions"] = question_plan(
         "RESOLVED", selection, continuation, parsed["hints"], recommendations, [],
         upstream_candidates=unresolved_upstream,
-        upstream_default=next((s["mapping"] for s in profile_workflow if s["mapping"] != primary.key), None),
-        default_mode="one-way" if primary.source == HUB_LANGUAGE else "round-trip",
+        upstream_default=(
+            "existing-graph-export" if result.get("slices")
+            else next((s["mapping"] for s in profile_workflow if s["mapping"] != primary.key), None)
+        ),
+        default_mode="one-way" if (result.get("slices") or primary.source == HUB_LANGUAGE) else "round-trip",
         persist_policy=persist_policy,
     )
     return result
@@ -1943,10 +2165,12 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     p_parse = sub.add_parser("parse")
     p_parse.add_argument("--request", required=True)
+    p_parse.add_argument("--slice-catalog", help="package-slices JSON (default: reference/package-slices.json)")
     for name in ("discover", "draft-profile", "contracts", "check-profile"):
         p = sub.add_parser(name)
         if name in ("discover", "draft-profile"):
             p.add_argument("--request", required=True)
+        p.add_argument("--slice-catalog", help="package-slices JSON (default: reference/package-slices.json)")
         if name == "contracts":
             p.add_argument("--mapping", required=True, help="exact id@version to derive contracts for")
         if name == "check-profile":
@@ -1981,8 +2205,9 @@ def main(argv: list[str] | None = None) -> int:
             args.materialize_install = list(layout["materialize"]["install"])
     if getattr(args, "workspace", None):
         fetch_missing_inputs(args)
+    catalog = load_slice_catalog(getattr(args, "slice_catalog", None))
     if args.command == "parse":
-        output = parse_request(args.request)
+        output = parse_request(args.request, catalog)
     else:
         registry = load_registry(args)
         if args.command == "contracts":
@@ -1992,7 +2217,7 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "check-profile":
             output = check_profile(registry, json.loads(Path(args.profile).read_text()))
         else:
-            output = discover(args.request, registry, args.window)
+            output = discover(args.request, registry, args.window, catalog)
             if args.command == "draft-profile":
                 output = draft_profile(args.request, output, registry)
     text = json.dumps(output, indent=2, sort_keys=False) + "\n"

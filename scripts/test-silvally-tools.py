@@ -679,6 +679,33 @@ else:
     blocked = run_tool("transform_runs.py", "start", "--run-dir", str(run_dir), "--approver", "t", "--scope", "t", "--approve", digest, check=False)
     if blocked.returncode == 0 or "DeploymentDrift" not in blocked.stderr:
         fail("start was not refused under deployment drift")
+    silvally_io.write_json(tmp / "slice-intent.json", {
+        "status": "RESOLVED", "selectedProfile": None, "selection": {"selected": "canon-to-omega@2.0.0"},
+        "slices": [{"id": "members", "outputDatasets": ["member_report"]},
+                   {"id": "ledgers", "outputDatasets": ["ledger_summary"]}],
+    })
+    slice_out = tmp / "slice-spec.json"
+    run_tool("transform_runs.py", "spec-from-intent", "--intent", str(tmp / "slice-intent.json"), "--workspace", str(ws),
+             "--profile", "example-dev", "--bind", "full=s3://example-bucket/inputs/full/", "--negatives", "none",
+             "--run-id", "20990101T000000Z", "--out", str(slice_out), env=env)
+    slice_cases = {c["case"]: c for c in json.loads(slice_out.read_text())["cases"]}
+    if set(slice_cases) != {"full-members", "full-ledgers"}:
+        fail(f"named slices derived a full-package run or per-output cases: {sorted(slice_cases)}")
+    if slice_cases["full-members"]["request"]["outputDatasets"] != ["member_report"]:
+        fail("the members slice did not request only its datasets")
+    if slice_cases["full-ledgers"]["request"]["outputDatasets"] != ["ledger_summary"]:
+        fail("the ledgers slice did not request only its datasets")
+    prod_spec = json.loads(out.read_text())
+    prod_spec["environment"] = "prod"
+    prod_spec["deployment"] = {"registry": "dev", "drift": None}
+    silvally_io.write_json(tmp / "prod-spec.json", prod_spec)
+    prod_dir = tmp / "prod-run"
+    run_tool("transform_runs.py", "cards", "--spec", str(tmp / "prod-spec.json"), "--run-dir", str(prod_dir))
+    digest = json.loads(sorted((prod_dir / "cards").glob("1-*.json"))[0].read_text())["operationDigest"]
+    refused = run_tool("transform_runs.py", "start", "--run-dir", str(prod_dir), "--approver", "t", "--scope", "t",
+                       "--approve", digest, check=False)
+    if refused.returncode == 0 or "PROD Transform is never invoked" not in refused.stderr:
+        fail("a PROD Transform start was not refused")
     results.append("transform_runs spec-from-intent: registration-derived cases, automatic negatives, drift refusal")
 
 

@@ -14,7 +14,10 @@ person's machine (checkouts, `/tmp` scripts, cached registries, PROD extracts) i
 
 1. **Install the plugin** from the team marketplace (Cursor: Plugins → soofi-xyz-team-kit), or clone
    `soofi-xyz/soofi-xyz-team-kit` and run `scripts/local-cursor-plugin.sh`. Invoke the agent as
-   `/silvally` or ask in plain language ("test <source> to <target> <output words>").
+   `/silvally` or ask in plain language ("test <source> to <target> <output words>", or
+   "validate <source> to <target> for <slice>, <slice> and <slice>" for named package slices).
+   Slice words are not languages. PROD Transform is never invoked; unpublished-in-PROD is not a
+   mapping `NOT_READY`.
 2. **Prerequisites** (checked by the agent; install once):
    - `gh` authenticated (`gh auth status`) with read access to the Lexicon and Transform repositories.
    - AWS CLI v2 with SSO profiles for DEV and, only for read-only oracles, PROD. Profile names are

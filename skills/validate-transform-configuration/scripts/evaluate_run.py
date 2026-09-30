@@ -55,6 +55,7 @@ FINDING_PHASE = {
     "ProfileOutputInputDrift": (6, "FAIL"), "OutputFormatDrift": (6, "FAIL"), "ProfileOutputDatasetDrift": (6, "FAIL"),
     "ProfileRegistrationStatusDrift": (6, "FAIL"), "ForbiddenConceptInSql": (6, "FAIL"), "HubOutputNotGraph": (6, "FAIL"),
     "EndpointDatasetNotRequired": (6, "FAIL"), "RequiredInputUndeclared": (6, "FAIL"), "UpstreamSourceUnresolved": (6, "BLOCKED"),
+    "SliceOutputsMissing": (6, "FAIL"),
     "RegistrySourceDrift": (8, "BLOCKED"),
 }
 RANK = {"PASS": 0, "BLOCKED": 1, "FAIL": 2}
@@ -183,7 +184,7 @@ def main(argv: list[str] | None = None) -> int:
     for finding in findings:
         placement = FINDING_PHASE.get(finding.get("code"))
         mapping = finding.get("mapping")
-        if placement is None or (mapping and mapping not in run_keys):
+        if finding.get("severity") == "informational" or placement is None or (mapping and mapping not in run_keys):
             informational.append(finding.get("code"))
             continue
         question = answered.get(finding.get("code"))

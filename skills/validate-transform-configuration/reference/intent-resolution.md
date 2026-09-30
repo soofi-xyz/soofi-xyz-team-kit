@@ -100,24 +100,33 @@ selected:
 
 With a published registry inspected (`--registry` or `--workspace --aws`) and no `@x.y.z`, the
 resolver takes the versions the request matches (every enabled `from -> to` version, or those a
-qualifier hard-matches) and keeps only those present in a published registry:
+qualifier hard-matches) and keeps the highest selectable semantic version among DEV-published,
+candidate-build, and checked-in registrations. PROD catalog membership never selects or rejects a
+version; `UnpublishedInProd` is informational and is not a mapping `NOT_READY`.
 
-- one mapping id: select its highest semantic version (`10.0.0` over `9.0.0`), rule
-  `latest-published-semver`, and return `notice`:
-  `Resolved <id>@<x.y.z> — latest published of <v1>, <v2>, ...; add @x.y.z to pick another.`
-  Checked-in versions that are not published are ignored and named in the notice. `mapping-version`
-  is not asked. When only one published version matches and none is ignored, the rule is
-  `single-match` and there is no notice.
+- one mapping id: select its highest semantic version (`10.0.0` over `9.0.0`). DEV-published
+  versions use `latest-published-semver`; a candidate-only pick uses `latest-candidate-semver`.
+  Return `notice`:
+  `Resolved <id>@<x.y.z> — latest of <v1>, <v2>, ...; add @x.y.z to pick another.`
+  `mapping-version` is not asked. When only one published version matches and none is ignored, the
+  rule is `single-match` and there is no notice.
 - several mapping ids: `AMBIGUOUS`; the user chooses.
-- none published: `NO_MAPPING`; the checked-in registrations are offered as
-  `registered-not-published`, and `@x.y.z` pins one.
+- `@x.y.z` pins one version, including an unpublished checked-in version.
 
 `versionSelection` records `requested`, `candidates` (each version with the registries publishing it),
-`chosen`, `rule` (`explicit-version`, `latest-published-semver`, `single-match`,
-`cumulative-superset`) and `pin` (the chosen `mapping.json` source, path and SHA-256). The draft,
+`chosen`, `rule` (`explicit-version`, `latest-published-semver`, `latest-candidate-semver`,
+`single-match`, `cumulative-superset`) and `pin` (the chosen `mapping.json` source, path and SHA-256). The draft,
 `evaluate_run.py` and the run package carry it; the pin and the fetched S3 version id keep a later
-publication from changing a run in progress. An explicit `@x.y.z` always wins, including an
-unpublished checked-in version.
+publication from changing a run in progress.
+
+### Package slices
+
+`validate <from> to <to> for <slice>, <slice> and <slice>` selects one catalog package
+(`reference/package-slices.json`) and one `outputDatasets` set per named slice. Slice words are
+stripped before language match. The workflow is one-way: one step per slice, same mapping, no
+undifferentiated full-package run, and no producer chain from a slice word. Hub→Y still asks for
+an upstream source (default: existing graph export). A pinned `@x.y.z` that lacks a slice output
+is `SliceOutputsMissing`.
 
 ### Cumulative versions
 
@@ -248,9 +257,10 @@ The synthetic registry in `fixtures/synthetic-registry/` (hub `canon`; languages
 | `test canon to omega@1.0.0` | `RESOLVED` | the pinned older version |
 | `test canon to omega` | `AMBIGUOUS` | both versions offered with their outputs |
 | `test canon to omega`, published `1.0.0`, `2.0.0`, `9.0.0`, `10.0.0` | `RESOLVED` | `canon-to-omega@10.0.0` by `latest-published-semver`, with `notice` |
-| `test canon to omega`, published `1.0.0` only | `RESOLVED` | `canon-to-omega@1.0.0`; the notice names unpublished `2.0.0` |
-| `test canon to omega`, nothing published for the pair | `NO_MAPPING` | both registrations offered as `registered-not-published` |
+| `test canon to omega`, published `1.0.0` only | `RESOLVED` | `canon-to-omega@2.0.0` by `latest-candidate-semver` from the checked-in candidate |
+| `test canon to omega`, nothing published for the pair | `RESOLVED` | latest checked-in version; continue to DEV proof |
 | `test canon to omega`, two published mapping ids | `AMBIGUOUS` | both ids offered |
+| `validate canon to omega for members, ledgers` | `RESOLVED` | two one-way steps of `canon-to-omega@2.0.0` (`member_report`, `ledger_summary`); no producer chain |
 | `test alpha to omega` | `NO_MAPPING` | ranked candidates; the retired `alpha-to-omega@0.9.0` is listed, never offered |
 | `test alhpa to canon` | `UNKNOWN_LANGUAGE` | `spelling-close-to-alhpa` candidate `alpha` |
 | `test canon to omega sigma` | `AMBIGUOUS` | two target languages on one side |

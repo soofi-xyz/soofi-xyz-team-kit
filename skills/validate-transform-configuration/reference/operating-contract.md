@@ -26,8 +26,10 @@ Require a profile ID equal to its filename, environment, region, optional reques
 - profile, language definition, mapping, SQL, plan, deployment and output artifacts to SHA-256 digests;
 - every declared language to exactly one version;
 - every required direction to its exact enabled mapping identity and version. Without `@x.y.z`,
-  the version is the latest published semantic version of that mapping id, announced by the
-  resolver's `notice`, recorded as `versionSelection`, and pinned by `mapping.json` SHA-256.
+  the version is the latest selectable semantic version of that mapping id (DEV-published,
+  candidate-build, or checked-in), announced by the resolver's `notice`, recorded as
+  `versionSelection`, and pinned by `mapping.json` SHA-256. Absence from the PROD catalog is
+  observational only and is not `NOT_READY`. PROD Transform is never invoked.
 
 Execute `validationWorkflow.steps` in sequence. A `previous-step-output` input
 binds only to the preceding step's committed, physically verified Transform

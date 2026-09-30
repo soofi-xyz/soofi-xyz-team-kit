@@ -430,6 +430,8 @@ def run_errors(value: dict) -> list[str]:
             errors.append("ready without passing DEV execution steps")
         elif {step.get("approvalOperationDigest") for step in steps} - set(final.get("executionApprovalDigests") or []):
             errors.append("execution step without its own approval digest")
+        if (value.get("finalValidation") or {}).get("prodAccess") not in {None, "read-only"}:
+            errors.append("final validation claiming PROD writes")
     source_window = value.get("sourceWindowSelection")
     if source_window is not None:
         minimum_days = source_window.get("minimumCompleteUtcDays", 0)
@@ -958,6 +960,7 @@ def test_core_and_references() -> None:
         "derivationoverrides", "check-profile", "one rejected case per required input", "registry-layout.json",
         "final prod-derived validation", "finalprodderivedvalidationrequired", "derivedsourcewindowpolicy",
         "recordeddefaults", "own approval digest", "never `ready`", "source_window.py",
+        "package slices", "prod transform is never invoked", "unpublished-in-prod",
     ):
         if token not in core:
             fail(f"core routing/safety contract missing {token!r}")
@@ -1128,6 +1131,9 @@ class Registry:
     def args(self, *extra: str, profiles: Path | None = None) -> list[str]:
         out = ["--layout", str(self.root / "layout.json"), "--lexicon-root", str(self.candidate), "--main-lexicon-root", str(self.main),
                "--forbidden-concepts", str(self.root / "forbidden-concepts.json"), "--profiles", str(profiles or self.root / "profiles")]
+        catalog = self.root / "package-slices.json"
+        if catalog.exists():
+            out += ["--slice-catalog", str(catalog)]
         for spec in self.registries:
             out += ["--registry", spec]
         return out + list(extra)
@@ -1161,10 +1167,26 @@ def test_parse() -> None:
         fail(f"short-request grammar mis-parsed terms: {parsed}")
     if parsed["hints"] != {"version": "2.0.0", "environment": "prod", "mode": "round-trip"}:
         fail(f"short-request hints mis-parsed: {parsed['hints']}")
+    if parsed.get("slices"):
+        fail(f"a request without a for-clause produced slices: {parsed.get('slices')}")
     if resolver.parse_request("check canon omega")["status"] != "UNPARSED":
         fail("a request without a direction was parsed")
     if "ledger_summary" not in resolver.qualifier_phrases(["ledger", "summaries"]) or "member_report" not in resolver.qualifier_phrases(["member", "reports"]):
         fail("a trailing plural qualifier is not tried in singular form")
+    catalog = json.loads((FIXTURE / "package-slices.json").read_text())
+    sliced = resolver.parse_request("validate canon to omega for members, ledgers", catalog)
+    if sliced["status"] != "PARSED" or sliced["slices"] != ["members", "ledgers"]:
+        fail(f"named package slices were not extracted: {sliced}")
+    if sliced["sourceTerms"] != ["canon"] or sliced["targetTerms"] != ["omega"]:
+        fail(f"slice words leaked into language terms: {sliced}")
+    lazy = resolver.parse_request("validate lexicon to interprose for sms, dsa and m2d")
+    if lazy["status"] != "PARSED" or lazy["slices"] != ["sms", "dsa", "m2d"]:
+        fail(f"the first-class lazy slice phrase was not parsed: {lazy}")
+    if lazy["sourceTerms"] != ["lexicon"] or lazy["targetTerms"] != ["interprose"]:
+        fail(f"the lazy slice phrase did not keep the package language pair: {lazy}")
+    other = resolver.parse_request("validate quiq to lexicon")
+    if other["slices"] or other["sourceTerms"] != ["quiq"] or other["targetTerms"] != ["lexicon"]:
+        fail(f"a different language pair was treated as package slices: {other}")
 
 
 def test_resolution_and_selection(tmp: Path) -> None:
@@ -1367,7 +1389,7 @@ def test_version_default(tmp: Path) -> None:
         fail(f"several published versions did not default to the highest semver (10.0.0 > 9.0.0): {latest['selection'].get('selected')}")
     if selection.get("rule") != "latest-published-semver" or selection.get("requested") is not None:
         fail(f"the defaulted version was not recorded as latest-published-semver: {selection}")
-    expected_notice = "Resolved canon-to-omega@10.0.0 — latest published of 1.0.0, 2.0.0, 9.0.0, 10.0.0; add @x.y.z to pick another."
+    expected_notice = "Resolved canon-to-omega@10.0.0 — latest of 1.0.0, 2.0.0, 9.0.0, 10.0.0; add @x.y.z to pick another."
     if latest.get("notice") != expected_notice or selection.get("notice") != expected_notice:
         fail(f"the defaulted version was not announced upfront: {latest.get('notice')!r}")
     if selection["pin"] != {"source": "published-registry", "label": "dev", "path": str(pinned.relative_to(published)),
@@ -1411,16 +1433,35 @@ def test_version_default(tmp: Path) -> None:
     publish(only_v1, docs["1.0.0"])
     unpublished_newer.registries = [f"dev={only_v1}"]
     older = unpublished_newer.discover("test canon to omega")
-    if older["selection"]["selected"] != "canon-to-omega@1.0.0" or "Not published, so not considered: 2.0.0." not in older.get("notice", ""):
-        fail(f"an unpublished checked-in version was defaulted to, or not named in the notice: {older.get('notice')}")
+    if older["status"] != "RESOLVED" or older["selection"]["selected"] != "canon-to-omega@2.0.0":
+        fail(f"a checked-in newer version was not selected so DEV proof can continue: {older.get('selection')}")
+    if older.get("versionSelection", {}).get("rule") != "latest-candidate-semver":
+        fail(f"a candidate-only default was not recorded as latest-candidate-semver: {older.get('versionSelection')}")
+    if "Not in a DEV catalog" not in (older.get("notice") or ""):
+        fail(f"a candidate-only default did not announce DEV proof: {older.get('notice')!r}")
 
     none_published = Registry(tmp, "version-none-published")
     other = tmp / "version-other-published"
     publish(other, json.loads(none_published.registration("canon-to-sigma@1.0.0").read_text()))
     none_published.registries = [f"dev={other}"]
     missing = none_published.discover("test canon to omega")
-    if missing["status"] != "NO_MAPPING" or not {"canon-to-omega@1.0.0", "canon-to-omega@2.0.0"} <= set(offered(missing)):
-        fail(f"no published version did not give NO_MAPPING with the registrations offered by version: {missing['status']} {offered(missing)}")
+    if missing["status"] != "RESOLVED" or missing["selection"]["selected"] != "canon-to-omega@2.0.0":
+        fail(f"checked-in versions of an unpublished pair did not stay RESOLVED: {missing['status']} {missing.get('selection')}")
+
+    prod_absent = Registry(tmp, "version-unpublished-in-prod")
+    dev_pub = tmp / "version-dev-v2"
+    prod_pub = tmp / "version-prod-v1"
+    publish(dev_pub, docs["2.0.0"])
+    publish(prod_pub, docs["1.0.0"])
+    prod_absent.registries = [f"dev={dev_pub}", f"prod={prod_pub}"]
+    observed = prod_absent.discover("test canon to omega")
+    unpublished = next((f for f in observed.get("findings", []) if f["code"] == "UnpublishedInProd"), None)
+    if observed["status"] != "RESOLVED" or observed["selection"]["selected"] != "canon-to-omega@2.0.0":
+        fail(f"absence from PROD rejected a DEV-published version: {observed.get('selection')}")
+    if unpublished is None or unpublished.get("severity") != "informational":
+        fail("absence from the PROD catalog was not an informational finding")
+    if any(f["code"] == "UnpublishedInProd" and f.get("severity") == "fail" for f in observed.get("findings", [])):
+        fail("unpublished-in-PROD was treated as a mapping failure")
 
     two_ids = Registry(tmp, "version-two-ids")
     two_published = tmp / "version-two-ids-published"
@@ -1487,6 +1528,34 @@ def test_contracts_and_profile_check(tmp: Path) -> None:
         fail("an ambiguous request produced derived directions or a selected profile")
 
 
+def test_package_slices(tmp: Path) -> None:
+    reg = Registry(tmp, "slices")
+    result = reg.discover("validate canon to omega for members, ledgers")
+    if result["status"] != "RESOLVED" or result["selection"]["selected"] != "canon-to-omega@2.0.0":
+        fail(f"named slices did not resolve to the covering version: {result.get('selection')}")
+    steps = result["workflow"]["steps"]
+    if [s.get("slice") for s in steps] != ["members", "ledgers"]:
+        fail(f"slices were not separate workflow steps: {steps}")
+    if [s.get("outputDatasets") for s in steps] != [["member_report"], ["ledger_summary"]]:
+        fail(f"each slice did not keep its own outputs: {steps}")
+    if {s["mapping"] for s in steps} != {"canon-to-omega@2.0.0"}:
+        fail(f"slices selected more than one mapping: {steps}")
+    if any(s.get("inputSource") != "profile-evidence" for s in steps):
+        fail(f"slice steps did not read profile evidence: {steps}")
+    if any("alpha-to-canon" in s["mapping"] for s in steps):
+        fail("a slice word chained a producer mapping")
+    if result["parsed"]["slices"] != ["members", "ledgers"] or result["intent"].get("qualifiers"):
+        fail(f"slice words leaked as qualifiers: {result['intent']}")
+    if result["parsed"]["hints"].get("mode") != "one-way":
+        fail("named slices did not force one-way")
+    upstream = next((q for q in result["questions"] if q["id"] == "upstream-source"), None)
+    if upstream and upstream.get("default") != "existing-graph-export":
+        fail(f"package slices did not default upstream to an existing graph export: {upstream}")
+    pinned = reg.discover("validate canon to omega@1.0.0 for members, ledgers")
+    if pinned["selection"]["selected"] != "canon-to-omega@1.0.0" or "SliceOutputsMissing" not in codes(pinned):
+        fail("a pinned version missing a slice output was not reported")
+
+
 def test_layout_independence() -> None:
     resolver = load_resolver()
     default = load_json(LAYOUT)
@@ -1523,6 +1592,7 @@ def main() -> int:
         test_profile_drift_and_model_policy(tmp)
         test_registry_sources(tmp)
         test_version_default(tmp)
+        test_package_slices(tmp)
         test_contracts_and_profile_check(tmp)
     print("Silvally contract and resolver tests passed")
     return 0

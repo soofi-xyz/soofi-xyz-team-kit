@@ -97,9 +97,23 @@ def cmd_cards(args) -> int:
     return 0
 
 
+def assert_dev_transform(spec: dict) -> None:
+    """Refuse any Transform start that targets PROD. Execution proof is DEV only."""
+    env = str(spec.get("environment") or "dev").lower()
+    if env in {"prod", "production"}:
+        raise SilvallyError("PROD Transform is never invoked; execution proof is DEV")
+    label = str((spec.get("deployment") or {}).get("registry") or "").lower()
+    if label in {"prod", "production"}:
+        raise SilvallyError("PROD Transform is never invoked; execution proof is DEV")
+    name = (spec.get("stateMachineArn") or "").rsplit(":", 1)[-1].lower()
+    if name.startswith("prod-") or name.endswith("-prod") or "-prod-" in name:
+        raise SilvallyError("PROD Transform is never invoked; execution proof is DEV")
+
+
 def cmd_start(args) -> int:
     run_dir = Path(args.run_dir)
     spec = load_spec(str(run_dir / "run-spec.json"))
+    assert_dev_transform(spec)
     approvals = set(args.approve or [])
     if (spec.get("deployment") or {}).get("drift") and approvals:
         raise SilvallyError(spec["deployment"]["blocking"])
@@ -315,9 +329,15 @@ def present_tables(prefix: str, profile: str, region: str) -> set[str]:
 
 
 def derive_cases(mapping: dict, key: str, bindings: dict[str, str], present: dict[str, set[str]],
-                 outputs_filter: list[str] | None, negatives: bool) -> tuple[list[dict], list[dict]]:
-    """Cases from the registration alone: per-output positives, full runs, one negative per required input."""
+                 outputs_filter: list[str] | None, negatives: bool,
+                 slices: list[dict] | None = None) -> tuple[list[dict], list[dict]]:
+    """Cases from the registration alone: per-output positives, full runs, one negative per required input.
+
+    When `slices` is set, emit one PASS case per named slice (its outputDatasets together) and no
+    undifferentiated full-package run.
+    """
     outputs = {o["dataset"]: list(o.get("requiredInputs") or [i["table"] for i in mapping["inputs"]]) for o in mapping["outputs"]}
+    slice_specs = [s for s in (slices or []) if s.get("outputDatasets")]
     selected = [d for d in outputs if not outputs_filter or d in outputs_filter]
 
     def req(names: list[str], tables: list[str], base: str) -> dict:
@@ -330,16 +350,30 @@ def derive_cases(mapping: dict, key: str, bindings: dict[str, str], present: dic
         if not runnable:
             skipped.append({"binding": name, "reason": "no selected output has all its requiredInputs under this prefix"})
             continue
-        if set(runnable) == set(outputs) and len(outputs) > 1:
-            tables = sorted({t for d in outputs for t in outputs[d]})
-            cases.append({"case": f"{name}-full", "mapping": key, "expected": "PASS", "binding": name, "request": req(sorted(outputs), tables, base)})
-        for dataset in runnable:
-            first_binding.setdefault(dataset, name)
-            cases.append({"case": f"{name}-{dataset.replace('_', '-')}-only", "mapping": key, "expected": "PASS",
-                          "binding": name, "request": req([dataset], outputs[dataset], base)})
+        if slice_specs:
+            for spec in slice_specs:
+                needed = list(spec["outputDatasets"])
+                if set(needed) <= set(runnable):
+                    tables = sorted({t for d in needed for t in outputs[d]})
+                    cases.append({"case": f"{name}-{spec['id']}", "mapping": key, "expected": "PASS",
+                                  "binding": name, "slice": spec["id"],
+                                  "request": req(needed, tables, base)})
+                else:
+                    skipped.append({"binding": name, "slice": spec["id"],
+                                    "missingDatasets": sorted(set(needed) - set(runnable))})
+            for dataset in runnable:
+                first_binding.setdefault(dataset, name)
+        else:
+            if set(runnable) == set(outputs) and len(outputs) > 1:
+                tables = sorted({t for d in outputs for t in outputs[d]})
+                cases.append({"case": f"{name}-full", "mapping": key, "expected": "PASS", "binding": name, "request": req(sorted(outputs), tables, base)})
+            for dataset in runnable:
+                first_binding.setdefault(dataset, name)
+                cases.append({"case": f"{name}-{dataset.replace('_', '-')}-only", "mapping": key, "expected": "PASS",
+                              "binding": name, "request": req([dataset], outputs[dataset], base)})
         for dataset in sorted(set(selected) - set(runnable)):
             skipped.append({"binding": name, "dataset": dataset, "missingInputs": sorted(set(outputs[dataset]) - present[name])})
-    if not any(c["case"].endswith("-full") for c in cases) and len(outputs) > 1:
+    if not slice_specs and not any(c["case"].endswith("-full") for c in cases) and len(outputs) > 1:
         skipped.append({"case": "full", "reason": "no binding holds every output's requiredInputs; full run not derivable"})
     if negatives:
         for dataset in selected:
@@ -380,7 +414,10 @@ def cmd_spec_from_intent(args) -> int:
         raise SilvallyError("no input binding: pass --bind NAME=s3://<prefix>/ (a prefix holding one <table>/ directory per input)")
     bindings = {n: (u if u.endswith("/") else u + "/") for n, u in bindings.items()}
     present = {n: present_tables(u, args.profile, args.region) for n, u in bindings.items()}
-    cases, skipped = derive_cases(mapping, mapping_key, bindings, present, args.outputs, args.negatives == "all")
+    slices = [s for s in (intent.get("slices") or []) if s.get("outputDatasets")]
+    outputs_filter = args.outputs or ([d for s in slices for d in s["outputDatasets"]] or None)
+    cases, skipped = derive_cases(mapping, mapping_key, bindings, present, outputs_filter,
+                                  args.negatives == "all", slices=slices)
     machines = aws(["stepfunctions", "list-state-machines"], profile=args.profile, region=args.region, environment="prod")["stateMachines"]
     suffix = args.state_machine_suffix or RUNTIME["stateMachineSuffix"]
     arn = next((m["stateMachineArn"] for m in machines if m["name"].endswith(suffix)), None)

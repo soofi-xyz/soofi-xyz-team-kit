@@ -369,7 +369,7 @@
   },
   "$defs": {
     "versionSelection": {
-      "description": "How the mapping version was chosen. Without @x.y.z the rule is latest-published-semver: the highest semantic version among the published ENABLED versions of one mapping id, announced by notice. The chosen mapping.json is pinned by SHA-256.",
+      "description": "How the mapping version was chosen. Without @x.y.z the default is the highest selectable semantic version (DEV-published, candidate-build, or checked-in). PROD catalog membership never selects or rejects a version. The chosen mapping.json is pinned by SHA-256.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -426,6 +426,7 @@
           "enum": [
             "explicit-version",
             "latest-published-semver",
+            "latest-candidate-semver",
             "single-match",
             "cumulative-superset"
           ]
@@ -445,7 +446,8 @@
             "source": {
               "enum": [
                 "published-registry",
-                "checked-in-registration"
+                "checked-in-registration",
+                "candidate-build"
               ]
             },
             "label": {
@@ -493,6 +495,28 @@
                     "const": "published-registry"
                   }
                 }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "rule": {
+                "const": "latest-candidate-semver"
+              }
+            },
+            "required": [
+              "rule"
+            ]
+          },
+          "then": {
+            "required": [
+              "notice"
+            ],
+            "properties": {
+              "requested": {
+                "type": "null"
               }
             }
           }
