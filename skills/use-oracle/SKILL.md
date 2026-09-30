@@ -1,6 +1,6 @@
 ---
 name: use-oracle
-description: "Operate Oracle county mining and the single Atlas publication path, or return one property's raw official source response without transformation."
+description: "Operate Oracle county mining and Atlas publication, improve HOA name/fee/frequency accuracy against NetSuite-paid truth, or return one property's raw official response without transformation."
 ---
 
 # Use Oracle
@@ -35,10 +35,11 @@ product checks. Atlas archives and CLI-exported tables are the MCP/public source
 3. [`reference/permit-evidence-preflight.md`](./reference/permit-evidence-preflight.md)
 4. [`reference/roof-age-and-identity-reingest.md`](./reference/roof-age-and-identity-reingest.md)
 5. [`reference/hoa-property-management.md`](./reference/hoa-property-management.md)
-6. [`reference/self-contained-ingestion.md`](./reference/self-contained-ingestion.md)
-7. [`reference/raw-property-capture.md`](./reference/raw-property-capture.md)
-8. [`reference/failure-modes.md`](./reference/failure-modes.md)
-9. [`reference/durable-orchestration.md`](./reference/durable-orchestration.md)
+6. [`reference/hoa-web-ingestion.md`](./reference/hoa-web-ingestion.md)
+7. [`reference/self-contained-ingestion.md`](./reference/self-contained-ingestion.md)
+8. [`reference/raw-property-capture.md`](./reference/raw-property-capture.md)
+9. [`reference/failure-modes.md`](./reference/failure-modes.md)
+10. [`reference/durable-orchestration.md`](./reference/durable-orchestration.md)
 
 ## Choose the ingestion stack
 
@@ -103,7 +104,16 @@ Run these stages in order:
    lacks those edges or the license source fields, record the gap and do not
    substitute another edge.
 5. **Internal reconciliation:** `query-db-loading-matching`.
-6. **Enrichment:** BBB, places, HOA/property management, AVM, and roof age as applicable.
+6. **Enrichment:** For HOA names, fees, and frequencies, follow
+   `reference/hoa-web-ingestion.md`: preserve raw receipts, validate the exact
+   source-rendered address, retain every explicit amount/frequency tuple, and
+   keep official CTMH/Sunbiz identity separate from web observations. Treat
+   NetSuite `-unit_holding_hoa_dues_cost` as paid-cost truth; never use
+   `actual_dip`. Target missing/nonpositive Prism fees and fee gaps over 7.5%.
+   Run the monthly/quarterly/semiannual/annual query matrix only for unresolved,
+   conflicting, or non-improving properties. Require the full-cohort shadow run
+   to improve both coverage and NetSuite error before publishing through Atlas.
+   Run BBB, places, AVM, and roof age as applicable.
 
 Preserve these internal contracts:
 
@@ -120,6 +130,14 @@ Preserve these internal contracts:
 - Compute roof age from accepted lifecycle evidence and retain confidence/coverage
   caveats.
 - Keep reputation and places separate from legal identity.
+- Never stamp an HOA name, fee, or frequency from a search snippet or a
+  same-community/different-property page.
+- Never default a missing fee frequency to monthly. Preserve master and
+  sub-association observations separately unless exact-property evidence proves
+  both apply.
+- Never publish HOA web enrichment without immutable raw receipts, the
+  adjudicated regression set, and a full-cohort shadow run that improves
+  coverage and NetSuite paid-HOA MAE/RMSE.
 
 The Query DB never becomes the publication source. Its successful reconciliation gates
 completion and provides diagnostics; CAR inputs remain validated lexicon output.

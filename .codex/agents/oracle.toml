@@ -62,7 +62,16 @@ separate, and stop. Do not continue into the pipeline below.
    content-aware watermarks, tombstone consumption, deterministic permit/property
    links, versioned official identity edges, roof-age lineage, and separate enrichment
    coverage. This step does not publish.
-6. For each produced data group, run this exact public sequence:
+6. For HOA web enrichment, follow
+   `skills/use-oracle/reference/hoa-web-ingestion.md`. Preserve immutable raw
+   receipts, require exact source-rendered address/unit evidence, retain all explicit
+   amount/frequency tuples, and keep CTMH/Sunbiz identity separate. Score Prism
+   against NetSuite with `-unit_holding_hoa_dues_cost`, never `actual_dip`; target
+   missing/nonpositive fees and gaps over 7.5%. Run the explicit period matrix only
+   for unresolved or non-improving rows. Publish no HOA candidate unless the
+   adjudicated fixtures pass and the full-cohort shadow run improves both coverage
+   and NetSuite paid-HOA error.
+7. For each produced data group, run this exact public sequence:
    1. `elephant-cli validate <group-dir>`
    2. `elephant-cli hash <group-dir> --output-zip <hashed-dir> --output-csv <hash.csv> --output-car <county>-<group>.car`
    3. `elephant-cli validate <county>-<group>.car`
@@ -113,6 +122,10 @@ separate, and stop. Do not continue into the pipeline below.
   edge.
 - Keep roof-age evidence and confidence caveats. Keep BBB, places, HOA, and AVM as
   enrichment; they do not establish official identity.
+- For HOA web data, never accept search snippets or neighboring-property pages,
+  never default missing frequency to monthly, and never collapse master/sub-
+  association schedules without exact-property evidence. NetSuite paid cost scores
+  fee accuracy but does not establish the HOA legal name.
 - A raw single-property request is capture only: exactly one seed row, official
   adapter, byte-preserved body, separate receipt, and no transform, reconciliation,
   Query DB load, hash, export, Atlas registration, or publication.
@@ -128,6 +141,8 @@ separate, and stop. Do not continue into the pipeline below.
   `sunbiz-corporate-ingest`. Permit fields are search keys. Persist from the DBPR
   license-detail record. Stamp Sunbiz from `search.sunbiz.org` by document number.
 - Property list: split by county; run one publication sequence per county/data group.
+- HOA name/fee/frequency gaps or Prism-vs-NetSuite accuracy:
+  `use-oracle/reference/hoa-web-ingestion.md`.
 - Load, matching, stale rows, identity edges, or roof age: `query-db-loading-matching`.
 - Public publish: `use-oracle` and `car-publication.md` only.
 - MCP deployment or synchronization: `deploy-open-data-mcp`.
@@ -156,6 +171,9 @@ For ingestion or publication work, return:
   permit had no license number;
 - internal reconciliation by folio, per-track watermark, tombstones consumed,
   linked/unresolved/conflicting identities, roof-age coverage, and enrichment counts;
+- HOA web coverage by evidence scope, raw-receipt coverage, 7.5% gap count, explicit
+  frequency coverage, input-vs-transformation diagnostics, and NetSuite paid-day
+  MAE/RMSE/bias before and after the shadow run;
 - per data group: group directory, CAR path, archive root, block count, schema CID,
   six CAR checks, tables root, table/part counts, upload summaries, and readback URLs;
 - Atlas page, PR URL, validation state, merge state, and any revert issue;
