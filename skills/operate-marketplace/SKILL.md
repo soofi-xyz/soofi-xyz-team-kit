@@ -190,15 +190,18 @@ bundle; do not route it through the Build or Comply services.
    asked what is missing. Never push to the default branch, merge, deploy, or
    publish in this lane. End the run at the pull request; publishing waits
    until it merges.
-5. If the zip is ready but there is no `bundle_url`, give the upload and
-   presign steps from section B2 of that file.
+5. If the zip is ready but there is no `bundle_url`, upload it through Prism
+   Marketplace (section B2 of that file). That needs only
+   `MARKETPLACE_API_KEY`; never ask for a bucket or AWS profile to upload.
 6. Add the real security scan and Lambda obfuscation from that file; the
    publish step writes `service-comply` and `obfuscated: true` only from
    their results. Never write a verdict by hand, and never name the Build
    service as issuer of metadata it did not produce.
 7. Pack for review under a stage no live install uses in the review account
-   `257779860257` (for example `review`), with that account's credentials
-   when the app pins `env.account` at synth.
+   `257779860257` (for example `review`). A Marketplace entrypoint that pins
+   no account (section A2a) packs without AWS credentials; one that still pins
+   `env.account` needs review-account credentials, so add A2a to the
+   readiness pull request instead.
 
 ## 3. Publish, review, rollback
 
@@ -208,15 +211,18 @@ open, stop and say so. Never pack from an unmerged or locally patched checkout.
 
 1. Resolve `product_id`: `GET /ontology/products/by-name?name={Product}`.
 2. Ensure the component exists (create with §2 step 6 if missing).
-3. `PUT /ontology/products/{product_id}/components/{component_id}/bundles`
+3. Get the `bundle_url`: run the product's `just publish` (it uploads through
+   `POST .../components/{component_id}/bundle-uploads`), or follow section B2
+   of [publish-readiness.md](reference/publish-readiness.md) by hand.
+4. `PUT /ontology/products/{product_id}/components/{component_id}/bundles`
    `{ "bundle_url": "https://...", "skip_review": false }` → `202` with
    `review_id` and `bundle_status`.
-4. Poll `GET /reviews/{review_id}` until `SUCCEEDED` or `FAILED` (scripts default
+5. Poll `GET /reviews/{review_id}` until `SUCCEEDED` or `FAILED` (scripts default
    timeout ~1200s). On failure, return `review_details` without inventing fixes.
-5. `GET .../components/{component_id}/bundles` — for `VALID` rows, use the
+6. `GET .../components/{component_id}/bundles` — for `VALID` rows, use the
    Marketplace-hosted `bundle_url` (short-lived presign). Statuses:
    `UPLOADING_IN_PROGRESS` | `VALID` | `FAILED`.
-6. Rollback: `POST .../components/{component_id}/rollback` when at least two
+7. Rollback: `POST .../components/{component_id}/rollback` when at least two
    VALID bundles exist → `202`. `400` otherwise.
 
 `skip_review: true` only before the first VALID bundle, and only with explicit
