@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 This skill is intentionally thin. Use it as a loader for [`reference/PRD.md`](./reference/PRD.md), not as a requirements copy.
 
-Treat Puller as a subscriber-side implementation belonging to Marketplace and Deploy, not a separately advertised product. Use these historical mechanics only after resolving the current ownership and state contract.
+Treat Puller as the separate subscriber-side implementation in the Marketplace/Deploy integration, not another catalog product. Preserve its installation history, desired state and keys outside the stateless Deploy run service. Verify the current subscriber contract before using detailed reference mechanics.
 
 ## Required Reading
 
@@ -19,18 +19,18 @@ Treat Puller as a subscriber-side implementation belonging to Marketplace and De
 ## Product ownership
 
 Use the catalog in [guide-product-work](../guide-product-work/SKILL.md).
-Marketplace/Deploy subscriber implementation has no separately assigned agent in this kit. Execute this supporting
-skill directly only within the requested scope. Do not assign this work to
-Conkeldurr (Persist) or Zygarde (System), and do not call retired specialists.
-Use relevant supporting skills directly. Use Registeel only for current
-Marketplace publication and Regigigas for Marketplace implementation changes.
+Route Marketplace catalog/publication contracts to Regigigas/Registeel and Deploy
+run integration to Corviknight/Skarmory. Use Torterra/Shaymin for the Environment
+first-install handoff. These assignments do not move subscriber state into Deploy
+or Marketplace. Resolve subscriber package changes within the requested integration
+scope; do not create a new product agent or assign them to Persist/System.
 
 ## Implementation Rules
 
-- Treat the PRD as the single source of truth for routes, data contracts, resource shapes, IAM scopes, env vars, error tags, webhook handling, workflows, and verification.
+- Use the PRD for subscriber state, webhook, reconciliation and recovery mechanics. Verify actual routes/auth against the target revision and the [current Deploy contract](../build-product-deployer/reference/PRD.md); old token-deploy examples do not override its SigV4 run API.
 - Do not implement from this `SKILL.md` alone.
 - For an existing Puller deployment, integrate through the PRD's public API, webhook, and reconciliation contracts instead of provisioning a duplicate service.
-- If any old skill or rule file conflicts with the PRD, the PRD wins; update stale guidance instead of layering compatibility shims.
+- Preserve verified subscriber contracts while updating stale integration guidance. Do not add token-deploy, review or rollback operations to stateless Deploy to satisfy an old example.
 
 ## Expected Output
 

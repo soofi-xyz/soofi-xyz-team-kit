@@ -9,7 +9,13 @@ Choose a builder to implement or fix a product, or a configurer to use an existi
 ```text
 /conkeldurr Fix Persist's duplicate-ingest handling and walk me through a replay test.
 /celebi Configure a Connect → Transform → Persist outcome on the existing System.
+/silvally test sms end to end; approve all DEV writes; allow DEV Persist writes
 ```
+
+`/silvally test sms end to end` (or `test quiq to interprose for sms`) is a chained validation: real PROD Quiq
+events → DEV `quiq-to-lexicon` → DEV Persist load and scoped export → DEV `lexicon-to-interprose@2.0.0` `sms_log`
+→ comparison with the source events, canary first. Chains are data in
+[`chains.json`](./skills/validate-transform-configuration/reference/chains.json).
 
 In Copilot, select `soofi-xyz-team-kit:<agent>`. In Codex, request the named custom agent.
 
@@ -19,7 +25,12 @@ In Copilot, select `soofi-xyz-team-kit:<agent>`. In Codex, request the named cus
 
 | Product | What it does | Build and maintain | Configure and test |
 | --- | --- | --- | --- |
+| **Account** | Account manages identities, keys, provisioning, domains and maintenance access. | [`kangaskhan`](./agents/kangaskhan.md) | [`blissey`](./agents/blissey.md) |
+| **Environment** | Environment prepares tenant environments, shared routing and initial product installations. | [`torterra`](./agents/torterra.md) | [`shaymin`](./agents/shaymin.md) |
 | **Marketplace** | Marketplace catalogs products and reviews, publishes and rolls back bundles. | [`regigigas`](./agents/regigigas.md) | [`registeel`](./agents/registeel.md) |
+| **Build** | Build turns validated source into portable deployment artifacts with provenance. | [`tinkaton`](./agents/tinkaton.md) | [`metang`](./agents/metang.md) |
+| **Deploy** | Deploy executes validated artifacts and reports deployment run results. | [`corviknight`](./agents/corviknight.md) | [`skarmory`](./agents/skarmory.md) |
+| **Model** | Model governs vocabulary, definitions and compatible artifact releases. | [`dialga`](./agents/dialga.md) | [`jirachi`](./agents/jirachi.md) |
 | **Transform** | Transform converts registered source languages into target languages. | [`kecleon`](./agents/kecleon.md) | [`silvally`](./agents/silvally.md) |
 | **Persist** | Persist stores graph facts and serves queries, indexes and triggers. | [`conkeldurr`](./agents/conkeldurr.md) | [`uxie`](./agents/uxie.md) |
 | **Rule** | Rule selects entities and evaluates governed predicates. | [`gallade`](./agents/gallade.md) | [`meditite`](./agents/meditite.md) |

@@ -1,0 +1,32 @@
+{
+  "id": "package-slices.json",
+  "contractVersion": 1,
+  "description": "Named output slices of one Transform mapping package. A request 'validate <from> to <to> for <slice>, <slice> and <slice>' selects this package and one outputDatasets set per slice. Slice words are not languages and do not select a different mapping.",
+  "package": {
+    "from": "lexicon",
+    "to": "interprose",
+    "mappingId": "lexicon-to-interprose"
+  },
+  "aliases": {
+    "sms": "sms",
+    "dsa": "dsa",
+    "m2d": "m2d"
+  },
+  "slices": {
+    "sms": {
+      "id": "sms",
+      "outputDatasets": ["sms_log"],
+      "introducedIn": "2.0.0"
+    },
+    "dsa": {
+      "id": "dsa",
+      "outputDatasets": ["form_1281"],
+      "introducedIn": "4.0.0"
+    },
+    "m2d": {
+      "id": "m2d",
+      "outputDatasets": ["document_registration", "document_registration_rejects"],
+      "introducedIn": "5.0.0"
+    }
+  }
+}

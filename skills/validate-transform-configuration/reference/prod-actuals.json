@@ -1,0 +1,195 @@
+{
+  "id": "prod-actuals.json",
+  "contractVersion": 2,
+  "description": "What PROD actually did for each named package slice, read-only, used as the comparison baseline for the DEV canary and the full-window DEV run, and how each slice's real PROD-derived inputs are built. Each slice names one baseline source. A slice with baselineKind none falls back to schema, row-count and reject-reason checks, and the report says so. Silvally never builds a local oracle in place of a missing actual.",
+  "package": {
+    "from": "lexicon",
+    "to": "interprose",
+    "mappingId": "lexicon-to-interprose"
+  },
+  "slices": {
+    "sms": {
+      "outputDatasets": ["sms_log"],
+      "baselineKind": "iceberg-table",
+      "source": {
+        "region": "us-east-2",
+        "table": "interprose_current.txt_msg_log",
+        "meaning": "Interprose's own SMS log rows, mirrored read-only by Stage ETL",
+        "windowColumn": "sent_date",
+        "dataTimestampColumn": "_stage_output_timestamp",
+        "freshness": "the table's maximum _stage_output_timestamp must reach the window end (a re-committed snapshot is not enough); otherwise the slice uses the most recent UTC day its data covers and the stale mirror is a data-platform handoff"
+      },
+      "rowFilter": {"actual": {"txt_msg_vendor_id": "67"}},
+      "key": {
+        "dataset": ["vendor_tracking_code"],
+        "actual": ["vendor_tracking_code"],
+        "fallback": {"dataset": ["debt_id", "phone_number", "sent_date"], "actual": ["debt_id", "phone_number", "sent_date"]},
+        "rationale": "sms_log emits only provider QUIQ status edges (sms_log.sql: provider = 'QUIQ'), with vendor_tracking_code = provider_tracking_code, plus debt_id, phone_number, msg, sent_date, vendor_result, txt_msg_template_id, te_id and interaction_identifier. txt_msg_log mixes every SMS vendor: on 2026-09-04..06 every row that carried vendor_tracking_code had txt_msg_vendor_id 67 (3/3, 16/16, 1/1) and no txt_msg_vendor_id 34 row carried one, so the 2.5% population of the whole table is the legacy vendor's rows, which sms_log never produces. The comparison population is therefore txt_msg_vendor_id 67 (rowFilter.actual), keyed by vendor_tracking_code; a row without a tracking code (for example an opt-in or opt-out status) is keyed by the always-populated composite debt_id, phone_number, sent_date. compare reports keyCoverage, so a wrong vendor id or an unpopulated key fails visibly instead of silently."
+      },
+      "normalize": {"sent_date": "utc-timestamp", "phone_number": "digits"},
+      "fieldMap": {
+        "debt_id": "debt_id",
+        "phone_number": "phone_number",
+        "msg": "msg",
+        "sent_date": "sent_date",
+        "vendor_result": "vendor_result",
+        "txt_msg_template_id": "txt_msg_template_id",
+        "vendor_tracking_code": "vendor_tracking_code"
+      },
+      "canary": {
+        "eventTimeField": "sent_date",
+        "eventKeyField": ["vendor_tracking_code", "txt_msg_log_id"],
+        "outcomeField": "vendor_result",
+        "population": {"txt_msg_vendor_id": "67"}
+      },
+      "comparison": {"canaryDevScope": "actual-keys", "fullDevScope": "all"},
+      "inputBuilder": "graph_inputs.py",
+      "graphInputs": {
+        "root": {"dataset": "vertex-debt", "keyProperty": "debt_identifier", "actualKey": "debt_id"},
+        "hops": [
+          {"edge": "edge-debt-has-text-message", "from": "vertex-debt", "direction": "out"},
+          {"edge": "edge-text-message-status-changed", "from": "vertex-text-message", "direction": "out", "window": "effective_at", "prune": true},
+          {"edge": "edge-phone-number-has-text-message", "from": "vertex-text-message", "direction": "in"},
+          {"edge": "edge-text-message-rendered-from-template", "from": "vertex-text-message", "direction": "out"},
+          {"edge": "edge-text-message-has-rendered-artifact-uri", "from": "vertex-text-message", "direction": "out"}
+        ],
+        "dayCounts": {
+          "edge": "edge-text-message-status-changed",
+          "window": "effective_at",
+          "has": {"provider": "QUIQ"},
+          "literal": "datetime",
+          "rationale": "sms_log.sql emits a row only for a status edge with provider = 'QUIQ', so an input day counts only when it has such edges; graph_inputs.py edge-days counts them per UTC day"
+        }
+      },
+      "daySelection": {
+        "rule": "the most recent complete UTC day with BOTH txt_msg_vendor_id 67 rows in the mirror AND provider QUIQ status edges in PROD Persist, within a 14-day lookback counted back from the lookback anchor: today, or, when the mirror is stale, the day its data cutoff (dataMax of _stage_output_timestamp) falls on, so the mirror's most recent covered day stays reachable; the anchor moves back at most 30 days",
+        "actualDays": "iceberg_snapshot_read.py --table interprose_current.txt_msg_log --window-column sent_date --start <today - 44 days> --end-exclusive <today> --where txt_msg_vendor_id=67 --data-max-column _stage_output_timestamp (byUtcDay; one read bounded to the 14-day lookback plus the 30-day maximum anchor shift)",
+        "inputDays": "graph_inputs.py edge-days --slice sms --lookback-days 14 --end-day <anchor - 1 day> (per-day count of provider QUIQ edge-text-message-status-changed edges over the same anchored lookback; the anchor is the dataMax day when stale, else today)",
+        "choose": "source_window.py data-days --most-recent --lookback-days 14 --slice-days <actual days> --input-days <input days> --data-through sms=<dataMax> --catalog reference/prod-actuals.json (records each slice's lookback anchor)",
+        "noDay": "BLOCKED: the slice reports UpstreamInputEmpty (and ProdMirrorStale when the mirror stops first) plus this entry's blockedHandoffs"
+      },
+      "hydration": {
+        "dataset": "hydrated_text_message_artifact",
+        "edge": "edge-text-message-has-rendered-artifact-uri",
+        "columns": {"artifact_uri": "uri", "content_type": "content_type", "content_sha256": "content_sha256", "body_selector": "body_selector"},
+        "uriColumn": "artifact_uri",
+        "sha256Column": "content_sha256",
+        "selectorColumn": "body_selector",
+        "bodyColumn": "msg"
+      },
+      "sensitiveFields": {
+        "inputs": ["vertex-phone-number.phone_number", "hydrated_text_message_artifact.msg"],
+        "outputs": ["phone_number", "msg"],
+        "decision": "ownerDecisions.sensitiveFieldStaging = stage-real-values-to-dev: the real values are staged to DEV unmodified and compared directly. Without it the slice stops with SensitiveStagingDecisionRequired (ask the owner)."
+      },
+      "prodTransformRuns": {
+        "status": "NONE",
+        "checked": "2026-09-30, read-only: every execution of the PROD Transform state machine (us-east-2 TransformPipelineStack-transform-pipeline, 141 executions from 2026-09-21) and every run plan under its data bucket's runs/ (149 plans)",
+        "finding": "PROD Transform has executed only interprose-to-graph@1.0.0; no lexicon-to-interprose version, and so no sms_log output, has ever run in PROD. A PROD Transform run cannot stand in as the SMS actual; the Interprose mirror is the only actual.",
+        "recheck": "list runs/<execution>/plan.json in the PROD Transform data bucket and match mapping.id lexicon-to-interprose with sms_log among the outputs"
+      },
+      "blockedHandoffs": [
+        {"code": "ProdMirrorStale", "owner": "data platform (Stage ETL mirror)", "detail": "interprose_current.txt_msg_log data ends 2026-09-06 although the table is re-committed; refresh the mirror so a day after the Persist SMS status edges begin is covered"},
+        {"code": "SmsStatusProviderNull", "owner": "Persist SMS ingestion (text-message status producer)", "detail": "PROD Persist edge-text-message-status-changed edges start 2026-09-13 and carry provider null; sms_log.sql keeps only provider = 'QUIQ', so no day has both a mirror row and an emitted sms_log row. Populate provider QUIQ on the status edges (or change the carried query's filter, a mapping CONFIGURATION decision)"},
+        {"code": "ArtifactDigestMismatch", "owner": "rendered message-body artifact producer", "detail": "hydration of edge-text-message-has-rendered-artifact-uri found objects whose SHA-256 differs from the edge's content_sha256; fix the artifact or the recorded digest so message bodies can be verified"}
+      ],
+      "knownRisks": [
+        {"code": "CarriedQueryProviderCoverage", "classification": "data/mapping-coverage risk", "detail": "the carried sms_log query filters provider = 'QUIQ' while current PROD status edges have provider null: on today's PROD graph the query emits no rows, and an unchanged query cannot prove it covers real SMS traffic until provider is populated"}
+      ]
+    },
+    "dsa": {
+      "outputDatasets": ["form_1281"],
+      "baselineKind": "iceberg-table",
+      "source": {
+        "region": "us-east-2",
+        "table": "interprose_current.debt_settlement_agency",
+        "meaning": "Interprose's debt settlement agency rows; an active row (empty delete_date) is the DSA_NAME Interprose actually holds for that debt",
+        "windowColumn": "last_update",
+        "dataTimestampColumn": "_stage_output_timestamp",
+        "freshness": "the table's maximum _stage_output_timestamp must reach the window end (a re-committed snapshot is not enough)"
+      },
+      "key": {"dataset": ["debtID"], "actual": ["debt_id"]},
+      "fieldMap": {"debtID": "debt_id", "value": "dsa_name"},
+      "rowFilter": {"dataset": {"field_identifier": "DSA_NAME"}, "actual": {"delete_date": ""}},
+      "canary": {
+        "eventTimeField": "last_update",
+        "eventKeyField": "debt_id",
+        "outcomeField": "delete_date",
+        "outcomeMode": "presence",
+        "outcomeLabels": {"absent": "active", "present": "deleted"}
+      },
+      "comparison": {
+        "actualScope": "current-state-by-key",
+        "detail": "form_1281 emits each debt's current DSA_NAME, so the window only selects debts: read the actual by key (prod_actuals.py keys, then iceberg_snapshot_read.py --key-column debt_id --keys-file) for the canary or window debts and compare the active row per debt. A debt with only deleted rows must produce no DEV row.",
+        "keyRead": {
+          "selectKeys": "iceberg_snapshot_read.py --table interprose_current.debt_settlement_agency --window-column last_update --start <day> --end-exclusive <day + 1> --data-max-column _stage_output_timestamp, then prod_actuals.py canary-sample (canary) or the whole window's rows, then prod_actuals.py keys --field debt_id: the window selects the debts",
+          "readState": "iceberg_snapshot_read.py --table interprose_current.debt_settlement_agency --key-column debt_id --keys-file keys.txt --current-state-as-of <dataMax of the selection read> --data-max-column _stage_output_timestamp (no --window-column): every row of each selected debt whose _stage_output_timestamp is at or before the mirror's data cutoff, not only the window's rows, so a DSA set before the window or deleted after it counts",
+          "asOf": "the mirror's data cutoff (prod_actuals.py table-summary dataThrough); the graph inputs use the same cutoff (graph_inputs.py --as-of)"
+        },
+        "canaryDevScope": "all",
+        "fullDevScope": "all"
+      },
+      "inputBuilder": "graph_inputs.py",
+      "graphInputs": {
+        "root": {"dataset": "vertex-debt", "keyProperty": "debt_identifier", "actualKey": "debt_id"},
+        "hops": [
+          {"edge": "edge-company-represents-debt", "from": "vertex-debt", "direction": "in"}
+        ],
+        "asOf": "when the actual's dataThrough precedes the graph's current state, build with --as-of <dataThrough> so edges created after the mirror stopped do not show as mismatches"
+      }
+    },
+    "m2d": {
+      "outputDatasets": ["document_registration", "document_registration_rejects"],
+      "baselineKind": "state-machine-lambda-outcomes",
+      "source": {
+        "region": "us-east-2",
+        "lambdaFunctionName": "m2d-pipeline-prod-use2-interprose-upload",
+        "stateMachine": "DocumentProcessingStateMachine (EXPRESS; upload steps SliceUploadToInterprose and UploadToInterproseQC invoke lambdaFunctionName directly)",
+        "executionLogGroup": "/aws/vendedlogs/states/m2d-pipeline-prod-use2-document-processing",
+        "lambdaLogGroup": "/aws/lambda/m2d-pipeline-prod-use2-interprose-upload",
+        "meaning": "EXPRESS executions have no execution history API; their logging level ALL with includeExecutionData records every LambdaFunctionScheduled input and LambdaFunctionSucceeded or LambdaFunctionFailed result. A succeeded output is the registration Interprose accepted; a failure is an expected reject",
+        "inputField": "LambdaFunctionScheduled details.input: the upload step Parameters, which is also the DEV classification_event input row, staged unmodified",
+        "daySelection": "prod_actuals.py probe-days (newest-first, bounded pages per day), then lambda-outcomes for the chosen day only"
+      },
+      "key": {"dataset": ["remote_s3_uri"], "actual": ["remoteS3Uri"]},
+      "fieldMap": {
+        "debt_id": "debtID",
+        "filename": "interproseFilename",
+        "description": "interproseResponse.description",
+        "remote_s3_uri": "remoteS3Uri",
+        "remote_s3_region": "interproseResponse.remoteS3Region"
+      },
+      "debtSource": "the DEV input events are exactly what PROD sent (prod_actuals.py inputs adds nothing from the Lambda result). When an event carries no Interprose lineage or all-digit debtID, document_registration.sql (lexicon-to-interprose@5.0.0) takes the debt from the graph inputs: vertex-files.source_url == s3://{s3Bucket}/{classifiedKey or s3Key} -> edge-debt-has-file -> vertex-debt.debt_identifier. debt_id equality with the Lambda's logged debtID is therefore a genuine check of that resolution, not an echo of the actual.",
+      "rejects": {"dataset": "document_registration_rejects", "key": "s3_key_sha256", "actualOutcome": "rejected",
+                  "actualKeyFields": ["input.classifiedKey", "input.s3Key"]},
+      "canary": {"eventTimeField": "eventTime", "eventKeyField": ["input.classifiedKey", "input.s3Key"], "outcomeField": "outcome"},
+      "comparison": {"canaryDevScope": "all", "fullDevScope": "all"},
+      "inputBuilder": "prod_actuals.py inputs (classification_event JSONL, unmodified) + graph_inputs.py gremlin --events <selected events> (vertex-files, edge-debt-has-file, vertex-debt Parquet)",
+      "graphInputs": {
+        "root": {"dataset": "vertex-files", "keyProperty": "file_id", "actualKey": "actual.interproseDocumentID", "keyTemplate": "interprose:{}"},
+        "hops": [
+          {"edge": "edge-debt-has-file", "from": "vertex-files", "direction": "in"}
+        ],
+        "keyRationale": "M2D's neptune-writer writes each files vertex after the Interprose upload with file_id = interprose:<interproseDocumentID>, the id in the upload Lambda's LambdaFunctionSucceeded output. Reading by that key (pages of --batch-size, no day-wide scan) returns exactly the uploaded events' files vertices, their incoming debt_has_file edges and the linked debt vertices; rejected events have no interproseDocumentID and contribute no key.",
+        "joinCoverage": {
+          "eventFilter": {"outcome": "accepted"},
+          "uriTemplate": "s3://{bucket}/{key}",
+          "uriParts": {"bucket": ["input.s3Bucket"], "key": ["input.classifiedKey", "input.s3Key"]},
+          "explainFrom": "input",
+          "uriProperty": "source_url",
+          "edge": "edge-debt-has-file",
+          "endpointDataset": "vertex-debt",
+          "endpointProperty": "debt_identifier",
+          "endpointPattern": "^0*[1-9][0-9]*$",
+          "handoff": {"code": "GraphJoinCoverageGap", "owner": "M2D neptune-writer (files vertices and debt_has_file edges in PROD Persist)",
+                      "detail": "Each uploaded event needs a files vertex whose source_url is the event's classified URI, linked to exactly one debt. A uriMismatch explained by another key (for example classifiedRunKey) means the writer records a different S3 key than the upload step's classifiedKey: align the writer, or, if that key is intended, change the mapping's join (a mapping CONFIGURATION decision). Rerun the slice once covered."}
+        },
+        "verified": "2026-09-29 PROD, read-only: all 139 uploaded events matched a files vertex by s3://{s3Bucket}/{classifiedKey or s3Key}, and the linked graph debt equalled the Lambda's debtID for 139/139"
+      },
+      "blockedHandoffs": [
+        {"code": "GraphJoinCoverageGap", "owner": "M2D neptune-writer (files vertices and debt_has_file edges in PROD Persist)",
+         "detail": "an uploaded event has no files vertex with source_url = s3://{s3Bucket}/{classifiedKey or s3Key} linked to exactly one debt; graph_inputs.py joinCoverage names the gap categories and the event field the writer used instead"}
+      ]
+    }
+  }
+}

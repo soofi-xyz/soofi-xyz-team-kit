@@ -3,10 +3,33 @@
   "source": {
     "meeting": "Builder Story Planning, 2026-09-30",
     "spreadsheet": "staircase-products export, supplied 2026-09-30",
-    "precedence": "User follow-up retains Conkeldurr for Persist, assigns Zygarde to System and excludes the API documentation workstream."
+    "precedence": "User follow-up retains Conkeldurr for Persist, assigns Zygarde to System and excludes the API documentation workstream. A later user request assigns Account its own builder/configurer pair. A subsequent request assigns builder/configurer pairs to Environment, Build, Deploy and Model."
   },
   "workflowSkill": "guide-product-work",
   "products": [
+    {
+      "id": "account",
+      "name": "Account",
+      "legacyNames": [
+        "Account Manager",
+        "Tenant Account Manager"
+      ],
+      "sourceRows": [],
+      "status": "assigned",
+      "summary": "Account manages identities, keys, provisioning, domains and maintenance access.",
+      "agents": {
+        "build": "kangaskhan",
+        "configure": "blissey"
+      },
+      "skills": {
+        "build": "build-tenant-account-manager",
+        "configure": "configure-account-product"
+      },
+      "notes": [
+        "Added by explicit user request after the supplied spreadsheet; no source row is claimed. Kangaskhan builds the Account API; Blissey configures existing deployments. Account provisioning does not own product installation or partner credentials."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/account.md"
+    },
     {
       "id": "access",
       "name": "Access",
@@ -54,19 +77,20 @@
       "sourceRows": [
         4
       ],
-      "status": "unassigned",
-      "summary": "",
+      "status": "assigned",
+      "summary": "Environment prepares tenant environments, shared routing and initial product installations.",
       "agents": {
-        "build": null,
-        "configure": null
+        "build": "torterra",
+        "configure": "shaymin"
       },
       "skills": {
-        "build": null,
-        "configure": null
+        "build": "build-bootstrap-cli",
+        "configure": "configure-environment-product"
       },
       "notes": [
-        "Keep Environment as the product identity. Bootstrap is its changed setup implementation. No product agent is assigned yet."
-      ]
+        "Torterra builds Environment; Shaymin configures existing deployments. Bootstrap is its setup adapter, including the initial no-service install path. HTTP API capabilities are required build scope, not a claim that a service is already deployed."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/environment.md"
     },
     {
       "id": "finance",
@@ -173,17 +197,20 @@
       "sourceRows": [
         10
       ],
-      "status": "unassigned",
-      "summary": "",
+      "status": "assigned",
+      "summary": "Build turns validated source into portable deployment artifacts with provenance.",
       "agents": {
-        "build": null,
-        "configure": null
+        "build": "tinkaton",
+        "configure": "metang"
       },
       "skills": {
-        "build": null,
-        "configure": null
+        "build": "build-build-service",
+        "configure": "configure-build-product"
       },
-      "notes": []
+      "notes": [
+        "Tinkaton builds the Build API and runner; Metang configures build jobs. Build provenance does not imply Marketplace publication or Deploy completion."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/build.md"
     },
     {
       "id": "code",
@@ -230,19 +257,20 @@
       "sourceRows": [
         13
       ],
-      "status": "unassigned",
-      "summary": "",
+      "status": "assigned",
+      "summary": "Deploy executes validated artifacts and reports deployment run results.",
       "agents": {
-        "build": null,
-        "configure": null
+        "build": "corviknight",
+        "configure": "skarmory"
       },
       "skills": {
-        "build": null,
-        "configure": null
+        "build": "build-product-deployer",
+        "configure": "configure-deploy-product"
       },
       "notes": [
-        "Reconcile the current stateless SigV4 run interface with historical deployment instructions. Attribute subscriber installation state explicitly; do not turn the Puller package into a separate product."
-      ]
+        "Corviknight builds the stateless SigV4 run API; Skarmory configures runs. Subscriber-side Puller remains separate and owns install history/keys; do not add it as a product or move that state into Deploy."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/deploy.md"
     },
     {
       "id": "health",
@@ -634,19 +662,20 @@
         34,
         57
       ],
-      "status": "unassigned",
-      "summary": "",
+      "status": "assigned",
+      "summary": "Model governs vocabulary, definitions and compatible artifact releases.",
       "agents": {
-        "build": null,
-        "configure": null
+        "build": "dialga",
+        "configure": "jirachi"
       },
       "skills": {
-        "build": null,
-        "configure": null
+        "build": "build-lexicon-product",
+        "configure": "configure-model-product"
       },
       "notes": [
-        "Merge spreadsheet rows 34 and 57 into one Model product. Lexicon names the universal vocabulary; Model owns governed modeling. Mew is preserved as historical modeling expertise, not an assigned runtime configurer."
-      ]
+        "Merge spreadsheet rows 34 and 57 into one Model product. Dialga builds Model; Jirachi configures existing APIs and governed releases. Preserve Lexicon artifact contracts and Mew as a retained modeling specialist; API assignment does not establish runtime availability."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/model.md"
     },
     {
       "id": "notary",

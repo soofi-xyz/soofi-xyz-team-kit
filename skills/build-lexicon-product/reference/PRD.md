@@ -1,6 +1,8 @@
-# Lexicon Product - Product Requirements Document (PRD)
+# Model product contract and Lexicon artifacts
 
-Authoritative blueprint for re-creating the **Lexicon** product from the reference implementation in `../lexicon`. Lexicon is the governed source of truth for graph vocabulary, ruleset data, metric definitions, and source-system mapping artifacts consumed by SOCAPITAL products.
+Use **Model** as the product identity, Dialga as builder and Jirachi as configurer. Preserve the Lexicon vocabulary and artifact identifiers used by existing consumers. Treat the reference implementation in `../lexicon` as a repository to verify, not proof of the current deployment. Model governs graph vocabulary, ruleset data, metric definitions and shared mapping artifacts. Use Mew for retained vocabulary lookup and modeling expertise.
+
+Deliver Model as an authenticated HTTP API for definition/release lookup, candidate validation, governed change submission and approved publication/status. Discover existing operations before invoking them; missing API capabilities are builder work. Keep review and versioned release gates, and preserve the S3/SSM consumer contracts below. This adds an API requirement, not an assertion that the reference artifact service already has one.
 
 ---
 
@@ -22,10 +24,11 @@ Lexicon is deployed before products that depend on those artifacts. Consumers re
 
 ### 1.2 Primary user surface
 
-Lexicon has two surfaces:
+Model requires an HTTP API in addition to the verified artifact/viewer interfaces:
 
 | Surface | Identifier | Auth | Purpose |
 | --- | --- | --- | --- |
+| Product HTTP API | Discover or implement in the target service | Explicit authentication and caller/resource authorization | Read definitions/releases, validate candidates and follow governed publication status/results; required capability, not a claimed deployed route |
 | Static UI | CloudFront distribution output `DistributionUrl` | CloudFront/S3; optional upstream access control in future | Browse graph classes, relationships, rules, and mappings from checked-in data |
 | Data artifacts | S3 URIs published through `/lexicon/*` SSM parameters | AWS IAM + S3 | Machine-readable artifact contract for Persist, Rules, Translate, dashboards, and build/release tooling |
 
@@ -47,7 +50,7 @@ The reference implementation already deploys the first five parameters. The targ
 ### 1.3 Non-goals
 
 - Lexicon does **not** persist graph facts. Persist owns graph writes, Gremlin reads, Neptune, validation execution, and candidate validation routes.
-- Lexicon does **not** expose a runtime CRUD API for schema edits, rules, metrics, or mappings. Changes are reviewed source changes and ship as product releases.
+- Model does **not** allow unrestricted runtime mutation of canonical schemas, rules, metrics or mappings. API operations submit/validate candidates and initiate approved release work; canonical changes remain reviewed source changes and ship as versioned releases.
 - Lexicon does **not** own partner ingestion, translation execution, or source-system credentials. Translate and data pipelines consume Lexicon artifacts; they own execution.
 - Lexicon does **not** own the Main Dashboard. It owns the metric registry that dashboard changes must reference.
 - Lexicon does **not** bypass Marketplace or Build compatibility checks. Release metadata is provenance and dependency input, not an alternate deployment channel.
@@ -59,7 +62,7 @@ The reference implementation already deploys the first five parameters. The targ
 
 ### 2.0 Architectural principles
 
-1. **The reviewed source tree is the authoring surface.** Runtime S3 data is an output of source review, tests, Build, and CDK deploy. Operators do not hand-edit canonical S3 objects.
+1. **The reviewed source tree is authoritative for canonical changes.** Model API operations may submit candidates and initiate verified review/publication workflows. Runtime S3 data remains an output of source review, tests, Build and deployment; operators do not hand-edit canonical S3 objects.
 2. **S3/SSM is the consumer boundary.** Consumers discover artifacts through stable `/lexicon/*` SSM parameters and then read scoped S3 objects or prefixes. They do not require repository checkout at runtime.
 3. **Graph data is immutable by model.** Facts that change over time are modeled as new vertices or event edges. Mutable current-state convenience belongs in declared derived indexes, not in destructive graph updates.
 4. **Related entities are linked, not embedded.** Companies, phone numbers, addresses, emails, statuses, preferences, complaints, and similar concepts are separate vertices connected by typed edges.
@@ -88,7 +91,7 @@ pnpm cdk:destroy
 
 CI target repos expose `just check`, `just test`, `just cdk:synth`, and `just cdk:deploy`. The current reference implementation uses npm and Bun scripts; that is a migration gap, not the target contract.
 
-Lexicon has no Lambda API router, no OpenAPI document, no API Gateway base path, and no Usage Plan attachment.
+The reference artifact stack does not establish a Model API deployment. Add the required HTTP interface using the target service architecture, with authorization, validated requests, correlated errors and observable async status/results. Keep the static viewer read-only and reuse the existing artifact store; do not create a second vocabulary service.
 
 ### 2.2 Storage
 
@@ -379,7 +382,8 @@ interprose/
 ```
 
 Publish SQL files as executable configuration consumed by Transform.
-Lexicon owns their source, vocabulary and S3 publication; Transform resolves
+Model governs their shared definitions and publication; Silvally authors concrete
+Transform mapping configurations. Transform resolves
 the registered mapping, reads the SQL objects and executes them with
 `spark.sql()` against typed temp views in its Python/PySpark Glue job.
 Keep source joins, predicates, identifier expressions and typed projections in
@@ -394,7 +398,8 @@ Extend configuration publication for Transform's explicit `from`/`to` contract:
 publish named/versioned language schema references and enabled directional
 `spark-sql` mapping manifests for arbitrary registered pairs. Keep language
 identity independent of Parquet/JSONL/CSV encoding and tabular/graph serialization.
-Lexicon owns configuration; it is not the required target language of every pair.
+Model governs shared schema/mapping definitions and publication; Silvally owns
+concrete Transform configuration. Model is not the required target language of every pair.
 
 Use the [Transform registration contract](../../build-transform-product/reference/languages-and-mappings.md)
 for schemas, SQL bindings, version/digest validation and the proposed
@@ -520,6 +525,13 @@ Breaking changes require a new Lexicon release and coordinated dependent product
 
 ## 6. Testing
 
+Follow the [Model capability map](../../guide-product-work/reference/iterations/model.md)
+and [synthetic test data](test-data.md). Include HTTP authorization, candidate
+conflicts, review gates, async status/results and artifact read-back in each piece.
+Use local fakes, then the actual test API with mocked external integrations. Have
+the user invoke each feature and inspect correlated AWS logs/workflows before
+advancing; artifact validation or synthesis alone does not prove API behavior.
+
 ### 6.1 Required checks
 
 The target repo exposes:
@@ -587,6 +599,9 @@ Target gaps to close while re-creating the product:
 ---
 
 ## 8. Acceptance Criteria
+
+- The authenticated Model HTTP API exposes the selected definition, candidate and approved release capabilities with validated requests, caller/resource authorization, correlated errors and async status/results where needed.
+- Unsupported API operations remain builder gaps; configurers do not replace them with direct canonical S3/SSM writes.
 
 - `LexiconStack` deploys a private data bucket, static UI, CloudFront distribution, all required SSM parameters, and CloudFormation outputs.
 - All artifacts listed in section 2.2 are present in S3 after deployment with versioning enabled.

@@ -1,0 +1,52 @@
+{
+  "id": "chain-sources.json",
+  "contractVersion": 1,
+  "description": "Test source: member events normalized to the alpha members dataset.",
+  "sources": {
+    "member-events": {
+      "language": "alpha",
+      "dataset": "members",
+      "readMethod": {
+        "listing": {"bucket": "example-source-bucket", "prefix": "events/{day}/", "dayFolders": [0, 1], "familyFrom": "filename-prefix"}
+      },
+      "families": {
+        "MemberUpdated": {
+          "rows": "data.updates",
+          "timeField": "effective_at",
+          "lookups": ["profileContext", "profileDocument", "avatarArtifact"],
+          "fields": {
+            "member_id": {"normalize": {"path": "row.id"}, "as": "trim"},
+            "display_name": {"first": [{"path": "ctx.displayName"}, {"path": "row.name"}]},
+            "tier": {"normalize": {"path": "row.tier"}, "as": "trim"},
+            "effective_at": {"normalize": {"first": [{"path": "row.time"}, {"path": "doc.timestamp"}]}, "as": "utc-millis"},
+            "phone_number": {"normalize": {"path": "row.handle"}, "as": "phone10"},
+            "location": {"path": "lookup.memberLocation"}
+          },
+          "quarantine": [
+            {"reason": "missing_context", "when": {"blank": {"path": "ctx.memberId"}}},
+            {"reason": "unknown_tier", "when": {"notIn": {"path": "out.tier"}, "values": "language-enum:tier"}}
+          ]
+        }
+      },
+      "excludedFamilies": {"MemberViewed": "a view, not an update"},
+      "lookups": {
+        "profileContext": {"kind": "dynamodb-batch-get", "tableNamePrefix": "ExampleContextTable", "keyAttribute": "memberId",
+                           "key": {"normalize": {"path": "row.id"}, "as": "trim"}, "bind": "ctx", "pageSize": 100},
+        "profileDocument": {"kind": "s3-json-select", "bucket": "example-context-bucket",
+                            "key": {"format": "profiles/{day}/{batch}.json", "args": {"day": {"normalize": {"path": "ctx.sentAt"}, "as": "utc-date-path"}, "batch": {"path": "ctx.batchId"}}},
+                            "requires": ["ctx.batchId", "ctx.sentAt"],
+                            "select": {"array": "items", "match": "member_id", "equals": {"path": "ctx.memberId"}}, "bind": "item"},
+        "avatarArtifact": {"kind": "s3-artifact", "uri": {"path": "item.avatar_uri"}, "selectorByContentType": {"text/plain": "TEXT"},
+                           "fields": {"uri": "artifact_uri", "contentType": "artifact_content_type", "sha256": "artifact_content_sha256", "selector": "artifact_body_selector"}},
+        "memberLocation": {"kind": "rows-file", "keysFrom": "out.phone_number", "keyColumn": "phone", "valueColumn": "location",
+                           "keyNormalize": "phone10", "valid": ["MOBILE", "HOME"], "reduce": {"conflict": "MOBILE", "none": "MOBILE"},
+                           "read": "iceberg_snapshot_read.py --key-column phone --keys-file <keys>"}
+      },
+      "requiredFields": ["member_id", "display_name", "tier", "effective_at", "location"],
+      "enums": {"tier": ["gold", "silver", "bronze"]},
+      "canary": {"eventTimeField": "effective_at", "eventKeyField": ["member_id"], "outcomeField": "tier", "perSlice": 2},
+      "daySelection": {"requiredFamilies": ["MemberUpdated"]},
+      "sensitiveFields": {"inputs": ["members.phone_number"], "outputs": [], "decision": "sensitiveFieldStaging"}
+    }
+  }
+}

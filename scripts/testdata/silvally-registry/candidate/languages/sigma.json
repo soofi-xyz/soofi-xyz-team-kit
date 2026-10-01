@@ -1,0 +1,1 @@
+{ "vertices": [ { "type": "member_digest", "is_deprecated": false, "deprecated_properties": {}, "required": [], "properties": { "member_id": { "type": "string" }, "display_name": { "type": "string" } } } ], "edges": [] }

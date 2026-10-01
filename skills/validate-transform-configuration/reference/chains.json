@@ -1,0 +1,133 @@
+{
+  "id": "chains.json",
+  "contractVersion": 1,
+  "description": "Chained (multi-step) validations: an ordered chain of N steps (source-events, transform, persist-load, persist-export, compare) that the resolver selects from a request and chain_runs.py plans, gates and records. Each transform step pins its own mapping version and deployment digest, each DEV write has its own card, the whole chain runs a 10-event canary first and then the full window, and cost is summed across steps. Chain-specific values (mapping ids, versions, datasets, accounts, Persist workflow, export closure, expectation rules) are data here; no tool branches on them.",
+  "chains": {
+    "quiq-sms-end-to-end": {
+      "title": "Quiq SMS lifecycle end to end: PROD Quiq events -> DEV quiq-to-lexicon -> DEV Persist load -> DEV Persist export -> DEV lexicon-to-interprose sms_log -> compare with the source events",
+      "slice": "sms",
+      "requests": {
+        "pairs": [{"from": "quiq", "to": "interprose", "slices": ["sms"]}],
+        "phrases": ["sms end to end", "sms end-to-end", "sms e2e"],
+        "examples": ["test quiq to interprose for sms", "test sms end to end", "validate quiq to interprose for sms", "check sms end to end"]
+      },
+      "environments": {
+        "dev": {"account": "951132547414", "region": "us-east-2"},
+        "prod": {"account": "014948052063", "region": "us-east-2", "access": "read-only"}
+      },
+      "persistPolicy": "required",
+      "steps": [
+        {
+          "id": "source",
+          "kind": "source-events",
+          "catalog": "chain-sources.json",
+          "source": "quiq-lifecycle",
+          "table": "lifecycle",
+          "detail": "read the window's PROD Quiq events read-only, normalize them to the quiq lifecycle language, stage them to DEV (create-only, own approval digest or blanketDevWrites)"
+        },
+        {
+          "id": "forward",
+          "kind": "transform",
+          "from": "quiq",
+          "to": "lexicon",
+          "mappingId": "quiq-to-lexicon",
+          "version": "latest",
+          "input": {"step": "source", "table": "lifecycle"},
+          "outputShape": "graph",
+          "keysOutput": {"dataset": "vertex-text-message", "label": "text_message", "column": "interaction_identifier:String"}
+        },
+        {
+          "id": "persist-load",
+          "kind": "persist-load",
+          "input": {"step": "forward"},
+          "workflow": {
+            "stateMachineNamePrefix": "PersistNeptuneCsvWorkflow",
+            "request": {"schemaVersion": "1", "maxConcurrency": 2, "waitForIndexCatchup": true},
+            "detail": "the deployed DEV PersistNeptuneCsvWorkflow takes the forward Transform output prefix (vertices/ and edges/ Neptune CSV) as s3_uri, runs the Persist rehash Glue job (NeptuneCsvRehashJob; content-hashes ids and remaps endpoints into its bulk-load bucket under workflow-rehash/<execution>/), bulk-loads vertices then edges and waits for the derived-index checkpoint (indexCatchupStatus.caughtUp). Input as executed on 2026-09-23 (sms-quiq-full-day-20260919-20260923T210000Z-a4fa9e01, SUCCEEDED)."
+          },
+          "isolation": {
+            "identity": "quiq-to-lexicon ids are deterministic (interaction, status, effective time, provider id) and Persist rehashes them by content, so loading the same window again merges into the same elements (no new rows); debt and phone vertices may already exist in DEV and are merged, never replaced",
+            "residue": "Persist has no supported delete-by-id workflow in DEV (only PersistDuplicateCleanupWorkflow); the loaded vertices and edges remain in the shared DEV graph after the run and are reported as residue with their counts",
+            "prod": "refused: the workflow ARN, the profile's account and the state machine name must be DEV"
+          }
+        },
+        {
+          "id": "persist-export",
+          "kind": "persist-export",
+          "input": {"step": "persist-load"},
+          "keysFrom": {"step": "forward"},
+          "for": "projection",
+          "plan": {
+            "root": {"dataset": "vertex-text-message", "keyProperty": "interaction_identifier"},
+            "hops": [
+              {"edge": "edge-debt-has-text-message", "from": "vertex-text-message", "direction": "in"},
+              {"edge": "edge-phone-number-has-text-message", "from": "vertex-text-message", "direction": "in"},
+              {"edge": "edge-text-message-status-changed", "from": "vertex-text-message", "direction": "out"},
+              {"edge": "edge-text-message-rendered-from-template", "from": "vertex-text-message", "direction": "out"},
+              {"edge": "edge-text-message-has-rendered-artifact-uri", "from": "vertex-text-message", "direction": "out"}
+            ]
+          },
+          "hydration": {
+            "dataset": "hydrated_text_message_artifact",
+            "edge": "edge-text-message-has-rendered-artifact-uri",
+            "columns": {"artifact_uri": "uri", "content_type": "content_type", "content_sha256": "content_sha256", "body_selector": "body_selector"},
+            "uriColumn": "artifact_uri",
+            "sha256Column": "content_sha256",
+            "selectorColumn": "body_selector",
+            "bodyColumn": "msg"
+          },
+          "scopeCheck": "every exported dataset's row count equals the forward step's output count for the same dataset (the forward _metadata.json); a larger count means elements outside this run hang off its messages (ExportScopeMismatch, FAIL)",
+          "detail": "bounded read-only DEV Persist Gremlin (SigV4 POST /persist/gremlin) rooted at exactly the text_message interaction_identifier values this run's forward output produced (never the whole DEV graph), pages of --batch-size, retried and merged into one Parquet dataset per graph input of the projection mapping, zero dangling endpoints; bodies hydrated from the DEV artifact copies named by the artifact edges, SHA-256 verified. The earlier DEV run read the same closure in 117 queries of 600 message ids."
+        },
+        {
+          "id": "projection",
+          "kind": "transform",
+          "from": "lexicon",
+          "to": "interprose",
+          "mappingId": "lexicon-to-interprose",
+          "version": "2.0.0",
+          "outputDatasets": ["sms_log"],
+          "input": {"step": "persist-export"},
+          "outputShape": "tabular"
+        },
+        {
+          "id": "compare",
+          "kind": "compare",
+          "baseline": "source",
+          "output": {"step": "projection", "dataset": "sms_log", "format": "csv", "delimiter": "|", "header": true},
+          "expectation": {
+            "rulesFrom": "lexicon-to-interprose@2.0.0 queries/sms_log.sql (status edge provider = 'QUIQ', message_type = 'SMS', required debt and phone links, msg stop/unstop for OPTED_OUT/OPTED_IN, otherwise the hydrated body with CR/LF and | replaced by spaces, rows without a body dropped)",
+            "key": ["interaction_identifier", "te_id", "sent_date", "vendor_result"],
+            "exclusions": [
+              {"category": "non-quiq-provider", "when": {"notEquals": {"path": "row.provider"}, "value": "QUIQ"}, "rule": "WHERE status_edge.provider = 'QUIQ'"},
+              {"category": "mms", "when": {"notEquals": {"path": "row.message_type"}, "value": "SMS"}, "rule": "AND message.message_type = 'SMS'"},
+              {"category": "no-hydrated-body", "when": {"all": [{"notIn": {"path": "row.canonical_status"}, "values": ["OPTED_IN", "OPTED_OUT"]}, {"blank": {"path": "body"}}]},
+               "rule": "status IN ('OPTED_IN', 'OPTED_OUT') OR msg IS NOT NULL"}
+            ],
+            "fields": {
+              "debt_id": {"path": "row.debt_identifier"},
+              "phone_number": {"normalize": {"path": "row.phone_number"}, "as": "phone10"},
+              "msg": {"case": [{"when": {"equals": {"path": "row.canonical_status"}, "value": "OPTED_OUT"}, "then": {"const": "stop"}},
+                               {"when": {"equals": {"path": "row.canonical_status"}, "value": "OPTED_IN"}, "then": {"const": "unstop"}}],
+                      "else": {"normalize": {"path": "body"}, "as": "single-line-pipe-safe"}},
+              "sent_date": {"normalize": {"path": "row.effective_at"}, "as": "utc-millis"},
+              "vendor_result": {"path": "row.provider_result"},
+              "txt_msg_template_id": {"first": [{"path": "row.template_identifier"}]},
+              "vendor_tracking_code": {"path": "row.provider_tracking_code"},
+              "te_id": {"path": "row.provider_message_identifier"},
+              "interaction_identifier": {"path": "row.interaction_identifier"}
+            },
+            "normalize": {"sent_date": "utc-millis", "phone_number": "phone10"},
+            "coverageGaps": [
+              {"code": "TemplateMetadataUnresolved", "when": {"present": {"path": "source.ctx.templateIdentifier"}},
+               "detail": "the send context names a template but the lifecycle row has template_is_known false, so txt_msg_template_id is expected empty (chain-sources.json normalizationNotes)"}
+            ]
+          }
+        }
+      ],
+      "defaults": {"forward": "latest selectable semantic version of quiq-to-lexicon", "projection": "lexicon-to-interprose@2.0.0 (sms_log is introduced there)"},
+      "versionOverrides": "quiq-to-lexicon@x.y.z or lexicon-to-interprose@x.y.z in the request pins that step; a bare @x.y.z pins the last transform step (the projection whose output is compared)",
+      "unattendedExample": "test quiq to interprose for sms; approve all DEV writes; allow DEV Persist writes; use the most recent full UTC day with real data; if the canary passes, run the full day; stage real phone numbers and message bodies to DEV; accept Transform product changes as out of scope; cost ceiling $10 per job"
+    }
+  }
+}
