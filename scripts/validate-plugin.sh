@@ -121,6 +121,8 @@ main() {
   "${root}/skills/use-oracle/scripts/oracle-paths.test.sh"
 
   "${python_bin}" "${root}/scripts/check-plugin-clean-room.py" --self-test
+  "${python_bin}" "${root}/scripts/test-validate-transform-configuration.py"
+  "${python_bin}" "${root}/scripts/test-silvally-tools.py"
   "${python_bin}" "${root}/scripts/product_catalog.py" check
   validate_neutral_references "${root}"
 

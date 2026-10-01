@@ -1,0 +1,25 @@
+{
+  "id": "package-slices.json",
+  "contractVersion": 1,
+  "package": {
+    "from": "canon",
+    "to": "omega",
+    "mappingId": "canon-to-omega"
+  },
+  "aliases": {
+    "members": "members",
+    "ledgers": "ledgers"
+  },
+  "slices": {
+    "members": {
+      "id": "members",
+      "outputDatasets": ["member_report"],
+      "introducedIn": "1.0.0"
+    },
+    "ledgers": {
+      "id": "ledgers",
+      "outputDatasets": ["ledger_summary"],
+      "introducedIn": "2.0.0"
+    }
+  }
+}

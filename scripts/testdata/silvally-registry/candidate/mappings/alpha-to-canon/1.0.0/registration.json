@@ -1,0 +1,113 @@
+{
+  "id": "alpha-to-canon",
+  "version": "1.0.0",
+  "status": "ENABLED",
+  "engine": "spark-sql",
+  "from": "alpha",
+  "to": "canon",
+  "sqlOptions": {
+    "ansiEnabled": true
+  },
+  "inputs": [
+    {
+      "table": "members",
+      "view": "source_members",
+      "format": "jsonl",
+      "options": {
+        "multiLine": false,
+        "mode": "FAILFAST"
+      }
+    },
+    {
+      "table": "ledgers",
+      "view": "source_ledgers",
+      "format": "csv",
+      "options": {
+        "header": true,
+        "inferSchema": true
+      }
+    },
+    {
+      "table": "rates",
+      "view": "source_rates",
+      "format": "parquet",
+      "options": {}
+    }
+  ],
+  "output": {
+    "shape": "graph",
+    "format": "csv",
+    "profile": "neptune",
+    "options": {
+      "header": true,
+      "nullValue": ""
+    }
+  },
+  "outputs": [
+    {
+      "dataset": "vertex-member",
+      "requiredInputs": [
+        "members"
+      ],
+      "graph": {
+        "kind": "vertex",
+        "label": "member",
+        "idColumn": "~id"
+      },
+      "queries": [
+        {
+          "path": "queries/vertex-member.sql",
+          "sha256": "1302e938a2997a357b2bc29771344ca6bcaf2677dd2d1078d2d3e536981e12e5"
+        }
+      ],
+      "dependsOn": []
+    },
+    {
+      "dataset": "vertex-ledger",
+      "requiredInputs": [
+        "ledgers",
+        "members",
+        "rates"
+      ],
+      "graph": {
+        "kind": "vertex",
+        "label": "ledger",
+        "idColumn": "~id"
+      },
+      "queries": [
+        {
+          "path": "queries/vertex-ledger.sql",
+          "sha256": "b8d7c5f5b5eddb52249b45297a575be47516ff9e1885ff16bb33724c2fe5e9fc"
+        }
+      ],
+      "dependsOn": []
+    },
+    {
+      "dataset": "edge-member-has-ledger",
+      "requiredInputs": [
+        "ledgers",
+        "members"
+      ],
+      "graph": {
+        "kind": "edge",
+        "label": "member_has_ledger",
+        "idColumn": "~id",
+        "from": {
+          "column": "~from",
+          "dataset": "vertex-member"
+        },
+        "to": {
+          "column": "~to",
+          "dataset": "vertex-ledger"
+        }
+      },
+      "queries": [
+        {
+          "path": "queries/edge-member-has-ledger.sql",
+          "sha256": "1421d13321acb42b5283850a9d10e241a6f4e229a81796d6eb2ce386c83a87b0"
+        }
+      ],
+      "dependsOn": []
+    }
+  ]
+}

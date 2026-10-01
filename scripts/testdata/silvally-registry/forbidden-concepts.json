@@ -1,0 +1,13 @@
+{
+  "id": "forbidden-concepts.json",
+  "contractVersion": 1,
+  "evidence": {
+    "lexiconRepository": "example-org/test-registry",
+    "mainCommitSha": "0000000000000000000000000000000000000001",
+    "observedAt": "2099-01-01",
+    "derivation": "Test registry: one removed concept, one scoped property and one retired mapping version."
+  },
+  "concepts": [{ "label": "member_legacy_link", "kind": "edge", "reason": "Test removed concept" }],
+  "properties": [{ "concept": "member", "property": "legacy_code", "sqlScan": true, "reason": "Test reverted property" }],
+  "retiredMappings": [{ "mapping": "alpha-to-omega@0.9.0", "reason": "Test retired direct mapping" }]
+}

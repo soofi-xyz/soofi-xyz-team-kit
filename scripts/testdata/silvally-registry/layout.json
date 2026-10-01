@@ -1,0 +1,23 @@
+{
+  "id": "layout.json",
+  "contractVersion": 1,
+  "description": "Test registry layout: a hub language, paths and parameter names that differ from any real registry.",
+  "repository": { "slug": "example-org/test-registry", "defaultRegion": "xx-test-1" },
+  "hubLanguage": "canon",
+  "conceptModelPath": "languages/canon.json",
+  "languageDefinitionPath": "languages/{language}.json",
+  "languageRegistry": { "path": "languages/index.txt", "blockPattern": "(?s)^(.*)$", "keyPattern": "^(\\w+)$" },
+  "languageParameters": {
+    "declaredIn": null,
+    "declarationPattern": "(?!)",
+    "parameterPattern": "/registry/[a-z0-9-]*data-uri",
+    "prefix": "/registry/",
+    "suffix": "data-uri"
+  },
+  "registrationGlob": "mappings/**/registration.json",
+  "retiredMappingIds": { "path": "retired.txt", "listPattern": "const retired of \\[(.*?)\\]" },
+  "publishedRegistry": { "uriParameter": "/registry/mappings-uri", "parameterPath": "/registry", "mappingGlob": "transform-mappings/*/*/mapping.json" },
+  "graphDatasetPrefixes": ["vertex", "edge"],
+  "materialize": { "install": [], "command": "cp -R mappings {out}" },
+  "transformRuntime": { "stateMachineSuffix": "-transform-pipeline", "planKey": "runs/{executionName}/plan.json", "outputTablesDir": "tables", "glueUsdPerDpuHour": 0.44 }
+}
