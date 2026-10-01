@@ -13,8 +13,8 @@ roundTrip, phases, boundaryDecisions, failures, remediations) is generated from 
 records: the resolver's --workspace inputs-manifest.json (pinned repositories) and --intent (languages, slices, pin,
 versionSelection), the selected or run-scoped --profile-doc, evaluate_run.py's --evaluation (phases, per-slice
 verdicts, finalValidation, owner decisions, product-change flags), the run-spec (DEV account and region),
-graph_inputs.py summaries, and the remediation handoffs recorded by source_window.py data-days (--handoffs) and the
-catalog's blockedHandoffs. What no record holds is never invented: the Transform revision, its deployed Glue script
+graph_inputs.py summaries, and the remediation handoffs recorded by source_window.py data-days (--handoffs), a graph
+summary's joinCoverage handoff and the catalog's blockedHandoffs. What no record holds is never invented: the Transform revision, its deployed Glue script
 digest and the Spark version come from --transform-revision, --transform-deployment-digest and --spark-version (without
 them runtime is UNAVAILABLE, which cannot be READY), and a FAIL/BLOCKED phase whose cause has no recorded handoff
 stops with PackageSpecIncomplete naming the codes. --package-spec is an optional override: its top-level keys replace
@@ -271,7 +271,7 @@ class SpecGenerator:
                                          for r in exports),
                     "danglingEndpointCount": sum(r.get("danglingEndpointCount") or 0 for r in exports)}
         if self.graph_summaries:
-            return {"required": True, "identityUnique": all(s.get("status") == "BUILT" for s in self.graph_summaries),
+            return {"required": True, "identityUnique": all(s.get("status") in ("BUILT", "JOIN_COVERAGE_GAP") for s in self.graph_summaries),
                     "endpointCount": sum((s.get("rootsFound") or 0) + sum(h.get("endpointVertices") or 0 for h in s.get("hops", []))
                                          for s in self.graph_summaries),
                     "danglingEndpointCount": sum(s.get("danglingEndpointCount") or 0 for s in self.graph_summaries)}
@@ -360,6 +360,8 @@ class SpecGenerator:
             if result.get("verdict") == "READY":
                 continue
             recorded = [h for doc in self.handoff_docs for h in (((doc.get("slices") or {}).get(name) or {}).get("handoffs") or [])]
+            recorded += [s["joinCoverage"]["handoff"] for s in self.graph_summaries
+                         if s.get("slice") == name and (s.get("joinCoverage") or {}).get("handoff")]
             recorded += [h for h in ((self.catalog.get("slices") or {}).get(name) or {}).get("blockedHandoffs") or [] if h["code"] in reported]
             open_phases = sorted(int(n) for n, s in (result.get("phases") or {}).items() if s not in (None, "PASS"))
             for h in recorded:

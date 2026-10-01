@@ -72,10 +72,24 @@ Each numbered write is a separate confirmation gate.
    read-only profile. Write nothing in PROD.
 2. Keep the rows in a mode-0700 private directory outside any repository.
    For the canary, `prod_actuals.py canary-sample` selects the events and
-   `prod_actuals.py inputs` writes their real inputs (with `--bind` for a field
-   the PROD run resolved). For graph-input slices, `graph_inputs.py gremlin` builds
+   `prod_actuals.py inputs` writes their real inputs exactly as PROD sent them
+   (nothing from the PROD result is added). For graph-input slices, `graph_inputs.py gremlin` builds
    the Transform graph datasets for those events' keys from a bounded read-only
    PROD Persist read, with zero dangling endpoints (`--as-of` for a stale actual).
+   M2D takes both: the unmodified `classification_event` rows plus `vertex-files`
+   (keyed by `file_id` = `interprose:<interproseDocumentID>` from each accepted event's
+   `LambdaFunctionSucceeded` output; rejected events have no id), their incoming
+   `edge-debt-has-file` edges and the linked debt vertices: keyed pages of
+   `--batch-size`, never a day-wide scan. The three Parquet datasets carry `~id`,
+   `file_id:String`, `source_url:String`; `~id`, `~from` (debt), `~to` (files),
+   `created_at:DateTime`; and `~id`, `debt_identifier:String`, with 0 dangling endpoints.
+   The catalog's `joinCoverage` then requires every uploaded event to have a files
+   vertex whose `source_url` is `s3://{s3Bucket}/{classifiedKey or s3Key}`, linked to
+   exactly one debt; a `uriMismatch` names the field the writer used instead (for
+   example `classifiedRunKey`). A gap is `JOIN_COVERAGE_GAP`: phase 7 `BLOCKED` with the
+   `GraphJoinCoverageGap` handoff to M2D's neptune-writer, not a mapping `FAIL`. On PROD
+   on 2026-09-29 all 139 uploaded events matched by that URI and the graph debt equalled
+   the Lambda's debt for 139/139.
    Slices with sensitive fields (SMS phone numbers and message bodies) are staged
    only under the owner's `sensitiveFieldStaging` decision, with real values
    unmodified.

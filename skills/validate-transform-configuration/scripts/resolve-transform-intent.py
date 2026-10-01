@@ -1873,7 +1873,8 @@ def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclu
             result["upstreamSource"] = {"kind": "prod-derived-input-builders", "slices": builders,
                                         "detail": "graph slices read a bounded read-only PROD Persist Gremlin neighbourhood "
                                                   "of the window's keys (graph_inputs.py); event slices take the PROD "
-                                                  "Lambda's real inputs (prod_actuals.py inputs)"}
+                                                  "Lambda's real inputs unmodified (prod_actuals.py inputs), plus the "
+                                                  "graph inputs their catalog graphInputs declare"}
             findings.append({"code": "UpstreamSourceDefaulted", "mapping": primary.key, "severity": "informational",
                              "detail": "every named slice has a catalogued PROD-derived input builder; no answer is needed",
                              "slices": builders})

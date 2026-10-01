@@ -42,6 +42,18 @@ against the edge's digest, and the edge's selector (TEXT, JSON_BODY or $.path) e
 A slice that declares `sensitiveFields` is built only when the owner decided `sensitiveFieldStaging:
 stage-real-values-to-dev`; the real values are then staged to DEV unmodified and compared directly.
 
+A catalog root may declare `keyTemplate` (for example `interprose:{}`): each event's actualKey value is
+formatted into it before the keyed read, so the root is read by the identity PROD wrote (an event without the
+value contributes no key). A catalog `joinCoverage` (requires --events) proves the inputs cover the join the
+mapping's SQL makes: every event matching its eventFilter needs a root vertex for its key whose uriProperty
+equals the event's URI (uriTemplate over the first non-empty field of each uriParts entry), linked through
+the named edge to exactly one endpoint (in endpointDataset, which must match the contracts) whose
+endpointProperty matches endpointPattern. Gaps are counted per
+category (noFileKey, noEventUri, noRootVertex, uriMismatch, noLinkedEndpoint, ambiguousEndpoint); a
+uriMismatch names the event field that would have produced the vertex's URI (for example classifiedRunKey
+instead of classifiedKey). Real values go to <private-dir>/<slice>-join-coverage-gaps.jsonl only. Any gap is
+status JOIN_COVERAGE_GAP with the catalog's handoff: an input-coverage BLOCKED, never a mapping FAIL.
+
 A root dataset or windowed edge dataset left with no rows is status INPUT_EMPTY (inputEmpty.code
 UpstreamInputEmpty): pass the summary to evaluate_run.py --graph-inputs so the slice reports the real cause.
 
@@ -408,15 +420,112 @@ def s3_fetcher(profile: str, region: str, directory: Path):
     return fetch
 
 
+def event_key(event: dict, root: dict) -> str:
+    value = text(dig(event, root["actualKey"])).strip()
+    return root.get("keyTemplate", "{}").format(value) if value else ""
+
+
 def root_keys(args, plan: dict) -> list[str]:
     if args.keys_file:
         values = Path(args.keys_file).read_text(encoding="utf-8").splitlines()
     else:
-        values = [text(dig(e, plan["root"]["actualKey"])) for e in read_jsonl(args.events)]
+        values = [event_key(e, plan["root"]) for e in read_jsonl(args.events)]
     keys = sorted({v.strip() for v in values if v and v.strip()})
     if not keys:
         raise SilvallyError("no root keys: the canary or window events carry no value of the root actualKey")
     return keys
+
+
+MAX_GAP_SAMPLES = 5
+
+
+def first_value(event: dict, paths) -> tuple[str, str]:
+    """(value, field name) of the first non-empty path."""
+    for path in [paths] if isinstance(paths, str) else paths:
+        value = text(dig(event, path))
+        if value:
+            return value, path.rsplit(".", 1)[-1]
+    return "", ""
+
+
+def join_coverage(cover: dict, plan: dict, contracts: dict, data: dict, events: list[dict]) -> tuple[dict, list[dict]]:
+    """The catalog joinCoverage check over the built datasets: counts and field-name samples, plus private rows."""
+    root = plan["root"]
+    edge = next((c for c in contracts["inputs"] if c["table"] == cover["edge"]), None)
+    if not edge or edge.get("graphKind") != "edge" or root["dataset"] not in edge.get("endpoints", {}).values():
+        raise SilvallyError(f"joinCoverage edge {cover['edge']} is not an edge input touching {root['dataset']}")
+    near_is_to = edge["endpoints"]["to"] == root["dataset"]
+    far_dataset = edge["endpoints"]["from" if near_is_to else "to"]
+    if cover.get("endpointDataset", far_dataset) != far_dataset:
+        raise SilvallyError(f"joinCoverage names endpoint {cover['endpointDataset']} but {cover['edge']} ends at {far_dataset}")
+    pattern = re.compile(cover.get("endpointPattern", ".+"))
+    vertices = data.get(root["dataset"], {})
+    by_key: dict[str, list[dict]] = {}
+    by_uri: dict[str, list[str]] = {}
+    for vertex in vertices.values():
+        by_key.setdefault(text(vertex["properties"].get(root["keyProperty"])), []).append(vertex)
+        by_uri.setdefault(text(vertex["properties"].get(cover["uriProperty"])), []).append(vertex["id"])
+    linked: dict[str, set] = {}
+    for item in data.get(cover["edge"], {}).values():
+        near, far = (item.get("IN"), item.get("OUT")) if near_is_to else (item.get("OUT"), item.get("IN"))
+        endpoint = data.get(far_dataset, {}).get(far)
+        value = text((endpoint or {}).get("properties", {}).get(cover["endpointProperty"]))
+        if endpoint and pattern.match(value):
+            linked.setdefault(near, set()).add(value)
+    parts = cover["uriParts"]
+
+    def uri_of(values: dict) -> str:
+        return cover["uriTemplate"].format(**values)
+
+    selected = [e for e in events if all(text(dig(e, k)) == text(v) for k, v in (cover.get("eventFilter") or {}).items())]
+    gaps, explained, samples, private = {}, {}, [], []
+    covered = 0
+    for event in selected:
+        key = event_key(event, root)
+        values, fields = {}, {}
+        for name, paths in parts.items():
+            values[name], fields[name] = first_value(event, paths)
+        uri = uri_of(values) if all(values.values()) else ""
+        found = [text(v["properties"].get(cover["uriProperty"])) for v in by_key.get(key, [])]
+        sample = {"expectedFrom": fields}
+        if not key:
+            category = "noFileKey"
+        elif not uri:
+            category = "noEventUri"
+        elif not found:
+            category = "noRootVertex"
+        elif uri not in found:
+            category = "uriMismatch"
+            source = dig(event, cover["explainFrom"]) if cover.get("explainFrom") else None
+            names = sorted({f for f, v in (source or {}).items() if isinstance(v, str) and v
+                            for name in parts if uri_of({**values, name: v}) in found})
+            label = ",".join(names) or "unexplained"
+            explained[label] = explained.get(label, 0) + 1
+            sample["foundMatches"] = label
+        else:
+            endpoints = set().union(*(linked.get(i, set()) for i in by_uri.get(uri, [])))
+            category = "noLinkedEndpoint" if not endpoints else ("ambiguousEndpoint" if len(endpoints) > 1 else "")
+            if category == "ambiguousEndpoint":
+                sample["distinctEndpoints"] = len(endpoints)
+        if not category:
+            covered += 1
+            continue
+        gaps[category] = gaps.get(category, 0) + 1
+        if sum(1 for x in samples if x["category"] == category) < MAX_GAP_SAMPLES:
+            samples.append({"category": category, **sample})
+            private.append({"category": category, "key": key, "expectedUri": uri, "foundUris": found, **sample})
+    report = {"status": "GAP" if gaps else "COVERED", "eventFilter": cover.get("eventFilter") or {}, "eventsChecked": len(selected),
+              "covered": covered, "gaps": gaps, "uriMismatchExplainedBy": explained, "gapSamples": samples,
+              "join": f"{root['dataset']}.{cover['uriProperty']} == {cover['uriTemplate']} -> {cover['edge']} -> "
+                      f"{far_dataset}.{cover['endpointProperty']}"}
+    if gaps:
+        handoff = dict(cover.get("handoff") or {"code": "GraphJoinCoverageGap", "owner": "graph producer"})
+        handoff["detail"] = (f"{sum(gaps.values())} of {len(selected)} events lack the graph join {report['join']} "
+                             f"({', '.join(f'{k} {v}' for k, v in sorted(gaps.items()))}"
+                             + (f"; URI mismatches match {explained}" if explained else "") + "). "
+                             + handoff.get("detail", ""))
+        report["handoff"] = handoff
+    return report, private
 
 
 def build(args, source=None, fetch=None) -> dict:
@@ -431,6 +540,9 @@ def build(args, source=None, fetch=None) -> dict:
         raise SilvallyError(f"SensitiveStagingDecisionRequired: slice {args.slice} stages {sensitive.get('inputs')} to DEV; "
                             "the owner must decide sensitiveFieldStaging: stage-real-values-to-dev (state it up front, "
                             "or approve it when asked)")
+    cover = plan.get("joinCoverage")
+    if cover and not args.events:
+        raise SilvallyError(f"slice {args.slice} declares joinCoverage: pass --events (the canary or window events), not --keys-file")
     keys = root_keys(args, plan)
     window = (parse_loose(args.window_start), parse_loose(args.window_end_exclusive))
     if source is None:
@@ -470,7 +582,17 @@ def build(args, source=None, fetch=None) -> dict:
     if empty:
         summary["inputEmpty"] = {"code": "UpstreamInputEmpty", "datasets": sorted(empty),
                                  "detail": "the PROD graph has no root vertex for the keys, or no windowed edge in the window"}
-    summary["status"] = "FAIL" if dangling or failures else ("INPUT_EMPTY" if empty else "BUILT")
+    gap = False
+    if cover:
+        report, private = join_coverage(cover, plan, contracts, data, read_jsonl(args.events))
+        if private:
+            target = private_dir(args.private_dir) / f"{args.slice}-join-coverage-gaps.jsonl"
+            target.write_text("".join(json.dumps(r, sort_keys=True) + "\n" for r in private), encoding="utf-8")
+            report["gapSamplesPrivateFile"] = str(target)
+        summary["joinCoverage"] = report
+        gap = report["status"] == "GAP"
+    summary["status"] = ("FAIL" if dangling or failures else "JOIN_COVERAGE_GAP" if gap
+                         else "INPUT_EMPTY" if empty else "BUILT")
     write_json(args.out, summary)
     return summary
 

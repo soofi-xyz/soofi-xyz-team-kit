@@ -148,7 +148,7 @@
         "executionLogGroup": "/aws/vendedlogs/states/m2d-pipeline-prod-use2-document-processing",
         "lambdaLogGroup": "/aws/lambda/m2d-pipeline-prod-use2-interprose-upload",
         "meaning": "EXPRESS executions have no execution history API; their logging level ALL with includeExecutionData records every LambdaFunctionScheduled input and LambdaFunctionSucceeded or LambdaFunctionFailed result. A succeeded output is the registration Interprose accepted; a failure is an expected reject",
-        "inputField": "LambdaFunctionScheduled details.input: the upload step Parameters, which is also the DEV classification_event input row",
+        "inputField": "LambdaFunctionScheduled details.input: the upload step Parameters, which is also the DEV classification_event input row, staged unmodified",
         "daySelection": "prod_actuals.py probe-days (newest-first, bounded pages per day), then lambda-outcomes for the chosen day only"
       },
       "key": {"dataset": ["remote_s3_uri"], "actual": ["remoteS3Uri"]},
@@ -159,12 +159,37 @@
         "remote_s3_uri": "remoteS3Uri",
         "remote_s3_region": "interproseResponse.remoteS3Region"
       },
-      "debtBinding": "a debt-resolved event is compared against the debtID the PROD Lambda logged, not one Silvally derives",
+      "debtSource": "the DEV input events are exactly what PROD sent (prod_actuals.py inputs adds nothing from the Lambda result). When an event carries no Interprose lineage or all-digit debtID, document_registration.sql (lexicon-to-interprose@5.0.0) takes the debt from the graph inputs: vertex-files.source_url == s3://{s3Bucket}/{classifiedKey or s3Key} -> edge-debt-has-file -> vertex-debt.debt_identifier. debt_id equality with the Lambda's logged debtID is therefore a genuine check of that resolution, not an echo of the actual.",
       "rejects": {"dataset": "document_registration_rejects", "key": "s3_key_sha256", "actualOutcome": "rejected",
                   "actualKeyFields": ["input.classifiedKey", "input.s3Key"]},
       "canary": {"eventTimeField": "eventTime", "eventKeyField": ["input.classifiedKey", "input.s3Key"], "outcomeField": "outcome"},
       "comparison": {"canaryDevScope": "all", "fullDevScope": "all"},
-      "inputBuilder": "prod_actuals.py inputs"
+      "inputBuilder": "prod_actuals.py inputs (classification_event JSONL, unmodified) + graph_inputs.py gremlin --events <selected events> (vertex-files, edge-debt-has-file, vertex-debt Parquet)",
+      "graphInputs": {
+        "root": {"dataset": "vertex-files", "keyProperty": "file_id", "actualKey": "actual.interproseDocumentID", "keyTemplate": "interprose:{}"},
+        "hops": [
+          {"edge": "edge-debt-has-file", "from": "vertex-files", "direction": "in"}
+        ],
+        "keyRationale": "M2D's neptune-writer writes each files vertex after the Interprose upload with file_id = interprose:<interproseDocumentID>, the id in the upload Lambda's LambdaFunctionSucceeded output. Reading by that key (pages of --batch-size, no day-wide scan) returns exactly the uploaded events' files vertices, their incoming debt_has_file edges and the linked debt vertices; rejected events have no interproseDocumentID and contribute no key.",
+        "joinCoverage": {
+          "eventFilter": {"outcome": "accepted"},
+          "uriTemplate": "s3://{bucket}/{key}",
+          "uriParts": {"bucket": ["input.s3Bucket"], "key": ["input.classifiedKey", "input.s3Key"]},
+          "explainFrom": "input",
+          "uriProperty": "source_url",
+          "edge": "edge-debt-has-file",
+          "endpointDataset": "vertex-debt",
+          "endpointProperty": "debt_identifier",
+          "endpointPattern": "^0*[1-9][0-9]*$",
+          "handoff": {"code": "GraphJoinCoverageGap", "owner": "M2D neptune-writer (files vertices and debt_has_file edges in PROD Persist)",
+                      "detail": "Each uploaded event needs a files vertex whose source_url is the event's classified URI, linked to exactly one debt. A uriMismatch explained by another key (for example classifiedRunKey) means the writer records a different S3 key than the upload step's classifiedKey: align the writer, or, if that key is intended, change the mapping's join (a mapping CONFIGURATION decision). Rerun the slice once covered."}
+        },
+        "verified": "2026-09-29 PROD, read-only: all 139 uploaded events matched a files vertex by s3://{s3Bucket}/{classifiedKey or s3Key}, and the linked graph debt equalled the Lambda's debtID for 139/139"
+      },
+      "blockedHandoffs": [
+        {"code": "GraphJoinCoverageGap", "owner": "M2D neptune-writer (files vertices and debt_has_file edges in PROD Persist)",
+         "detail": "an uploaded event has no files vertex with source_url = s3://{s3Bucket}/{classifiedKey or s3Key} linked to exactly one debt; graph_inputs.py joinCoverage names the gap categories and the event field the writer used instead"}
+      ]
     }
   }
 }
