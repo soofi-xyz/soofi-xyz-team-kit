@@ -72,10 +72,13 @@ Each numbered write is a separate confirmation gate.
    read-only profile. Write nothing in PROD.
 2. Keep the rows in a mode-0700 private directory outside any repository.
    For the canary, `prod_actuals.py canary-sample` selects the events and
-   `prod_actuals.py inputs` writes their real inputs (with `--bind` for a field
-   the PROD run resolved). For graph-input slices, `graph_inputs.py gremlin` builds
+   `prod_actuals.py inputs` writes their real inputs exactly as PROD sent them
+   (nothing from the PROD result is added). For graph-input slices, `graph_inputs.py gremlin` builds
    the Transform graph datasets for those events' keys from a bounded read-only
    PROD Persist read, with zero dangling endpoints (`--as-of` for a stale actual).
+   M2D takes both: the unmodified `classification_event` rows plus `vertex-files`
+   (keyed by `file_id` = `interprose:<interproseDocumentID>` of each accepted event),
+   `edge-debt-has-file` and the linked debt vertices, with the catalog's join-coverage check.
    Slices with sensitive fields (SMS phone numbers and message bodies) are staged
    only under the owner's `sensitiveFieldStaging` decision, with real values
    unmodified.

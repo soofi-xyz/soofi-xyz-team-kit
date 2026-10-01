@@ -34,7 +34,8 @@ FAIL, BLOCKED or APPROVAL_REQUIRED:
   6  mapping      profile drift, SQL scan, endpoint/required-input findings, check-profile result, and every
                   PRODUCT_CHANGE item: BLOCKED unless the owner accepted it as out of scope (then recorded)
   7  actuals      one PROD-actuals baseline per slice: AVAILABLE, or NONE (schema, row-count and reject-reason
-                  fallback, stated in the report); EMPTY, STALE or TRUNCATED baselines are BLOCKED
+                  fallback, stated in the report); EMPTY, STALE or TRUNCATED baselines are BLOCKED, and so is a
+                  graph_inputs.py JOIN_COVERAGE_GAP (events whose graph join the inputs do not cover)
   8  provenance   every plan's mapping digest matches the pin and the environment serves it; a run whose spec records
                   the registry location also needs a verdict-time dev_redeploy.py check (--deployment-check): SERVED
                   passes, a DeploymentRace (pruned or replaced by another PR's DEV deploy) is BLOCKED, a
@@ -212,7 +213,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--regression", action="append", default=[],
                         help="[SLICE=]transform_runs.py regress --slice result (repeatable, one baseline per slice)")
     parser.add_argument("--graph-inputs", action="append", default=[],
-                        help="graph_inputs.py summary of a slice's canary or window inputs (INPUT_EMPTY names the real cause)")
+                        help="graph_inputs.py summary of a slice's canary or window inputs (INPUT_EMPTY or "
+                             "JOIN_COVERAGE_GAP names the real cause)")
     parser.add_argument("--staging-upload", action="append", default=[],
                         help="stage_evidence_package.py upload result for a canary or full-window DEV package")
     parser.add_argument("--deployment-check", action="append", default=[],
@@ -447,6 +449,10 @@ def main(argv: list[str] | None = None) -> int:
             empty = built.get("inputEmpty") or {}
             phases.set(9, "BLOCKED", f"{empty.get('code', 'UpstreamInputEmpty')}: the PROD graph inputs have no rows in "
                        f"{empty.get('datasets')} ({empty.get('detail', '')}); nothing to run", Path(path).stem, name)
+        elif built.get("status") == "JOIN_COVERAGE_GAP":
+            handoff = (built.get("joinCoverage") or {}).get("handoff") or {}
+            phases.set(7, "BLOCKED", f"{handoff.get('code', 'GraphJoinCoverageGap')}: {handoff.get('detail', '')} "
+                       f"Owner: {handoff.get('owner', 'graph producer')}; input coverage, not a mapping FAIL", slice=name)
         elif built.get("status") != "BUILT":
             phases.set(9, "FAIL", f"graph inputs {built.get('status')}: {built.get('danglingEndpointCount')} dangling endpoints, "
                        f"hydration failures {[(d, s.get('hydrationFailures')) for d, s in built.get('datasets', {}).items() if s.get('hydrationFailures')]}",

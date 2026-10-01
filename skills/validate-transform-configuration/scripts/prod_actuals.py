@@ -30,10 +30,11 @@
       outcome-mode presence groups by whether the field is empty (catalog outcomeLabels name the two groups).
   prod_actuals.py keys --events selected.jsonl --field F --out keys.txt
       Write the distinct values of F (for example the canary debts) for key reads and graph-input roots.
-  prod_actuals.py inputs --events selected.jsonl --input-field input [--bind FIELD=actual.PATH ...]
-      --out-dir DIR
-      Write the selected events' real PROD inputs as part-00000.jsonl for approval-gated DEV staging.
-      --bind fills FIELD from the PROD result only when the input lacks it (the value PROD resolved).
+  prod_actuals.py inputs --events selected.jsonl --input-field input --out-dir DIR
+      Write the selected events' real PROD inputs, exactly as PROD sent them, as part-00000.jsonl for
+      approval-gated DEV staging. Nothing from the PROD result enters an input: a value the mapping resolves
+      (for example M2D's debt) comes from the slice's real upstream inputs (graph_inputs.py), so comparing it
+      with the PROD result is a genuine check.
   prod_actuals.py compare --catalog prod-actuals.json --slice NAME --actual events.jsonl
       --dataset NAME=PATH [...] [--delimiter '|'] [--allow-column COLUMN=REASON ...] [--dev-scope all|actual-keys]
       --out checks.json
@@ -369,21 +370,15 @@ def cmd_keys(args) -> int:
 
 
 def cmd_inputs(args) -> int:
-    binds = [b.split("=", 1) for b in args.bind or []]
-    rows, bound = [], 0
+    rows = []
     for event in read_jsonl(args.events):
         row = dig(event, args.input_field)
         if not isinstance(row, dict):
             raise SilvallyError(f"an event has no object at {args.input_field}")
-        row = dict(row)
-        for field, path in binds:
-            if row.get(field) in (None, "") and dig(event, path) not in (None, ""):
-                row[field] = dig(event, path)
-                bound += 1
         rows.append(row)
     out = private_dir(args.out_dir)
     write_jsonl(out / "part-00000.jsonl", rows)
-    summary = {"rows": len(rows), "boundFields": bound, "sha256": "sha256:" + sha256_file(out / "part-00000.jsonl")}
+    summary = {"rows": len(rows), "inputsAsProdSent": True, "sha256": "sha256:" + sha256_file(out / "part-00000.jsonl")}
     print(json.dumps(summary, indent=1))
     return 0
 
@@ -543,7 +538,6 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("inputs")
     p.add_argument("--events", required=True)
     p.add_argument("--input-field", default="input")
-    p.add_argument("--bind", action="append", help="FIELD=actual.PATH filled only when the input lacks FIELD")
     p.add_argument("--out-dir", required=True)
     p = sub.add_parser("compare")
     p.add_argument("--catalog", required=True, help="reference/prod-actuals.json or a profile's equivalent")

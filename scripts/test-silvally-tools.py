@@ -788,15 +788,18 @@ def test_prod_actuals(tmp: Path) -> None:
         fail("an allowed column was not excluded and recorded")
     selected = tmp / "selected.jsonl"
     prod_actuals.write_jsonl(selected, [{"input": {"s3Key": "k1", "debt": ""}, "actual": {"resolved": "d1"}}])
-    run_tool("prod_actuals.py", "inputs", "--events", str(selected), "--bind", "debt=actual.resolved", "--out-dir", str(tmp / "canary-inputs"))
+    written = json.loads(run_tool("prod_actuals.py", "inputs", "--events", str(selected), "--out-dir", str(tmp / "canary-inputs")).stdout)
     staged = json.loads((tmp / "canary-inputs" / "part-00000.jsonl").read_text())
-    if staged != {"s3Key": "k1", "debt": "d1"}:
-        fail(f"the canary input did not take the value PROD resolved for an empty field: {staged}")
+    if staged != {"s3Key": "k1", "debt": ""} or not written["inputsAsProdSent"]:
+        fail(f"the canary input was not exactly what PROD sent: {staged}")
+    if run_tool("prod_actuals.py", "inputs", "--events", str(selected), "--bind", "debt=actual.resolved",
+                "--out-dir", str(tmp / "bound-inputs"), check=False).returncode == 0:
+        fail("prod_actuals.py inputs still accepts --bind, which copies a PROD result into an input")
     days = source_window.data_days({"a": {"2099-01-04": 3, "2099-01-07": 1}, "b": {"2099-01-06": 9}}, "2099-01-06", False,
                                    source_window.parse_utc("2099-01-08T06:00:00Z"))
     if days["emptySlices"] != ["a"] or days["slices"]["a"]["nearestDayWithData"] != "2099-01-07":
         fail(f"an empty slice did not get the nearest UTC day with data: {days}")
-    results.append("prod_actuals Lambda pairing, deterministic mixed canary, keyed comparison with rejects, bound inputs; data-days")
+    results.append("prod_actuals Lambda pairing, deterministic mixed canary, keyed comparison with rejects, inputs as PROD sent them; data-days")
 
 
 def test_stage_package(tmp: Path) -> None:
@@ -1143,6 +1146,158 @@ def test_graph_inputs(tmp: Path) -> None:
         fail("Persist Gremlin response shapes were not recognized")
     results.append("graph_inputs bounded read-only Gremlin build: window + prune, as-of cutoff, closure, hydration, bounds, "
                    "sensitive-field decision, injection and mutation refusals")
+
+
+def m2d_contracts(debt_dataset: str) -> dict:
+    return {"inputs": [
+        {"table": "classification_event", "format": "jsonl"},
+        {"table": "vertex-files", "graphKind": "vertex", "label": "files", "requiredColumns": ["~id", "file_id:String", "source_url:String"],
+         "optionalColumns": []},
+        {"table": "edge-debt-has-file", "graphKind": "edge", "label": "debt_has_file", "requiredColumns": ["~id", "~from", "~to", "created_at:DateTime"],
+         "optionalColumns": [], "endpoints": {"from": debt_dataset, "to": "vertex-files"}},
+        {"table": debt_dataset, "graphKind": "vertex", "label": "debt", "requiredColumns": ["~id", "debt_identifier:String"], "optionalColumns": []}]}
+
+
+def test_m2d_graph_inputs(tmp: Path) -> None:
+    """M2D: unmodified Lambda inputs plus files/debt_has_file/debt read by interprose:<id>, and the join-coverage gate."""
+    import graph_inputs
+    import re
+    work = tmp / "m2d-graph"
+    debt_dataset = json.loads((SKILL / "reference" / "prod-actuals.json").read_text())["slices"]["m2d"]["graphInputs"]["joinCoverage"]["endpointDataset"]
+    bucket = "m2d-pipeline-prod-use2-documents"
+
+    def upload(n: int, outcome: str, doc_id: int | None, debt: str, **keys) -> dict:
+        event = {"eventTime": f"2099-01-06T0{n}:15:00.000Z", "outcome": outcome,
+                 "input": {"s3Bucket": bucket, "uploadToInterprose": True, "accountId": f"SOC-{n:04d}", "remoteS3Region": "us-east-2",
+                           "classification": {"statement_type": "CHARGE_OFF_STATEMENT"}, **keys}}
+        if doc_id:
+            event["actual"] = {"interproseDocumentID": doc_id, "debtID": debt, "remoteS3Uri": f"s3://{bucket}/{keys.get('classifiedKey') or keys['s3Key']}"}
+        return event
+    events = [
+        upload(1, "accepted", 9001, "700123", classifiedKey="classified/2099/01/06/SOC-0001/charge-off.pdf", s3Key="raw/SOC-0001.zip"),
+        upload(2, "accepted", 9002, "700222", classifiedKey="classified/2099/01/06/SOC-0002/letter.pdf",
+               classifiedRunKey="classified/runs/r-77/SOC-0002/letter.pdf", s3Key="raw/SOC-0002.zip"),
+        upload(3, "accepted", 9003, "700300", s3Key="raw/2099/01/06/SOC-0003/bill-of-sale.pdf"),
+        upload(4, "accepted", 9004, "700400", classifiedKey="classified/2099/01/06/SOC-0004/statement.pdf"),
+        upload(5, "accepted", 9005, "700500", classifiedKey="classified/2099/01/06/SOC-0005/affidavit.pdf"),
+        upload(6, "rejected", None, "", classifiedKey="classified/2099/01/06/SOC-0006/unknown.pdf"),
+    ]
+    events[1]["input"].pop("debtID", None)
+    raw_inputs = [json.loads(json.dumps(e["input"])) for e in events]
+    files = {"f1": ("interprose:9001", f"s3://{bucket}/classified/2099/01/06/SOC-0001/charge-off.pdf"),
+             "f2": ("interprose:9002", f"s3://{bucket}/classified/runs/r-77/SOC-0002/letter.pdf"),
+             "f3": ("interprose:9003", f"s3://{bucket}/raw/2099/01/06/SOC-0003/bill-of-sale.pdf"),
+             "f4": ("interprose:9004", f"s3://{bucket}/classified/2099/01/06/SOC-0004/statement.pdf"),
+             "f9": ("interprose:9999", f"s3://{bucket}/classified/2099/01/05/SOC-0999/other.pdf")}
+    vertices = {fid: {"id": fid, "label": "files", "file_id": key, "source_url": url} for fid, (key, url) in files.items()}
+    debts = {"d1": "700123", "d2": "700222", "d3": "700300", "d4a": "700400", "d4b": "700401", "d9": "799999"}
+    vertices.update({did: {"id": did, "label": "debt", "debt_identifier": value} for did, value in debts.items()})
+    links = [("d1", "f1"), ("d2", "f2"), ("d3", "f3"), ("d4a", "f4"), ("d4b", "f4"), ("d9", "f9")]
+    edges = [{"id": f"{d}-{f}", "label": "debt_has_file", "OUT": {"id": d}, "IN": {"id": f}, "created_at": "2099-01-06T09:00:00Z"} for d, f in links]
+    queries = []
+
+    def query(gremlin: str) -> list:
+        queries.append(gremlin)
+        graph_inputs.assert_read_only(gremlin)
+        if gremlin.startswith("g.V().hasLabel('files')"):
+            wanted = set(re.findall(r"'([^']+)'", gremlin.split("within(")[1]))
+            return [v for v in vertices.values() if v.get("file_id") in wanted]
+        ids = set(re.findall(r"'([^']+)'", gremlin.split(")")[0]))
+        if ".inE('debt_has_file')" not in gremlin:
+            fail(f"the M2D hop did not read incoming debt_has_file edges: {gremlin}")
+        return [{"e": e, "v": vertices[e["OUT"]["id"]]} for e in edges if e["IN"]["id"] in ids]
+
+    work.mkdir(parents=True)
+    prod_actuals.write_jsonl(work / "events.jsonl", events)
+    silvally_io.write_json(work / "contracts.json", m2d_contracts(debt_dataset))
+    silvally_io.write_json(work / "decisions.json", {})
+
+    def build(label: str, events_file: Path) -> dict:
+        ns = __import__("argparse").Namespace(
+            command="gremlin", contracts=str(work / "contracts.json"), catalog=str(SKILL / "reference" / "prod-actuals.json"),
+            slice="m2d", events=str(events_file), keys_file=None, window_start=None, window_end_exclusive=None, as_of=None,
+            owner_decisions=str(work / "decisions.json"), max_elements=1000, private_dir=str(work / f"{label}-private"),
+            out_dir=str(work / f"{label}-pkg"), out=str(work / f"{label}.json"))
+        return graph_inputs.build(ns, source=graph_inputs.GremlinSource(query, batch_size=2, retries=0, backoff=0, sleep=lambda _: None))
+
+    gap = build("gap", work / "events.jsonl")
+    requested = {k for q in queries if q.startswith("g.V().hasLabel('files')") for k in re.findall(r"'(interprose:[^']+)'", q)}
+    if requested != {f"interprose:{n}" for n in range(9001, 9006)} or any("has('file_id', within(" not in q
+                                                                           for q in queries if q.startswith("g.V().hasLabel")):
+        fail(f"the files read was not keyed by interprose:<interproseDocumentID> of the accepted events only: {sorted(requested)}")
+    rows = {d: s["rows"] for d, s in gap["datasets"].items()}
+    if rows != {"vertex-files": 4, "edge-debt-has-file": 5, debt_dataset: 5} or gap["danglingEndpointCount"] != 0:
+        fail(f"the M2D graph datasets are not the uploaded files, their debt_has_file edges and debts with 0 dangling: {gap}")
+    import pyarrow.parquet as pq
+    first_file = pq.read_table(work / "gap-pkg" / "vertex-files" / "part-00000.parquet").to_pylist()[0]
+    first_edge = pq.read_table(work / "gap-pkg" / "edge-debt-has-file" / "part-00000.parquet").to_pylist()[0]
+    first_debt = pq.read_table(work / "gap-pkg" / debt_dataset / "part-00000.parquet").to_pylist()[0]
+    if first_file != {"~id": "f1", "~label": "files", "file_id:String": "interprose:9001",
+                      "source_url:String": f"s3://{bucket}/classified/2099/01/06/SOC-0001/charge-off.pdf"} \
+            or first_edge != {"~id": "d1-f1", "~label": "debt_has_file", "~from": "d1", "~to": "f1", "created_at:DateTime": "2099-01-06T09:00:00.000Z"} \
+            or first_debt != {"~id": "d1", "~label": "debt", "debt_identifier:String": "700123"}:
+        fail(f"the M2D Parquet columns do not follow the graph conventions: {first_file} | {first_edge} | {first_debt}")
+    cover = gap["joinCoverage"]
+    if gap["status"] != "JOIN_COVERAGE_GAP" or cover["eventsChecked"] != 5 or cover["covered"] != 2 \
+            or cover["gaps"] != {"uriMismatch": 1, "ambiguousEndpoint": 1, "noRootVertex": 1} \
+            or cover["uriMismatchExplainedBy"] != {"classifiedRunKey": 1} or cover["handoff"]["code"] != "GraphJoinCoverageGap":
+        fail(f"join coverage did not classify the uncovered uploads: {cover}")
+    mismatch = next(x for x in cover["gapSamples"] if x["category"] == "uriMismatch")
+    if mismatch != {"category": "uriMismatch", "expectedFrom": {"bucket": "s3Bucket", "key": "classifiedKey"}, "foundMatches": "classifiedRunKey"}:
+        fail(f"the URI mismatch example does not name classifiedKey versus classifiedRunKey: {mismatch}")
+    if "SOC-0002" in json.dumps(gap) or bucket in json.dumps(gap):
+        fail("real S3 keys left the private directory in the graph-inputs summary")
+    private = prod_actuals.read_jsonl(cover["gapSamplesPrivateFile"])
+    if len(private) != 3 or not any(r["foundUris"] == [files["f2"][1]] for r in private):
+        fail(f"the private gap samples do not hold the expected and found URIs: {private}")
+    if [e["input"] for e in prod_actuals.read_jsonl(work / "events.jsonl")] != raw_inputs:
+        fail("building graph inputs changed the PROD events")
+
+    prod_actuals.write_jsonl(work / "covered.jsonl", [events[0], events[2], events[5]])
+    queries.clear()
+    covered = build("covered", work / "covered.jsonl")
+    if covered["status"] != "BUILT" or covered["joinCoverage"]["status"] != "COVERED" or covered["joinCoverage"]["covered"] != 2:
+        fail(f"uploads whose files vertex and single debt are present were not covered: {covered}")
+    silvally_io.write_json(work / "contracts.json", m2d_contracts("vertex-account"))
+    try:
+        build("drift", work / "covered.jsonl")
+        fail("a joinCoverage endpoint that the registration's contracts do not declare was accepted")
+    except silvally_io.SilvallyError as error:
+        if "joinCoverage names endpoint" not in str(error):
+            raise
+    silvally_io.write_json(work / "contracts.json", m2d_contracts(debt_dataset))
+    try:
+        ns_keys = work / "keys.txt"
+        ns_keys.write_text("interprose:9001\n")
+        graph_inputs.build(__import__("argparse").Namespace(
+            command="gremlin", contracts=str(work / "contracts.json"), catalog=str(SKILL / "reference" / "prod-actuals.json"),
+            slice="m2d", events=None, keys_file=str(ns_keys), window_start=None, window_end_exclusive=None, as_of=None,
+            owner_decisions=str(work / "decisions.json"), max_elements=1000, private_dir=str(work / "k-private"),
+            out_dir=str(work / "k-pkg"), out=str(work / "k.json")), source=graph_inputs.GremlinSource(query))
+        fail("a joinCoverage slice was built from a keys file without the events it must cover")
+    except silvally_io.SilvallyError as error:
+        if "joinCoverage" not in str(error):
+            raise
+
+    intent = {"status": "RESOLVED", "selectedProfile": PROFILE.name, "primaryDirection": {"to": "omega", "outputShape": "tabular"},
+              "workflow": {"steps": [{"mapping": "canon-to-omega@2.0.0"}]}, "findings": [],
+              "slices": [{"id": "m2d", "outputDatasets": ["document_registration", "document_registration_rejects"]}]}
+    silvally_io.write_json(work / "intent.json", intent)
+    silvally_io.write_json(work / "actuals.json", {"slice": "m2d", "baselineKind": "state-machine-lambda-outcomes", "status": "AVAILABLE"})
+    run_tool("evaluate_run.py", "--intent", str(work / "intent.json"), "--profile", str(PROFILE), "--prod-actuals", str(work / "actuals.json"),
+             "--graph-inputs", str(work / "gap.json"), "--out", str(work / "eval.json"), check=False)
+    evaluation = json.loads((work / "eval.json").read_text())
+    phase = {p["number"]: p for p in evaluation["phases"]}
+    reasons7 = " ".join(phase[7]["reasons"])
+    if phase[7]["status"] != "BLOCKED" or "[m2d] GraphJoinCoverageGap" not in reasons7 or "classifiedRunKey" not in reasons7 \
+            or any("graph inputs JOIN_COVERAGE_GAP" in r for r in phase[9]["reasons"]):
+        fail(f"a join-coverage gap was not a phase-7 BLOCKED with its handoff (and not a canary FAIL): {phase[7]} | {phase[9]['reasons']}")
+    if evaluation["slices"]["m2d"]["verdict"] == "NOT_READY" and not any(
+            r.startswith("FAIL") for p in evaluation["phases"] for r in p["reasons"] if "GraphJoinCoverageGap" not in r):
+        fail("the join-coverage gap produced a NOT_READY verdict")
+    results.append("M2D graph inputs: unmodified events, files read by interprose:<interproseDocumentID>, incoming debt_has_file and "
+                   "debts as Parquet with 0 dangling, join coverage (classifiedRunKey mismatch, ambiguous debt, missing vertex) "
+                   "as phase-7 BLOCKED with a handoff")
 
 
 def test_prod_actuals_catalog(tmp: Path) -> None:
@@ -2203,6 +2358,7 @@ def main() -> int:
         test_regress(tmp)
         test_per_slice_evaluation(tmp)
         test_graph_inputs(tmp)
+        test_m2d_graph_inputs(tmp)
         test_prod_actuals_catalog(tmp)
         test_unattended_intake(tmp)
         test_run_workspace(tmp)
