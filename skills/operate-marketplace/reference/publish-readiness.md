@@ -75,6 +75,17 @@ Check each item in the product repo at its default branch.
    resources, keep the deploy entrypoint unchanged and add a separate
    `marketplace/app.ts` with the stage-neutral id. Point `cdk.json` or the pack
    step at it, and have deploy commands name their entrypoint explicitly.
+2a. **Marketplace entrypoint pins no account or region.** Leave `env` unset
+   (or set neither `account` nor `region`) in the entrypoint the pack step
+   synthesizes, and use no context lookups there, so the assembly installs
+   into whichever account and region Deploy targets and packing needs no AWS
+   credentials. Keep the live deploy entrypoint unchanged.
+
+   Incorrect — the bundle only installs where it was packed:
+
+   ```ts
+   new DeployStack(app, "deploy-api", { env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: "us-east-2" } });
+   ```
 
 3. **Lambda bundles minified with no source maps.** Set these in the product's
    single Lambda bundling helper, not per function:
@@ -169,9 +180,14 @@ Check each item in the product repo at its default branch.
      warnings → `LOW`; nothing → `NONE`. Stop before upload on `MEDIUM` or
      worse and report the findings.
 7. **A publish step** (`just publish`) that packs, runs the scan, writes both
-   metadata tokens from real results (section B), uploads to S3, and prints a
-   presigned URL (section B2). It supports a dry-run mode that stops before
-   the upload and prints the zip path, size, and decoded token payloads.
+   metadata tokens from real results (section B), uploads through Prism
+   Marketplace's upload endpoint with `MARKETPLACE_API_KEY` (section B2), and
+   hands the returned `bundle_url` to `PUT .../bundles` without logging it.
+   It takes the product id from
+   `MARKETPLACE_PRODUCT_ID` (or resolves it with
+   `GET /ontology/products/by-name`) and needs no AWS credentials or bucket.
+   It supports a dry-run mode that stops before the upload and prints the zip
+   path, size, and decoded token payloads.
    The script deletes `cdk.out` and runs the Marketplace synth itself; never
    scan or pack an existing `cdk.out`, or an older assembly gets attributed to
    the current commit.
@@ -249,72 +265,54 @@ Who writes it:
   from the scanner output. Never write a verdict by hand or copy one from
   another bundle.
 
-## B2. Host the bundle and get the presigned URL
+## B2. Upload the bundle through Prism Marketplace
 
-Do not ask the user for a bucket name. Resolve the upload bucket in the
-Marketplace account `848665034107` in this order, after the account and region
-check. When the pack step needed review-account credentials, switch back to a
-Marketplace-account profile before these bucket and upload commands:
+Prism Marketplace hands out the upload. Uploading needs only
+`MARKETPLACE_API_KEY`: no AWS credentials, no bucket, and no `aws s3`
+commands. Never ask the user for a bucket or an AWS profile for this step.
 
-1. A bucket the user named.
-2. The shared bucket recorded in SSM `/marketplace/bundle-upload-bucket`.
-3. Otherwise create `prism-marketplace-bundles-<account>-<region>` and record
-   it in that parameter, so later publishes reuse it:
-
-```bash
-ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
-BUCKET=$(aws ssm get-parameter --name /marketplace/bundle-upload-bucket \
-  --query Parameter.Value --output text 2>/dev/null) || {
-  BUCKET="prism-marketplace-bundles-${ACCOUNT}-${AWS_REGION}"
-  aws s3api create-bucket --bucket "$BUCKET" --region "$AWS_REGION" \
-    --create-bucket-configuration LocationConstraint="$AWS_REGION"   # omit for us-east-1
-  aws s3api put-public-access-block --bucket "$BUCKET" --public-access-block-configuration \
-    BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
-  aws s3api put-bucket-encryption --bucket "$BUCKET" --server-side-encryption-configuration \
-    '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
-  aws s3api put-bucket-lifecycle-configuration --bucket "$BUCKET" --lifecycle-configuration \
-    '{"Rules":[{"ID":"expire-bundles","Status":"Enabled","Filter":{"Prefix":""},"Expiration":{"Days":7}}]}'
-  aws s3api put-bucket-policy --bucket "$BUCKET" --policy "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"DenyInsecureTransport\",\"Effect\":\"Deny\",\"Principal\":\"*\",\"Action\":\"s3:*\",\"Resource\":[\"arn:aws:s3:::$BUCKET\",\"arn:aws:s3:::$BUCKET/*\"],\"Condition\":{\"Bool\":{\"aws:SecureTransport\":\"false\"}}}]}"
-  aws ssm put-parameter --name /marketplace/bundle-upload-bucket --type String --value "$BUCKET"
-}
-```
-
-Tell the user which bucket was used and whether it was created. Marketplace
-copies VALID bundles into its own store, so this bucket only holds uploads
-for the length of a review.
+1. `POST /ontology/products/{product_id}/components/{component_id}/bundle-uploads`
+   (no body) returns `{ upload: { url, fields }, bundle_url, expires_at }`.
+   The upload accepts one `application/zip` file of at most 256 MiB for 15
+   minutes (`expires_at`), and S3 rejects it unless both metadata fields are
+   present.
+2. POST the zip to `upload.url` as a form: every entry of `upload.fields`,
+   plus `x-amz-meta-service-builder` and `x-amz-meta-service-comply` with the
+   two tokens, and the file last. A `204` means it is stored.
+3. Pass `bundle_url` unchanged to `PUT .../bundles`. It is a presigned GET for
+   the uploaded object, valid for 1 hour, which covers the review.
 
 ```bash
-export AWS_PROFILE=<selected-profile> AWS_REGION=<region>
-KEY=bundles/<component_id>/<component_id>-cloud-assembly.zip
+BASE="${MARKETPLACE_BASE_URL:-https://1ubssdfzw2.execute-api.us-east-2.amazonaws.com/dev/marketplace}"
+TARGET_ENV=review just pack
 
-TARGET_ENV=<stage> just pack
+curl -sf -X POST -H "x-api-key: $MARKETPLACE_API_KEY" \
+  "$BASE/ontology/products/$PRODUCT_ID/components/<component_id>/bundle-uploads" > upload.json
 
-aws s3 cp artifacts/<component_id>-cloud-assembly.zip "s3://$BUCKET/$KEY" \
-  --content-type application/zip \
-  --metadata "service-builder=$BUILDER_TOKEN,service-comply=$COMPLY_TOKEN"
+# --form-string sends values literally; plain -F treats a leading @ or < specially.
+args=()
+while IFS= read -r field; do args+=(--form-string "$field"); done \
+  < <(jq -r '.upload.fields | to_entries[] | "\(.key)=\(.value)"' upload.json)
+curl -sf -o /dev/null -w '%{http_code}\n' "$(jq -r .upload.url upload.json)" "${args[@]}" \
+  --form-string "x-amz-meta-service-builder=$BUILDER_TOKEN" \
+  --form-string "x-amz-meta-service-comply=$COMPLY_TOKEN" \
+  -F "file=@artifacts/<component_id>-cloud-assembly.zip;type=application/zip"
 
-aws s3 presign "s3://$BUCKET/$KEY" --expires-in 7200
+BUNDLE_URL=$(jq -r .bundle_url upload.json); rm -f upload.json
 ```
 
 - Run these from a clean checkout of the merged default branch; `source_hash`
   must name a commit that exists on the remote.
-- Set metadata at upload time; S3 cannot add it to an existing object.
-- Use an expiry that outlasts the review (Marketplace re-downloads after up to
-  ~7.5 minutes of sandbox polling). SSO sessions cap the URL lifetime.
-- The URL must be a plain Amazon S3 HTTPS object URL, not CloudFront.
-- Treat the presigned URL as a secret while it is valid. Do not commit it.
-- Pack with credentials for the install account when the app pins
-  `env.account` at synth time.
+- The upload form and `bundle_url` are secrets while valid. Never print, log,
+  or commit them, and delete `upload.json` after use.
+- Request a new upload for every attempt; each one is single-use and expires.
 - The sandbox review installs the bundle into the review account
-  `257779860257`, not the Marketplace account `848665034107`. A review bundle
-  whose app pins `env.account` must be packed with review-account credentials.
-  Pack with a stage no live install uses there (for example
+  `257779860257`. Pack with a stage no live install uses there (for example
   `TARGET_ENV=review`), or the review updates live stacks. This matters most
   for Deploy, whose review install runs as `deploy-dev-*` in that account.
-
-Run bucket, upload, or presign commands only for a publish request, after the
-user confirms AWS credentials are ready and the account and region check
-passes.
+- A Marketplace entrypoint that pins `env.account` at synth still needs
+  install-account credentials to pack (see A2a); that is the only remaining
+  AWS requirement, and only for such products.
 
 ## C. How to report
 

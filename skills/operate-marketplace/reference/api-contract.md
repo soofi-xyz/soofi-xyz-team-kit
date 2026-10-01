@@ -44,6 +44,7 @@ already ends with `/marketplace`. Auth: shared `x-api-key` on every route.
 
 | Method | Path | Notes |
 | --- | --- | --- |
+| `POST` | `/ontology/products/{product_id}/components/{component_id}/bundle-uploads` | No body → `200` `{ upload: { url, fields }, bundle_url, expires_at }`; presigned S3 POST (15 min, ≤256 MiB zip, needs both metadata fields) and a 1-hour `bundle_url` for `PUT .../bundles` |
 | `PUT` | `/ontology/products/{product_id}/components/{component_id}/bundles` | `{ bundle_url, skip_review? }` → `202` `{ review_id, bundle_status, ... }` |
 | `GET` | `.../components/{component_id}/bundles` | `UPLOADING_IN_PROGRESS` \| `VALID` \| `FAILED`; hosted `bundle_url` when VALID |
 | `POST` | `.../components/{component_id}/rollback` | Previous VALID; needs ≥2 VALID |
