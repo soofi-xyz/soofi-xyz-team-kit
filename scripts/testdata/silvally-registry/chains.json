@@ -1,0 +1,49 @@
+{
+  "id": "chains.json",
+  "contractVersion": 1,
+  "description": "Test chain on the test registry: PROD-like member events -> alpha-to-canon -> Persist load -> Persist export -> canon-to-omega member_report -> compare with the source events.",
+  "chains": {
+    "members-end-to-end": {
+      "title": "member events end to end",
+      "slice": "members",
+      "requests": {
+        "pairs": [{"from": "alpha", "to": "omega", "slices": ["members"]}],
+        "phrases": ["members end to end", "members e2e"],
+        "examples": ["test alpha to omega for members", "test members end to end"]
+      },
+      "environments": {
+        "dev": {"account": "000000000000", "region": "xx-test-1"},
+        "prod": {"account": "999999999999", "region": "xx-test-1", "access": "read-only"}
+      },
+      "persistPolicy": "required",
+      "steps": [
+        {"id": "source", "kind": "source-events", "catalog": "chain-sources.json", "source": "member-events", "table": "members"},
+        {"id": "forward", "kind": "transform", "from": "alpha", "to": "canon", "mappingId": "alpha-to-canon", "version": "latest",
+         "input": {"step": "source", "table": "members"}, "outputShape": "graph",
+         "keysOutput": {"dataset": "vertex-member", "label": "member", "column": "display_name:String"}},
+        {"id": "persist-load", "kind": "persist-load", "input": {"step": "forward"},
+         "workflow": {"stateMachineNamePrefix": "ExampleGraphCsvWorkflow", "request": {"schemaVersion": "1", "maxConcurrency": 2, "waitForIndexCatchup": true}},
+         "isolation": {"identity": "deterministic ids merge on reload", "residue": "loaded elements remain"}},
+        {"id": "persist-export", "kind": "persist-export", "input": {"step": "persist-load"}, "keysFrom": {"step": "forward"}, "for": "projection",
+         "plan": {"root": {"dataset": "vertex-member", "keyProperty": "display_name"},
+                  "hops": [{"edge": "edge-member-has-ledger", "from": "vertex-member", "direction": "out"}]}},
+        {"id": "projection", "kind": "transform", "from": "canon", "to": "omega", "mappingId": "canon-to-omega", "version": "2.0.0",
+         "outputDatasets": ["member_report"], "input": {"step": "persist-export"}, "outputShape": "tabular"},
+        {"id": "compare", "kind": "compare", "baseline": "source",
+         "output": {"step": "projection", "dataset": "member_report", "format": "csv", "delimiter": ";", "header": true},
+         "expectation": {
+           "rulesFrom": "canon-to-omega@2.0.0 member_report",
+           "key": ["member_id"],
+           "exclusions": [{"category": "not-reportable", "when": {"notIn": {"path": "row.tier"}, "values": ["gold", "silver"]}}],
+           "fields": {"member_id": {"path": "row.member_id"},
+                      "display_name": {"case": [{"when": {"equals": {"path": "row.tier"}, "value": "silver"}, "then": {"const": "silver member"}}],
+                                       "else": {"normalize": {"path": "body"}, "as": "single-line-pipe-safe"}},
+                      "tier": {"path": "row.tier"}},
+           "normalize": {"member_id": "trim"},
+           "coverageGaps": [{"code": "NicknameUnresolved", "when": {"present": {"path": "source.ctx.nickname"}}}]
+         }}
+      ],
+      "defaults": {"forward": "latest alpha-to-canon", "projection": "canon-to-omega@2.0.0"}
+    }
+  }
+}

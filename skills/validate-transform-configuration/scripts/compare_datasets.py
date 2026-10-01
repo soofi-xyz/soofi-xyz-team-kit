@@ -16,6 +16,10 @@
            columnConstraints/key. No check is specific to any mapping.
            check and closure require --slice and record it: evaluate_run.py never applies
            evidence of one slice (or of no slice) to another.
+  source-baseline  A chained validation's final output against the rows its PROD source events should
+           produce (source_events.py expect): keyed by the chain's expectation key, every expected row must
+           appear with equal fields (after the declared normalizations), no extra or duplicate rows; the
+           report carries the exclusion categories, quarantine reasons and coverage gaps with counts.
 
 A dataset is a file, a directory of part-* files, or a glob. CSV uses --delimiter (default ',',
 the Transform default; pass the registered delimiter). Parquet needs pyarrow. Output is JSON
@@ -371,6 +375,76 @@ def cmd_check(args) -> int:
     return 0 if summary["status"] == "PASS" else 1
 
 
+def read_unquoted(spec: str, delimiter: str, header: bool) -> list[dict]:
+    """Rows of an unquoted delimited dataset (one record per line, the delimiter never inside a value)."""
+    rows, columns = [], None
+    for f in files_of(spec):
+        lines = [line for line in Path(f).read_text(encoding="utf-8").split("\n") if line]
+        if header and lines:
+            columns = columns or lines[0].split(delimiter)
+            lines = lines[1:]
+        for record in lines:
+            values = record.split(delimiter)
+            rows.append(dict(zip(columns, values)) if columns else {str(i): v for i, v in enumerate(values)})
+    return rows
+
+
+def cmd_source_baseline(args) -> int:
+    """A chain's final output against the rows its PROD source events should produce (source_events.py expect)."""
+    from catalog_expressions import NORMALIZERS as FIELD_NORMALIZERS
+
+    chain = (json.loads(Path(args.chains).read_text()).get("chains") or {}).get(args.chain)
+    if not chain:
+        raise SystemExit(f"chain {args.chain!r} is not in {args.chains}")
+    step = next(s for s in chain["steps"] if s["kind"] == "compare")
+    rule, output = step["expectation"], step["output"]
+    expectation = json.loads(Path(args.expectation).read_text())
+    normalize = rule.get("normalize") or {}
+
+    def value(row: dict, column: str) -> str:
+        raw = row.get(column, "")
+        return scalar(FIELD_NORMALIZERS[normalize[column]](raw)) if column in normalize else scalar(raw)
+
+    _, expected_rows = read_rows(args.expected, ",", "jsonl")
+    if output.get("format", "csv") == "csv":
+        dev_rows = read_unquoted(args.actual, output.get("delimiter", args.delimiter), output.get("header", True))
+    else:
+        _, dev_rows = read_rows(args.actual, args.delimiter, output.get("format"))
+    key = rule["key"]
+    expected = {tuple(value(r, k) for k in key): r for r in expected_rows}
+    dev: dict[tuple, dict] = {}
+    duplicates = 0
+    for r in dev_rows:
+        k = tuple(value(r, c) for c in key)
+        duplicates += k in dev
+        dev.setdefault(k, r)
+    mismatches = {c: 0 for c in rule["fields"] if c not in key}
+    for k in expected.keys() & dev.keys():
+        for c in mismatches:
+            mismatches[c] += value(expected[k], c) != value(dev[k], c)
+    missing, extra = len(expected.keys() - dev.keys()), len(dev.keys() - expected.keys())
+    columns_ok = not dev_rows or set(rule["fields"]) <= set(dev_rows[0])
+    ok = not missing and not extra and not duplicates and not any(mismatches.values()) and columns_ok and bool(expected)
+    check = {"id": f"source-baseline-{output['dataset']}", "dataset": output["dataset"], "kind": "matches-source-events",
+             "failureCode": "SourceBaselineMismatch", "status": "PASS" if ok else "FAIL", "stage": expectation.get("stage"),
+             "expectedRows": len(expected), "devRows": len(dev_rows), "matchedKeys": len(expected.keys() & dev.keys()),
+             "missingRows": missing, "extraRows": extra, "duplicateDevKeys": duplicates, "key": key,
+             "mismatchedByColumn": {c: n for c, n in mismatches.items() if n}, "comparedColumns": sorted(rule["fields"]),
+             "columnsPresent": columns_ok, "normalizedColumns": normalize,
+             "exclusions": expectation.get("exclusions", {}), "duplicateSourceKeysCollapsed": expectation.get("duplicateKeysCollapsed", 0),
+             "quarantine": expectation.get("quarantine", {}), "coverageGaps": expectation.get("coverageGaps", {}),
+             "rulesFrom": rule.get("rulesFrom")}
+    if not expected:
+        check["detail"] = "no expected row: the source events produced nothing this mapping should emit"
+    summary = {"slice": args.slice, "chain": args.chain, "baselineKind": "source-events", "devScope": "all",
+               "checks": [check], "status": check["status"]}
+    text = json.dumps(summary, indent=1)
+    if args.out:
+        Path(args.out).write_text(text + "\n")
+    print(text)
+    return 0 if summary["status"] == "PASS" else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--delimiter", default=",")
@@ -401,8 +475,17 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--dataset", action="append", required=True, help="DATASET=PATH of a captured output")
     p.add_argument("--oracle", action="append", help="ORACLE_ID=PATH of a locally materialized oracle dataset")
     p.add_argument("--out")
+    p = sub.add_parser("source-baseline")
+    p.add_argument("--chains", required=True, help="the chain catalog (reference/chains.json)")
+    p.add_argument("--chain", required=True)
+    p.add_argument("--slice", required=True)
+    p.add_argument("--expected", required=True, help="source_events.py expect --private-out rows")
+    p.add_argument("--expectation", required=True, help="source_events.py expect --out summary (exclusions, quarantine)")
+    p.add_argument("--actual", required=True, help="the captured final output dataset (directory or file)")
+    p.add_argument("--out")
     args = parser.parse_args(argv)
-    return {"diff": cmd_diff, "parts": cmd_parts, "format": cmd_format, "closure": cmd_closure, "check": cmd_check}[args.command](args)
+    return {"diff": cmd_diff, "parts": cmd_parts, "format": cmd_format, "closure": cmd_closure, "check": cmd_check,
+            "source-baseline": cmd_source_baseline}[args.command](args)
 
 
 if __name__ == "__main__":

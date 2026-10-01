@@ -525,7 +525,44 @@
           "description": "When DEV no longer serves the pinned candidate (pruned or replaced by another PR's latest-PR-wins DEV deploy), re-run the pinned head's own DEV CI/CD workflow run; never PROD. blanketDevWrites does not cover it."
         },
         "devRedeployMaxAttempts": { "type": "integer", "minimum": 1, "maximum": 5 },
-        "persistPolicy": { "const": "required" }
+        "persistPolicy": { "const": "required" },
+        "devPersistWrites": {
+          "const": "dev-persist-loads-for-this-run",
+          "description": "The owner allowed this run's DEV Persist loads of a chained validation (PersistNeptuneCsvWorkflow on the run's own Transform output). DEV only; never PROD. blanketDevWrites does not cover it."
+        }
+      }
+    },
+    "chain": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A chained (multi-step) validation: per-step status per stage and cost summed across steps (chain_runs.py summary).",
+      "required": ["id", "slice", "status", "steps", "missingSteps", "actualUsd"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "slice": { "type": "string", "minLength": 1 },
+        "status": { "enum": ["PASS", "FAIL", "BLOCKED"] },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["stage", "step", "kind", "status", "actualUsd"],
+            "properties": {
+              "stage": { "enum": ["canary", "full"] },
+              "step": { "type": "string", "minLength": 1 },
+              "kind": { "enum": ["source-events", "transform", "persist-load", "persist-export", "compare"] },
+              "status": { "enum": ["PASS", "FAIL", "BLOCKED", "APPROVAL_REQUIRED"] },
+              "actualUsd": { "type": ["number", "null"], "minimum": 0 }
+            }
+          }
+        },
+        "missingSteps": { "type": "array", "items": { "type": "string" } },
+        "actualUsd": { "type": ["number", "null"], "minimum": 0 },
+        "residue": {
+          "type": "array",
+          "description": "DEV Persist elements left by the run's loads; Persist has no delete-by-id workflow.",
+          "items": { "type": ["object", "null"] }
+        }
       }
     },
     "sliceVerdicts": {

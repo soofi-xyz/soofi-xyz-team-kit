@@ -9,7 +9,13 @@
       [--canary-gate [SLICE=]gate.json ...] [--run-dir [SLICE=]RUN ...] [--checks checks.json ...]
       [--actuals-comparison checks.json ...] [--closure closure.json ...] [--regression [SLICE=]regression.json ...]
       [--graph-inputs summary.json ...] [--staging-upload upload.json ...] [--deployment-check [SLICE=]check.json ...]
-      [--mode observed-dev|bounded-dev-dry-run]
+      [--chain-step persist-evidence.json ...] [--mode observed-dev|bounded-dev-dry-run]
+
+A chained request (intent.kind chain) passes every transform step's canary and full run directories with the chain
+slice (SLICE=RUN), the source build summary as --canary-sample, the source-events baseline as --prod-actuals, the
+source-baseline comparisons as --canary-comparison / --actuals-comparison, the chain gate as --canary-gate, and each
+Persist load and export record as --chain-step: a missing record blocks phase 9 (canary) or 10 (full), and a Persist
+load counts only under its operation-specific approval or the owner's devPersistWrites decision (never blanketDevWrites).
       --out phases.json
 
 Every input is real data from a PROD-derived UTC window; there is no local or synthetic mode. Named package
@@ -84,6 +90,7 @@ CANARY_EVENTS_PER_SLICE = 10
 APPROVED_GATES = {"APPROVED", "PRE_APPROVED"}
 BLANKET_DEV_WRITES = "staging-and-executions-for-this-run"
 SENSITIVE_DECISION = "stage-real-values-to-dev"
+DEV_PERSIST_WRITES = "dev-persist-loads-for-this-run"
 ALL = None
 
 
@@ -217,6 +224,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="stage_evidence_package.py upload result for a canary or full-window DEV package")
     parser.add_argument("--deployment-check", action="append", default=[],
                         help="[SLICE=]dev_redeploy.py check result taken at verdict time (repeatable)")
+    parser.add_argument("--chain-step", action="append", default=[],
+                        help="chain_runs.py persist-load or persist-export evidence of a chained validation (repeatable)")
     parser.add_argument("--mode", choices=("observed-dev", "bounded-dev-dry-run"), default="observed-dev")
     parser.add_argument("--out", required=True)
     args = parser.parse_args(argv)
@@ -226,7 +235,8 @@ def main(argv: list[str] | None = None) -> int:
     decisions = read_json(args.owner_decisions) if args.owner_decisions else dict(intent.get("ownerDecisions") or {})
     catalog = read_json(args.catalog) if Path(args.catalog).exists() else {"slices": {}}
     phases = Phases()
-    run_keys = {s["mapping"] for s in intent.get("workflow", {}).get("steps", [])}
+    run_keys = {s["mapping"] for s in intent.get("workflow", {}).get("steps", []) if s.get("mapping")}
+    chain = intent.get("chain") if intent.get("kind") == "chain" else None
     slice_ids = [s["id"] for s in intent.get("slices") or []]
     scopes = slice_ids or [ALL]
     informational = []
@@ -234,9 +244,10 @@ def main(argv: list[str] | None = None) -> int:
     run_scoped = bool(profile and profile.get("kind") == "run-scoped-profile")
     if run_scoped and profile.get("status") != "PROMOTED":
         phases.set(1, "BLOCKED", "the run-scoped profile was not promoted: " + "; ".join(profile.get("reasons", [])))
-    elif intent.get("status") == "RESOLVED" and (intent.get("selectedProfile") or profile):
+    elif intent.get("status") == "RESOLVED" and (intent.get("selectedProfile") or profile or chain):
         label = f"run-scoped profile {profile['id']} (owner decisions + resolved intent)" if run_scoped else \
-            f"profile {intent.get('selectedProfile') or profile.get('id')}"
+            (f"chain {chain['id']} ({len(chain.get('steps', []))} steps)" if chain and not profile else
+             f"profile {intent.get('selectedProfile') or profile.get('id')}")
         phases.set(1, "PASS", f"resolved {sorted(run_keys)}; {label}", "intent-resolution")
         if (intent.get("versionSelection") or {}).get("notice"):
             phases.set(1, "PASS", intent["versionSelection"]["notice"], "version-selection")
@@ -512,6 +523,35 @@ def main(argv: list[str] | None = None) -> int:
             phases.set(11, "BLOCKED", "ProdActualsComparisonMissing: a PROD actual but no full-window comparison", slice=name)
         if phases.status(10, name) != "PASS":
             phases.set(11, "BLOCKED", "no approved full-window run to compare", slice=name)
+    chain_steps = [read_json(p) for p in args.chain_step]
+    persist_approvals = []
+    if chain:
+        chain_slice = chain.get("slice")
+        persist_ids = [s["id"] for s in chain.get("steps", []) if s["kind"] in ("persist-load", "persist-export")]
+        for stage, phase in (("canary", 9), ("full", 10)):
+            for step_id in persist_ids:
+                records = [r for r in chain_steps if r.get("step") == step_id and r.get("stage") == stage]
+                if not records:
+                    phases.set(phase, "BLOCKED", f"ChainStepEvidenceMissing: no {stage} evidence of chain step {step_id}",
+                               slice=chain_slice)
+                    continue
+                for record in records:
+                    detail = record.get("executionStatus") or (record.get("scopeCheck") or {}).get("code") or ""
+                    phases.set(phase, record.get("status", "FAIL"), f"chain {stage} {step_id} {record.get('status')} {detail}".strip(),
+                               record.get("executionArn") or f"chain-{step_id}", chain_slice)
+                    approval = record.get("approval")
+                    if record.get("stepKind") != "persist-load":
+                        continue
+                    if not approval or approval.get("status") != "APPROVED":
+                        phases.set(3, "BLOCKED", f"DevPersistWriteApprovalRequired: {stage} {step_id} has no recorded approval",
+                                   slice=chain_slice)
+                    elif approval.get("kind") == "owner-dev-persist-writes" and decisions.get("devPersistWrites") != DEV_PERSIST_WRITES:
+                        phases.set(3, "BLOCKED", f"{stage} {step_id} was approved as an owner DEV Persist write without the "
+                                   "owner's devPersistWrites decision", slice=chain_slice)
+                    else:
+                        persist_approvals.append(approval["operationDigest"])
+                        phases.set(3, "PASS", f"{stage} {step_id}: DEV Persist load under approval {approval['operationDigest']} "
+                                   f"({approval.get('kind')}); PROD Persist never written", "dev-persist-approval", chain_slice)
     for name in (set(baselines) - fallback) - {r.get("slice") for r in full_reports} - set(slice_ids):
         phases.set(11, "BLOCKED", f"ProdActualsComparisonMissing: slice {name} has a PROD actual but no full-window comparison")
     def evidence_scope(report: dict, path: str, kind: str):
@@ -608,7 +648,7 @@ def main(argv: list[str] | None = None) -> int:
              "sourceWindow": {k: windows[0][k] for k in ("start", "endExclusive", "completeUtcDays")} if len(windows) == 1 else None,
              "sliceWindows": windows,
              "stagingApprovalDigests": sorted({u["approvalOperationDigest"] for u in uploads if u.get("approvalOperationDigest")}),
-             "executionApprovalDigests": sorted(set(canary_approvals) | set(full_approvals)),
+             "executionApprovalDigests": sorted(set(canary_approvals) | set(full_approvals) | set(persist_approvals)),
              "inputManifestSha256s": sorted({"sha256:" + u["manifestFileSha256"] for u in uploads if u.get("manifestFileSha256")}),
              "canary": {"status": phases.status(9), "eventsPerSlice": CANARY_EVENTS_PER_SLICE,
                         "executionApprovalDigests": sorted(set(canary_approvals))},

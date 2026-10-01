@@ -37,6 +37,9 @@ Execute `validationWorkflow.steps` in sequence. A `previous-step-output` input
 binds only to the preceding step's committed, physically verified Transform
 output. When `persistPolicy` is `forbidden`, prove graph identity and endpoint
 closure directly from Transform artifacts and record Persist as not required.
+A chained validation (`validationChain` in a profile, or a `reference/chains.json`
+entry) runs its steps in order the same way: every step's canary first, the chain
+canary gate, then every step's full window, each step with its own evidence.
 
 Reject mutable evidence as proof. A branch, pull request, tag, `latest` object, undocumented deployment timestamp, or successful status without an immutable binding cannot validate behavior; a pull request is only a discovery selector and its resolved head SHA is the evidence identity.
 
@@ -99,6 +102,20 @@ Local work is limited to read-only discovery and a private evidence directory; n
 PROD is read-only and PROD Transform is never invoked. Collect control-plane metadata, execution logs, Iceberg snapshots and sanitized existing evidence only. Any required PROD mutation becomes a handoff; never execute it. PROD reads are bounded: an Iceberg actual is read only for the selected day(s) (window pushed down to the scan), and graph input days are counted with one bounded `count()` per day.
 
 The environment is DEV. It is asked unless the request says `in dev`/`in prod` or the owner gave `blanketDevWrites` for a test or validate request; then it is `CONFIRMED` with that source. Persist is `forbidden` for Transform validation as a stated policy default (a profile's `persistPolicy` or the owner's "allow a bounded Persist canary" changes it), recorded `CONFIRMED` with its source and shown up front in the resolver's `defaultsNotice`, never asked and never inferred.
+
+### DEV Persist writes in chained validations
+
+A chained validation (`reference/chains.json`) may load its own forward Transform output into DEV Persist and export it
+back; Persist is then `required` by the chain, stated up front, never asked as a policy. Each load is one operation card
+(`chain_runs.py persist-card`: the DEV `PersistNeptuneCsvWorkflow` ARN, the request with `s3_uri` set to the forward
+step's committed output, the expected elements per dataset, the cost ceiling) approved per digest, or by the owner's
+up-front `devPersistWrites` decision ("allow DEV Persist writes"; default: ask). `blanketDevWrites` covers staging and
+Transform executions only, never a Persist write. PROD Persist is never written: every Persist operation checks the
+profile's account and the state machine against the chain's DEV account. DEV Persist is shared: the export reads only
+the elements rooted at the forward output's own key values and must match the forward output's counts; loaded elements
+remain as residue (Persist has no delete-by-id workflow) and are reported with their counts. Ids produced by the forward
+mapping are deterministic and Persist rehashes them by content, so reloading the same window merges into the same
+elements.
 
 ### Pinned candidate not served in DEV
 

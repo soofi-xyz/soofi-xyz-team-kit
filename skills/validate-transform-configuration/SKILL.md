@@ -17,7 +17,8 @@ person's machine (checkouts, `/tmp` scripts, cached registries, PROD extracts) i
    `/silvally` or ask in plain language ("test <source> to <target> <output words>", or
    "validate <source> to <target> for <slice>, <slice> and <slice>" for named package slices;
    `test`, `validate` and `check` are the same request). Slice words are not languages. PROD Transform is never invoked; unpublished-in-PROD is not a
-   mapping `NOT_READY`.
+   mapping `NOT_READY`. `test quiq to interprose for sms` or `test sms end to end` runs the chained SMS end-to-end
+   validation (see **Chained validation** below).
 2. **Prerequisites** (checked by the agent; install once):
    - `gh` authenticated (`gh auth status`) with read access to the Lexicon and Transform repositories.
    - AWS CLI v2 with SSO profiles for DEV and, read-only, PROD (source windows and PROD actuals). Profile names are
@@ -71,8 +72,10 @@ All tools live in `scripts/`, take every location as an argument, and print JSON
 | `dev_redeploy.py` | 8–10, 12 | `check`: read-only served `mapping.json` SHA-256 against the pin (`SERVED`, `PRUNED`, `DIGEST_DIFFERS`), classified by the newest successful DEV deploy (every run of the DEV deploy workflow across branches within the re-run horizon, completed with success, ordered by completion) as `DeploymentRace` (another head; `BLOCKED`, recoverable) or `DeploymentDrift` (the pinned head's own deploy; `FAIL`). `redeploy`: only under the owner's `devRedeployPinned`, re-run the pinned head's DEV workflow run (the layout's `devDeploy`), wait, poll until served, and with `--workspace` refresh that workspace's registry snapshot (read-only); at most `maxRedeploys` per run |
 | `stage_evidence_package.py` | 4 | Build `manifest.json` (each object labelled by the dataset directory that holds it; the card carries `manifestCanonicalSha256`), then create-only DEV upload with an approval digest (`--approve`) or the owner's blanket DEV approval (`--owner-decisions`); the upload record carries `manifestFileSha256` |
 | `transform_runs.py` | 9–11 | Cases derived from the registration (`--slice`, `--outputs a,b`, each case's `inputContent` from the package manifest), `--stage canary|full`, operation cards (pins refreshed read-only from what DEV serves first), approval-gated DEV `start`, read-only `capture` (output rows only under the run's `private/`), `canary-gate --slice` (summarize one slice's canary and ask), `approve-full`, `regress --slice` (matched by mapping digest, slice, outputs and input content, never S3 prefix; `NOT_APPLICABLE` with the reason when no content-identical case exists), Glue `cost` |
-| `compare_datasets.py` | 11 | Keyed or whole-row diffs (CSV, JSONL, Parquet), part-byte identity, CSV header/delimiter checks, graph closure, and `check`: contracts plus the profile's declarative invariants, oracles and allowed losses. `check` and `closure` require `--slice` |
+| `compare_datasets.py` | 11 | Keyed or whole-row diffs (CSV, JSONL, Parquet), part-byte identity, CSV header/delimiter checks, graph closure, and `check`: contracts plus the profile's declarative invariants, oracles and allowed losses. `check` and `closure` require `--slice`. `source-baseline`: a chain's final output against the rows its source events require (missing, extra, changed and duplicate rows; exclusions, quarantine and coverage gaps with counts) |
 | `evaluate_run.py` | 1–12 | Map tool evidence to the 12 phase statuses per slice and compute each slice's verdict plus the overall verdict; phase 12 is the final PROD-derived validation |
+| `source_events.py` | 1, 7, 9–11 | Chains: `days` (per-UTC-day object counts per family of a chain source's PROD listing, for `data-days`), `build` (the window's PROD events read-only, normalized by the chain source catalog's declarative fields, lookups and quarantine rules into the first mapping's input language, artifacts copied into the DEV package; canary of 10 accepted events, mixed outcomes; `LOOKUP_ROWS_REQUIRED` until a rows-file lookup is read), `expect` (the compare step's expected rows with exclusion categories, coverage gaps and the `source-events` baseline); the catalogs' declarative expressions are `catalog_expressions.py` |
+| `chain_runs.py` | 3, 9–12 | Chains: `plan` (per-stage prefixes, run ids and pins), `persist-card`/`persist-load` (the DEV Persist load of the forward output; approval per digest or `devPersistWrites`, never `blanketDevWrites`; PROD refused), `persist-export` (bounded read-only DEV Persist read of exactly this run's ids into the next mapping's graph inputs plus hydrated bodies; `ExportScopeMismatch`), `gate` (the chain canary gate), `summary` (per-step status and cost summed across steps) |
 | `build_run_package.py` | 12 | Generate the package spec from the run directories and the run's records (`--workspace`, `--intent`, `--profile-doc`, `--evaluation`, `--handoffs`, `--graph-inputs`; the Transform revision, Glue script digest and Spark version by flag; optional `--package-spec` override, `--write-package-spec` to keep it), assemble `run.json` (actual cost summed over every canary and full run directory), compute the verdict from phases, refuse `READY` without a passing canary, an approved full run and a PROD-actuals baseline, validate against the run schema |
 
 Tests: `scripts/test-silvally-tools.py` and `scripts/test-validate-transform-configuration.py`
@@ -143,7 +146,7 @@ Read, in order:
 4. `reference/transform-configuration-profile-draft.schema.json`
 5. `reference/transform-configuration-profile.schema.json`
 6. the selected profile after profile matching (passed with `--profiles`; examples in `examples/profiles/`)
-7. `reference/test-dataset-recommendations.md` and `reference/prod-actuals.json`
+7. `reference/test-dataset-recommendations.md` and `reference/prod-actuals.json` (for a chained request also `reference/chains.json`, `reference/chain-sources.json` and `reference/chained-validation.md`)
 8. `reference/validation-phases-and-gates.md`
 9. `reference/evidence-requirements.md`
 10. `reference/execution-and-parity.md`
@@ -265,10 +268,11 @@ An owner can let an unattended run finish by stating decisions in the request; t
 - "stage real phone numbers and message bodies to DEV" (`sensitiveFieldStaging`): slices whose catalog lists `sensitiveFields` (SMS) stage the real values unmodified in DEV and compare them directly. Without it, `graph_inputs.py` and `stage_evidence_package.py` refuse such a slice before any PROD read (`SensitiveStagingDecisionRequired`).
 - "redeploy the pinned candidate to DEV if it is pruned[, up to N times]" (`devRedeployPinned`, optional `devRedeployMaxAttempts`): see **Pinned candidate not served in DEV** below. `blanketDevWrites` never covers a deployment.
 - "allow a bounded Persist canary" (`persistPolicy: required`): replaces the stated policy default `forbidden`, unless the profile fixes the policy; each Persist write stays approval-gated.
+- "allow DEV Persist writes" (`devPersistWrites`): a chained validation's DEV Persist loads of its own forward output are approved without a per-card question, each still recorded with the card digest (`kind: owner-dev-persist-writes`). `blanketDevWrites` never covers a Persist write, and nothing covers PROD Persist.
 
 `blanketDevWrites` in a test or validate request also confirms the environment as DEV (recorded in `confirmedFacts` with source `ownerDecisions.blanketDevWrites`); the Persist default is recorded `CONFIRMED` with source `policy-default`. Both appear in the resolver's `defaultsNotice`.
 
-Without these decisions the defaults stay: ask about each DEV write, ask before the full run, ask before staging sensitive fields, ask before a DEV redeploy, and `BLOCKED` on any unaccepted `PRODUCT_CHANGE`.
+Without these decisions the defaults stay: ask about each DEV write, ask before the full run, ask before staging sensitive fields, ask before a DEV redeploy, ask before each DEV Persist load, and `BLOCKED` on any unaccepted `PRODUCT_CHANGE`.
 
 ### Pinned candidate not served in DEV
 
@@ -282,6 +286,15 @@ A redeploy is DEV only: `dev_redeploy.py` refuses a workflow in `devDeploy.forbi
 With `windowSelection` given, `promote-run-profile` promotes a run-scoped profile (`kind: run-scoped-profile`) from the owner decisions and the resolved intent for slices the catalog knows, so an unattended request such as `validate lexicon to interprose for sms, dsa and m2d, approve all DEV writes, stage real phone numbers and message bodies to DEV, if the canary passes run the full window, most recent full UTC day with real data per slice` can reach a per-slice verdict. It stays fail-closed: an unknown slice, a missing window decision or an unresolved fact leaves the draft unpromoted with its questions.
 
 When PROD metadata access, the window confirmation, a PROD actual, a staging or execution approval, the canary gate or DEV access is unavailable, the verdict is `BLOCKED`, never `READY`. Hand off exactly what is missing: the PROD read-only access, the confirmation question, the canary result awaiting approval, or the pending operation card and its digest.
+
+### Chained validation (N mapping steps with a DEV Persist load and export)
+
+`test quiq to interprose for sms` or `test sms end to end` resolves the SMS chain of `reference/chains.json` (`kind:
+chain`): real PROD Quiq events read-only → DEV forward mapping → DEV Persist load → bounded DEV Persist export of exactly
+this run's elements → DEV projection → comparison with the source events, every step's canary first, then the chain gate
+(`chain_runs.py gate`), then every step's full window. Each transform step pins its own version; `devPersistWrites`
+approves the DEV Persist loads (never `blanketDevWrites`; PROD Persist is refused). Follow
+`reference/chained-validation.md` for the exact order of commands and the unattended phrasing.
 
 ## Resolve configuration sources automatically
 

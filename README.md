@@ -9,7 +9,13 @@ Choose a builder to implement or fix a product, or a configurer to use an existi
 ```text
 /conkeldurr Fix Persist's duplicate-ingest handling and walk me through a replay test.
 /celebi Configure a Connect → Transform → Persist outcome on the existing System.
+/silvally test sms end to end; approve all DEV writes; allow DEV Persist writes
 ```
+
+`/silvally test sms end to end` (or `test quiq to interprose for sms`) is a chained validation: real PROD Quiq
+events → DEV `quiq-to-lexicon` → DEV Persist load and scoped export → DEV `lexicon-to-interprose@2.0.0` `sms_log`
+→ comparison with the source events, canary first. Chains are data in
+[`chains.json`](./skills/validate-transform-configuration/reference/chains.json).
 
 In Copilot, select `soofi-xyz-team-kit:<agent>`. In Codex, request the named custom agent.
 

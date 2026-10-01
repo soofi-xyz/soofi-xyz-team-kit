@@ -1256,6 +1256,86 @@
       "type": "string",
       "minLength": 1,
       "description": "Id of the package entry in reference/prod-actuals.json whose slices define what PROD actually produced."
+    },
+    "validationChain": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A chained validation of N steps run in order, canary first and then the full window, each step with its own evidence and DEV approval. transform steps pin their own mapping; persist-load and persist-export load the previous transform output into DEV Persist and export exactly this run's elements back; compare checks the final output against the PROD source events. Catalogued chains live in reference/chains.json.",
+      "required": [
+        "chain",
+        "steps"
+      ],
+      "properties": {
+        "chain": {
+          "type": "string",
+          "minLength": 1,
+          "description": "chain id in the chain catalog"
+        },
+        "catalog": {
+          "type": "string",
+          "minLength": 1
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "sequence",
+              "id",
+              "kind"
+            ],
+            "properties": {
+              "sequence": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "id": {
+                "$ref": "#/$defs/kebab"
+              },
+              "kind": {
+                "enum": [
+                  "source-events",
+                  "transform",
+                  "persist-load",
+                  "persist-export",
+                  "compare"
+                ]
+              },
+              "direction": {
+                "$ref": "#/$defs/kebab",
+                "description": "the profile direction a transform step executes"
+              },
+              "inputStep": {
+                "$ref": "#/$defs/kebab",
+                "description": "the earlier step whose committed output this step reads"
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "kind": {
+                      "const": "transform"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "direction"
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "persistPolicy": {
+          "enum": [
+            "required"
+          ]
+        }
+      }
     }
   },
   "$defs": {

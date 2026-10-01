@@ -120,6 +120,9 @@ OWNER_DECISIONS = {
         r"|\bdev\s+re[\s-]?deploy(?:s|ment)?\s+(?:of\s+the\s+pinned\s+(?:candidate|mapping)\s+)?(?:is\s+|are\s+)?(?:pre[\s-]?)?approved\b[^.;\n]*"),
     "persistPolicy": re.compile(
         r"\b(?:require|allow|approve)[sd]?\s+(?:a\s+)?(?:bounded\s+)?(?:dev\s+)?persist\s+canary\b[^.;\n]*"),
+    "devPersistWrites": re.compile(
+        r"\b(?:allow|approve)[sd]?\s+(?:all\s+)?(?:the\s+)?dev\s+persist\s+(?:writes?|loads?)\b[^.;\n]*"
+        r"|\bdev\s+persist\s+(?:writes?|loads?)\s+(?:are\s+|is\s+)?(?:pre[\s-]?)?(?:approved|allowed)\b[^.;\n]*"),
 }
 OWNER_DECISION_VALUES = {
     "windowSelection": "most-recent-full-utc-day-with-data-per-slice",
@@ -127,7 +130,10 @@ OWNER_DECISION_VALUES = {
     "sensitiveFieldStaging": "stage-real-values-to-dev",
     "devRedeployPinned": "rerun-pr-dev-workflow-for-pinned-head",
     "persistPolicy": "required",
+    "devPersistWrites": "dev-persist-loads-for-this-run",
 }
+STEP_VERSION = re.compile(r"\b([a-z0-9]+(?:-[a-z0-9]+)*-to-[a-z0-9]+(?:-[a-z0-9]+)*)@(\d+\.\d+\.\d+)\b")
+DEFAULT_CHAINS = SKILL_ROOT / "reference" / "chains.json"
 REDEPLOY_LIMIT = re.compile(r"\b(?:up\s+to|at\s+most)\s+(\d+)\s+(?:times|redeploys?)\b")
 CANDIDATE_BUILD_LABEL = "candidate-build"
 OWNER_PREFIX = re.compile(r"\bowner\s+decisions?\s*:?")
@@ -209,8 +215,12 @@ def extract_package_slices(text: str, catalog: dict) -> tuple[str, list[str]]:
 def parse_request(request: str, slice_catalog: dict | None = None) -> dict:
     text = request.strip().lower()
     text = re.sub(r"^/?silvally\b", "", text).strip()
+    steps = {m.group(1): m.group(2) for m in STEP_VERSION.finditer(text)}
+    text = STEP_VERSION.sub(" ", text)
     text, owner_decisions = extract_owner_decisions(text)
     hints: dict = {"version": None, "environment": None, "mode": None, "ownerDecisions": owner_decisions}
+    if steps:
+        hints["stepVersions"] = steps
     version = VERSION_HINT.search(text)
     if version:
         hints["version"] = version.group(1)
@@ -223,6 +233,10 @@ def parse_request(request: str, slice_catalog: dict | None = None) -> dict:
         if pattern.search(text):
             hints["mode"] = mode
             text = pattern.sub(" ", text)
+    chain_text = text
+    for verb in VERBS:
+        chain_text = re.sub(rf"^\s*{verb}\b", " ", chain_text).strip()
+    chain_text = " ".join(re.split(r"[\s,]+", chain_text)).strip(" ,")
     text = re.sub(r"\bend[\s-]to[\s-]end\b", " ", text)
     for verb in VERBS:
         text = re.sub(rf"^\s*{verb}\b", " ", text).strip()
@@ -239,6 +253,7 @@ def parse_request(request: str, slice_catalog: dict | None = None) -> dict:
             "qualifiers": [],
             "slices": slices,
             "hints": hints,
+            "chainText": chain_text,
         }
 
     def terms(side: str) -> tuple[list[str], list[str]]:
@@ -261,6 +276,7 @@ def parse_request(request: str, slice_catalog: dict | None = None) -> dict:
         "qualifiers": source_qualifiers + target_qualifiers,
         "slices": slices,
         "hints": hints,
+        "chainText": chain_text,
     }
 
 
@@ -1537,13 +1553,164 @@ def environment_fact(hints: dict) -> dict | None:
                           + ("the owner's blanketDevWrites decision for this test." if evidence.startswith("owner") else "the request."))}
 
 
+def load_chains(path: Path | str | None = None) -> dict:
+    source = Path(path) if path else DEFAULT_CHAINS
+    if not source.exists():
+        return {"chains": {}, "path": None}
+    return {**json.loads(source.read_text()), "path": str(source)}
+
+
+def match_chain(parsed: dict, chains: dict) -> tuple[str, dict, str] | None:
+    """(chain id, chain, how) when the request names a catalogued chain: its language pair with its slices, or a phrase."""
+    for chain_id, chain in sorted((chains.get("chains") or {}).items()):
+        requests = chain.get("requests") or {}
+        phrases = {" ".join(p.lower().split()) for p in requests.get("phrases", [])}
+        if parsed.get("chainText") in phrases:
+            return chain_id, chain, "phrase"
+        if parsed["status"] != "PARSED":
+            continue
+        for pair in requests.get("pairs", []):
+            if (parsed["sourceTerms"] == [pair["from"]] and parsed["targetTerms"] == [pair["to"]]
+                    and sorted(parsed.get("slices") or []) == sorted(pair.get("slices") or [])):
+                return chain_id, chain, "language-pair-and-slices"
+    return None
+
+
+def select_chain_step(registry: Registry, step: dict, requested: str | None) -> dict:
+    """One transform step's mapping: the request's id@x.y.z, else the chain's pinned default, else the latest version."""
+    ranked = [m.summary() for m in registry.enabled(source=step["from"], target=step["to"]) if m.id == step["mappingId"]]
+    version = requested or (None if step.get("version", "latest") == "latest" else step["version"])
+    if not ranked:
+        return {"status": "NO_MAPPING", "selected": None, "candidates": [],
+                "reason": f"no enabled {step['mappingId']} ({step['from']}->{step['to']}) in the inspected registries"}
+    if version:
+        chosen = next((r for r in ranked if r["mapping"] == f"{step['mappingId']}@{version}"), None)
+        if not chosen:
+            return {"status": "NO_MAPPING", "selected": None, "candidates": ranked,
+                    "reason": f"{step['mappingId']}@{version} is not an enabled version ({', '.join(r['mapping'] for r in ranked)})"}
+        rule = "explicit-version" if requested else "chain-default"
+        selection = version_selection(ranked, chosen, version, rule)
+        if not requested:
+            selection["notice"] = (f"Chain step {step['id']}: {chosen['mapping']} (the chain's pinned default); "
+                                   f"add {step['mappingId']}@x.y.z to pick another.")
+        return {"status": "RESOLVED", "selected": chosen["mapping"], "candidates": ranked, "versionSelection": selection}
+    return latest_published(ranked, ranked, step["from"], step["to"])
+
+
+def resolve_chain(parsed: dict, registry: Registry, chain_id: str, chain: dict, how: str, chains_path: str | None,
+                  result: dict) -> dict:
+    """A chained request: every transform step resolved and pinned, the Persist steps fixed by the chain, owner decisions kept."""
+    hints = parsed["hints"]
+    transforms = [s for s in chain["steps"] if s["kind"] == "transform"]
+    overrides = {k: v for k, v in (hints.get("stepVersions") or {}).items() if k in {s["mappingId"] for s in transforms}}
+    unknown_overrides = sorted(set(hints.get("stepVersions") or {}) - set(overrides))
+    if hints.get("version") and transforms:
+        overrides.setdefault(transforms[-1]["mappingId"], hints["version"])
+    steps, notices, findings = [], [], []
+    for step in chain["steps"]:
+        entry = {"id": step["id"], "kind": step["kind"]}
+        if step["kind"] == "transform":
+            selection = select_chain_step(registry, step, overrides.get(step["mappingId"]))
+            entry.update({"from": step["from"], "to": step["to"], "selection": selection["status"],
+                          "mapping": selection.get("selected"), "versionSelection": selection.get("versionSelection"),
+                          "outputDatasets": step.get("outputDatasets")})
+            if selection["status"] != "RESOLVED":
+                findings.append({"code": "ChainStepUnresolved", "step": step["id"], "detail": selection.get("reason")})
+            elif step.get("outputDatasets"):
+                lacking = sorted(set(step["outputDatasets"]) - set(registry.mappings[selection["selected"]].output_names))
+                if lacking:
+                    entry["mapping"] = None
+                    findings.append({"code": "ChainStepUnresolved", "step": step["id"], "mapping": selection["selected"],
+                                     "detail": f"{selection['selected']} does not output {lacking}, which this chain compares"})
+            notice = (selection.get("versionSelection") or {}).get("notice")
+            if notice:
+                notices.append(notice)
+        steps.append(entry)
+    for name in unknown_overrides:
+        findings.append({"code": "ChainVersionOverrideIgnored", "severity": "informational", "mapping": name,
+                         "detail": f"{name} is not a transform step of chain {chain_id}"})
+    resolved = [s for s in steps if s["kind"] == "transform" and s.get("mapping")]
+    decisions = hints["ownerDecisions"]
+    environment = environment_fact(hints)
+    persist = {"id": "persist-policy", "label": "Persist", "value": "required", "state": "CONFIRMED", "source": "chain",
+               "evidenceIds": ["chain-catalog"],
+               "statement": ("required — the chain loads the forward output into DEV Persist and exports it back (DEV only; PROD "
+                             "Persist is never written); each load needs its own approval or the owner's devPersistWrites "
+                             f"({'given' if decisions.get('devPersistWrites') else 'not given: asked before the load'}).")}
+    facts = ([environment] if environment else []) + [persist]
+    questions = []
+    if hints.get("environment") is None and not environment:
+        questions.append({"id": "environment", "prompt": "Which environment should Silvally validate against?",
+                          "options": [{"id": "dev", "label": "DEV (default): approval-gated staging, runs and Persist loads"},
+                                      {"id": "prod-read-only", "label": "PROD read-only: metadata and existing evidence only"}],
+                          "allowMultiple": False, "default": "dev"})
+    if not decisions.get("devPersistWrites"):
+        questions.append({"id": "dev-persist-writes", "prompt": "May this run load its forward output into the shared DEV Persist "
+                          "graph (and leave it there as residue)?",
+                          "options": [{"id": "ask-per-load", "label": "Ask before each DEV Persist load (default)"},
+                                      {"id": "allow-dev-persist-writes", "label": "Allow DEV Persist writes for this run"}],
+                          "allowMultiple": False, "default": "ask-per-load"})
+    last = resolved[-1] if resolved else None
+    result.update({
+        "status": "RESOLVED" if len(resolved) == len(transforms) and transforms else "NO_MAPPING",
+        "kind": "chain",
+        "chain": {"id": chain_id, "catalog": chains_path, "slice": chain.get("slice"), "match": how, "title": chain.get("title"),
+                  "steps": steps, "persistPolicy": chain.get("persistPolicy", "required")},
+        "intent": {"source": transforms[0]["from"] if transforms else None, "target": transforms[-1]["to"] if transforms else None,
+                   "qualifiers": []},
+        "languages": {n: language_status(registry, n) for n in sorted({x for s in transforms for x in (s["from"], s["to"])})},
+        "selection": {"status": "RESOLVED" if last else "NO_MAPPING", "selected": last["mapping"] if last else None,
+                      "candidates": []},
+        "primaryDirection": {"from": transforms[-1]["from"], "to": transforms[-1]["to"], "outputShape": transforms[-1].get("outputShape")}
+        if transforms else {},
+        "workflow": {"steps": [{"sequence": i + 1, "step": s["id"], "kind": s["kind"], "mapping": s.get("mapping"),
+                                "from": s.get("from"), "to": s.get("to"),
+                                "inputSource": "prod-derived-source-events" if i == 0 else "previous-step-output"}
+                               for i, s in enumerate(steps)],
+                     "persistPolicyDefault": chain.get("persistPolicy", "required"), "persistPolicySource": "chain"},
+        "slices": [{"id": chain.get("slice"), "outputDatasets": transforms[-1].get("outputDatasets") or []}] if chain.get("slice") else [],
+        "selectedProfile": None,
+        "findings": findings,
+        "questions": questions,
+        "confirmedFacts": facts,
+        "defaultsNotice": defaults_notice(facts),
+    })
+    if notices:
+        result["notice"] = " ".join(notices)
+    if last and last.get("versionSelection"):
+        result["versionSelection"] = last["versionSelection"]
+    if result["status"] == "RESOLVED":
+        result["intakeState"] = "CONTEXT_COMPLETE" if not questions else "NEEDS_INPUT"
+        forbidden = sorted(shared_forbidden_labels(registry) | {normalize_dataset(r) for r in registry.retired})
+        tokens = sql_scan_tokens(registry, forbidden)
+        result["conceptChecks"] = {s["mapping"]: concept_checks(registry, registry.mappings[s["mapping"]], forbidden) for s in resolved}
+        result["sqlScan"] = {s["mapping"]: {"queriesScanned": len(set(registry.mappings[s["mapping"]].query_files)),
+                                            "forbiddenLabels": sql_forbidden_labels(registry.mappings[s["mapping"]], tokens)}
+                             for s in resolved}
+        for key, checks in result["conceptChecks"].items():
+            for c in failing_concepts(checks):
+                findings.append({"code": "RemovedLexiconConcept" if c["state"] in {"FORBIDDEN", "REMOVED_ON_MAIN"}
+                                 else "LexiconConceptInactive", "mapping": key, **c})
+        for key, scan in result["sqlScan"].items():
+            findings.extend({"code": "ForbiddenConceptInSql", "mapping": key, **hit} for hit in scan["forbiddenLabels"])
+        result["nextSteps"] = [
+            "chain_runs.py plan --intent <this file> --day <confirmed UTC day> --dev-bucket <DEV Transform data bucket>",
+            "then the canary of every step in order, chain_runs.py gate, and (after approval) the full window",
+        ]
+    return result
+
+
 def discover(request: str, registry: Registry, window: str = "<startZ>_<endExclusiveZ>",
-             slice_catalog: dict | None = None, actuals: dict | None = None) -> dict:
+             slice_catalog: dict | None = None, actuals: dict | None = None, chains: dict | None = None) -> dict:
     catalog = slice_catalog if slice_catalog is not None else load_slice_catalog()
     actuals = actuals if actuals is not None else load_actuals_catalog()
+    chains = chains if chains is not None else load_chains()
     parsed = parse_request(request, catalog)
     result: dict = {"parsed": parsed, "intakeState": "NEEDS_INPUT", "registrySources": registry.registry_labels,
                     "ownerDecisions": parsed["hints"]["ownerDecisions"]}
+    matched = match_chain(parsed, chains)
+    if matched:
+        return resolve_chain(parsed, registry, *matched, chains.get("path"), result)
     if parsed["status"] != "PARSED":
         result.update({"status": "UNPARSED", "questions": [], "nextStep": parsed["reason"]})
         return result
@@ -2367,6 +2534,7 @@ def main(argv: list[str] | None = None) -> int:
             p.add_argument("--request", required=True)
         p.add_argument("--slice-catalog", help="package-slices JSON (default: reference/package-slices.json)")
         p.add_argument("--prod-actuals-catalog", help="PROD-actuals catalog (default: reference/prod-actuals.json)")
+        p.add_argument("--chains", help="chain catalog (default: reference/chains.json)")
         if name == "contracts":
             p.add_argument("--mapping", required=True, help="exact id@version to derive contracts for")
         if name == "check-profile":
@@ -2419,8 +2587,12 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "check-profile":
             output = check_profile(registry, json.loads(Path(args.profile).read_text()))
         else:
-            output = discover(args.request, registry, args.window, catalog, load_actuals_catalog(args.prod_actuals_catalog))
-            if args.command == "draft-profile":
+            output = discover(args.request, registry, args.window, catalog, load_actuals_catalog(args.prod_actuals_catalog),
+                              load_chains(args.chains))
+            if args.command == "draft-profile" and output.get("kind") == "chain":
+                output = {**output, "draft": None, "detail": "a chained request is configured by its chain catalog entry "
+                          "(chain_runs.py plan); each step's mapping is still validated against its registration"}
+            elif args.command == "draft-profile":
                 output = draft_profile(args.request, output, registry)
     text = json.dumps(output, indent=2, sort_keys=False) + "\n"
     if getattr(args, "out", None):

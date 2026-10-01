@@ -176,7 +176,16 @@ class SpecGenerator:
                      and e.get("slug") == candidate.get("slug")), candidate)
         return candidate, main
 
+    @property
+    def chain(self) -> dict | None:
+        return (self.intent or {}).get("chain") if (self.intent or {}).get("kind") == "chain" else None
+
     def profile(self) -> dict:
+        if not self.args.profile_doc and self.chain and self.chain.get("catalog"):
+            entry = (read_json(self.chain["catalog"]).get("chains") or {}).get(self.chain["id"])
+            self.need(entry, f"chain {self.chain['id']} in {self.chain['catalog']}")
+            return {"id": self.chain["id"], "revision": "chain-catalog",
+                    "sha256": "sha256:" + sha256_bytes(json.dumps(entry, sort_keys=True, separators=(",", ":")).encode())}
         return profile_identity(self.need(self.args.profile_doc, "--profile-doc"))
 
     def discoveryTrace(self) -> list[dict]:
@@ -217,11 +226,24 @@ class SpecGenerator:
                            for e in p.get("evidenceIds", []) if KEBAB.match(e)}) or ["intent-resolution"]
         accepted = set(self.evaluation.get("acceptedProductChanges") or [])
         slices = self.slices
+        directions = [{"id": d, "sourceLanguage": language(source, candidate["commitSha"]),
+                       "targetLanguage": language(target, candidate["commitSha"]), "mapping": mapping,
+                       "evidenceIds": ["intent-resolution"] + ([kebab(f"{s}-slice")] if s else [])}
+                      for d, s in zip(self.direction_ids(), slices or [None])]
+        if self.chain:
+            directions = []
+            for step in (s for s in self.chain["steps"] if s["kind"] == "transform"):
+                step_pin = ((step.get("versionSelection") or {}).get("pin") or {}).get("sha256")
+                directions.append({"id": kebab(f"{self.chain['id']}-{step['id']}"),
+                                   "sourceLanguage": language(step["from"], candidate["commitSha"]),
+                                   "targetLanguage": language(step["to"], candidate["commitSha"]),
+                                   "mapping": {"id": step["mapping"], "revision": candidate["commitSha"],
+                                               "sha256": digest(self.need(step_pin, f"the pin of chain step {step['id']}"))},
+                                   "evidenceIds": ["intent-resolution", kebab(f"chain-{step['id']}")]})
+            last = [s for s in self.chain["steps"] if s["kind"] == "transform"][-1]
+            mapping_id, version = self.chain["id"], last["mapping"].split("@")[-1]
         return {"id": kebab("-".join([mapping_id, *slices])), "version": version, "transformProduct": self.transform_product(),
-                "directions": [{"id": d, "sourceLanguage": language(source, candidate["commitSha"]),
-                                "targetLanguage": language(target, candidate["commitSha"]), "mapping": mapping,
-                                "evidenceIds": ["intent-resolution"] + ([kebab(f"{s}-slice")] if s else [])}
-                               for d, s in zip(self.direction_ids(), slices or [None])],
+                "directions": directions,
                 "lexicon": language(hub, main["commitSha"]),
                 "sourceRevisions": [{"slug": s, "commitSha": c} for s, c in dict.fromkeys((e["slug"], e["commitSha"]) for e in self.repositories)],
                 "dependencies": [{"product": "Lexicon", "version": main["commitSha"], "sha256": language(hub, main["commitSha"])["sha256"],
@@ -242,6 +264,12 @@ class SpecGenerator:
                 "containsRawPii": False, "containsSecrets": False}
 
     def graph(self) -> dict:
+        exports = [r for r in getattr(self.args, "chain_records", []) if r.get("stepKind") == "persist-export"]
+        if exports:
+            return {"required": True, "identityUnique": all(r.get("status") == "PASS" for r in exports),
+                    "endpointCount": sum((r.get("rootsFound") or 0) + sum(h.get("endpointVertices") or 0 for h in r.get("hops", []))
+                                         for r in exports),
+                    "danglingEndpointCount": sum(r.get("danglingEndpointCount") or 0 for r in exports)}
         if self.graph_summaries:
             return {"required": True, "identityUnique": all(s.get("status") == "BUILT" for s in self.graph_summaries),
                     "endpointCount": sum((s.get("rootsFound") or 0) + sum(h.get("endpointVertices") or 0 for h in s.get("hops", []))
@@ -261,14 +289,28 @@ class SpecGenerator:
                 "and Spark version were not supplied (--transform-revision, --transform-deployment-digest, --spark-version)",
                 "evidenceIds": ["runtime-provenance"]}
 
+    def chain_status(self, kind: str) -> str | None:
+        records = [r for r in getattr(self.args, "chain_records", []) if r.get("stepKind") == kind]
+        if not records:
+            return None
+        statuses = {r.get("status") for r in records}
+        stages = {r.get("stage") for r in records if r.get("status") == "PASS"}
+        return "FAIL" if "FAIL" in statuses else ("PASS" if {"canary", "full"} <= stages else "BLOCKED")
+
     def persistCanary(self) -> dict:
         policy = (self.profile_doc.get("validationWorkflow") or {}).get("persistPolicy") \
             or ((self.intent or {}).get("workflow") or {}).get("persistPolicyDefault") or "forbidden"
         if policy == "forbidden":
             return {"required": False, "status": "PASS", "evidenceIds": ["persist-policy-forbidden"]}
+        status = self.chain_status("persist-load")
+        if status:
+            return {"required": True, "status": status, "evidenceIds": ["chain-persist-load"]}
         return {"required": True, "status": "BLOCKED", "evidenceIds": ["persist-canary-not-recorded"]}
 
     def exporterHydration(self) -> dict:
+        status = self.chain_status("persist-export")
+        if status:
+            return {"required": True, "status": status, "evidenceIds": ["chain-persist-export"]}
         return {"required": False, "status": "PASS", "evidenceIds": ["exporter-hydration-not-required"]}
 
     def roundTrip(self) -> dict:
@@ -434,7 +476,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--transform-deployment-digest", help="SHA-256 of the deployed Transform Glue script")
     parser.add_argument("--spark-version", help="Spark version of the DEV Transform Glue job, for example 3.3")
     parser.add_argument("--layout", help="registry layout JSON (default reference/registry-layout.json)")
+    parser.add_argument("--chain-step", action="append", default=[],
+                        help="chain_runs.py persist-load or persist-export evidence (repeatable): Persist cost, approvals, graph proof")
+    parser.add_argument("--chain-summary", help="chain_runs.py summary: per-step status and cost of a chained validation")
     args = parser.parse_args(argv)
+    args.chain_records = [read_json(p) for p in args.chain_step]
     run_dirs = [Path(d) for d in args.run_dir]
     spec = generate_spec(args, run_dirs, read_json(args.package_spec) if args.package_spec else {})
     if args.write_package_spec:
@@ -442,6 +488,13 @@ def main(argv: list[str] | None = None) -> int:
     full = [(d, read_json(d / "steps.json") if (d / "steps.json").exists() else []) for d in run_dirs]
     steps = [s for _, st in full for s in st]
     cost, by_run = package_cost([(Path(d), "canary") for d in args.canary_run_dir] + [(d, "full") for d in run_dirs])
+    for record in args.chain_records:
+        if record.get("stepKind") != "persist-load":
+            continue
+        spent = (record.get("cost") or {}).get("actualUsd")
+        by_run.append({"runId": f"{record['step']}-{record['stage']}", "stage": record["stage"], "actualUsd": spent})
+        cost["ceilingUsd"] += (record.get("cost") or {}).get("ceilingUsd") or 0
+        cost["actualUsd"] = None if spent is None or cost["actualUsd"] is None else round(cost["actualUsd"] + spent, 3)
 
     datasets = list(spec.get("datasets", []))
     for s in steps:
@@ -460,6 +513,10 @@ def main(argv: list[str] | None = None) -> int:
             if f.endswith(".started.json"):
                 continue
             a = read_json(f)["approval"]
+            approvals.append({"operationDigest": a["operationDigest"], "environment": "dev", "status": a["status"], "recordedAt": a["recordedAt"]})
+    for record in args.chain_records:
+        a = record.get("approval")
+        if a:
             approvals.append({"operationDigest": a["operationDigest"], "environment": "dev", "status": a["status"], "recordedAt": a["recordedAt"]})
 
     computed = verdict_of(spec["phases"])
@@ -483,6 +540,12 @@ def main(argv: list[str] | None = None) -> int:
                      "ownerDecisions", "acceptedProductChanges", "prodActuals", "sliceVerdicts", "productChangeFlags"):
         if optional in spec:
             run[optional] = spec[optional]
+    if args.chain_summary:
+        summary = read_json(args.chain_summary)
+        run["chain"] = {"id": summary["chain"], "slice": summary["slice"], "status": summary["status"],
+                        "steps": [{k: e[k] for k in ("stage", "step", "kind", "status", "actualUsd")} for e in summary["steps"]],
+                        "missingSteps": summary["missingSteps"], "actualUsd": summary["cost"]["actualUsd"],
+                        "residue": summary.get("residue") or []}
     gaps = final_validation_gaps(run) if computed == "READY" else []
     if gaps:
         raise SilvallyError("READY requires the final PROD-derived DEV validation: " + "; ".join(gaps)

@@ -149,10 +149,25 @@ and carried into the `discover` result so an unattended run can finish:
 | `windowSelection: most-recent-full-utc-day-with-data-per-slice` | "most recent full UTC day with real data per slice" | each slice uses its own most recent complete UTC day with data, recorded in `finalValidation.sliceWindows` |
 | `blanketDevWrites: staging-and-executions-for-this-run` | "approve all DEV writes for this run" | every DEV staging copy and execution card of this run is approved; each approval records the card digest with `kind: owner-blanket-dev-writes` |
 | `sensitiveFieldStaging: stage-real-values-to-dev` | "stage real phone numbers and message bodies to DEV" | slices with catalogued `sensitiveFields` stage the real values unmodified in DEV and compare them directly |
+| `devPersistWrites: dev-persist-loads-for-this-run` | "allow DEV Persist writes" | a chained validation's DEV Persist loads are approved per card digest with `kind: owner-dev-persist-writes`; `blanketDevWrites` never covers them and nothing covers PROD |
 
 Without them the defaults hold: ask about each DEV write, ask before the full run, ask before
-staging sensitive fields, and `BLOCKED` on any unaccepted `PRODUCT_CHANGE`. Silvally never
-assumes a decision the owner did not state.
+staging sensitive fields, ask before each DEV Persist load, and `BLOCKED` on any unaccepted
+`PRODUCT_CHANGE`. Silvally never assumes a decision the owner did not state.
+
+### Chained requests
+
+Before mapping selection the resolver matches the chain catalog (`reference/chains.json`, or `--chains`): a
+request whose language pair and named slices equal a chain's `requests.pairs` entry, or whose text (after the verb and
+owner decisions) equals one of its `requests.phrases`, resolves to `kind: chain`. For the SMS chain these are
+`test quiq to interprose for sms` and `test sms end to end` (`validate` and `check` are the same request). Each
+transform step is pinned on its own: the chain's default (`latest`, or a fixed version), an explicit
+`<mapping-id>@x.y.z` in the request for that step, or a bare `@x.y.z` for the last transform step. An unknown version, or
+one that lacks the outputs the chain compares, is `ChainStepUnresolved` (`NO_MAPPING`). The result carries
+`chain.steps`, the workflow of every step kind, the slice, Persist `required` (source `chain`) in `defaultsNotice`, and
+asks only `environment` (unless confirmed) and `dev-persist-writes` (unless decided). A language pair without the
+chain's slice resolves as a normal mapping request. `chain_runs.py plan` turns the intent into per-stage prefixes and
+run ids.
 
 ### Run-scoped profile
 

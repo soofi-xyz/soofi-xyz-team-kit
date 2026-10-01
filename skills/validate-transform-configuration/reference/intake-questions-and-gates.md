@@ -34,6 +34,9 @@ Rules:
 - A `devRedeployPinned` owner decision answers the redeploy question; without
   it, a pinned candidate that DEV no longer serves stops with `DeploymentRace`
   and Silvally asks the owner before any DEV deploy.
+- A chained request asks `dev-persist-writes` (default: ask before each DEV
+  Persist load) unless the owner said "allow DEV Persist writes"
+  (`devPersistWrites`). Persist itself is `required` by the chain and not asked.
 - Every run aiming for `READY` asks the separate `source-window` day-or-range
   confirmation question before any staging, after Silvally has compared recent
   complete UTC days read-only (`source_window.py recommend`). Options are the
@@ -77,6 +80,7 @@ operation.
 | Transform execution (canary, then full window) | `transform_runs.py start` (`aws stepfunctions start-execution` on the DEV Transform state machine); a full-stage start also needs an approved `--canary-gate` | DEV |
 | cost-approval callback | `aws stepfunctions send-task-success` for a paused cost gate | DEV |
 | Persist canary | the documented Persist ingest surface, bounded | DEV, only when `persistPolicy` is `required` |
+| DEV Persist load of a chained validation (canary, then full window) | `chain_runs.py persist-card` then `persist-load` (`aws stepfunctions start-execution` on the DEV `PersistNeptuneCsvWorkflow` with the forward step's output as `s3_uri`); a full-stage load also needs the approved chain `--canary-gate` | DEV only; card per load or the owner's `devPersistWrites` (never `blanketDevWrites`); PROD refused |
 
 Read-only work (materializing checkouts, running the resolver, reading CI
 results, and reading S3, SSM, CloudWatch Logs or Iceberg) needs no card; it

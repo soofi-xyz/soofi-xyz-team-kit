@@ -19,5 +19,9 @@ elsewhere.
 - `calibrations/*.md` hold sanitized expectations (row counts, digests, pinned revisions) for a
   profile's declared scenarios. They are evidence notes, not runtime inputs.
 
+Chained validations are catalogued in `reference/chains.json` (steps, versions, Persist load/export, expectation
+rules) and `reference/chain-sources.json` (the PROD source and its read method), not as profiles;
+`calibrations/quiq-sms-end-to-end-chain.md` records the SMS chain's earlier DEV evidence.
+
 Mapping-specific rules belong in the profile as declarative checks, `oracles`, `allowedLosses`,
 `columnConstraints` and `derivationOverrides`, interpreted by `compare_datasets.py check`.

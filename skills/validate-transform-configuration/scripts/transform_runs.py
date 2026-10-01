@@ -376,6 +376,33 @@ def summarize_output(files: list[str], fmt: dict) -> dict:
     return out
 
 
+def graph_groups(meta: dict, prefix: str, out_dir: Path) -> dict[str, dict]:
+    """Graph outputs share physical groups (for example vertices/ and edges/ Neptune CSV holding several datasets):
+    reconcile each group's physical records with the sum of its datasets' metadata rowCount."""
+    import csv
+    import io
+    members: dict[str, list[dict]] = {}
+    for dataset in meta.get("datasets", []):
+        location = str(dataset.get("s3Prefix") or "").rstrip("/") + "/"
+        if location.startswith(prefix) and location != prefix:
+            members.setdefault(location[len(prefix):].strip("/"), []).append(dataset)
+    out = {}
+    for group, datasets in members.items():
+        files = sorted(f for f in glob.glob(str(out_dir / group / "**" / "*"), recursive=True)
+                       if Path(f).is_file() and not f.endswith((".crc", ".json")) and not Path(f).name.startswith(("_", ".")))
+        if not files:
+            continue
+        physical = 0
+        for f in files:
+            reader = csv.reader(io.StringIO(Path(f).read_text(encoding="utf-8")))
+            physical += max(0, sum(1 for record in reader if record) - 1)
+        expected = sum(int(d.get("rowCount") or 0) for d in datasets)
+        for dataset in datasets:
+            out[dataset["dataset"]] = {"physicalGroup": group, "groupFiles": len(files), "groupMetadataRows": expected,
+                                       "groupPhysicalRows": physical, "reconciled": expected == physical}
+    return out
+
+
 def rejection_ok(describe: dict, states: list[str], error: str | None, missing: str | None) -> tuple[bool, bool]:
     """(refused before the Transform job started, the error names the omitted input)."""
     refused = describe["status"] == "FAILED" and "RunTransformJob" not in states
@@ -464,8 +491,13 @@ def cmd_capture(args) -> int:
                 write_json(step_dir / "_metadata.json", meta)
             entry["privateOutputDir"] = str(out_dir)
             outputs = []
+            groups = graph_groups(meta, prefix, out_dir)
             for dataset in meta.get("datasets", []):
                 files = data_files(out_dir / RUNTIME["outputTablesDir"] / dataset["dataset"])
+                group = groups.get(dataset["dataset"])
+                if not files and group:
+                    outputs.append({"dataset": dataset["dataset"], "metadataRows": dataset.get("rowCount"), **group})
+                    continue
                 if not files:
                     outputs.append({"dataset": dataset["dataset"], "metadataRows": dataset.get("rowCount")})
                     continue

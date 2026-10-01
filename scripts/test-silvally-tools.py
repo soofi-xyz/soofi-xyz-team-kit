@@ -9,6 +9,7 @@ Runs with the standard library plus jsonschema.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -2184,6 +2185,428 @@ def argparse_namespace(**values):
                                  "timeout_seconds": 1, **values})
 
 
+CHAINS = FIXTURE / "chains.json"
+CHAIN_ARGS = [*RESOLVER_ARGS, "--slice-catalog", str(FIXTURE / "package-slices.json"), "--chains", str(CHAINS)]
+PROD_ACCOUNT = "9" * 12
+DEV_ACCOUNT = "0" * 12
+
+
+def chain_discover(tmp: Path, request: str) -> dict:
+    out = tmp / f"chain-{hashlib_hex(request)[:12]}.json"
+    run_tool("resolve-transform-intent.py", "discover", *CHAIN_ARGS, "--request", request, "--out", str(out))
+    return json.loads(out.read_text())
+
+
+def test_chain_resolution(tmp: Path) -> None:
+    import importlib.util
+    work = tmp / "chain-resolve"
+    work.mkdir()
+    pair = chain_discover(work, "test alpha to omega for members")
+    steps = {s["id"]: s for s in pair.get("chain", {}).get("steps", [])}
+    if pair.get("kind") != "chain" or pair["status"] != "RESOLVED" or pair["chain"]["match"] != "language-pair-and-slices":
+        fail(f"a chain's language pair with its slice did not resolve to the chain: {pair.get('status')} {pair.get('kind')}")
+    if steps["forward"]["mapping"] != "alpha-to-canon@1.0.0" or steps["projection"]["mapping"] != "canon-to-omega@2.0.0":
+        fail(f"chain steps did not take the latest forward and the pinned projection: {steps}")
+    if steps["projection"]["versionSelection"]["rule"] != "chain-default" or "add canon-to-omega@x.y.z" not in pair["notice"]:
+        fail("the chain's pinned projection default was not announced")
+    if [s["kind"] for s in pair["workflow"]["steps"]] != ["source-events", "transform", "persist-load", "persist-export", "transform", "compare"]:
+        fail(f"the chain workflow lost its step order: {pair['workflow']['steps']}")
+    persist = next(f for f in pair["confirmedFacts"] if f["id"] == "persist-policy")
+    if persist["value"] != "required" or persist["source"] != "chain" or "devPersistWrites" not in persist["statement"]:
+        fail(f"the chain did not state its Persist policy and the devPersistWrites default: {persist}")
+    if {q["id"] for q in pair["questions"]} != {"environment", "dev-persist-writes"}:
+        fail(f"an undecided chain did not ask for the environment and DEV Persist writes: {pair['questions']}")
+    phrase = chain_discover(work, "check members end to end; approve all DEV writes; allow DEV Persist writes")
+    if phrase.get("kind") != "chain" or phrase["chain"]["match"] != "phrase" or phrase["questions"]:
+        fail(f"the chain phrase with both DEV decisions still asked questions: {phrase.get('questions')}")
+    if phrase["ownerDecisions"] != {"blanketDevWrites": "staging-and-executions-for-this-run",
+                                    "devPersistWrites": "dev-persist-loads-for-this-run"} or phrase["intakeState"] != "CONTEXT_COMPLETE":
+        fail(f"owner decisions of a chain request were not recorded: {phrase['ownerDecisions']}")
+    pinned = chain_discover(work, "test alpha to omega for members canon-to-omega@1.0.0")
+    projection = next(s for s in pinned["chain"]["steps"] if s["id"] == "projection")
+    if projection["mapping"] != "canon-to-omega@1.0.0" or projection["versionSelection"]["rule"] != "explicit-version":
+        fail(f"an id@x.y.z override did not pin that chain step: {projection}")
+    bare = chain_discover(work, "test alpha to omega for members @1.0.0")
+    if next(s for s in bare["chain"]["steps"] if s["id"] == "projection")["mapping"] != "canon-to-omega@1.0.0":
+        fail("a bare @x.y.z did not pin the chain's last transform step")
+    narrowed = json.loads(CHAINS.read_text())
+    next(s for s in narrowed["chains"]["members-end-to-end"]["steps"] if s["id"] == "projection")["outputDatasets"] = ["ledger_summary"]
+    (work / "narrowed-chains.json").write_text(json.dumps(narrowed))
+    out = work / "narrowed.json"
+    run_tool("resolve-transform-intent.py", "discover", *CHAIN_ARGS[:-1], str(work / "narrowed-chains.json"), "--request",
+             "test alpha to omega for members canon-to-omega@1.0.0", "--out", str(out))
+    lacking = json.loads(out.read_text())
+    if lacking["status"] != "NO_MAPPING" or not any("does not output" in (f.get("detail") or "") for f in lacking["findings"]):
+        fail("an override whose version lacks the compared output did not stop the chain")
+    missing = chain_discover(work, "test alpha to omega for members canon-to-omega@9.9.9")
+    if missing["status"] != "NO_MAPPING" or "ChainStepUnresolved" not in {f["code"] for f in missing["findings"]}:
+        fail("an override naming no enabled version did not stop the chain")
+    direct = chain_discover(work, "test alpha to omega")
+    if direct.get("kind") == "chain":
+        fail("a language pair without the chain's slice was taken as the chain")
+    spec = importlib.util.spec_from_file_location("resolver_chain", SCRIPTS / "resolve-transform-intent.py")
+    resolver = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = resolver
+    spec.loader.exec_module(resolver)
+    unattended = resolver.parse_request(
+        "test alpha to omega for members; approve all DEV writes; allow DEV Persist writes; use the most recent full UTC day "
+        "with real data; if the canary passes, run the full day; stage real phone numbers and message bodies to DEV; accept "
+        "Transform product changes as out of scope; cost ceiling $10 per job", json.loads((FIXTURE / "package-slices.json").read_text()))
+    expected = {"blanketDevWrites", "devPersistWrites", "windowSelection", "preApproveFullRunOnCanaryPass", "sensitiveFieldStaging",
+                "acceptProductChanges", "costCeilingUsd"}
+    if set(unattended["hints"]["ownerDecisions"]) != expected or unattended["slices"] != ["members"]:
+        fail(f"the unattended chain phrasing lost a decision: {unattended['hints']['ownerDecisions']}")
+    for text, only in (("allow DEV Persist writes", "devPersistWrites"), ("approve all DEV writes", "blanketDevWrites"),
+                       ("allow a bounded Persist canary", "persistPolicy")):
+        decisions = resolver.extract_owner_decisions(("test x to y; " + text).lower())[1]
+        if set(decisions) != {only}:
+            fail(f"{text!r} set {sorted(decisions)}, not only {only}")
+    results.append("chains: language pair + slice or phrase resolves the chain, latest forward and pinned projection, id@x.y.z "
+                   "and bare @x.y.z overrides, unknown version stops, devPersistWrites asked by default and separate from "
+                   "blanketDevWrites and the Persist canary policy, unattended phrasing recognized")
+
+
+class FakeProd:
+    """In-memory PROD reads for source_events.py (objects, a context table, JSON documents and artifacts)."""
+
+    def __init__(self, objects: dict, contexts: dict, artifacts: dict):
+        from collections import Counter
+        self.objects, self.contexts, self.artifacts, self.reads, self.stats = objects, contexts, artifacts, [], Counter()
+
+    def list(self, bucket: str, prefix: str) -> list[dict]:
+        return [{"key": k.split("/", 1)[1], "bytes": 1} for k in sorted(self.objects) if k.startswith(f"{bucket}/{prefix}")]
+
+    def get(self, bucket: str, key: str) -> bytes:
+        self.reads.append(f"{bucket}/{key}")
+        if f"s3://{bucket}/{key}" in self.artifacts:
+            return self.artifacts[f"s3://{bucket}/{key}"]
+        if f"{bucket}/{key}" not in self.objects:
+            raise silvally_io.SilvallyError("NoSuchKey")
+        return self.objects[f"{bucket}/{key}"]
+
+    def content_type(self, bucket: str, key: str) -> str:
+        return "text/plain"
+
+    def table(self, prefix: str) -> str:
+        return prefix + "-1"
+
+    def batch_get(self, table: str, attribute: str, keys: list[str]) -> dict:
+        self.reads.append(f"dynamodb:{len(keys)}")
+        return {k: self.contexts[k] for k in keys if k in self.contexts}
+
+
+def member_events() -> FakeProd:
+    updates = [{"id": "M1", "tier": "gold", "time": "2099-01-06T01:00:00Z", "handle": "+1 (555) 000-0001"},
+               {"id": "M2", "tier": "silver", "time": "2099-01-06T02:00:00Z", "handle": "5550000002"},
+               {"id": "M3", "tier": "gold", "time": "2099-01-06T03:00:00Z", "handle": "5550000003"},
+               {"id": "M4", "tier": "platinum", "time": "2099-01-06T04:00:00Z", "handle": "5550000004"},
+               {"id": "M5", "tier": "bronze", "time": "2099-01-06T05:00:00Z", "handle": "5550000005", "name": "Eve"},
+               {"id": "M6", "tier": "gold", "time": "2099-01-05T23:00:00Z", "handle": "5550000006"}]
+    late = [{"id": "M7", "tier": "gold", "time": "2099-01-06T23:30:00Z", "handle": "5550000007"}]
+    objects = {"example-source-bucket/events/2099-01-06/MemberUpdated-1.json": json.dumps({"data": {"updates": updates}}).encode(),
+               "example-source-bucket/events/2099-01-07/MemberUpdated-2.json": json.dumps({"data": {"updates": late}}).encode(),
+               "example-source-bucket/events/2099-01-06/MemberViewed-1.json": b"{}"}
+    contexts = {m: {"memberId": m, "displayName": {"M1": "Ann", "M2": "Bob", "M7": "Gil"}.get(m), "batchId": "b1",
+                    "sentAt": "2099-01-05T10:00:00Z", **({"nickname": "A"} if m == "M1" else {})} for m in ("M1", "M2", "M4", "M5", "M7")}
+    items = [{"member_id": m, "avatar_uri": f"s3://example-art/a/{m}.txt"} for m in ("M1", "M2", "M5", "M7")]
+    objects["example-context-bucket/profiles/2099/01/05/b1.json"] = json.dumps({"items": items}).encode()
+    artifacts = {"s3://example-art/a/M1.txt": b"Ann\r\nSmith|Jr", "s3://example-art/a/M2.txt": b"Bob",
+                 "s3://example-art/a/M5.txt": b"Eve", "s3://example-art/a/M7.txt": b'"Hi"'}
+    return FakeProd(objects, contexts, artifacts)
+
+
+def source_args(tmp: Path, stage: str, label: str, decisions: dict, rows: str | None = None):
+    import argparse
+    silvally_io.write_json(tmp / f"{label}-decisions.json", decisions)
+    return argparse.Namespace(catalog=str(FIXTURE / "chain-sources.json"), source="member-events", slice="members", day="2099-01-06",
+                              stage=stage, profile="example-prod", region="xx-test-1", owner_decisions=str(tmp / f"{label}-decisions.json"),
+                              dev_prefix=f"s3://example-dev-bucket/inputs/{label}/", lookup_rows=[f"memberLocation={rows}"] if rows else None,
+                              canary_scan_limit=500, private_dir=str(tmp / f"{label}-private"), package_dir=str(tmp / f"{label}-pkg"),
+                              out=str(tmp / f"{label}.json"))
+
+
+def test_source_events(tmp: Path) -> None:
+    import source_events
+    work = tmp / "source-events"
+    work.mkdir()
+    prod = member_events()
+    try:
+        source_events.build(source_args(work, "canary", "undecided", {}), prod)
+        fail("a sensitive source was read without the owner's staging decision")
+    except silvally_io.SilvallyError as error:
+        if "SensitiveStagingDecisionRequired" not in str(error) or prod.reads:
+            fail("the sensitive-field refusal did not come before any PROD read")
+    decided = {"sensitiveFieldStaging": "stage-real-values-to-dev"}
+    first = source_events.build(source_args(work, "canary", "canary", decided), prod)
+    keys = (work / "canary-private" / "lookup-keys" / "memberLocation.txt").read_text().split()
+    if first["status"] != "LOOKUP_ROWS_REQUIRED" or keys != ["5550000001", "5550000005"]:
+        fail(f"the canary did not stop for its rows-file lookup with the accepted rows' keys: {first} {keys}")
+    rows = work / "locations.jsonl"
+    rows.write_text('{"phone": "5550000001", "location": "home"}\n{"phone": "(555) 000-0005", "location": "MOBILE"}\n'
+                    '{"phone": "5550000005", "location": "HOME"}\n')
+    reads = len(prod.reads)
+    canary = source_events.build(source_args(work, "canary", "canary", decided, str(rows)), prod)
+    built = [json.loads(line) for line in (work / "canary-pkg" / "members" / "part-00000.jsonl").read_text().splitlines()]
+    by_id = {r["member_id"]: r for r in built}
+    if canary["status"] != "BUILT" or sorted(by_id) != ["M1", "M5"] or len(prod.reads) != reads:
+        fail(f"the canary did not take 2 accepted rows across outcomes from its cache: {canary.get('status')} {sorted(by_id)}")
+    if by_id["M1"]["location"] != "HOME" or by_id["M5"]["location"] != "MOBILE" or by_id["M5"]["display_name"] != "Eve":
+        fail(f"rows-file reduction or field fallbacks were wrong: {by_id}")
+    artifact = by_id["M1"]
+    copy = work / "canary-pkg" / artifact["artifact_uri"].removeprefix("s3://example-dev-bucket/inputs/canary/")
+    if not artifact["artifact_uri"].startswith("s3://example-dev-bucket/inputs/canary/artifacts/") or not copy.exists() \
+            or hashlib.sha256(copy.read_bytes()).hexdigest() != artifact["artifact_content_sha256"] or artifact["artifact_body_selector"] != "TEXT":
+        fail(f"the artifact was not copied into the DEV package with its digest and selector: {artifact}")
+    if canary["eventsSelected"] != 2 or not canary["selectionDigest"].startswith("sha256:") or canary["byOutcome"] != {"bronze": 1, "gold": 1}:
+        fail(f"the canary summary cannot serve as the canary sample: {canary}")
+    full = source_events.build(source_args(work, "full", "full", decided, str(rows)), member_events())
+    if full["accepted"] != 4 or full["quarantine"] != {"missing_context": 1, "unknown_tier": 1} \
+            or full["readStats"]["excludedFamilyObjects"] != {"MemberViewed": 1} or full["readStats"]["outsideWindow"] != 1:
+        fail(f"the full day did not account for every observation: {full}")
+    expect_args = __import__("argparse").Namespace(
+        chains=str(CHAINS), chain="members-end-to-end", build_summary=str(work / "full.json"), private_dir=str(work / "full-private"),
+        package_dir=str(work / "full-pkg"), dev_prefix="s3://example-dev-bucket/inputs/full/", private_out=str(work / "expected.jsonl"),
+        baseline_out=str(work / "baseline.json"), out=str(work / "expect.json"))
+    expectation = source_events.expect(expect_args)
+    expected = {r["member_id"]: r for r in map(json.loads, (work / "expected.jsonl").read_text().splitlines())}
+    if expectation["expectedRows"] != 3 or expectation["exclusions"] != {"not-reportable": 1} \
+            or expectation["coverageGaps"] != {"NicknameUnresolved": 1} or expectation["quarantine"] != full["quarantine"]:
+        fail(f"the expectation did not count exclusions, gaps and quarantine: {expectation}")
+    if expected["M1"]["display_name"] != "Ann Smith Jr" or expected["M2"]["display_name"] != "silver member" \
+            or expected["M7"]["display_name"] != '"Hi"':
+        fail(f"expected fields did not follow the documented rules: {expected}")
+    baseline = json.loads((work / "baseline.json").read_text())
+    if baseline["baselineKind"] != "source-events" or baseline["status"] != "AVAILABLE" or baseline["slice"] != "members":
+        fail(f"the source-events baseline record is not usable by evaluate_run: {baseline}")
+    actual = work / "actual"
+    actual.mkdir()
+    (actual / "part-00000.csv").write_text('member_id;display_name;tier\nM1;Ann Smith Jr;gold\nM2;silver member;silver\nM7;"Hi";gold\n')
+    report = json.loads(run_tool("compare_datasets.py", "source-baseline", "--chains", str(CHAINS), "--chain", "members-end-to-end",
+                                 "--slice", "members", "--expected", str(work / "expected.jsonl"), "--expectation",
+                                 str(work / "expect.json"), "--actual", str(actual), "--out", str(work / "compare.json")).stdout)
+    check = report["checks"][0]
+    if report["status"] != "PASS" or check["matchedKeys"] != 3 or check["exclusions"] != {"not-reportable": 1}:
+        fail(f"a matching output (including an unquoted leading quote) failed the source baseline: {check}")
+    (actual / "part-00000.csv").write_text("member_id;display_name;tier\nM1;Ann Smith Jr;gold\nM2;Bob;silver\nM9;x;gold\n")
+    bad = run_tool("compare_datasets.py", "source-baseline", "--chains", str(CHAINS), "--chain", "members-end-to-end", "--slice",
+                   "members", "--expected", str(work / "expected.jsonl"), "--expectation", str(work / "expect.json"),
+                   "--actual", str(actual), check=False)
+    check = json.loads(bad.stdout)["checks"][0]
+    if bad.returncode == 0 or (check["missingRows"], check["extraRows"], check["mismatchedByColumn"]) != (1, 1, {"display_name": 1}):
+        fail(f"missing, extra and mismatched rows were not counted: {check}")
+    copy.write_bytes(b"tampered")
+    tampered = work / "full-pkg" / json.loads((work / "full-pkg" / "members" / "part-00000.jsonl").read_text().splitlines()[0])[
+        "artifact_uri"].removeprefix("s3://example-dev-bucket/inputs/full/")
+    tampered.write_bytes(b"tampered")
+    try:
+        source_events.expect(expect_args)
+        fail("a packaged artifact that no longer matches its digest was hydrated")
+    except silvally_io.SilvallyError as error:
+        if "ArtifactDigestMismatch" not in str(error):
+            raise
+    results.append("source_events: sensitive refusal before PROD reads, window plus spill day, declarative fields and quarantine, "
+                   "context/document/artifact lookups, rows-file stop and cached rerun, deterministic mixed canary, artifacts "
+                   "copied to the DEV package; expectation exclusions, gaps and digest checks; compare_datasets source-baseline "
+                   "on unquoted output with missing/extra/mismatch counts")
+
+
+def chain_shim_body(log: Path) -> str:
+    return f"""
+import os
+log = {str(log)!r}
+joined = " ".join(args)
+if args[:2] == ["sts", "get-caller-identity"]:
+    print(json.dumps({{"Account": os.environ["SHIM_ACCOUNT"]}}))
+elif args[:2] == ["stepfunctions", "list-state-machines"]:
+    arn = "arn:aws:states:xx-test-1:" + os.environ["SHIM_ACCOUNT"] + ":stateMachine:ExampleGraphCsvWorkflow-abc"
+    print(json.dumps({{"stateMachines": [{{"name": "ExampleGraphCsvWorkflow-abc", "stateMachineArn": arn}}]}}))
+elif args[:2] == ["stepfunctions", "start-execution"]:
+    open(log, "a").write(joined + "\\n")
+    print(json.dumps({{"executionArn": "arn:aws:states:xx-test-1:000000000000:execution:ExampleGraphCsvWorkflow-abc:x"}}))
+elif args[:2] == ["stepfunctions", "describe-execution"]:
+    output = {{"rehashResult": {{"JobRunState": "SUCCEEDED", "DPUSeconds": 3600}}, "indexCatchupStatus": {{"caughtUp": True}},
+              "costEstimate": {{"estimatedCostUsd": 0.01}}}}
+    print(json.dumps({{"executionArn": args[3], "status": "SUCCEEDED", "output": json.dumps(output)}}))
+else:
+    print("{{}}")
+"""
+
+
+def transform_run(directory: Path, stage: str, steps: list[dict], cost: float | None = None) -> Path:
+    directory.mkdir(parents=True)
+    silvally_io.write_json(directory / "run-spec.json", {"runId": directory.name, "stage": stage})
+    silvally_io.write_json(directory / "steps.json", steps)
+    for s in steps:
+        silvally_io.write_json(directory / "approvals" / f"{s['step']}.json", {"approval": {"status": "APPROVED"}})
+    if cost is not None:
+        silvally_io.write_json(directory / "cost.json", {"actualUsd": cost})
+    return directory
+
+
+def test_chain_runs(tmp: Path) -> None:
+    import chain_runs
+    import graph_inputs
+    work = tmp / "chain-runs"
+    work.mkdir()
+    intent_path = work / "intent.json"
+    intent_path.write_text(json.dumps(chain_discover(work, "test alpha to omega for members")))
+    plan_path = work / "plan.json"
+    run_tool("chain_runs.py", "--chains", str(CHAINS), "plan", "--intent", str(intent_path), "--day", "2099-01-06",
+             "--dev-bucket", "example-dev-bucket", "--run-id", "20990107T000000Z", "--out", str(plan_path))
+    plan = json.loads(plan_path.read_text())
+    window_segment = "2099-01-06T000000Z_2099-01-07T000000Z"
+    if window_segment not in plan["stages"]["canary"]["source"]["stagingPrefix"] or plan["stages"]["full"]["forward"]["runId"] != "20990107T000000Z-full-forward" \
+            or plan["stages"]["canary"]["projection"]["mapping"] != "canon-to-omega@2.0.0":
+        fail(f"the chain plan does not carry the window token, per-stage run ids and pins: {plan['stages']['canary']}")
+    forward = transform_run(work / "forward-canary", "canary", [{
+        "step": "1-source-full", "status": "SUCCEEDED", "verdict": "PASS", "expected": "PASS",
+        "outputPrefix": "s3://example-dev-bucket/outputs/x/1/source-full/exec/",
+        "outputs": [{"dataset": "vertex-member", "metadataRows": 2}, {"dataset": "edge-member-has-ledger", "metadataRows": 2}]}], cost=0.1)
+    log = work / "starts.log"
+    env = aws_shim(work / "bin", chain_shim_body(log))
+    card_args = ["--chains", str(CHAINS), "persist-card", "--plan", str(plan_path), "--stage", "canary", "--forward-run-dir", str(forward),
+                 "--profile", "example-dev", "--region", "xx-test-1", "--run-dir", str(work / "load-canary")]
+    prod = run_tool("chain_runs.py", *card_args, env={**env, "SHIM_ACCOUNT": PROD_ACCOUNT}, check=False)
+    if prod.returncode == 0 or "PROD Persist is never written" not in prod.stderr:
+        fail("a Persist load card was written for the PROD account")
+    out = run_tool("chain_runs.py", *card_args, env={**env, "SHIM_ACCOUNT": DEV_ACCOUNT}).stdout
+    card = json.loads(next((work / "load-canary" / "cards").glob("*.json")).read_text())
+    if "APPROVAL_REQUIRED" not in out or card["request"]["s3_uri"] != "s3://example-dev-bucket/outputs/x/1/source-full/exec" \
+            or card["request"]["waitForIndexCatchup"] is not True or card["expectedElements"] != {"vertex-member": 2, "edge-member-has-ledger": 2}:
+        fail(f"the Persist load card does not bind the forward output and the workflow request: {card}")
+    silvally_io.write_json(work / "blanket.json", {"blanketDevWrites": "staging-and-executions-for-this-run"})
+    load_args = ["--chains", str(CHAINS), "persist-load", "--run-dir", str(work / "load-canary"), "--approver", "t", "--scope", "t"]
+    blanket = run_tool("chain_runs.py", *load_args, "--owner-decisions", str(work / "blanket.json"),
+                       env={**env, "SHIM_ACCOUNT": DEV_ACCOUNT}, check=False)
+    if blanket.returncode == 0 or "DevPersistWriteApprovalRequired" not in blanket.stderr or "blanketDevWrites" not in blanket.stderr or log.exists():
+        fail("blanketDevWrites approved a DEV Persist load")
+    wrong = run_tool("chain_runs.py", *load_args, "--approve", "sha256:" + "f" * 64, env={**env, "SHIM_ACCOUNT": DEV_ACCOUNT}, check=False)
+    if wrong.returncode == 0 or log.exists():
+        fail("a Persist load started under an approval digest of another card")
+    silvally_io.write_json(work / "persist.json", {"devPersistWrites": "dev-persist-loads-for-this-run"})
+    run_tool("chain_runs.py", *load_args, "--owner-decisions", str(work / "persist.json"), "--wait", "--poll-seconds", "0",
+             env={**env, "SHIM_ACCOUNT": DEV_ACCOUNT})
+    loaded = json.loads((work / "load-canary" / "persist-load-canary.json").read_text())
+    if loaded["status"] != "PASS" or loaded["approval"]["kind"] != "owner-dev-persist-writes" or loaded["cost"]["actualUsd"] != 0.44 \
+            or "ExampleGraphCsvWorkflow" not in log.read_text():
+        fail(f"the owner-approved DEV Persist load was not started and recorded: {loaded}")
+    full_card = ["--chains", str(CHAINS), "persist-card", "--plan", str(plan_path), "--stage", "full", "--forward-run-dir", str(forward),
+                 "--profile", "example-dev", "--region", "xx-test-1", "--run-dir", str(work / "load-full")]
+    run_tool("chain_runs.py", *full_card, env={**env, "SHIM_ACCOUNT": DEV_ACCOUNT})
+    ungated = run_tool("chain_runs.py", "--chains", str(CHAINS), "persist-load", "--run-dir", str(work / "load-full"), "--approver", "t",
+                       "--scope", "t", "--owner-decisions", str(work / "persist.json"), env={**env, "SHIM_ACCOUNT": DEV_ACCOUNT}, check=False)
+    if ungated.returncode == 0 or "CanaryRequired" not in ungated.stderr:
+        fail("a full-stage Persist load started without the chain canary gate")
+
+    contracts = work / "projection-contracts.json"
+    run_tool("resolve-transform-intent.py", "contracts", *RESOLVER_ARGS, "--mapping", "canon-to-omega@2.0.0", "--out", str(contracts))
+    out_dir = work / "forward-rows" / "vertices"
+    out_dir.mkdir(parents=True)
+    (out_dir / "part-00000.csv").write_text('~id,~label,display_name:String\nv1,member,Ann\nv2,member,Bob\nl1,ledger,\n')
+    vertices = {"m1": {"id": "m1", "label": "member", "display_name": "Ann", "tier": "gold"},
+                "m2": {"id": "m2", "label": "member", "display_name": "Bob", "tier": "silver"},
+                "l1": {"id": "l1", "label": "ledger", "units": 1}, "l2": {"id": "l2", "label": "ledger", "units": 2}}
+    edges = [{"id": "e1", "label": "member_has_ledger", "OUT": {"id": "m1"}, "IN": {"id": "l1"}},
+             {"id": "e2", "label": "member_has_ledger", "OUT": {"id": "m2"}, "IN": {"id": "l2"}}]
+    asked = []
+
+    def query(gremlin: str) -> list:
+        import re
+        asked.append(gremlin)
+        graph_inputs.assert_read_only(gremlin)
+        if gremlin.startswith("g.V().hasLabel('member')"):
+            wanted = set(re.findall(r"'([^']+)'", gremlin.split("within(")[1]))
+            return [v for v in vertices.values() if v.get("display_name") in wanted]
+        ids = set(re.findall(r"'([^']+)'", gremlin.split(")")[0]))
+        return [{"e": e, "v": vertices[e["IN"]["id"]]} for e in edges if e["OUT"]["id"] in ids]
+
+    def export(label: str, counts: dict, evidence: Path) -> dict:
+        silvally_io.write_json(work / f"{label}-meta.json", {"datasets": [{"dataset": k, "rowCount": v} for k, v in counts.items()]})
+        ns = __import__("argparse").Namespace(
+            chains=str(CHAINS), plan=str(plan_path), stage="canary", load_evidence=str(evidence), contracts=str(contracts),
+            forward_output_dir=str(work / "forward-rows"), forward_metadata=str(work / f"{label}-meta.json"), profile="example-dev",
+            region="xx-test-1", max_elements=1000, private_dir=str(work / f"{label}-private"), package_dir=str(work / f"{label}-pkg"),
+            out=str(work / f"{label}.json"))
+        import contextlib
+        import io
+        with contextlib.redirect_stdout(io.StringIO()):
+            chain_runs.cmd_persist_export(ns, source=graph_inputs.GremlinSource(query), fetch=lambda uri: b"")
+        return json.loads((work / f"{label}.json").read_text())
+
+    exact = export("export", {"vertex-member": 2, "vertex-ledger": 2, "edge-member-has-ledger": 2},
+                   work / "load-canary" / "persist-load-canary.json")
+    if exact["status"] != "PASS" or exact["rootKeys"] != 2 or exact["datasets"]["edge-member-has-ledger"]["rows"] != 2 \
+            or not any("within('Ann','Bob')" in q for q in asked) or any("g.V()." in q and "within" not in q for q in asked):
+        fail(f"the DEV Persist export was not rooted at exactly this run's keys: {exact} {asked}")
+    wider = export("wider", {"vertex-member": 2, "vertex-ledger": 1, "edge-member-has-ledger": 2}, work / "load-canary" / "persist-load-canary.json")
+    if wider["status"] != "FAIL" or wider["scopeCheck"]["mismatched"] != ["vertex-ledger"]:
+        fail(f"an export holding elements outside this run's output passed: {wider['scopeCheck']}")
+    silvally_io.write_json(work / "stale-load.json", {**loaded, "stage": "full"})
+    try:
+        export("stale", {"vertex-member": 2}, work / "stale-load.json")
+        fail("an export ran without this stage's passing Persist load")
+    except silvally_io.SilvallyError:
+        pass
+
+    silvally_io.write_json(work / "source-canary.json", {"stage": "canary", "status": "BUILT", "accepted": 2})
+    silvally_io.write_json(work / "compare-canary.json", {"stage": "canary", "status": "PASS", "checks": [{"id": "c", "status": "PASS"}]})
+    projection = transform_run(work / "projection-canary", "canary", [{"step": "1-export-members", "status": "SUCCEEDED", "verdict": "PASS"}], cost=0.2)
+    evidence = [f"source={work / 'source-canary.json'}", f"forward={forward}", f"persist-load={work / 'load-canary' / 'persist-load-canary.json'}",
+                f"persist-export={work / 'export.json'}", f"projection={projection}"]
+    gate_args = ["--chains", str(CHAINS), "gate", "--plan", str(plan_path), "--out", str(work / "gate.json")]
+    missing = run_tool("chain_runs.py", *gate_args, *[a for e in evidence for a in ("--step", e)], check=False)
+    if missing.returncode == 0 or json.loads((work / "gate.json").read_text())["status"] != "CANARY_FAILED":
+        fail("the chain gate passed without the comparison step")
+    silvally_io.write_json(work / "pre.json", {"preApproveFullRunOnCanaryPass": True})
+    run_tool("chain_runs.py", *gate_args, *[a for e in evidence + [f"compare={work / 'compare-canary.json'}"] for a in ("--step", e)],
+             "--owner-decisions", str(work / "pre.json"))
+    gate = json.loads((work / "gate.json").read_text())
+    if gate["status"] != "PRE_APPROVED" or gate["gateDigest"] != transform_runs.gate_digest(gate) or gate["slice"] != "members":
+        fail(f"a passing chain canary with the owner's pre-approval was not PRE_APPROVED: {gate}")
+    summary = run_tool("chain_runs.py", "--chains", str(CHAINS), "summary", "--plan", str(plan_path),
+                       *[a for e in evidence + [f"compare={work / 'compare-canary.json'}"] for a in ("--step", "canary:" + e)],
+                       "--out", str(work / "chain.json"), check=False)
+    chain = json.loads((work / "chain.json").read_text())
+    if summary.returncode == 0 or chain["status"] != "BLOCKED" or len(chain["missingSteps"]) != 6 or chain["cost"]["actualUsd"] != 0.74:
+        fail(f"the chain summary did not sum step costs and list the missing full stage: {chain['cost']} {chain['missingSteps']}")
+
+    silvally_io.write_json(work / "chain-intent.json", {**json.loads(intent_path.read_text()), "ownerDecisions": {}})
+    evaluation = work / "evaluation.json"
+    run_tool("evaluate_run.py", "--intent", str(work / "chain-intent.json"), "--chain-step", str(work / "load-canary" / "persist-load-canary.json"),
+             "--out", str(evaluation), check=False)
+    phases = {p["number"]: p for p in json.loads(evaluation.read_text())["phases"]}
+    if not any("devPersistWrites" in r and r.startswith("BLOCKED") for r in phases[3]["reasons"]):
+        fail(f"an owner Persist approval without the decision was not blocked: {phases[3]['reasons']}")
+    if not any("ChainStepEvidenceMissing" in r and "persist-export" in r for r in phases[9]["reasons"]):
+        fail(f"a missing chain step was not reported: {phases[9]['reasons']}")
+    if not any(r.startswith("PASS") and "chain members-end-to-end" in r for r in phases[1]["reasons"]):
+        fail(f"phase 1 did not accept the resolved chain: {phases[1]['reasons']}")
+    results.append("chain_runs: plan with window-token prefixes and per-step pins; DEV Persist load card bound to the forward "
+                   "output, PROD account refused, blanketDevWrites and foreign digests refused, devPersistWrites start with "
+                   "recorded cost, full load needs the chain gate; export rooted at this run's keys with the scope check; chain "
+                   "gate CANARY_FAILED/PRE_APPROVED; summary sums cost and lists missing steps; evaluate_run blocks undecided "
+                   "Persist approvals and missing chain steps")
+
+
+def test_graph_output_groups(tmp: Path) -> None:
+    out_dir = tmp / "graph-groups"
+    (out_dir / "vertices").mkdir(parents=True)
+    (out_dir / "edges").mkdir()
+    (out_dir / "vertices" / "part-00000.csv").write_text('~id,~label,note:String\nv1,member,"two\nlines"\nv2,member,x\nl1,ledger,y\n')
+    (out_dir / "edges" / "part-00000.csv").write_text("~id,~from,~to,~label\ne1,v1,l1,member_has_ledger\n")
+    prefix = "s3://example-dev-bucket/outputs/x/run/case/exec/"
+    meta = {"datasets": [{"dataset": "vertex-member", "rowCount": 2, "s3Prefix": prefix + "vertices"},
+                         {"dataset": "vertex-ledger", "rowCount": 1, "s3Prefix": prefix + "vertices"},
+                         {"dataset": "edge-member-has-ledger", "rowCount": 1, "s3Prefix": prefix + "edges"}]}
+    groups = transform_runs.graph_groups(meta, prefix, out_dir)
+    if not all(g["reconciled"] for g in groups.values()) or groups["vertex-ledger"]["groupPhysicalRows"] != 3:
+        fail(f"graph output groups did not reconcile (a quoted multi-line value is one record): {groups}")
+    meta["datasets"][1]["rowCount"] = 2
+    if transform_runs.graph_groups(meta, prefix, out_dir)["vertex-member"]["reconciled"]:
+        fail("a graph group whose metadata disagrees with its physical records reconciled")
+    results.append("transform_runs capture reconciles graph outputs per physical group (vertices/, edges/)")
+
+
 def main() -> int:
     with tempfile.TemporaryDirectory() as raw:
         tmp = Path(raw)
@@ -2217,6 +2640,10 @@ def main() -> int:
         test_regress_by_input_content(tmp)
         test_current_state_key_read(tmp)
         test_stale_lookback_anchor(tmp)
+        test_chain_resolution(tmp)
+        test_source_events(tmp)
+        test_chain_runs(tmp)
+        test_graph_output_groups(tmp)
     print("Silvally tool tests passed: " + "; ".join(results))
     return 0
 

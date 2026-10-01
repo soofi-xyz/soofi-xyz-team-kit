@@ -30,6 +30,29 @@ A run reaches `READY` only through a final pass of phases 1–12 in `observed-de
 
 `bounded-dev-dry-run` proves the approval gates only; phase 12 stays `BLOCKED`. A canary awaiting the user's answer is `BLOCKED` (phase 10 `APPROVAL_REQUIRED`). A failed canary stops the run as `NOT_READY` (or `BLOCKED` when the comparison itself could not be made); the full run is not suggested. Missing PROD access, a missing confirmation, or a missing staging or execution approval is `BLOCKED` with a handoff naming what is needed.
 
+## Chained validations
+
+A chained request (`kind: chain`, `reference/chains.json`) runs the same 12 phases over an ordered chain of steps:
+`source-events` (PROD events read-only, normalized by the chain source catalog and staged to DEV), `transform` (each with
+its own pinned mapping, run directory and deployment digest checks), `persist-load` (DEV `PersistNeptuneCsvWorkflow` on the
+previous transform's committed output), `persist-export` (a bounded read-only DEV Persist read of exactly this run's ids
+into the next mapping's graph inputs, with hydrated bodies) and `compare` (the final output against the source events).
+
+- phase 1: the chain resolves every transform step; the window is the most recent full UTC day with source events
+  (`source_events.py days` feeds `source_window.py data-days`), or the user's confirmed day;
+- phase 3: each staging copy, each Transform execution and each DEV Persist load has its own approval, the load only
+  per operation or under the owner's `devPersistWrites` (never `blanketDevWrites`); PROD Persist is refused;
+- phase 7: the baseline is the source events (`source_events.py expect`, `baselineKind: source-events`);
+- phase 8: every transform step checks its own served digest before `StartExecution` and at verdict time;
+- phase 9: every step runs its canary (10 accepted source events) in order and every canary step has evidence
+  (`ChainStepEvidenceMissing` otherwise); `chain_runs.py gate` is the canary gate for the whole chain;
+- phase 10: after the gate is `APPROVED` or `PRE_APPROVED`, every step runs the full window; a full Persist load without
+  the gate is refused;
+- phase 11: `compare_datasets.py source-baseline` on the full window: no missing, extra or changed row, with every
+  exclusion category, quarantine reason and coverage gap reported with counts; the Persist export's scope check
+  (`ExportScopeMismatch`) and zero dangling endpoints hold;
+- phase 12: cost is summed across steps (`chain_runs.py summary`, `build_run_package.py --chain-summary --chain-step`).
+
 ## Approval placement
 
 Finish read-only work first. Immediately before each DEV external write, create an operation-specific approval record and stop at `APPROVAL_REQUIRED`. After matching explicit approval, perform only that operation. Any changed target, payload, digest, cost ceiling or retry requires a new approval. The canary gate is one more approval: the full-window run needs the user's answer to the canary result, and `transform_runs.py start` refuses a full-stage run without an `APPROVED` or `PRE_APPROVED` gate.
