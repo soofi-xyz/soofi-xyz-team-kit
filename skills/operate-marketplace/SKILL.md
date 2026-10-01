@@ -40,9 +40,16 @@ Organizations tenancy, StackSets, or Account Manager from this skill.
    Do not run the lookup yourself, do not print the value, and do not ask the
    user to paste it into chat.
 
-   Get it in their own terminal (prints only there). Use an AWS profile for
-   account `848665034107` (`AWS_PROFILE=<selected-profile>`), region
-   `us-east-2`:
+   Offer both ways to get the key; the user picks the one that fits. The key
+   is the only credential publishing needs, so neither way requires AWS access
+   after this step.
+
+   **a. Someone gave you the key** (for example a teammate, through a secure
+   channel). Go straight to setting it below.
+
+   **b. You have AWS access to the Prism Marketplace account `848665034107`.**
+   Read it in your own terminal (prints only there), with a profile for that
+   account (`AWS_PROFILE=<selected-profile>`), region `us-east-2`:
 
    ```bash
    export AWS_REGION=us-east-2
@@ -52,12 +59,14 @@ Organizations tenancy, StackSets, or Account Manager from this skill.
      --output text
    ```
 
+   Without either, ask someone with access to `848665034107` to share the key.
+
    Set it for the process that launches Cursor, then fully quit and reopen Cursor
    so the agent can see it. An export in a terminal started after Cursor will
    not reach the agent.
 
    ```bash
-   export MARKETPLACE_API_KEY='<value from the command above>'
+   export MARKETPLACE_API_KEY='<the key>'
    ```
 
    If an old value keeps coming back, remove it where it was set (a shell
