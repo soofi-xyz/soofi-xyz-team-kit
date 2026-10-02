@@ -4,8 +4,8 @@ Use Regigigas for service features and Registeel for supported catalog operation
 Apply the [shared workflow](../../SKILL.md). These six capabilities have separate
 user-visible outcomes; derive the scoped plan and dependency order from the target
 [operation contract](../../../operate-marketplace/reference/api-contract.md).
-Use only authorized catalog objects and genuine CDK cloud-assembly bundles packed
-from a product's merged default branch.
+Use only authorized catalog objects and genuine CDK cloud-assembly bundles that
+the Build service built from a product's merged default branch.
 
 | Feature ID / usable capability | Dependency | Builder increment / configurer exercise | AWS inspection and acceptance |
 | --- | --- | --- | --- |
