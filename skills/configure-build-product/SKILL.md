@@ -197,8 +197,9 @@ missing or cannot verify, with evidence and the concrete change.
   Serverless/SAM/Terraform/Pulumi layouts. `git archive` of a clean ref
   satisfies this for tracked files.
 
-Making these changes is product source work: do it in the product repository on
-a branch when the user asks, never by changing Build.
+Making these changes is product source work for the product's owners. Report
+them; never create branches, commits or pull requests in a product repository,
+and never change Build to make one product pass.
 
 ## 2. End-to-end check (`scripts/demo.sh`)
 
