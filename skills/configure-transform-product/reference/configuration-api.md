@@ -64,9 +64,8 @@ return.
 
 ## Configuration repositories
 
-Keep one repository per integration, for example
-`Spring-Oaks-Capital-LLC/lexicon-to-interprose`. Transform mappings live under
-`transform/`:
+Keep one repository per integration (for example, one repository for the
+Lexicon to Interprose integration). Transform mappings live under `transform/`:
 
 ```text
 transform/mappings/<mapping_id>/<version>/
