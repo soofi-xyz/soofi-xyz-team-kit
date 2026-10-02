@@ -37,6 +37,11 @@ directly.
 
 Versions are immutable. To change a mapping, register a new version.
 
+The `mapping.json` digest is the sha256 of the stored compact JSON, so it
+differs from a pretty-printed local file with identical content (SQL digests
+are byte-for-byte); compare content or use the digests validate/register
+return.
+
 ## Run routes
 
 | Route | Body | Result |
@@ -85,6 +90,7 @@ H=skills/configure-transform-product/scripts/transform_api.py
 python3 "$H" validate <repo>/transform
 python3 "$H" register <repo>/transform
 python3 "$H" get <mapping-id> <version>
+python3 "$H" get <mapping-id> <version> --root <repo>/transform
 python3 "$H" list <mapping-id>
 python3 "$H" start request.json --transaction-id <run-id>
 python3 "$H" status <run-id>
@@ -92,7 +98,9 @@ python3 "$H" approve <run-id> --approve --reviewed-by <name> --comment "<reason>
 ```
 
 The helper needs `botocore`, prints JSON and exits non-zero on any non-2xx
-response.
+response. `register` reports each version as `created`, `unchanged` or
+`failed`; `get --root` reports each file as `content matches` or
+`content differs` and exits non-zero on any difference.
 
 With curl:
 
