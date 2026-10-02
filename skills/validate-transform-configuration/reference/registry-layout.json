@@ -26,6 +26,13 @@
     "path": "infra/test/transform-mappings.spec.ts",
     "listPattern": "const retired of \\[(.*?)\\]"
   },
+  "transformRegistry": {
+    "description": "Transform's own mapping registry, checked before publishedRegistry. Schema-free v2 runs resolve registered versions here first and fall back to Lexicon's published registry while the Transform stack's lexiconMappingFallback is true. The validation scripts still resolve through publishedRegistry.",
+    "apiUrlParameter": "/TransformPipelineStack/api-url",
+    "service": "execute-api",
+    "listRoute": "transform/mappings/{mappingId}/versions",
+    "getRoute": "transform/mappings/{mappingId}/versions/{version}"
+  },
   "publishedRegistry": {
     "uriParameter": "/lexicon/transform-mappings-uri",
     "parameterPath": "/lexicon",

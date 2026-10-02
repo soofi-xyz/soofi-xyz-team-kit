@@ -39,11 +39,18 @@ parameter names below are keys of `registry-layout.json`; pass `--layout` for an
 | --- | --- | --- |
 | Registry candidate checkout at a pinned SHA | language definitions (`languageDefinitionPath`), registry keys (`languageRegistry`), declared language parameters (`languageParameters.declaredIn`), checked-in registrations (`registrationGlob`) | isolated checkout at the selected SHA |
 | Registry `main` checkout at a pinned SHA | current active concepts (`conceptModelPath`); retired mapping ids (`retiredMappingIds`) | isolated checkout at the resolved `main` SHA |
+| Transform registry per environment (checked first) | mapping versions registered through Transform's API, with per-file SHA-256 | SigV4 `GET <transformRegistry.listRoute>` and `<transformRegistry.getRoute>` against the URL in `transformRegistry.apiUrlParameter` |
 | Published registry per environment | exact deployed `transform-mappings/<id>/<version>/mapping.json`, including generator-only mappings | `aws ssm get-parameter --name <publishedRegistry.uriParameter>`, then a filtered `aws s3 sync` of `*/mapping.json` and `*/queries/*` |
 | Published parameter names per environment | which languages each environment actually publishes | `aws ssm get-parameters-by-path --path <publishedRegistry.parameterPath>` |
 
 All AWS reads use an operator-selected profile in the layout's default region (or `--region`).
 They are control-plane or object reads; PROD reads never change state.
+
+Transform resolves a schema-free v2 run from its own registry first and falls back to Lexicon's
+published registry only for unregistered versions while its `lexiconMappingFallback` is on.
+Check the Transform registry before the published registry. The resolver, fetcher and run
+scripts still resolve through the published registry only; moving them to the Transform
+registry is a follow-up.
 
 Generated mappings exist only in the published registry or a materialized build. Never infer
 them from prose. When checked-in registrations and a published registry disagree for the same
