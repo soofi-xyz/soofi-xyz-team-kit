@@ -3,7 +3,7 @@
   "source": {
     "meeting": "Builder Story Planning, 2026-09-30",
     "spreadsheet": "staircase-products export, supplied 2026-09-30",
-    "precedence": "User follow-up retains Conkeldurr for Persist, assigns Zygarde to System and excludes the API documentation workstream. A later user request assigns Account its own builder/configurer pair. A subsequent request assigns builder/configurer pairs to Environment, Build, Deploy and Model."
+    "precedence": "User follow-up retains Conkeldurr for Persist, assigns Zygarde to System and excludes the API documentation workstream. A later user request assigns Account its own builder/configurer pair. A subsequent request assigns builder/configurer pairs to Environment, Build, Deploy and Model. User follow-up assigns Puller polling, subscriptions and reconciliation to the Deploy product; keep subscriber state separate from its stateless run API."
   },
   "workflowSkill": "guide-product-work",
   "products": [
@@ -88,7 +88,8 @@
         "configure": "configure-environment-product"
       },
       "notes": [
-        "Torterra builds Environment; Shaymin configures existing deployments. Bootstrap is its setup adapter, including the initial no-service install path. HTTP API capabilities are required build scope, not a claim that a service is already deployed."
+        "Torterra builds Environment; Shaymin configures existing deployments. Bootstrap is its setup adapter, including the initial no-service install path. HTTP API capabilities are required build scope, not a claim that a service is already deployed.",
+        "Environment bootstraps the Deploy run service and installs its Deploy-owned Puller component; ongoing subscriber behavior belongs to Corviknight/Skarmory."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/environment.md"
     },
@@ -148,7 +149,7 @@
         "configure": "operate-marketplace"
       },
       "notes": [
-        "Regigigas is narrowed to the current Marketplace builder role. Puller is deployment/subscription implementation attributed to Marketplace and Deploy, not another product."
+        "Regigigas builds Marketplace catalog/publication capabilities. Deploy owns Puller subscriptions, polling, installation history and update execution. Marketplace supplies its supported catalog/publication interfaces; verify notification support rather than restoring historical subscription APIs."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/marketplace.md"
     },
@@ -258,7 +259,7 @@
         13
       ],
       "status": "assigned",
-      "summary": "Deploy executes validated artifacts and reports deployment run results.",
+      "summary": "Deploy installs products and keeps subscribed components updated.",
       "agents": {
         "build": "corviknight",
         "configure": "skarmory"
@@ -268,7 +269,7 @@
         "configure": "configure-deploy-product"
       },
       "notes": [
-        "Corviknight builds the stateless SigV4 run API; Skarmory configures runs. Subscriber-side Puller remains separate and owns install history/keys; do not add it as a product or move that state into Deploy."
+        "Corviknight builds Deploy, including its Puller subscriber component; Skarmory configures runs, subscriptions, polling, update policy and recovery. Keep subscriber desired state, install history and subscription secrets in the Deploy-owned Puller component, separate from the stateless SigV4 run API. Separate packages or stacks do not create a separate product."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/deploy.md"
     },

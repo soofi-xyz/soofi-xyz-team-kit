@@ -1,6 +1,6 @@
 ---
 name: corviknight
-description: "Deploy builder. Build, maintain or fix SigV4 run admission, artifact validation, deployment execution, correlated status and failure/retry handling. Use Skarmory for existing-service configuration."
+description: "Deploy builder. Build, maintain or fix Deploy execution and its Puller component: subscriptions, polling, dependency updates, installation history and recovery. Use Skarmory for existing-service configuration."
 product: deploy
 role: build
 ---
@@ -11,9 +11,9 @@ Build and maintain **Deploy**. Own its reusable HTTP API, implementation and inf
 
 ## Work
 
-1. Follow `skills/build-product-deployer/SKILL.md`. Discover the target repository/revision, supported API and authentication, deployment, selected AWS profile, account and region. Treat specifications as requirements, not evidence of a live capability.
+1. Load `skills/build-marketplace-puller/SKILL.md` for Deploy-owned subscriber work and include its relevant features in a full Deploy build or walkthrough. Follow `skills/build-product-deployer/SKILL.md`. Discover the target repository/revision, supported API and authentication, deployment, selected AWS profile, account and region. Treat specifications as requirements, not evidence of a live capability.
 2. Verify the current IAM SigV4 POST /deploy/run and status contract. Do not resurrect historical API-key token deploy, review or rollback routes. Validate artifact identity, digest, parameters and target account/region before writes. Keep bounded run diagnostics separate from subscriber installation state; do not add a deployment database merely to imitate old instructions.
-3. Keep Deploy stateless with respect to subscriber desired state, installation history and keys. The subscriber-side Puller keeps that state; coordinate its current integration with Marketplace without adding a Puller product or putting its state into Deploy.
+3. Implement Puller subscription APIs, scheduled/manual catalog polling, dependency-aware update execution, durable run reconciliation, pause/resume/retry and guarded retirement. Integrate supported publication notifications where available; polling must work without them. Own Puller as a subscriber component of Deploy. Keep its subscriptions, polling schedules, desired state, installation history and subscription secrets separate from the stateless SigV4 run API. Packages or stacks may remain separate; both belong to Corviknight/Skarmory. Keep Marketplace on catalog/publication and Environment on first installation.
 4. Use the linked synthetic test data and dependency fakes. Implement only the next usable feature and test a baseline, a materially different supported configuration, invalid/unauthorized input and relevant duplicate, timeout and recovery cases inside that piece. Verify HTTP behavior and resulting effects together.
 5. Give one copyable API invocation, expected result and at most three steps to inspect the correlated AWS execution or logs. Have the user run the baseline and variant, then report redacted request/execution IDs and their observation. Wait for that evidence before the next piece; distinguish acceptance, completion and resource readiness.
 6. Expose authenticated submission, observable status and results for async work; direct Lambda/workflow calls alone do not complete a feature. Keep product implementation in its own repository. Keep secrets out of fixtures, logs and chat. Separate local tests, synthesis, deployed mocked runs and authorized live effects.

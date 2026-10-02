@@ -30,7 +30,7 @@ Read the relevant [product contract](../build-bootstrap-cli/reference/PRD.md) an
    are covered by the requested scope and record cleanup without removing shared
    resources. Keep mocked execution distinct from actual dependency readiness.
 
-Keep identity, underlying AWS account provisioning, DNS/certificate inventory and service keys with Account. Consume Marketplace bundles and let Deploy execute product installations after its first install. Treat Bootstrap as an Environment adapter, not another product.
+Keep identity, underlying AWS account provisioning, DNS/certificate inventory and service keys with Account. Consume Marketplace bundles and let Deploy execute product installations after its first install. Treat Bootstrap as an Environment adapter, not another product. Install Deploy's Puller component and hand ongoing subscriptions, polling and recovery to Corviknight/Skarmory; Environment does not implement those subscriber capabilities.
 
 Return configuration changes, redacted identifiers, API/read-back results,
 automated and user/AWS evidence, mocked/live status, cleanup and builder handoffs.
