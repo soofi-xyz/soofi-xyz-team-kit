@@ -28,7 +28,7 @@ No separate API-documentation workstream is added.
 
 Preserve the cold-start path: an operator-run Bootstrap adapter may perform the first Deploy install before any service endpoint exists. Make the Environment HTTP API the product surface for plan, submission, status and results; the CLI shares execution logic. Identify missing API capabilities as builder work, not an assumed deployed route. Never persist API keys, AWS credentials or signed bundle URLs in resume state.
 
-Keep identity, underlying AWS account provisioning, DNS/certificate inventory and service keys with Account. Consume Marketplace bundles and let Deploy execute product installations after its first install. Treat Bootstrap as an Environment adapter, not another product.
+Keep identity, underlying AWS account provisioning, DNS/certificate inventory and service keys with Account. Consume Marketplace bundles and let Deploy execute product installations after its first install. Treat Bootstrap as an Environment adapter, not another product. Install Deploy's Puller component and hand ongoing subscriptions, polling and recovery to Corviknight/Skarmory; Environment does not implement those subscriber capabilities.
 
 ## Build each feature piece
 

@@ -1,6 +1,6 @@
 ---
 name: build-product-deployer
-description: "Build or maintain the Deploy HTTP API and its SigV4 run admission, artifact validation, deployment execution, correlated status and failure/retry handling. Use Corviknight; use Skarmory for existing-service configuration."
+description: "Build or maintain Deploy run APIs and its Puller subscriptions, polling, dependency updates, installation history and recovery. Use Corviknight; use Skarmory for existing-service configuration."
 disable-model-invocation: true
 ---
 
@@ -11,6 +11,11 @@ Use `corviknight`. Load [guide-product-work](../guide-product-work/SKILL.md),
 and [engineering guidelines](../apply-engineering-guidelines/SKILL.md).
 Use `skarmory` with [configure-deploy-product](../configure-deploy-product/SKILL.md)
 for operations through an existing deployment.
+
+Load [build-marketplace-puller](../build-marketplace-puller/SKILL.md) and its
+[subscriber contract](../build-marketplace-puller/reference/PRD.md) for Puller work.
+Include the Puller capability areas in full-product discovery and implementation;
+loading only the run API contract is not a complete Deploy product plan.
 
 ## Scope and contract
 
@@ -28,7 +33,13 @@ No separate API-documentation workstream is added.
 
 Verify the current IAM SigV4 POST /deploy/run and status contract. Do not resurrect historical API-key token deploy, review or rollback routes. Validate artifact identity, digest, parameters and target account/region before writes. Keep bounded run diagnostics separate from subscriber installation state; do not add a deployment database merely to imitate old instructions.
 
-Keep Deploy stateless with respect to subscriber desired state, installation history and keys. The subscriber-side Puller keeps that state; coordinate its current integration with Marketplace without adding a Puller product or putting its state into Deploy.
+Own Puller as a subscriber component of Deploy. Keep its subscriptions, polling schedules, desired state, installation history and subscription secrets separate from the stateless SigV4 run API. Packages or stacks may remain separate; both belong to Corviknight/Skarmory. Keep Marketplace on catalog/publication and Environment on first installation.
+
+Implement Puller HTTP operations for local subscriptions, scheduled/manual
+reconciliation, update control and observable installation history. Keep polling
+functional with Marketplace catalog reads alone. Add publication notifications
+only against a verified supported contract. Use the current run API for deployment
+and status; do not implement a second CloudFormation executor in Puller.
 
 ## Build each feature piece
 
