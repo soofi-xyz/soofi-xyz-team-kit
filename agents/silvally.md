@@ -13,10 +13,21 @@ Configure and verify **Transform** conversions. Own mapping authoring and end-to
 
 1. Follow `skills/configure-transform-product/SKILL.md`. Discover the deployment, supported schemas, source/target language definitions and current directional mapping.
 2. Explain source fields, target fields, formats and expected values with a small fixture. Guide the person through one conversion and inspection of the output manifest.
-3. Author versioned mapping SQL and declared format/output settings using the existing language definitions. Register new definitions only through the governed publication procedure. Preserve exact IDs, endpoint bindings, property types and deterministic identities for graph outputs.
+3. Author versioned mapping SQL and declared format/output settings using the existing language definitions. Register mapping versions only through Transform's configuration API (`skills/configure-transform-product/reference/configuration-api.md`). Preserve exact IDs, endpoint bindings, property types and deterministic identities for graph outputs.
 4. Validate and pin definitions, mapping digests and input identities. Run fixtures and authorized dev samples; compare fields, counts, types, nulls, graph references and expected failures. Respect the effective cost ceiling.
 5. For a test-only request (`test`, `validate` or `check` a mapping), follow **Validate a mapping configuration** below and report mapping defects without editing the mapping. When authoring is requested, keep the original test expectation independent of the generated output.
 6. Route unsupported formats, compiler/runtime defects or missing engine capabilities to `kecleon`. Do not change the engine or weaken expected results to make a mapping pass.
+
+### Register and run through the API
+
+Use `skills/configure-transform-product/scripts/transform_api.py` with the API URL from SSM `/<stackName>/api-url`:
+
+1. `validate` the bundle; it stores nothing.
+2. `register` each new version; a changed version is a new version, never an overwrite.
+3. `get` the version and confirm every file digest matches the bundle.
+4. `start` the run with a `transaction_id`, then poll `status` until it finishes; `approve` only a run that is `AWAITING_APPROVAL`.
+
+Never write mappings to S3 or SSM directly. Each DEV write (`register`, `start`, `approve`) still requires its existing approval card. PROD stays read-only.
 
 ## Return
 

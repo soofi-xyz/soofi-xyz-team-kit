@@ -10,10 +10,15 @@ Use [the Transform capability map](../guide-product-work/reference/iterations/tr
 Use `silvally`. Follow [guide-product-work](../guide-product-work/SKILL.md).
 Read the relevant references in [build-transform-product](../build-transform-product/SKILL.md):
 `languages-and-mappings.md`, `formats-and-execution.md`, `graph-mappings.md`
-when applicable, and `operations-and-verification.md`.
+when applicable, and `operations-and-verification.md`. Use
+[configuration-api.md](reference/configuration-api.md) and
+[`scripts/transform_api.py`](scripts/transform_api.py) for every registration
+and run.
 
 1. Discover the existing engine, source/target definitions, mapping and publication
-   mechanism. Distinguish a requested mapping change from an engine defect.
+   mechanism. Read the API URL from SSM `/<stackName>/api-url` and list
+   registered versions through the API. Distinguish a requested mapping change
+   from an engine defect.
 2. Explain a small source/target example. Establish expected values independently
    of generated SQL. Include missing/null values, wrong types and graph references
    when applicable.
@@ -22,10 +27,14 @@ when applicable, and `operations-and-verification.md`.
    `from`, `to`, S3 locations and optional cost ceiling; do not invent a separate
    Translate registry or inline JSON preview API.
 4. Validate definition-derived types, declared graph roles, stable IDs and edge
-   endpoints. Pin artifacts through the governed catalog; do not mutate a moving
-   alias underneath an admitted execution.
+   endpoints. Publish through Transform's API: validate, register, then get the
+   version and confirm its file digests. Never write mappings to S3 or SSM
+   directly. Registered versions are immutable; publish every change as a new
+   version and do not mutate a moving alias underneath an admitted execution.
 5. For each implementation iteration, guide the person through its fixture/dev
-   run, output-manifest inspection and correlated AWS logs. For a test-only
+   run (start the run, poll its status, approve the cost only when it is
+   `AWAITING_APPROVAL` and the person approves), output-manifest inspection and
+   correlated AWS logs. For a test-only
    request, use existing authorized configurations without editing or publishing.
    Compare fields, counts, types and failure cases. Report configuration validity,
    publication and actual execution separately.
