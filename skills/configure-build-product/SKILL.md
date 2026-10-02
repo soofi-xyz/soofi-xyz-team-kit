@@ -57,7 +57,9 @@ product-supplied commands and never creates `service-comply`.
    `BUILD_BASE_URL` is wrong.
 
 4. If a variable is unset, the key check returns `403`, or the URL is wrong,
-   stop, say which case it is, give the get-and-set steps below and wait. Do
+   stop before any API call, say which case it is, give the get-and-set steps
+   below and wait. The readiness lane (§1, including its local recipe) reads
+   the product repository and calls no Build endpoint, so it may still run. Do
    not call any other endpoint, do not read the values from AWS yourself, and
    do not ask the user to paste the key into chat.
 
@@ -101,6 +103,11 @@ product-supplied commands and never creates `service-comply`.
    `curl -K -` config on stdin, never with `-v`, `--trace`, `set -x`, or
    `env`/`printenv` in the same shell.
 
+6. Every Build API call (`GET /information` included), the upload `POST` and
+   the presigned artifact download need full network access. A sandboxed
+   agent must request it for those commands; a sandbox block is not a Build
+   failure.
+
 ## Secrets
 
 Never print, log, paste or commit `BUILD_API_KEY`, the `POST /sources` upload
@@ -138,11 +145,20 @@ Hand off and stop when:
 Every build runs a real CodeBuild job (about 2–4 minutes; five at once per
 stage). Start builds only within the requested scope.
 
-Set up a scratch directory and helper once per shell. The helper sends the
-key on stdin, writes the body to `$BUILD_TMP/body` and prints only the status:
+When the user directly asks to build or verify a product, run the baseline
+end to end (§2, or §3–§6) and report once. The one-piece-at-a-time flow that
+waits for user feedback ("Piece discipline" below) is for guided walkthroughs.
+
+Agents run each command in a fresh shell, so no variable or function survives
+between commands. Use a fixed scratch directory, keep ids and bodies in files
+there, and make every snippet self-contained. Write the helper once; every
+snippet below starts by re-reading it. It sends the key on stdin, writes the
+body to `$BUILD_TMP/body` and prints only the status:
 
 ```bash
-BUILD_TMP=$(mktemp -d)
+BUILD_TMP="${TMPDIR:-/tmp}/metang-build"; mkdir -p "$BUILD_TMP"
+cat > "$BUILD_TMP/api.sh" <<'EOF'
+BUILD_TMP="${TMPDIR:-/tmp}/metang-build"
 build_api() { # method path [json-body]
   if [ -n "${3:-}" ]; then
     printf 'url = "%s%s"\nheader = "x-api-key: %s"\n' "${BUILD_BASE_URL%/}" "$2" "$BUILD_API_KEY" |
@@ -152,9 +168,11 @@ build_api() { # method path [json-body]
       curl -sS -o "$BUILD_TMP/body" -w '%{http_code}\n' -X "$1" -K -
   fi
 }
+EOF
 ```
 
-Delete `$BUILD_TMP` when done.
+The helper file holds no secret; it reads the variables at call time. Delete
+`$BUILD_TMP` when done.
 
 ## 1. Product readiness
 
@@ -172,13 +190,16 @@ missing or cannot verify, with evidence and the concrete change.
   (defaults to, and must equal, `marketplace/app.ts`),
   `"context_schema_version": "1"`,
   `stacks` (1–50 unique CDK stack ids), optional `base_path`, `requires`
-  {`domain`, `shared_usage_plan`, `identity`}, `lambda_asset_policy`
-  {`minified: true`, `obfuscated: true`, `source_maps: false`}. No command or
-  lifecycle keys (`scripts`, `synth_command`, `deploy_command`, `engine`, …).
-- **Entrypoint.** `marketplace/app.ts` is a normal CDK app (`new App()` …
-  `app.synth()`) that adds exactly the manifest's stacks, each with at least
-  one resource. It must synth without AWS credentials: no context lookups
-  (commit `cdk.context.json`), no SDK calls.
+  {`domain`, `shared_usage_plan`, `identity`}, optional `lambda_asset_policy`
+  (when present exactly {`minified: true`, `obfuscated: true`,
+  `source_maps: false`}). No command or lifecycle keys (`scripts`,
+  `synth_command`, `deploy_command`, `engine`, …).
+- **Entrypoint.** `marketplace/app.ts` is a normal CDK app (`new App()`) that
+  adds exactly the manifest's stacks, each with at least one resource. An
+  explicit `app.synth()` is optional: Build runs the entrypoint with `tsx` and
+  `CDK_OUTDIR` set, and CDK then synthesizes automatically when the process
+  exits (Connect relies on this). It must synth without AWS credentials: no
+  context lookups (commit `cdk.context.json`), no SDK calls.
 - **Install.** The lockfile picks the package manager: `pnpm install
   --frozen-lockfile --ignore-scripts` or `npm ci --ignore-scripts`. It must
   match `package.json`; both lockfiles, `yarn.lock`/`bun.lock` only, or
@@ -197,6 +218,27 @@ missing or cannot verify, with evidence and the concrete change.
   Serverless/SAM/Terraform/Pulumi layouts. `git archive` of a clean ref
   satisfies this for tracked files.
 
+**Local readiness recipe** (no AWS, no Build API). Checks install, type check,
+credentialless synth and Lambda obfuscation the way Build runs them:
+
+```bash
+W=$(mktemp -d); git -C <repo> archive <ref> | tar -x -C "$W"; cd "$W"
+if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile --ignore-scripts --ignore-pnpmfile; else npm ci --ignore-scripts; fi
+node_modules/.bin/tsc --noEmit -p tsconfig.json
+env -u AWS_PROFILE -u AWS_ACCESS_KEY_ID -u AWS_SECRET_ACCESS_KEY -u AWS_SESSION_TOKEN \
+  CDK_OUTDIR="$W/cdk.out" npx tsx marketplace/app.ts
+for f in "$W"/cdk.out/asset.*/*.js "$W"/cdk.out/asset.*/*.mjs "$W"/cdk.out/asset.*/*.cjs; do
+  [ -f "$f" ] && echo "$(grep -oE '\b_0x[0-9a-f]{4,}\b' "$f" | wc -l | tr -d ' ') ${f#"$W"/cdk.out/}"
+done
+cd - >/dev/null; rm -rf "$W"
+```
+
+Use the lockfile that exists (exactly one). Each Lambda asset's entry file
+(the `Handler` file, such as `index.js` for `index.handler`) needs at least
+20 `_0x` identifiers; CDK's own framework handlers are exempt. These results
+are local evidence only, not a Build run: Build still pins its own npm/pnpm,
+installs through CodeArtifact and runs product code as an isolated user.
+
 Making these changes is product source work for the product's owners. Report
 them; never create branches, commits or pull requests in a product repository,
 and never change Build to make one product pass.
@@ -210,6 +252,23 @@ From a checkout of `prismteam-ai/build` at `main`, with `BUILD_BASE_URL` and
 scripts/demo.sh <product-git-repo> [ref=origin/main]
 ```
 
+Run the prerequisites' presence check first and run `demo.sh` only when it
+shows both variables set. If either is unset, `demo.sh` silently falls back
+to reading the URL and caller-A key from AWS with the user's AWS profile and
+defaults to stage `dev`.
+
+If the user's Build checkout is on another branch or read-only, never switch
+it. Read Build files with `git -C <build> fetch origin` then
+`git -C <build> show origin/main:<path>`. To run `demo.sh`, use a temporary
+detached worktree and remove it afterwards:
+
+```bash
+T="${TMPDIR:-/tmp}/metang-build-main"; git -C <build> fetch origin
+git -C <build> worktree add --detach "$T" origin/main
+"$T/scripts/demo.sh" <product-git-repo> origin/main
+git -C <build> worktree remove --force "$T"
+```
+
 It zips the ref with `git archive`, uploads it through `POST /sources`, starts
 `POST /builds {source_id}`, polls every 10 s (`DEMO_TIMEOUT_SECONDS`, default
 1200), prints the last 40 log lines, and on success checks the manifest and
@@ -217,20 +276,23 @@ artifact hashes, lists the zip, prints the per-asset policy and the decoded
 `service-builder`. A failure prints `tag`, `reason` and findings and exits 1.
 It never prints the key, form or URLs. Optional `MARKETPLACE_REPO` /
 `DEPLOY_REPO` run Marketplace's and Deploy's own validators on the artifact;
-`inspectBundle` then needs a real `SERVICE_COMPLY` token. Build revisions older
-than the environment-input change read the URL and key from AWS instead.
+`inspectBundle` then needs a real `SERVICE_COMPLY` token.
 
-Use this as the copyable invocation for the user. Use §3–§6 when you need the
-individual steps.
+Use this as the copyable invocation for the user. One `demo.sh` run (or one
+baseline build through §3–§6) is evidence for the `source-validation`
+(intake), `assembly`, `asset-policy` and `provenance` pieces together; count
+it for all four rather than starting a build per piece. Use §3–§6 when you
+need the individual steps.
 
 ## 3. Source intake
 
 ```bash
+. "${TMPDIR:-/tmp}/metang-build/api.sh"
 git -C <repo> archive --format=zip -o "$BUILD_TMP/source.zip" <ref>
-shasum -a 256 "$BUILD_TMP/source.zip"
+shasum -a 256 "$BUILD_TMP/source.zip" | tee "$BUILD_TMP/source.sha256"
 build_api POST /sources '{}'            # expect 201
 jq -r '.source_id, .expires_at' "$BUILD_TMP/body"
-source_id=$(jq -r .source_id "$BUILD_TMP/body")
+jq -r .source_id "$BUILD_TMP/body" > "$BUILD_TMP/source_id"
 {
   jq -r '"url = \"\(.upload.url)\"", (.upload.fields | to_entries[] | "form-string = \"\(.key)=\(.value)\"")' "$BUILD_TMP/body"
   printf 'form-string = "x-amz-meta-service-code=%s"\n' ""
@@ -250,9 +312,10 @@ HTTPS URL; it is a bearer secret and gets synchronous address checks.
 ## 4. Start a build
 
 ```bash
-build_api POST /builds "$(jq -nc --arg s "$source_id" '{source_id: $s}')"   # expect 202
-jq -c '{build_id, build_status, transaction_id}' "$BUILD_TMP/body"
-build_id=$(jq -r .build_id "$BUILD_TMP/body")
+. "${TMPDIR:-/tmp}/metang-build/api.sh"
+build_api POST /builds "$(jq -nc --arg s "$(cat "$BUILD_TMP/source_id")" '{source_id: $s}')"   # expect 202
+jq -c '{build_id, build_status, transaction_id}' "$BUILD_TMP/body" | tee "$BUILD_TMP/start.json"
+jq -r .build_id "$BUILD_TMP/body" > "$BUILD_TMP/build_id"
 ```
 
 Use `/service` or `/data` to pin the bundle type. Add `component_id`,
@@ -266,8 +329,9 @@ inspector for it.
 ## 5. Follow status and logs
 
 ```bash
+. "${TMPDIR:-/tmp}/metang-build/api.sh"; build_id=$(cat "$BUILD_TMP/build_id")
 build_api GET "/builds/$build_id"
-jq 'del(.artifact_url) | {build_status, failure, validation: .validation.outcome, asset_policy: .asset_policy.outcome, runner}' "$BUILD_TMP/body"
+jq 'del(.artifact_url) | {build_status, failure, validation: {outcome: .validation.outcome, warnings: .validation.warnings}, asset_policy: .asset_policy.outcome, runner}' "$BUILD_TMP/body"
 build_api GET "/builds/$build_id/logs?limit=500"
 jq -r '.entries[].message' "$BUILD_TMP/body" | tail -n 40
 ```
@@ -280,6 +344,7 @@ absent. Read `failure.tag`, `failure.phase`, `failure.reason`,
 ## 6. Verify the artifact
 
 ```bash
+. "${TMPDIR:-/tmp}/metang-build/api.sh"; build_id=$(cat "$BUILD_TMP/build_id")
 build_api GET "/builds/$build_id"
 jq 'del(.artifact_url)' "$BUILD_TMP/body" > "$BUILD_TMP/status.json"
 artifact_url=$(jq -r '.artifact_url // empty' "$BUILD_TMP/body"); rm -f "$BUILD_TMP/body"
@@ -386,11 +451,14 @@ credentials; Metang does not run it with its own.
    invalid/unauthorized input and relevant replay/recovery cases. Four pieces
    is a floor for a full walkthrough, not a quota for narrow work.
 3. Give the user one copyable invocation (usually `scripts/demo.sh`), the
-   expected result and at most three AWS inspection steps (Step Functions
-   execution named by `build_id`, CodeBuild log stream `<build_id>/…`, the
-   artifact object). Have them run the baseline and variant, then report
-   redacted `build_id`s and observations. Wait for that evidence before the
-   next piece.
+   expected result and at most three AWS inspection steps: the execution
+   named by the `build_id` on state machine `BuildCloudAssembly-<stage>`; the
+   CodeBuild build of project `BuildAssembly-<stage>`, whose log stream in
+   `/aws/codebuild/BuildAssembly-<stage>` is prefixed by the `build_id`; the
+   artifact object. In a guided walkthrough, have them run the baseline and
+   variant, then report redacted `build_id`s and observations, and wait for
+   that evidence before the next piece. On a direct build or verify request,
+   run the baseline yourself and report once.
 4. Report evidence levels separately: request accepted (`202`), build
    completed (`SUCCEEDED`/`FAILED`), artifact verified (hashes and token
    checked), consumer validators run. A built artifact is not a published

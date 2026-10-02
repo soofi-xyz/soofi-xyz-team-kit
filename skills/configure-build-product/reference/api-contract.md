@@ -71,13 +71,18 @@ until then.
 
 `build_status`: `QUEUED` → `VALIDATING` → `BUILDING` → `SUCCEEDED` | `FAILED`.
 Main fields: `failure {tag, reason, phase}`, `validation {outcome, root,
-entry_count, stacks, findings}`, `assembly {stacks, size_bytes, file_count}`,
+entry_count, stacks, findings, warnings?}`, `assembly {stacks, size_bytes, file_count}`,
 `asset_policy {outcome, lambda_assets[{asset_id, used_by, file_count, js_bytes,
 obfuscated, framework}], findings}`, `provenance {artifact_sha256,
 artifact_size_bytes, build_manifest_sha256, source_sha256, service_code,
 service_comply ("PRESENT"|"ABSENT"), service_builder, artifact_metadata_keys}`,
 `runner {kind: "CODEBUILD", artifact_built, outcome}`, `created_at`,
 `updated_at`, `artifact_expires_at` (created + 180 days).
+
+`validation.warnings` lists accepted source problems as `{code, message}`
+(today only `ApiSpecMissing`: `base_path` set without
+`requirements/swagger.yml`). Warnings never fail a build; the field is
+omitted when there are none.
 
 A `SUCCEEDED` build with a stored assembly also has `artifact_url` (presigned
 `GetObject`, 15 minutes, a bearer secret; read status again for a fresh one)
@@ -95,6 +100,15 @@ cdk.out/manifest.json         exactly one
 cdk.out/<Stack>.template.json every stack declares at least one resource
 cdk.out/asset.<hash>/…
 ```
+
+`build/build.manifest.json` also carries top-level `warnings` (the same
+`{code, message}` list, `[]` when there are none) and a `builder` block:
+`{service: "build", runner_version, codebuild_build_id, node_version,
+package_manager, aws_cdk_lib_version?, asset_policy_version,
+isolation_version?}`. `builder.package_manager` is the tool pin that ran the
+install, `npm@10.9.3` or `pnpm@10.14.0`. The runner pins its own npm and pnpm
+versions; the product's `packageManager` field or npm/pnpm version does not
+change them.
 
 S3 metadata on the object: `x-amz-meta-service-builder` first, then any
 forwarded `service-comply`, `service-code` and other inbound `service-*` values
