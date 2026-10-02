@@ -152,7 +152,7 @@ Persisted `failure.tag` values on a `FAILED` build:
 | `VALIDATING` | `LegacyArtifactShape` | `config.json`, `serverless.*`, `samconfig.*`, `Pulumi*.yaml`, `*.tf`, `artifacts/*/update.json` |
 | `VALIDATING` | `MarketplaceManifestInvalid` | Missing/invalid `marketplace.product.json`, missing required file, several roots, `component_id` mismatch |
 | `VALIDATING` | `BundleTypeMismatch` | Request/route `bundle_type` ≠ manifest |
-| `BUILDING` | `DependencyInstallFailed` (non-PRD) | `pnpm install --frozen-lockfile` failed |
+| `BUILDING` | `DependencyInstallFailed` (non-PRD) | `pnpm install --frozen-lockfile` or `npm ci` failed |
 | `BUILDING` | `CdkSynthFailed` | Type check ("Type check failed"), synth, or "Cloud assembly invalid" |
 | `BUILDING` | `LambdaAssetPolicyViolation` | A Lambda asset is not minified, obfuscated and source-map-free |
 | any | `CodeBuildRunnerFailed` | Runner crash, isolation probe failure, or "CodeBuild capacity unavailable" |

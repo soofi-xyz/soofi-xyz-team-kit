@@ -91,8 +91,8 @@ The deployed implementation (`prismteam-ai/build`) settles these points. Keep th
 - **Auth.** Build creates its own usage plan with two test keys per stage (`build-<stage>-caller-a` / `-b`). Attaching to the Bootstrap shared usage plan, real consumer keys, the `/infra-builder` custom domain and `DisableExecuteApiEndpoint` are deferred; the base URL is the stack output `BuildApiUrl` of `BuildApi-<stage>`.
 - **Stacks.** `BuildData-<stage>` → `BuildWorkflow-<stage>` → `BuildApi-<stage>` (the roles of §2.1's DataStack, WorkflowStack and BuildStack).
 - **Runner.** CodeBuild in a VPC with endpoint-only routes. The runner receives no `source_url`; `FetchSource` stages the zip. Product code (install, `tsc`, synth) runs without AWS credentials or registry tokens as a separate `build-product` user behind a fail-closed isolation probe. The runner role reaches only the exchange bucket's `inbox/*`/`outbox/*` and CodeArtifact reads; Lambdas own the run row and the artifact bucket.
-- **Checks.** The fixed checks are `pnpm install --frozen-lockfile --ignore-scripts --ignore-pnpmfile` (`DependencyInstallFailed`), `tsc --noEmit -p tsconfig.json` (`CdkSynthFailed`, "Type check failed") and synth. Lint, tests and OpenAPI freshness (§5.4) are not run yet.
-- **Entrypoint.** `marketplace/app.ts` runs as a normal CDK app (`new App()` … `app.synth()`) with `tsx`; there is no `createMarketplaceApp` factory (§5.5). Products need `"entrypoint": "marketplace/app.ts"` in `marketplace.product.json` and `requirements/swagger.yml` when the manifest sets `base_path`.
+- **Checks.** The fixed checks are the install picked by the source's single lockfile, `pnpm install --frozen-lockfile --ignore-scripts --ignore-pnpmfile` or `npm ci --ignore-scripts` (`DependencyInstallFailed`), `tsc --noEmit -p tsconfig.json` (`CdkSynthFailed`, "Type check failed") and synth. Lint, tests and OpenAPI freshness (§5.4) are not run yet.
+- **Entrypoint.** `marketplace/app.ts` runs as a normal CDK app (`new App()` … `app.synth()`) with `tsx`; there is no `createMarketplaceApp` factory (§5.5). Build accepts what Prism Marketplace accepts: `entrypoint` may be omitted (it defaults to, and must equal, `marketplace/app.ts`), and a missing `requirements/swagger.yml` with `base_path` set is an `ApiSpecMissing` warning in the status and `build.manifest.json`, not a failure (§3.1 deviation). npm products (`package-lock.json`) are accepted alongside pnpm; exactly one lockfile must be present.
 - **Lambda asset policy** (`lambda-asset-policy.v2`). Build inspects the final assets, not the construct package (§3.4, §5.6). Every Node.js function's entry file must be `javascript-obfuscator` output (at least 20 `_0x…` identifiers), minified, with no source maps or TypeScript sources; CDK's own handlers are exempt. Any violation fails the build with `LambdaAssetPolicyViolation`, so every `SUCCEEDED` build is publishable. Container images, inline code, pre-zipped assets and non-Node.js product runtimes are rejected.
 - **Artifact.** `marketplace.product.json` + `build/build.manifest.json` (`build.manifest.v2`: Deploy's pack-manifest fields plus provenance) + `cdk.out/`. No separate `validation-report.json` / `synth-report.json`; the status response carries `validation` and `asset_policy`.
 - **`service-builder`.** Unsigned and JWT-shaped with the claims in §3.3.
@@ -633,7 +633,7 @@ The CodeBuild runner is a TypeScript program in the Build implementation repo. I
 1. Read `marketplace.product.json`.
 2. Validate `component_id`, `component_name`, `bundle_type`, `entrypoint`, `context_schema_version`, `stacks[]`, `base_path`, and `requires`.
 3. Assert `entrypoint === "marketplace/app.ts"`.
-4. Assert `package.json`, `pnpm-lock.yaml`, `tsconfig.json`, and `marketplace/app.ts` exist.
+4. Assert `package.json`, exactly one of `pnpm-lock.yaml` / `package-lock.json`, `tsconfig.json`, and `marketplace/app.ts` exist.
 5. Assert no legacy `config.json`, `artifacts/<module>/update.json`, `serverless.yml` deployment package, Terraform/Pulumi/SAM config, or deploy-engine selector is present.
 6. Assert the request's `component_id` / `bundle_type`, when provided, match the manifest.
 
@@ -770,7 +770,7 @@ Every HTTP error uses:
 }
 ```
 
-The implementation adds `error.tag`. It keeps two non-PRD tags because no PRD tag fits: `404 SourceNotFound` (unknown, expired or other caller's `POST /sources` upload) and the persisted `422 DependencyInstallFailed` (`pnpm install --frozen-lockfile` failed, a product error before synth). PRD tags it never emits: `BuildAlreadyRunningForSource`, `LegacyBundleTypeGone`, `ArtifactTooLarge`, `OpenApiStale`, `AssessmentFailed`, `ArtifactUploadFailed`, `CallbackTimeout`. A missing or rejected API key is API Gateway's `403 ApiKeyDenied`.
+The implementation adds `error.tag`. It keeps two non-PRD tags because no PRD tag fits: `404 SourceNotFound` (unknown, expired or other caller's `POST /sources` upload) and the persisted `422 DependencyInstallFailed` (`pnpm install --frozen-lockfile` or `npm ci` failed, a product error before synth). PRD tags it never emits: `BuildAlreadyRunningForSource`, `LegacyBundleTypeGone`, `ArtifactTooLarge`, `OpenApiStale`, `AssessmentFailed`, `ArtifactUploadFailed`, `CallbackTimeout`. A missing or rejected API key is API Gateway's `403 ApiKeyDenied`.
 
 ---
 

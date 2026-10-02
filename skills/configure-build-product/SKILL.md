@@ -162,12 +162,15 @@ Check the product repository at the ref to build. Report each item as ready,
 missing or cannot verify, with evidence and the concrete change.
 
 - **Layout.** Root (or a single top-level directory) holds
-  `marketplace.product.json`, `package.json`, `pnpm-lock.yaml`,
-  `tsconfig.json`, `marketplace/app.ts`, and `requirements/swagger.yml`
-  describing the API when the manifest sets `base_path`.
+  `marketplace.product.json`, `package.json`, exactly one lockfile
+  (`pnpm-lock.yaml` or `package-lock.json`), `tsconfig.json` and
+  `marketplace/app.ts`. `requirements/swagger.yml` describing the API is
+  recommended when the manifest sets `base_path`; without it the build still
+  succeeds with an `ApiSpecMissing` warning.
 - **Manifest** (closed schema, unknown fields rejected): `component_id`,
-  `component_name`, `bundle_type` (`SERVICE`/`DATA`),
-  `"entrypoint": "marketplace/app.ts"`, `"context_schema_version": "1"`,
+  `component_name`, `bundle_type` (`SERVICE`/`DATA`), optional `entrypoint`
+  (defaults to, and must equal, `marketplace/app.ts`),
+  `"context_schema_version": "1"`,
   `stacks` (1–50 unique CDK stack ids), optional `base_path`, `requires`
   {`domain`, `shared_usage_plan`, `identity`}, `lambda_asset_policy`
   {`minified: true`, `obfuscated: true`, `source_maps: false`}. No command or
@@ -176,9 +179,11 @@ missing or cannot verify, with evidence and the concrete change.
   `app.synth()`) that adds exactly the manifest's stacks, each with at least
   one resource. It must synth without AWS credentials: no context lookups
   (commit `cdk.context.json`), no SDK calls.
-- **Install.** pnpm with a current lockfile (`--frozen-lockfile
-  --ignore-scripts`); `typescript` is a dependency; `tsc --noEmit -p
-  tsconfig.json` passes. Packages come from the public npm registry through
+- **Install.** The lockfile picks the package manager: `pnpm install
+  --frozen-lockfile --ignore-scripts` or `npm ci --ignore-scripts`. It must
+  match `package.json`; both lockfiles, `yarn.lock`/`bun.lock` only, or
+  `npm-shrinkwrap.json` are rejected. `typescript` is a dependency; `tsc
+  --noEmit -p tsconfig.json` passes. Packages come from the public npm registry through
   Build's CodeArtifact proxy: private registries, `.npmrc`, `.pnpmfile.*`,
   Git dependencies and lifecycle scripts are not available.
 - **Lambda assets.** Every Node.js Lambda is bundled minified with no source
@@ -360,9 +365,9 @@ credentials; Metang does not run it with its own.
 | `UnsafeArchivePath` (VALIDATING) | Rebuild the zip from `git archive`; remove denied paths and links |
 | `ProductLifecycleCommandRejected` (VALIDATING) | Remove command/lifecycle keys and `.pnpmfile.*` |
 | `LegacyArtifactShape` (VALIDATING) | Remove Serverless/SAM/Terraform/Pulumi files; ship CDK only |
-| `MarketplaceManifestInvalid` (VALIDATING) | Fix the manifest per §1 (`entrypoint`, `swagger.yml` with `base_path`, `component_id`) |
+| `MarketplaceManifestInvalid` (VALIDATING) | Fix the manifest or layout per §1 (`entrypoint` value, `component_id`, lockfile) |
 | `BundleTypeMismatch` (VALIDATING) | Use the route that matches the manifest's `bundle_type` |
-| `DependencyInstallFailed` (BUILDING) | Update `pnpm-lock.yaml`; drop private or Git dependencies |
+| `DependencyInstallFailed` (BUILDING) | Update the lockfile (`pnpm-lock.yaml` or `package-lock.json`); drop private or Git dependencies |
 | `CdkSynthFailed` (BUILDING) | Read logs: "Type check failed" → fix `tsc`; synth error or lookup → fix the app; "Cloud assembly invalid" → stacks must match the manifest and declare a resource |
 | `LambdaAssetPolicyViolation` (BUILDING) | Read `asset_policy.findings`; minify, drop source maps, obfuscate entry files |
 | `CodeBuildRunnerFailed` | "CodeBuild capacity unavailable" → retry later; otherwise hand to `tinkaton` |
