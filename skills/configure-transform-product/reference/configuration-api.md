@@ -9,9 +9,9 @@ directly.
 - Base URL: SSM parameter `/<stackName>/api-url` (for example
   `/TransformPipelineStack/api-url`) in the target account and region.
 - Every route uses IAM SigV4 (service `execute-api`).
-- Stack outputs name the managed policies: `ApiInvokePolicyArn` (run routes),
-  `ConfigReadPolicyArn` (validate, get, list) and `ConfigWritePolicyArn`
-  (register).
+- Stack outputs name the managed policies: `ApiInvokePolicyArn` (start and
+  status), `ApprovalPolicyArn` (approve or reject spend), `ConfigReadPolicyArn`
+  (validate, get, list) and `ConfigWritePolicyArn` (register).
 - Responses use `{ "ok": true, "data": ... }` or
   `{ "ok": false, "error": { "type": ..., "message": ... } }`.
 
