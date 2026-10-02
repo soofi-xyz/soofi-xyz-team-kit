@@ -65,6 +65,8 @@ jobs:
           python3 -m py_compile scripts/test-silvally-tools.py
           python3 -m py_compile skills/configure-transform-product/scripts/transform_api.py
           python3 -m py_compile scripts/test-transform-api.py
+          python3 -m py_compile skills/operate-marketplace/scripts/publish_via_build.py
+          python3 -m py_compile scripts/test-publish-via-build.py
           python3 -m py_compile scripts/check-system-manifest.py
           python3 -m py_compile scripts/test-build-system-product-contract.py
 

@@ -124,6 +124,7 @@ main() {
   "${python_bin}" "${root}/scripts/test-validate-transform-configuration.py"
   "${python_bin}" "${root}/scripts/test-silvally-tools.py"
   "${python_bin}" "${root}/scripts/test-transform-api.py"
+  "${python_bin}" "${root}/scripts/test-publish-via-build.py"
   "${python_bin}" "${root}/scripts/product_catalog.py" check
   validate_neutral_references "${root}"
 

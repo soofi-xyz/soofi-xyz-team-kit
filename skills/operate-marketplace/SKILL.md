@@ -1,6 +1,6 @@
 ---
 name: operate-marketplace
-description: "Operate the deployed Prism Marketplace catalog API from prismteam-ai/marketplace: configure review settings, register ontology (families, categories, products, configurations, components), check and fix product publish readiness, publish CDK cloud-assembly zips and poll reviews, and roll back VALID bundles. Use when registering or publishing products to Prism Marketplace or checking review status."
+description: "Operate the deployed Prism Marketplace catalog API from prismteam-ai/marketplace: configure review settings, register ontology (families, categories, products, configurations, components), check product publish readiness, build bundles through the Build service and publish them, poll reviews, and roll back VALID bundles. Use when registering or publishing products to Prism Marketplace or checking review status."
 ---
 
 Use [the Marketplace capability map](../guide-product-work/reference/iterations/marketplace.md). Derive the feature pieces from scope and dependencies, then apply the work below within each piece; require a user-run configuration, AWS inspection and feedback before starting the next implementation piece.
@@ -92,10 +92,35 @@ Organizations tenancy, StackSets, or Account Manager from this skill.
 
    Pass the key to `curl` only as `-H "x-api-key: $MARKETPLACE_API_KEY"`, never
    with `-v`, `--trace`, `set -x`, or `env`/`printenv` in the same shell.
-3. Prefer the repo scripts when they fit:
-   - `./scripts/demo.sh` — register Prism / Platform / products
-   - `./scripts/publish-product.sh` — ensure component, PUT bundle, poll review
-4. For manual calls, send `x-api-key` and `content-type: application/json` on
+3. Publishing builds the bundle with the Build service, which runs in the
+   Marketplace account `848665034107` on the same shared usage plan, so
+   `MARKETPLACE_API_KEY` is also the Build key. Never ask for a Build key.
+   Use this Build API URL (also `DEFAULT_BUILD_BASE_URL` in
+   [`scripts/publish_via_build.py`](scripts/publish_via_build.py)):
+   `PLACEHOLDER-BuildApiUrl-of-BuildApi-in-848665034107-us-east-2`.
+   While it is still the placeholder, Build is not deployed there: stop and
+   report it instead of publishing. Honor `BUILD_BASE_URL` only when the user
+   sets a different one, and confirm that URL with them before any publish.
+   Check that Build accepts the key with this read-only call; it prints only
+   the HTTP status:
+
+   ```bash
+   BUILD="${BUILD_BASE_URL:-<the Build API URL above>}"
+   curl -s -o /dev/null -w '%{http_code}\n' -H "x-api-key: $MARKETPLACE_API_KEY" "${BUILD%/}/builds/bld_00000000000000000000000000"
+   ```
+
+   `404` means Build accepts the key. `403` (`ApiKeyDenied`) after
+   `GET /settings/status` returned `200` means Build's stage is not on the
+   shared usage plan yet: report a Build deployment gap for `tinkaton`, not a
+   key problem, and do not ask the user for another key.
+4. Prefer the scripts when they fit:
+   - [`scripts/publish_via_build.py`](scripts/publish_via_build.py) — build
+     through Build, scan, verify, upload, PUT bundle, poll review
+     ([publish-readiness.md](reference/publish-readiness.md) section B)
+   - Marketplace repo `./scripts/demo.sh` — register Prism / Platform / products
+   - Marketplace repo `./scripts/publish-product.sh` — ensure component, PUT an
+     existing `bundle_url`, poll review
+5. For manual calls, send `x-api-key` and `content-type: application/json` on
    every request.
 
 ## Workflow — pick the lane
@@ -106,8 +131,8 @@ Classify the request, then run exactly one primary lane (plus inspect as needed)
 | --- | --- | --- |
 | Settings | First non-skip publish, or review readiness unknown | §1 |
 | Register | New family / category / product / configuration / component | §2 |
-| Readiness | User wants to publish but has no `bundle_url`, or asks to make a product publishable | §3a |
-| Publish | New cloud-assembly `bundle_url`, review poll, rollback | §3 |
+| Readiness | User asks whether a product can publish, or a publish stopped on a product gap | §3a |
+| Publish | Publish a product through Build, review poll, rollback | §3 |
 | Inspect | Read-only ontology, bundles, reviews, settings status | §4 |
 
 Hand off and stop when:
@@ -117,6 +142,8 @@ Hand off and stop when:
 | Marketplace Lambda/CDK/OpenAPI defect | Stop; report evidence for a Marketplace repo change |
 | Need customers, environments, or API key minting | Not this API |
 | Need to install a bundle into an account | Deploy / Puller — not Marketplace |
+| Build rejects the key, is unreachable, fails with a Build defect, or cannot set a review-safe stage | `tinkaton`, with the `build_id` and failure tag |
+| Product source fails Build readiness or the scan | The product's owners; report the concrete change |
 | Need Organizations / StackSets control-plane design | Out of scope for this skill |
 | Need subscriptions / prices / site publication | Out of scope for this product; do not invent routes |
 
@@ -177,69 +204,75 @@ delete bottom-up.
 System is a **product** name, not a catalog type. Do not invent Agent or
 certification types.
 
-## 3a. Publish readiness (product not yet publishable)
+## 3a. Publish readiness
 
-Run this before §3 when the user has no `bundle_url`, or asks what their
-product needs to publish. The product's own pack and publish steps produce the
-bundle; do not route it through the Build or Comply services.
+Run this when the user asks whether a product can publish, or a publish
+stopped on a product gap. The Build service builds the bundle, so a product
+needs no pack or publish scripts and no pull request to be published.
 
-1. Ask for the product repository if it is not obvious, and check it out at
-   its default branch.
-2. Walk [publish-readiness.md](reference/publish-readiness.md): repository
-   requirements (manifest, stage-neutral stacks, Lambda bundling and
-   obfuscation, pack step, security scan, publish step, tests) and the S3 metadata Marketplace reads.
-3. Report each item as ready, missing, or cannot verify, with evidence, and
-   the concrete change for each missing item. Cite
-   [Spring-Oaks-Capital-LLC/deploy#3](https://github.com/Spring-Oaks-Capital-LLC/deploy/pull/3)
-   as the worked example.
-4. When the user asked to publish and the product is not ready, make the
-   changes without waiting for a second request: follow section D of that
-   file on a new branch, verify the bundle it builds passes Marketplace's
-   checks locally without uploading it, and open a pull request. Report only when the user
-   asked what is missing. Never push to the default branch, merge, deploy, or
-   publish in this lane. End the run at the pull request; publishing waits
-   until it merges.
-5. If the zip is ready but there is no `bundle_url`, upload it through Prism
-   Marketplace (section B2 of that file). That needs only
-   `MARKETPLACE_API_KEY`; never ask for a bucket or AWS profile to upload.
-6. Add the real security scan and Lambda obfuscation from that file; the
-   publish step writes `service-comply` and `obfuscated: true` only from
-   their results. Never write a verdict by hand, and never name the Build
-   service as issuer of metadata it did not produce.
-7. Pack for review under a stage no live install uses in the review account
-   `257779860257` (for example `review`). A Marketplace entrypoint that pins
-   no account (section A2a) packs without AWS credentials; one that still pins
-   `env.account` needs review-account credentials, so add A2a to the
-   readiness pull request instead.
+1. Ask for the product repository if it is not obvious; use its default branch
+   (or the branch the user named) at the remote tip.
+2. Walk [publish-readiness.md](reference/publish-readiness.md) section A:
+   Build readiness (the local recipe of configure-build-product §1, no Build
+   call), the registered component, the security scan and the review-stage rule.
+3. Prove it end to end without a Marketplace write:
+   `DRY_RUN=1 python3 skills/operate-marketplace/scripts/publish_via_build.py <checkout> [--branch <branch>]`.
+   It runs one real Build build and stops before any Marketplace call.
+4. Report each item as ready, missing or cannot verify, with evidence, and the
+   concrete change for each missing item. Product source changes belong to the
+   product's owners: never create branches, commits or pull requests in a
+   product repository, and never patch a checkout to get a bundle.
 
 ## 3. Publish, review, rollback
 
-Publish only a bundle packed from the product's merged default branch (a clean
-checkout of a commit on the remote). If the readiness pull request is still
-open, stop and say so. Never pack from an unmerged or locally patched checkout.
+Publish only from the product's merged default branch (or the branch the user
+named): the script archives a commit that is on the remote branch and never
+reads the working tree. Never publish from an unmerged or locally patched
+checkout.
 
-1. Resolve `product_id`: `GET /ontology/products/by-name?name={Product}`.
-2. Ensure the component exists (create with §2 step 6 if missing).
-3. Get the `bundle_url`: run the product's `just publish` (it uploads through
-   `POST .../components/{component_id}/bundle-uploads`), or follow section B2
-   of [publish-readiness.md](reference/publish-readiness.md) by hand.
-4. `PUT /ontology/products/{product_id}/components/{component_id}/bundles`
+1. Run the publish-through-Build script from this kit (section B of
+   [publish-readiness.md](reference/publish-readiness.md)):
+
+   ```bash
+   python3 skills/operate-marketplace/scripts/publish_via_build.py <product-checkout> [--branch <branch>]
+   ```
+
+   It checks `GET /settings/status`, resolves `product_id`
+   (`MARKETPLACE_PRODUCT_ID` or `GET /ontology/products/by-name` with
+   `MARKETPLACE_PRODUCT_NAME`, default the manifest's `component_name`),
+   requires the component to be registered (§2 step 6) with the manifest's
+   `bundle_type`, checks Build accepts the key, scans the source, builds it
+   through Build, verifies the artifact and both tokens against Marketplace's
+   checks, uploads through `POST .../components/{component_id}/bundle-uploads`,
+   then performs steps 2–4. Add `DRY_RUN=1` to stop before any Marketplace call.
+   Never mint `service-builder` or write `service-comply` by hand.
+2. `PUT /ontology/products/{product_id}/components/{component_id}/bundles`
    `{ "bundle_url": "https://...", "skip_review": false }` → `202` with
    `review_id` and `bundle_status`.
-5. Poll `GET /reviews/{review_id}` until `SUCCEEDED` or `FAILED` (scripts default
-   timeout ~1200s). On failure, return `review_details` without inventing fixes.
-6. `GET .../components/{component_id}/bundles` — for `VALID` rows, use the
+3. Poll `GET /reviews/{review_id}` until `SUCCEEDED` or `FAILED` (default
+   timeout 1200 s). On failure, return `review_details` without inventing fixes.
+4. `GET .../components/{component_id}/bundles` — for `VALID` rows, use the
    Marketplace-hosted `bundle_url` (short-lived presign). Statuses:
    `UPLOADING_IN_PROGRESS` | `VALID` | `FAILED`.
-7. Rollback: `POST .../components/{component_id}/rollback` when at least two
+5. Rollback: `POST .../components/{component_id}/rollback` when at least two
    VALID bundles exist → `202`. `400` otherwise.
 
-`skip_review: true` only before the first VALID bundle, and only with explicit
-user acceptance of a draft. Uploads must be a CDK cloud assembly zip with the
-metadata in [publish-readiness.md](reference/publish-readiness.md) section B;
-invalid artifacts return `422 BuildArtifactInvalid`.
+The script stops, with the reason in its JSON report, on a scan at `MEDIUM` or
+worse, a Build failure (`failure.tag`), a failed artifact or token check, more
+than 2 KB of S3 metadata, or stack names with a live stage (section D of
+publish-readiness.md). Report those; route Build defects and the stage gap to
+`tinkaton`.
 
-Env vars for `publish-product.sh`: `MARKETPLACE_API_KEY`,
+`skip_review: true` only before the first VALID bundle, and only with explicit
+user acceptance of a draft. Invalid artifacts return `422 BuildArtifactInvalid`.
+
+Env vars for `publish_via_build.py`: `MARKETPLACE_API_KEY` (Marketplace and
+Build), optional `DRY_RUN`, `MARKETPLACE_BASE_URL`, `BUILD_BASE_URL`,
+`MARKETPLACE_PRODUCT_ID`, `MARKETPLACE_PRODUCT_NAME`, `BUILD_TIMEOUT_SECONDS`,
+`MARKETPLACE_REVIEW_TIMEOUT_SECONDS`.
+
+Env vars for the Marketplace repo's `publish-product.sh` (an existing
+`bundle_url` only): `MARKETPLACE_API_KEY`,
 `MARKETPLACE_BUNDLE_URL`, `MARKETPLACE_PRODUCT_NAME`, `MARKETPLACE_COMPONENT_ID`,
 optional `MARKETPLACE_COMPONENT_TYPE`, `MARKETPLACE_SKIP_REVIEW`,
 `MARKETPLACE_REVIEW_TIMEOUT_SECONDS`, `MARKETPLACE_BASE_URL`.
@@ -270,7 +303,8 @@ components or is referenced as `configured_product_id`.
 ## Return
 
 Report: lane chosen; Prism Marketplace as the target; entities touched (names + ids); publish
-`review_id` / final `bundle_status` / hosted `bundle_url` when relevant;
+source commit, `build_id`, scan severity, the checks passed, metadata bytes,
+`review_id` and final `bundle_status` when relevant (never the presigned URLs);
 Persist confirmation only if `demo.sh` or an equivalent check was run; and any
 handoff outside Marketplace.
 
