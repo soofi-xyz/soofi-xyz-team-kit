@@ -21,6 +21,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: prismteam-ai/ci-action@main
+      - uses: prismteam-ai/build/actions/publish@main
         with:
           marketplace_api_key: ${{ secrets.MARKETPLACE_API_KEY }}

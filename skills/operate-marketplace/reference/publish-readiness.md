@@ -9,9 +9,10 @@ tags: marketplace, publish, build, cloud-assembly, readiness, security-scan
 The Build service builds every bundle Registeel publishes. A product needs no
 pack or publish scripts and no pull request to be published: it is publishable
 when Build accepts its source, the security scan passes and its stack names are
-safe for the sandbox review. `scripts/publish_via_build.py` in
-[`prismteam-ai/ci-action`](https://github.com/prismteam-ai/ci-action) runs the
-whole flow from a product checkout, the same way product CI runs it.
+safe for the sandbox review. `actions/publish/publish_via_build.py` in
+[`prismteam-ai/build`](https://github.com/prismteam-ai/build) (`actions/publish`) runs the
+whole flow from a product checkout, the same way product CI runs it (the
+Build repository's Actions access must allow organization repositories).
 
 Marketplace's own checks live in `prismteam-ai/marketplace`
 `lambda/services/bundle-review.ts` (`inspectBundle`, `assertComplyPassed`,
@@ -48,11 +49,11 @@ checkout to get a bundle sooner.
 ## B. What `publish_via_build.py` does
 
 ```bash
-DRY_RUN=1 python3 "$CI_ACTION/scripts/publish_via_build.py" all <product-checkout> [--branch main]
-python3 "$CI_ACTION/scripts/publish_via_build.py" all <product-checkout> [--branch main]
+DRY_RUN=1 python3 "$BUILD_REPO/actions/publish/publish_via_build.py" all <product-checkout> [--branch main]
+python3 "$BUILD_REPO/actions/publish/publish_via_build.py" all <product-checkout> [--branch main]
 ```
 
-`$CI_ACTION` is the `prismteam-ai/ci-action` clone from the skill's
+`$BUILD_REPO` is the `prismteam-ai/build` clone from the skill's
 Prerequisites step 4. `all` runs three steps; CI runs them one by one
 (`code <checkout> --work-dir DIR`, `build --work-dir DIR`,
 `publish --work-dir DIR`), passing state through `DIR/state.json`.
