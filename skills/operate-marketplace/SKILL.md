@@ -133,7 +133,7 @@ Classify the request, then run exactly one primary lane (plus inspect as needed)
 | Readiness | User asks whether a product can publish, or a publish stopped on a product gap | §3a |
 | Publish | Publish a product through Build, review poll, rollback | §3 |
 | Inspect | Read-only ontology, bundles, reviews, settings status | §4 |
-| CI publishing | User asks to publish a product on every merge to its default branch | §5 |
+| CI publishing | A publish found no CI workflow in the product repo, or the user asks to publish on every merge | §5 |
 
 Hand off and stop when:
 
@@ -230,6 +230,18 @@ named): the script archives a commit that is on the remote branch and never
 reads the working tree. Never publish from an unmerged or locally patched
 checkout.
 
+0. Before publishing, run the script below with `DRY_RUN=1`, then check
+   the product repository's default branch for a workflow that uses
+   `actions/publish-to-marketplace`:
+
+   ```bash
+   gh api "repos/<owner>/<repo>/contents/.github/workflows?ref=<default-branch>" --jq '.[].name' \
+     | while read -r f; do gh api "repos/<owner>/<repo>/contents/.github/workflows/$f?ref=<default-branch>" --jq .content | base64 -d | grep -q 'actions/publish-to-marketplace' && echo "$f"; done
+   ```
+
+   No match: go to §5, open the CI pull request and stop with the two
+   choices (merge it to publish automatically, or "publish now" for a
+   one-time publish with step 1). A match: continue with step 1.
 1. Run the publish-through-Build script from this kit (section B of
    [publish-readiness.md](reference/publish-readiness.md)):
 
@@ -293,7 +305,8 @@ components or is referenced as `configured_product_id`.
 
 ## 5. CI publishing (publish on every merge)
 
-Only when the user asks for it. The product repository gets one GitHub Actions
+When a publish request finds no CI workflow in the product repository (§3
+step 0), or the user asks for it. The product repository gets one GitHub Actions
 file that publishes each push to its default branch (a merged pull request)
 with the same flow as §3, through the shared action
 [`actions/publish-to-marketplace`](../../actions/publish-to-marketplace/action.yml)
@@ -309,7 +322,10 @@ Marketplace and Build URLs are built in.
    `.github/workflows/marketplace.yml`. If the default branch is not `main`,
    change only `branches: [main]`. Commit only that file and open one pull
    request. Never push to the default branch, merge, or touch other files.
-4. Give the user the secret steps, then stop:
+4. Tell the user the two choices and wait: merge the pull request (after
+   adding the secret below) and the product publishes itself now and on every
+   later merge, or reply "publish now" and you publish this commit once with
+   §3 step 1. Never publish before they choose. Secret steps:
 
    ```bash
    gh secret set MARKETPLACE_API_KEY -R <owner>/<repo> --body "$MARKETPLACE_API_KEY"
