@@ -8,16 +8,16 @@ Source of truth: `skills/prism-asset-pipeline/art-direction/art-direction.md`. T
 Workflow entry point: `skills/prism-asset-pipeline/SKILL.md`. Resolve these paths inside the installed plugin, not the workspace.
 
 Hard rules:
-- Every visual must pass the visual-alone test: a reader gets the section's assertion from the graphic without the copy.
+- Take the section copy, the emphasis, and depiction before a picture is planned. Show all three. Apply `system.json` `visual_slots.suggestion` in order. The first matching rule wins. Suggest exactly one of background, focus, or distinguishing per visual. Depiction does not choose the style. `user` puts a circle in the picture and the feeling happens to it. `us` puts a rounded square in the picture. `about_us` is the work or the system and may stay abstract. Then state the compositional layer separately. Flow is that layer, not a style. A section can have more than one visual, each with its own style. A stored suggestion does not skip the rule. Do not invent emphasis or depiction. Do not ignore a provided value. Run `visual_slots.selection`: the section copy proposes candidate elements, and the subject and the feeling decide which stay and how they interact. Article words do not propose candidates. One background can still underlie the page where a section's suggested style is background. Feeling versus explanation is per visual, not instead of style. Fail a focus visual that becomes a keyword diagram. Fail a feeling compositional flow mark that explains. Fail an explanation visual that only sets a mood. Fail `user` when there is no circle. Fail `us` when there is no rounded square.
 - Reuse lexicon entries when meaning matches; propose new ones when the content requires; flag both for approval.
 - When the copy argues a ceiling against a solution, the visuals must not mirror. The weaker side is visibly constrained.
 - The `eclipse` token is geometry and type only. Never blurred.
 - Geometry is exact SVG: 1.5 px non-scaling strokes, round caps. Never ask an image model for geometry. Focus rays come from gpt-image-2.5-sunburst and are composited under the SVG.
 - Rendering: anything with a hard edge is one solid flat color; anything with a gradient is diffused light with soft edges. Light is smooth, never grain, noise, or texture.
-- Line color comes from the hero ray (`system.json` `lines.colors`). Never ember or violet.
-- One construction: the light originates on the geometry and shares its angles. Shapes are outlines only. An inner glow or orb sits inside the outline, and the ray leaves from that glow. Place the outline on the measured origin. Do not attach Color Concept 04 as a reference image for focus rays. Never flat-fill a shape.
+- Line color is the graphic color of the ray that line meets (`system.json` `lines.colors`, same hexes as `shapes.graphic_colors`). The same darker color as the shape outline. Never the pale core, a ray fill, or a gradient.
+- One construction: the light originates on the geometry and shares its angles. A shape large enough to read as an outline has no fill. A shape small enough to read as a dot is filled with the graphic color of the ray it sits on. The stroke of a larger shape is that same graphic color (`system.json` `shapes.graphic_colors`), darker than that ray. The line uses that same graphic color. Place the outline on the measured origin. Do not attach Color Concept 04 as a reference image for focus rays.
 - Type first: lay out headline, body, and CTA per breakpoint before the graphic. Recompose mobile; never crop desktop.
-- Color harmony: the four Concept 04 pairs, chosen for harmony only; one hero ray, other rays support it.
+- Color harmony: the four Concept 04 pairs, chosen for harmony only. A composition may contain more than one ray. Each takes one job. When more than one is used, the ray that carries the claim is the hero, and the others support it. When a shape sits on a line, the line breaks at the shape. A line enters from one edge of the frame and leaves through another. It does not begin or end in open ground. A composition may join more than one motif when the join is the situation.
 - Mobile never ends a vertical element in a symmetric downward cone of light.
 - Blurred light only via the construction rules in §2/§3. Visible ground between bands. No two adjacent shapes share a stroke color.
 - No text baked into graphics. Labels are HTML, positioned from anchors in the brief.
@@ -27,4 +27,4 @@ Hard rules:
 - Never infer construction, coordinates, or font metrics. Ask.
 - Never write to `public/` without explicit approval.
 - Never write generated runs into the plugin tree; use `$PRISM_RUNS_DIR` (default `~/.prism-assets/runs`).
-- When Miranda corrects an output, update the skill or brief that caused it.
+- When an output is corrected, update the skill or brief that caused it.

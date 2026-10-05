@@ -53,7 +53,7 @@ Hex values are the fills on Figma frame Option 10 (`90:710` in `Prism-Visual-ID-
 | Swatch | Hex | Name | Role |
 |---|---|---|---|
 | 1 | `#161616` | eclipse | Geometry, type, legacy/"before" states. Never blurred. |
-| 2 | `#F8F7F7` | mist | Ground. Negative space between shapes. |
+| 2 | `#F0EEE9` | mist | Ground. Negative space between shapes. |
 | 3 | `#FDE692` | solar | Fill (light) |
 | 4 | `#FBE645` | flare | Stroke / accent |
 | 5 | `#FB6F48` | ember | Stroke |
@@ -65,10 +65,10 @@ Names are approved. Aqua and indigo are retired. `MRNDA White` `#FDFCFC` and `MR
 
 A graphic uses the inner/rim pairs it already has. One mark, such as an underline, uses one pair. Two beams may use two pairs when the source already has two. Do not paint the full palette onto every instance.
 
-Tonality comes from the rays in Color Concept 04 (Figma `90:710`), not from the flat swatches beside them. Those rays are high-key: color is pale, soft, and dissolved into the ground. A token is the center of a wash. Edges do not form a hard shape, and the surface is not glossy. The swatches are the flat tokens. The rays are those tokens pulled back.
+Tonality comes from the rays in Color Concept 04 (Figma `90:710`), not from the flat swatches beside them. Those rays are high-key: color is pale, soft, and dissolved into the ground. A token is the center of a wash. Edges do not form a hard shape, and the surface is not glossy. The swatches are the flat tokens. The rays are those tokens pulled back. On one ray the inner color is the wider body and the outer color is the narrower edge. Both stay equally washed. The outer color does not take over the beam.
 
 ### Construction changes [proposed]
-- Ground is `#F8F7F7`, not indigo. The negative-space rule now means **visible off-white bands between color bands**, as in Concept 04.
+- Ground is `#F0EEE9`, not indigo. The negative-space rule now means **visible off-white bands between color bands**, as in Concept 04.
 - Light bands follow the fan in `tokens.json`: `fan.upper` 13.98°, `fan.middle` 32.23°, `fan.lower` 52.70°, degrees down from horizontal. Higher bands sit near `fan.upper`. Lower bands sit near `fan.lower`. Angles between are interpolated. Concept 04 sits inside that spread (about 18°, 38°, and 47°).
 - The fan origin is the logo's top-left corner. By default it sits off-canvas at the top-left. A composition may move it to the focal point when the light relation is `from-focal`.
 - Light takes its direction from the three fan angles by default. Geometric shapes may use any angles, as long as one composition uses one consistent shape system.
@@ -140,12 +140,12 @@ The primitives plan is archived in `art-direction/archive/primitives-plan.md`. G
 ### Pairing geometry and light [proposed]
 The live site pairs the two layers hand in hand: sharp elbow routes (`home.bottleneck-group14`) beside the pinched rays, sharp ticks (`group13`) and soft underlines on the same four problem lines, sharp connectors (`home.outcomes-connector`) between cards with soft glows behind them.
 
-- **Geometry** carries structure: steps, sequence, counts, routes, boundaries, the process as designed or as broken. Narrow, crisp, flat, one solid inner color (flare or sky), rounded ends on every line and dash. Never blurred, never glowing. Angles: one consistent shape system per composition.
-- **Shapes:** only circles, triangles, squares, rectangles, hexagons, and other regular polygons; never irregular trapezoids or freeform polygons. Every shape has rounded corners, except at a transition point where geometry turns into light. Shapes are outlines only, in one flat line color. Never a flat fill. An inner glow or orb may sit inside an outline, and the ray leaves from that glow. Every symbol is built from these shapes. The full system is in `system.json`.
-- **Rendering rule:** anything with a hard edge (a line, a dash, an outline) is one solid flat color. A shape is never flat-filled; presence inside it is a glow or orb. Anything with a gradient or more than one color is diffused light with soft, blurred edges. Never put a crisp edge around a gradient. Lines use only the lighter inner colors, flare (#FBE645) or sky (#9DDEFD); never ember or violet, which read flat as lines. Light is smooth: clean continuous gradients, never grain, noise, speckle, or texture.
+- **Geometry** carries structure: steps, sequence, counts, routes, boundaries, the process as designed or as broken. Narrow, crisp, flat, one solid graphic color (the same darker color as the shape outline), rounded ends on every line and dash. Never blurred, never glowing. Angles: one consistent shape system per composition.
+- **Shapes:** circles, triangles, squares, rectangles, and other regular polygons. The user and their work are circles. Us and our work are rounded squares. Never irregular trapezoids or freeform polygons. Every shape has rounded corners, except at a transition point where geometry turns into light. Size follows the composition. A shape may be large when that reads better. A shape large enough to read as an outline has no fill. Its stroke is the darker graphic color of the ray it sits on (`system.json` `shapes.graphic_colors`): yellow/red `#F4480A`, blue/gold `#6CAE25`, blue/purple `#787AEE`, mint/blue `#64B8C7`. A shape small enough to read as a dot is filled with that same graphic color. The line uses that same graphic color. The line sets the scene and carries the motif. Every symbol is built from these shapes. The full system is in `system.json`.
+- **Rendering rule:** anything with a hard edge (a line, a dash, an outline, a filled dot) is one solid flat color. A shape large enough to read as an outline has no fill. A shape small enough to read as a dot is filled with the graphic color of the ray it sits on. Anything with a gradient or more than one color is diffused light with soft, blurred edges. Never put a crisp edge around a gradient. Lines use the graphic color of the ray they meet, the same darker color as the shape outline. Light is smooth: clean continuous gradients, never grain, noise, speckle, or texture.
 - **Light** carries energy and outcome: capacity, clarity, what the work becomes. Diffused prismatic rays with an inner and an outer color, per the tonality rule above. Never outlined.
 - The two layers meet at the shape: it stays an outline, an inner glow or orb sits inside it, and the ray leaves from that glow so the light reads as coming from the shape. Place the outline on the measured origin of the generated ray.
-- When geometry becomes light (a line opening into a ray), it is the same thing changing state, so the geometry takes the light's color. When geometry is a separate thing (a connector between two glows, a boundary the light meets), it may keep its own color.
+- When a line opens into a ray, the line keeps the graphic color of that pair. It does not switch to the pale core of the ray. A connector or a boundary uses that same graphic color when it belongs to one ray.
 - A graphic may be geometry only (a tick, a connector), light only (a page-break wash), or both. Choose by what the copy's claim needs: structure, energy, or the change from one to the other.
 
 ### C. Distinguishing — separates concepts
@@ -161,12 +161,12 @@ A graphic is one designed layout with the page's type, not a mark placed beside 
 - **Type first.** Design the section's layout before the graphic, for each breakpoint: where the headline, body, and CTA sit (left, centered, stacked, split), their widths on a 12-column desktop grid and a 4-column mobile grid, and why that placement serves the section. Record it as `layout` in the readings file, in percent of the frame, and preview it with `node <pipeline>/scripts/sheet.mjs`.
 - **Protect the type.** No saturated light, no line crossings, and no focal event behind the headline or the CTA. A quiet line may pass under body text only at the lightest weight.
 - **Anchor to the type.** Align the focal event to a type anchor, such as the headline's baseline, the CTA's center line, or the text column's edge, so image and type read as one layout. Sit elements on the 8 px grid (`tokens.json` `grid_px`).
-- **Proportion.** Size the geometry and the light against each other and against the text block; the light never dwarfs the headline's line length by accident. Scale per `system.json` `scale`: type is the foreground, light fills 50–75% of the frame and bleeds off an edge, and players (hexagons, rounded squares, circles) stay small, legible but never the focal point. Open ground protects the type zone; elsewhere the light fills the frame.
+- **Proportion.** Size the geometry and the light against each other and against the text block; the light never dwarfs the headline's line length by accident. Scale per `system.json` `scale`: type is the foreground, light fills 50–75% of the frame and bleeds off an edge, and the circle and the rounded square stay legible. Open ground protects the type zone; elsewhere the light fills the frame.
 - **Reading path.** The eye goes headline, then the focal event, then the CTA. The graphic's direction follows the reading direction (left to right on desktop, top to bottom on mobile) and never pulls the eye off the page before it reaches the CTA.
 
 ### E. Color harmony
 - **Pairs.** Rays use the four pairs from Color Concept 04 (`tokens.json` `light.pairs`): blue/purple, blue/gold, yellow/red, mint/blue. Colors carry no meaning; they are chosen for harmony.
-- **Hero one ray.** The ray that carries the section's claim is the largest, strongest, and nearest the focal point. Other rays support it: fewer, smaller or softer, chosen to sit together the way the four rays do in Concept 04.
+- **More than one ray.** A composition may contain more than one ray. Each takes one job. When more than one is used, the ray that carries the section's claim is the hero: the largest, strongest, and nearest the focal point. The others are fewer, smaller, or softer, chosen to sit together the way the four rays do in Concept 04. Clean ground stays between them.
 - **Construction.** Focus rays are a GPT image: already colored at the origin, narrower there, wider and more diffused as they travel, with off-white ground between only the rays the composition names. Concept 04 supplies the pairs and that softness. Do not attach it as an image reference. The filled-shape, thick-stroke, Gaussian-blur construction, including the blue/gold double stroke, is for the background library.
 - **Lines.** See `system.json` `lines`.
 

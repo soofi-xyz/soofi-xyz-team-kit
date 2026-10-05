@@ -1,8 +1,7 @@
 {
-  "_note": "The Prism visual system. Every phase reads this file; nothing outside it is drawn without a proposed addition Miranda approves. Status per block: locked | draft | pending.",
+  "_note": "The Prism visual system. Every phase reads this file; nothing outside it is drawn without an approved addition.",
   "version": "0.1.0",
   "pattern": {
-    "status": "locked",
     "name": "prism",
     "meaning": "Light passing through structure: one input broken into organized, legible parts.",
     "layers": {
@@ -11,26 +10,89 @@
     },
     "handoff": "Where geometry becomes light is where the claim happens. Light originates on a point of the geometry and shares its angles."
   },
+  "visual_slots": {
+    "rule": "Style and the picture are separate. Emphasis chooses the style before a motif is named. Copy comes last. The situation has to hold what the copy is about. It does not choose the subject or replace the feeling. The compositional layer is separate. It is not a fourth style. A section may have more than one visual, each with its own style. Do not invent emphasis, subject, or feeling. Do not ignore a provided value. Do not skip the suggestion rule because a style is already stored. The vocabulary is the drawing kit. It does not choose the style. Who the section is for does not choose the subject.",
+    "inputs": {
+      "emphasis": "Taken first. Values: high, low, or none. High is focus. Low is background. None means there is no picture. Do not ask for a subject or a feeling. If it is not provided and the brief does not state what to emphasize, stop and ask. Do not invent it.",
+      "subject": "Taken once there is a picture. Values: user, us, or about_us. Stored on a section as depiction. The user and their work are circles. Us and our work are rounded squares. about_us is the system. If it is not provided, stop and ask.",
+      "feeling": "Taken after the subject. Name a motif through motif_sourcing. Approved motifs live in sources/approved-motifs.json. Read them with the other sources. Choose one only when it is the best fit for this section. If the feeling is not provided, stop and ask. If no source yields a situation that fits, stop and ask.",
+      "copy": "Taken last. The section copy: headline, body, parts, and buttons. It does not choose the subject or replace the feeling. The situation has to hold what the copy is about: how long the hard part is, and whether the subject is still in it or already past it. Overcoming means the obstacle is still being met. Overcome means the long hard part is already behind the subject. Drop a situation that matches the feeling word and misses the copy, after checking whether a join would hold the copy. Crossing a finish is finishing. Do not drop that picture because it is also a race, when the copy is about finishing. The headline can choose the picture when its words name an action this kit can draw. The feeling word alone cannot. Do not diagram the headline's nouns."
+    },
+    "selection": {
+      "order": "Take emphasis first. If it is none, draw nothing. Otherwise take the subject, then the feeling, and name the motif. Take the copy last. The situation has to hold what the copy is about. The copy does not choose the subject or replace the feeling. If the subject or the feeling is missing, stop and ask. Do not fill either from a stored section.",
+      "candidates": "Match the section copy to vocabulary words. Each match is a candidate. Candidates may confirm the motif. They are not in the picture yet. Article words do not propose candidates.",
+      "cut": "The motif is already named from the feeling. A candidate from the copy stays only when removing it would change that motif. Otherwise cut it. The headline can choose the picture when its words name an action this kit can draw. The feeling word alone cannot. Do not diagram the headline's nouns.",
+      "explanation": "When the visual's job is explanation, the copy's parts are the marks. Do not cut them down to a mood."
+    },
+    "depiction": {
+      "user": "The reader is in the picture as a circle. Their work and their projects are circles too. The feeling happens to that circle. A picture with no circle fails. A ray or the prism cannot be the only subject. Not a face, a body, or hands.",
+      "us": "Prism is in the picture as a rounded square. Our work is a rounded square too. The agent or the prism is the subject.",
+      "about_us": "The picture is the system: structure, or our work as rounded squares. A circle is not required. Do not use it when the reader should see themselves."
+    },
+    "section_focus": "On a section record, focus is who the section is for. It is not the focus style, and it is not depiction.",
+    "styles": {
+      "background": {
+        "name": "Background",
+        "purpose": "Broad atmosphere. Does not make the claim.",
+        "examples": [
+          "subtle geometric grid",
+          "prism-light gradient",
+          "connected nodes",
+          "layered planes",
+          "faint graph structure"
+        ],
+        "job": "neither"
+      },
+      "focus": {
+        "name": "Focus",
+        "purpose": "The large emphasis visual. Makes one assertion visible. On a feeling section it carries the named feeling and adds no new fact. It fails if it becomes a keyword diagram.",
+        "job": "feeling, unless the copy's job is contrast (then the style is distinguishing, not focus)"
+      },
+      "distinguishing": {
+        "name": "Distinguishing",
+        "purpose": "Separates one concept from another. Only for contrast. Explanation. Not for a sequence or a list of same-kind results.",
+        "job": "explanation"
+      }
+    },
+    "suggestion": [
+      "Take emphasis before the copy. Apply the first matching rule. A stored suggestion does not skip the rule.",
+      "emphasis none → no visual",
+      "emphasis high → focus",
+      "emphasis low → background",
+      "After the motif is named, read the copy. If the copy contrasts two or more concepts, the style becomes distinguishing. Emphasis changes scale, not that style."
+    ],
+    "compositional_layer": {
+      "rule": "Says how the marks are arranged. It does not pick background, focus, or distinguishing. State it after the style.",
+      "single": "One dominant frame.",
+      "flow": "One equal mark per peer part, same size, same weight, in a row or a path.",
+      "combine": "A section may combine a style with a compositional treatment. Example: plan at low emphasis → style background, compositional layer flow of 3 step marks. If emphasis on that section is raised to high → style becomes focus, and the 3 steps stay on the compositional layer."
+    },
+    "feeling_versus_explanation": {
+      "rule": "Per visual, not instead of style.",
+      "background": "neither",
+      "focus": "feeling, unless the copy's job is contrast (then the style is distinguishing, not focus)",
+      "distinguishing": "explanation",
+      "compositional_flow_marks": "explanation when the parts are steps; feeling when the words already state same-kind results"
+    },
+    "page_atmosphere": "One background can still underlie the page. That is the background style used where a section's suggested style is background, not a second style invented per section."
+  },
   "object_system": {
-    "status": "locked",
     "kind": "geometric",
     "never": [
       "people",
       "faces",
       "hands",
       "literal objects",
-      "icons",
       "letters or numbers inside graphics"
-    ]
+    ],
+    "icons": "Allowed when abstracted into this system. An icon is a reference for a recognizable form, not something pasted in. Rebuild it from the allowed shapes and lines: rounded corners, no fill, the stroke rules, and one meaning per shape. Keep only the parts that make the form recognizable. Never copy a library glyph as is, and never add an icon as decoration. A prize badge (crown, ribbon, laurel, trophy) is not allowed. A structure the line builds, such as a podium, is not an icon."
   },
   "shapes": {
-    "status": "locked",
     "allowed": [
       "circle",
       "triangle",
       "square",
       "rectangle",
-      "hexagon",
       "other regular polygons"
     ],
     "banned": [
@@ -38,33 +100,36 @@
       "freeform or random polygons"
     ],
     "corners": "Every shape has rounded corners, except at a transition point where geometry turns into light.",
-    "fill": "Shapes are outlines only, one flat line color. Never a flat fill. Presence is an inner glow or orb inside the outline, and that glow is what the ray leaves from.",
+    "fill": "A shape large enough to read as an outline has no fill. Its stroke is the graphic color of the ray it sits on. A shape small enough to read as a dot is filled with that same graphic color and has no separate stroke. The fill does not mean a decision. Not mist, and not a ray color.",
+    "stroke": "The stroke is darker than the ray it sits on, and it is the graphic color of that ray pair. A shape used with a ray takes that pair's graphic color. A line uses that same graphic color. The line and the shape outline on one ray are the same color.",
+    "graphic_colors": {
+      "source": "Figma Option 25, file U1dHsSYfN6mxAu7dLmAfSJ, node 624:138. One empty rounded rectangle on each ray.",
+      "yellow/red": "#F4480A",
+      "blue/gold": "#6CAE25",
+      "blue/purple": "#787AEE",
+      "mint/blue": "#64B8C7"
+    },
     "symbols": "Every symbol is built from the allowed shapes; no bespoke silhouettes.",
     "angles": "One consistent shape system per composition; the light's edges share its angles. Fan angles (tokens.json fan) are the default for light direction."
   },
   "lines": {
-    "status": "locked",
     "weight": "1.5 px at 1x (non-scaling stroke); the lightest stroke on the page. 1 px read too faint in pale sky or gold on mist.",
     "caps": "round",
     "colors": {
-      "blue/gold": "flare #FBE645 (outer)",
-      "mint/blue": "sky #9DDEFD (outer)",
-      "blue/purple": "sky #9DDEFD (inner; the outer violet reads flat)",
-      "yellow/red": "flare #FBE645 (proposed: the outer ember reads flat and the solar inner is too pale to see)"
+      "blue/gold": "#6CAE25",
+      "mint/blue": "#64B8C7",
+      "blue/purple": "#787AEE",
+      "yellow/red": "#F4480A"
     },
-    "rule": "One solid flat color per line, taken from the hero ray: its outer color when that is a light color, otherwise the fallback listed in colors. Never ember or violet. Never blurred or gradient."
+    "rule": "One composition uses one line color, the graphic color of the one ray that line meets. That is the same darker color as the shape outline on that ray (shapes.graphic_colors). The color does not change along the line. Never the pale core, never a ray fill, and never a gradient. A line never has a sharp corner. A turn is a smooth curve. A wandering line is wavy. A curve is one smooth bend, not a chain of straight facets. A wave rounds at the bottom as well as the top. A trough is a curve, not a flat shelf with a corner at each end. A change from straight to wavy is one continuous rounded shift. A line enters from one edge of the frame and leaves through another. It does not begin or end in open ground. The only stop is the break where a shape sits on the line."
   },
   "text_treatment": {
-    "status": "pending",
-    "_note": "A separate layer the agent controls for type and UI: emphasis, arrows, slashes, dashes, ticks, connectors. Standard underlines are not used for emphasis. Members to be defined by Miranda.",
+    "_note": "A separate layer the agent controls for type and UI: emphasis, arrows, slashes, dashes, ticks, connectors.",
     "banned": [
       "standard underline for emphasis"
-    ],
-    "members": []
+    ]
   },
   "color": {
-    "status": "locked",
-    "source": "tokens.json light.pairs (from Figma Color Concept 04)",
     "pairs": [
       "blue/purple (sky/violet)",
       "blue/gold (sky/flare)",
@@ -74,322 +139,127 @@
     "meaning": "none. Colors are chosen for harmony, not meaning.",
     "rules": [
       "A ray's inner and outer colors always come from one pair.",
-      "Hero one ray: the ray that carries the section's claim is the largest, strongest, and nearest the focal point.",
-      "Other rays support it: fewer, smaller or softer, and chosen to sit harmoniously next to the hero, the way the four rays sit together in Color Concept 04.",
+      "A composition may contain more than one ray. Each ray takes one job from composition.jobs.light.",
+      "When more than one ray is used, the ray that carries the section's claim is the hero: the largest, strongest, and nearest the focal point. The others are fewer, smaller, or softer, and they sit together the way the four rays do in Color Concept 04.",
       "Concept 04 supplies the pairs and the softness. Focus rays are a GPT image, not a blurred SVG shape. The blurred-SVG construction (filled inner, thick outer stroke, Gaussian blur, and the blue/gold double stroke) is for the background library.",
       "Leave clean ground between rays."
     ]
   },
   "light": {
-    "status": "locked",
     "rules": [
       "Anything multicolor or gradient is diffused, never crisp-edged.",
       "Smooth gradients: no grain, noise, speckle, or texture.",
-      "A ray starts narrower at its origin and grows wider and more diffused as it travels, and it still leaves the frame. It is already visibly colored at the origin.",
-      "The image contains only the hero ray and the supporting rays named in the composition, with off-white ground between them for their whole length.",
+      "A ray starts narrower at its origin and grows wider and more diffused as it travels, and it still leaves the frame. The origin is pale, close to the ground. Further along, the inner color is the body of the ray: most of the colored area. The outer color is a softer band along the long edges, narrower than the inner, and it stays visible. The outer color never becomes the larger area, and it is never louder than the inner. Both colors stay equally washed, pulled back from the flat swatch, and easy to tell apart. Every ray dissolves the way Color Concept 04 does: edges are soft along the whole length, and a supporting ray is blurred as much as the hero.",
+      "A ray sits on a fan angle from tokens.json fan: upper about 14°, middle about 32°, or lower about 53°, degrees down from horizontal. It travels down and to the right. It does not run level across the frame. A steep drop uses lower. A slope uses middle. A long opening uses upper. The line that enters the ray follows that same angle. A ray does not end in a rounded cap. The origin is a taper, not a rounded bulb. The far end is the frame cutting the beam. It is not a capsule, a pill, or a rounded slab of light.",
+      "Name every ray the composition uses. Do not add a ray that was not named. Ground (#F0EEE9) stays between them for their whole length.",
       "Rays are rendered by gpt-image-2.5-sunburst from a light-only prompt and composited under the SVG. Do not attach Color Concept 04, or any other image, as a reference. Geometry is never rendered by an image model. Blurred SVG light is for the background library, not focus rays."
     ]
   },
   "composition": {
-    "status": "draft",
-    "source": "art-direction.md §5D",
+    "jobs": {
+      "light": {
+        "does": "guide, uncover, highlight, power, or focus",
+        "guide": "The ray shows where the path is going.",
+        "uncover": "The ray reveals one side. The rest stays outside it.",
+        "highlight": "The ray makes one part brighter than the rest. It may shine straight down, as on first place. A straight-down ray is this job. It is not the held_within scope relation.",
+        "power": "The ray is the push along the direction.",
+        "focus": "The ray holds the subject in the light. The subject sits in the beam. The beam does not leave the subject behind. This is not the focus style."
+      },
+      "line": {
+        "does": "context, story, and composition",
+        "context": "Where the subject has been, including what is left out of the frame.",
+        "story": "A direction a person can recognize as the motif.",
+        "composition": "How the line uses the frame, clear of the type. This is not the compositional layer (single or flow)."
+      },
+      "shape": "A shape is a subject. The user and their work are circles. Us and our work are rounded squares. A shape that is not a subject is cut. An explanation flow mark is a step, not a second subject.",
+      "aside": "Type is its own layer. Color has no job. Emphasis chooses the style. It does not choose the ray's job."
+    },
+    "concept": {
+      "rule": "Run visual_slots.selection. There is no stored sentence. The subject and the feeling set the interaction. The section copy does not choose the subject or replace the feeling. The situation has to hold what the copy is about. Name the motif through motif_sourcing. Stop and ask only when no source yields a situation that fits. Do not invent a motif that no source supports.",
+      "roles": "Name the motif before any layout. Approved motifs live in sources/approved-motifs.json. They are candidates, not a first choice. For the ranking, the name is enough. The line, the subject, and the rays are decided after one name is locked. Do not force every feeling into a journey.",
+      "motif": {
+        "when": "After the inputs are digested and the cut is done. Before a layout.",
+        "is": "A recognizable situation, named in ordinary words, that holds the subject, the feeling, and the copy. Getting over a hill, blasting off, and first place are motifs. A dashed line becoming solid is not a motif. It is one way a motif can be drawn. Name the situation before any element.",
+        "then": "After one situation is locked, search for photographs of that situation. Download several into the run's references folder and look at the pictures before writing the event. Use them to see the moment: where the subject is, what the path does, and what is in front of and behind the subject. Translate that moment into this kit. Do not copy an object the kit cannot build. Do not attach the photographs to the ray. Then write the picture as one event before any element. The event is a moment a person could point at. It says where the hard part is relative to the subject, what the subject is doing, and what the light is doing. Say it without the words line, circle, or ray. If you cannot, it is not a picture yet. If two events in one set would be drawn the same way, one of them is not that event. Then draw only that event. An element that does not change the event is not in the frame. Do not place a line, a circle, and a ray and then look for a story. Each ray takes one job from composition.jobs.light. A structure the line builds is allowed when the event needs it. An icon is allowed only when it is rebuilt under object_system.icons and is part of the event, not a badge for the feeling.",
+        "join": "One composition may use more than one motif when the join is the situation, including when one motif holds the feeling and another holds the part of the copy it missed. A line chart turning into a jet stream is one picture. A long unsettled path into a launch is one picture. Draw the change. Do not join motifs that do not change what the frame says.",
+        "journey": "When the motif is a journey, the drawing has to read as that journey. Direction comes from the motif."
+      },
+      "vary": {
+        "rule": "Show situation names only, in ordinary words. Do not describe the line, where the subject sits, or the rays. Show the best fits for this section, up to three names. An approved name appears only when it is one of those fits. Stop for the ranking. After one is locked, illustrate that situation. Do not paint before it is locked."
+      },
+      "shared": "A composition may contain more than one ray. Each ray uses one pair and takes one job. They stay separated by clean ground and do not merge into one wash. The path uses the graphic color of the ray it meets. A ray covers an outcome. It does not cover the hard stretch, and it does not have to leave from the subject. The circle is the subject. It is large enough to read as the subject, and it sits in the light. How close it sits follows the moment. When the subject has been on that path, or the moment ties the subject directly to the line, the shape sits close to the line. When the moment does not, the shape can sit apart from it. A focus ray holds the subject: the light is on the circle, not a beam that leaves it behind. When a shape does sit on a line, the line breaks at the shape's edge and continues on the other side. The line is not visible through the shape. A line enters from one edge of the frame and leaves through another. It does not begin or end in open ground. A ray sits on a fan angle, down from horizontal. It does not run level."
+    },
     "rules": [
-      "The composition fills the frame: lines may enter from a frame edge and run across it, and light runs off the far edges.",
-      "Keep lines clear of the type: they pass below or beside the headline and body, never through them.",
-      "The shape stays an outline. An inner glow or orb sits inside it, and the ray leaves from that glow, so the light reads as coming from the shape. The outline is never flat-filled.",
+      "Follow motif_sourcing. For the ranking, show situation names only. Do not describe the line, where the subject sits, or the rays. Stop for the ranking. After one is locked, search for photographs of that situation and look at them before writing the event. Then write the event before any element, then draw only that event. Do not paint before it is locked.",
+      "The drawing has to read as the event before any label. A repeating wave is not a climb, a grind, or a cleared obstacle. Two events in one set do not become the same picture. A composition may join more than one motif when the join is the event.",
+      "A composition may contain more than one ray. Each ray takes one job. Clean ground stays between them.",
+      "The circle is the subject. It is large enough to read as the subject, and it sits in the light. How close it sits follows the moment. When the subject has been on that path, or the moment ties the subject directly to the line, the shape sits close to the line. When the moment does not, the shape can sit apart from it. A focus ray holds the subject: the light is on the circle, not a beam that leaves it behind. When a shape does sit on a line, the line breaks at the shape's edge and continues on the other side. The line is not visible through the shape. A line enters from one edge of the frame and leaves through another. It does not begin or end in open ground.",
+      "At high emphasis, leave the type zone clear and let the rest of the field feel occupied. The situation crosses most of the frame. Negative space is the type zone and the gaps between rays. The frame should not feel blank.",
+      "A shape large enough to read as an outline has no fill. Its stroke is the graphic color of the ray it sits on. A shape small enough to read as a dot is filled with that same graphic color. Size follows the composition: a shape may be large when that reads better.",
+      "A mark earns its place. If a second line or a second shape does not change what the frame says, leave it out. Open ground is only the type zone; a line uses the rest of the field.",
       "After the ray image returns, measure its origin and place the SVG on that measurement.",
       "Rays are separated by clean ground; they never merge into one wash."
     ]
   },
   "feedback_insights": [
-    "Miranda prefers lines and grids as precise, rhythmic structure (often equidistant).",
+    "Lines and grids are precise, rhythmic structure, often equidistant.",
     "An outlined shape with an inner glow acts as the protagonist inside line structures. Flat fills read as dull.",
     "One clear transition point where geometry becomes light.",
     "Real light behavior (refraction, convergence, long-exposure trails) over narrative or UI metaphors.",
     "Avoid progress-bar stations, falling particles, and rotation sequences; they read as UI or clutter.",
-    "The mark must communicate the word's literal quality first (movement must look like motion), then the business meaning.",
-    "GPT image (gpt-image-2.5-sunburst) renders the rays better than blurred SVG or Recraft. Use it for light; keep lines and players as exact SVG.",
-    "Attaching Color Concept 04 as an image reference makes the model copy its single blended field. Use it for pairs and softness only."
+    "The mark must communicate the word's literal quality first (movement must look like motion), then the business meaning."
   ],
-  "held_for_later": {
-    "speed": "A row of the same shape, each stretched more in the direction of travel than the last, until the final one becomes a streak of light."
-  },
-  "keyword_process": "For each keyword, generate 7 options internally, score them against the feedback insights, and show Miranda only the top 3, with a recommended pick.",
+  "keyword_process": "For each keyword, generate 7 options internally, score them against the feedback insights, and show only the top 3, with a recommended pick. This proposes a vocabulary treatment. It does not choose the style.",
   "grammar": {
-    "status": "locked",
     "_note": "What each element means. Every mark uses these meanings; never give a shape a second meaning.",
     "shapes": {
-      "hexagon": {
-        "means": "a unit: a unit of work, a product, or the item being worked on (interchangeable; context tells them apart)",
-        "lit": "in use, present: an inner glow or orb inside the outline",
-        "outlined": "an empty slot or work not yet done: outline only"
-      },
       "rounded_square": {
-        "means": "the prism and the agent: the actor that transforms the work, mirroring the logo",
+        "means": "us and our work: the prism and the agent, mirroring the logo",
         "use": "One agent: a rounded square at a transition point, with work passing through it. The agent network: several rounded squares joined by lines, with light moving between them."
       },
       "circle": {
-        "means": "human interaction: approvals, sign-offs, decisions, guidance",
+        "means": "the user, and their work and projects",
         "lit": "a decision made: an inner glow or orb inside the outline",
         "outlined": "a decision or review still pending: outline only"
       },
       "triangle": {
         "means": "unassigned",
-        "rule": "Propose a meaning only when a keyword genuinely needs it; Miranda decides. Never apply arbitrarily."
+        "rule": "Propose a meaning only when a keyword genuinely needs it. Never apply arbitrarily."
       },
       "large_rounded_outline": {
         "means": "unassigned",
-        "rule": "Propose a meaning only when a keyword genuinely needs it; Miranda decides. Never apply arbitrarily."
+        "rule": "Propose a meaning only when a keyword genuinely needs it. Never apply arbitrarily."
       }
     },
     "lines": {
+      "role": "The line sets the scene. It is the part of the picture that communicates the motif.",
+      "combine": "After the motif is named, one composition may use more than one line treatment. A dashed stretch may become solid. A wavy line may also be dashed. That change draws the motif. It is not the motif.",
+      "break": "When a shape sits on a line, the line stops at the shape's edge and continues on the other side. The line does not pass through the shape. A line enters from one edge of the frame and leaves through another. It does not begin or end in open ground.",
       "solid": "a relationship or a defined path",
-      "wandering": "a process that is disorganized, starts and stops, or cannot get moving",
+      "wandering": "a process that is disorganized, starts and stops, or cannot get moving. Drawn as a wavy line. The bottom of each wave is rounded, the same as the top. A change from straight to wavy is one continuous rounded shift. Never a sharp corner, and never a chain of straight facets.",
       "elbow": "a hand-off route between parts",
       "equidistant_parallel": "separate streams of work",
       "grid": "structure, a standard, a system"
     },
-    "light": "the outcome: value, energy, what the work becomes",
+    "light": "the outcome: value, energy, what the work becomes. A glow can mark the one shape the moment is about. On a card, that glow can sit inside or outside.",
+    "feelings": {
+      "rule": "A feeling is a named situation. Motifs approved for reuse live in sources/approved-motifs.json. Read that file with the other sources. An approved motif is a candidate. Offer it when it is the best fit for this section. Leave it out when another situation fits better. Approval is not a rank. Colors do not mean a feeling. If the prompt does not name a feeling, stop and ask. If the named feeling has no entry there, follow motif_sourcing, including its fallback. Stop and ask only when that fallback yields nothing that passes the filters. Do not invent a motif that no source and no schema supports. Write a sourced motif into sources/approved-motifs.json only after a person approves it for reuse. When the visual's job is explanation, do not draw a feeling. When emphasis is none, draw nothing.",
+      "defined": ["winning", "free", "stuck", "ready"]
+    },
     "modifiers": {
-      "filled_vs_outlined": "an inner glow or orb means real, present, active; an empty outline means potential, empty, planned. Never a flat fill.",
-      "main_actor_color": "the protagonist outline is sky #9DDEFD. Presence is an inner glow or orb, never a flat fill.",
+      "filled_vs_outlined": "an inner glow or orb means real, present, active; an empty outline means potential, empty, planned. The shape itself is never filled.",
+      "main_actor_color": "the protagonist outline and the line are the graphic color of the ray they sit on. Not the pale core.",
       "aligned_vs_misaligned": "order vs problem state",
       "complete_vs_broken": "finished vs broken",
       "repetition": "scale, volume"
     },
     "transformation_rule": "Transformation is shown only by a color change or by geometry turning into diffused light, never by one shape becoming another shape. A color change happens only at a transition point (the rounded-square prism); everywhere else the same thing keeps the same color."
   },
-  "keywords_history": {
-    "status": "draft",
-    "source": "Soofi, 'Why the Next Systems Integrator Is an Agent Network'",
-    "_note": "Each keyword gets one locked visual signal, chosen by Miranda from sketched options. signal stays null until then.",
-    "prism": [
-      {
-        "word": "translate",
-        "meaning": "business language, data, and process turned into system form",
-        "signal": {
-          "status": "chosen",
-          "options": [
-            {
-              "name": "same row, new color",
-              "form": "A row of hexagons passes through a rounded-square prism and leaves it in exactly the same positions and spacing, in a new color (or opening into light). The constant (count, position, shape) shows the meaning is kept; the color change at the prism shows the transformation."
-            },
-            {
-              "name": "bent, not changed",
-              "form": "Parallel hairlines meet a focal point and leave it at a new angle, the way light refracts in a prism."
-            }
-          ],
-          "open": "Decide first what is being translated. These work for individual items; a system or a process needs its own variant (to design).",
-          "notes": [
-            "Grammar update: never change shape to show transformation."
-          ]
-        }
-      },
-      {
-        "word": "reuse",
-        "meaning": "repeated patterns become products instead of being rebuilt",
-        "signal": {
-          "status": "chosen",
-          "form": "Three separate hexagon line grids, each a different overall shape (for example a long strip, a compact cluster, a stepped layout), all using the same hexagon cell and orientation. Each grid has one empty cell, and the same outlined hexagon with an inner glow sits in that cell in all three, in a different position in each grid.",
-          "reads_as": "We fit our reusable parts into several different structures.",
-          "notes": [
-            "The grids must differ in overall shape but share the cell, or it reads as one repeated pattern.",
-            "The empty cell must read as missing from the grid, so the lit hexagon reads as fitting in."
-          ]
-        }
-      },
-      {
-        "word": "compose",
-        "meaning": "a system is built by combining known products",
-        "signal": {
-          "status": "chosen",
-          "form": "Several separate hairlines, evenly spaced, run into one small rounded square (the prism) and one broad diffused ray leaves it. The prism is the inflection point.",
-          "reads_as": "Separate products come together into one outcome.",
-          "notes": [
-            "The number of lines is the number of parts being composed (3 to 5).",
-            "Lines take the inner color of the ray they become.",
-            "Keep it distinct from translate's bent lines: in compose the lines converge and become light; in translate they stay lines and change direction.",
-            "Grammar update: the convergence point is the rounded-square prism, mirroring the logo."
-          ]
-        }
-      },
-      {
-        "word": "compound",
-        "meaning": "every engagement strengthens the network",
-        "signal": {
-          "status": "proposed",
-          "form": "A grid of small outlined hexagons starting from one hexagon with an inner glow at the bottom left. The first three or more columns hold one square each, then growth takes off (for example 1, 1, 1, 2, 4, 8), each new hexagon joined to an existing one by horizontal or vertical connector lines on the grid. Light builds where the grid is densest and opens off the upper right.",
-          "reads_as": "Slow start, then each engagement builds on the last and growth accelerates.",
-          "notes": [
-            "Keep connections on the grid (0 and 90 degrees, elbows); diagonal branching reads as a family tree or a virus.",
-            "Cap the growth so it stays a progression, not texture."
-          ],
-          "confirm": "Miranda's idea; confirm when we reach compound."
-        }
-      },
-      {
-        "word": "network",
-        "meaning": "data as a graph of objects and relationships, not a table",
-        "signal": {
-          "status": "chosen",
-          "form": "Small outlined circles as nodes, joined many-to-many by hairlines (each node linked to several others, not a chain, tree, or grid). Soft diffused light glows along the connections, not on the nodes.",
-          "reads_as": "The value is in the relationships.",
-          "notes": [
-            "Light must sit clearly on the lines, not as a general glow over the area.",
-            "No single central node; that reads as hub and spoke."
-          ]
-        }
-      },
-      {
-        "word": "movement",
-        "meaning": "moving between states creates information",
-        "signal": {
-          "status": "chosen",
-          "form": "A small outlined hexagon (a unit of work), with an inner glow, at the leading position. Behind it, a long diffused light streak follows its path like a long-exposure light trail, fading toward where it started. The path may curve or turn at right angles.",
-          "reads_as": "The work is moving, and its movement leaves light behind: the trail is the information created.",
-          "notes": [
-            "Motion must read at a glance: sharp leading edge, soft trailing light.",
-            "The handoff from geometry to light happens through motion, not at a fixed point."
-          ]
-        }
-      },
-      {
-        "word": "memory",
-        "meaning": "chain of custody: who touched it, what changed, what was corrected",
-        "signal": {
-          "status": "chosen",
-          "form": "An outlined hexagon with an inner glow (the unit of work) on the right linked by one continuous hairline, through evenly spaced small circles (one per hand-off), back to an origin point on the left that glows softly.",
-          "reads_as": "Every step is traceable back to where it started: chain of custody."
-        }
-      },
-      {
-        "word": "explicit",
-        "meaning": "context taken out of people's heads and modeled",
-        "signal": null
-      },
-      {
-        "word": "govern",
-        "meaning": "auditable and disciplined without losing speed",
-        "signal": null
-      },
-      {
-        "word": "canonical",
-        "meaning": "one normalized structure and shared vocabulary",
-        "signal": null
-      },
-      {
-        "word": "custom-fit",
-        "meaning": "flexible like custom software, repeatable like packaged software",
-        "signal": null
-      },
-      {
-        "word": "manufacture",
-        "meaning": "integration as standards-driven production",
-        "signal": null
-      }
-    ],
-    "problem": [
-      {
-        "word": "fragmented",
-        "meaning": "disconnected systems and definitions",
-        "signal": null
-      },
-      {
-        "word": "brittle",
-        "meaning": "integrations that break",
-        "signal": null
-      },
-      {
-        "word": "rigid",
-        "meaning": "off-the-shelf software forces the business to adapt",
-        "signal": null
-      },
-      {
-        "word": "slow",
-        "meaning": "custom builds are slow, expensive, and risky",
-        "signal": null
-      },
-      {
-        "word": "manual handoff",
-        "meaning": "humans carrying context between systems",
-        "signal": null
-      },
-      {
-        "word": "starting over",
-        "meaning": "every client, integration, and workflow rebuilt from scratch",
-        "signal": null
-      },
-      {
-        "word": "hidden context",
-        "meaning": "knowledge in memory, Slack, and spreadsheets",
-        "signal": null
-      },
-      {
-        "word": "incomplete",
-        "meaning": "models that hold records but not meaning",
-        "signal": null
-      }
-    ],
-    "contrasts": [
-      "COTS (rigid) vs custom (slow) vs Prism (custom-fit from reusable parts)",
-      "data as a table vs data as a network",
-      "activity as exhaust vs activity as information",
-      "swapping tools vs fixing the model"
-    ],
-    "later": [
-      "Discover",
-      "Connect",
-      "Transform",
-      "Lexicon",
-      "Model",
-      "Rule",
-      "Persist",
-      "Schedule",
-      "Report",
-      "Predict",
-      "Test",
-      "Deploy",
-      "Marketplace",
-      "System"
-    ],
-    "core": [
-      {
-        "word": "agent",
-        "meaning": "agents configure, operate, change, and govern products; together they are the agent network that is Prism",
-        "signal": {
-          "status": "chosen",
-          "form": "The rounded-square prism is the agent. One agent: a rounded square at a transition point with work passing through it. The network: several rounded squares joined by lines, light moving between them."
-        }
-      },
-      {
-        "word": "disperse",
-        "meaning": "one whole broken into distinct, organized parts: the pervasive prism concept",
-        "signal": {
-          "status": "chosen",
-          "form": "One broad pale ray enters a rounded-square prism and leaves as several distinct rays from the four Concept 04 pairs, fanning at the logo's fan angles with clean ground between them; one of them is the hero ray."
-        }
-      }
-    ]
-  },
   "vocabulary": {
-    "_note": "Words map to treatments, not pictures. A treatment applies to any element in any composition; a section combines one transformation with up to two relations, treatments, or states. Examples show one use, never the only use.",
+    "_note": "Words map to treatments, not pictures. Section copy proposes candidate elements from these word lists. The subject and the feeling decide which candidates stay and how they interact. The vocabulary does not choose the style. An explanation visual uses the copy's parts as the marks.",
     "elements": {
-      "hexagon": {
-        "means": "a unit: any discrete piece the system handles: a unit of work, a product, or the item being worked on (a document, a record, a customer)",
-        "words": [
-          "work",
-          "product",
-          "project",
-          "capability",
-          "document",
-          "record",
-          "customer",
-          "data",
-          "object"
-        ]
-      },
       "circle": {
-        "means": "human interaction: approvals, sign-offs, decisions, guidance",
+        "means": "the user, and their work and projects",
         "words": [
           "human",
           "Operational Architect",
@@ -397,15 +267,18 @@
           "sign-off",
           "decision",
           "review",
-          "guidance"
+          "guidance",
+          "project",
+          "work"
         ]
       },
       "rounded_square": {
-        "means": "the prism and the agent",
+        "means": "us and our work: the prism and the agent",
         "words": [
           "agent",
           "Prism",
-          "agent network (several, linked)"
+          "agent network (several, linked)",
+          "our work"
         ]
       },
       "line": {
@@ -421,13 +294,17 @@
         "words": [
           "outcome",
           "value",
-          "result"
-        ]
+          "result",
+          "growth",
+          "progress",
+          "output"
+        ],
+        "rule": "When these words appear in the copy, the outcome they name is shown by the ray. A motif may still draw a line, a chart, or an arrow as the situation. This rule only decides which element carries the outcome."
       }
     },
     "states": {
       "filled_vs_outlined": {
-        "treatment": "An inner glow or orb inside the outline means real, present, active. An empty outline means potential, empty, planned. Never a flat fill."
+        "treatment": "An inner glow or orb inside the outline means real, present, active. An empty outline means potential, empty, planned. The shape itself is never filled."
       },
       "complete_vs_broken": {
         "treatment": "complete = finished; missing sides or gaps = broken",
@@ -445,7 +322,7 @@
         ]
       },
       "wandering": {
-        "treatment": "One continuous solid squiggle, like a stock-price line with no trend: the process is disorganized, starts and stops, or cannot get moving. One flat line color, smooth turns, no axis, no fill.",
+        "treatment": "One continuous wavy line, smooth curves only. The bottom of each wave is rounded, the same as the top. A change from straight to wavy is one continuous rounded shift. No sharp corners and no straight facets. The process is disorganized, starts and stops, or cannot get moving. It uses the field around the type. One flat line color, the graphic color of the ray it meets, the same color as a shape outline on that ray. No axis.",
         "words": [
           "disorganized",
           "slow",
@@ -468,8 +345,7 @@
           "bottleneck",
           "constraint",
           "pressure"
-        ],
-        "from_lexicon": "pinch"
+        ]
       },
       "unfit": {
         "treatment": "An outlined element, with an inner glow, that does not fit the slot or structure it sits in.",
@@ -477,8 +353,7 @@
           "rigid",
           "COTS",
           "legacy"
-        ],
-        "from_lexicon": "Legacy / before"
+        ]
       }
     },
     "treatments": {
@@ -487,18 +362,14 @@
         "words": [
           "speed",
           "fast"
-        ],
-        "replaces": "the old echo symbol ('the same thing, only faster')",
-        "reads_as": "rate: how fast it is going now"
+        ]
       },
       "movement": {
         "treatment": "The element leaves one continuous diffused light trail along its full path, including curves and right-angle turns, in the hero ray's colors. Long: it covers the distance traveled.",
         "words": [
           "movement",
-          "state change",
-          "workflow"
-        ],
-        "reads_as": "journey: it changed state over time and distance"
+          "state change"
+        ]
       },
       "_stacking": "Speed and movement stack: a light trail along the path plus short copies directly behind the element reads as moving fast through the process."
     },
@@ -528,27 +399,14 @@
         "treatment": "The same outlined element, with an inner glow, appears in several different structures, keeping its color.",
         "words": [
           "reuse",
-          "product",
-          "certified pattern",
-          "marketplace"
+          "certified pattern"
         ]
       },
-      "growing": {
-        "treatment": "Repetition that starts slowly from one origin and accelerates, each new element joined to an existing one.",
-        "words": [
-          "compound",
-          "scale",
-          "learn"
-        ],
-        "status": "proposed"
-      },
       "held_within": {
-        "treatment": "Elements sit inside a ray of light; the ray is the scope they operate within. The ray comes from the agent (rounded square) or along the fan angles by default, not straight down, so it reads as scope, not a spotlight.",
+        "treatment": "Elements sit inside a ray of light; the ray is the scope they operate within. The ray comes from the agent (rounded square) or along the fan angles by default, not straight down, so scope does not read as a spotlight. A ray that shines straight down is the highlight job, as on first place, and is not this relation.",
         "words": [
           "govern",
           "governance",
-          "registry",
-          "certified",
           "scope"
         ]
       },
@@ -559,8 +417,7 @@
           "workflow",
           "hand-off",
           "manual hand-off (broken)"
-        ],
-        "from_lexicon": "route"
+        ]
       }
     },
     "transformations": {
@@ -569,15 +426,13 @@
         "treatment": "Elements pass through the prism and keep their arrangement; their color changes or they open into light.",
         "words": [
           "translate",
-          "transform",
-          "model"
+          "transform"
         ]
       },
       "converge": {
         "treatment": "Evenly spaced lines run into the prism and leave as one diffused ray.",
         "words": [
           "compose",
-          "system",
           "integrate"
         ]
       },
@@ -586,8 +441,6 @@
         "words": [
           "disperse",
           "decompose",
-          "report",
-          "predict",
           "outputs"
         ]
       },
@@ -601,49 +454,113 @@
       "organize": {
         "treatment": "Tangled lines converge at the prism and leave as evenly spaced, ordered lines, which then open into light.",
         "words": [
-          "canonical",
           "normalize",
           "standardize",
-          "organize",
-          "manufacture"
+          "organize"
         ]
       }
-    },
-    "pending": [],
-    "unmapped": {
-      "_note": "Proposed lexicon entries with no vocabulary treatment yet. Propose one (7 options, top 3, as treatments) only when a section needs it.",
-      "cycle": "lifecycle, states that recur",
-      "assign": "work given to distinct roles (agents and humans each holding a different part)"
-    },
-    "lexicon_map": {
-      "pinch": "states.pinched",
-      "meet": "transformations.converge",
-      "rise": "treatments.movement",
-      "route": "relations.routed",
-      "split": "transformations.disperse",
-      "bound": "relations.held_within",
-      "Legacy / before": "states.unfit",
-      "Messy input": "transformations.organize (its tangled input)",
-      "Agent": "elements.rounded_square",
-      "Human": "elements.circle",
-      "Governance": "relations.held_within",
-      "Data model": "relations.connected",
-      "cycle": "unmapped",
-      "assign": "unmapped"
     }
   },
-  "definition_of_done": "Asked 'what is the system?', Ampharos returns this file: pattern, object system, shapes and grammar, lines, color, light, composition, and the vocabulary mapping every keyword to an element, state, treatment, relation, or transformation.",
+  "definition_of_done": "Asked 'what is the system?', Ampharos returns the reusable definitions and guardrails in this file: inputs, styles, jobs, motif, motif_sourcing, shapes, lines, color, light, and the vocabulary. A page outline is not the system. The vocabulary is the drawing kit. It does not choose the style.",
   "scale": {
-    "status": "draft",
-    "hierarchy": "Type is the foreground and the largest element. Light is the field: it fills most of the frame. Players (hexagons, rounded squares, circles, lines) are small: legible, never the hard focal point.",
+    "hierarchy": "Type is the foreground and the largest element. Light is the field. At high emphasis the field should feel occupied: the situation crosses most of the frame, and the light covers 50 to 75 percent of it and bleeds off an edge. Negative space stays in the type zone and in the gaps between rays. The frame should not feel blank.",
     "players": {
-      "hexagon_height": "5 to 7 percent of the frame height on desktop; 4 to 6 percent of the frame width on mobile",
-      "rounded_square": "about 70 percent of the hexagon height",
-      "circle": "40 to 60 percent of the hexagon height",
+      "size": "Choose the size the composition needs. A shape may be large when that reads better. There is no maximum size.",
+      "very_small": "A shape small enough to read as a dot is filled with the graphic color of the ray it sits on. A shape large enough to read as an outline has no fill.",
+      "small_mark": "When the shape is a small mark and size is not doing the work, a circle is 5 to 7 percent of the frame height on desktop, and 4 to 6 percent of the frame width on mobile. A rounded square is about 70 percent of that. This is not a cap.",
       "minimum": "large enough that 1 px lines read at 1x (about 24 px)"
     },
     "light": "The light field covers 50 to 75 percent of the frame and bleeds off at least one edge. Supporting rays help fill the frame around the hero ray.",
-    "open_ground": "Open ground protects the type zone. Elsewhere, the light fills the frame.",
+    "open_ground": "Open ground protects the type zone. At high emphasis, the line and the light occupy the rest of the field. Negative space is the gap between them, not an empty frame.",
     "focal": "The focal event is the handoff where light begins, not the players."
+  },
+  "motif_sourcing": {
+    "_note": "How Ampharos finds motifs for a subject, a feeling, and copy. Sources propose situations. This file decides how they are drawn. A sourced motif is a candidate until it is ranked. Paths are relative to this file's directory.",
+    "when": "After emphasis, subject, and feeling are taken. Before any layout. The copy is read before a situation is kept. The situation has to hold what the copy is about. The copy does not choose the subject or replace the feeling.",
+    "judgment": "A candidate stays in the running only when a person could recognize the moment drawn with this kit. The line sets the scene and carries the motif. A circle is the user and their work. A rounded square is us and our work. A ray carries the outcome. A glow can mark the one shape the moment is about. Drop a candidate when the picture depends on a specific object this kit cannot build, or when the idea would not be recognizable once drawn. Apply that test to each candidate. Do not keep a list of banned objects. The feeling names the kind of moment. The headline can choose the picture when its words name an action this kit can draw. The feeling word alone cannot. The copy still does not replace the feeling or choose who the subject is. When one situation holds the feeling and misses part of the copy, check a join before dropping it. The join is a candidate when together they hold the copy. A launch can miss a years-long stretch. A long unsettled path into that launch can hold the years and the win. Crossing a finish is finishing. Do not drop that picture because it is also a race, when the copy is about finishing. A picture of beating other people is a different moment. It fails when the copy has no one else in it.",
+    "sources": [
+      {
+        "order": 1,
+        "file": "sources/approved-motifs.json",
+        "read": "Motifs a person has approved for reuse, under the feeling name. Take the name. After that name is locked, use its drawing. Do not prefer an entry because it is approved."
+      },
+      {
+        "order": 2,
+        "file": "sources/prism-feelings-proposed.json",
+        "read": "Match the feeling by name or meaning. Take the situation name only, the words before the drawing. The line, shape, and ray sentences in that file are not the motif. Map the situation onto the elements after it is named."
+      },
+      {
+        "order": 3,
+        "file": "sources/ampharos-motif-lexicon.json",
+        "read": "Match the feeling to an entry by its triggers. Read conceptual_metaphors, image_schemas, and motifs as situations only. Ignore its composition, color, and camera fields; this file overrides them."
+      },
+      {
+        "order": 4,
+        "file": "sources/metanet-index.json",
+        "read": "Look up the feeling as a target concept. Each source is a concrete domain the situation can come from. Skip entries marked domain_specific."
+      },
+      {
+        "order": 5,
+        "file": "sources/imageschemanet-index.json",
+        "read": "Look up the key verbs and nouns of the feeling and copy in words, or a situation in frames. Each returns the image schema it activates and the role (source, path, goal, blocker, container, supporter). The role tells where the subject sits and what the line builds. Covers six schemas only. Use it to place the subject after the situation is named."
+      },
+      {
+        "order": 6,
+        "file": "open icon libraries (Tabler Icons, Pictogrammers)",
+        "read": "How a concept is conventionally drawn. Use it to find the recognizable form of a candidate, then rebuild it under object_system.icons. A form every library uses the same way is also a cliché to check against the feeling."
+      }
+    ],
+    "steps": [
+      "Name the feeling's core situation in ordinary words, the way 'getting over a hill' or 'first place' is named.",
+      "Read the sources in order. Collect candidate situations. A literal object in a source is a situation, not a picture: 'a rocket launching' is the situation 'blasting off', drawn as a steep rising line.",
+      "From sources/prism-feelings-proposed.json, take the situation name only. Do not copy its line, shape, or ray sentences. Do not map it yet.",
+      "After one situation is locked, translate it into the elements with translate_schema: what the line builds, where the subject sits, and which one job each ray takes, or no ray for a problem state. When sources/imageschemanet-index.json has the situation's words, use its role to place the subject.",
+      "After one situation is locked, if it needs a recognizable form, look it up in the icon libraries and rebuild it under object_system.icons.",
+      "Fit the subject. user: the feeling happens to the circle, and their work is a circle too. us: the rounded square is the actor, and our work is a rounded square too. about_us: the system is the subject. Drop a candidate that needs a different subject.",
+      "Fit the copy before a situation is kept. The copy does not choose the subject or replace the feeling. The situation has to hold what the copy is about: how long the hard part is, and whether the subject is still in it or already past it. Overcoming means the obstacle is still being met. Overcome means the long hard part is already behind the subject. Drop a situation that matches the feeling word and misses the copy, after checking whether a join would hold the copy. Crossing a finish is finishing. Do not drop that picture because it is also a race, when the copy is about finishing. The headline can choose the picture when its words name an action this kit can draw. The feeling word alone cannot. Do not diagram the headline's nouns.",
+      "Run the filters. Then keep up to three candidates that are different situations, not one situation drawn three ways.",
+      "Show the situation names for a ranking: the best fits for this section, up to three. An approved name is included only when it is one of those fits. The name only. Write the drawing into the candidate record only after one name is locked."
+    ],
+    "candidate_record": {
+      "motif": "The situation in ordinary words, then how the line, the subject, and the ray draw it, in the style of sources/approved-motifs.json.",
+      "status": "approved or sourced",
+      "source": "Which file and entry it came from.",
+      "schema": "The image schema it rests on.",
+      "fits_subject": "Why it works for this depiction.",
+      "fits_copy": "What the copy confirms, without the motif diagramming it.",
+      "misreading": "The strongest wrong reading, and how the drawing prevents it."
+    },
+    "filters": [
+      "object_system.never: no people, faces, hands, literal objects, or letters or numbers in graphics. Icons only as rebuilt under object_system.icons. A structure the line builds is allowed.",
+      "Only grammar.shapes with their one meaning. Never give a shape a second meaning. A lit or outlined circle means a decision made or pending, not an emotion.",
+      "transformation_rule: change happens only at the rounded square, never one shape becoming another.",
+      "Problem-state feelings have no ray. The ray covers only the outcome, never the hard stretch.",
+      "Real light behavior over UI metaphors; no progress-bar stations, falling particles, or rotation sequences.",
+      "Not a near-copy of an approved motif under a different feeling. File a picture by what it reads as. The precipice reads as a decision, or as almost there, not as winning.",
+      "The drawing has to read as the situation before the rationale is read."
+    ],
+    "translate_schema": {
+      "VERTICALITY": "A line that rises or falls; the subject's height on it.",
+      "SOURCE-PATH-GOAL": "A solid path line; direction from the motif; light on the outcome end.",
+      "CONTAINER": "A closed run of lines (trapped) or the held_within relation (sheltered scope).",
+      "FORCE": "pinched (blockage / pressure), the ray's 'power' job (push), a line pressing on the subject.",
+      "BALANCE": "aligned_vs_misaligned on a grid; a straight line among wandering ones.",
+      "LINK": "relations.connected, routed (elbow), parallel lines that join.",
+      "CENTER-PERIPHERY": "The ray's 'focus' or 'highlight' job.",
+      "PART-WHOLE": "complete_vs_broken; units on or off a grid.",
+      "NEAR-FAR": "Distance between the subject and the ray or other shapes.",
+      "SCALE": "modifiers.repetition; lines splitting on the fan angles.",
+      "LIGHT-DARK": "lit_vs_unlit; the ray's 'uncover' job.",
+      "CONTACT": "Two lines meeting at a point where light begins (the handoff).",
+      "MERGING / SPLITTING": "transformations converge, disperse, organize at the rounded square.",
+      "CYCLE": "No grammar yet. Loops and rotation read as UI; avoid until defined.",
+      "ITERATION": "The speed treatment's repeated copies; equidistant marks.",
+      "FULL-EMPTY": "filled_vs_outlined (inner glow vs empty outline). Never on the user circle for emotion: on a circle it means decided vs pending.",
+      "SURFACE": "No grammar yet."
+    },
+    "ranking": "Show situation names only, in ordinary words. An approved name from sources/approved-motifs.json appears only when it is one of the best fits. Do not describe the line, where the subject sits, or the rays. Stop for the ranking. Do not paint.",
+    "after_lock": "After one situation is locked, search for photographs of that situation. Download several into the run's references folder and look at the pictures before writing the event. Use them to see the moment: where the subject is, what the path does, and what is in front of and behind the subject. Translate that moment into this kit. Do not copy an object the kit cannot build. Do not attach the photographs to the ray. Then illustrate it. Map it onto the elements: what the line builds, where the subject sits, one job per ray, the line break where a shape sits on a line, and a join only when the join is the situation. Then write the composition. Do not reopen the ranking.",
+    "approval": "Locking a name approves that situation for the section. Write it into sources/approved-motifs.json when the person approves keeping it for reuse. Never write a candidate back without that approval.",
+    "fallback": "If no source matches the feeling, name its image schema and build candidates from translate_schema. If that still yields nothing that passes the filters, stop and ask. Do not invent a motif that no source and no schema supports."
   }
 }

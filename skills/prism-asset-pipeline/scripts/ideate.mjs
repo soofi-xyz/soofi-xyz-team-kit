@@ -125,9 +125,8 @@ const ideas = parseJson(
   await claude(
     system,
     `Section:\n${JSON.stringify(section, null, 2)}\n\nStructures already used (precedents; baseline to beat, never the starting point): ${used.join("; ")}\n\n` +
-      `Do steps 1 and 2 of the prompt-writer skill. For each candidate, write "image" as what a viewer literally sees, in visual terms only: shapes, positions, light, color, change across the frame. No meaning words, no metaphors, nothing a critic could use to guess the copy.\n\n` +
-      `Return JSON only: {"claim": "", "pattern_type": "", "claim_shape": "", "contrast_property": "", "readings": ["", "", ""], ` +
-      `"candidates": [{"n": 1, "structure": "", "reading": "which of the three readings", "layers": "light-led|geometry-led|both", "composition_type": "", "prism_meaning": "", "image": "", "intended": "what it should communicate", "precedent": false}]}`,
+      `Do steps 1 and 2 of the prompt-writer skill. Run visual_slots.selection first: emphasis, then subject, then feeling, then copy to validate. Follow motif_sourcing. Read sources/approved-motifs.json with the other sources. An approved motif is a candidate. Use it only when it is the best fit for this section. From sources/prism-feelings-proposed.json, take the situation name only and map it onto the elements after it is named. If no source yields a situation that fits, stop. The situation is already locked. Illustrate that one situation. Do not propose a different situation. Draw it with the line and the subject. A composition may contain more than one ray, and each ray takes one job. Where a shape sits on a line, the line breaks at the shape. The drawing has to read as the locked motif. For each solution, write "motif" as the situation in a few words, and "image" as what a viewer literally sees. No metaphors in "image".\n\n` +
+      `Return JSON only: {"concept": "", "pair": "", "candidates": [{"n": 1, "motif": "", "structure": "", "hard_stretch": "", "subject": "", "outcome": "", "image": "", "intended": "the motif", "precedent": false}]}`,
   ),
 );
 
@@ -156,8 +155,8 @@ const decision = parseJson(
     system,
     `Section:\n${JSON.stringify(section, null, 2)}\n\nYour candidates:\n${JSON.stringify(ideas.candidates, null, 2)}\n\nBlind critic results:\n${JSON.stringify(critiques, null, 2)}\n\n` +
       `Pick the ${top} strongest by blind_match and headline_fit; drop generic ones; a precedent wins only if clearly higher. Say why the pick beats the runner-up. ` +
-      `For each pick, do steps 3 and 4 of the prompt-writer skill for desktop (1536x1024) and mobile (1024x1536), recomposing mobile rather than cropping. Add bindings only where the skill says they matter.\n\n` +
-      `Return JSON only: {"picks": [{"n": 1, "why": ""}], "runner_up": {"n": 0, "why_not": ""}, "readings": [{"n": 1, "breakpoint": "desktop|mobile", "size": "", "structure": "", "concept": "", "claim_shape": "", "pattern_type": "", "visual_alone_test": "", "composition": "", "color": {"pair": ""}, "bindings": [{"word": "", "how": ""}], "geometry": "", "light_prompt": ""}]}`,
+      `For each pick, do steps 3 and 4 of the prompt-writer skill for desktop (1536x1024) and mobile (1024x1536), recomposing mobile rather than cropping. geometry is the elements that made the cut. light_prompt covers only the region that feeling gives to the ray. When the feeling has no ray, light_prompt is empty ground.\n\n` +
+      `Return JSON only: {"picks": [{"n": 1, "why": ""}], "runner_up": {"n": 0, "why_not": ""}, "readings": [{"n": 1, "breakpoint": "desktop|mobile", "size": "", "structure": "", "concept": "", "pair": "", "geometry": "", "light_prompt": ""}]}`,
   ),
 );
 

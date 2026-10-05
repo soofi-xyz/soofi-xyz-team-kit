@@ -1,7 +1,7 @@
 {
   "_note": "IDs checked against provider docs on 2026-09-28. Geometry is authored as SVG (1.5 px strokes, round caps). Focus rays are rendered by gpt-image-2.5-sunburst and composited under the SVG. Blurred SVG light is for the background library. An image model never renders geometry.",
   "concept": {
-    "runs_in": "skills/prism-asset-pipeline/scripts/ideate.mjs (Anthropic API), not the chat"
+    "runs_in": "Claude in Cursor, when ANTHROPIC_API_KEY is missing. Otherwise skills/prism-asset-pipeline/scripts/ideate.mjs"
   },
   "raster": {
     "default": "gemini",
@@ -41,6 +41,6 @@
     "env": "ANTHROPIC_API_KEY",
     "thinking_budget": 16000,
     "critic": "gpt-5.5",
-    "_note": "latest-opus resolves to the newest Opus listed by the Anthropic models endpoint; pin an exact id here to freeze it. The critic is a different provider so the author never judges itself."
+    "_note": "latest-opus resolves to the newest Opus listed by the Anthropic models endpoint; pin an exact id here to freeze it. The critic is a different provider so the author never judges itself. When ANTHROPIC_API_KEY is missing, use Claude in Cursor to write the ideas, geometry, and light prompt. Do not stop. OPENAI_API_KEY is still required to paint rays."
   }
 }

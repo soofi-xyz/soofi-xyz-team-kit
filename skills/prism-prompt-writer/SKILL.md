@@ -7,70 +7,44 @@ description: Turns one approved Prism visual (section copy, job, goal, verb) int
 
 Paths: `art-direction/...` means `<pipeline>/art-direction/...` and `<runs>` is the runs root, both defined in `prism-asset-pipeline`.
 
-Run steps 1–4 with `node <pipeline>/scripts/ideate.mjs`, not by hand in chat. It sends this skill to the model set in `<pipeline>/models.config.json` `ideate`, has a separate critic read each idea blind as text before any image is made, and writes the picked prompts into the run's `readings.json`.
+If `ANTHROPIC_API_KEY` is set, run steps 1–4 with `node <pipeline>/scripts/ideate.mjs`. If it is missing, use Claude in Cursor for those steps. Do not stop and do not ask for the key. Write the geometry and the light prompt into the run's `readings.json`. Painting the ray still uses `OPENAI_API_KEY`.
 
 Inputs: the section from `asset_plan.json` (assertion, body, evidence, CTA, job, goal, pattern type, verb), `art-direction/system.json` (grammar, color, lines, vocabulary), `art-direction/art-direction.md` §5, `art-direction/prismatic-symbolism.md`, `art-direction/tokens.json`. Never attach or describe a shipped graphic.
 
-## 1. Read the section
-1. Read all four parts of the section, not only the headline. Each does a different job:
-   - Assertion: the claim the visual must prove. Write it in ≤10 words.
-   - Body: how the copy characterizes each thing. Map its descriptive words to `system.json` vocabulary states and treatments: "rigid" → `states.unfit`; "manual hand-off" → broken `relations.routed`; "reusable" → `relations.repeated_identity`; "slow" → `states.wandering`.
-   - Evidence: the concrete parts. A list sets the count of elements (four problems → four marks). The evidence decides what the pieces are; the assertion decides what happens to them.
-   - CTA: no visual weight unless the section bookends the page.
-2. Take the pattern type from the plan. It sets what the visual must do:
-   - Background: atmosphere only. It carries no claim, so skip steps 3–6. Use the background library (§5A); write a prompt only when the plan asks for a new crop.
-   - Focus: make the assertion visible, as one idea.
-   - Distinguishing: separate two concepts. Give each side its own form from how the body characterizes it ("COTS is rigid" → fixed blocks; "Prism is reusable" → a network of identical agent units). Obey the asymmetry rule and the before/after color split (§5C).
-   If the plan has no pattern type, decide it from the section's job and record why.
-3. Name the claim shape, using the same names as `prism-concept`: contrast, transformation, decomposition, sequence, structure, or quality (one state shown well). Only a transformation gets `before`, `turn`, and `after`, with the turn given its own visible stretch. Do not force a story onto copy that has none.
-4. Name the ONE visible property that carries the idea: continuity, order, width, direction, count, separation, or color temperature. If you need two properties, the idea is not clear yet.
-5. Bind specific words only when they matter. If the section carries a specific the image must show (a duration like "years", an amount, a named actor), bind that word to a variable from "Visual variables" in `prismatic-symbolism.md` and write how the image exaggerates it. Otherwise leave `bindings` empty; the claim and the property are enough.
-6. Decide identity. The same thing keeps one color everywhere except at the prism, where a color change means transformation. Colors carry no other meaning.
-7. Write the visual-alone test as one sentence a stranger could say with no copy: "Scattered pieces settle into one clear order."
+## 1. Select what is drawn
+Run `system.json` `visual_slots.selection`. There is no stored sentence.
 
-Proposed, not yet approved (report it, do not act on it): load test. Note any image element with no reason in the copy, and any bound word with no element.
+1. If the prompt does not state the subject, stop and ask. The subject is `user` (circle), `us` (rounded square), or `about_us` (the work or the system). Do not read it off a stored `depiction` field.
+2. If the prompt does not state the feeling, stop and ask. Follow `motif_sourcing`. Read `sources/approved-motifs.json` with `sources/prism-feelings-proposed.json`, `sources/ampharos-motif-lexicon.json`, `sources/metanet-index.json`, and `sources/imageschemanet-index.json`. An approved motif is a candidate. Offer it only when it is the best fit for this section. From the proposed file, take the situation name only. Do not map it until one name is locked. After it is locked, write the event before any element. Stop and ask only when no source yields a situation that fits. When the visual's job is explanation, do not draw a feeling.
+3. Then read the section copy. It does not choose the subject or replace the feeling. The situation has to hold what the copy is about: how long the hard part is, and whether the subject is still in it or already past it. Drop a situation that matches the feeling word and misses the copy, after checking whether a join would hold the copy. Crossing a finish is finishing. Do not drop that picture because it is also a race, when the copy is about finishing.
+4. The subject stays. A shape is a subject. The line builds the situation. Each ray takes one job from `composition.jobs.light`: guide, uncover, highlight, power, or focus. A composition may contain more than one ray. When a shape sits on a line, the line breaks at the shape. A composition may join more than one motif when the join is the situation. The drawing has to read as the motif.
+5. Keep a candidate only when removing it would change that interaction. Cut the rest. When the visual's job is explanation, the copy's parts are the marks. Do not cut them down to a mood.
 
-## 2. Diverge within the system, then choose
-Read `art-direction/system.json` first. Every candidate is composed from its vocabulary: elements, states, treatments, relations, and transformations. Never invent a mark. Precedents (the worked example, approved graphics, ideas Miranda has given) show how to reason, not what to draw.
+## 2. Rank, then illustrate
+For the ranking, show situation names only, in ordinary words. Show the best fits for this section, up to three names. An approved name appears only when it is one of those fits. Do not describe the line, where the subject sits, or the rays. Do not invent a motif that no source supports.
 
-- Map the reading's words to vocabulary keys. If a needed word is `unmapped`, stop and propose a treatment through pipeline phase 0 (7 options generated, top 3 shown, each a treatment that applies to any element).
-- A candidate is one transformation (the claim) plus at most two relations, treatments, or states, arranged in a layout. Two candidates with the same keys must differ in composition: which element carries the claim, where the prism sits, how the hero ray leaves, what the type anchors to.
+Stop for the ranking. Do not paint before one name is locked.
 
-1. Write 3 different readings of the section: what else could it be about? Take different angles on the same copy: the problem, the moment of change, the result, the feeling, the hidden structure.
-2. From those readings, write 8 candidates, each naming its vocabulary keys. Name each one's structure in three words or fewer ("open form closes", "layers fall into alignment", "pool breaks free"). No two candidates may share a structure; restyling one idea (a different angle, color, or layout) is the same candidate.
-3. Spread the set. Include at least two that are light-led, two that are geometry-led, and two that pair both. Use at least three composition types: one focal event, a field across the frame, a split, a sequence, or layered planes. Draw from `prismatic-symbolism.md` and from anything else a prism or light does: layers, planes, caustics, cast shadows, closure, alignment, filling a space.
-4. Each candidate must express something a prism does: decomposition, refraction, structure, layers, light passing through a system, one input becoming organized outputs, or hidden structure becoming visible.
-5. Flag any candidate whose structure matches a precedent or another section's graphic as `precedent`. It may stay in the set as the baseline to beat, but it wins only if it scores clearly higher.
-6. Score each 1–5 on: one-glance readability (would a stranger name it in 2 seconds?), fit to the copy, and distinct silhouette from neighboring sections and precedents.
-7. Pick one and say why it beats the runner-up. Record the rest under `rejected` with the score and reason. Show Miranda all eight, one line each, with the pick.
+After one name is locked, search for photographs of that situation. Download several into the run's references folder and look at the pictures before writing the event. Use them to see the moment: where the subject is, what the path does, and what is in front of and behind the subject. Translate that moment into this kit. Do not copy an object the kit cannot build. Do not attach the photographs to the ray. Then write the picture as one event before any element. The event says where the hard part is relative to the subject, what the subject is doing, and what the light is doing. Say it without the words line, circle, or ray. If you cannot, it is not a picture yet. If two events in one set would be drawn the same way, one of them is not that event. Then draw only that event. An element that does not change the event is not in the frame. Do not place a line, a circle, and a ray and then look for a story. Do not add a prize icon. Do not reopen the ranking.
 
-## 3. Composition spec (write before the two paint artifacts)
-Follow `art-direction.md` §5D (composition) and §5E (color harmony).
-- Type first: design the layout for each breakpoint before any graphic element: where the headline, body, and CTA sit and why. Record it as `layout` (percent of the frame: `{"headline": {"left", "top", "width"}, "body": {...}, "cta": {"left", "top"}}`). Name the type anchor the focal event aligns to. Keep the graphic out of the type's area.
-- One construction: name the point of the geometry the light starts from, and the angles the geometry and the ray's edges share.
-- Color: name the hero ray's pair and any supporting rays, per `art-direction.md` §5E (colors carry no meaning; one hero ray). Line color comes from `system.json` `lines.colors`.
-- Where each part sits and how much of the frame it takes. For a change, put `before` where the eye starts (left on desktop, top on mobile) and size it by its binding: a long wait gets a long run.
-- Both states must be clearly visible. The weaker state is at least half the intensity of the stronger one; never let it fade into the ground.
-- The one focal event and where it sits.
-- The headline zone.
-- One primary phenomenon plus at most one supporting (see `prismatic-symbolism.md`).
-- Breakpoints: write a desktop spec (landscape, `size` `1536x1024`) and a mobile spec (portrait, `size` `1024x1536`). Recompose mobile; never crop desktop. On mobile the headline sits at the top and the reader scrolls down, so the idea reads top to bottom: geometry may run at 90°, and the light opens below the text. Never end a vertical element in a symmetrical downward cone of light; it reads as a rocket launch or upward progress in every test so far. Run the sequence diagonally or keep it horizontal, and let the light leave at an angle. Keep the same pair, the same handoff, and the same meaning on both. Save them as `<id>.desktop` and `<id>.mobile`, and read back both.
-- Layers: say which elements are geometry (sharp, carries structure) and which are light (diffused, carries energy), and name the handoff point where they meet. See "Pairing geometry and light" in `art-direction.md`.
+## 3. Composition spec
+- Type first. Headline and body stay in the open ground. The path passes below or beside the type, never through it.
+- Name where the path changes, in percent of the frame. That change is the meaning.
+- Name where the subject is in the event. The subject does not have to sit on the path. Where a shape does sit on a line, the line breaks at the shape's edge and continues on the other side. A line enters from one edge of the frame and leaves through another. It does not begin or end in open ground.
+- Name every ray, the region it covers, and its one job. A ray covers an outcome. It does not have to leave from the subject. A composition may contain more than one ray. Do not add a ray that was not named.
+- Each ray uses one pair. Name it.
+- Desktop `1536x1024` and mobile `1024x1536`, recomposed, not cropped. On mobile the idea reads top to bottom. Do not end in a symmetric downward cone.
 
 ## 4. Two paint artifacts
-Write both. Do not combine them into one image prompt.
+Write both. Do not combine them into one image prompt. Do not ask the image model to draw the line or the circle.
 
 ### Geometry (`geometry`)
-What the SVG draws. Positions in percent of the frame, the line color token, 1.5 px strokes, and which marks wander. Shapes are outlines only, never a flat fill. No light, no blur, no gradient; the inner glow belongs in the light prompt.
+The SVG. 1.5 px stroke, round caps, the graphic color of the pair. Positions in percent of the frame. A large shape has no fill. A shape small enough to read as a dot is filled with the graphic color.
+- The line builds the motif. The subject sits in that situation. Direction comes from the motif. Where a shape sits on the line, stop the line at the shape's edge and resume it on the other side.
+- The subject: which shape, how big, and where.
 
 ### Light prompt (`light_prompt`)
-Sent only to `gpt-image-2.5-sunburst`. Light only.
-1. One sentence of the rays, with no marks in it.
-2. The origin, in percent of the frame, and which side of the frame stays empty background.
-3. Each named ray's inner and outer hex, from `tokens.json` `light.pairs`. The hero is the largest. Name no ray the composition did not name.
-4. A small glow or orb sits at the origin, and the ray leaves from it. The ray is already visibly colored there, starts narrower, and grows wider and more diffused as it travels, leaving the frame. Off-white ground stays between the rays for their whole length. The image has no outlined shapes; the outline is drawn later in SVG.
-5. At most five exclusions: no lines, no shapes, no text, no grain, no texture. Long negative lists make the image worse.
-Do not attach Color Concept 04, or any other image, as a reference. The model copies that picture's single blended field. Take the hex values from the tokens.
+Sent only to `gpt-image-2.5-sunburst`. Light only. Name the pair and its hex values from `tokens.json` `light.pairs`. Name every ray the composition uses: its pair, where it sits, in percent of the frame, and that the rest stays empty ground. Name the ground hex from `tokens.json` `palette.mist`. Do not add a ray that was not named. No lines, no shapes, no text, no grain. Do not attach a reference image.
 
 ## 5. Blind read-back
 Run `node <pipeline>/scripts/readback.mjs <run>/readings.json <id...>`. A separate model describes the image without the copy, then scores it against the visual-alone test.

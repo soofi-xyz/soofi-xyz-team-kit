@@ -20,11 +20,11 @@ Color stays clean pastel everywhere. Show a problem through shape (pinch, gap, e
 
 ## Geometry marks (sharp layer)
 
-Geometry is crisp, narrow, flat, one solid color, never blurred, never gradient. Anything multicolor or gradient is diffused light, never crisp-edged. Lines use only the lighter inner colors, flare or sky; never ember or violet. Every line and dash has rounded ends. It pairs with the light above; see "Pairing geometry and light" in `art-direction.md`.
+Geometry is crisp, narrow, flat, one solid color, never blurred, never gradient. Anything multicolor or gradient is diffused light, never crisp-edged. Lines use the graphic color of the ray they meet, the same darker color as the shape outline. Never the pale core. Every line and dash has rounded ends. It pairs with the light above; see "Pairing geometry and light" in `art-direction.md`.
 
 | Mark | Meaning | How it renders |
 |---|---|---|
-| Wandering line | a process that is disorganized, starts and stops, or cannot get moving | one continuous solid squiggle, like a stock-price line with no trend; one flat line color, smooth turns, no axis, no fill |
+| Wandering line | a process that is disorganized, starts and stops, or cannot get moving | one continuous wavy line, smooth curves only, troughs rounded the same as crests, a straight-to-wavy change is one rounded shift, no sharp corners, one flat line color, no axis |
 | Solid hairline | a defined, continuous path | one narrow sharp line |
 | Elbow route | a path between parts that already exist | sharp line turning 90° |
 | Tick | one item counted in a list | short sharp vertical stroke |

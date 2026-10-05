@@ -21,9 +21,9 @@ const jobs = [
     source: "home/hero-glow-desktop.svg",
     copy: "Redesign work for the age of AI agents.",
     fromCopy:
-      "For the sentence \"Redesign work for the age of AI agents.\" This is a claim that opens the page. Make one field of light that lets that claim land. One color only, flare #FBE645, pale and high-key, dissolved into ground #F8F7F7. Edges disappear. No gloss, no hard shape. Do not add a second color. No people, tools, icons, or letters.",
+      "For the sentence \"Redesign work for the age of AI agents.\" This is a claim that opens the page. Make one field of light that lets that claim land. One color only, flare #FBE645, pale and high-key, dissolved into ground #F0EEE9. Edges disappear. No gloss, no hard shape. Do not add a second color. No people, tools, icons, or letters.",
     prompt:
-      "The headline is \"Redesign work for the age of AI agents.\" This light sits behind that sentence and opens the page. Keep the two beams and the gap already in the image. Change the black ground to #F8F7F7. Do not add colors that are not already in the beams. Do not draw tools, people, handoffs, or letters.",
+      "The headline is \"Redesign work for the age of AI agents.\" This light sits behind that sentence and opens the page. Keep the two beams and the gap already in the image. Change the black ground to #F0EEE9. Do not add colors that are not already in the beams. Do not draw tools, people, handoffs, or letters.",
   },
   {
     id: "home.problem-underline",
@@ -31,9 +31,9 @@ const jobs = [
     source: "home/problem-underline-desktop.svg",
     copy: "Manual handoffs. Approval chasing. Status checking. Context transfer.",
     fromCopy:
-      "For the evidence lines \"Manual handoffs. Approval chasing. Status checking. Context transfer.\" The claim is that these are the old model, not transformation. Make one small soft mark that could sit under a single line, so the line lands. One color only, sky #9DDEFD, pale and high-key, dissolved into ground #F8F7F7. No hard edge, no gloss. Do not draw the four activities. No other colors. No letters, icons, or people.",
+      "For the evidence lines \"Manual handoffs. Approval chasing. Status checking. Context transfer.\" The claim is that these are the old model, not transformation. Make one small soft mark that could sit under a single line, so the line lands. One color only, sky #9DDEFD, pale and high-key, dissolved into ground #F0EEE9. No hard edge, no gloss. Do not draw the four activities. No other colors. No letters, icons, or people.",
     prompt:
-      "These words are the evidence: \"Manual handoffs. Approval chasing. Status checking. Context transfer.\" A single short glow sits under a line like those, so the line lands. Keep it one color, the color already in the mark. Change the black ground to #F8F7F7. Do not illustrate the four activities. Do not add other colors. Do not draw letters.",
+      "These words are the evidence: \"Manual handoffs. Approval chasing. Status checking. Context transfer.\" A single short glow sits under a line like those, so the line lands. Keep it one color, the color already in the mark. Change the black ground to #F0EEE9. Do not illustrate the four activities. Do not add other colors. Do not draw letters.",
   },
   {
     id: "home.bottleneck-rays",
@@ -41,10 +41,10 @@ const jobs = [
     source: "home/bottleneck-ray-top-left-desktop.png",
     copy: "Your people are not the bottleneck. Your workflow is.",
     fromCopy:
-      "For the sentence \"Your people are not the bottleneck. Your workflow is.\" Show the constraint: light forced toward one point, because the workflow is what squeezes. One color only, sky #9DDEFD, pale and high-key, edges dissolved into ground #F8F7F7. No gloss, no hard silhouette. Do not draw people. No other colors. No letters or icons.",
+      "For the sentence \"Your people are not the bottleneck. Your workflow is.\" Show the constraint: light forced toward one point, because the workflow is what squeezes. One color only, sky #9DDEFD, pale and high-key, edges dissolved into ground #F0EEE9. No gloss, no hard silhouette. Do not draw people. No other colors. No letters or icons.",
     tone: "art-direction/references/color-concept-04.png",
     prompt:
-      "The sentence is \"Your people are not the bottleneck. Your workflow is.\" The light narrows to a point because the workflow is the constraint. Keep that pinch and the gaps. The second image is tonality only: match how pale, soft, and high-key those washes are. Color sits back into the ground and the edges disappear. Do not copy that image's layout, logo, words, stripes, or its set of colors. This ray stays the one blue already in the first image, washed back to that softness. Ground is #F8F7F7. No gloss. No hard edge. No extra colors. No letters.",
+      "The sentence is \"Your people are not the bottleneck. Your workflow is.\" The light narrows to a point because the workflow is the constraint. Keep that pinch and the gaps. The second image is tonality only: match how pale, soft, and high-key those washes are. Color sits back into the ground and the edges disappear. Do not copy that image's layout, logo, words, stripes, or its set of colors. This ray stays the one blue already in the first image, washed back to that softness. Ground is #F0EEE9. No gloss. No hard edge. No extra colors. No letters.",
   },
 ];
 

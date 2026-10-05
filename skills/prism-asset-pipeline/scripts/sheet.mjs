@@ -30,10 +30,10 @@ const cards = picks.map((reading) => {
 const html = `<!doctype html><meta charset="utf-8"><title>${escape(prefixes.join(", "))}</title>
 <style>
 body{margin:32px;background:#e9e8e8;font-family:Inter,system-ui,sans-serif;display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start}
-figure{margin:0}.frame{position:relative;background-size:cover;background-color:#F8F7F7;box-shadow:0 1px 4px #0002}
+figure{margin:0}.frame{position:relative;background-size:cover;background-color:#F0EEE9;box-shadow:0 1px 4px #0002}
 .frame>*{position:absolute;margin:0;color:#161616}
 h1{font-weight:500;line-height:1.05;letter-spacing:-0.02em}p{line-height:1.4;color:#161616b3}
-a{background:#161616;color:#F8F7F7;padding:12px 20px;border-radius:999px;white-space:nowrap;text-decoration:none}
+a{background:#161616;color:#F0EEE9;padding:12px 20px;border-radius:999px;white-space:nowrap;text-decoration:none}
 figcaption{font-size:12px;color:#555;margin-top:8px}
 </style>${cards.join("")}`;
 

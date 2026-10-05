@@ -1,0 +1,409 @@
+{
+  "_note": "Proposed motifs. Nothing here is approved. Copy a motif into sources/approved-motifs.json to approve it for reuse. Underscore keys are review notes; drop them on approval if the agent should see only 'motifs'.",
+  "version": "0.1.0-proposed",
+  "derived_from": "Ampharos motif lexicon v0.2 (conceptual metaphors + image schemas), translated into the Prism grammar: line builds the situation, shape is the subject, ray takes one job.",
+  "feelings": {
+    "overcoming": {
+      "motifs": [
+        "Through the narrows. Two lines pinch together to one tight point and open apart again. The subject is just past the pinch, in the open stretch. The ray guides along the open stretch.",
+        "The gap in the wall. A solid line crosses the path as a wall, broken in one place. The subject is on the far side of the break. The ray highlights the far side only."
+      ],
+      "_status": "proposed",
+      "_from_lexicon": [
+        "overcoming"
+      ],
+      "_schema": "FORCE: BLOCKAGE",
+      "_kind": "feeling",
+      "_misreading": "Reads as still trapped if the subject's position past the pinch or gap is ambiguous."
+    },
+    "progress": {
+      "motifs": [
+        "Gaining ground. One path line: wandering behind the subject, solid and steady ahead of it. The subject is just past the change. The ray guides along the solid stretch.",
+        "Momentum. The subject moves along a solid line with the speed treatment behind it. The ray is the push."
+      ],
+      "_status": "proposed",
+      "_from_lexicon": [
+        "progress"
+      ],
+      "_schema": "SOURCE-PATH-GOAL",
+      "_kind": "feeling",
+      "_misreading": "Reads as a stock chart or a progress bar if stations are added; no stops along the line."
+    },
+    "growth": {
+      "motifs": [
+        "Branching out. One solid line splits into several lines spreading on the fan angles. The subject sits at the first split. The ray highlights the widening spread.",
+        "More of it. Units on a grid: lit nearest the subject, outlined at the far edge, with more lit than outlined. The ray highlights the lit area."
+      ],
+      "_status": "proposed",
+      "_from_lexicon": [
+        "growth",
+        "scale_reach"
+      ],
+      "_schema": "SCALE",
+      "_kind": "feeling",
+      "_misreading": "Reads as uncontrolled sprawl if the branches are irregular; keep them on the fan angles."
+    },
+    "done": {
+      "motifs": [
+        "Complete. A unit that had a gap now has every side. It is lit. The subject sits beside it. The ray highlights the unit.",
+        "Across the line. The path ends at one solid crossing line. The subject is just past it. The ray focuses on the subject."
+      ],
+      "_status": "proposed",
+      "_from_lexicon": [
+        "ending",
+        "before_after"
+      ],
+      "_schema": "PART-WHOLE",
+      "_kind": "feeling",
+      "_misreading": "A finish line can read as a race (competition) rather than completion; prefer the complete unit for 'project done'."
+    },
+    "transformed": {
+      "motifs": [
+        "Through the prism. Tangled lines run into the rounded square and leave as evenly spaced lines that open into light. The subject is on the light side. The ray is the outcome after the prism.",
+        "Same work, new color. The subject is a unit (about_us). It passes through the rounded square, keeps its shape and arrangement, and leaves lit in the ray's color. The ray highlights the far side."
+      ],
+      "_status": "proposed",
+      "_from_lexicon": [
+        "transformation",
+        "simplicity"
+      ],
+      "_schema": "MERGING / SPLITTING",
+      "_kind": "feeling",
+      "_misreading": "Must follow the transformation rule: change happens only at the rounded square, never one shape becoming another."
+    },
+    "aspiring": {
+      "motifs": [
+        "Eyes on the top. The subject sits at the foot of a rising solid line. The ray sits at the top, not yet reached. The ray guides upward."
+      ],
+      "_status": "proposed",
+      "_from_lexicon": [
+        "ambition"
+      ],
+      "_schema": "VERTICALITY",
+      "_kind": "feeling",
+      "_misreading": "Too close to the approved precipice motif under winning; keep the subject clearly at the bottom."
+    },
+    "relief": {
+      "motifs": [
+        "Unknotted. Tangled lines that surrounded the subject have straightened into evenly spaced lines beside it. The subject sits in open ground. The ray uncovers the open ground.",
+        "Weight lifted. A heavy line that pressed down on the subject has risen clear of it, leaving open ground between. The ray fills that space."
+      ],
+      "_status": "proposed",
+      "_from_lexicon": [
+        "relief"
+      ],
+      "_schema": "FORCE: REMOVAL OF RESTRAINT",
+      "_kind": "feeling",
+      "_misreading": "'Unknotted' overlaps the organize transformation; without the rounded square it is relief, with it it is transformed."
+    },
+    "overwhelmed": {
+      "motifs": [
+        "Buried. Many lines cross over the subject from above, piling across it. There is no ray.",
+        "Every stream at once. Many equidistant parallel lines all converge on the subject, and the subject is the pinch point. There is no ray."
+      ],
+      "_status": "proposed",
+      "_from_lexicon": [
+        "overwhelm"
+      ],
+      "_schema": "CONTAINER (over-full)",
+      "_kind": "feeling",
+      "_misreading": "'Every stream at once' can read as integration (converge) if the meeting point is the rounded square instead of the subject."
+    },
+    "pressure": {
+      "motifs": [
+        "Squeezed. Two lines close in on the subject from both sides, leaving almost no space. There is no ray.",
+        "Closing gap. Two lines converge ahead of the subject toward a pinch. The subject moves toward it with the speed treatment. There is no ray."
+      ],
+      "_status": "proposed",
+      "_from_lexicon": [
+        "anxiety",
+        "time_pressure"
+      ],
+      "_schema": "FORCE: COMPULSION",
+      "_kind": "feeling",
+      "_misreading": "Without the subject inside the narrowing, it reads as a neutral funnel."
+    },
+    "calm": {
+      "motifs": [
+        "Level ground. One long solid horizontal line. The subject rests on it with wide open ground above. A soft ray highlights the ground ahead.",
+        "In order. The subject sits on a grid where every line is aligned and equidistant. The ray is broad and soft."
+      ],
+      "_status": "proposed",
+      "_from_lexicon": [
+        "calm",
+        "stability",
+        "balance"
+      ],
+      "_schema": "BALANCE",
+      "_kind": "feeling",
+      "_misreading": "Reads as stalled (stuck) if nothing ahead is lit; keep the ray present."
+    },
+    "hopeful": {
+      "motifs": [
+        "First light. The edge of a ray just reaches the subject from one side. The rest of the frame is open ground. The ray uncovers."
+      ],
+      "_status": "proposed",
+      "_from_lexicon": [
+        "hope"
+      ],
+      "_schema": "LIGHT-DARK",
+      "_kind": "feeling",
+      "_misreading": "Keep the ray reaching the subject from the side, not ahead of it. Light ahead and not yet entered is the precipice motif, which belongs to winning."
+    },
+    "confident": {
+      "motifs": [
+        "Holding the line. Wandering lines move around the subject. The subject sits on one straight solid line that does not bend. The ray highlights the straight line."
+      ],
+      "_status": "proposed",
+      "_from_lexicon": [
+        "confidence",
+        "mastery"
+      ],
+      "_schema": "BALANCE",
+      "_kind": "feeling",
+      "_misreading": "Reads as isolation if the wandering lines feel hostile rather than incidental."
+    },
+    "clarity": {
+      "motifs": [
+        "Brought into the light. Elements in the frame are faint and partial except where the ray falls. There, the units around the subject are crisp and complete. The ray uncovers.",
+        "Lines align. Misaligned lines settle onto a grid around the subject. The ray highlights the aligned area."
+      ],
+      "_status": "proposed",
+      "_from_lexicon": [
+        "clarity"
+      ],
+      "_schema": "LIGHT-DARK",
+      "_kind": "feeling",
+      "_misreading": "Uses the lit_vs_unlit state; the unlit part must read as faint, not missing, or it reads as emptiness."
+    },
+    "confused": {
+      "motifs": [
+        "Tangle. The subject sits inside lines crossing in every direction. No line leaves the tangle. There is no ray.",
+        "Scattered. Units lie off the grid around the subject, some broken. There is no ray."
+      ],
+      "_status": "proposed",
+      "_from_lexicon": [
+        "confusion"
+      ],
+      "_schema": "PART-WHOLE (broken)",
+      "_kind": "feeling",
+      "_misreading": "A tangle can read as a network; keep the lines crossing without nodes on the links."
+    },
+    "aha": {
+      "motifs": [
+        "It connects. Two separate lines near the subject meet at one point. The ray begins at that meeting point. The ray highlights.",
+        "Revealed. Among many faint units, a ray uncovers one. That unit is lit and complete. The subject is beside it."
+      ],
+      "_status": "proposed",
+      "_from_lexicon": [
+        "insight"
+      ],
+      "_schema": "CONTACT",
+      "_kind": "feeling",
+      "_misreading": "Do not draw a lightbulb or a spark icon; the junction is the moment."
+    },
+    "focused": {
+      "motifs": [
+        "Narrowed. Many faint lines run across the frame. One solid line leads to the subject. The ray focuses onto the subject."
+      ],
+      "_status": "proposed",
+      "_from_lexicon": [
+        "focus"
+      ],
+      "_schema": "CENTER-PERIPHERY",
+      "_kind": "feeling",
+      "_misreading": "The focus ray job is not the focus style; keep the ray narrow, not a page-wide wash."
+    },
+    "choosing": {
+      "motifs": [
+        "The fork. The path splits into two or three lines. The subject sits at the split, lit because the choice is made. The ray guides down one branch."
+      ],
+      "_status": "proposed",
+      "_from_lexicon": [
+        "decision"
+      ],
+      "_schema": "SOURCE-PATH-GOAL (branching)",
+      "_kind": "feeling",
+      "_misreading": "A lit circle means a decision made; use an outlined circle only if the choice is still pending."
+    },
+    "discovering": {
+      "motifs": [
+        "Into the unlit. The path leads from a lit area into the faint part of the frame. The subject is at the boundary. The ray uncovers a little ahead of it.",
+        "Open field. A closed run of lines opens on one side. The subject stands in the opening facing out. The ray uncovers the field beyond."
+      ],
+      "_status": "proposed",
+      "_from_lexicon": [
+        "discovery",
+        "freedom_opportunity"
+      ],
+      "_schema": "LIGHT-DARK",
+      "_kind": "feeling",
+      "_misreading": "'Into the unlit' can read as risk if the faint area is too dark; keep it faint, not black."
+    },
+    "together": {
+      "motifs": [
+        "Side by side. The subject and a rounded square travel on two equidistant parallel lines that join into one ahead. The ray guides along the joined line.",
+        "Handed off cleanly. An unbroken elbow route runs between the subject and a rounded square. The ray highlights the route."
+      ],
+      "_status": "proposed",
+      "_from_lexicon": [
+        "collaboration",
+        "connection_integration",
+        "delegation_automation"
+      ],
+      "_schema": "LINK",
+      "_kind": "feeling",
+      "_misreading": "Two parallel lines that never join read as siloed; the join must be visible."
+    },
+    "trusted": {
+      "motifs": [
+        "Held up. The subject sits on a span of solid lines that stays aligned beneath it. The ray highlights the span.",
+        "Traced. One continuous line runs from the subject back to a softly glowing origin, through stops: circles where a human approved, rounded squares where an agent acted. The ray highlights the origin."
+      ],
+      "_status": "proposed",
+      "_from_lexicon": [
+        "trust"
+      ],
+      "_schema": "FORCE: SUPPORT",
+      "_kind": "feeling",
+      "_misreading": "'Traced' is the traced relation; make sure the stops read as approvals, not as a progress bar."
+    },
+    "siloed": {
+      "motifs": [
+        "Separate streams. Equidistant parallel lines that never meet. The subject is on one, units sit on others. There is no ray.",
+        "Walled off. The subject sits inside a closed run of solid lines with no gap. There is no ray."
+      ],
+      "_status": "proposed",
+      "_from_lexicon": [
+        "isolation"
+      ],
+      "_schema": "NEAR-FAR (far)",
+      "_kind": "feeling",
+      "_misreading": "Parallel streams are also 'separate streams of work' in the grammar; the problem reading needs the missing join to be noticeable."
+    },
+    "backed": {
+      "motifs": [
+        "A lift. A rounded square sits beneath the point where the subject's line turns upward. The ray is the push from the rounded square."
+      ],
+      "_status": "proposed",
+      "_from_lexicon": [
+        "support"
+      ],
+      "_schema": "FORCE: ENABLEMENT",
+      "_kind": "feeling",
+      "_misreading": "Reads as Prism carrying the reader passively; keep the subject on its own line."
+    },
+    "in_control": {
+      "motifs": [
+        "Above the tangle. A tangle of lines sits low in the frame. The subject is on a solid line clear above it. The ray highlights the subject's line."
+      ],
+      "_status": "proposed",
+      "_from_lexicon": [
+        "control",
+        "mastery"
+      ],
+      "_schema": "VERTICALITY",
+      "_kind": "feeling",
+      "_misreading": "Reads as detached from the work if the tangle is too far away."
+    },
+    "safe": {
+      "motifs": [
+        "Within scope. The subject sits inside a ray coming from the rounded square along the fan angle. Outside the ray, crossing lines stay faint. The ray highlights the scope the subject works within."
+      ],
+      "_status": "proposed",
+      "_from_lexicon": [
+        "safety"
+      ],
+      "_schema": "CONTAINER (inside)",
+      "_kind": "feeling",
+      "_misreading": "This is the held_within relation; if the ray is too narrow it reads as a spotlight on the subject rather than a scope it works within."
+    },
+    "at_risk": {
+      "motifs": [
+        "Thin footing. The subject is on a dashed line over open ground, and the dashes thin out ahead. There is no ray.",
+        "The pinch ahead. The path ahead narrows to a pinched point the subject has not reached yet. There is no ray."
+      ],
+      "_status": "proposed",
+      "_from_lexicon": [
+        "risk",
+        "fear"
+      ],
+      "_schema": "BALANCE (precarious)",
+      "_kind": "feeling",
+      "_misreading": "'Thin footing' is close to the approved stuck motif (dashed line ends); keep the dashes continuing but thinning."
+    },
+    "setback": {
+      "motifs": [
+        "Slipped back. On a rising line, the subject sits lower than a faint trace of where it had been. There is no ray.",
+        "Losing ground. A line that rose now slopes down past the subject, and the subject is partway down. There is no ray."
+      ],
+      "_status": "proposed",
+      "_from_lexicon": [
+        "setback",
+        "decline"
+      ],
+      "_schema": "VERTICALITY (down)",
+      "_kind": "feeling",
+      "_misreading": "The faint earlier position can read as a second subject; keep it barely suggested."
+    },
+    "comeback": {
+      "motifs": [
+        "The V. The line drops, bottoms out, and rises higher than it began. The subject is on the rise, above the starting height. The ray is the push.",
+        "Rebuilt. A unit with gaps on one side; further along, the same unit is complete and lit. The subject sits beside the complete one. The ray highlights it."
+      ],
+      "_status": "proposed",
+      "_from_lexicon": [
+        "comeback"
+      ],
+      "_schema": "VERTICALITY (down then up)",
+      "_kind": "feeling",
+      "_misreading": "'Rebuilt' must keep the same shape on both sides; it is a state change, not a shape change."
+    }
+  },
+  "not_proposed": {
+    "winning": "Approved feeling 'winning'.",
+    "launch": "Approved feeling 'ready' (v0.1.1).",
+    "stuck": "Approved feeling 'stuck'.",
+    "speed": "vocabulary.treatments.speed",
+    "connection_integration": "vocabulary.relations.connected and transformations.converge; proposed feeling 'together' uses it.",
+    "delegation_automation": "Depiction 'us' plus vocabulary.transformations.pass_through; proposed feeling 'together' uses it.",
+    "simplicity": "vocabulary.transformations.organize; proposed feeling 'transformed' uses it.",
+    "freedom_opportunity": "Approved feeling 'free'; proposed 'discovering' covers opportunity.",
+    "value_abundance": "grammar.light (light is the outcome/value); no separate feeling needed.",
+    "change_disruption": "vocabulary.transformations; disruption as a problem state is 'confused' or 'pressure'.",
+    "stability": "Folded into proposed 'calm'.",
+    "balance": "Folded into proposed 'calm'; aligned_vs_misaligned state.",
+    "journey": "A motif shape, not a feeling: composition.concept.motif.journey.",
+    "before_after": "complete_vs_broken and aligned_vs_misaligned states; proposed 'done' and 'comeback' use them.",
+    "scale_reach": "modifiers.repetition; folded into proposed 'growth'.",
+    "competition": "Covered by 'winning' (first place).",
+    "leadership": "Depiction 'us'; not a reader feeling.",
+    "pride": "Covered by 'winning'.",
+    "joy": "Off-brand for Prism sections; 'free' and 'winning' carry the positive end.",
+    "sadness": "Off-brand for Prism sections.",
+    "anger": "Off-brand for Prism sections.",
+    "despair": "Off-brand; 'stuck' carries the problem state.",
+    "love": "Off-brand for Prism sections.",
+    "shame": "Off-brand for Prism sections.",
+    "belonging": "Not needed yet; propose later if a community/customer section needs it."
+  },
+  "schema_to_grammar": {
+    "VERTICALITY": "A line that rises or falls; the subject's height on it.",
+    "SOURCE-PATH-GOAL": "A solid path line; direction from the motif; light on the outcome end.",
+    "CONTAINER": "A closed run of lines (trapped) or the held_within relation (sheltered scope).",
+    "FORCE": "pinched (blockage / pressure), the ray's 'power' job (push), a line pressing on the subject.",
+    "BALANCE": "aligned_vs_misaligned on a grid; a straight line among wandering ones.",
+    "LINK": "relations.connected, routed (elbow), parallel lines that join.",
+    "CENTER-PERIPHERY": "The ray's 'focus' or 'highlight' job.",
+    "PART-WHOLE": "complete_vs_broken; units on or off a grid.",
+    "NEAR-FAR": "Distance between the subject and the ray or other shapes.",
+    "SCALE": "modifiers.repetition; lines splitting on the fan angles.",
+    "LIGHT-DARK": "lit_vs_unlit; the ray's 'uncover' job.",
+    "CONTACT": "Two lines meeting at a point where light begins (the handoff).",
+    "MERGING / SPLITTING": "transformations converge, disperse, organize at the rounded square.",
+    "CYCLE": "No grammar yet. Loops and rotation read as UI (feedback_insights); avoid until defined.",
+    "ITERATION": "The speed treatment's repeated copies; equidistant marks.",
+    "FULL-EMPTY": "filled_vs_outlined (inner glow vs empty outline). Never on the user circle for emotion: on a circle it means decided vs pending.",
+    "SURFACE": "No grammar yet."
+  }
+}

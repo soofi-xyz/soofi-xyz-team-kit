@@ -1,0 +1,48 @@
+{
+  "_note": "Motifs a person has approved for reuse. Ampharos reads this file with the other motif sources. An entry may be offered. It is chosen only when it is the best fit for the section: the feeling, the subject, and the copy. Approval is not a rank. Add a motif here only after a person approves it for reuse.",
+  "winning": {
+    "note": "The precipice reads as a decision, or as almost there, not as winning. Do not offer it when the feeling is winning.",
+    "motifs": [
+      {
+        "name": "First place",
+        "drawing": "The line draws three podiums. The subject sits on one. A ray shines down on it."
+      },
+      {
+        "name": "Blasting off",
+        "drawing": "Beside a growth chart. The line rises like a chart. The subject is at the front of that rise. The ray is the push."
+      },
+      {
+        "name": "Over a hill after a windy road",
+        "drawing": "The line is wavy, then crests and descends. The subject is on the far side."
+      }
+    ]
+  },
+  "free": {
+    "motifs": [
+      {
+        "name": "The journey is over",
+        "drawing": "The subject sits in open light, with nothing still holding it."
+      }
+    ]
+  },
+  "stuck": {
+    "motifs": [
+      {
+        "name": "The way forward never settles",
+        "drawing": "The line keeps rising and falling. The subject is still on it. There is no ray."
+      },
+      {
+        "name": "A dashed line ends",
+        "drawing": "There is no continuation. The subject sits at the edge of the dashes."
+      }
+    ]
+  },
+  "ready": {
+    "motifs": [
+      {
+        "name": "Lined up",
+        "drawing": "The subject and a rounded square sit on one grid line, facing the same way. The ray lies ahead on that line. The ray guides."
+      }
+    ]
+  }
+}

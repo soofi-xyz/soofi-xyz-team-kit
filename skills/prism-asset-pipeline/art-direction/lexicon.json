@@ -67,32 +67,6 @@
       "maps_to": "transformations.disperse"
     },
     {
-      "verb": "cycle",
-      "concept": "lifecycle, states that recur",
-      "direction": "a thing returns through its states",
-      "form": "A closed loop of stages, not a staircase",
-      "color_state": "spectrum",
-      "rationale": "Owned, reused, updated, and retired is a life that comes back around. Rise only goes forward, so it does not cover a lifecycle.",
-      "status": "proposed",
-      "sources": [
-        "art-direction/runs/holdout-method/asset_plan.json#agent-resources"
-      ],
-      "maps_to": "unmapped"
-    },
-    {
-      "verb": "assign",
-      "concept": "work given to distinct roles",
-      "direction": "roles stay distinct and each receives a job",
-      "form": "Separate marks, each holding a different part of the work",
-      "color_state": "spectrum",
-      "rationale": "A hybrid team gives different work to agents and to humans. That is not an overlap (meet) and not one source becoming outputs (split).",
-      "status": "proposed",
-      "sources": [
-        "art-direction/runs/holdout-method/asset_plan.json#hybrid-team"
-      ],
-      "maps_to": "unmapped"
-    },
-    {
       "verb": "bound",
       "concept": "a chosen limit that keeps a system manageable",
       "direction": "constraint as the goal",
