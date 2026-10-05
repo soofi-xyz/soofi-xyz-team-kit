@@ -113,18 +113,18 @@ Organizations tenancy, StackSets, or Account Manager from this skill.
    shared usage plan yet: report a Build deployment gap for `tinkaton`, not a
    key problem, and do not ask the user for another key.
 4. Prefer the scripts when they fit:
-   - `scripts/publish_via_build.py` in the private repository
-     [`prismteam-ai/ci-action`](https://github.com/prismteam-ai/ci-action) — the
+   - `actions/publish/publish_via_build.py` in the private repository
+     [`prismteam-ai/build`](https://github.com/prismteam-ai/build) — the
      same script product CI runs: Code (zip and security scan), Build, Publish
      ([publish-readiness.md](reference/publish-readiness.md) section B). Get or
      refresh it before every publish:
 
      ```bash
-     CI_ACTION="$HOME/.cache/prism/ci-action"
-     if [ -d "$CI_ACTION/.git" ]; then git -C "$CI_ACTION" pull -q --ff-only; else gh repo clone prismteam-ai/ci-action "$CI_ACTION" -- -q; fi
+     BUILD_REPO="$HOME/.cache/prism/build"
+     if [ -d "$BUILD_REPO/.git" ]; then git -C "$BUILD_REPO" pull -q --ff-only; else gh repo clone prismteam-ai/build "$BUILD_REPO" -- -q; fi
      ```
 
-     Below, `publish_via_build.py` means `"$CI_ACTION/scripts/publish_via_build.py"`.
+     Below, `publish_via_build.py` means `"$BUILD_REPO/actions/publish/publish_via_build.py"`.
    - Marketplace repo `./scripts/demo.sh` — register Prism / Platform / products
    - Marketplace repo `./scripts/publish-product.sh` — ensure component, PUT an
      existing `bundle_url`, poll review
@@ -225,7 +225,7 @@ needs no pack or publish scripts and no pull request to be published.
    Build readiness (the local recipe of configure-build-product §1, no Build
    call), the registered component, the security scan and the review-stage rule.
 3. Prove it end to end without a Marketplace write:
-   `DRY_RUN=1 python3 "$CI_ACTION/scripts/publish_via_build.py" all <checkout> [--branch <branch>]`.
+   `DRY_RUN=1 python3 "$BUILD_REPO/actions/publish/publish_via_build.py" all <checkout> [--branch <branch>]`.
    It runs the Code and Build steps (one real build) and makes no Marketplace call.
 4. Report each item as ready, missing or cannot verify, with evidence, and the
    concrete change for each missing item. Product source changes belong to the
@@ -240,11 +240,11 @@ reads the working tree. Never publish from an unmerged or locally patched
 checkout.
 
 0. Before publishing, check the product repository's default branch for a
-   workflow that uses `prismteam-ai/ci-action`:
+   workflow that uses `prismteam-ai/build/actions/publish`:
 
    ```bash
    gh api "repos/<owner>/<repo>/contents/.github/workflows?ref=<default-branch>" --jq '.[].name' \
-     | while read -r f; do gh api "repos/<owner>/<repo>/contents/.github/workflows/$f?ref=<default-branch>" --jq .content | base64 -d | grep -q 'prismteam-ai/ci-action' && echo "$f"; done
+     | while read -r f; do gh api "repos/<owner>/<repo>/contents/.github/workflows/$f?ref=<default-branch>" --jq .content | base64 -d | grep -q 'prismteam-ai/build/actions/publish' && echo "$f"; done
    ```
 
    No match: run the script with `DRY_RUN=1` (step 1), then go to §5, open
@@ -280,7 +280,7 @@ checkout.
    [publish-readiness.md](reference/publish-readiness.md)):
 
    ```bash
-   python3 "$CI_ACTION/scripts/publish_via_build.py" all <product-checkout> [--branch <branch>]
+   python3 "$BUILD_REPO/actions/publish/publish_via_build.py" all <product-checkout> [--branch <branch>]
    ```
 
    Code: zips the commit and scans it. Build: checks `GET /settings/status`,
@@ -344,15 +344,16 @@ When a publish request finds no CI workflow in the product repository (§3
 step 0), or the user asks for it. The product repository gets one GitHub Actions
 file that publishes each push to its default branch (a merged pull request)
 with the same flow as §3, through the shared action
-[`prismteam-ai/ci-action`](https://github.com/prismteam-ai/ci-action). Its run
-shows the three steps (Code, Build, Publish) separately. The action repository
-is private and shared with every `prismteam-ai` repository; a product outside
-that organization cannot use it. The repository needs one secret,
+[`prismteam-ai/build`](https://github.com/prismteam-ai/build) (`actions/publish`). Its run
+shows the three steps (Code, Build, Publish) separately. The action lives in the private Build
+repository, whose Actions access setting must allow organization repositories
+(Build repo Settings, Actions, Access); a product outside that organization
+cannot use it. The repository needs one secret,
 `MARKETPLACE_API_KEY`; the Marketplace and Build URLs are built in.
 
 1. The product's component must already be registered (§2) and its review
    settings operational (§1).
-2. Run `DRY_RUN=1 python3 "$CI_ACTION/scripts/publish_via_build.py" all <product-repo>`
+2. Run `DRY_RUN=1 python3 "$BUILD_REPO/actions/publish/publish_via_build.py" all <product-repo>`
    (§3). Stop on any readiness gap or blocking scan; report it to the owners.
 3. On a new branch from the default branch, add exactly
    [`templates/marketplace.yml`](templates/marketplace.yml) as
