@@ -17,9 +17,8 @@ Marketplace's own checks live in `prismteam-ai/marketplace`
 `assertCloudAssemblyZip`, `downloadBundle`). They win if this page drifts.
 Build's contract is [the Build API summary](../../configure-build-product/reference/api-contract.md).
 
-Build itself is the one exception: it publishes from its own repository with
-its own `just publish` (Build PRD "Self-publication"). Do not run Build's
-bundle through this script.
+Build itself is published like any other product, through this script and the
+Build service.
 
 ## A. Readiness checklist
 
@@ -132,16 +131,17 @@ Example `service-comply` payload:
 ## D. Review-stage rule
 
 The sandbox review installs the bundle into the review account `257779860257`,
-where the review Deploy itself runs as `deploy-dev-*`. Build passes no stage:
-stack names come from the product's default stage (Deploy's is `dev`), and Build
-rejects `synth_context`. The script therefore refuses any CloudFormation stack
-name with a `dev` or `prod` stage segment before a Marketplace write (before
-Build when publishing; a dry run reports it after the build).
+where the review Deploy itself runs as `deploy-dev-*`. Build synthesizes every
+product with CDK context `stage=review` (`packedStage` in the build manifest,
+`cloud_assembly.packed_stage` in `service-builder`), so a product that reads
+`stage` gets `-review` stack names; the scan synth sets the same context. The
+script still refuses any CloudFormation stack name with a `dev` or `prod` stage
+segment before a Marketplace write (before Build when publishing; a dry run
+reports it after the build): that means the product hardcodes a live stage.
 
-Report a refusal as a blocker outside Marketplace: Build needs a supported
-stage or synth-context option (Tinkaton), or the product's Marketplace
-entrypoint needs a non-live default stage (its owners). Do not work around it
-with a product patch, a hand-packed zip or `skip_review`.
+Report a refusal to the product's owners: the Marketplace entrypoint must take
+its stage from CDK context. Do not work around it with a product patch, a
+hand-packed zip or `skip_review`.
 
 ## E. How to report
 

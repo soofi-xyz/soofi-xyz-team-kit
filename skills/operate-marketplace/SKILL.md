@@ -133,6 +133,7 @@ Classify the request, then run exactly one primary lane (plus inspect as needed)
 | Readiness | User asks whether a product can publish, or a publish stopped on a product gap | §3a |
 | Publish | Publish a product through Build, review poll, rollback | §3 |
 | Inspect | Read-only ontology, bundles, reviews, settings status | §4 |
+| CI publishing | User asks to publish a product on every merge to its default branch | §5 |
 
 Hand off and stop when:
 
@@ -141,7 +142,7 @@ Hand off and stop when:
 | Marketplace Lambda/CDK/OpenAPI defect | Stop; report evidence for a Marketplace repo change |
 | Need customers, environments, or API key minting | Not this API |
 | Need to install a bundle into an account | Deploy / Puller — not Marketplace |
-| Build rejects the key, is unreachable, fails with a Build defect, or cannot set a review-safe stage | `tinkaton`, with the `build_id` and failure tag |
+| Build rejects the key, is unreachable, or fails with a Build defect | `tinkaton`, with the `build_id` and failure tag |
 | Product source fails Build readiness or the scan | The product's owners; report the concrete change |
 | Need Organizations / StackSets control-plane design | Out of scope for this skill |
 | Need subscriptions / prices / site publication | Out of scope for this product; do not invent routes |
@@ -289,6 +290,38 @@ Useful reads before or after writes:
 
 Prefer inspect over destructive deletes. Never delete a product that still owns
 components or is referenced as `configured_product_id`.
+
+## 5. CI publishing (publish on every merge)
+
+Only when the user asks for it. The product repository gets one GitHub Actions
+file that publishes each push to its default branch (a merged pull request)
+with the same flow as §3, through the shared action
+[`actions/publish-to-marketplace`](../../actions/publish-to-marketplace/action.yml)
+in this kit. The repository needs one secret, `MARKETPLACE_API_KEY`; the
+Marketplace and Build URLs are built in.
+
+1. The product's component must already be registered (§2) and its review
+   settings operational (§1).
+2. Run `DRY_RUN=1 python3 skills/operate-marketplace/scripts/publish_via_build.py <product-repo>`
+   (§3). Stop on any readiness gap or blocking scan; report it to the owners.
+3. On a new branch from the default branch, add exactly
+   [`templates/marketplace.yml`](templates/marketplace.yml) as
+   `.github/workflows/marketplace.yml`. If the default branch is not `main`,
+   change only `branches: [main]`. Commit only that file and open one pull
+   request. Never push to the default branch, merge, or touch other files.
+4. Give the user the secret steps, then stop:
+
+   ```bash
+   gh secret set MARKETPLACE_API_KEY -R <owner>/<repo> --body "$MARKETPLACE_API_KEY"
+   ```
+
+   or GitHub → repository Settings → Secrets and variables → Actions → New
+   repository secret `MARKETPLACE_API_KEY`. They run it in their own terminal;
+   never run it for them, never print or paste the value.
+5. After they merge, the "Publish to Marketplace" run shows the commit, scan
+   severity, `build_id`, stacks, `review_id` and bundle id in its job summary.
+   `workflow_dispatch` re-runs the latest default-branch commit. A run that
+   stops prints the same JSON report as the script.
 
 ## Safety
 

@@ -292,6 +292,14 @@ class Helpers(unittest.TestCase):
             ["deploy-dev-api", "Connect-prod"],
         )
 
+    def test_scan_context_sets_stage_review_like_build(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp)
+            self.assertEqual(json.loads(pvb.product_context(source)), {"stage": "review"})
+            (source / "cdk.context.json").write_text(json.dumps({"stage": "prod", "cached": 1}))
+            (source / "cdk.json").write_text(json.dumps({"context": {"stage": "dev", "flag": True}}))
+            self.assertEqual(json.loads(pvb.product_context(source)), {"cached": 1, "flag": True, "stage": "review"})
+
     def test_build_url_default_and_override(self):
         self.assertTrue(pvb.DEFAULT_BUILD_BASE_URL.startswith("https://"))
         self.assertEqual(pvb.build_base_url(f"{BUILD}/"), (BUILD, "BUILD_BASE_URL"))

@@ -76,6 +76,7 @@ CDK_NAG_VERSION = "2.38.2"
 TSX_VERSION = "4.20.5"
 BLOCKING_SEVERITIES = {"CRITICAL", "HIGH", "MEDIUM"}
 TERMINAL_BUILD = {"SUCCEEDED", "FAILED", "CANCELLED"}
+PACKED_STAGE = "review"
 LIVE_STAGE = re.compile(r"(?:^|-)(?:dev|prod)(?:-|$)", re.IGNORECASE)
 NAG_REPORT = re.compile(r"^AwsSolutions-(.*)-NagReport\.json$")
 NULL_BUILD_ID = "bld_00000000000000000000000000"
@@ -263,8 +264,8 @@ def comply_payload(scan: dict[str, Any], source_hash: str, scanned_at: datetime.
     }
 
 
-def product_context(source_dir: Path) -> str | None:
-    """CDK context Build passes: cdk.json "context" over cdk.context.json."""
+def product_context(source_dir: Path) -> str:
+    """CDK context Build passes: cdk.json "context" over cdk.context.json, with stage=review over both."""
     merged: dict[str, Any] = {}
     cached = source_dir / "cdk.context.json"
     if cached.is_file():
@@ -275,7 +276,8 @@ def product_context(source_dir: Path) -> str | None:
         if not isinstance(context, dict):
             raise PublishError('cdk.json "context" must be an object')
         merged.update(context)
-    return compact(merged) if merged else None
+    merged["stage"] = PACKED_STAGE
+    return compact(merged)
 
 
 def package_manager(source_dir: Path) -> str:
@@ -378,9 +380,7 @@ def run_security_scan(source_dir: Path, work_dir: Path, stack_ids: list[str]) ->
         "PUBLISH_SCAN_PRODUCT_ROOT": str(source_dir),
         "PUBLISH_SCAN_NAG_ROOT": str(root),
     }
-    context = product_context(source_dir)
-    if context:
-        synth_env["CDK_CONTEXT_JSON"] = context
+    synth_env["CDK_CONTEXT_JSON"] = product_context(source_dir)
     log("scan: credential-free synth of marketplace/app.ts")
     run([*tsx_command(source_dir), "marketplace/app.ts"], source_dir, product_env(home, synth_env))
 
