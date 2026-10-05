@@ -14,7 +14,7 @@ All boundary objects reject unknown fields unless explicitly declared as a map.
 | `$defs` name | Producer → consumer | Meaning |
 | --- | --- | --- |
 | `Environment` | operator → CLI/CDK/control plane | One environment's identities, scopes, runtime, limits, pricing and integrations |
-| `Request` | caller → resolver | Source/target language names, named input S3 locations and output S3 prefix; no versions, mapping selection, formats or options |
+| `Request` | caller → resolver | Source/target language names, named input S3 locations and output S3 prefix, plus an optional `mappingVersion` that pins one registered mapping version; no formats or options |
 | `Catalog` / `LanguageRegistration` | Lexicon publisher → resolver | Revision, mapping artifact identities and language registrations that point at Lexicon language definitions (the schema) with status, shape and current-version flags |
 | `Mapping` / `MappingOutput` / `Query` / `Output` | Lexicon publisher → resolver/worker | Exact directional versions, named views with formats/options, output shape/format/profile/options, output dependencies and SQL identities |
 | `Graph` / `Endpoint` / `Property` | mapping author → graph validator/writer | Returned-column bindings, referenced vertex datasets and typed properties |

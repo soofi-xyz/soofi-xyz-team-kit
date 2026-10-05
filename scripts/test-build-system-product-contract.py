@@ -307,6 +307,68 @@ def assert_emit_contracts() -> None:
     )
 
 
+    assert_accepts(
+        "transform request pins a mapping version",
+        lambda p, _m: edit_emit(p, "emits/transform/request.stub.json", lambda d: d.update(mappingVersion="1.0.0")),
+    )
+    assert_rejects(
+        "transform request mapping version is not semver",
+        lambda p, _m: edit_emit(p, "emits/transform/request.stub.json", lambda d: d.update(mappingVersion="latest")),
+        "transform-request contract: mappingVersion",
+    )
+
+
+SYSTEM_TEMPLATE = {
+    "description": "Read the curated record.",
+    "StartAt": "Read",
+    "States": {"Read": {"Type": "Product", "Binding": "reader", "End": True}},
+}
+
+
+def as_system_payloads(package: Path, manifest: dict) -> None:
+    """Rewrite the product emits as System API payloads, named by their configRefs."""
+    product = package / "emits" / "product"
+    write_json(product / "product.definition.stub.json", {
+        "description": "Sale availability.",
+        "inputSchema": {"type": "object"},
+        "outputSchema": {"type": "object"},
+    })
+    write_json(product / "flow-templates" / "sale_availability_lookup.stub.json", SYSTEM_TEMPLATE)
+    write_json(product / "product-flows" / "default.stub.json", {
+        "description": "Default flow.",
+        "definition": "sale-availability",
+        "template": "sale_availability_lookup",
+        "bindings": {"reader": {"product": "curated-reader"}},
+    })
+    refs = manifest["configRefs"]
+    refs["productDefinition"]["name"] = "sale-availability"
+    refs["productFlowTemplate"]["name"] = "sale_availability_lookup"
+    refs["productFlow"]["name"] = "default"
+
+
+def assert_system_payloads() -> None:
+    assert_accepts("System API payloads named by their configRefs", as_system_payloads)
+
+    def unnamed(p: Path, m: dict) -> None:
+        as_system_payloads(p, m)
+        m["configRefs"]["productFlowTemplate"].pop("name")
+
+    assert_rejects("System template without a configRef name", unnamed, "flow template has no name")
+
+    def wrong_definition(p: Path, m: dict) -> None:
+        as_system_payloads(p, m)
+        edit_emit(p, "emits/product/product-flows/default.stub.json", lambda d: d.update(definition="other"))
+
+    assert_rejects("System flow names another definition", wrong_definition,
+                   "flow definition 'other' does not match an emitted product definition")
+
+    def broken_start(p: Path, m: dict) -> None:
+        as_system_payloads(p, m)
+        edit_emit(p, "emits/product/flow-templates/sale_availability_lookup.stub.json", lambda d: d.update(StartAt="Nowhere"))
+
+    assert_rejects("System template StartAt is checked at the top level", broken_start,
+                   "StartAt 'Nowhere' is not a state")
+
 
 def main() -> int:
     assert_worked_example()
@@ -314,6 +376,7 @@ def main() -> int:
     assert_reference_resolution()
     assert_orchestration_rules()
     assert_emit_contracts()
+    assert_system_payloads()
     print("build-system-product contract tests passed")
     return 0
 
