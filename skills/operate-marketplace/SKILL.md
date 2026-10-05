@@ -140,7 +140,7 @@ Classify the request, then run exactly one primary lane (plus inspect as needed)
 | Settings | First non-skip publish, or review readiness unknown | §1 |
 | Register | New family / category / product / configuration / component | §2 |
 | Readiness | User asks whether a product can publish, or a publish stopped on a product gap | §3a |
-| Publish | Publish a product through Build, review poll, rollback | §3 |
+| Publish | Publish a product through Build (or check its CI publish run), review poll, rollback | §3 |
 | Inspect | Read-only ontology, bundles, reviews, settings status | §4 |
 | CI publishing | A publish found no CI workflow in the product repo, or the user asks to publish on every merge | §5 |
 
@@ -239,18 +239,41 @@ named): the script archives a commit that is on the remote branch and never
 reads the working tree. Never publish from an unmerged or locally patched
 checkout.
 
-0. Before publishing, run the script below with `DRY_RUN=1`, then check
-   the product repository's default branch for a workflow that uses
-   `prismteam-ai/ci-action`:
+0. Before publishing, check the product repository's default branch for a
+   workflow that uses `prismteam-ai/ci-action`:
 
    ```bash
    gh api "repos/<owner>/<repo>/contents/.github/workflows?ref=<default-branch>" --jq '.[].name' \
      | while read -r f; do gh api "repos/<owner>/<repo>/contents/.github/workflows/$f?ref=<default-branch>" --jq .content | base64 -d | grep -q 'prismteam-ai/ci-action' && echo "$f"; done
    ```
 
-   No match: go to §5, open the CI pull request and stop with the two
-   choices (merge it to publish automatically, or "publish now" for a
-   one-time publish with step 1). A match: continue with step 1.
+   No match: run the script with `DRY_RUN=1` (step 1), then go to §5, open
+   the CI pull request and stop with the two choices (merge it to publish
+   automatically, or "publish now" for a one-time publish with step 1).
+
+   A match (`<workflow>`): CI publishes every merge, so check its run for the
+   default branch's tip instead of publishing again:
+
+   ```bash
+   TIP=$(gh api "repos/<owner>/<repo>/commits/<default-branch>" --jq .sha)
+   gh run list -R <owner>/<repo> --workflow <workflow> --branch <default-branch> -L 10 \
+     --json databaseId,headSha,status,conclusion,url --jq ".[] | select(.headSha == \"$TIP\")"
+   gh run view <run-id> -R <owner>/<repo> --json jobs --jq '.jobs[].steps[] | [.name, .status, .conclusion] | @tsv'
+   gh run view <run-id> -R <owner>/<repo> --log | grep -E '"(error|build_id|review_id|review_status|bundle_id)"'
+   ```
+
+   - Running: report the current step (Code, Build or Publish) and the run
+     URL. Offer to check again; do not publish.
+   - Succeeded: confirm the `review_id` and `bundle_id` from the log in
+     `GET .../components/{component_id}/bundles` (§3 step 4) and report them.
+   - Failed: report the failed step and the log's `error`; route it like a
+     script stop (below). Re-run only if the user asks:
+     `gh run rerun <run-id> -R <owner>/<repo>`.
+   - No run for the tip: say so and offer to start one
+     (`gh workflow run <workflow> -R <owner>/<repo>`) or a one-time publish
+     with step 1.
+
+   Publish with step 1 only when the user asks for it explicitly.
 1. Run the publish script (Prerequisites step 4; section B of
    [publish-readiness.md](reference/publish-readiness.md)):
 
@@ -349,7 +372,8 @@ that organization cannot use it. The repository needs one secret,
 5. After they merge, the "Publish to Marketplace" run shows the commit, scan
    severity, `build_id`, stacks, `review_id` and bundle id in its job summary,
    and the step that stopped when one fails. `workflow_dispatch` re-runs the
-   latest default-branch commit.
+   latest default-branch commit. Later publish requests check this run
+   (§3 step 0) instead of publishing again.
 
 ## Safety
 
