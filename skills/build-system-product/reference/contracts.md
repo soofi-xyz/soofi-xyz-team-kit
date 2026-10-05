@@ -28,7 +28,10 @@ Spark SQL in the manifest; keep executable/configuration details in the owning
 product's referenced artifacts.
 
 Keep every runnable flow template-backed. The checker validates template names,
-transitions, flow bindings, leaf contracts and references. A kit `product-*`
+transitions, flow bindings, leaf contracts and references. It accepts System's API
+payloads as they are: a definition, template or flow is named by its API path, so
+set that name as the configRef `name`; a template keeps `StartAt` and `States` at
+its top level; a flow names its `template` and `definition`. A kit `product-*`
 artifact kind names a compatibility configuration shape, not a separate product.
 Use `persist-ingest` rather than the removed historical collection API concept.
 
