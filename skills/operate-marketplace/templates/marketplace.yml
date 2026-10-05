@@ -1,0 +1,26 @@
+name: Publish to Marketplace
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-to-marketplace
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: prismteam-ai/ci-action@main
+        with:
+          marketplace_api_key: ${{ secrets.MARKETPLACE_API_KEY }}
