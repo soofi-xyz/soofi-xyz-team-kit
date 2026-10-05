@@ -941,7 +941,7 @@
         48
       ],
       "status": "assigned",
-      "summary": "Persist stores graph facts and serves queries, indexes and triggers.",
+      "summary": "Persist ingests and queries graph facts, maintains derived indexes and triggers, and owns lexicon-governed vector search composed through GraphQL.",
       "agents": {
         "build": "conkeldurr",
         "configure": "uxie"
@@ -951,7 +951,8 @@
         "configure": "configure-persist-product"
       },
       "notes": [
-        "User override: retain Conkeldurr for Persist only. Uxie configures existing deployments."
+        "User override: retain Conkeldurr for Persist only. Uxie configures existing deployments.",
+        "Requested 2026-10-05: keep embeddings, OpenSearch vector indexing and GraphQL search composition in a separate vector-search feature piece. Model owns lexicon field eligibility; Persist owns implementation and GraphQL source routing. This scope assignment does not establish deployed support."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/persist.md"
     },

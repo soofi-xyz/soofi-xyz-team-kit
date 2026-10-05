@@ -1,6 +1,6 @@
 ---
 name: build-persist-service
-description: "Build or maintain the Persist graph service, ingestion, queries, indexes and triggers. Use Conkeldurr; use Uxie for particular configurations."
+description: "Build or maintain Persist graph ingestion, queries, indexes, triggers and lexicon-governed vector search through GraphQL. Use Conkeldurr; use Uxie for particular configurations."
 disable-model-invocation: true
 ---
 
@@ -14,6 +14,14 @@ configuration on an existing deployment. Follow
 [engineering guidelines](../apply-engineering-guidelines/SKILL.md).
 
 Read [current scope](reference/current-scope.md) before the detailed PRD. Resolve reported differences against the target revision.
+
+For embeddings or semantic/hybrid search, load [the separate vector-search
+piece](reference/vector-search.md). Keep its eligibility consumption, model
+evaluation, embedding/index maintenance and GraphQL search composition together
+under `vector-search`, with its own user-run configuration and AWS checkpoint.
+Use a separate GraphQL search data source and resolver composition; preserve
+the existing Gremlin/Neptune FTS surface. Route lexicon declaration changes to
+Model's assigned agents; keep physical source routing in Persist's resolution map.
 
 Read relevant [implementation details](reference/PRD.md) under that reconciliation. Discover the
 target repository, revision and environment. Reuse an existing service when
