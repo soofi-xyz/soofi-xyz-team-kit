@@ -265,7 +265,9 @@ checkout.
    - Running: report the current step (Code, Build or Publish) and the run
      URL. Offer to check again; do not publish.
    - Succeeded: confirm the `review_id` and `bundle_id` from the log in
-     `GET .../components/{component_id}/bundles` (§3 step 4) and report them.
+     `GET .../components/{component_id}/bundles` (§3 step 4). Tell the user
+     the default branch's tip is already published, with those ids, and
+     offer to publish it again with step 1 if they still want to. Wait.
    - Failed: report the failed step and the log's `error`; route it like a
      script stop (below). Re-run only if the user asks:
      `gh run rerun <run-id> -R <owner>/<repo>`.
