@@ -21,6 +21,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: soofi-xyz/soofi-xyz-team-kit/actions/publish-to-marketplace@main
+      - uses: prismteam-ai/ci-action@main
         with:
           marketplace_api_key: ${{ secrets.MARKETPLACE_API_KEY }}

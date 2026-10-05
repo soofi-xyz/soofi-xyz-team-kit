@@ -95,8 +95,8 @@ Organizations tenancy, StackSets, or Account Manager from this skill.
 3. Publishing builds the bundle with the Build service, which runs in the
    Marketplace account `848665034107` on the same shared usage plan, so
    `MARKETPLACE_API_KEY` is also the Build key. Never ask for a Build key.
-   Use this Build API URL (also `DEFAULT_BUILD_BASE_URL` in
-   [`scripts/publish_via_build.py`](scripts/publish_via_build.py)):
+   Use this Build API URL (also `DEFAULT_BUILD_BASE_URL` in the publish
+   script, step 4):
    `https://5b45a3h1bd.execute-api.us-east-2.amazonaws.com/dev`.
    Honor `MARKETPLACE_BUILD_BASE_URL` only when the user
    sets a different one, and confirm that URL with them before any publish.
@@ -113,9 +113,18 @@ Organizations tenancy, StackSets, or Account Manager from this skill.
    shared usage plan yet: report a Build deployment gap for `tinkaton`, not a
    key problem, and do not ask the user for another key.
 4. Prefer the scripts when they fit:
-   - [`scripts/publish_via_build.py`](scripts/publish_via_build.py) — build
-     through Build, scan, verify, upload, PUT bundle, poll review
-     ([publish-readiness.md](reference/publish-readiness.md) section B)
+   - `scripts/publish_via_build.py` in the private repository
+     [`prismteam-ai/ci-action`](https://github.com/prismteam-ai/ci-action) — the
+     same script product CI runs: Code (zip and security scan), Build, Publish
+     ([publish-readiness.md](reference/publish-readiness.md) section B). Get or
+     refresh it before every publish:
+
+     ```bash
+     CI_ACTION="$HOME/.cache/prism/ci-action"
+     if [ -d "$CI_ACTION/.git" ]; then git -C "$CI_ACTION" pull -q --ff-only; else gh repo clone prismteam-ai/ci-action "$CI_ACTION" -- -q; fi
+     ```
+
+     Below, `publish_via_build.py` means `"$CI_ACTION/scripts/publish_via_build.py"`.
    - Marketplace repo `./scripts/demo.sh` — register Prism / Platform / products
    - Marketplace repo `./scripts/publish-product.sh` — ensure component, PUT an
      existing `bundle_url`, poll review
@@ -216,8 +225,8 @@ needs no pack or publish scripts and no pull request to be published.
    Build readiness (the local recipe of configure-build-product §1, no Build
    call), the registered component, the security scan and the review-stage rule.
 3. Prove it end to end without a Marketplace write:
-   `DRY_RUN=1 python3 skills/operate-marketplace/scripts/publish_via_build.py <checkout> [--branch <branch>]`.
-   It runs one real Build build and stops before any Marketplace call.
+   `DRY_RUN=1 python3 "$CI_ACTION/scripts/publish_via_build.py" all <checkout> [--branch <branch>]`.
+   It runs the Code and Build steps (one real build) and makes no Marketplace call.
 4. Report each item as ready, missing or cannot verify, with evidence, and the
    concrete change for each missing item. Product source changes belong to the
    product's owners: never create branches, commits or pull requests in a
@@ -232,32 +241,33 @@ checkout.
 
 0. Before publishing, run the script below with `DRY_RUN=1`, then check
    the product repository's default branch for a workflow that uses
-   `actions/publish-to-marketplace`:
+   `prismteam-ai/ci-action`:
 
    ```bash
    gh api "repos/<owner>/<repo>/contents/.github/workflows?ref=<default-branch>" --jq '.[].name' \
-     | while read -r f; do gh api "repos/<owner>/<repo>/contents/.github/workflows/$f?ref=<default-branch>" --jq .content | base64 -d | grep -q 'actions/publish-to-marketplace' && echo "$f"; done
+     | while read -r f; do gh api "repos/<owner>/<repo>/contents/.github/workflows/$f?ref=<default-branch>" --jq .content | base64 -d | grep -q 'prismteam-ai/ci-action' && echo "$f"; done
    ```
 
    No match: go to §5, open the CI pull request and stop with the two
    choices (merge it to publish automatically, or "publish now" for a
    one-time publish with step 1). A match: continue with step 1.
-1. Run the publish-through-Build script from this kit (section B of
+1. Run the publish script (Prerequisites step 4; section B of
    [publish-readiness.md](reference/publish-readiness.md)):
 
    ```bash
-   python3 skills/operate-marketplace/scripts/publish_via_build.py <product-checkout> [--branch <branch>]
+   python3 "$CI_ACTION/scripts/publish_via_build.py" all <product-checkout> [--branch <branch>]
    ```
 
-   It checks `GET /settings/status`, resolves `product_id`
-   (`MARKETPLACE_PRODUCT_ID` or `GET /ontology/products/by-name` with
-   `MARKETPLACE_PRODUCT_NAME`, default the manifest's `component_name`),
-   requires the component to be registered (§2 step 6) with the manifest's
-   `bundle_type`, checks Build accepts the key, scans the source, builds it
-   through Build, verifies the artifact and both tokens against Marketplace's
-   checks, uploads through `POST .../components/{component_id}/bundle-uploads`,
-   then performs steps 2–4. Add `DRY_RUN=1` to stop before any Marketplace call.
-   Never mint `service-builder` or write `service-comply` by hand.
+   Code: zips the commit and scans it. Build: checks `GET /settings/status`,
+   resolves `product_id` (`MARKETPLACE_PRODUCT_ID` or
+   `GET /ontology/products/by-name` with `MARKETPLACE_PRODUCT_NAME`, default
+   the manifest's `component_name`), requires the component to be registered
+   (§2 step 6) with the manifest's `bundle_type`, checks Build accepts the key
+   and builds through Build. Publish: uploads through
+   `POST .../components/{component_id}/bundle-uploads`, then performs steps
+   2–4. Add `DRY_RUN=1` to stop after Build. Build and Marketplace check the
+   bundle themselves. Never mint `service-builder` or write `service-comply`
+   by hand.
 2. `PUT /ontology/products/{product_id}/components/{component_id}/bundles`
    `{ "bundle_url": "https://...", "skip_review": false }` → `202` with
    `review_id` and `bundle_status`.
@@ -269,11 +279,11 @@ checkout.
 5. Rollback: `POST .../components/{component_id}/rollback` when at least two
    VALID bundles exist → `202`. `400` otherwise.
 
-The script stops, with the reason in its JSON report, on a scan at `MEDIUM` or
-worse, a Build failure (`failure.tag`), a failed artifact or token check, more
-than 2 KB of S3 metadata, or stack names with a live stage (section D of
-publish-readiness.md). Report those; route Build defects and the stage gap to
-`tinkaton`.
+The script stops, with the failed step and reason in its JSON report's
+`error`, on a scan at `MEDIUM` or worse, stack names with a live stage
+(section D of publish-readiness.md), a Build failure (`failure.tag`) or a
+failed review (`review_details`). Report those; route Build defects to
+`tinkaton` and live-stage stack names to the product's owners.
 
 `skip_review: true` only before the first VALID bundle, and only with explicit
 user acceptance of a draft. Invalid artifacts return `422 BuildArtifactInvalid`.
@@ -309,13 +319,15 @@ When a publish request finds no CI workflow in the product repository (§3
 step 0), or the user asks for it. The product repository gets one GitHub Actions
 file that publishes each push to its default branch (a merged pull request)
 with the same flow as §3, through the shared action
-[`actions/publish-to-marketplace`](../../actions/publish-to-marketplace/action.yml)
-in this kit. The repository needs one secret, `MARKETPLACE_API_KEY`; the
-Marketplace and Build URLs are built in.
+[`prismteam-ai/ci-action`](https://github.com/prismteam-ai/ci-action). Its run
+shows the three steps (Code, Build, Publish) separately. The action repository
+is private and shared with every `prismteam-ai` repository; a product outside
+that organization cannot use it. The repository needs one secret,
+`MARKETPLACE_API_KEY`; the Marketplace and Build URLs are built in.
 
 1. The product's component must already be registered (§2) and its review
    settings operational (§1).
-2. Run `DRY_RUN=1 python3 skills/operate-marketplace/scripts/publish_via_build.py <product-repo>`
+2. Run `DRY_RUN=1 python3 "$CI_ACTION/scripts/publish_via_build.py" all <product-repo>`
    (§3). Stop on any readiness gap or blocking scan; report it to the owners.
 3. On a new branch from the default branch, add exactly
    [`templates/marketplace.yml`](templates/marketplace.yml) as
@@ -335,9 +347,9 @@ Marketplace and Build URLs are built in.
    repository secret `MARKETPLACE_API_KEY`. They run it in their own terminal;
    never run it for them, never print or paste the value.
 5. After they merge, the "Publish to Marketplace" run shows the commit, scan
-   severity, `build_id`, stacks, `review_id` and bundle id in its job summary.
-   `workflow_dispatch` re-runs the latest default-branch commit. A run that
-   stops prints the same JSON report as the script.
+   severity, `build_id`, stacks, `review_id` and bundle id in its job summary,
+   and the step that stopped when one fails. `workflow_dispatch` re-runs the
+   latest default-branch commit.
 
 ## Safety
 
@@ -351,8 +363,7 @@ Marketplace and Build URLs are built in.
 ## Return
 
 Report: lane chosen; Prism Marketplace as the target; entities touched (names + ids); publish
-source commit, `build_id`, scan severity, the checks passed, metadata bytes,
-`review_id` and final `bundle_status` when relevant (never the presigned URLs);
+source commit, `build_id`, scan severity, `review_id` and final `bundle_status` when relevant (never the presigned URLs);
 Persist confirmation only if `demo.sh` or an equivalent check was run; and any
 handoff outside Marketplace.
 

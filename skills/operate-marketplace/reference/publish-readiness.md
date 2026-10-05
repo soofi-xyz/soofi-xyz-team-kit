@@ -9,8 +9,9 @@ tags: marketplace, publish, build, cloud-assembly, readiness, security-scan
 The Build service builds every bundle Registeel publishes. A product needs no
 pack or publish scripts and no pull request to be published: it is publishable
 when Build accepts its source, the security scan passes and its stack names are
-safe for the sandbox review. [`scripts/publish_via_build.py`](../scripts/publish_via_build.py)
-runs the whole flow from a product checkout.
+safe for the sandbox review. `scripts/publish_via_build.py` in
+[`prismteam-ai/ci-action`](https://github.com/prismteam-ai/ci-action) runs the
+whole flow from a product checkout, the same way product CI runs it.
 
 Marketplace's own checks live in `prismteam-ai/marketplace`
 `lambda/services/bundle-review.ts` (`inspectBundle`, `assertComplyPassed`,
@@ -47,15 +48,20 @@ checkout to get a bundle sooner.
 ## B. What `publish_via_build.py` does
 
 ```bash
-DRY_RUN=1 python3 skills/operate-marketplace/scripts/publish_via_build.py <product-checkout> [--branch main]
-python3 skills/operate-marketplace/scripts/publish_via_build.py <product-checkout> [--branch main]
+DRY_RUN=1 python3 "$CI_ACTION/scripts/publish_via_build.py" all <product-checkout> [--branch main]
+python3 "$CI_ACTION/scripts/publish_via_build.py" all <product-checkout> [--branch main]
 ```
 
-1. **Source.** Resolves the tip of `origin/<branch>` (default: the remote
+`$CI_ACTION` is the `prismteam-ai/ci-action` clone from the skill's
+Prerequisites step 4. `all` runs three steps; CI runs them one by one
+(`code <checkout> --work-dir DIR`, `build --work-dir DIR`,
+`publish --work-dir DIR`), passing state through `DIR/state.json`.
+
+1. **Code: source.** Resolves the tip of `origin/<branch>` (default: the remote
    default branch; `--ref` must be a commit on it) and `git archive`s that
    commit to `source.zip`. Its sha256 is the `source_hash` for both tokens.
    The checkout is only fetched and read.
-2. **Scan the same zip.** Extracts it, installs with lifecycle scripts off
+2. **Code: scan the same zip.** Extracts it, installs with lifecycle scripts off
    (`pnpm install --frozen-lockfile --ignore-scripts` or
    `npm ci --ignore-scripts`), synthesizes `marketplace/app.ts` with `tsx` the
    way Build does (`CDK_OUTDIR`, `cdk.json`/`cdk.context.json` context, no AWS
@@ -69,32 +75,27 @@ python3 skills/operate-marketplace/scripts/publish_via_build.py <product-checkou
 
    Severity: any critical/high advisory or nag error → `HIGH`; any moderate
    advisory → `MEDIUM`; only low advisories or nag warnings → `LOW`; nothing →
-   `NONE`. `MEDIUM` or worse stops before Build. The `service-comply` token is
-   written only from these results, `issuer: registeel/publish-via-build`.
-3. **Build.** `POST /sources` uploads the same zip with `service-comply`
-   attached, so Build binds it as `service_comply_sha256` in its token;
-   `POST /builds` with the manifest's `bundle_type` and `component_id`; polls
-   `GET /builds/{id}`; downloads the artifact and `GET /builds/{id}/manifest`.
-4. **Verify Build's output.** Download sha256 = `provenance.artifact_sha256` =
-   token `artifact_hash`; manifest route = zip `build/build.manifest.json` =
-   `provenance.build_manifest_sha256`; token `source_hash` = the zip's sha256;
-   token header `{"alg":"none","typ":"JWT"}`, `iss: build`, `sub` = `build_id`;
-   `service_comply_sha256` = sha256 of the comply token; `artifact_built: true`;
-   asset policy `PASSED`; scan and Build produced the same CloudFormation stack
-   names.
-5. **Marketplace checks, offline** (section C), then the review-stage rule
-   (section D). `--marketplace-repo <checkout>` also runs Marketplace's own
-   `bundle-review.ts` from `origin/main` of that checkout against the artifact.
-6. **Publish** (skipped by `DRY_RUN=1`, which makes no Marketplace call):
-   `POST .../bundle-uploads`, uploads the zip with both tokens as
+   `NONE`. `MEDIUM` or worse, or a stack name with a live stage (section D),
+   stops here, before Build. The `service-comply` token is written only from
+   these results, `issuer: registeel/publish-via-build`.
+3. **Build.** Unless `DRY_RUN=1`, first checks the Marketplace key, review
+   settings and the registered component, so a bad key wastes no build. Checks
+   Build accepts the key, then `POST /sources` uploads the same zip with
+   `service-comply` attached (Build binds it as `service_comply_sha256` in its
+   token), `POST /builds` with the manifest's `bundle_type` and `component_id`,
+   polls `GET /builds/{id}` and downloads the artifact.
+4. **Publish** (skipped by `DRY_RUN=1`, which makes no Marketplace call):
+   `POST .../bundle-uploads`, uploads the artifact with both tokens as
    `x-amz-meta-service-builder` and `x-amz-meta-service-comply`, `PUT .../bundles`
    `{bundle_url, skip_review: false}`, polls `GET /reviews/{review_id}` and reads
    the bundle row.
 
-It prints progress on stderr and one JSON report on stdout (`build_id`, scan
-findings, decoded tokens, metadata bytes, every check passed, `review_id`).
+Build and Marketplace validate the bundle and tokens themselves (section C);
+the script does not repeat those checks. It prints progress on stderr and one
+JSON report on stdout (the commit, scan findings, decoded tokens, `build_id`,
+stack names, `review_id`, bundle id, and `error` naming the step that stopped).
 It never prints the key, upload forms, `bundle_url` or the artifact URL. The
-work directory keeps `source.zip`, the artifact and `metadata.json`; delete it
+work directory keeps `source.zip`, `artifact.zip` and `state.json`; delete it
 after a dry run.
 
 ## C. Metadata Marketplace reads from the S3 object
@@ -111,9 +112,9 @@ after a dry run.
 - The zip: under 256 MiB, not ZIP64, with `marketplace.product.json`,
   `build/build.manifest.json`, `cdk.out/manifest.json` and templates that each
   have `Resources`. Build's artifact layout satisfies this.
-- S3 caps keys plus values at 2 KB. Build caps its token at 1200 bytes; with
-  both keys (29 bytes) the comply token may use 819. A Deploy dry run used
-  1194 + 470 = 1664 bytes including keys.
+- S3 caps keys plus values at 2 KB. Build caps its token at 1280 bytes; with
+  both keys (29 bytes) the comply token may use 739. A Build dry run used
+  1686 bytes including keys.
 
 Example `service-comply` payload:
 
@@ -136,8 +137,8 @@ product with CDK context `stage=review` (`packedStage` in the build manifest,
 `cloud_assembly.packed_stage` in `service-builder`), so a product that reads
 `stage` gets `-review` stack names; the scan synth sets the same context. The
 script still refuses any CloudFormation stack name with a `dev` or `prod` stage
-segment before a Marketplace write (before Build when publishing; a dry run
-reports it after the build): that means the product hardcodes a live stage.
+segment in its Code step, before Build: that means the product hardcodes a
+live stage.
 
 Report a refusal to the product's owners: the Marketplace entrypoint must take
 its stage from CDK context. Do not work around it with a product patch, a
@@ -146,7 +147,7 @@ hand-packed zip or `skip_review`.
 ## E. How to report
 
 One row per section A item, then: the `build_id`, scan severity and findings,
-which Build and Marketplace checks passed, metadata bytes, and whether the
+and whether the
 product can publish now. Name blockers outside the product (Build not reachable
 with `MARKETPLACE_API_KEY`, review settings not operational, review-stage
 names) with their owner.
