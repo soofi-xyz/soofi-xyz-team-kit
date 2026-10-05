@@ -2,6 +2,12 @@
 
 Authoritative blueprint for re-creating the **Persist** graph-persistence service from scratch. It captures the full feature set, data contracts, runtime behaviour, and infrastructure topology the implementation must enforce.
 
+Read [current scope](current-scope.md) first. For requested embeddings and
+semantic/hybrid search, load [the separate vector-search piece](vector-search.md).
+Use its GraphQL search-source/root-discovery guidance where this baseline limits
+OpenSearch to Neptune FTS or external sources to existing entity leaf fields.
+Verify the target revision; neither reference proves deployed support.
+
 ---
 
 ## 1. Product Overview
@@ -38,8 +44,8 @@ Out-of-band, the service also exposes:
 
 ### 1.3 Non-goals
 
-- Persist's public read surfaces are Gremlin and the lexicon-generated GraphQL API — nothing else. OpenSearch-backed full-text search is accessed through the existing Gremlin read surface, not through a separate `/persist/search` endpoint or a raw OpenSearch endpoint.
-- Persist does **not** provide an arbitrary search engine or caller-defined OpenSearch schema. It only maintains the OpenSearch documents required for Neptune full-text search over Persist's graph data and the derived properties declared by Lexicon's `indexes` metadata.
+- Persist's public read surfaces are Gremlin and the lexicon-generated GraphQL API — nothing else. Preserve existing Neptune FTS through Gremlin. Compose requested lexical/semantic/hybrid search through a separate GraphQL search data source as scoped in [the vector-search piece](vector-search.md), without a separate `/persist/search` endpoint or a raw OpenSearch endpoint.
+- Persist does **not** provide an arbitrary search engine or caller-defined OpenSearch schema. Maintain Neptune FTS documents and lexicon-declared derived indexes; add lexicon-governed text/vector projections only within the separate vector-search piece.
 - The GraphQL surface does **not** accept caller-defined types, caller-defined resolvers, mutations, or subscriptions. The schema is generated from the lexicon; the field-to-source routing comes only from the Persist-owned resolution map (§3.9). Callers cannot select or override a data source per request.
 - Persist does **not** proxy arbitrary Interprose operations. Interprose is reachable only as a resolution target for fields declared in the resolution map, through the batched, cached, rate-limited resolver client in §4.5 — never as a passthrough API.
 - Persist does **not** provide the legacy document-store surface (`/persistence/transactions`, `/persistence/collections`) or accept API-key authentication. Callers use SigV4 against `/persist/*`; deployment correlation and log records stay in the owning service's storage.
@@ -83,6 +89,11 @@ Stack outputs (re-exported at the application level): `NeptuneWriterEndpoint`, `
 ### 2.3 PersistSearchStack contents
 
 `PersistSearchStack` owns the OpenSearch resources and the Neptune Streams consumer that make Neptune full-text search usable through Gremlin. Neptune remains the source of truth; OpenSearch is rebuildable and eventually consistent.
+
+Treat the `SEARCH` collection below as the FTS baseline. Verify vector mapping,
+mutation and replication support before selecting the vector-search topology;
+use the separate piece's compatible/companion-index guidance without replacing
+working FTS infrastructure by assumption.
 
 - **Amazon OpenSearch Serverless collection**:
   - Type `SEARCH`; collection name stable per tenant/environment, e.g. `persist-fts-<stage>`.
@@ -522,6 +533,10 @@ Contract rules:
 
 OpenSearch is a derived read index for Neptune full-text search, not an authority for graph state. Persist follows Neptune's documented OpenSearch document model for Gremlin data:
 
+Preserve this baseline for existing FTS queries. Apply complete-content embedding,
+eligible blob extraction, chunk metadata and vector generation rules from
+[the vector-search piece](vector-search.md) only to its governed search projection.
+
 ```json
 {
   "entity_id": "<vertex-or-edge-id>",
@@ -586,6 +601,7 @@ Contract rules:
 - `dynamodb` entries name their table through an env-var indirection (`table_env`) so IAM grants and CDK wiring stay explicit per table; key templates may interpolate only the element `id` and lexicon properties already resolved from the graph.
 - `interprose` entries name a whitelisted operation from the Persist Interprose client (§4.5); arbitrary URLs or verbs in the map are rejected.
 - Relationship fields (edges) always resolve from the graph. Only scalar/leaf fields may be routed to DynamoDB or Interprose.
+- For the separate vector-search piece, extend the governed map with root-search declarations and a search-source contract. Root discovery returns ranked vertex/edge identities; hydrate their canonical fields and relationships through graph loaders. Do not treat this as existing leaf-only routing support.
 - The map carries `schema_version` and is content-hashed; the active hash is exposed via `GET /persist/graphql/schema` and logged with every GraphQL request for auditability.
 - Changing a field's source is a caller-invisible operation by design, but it changes freshness semantics — treat map promotion like a lexicon promotion (reviewed artifact, not ad-hoc edits).
 
@@ -695,6 +711,13 @@ The signature above is normative in shape, not in typing style: express the asyn
 - Each adapter follows §7.7: a typed interface, a construction path that takes clients/clocks/config as injected dependencies, and a live binding — expressed in the codebase's established runtime/DI style (e.g. Effect services and layers). Tests pass in-memory fakes through the same interface.
 
 **The registry.** `SourceResolverRegistry` is a map from `source` discriminator to adapter, assembled once in the composition module. Resolution-map loading validates that every `source` value in the map has a registered adapter and calls each adapter's `validateEntry` for its entries. **Adding a new data source is exactly three changes**: implement the port, register the adapter, and extend the resolution-map schema's `source` enum plus entry shape. No changes to executor, planner, schema generator, or other adapters — this is the open–closed boundary and reviewers must reject designs that special-case a source inside the executor.
+
+Apply that three-change rule to sources implementing the existing leaf-resolution
+port. Root discovery is an additional capability: introduce generic root-search
+declarations/ports as described in [the vector-search piece](vector-search.md).
+Keep search ranking and graph hydration in resolver composition, existing source
+adapters independent, and source-specific transport out of the executor/schema
+generator. Do not force search discovery into `batchLoad` for known parent IDs.
 
 **The generic field resolver.** The schema generator attaches one generic resolver factory to every field, closed over that field's resolution-map entry:
 

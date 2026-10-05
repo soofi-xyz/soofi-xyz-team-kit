@@ -32,7 +32,7 @@ In Copilot, select `soofi-xyz-team-kit:<agent>`. In Codex, request the named cus
 | **Deploy** | Deploy installs products and keeps subscribed components updated. | [`corviknight`](./agents/corviknight.md) | [`skarmory`](./agents/skarmory.md) |
 | **Model** | Model governs vocabulary, definitions and compatible artifact releases. | [`dialga`](./agents/dialga.md) | [`jirachi`](./agents/jirachi.md) |
 | **Transform** | Transform converts registered source languages into target languages. | [`kecleon`](./agents/kecleon.md) | [`silvally`](./agents/silvally.md) |
-| **Persist** | Persist stores graph facts and serves queries, indexes and triggers. | [`conkeldurr`](./agents/conkeldurr.md) | [`uxie`](./agents/uxie.md) |
+| **Persist** | Persist ingests and queries graph facts, maintains derived indexes and triggers, and owns lexicon-governed vector search composed through GraphQL. | [`conkeldurr`](./agents/conkeldurr.md) | [`uxie`](./agents/uxie.md) |
 | **Rule** | Rule selects entities and evaluates governed predicates. | [`gallade`](./agents/gallade.md) | [`meditite`](./agents/meditite.md) |
 | **Connect** | Connect exchanges files and requests with external partners. | [`lapras`](./agents/lapras.md) | [`wingull`](./agents/wingull.md) |
 | **System** | System orchestrates business outcomes through reusable configured flows. | [`zygarde`](./agents/zygarde.md) | [`celebi`](./agents/celebi.md) |
