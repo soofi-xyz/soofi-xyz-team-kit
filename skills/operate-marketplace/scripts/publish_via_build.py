@@ -33,7 +33,7 @@ Env:
   MARKETPLACE_API_KEY                  required; x-api-key for Marketplace and Build
   DRY_RUN=1                            stop before any Marketplace call
   MARKETPLACE_BASE_URL                 https://<host>/.../marketplace (default: Prism Marketplace)
-  BUILD_BASE_URL                       Build API URL (default: DEFAULT_BUILD_BASE_URL)
+  MARKETPLACE_BUILD_BASE_URL                       Build API URL (default: DEFAULT_BUILD_BASE_URL)
   MARKETPLACE_PRODUCT_ID               product UUID (default: by-name lookup)
   MARKETPLACE_PRODUCT_NAME             default: the manifest's component_name
   BUILD_TIMEOUT_SECONDS                default 1200
@@ -524,7 +524,7 @@ def read_product_manifest(source_zip: bytes) -> dict[str, Any]:
 def build_preflight(api: Api) -> dict[str, Any]:
     status, info = api.call("GET", "/information")
     if status != 200 or info.get("service") != "build":
-        raise PublishError(f"BUILD_BASE_URL does not reach Build (GET /information returned {status})")
+        raise PublishError(f"MARKETPLACE_BUILD_BASE_URL does not reach Build (GET /information returned {status})")
     missing = [cap for cap in REQUIRED_CAPABILITIES if cap not in (info.get("capabilities") or [])]
     if missing:
         raise PublishError(f"Build lacks capabilities {', '.join(missing)}")
@@ -775,14 +775,14 @@ def marketplace_base_url(value: str | None) -> str:
 
 
 def build_base_url(value: str | None) -> tuple[str, str]:
-    """Build URL and where it came from: `BUILD_BASE_URL` when set, else the built-in default."""
+    """Build URL and where it came from: `MARKETPLACE_BUILD_BASE_URL` when set, else the built-in default."""
     if value:
-        base, origin = value.rstrip("/"), "BUILD_BASE_URL"
+        base, origin = value.rstrip("/"), "MARKETPLACE_BUILD_BASE_URL"
     else:
         base, origin = DEFAULT_BUILD_BASE_URL.rstrip("/"), "default"
     url = urlparse(base)
     if url.scheme != "https" or not url.hostname or url.query or url.fragment:
-        raise PublishError("BUILD_BASE_URL must be an https:// Build API URL")
+        raise PublishError("MARKETPLACE_BUILD_BASE_URL must be an https:// Build API URL")
     return base, origin
 
 
@@ -882,7 +882,7 @@ def execute(args: argparse.Namespace, report: dict[str, Any]) -> bool:
     dry_run = os.environ.get("DRY_RUN") == "1"
     report["dry_run"] = dry_run
     key = require_env("MARKETPLACE_API_KEY", MARKETPLACE_KEY_STEPS)
-    build_url, build_url_origin = build_base_url(os.environ.get("BUILD_BASE_URL"))
+    build_url, build_url_origin = build_base_url(os.environ.get("MARKETPLACE_BUILD_BASE_URL"))
     build = Api("Build", build_url, key)
     build_timeout = positive_seconds("BUILD_TIMEOUT_SECONDS", 1200)
     marketplace = None

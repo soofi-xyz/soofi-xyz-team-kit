@@ -98,13 +98,13 @@ Organizations tenancy, StackSets, or Account Manager from this skill.
    Use this Build API URL (also `DEFAULT_BUILD_BASE_URL` in
    [`scripts/publish_via_build.py`](scripts/publish_via_build.py)):
    `https://5b45a3h1bd.execute-api.us-east-2.amazonaws.com/dev`.
-   Honor `BUILD_BASE_URL` only when the user
+   Honor `MARKETPLACE_BUILD_BASE_URL` only when the user
    sets a different one, and confirm that URL with them before any publish.
    Check that Build accepts the key with this read-only call; it prints only
    the HTTP status:
 
    ```bash
-   BUILD="${BUILD_BASE_URL:-<the Build API URL above>}"
+   BUILD="${MARKETPLACE_BUILD_BASE_URL:-<the Build API URL above>}"
    curl -s -o /dev/null -w '%{http_code}\n' -H "x-api-key: $MARKETPLACE_API_KEY" "${BUILD%/}/builds/bld_00000000000000000000000000"
    ```
 
@@ -279,7 +279,7 @@ publish-readiness.md). Report those; route Build defects and the stage gap to
 user acceptance of a draft. Invalid artifacts return `422 BuildArtifactInvalid`.
 
 Env vars for `publish_via_build.py`: `MARKETPLACE_API_KEY` (Marketplace and
-Build), optional `DRY_RUN`, `MARKETPLACE_BASE_URL`, `BUILD_BASE_URL`,
+Build), optional `DRY_RUN`, `MARKETPLACE_BASE_URL`, `MARKETPLACE_BUILD_BASE_URL`,
 `MARKETPLACE_PRODUCT_ID`, `MARKETPLACE_PRODUCT_NAME`, `BUILD_TIMEOUT_SECONDS`,
 `MARKETPLACE_REVIEW_TIMEOUT_SECONDS`.
 

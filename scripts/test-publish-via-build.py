@@ -302,7 +302,7 @@ class Helpers(unittest.TestCase):
 
     def test_build_url_default_and_override(self):
         self.assertTrue(pvb.DEFAULT_BUILD_BASE_URL.startswith("https://"))
-        self.assertEqual(pvb.build_base_url(f"{BUILD}/"), (BUILD, "BUILD_BASE_URL"))
+        self.assertEqual(pvb.build_base_url(f"{BUILD}/"), (BUILD, "MARKETPLACE_BUILD_BASE_URL"))
         with mock.patch.object(pvb, "DEFAULT_BUILD_BASE_URL", BUILD):
             self.assertEqual(pvb.build_base_url(None), (BUILD, "default"))
         with self.assertRaises(pvb.PublishError):
@@ -335,7 +335,7 @@ class MainFlow(unittest.TestCase):
         out, err = io.StringIO(), io.StringIO()
         environment = {
             "MARKETPLACE_API_KEY": KEY,
-            "BUILD_BASE_URL": BUILD,
+            "MARKETPLACE_BUILD_BASE_URL": BUILD,
             "MARKETPLACE_BASE_URL": MARKETPLACE,
             "MARKETPLACE_PRODUCT_ID": "",
             "MARKETPLACE_PRODUCT_NAME": "",
