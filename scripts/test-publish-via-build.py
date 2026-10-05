@@ -292,11 +292,9 @@ class Helpers(unittest.TestCase):
             ["deploy-dev-api", "Connect-prod"],
         )
 
-    def test_build_url_placeholder_needs_override(self):
-        with mock.patch.object(pvb, "DEFAULT_BUILD_BASE_URL", "PLACEHOLDER"):
-            with self.assertRaisesRegex(pvb.PublishError, "placeholder"):
-                pvb.build_base_url(None)
-            self.assertEqual(pvb.build_base_url(f"{BUILD}/"), (BUILD, "BUILD_BASE_URL"))
+    def test_build_url_default_and_override(self):
+        self.assertTrue(pvb.DEFAULT_BUILD_BASE_URL.startswith("https://"))
+        self.assertEqual(pvb.build_base_url(f"{BUILD}/"), (BUILD, "BUILD_BASE_URL"))
         with mock.patch.object(pvb, "DEFAULT_BUILD_BASE_URL", BUILD):
             self.assertEqual(pvb.build_base_url(None), (BUILD, "default"))
         with self.assertRaises(pvb.PublishError):

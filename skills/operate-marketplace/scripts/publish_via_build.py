@@ -68,7 +68,7 @@ from typing import Any, Callable
 from urllib.parse import quote, urlparse
 
 DEFAULT_MARKETPLACE_BASE_URL = "https://1ubssdfzw2.execute-api.us-east-2.amazonaws.com/dev/marketplace"
-DEFAULT_BUILD_BASE_URL = "PLACEHOLDER-BuildApiUrl-of-BuildApi-in-848665034107-us-east-2"
+DEFAULT_BUILD_BASE_URL = "https://5b45a3h1bd.execute-api.us-east-2.amazonaws.com/dev"
 ISSUER = "registeel/publish-via-build"
 MAX_BUNDLE_BYTES = 268_435_456
 MAX_METADATA_BYTES = 2048
@@ -775,13 +775,11 @@ def marketplace_base_url(value: str | None) -> str:
 
 
 def build_base_url(value: str | None) -> tuple[str, str]:
-    """Build URL and where it came from; the built-in default is a placeholder until Build is deployed."""
+    """Build URL and where it came from: `BUILD_BASE_URL` when set, else the built-in default."""
     if value:
         base, origin = value.rstrip("/"), "BUILD_BASE_URL"
-    elif DEFAULT_BUILD_BASE_URL.startswith("https://"):
-        base, origin = DEFAULT_BUILD_BASE_URL.rstrip("/"), "default"
     else:
-        raise PublishError("Build is not deployed in the Marketplace account yet: DEFAULT_BUILD_BASE_URL is a placeholder")
+        base, origin = DEFAULT_BUILD_BASE_URL.rstrip("/"), "default"
     url = urlparse(base)
     if url.scheme != "https" or not url.hostname or url.query or url.fragment:
         raise PublishError("BUILD_BASE_URL must be an https:// Build API URL")

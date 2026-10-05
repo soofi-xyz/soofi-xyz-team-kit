@@ -97,9 +97,8 @@ Organizations tenancy, StackSets, or Account Manager from this skill.
    `MARKETPLACE_API_KEY` is also the Build key. Never ask for a Build key.
    Use this Build API URL (also `DEFAULT_BUILD_BASE_URL` in
    [`scripts/publish_via_build.py`](scripts/publish_via_build.py)):
-   `PLACEHOLDER-BuildApiUrl-of-BuildApi-in-848665034107-us-east-2`.
-   While it is still the placeholder, Build is not deployed there: stop and
-   report it instead of publishing. Honor `BUILD_BASE_URL` only when the user
+   `https://5b45a3h1bd.execute-api.us-east-2.amazonaws.com/dev`.
+   Honor `BUILD_BASE_URL` only when the user
    sets a different one, and confirm that URL with them before any publish.
    Check that Build accepts the key with this read-only call; it prints only
    the HTTP status:
