@@ -1,7 +1,7 @@
 {
   "name": "soofi-xyz-team-kit",
-  "description": "Product builders and configurers with guided feature increments for Account, Environment, Build, Deploy, Model, Marketplace, Transform, Persist, Rule, Connect and System.",
-  "version": "0.84.2",
+  "description": "Product builders and configurers with guided feature increments for Account, Console, Environment, Build, Deploy, Model, Marketplace, Transform, Persist, Rule, Connect and System.",
+  "version": "0.85.0",
   "author": {
     "name": "Soofi XYZ"
   },
@@ -21,7 +21,7 @@
   "interface": {
     "displayName": "Soofi XYZ",
     "shortDescription": "Build and configure Soofi products with guided workflows.",
-    "longDescription": "Product builders and configurers with guided feature increments for Account, Environment, Build, Deploy, Model, Marketplace, Transform, Persist, Rule, Connect and System.",
+    "longDescription": "Product builders and configurers with guided feature increments for Account, Console, Environment, Build, Deploy, Model, Marketplace, Transform, Persist, Rule, Connect and System.",
     "developerName": "Soofi XYZ",
     "category": "Productivity",
     "capabilities": [
@@ -30,6 +30,8 @@
     ],
     "websiteURL": "https://github.com/soofi-xyz/cursor-plugin",
     "defaultPrompt": [
+      "Use Chandelure to build or fix Console.",
+      "Use Vivillon to configure and test a Console application.",
       "Use Conkeldurr to build or fix Persist.",
       "Use Zygarde to build System through guided mock scenarios.",
       "Use Celebi to configure a System outcome."

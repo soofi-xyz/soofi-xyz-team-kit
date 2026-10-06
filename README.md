@@ -26,6 +26,7 @@ In Copilot, select `soofi-xyz-team-kit:<agent>`. In Codex, request the named cus
 | Product | What it does | Build and maintain | Configure and test |
 | --- | --- | --- | --- |
 | **Account** | Account manages identities, keys, provisioning, domains and maintenance access. | [`kangaskhan`](./agents/kangaskhan.md) | [`blissey`](./agents/blissey.md) |
+| **Console** | Console renders reusable authenticated applications from governed, versioned UI configurations. | [`chandelure`](./agents/chandelure.md) | [`vivillon`](./agents/vivillon.md) |
 | **Environment** | Environment prepares tenant environments, shared routing and initial product installations. | [`torterra`](./agents/torterra.md) | [`shaymin`](./agents/shaymin.md) |
 | **Marketplace** | Marketplace catalogs products and reviews, publishes and rolls back bundles. | [`regigigas`](./agents/regigigas.md) | [`registeel`](./agents/registeel.md) |
 | **Build** | Build turns validated source into portable deployment artifacts with provenance. | [`tinkaton`](./agents/tinkaton.md) | [`metang`](./agents/metang.md) |
