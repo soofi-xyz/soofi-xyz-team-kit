@@ -3,7 +3,7 @@
   "source": {
     "meeting": "Builder Story Planning, 2026-09-30",
     "spreadsheet": "staircase-products export, supplied 2026-09-30",
-    "precedence": "User follow-up retains Conkeldurr for Persist, assigns Zygarde to System and excludes the API documentation workstream. A later user request assigns Account its own builder/configurer pair. A subsequent request assigns builder/configurer pairs to Environment, Build, Deploy and Model. User follow-up assigns Puller polling, subscriptions and reconciliation to the Deploy product; keep subscriber state separate from its stateless run API."
+    "precedence": "User follow-up retains Conkeldurr for Persist, assigns Zygarde to System and excludes the API documentation workstream. A later user request assigns Account its own builder/configurer pair. Subsequent requests assign builder/configurer pairs to Environment, Build, Deploy, Model and Console. User follow-up assigns Puller polling, subscriptions and reconciliation to the Deploy product; keep subscriber state separate from its stateless run API."
   },
   "workflowSkill": "guide-product-work",
   "products": [
@@ -56,17 +56,20 @@
       "sourceRows": [
         3
       ],
-      "status": "unassigned",
-      "summary": "",
+      "status": "assigned",
+      "summary": "Console renders reusable authenticated applications from governed, versioned UI configurations.",
       "agents": {
-        "build": null,
-        "configure": null
+        "build": "chandelure",
+        "configure": "vivillon"
       },
       "skills": {
-        "build": null,
-        "configure": null
+        "build": "build-console-product",
+        "configure": "configure-console-product"
       },
-      "notes": []
+      "notes": [
+        "Assigned by explicit user request on 2026-10-06. Chandelure builds the reusable Console runtime and configuration API; Vivillon configures applications on existing deployments. Console configuration is an artifact, not a separate product. Keep Model composition, Persist facts, Account identity and System execution with their owning products."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/console.md"
     },
     {
       "id": "environment",
