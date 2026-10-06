@@ -30,6 +30,26 @@ Read the relevant [product contract](../build-bootstrap-cli/reference/PRD.md) an
    are covered by the requested scope and record cleanup without removing shared
    resources. Keep mocked execution distinct from actual dependency readiness.
 
+## Customer accounts and live installs
+
+- **Onboard a customer account through its governed role.** A Marketplace-installed
+  Deploy has no invoker resource policy, so Environment reaches it only by assuming
+  the customer-account role `/prism/environment-target`. Create that role (Deploy
+  invoke only, trusting Environment's caller roles), add the account to
+  `CustomerAccountIds`, and give its routing inventory entry `target_role_arn`. Follow
+  the Environment README's [per-account customer role](https://github.com/prismteam-ai/environment#per-account-customer-role-2026-10-05)
+  and [onboarding](https://github.com/prismteam-ai/environment#onboard-a-new-customer-account-operator)
+  sections for the exact policy, trust and inventory entry.
+- **Record the region's API Gateway CloudWatch role before installing a product.**
+  `apigateway get-account` holds one role per account and region, and installing a
+  product whose REST API manages it (Deploy and Account today) silently replaces it.
+  Restore the recorded role before deleting that product's retained role, or another
+  team's API logging breaks.
+- **Choose a low-footprint test product.** Before an install, inspect the bundle's
+  templates: prefer one without `AWS::ApiGateway::Account`, without required
+  parameters and without resources retained on delete, and check that its stack name
+  (often `<Product>-review`) does not already exist in the target account.
+
 Keep identity, underlying AWS account provisioning, DNS/certificate inventory and service keys with Account. Consume Marketplace bundles and let Deploy execute product installations after its first install. Treat Bootstrap as an Environment adapter, not another product. Install Deploy's Puller component and hand ongoing subscriptions, polling and recovery to Corviknight/Skarmory; Environment does not implement those subscriber capabilities.
 
 Return configuration changes, redacted identifiers, API/read-back results,
