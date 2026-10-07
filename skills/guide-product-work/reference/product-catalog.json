@@ -3,10 +3,32 @@
   "source": {
     "meeting": "Builder Story Planning, 2026-09-30",
     "spreadsheet": "staircase-products export, supplied 2026-09-30",
-    "precedence": "User follow-up retains Conkeldurr for Persist, assigns Zygarde to System and excludes the API documentation workstream. A later user request assigns Account its own builder/configurer pair. Subsequent requests assign builder/configurer pairs to Environment, Build, Deploy, Model and Console. User follow-up assigns Puller polling, subscriptions and reconciliation to the Deploy product; keep subscriber state separate from its stateless run API."
+    "precedence": "User follow-up retains Conkeldurr for Persist and assigns Zygarde to System. Later requests assign builder/configurer pairs to Account, Environment, Build, Deploy, Model and Console. User follow-up assigns Puller polling, subscriptions and reconciliation to the Deploy product; keep subscriber state separate from its stateless run API. The 2026-10-07 request adds Documentation as a distinct product, superseding the earlier API documentation exclusion. Require the engineering and React/TypeScript/tRPC application skills; keep Site and Document separate and unassigned."
   },
   "workflowSkill": "guide-product-work",
   "products": [
+    {
+      "id": "documentation",
+      "name": "Documentation",
+      "legacyNames": [],
+      "sourceRows": [],
+      "status": "assigned",
+      "summary": "Documentation publishes product documentation and serves a configurable developer portal with API references, guides and interactive examples.",
+      "agents": {
+        "build": "unown",
+        "configure": "togetic"
+      },
+      "skills": {
+        "build": "build-documentation-product",
+        "configure": "configure-documentation-product"
+      },
+      "notes": [
+        "Added by explicit user request on 2026-10-07 after review of site-tech-ui and documentation; no spreadsheet row is claimed. Documentation is the canonical product name, not an alias for Site or Document.",
+        "Unown builds the reusable publishing API and developer portal; Togetic configures existing capabilities. Require apply-engineering-guidelines and build-frontend-backends with React, strict TypeScript and tRPC. Historical sources describe behavior, not the approved implementation stack or a verified deployment.",
+        "The reviewed UI depends on a separate site-tech-api absent from the supplied projects. Discover and verify that contract before claiming integration. Preserve Account, Model, Console, Build, Marketplace, Environment and Deploy ownership."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/documentation.md"
+    },
     {
       "id": "account",
       "name": "Account",

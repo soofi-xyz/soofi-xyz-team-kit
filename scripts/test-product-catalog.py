@@ -23,6 +23,15 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(self.product("persist")["agents"]["build"], "conkeldurr")
         self.assertEqual(self.product("system")["agents"]["build"], "zygarde")
 
+    def test_documentation_has_distinct_ownership_from_site_and_document(self):
+        product = self.product("documentation")
+        self.assertEqual(product["name"], "Documentation")
+        self.assertEqual(product["agents"], {"build": "unown", "configure": "togetic"})
+        self.assertEqual(product["sourceRows"], [])
+        for name in ("site", "document"):
+            self.assertEqual(self.product(name)["status"], "unassigned")
+            self.assertNotIn(name, [alias.casefold() for alias in product["legacyNames"]])
+
     def test_same_agent_cannot_own_two_products(self):
         self.product("system")["agents"]["build"] = "conkeldurr"
         self.assertTrue(any("duplicate ownership" in e for e in catalog.validate(self.data)))
@@ -83,6 +92,8 @@ class CatalogTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             shutil.copytree(catalog.ROOT / "agents", root / "agents")
+            # Exercise an actually unavailable target even after its product is assigned.
+            (root / "agents/unown.md").unlink()
             # Only the required lightweight skill entrypoints are needed here.
             for name in {self.data["workflowSkill"], *(
                 skill for p in self.data["products"] for skill in p["skills"].values() if skill
