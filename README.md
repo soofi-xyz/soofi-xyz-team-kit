@@ -9,6 +9,8 @@ Choose a builder to implement or fix a product, or a configurer to use an existi
 ```text
 /conkeldurr Fix Persist's duplicate-ingest handling and walk me through a replay test.
 /celebi Configure a Connect → Transform → Persist outcome on the existing System.
+/unown Build Documentation's publishing API and React/TypeScript/tRPC portal in guided feature increments.
+/togetic Publish and test a product's OpenAPI, overview and guides on the existing Documentation service.
 /silvally test sms end to end; approve all DEV writes; allow DEV Persist writes
 ```
 
@@ -25,6 +27,7 @@ In Copilot, select `soofi-xyz-team-kit:<agent>`. In Codex, request the named cus
 
 | Product | What it does | Build and maintain | Configure and test |
 | --- | --- | --- | --- |
+| **Documentation** | Documentation publishes product documentation and serves a configurable developer portal with API references, guides and interactive examples. | [`unown`](./agents/unown.md) | [`togetic`](./agents/togetic.md) |
 | **Account** | Account manages identities, keys, provisioning, domains and maintenance access. | [`kangaskhan`](./agents/kangaskhan.md) | [`blissey`](./agents/blissey.md) |
 | **Console** | Console renders reusable authenticated applications from governed, versioned UI configurations. | [`chandelure`](./agents/chandelure.md) | [`vivillon`](./agents/vivillon.md) |
 | **Environment** | Environment prepares tenant environments, shared routing and initial product installations. | [`torterra`](./agents/torterra.md) | [`shaymin`](./agents/shaymin.md) |
