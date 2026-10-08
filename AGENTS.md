@@ -33,6 +33,9 @@ Follow these conventions whenever you touch files in this repo.
 - Require `product` and `role` (`build` or `configure`) in featured product agent frontmatter.
   Conkeldurr builds Persist; Zygarde builds System. Keep configuration separate.
   Kangaskhan builds Account; Blissey configures it through the existing HTTP API.
+  Corviknight builds Deploy, including Puller polling/subscriptions/reconciliation;
+  Skarmory configures both. Keep Puller state in its Deploy-owned subscriber
+  component, separate from the stateless run API. Environment owns first installation.
 - Require an HTTP API for assigned product capabilities, including submission,
   status and results for async work. CLI/workflow/artifact adapters support that
   surface; they do not replace API acceptance. Verify existing deployments rather

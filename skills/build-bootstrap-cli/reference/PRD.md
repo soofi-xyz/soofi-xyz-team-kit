@@ -31,9 +31,10 @@ acceptance. Do not build parallel orchestration engines.
 - Marketplace owns catalog/bundle discovery, review and publication.
 - Deploy owns execution of validated deployment artifacts once available. Preserve
   its current stateless SigV4 run/status contract.
-- Subscriber-side Puller owns installation history, keys, subscriptions and local
-  desired-state reconciliation. Coordinate its integration with Marketplace/Deploy;
-  do not create another catalog product or move its state into stateless Deploy.
+- Deploy owns the subscriber-side Puller component, including installation
+  history, subscription secrets, subscriptions, polling and local reconciliation.
+  Corviknight builds it and Skarmory configures it. Environment installs it; keep
+  its state separate from the stateless run service without creating another product.
 - Product stacks own their endpoint mapping resources under Environment's shared
   routing contract. Reject a conflicting path claim rather than overwrite it.
 
@@ -85,7 +86,8 @@ requirement to force API-key usage onto a SigV4-only Deploy implementation.
    stack plan and verify account/region before writes. Do not offer arbitrary
    local product deployment after Deploy is available.
 4. **Subscriber handoff:** invoke the verified current Deploy run API using its
-   actual auth and payload, follow run status, then check subscriber readiness.
+   actual auth and payload, follow run status, then check readiness of the Deploy-owned
+   Puller component. Hand ongoing subscriptions, polling and recovery to Corviknight/Skarmory.
    Do not use `/infra-deployer/deploy-by-token` from superseded instructions.
 5. **Product endpoints:** coordinate supported route claims and read-back against
    the shared domain. Keep product-owned mapping resources with their stack;
@@ -106,7 +108,8 @@ run alone leaves the product's API acceptance pending.
 Persist only non-secret resume metadata: schema version, account/environment
 identity, bundle identities, stack/run IDs, completed steps and update time.
 Store API-managed status using the target's supported persistence; keep subscriber
-installation state outside Deploy. Do not trust persisted signed URLs or secrets.
+installation state in Deploy's Puller component, separate from the run service.
+Do not trust persisted signed URLs or secrets.
 
 Return stable errors for missing input, incomplete manifest, account/region
 mismatch, invalid bundle, path conflict, unsupported local component, health

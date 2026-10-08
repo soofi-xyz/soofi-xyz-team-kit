@@ -129,7 +129,7 @@ def validate(catalog: dict, root: Path = ROOT) -> list[str]:
         content = path.read_text()
         for match in re.finditer(r"\b(?:use|via|to|with|ask|invoke|delegate to)\s+[`*]*([a-z][a-z0-9-]*)[`*]*\b", content, re.I):
             target = match.group(1).lower()
-            if target == "unown":
+            if target == "unown" and target not in installed:
                 errors.append(f"{path.relative_to(root)}: unavailable agent handoff to {target}")
         for target in re.findall(r"\]\(([^)]+\.md)(?:#[^)]*)?\)", content):
             if "://" in target:

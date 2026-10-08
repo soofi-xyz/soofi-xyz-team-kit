@@ -1,0 +1,207 @@
+#!/usr/bin/env python3
+"""Fetch the read-only inputs Silvally needs into a disposable workspace.
+
+Nothing is read from the operator's existing checkouts. Every command is
+read-only against GitHub and AWS and writes only under --workspace.
+
+  fetch_validation_inputs.py repo --workspace WS --slug OWNER/REPO (--ref REF | --pr N) --name lexicon-candidate
+  fetch_validation_inputs.py registry --workspace WS --label dev --profile <dev-profile> [--region <region>]
+  fetch_validation_inputs.py ssm-names --workspace WS --label dev --profile <dev-profile>
+  fetch_validation_inputs.py materialize --workspace WS --name lexicon-candidate [--command "<repo command with {out}>"]
+
+Defaults (registry URI parameter, parameter path, region, materialization commands)
+come from reference/registry-layout.json or --layout.
+
+Each command prints and appends a JSON record to WS/inputs-manifest.json
+(pinned commit SHAs, SSM parameter values that are locations, file digests).
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import shlex
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+from silvally_io import SilvallyError, aws, load_layout, parse_s3, read_json, sha256_file, write_json
+
+ECHO = sys.stdout  # the resolver redirects progress records to stderr
+
+
+def record(workspace: Path, entry: dict) -> dict:
+    manifest = workspace / "inputs-manifest.json"
+    entries = read_json(manifest) if manifest.exists() else []
+    entries = [e for e in entries if not (e.get("kind") == entry["kind"] and e.get("name") == entry.get("name"))]
+    entries.append(entry)
+    write_json(manifest, entries)
+    print(json.dumps(entry, indent=1), file=ECHO)
+    return entry
+
+
+GIT_AUTH = ["-c", "credential.helper=", "-c", "credential.helper=!gh auth git-credential"]
+
+
+def run(command: list[str], cwd: Path | None = None) -> str:
+    if command[0] == "git":
+        command = ["git", *GIT_AUTH, *command[1:]]
+    env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GCM_INTERACTIVE": "never"}
+    result = subprocess.run(command, cwd=cwd, capture_output=True, text=True, env=env, stdin=subprocess.DEVNULL)
+    if result.returncode != 0:
+        raise SilvallyError(f"{' '.join(command[:3])} failed: {result.stderr.strip()[-400:]}")
+    return result.stdout.strip()
+
+
+def resolve_ref(slug: str, ref: str | None, pr: int | None) -> tuple[str, dict]:
+    if pr is not None:
+        data = json.loads(run(["gh", "pr", "view", str(pr), "-R", slug, "--json", "headRefOid,headRefName,state"]))
+        return data["headRefOid"], {"selectionMethod": "pull-request", "pullRequestNumber": pr, "headRefName": data["headRefName"], "state": data["state"]}
+    if ref is None:
+        ref = json.loads(run(["gh", "repo", "view", slug, "--json", "defaultBranchRef"]))["defaultBranchRef"]["name"]
+        method = "default-branch"
+    else:
+        method = "requested-ref"
+    sha = run(["gh", "api", f"repos/{slug}/commits/{ref}", "--jq", ".sha"])
+    return sha, {"selectionMethod": method, "requestedRef": ref}
+
+
+def fetch_repo(args) -> dict:
+    workspace = Path(args.workspace)
+    target = workspace / args.name
+    sha, selection = resolve_ref(args.slug, args.ref, args.pr)
+    if not (target / ".git").exists():
+        target.mkdir(parents=True, exist_ok=True)
+        run(["git", "init", "-q"], cwd=target)
+        run(["git", "remote", "add", "origin", f"https://github.com/{args.slug}.git"], cwd=target)
+    run(["git", "fetch", "-q", "--depth", str(args.depth), "origin", sha], cwd=target)
+    run(["git", "checkout", "-q", "--detach", sha], cwd=target)
+    head = run(["git", "rev-parse", "HEAD"], cwd=target)
+    if head != sha:
+        raise SilvallyError(f"checkout HEAD {head} does not match selected {sha}")
+    missing = [p for p in args.required_path or [] if not (target / p).exists()]
+    return record(workspace, {"kind": "repository", "name": args.name, "slug": args.slug, "commitSha": sha, **selection,
+                              "path": str(target), "requiredPathsVerified": not missing, "missingRequiredPaths": missing})
+
+
+def fetch_registry(args) -> dict:
+    workspace = Path(args.workspace)
+    uri = aws(["ssm", "get-parameter", "--name", args.parameter], profile=args.profile, region=args.region,
+              environment=args.environment)["Parameter"]["Value"].rstrip("/") + "/"
+    bucket, prefix = parse_s3(uri)
+    target = workspace / f"registry-{args.label}"
+    aws(["s3", "sync", uri, str(target), "--exclude", "*", "--include", "*/mapping.json", "--include", "*/queries/*", "--quiet"],
+        profile=args.profile, region=args.region, environment=args.environment, output_json=False)
+    mappings = []
+    for mapping in sorted(target.glob("*/*/mapping.json")):
+        key = f"{prefix}{mapping.relative_to(target)}"
+        head = aws(["s3api", "head-object", "--bucket", bucket, "--key", key], profile=args.profile, region=args.region,
+                   environment=args.environment)
+        mappings.append({"mapping": f"{mapping.parent.parent.name}@{mapping.parent.name}", "sha256": sha256_file(mapping),
+                         "versionId": head.get("VersionId"), "lastModified": head.get("LastModified")})
+    return record(workspace, {"kind": "registry", "name": args.label, "location": uri, "path": str(target), "mappings": mappings})
+
+
+def fetch_ssm_names(args) -> dict:
+    workspace = Path(args.workspace)
+    names, token = [], None
+    while True:
+        call = ["ssm", "get-parameters-by-path", "--path", args.path, "--recursive"]
+        if token:
+            call += ["--next-token", token]
+        page = aws(call, profile=args.profile, region=args.region, environment=args.environment)
+        names += [p["Name"] for p in page.get("Parameters", [])]
+        token = page.get("NextToken")
+        if not token:
+            break
+    target = workspace / f"ssm-{args.label}.json"
+    write_json(target, sorted(names))
+    return record(workspace, {"kind": "ssm-names", "name": args.label, "path": str(target), "count": len(names)})
+
+
+def check_node(requirement: dict | None) -> dict:
+    """Refuse a Node.js below the layout's minimum major; warn (never block) below the recommended version."""
+    if not requirement:
+        return {}
+    result = subprocess.run(["node", "--version"], capture_output=True, text=True, check=False) if shutil.which("node") else None
+    if result is None or result.returncode != 0:
+        raise SystemExit(f"Node.js {requirement['minimumMajor']}+ with npm/npx is required to materialize mappings; "
+                         f"{requirement['recommended']} is recommended")
+    version = result.stdout.strip().lstrip("v")
+    parts = tuple(int(p) for p in re.findall(r"\d+", version)[:3])
+    if parts[0] < requirement["minimumMajor"]:
+        raise SystemExit(f"Node.js {version} is below the minimum {requirement['minimumMajor']}: {requirement['reason']}")
+    recommended = tuple(int(p) for p in requirement["recommended"].split("."))
+    if parts[:len(recommended)] < recommended:
+        print(f"warning: Node.js {version} is below the recommended {requirement['recommended']}; continuing "
+              "(npm may print EBADENGINE warnings; the materialized mapping digests are what count)", file=sys.stderr)
+    return {"node": version, "recommended": requirement["recommended"], "belowRecommended": parts[:len(recommended)] < recommended}
+
+
+def materialize(args) -> dict:
+    workspace = Path(args.workspace)
+    checkout = workspace / args.name
+    out = workspace / f"{args.name}-materialized"
+    node = check_node(getattr(args, "node", None))
+    if args.install:
+        for step in args.install:
+            subprocess.run(shlex.split(step), cwd=checkout, check=True, stdout=sys.stderr, stdin=subprocess.DEVNULL)
+    command = [part.replace("{out}", str(out)) for part in shlex.split(args.command)]
+    subprocess.run(command, cwd=checkout, check=True, env={**os.environ}, stdout=sys.stderr, stdin=subprocess.DEVNULL)
+    mappings = [{"mapping": f"{m.parent.parent.name}@{m.parent.name}", "sha256": sha256_file(m)}
+                for m in sorted(out.rglob("mapping.json"))]
+    return record(workspace, {"kind": "materialized", "name": args.name, "path": str(out), "mappings": mappings, **node})
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--layout", help="registry layout JSON (default reference/registry-layout.json)")
+    sub = parser.add_subparsers(dest="command", required=True)
+    repo = sub.add_parser("repo")
+    repo.add_argument("--workspace", required=True)
+    repo.add_argument("--slug", required=True)
+    repo.add_argument("--ref")
+    repo.add_argument("--pr", type=int)
+    repo.add_argument("--name", required=True)
+    repo.add_argument("--depth", type=int, default=50)
+    repo.add_argument("--required-path", action="append")
+    for name in ("registry", "ssm-names"):
+        p = sub.add_parser(name)
+        p.add_argument("--workspace", required=True)
+        p.add_argument("--label", required=True)
+        p.add_argument("--profile", required=True, help="operator-chosen AWS profile for that environment")
+        p.add_argument("--region", help="default: the layout's repository.defaultRegion")
+        p.add_argument("--environment", choices=("dev", "prod"), default="prod",
+                       help="prod enforces read-only verbs; dev reads are read-only too")
+        if name == "ssm-names":
+            p.add_argument("--path", help="default: the layout's publishedRegistry.parameterPath")
+        else:
+            p.add_argument("--parameter", help="default: the layout's publishedRegistry.uriParameter")
+    mat = sub.add_parser("materialize")
+    mat.add_argument("--workspace", required=True)
+    mat.add_argument("--name", required=True)
+    mat.add_argument("--command", dest="materialize_command", help="materialization command; {out} is replaced by the output directory")
+    mat.add_argument("--install", action="append", help="setup command run first in the checkout, e.g. 'npm ci'")
+    args = parser.parse_args(argv)
+    layout = load_layout(args.layout)
+    if args.command in ("registry", "ssm-names"):
+        args.region = args.region or layout["repository"]["defaultRegion"]
+        if args.command == "registry":
+            args.parameter = args.parameter or layout["publishedRegistry"]["uriParameter"]
+        else:
+            args.path = args.path or layout["publishedRegistry"]["parameterPath"]
+    if args.command == "materialize":
+        materialize(argparse.Namespace(workspace=args.workspace, name=args.name,
+                                       command=args.materialize_command or layout["materialize"]["command"],
+                                       install=layout["materialize"]["install"] if args.install is None else args.install,
+                                       node=layout["materialize"].get("node")))
+        return 0
+    {"repo": fetch_repo, "registry": fetch_registry, "ssm-names": fetch_ssm_names}[args.command](args)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

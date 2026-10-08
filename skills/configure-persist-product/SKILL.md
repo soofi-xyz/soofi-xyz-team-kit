@@ -1,6 +1,6 @@
 ---
 name: configure-persist-product
-description: "Configure and test a particular ingestion, query, governed index or trigger on an existing Persist deployment. Use Uxie; hand service implementation changes to Conkeldurr."
+description: "Configure and test ingestion, queries, governed indexes, triggers or GraphQL vector search on an existing Persist deployment. Use Uxie; hand service implementation changes to Conkeldurr."
 ---
 
 Use [the Persist capability map](../guide-product-work/reference/iterations/persist.md). Derive the feature pieces from scope and dependencies, then apply the work below within each piece; require a user-run configuration, AWS inspection and feedback before starting the next implementation piece.
@@ -11,6 +11,14 @@ Use `uxie`. Follow [guide-product-work](../guide-product-work/SKILL.md).
 Read [current scope](../build-persist-service/reference/current-scope.md), then
 the relevant ingest/query/index/trigger sections of the existing implementation
 PRD. Verify the target revision before treating a reference as deployed behavior.
+
+For vector search, read [the separate vector-search
+piece](../build-persist-service/reference/vector-search.md). Verify that the
+deployment supports its GraphQL search source and root discovery contract before
+configuring it. Consume approved Model-owned field eligibility and an evaluated,
+pinned embedding profile; keep vector work under its own `vector-search`
+checkpoint. Route missing implementation to Conkeldurr and lexicon declaration
+changes to Model's assigned agents. Do not add vector syntax to Gremlin.
 
 1. Establish the authorized dataset, existing model, IDs, relationships and
    expected queries. Discover the deployment and verify AWS account/region.

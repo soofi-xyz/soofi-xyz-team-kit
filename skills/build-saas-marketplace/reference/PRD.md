@@ -15,9 +15,12 @@ review status transitions and idempotency.
 Marketplace does not execute subscriber deployments or mint tenant keys. Do not
 add subscription endpoints, StackSets, central-account tenant administration or
 customer/environment APIs merely because historical instructions prescribed them.
-Treat a subscriber-side puller as implementation belonging to Marketplace/Deploy;
-physical distribution does not create another product. Any change to the supported
-subscription boundary requires an explicit product decision, not an invented API.
+Deploy owns the Puller subscriber component: Corviknight builds it and Skarmory
+configures its subscriptions, polling, installation history and update execution.
+Physical distribution with Marketplace does not change product ownership. Serve
+existing catalog/publication interfaces to Puller; add notifications only under a
+verified supported contract. Puller polling must not require invented Marketplace
+subscription endpoints.
 
 ## Build and verify
 

@@ -1,0 +1,328 @@
+# Short-request intent resolution
+
+Silvally accepts requests as short as `test <source> to <target>`,
+`test <hub> <output words> to <target>`, or `test <hub> (<producer>) to <target>`. This
+reference defines how such a request becomes an exact `(source language, target language,
+direction, mapping id@version)` plan. It is read-only discovery; no step here
+writes outside a private evidence directory. The resolver knows no language, mapping or
+dataset in advance: every word is matched against what the inspected registry declares.
+
+## Grammar
+
+```text
+[/silvally] <verb> <source terms> [(<qualifiers>)] <to|into|->|=>|→> <target terms> [hints]
+verb      := test | validate | check | verify | run | try | prove
+hints     := @<x.y.z> | v<x.y.z>        mapping version
+           | in dev | in prod           environment (prod is always read-only)
+           | round trip | one way       direction mode
+           | owner decisions             see "Owner decisions" below
+```
+
+`test`, `validate` and `check` are the same request: `test lexicon to interprose for sms, dsa
+and m2d`, `check …` and `validate …` resolve to the same plan, with or without `/silvally`.
+
+- A side naming the hub language (the layout's `hubLanguage`) plus other words treats those
+  words as **qualifiers** (`<hub> <output words>`, `<hub> (<producer>)`, `<target> <output words>`):
+  they select which hub slice or which output feeds the projection.
+  `(<a>/<b>)` lists alternatives; each word is a qualifier.
+- Two non-hub languages on one side is `AMBIGUOUS`.
+- Words that are not registered languages remain terms; they are never mapped
+  to a language by prose similarity. Close spellings are offered as candidates
+  only.
+
+## Registry sources
+
+Resolve against pinned, immutable inputs. Record each in the discovery trace. Paths and
+parameter names below are keys of `registry-layout.json`; pass `--layout` for another registry.
+
+| Source | What it proves | How to materialize read-only |
+| --- | --- | --- |
+| Registry candidate checkout at a pinned SHA | language definitions (`languageDefinitionPath`), registry keys (`languageRegistry`), declared language parameters (`languageParameters.declaredIn`), checked-in registrations (`registrationGlob`) | isolated checkout at the selected SHA |
+| Registry `main` checkout at a pinned SHA | current active concepts (`conceptModelPath`); retired mapping ids (`retiredMappingIds`) | isolated checkout at the resolved `main` SHA |
+| Transform registry per environment (checked first) | mapping versions registered through Transform's API, with per-file SHA-256 | SigV4 `GET <transformRegistry.listRoute>` and `<transformRegistry.getRoute>` against the URL in `transformRegistry.apiUrlParameter` |
+| Published registry per environment | exact deployed `transform-mappings/<id>/<version>/mapping.json`, including generator-only mappings | `aws ssm get-parameter --name <publishedRegistry.uriParameter>`, then a filtered `aws s3 sync` of `*/mapping.json` and `*/queries/*` |
+| Published parameter names per environment | which languages each environment actually publishes | `aws ssm get-parameters-by-path --path <publishedRegistry.parameterPath>` |
+
+All AWS reads use an operator-selected profile in the layout's default region (or `--region`).
+They are control-plane or object reads; PROD reads never change state.
+
+Transform resolves a schema-free v2 run from its own registry first and falls back to Lexicon's
+published registry only for unregistered versions while its `lexiconMappingFallback` is on.
+Check the Transform registry before the published registry. The resolver, fetcher and run
+scripts still resolve through the published registry only; moving them to the Transform
+registry is a follow-up.
+
+Generated mappings exist only in the published registry or a materialized build. Never infer
+them from prose. When checked-in registrations and a published registry disagree for the same
+`id@version`, report `RegistrySourceDrift`: the deployed artifact is not the pinned candidate.
+
+## Language states
+
+| State | Meaning |
+| --- | --- |
+| `DEFINED` | registered and its definition file (`languageDefinitionPath`) declares datasets |
+| `REGISTERED_WITHOUT_DEFINITION` | registry key or SSM name exists but no definition file declares datasets |
+| `MAPPING_ENDPOINT_ONLY` | only appears as a mapping `from`/`to`; Lexicon does not govern its schema |
+| `UNKNOWN` | not registered and not a mapping endpoint |
+
+Any non-`DEFINED` endpoint produces `LanguageDefinitionMissing`. Parity for
+that side cannot be derived from Lexicon (see `execution-and-parity.md`).
+
+## Mapping selection
+
+1. List `ENABLED` mappings with `from == source` and `to == target`.
+2. One candidate: `RESOLVED`.
+3. Several versions: a version hint selects exactly one. With a published registry
+   inspected and no version hint, the latest published version of one mapping id is
+   selected (see Version default). Otherwise a qualifier
+   selects a version only through a **hard chain signal** on that version's
+   *discriminating* inputs, which are the inputs not shared by every competing
+   version:
+   - `chain-producer`: `<qualifier>-to-<hub>` outputs overlap them;
+   - `chain-sibling`: `<hub>-to-<qualifier>` inputs overlap them;
+   - `output-dataset`: a run of qualifier words joined with `_` (a trailing
+     plural `s` is also tried) equals one of that version's discriminating
+     outputs, for example `ledger summaries` -> `ledger_summary`.
+   A dataset-name substring match is a soft signal and never selects alone.
+   A single enabled candidate resolves on its own; qualifiers then only steer
+   the continuation (see below).
+4. Zero or several hard matches: `AMBIGUOUS`; list every version with its
+   outputs and the qualifiers it serves.
+5. No direct mapping: `NO_MAPPING`. Rank candidates by inverse direction,
+   producers of the inverse mapping's inputs, dataset mentions, same source or
+   target, profile aliases, and retired ids. Do not select one.
+
+Two kinds of mapping are listed but never offered in `mapping-choice` and never
+selected:
+
+- **Retired**: ids in the registry's retired list (`retiredMappingIds`), and
+  exact `id@version` keys in the shared `forbidden-concepts.json`
+  `retiredMappings`. A retired key still present in a registry is filtered out
+  of selection and reported as `RetiredMappingInRegistry`.
+- **Planned**: a profile direction with `status: not-registered` for the same
+  language pair whose `id@version` no inspected registry holds. It appears with
+  `status: PLANNED`, and its matching outputs are listed as reasons. It is
+  reported as `PlannedMappingNotRegistered`, with `matchesRequest` set when the
+  qualifiers name its outputs. When it is registered on a candidate branch,
+  pass that checkout as `--lexicon-root` or its `cdk synth` output as
+  `--registry`.
+
+### Version default
+
+With a published registry inspected (`--registry` or `--workspace --aws`) and no `@x.y.z`, the
+resolver takes the versions the request matches (every enabled `from -> to` version, or those a
+qualifier hard-matches) and keeps the highest selectable semantic version among DEV-published,
+candidate-build, and checked-in registrations. PROD catalog membership never selects or rejects a
+version; `UnpublishedInProd` is informational and is not a mapping `NOT_READY`.
+
+- one mapping id: select its highest semantic version (`10.0.0` over `9.0.0`). DEV-published
+  versions use `latest-published-semver`; a candidate-only pick (checked-in registration or the
+  materialized `candidate-build`, which is candidate provenance and never a published registry)
+  uses `latest-candidate-semver`, with the pin's `source: candidate-build` for a generated mapping.
+  Return `notice`:
+  `Resolved <id>@<x.y.z> — latest of <v1>, <v2>, ...; add @x.y.z to pick another.`
+  `mapping-version` is not asked. When only one published version matches and none is ignored, the
+  rule is `single-match` and there is no notice.
+- several mapping ids: `AMBIGUOUS`; the user chooses.
+- `@x.y.z` pins one version, including an unpublished checked-in version.
+
+`versionSelection` records `requested`, `candidates` (each version with the registries publishing it),
+`chosen`, `rule` (`explicit-version`, `latest-published-semver`, `latest-candidate-semver`,
+`single-match`, `cumulative-superset`) and `pin` (the chosen `mapping.json` source, path and SHA-256). The draft,
+`evaluate_run.py` and the run package carry it; the pin and the fetched S3 version id keep a later
+publication from changing a run in progress.
+
+### Package slices
+
+`validate <from> to <to> for <slice>, <slice> and <slice>` selects one catalog package
+(`reference/package-slices.json`) and one `outputDatasets` set per named slice. Slice words are
+stripped before language match. The workflow is one-way: one step per slice, same mapping, no
+undifferentiated full-package run, and no producer chain from a slice word. When every requested
+slice has a catalogued `graphInputs` plan in `reference/prod-actuals.json`, the upstream source
+defaults to the bounded read-only PROD Persist Gremlin build (`graph_inputs.py gremlin`), recorded
+as `UpstreamSourceDefaulted`; otherwise Hub→Y still asks for an upstream source. Each slice's output datasets come from `package-slices.json`. A pinned `@x.y.z` that lacks a slice output
+is `SliceOutputsMissing`.
+
+### Owner decisions
+
+Decisions the owner states up front in the request are parsed into `hints.ownerDecisions`
+and carried into the `discover` result so an unattended run can finish:
+
+| Decision | Example wording | Effect |
+| --- | --- | --- |
+| `preApproveFullRunOnCanaryPass` | "if the canary passes, run the full window" | a passing canary gate is `PRE_APPROVED`; a failed canary still stops |
+| `acceptProductChanges` | "accept Transform product changes as out of scope" | unresolved `PRODUCT_CHANGE` items stay flagged for Kecleon, recorded `ownerAccepted`, and do not block `READY` |
+| `costCeilingUsd` | "cost ceiling $5 per job" | `transform_runs.py` refuses any case above the ceiling (`CostCeilingExceeded`) |
+| `windowSelection: most-recent-full-utc-day-with-data-per-slice` | "most recent full UTC day with real data per slice" | each slice uses its own most recent complete UTC day with data, recorded in `finalValidation.sliceWindows` |
+| `blanketDevWrites: staging-and-executions-for-this-run` | "approve all DEV writes for this run" | every DEV staging copy and execution card of this run is approved; each approval records the card digest with `kind: owner-blanket-dev-writes` |
+| `sensitiveFieldStaging: stage-real-values-to-dev` | "stage real phone numbers and message bodies to DEV" | slices with catalogued `sensitiveFields` stage the real values unmodified in DEV and compare them directly |
+| `devPersistWrites: dev-persist-loads-for-this-run` | "allow DEV Persist writes" | a chained validation's DEV Persist loads are approved per card digest with `kind: owner-dev-persist-writes`; `blanketDevWrites` never covers them and nothing covers PROD |
+
+Without them the defaults hold: ask about each DEV write, ask before the full run, ask before
+staging sensitive fields, ask before each DEV Persist load, and `BLOCKED` on any unaccepted
+`PRODUCT_CHANGE`. Silvally never assumes a decision the owner did not state.
+
+### Chained requests
+
+Before mapping selection the resolver matches the chain catalog (`reference/chains.json`, or `--chains`): a
+request whose language pair and named slices equal a chain's `requests.pairs` entry, or whose text (after the verb and
+owner decisions) equals one of its `requests.phrases`, resolves to `kind: chain`. For the SMS chain these are
+`test quiq to interprose for sms` and `test sms end to end` (`validate` and `check` are the same request). Each
+transform step is pinned on its own: the chain's default (`latest`, or a fixed version), an explicit
+`<mapping-id>@x.y.z` in the request for that step, or a bare `@x.y.z` for the last transform step. An unknown version, or
+one that lacks the outputs the chain compares, is `ChainStepUnresolved` (`NO_MAPPING`). The result carries
+`chain.steps`, the workflow of every step kind, the slice, Persist `required` (source `chain`) in `defaultsNotice`, and
+asks only `environment` (unless confirmed) and `dev-persist-writes` (unless decided). A language pair without the
+chain's slice resolves as a normal mapping request. `chain_runs.py plan` turns the intent into per-stage prefixes and
+run ids.
+
+### Run-scoped profile
+
+`resolve-transform-intent.py promote-run-profile --intent intent.json --draft draft.json` promotes
+an unattended run's draft to a run-scoped profile (`kind: run-scoped-profile`, id
+`run-scoped-<mapping>-<digest>`) when the owner chose `windowSelection` and every requested slice
+is known to `package-slices.json` and the PROD actuals catalog. The profile carries the directions,
+the derived source-window policy, the owner decisions and the resolved answers, and is valid only
+for that run: `evaluate_run.py` accepts it for phase 1, and `build_run_package.py --profile-doc`
+records it with revision `run-scoped`. Anything still unknown (an unknown slice, no window
+decision, an unresolved material fact) leaves the draft unpromoted with its questions.
+
+### Cumulative versions
+
+Without a published registry, when several enabled versions of one mapping id match a request and no version is requested,
+the resolver selects the highest version if its outputs include every other matching version's
+outputs (`selectionRule: cumulative-superset`), for example a `2.0.0` that still carries every
+`1.0.0` output. `@<version>` still pins an older version. Versions whose outputs are not a subset
+keep the request ambiguous.
+
+## Workflow derivation
+
+- `X -> <hub>` with an inverse `<hub> -> X`: forward, then inverse
+  (default round-trip). With several inverse versions, the one whose outputs
+  the qualifiers name is chosen, otherwise the highest version. If the
+  qualifiers name only a planned inverse, the workflow stops after the forward
+  step instead of substituting another version. Any `<hub> -> Y` whose
+  inputs consume forward outputs is offered as an optional cross-source step.
+- `<hub> -> Y` qualified by `Q` with exactly one `Q -> <hub>` producer:
+  producer, then projection (default one-way). The producer's inverse is
+  offered as an optional round trip.
+- `<hub> -> Y` with no unique producer: `UpstreamSourceUnresolved`; ask for
+  the upstream mapping or an existing immutable graph export.
+
+Each later step binds only to the preceding step's committed physical output.
+
+## Profile matching
+
+A profile is selected when its directions declare the exact `id@version` of
+**every** resolved workflow step, and exactly one profile does. `id` comes from
+`mapping.id` or `mapping.expectedId`. `version` comes from `mapping.version` or
+the planned `logicalArtifactPath`. A profile that reuses a large shared mapping
+as its first step therefore does not capture unrelated round trips through that mapping. Aliases in
+`terminologyAliases` only rank candidates.
+
+The selected profile then shapes the plan. Its `validationWorkflow` appears as
+`profileWorkflow`, and its first step becomes the `upstream-source` default. A
+fixed `persistPolicy` sets the Persist policy (otherwise it is `forbidden` as the stated policy
+default, or `required` by the owner's decision); Persist is never asked, and `confirmedFacts` plus
+`defaultsNotice` state it with its source. The owner's `blanketDevWrites` likewise confirms the
+environment as DEV. For a direction declared
+with `outputDatasetMatch: includes`, concept checks cover only the declared
+outputs; the rest are recorded as `NOT_SELECTED`, because the run selects them
+through the request's `outputDatasets`. The candidate `lexicon.json` is
+compared with `main` (`lexiconModel`) on every run. Under
+`lexiconModelPolicy.candidateLexiconDiff: forbidden`, a difference is reported
+as `LexiconModelDiffersFromMain`, and a missing `main` checkout as
+`LexiconModelUnchecked`. When the profile lists `approvedAdditions`
+(`concept`, `property`, `approval`), the resolver removes exactly those
+properties from the candidate and compares the rest with `main` as canonical
+JSON, index definitions included. An exact match is reported as
+`LexiconModelApprovedAdditions`; any other difference, including a stale
+branch that lacks newer `main` concepts, stays `LexiconModelDiffersFromMain`.
+
+After matching, compare the profile against the registry:
+
+- `ProfileRegistrationStatusDrift`: the profile says `not-registered`, but an
+  environment registry has the mapping `ENABLED`. Record which environments.
+- `ProfileOutputDatasetDrift`: the profile's expected output datasets differ
+  from the registered outputs (`exact`), or are not all registered
+  (`includes`).
+- `ProfileOutputInputDrift`: an `outputContracts` entry's `requiredInputs`
+  differ from the registered output's `requiredInputs`.
+- `OutputFormatDrift`: the registered `output.format`, `options.delimiter`
+  (Transform default `,`), or `options.header` (default `false`) differ from
+  the contract's `format`.
+
+Drift is a finding for the profile owner. Silvally does not edit the profile,
+mapping, or language during a run.
+
+## Resolver
+
+`scripts/resolve-transform-intent.py` implements this reference with the Python
+standard library only. With `--workspace` it fetches what is not supplied,
+read-only: registry candidate (`--candidate-pr` or `--candidate-ref`) and main
+(`--main-ref`, default branch) checkouts pinned by SHA through `gh`/`git`, and for
+each `--aws label=<profile>` the published registry and language parameter names
+(see `fetch_validation_inputs.py`). The workspace's `inputs-manifest.json` records
+every SHA, registry digest and `VersionId`. Generated mappings have no checked-in
+registration; add `--materialize-candidate` to build them in the fetched checkout with the
+layout's `materialize` commands and load them as registry `candidate-build`. A published
+registry that lacks the candidate version (pruned by another deploy) is then visible as a
+digest difference instead of an absent mapping.
+
+```bash
+python3 skills/validate-transform-configuration/scripts/resolve-transform-intent.py discover \
+  --request "test <source> to <target> <output words>" \
+  --workspace "$WS" --candidate-pr <registry-pr> --materialize-candidate --aws dev=<dev-profile> \
+  --profiles <profile-dir> --out "$WS/intent.json"
+```
+
+Equivalent with inputs you already materialized:
+
+```bash
+python3 skills/validate-transform-configuration/scripts/resolve-transform-intent.py discover \
+  --request "test <hub> (<producer>) to <target>" \
+  --lexicon-root "$CANDIDATE" --main-lexicon-root "$MAIN" \
+  --registry dev="$REGISTRY_DEV" --registry prod="$REGISTRY_PROD" \
+  --ssm-parameters dev="$SSM_DEV" --ssm-parameters prod="$SSM_PROD" \
+  --profiles <profile-dir> --window <startZ>_<endExclusiveZ> --out "$WORK/intent.json"
+```
+
+Other commands share the same inputs:
+
+- `contracts --mapping <id>@<version>`: per-output contracts derived from the registration and
+  the target definition (required inputs, format, columns, key, graph binding, endpoints) plus
+  derivation findings (`EndpointDatasetNotRequired`, `RequiredInputUndeclared`, `DatasetUndefined`);
+- `draft-profile`: a draft conforming to `transform-configuration-profile-draft.schema.json`,
+  with `derivedDirections` regenerated from the registry when the request resolves;
+- `check-profile --profile <file>`: regenerate every registered direction of a profile and compare;
+  only the `(dataset, field)` pairs in its `derivationOverrides` may differ, and an override that
+  matches no difference is stale. Exit status 1 on undeclared or stale differences.
+
+The `discover` output contains `status`, `intent`, `languages`, `selection`,
+`lexiconModel`, `workflow`, `profileWorkflow`, `profileMatches`,
+`selectedProfile`, `parityPolicy`, `partialInputPolicy`, `conceptChecks`,
+`sqlScan`, `parityDerivation`, `datasetRecommendations`, `findings`, and
+`questions`. `--forbidden-concepts` defaults to
+`reference/forbidden-concepts.json`. Pass a full-history `main` clone so added concepts are
+checked against `main` history. Pin the resolver's SHA-256 as
+`intentResolution.resolverSha256` in the run package.
+
+## Example resolutions
+
+The test registry in `scripts/testdata/silvally-registry/` (hub `canon`; languages `alpha`,
+`omega`, `sigma`) produces these results; the contract tests assert them.
+
+| Request | Status | Plan or candidates |
+| --- | --- | --- |
+| `test canon (alpha) to omega ledger summary` | `RESOLVED` | `alpha-to-canon@1.0.0` then `canon-to-omega@2.0.0` (`output-dataset` signal on the only version that outputs `ledger_summary`); test profile selected |
+| `test canon to omega member report` | `RESOLVED` | `canon-to-omega@2.0.0` by `cumulative-superset`; `UpstreamSourceUnresolved` asks for the producer |
+| `test canon to omega@1.0.0` | `RESOLVED` | the pinned older version |
+| `test canon to omega` | `AMBIGUOUS` | both versions offered with their outputs |
+| `test canon to omega`, published `1.0.0`, `2.0.0`, `9.0.0`, `10.0.0` | `RESOLVED` | `canon-to-omega@10.0.0` by `latest-published-semver`, with `notice` |
+| `test canon to omega`, published `1.0.0` only | `RESOLVED` | `canon-to-omega@2.0.0` by `latest-candidate-semver` from the checked-in candidate |
+| `test canon to omega`, nothing published for the pair | `RESOLVED` | latest checked-in version; continue to DEV proof |
+| `test canon to omega`, two published mapping ids | `AMBIGUOUS` | both ids offered |
+| `validate canon to omega for members, ledgers` | `RESOLVED` | two one-way steps of `canon-to-omega@2.0.0` (`member_report`, `ledger_summary`); no producer chain |
+| `test alpha to omega` | `NO_MAPPING` | ranked candidates; the retired `alpha-to-omega@0.9.0` is listed, never offered |
+| `test alhpa to canon` | `UNKNOWN_LANGUAGE` | `spelling-close-to-alhpa` candidate `alpha` |
+| `test canon to omega sigma` | `AMBIGUOUS` | two target languages on one side |

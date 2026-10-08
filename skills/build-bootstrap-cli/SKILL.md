@@ -33,6 +33,9 @@ manifest with Account. Consume that non-secret manifest, then own domain and
 certificate lifecycle, shared routing and initial platform-installation readiness.
 Consume Marketplace bundles and let Deploy execute product installations after its
 first install. Treat Bootstrap as an Environment adapter, not another product.
+Install Deploy's Puller component and hand ongoing subscriptions, polling and
+recovery to Corviknight/Skarmory; Environment does not implement those subscriber
+capabilities.
 
 ## Build each feature piece
 

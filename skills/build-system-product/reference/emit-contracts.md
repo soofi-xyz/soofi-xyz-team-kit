@@ -7,7 +7,7 @@ wire contract. These review shapes are not automatic HTTP payloads.
 | --- | --- | --- |
 | `product-definition` | Named outcome and input/output schemas | Celebi |
 | `product-flow-template` | Named reusable template definition | Celebi |
-| `product-flow` | Named flow with required `flow_template_name` | Celebi |
+| `product-flow` | Named flow with required `flow_template_name` (System payload: `template`) | Celebi |
 | `product-waterfall` | Ordered references to emitted flows | Celebi |
 | `product-invocation` | Request fixture and expected result | Celebi |
 | `lexicon-catalog` | Registered language/mapping references used by Transform | Silvally |

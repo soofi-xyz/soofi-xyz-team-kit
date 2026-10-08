@@ -28,3 +28,20 @@ Use the detailed PRD for unaffected data invariants and implementation detail.
 Where it conflicts with this comparison, inspect the service's current contract
 and record the resolution. Never remove working functionality solely because
 it was absent from an old instruction file.
+
+## Requested vector-search scope (2026-10-05)
+
+Load [the vector-search piece](vector-search.md) when embeddings or semantic/hybrid
+search are requested. Treat it as a separate feature piece with its own acceptance
+checkpoint. It adds Model-owned lexicon field eligibility, complete-text FTS plus
+embeddings in OpenSearch, and a separate search data source composed with graph
+reads in the existing GraphQL resolver layer. Preserve Gremlin/Neptune FTS without
+vector extensions or a separate search endpoint.
+
+Use this requested scope for search composition where the older PRD restricts
+OpenSearch to Neptune FTS or external sources to existing entity leaf fields.
+Root search discovers ranked vertex/edge IDs and needs its own explicit contract;
+do not pretend the existing leaf-only adapter already provides it. Verify the
+target GraphQL runtime, source ports, collection capabilities and live deployment
+before claiming support. This request changes the kit's implementation guidance,
+not deployed services or published API documentation.

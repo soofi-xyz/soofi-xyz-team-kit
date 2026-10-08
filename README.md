@@ -9,7 +9,15 @@ Choose a builder to implement or fix a product, or a configurer to use an existi
 ```text
 /conkeldurr Fix Persist's duplicate-ingest handling and walk me through a replay test.
 /celebi Configure a Connect → Transform → Persist outcome on the existing System.
+/unown Build Documentation's publishing API and React/TypeScript/tRPC portal in guided feature increments.
+/togetic Publish and test a product's OpenAPI, overview and guides on the existing Documentation service.
+/silvally test sms end to end; approve all DEV writes; allow DEV Persist writes
 ```
+
+`/silvally test sms end to end` (or `test quiq to interprose for sms`) is a chained validation: real PROD Quiq
+events → DEV `quiq-to-lexicon` → DEV Persist load and scoped export → DEV `lexicon-to-interprose@2.0.0` `sms_log`
+→ comparison with the source events, canary first. Chains are data in
+[`chains.json`](./skills/validate-transform-configuration/reference/chains.json).
 
 In Copilot, select `soofi-xyz-team-kit:<agent>`. In Codex, request the named custom agent.
 
@@ -19,14 +27,16 @@ In Copilot, select `soofi-xyz-team-kit:<agent>`. In Codex, request the named cus
 
 | Product | What it does | Build and maintain | Configure and test |
 | --- | --- | --- | --- |
+| **Documentation** | Documentation publishes product documentation and serves a configurable developer portal with API references, guides and interactive examples. | [`unown`](./agents/unown.md) | [`togetic`](./agents/togetic.md) |
 | **Account** | Account manages Prism identities and keys, guides Prism-managed or client-owned AWS setup, creates or adopts the backing account, verifies Prism service access and emits bootstrap manifests. | [`kangaskhan`](./agents/kangaskhan.md) | [`blissey`](./agents/blissey.md) |
-| **Environment** | Environment manages domains, certificates, shared routing and the initial Prism platform installation. | [`torterra`](./agents/torterra.md) | [`shaymin`](./agents/shaymin.md) |
+| **Console** | Console renders reusable authenticated applications from governed, versioned UI configurations. | [`chandelure`](./agents/chandelure.md) | [`vivillon`](./agents/vivillon.md) |
+| **Environment** | Environment prepares tenant environments, shared routing and initial product installations. | [`torterra`](./agents/torterra.md) | [`shaymin`](./agents/shaymin.md) |
 | **Marketplace** | Marketplace catalogs products and reviews, publishes and rolls back bundles. | [`regigigas`](./agents/regigigas.md) | [`registeel`](./agents/registeel.md) |
 | **Build** | Build turns validated source into portable deployment artifacts with provenance. | [`tinkaton`](./agents/tinkaton.md) | [`metang`](./agents/metang.md) |
-| **Deploy** | Deploy executes validated artifacts and reports deployment run results. | [`corviknight`](./agents/corviknight.md) | [`skarmory`](./agents/skarmory.md) |
+| **Deploy** | Deploy installs products and keeps subscribed components updated. | [`corviknight`](./agents/corviknight.md) | [`skarmory`](./agents/skarmory.md) |
 | **Model** | Model governs vocabulary, definitions and compatible artifact releases. | [`dialga`](./agents/dialga.md) | [`jirachi`](./agents/jirachi.md) |
 | **Transform** | Transform converts registered source languages into target languages. | [`kecleon`](./agents/kecleon.md) | [`silvally`](./agents/silvally.md) |
-| **Persist** | Persist stores graph facts and serves queries, indexes and triggers. | [`conkeldurr`](./agents/conkeldurr.md) | [`uxie`](./agents/uxie.md) |
+| **Persist** | Persist ingests and queries graph facts, maintains derived indexes and triggers, and owns lexicon-governed vector search composed through GraphQL. | [`conkeldurr`](./agents/conkeldurr.md) | [`uxie`](./agents/uxie.md) |
 | **Rule** | Rule selects entities and evaluates governed predicates. | [`gallade`](./agents/gallade.md) | [`meditite`](./agents/meditite.md) |
 | **Connect** | Connect exchanges files and requests with external partners. | [`lapras`](./agents/lapras.md) | [`wingull`](./agents/wingull.md) |
 | **System** | System orchestrates business outcomes through reusable configured flows. | [`zygarde`](./agents/zygarde.md) | [`celebi`](./agents/celebi.md) |

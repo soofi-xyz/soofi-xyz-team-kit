@@ -28,7 +28,7 @@ Make the variant `fixture-account-b`, `222222222222`,
 | Plan | Account manifest and Marketplace bundle responders; complete, access-not-ready, wrong caller and digest mismatch | Valid plan is pinned and scoped; invalid input has no AWS writes |
 | Shared routing | Fake Route 53/ACM/API Gateway/SSM providers; fresh, compatible existing and conflicting domain resources | Environment creates or adopts only authorized compatible resources and never creates competing DNS/certificate ownership |
 | First install | Fake AWS deploy adapter; unavailable, healthy, failed and interrupted Deploy install | Local adapter only closes cold start; API read-back identifies actual readiness |
-| Subscriber handoff | Fake SigV4 Deploy and subscriber status; pending, complete and unhealthy | Environment waits for real completion/readiness; install history stays subscriber-side |
+| Subscriber handoff | Fake SigV4 Deploy and subscriber status; pending, complete and unhealthy | Environment waits for real completion/readiness; install history stays in the Deploy-owned Puller component |
 | Product endpoints | Two component IDs with distinct then identical paths | Correct owner can attach/read; conflict and unauthorized attempt preserve prior state |
 | Resume | Non-secret interrupted state with a pinned plan; changed bundle and repeated request | Completed effects are not replayed silently; changed inputs follow supported conflict rules |
 

@@ -279,23 +279,35 @@ class ManifestCheck:
             if ref["kind"] == kind and isinstance(self.emits.get(name), dict)
         }
 
+    def _saved_name(self, ref_name: str, document: dict) -> str | None:
+        """The artifact's own `name`, else the name its configRef says it is saved under."""
+        return document.get("name") or self.config_refs[ref_name].get("name")
+
     def check_product_emits(self) -> None:
+        # Two shapes are accepted: the compatibility shapes (`name`, template `definition`,
+        # `flow_template_name`) and System's API payloads, which are named by their API path
+        # (configRef `name`), keep StartAt/States at the template's top level and name the
+        # flow's template and definition in `template` and `definition`.
         product_name = self.manifest.get("productName", self.manifest["systemId"])
+        definition_names: set[str] = set()
         for name, definition in self._emits_of("product-definition").items():
-            if definition.get("name") != product_name:
+            saved = self._saved_name(name, definition)
+            definition_names.add(saved or "")
+            if saved != product_name:
                 self.fail(
                     f"configRefs/{name}",
-                    f"product definition name {definition.get('name')!r} does not match {product_name!r}",
+                    f"product definition name {saved!r} does not match {product_name!r}",
                 )
 
         template_names: set[str] = set()
         for name, template in self._emits_of("product-flow-template").items():
             where = f"configRefs/{name}"
-            if not template.get("name"):
-                self.fail(where, "flow template has no name")
+            saved = self._saved_name(name, template)
+            if not saved:
+                self.fail(where, "flow template has no name; set it in the template or its configRef")
             else:
-                template_names.add(template["name"])
-            definition = template.get("definition", {})
+                template_names.add(saved)
+            definition = template["definition"] if "definition" in template else template
             states = definition.get("States", {})
             if definition.get("StartAt") not in states:
                 self.fail(where, f"StartAt {definition.get('StartAt')!r} is not a state")
@@ -305,12 +317,14 @@ class ManifestCheck:
         flow_names: set[str] = set()
         for name, flow in self._emits_of("product-flow").items():
             where = f"configRefs/{name}"
-            flow_names.add(flow.get("name", ""))
-            template = flow.get("flow_template_name")
+            flow_names.add(self._saved_name(name, flow) or "")
+            template = flow.get("flow_template_name") or flow.get("template")
             if not template:
-                self.fail(where, "product flow must set flow_template_name")
+                self.fail(where, "product flow must set flow_template_name or template")
             elif template not in template_names:
-                self.fail(where, f"flow_template_name {template!r} does not match an emitted flow template")
+                self.fail(where, f"flow template {template!r} does not match an emitted flow template")
+            if "definition" in flow and flow["definition"] not in definition_names:
+                self.fail(where, f"flow definition {flow['definition']!r} does not match an emitted product definition")
 
         for name, waterfall in self._emits_of("product-waterfall").items():
             for index, entry in enumerate(waterfall.get("waterfall", [])):

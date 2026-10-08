@@ -1,102 +1,154 @@
 ---
-title: Product publish-readiness checklist
+title: Product publish readiness and the publish-through-Build flow
 impact: HIGH
-tags: marketplace, publish, build, cloud-assembly, readiness
+tags: marketplace, publish, build, cloud-assembly, readiness, security-scan
 ---
 
-# Product publish-readiness checklist
+# Product publish readiness
 
-Use this when a user wants to publish a product to Prism Marketplace and has no
-Build-produced `bundle_url` yet. Inspect the product repository read-only and
-report which items are missing. Do not edit the product repository from this
-skill; return the gap list so the product owner can make the change.
-
-Reference implementation: [Spring-Oaks-Capital-LLC/deploy#3](https://github.com/Spring-Oaks-Capital-LLC/deploy/pull/3)
-("Make Deploy Marketplace-publishable"). Point users at it as the worked example.
+The Build service builds every bundle Registeel publishes. A product needs no
+pack or publish scripts and no pull request to be published: it is publishable
+when Build accepts its source, the security scan passes and its stack names are
+safe for the sandbox review. `actions/publish/publish_via_build.py` in
+[`prismteam-ai/build`](https://github.com/prismteam-ai/build) (`actions/publish`) runs the
+whole flow from a product checkout, the same way product CI runs it (the
+Build repository's Actions access must allow organization repositories).
 
 Marketplace's own checks live in `prismteam-ai/marketplace`
 `lambda/services/bundle-review.ts` (`inspectBundle`, `assertComplyPassed`,
-`assertCloudAssemblyZip`). They win if this list drifts.
+`assertCloudAssemblyZip`, `downloadBundle`). They win if this page drifts.
+Build's contract is [the Build API summary](../../configure-build-product/reference/api-contract.md).
 
-## A. Repository changes (product owner adds these)
+Build itself is published like any other product, through this script and the
+Build service.
 
-Check each item in the product repo at its default branch.
+## A. Readiness checklist
 
-1. **`marketplace.product.json` at the repo root.** Declarative only.
+Check the product repository at the tip of its default branch (or the branch
+the user named). Report each row `ready`, `missing` or `cannot verify`.
 
-   ```json
-   {
-     "component_id": "deploy",
-     "component_name": "Deploy",
-     "bundle_type": "SERVICE",
-     "context_schema_version": "1",
-     "stacks": ["deploy-data", "deploy-workflow", "deploy-api"],
-     "base_path": "deploy",
-     "requires": { "domain": false, "shared_usage_plan": false, "identity": false }
-   }
-   ```
+1. **Build readiness.** Every item of
+   [configure-build-product §1](../../configure-build-product/SKILL.md#1-product-readiness):
+   layout and exactly one lockfile, the closed `marketplace.product.json`
+   schema, a `marketplace/app.ts` that synthesizes without AWS credentials or
+   context lookups, minified and `javascript-obfuscator` Lambda entry files
+   without source maps, no Docker assets and no denied paths. Its local
+   readiness recipe needs no Build call.
+2. **Component.** `component_id` in the manifest is a registered Marketplace
+   component of the same `type` as `bundle_type` (§2 of the skill registers it).
+3. **Security scan passes** (section B, step 2): no critical, high or moderate
+   production dependency advisory and no cdk-nag error. Each `NagSuppressions`
+   entry in the product needs a written reason.
+4. **Review-stage-safe stack names** (section D).
 
-   - `component_id` must equal the Marketplace component id it will publish to.
-   - `bundle_type` is `SERVICE` or `DATA`.
-   - `stacks[]` must equal the CDK construct ids in the app entrypoint.
-   - Must NOT contain `entrypoint` in the packed copy, or any command or
-     lifecycle field (`synth_command`, `deploy_command`, `post_deploy_command`,
-     `build_command`, `scripts`, `docker_build`, `serverless`, `terraform`,
-     `sam`, `pulumi`, `engine`).
+A `missing` row in 1, 3 or 4 is a product source change for the product's
+owners. Report the concrete change and the failing evidence; do not create
+branches, commits or pull requests in a product repository, and never patch a
+checkout to get a bundle sooner.
 
-   Incorrect — a command field Build and Marketplace reject:
+## B. What `publish_via_build.py` does
 
-   ```json
-   { "component_id": "connect", "bundle_type": "SERVICE", "stacks": ["connect-api"], "deploy_command": "cdk deploy" }
-   ```
+```bash
+DRY_RUN=1 python3 "$BUILD_REPO/actions/publish/publish_via_build.py" all <product-checkout> [--branch main]
+python3 "$BUILD_REPO/actions/publish/publish_via_build.py" all <product-checkout> [--branch main]
+```
 
-2. **TypeScript CDK app that synthesizes the declared stacks.** Stage-neutral
-   construct ids (`deploy-api`), stage-specific `stackName`
-   (`deploy-${stage}-api`). `cdk synth --strict` must succeed. No Serverless
-   Framework, SAM, or Terraform deploy path.
-3. **Lambda assets minified and obfuscated, no source maps.** Use the approved
-   platform construct, not raw `aws_lambda.Function` with `Code.fromAsset` for
-   Node.js handlers. Marketplace rejects metadata where `minified`, `obfuscated`
-   are not `true` or `source_maps` is not `false`.
-4. **No Docker image assets.** File assets only in `cdk.out/*.assets.json`.
-5. **A pack step that produces the cloud-assembly zip** (Deploy uses
-   `scripts/pack-cloud-assembly.ts` behind `just pack`). The zip contains only:
+`$BUILD_REPO` is the `prismteam-ai/build` clone from the skill's
+Prerequisites step 4. `all` runs three steps; CI runs them one by one
+(`code <checkout> --work-dir DIR`, `build --work-dir DIR`,
+`publish --work-dir DIR`), passing state through `DIR/state.json`.
 
-   ```text
-   marketplace.product.json
-   build/build.manifest.json
-   cdk.out/manifest.json
-   cdk.out/<Stack>.template.json   # each with a Resources object
-   cdk.out/*.assets.json and asset.* dirs
-   ```
+1. **Code: source.** Resolves the tip of `origin/<branch>` (default: the remote
+   default branch; `--ref` must be a commit on it) and `git archive`s that
+   commit to `source.zip`. Its sha256 is the `source_hash` for both tokens.
+   The checkout is only fetched and read.
+2. **Code: scan the same zip.** Extracts it, installs with lifecycle scripts off
+   (`pnpm install --frozen-lockfile --ignore-scripts` or
+   `npm ci --ignore-scripts`), synthesizes `marketplace/app.ts` with `tsx` the
+   way Build does (`CDK_OUTDIR`, `cdk.json`/`cdk.context.json` context, no AWS
+   credentials, no API keys, an empty home), and reads:
+   - the production dependency audit (`pnpm audit --prod --json` or
+     `npm audit --omit=dev --json`);
+   - the cdk-nag `AwsSolutionsChecks` report of every manifest stack. When the
+     app applies no `AwsSolutionsChecks` aspect, the scan applies one (pinned
+     `cdk-nag`, sharing the product's `aws-cdk-lib`); product suppressions
+     still apply. A missing report fails the scan.
 
-   and never `lib/`, `src/`, `lambda/`, `test/`, `node_modules/`,
-   `marketplace/app.ts`, `.git/`, or env files. Keep it under 256 MiB and
-   non-ZIP64.
-6. **Tests** covering the manifest and zip layout, as Deploy PR #3 does.
+   Severity: any critical/high advisory or nag error → `HIGH`; any moderate
+   advisory → `MEDIUM`; only low advisories or nag warnings → `LOW`; nothing →
+   `NONE`. `MEDIUM` or worse, or a stack name with a live stage (section D),
+   stops here, before Build. The `service-comply` token is written only from
+   these results, `issuer: registeel/publish-via-build`.
+3. **Build.** Unless `DRY_RUN=1`, first checks the Marketplace key, review
+   settings and the registered component, so a bad key wastes no build. Checks
+   Build accepts the key, then `POST /sources` uploads the same zip with
+   `service-comply` attached (Build binds it as `service_comply_sha256` in its
+   token), `POST /builds` with the manifest's `bundle_type` and `component_id`,
+   polls `GET /builds/{id}` and downloads the artifact.
+4. **Publish** (skipped by `DRY_RUN=1`, which makes no Marketplace call):
+   `POST .../bundle-uploads`, uploads the artifact with both tokens as
+   `x-amz-meta-service-builder` and `x-amz-meta-service-comply`, `PUT .../bundles`
+   `{bundle_url, skip_review: false}`, polls `GET /reviews/{review_id}` and reads
+   the bundle row.
 
-## B. Pipeline requirements (outside the repo)
+Build and Marketplace validate the bundle and tokens themselves (section C);
+the script does not repeat those checks. It prints progress on stderr and one
+JSON report on stdout (the commit, scan findings, decoded tokens, `build_id`,
+stack names, `review_id`, bundle id, and `error` naming the step that stopped).
+It never prints the key, upload forms, `bundle_url` or the artifact URL. The
+work directory keeps `source.zip`, `artifact.zip` and `state.json`; delete it
+after a dry run.
 
-A correct zip is necessary but not sufficient. Marketplace also reads S3 object
-metadata that only Build and Comply issue. Never tell the user to hand-write it.
+## C. Metadata Marketplace reads from the S3 object
 
-- `bundle_url` is an Amazon S3 HTTPS object URL, reachable without redirects,
-  with `Content-Length`.
-- `x-amz-meta-service-builder` (issued by Build) decodes to an object with
-  `artifact_kind: "CDK_CLOUD_ASSEMBLY"`, `deployer_contract_version: "1"`,
-  `component_id` matching the Marketplace component, `sha256:` values for
-  `source_hash` / `assembly_hash` / `artifact_hash` (artifact hash must match
-  the bytes), `cloud_assembly`, `deployment_parameters`, and
-  `lambda_asset_policy`.
-- `x-amz-meta-service-comply` (issued by Comply) has a `severity_label` below
-  `MEDIUM`.
+- `x-amz-meta-service-builder`: Build's own token from
+  `provenance.service_builder`, unchanged. Never mint or edit one.
+  Marketplace requires `artifact_kind: "CDK_CLOUD_ASSEMBLY"`,
+  `deployer_contract_version: "1"`, `component_id` equal to the component,
+  `sha256:` `source_hash`/`assembly_hash`/`artifact_hash` (artifact hash =
+  zip bytes), `cloud_assembly` and `deployment_parameters` objects and
+  `lambda_asset_policy` `{minified: true, obfuscated: true, source_maps: false}`.
+- `x-amz-meta-service-comply`: the scan's token; `severity_label` below
+  `MEDIUM` and `source_hash` equal to `service-builder`'s.
+- The zip: under 256 MiB, not ZIP64, with `marketplace.product.json`,
+  `build/build.manifest.json`, `cdk.out/manifest.json` and templates that each
+  have `Resources`. Build's artifact layout satisfies this.
+- S3 caps keys plus values at 2 KB. Build caps its token at 1280 bytes; with
+  both keys (29 bytes) the comply token may use 739. A Build dry run used
+  1686 bytes including keys.
 
-If Build or Comply is not deployed in the target account, say so: the repo can
-be made ready, but publishing waits on those services.
+Example `service-comply` payload:
 
-## C. How to report
+```json
+{
+  "issuer": "registeel/publish-via-build",
+  "scanners": ["pnpm-audit@10.14.0", "cdk-nag@2.38.2"],
+  "severity_label": "LOW",
+  "findings": { "critical": 0, "high": 0, "moderate": 0, "low": 0, "nag_errors": 0, "nag_warnings": 1 },
+  "source_hash": "sha256:<sha256 of source.zip, equal to service-builder source_hash>",
+  "scanned_at": "2026-10-02T15:29:39Z"
+}
+```
 
-Return a table with one row per item in A and B: `ready`, `missing`, or
-`cannot verify`, with the file path or evidence. Then list the concrete next
-change for each `missing` row, citing Deploy PR #3 for the pattern. End with
-whether the product can publish now, and what blocks it if not.
+## D. Review-stage rule
+
+The sandbox review installs the bundle into the review account `257779860257`,
+where the review Deploy itself runs as `deploy-dev-*`. Build synthesizes every
+product with CDK context `stage=review` (`packedStage` in the build manifest,
+`cloud_assembly.packed_stage` in `service-builder`), so a product that reads
+`stage` gets `-review` stack names; the scan synth sets the same context. The
+script still refuses any CloudFormation stack name with a `dev` or `prod` stage
+segment in its Code step, before Build: that means the product hardcodes a
+live stage.
+
+Report a refusal to the product's owners: the Marketplace entrypoint must take
+its stage from CDK context. Do not work around it with a product patch, a
+hand-packed zip or `skip_review`.
+
+## E. How to report
+
+One row per section A item, then: the `build_id`, scan severity and findings,
+and whether the
+product can publish now. Name blockers outside the product (Build not reachable
+with `MARKETPLACE_API_KEY`, review settings not operational, review-stage
+names) with their owner.

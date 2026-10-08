@@ -3,10 +3,32 @@
   "source": {
     "meeting": "Builder Story Planning, 2026-09-30",
     "spreadsheet": "staircase-products export, supplied 2026-09-30",
-    "precedence": "User follow-up retains Conkeldurr for Persist, assigns Zygarde to System and excludes the API documentation workstream. A later user request assigns Account its own builder/configurer pair. A subsequent request assigns builder/configurer pairs to Environment, Build, Deploy and Model. The latest Account boundary correction keeps AWS account identity, keys, records, provisioning and bootstrap manifests in Account; moves domains, certificates and initial installation to Environment; reserves console assignments for unassigned Access; and assigns Account catalog registration to Registeel."
+    "precedence": "User follow-up retains Conkeldurr for Persist and assigns Zygarde to System. Later requests assign builder/configurer pairs to Account, Environment, Build, Deploy, Model and Console. User follow-up assigns Puller polling, subscriptions and reconciliation to the Deploy product; keep subscriber state separate from its stateless run API. The 2026-10-07 request adds Documentation as a distinct product, superseding the earlier API documentation exclusion. Require the engineering and React/TypeScript/tRPC application skills; keep Site and Document separate and unassigned. The latest Account boundary correction keeps AWS account identity, keys, records, provisioning and bootstrap manifests in Account; moves domains, certificates and initial installation to Environment; reserves console assignments for unassigned Access; and assigns Account catalog registration to Registeel."
   },
   "workflowSkill": "guide-product-work",
   "products": [
+    {
+      "id": "documentation",
+      "name": "Documentation",
+      "legacyNames": [],
+      "sourceRows": [],
+      "status": "assigned",
+      "summary": "Documentation publishes product documentation and serves a configurable developer portal with API references, guides and interactive examples.",
+      "agents": {
+        "build": "unown",
+        "configure": "togetic"
+      },
+      "skills": {
+        "build": "build-documentation-product",
+        "configure": "configure-documentation-product"
+      },
+      "notes": [
+        "Added by explicit user request on 2026-10-07 after review of site-tech-ui and documentation; no spreadsheet row is claimed. Documentation is the canonical product name, not an alias for Site or Document.",
+        "Unown builds the reusable publishing API and developer portal; Togetic configures existing capabilities. Require apply-engineering-guidelines and build-frontend-backends with React, strict TypeScript and tRPC. Historical sources describe behavior, not the approved implementation stack or a verified deployment.",
+        "The reviewed UI depends on a separate site-tech-api absent from the supplied projects. Discover and verify that contract before claiming integration. Preserve Account, Model, Console, Build, Marketplace, Environment and Deploy ownership."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/documentation.md"
+    },
     {
       "id": "account",
       "name": "Account",
@@ -49,7 +71,7 @@
         "configure": null
       },
       "notes": [
-        "Access is currently unassigned. Do not move console-user, permission-set or AWS-account-assignment behavior into Account to fill this ownership gap."
+        "Account onboarding identifies this as an ownership gap. Do not implement temporary customer console users or Identity Center assignments inside Account."
       ]
     },
     {
@@ -59,17 +81,20 @@
       "sourceRows": [
         3
       ],
-      "status": "unassigned",
-      "summary": "",
+      "status": "assigned",
+      "summary": "Console renders reusable authenticated applications from governed, versioned UI configurations.",
       "agents": {
-        "build": null,
-        "configure": null
+        "build": "chandelure",
+        "configure": "vivillon"
       },
       "skills": {
-        "build": null,
-        "configure": null
+        "build": "build-console-product",
+        "configure": "configure-console-product"
       },
-      "notes": []
+      "notes": [
+        "Assigned by explicit user request on 2026-10-06. Chandelure builds the reusable Console runtime and configuration API; Vivillon configures applications on existing deployments. Console configuration is an artifact, not a separate product. Keep Model composition, Persist facts, Account identity and System execution with their owning products."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/console.md"
     },
     {
       "id": "environment",
@@ -81,7 +106,7 @@
         4
       ],
       "status": "assigned",
-      "summary": "Environment manages domains, certificates, shared routing and the initial Prism platform installation.",
+      "summary": "Environment prepares tenant environments, shared routing and initial product installations.",
       "agents": {
         "build": "torterra",
         "configure": "shaymin"
@@ -92,7 +117,7 @@
       },
       "notes": [
         "Torterra builds Environment; Shaymin configures existing deployments. Bootstrap is its setup adapter, including the initial no-service install path. HTTP API capabilities are required build scope, not a claim that a service is already deployed.",
-        "Environment consumes Account's non-secret bootstrap manifest, then owns domain/certificate lifecycle and installation readiness. It does not create or adopt the backing AWS account."
+        "Environment bootstraps the Deploy run service and installs its Deploy-owned Puller component; ongoing subscriber behavior belongs to Corviknight/Skarmory."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/environment.md"
     },
@@ -152,8 +177,7 @@
         "configure": "operate-marketplace"
       },
       "notes": [
-        "Regigigas is narrowed to the current Marketplace builder role. Puller is deployment/subscription implementation attributed to Marketplace and Deploy, not another product.",
-        "Registeel operates catalog registration for every product, including Account. Kangaskhan and Blissey do not register Account in Prism Marketplace."
+        "Regigigas builds Marketplace catalog/publication capabilities. Deploy owns Puller subscriptions, polling, installation history and update execution. Marketplace supplies its supported catalog/publication interfaces; verify notification support rather than restoring historical subscription APIs."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/marketplace.md"
     },
@@ -263,7 +287,7 @@
         13
       ],
       "status": "assigned",
-      "summary": "Deploy executes validated artifacts and reports deployment run results.",
+      "summary": "Deploy installs products and keeps subscribed components updated.",
       "agents": {
         "build": "corviknight",
         "configure": "skarmory"
@@ -273,7 +297,7 @@
         "configure": "configure-deploy-product"
       },
       "notes": [
-        "Corviknight builds the stateless SigV4 run API; Skarmory configures runs. Subscriber-side Puller remains separate and owns install history/keys; do not add it as a product or move that state into Deploy."
+        "Corviknight builds Deploy, including its Puller subscriber component; Skarmory configures runs, subscriptions, polling, update policy and recovery. Keep subscriber desired state, install history and subscription secrets in the Deploy-owned Puller component, separate from the stateless SigV4 run API. Separate packages or stacks do not create a separate product."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/deploy.md"
     },
@@ -945,7 +969,7 @@
         48
       ],
       "status": "assigned",
-      "summary": "Persist stores graph facts and serves queries, indexes and triggers.",
+      "summary": "Persist ingests and queries graph facts, maintains derived indexes and triggers, and owns lexicon-governed vector search composed through GraphQL.",
       "agents": {
         "build": "conkeldurr",
         "configure": "uxie"
@@ -955,7 +979,8 @@
         "configure": "configure-persist-product"
       },
       "notes": [
-        "User override: retain Conkeldurr for Persist only. Uxie configures existing deployments."
+        "User override: retain Conkeldurr for Persist only. Uxie configures existing deployments.",
+        "Requested 2026-10-05: keep embeddings, OpenSearch vector indexing and GraphQL search composition in a separate vector-search feature piece. Model owns lexicon field eligibility; Persist owns implementation and GraphQL source routing. This scope assignment does not establish deployed support."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/persist.md"
     },

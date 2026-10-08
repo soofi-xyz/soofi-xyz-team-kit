@@ -1,0 +1,76 @@
+{
+  "id": "registry-layout.json",
+  "contractVersion": 1,
+  "description": "Where a Lexicon-style registry keeps languages, mappings and publication metadata. The resolver, fetcher and run tools read every repository path, SSM name and default from this file; pass --layout to use another registry.",
+  "repository": {
+    "slug": "Spring-Oaks-Capital-LLC/lexicon",
+    "defaultRegion": "us-east-2"
+  },
+  "hubLanguage": "lexicon",
+  "conceptModelPath": "src/data/lexicon.json",
+  "languageDefinitionPath": "src/data/{language}.json",
+  "languageRegistry": {
+    "path": "src/data/lexicons.ts",
+    "blockPattern": "export const lexicons[^=]*=\\s*\\{(.*?)\\n\\};",
+    "keyPattern": "^\\s{2}(\\w+):\\s*\\{"
+  },
+  "languageParameters": {
+    "declaredIn": "infra/lib/lexicon-stack.ts",
+    "declarationPattern": "parameterName:\\s*\"(/lexicon/[a-z0-9-]*data-uri)\"",
+    "parameterPattern": "/lexicon/[a-z0-9-]*data-uri",
+    "prefix": "/lexicon/",
+    "suffix": "data-uri"
+  },
+  "registrationGlob": "src/transform/mappings/**/registration.json",
+  "retiredMappingIds": {
+    "path": "infra/test/transform-mappings.spec.ts",
+    "listPattern": "const retired of \\[(.*?)\\]"
+  },
+  "transformRegistry": {
+    "description": "Transform's own mapping registry, checked before publishedRegistry. Schema-free v2 runs resolve registered versions here first and fall back to Lexicon's published registry while the Transform stack's lexiconMappingFallback is true. The validation scripts still resolve through publishedRegistry.",
+    "apiUrlParameter": "/TransformPipelineStack/api-url",
+    "service": "execute-api",
+    "listRoute": "transform/mappings/{mappingId}/versions",
+    "getRoute": "transform/mappings/{mappingId}/versions/{version}"
+  },
+  "publishedRegistry": {
+    "uriParameter": "/lexicon/transform-mappings-uri",
+    "parameterPath": "/lexicon",
+    "mappingGlob": "transform-mappings/*/*/mapping.json"
+  },
+  "devDeploy": {
+    "description": "The registry repository's documented DEV deploy path. Lexicon has no workflow_dispatch: its DEV CI/CD workflow runs on pull_request only and deploys the PR's registry (DEPLOY_LEXICON_ONLY=true, just deploy), replacing the shared DEV registry (latest-PR-wins). Republishing a pinned candidate is a full re-run of the newest run of that workflow for the pinned head SHA.",
+    "workflowFile": "ci-cd-dev.yml",
+    "workflowName": "DEV CI/CD",
+    "event": "pull_request",
+    "mechanism": "gh-run-rerun",
+    "forbiddenWorkflowFiles": ["ci-cd-prod.yml"],
+    "maxRedeploys": 2,
+    "runListHorizonDays": 30,
+    "runListLimit": 1000,
+    "runTimeoutMinutes": 45,
+    "servedPollSeconds": 30,
+    "servedPollAttempts": 20
+  },
+  "graphDatasetPrefixes": ["vertex", "edge"],
+  "materialize": {
+    "install": ["npm ci --no-audit --no-fund", "npm ci --no-audit --no-fund --prefix infra"],
+    "command": "npx tsx infra/test/spark/materialize-mappings.ts {out}",
+    "node": {
+      "minimumMajor": 18,
+      "recommended": "22.18",
+      "reason": "tsx (the materialize command) needs Node.js 18+; CI uses 22.18. Older supported majors work but npm may print EBADENGINE warnings, so they are warned about, not blocked."
+    }
+  },
+  "persist": {
+    "apiUrlParameter": "persist-api-url",
+    "gremlinPath": "/persist/gremlin",
+    "service": "execute-api"
+  },
+  "transformRuntime": {
+    "stateMachineSuffix": "-transform-pipeline",
+    "planKey": "runs/{executionName}/plan.json",
+    "outputTablesDir": "tables",
+    "glueUsdPerDpuHour": 0.44
+  }
+}

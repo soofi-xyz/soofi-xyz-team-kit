@@ -1,0 +1,11 @@
+{
+  "vertices": [
+    { "type": "members", "is_deprecated": false, "deprecated_properties": {}, "required": ["member_id"],
+      "properties": { "member_id": { "type": "string" }, "display_name": { "type": "string" }, "tier": { "type": "string", "enum": ["gold", "silver"] } } },
+    { "type": "ledgers", "is_deprecated": false, "deprecated_properties": {}, "required": ["ledger_id"],
+      "properties": { "ledger_id": { "type": "string" }, "member_id": { "type": "string" }, "amount": { "type": "number" } } },
+    { "type": "rates", "is_deprecated": false, "deprecated_properties": {}, "required": ["tier"],
+      "properties": { "tier": { "type": "string" }, "factor": { "type": "number" } } }
+  ],
+  "edges": []
+}
