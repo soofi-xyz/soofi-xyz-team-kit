@@ -9,16 +9,18 @@ feedback inside each piece, not as a final testing phase.
 
 | Feature ID / usable capability | Dependency | Builder increment / configurer exercise | AWS inspection and acceptance |
 | --- | --- | --- | --- |
-| `job-intake` — submit and observe a build job | Verified HTTP/auth contract and source fixture | Deliver minimal submit/status/result with stable job identity and a fake runner first. Compare SERVICE/DATA requests, invalid options and another caller’s job. | Trace API request, job record and execution; verify authorization, terminal fake result and correlation without claiming an actual artifact was built. |
+| `job-intake` — submit and observe a build job | Verified HTTP/auth contract and source fixture | Deliver minimal submit/status/result with stable job identity and a fake runner first. Compare SERVICE/CONFIGURATION requests, invalid options and another caller’s job. | Trace API request, job record and execution; verify authorization, terminal fake result and correlation without claiming an actual artifact was built. |
 | `source-validation` — accept safe source archives | Job intake | Deliver source URL and `POST /sources` upload intake, archive normalization and declarative manifest validation. Exercise valid sources, another caller's `source_id`, traversal entries, forbidden lifecycle commands and unsafe URLs. | Inspect validation states and rejection reason; confirm rejected input never starts dependency install or writes deployment resources. |
-| `assembly` — produce a portable cloud assembly | Validated source | Deliver isolated dependency install, fixed checks and credentialless CDK synthesis. Compare small SERVICE/DATA projects and a failed test or forbidden account lookup. | Follow the real test runner logs to templates/assets; verify no source-provided buildspec, tenant credentials or deployment effects. Distinguish synth from deploy. |
+| `assembly` — produce a portable cloud assembly | Validated source | Deliver isolated dependency install, fixed checks and credentialless CDK synthesis. Compare small SERVICE/CONFIGURATION projects and a failed test or forbidden account lookup. | Follow the real test runner logs to templates/assets; verify no source-provided buildspec, tenant credentials or deployment effects. Distinguish synth from deploy. |
 | `asset-policy` — enforce deployable runtime assets | Synthesized assembly | Deliver final Lambda asset checks for approved bundling, minification, obfuscation and absent source maps; reject forbidden source/package files and unsupported image assets. | Inspect asset-policy report and the actual archive; confirm a deliberately failing fixture cannot produce a successful release artifact. |
 | `provenance` — produce verifiable artifact manifests | Accepted assembly/assets | Deliver normalized packaging, source/assembly/template/asset digests and Model release provenance. Compare equivalent inputs and tampered artifacts without promising determinism the contract does not guarantee. | Read result API, manifest and S3 metadata; independently compute hashes and verify no secret URLs or local paths leak into artifacts. |
 | `delivery` — deliver job results reliably | Observable artifact result | Deliver one best-effort PRD §5.8 callback (no queue or signature), logs/manifest retrieval and temporary download access. Exercise success, callback timeout/retry and expired URL. | Inspect callback attempts and result retrieval; confirm delivery failure does not silently rewrite a completed build result or expose callback credentials. |
 | `recovery-retention` — recover failed jobs and expire owned artifacts | Selected job/artifact capabilities | Deliver supported job timeout/failure reconciliation and retention cleanup. Exercise interrupted runner, repeated delivery and expired versus retained artifacts. | Inspect terminal status and cleanup logs; compare evidence before/after expiry and verify unrelated artifacts remain. Finish with cumulative source-to-artifact acceptance. |
 
-All seven areas are deployed in `prismteam-ai/build` (see its `docs/progress.md`
-for each piece's evidence level); PRD §1.4 records the implemented decisions.
+The baseline seven areas are recorded as deployed in `prismteam-ai/build` (see
+its `docs/progress.md` for evidence); PRD §1.4 records the implemented decisions.
+Verify the `CONFIGURATION` type and `/configuration` migration separately;
+the baseline evidence does not establish the renamed contract.
 Metang operates them through [the Build API summary](../../../configure-build-product/reference/api-contract.md).
 
 Read [the product contract](../../../build-build-service/reference/PRD.md) and
@@ -37,6 +39,6 @@ Keep Marketplace publication/review with Regigigas/Registeel and deployment exec
 Apply the [configuration-bundle contract](../../../build-product-deployer/reference/configuration-bundles.md)
 inside source validation, assembly and provenance. Compare two configuration
 revisions using the same provider, verify hashed payloads and parameterized shared
-provider references, and reject per-bundle installer code. Preserve DATA as the
-supported wire value. Verify this additional coverage in the target; the existing
+provider references, and reject per-bundle installer code. Use `CONFIGURATION`
+consistently from request to artifact/provenance. Verify this coverage in the target; the existing
 feature evidence does not establish shared-provider support.

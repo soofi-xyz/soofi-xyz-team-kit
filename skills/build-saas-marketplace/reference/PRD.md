@@ -33,6 +33,6 @@ Keep catalog acceptance separate from installation in a subscriber environment.
 ## Configuration bundles
 
 Follow [the shared configuration-bundle contract](../../build-product-deployer/reference/configuration-bundles.md).
-Verify supported component types, immutable publication and compatible shared-provider/API prerequisites in review. Keep publication, review installation and subscriber installation distinct; selecting a previous catalog release does not undo configuration API effects.
+Implement the `CONFIGURATION` component type consistently in catalog and publication contracts; migrate legacy metadata while preserving identities and immutable provenance. Verify compatible shared-provider/API prerequisites in review. Keep publication, review installation and subscriber installation distinct; selecting a previous catalog release does not undo configuration API effects.
 Treat these additions as required scope to verify in the target revision, not as
 proof that provider support or the target API lifecycle is already deployed.

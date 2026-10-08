@@ -21,8 +21,8 @@ Build and maintain **Marketplace** only. Use `registeel` for registering catalog
 ## Configuration bundles
 
 Read [the shared configuration-bundle contract](../skills/build-product-deployer/reference/configuration-bundles.md) for this work.
-Cover configuration-bundle component/type consistency, immutable publication and
-provider/API dependencies in review. Ensure the review environment has a compatible
+Implement `CONFIGURATION` component/type consistency and legacy catalog migration.
+Cover immutable publication and provider/API dependencies in review. Ensure the review environment has a compatible
 shared Deploy provider and controlled target APIs; surface missing prerequisites rather
 than skipping review. Verify configuration application results without starting business
 jobs. Keep catalog rollback distinct from reversing configuration effects.

@@ -3,7 +3,7 @@
   "source": {
     "meeting": "Builder Story Planning, 2026-09-30",
     "spreadsheet": "staircase-products export, supplied 2026-09-30",
-    "precedence": "User follow-up retains Conkeldurr for Persist and assigns Zygarde to System. Later requests assign builder/configurer pairs to Account, Environment, Build, Deploy, Model and Console. User follow-up assigns Puller polling, subscriptions and reconciliation to the Deploy product; keep subscriber state separate from its stateless run API. The 2026-10-07 request adds Documentation as a distinct product, superseding the earlier API documentation exclusion. Require the engineering and React/TypeScript/tRPC application skills; keep Site and Document separate and unassigned. The latest Account boundary correction keeps AWS account identity, keys, records, provisioning and bootstrap manifests in Account; moves domains, certificates and initial installation to Environment; reserves console assignments for unassigned Access; and assigns Account catalog registration to Registeel. The configuration-bundle design assigns the shared Transform/Connect/System configuration installer and its service installation/update to Deploy, and each target API and payload semantics to its existing product pair. Keep DATA as a verified wire compatibility value; use configuration bundles in guidance. Use a synthetic configuration integration for installer acceptance, without adding a Model pilot or a new product owner."
+    "precedence": "User follow-up retains Conkeldurr for Persist and assigns Zygarde to System. Later requests assign builder/configurer pairs to Account, Environment, Build, Deploy, Model and Console. User follow-up assigns Puller polling, subscriptions and reconciliation to the Deploy product; keep subscriber state separate from its stateless run API. The 2026-10-07 request adds Documentation as a distinct product, superseding the earlier API documentation exclusion. Require the engineering and React/TypeScript/tRPC application skills; keep Site and Document separate and unassigned. The latest Account boundary correction keeps AWS account identity, keys, records, provisioning and bootstrap manifests in Account; moves domains, certificates and initial installation to Environment; reserves console assignments for unassigned Access; and assigns Account catalog registration to Registeel. The configuration-bundle design assigns the shared Transform/Connect/System configuration installer and its service installation/update to Deploy, and each target API and payload semantics to its existing product pair. Use configuration bundles in guidance and CONFIGURATION in bundle/component types; migrate legacy DATA contracts across Build, Marketplace and Deploy. Use a synthetic configuration integration for installer acceptance, without adding a Model pilot or a new product owner."
   },
   "workflowSkill": "guide-product-work",
   "products": [
@@ -178,7 +178,7 @@
       },
       "notes": [
         "Regigigas builds Marketplace catalog/publication capabilities. Deploy owns Puller subscriptions, polling, installation history and update execution. Marketplace supplies its supported catalog/publication interfaces; verify notification support rather than restoring historical subscription APIs.",
-        "Register, review and publish configuration bundles using the supported component type. Require compatible shared Deploy provider and configuration API prerequisites in review environments; catalog rollback does not reverse applied configuration."
+        "Register, review and publish configuration bundles using the CONFIGURATION component type; migrate legacy catalog metadata and publication contracts. Require compatible shared Deploy provider and configuration API prerequisites in review environments; catalog rollback does not reverse applied configuration."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/marketplace.md"
     },
@@ -239,7 +239,7 @@
       },
       "notes": [
         "Tinkaton builds the Build API and runner; Metang configures build jobs. Build provenance does not imply Marketplace publication or Deploy completion.",
-        "Build configuration bundles as portable CDK assemblies containing configuration assets and declarations referencing the shared Deploy provider. Preserve verified DATA wire compatibility; validate payload digests and provider contract requirements without executing configuration APIs during builds."
+        "Build configuration bundles as portable CDK assemblies containing configuration assets and declarations referencing the shared Deploy provider. Use CONFIGURATION consistently in request, artifact and provenance schemas; validate payload digests and provider contract requirements without executing configuration APIs during builds."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/build.md"
     },
@@ -300,7 +300,7 @@
       },
       "notes": [
         "Corviknight builds Deploy, including its Puller subscriber component; Skarmory configures runs, subscriptions, polling, update policy and recovery. Keep subscriber desired state, install history and subscription secrets in the Deploy-owned Puller component, separate from the stateless SigV4 run API. Separate packages or stacks do not create a separate product.",
-        "Own the shared configuration-bundle installer and typed Transform, Connect and System API adapters. Ship the provider as part of Deploy service infrastructure through its normal installation/update lifecycle. Reuse a provider per target account/region across bundle stacks; do not package a custom Lambda per bundle. Keep operation receipts separate from Puller subscriber state. Call these configuration bundles; preserve DATA only where the verified wire contract requires it. Follow skills/build-product-deployer/reference/configuration-bundles.md."
+        "Own the shared configuration-bundle installer and typed Transform, Connect and System API adapters. Ship the provider as part of Deploy service infrastructure through its normal installation/update lifecycle. Reuse a provider per target account/region across bundle stacks; do not package a custom Lambda per bundle. Keep operation receipts separate from Puller subscriber state. Use configuration bundles and the CONFIGURATION type consistently; migrate legacy type handling and subscription metadata with Build and Marketplace. Follow skills/build-product-deployer/reference/configuration-bundles.md."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/deploy.md"
     },

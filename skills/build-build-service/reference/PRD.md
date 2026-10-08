@@ -1,5 +1,11 @@
 # Build Service - Product Requirements Document (PRD)
 
+Use `CONFIGURATION` for configuration bundles and `/configuration` for their
+start/status alias in the target contract below. Migrate the legacy type and
+route with Marketplace and Deploy using [the shared contract](../../build-product-deployer/reference/configuration-bundles.md).
+Verify implementation/deployment separately; this rename is required scope,
+not evidence that the new contract is already available.
+
 Authoritative blueprint for building the **Build** product. It captures the target feature set, artifact contract, validation rules, runtime behaviour, and infrastructure topology that the service must enforce. The implementation is [`prismteam-ai/build`](https://github.com/prismteam-ai/build); its `README.md`, `requirements/swagger.yml` and `docs/progress.md` record what is deployed, and §1.4 lists where it deliberately differs from this document. It replaces the legacy Python 3.9 + Serverless Framework service (`StaircaseAPI/build`) that used CodeBuild to package Serverless Framework bundles; nothing is migrated from it. This PRD specifies the canonical replacement: **TypeScript everywhere**, **AWS CDK only**, `pnpm`, Vitest, ESLint, Prettier, Lambda `nodejs24.x` on ARM64, and **built CDK cloud assemblies** as the only marketplace build artifact.
 
 The intentional product change is direct: **Build actually builds the service.** Build accepts TypeScript AWS CDK source as input, runs the checks and CDK synth/bundling in CodeBuild, and emits a portable CDK cloud assembly containing synthesized CloudFormation templates plus staged file assets. Build no longer emits source snapshots, `config.json`, `artifacts/<module>/update.json`, Serverless Framework packages, or product-owned deployment scripts.
@@ -40,9 +46,9 @@ A single **AWS API Gateway REST API** mounted at `https://<subdomain>/infra-buil
 
 | Group | Routes | Purpose |
 | --- | --- | --- |
-| **Build runs** | `POST /builds`, `POST /service`, `POST /data` | Start a CDK cloud-assembly build. `/service` defaults `bundle_type=SERVICE`; `/data` defaults `bundle_type=DATA`; `/builds` requires or infers the type from `marketplace.product.json`. |
+| **Build runs** | `POST /builds`, `POST /service`, `POST /configuration` | Start a CDK cloud-assembly build. `/service` defaults `bundle_type=SERVICE`; `/configuration` defaults `bundle_type=CONFIGURATION`; `/builds` requires or infers the type from `marketplace.product.json`. |
 | **Source uploads** | `POST /sources` | Presigned S3 POST form (15 minutes, `application/zip`, at most 256 MiB) for one source zip; returns a `source_id` bound to the calling API key (§4.0). |
-| **Build status** | `GET /builds/{build_id}`, `GET /service/{build_id}`, `GET /data/{build_id}` | Poll in-flight/terminal status and retrieve the Build artifact URL when complete. The `/service` and `/data` aliases cover start and status only; logs and manifest live under `/builds/{build_id}` for every build. |
+| **Build status** | `GET /builds/{build_id}`, `GET /service/{build_id}`, `GET /configuration/{build_id}` | Poll in-flight/terminal status and retrieve the Build artifact URL when complete. The `/service` and `/configuration` aliases cover start and status only; logs and manifest live under `/builds/{build_id}` for every build. |
 | **Build logs** | `GET /builds/{build_id}/logs` | Return bounded CodeBuild and validation logs for operators and CI. |
 | **Artifact manifest** | `GET /builds/{build_id}/manifest` | Return Build's persisted validation manifest without minting a new artifact URL. |
 | **Internal - service info** | `GET /information` | Static service metadata (API Gateway `MOCK`, no API key). |
@@ -58,7 +64,7 @@ type BuildStatusResponse = {
   transaction_id: string;
   component_id?: string;
   component_name?: string;
-  bundle_type?: "SERVICE" | "DATA";
+  bundle_type?: "SERVICE" | "CONFIGURATION";
   source_hash?: string;
   artifact_hash?: string;
   artifact_url?: string;               // present only when SUCCEEDED; presigned (implementation: 15 minutes)
@@ -79,14 +85,14 @@ type BuildStatusResponse = {
 - Build does **not** embed AWS credentials, API keys, presigned source URLs, callback secrets, or tenant configuration in artifacts or manifests.
 - Build does **not** include product CDK source, TypeScript Lambda source, tests, or package manager state in the output artifact. CloudFormation templates remain visible to Marketplace and Deployer, and Lambda runtime bundles are visible as deployable assets, so the security requirement is that **runtime Lambda assets are minified, obfuscated, and source-map-free before Build uploads the artifact**.
 - Build does **not** support Docker image assets in the first production contract. CDK Docker image assets require a build/push step at deployment time; until Build has a platform-owned prebuilt-image artifact contract, products must use file assets or managed images that do not require Deployer to build product source.
-- Build does **not** support legacy `FRONTEND`, `FRONTEND_CONFIG`, `CHAT`, or `CONTRACT` bundle types. Those product lines must be represented as CDK `SERVICE` or `DATA` components.
+- Build does **not** support legacy `FRONTEND`, `FRONTEND_CONFIG`, `CHAT`, or `CONTRACT` bundle types. Those product lines must be represented as CDK `SERVICE` or `CONFIGURATION` components.
 - Build does **not** create `service-comply`. Comply scanning stays with the product's publish step (Registeel); Build forwards an inbound `service-comply` verbatim.
 
 ### 1.4 Implemented contract and deliberate differences
 
 The deployed implementation (`prismteam-ai/build`) settles these points. Keep them unless the user changes the decision:
 
-- **Routes.** PRD §4 plus `POST /sources` (§4.0). Signing was removed by decision: no KMS signing keys and no `GET /keys`. No cancel route (`CANCELLED` stays in the status type; nothing sets it). `/service` and `/data` alias only start and status.
+- **Routes.** The recorded implementation uses `/service` and legacy `/data` for start/status; the target migration replaces `/data` and `DATA` with `/configuration` and `CONFIGURATION`. Verify the target revision before calls. Keep `POST /sources` (§4.0). Signing was removed by decision: no KMS signing keys and no `GET /keys`. No cancel route (`CANCELLED` stays in the status type; nothing sets it).
 - **Callbacks.** PRD §5.8 only: one best-effort, unsigned POST (up to 3 attempts in one invocation), sent at most once. No SQS queue, DLQ or signature; a callback never changes a build's outcome. `callback_url`, `source_url`, upload forms and presigned `artifact_url`s (including the one in the callback payload) are bearer secrets: never returned, logged or passed through Step Functions input.
 - **Auth.** Build creates its own usage plan with two test keys per stage (`build-<stage>-caller-a` / `-b`). Attaching to the Bootstrap shared usage plan, real consumer keys, the `/infra-builder` custom domain and `DisableExecuteApiEndpoint` are deferred; the base URL is the stack output `BuildApiUrl` of `BuildApi-<stage>`.
 - **Stacks.** `BuildData-<stage>` → `BuildWorkflow-<stage>` → `BuildApi-<stage>` (the roles of §2.1's DataStack, WorkflowStack and BuildStack).
@@ -373,7 +379,7 @@ type BuildManifest = {
   transactionId: string;
   componentId: string;
   componentName: string;
-  bundleType: "SERVICE" | "DATA";
+  bundleType: "SERVICE" | "CONFIGURATION";
   artifactKind: "CDK_CLOUD_ASSEMBLY";
   deployerContractVersion: "1";
   sourceHash: string;              // SHA-256 of downloaded input bytes
@@ -461,7 +467,7 @@ type ServiceBuilderClaims = {
   lambda_asset_policy: { minified: true; obfuscated: true; source_maps: false };
   // optional, added in this order while the token stays within 1200 bytes:
   service_comply_sha256?: string;         // binds an inbound service-comply
-  bundle_type?: "SERVICE" | "DATA";
+  bundle_type?: "SERVICE" | "CONFIGURATION";
   build_manifest_sha256?: string;
   source_commit?: string;                 // from an inbound service-code token
   repository?: string;
@@ -532,7 +538,7 @@ type StartBuildRequest = {
   source_id?: string;                    // from POST /sources
   component_id?: string;                 // optional; if present must match marketplace.product.json
   component_name?: string;
-  bundle_type?: "SERVICE" | "DATA";      // optional when manifest declares it
+  bundle_type?: "SERVICE" | "CONFIGURATION";      // optional when manifest declares it
   callback_url?: string;
   log_level?: "INFO" | "DEBUG";
   worker_size?: "STANDARD" | "LARGE";
@@ -569,16 +575,16 @@ Response:
 }
 ```
 
-### 4.2 `POST /service` and `POST /data`
+### 4.2 `POST /service` and `POST /configuration`
 
 Aliases for CI compatibility:
 
 - `/service` behaves like `/builds` with `bundle_type = "SERVICE"` unless the request explicitly sets the same value.
-- `/data` behaves like `/builds` with `bundle_type = "DATA"` unless the request explicitly sets the same value.
+- `/configuration` behaves like `/builds` with `bundle_type = "CONFIGURATION"` unless the request explicitly sets the same value.
 
 If the source manifest declares a different `bundle_type`, Build returns `422 BundleTypeMismatch`.
 
-Legacy routes `/frontend`, `/frontend-config`, `/chat`, and `/smart-contract` are not part of the target public API. If compatibility aliases are temporarily retained during migration, they MUST return `410 Gone` with remediation text directing callers to CDK `SERVICE`/`DATA` builds.
+Legacy routes `/frontend`, `/frontend-config`, `/chat`, and `/smart-contract` are not part of the target public API. If compatibility aliases are temporarily retained during migration, they MUST return `410 Gone` with remediation text directing callers to CDK `SERVICE`/`CONFIGURATION` builds.
 
 ### 4.3 `GET /builds/{build_id}`
 
@@ -732,7 +738,7 @@ type BuildTerminalCallback = {
   build_id: string;
   transaction_id: string;
   component_id?: string;
-  bundle_type?: "SERVICE" | "DATA";
+  bundle_type?: "SERVICE" | "CONFIGURATION";
   artifact_url?: string;                 // SUCCEEDED only
   artifact_url_expires_at?: string;
   artifact_hash?: string;
@@ -914,7 +920,7 @@ In the implementation, `scripts/smoke.sh --skip-codebuild <stage>` runs the chec
 8. **DynamoDB repositories**: build runs, events, reports.
 9. **CDK stacks**: DataStack, WorkflowStack, BuildStack, with least-privilege IAM and shared usage-plan attachment.
 10. **OpenAPI generator**: route definitions drive `scripts/generate-openapi.ts`; generated spec checked in.
-11. **Fixtures**: valid CDK service, valid CDK configuration bundle (`DATA` wire type), raw-lambda violation, legacy Serverless artifact, unsafe zip paths.
+11. **Fixtures**: valid CDK service, valid CDK configuration bundle (`CONFIGURATION` wire type), raw-lambda violation, legacy Serverless artifact, unsafe zip paths.
 12. **Smoke/integration tests**: deployed Build API exercise happy path and the two failure fixtures.
 
 ---
@@ -940,6 +946,6 @@ A re-implementation is complete when:
 ## Configuration bundles
 
 Follow [the shared configuration-bundle contract](../../build-product-deployer/reference/configuration-bundles.md).
-Preserve the supported CDK assembly and DATA wire value. Validate configuration assets and shared-provider references; changing only configuration must change the affected payload identity. Build never applies the configurations.
+Keep the supported CDK assembly and use the `CONFIGURATION` type consistently in requests, manifests, status, callbacks and provenance. Validate configuration assets and shared-provider references; changing only configuration must change the affected payload identity. Build never applies the configurations.
 Treat these additions as required scope to verify in the target revision, not as
 proof that provider support or the target API lifecycle is already deployed.

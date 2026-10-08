@@ -58,8 +58,9 @@ ownership of its configuration API.
 
 Read the [configuration-bundle contract](./skills/build-product-deployer/reference/configuration-bundles.md)
 for ownership, lifecycle and synthetic acceptance. These instructions define build
-scope, not deployed support. Preserve `DATA` wherever existing wire contracts
-require it; configuration bundles do not carry their own installer Lambda.
+scope, not deployed support. Use `CONFIGURATION` consistently in bundle/component
+contracts and migrate legacy naming; configuration bundles do not carry their own
+installer Lambda.
 
 ## Installation and updates
 

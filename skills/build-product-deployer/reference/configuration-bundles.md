@@ -6,10 +6,20 @@ packaging, reviewing, installing or authoring these bundles. Treat it as require
 implementation scope; inspect target revisions before claiming deployed support.
 Editing this kit does not implement or deploy the installer.
 
-Preserve `DATA`, `/data` and `SERVICE|DATA` wherever the verified Build or
-Marketplace wire contract requires them. Explain `DATA` as the compatibility
-value for configuration bundles. Do not invent a `CONFIGURATION` enum, rename
-routes or change existing manifest schemas just to match the user-facing name.
+Use **configuration bundle** in product language and `CONFIGURATION` as the
+bundle/component type alongside `SERVICE`. Use `/configuration` for Build's
+type-specific start/status alias; retain `/builds` as the generic route.
+Align Build, Marketplace and Deploy request/response schemas, manifests,
+provenance, catalog metadata, callbacks and subscription records with this name.
+
+Treat `DATA` and `/data` as legacy contracts to migrate, not compatibility values
+for new bundles. Inspect the target revision before calling the new contract;
+hand missing migration support to the relevant builder instead of falling back
+to the legacy type. Migrate mutable metadata while preserving identities and
+references. Keep historical evidence and immutable artifact bytes/digests intact;
+rebuild and publish a new release when an old artifact needs the new type. Retire
+legacy write inputs/routes with a clear migration error. Verify the full
+Build → Marketplace → Deploy path before claiming the migration is complete.
 
 ## Ownership
 
@@ -145,6 +155,7 @@ adapters. Keep user-run API and AWS observations inside each feature increment.
 | Scenario | Required observation |
 | --- | --- |
 | Baseline | Install a fixture mapping, Connect flow/partner configuration and System flow referencing them; read back all applied identities and make zero business-run calls |
+| Type migration | Build, publish and install with `CONFIGURATION` in requests, metadata and artifacts; migrate existing mutable metadata without identity/reference changes, preserve historical artifact hashes, and reject retired legacy writes/routes with migration guidance |
 | Changed configuration | Change one document with unchanged provider/service code; verify changed asset digest, intended resource update and preserved unaffected configurations |
 | Shared provider | Install two bundles using the same provider; verify no per-bundle Lambda and no ownership collision or cross-bundle mutation |
 | Replay and conflict | Retry identical delivery and concurrent triggers; reconcile one owned outcome, reject changed immutable content and conflicting claims |

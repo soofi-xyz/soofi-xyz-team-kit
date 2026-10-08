@@ -21,6 +21,7 @@ Configure a particular use of **Deploy**. Use an existing HTTP API; keep service
 ## Configuration bundles
 
 Read [the shared configuration-bundle contract](../skills/build-product-deployer/reference/configuration-bundles.md) for this work.
+Verify the `CONFIGURATION` contract is deployed; hand migration gaps to Corviknight.
 Install pinned configuration bundles through the verified Deploy API and configure
 Puller update policy. Verify shared-provider compatibility, target API prerequisites,
 configuration ownership and dependencies before submission. Follow per-configuration

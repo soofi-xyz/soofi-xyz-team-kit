@@ -22,7 +22,8 @@ Build and maintain **Build**. Own its reusable HTTP API, implementation and infr
 Read [the shared configuration-bundle contract](../skills/build-product-deployer/reference/configuration-bundles.md) for this work.
 Build configuration bundles as portable CDK assemblies containing configuration assets
 and declarations referencing the shared Deploy provider. Validate payload digests,
-provider-contract requirements and supported wire-type consistency. Exercise a changed
+provider-contract requirements and `CONFIGURATION` type consistency. Migrate Build's
+legacy type/route and provenance contracts. Exercise a changed
 configuration with unchanged service code and an assembly with no bundle-specific Lambda.
 Do not call target configuration APIs during build or add arbitrary lifecycle hooks.
 

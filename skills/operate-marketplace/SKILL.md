@@ -16,6 +16,10 @@ Treat that repo's `requirements/openapi.yaml`, `README.md`, and `AGENTS.md` as t
 contract. Endpoint shapes and error tags are summarized in
 [api-contract.md](reference/api-contract.md).
 
+For configuration bundles, verify the target supports the `CONFIGURATION`
+component type before registration/publication. Hand missing migration support
+to Regigigas; do not fall back to the legacy bundle type.
+
 This product's v1 surface is **catalog register + publish + review + rollback**.
 It does not deploy into subscriber accounts. Do not invent subscriptions, prices,
 or site publication APIs — the product `AGENTS.md` forbids them. Do not redesign
@@ -206,7 +210,7 @@ Typical sequence:
 6. Components:
    `POST /ontology/products/{product_id}/components`
    `{ "components": [{ "component_id": "deploy", "type": "SERVICE" }] }`
-   (`SERVICE` or `DATA`)
+   (`SERVICE` or `CONFIGURATION`)
 
 Idempotency: treat `409 CatalogConflict` as success when the entity already
 exists; resolve ids via `GET /ontology`, `GET /ontology/products/by-name?name=`,
