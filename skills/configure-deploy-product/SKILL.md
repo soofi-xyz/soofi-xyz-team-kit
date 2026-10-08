@@ -44,3 +44,8 @@ Own Puller as a subscriber component of Deploy. Keep its subscriptions, polling 
 
 Return configuration changes, redacted identifiers, API/read-back results,
 automated and user/AWS evidence, mocked/live status, cleanup and builder handoffs.
+
+## Configuration bundles
+
+Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
+Verify provider/API prerequisites and operate installation, read-back, retry and retirement through supported APIs.

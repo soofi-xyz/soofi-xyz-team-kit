@@ -19,6 +19,15 @@ Build and maintain **System**. Own the reusable orchestration framework and its 
 6. After every framework increment, have the person run its actual System configuration, inspect Step Functions and correlated logs, and report expected/actual behavior before implementing the next piece. Cover every selected feature with configuration/negative cases, then rerun cumulative mock acceptance. Only then progress to real integrations within the authorized scope.
 7. Use local fixture validation as preparation. Do not label a manifest, a simulator, or a synthesized stack as a working deployed System.
 
+## Configuration bundles
+
+Read [the shared configuration-bundle contract](../skills/build-product-deployer/reference/configuration-bundles.md) for this work.
+Support the shared Deploy installer's System adapter through definition, template,
+flow and waterfall configuration APIs. Verify version/conflict semantics, stable identities,
+read-back, scoped authorization and supported retirement. Resolve pinned leaf references
+and keep registration separate from business invocation. Keep configuration installation
+in Deploy; do not require a System business flow to install System's own configurations.
+
 ## Return
 
 Return the framework changes, template/compiler checks, scenario results, current learning stage, human observations and evidence levels. Separate mock acceptance from real leaf-product readiness.

@@ -41,3 +41,10 @@ limits, upload checksums and observability when verified in the target service.
 Test worker/compiler behavior, auth failures, callback signatures, duplicate and
 early webhooks, retries, partial jobs and local partner fakes. Follow the product's
 existing dev acceptance suite and shared interactive workflow.
+
+## Configuration bundles
+
+Follow [the shared configuration-bundle contract](../../build-product-deployer/reference/configuration-bundles.md).
+Verify flow, partner-configuration and activation identity/revision APIs, conflict behavior, read-back and scoped retirement. Keep registration distinct from activation and partner jobs; keep internal configuration installation with Deploy.
+Treat these additions as required scope to verify in the target revision, not as
+proof that provider support or the target API lifecycle is already deployed.

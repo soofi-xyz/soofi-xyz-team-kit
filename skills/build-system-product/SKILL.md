@@ -59,3 +59,8 @@ repository; this kit supplies the workflow, contracts and test scenarios.
 
 Return framework changes, test results, progress through the shared stages,
 observed mock acceptance, real-integration evidence and remaining gaps.
+
+## Configuration bundles
+
+Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
+Own configuration lifecycle APIs and pinned leaf-reference validation; installing definitions must not invoke business flows.

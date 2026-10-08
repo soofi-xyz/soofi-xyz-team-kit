@@ -1,7 +1,8 @@
 # Deploy implementation scope
 
 Use **Deploy** as the product name, Corviknight as builder and Skarmory as configurer.
-Deploy owns both deployment execution and the Puller subscriber component. Follow
+Deploy owns deployment execution, the shared configuration-bundle installer and
+the Puller subscriber component. Follow
 [the capability map](../../guide-product-work/reference/iterations/deploy.md) and
 [synthetic test data](test-data.md) for feature increments and user/AWS checks.
 
@@ -10,6 +11,11 @@ Deploy owns both deployment execution and the Puller subscriber component. Follo
 - **Run service:** accept validated deployment requests, execute artifacts and
   expose correlated run status/results. Keep it stateless with respect to
   subscriber desired state, installation history and subscription secrets.
+- **Configuration installer:** reuse shared providers and typed Transform, Connect
+  and System API adapters across configuration bundles. Own durable operation
+  receipts and partial-failure recovery separately from subscriber state. Load
+  [the configuration-bundle contract](configuration-bundles.md); do not ship a
+  custom installer Lambda in each bundle.
 - **Puller:** own subscriptions, periodic/manual catalog polling, desired/pending/
   installed versions, dependency-aware updates, installation history, update
   controls and recovery. Keep that state in this Deploy-owned component; separate

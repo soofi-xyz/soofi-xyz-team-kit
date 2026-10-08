@@ -32,3 +32,8 @@ Read [the System scope](../build-system-product/reference/PRD.md),
 
 Return the composition, versions, validated files, actual scenario results,
 learning stage, unresolved dependencies and readiness for real integration.
+
+## Configuration bundles
+
+Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
+Compose pinned System and leaf documents; preserve scenario validation and hand bundle installation to Skarmory.

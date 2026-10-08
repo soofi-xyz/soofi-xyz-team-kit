@@ -189,3 +189,10 @@ pair failures. A new compatible pair must work through registration alone.
 Report implementation/deployment gaps as evidence, not product restrictions.
 Use [AWS workflow](aws-workflow.md) for explicit baseline limits and recovery
 behavior. Local tests and synthesis do not establish live deployment status.
+
+## Configuration bundles
+
+Follow [the shared configuration-bundle contract](../../build-product-deployer/reference/configuration-bundles.md).
+Verify mapping validation, immutable/versioned registration, replay/conflicts and read-back through the actual configuration API. Keep installer execution with Deploy and mapping readiness with Silvally; registration does not start Transform runs.
+Treat these additions as required scope to verify in the target revision, not as
+proof that provider support or the target API lifecycle is already deployed.

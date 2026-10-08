@@ -3,7 +3,7 @@
   "source": {
     "meeting": "Builder Story Planning, 2026-09-30",
     "spreadsheet": "staircase-products export, supplied 2026-09-30",
-    "precedence": "User follow-up retains Conkeldurr for Persist and assigns Zygarde to System. Later requests assign builder/configurer pairs to Account, Environment, Build, Deploy, Model and Console. User follow-up assigns Puller polling, subscriptions and reconciliation to the Deploy product; keep subscriber state separate from its stateless run API. The 2026-10-07 request adds Documentation as a distinct product, superseding the earlier API documentation exclusion. Require the engineering and React/TypeScript/tRPC application skills; keep Site and Document separate and unassigned. The latest Account boundary correction keeps AWS account identity, keys, records, provisioning and bootstrap manifests in Account; moves domains, certificates and initial installation to Environment; reserves console assignments for unassigned Access; and assigns Account catalog registration to Registeel."
+    "precedence": "User follow-up retains Conkeldurr for Persist and assigns Zygarde to System. Later requests assign builder/configurer pairs to Account, Environment, Build, Deploy, Model and Console. User follow-up assigns Puller polling, subscriptions and reconciliation to the Deploy product; keep subscriber state separate from its stateless run API. The 2026-10-07 request adds Documentation as a distinct product, superseding the earlier API documentation exclusion. Require the engineering and React/TypeScript/tRPC application skills; keep Site and Document separate and unassigned. The latest Account boundary correction keeps AWS account identity, keys, records, provisioning and bootstrap manifests in Account; moves domains, certificates and initial installation to Environment; reserves console assignments for unassigned Access; and assigns Account catalog registration to Registeel. The configuration-bundle design assigns the shared Transform/Connect/System configuration installer and its service installation/update to Deploy, and each target API and payload semantics to its existing product pair. Use configuration bundles in guidance and CONFIGURATION in bundle/component types; migrate legacy DATA contracts across Build, Marketplace and Deploy. Use a synthetic configuration integration for installer acceptance, without adding a Model pilot or a new product owner."
   },
   "workflowSkill": "guide-product-work",
   "products": [
@@ -177,7 +177,8 @@
         "configure": "operate-marketplace"
       },
       "notes": [
-        "Regigigas builds Marketplace catalog/publication capabilities. Deploy owns Puller subscriptions, polling, installation history and update execution. Marketplace supplies its supported catalog/publication interfaces; verify notification support rather than restoring historical subscription APIs."
+        "Regigigas builds Marketplace catalog/publication capabilities. Deploy owns Puller subscriptions, polling, installation history and update execution. Marketplace supplies its supported catalog/publication interfaces; verify notification support rather than restoring historical subscription APIs.",
+        "Register, review and publish configuration bundles using the CONFIGURATION component type; migrate legacy catalog metadata and publication contracts. Require compatible shared Deploy provider and configuration API prerequisites in review environments; catalog rollback does not reverse applied configuration."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/marketplace.md"
     },
@@ -237,7 +238,8 @@
         "configure": "configure-build-product"
       },
       "notes": [
-        "Tinkaton builds the Build API and runner; Metang configures build jobs. Build provenance does not imply Marketplace publication or Deploy completion."
+        "Tinkaton builds the Build API and runner; Metang configures build jobs. Build provenance does not imply Marketplace publication or Deploy completion.",
+        "Build configuration bundles as portable CDK assemblies containing configuration assets and declarations referencing the shared Deploy provider. Use CONFIGURATION consistently in request, artifact and provenance schemas; validate payload digests and provider contract requirements without executing configuration APIs during builds."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/build.md"
     },
@@ -287,7 +289,7 @@
         13
       ],
       "status": "assigned",
-      "summary": "Deploy installs products and keeps subscribed components updated.",
+      "summary": "Deploy installs products and configuration bundles through a shared installer and keeps subscribed components updated.",
       "agents": {
         "build": "corviknight",
         "configure": "skarmory"
@@ -297,7 +299,8 @@
         "configure": "configure-deploy-product"
       },
       "notes": [
-        "Corviknight builds Deploy, including its Puller subscriber component; Skarmory configures runs, subscriptions, polling, update policy and recovery. Keep subscriber desired state, install history and subscription secrets in the Deploy-owned Puller component, separate from the stateless SigV4 run API. Separate packages or stacks do not create a separate product."
+        "Corviknight builds Deploy, including its Puller subscriber component; Skarmory configures runs, subscriptions, polling, update policy and recovery. Keep subscriber desired state, install history and subscription secrets in the Deploy-owned Puller component, separate from the stateless SigV4 run API. Separate packages or stacks do not create a separate product.",
+        "Own the shared configuration-bundle installer and typed Transform, Connect and System API adapters. Ship the provider as part of Deploy service infrastructure through its normal installation/update lifecycle. Reuse a provider per target account/region across bundle stacks; do not package a custom Lambda per bundle. Keep operation receipts separate from Puller subscriber state. Use configuration bundles and the CONFIGURATION type consistently; migrate legacy type handling and subscription metadata with Build and Marketplace. Follow skills/build-product-deployer/reference/configuration-bundles.md."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/deploy.md"
     },
@@ -936,7 +939,8 @@
         "configure": "configure-transform-product"
       },
       "notes": [
-        "Resolve the spreadsheet test-only/configuration mismatch: Silvally authors and tests mappings; Kecleon owns engine implementation. Preserve test-only intent when the user only requests evaluation."
+        "Resolve the spreadsheet test-only/configuration mismatch: Silvally authors and tests mappings; Kecleon owns engine implementation. Preserve test-only intent when the user only requests evaluation.",
+        "Own validation, immutable/versioned registration, read-back and lifecycle semantics for Transform configuration consumed by the shared Deploy installer. Kecleon handles API gaps; Silvally authors and validates mapping payloads under its existing readiness gates. Do not create per-bundle installer code."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/transform.md"
     },
@@ -1061,7 +1065,9 @@
         "build": "build-connect-product",
         "configure": "operate-connect-configurations"
       },
-      "notes": [],
+      "notes": [
+        "Own flow, partner-configuration and activation API lifecycle semantics consumed by the shared Deploy installer. Lapras handles API gaps; Wingull authors and verifies payloads and secret references. Configuration registration must not implicitly start partner jobs."
+      ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/connect.md"
     },
     {
@@ -1104,7 +1110,8 @@
         "configure": "configure-system-product"
       },
       "notes": [
-        "User override: Zygarde builds System; Celebi configures outcomes. Current scope is the orchestration core, not all historical Product features."
+        "User override: Zygarde builds System; Celebi configures outcomes. Current scope is the orchestration core, not all historical Product features.",
+        "Own definition, template, flow and waterfall configuration API lifecycle semantics consumed by the shared Deploy installer. Zygarde handles API gaps; Celebi composes configurations with pinned leaf references. Registering a configuration bundle must not implicitly invoke a business flow."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/system.md"
     },

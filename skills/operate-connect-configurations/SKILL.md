@@ -194,3 +194,8 @@ Return the run report: classification, data profile, credential sources and
 copies (ARNs only), sample and expected outcomes, configuration documents with
 validation output, dev evidence, cleanup, defects handed to `lapras`, and the
 production steps.
+
+## Configuration bundles
+
+Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
+Author pinned configuration documents and secret references; preserve partner validation and keep registration separate from activation and traffic.

@@ -6,6 +6,12 @@ tags: build, http, openapi, provenance
 
 # Build API contract summary
 
+Use `CONFIGURATION` and `/configuration` in the target contract below. The
+previous contract used `DATA` and `/data`; verify the migration in the target
+revision before configuration-bundle calls. Hand missing support to Tinkaton;
+do not silently fall back to the legacy type. This page does not prove deployment
+of the renamed contract. Follow [the shared migration requirements](../../build-product-deployer/reference/configuration-bundles.md).
+
 Authoritative source: [`prismteam-ai/build`](https://github.com/prismteam-ai/build)
 → `requirements/swagger.yml`, `README.md`, `lib/build-api-stack.ts` and
 `src/domain/errors.ts`. When they differ from this page, the repository wins.
@@ -24,14 +30,14 @@ upload is `404 SourceNotFound`, identical to an unknown id.
 | --- | --- | --- | --- |
 | `POST` | `/sources` | `201` | Body empty or `{}`. Returns `{source_id, upload{url, fields}, expires_at}`. The form is a bearer secret for 15 minutes. |
 | `POST` | `/builds` | `202` | Start a build; `bundle_type` optional (inferred from `marketplace.product.json`) |
-| `POST` | `/service`, `/data` | `202` | Same, with `bundle_type` `SERVICE` / `DATA`; a conflicting request value is `400 InvalidBuildOption`, a conflicting manifest is `BundleTypeMismatch` at `VALIDATING` |
-| `GET` | `/builds/{build_id}`, `/service/{build_id}`, `/data/{build_id}` | `200` | Status for the creating key |
+| `POST` | `/service`, `/configuration` | `202` | Same, with `bundle_type` `SERVICE` / `CONFIGURATION`; a conflicting request value is `400 InvalidBuildOption`, a conflicting manifest is `BundleTypeMismatch` at `VALIDATING` |
+| `GET` | `/builds/{build_id}`, `/service/{build_id}`, `/configuration/{build_id}` | `200` | Status for the creating key |
 | `GET` | `/builds/{build_id}/logs?limit=1..500&next_token=` | `200` | `{build_id, build_status, entries[{timestamp, message}], next_token?}` oldest first; `next_token` is omitted at the end |
 | `GET` | `/builds/{build_id}/manifest` | `200` | Stored `build.manifest.json` bytes; `404 BuildManifestNotFound` without a stored assembly (failed or expired build) |
 | `GET` | `/information` | `200` | No key. `{service: "build", stage, capabilities[], runner: "CODEBUILD"}` |
 
 Logs and manifest exist only under `/builds/{build_id}`, also for builds started
-on `/service` or `/data`. There is no `/keys`, no signing key, no cancel route,
+on `/service` or `/configuration`. There is no `/keys`, no signing key, no cancel route,
 no alias logs/manifest/sources routes and no callback queue. `CANCELLED` is in
 the status enum because the PRD lists it; nothing sets it.
 
@@ -44,7 +50,7 @@ Exactly one of `source_url` or `source_id`; both or neither is `400 BadRequest`.
 | `source_id` | `src_…` from `POST /sources` (skips the URL probe) |
 | `source_url` | `https`, port 443, public host, no credentials, no redirects; a bearer secret |
 | `callback_url` | Optional `https` public URL; one best-effort terminal POST (below) |
-| `bundle_type` | `SERVICE` \| `DATA` |
+| `bundle_type` | `SERVICE` \| `CONFIGURATION` |
 | `component_id`, `component_name` | Optional; `component_id` must equal the manifest's |
 | `log_level` | `INFO` \| `DEBUG` |
 | `worker_size` | `STANDARD` \| `LARGE` |

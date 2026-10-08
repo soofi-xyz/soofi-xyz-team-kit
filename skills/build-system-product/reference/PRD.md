@@ -53,3 +53,10 @@ The kit's [composition contract](contracts.md) is a review artifact, not the
 System HTTP request schema. Use the actual target service contract when applying
 it. Preserve backward compatibility deliberately; do not blindly rename deployed
 fields when normalizing catalog terminology.
+
+## Configuration bundles
+
+Follow [the shared configuration-bundle contract](../../build-product-deployer/reference/configuration-bundles.md).
+Verify definition, template, flow and waterfall lifecycle APIs with stable identities, pinned references, replay/conflicts and read-back. Keep installation in Deploy; registration must not invoke a business flow.
+Treat these additions as required scope to verify in the target revision, not as
+proof that provider support or the target API lifecycle is already deployed.
