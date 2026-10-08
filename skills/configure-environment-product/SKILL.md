@@ -1,6 +1,6 @@
 ---
 name: configure-environment-product
-description: "Configure and test Environment through its existing HTTP API. Use Shaymin for environment plans, Account manifest intake, shared API routing, initial Deploy installation, subscriber handoff and resumable readiness checks; route service gaps to Torterra."
+description: "Configure and test Environment through its existing HTTP API. Use Shaymin for plans, Account manifest intake, domains, certificates, shared routing, initial Prism installation and resumable readiness; route service gaps to Torterra."
 ---
 
 # Configure Environment
@@ -17,7 +17,11 @@ Read the relevant [product contract](../build-bootstrap-cli/reference/PRD.md) an
    synthetic fixture. Use a baseline, materially different supported configuration,
    invalid/unauthorized input and relevant replay/recovery cases inside each piece;
    use four as a full walkthrough floor, not a fixed count or a quota for narrow work.
-3. Configure verified environment plans, shared routing, initial installs and recovery through the existing Environment API. If only Bootstrap exists, identify the API gap and hand it to Torterra. Run a supported cold-start adapter only when explicitly in scope; its successful CLI run does not satisfy HTTP API acceptance.
+3. Configure verified environment plans, domain/certificate lifecycle, shared
+   routing, initial installs and recovery through the existing Environment API.
+   If only Bootstrap exists, identify the API gap and hand it to Torterra. Run a
+   supported cold-start adapter only when explicitly in scope; its successful CLI
+   run does not satisfy HTTP API acceptance.
 4. Use the deployment's verified test adapters for external effects. If it lacks
    a safe test mode or required capability, leave that check pending and hand a
    redacted reproducer to `torterra`. Do not edit service code, write internal storage,
@@ -30,7 +34,11 @@ Read the relevant [product contract](../build-bootstrap-cli/reference/PRD.md) an
    are covered by the requested scope and record cleanup without removing shared
    resources. Keep mocked execution distinct from actual dependency readiness.
 
-Keep identity, underlying AWS account provisioning, DNS/certificate inventory and service keys with Account. Consume Marketplace bundles and let Deploy execute product installations after its first install. Treat Bootstrap as an Environment adapter, not another product.
+Keep identity, keys, the backing AWS account record/provisioning and bootstrap
+manifest with Account. Consume that non-secret manifest, then own domain and
+certificate lifecycle, shared routing and initial platform-installation readiness.
+Consume Marketplace bundles and let Deploy execute product installations after
+its first install. Treat Bootstrap as an Environment adapter, not another product.
 
 Return configuration changes, redacted identifiers, API/read-back results,
 automated and user/AWS evidence, mocked/live status, cleanup and builder handoffs.

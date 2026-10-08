@@ -20,6 +20,9 @@ This product's v1 surface is **catalog register + publish + review + rollback**.
 It does not deploy into subscriber accounts. Do not invent subscriptions, prices,
 or site publication APIs — the product `AGENTS.md` forbids them. Do not redesign
 Organizations tenancy, StackSets, or Account Manager from this skill.
+Registeel owns catalog registration for every product, including **Account**.
+Registering Account here does not provision a customer AWS account or prove the
+Account service is deployed.
 
 ## Prerequisites
 

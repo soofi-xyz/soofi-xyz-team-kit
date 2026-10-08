@@ -821,7 +821,8 @@ Expected implementation modules:
 - Node.js 22+ locally; Lambda runtime is Node.js 24.
 - pnpm.
 - CDK bootstrap completed in the Build service account.
-- API Gateway custom domain and shared Usage Plan created by Bootstrap/Account.
+- API Gateway custom domain, certificate and shared Usage Plan created by
+  Environment through its Bootstrap adapter.
 - S3/DynamoDB/KMS/CodeBuild/Step Functions/Lambda/API Gateway permissions for the Build stacks.
 - Approved platform construct package published and available to product source repositories.
 - Product source repositories follow the Marketplace CDK source input layout; Build output follows the Deployer cloud assembly artifact layout.

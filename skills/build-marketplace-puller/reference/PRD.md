@@ -23,7 +23,13 @@ Marketplace Puller is the **tenant-side counterpart** to the Marketplace's push-
 2. **Reconciliation polling.** On a schedule, list the latest released bundle for every component this tenant is subscribed to (against `GET <marketplace-host>/marketplace/ontology/products/{product_id}/components/{component_id}/bundles?sort=desc&limit=1`) so the tenant catches up even when a webhook is lost or the Puller was offline. Root operator subscriptions also maintain managed Marketplace subscriptions for every transitive dependency in the latest `dependency_layers`, so dependency components receive their own webhooks when they publish new versions.
 3. **Deployer handoff + drift reconciliation.** For every distinct `(component_id, bundle_id)` pair the Puller has accepted (whether via webhook or polling), call the **local** Deployer at `https://<this-tenant-subdomain>/infra-deployer/deploy-by-token` with the bundle's presigned `bundle_url`, persist the resulting `deploy_id`, and reconcile the terminal callback Deployer sends back. The currently-deployed `bundle_id` per component is stored on a tenant-local row so a follow-up reconciliation can detect drift (the row says `bundle_X`, the latest released bundle is `bundle_Y`) and self-heal.
 
-The Marketplace **decides what is published** (catalog ownership lives in Marketplace per `Marketplace.md` §3.4); Account **decides who is a tenant** (identity, AWS sub-account, FQDN, service key — per `Account.md` §1.1); Deployer **decides how a bundle becomes infrastructure** (per `Deployer.md` §1.1); the Puller is the **glue** that keeps each tenant continuously up-to-date with the marketplace catalog without requiring the marketplace control plane to know how to deploy into the tenant.
+The Marketplace **decides what is published** (catalog ownership lives in
+Marketplace per `Marketplace.md` §3.4); Account owns the Prism identity, backing
+AWS account record/provisioning and service keys; Environment owns domains,
+certificates and initial installation; Deployer **decides how a bundle becomes
+infrastructure** (per `Deployer.md` §1.1); the Puller is the **glue** that keeps
+each tenant continuously up-to-date with the marketplace catalog without requiring
+the marketplace control plane to know how to deploy into the tenant.
 
 The Puller is a **single-tenant, local-account-only** product. It runs in the same AWS sub-account as its Deployer and never assumes a role into another account; cross-tenant fan-out is exclusively the Marketplace's responsibility (the Marketplace dispatches one webhook per subscription, and one subscription is bound to one Puller's webhook URL).
 
@@ -613,7 +619,11 @@ CreateUninstallRun (DDB PutItem; status=RUNNING, condition no RUNNING uninstall)
 
 The uninstall workflow is destructive but local-account only. It never calls Account. It removes Marketplace fan-out first so new bundle notifications cannot race with stack deletion, then asks the local Deployer to delete the CloudFormation stacks corresponding to every live component. A component is considered uninstalled only after Deployer reports terminal delete success and `ComponentStateTable.live_bundle_id` is cleared. `safe_for_account_disable=true` is the signal operators use before calling `POST /accounts/{account_id}/disable`.
 
-Puller does not delete the Bootstrap-created shared API Gateway custom domain, the shared Usage Plan, Account DNS/certificate records, Deployer itself, or Puller itself as part of normal product uninstall. Those are bootstrap/system resources and are removed by the final tenant offboarding runbook after Account's domain-consumer guard is clean.
+Puller does not delete the Environment-owned shared API Gateway custom domain,
+shared Usage Plan, DNS/certificate records, Deployer itself, or Puller itself as
+part of normal product uninstall. Those are Environment/system resources and are
+removed by the final Environment offboarding runbook after product mappings and
+other domain consumers are clean.
 
 ### 5.4 `DeployerWatchdog` — stale callback reconciliation
 

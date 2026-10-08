@@ -19,8 +19,8 @@ In Copilot, select `soofi-xyz-team-kit:<agent>`. In Codex, request the named cus
 
 | Product | What it does | Build and maintain | Configure and test |
 | --- | --- | --- | --- |
-| **Account** | Account manages identities, keys, provisioning, domains and maintenance access. | [`kangaskhan`](./agents/kangaskhan.md) | [`blissey`](./agents/blissey.md) |
-| **Environment** | Environment prepares tenant environments, shared routing and initial product installations. | [`torterra`](./agents/torterra.md) | [`shaymin`](./agents/shaymin.md) |
+| **Account** | Account manages Prism identities and keys, guides Prism-managed or client-owned AWS setup, creates or adopts the backing account, verifies Prism service access and emits bootstrap manifests. | [`kangaskhan`](./agents/kangaskhan.md) | [`blissey`](./agents/blissey.md) |
+| **Environment** | Environment manages domains, certificates, shared routing and the initial Prism platform installation. | [`torterra`](./agents/torterra.md) | [`shaymin`](./agents/shaymin.md) |
 | **Marketplace** | Marketplace catalogs products and reviews, publishes and rolls back bundles. | [`regigigas`](./agents/regigigas.md) | [`registeel`](./agents/registeel.md) |
 | **Build** | Build turns validated source into portable deployment artifacts with provenance. | [`tinkaton`](./agents/tinkaton.md) | [`metang`](./agents/metang.md) |
 | **Deploy** | Deploy executes validated artifacts and reports deployment run results. | [`corviknight`](./agents/corviknight.md) | [`skarmory`](./agents/skarmory.md) |

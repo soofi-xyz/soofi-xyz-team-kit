@@ -3,7 +3,7 @@
   "source": {
     "meeting": "Builder Story Planning, 2026-09-30",
     "spreadsheet": "staircase-products export, supplied 2026-09-30",
-    "precedence": "User follow-up retains Conkeldurr for Persist, assigns Zygarde to System and excludes the API documentation workstream. A later user request assigns Account its own builder/configurer pair. A subsequent request assigns builder/configurer pairs to Environment, Build, Deploy and Model."
+    "precedence": "User follow-up retains Conkeldurr for Persist, assigns Zygarde to System and excludes the API documentation workstream. A later user request assigns Account its own builder/configurer pair. A subsequent request assigns builder/configurer pairs to Environment, Build, Deploy and Model. The latest Account boundary correction keeps AWS account identity, keys, records, provisioning and bootstrap manifests in Account; moves domains, certificates and initial installation to Environment; reserves console assignments for unassigned Access; and assigns Account catalog registration to Registeel."
   },
   "workflowSkill": "guide-product-work",
   "products": [
@@ -16,7 +16,7 @@
       ],
       "sourceRows": [],
       "status": "assigned",
-      "summary": "Account manages identities, keys, provisioning, domains and maintenance access.",
+      "summary": "Account manages Prism identities and keys, guides Prism-managed or client-owned AWS setup, creates or adopts the backing account, verifies Prism service access and emits bootstrap manifests.",
       "agents": {
         "build": "kangaskhan",
         "configure": "blissey"
@@ -26,7 +26,8 @@
         "configure": "configure-account-product"
       },
       "notes": [
-        "Added by explicit user request after the supplied spreadsheet; no source row is claimed. Kangaskhan builds the Account API; Blissey configures existing deployments. Account provisioning does not own product installation or partner credentials."
+        "Added by explicit user request after the supplied spreadsheet; no source row is claimed. Kangaskhan builds the Account API; Blissey guides and configures existing deployments.",
+        "Account owns identity, keys, the AWS account record, explicit create-or-adopt provisioning, Prism cross-account service readiness and bootstrap-manifest output. Its configurer also guides a client through standalone AWS signup before using the same existing-account adoption path. It does not own domains, certificates, initial platform installation, customer console assignments or Prism Marketplace registration."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/account.md"
     },
@@ -38,7 +39,7 @@
         2
       ],
       "status": "unassigned",
-      "summary": "",
+      "summary": "Access will own IAM Identity Center and customer AWS Console assignments.",
       "agents": {
         "build": null,
         "configure": null
@@ -47,7 +48,9 @@
         "build": null,
         "configure": null
       },
-      "notes": []
+      "notes": [
+        "Access is currently unassigned. Do not move console-user, permission-set or AWS-account-assignment behavior into Account to fill this ownership gap."
+      ]
     },
     {
       "id": "console",
@@ -78,7 +81,7 @@
         4
       ],
       "status": "assigned",
-      "summary": "Environment prepares tenant environments, shared routing and initial product installations.",
+      "summary": "Environment manages domains, certificates, shared routing and the initial Prism platform installation.",
       "agents": {
         "build": "torterra",
         "configure": "shaymin"
@@ -88,7 +91,8 @@
         "configure": "configure-environment-product"
       },
       "notes": [
-        "Torterra builds Environment; Shaymin configures existing deployments. Bootstrap is its setup adapter, including the initial no-service install path. HTTP API capabilities are required build scope, not a claim that a service is already deployed."
+        "Torterra builds Environment; Shaymin configures existing deployments. Bootstrap is its setup adapter, including the initial no-service install path. HTTP API capabilities are required build scope, not a claim that a service is already deployed.",
+        "Environment consumes Account's non-secret bootstrap manifest, then owns domain/certificate lifecycle and installation readiness. It does not create or adopt the backing AWS account."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/environment.md"
     },
@@ -148,7 +152,8 @@
         "configure": "operate-marketplace"
       },
       "notes": [
-        "Regigigas is narrowed to the current Marketplace builder role. Puller is deployment/subscription implementation attributed to Marketplace and Deploy, not another product."
+        "Regigigas is narrowed to the current Marketplace builder role. Puller is deployment/subscription implementation attributed to Marketplace and Deploy, not another product.",
+        "Registeel operates catalog registration for every product, including Account. Kangaskhan and Blissey do not register Account in Prism Marketplace."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/marketplace.md"
     },

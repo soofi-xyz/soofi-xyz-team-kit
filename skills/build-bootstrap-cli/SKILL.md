@@ -1,6 +1,6 @@
 ---
 name: build-bootstrap-cli
-description: "Build or maintain the Environment HTTP API and its environment plans, Account manifest intake, shared API routing, initial Deploy installation, subscriber handoff and resumable readiness checks. Use Torterra; use Shaymin for existing-service configuration."
+description: "Build or maintain the Environment HTTP API and its plans, Account manifest intake, domain/certificate lifecycle, shared routing, initial Prism installation and resumable readiness. Use Torterra; use Shaymin for existing-service configuration."
 disable-model-invocation: true
 ---
 
@@ -28,7 +28,11 @@ No separate API-documentation workstream is added.
 
 Preserve the cold-start path: an operator-run Bootstrap adapter may perform the first Deploy install before any service endpoint exists. Make the Environment HTTP API the product surface for plan, submission, status and results; the CLI shares execution logic. Identify missing API capabilities as builder work, not an assumed deployed route. Never persist API keys, AWS credentials or signed bundle URLs in resume state.
 
-Keep identity, underlying AWS account provisioning, DNS/certificate inventory and service keys with Account. Consume Marketplace bundles and let Deploy execute product installations after its first install. Treat Bootstrap as an Environment adapter, not another product.
+Keep identity, keys, the backing AWS account record/provisioning and bootstrap
+manifest with Account. Consume that non-secret manifest, then own domain and
+certificate lifecycle, shared routing and initial platform-installation readiness.
+Consume Marketplace bundles and let Deploy execute product installations after its
+first install. Treat Bootstrap as an Environment adapter, not another product.
 
 ## Build each feature piece
 
