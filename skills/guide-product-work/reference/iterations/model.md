@@ -1,7 +1,7 @@
 # Model capability map
 
 Use Dialga to implement Model and Jirachi to configure existing
-capabilities. Follow the [shared workflow](../../SKILL.md). These 8 areas are a
+capabilities. Follow the [shared workflow](../../SKILL.md). These 7 areas are a
 starting inventory, not a fixed iteration count. Order dependencies and split
 independently useful features further. Use at least four pieces for a full-product
 build; narrow work selects only relevant pieces. Keep automated tests and user/AWS
@@ -15,7 +15,6 @@ feedback inside each piece, not as a final testing phase.
 | `ruleset-definitions` — publish consistent rule definitions | Governed changes and Rule artifact contract | Deliver ruleset catalog/manifests/query-reference validation and governed publication. Exercise ordered rules, missing query files and unknown vocabulary labels. | Inspect validation/publication logs and API read-back; verify artifacts match the approved candidate. Hand actual Rule evaluation to Meditite. |
 | `language-mappings` — govern shared language and mapping registrations | Governed changes and Transform registration contract | Deliver versioned schema references and directional mapping publication. Use Silvally-authored mapping fixtures; exercise reverse direction missing, schema/digest mismatch and explicit graph ID/endpoint bindings. | Inspect published identities, references and digests. Verify publication without claiming Transform execution; a new generic catalog pointer remains a build requirement until observed. |
 | `kpi-metric-configuration` — map business KPIs to executable metric families | Governed changes, verified graph vocabulary and Base Metrics catalogs | Deliver exact-reuse lookup, family matching, executable-package validation and release inclusion. Compare a reused definition, supported family variant, family without an executor and unsupported composite formula. Finance is one executable family, not the generic KPI contract. | Inspect Base Metrics and executable-package manifests, generated plans/digests, released artifact and API read-back. Verify consumer compatibility separately; distinguish validation, publication, activation and observed materialization. |
-| `observability-metric-definitions` — govern CloudWatch names and dimensions | Governed changes | Deliver observability registry validation and release inclusion. Compare two dimension sets and reject unknown dimensions or inconsistent emission metadata. Coordinate actual emitter/dashboard updates with their owners. | Inspect registry validation, released artifact and API read-back; distinguish a valid definition from an observed CloudWatch metric emitted by a consumer. |
 | `release-compatibility` — publish and select compatible releases | Selected governed artifact families | Deliver reviewed release publication, digest metadata, consumer compatibility checks and supported prior-release selection. Exercise a breaking change, interrupted publication and digest mismatch. | Inspect publication execution, release metadata and consumer-readable S3/SSM values. Verify no partial release is advertised as complete; use supported reviewed release flow, never direct object overwrite. |
 
 Read [the product contract](../../../build-lexicon-product/reference/PRD.md) and

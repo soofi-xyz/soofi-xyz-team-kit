@@ -157,9 +157,6 @@ numerator/denominator alignment or zero-denominator behavior. Do not approximate
 a ratio with `AVERAGE`, and do not emit two component metrics while claiming the
 requested KPI exists.
 
-`cloudwatch-metrics.json` is an AWS observability registry. It is not a business
-KPI definition or execution contract.
-
 ## Generate, validate and govern
 
 For a supported new definition:

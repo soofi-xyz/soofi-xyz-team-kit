@@ -19,7 +19,7 @@ The core artifact is `lexicon.json`: a reviewed graph ontology containing vertex
 - Interprose-to-Lexicon transform SQL artifacts;
 - generated Base Metrics family/operation catalogs for discovering measurable graph facts;
 - reviewed executable metric-family packages, with payment financial metrics as one current specialization;
-- CloudWatch observability metric definitions used by products that emit platform metrics;
+- CloudWatch metric definitions used by products that emit platform metrics;
 - a read-only UI for humans to browse schemas, relationships, rules, and mappings.
 
 Lexicon is deployed before products that depend on those artifacts. Consumers read immutable reviewed artifacts from S3 using SSM parameter names owned by Lexicon; they do not fetch arbitrary GitHub files or embed copies of the schema in their own source.
@@ -45,7 +45,7 @@ The target deployment publishes these SSM parameters:
 | `/lexicon/interprose-transform-uri` | `s3://<LexiconDataBucket>/interprose/` | Translate, ETL builders | SQL transform prefix with `vertices/` and `edges/` children |
 | `/lexicon/base-metrics-catalog-uri` | Immutable Base Metrics `manifest.json` URI | Model/configuration tools | Generated definitions-only family and operation catalogs |
 | `/lexicon/financial-metrics-catalog-uri` | Immutable approved-release URI | Compatible metric materializers | Reviewed executable payment financial-metric package |
-| `/lexicon/cloudwatch-metrics-uri` | `s3://<LexiconDataBucket>/cloudwatch-metrics.json` | Dashboards, metric checks | Governed observability metric definitions |
+| `/lexicon/cloudwatch-metrics-uri` | `s3://<LexiconDataBucket>/cloudwatch-metrics.json` | Dashboards, metric checks | Governed metric definitions |
 | `/lexicon/rule-query-artifacts-uri` | `s3://<LexiconDataBucket>/rule-query-artifacts.json` | Rules/tooling | Rule query artifact metadata |
 | `/lexicon/release-uri` | `s3://<LexiconDataBucket>/release.json` | Build, Marketplace, operators | Release metadata tying artifact digests to `lexicon_version_id` |
 
@@ -362,15 +362,13 @@ The `.gremlin` file stores the executable query text. The optional `.sql` file s
 
 The existing Filter adapter selects the default `phone` catalog item only when rule context is absent. Context can select multiple matching manifests; explicit `rule_s3_uris` bypass catalog selection. Follow the [current Rules selection contract](../../build-rules-product/reference/implementation/rules-and-queries.md#selection-semantics) for precedence, matching and compatibility.
 
-### 3.4 CloudWatch observability metric registry
+### 3.4 CloudWatch metric registry
 
 `cloudwatch-metrics.json` uses the same `vertices` / `edges` container shape as other schema-like files, but metric definitions are standalone vertices and `edges` is empty.
 
 Each metric vertex type is the canonical metric name. Properties describe required dimensions and accepted enum values. Products that emit CloudWatch metrics must add or update this file in the same PR cycle as the runtime metric emission and dashboard display work.
 
-The registry is the source of truth for observability metric names and
-dimensions; CloudWatch itself is an operational sink, not the registry. This is
-not the business KPI definition or materialization contract.
+The registry is the source of truth for metric names and dimensions; CloudWatch itself is an operational sink, not the registry.
 
 ### 3.5 KPI metric catalogs and executable families
 
@@ -611,7 +609,7 @@ Minimum suites:
 | `ruleset-integration` | rule Gremlin references against Lexicon labels/properties/indexes, status-event ordering, account/phone scope semantics |
 | `base-metrics-catalog` | deterministic family/operation generation, category/type-valid calculations, path continuity, review states and manifest digests |
 | `executable-metric-packages` | exact graph references, package-specific semantics, generated plan equivalence, consumer compatibility, release digests and publication/activation separation |
-| `cloudwatch-metrics-data` | observability metric list, dimensions, enum values, no edge relationships |
+| `cloudwatch-metrics-data` | metric list, dimensions, enum values, no edge relationships |
 | `interprose-mapping` | source schema and transform SQL references for mapped graph elements |
 | `ui-smoke` | UI renders each registry entry without crashing |
 | `cdk` | stack synthesizes, SSM parameter names and S3 deployment prefixes match this PRD |
@@ -651,6 +649,7 @@ The current `../lexicon` implementation already includes:
 Target gaps to close while re-creating the product:
 
 - migrate npm/Bun scripts to the shared `pnpm`/`just` contract;
+- publish `cloudwatch-metrics.json`, `rule-query-artifacts.json`, and `release.json` through S3/SSM;
 - add CDK assertions for every SSM parameter and prefix;
 - make production removal policies explicit for the website bucket;
 - document the Marketplace component metadata for Lexicon, including `lexicon_version_id` generation.
@@ -665,6 +664,6 @@ Target gaps to close while re-creating the product:
 - `LexiconStack` deploys a private data bucket, static UI, CloudFront distribution, all required SSM parameters, and CloudFormation outputs.
 - All artifacts listed in section 2.2 are present in S3 after deployment with versioning enabled.
 - Persist, Rules, Translate, Build/Marketplace, and metric checks can consume Lexicon only through the S3/SSM contracts in section 4.
-- Tests cover schema integrity, ruleset structure/integration, Base Metrics generation, executable metric packages, observability registry shape, UI smoke rendering, and CDK parameter/prefix contracts.
+- Tests cover schema integrity, ruleset structure/integration, Base Metrics generation, executable metric packages, metric registry shape, UI smoke rendering, and CDK parameter/prefix contracts.
 - The deployed `release.json` records a `lexicon_version_id` and digests for every published artifact group.
 - Existing consumer PRDs reference Lexicon as the owner of these artifacts and do not require consumers to read the Lexicon Git repository at runtime.

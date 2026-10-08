@@ -15,7 +15,6 @@ before preparing a real model change. Never invent production enum evidence.
 | Ruleset definitions | One rule and query referencing fixture labels; missing query and unknown-label variants | Catalog/reference checks pass or reject predictably without invoking Rule evaluation |
 | Language/mappings | Two registered fixture languages and one Silvally-authored directional mapping | Missing reverse direction, schema/digest mismatch and missing graph bindings reject correctly |
 | KPI metric configuration | Exact existing operation; supported executable-family variant; generic family without an executor; unsupported ratio or graph reference | Reuse/family/support classification is correct, generated artifacts are deterministic and publication is not presented as activation/materialization |
-| Observability metric definitions | Fixture CloudWatch metric with required dimension; alternate valid dimension value; unknown dimension | Registry validation and publication work without claiming consumer emission |
 | Release compatibility | Compatible addition, breaking removal and interrupted publication | Active release never points at a partial or incompatible artifact set; read-back hashes match |
 
 Use the current target validators to materialize JSON, manifests and query files;

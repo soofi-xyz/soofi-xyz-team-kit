@@ -55,8 +55,7 @@ force it into the payment financial-metrics package.
    calculation, time behavior, scope, grain, unit or consumer capability.
 5. Generate only through the selected family's discovered authoring contract
    and generator. Never clone generated plans, invent generic metric fields,
-   treat a unit such as `PERCENT` as formula semantics, or use
-   `cloudwatch-metrics.json` as a business KPI contract.
+   or treat a unit such as `PERCENT` as formula semantics.
 6. Present the matched family, exact reuse/new-version decision, authored
    fields, generated evidence and runtime compatibility. Require confirmation
    before validation and separate confirmation before governed publication or
