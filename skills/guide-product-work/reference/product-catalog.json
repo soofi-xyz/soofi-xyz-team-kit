@@ -3,7 +3,7 @@
   "source": {
     "meeting": "Builder Story Planning, 2026-09-30",
     "spreadsheet": "staircase-products export, supplied 2026-09-30",
-    "precedence": "User follow-up retains Conkeldurr for Persist and assigns Zygarde to System. Later requests assign builder/configurer pairs to Account, Environment, Build, Deploy, Model and Console. User follow-up assigns Puller polling, subscriptions and reconciliation to the Deploy product; keep subscriber state separate from its stateless run API. The 2026-10-07 request adds Documentation as a distinct product, superseding the earlier API documentation exclusion. Require the engineering and React/TypeScript/tRPC application skills; keep Site and Document separate and unassigned."
+    "precedence": "User follow-up retains Conkeldurr for Persist and assigns Zygarde to System. Later requests assign builder/configurer pairs to Account, Environment, Build, Deploy, Model and Console. User follow-up assigns Puller polling, subscriptions and reconciliation to the Deploy product; keep subscriber state separate from its stateless run API. The 2026-10-07 request adds Documentation as a distinct product, superseding the earlier API documentation exclusion. Require the engineering and React/TypeScript/tRPC application skills; keep Site and Document separate and unassigned. The latest Account boundary correction keeps AWS account identity, keys, records, provisioning and bootstrap manifests in Account; moves domains, certificates and initial installation to Environment; reserves console assignments for unassigned Access; and assigns Account catalog registration to Registeel."
   },
   "workflowSkill": "guide-product-work",
   "products": [
@@ -38,7 +38,7 @@
       ],
       "sourceRows": [],
       "status": "assigned",
-      "summary": "Account manages identities, keys, provisioning, domains and maintenance access.",
+      "summary": "Account manages Prism identities and keys, guides Prism-managed or client-owned AWS setup, creates or adopts the backing account, verifies Prism service access and emits bootstrap manifests.",
       "agents": {
         "build": "kangaskhan",
         "configure": "blissey"
@@ -48,7 +48,8 @@
         "configure": "configure-account-product"
       },
       "notes": [
-        "Added by explicit user request after the supplied spreadsheet; no source row is claimed. Kangaskhan builds the Account API; Blissey configures existing deployments. Account provisioning does not own product installation or partner credentials."
+        "Added by explicit user request after the supplied spreadsheet; no source row is claimed. Kangaskhan builds the Account API; Blissey guides and configures existing deployments.",
+        "Account owns identity, keys, the AWS account record, explicit create-or-adopt provisioning, Prism cross-account service readiness and bootstrap-manifest output. Its configurer also guides a client through standalone AWS signup before using the same existing-account adoption path. It does not own domains, certificates, initial platform installation, customer console assignments or Prism Marketplace registration."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/account.md"
     },
@@ -60,7 +61,7 @@
         2
       ],
       "status": "unassigned",
-      "summary": "",
+      "summary": "Access will own IAM Identity Center and customer AWS Console assignments.",
       "agents": {
         "build": null,
         "configure": null
@@ -69,7 +70,9 @@
         "build": null,
         "configure": null
       },
-      "notes": []
+      "notes": [
+        "Account onboarding identifies this as an ownership gap. Do not implement temporary customer console users or Identity Center assignments inside Account."
+      ]
     },
     {
       "id": "console",

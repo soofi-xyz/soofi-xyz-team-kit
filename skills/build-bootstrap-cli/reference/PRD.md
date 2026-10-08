@@ -21,12 +21,13 @@ acceptance. Do not build parallel orchestration engines.
 
 ## Ownership
 
-- Account owns identity, underlying AWS account provisioning, canonical DNS/zone
-  and certificate inventory, service-key lifecycle and bootstrap-manifest output.
-- Environment owns setup plans, shared API Gateway domain/usage-plan resources,
-  non-secret environment defaults, endpoint attachment coordination and readiness.
-  Consume Account-owned domain/certificate inventory; reconcile routing aliases
-  through the supported Account integration rather than creating competing zones.
+- Account owns identity, keys, the backing AWS account record/provisioning,
+  verified Prism cross-account service readiness and bootstrap-manifest output.
+- Environment owns setup plans, DNS/hosted-zone and certificate lifecycle, shared
+  API Gateway domain/usage-plan resources, non-secret environment defaults,
+  endpoint attachment coordination and installation readiness. Use the Account
+  manifest to select the authorized AWS account; do not write domain/certificate
+  state back into Account.
 - Marketplace owns catalog/bundle discovery, review and publication.
 - Deploy owns execution of validated deployment artifacts once available. Preserve
   its current stateless SigV4 run/status contract.
@@ -45,11 +46,13 @@ show commands with `AWS_PROFILE=<selected-profile>`, never a personal profile.
 
 Discover Account's bootstrap-manifest operation (the reference uses
 `GET /accounts/{account_id}/bootstrap-manifest`) and validate the supported schema.
-Require identity, AWS account, domain/zone, a certificate for the selected region,
-service-key identifier when the target routing contract requires it, deployment
-regions and system-component coordinates. Refuse an incomplete or mismatched
-manifest before setup. Retrieve secret material only through authorized Account
-operations into the approved local secret channel.
+Require Account identity, backing AWS account, access-readiness evidence,
+service-key identifier when the target routing contract requires it, supported
+deployment constraints and system-component coordinates. Collect the desired
+domain/region and proof of domain authority as Environment inputs, then create or
+adopt compatible zone/certificate resources through Environment. Refuse an
+incomplete or mismatched manifest before setup. Retrieve secret material only
+through authorized operations into the approved local secret channel.
 
 Resolve valid Marketplace bundles and pin component, bundle and artifact identity
 for the plan. Validate size, safe archive paths, component/type, Build manifest,
@@ -61,7 +64,7 @@ Preserve verified non-secret output contracts used by existing products:
 
 | Output | Ownership / handling |
 | --- | --- |
-| Manifest-selected domain configuration SSM parameter | Environment writes resolved API Gateway domain handles; Account supplies zone/certificate identity |
+| Environment domain configuration SSM parameter | Environment writes and owns resolved zone, certificate and API Gateway domain handles |
 | `/account/shared-usage-plan-id` or verified manifest override | Environment creates/discovers one supported shared plan and binds the Account key; products attach their own stages |
 | `/account/env-parameters` or verified manifest override | Environment stores non-secret shared handles/defaults; never keys or signed URLs |
 
@@ -73,8 +76,8 @@ requirement to force API-key usage onto a SigV4-only Deploy implementation.
 1. **Plan:** read and validate Account/Marketplace inputs, check target scope,
    inspect artifacts and show pinned versions, intended resources and non-secret
    parameter names. Planning and dry-run perform no provisioning writes.
-2. **Shared routing:** create or reuse supported API Gateway domain and shared
-   usage-plan resources from existing domain/certificate inventory. Preserve
+2. **Shared routing:** create or adopt compatible Environment-owned DNS,
+   certificate, API Gateway domain and shared usage-plan resources. Preserve
    stage/key binding ownership and published handles; verify existing resources
    agree with account, domain and region before adopting them.
 3. **First Deploy install:** use the operator-run Bootstrap adapter only for the

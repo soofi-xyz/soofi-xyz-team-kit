@@ -21,6 +21,10 @@ events → DEV `quiq-to-lexicon` → DEV Persist load and scoped export → DEV 
 
 In Copilot, select `soofi-xyz-team-kit:<agent>`. In Codex, request the named custom agent.
 
+Setting up an AWS account for Prism? Start with the
+[Account onboarding guide](./docs/account-onboarding.md) and Blissey; use
+Kangaskhan only when Account behavior is missing or broken.
+
 ## Product agents
 
 <!-- product-catalog:start -->
@@ -28,7 +32,7 @@ In Copilot, select `soofi-xyz-team-kit:<agent>`. In Codex, request the named cus
 | Product | What it does | Build and maintain | Configure and test |
 | --- | --- | --- | --- |
 | **Documentation** | Documentation publishes product documentation and serves a configurable developer portal with API references, guides and interactive examples. | [`unown`](./agents/unown.md) | [`togetic`](./agents/togetic.md) |
-| **Account** | Account manages identities, keys, provisioning, domains and maintenance access. | [`kangaskhan`](./agents/kangaskhan.md) | [`blissey`](./agents/blissey.md) |
+| **Account** | Account manages Prism identities and keys, guides Prism-managed or client-owned AWS setup, creates or adopts the backing account, verifies Prism service access and emits bootstrap manifests. | [`kangaskhan`](./agents/kangaskhan.md) | [`blissey`](./agents/blissey.md) |
 | **Console** | Console renders reusable authenticated applications from governed, versioned UI configurations. | [`chandelure`](./agents/chandelure.md) | [`vivillon`](./agents/vivillon.md) |
 | **Environment** | Environment prepares tenant environments, shared routing and initial product installations. | [`torterra`](./agents/torterra.md) | [`shaymin`](./agents/shaymin.md) |
 | **Marketplace** | Marketplace catalogs products and reviews, publishes and rolls back bundles. | [`regigigas`](./agents/regigigas.md) | [`registeel`](./agents/registeel.md) |
