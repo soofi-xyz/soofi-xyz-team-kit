@@ -35,6 +35,12 @@ authoring anything. Build a bounded shortlist from facts the model actually
 contains; three to seven suggestions is normally enough to expose useful choices
 without treating every property as a KPI.
 
+Inventory graph properties, external properties and derived indexes separately.
+Indexes may support reads but are not canonical source properties. Prefer explicit
+event classes, event timestamps and enums; if only names/descriptions imply an
+event, label the candidate `event-like` and require confirmation rather than
+asserting event semantics.
+
 Safe candidate shapes include:
 
 - counts of vertices/entities in a defined population;
@@ -67,6 +73,20 @@ refines it. Preserve that selection separately, then normalize and generate only
 the selected candidate. Do not turn the whole shortlist into canonical metric
 configuration.
 
+## Bind selection to the proposal
+
+Give each discovery result a proposal revision and bind it to the model release
+ID and SHA-256 digest. Selection must carry the candidate ID and proposal revision.
+Reject stale selections after the model, candidate inventory or support
+classification changes. Selection confirms the intended business meaning and
+authorizes configuration generation only; it does not approve validation,
+publication, activation or materialization.
+
+Keep contract fit deterministic. A model may rank business plausibility, but it
+must choose only among opaque references and enums produced by validated model and
+metric-package adapters. Never let free-form descriptions create properties,
+paths, enum/status values, calculations or dimensions.
+
 ## Normalize the KPI
 
 Collect:
@@ -87,6 +107,22 @@ Collect:
 
 This normalized intent is an analysis record. Do not present it as a Model API
 payload unless the discovered API defines that wire contract.
+
+## Resolve model and metric adapters
+
+The builder workflow keeps two extension points explicit:
+
+- a governed-model adapter verifies release identity/digest and exposes typed
+  classes, properties, relationships, enums, events and validated directed paths
+  as opaque references;
+- a metric-package adapter reports supported calculations/scopes/grains/dimensions,
+  classifies exact reuse versus family-only/blocked candidates, invokes the
+  family-owned generator and validator, and checks a pinned consumer revision.
+
+Do not collapse these into one generic payload assembled by model output. The
+current payment financial v2 adapter is exact-reuse/activation-only against the
+observed Persist compiler. Other packages may support new definitions only when
+their own schema, generator and pinned consumer explicitly prove that capability.
 
 ## Find the Base Metrics family
 
@@ -175,10 +211,12 @@ Generate, never copy or hand-edit, plans, family metadata, counts and digests.
 
 The current Persist payment runtime accepts the approved v2 financial release,
 strictly decodes the generated plan, cross-checks compatibility fields and
-materializes the code-owned payment definition set through shadow rebuild,
-reconciliation and activation. This is payment-family support, not a generic
-Base Metrics interpreter. Verify this boundary again in the selected consumer
-revision.
+materializes the closed code-owned payment definition set through shadow rebuild,
+reconciliation and activation. Its configurable surface is a sorted, unique,
+non-empty `dev_activation_allowlist.metric_ids` subset of existing catalog-backed
+IDs. It does not support new financial definitions, selectors, traversals or
+plans. This is payment-family support, not a generic Base Metrics interpreter.
+Verify this boundary again in the selected consumer revision.
 
 ## Classify support
 
@@ -198,7 +236,7 @@ requested KPI exists.
 
 ## Generate, validate and govern
 
-For a supported new definition:
+For an executable package that explicitly supports a new definition:
 
 1. Add or change only fields owned by the selected package.
 2. Run its generator.
@@ -211,6 +249,12 @@ For a supported new definition:
 7. Read back the reviewed immutable release and compare digests.
 8. Treat activation/materialization as a separate Persist-owned operation.
 
+For current payment financial v2 configuration, skip new-definition authoring:
+select existing immutable IDs, validate the sorted/unique/non-empty activation
+allowlist against the approved catalog, run the official generator unchanged and
+verify the pinned Persist revision. Unknown IDs, empty lists and hand-edited
+generated plans, matrices, counts or digests fail closed.
+
 If no Model API exists, artifact validation remains local evidence only. Leave
 publication pending and hand the missing API capability to Dialga; never replace
 it with direct canonical source, S3 or SSM writes.
@@ -219,12 +263,16 @@ it with direct canonical source, S3 or SSM writes.
 
 - Exact reuse: a KPI semantically identical to an existing operation returns its
   immutable definition identity without a duplicate.
-- Supported variant: a family-supported calculation or time behavior generates
-  through one executable package and passes consumer compatibility.
+- Current payment activation: selected existing metric IDs produce a sorted,
+  unique, non-empty allowlist; unknown, duplicate and empty selections fail.
+- Supported variant: only a package/consumer that explicitly permits a new
+  definition may generate one and prove consumer compatibility.
 - Family-only: a non-financial KPI maps to a Base Metrics family but stays
   `partial` when no executable package/runtime exists.
 - Invalid: an unknown graph reference, discontinuous path, unsupported
   calculation or composite ratio fails before publication.
+- Boundary: configuration without revision-bound selection, stale proposal
+  digests and prompt-injection text that attempts to introduce references fail.
 - Recovery: unchanged input regenerates byte-identical plans/releases and stable
   digests; hand-edited generated data fails closed.
 - Lifecycle: validation, publication, activation and observed materialization

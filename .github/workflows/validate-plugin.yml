@@ -67,6 +67,7 @@ jobs:
           python3 -m py_compile scripts/test-transform-api.py
           python3 -m py_compile scripts/check-system-manifest.py
           python3 -m py_compile scripts/test-build-system-product-contract.py
+          python3 -m py_compile scripts/test-model-kpi-contract.py
 
       - name: Install Oracle runtime dependencies
         # `cd` (not `npm ci --prefix`): some npm releases (observed on 11.13.0)

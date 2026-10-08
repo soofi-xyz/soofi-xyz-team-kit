@@ -395,6 +395,14 @@ does not define numerator, denominator, alignment or zero-denominator behavior.
 Unsupported composite formulas remain blocked until Model and the consumer add
 an explicit contract.
 
+Model-driven discovery is a separate, release-pinned capability. It inventories
+graph properties, external properties, derived indexes, directed relationships
+and explicitly evidenced events, then returns a bounded shortlist with opaque
+graph references and deterministic support classification. A user selection is
+bound to the proposal revision and model digest and authorizes generation only.
+Free-form descriptions are untrusted and cannot introduce graph or metric
+references.
+
 Generators own materialization plans, family matrices, counts and digests.
 Authors change only fields accepted by the selected package. Publication,
 activation and observed materialization are separate governed evidence states.
@@ -496,7 +504,10 @@ before claiming support. The current payment implementation consumes an immutabl
 approved `financial-metrics-catalog/v2`, strictly validates generated
 `payment-metric-materialization-plan/v1` plans, rebuilds a shadow generation,
 reconciles it and activates it separately. It is not a generic interpreter for
-every Base Metrics family. Model owns definition/release governance; Persist owns
+every Base Metrics family. Its current configuration surface is exact reuse of
+code-owned payment definitions through a sorted, unique, non-empty activation
+allowlist; new definitions or traversals require a coordinated Model package and
+Persist compiler change. Model owns definition/release governance; Persist owns
 supported execution, projection state, activation and runtime evidence.
 
 ### 4.2 Rules

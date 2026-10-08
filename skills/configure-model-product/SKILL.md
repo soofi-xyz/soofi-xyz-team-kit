@@ -37,18 +37,22 @@ When a user defines a KPI or asks what can be measured, read the
 Finance is one configuration family; do not assume every KPI is financial or
 force it into the payment financial-metrics package.
 
-1. Pin the selected Lexicon release and inspect its classes, typed properties,
-   directed relationships and event facts together with Base Metrics
-   family/operation catalogs, approved executable packages and digests.
+1. Pin the selected Lexicon release and digest. If no Model API release exists,
+   accept a user-supplied artifact for analysis only and keep submission/publication
+   pending. Inventory classes, graph properties, external properties, derived
+   indexes, directed relationships and explicitly evidenced events separately,
+   together with Base Metrics family/operation catalogs, approved executable
+   packages and consumer revisions.
 2. For an open-ended request, derive only a small, bounded set of KPI hypotheses
    from exact model evidence. For each one show a suggestion ID, business decision,
    population/root, graph path, family/operation match, executable support,
    confidence and assumptions. Confidence reflects schema/runtime evidence, not
    business importance. Suggestions are analysis records, not configuration.
-3. Ask the user to select or refine a suggestion. Do not generate configuration
-   from an unapproved suggestion. Then normalize the selected intent: decision,
-   population, measure, calculation, numerator/denominator when applicable,
-   exclusions, unique item, unit, output type, time behavior, business
+3. Ask the user to select or refine a suggestion, recording the proposal revision
+   and model digest. Reject stale or unbound selection, and do not generate
+   configuration from an unapproved suggestion. Then normalize the selected
+   intent: decision, population, measure, calculation, numerator/denominator when
+   applicable, exclusions, unique item, unit, output type, time behavior, business
    time/timezone, coverage, scope, grain and dimensions.
 4. Search for exact semantic reuse, then match the selected KPI to an existing
    base family by graph source/path, unique item and valid calculation. Select an
@@ -66,6 +70,13 @@ force it into the payment financial-metrics package.
    fields, generated evidence and runtime compatibility. Require confirmation
    before validation and separate confirmation before governed publication or
    activation. Verify immutable release/read-back digests.
+
+For the currently observed payment financial v2/Persist contract, configure by
+exactly reusing existing code-owned metric IDs. The supported configurable surface
+is a sorted, unique, non-empty catalog-backed activation allowlist; it is not a
+license to author new financial definitions, selectors, elections, plans, matrix
+entries, counts or digests. Hand new reusable Model capability to Dialga and
+Persist compiler/runtime support to Conkeldurr.
 
 Return this proposal:
 

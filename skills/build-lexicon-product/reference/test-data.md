@@ -14,13 +14,18 @@ before preparing a real model change. Never invent production enum evidence.
 | Governed changes | Approved, rejected and stale candidate revisions with fake review integration | Only supported approved revision proceeds; fake approval remains marked as mocked |
 | Ruleset definitions | One rule and query referencing fixture labels; missing query and unknown-label variants | Catalog/reference checks pass or reject predictably without invoking Rule evaluation |
 | Language/mappings | Two registered fixture languages and one Silvally-authored directional mapping | Missing reverse direction, schema/digest mismatch and missing graph bindings reject correctly |
-| KPI metric configuration | Exact existing operation; supported executable-family variant; generic family without an executor; unsupported ratio or graph reference | Reuse/family/support classification is correct, generated artifacts are deterministic and publication is not presented as activation/materialization |
+| KPI discovery | Unrelated model with numeric, enum, temporal, direct-edge and explicitly evidenced event facts; prompt-injection text in descriptions | Suggestions use only validated opaque references, distinguish external properties/indexes/events, and report deterministic support separately from business plausibility |
+| KPI selection | Current proposal revision/digest; missing selection; stale revision after model change | Only a revision-bound explicit selection can proceed to generation; selection is not publication or activation approval |
+| KPI metric configuration | Exact existing payment operation and activation subset; generic family without an executor; unsupported ratio, graph reference or new payment definition | Existing IDs produce a sorted/unique/non-empty allowlist; family-only/blocked classification is correct, generated artifacts are deterministic and publication is not presented as activation/materialization |
 | Release compatibility | Compatible addition, breaking removal and interrupted publication | Active release never points at a partial or incompatible artifact set; read-back hashes match |
 
 Use the current target validators to materialize JSON, manifests and query files;
 these scenarios do not define a replacement wire schema. Compute real fixture
 hashes. Mock review delivery, artifact storage and consumer compatibility probes
 first; keep Persist, Rule and Transform execution separate from Model validation.
+Regenerate unchanged inputs twice and compare bytes/digests. Reject unknown,
+reversed or discontinuous graph references, invented enum/status values, duplicate
+or empty payment activation IDs and any hand-edited plan, matrix, count or digest.
 
 Run the deployed test API with controlled candidate data and fake external
 integrations; inspect API logs and publication workflows or resource logs for

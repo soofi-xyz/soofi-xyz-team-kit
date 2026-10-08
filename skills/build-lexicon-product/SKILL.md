@@ -41,15 +41,24 @@ Implement a two-stage governed workflow:
    return a bounded set of KPI suggestions. Every suggestion carries exact graph
    evidence, a Base Metrics family/operation match, executable-family and consumer
    support, confidence, assumptions and `measurable | partial | blocked`.
-2. **Configure** — accept only a user-selected suggestion, normalize its business
-   semantics and generate configuration through one discovered executable family's
-   current authoring schema and generator.
+2. **Configure** — accept only a user selection bound to the proposal revision and
+   model digest, normalize its business semantics and generate configuration
+   through one discovered executable family's current authoring schema and
+   generator. A selection authorizes generation, not publication or activation.
 
 Keep suggestions as non-canonical analysis records. A model can prove that a
 calculation is structurally measurable; names and descriptions alone cannot prove
 business priority or approval. Require explicit selection before configuration,
 separate confirmation before publication and separate activation through the
 consumer-owned workflow.
+
+Keep validated model references behind a governed-model adapter and package/runtime
+capabilities behind a metric-package adapter. Give model reasoning only opaque
+validated reference IDs or generated enums; descriptions remain untrusted text and
+cannot create graph references. The package adapter owns exact reuse classification,
+source validation, deterministic generation and pinned-consumer compatibility.
+Current payment financial v2 support is exact-reuse/activation-only unless the
+selected Persist compiler proves support for a broader definition.
 
 Validate every referenced class, property, edge direction, path, type, calculation,
 time behavior, scope, grain, dimension, unit and deduplication identity against the
