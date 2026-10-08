@@ -21,6 +21,10 @@ events → DEV `quiq-to-lexicon` → DEV Persist load and scoped export → DEV 
 
 In Copilot, select `soofi-xyz-team-kit:<agent>`. In Codex, request the named custom agent.
 
+Setting up an AWS account for Prism? Start with the
+[Account onboarding guide](./docs/account-onboarding.md) and Blissey; use
+Kangaskhan only when Account behavior is missing or broken.
+
 ## Product agents
 
 <!-- product-catalog:start -->
