@@ -1,5 +1,13 @@
 # Transform — Multilingual Implementation PRD
 
+Support SQL conversion and the distinct
+[non-deterministic extraction phase](non-deterministic-extraction.md). For that
+phase, resolve a versioned configuration selecting a Bedrock model, extraction
+instructions and output JSON Schema, accept string input, and use the TypeScript
+AI SDK worker to produce validated JSON. Implement its versioned HTTP contracts
+in the target product; the v2 request, schema and Glue architecture below specify
+the existing SQL path and do not already accept extraction configurations.
+
 Implement a Python/PySpark service that converts between **registered data
 languages** using governed SQL configuration. Require explicit `from` and `to`.
 Support Parquet, JSONL, CSV and Excel on both sides, with tabular and graph
@@ -189,6 +197,18 @@ pair failures. A new compatible pair must work through registration alone.
 Report implementation/deployment gaps as evidence, not product restrictions.
 Use [AWS workflow](aws-workflow.md) for explicit baseline limits and recovery
 behavior. Local tests and synthesis do not establish live deployment status.
+
+## 8. Non-deterministic extraction increment
+
+Follow [the extraction phase contract](non-deterministic-extraction.md) and the
+capability map's `non-deterministic-extraction` feature. Deliver configuration
+validation/registration/read-back, string-input submission/status/results,
+configuration pinning, Bedrock invocation with the AI SDK, structured output
+validation and usage/failure reporting in one usable increment. Keep model and
+schema selection in configuration and source data in the run input. Use a
+TypeScript worker for this phase; preserve the SQL resolver and Glue path.
+Verify configuration variants and saved-result replay, then complete the user's
+live run/AWS inspection checkpoint. Do not promise deterministic fresh inference.
 
 ## Configuration bundles
 
