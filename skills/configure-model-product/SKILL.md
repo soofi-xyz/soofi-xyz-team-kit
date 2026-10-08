@@ -37,26 +37,32 @@ When a user defines a KPI or asks what can be measured, read the
 Finance is one configuration family; do not assume every KPI is financial or
 force it into the payment financial-metrics package.
 
-1. Normalize the business intent: decision, population, measure, calculation,
-   numerator/denominator when applicable, exclusions, unique item, unit, output
-   type, time behavior, business time/timezone, coverage, scope, grain and
-   dimensions. This is an analysis record, not a new API wire schema.
-2. Pin the selected Lexicon release and inspect its graph vocabulary, Base
-   Metrics family/operation catalogs, approved executable metric packages and
-   digests. Search for exact semantic reuse before creating a candidate.
-3. Match the KPI to an existing base family by graph source/path, unique item
-   and valid calculation, then select an executable configuration family whose
-   temporal, scope, dimension and consumer contracts support it. Verify the
-   deployed consumer revision independently.
-4. Return `measurable` only when an existing definition can be reused or the
+1. Pin the selected Lexicon release and inspect its classes, typed properties,
+   directed relationships and event facts together with Base Metrics
+   family/operation catalogs, approved executable packages and digests.
+2. For an open-ended request, derive only a small, bounded set of KPI hypotheses
+   from exact model evidence. For each one show a suggestion ID, business decision,
+   population/root, graph path, family/operation match, executable support,
+   confidence and assumptions. Confidence reflects schema/runtime evidence, not
+   business importance. Suggestions are analysis records, not configuration.
+3. Ask the user to select or refine a suggestion. Do not generate configuration
+   from an unapproved suggestion. Then normalize the selected intent: decision,
+   population, measure, calculation, numerator/denominator when applicable,
+   exclusions, unique item, unit, output type, time behavior, business
+   time/timezone, coverage, scope, grain and dimensions.
+4. Search for exact semantic reuse, then match the selected KPI to an existing
+   base family by graph source/path, unique item and valid calculation. Select an
+   executable configuration family whose temporal, scope, dimension and consumer
+   contracts support it. Verify the deployed consumer revision independently.
+5. Return `measurable` only when an existing definition can be reused or the
    selected executable family supports the complete candidate. Return `partial`
    when Base Metrics identifies a family but no executable package/consumer
    exists. Return `blocked` for missing graph facts, unsupported formula,
    calculation, time behavior, scope, grain, unit or consumer capability.
-5. Generate only through the selected family's discovered authoring contract
+6. Generate only through the selected family's discovered authoring contract
    and generator. Never clone generated plans, invent generic metric fields,
    or treat a unit such as `PERCENT` as formula semantics.
-6. Present the matched family, exact reuse/new-version decision, authored
+7. Present the matched family, exact reuse/new-version decision, authored
    fields, generated evidence and runtime compatibility. Require confirmation
    before validation and separate confirmation before governed publication or
    activation. Verify immutable release/read-back digests.

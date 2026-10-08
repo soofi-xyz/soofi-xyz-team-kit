@@ -28,6 +28,45 @@ tests. A published Lexicon family is not proof that Persist executes it.
 Record the source revisions, release IDs, contract versions, artifact paths,
 byte lengths and SHA-256 digests used for the proposal.
 
+## Discover KPI candidates from a model
+
+When the user has not already defined one KPI, inspect the pinned model before
+authoring anything. Build a bounded shortlist from facts the model actually
+contains; three to seven suggestions is normally enough to expose useful choices
+without treating every property as a KPI.
+
+Safe candidate shapes include:
+
+- counts of vertices/entities in a defined population;
+- sum, average, minimum or maximum of a numeric property;
+- earliest/latest values when the model supplies the relevant temporal fact;
+- enum/status distributions and current-state counts when state semantics exist;
+- counts or existence checks over a direct directed edge;
+- counts over a short, explicit, continuous directed path;
+- event counts or rates only when event identity and event time are modeled.
+
+Do not derive metrics from PII merely because the fields exist. Do not infer
+business value from names or descriptions, invent joins or reverse an edge to
+make a candidate work. Avoid composite formulas unless a discovered executable
+family explicitly supports their operands, alignment and zero/error semantics.
+
+For every suggestion, report:
+
+- a stable suggestion ID scoped to this analysis;
+- KPI hypothesis and the business decision it could inform;
+- population/root class and exact graph/property evidence;
+- Base Metrics family and operation match;
+- executable package and consumer support;
+- `measurable | partial | blocked`;
+- confidence in schema/runtime support and the evidence behind it;
+- assumptions, ambiguities and facts still requiring business confirmation.
+
+Confidence is about model and runtime evidence, not business importance. A
+structurally measurable KPI is still only a suggestion until the user selects or
+refines it. Preserve that selection separately, then normalize and generate only
+the selected candidate. Do not turn the whole shortlist into canonical metric
+configuration.
+
 ## Normalize the KPI
 
 Collect:

@@ -30,6 +30,35 @@ Deliver the Model HTTP API while preserving verified Lexicon S3/SSM consumer con
 
 Keep Persist storage/validation execution with Conkeldurr/Uxie, Rule evaluation with Gallade/Meditite and Transform mapping execution with Kecleon/Silvally. Silvally authors concrete Transform configurations; Model owns shared definition validation and governed publication. Use Mew for vocabulary lookup/modeling advice without changing its retained specialist role.
 
+## Build model-driven KPI configuration
+
+When building KPI or metric capabilities, read
+[the KPI-to-metric configuration contract](../configure-model-product/reference/kpi-to-metric-configuration.md).
+Implement a two-stage governed workflow:
+
+1. **Discover** — accept a pinned model release and optional business objective,
+   inspect classes, typed properties, directed relationships and event facts, then
+   return a bounded set of KPI suggestions. Every suggestion carries exact graph
+   evidence, a Base Metrics family/operation match, executable-family and consumer
+   support, confidence, assumptions and `measurable | partial | blocked`.
+2. **Configure** — accept only a user-selected suggestion, normalize its business
+   semantics and generate configuration through one discovered executable family's
+   current authoring schema and generator.
+
+Keep suggestions as non-canonical analysis records. A model can prove that a
+calculation is structurally measurable; names and descriptions alone cannot prove
+business priority or approval. Require explicit selection before configuration,
+separate confirmation before publication and separate activation through the
+consumer-owned workflow.
+
+Validate every referenced class, property, edge direction, path, type, calculation,
+time behavior, scope, grain, dimension, unit and deduplication identity against the
+pinned model and package contract. Reject invented fields, discontinuous paths,
+unsupported formulas and hand-authored generated plans. Preserve model, family,
+package and consumer release identities and deterministic digests in every result.
+Return missing executable families or consumer support as a reproducible gap rather
+than extending the payment contract generically.
+
 ## Build each feature piece
 
 1. Select and order the capability map's logical features. Use at least four
