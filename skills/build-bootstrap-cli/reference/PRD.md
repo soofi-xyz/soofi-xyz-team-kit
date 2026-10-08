@@ -133,3 +133,10 @@ adapters. Give the user one invocation and at most three AWS inspection steps
 for every piece; wait for observed feedback before implementing the next piece.
 Distinguish local tests, synthesis, deployed mocked execution and authorized live
 resources. Finish with cumulative selected-feature acceptance and explicit gaps.
+
+## Configuration bundles
+
+Follow [the shared configuration-bundle contract](../../build-product-deployer/reference/configuration-bundles.md).
+Install the Deploy-owned shared provider per target account/region, without depending on it for its own installation. Verify provider contract, service discovery, scoped permissions and target API prerequisites before configuration readiness. Keep ongoing adapter operation with Deploy.
+Treat these additions as required scope to verify in the target revision, not as
+proof that provider support or the target API lifecycle is already deployed.

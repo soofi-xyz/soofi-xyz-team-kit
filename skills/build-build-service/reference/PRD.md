@@ -914,7 +914,7 @@ In the implementation, `scripts/smoke.sh --skip-codebuild <stage>` runs the chec
 8. **DynamoDB repositories**: build runs, events, reports.
 9. **CDK stacks**: DataStack, WorkflowStack, BuildStack, with least-privilege IAM and shared usage-plan attachment.
 10. **OpenAPI generator**: route definitions drive `scripts/generate-openapi.ts`; generated spec checked in.
-11. **Fixtures**: valid CDK service, valid CDK data bundle, raw-lambda violation, legacy Serverless artifact, unsafe zip paths.
+11. **Fixtures**: valid CDK service, valid CDK configuration bundle (`DATA` wire type), raw-lambda violation, legacy Serverless artifact, unsafe zip paths.
 12. **Smoke/integration tests**: deployed Build API exercise happy path and the two failure fixtures.
 
 ---
@@ -936,3 +936,10 @@ A re-implementation is complete when:
 - All Lambdas in the Build service itself use `nodejs24.x`, ARM64, ESM bundling, minification, and the `createRequire` banner.
 - IAM follows least privilege; CodeBuild cannot deploy CloudFormation and API handlers cannot mutate artifacts outside their route contracts.
 - All structured logs and metrics include `build_id`, `transaction_id`, `component_id`, and `phase`, with secrets redacted.
+
+## Configuration bundles
+
+Follow [the shared configuration-bundle contract](../../build-product-deployer/reference/configuration-bundles.md).
+Preserve the supported CDK assembly and DATA wire value. Validate configuration assets and shared-provider references; changing only configuration must change the affected payload identity. Build never applies the configurations.
+Treat these additions as required scope to verify in the target revision, not as
+proof that provider support or the target API lifecycle is already deployed.

@@ -401,3 +401,8 @@ This install does not deliver catalog graph facts to Persist yet: the
 Marketplace account has no Persist or `socap-engagement-events` bus. Do not
 report catalog changes as persisted, and expect `demo.sh`'s Persist check to
 fail until that is connected.
+
+## Configuration bundles
+
+Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
+Publish through the existing workflow, verify provider/API review prerequisites and hand installation to Skarmory; do not bypass review.

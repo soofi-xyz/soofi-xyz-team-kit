@@ -37,7 +37,7 @@ Kangaskhan only when Account behavior is missing or broken.
 | **Environment** | Environment prepares tenant environments, shared routing and initial product installations. | [`torterra`](./agents/torterra.md) | [`shaymin`](./agents/shaymin.md) |
 | **Marketplace** | Marketplace catalogs products and reviews, publishes and rolls back bundles. | [`regigigas`](./agents/regigigas.md) | [`registeel`](./agents/registeel.md) |
 | **Build** | Build turns validated source into portable deployment artifacts with provenance. | [`tinkaton`](./agents/tinkaton.md) | [`metang`](./agents/metang.md) |
-| **Deploy** | Deploy installs products and keeps subscribed components updated. | [`corviknight`](./agents/corviknight.md) | [`skarmory`](./agents/skarmory.md) |
+| **Deploy** | Deploy installs products and configuration bundles through a shared installer and keeps subscribed components updated. | [`corviknight`](./agents/corviknight.md) | [`skarmory`](./agents/skarmory.md) |
 | **Model** | Model governs vocabulary, definitions and compatible artifact releases. | [`dialga`](./agents/dialga.md) | [`jirachi`](./agents/jirachi.md) |
 | **Transform** | Transform converts registered source languages into target languages. | [`kecleon`](./agents/kecleon.md) | [`silvally`](./agents/silvally.md) |
 | **Persist** | Persist ingests and queries graph facts, maintains derived indexes and triggers, and owns lexicon-governed vector search composed through GraphQL. | [`conkeldurr`](./agents/conkeldurr.md) | [`uxie`](./agents/uxie.md) |
@@ -46,6 +46,19 @@ Kangaskhan only when Account behavior is missing or broken.
 | **System** | System orchestrates business outcomes through reusable configured flows. | [`zygarde`](./agents/zygarde.md) | [`celebi`](./agents/celebi.md) |
 
 <!-- product-catalog:end -->
+
+## Configuration bundles
+
+Use configuration bundles to install versioned Transform, Connect and System
+configurations through a shared Deploy-owned provider. Corviknight builds the
+installer; Skarmory operates it. Build packages configuration assets and provider
+references, Marketplace reviews and publishes them, and Environment installs the
+shared provider. Each target product keeps ownership of its configuration API.
+
+Read the [configuration-bundle contract](./skills/build-product-deployer/reference/configuration-bundles.md)
+for ownership, lifecycle and synthetic acceptance. These instructions define build
+scope, not deployed support. Preserve `DATA` wherever existing wire contracts
+require it; configuration bundles do not carry their own installer Lambda.
 
 ## Installation and updates
 

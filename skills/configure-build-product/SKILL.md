@@ -474,3 +474,8 @@ creation, not publication or installation.
 Return configuration changes, redacted identifiers, API/read-back results,
 automated and user/AWS evidence, mocked/live status, cleanup and builder
 handoffs.
+
+## Configuration bundles
+
+Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
+Verify configuration assets, wire compatibility and shared-provider references; hand source changes to owners and installer gaps to Corviknight.

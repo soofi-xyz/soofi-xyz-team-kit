@@ -44,3 +44,8 @@ and run.
 
 Return pair/mapping versions, diff, field-level results, output pointers,
 measured cost where available, human observations and outstanding defects.
+
+## Configuration bundles
+
+Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
+Author pinned mapping payloads under existing validation gates; installer success does not establish mapping readiness.

@@ -23,3 +23,10 @@ Verify a negative request cannot create unwanted state before asking the person
 to submit it. Missing artifacts/access leave the affected checkpoint pending.
 Discover the actual execution surface: synchronous API logs are sufficient where
 no Step Functions workflow exists. Do not invent endpoints or waive review gates.
+
+Apply the [configuration-bundle contract](../../../build-product-deployer/reference/configuration-bundles.md)
+inside component registration, publication, review and prior-release selection.
+Exercise supported wire-type consistency, missing/incompatible provider or target
+API prerequisites, terminal configuration read-back and failed application.
+Keep catalog rollback separate from configuration reversal; report review gaps
+rather than bypassing them.

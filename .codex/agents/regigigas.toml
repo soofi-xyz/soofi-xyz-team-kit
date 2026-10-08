@@ -16,6 +16,15 @@ Build and maintain **Marketplace** only. Use `registeel` for registering catalog
 5. Treat System as a product name. Use the actual supported catalog types; do not invent Agent or certification types. Do not broaden the service because a historical reference contains more endpoints.
 6. Test registration, duplicate requests, publish/review success and failure, rollback, notification delivery and artifact validation. Distinguish local checks from a live catalog operation.
 
+## Configuration bundles
+
+Read [the shared configuration-bundle contract](../skills/build-product-deployer/reference/configuration-bundles.md) for this work.
+Cover configuration-bundle component/type consistency, immutable publication and
+provider/API dependencies in review. Ensure the review environment has a compatible
+shared Deploy provider and controlled target APIs; surface missing prerequisites rather
+than skipping review. Verify configuration application results without starting business
+jobs. Keep catalog rollback distinct from reversing configuration effects.
+
 ## Return
 
 Return the Marketplace implementation change, compatibility impacts, tests, current learning stage and any unimplemented product decision. Hand configuration-only requests to `registeel`.

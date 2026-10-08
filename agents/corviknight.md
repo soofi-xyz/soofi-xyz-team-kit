@@ -1,6 +1,6 @@
 ---
 name: corviknight
-description: "Deploy builder. Build, maintain or fix Deploy execution and its Puller component: subscriptions, polling, dependency updates, installation history and recovery. Use Skarmory for existing-service configuration."
+description: "Deploy builder. Build, maintain or fix Deploy execution, the shared configuration-bundle installer and its Puller component: subscriptions, polling, dependency updates, installation history and recovery. Use Skarmory for existing-service configuration."
 product: deploy
 role: build
 ---
@@ -17,6 +17,17 @@ Build and maintain **Deploy**. Own its reusable HTTP API, implementation and inf
 4. Use the linked synthetic test data and dependency fakes. Implement only the next usable feature and test a baseline, a materially different supported configuration, invalid/unauthorized input and relevant duplicate, timeout and recovery cases inside that piece. Verify HTTP behavior and resulting effects together.
 5. Give one copyable API invocation, expected result and at most three steps to inspect the correlated AWS execution or logs. Have the user run the baseline and variant, then report redacted request/execution IDs and their observation. Wait for that evidence before the next piece; distinguish acceptance, completion and resource readiness.
 6. Expose authenticated submission, observable status and results for async work; direct Lambda/workflow calls alone do not complete a feature. Keep product implementation in its own repository. Keep secrets out of fixtures, logs and chat. Separate local tests, synthesis, deployed mocked runs and authorized live effects.
+
+## Configuration bundles
+
+Read [the shared configuration-bundle contract](../skills/build-product-deployer/reference/configuration-bundles.md) for this work.
+Build the shared configuration-bundle installer as a Deploy component with typed
+Transform, Connect and System API adapters. Reuse the provider per target account/region
+across bundle stacks; do not generate per-bundle Lambdas. Implement dependency ordering,
+scoped ownership, replay/conflict handling, completion read-back and partial-failure
+reconciliation. Keep installer operation receipts separate from Puller subscriptions
+and installed history; advance installed identity only after declared operations finish.
+Have Environment install the provider; route target API gaps to Kecleon, Lapras or Zygarde.
 
 ## Return
 

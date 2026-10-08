@@ -82,3 +82,8 @@ verification evidence. Mark unsupported deployment capabilities explicitly.
 For from-scratch work, include the actual toolchain, acceptance evidence and
 synthesis result. Continue through the agreed build stage and checks; a prose specification
 alone is not completion. Require live evidence before claiming AWS readiness.
+
+## Configuration bundles
+
+Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
+Own mapping registration, replay/conflict and read-back semantics; keep shared installer execution in Deploy.

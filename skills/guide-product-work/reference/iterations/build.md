@@ -33,3 +33,10 @@ and wait for that feedback before implementing or configuring the next piece.
 Keep local tests, synthesis, deployed mocked execution and live effects distinct.
 
 Keep Marketplace publication/review with Regigigas/Registeel and deployment execution with Corviknight/Skarmory. A successful build proves artifact creation, not publication or installation.
+
+Apply the [configuration-bundle contract](../../../build-product-deployer/reference/configuration-bundles.md)
+inside source validation, assembly and provenance. Compare two configuration
+revisions using the same provider, verify hashed payloads and parameterized shared
+provider references, and reject per-bundle installer code. Preserve DATA as the
+supported wire value. Verify this additional coverage in the target; the existing
+feature evidence does not establish shared-provider support.

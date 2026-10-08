@@ -2,7 +2,7 @@
 
 Use Zygarde for framework capabilities and Celebi for supported configurations.
 Apply the [shared workflow](../../SKILL.md) to the scoped dependency plan. These
-seven capability areas are a starting inventory; a feature may need several
+eight capability areas are a starting inventory; a feature may need several
 increments. Scenario families and the four fixture configurations are test
 coverage, not a count of implementation pieces.
 
@@ -15,6 +15,7 @@ coverage, not a count of implementation pieces.
 | `retry-policy` — recover a failed step | Executable flows | Deliver scoped configurable retries, timeouts and catches; configure a transient mock failure and an exhausted retry case. | Inspect actual attempts/backoff, timeout/catch and terminal cause; verify successful recovery and bounded failure. |
 | `waterfalls` — try another flow | Reusable flows and failure propagation | Deliver ordered primary/fallback attempts; configure fallback success and all-failed cases. | Inspect both flow attempts, outputs and error logs; prove success stops further attempts and terminal failure is preserved. |
 | `invocation-lifecycle` — inspect and safely repeat a run | Template invocation; richer flows for coverage | Complete supported invocation status/result/correlation and replay behavior beyond the minimal first run; configure duplicate/repeated calls with stable identities. | Correlate request, execution and leaf logs; compare status/result and duplicate-write behavior. Verify supported lifecycle semantics before claiming replay support. |
+| `configuration-lifecycle` — install definitions for configuration bundles | Verified definition, template, flow and waterfall APIs | Deliver/verify stable registration identities, version/conflict behavior, pinned leaf references, read-back and supported retirement for Deploy's shared adapter. Keep bundle installation independent of a System business invocation. | Inspect stored references/revisions and invalid dependency rejection; register without invoking flows. Preserve separate mocked and real scenario readiness. |
 
 Order independent features by the requested outcome; lifecycle work can precede
 branching. Include core diagnostics in the first path rather than deferring all
@@ -24,3 +25,6 @@ validation, retry policy or other uncovered capabilities. Demonstrate each piece
 implement only that piece, then have the person invoke its framework configuration
 and inspect AWS before the next piece. Finish with cumulative acceptance of every
 selected feature before introducing real integrations within scope.
+
+For configuration-bundle work, follow [the shared installer contract](../../../build-product-deployer/reference/configuration-bundles.md).
+Keep the new lifecycle/provider requirements distinct from observed deployment support.

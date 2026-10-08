@@ -61,3 +61,8 @@ capabilities.
 
 Return configuration changes, redacted identifiers, API/read-back results,
 automated and user/AWS evidence, mocked/live status, cleanup and builder handoffs.
+
+## Configuration bundles
+
+Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
+Verify shared provider/API prerequisites through existing Environment operations before reporting configuration installation readiness.

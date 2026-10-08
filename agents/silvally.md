@@ -29,6 +29,15 @@ Use `skills/configure-transform-product/scripts/transform_api.py` with the API U
 
 Never write mappings to S3 or SSM directly. Each DEV write (`register`, `start`, `approve`) still requires its existing approval card. PROD stays read-only.
 
+## Configuration bundles
+
+Read [the shared configuration-bundle contract](../skills/build-product-deployer/reference/configuration-bundles.md) for this work.
+Author and validate the mapping payloads and pinned references for configuration
+bundles using the existing intake and production-derived readiness gates. Hand reviewed
+artifacts to the Build/Marketplace/Deploy owners; do not generate installer Lambdas or
+change Transform. Synthetic installer fixtures and successful registration do not replace
+mapping validation, canary/full-window evidence or authorize additional executions.
+
 ## Return
 
 Return the pair, configuration diff, publication status, field-level comparisons, output artifacts, costs when measured, learning progress and builder defects.

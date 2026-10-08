@@ -8,7 +8,7 @@ Do not commit generated ZIPs, cloud assemblies, credentials or signed URLs here.
 | Fixture | Contents / variant | Required observation |
 | --- | --- | --- |
 | Minimal service | Valid SERVICE manifest, lockfile and one parameterized no-asset CDK stack | Job submits through API and produces a portable assembly with terminal status |
-| Minimal data | Valid DATA manifest under the supported DATA contract | Same job API handles supported alternative type without inventing new bundle kinds |
+| Configuration bundle | Supported DATA manifest, configuration assets and custom-resource declarations referencing a shared provider; change one payload with unchanged service code | Portable assembly preserves payload digests and provider requirements, changes affected identity, contains no per-bundle Lambda and makes no target API calls |
 | Runtime asset | Small approved Lambda construct using a synthetic constant response | Final staged assets satisfy minification/obfuscation policy and exclude source maps |
 | Invalid archive | Separate traversal, oversized, malformed manifest, private-address source URL and command-hook cases | Reject before runner side effects; no source URL credentials in logs |
 | Failing source | Failing fixed test or prohibited account/VPC lookup | Terminal failure explains the stage; no deployment, tenant credentials or usable artifact |
