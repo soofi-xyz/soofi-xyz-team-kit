@@ -929,7 +929,7 @@
         46
       ],
       "status": "assigned",
-      "summary": "Transform converts registered source languages into target languages.",
+      "summary": "Transform converts registered source languages into target languages and extracts schema-validated JSON from strings using configured Bedrock models.",
       "agents": {
         "build": "kecleon",
         "configure": "silvally"
@@ -940,7 +940,8 @@
       },
       "notes": [
         "Resolve the spreadsheet test-only/configuration mismatch: Silvally authors and tests mappings; Kecleon owns engine implementation. Preserve test-only intent when the user only requests evaluation.",
-        "Own validation, immutable/versioned registration, read-back and lifecycle semantics for Transform configuration consumed by the shared Deploy installer. Kecleon handles API gaps; Silvally authors and validates mapping payloads under its existing readiness gates. Do not create per-bundle installer code."
+        "Own validation, immutable/versioned registration, read-back and lifecycle semantics for Transform configuration consumed by the shared Deploy installer. Kecleon handles API gaps; Silvally authors and validates mapping payloads under its existing readiness gates. Do not create per-bundle installer code.",
+        "Add non-deterministic extraction as a distinct Transform phase: immutable configuration selects an Amazon Bedrock model, extraction instructions and an output JSON Schema; a TypeScript worker uses the AI SDK to extract validated structured JSON from string input. Kecleon implements the versioned API/runtime capability; Silvally configures it only after deployed support is verified. Preserve the existing Spark SQL contract and production-derived mapping readiness gates. Follow skills/build-transform-product/reference/non-deterministic-extraction.md."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/transform.md"
     },

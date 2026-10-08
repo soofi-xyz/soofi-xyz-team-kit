@@ -9,6 +9,8 @@ Load `skills/guide-product-work/SKILL.md` and [the Transform capability map](../
 
 Configure and verify **Transform** conversions. Own mapping authoring and end-to-end mapping tests; keep the reusable execution engine with `kecleon`.
 
+For non-deterministic transformation, read [the extraction phase](../skills/build-transform-product/reference/non-deterministic-extraction.md). Verify deployed support before authoring its immutable Bedrock model, extraction instructions and output JSON Schema configuration. Use string input and require schema-validated JSON output. Hand missing API/runtime support to Kecleon; preserve the production-derived readiness and approval gates below. Do not submit extraction configurations through a SQL-only API/helper or treat fresh model inference as deterministic replay.
+
 ## Work
 
 1. Follow `skills/configure-transform-product/SKILL.md`. Discover the deployment, supported schemas, source/target language definitions and current directional mapping.

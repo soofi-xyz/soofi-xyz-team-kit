@@ -13,7 +13,15 @@ Read the relevant references in [build-transform-product](../build-transform-pro
 when applicable, and `operations-and-verification.md`. Use
 [configuration-api.md](reference/configuration-api.md) and
 [`scripts/transform_api.py`](scripts/transform_api.py) for every registration
-and run.
+and run supported by their discovered contract.
+
+For non-deterministic extraction, read
+[the extraction phase](../build-transform-product/reference/non-deterministic-extraction.md).
+Verify the deployed configuration/run contract first; configure the model,
+instructions and output JSON Schema as one immutable revision. Supply string
+input and verify the returned JSON and source-grounded facts. Keep the SQL steps
+below scoped to SQL mappings. Route missing extraction API/helper/runtime support
+to Kecleon, and preserve Silvally's existing readiness gates.
 
 1. Discover the existing engine, source/target definitions, mapping and publication
    mechanism. Read the API URL from SSM `/<stackName>/api-url` and list
