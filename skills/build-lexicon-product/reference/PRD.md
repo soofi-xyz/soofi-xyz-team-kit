@@ -17,8 +17,8 @@ The core artifact is `lexicon.json`: a reviewed graph ontology containing vertex
 - ruleset catalogs used by Rules and downstream decisioning products;
 - Interprose source schemas and snapshot-constrained schemas used by Translate and data-preparation jobs;
 - Interprose-to-Lexicon transform SQL artifacts;
-- governed financial metric packages with closed materialization plans, release
-  attestations, and reviewed activation allowlists;
+- governed data-model-driven KPI metric packages with closed materialization
+  plans, release attestations, and reviewed activation allowlists;
 - CloudWatch metric definitions used by products that emit platform metrics;
 - a read-only UI for humans to browse schemas, relationships, rules, and mappings.
 
@@ -44,15 +44,16 @@ The target deployment publishes these SSM parameters:
 | `/lexicon/interprose-snapshots-data-uri` | `s3://<LexiconDataBucket>/inteprose-snapshots.json` | Translate, mapping authors | Snapshot-constrained Interprose source schema; object key preserves the current reference spelling |
 | `/lexicon/interprose-transform-uri` | `s3://<LexiconDataBucket>/interprose/` | Translate, ETL builders | SQL transform prefix with `vertices/` and `edges/` children |
 | `/lexicon/cloudwatch-metrics-uri` | `s3://<LexiconDataBucket>/cloudwatch-metrics.json` | Dashboards, metric checks | Governed metric definitions |
-| `/lexicon/financial-metrics-catalog-uri` | Immutable approved-release document for the matching Lexicon release | Persist | Governed financial metric package, manifest and release attestation |
+| `/lexicon/financial-metrics-catalog-uri` | Immutable approved-release document for the matching Lexicon release | Persist | Current payment-catalog reference: governed metric package, manifest and release attestation |
 | `/lexicon/rule-query-artifacts-uri` | `s3://<LexiconDataBucket>/rule-query-artifacts.json` | Rules/tooling | Rule query artifact metadata |
 | `/lexicon/release-uri` | `s3://<LexiconDataBucket>/release.json` | Build, Marketplace, operators | Release metadata tying artifact digests to `lexicon_version_id` |
 
 Verify which parameters the target revision and deployment actually publish.
-The current Lexicon reference includes the Financial Metrics release chain; the
-target product MUST publish every governed source file through reviewed,
-immutable S3 artifacts and stable SSM discovery rather than requiring consumers
-to read the repository.
+The current Lexicon reference includes the payment Financial Metrics release
+chain. It proves one catalog contract, not a finance-only product boundary.
+The target product MUST enumerate and publish every supported model's governed
+metric catalogs through reviewed immutable artifacts and API discovery rather
+than requiring consumers to read the repository.
 
 ### 1.3 Non-goals
 
@@ -127,7 +128,7 @@ s3://<LexiconDataBucket>/
 |-- cloudwatch-metrics.json
 |-- rule-query-artifacts.json
 |-- release.json
-|-- financial-metrics-catalog/
+|-- financial-metrics-catalog/  # verified payment reference catalog
 |   `-- releases/<lexicon_version_id>/
 |       |-- manifest.json
 |       |-- approved-release.json
@@ -386,11 +387,11 @@ Each metric vertex type is the canonical metric name. Properties describe requir
 
 The registry is the source of truth for metric names and dimensions; CloudWatch itself is an operational sink, not the registry.
 
-### 3.5 Financial metric-materialization catalog
+### 3.5 Data-model-driven KPI metric-materialization catalogs
 
-Financial metric definitions are governed business data, separate from the
-CloudWatch observability registry. The current Lexicon reference keeps the
-authoritative payment package at:
+Business KPI metric definitions are governed data, separate from the CloudWatch
+observability registry. Model supports any compatible Lexicon data model; the
+current Lexicon reference keeps one authoritative payment example at:
 
 ```text
 src/data/financial-metrics/payment-financial-metrics.v2.json
@@ -400,8 +401,8 @@ Its validation, materialization-plan generation and release contracts live
 under `scripts/lib/financial-metrics/`. The generated immutable release attests
 the exact package and `lexicon.json` bytes, and
 `/lexicon/financial-metrics-catalog-uri` points to its approved release
-document. Verify the target revision and package contract before changing these
-paths or adding another domain.
+document. Verify each target model's package, generator, catalog and publication
+contract. Do not reuse this payment path as the default for another domain.
 
 Authority is ordered:
 
@@ -432,10 +433,15 @@ Unsupported requested outputs are returned under `Cannot Be Generated`; the
 agent never invents an enum value, formula, attribution, precedence, timezone,
 currency conversion, route, or runtime capability.
 
+Inspect each target model for meaningful vertex/entity, edge/relationship,
+immutable-event, numeric-property, enum-member, current/as-of, first/latest,
+presence/missingness and path/cohort families. These are candidate categories,
+not a requirement to publish every structurally possible metric.
+
 #### Definition contract
 
-Use the target package schema exactly. The current payment v2 definition
-contract includes:
+Use the target package schema exactly. Every delivered definition resolves the
+concepts below; the current payment v2 definition contract is one implementation:
 
 - stable metric ID, immutable definition version, business name, family and
   catalog contract;
@@ -490,6 +496,16 @@ For example, a DSA payment metric must elect the applicable
 `company_represents_debt` relationship as of payment business time before
 following `debt_has_payment`. A current debt index cannot establish historical
 attribution.
+
+#### Metric delivery
+
+When metric delivery is requested, Jirachi converts approved `VALID`
+suggestions into the target package, runs its generator and validator, submits
+the candidate through the Model API, preserves review/version gates, publishes
+the immutable catalog and reads back metric/catalog identity plus artifact
+digests. `SUGGESTED`, `DELIVERED`, and `MATERIALIZED` are distinct states.
+Missing API or reusable catalog support remains a Dialga builder gap; direct
+source, S3, SSM or graph writes do not substitute for delivery.
 
 #### Materialization boundary
 
@@ -650,7 +666,9 @@ All Lexicon changes are source changes. A change may update one or more of:
 - `src/data/lexicon.json`;
 - `src/data/rulesets/**`;
 - `src/data/cloudwatch-metrics.json`;
-- `src/data/financial-metrics/**` and its validation/generation contracts;
+- every governed metric-catalog package and its validation/generation
+  contracts; the current payment reference is under
+  `src/data/financial-metrics/**`;
 - `src/data/rule-query-artifacts.json`;
 - `src/data/interprose*.json`;
 - `src/transform/interprose/**`;
@@ -676,7 +694,7 @@ Reviewers enforce:
 - legal/compliance review for contactability rules;
 - question/source evidence, canonical attribution, once-only identity,
   deterministic election, time, units, coverage and complete triggers for
-  financial metric definitions;
+  KPI metric definitions;
 - no numeric × enum × path Cartesian generation or duplicate path attribution;
 - generated closed plans and package-owned activation allowlists remain in sync
   with their validated source definitions;
@@ -724,7 +742,7 @@ Minimum suites:
 | `ruleset-structure` | catalog entries, manifest paths, split rule/query files, rule order, docs excluded from deployable prefix |
 | `ruleset-integration` | rule Gremlin references against Lexicon labels/properties/indexes, status-event ordering, account/phone scope semantics |
 | `cloudwatch-metrics-data` | metric list, dimensions, enum values, no edge relationships |
-| `financial-metrics-catalog` | package/release attestation, graph-reference validation, meaningful family contract, generated plan parity, elections/tie-breakers, coverage, triggers, typed outputs and activation allowlist |
+| `metric-materialization-catalog` | data-model-driven suggestion/delivery, package/release attestation, graph-reference validation, meaningful family contract, generated plan parity, elections/tie-breakers, coverage, triggers, typed outputs and activation allowlist |
 | `interprose-mapping` | source schema and transform SQL references for mapped graph elements |
 | `ui-smoke` | UI renders each registry entry without crashing |
 | `cdk` | stack synthesizes, SSM parameter names and S3 deployment prefixes match this PRD |
@@ -768,8 +786,9 @@ Target gaps to close while re-creating the product:
 - deliver and verify the authenticated Model API rather than treating source
   artifacts or the viewer as an API;
 - migrate npm/Bun scripts to the shared `pnpm`/`just` contract;
-- preserve and verify publication of observability metrics, financial metrics,
-  rule artifacts and release attestations through S3/SSM;
+- preserve and verify publication of observability metrics, every governed KPI
+  metric catalog, rule artifacts and release attestations through the supported
+  API and S3/SSM consumer boundary;
 - add CDK assertions for every SSM parameter and prefix;
 - make production removal policies explicit for the website bucket;
 - document the Marketplace component metadata for Lexicon, including `lexicon_version_id` generation.
@@ -784,15 +803,17 @@ Target gaps to close while re-creating the product:
 - `LexiconStack` deploys a private data bucket, static UI, CloudFront distribution, all required SSM parameters, and CloudFormation outputs.
 - All artifacts listed in section 2.2 are present in S3 after deployment with versioning enabled.
 - Persist, Rules, Translate, Build/Marketplace, and metric checks can consume Lexicon only through the S3/SSM contracts in section 4.
-- Financial metric candidates are question-led and source-supported; invalid
+- KPI metric candidates for any supported data model are question-led and
+  source-supported; invalid
   Cartesian/path candidates and unresolved business rules cannot publish.
-- Every published financial definition has deterministic identity,
+- Every delivered metric definition has deterministic identity,
   attribution, election/time, triggers, coverage, typed output and a generated
   closed materialization plan compatible with the pinned Lexicon release.
-- The immutable Financial Metrics release and matching Lexicon release attest
-  one another, and publication performs no Persist graph write or activation.
+- Every immutable metric-catalog release and matching Lexicon release attest
+  one another; delivery includes API publication and digest read-back, while
+  publication performs no Persist graph write or activation.
 - Tests cover schema integrity, ruleset structure, ruleset integration,
-  financial and observability metric registry contracts, UI smoke rendering,
+  business KPI and observability metric registry contracts, UI smoke rendering,
   and CDK parameter/prefix contracts.
 - The deployed `release.json` records a `lexicon_version_id` and digests for every published artifact group.
 - Existing consumer PRDs reference Lexicon as the owner of these artifacts and do not require consumers to read the Lexicon Git repository at runtime.

@@ -74,6 +74,29 @@ class ModelMetricMaterializationContractTests(unittest.TestCase):
             corpus,
         )
 
+    def test_kpi_capability_is_data_model_driven_and_delivers_metrics(self) -> None:
+        corpus = "\n".join(
+            read(path) for path in (DIALGA, JIRACHI, CONFIGURE_SKILL, KPI_REFERENCE)
+        )
+        for token in (
+            "any governed data model",
+            "not finance-specific",
+            "entity",
+            "relationship",
+            "numeric-property",
+            "enum-member",
+            "current/as-of",
+            "Deliver approved metrics",
+            "SUGGESTED",
+            "DELIVERED",
+            "MATERIALIZED",
+            "artifact URI and",
+            "digest",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token.casefold(), corpus.casefold())
+        self.assertIn("reference example, not the scope boundary", corpus)
+
     def test_reference_records_current_lexicon_catalog_contract(self) -> None:
         text = read(KPI_REFERENCE)
         for token in (
@@ -149,10 +172,11 @@ class ModelMetricMaterializationContractTests(unittest.TestCase):
         for token in (
             "Business KPI discovery",
             "Metric materialization validation",
-            "Metric materialization publication",
+            "Metric materialization delivery",
             "Observability metric definitions",
             "transition into and then out",
             "mixed-currency",
+            "one non-financial model",
             "do not define a replacement wire schema",
         ):
             with self.subTest(token=token):
@@ -169,6 +193,9 @@ class ModelMetricMaterializationContractTests(unittest.TestCase):
             "closed-plan",
             "publication",
             "does not activate",
+            "any governed data model",
+            "suggest",
+            "deliver",
         ):
             with self.subTest(product="model", token=token):
                 self.assertIn(token, model)

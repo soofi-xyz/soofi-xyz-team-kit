@@ -1,8 +1,10 @@
 # Business KPI to metric-materialization configuration
 
-Use this workflow when a person asks Model to turn business or report questions
-into governed metric definitions. Treat discovery, definition publication,
-Persist activation, and observed materialization as separate lifecycle stages.
+Use this workflow when a person asks Model to inspect any governed data model,
+suggest KPIs, and deliver metric definitions for business or report questions.
+The capability is data-model-driven, not finance-specific. Treat discovery,
+definition publication, Persist activation, and observed materialization as
+separate lifecycle stages.
 
 ## Ownership boundary
 
@@ -37,6 +39,12 @@ scripts/lib/financial-metrics/
 /lexicon/financial-metrics-catalog-uri
 ```
 
+This payment catalog is a verified reference implementation, not the only
+supported domain or naming convention. For another data model, discover its
+actual package schema, generator, catalog identity and publication contract.
+If Model cannot enumerate and publish that catalog through its API, delivery is
+pending builder work rather than permission to reuse the payment path.
+
 The source package is authoritative. It is published with a manifest and the
 matching Lexicon release; `metric_definition` vertices are immutable graph
 projections of that package. Treat these names as verified reference behavior,
@@ -62,6 +70,26 @@ Do not generate every numeric property × enum property × graph path. A reachab
 path proves connectivity, not business attribution. Multiple equivalent paths
 can count the same fact more than once and produce hundreds of millions of
 meaningless candidates.
+
+## Discover KPI families from the data model
+
+Inspect the complete target model before proposing metrics. Consider these
+families as candidates, not automatic output:
+
+- vertex/entity occurrence and distinct-entity counts;
+- edge/relationship and immutable event counts;
+- numeric-property SUM, AVERAGE, MINIMUM and MAXIMUM operations;
+- enum-member counts and distributions;
+- numeric measures classified by a compatible enum or status election;
+- current-state and historical as-of metrics;
+- first/latest date or date-time metrics;
+- presence, missingness and distinct-value metrics; and
+- path/cohort metrics with one reviewed attribution route.
+
+Use vertices, edges, properties, enums, indexes and supported path semantics to
+find what can be measured. Use business questions and semantic gates to decide
+what should be measured. Do not assume every structurally possible primitive or
+combination is a meaningful KPI.
 
 ## Candidate dispositions
 
@@ -137,8 +165,9 @@ summing daily snapshots.
 
 ## Definition record
 
-Use the target package schema exactly. For the current payment v2 contract, a
-complete candidate resolves at least:
+Use the target package schema exactly. Every delivered definition must resolve
+the following concepts; the current payment v2 contract is one concrete
+implementation:
 
 - stable `metric_id`, `definition_version`, `business_name`, family, and
   catalog contract version;
@@ -158,7 +187,7 @@ complete candidate resolves at least:
   contribution identity, period assignment, typed output, and sparse-delete
   behavior resolve without placeholders.
 
-In the current payment package, `GLOBAL` is the literal enterprise scope and
+In the current payment reference package, `GLOBAL` is the literal enterprise scope and
 has no company or debt scope edge. Debt cells link from the debt and all cells
 link to a `metric_period`. The package requests `DEBT` and `GLOBAL` scopes and
 `DAY`, `MONTH`, `QUARTER`, and `YEAR` grains. Preserve the exact target
@@ -200,7 +229,7 @@ immutable `metric_contribution` and `metric_dimension_coordinate` history
 remain unchanged. The Persist-managed `metric_projection_state` selects the
 active generation.
 
-## Canonical payment example
+## Reference example: payment status
 
 For `payment.current_status.nsf.amount.sum`, verify:
 
@@ -220,7 +249,7 @@ adds it to elected NSF cells for the payment's original business periods.
 `payment.amount.sum` remains an event-flow metric, and the NSF status event
 remains an immutable event contribution.
 
-## Historical DSA example
+## Reference example: historical DSA attribution
 
 Do not treat DSA as a vertex type. Discover and validate the actual path:
 
@@ -238,6 +267,26 @@ when present. A historical payment metric must elect representation as of the
 payment's business time. A current debt index can support a current debt count,
 but it cannot prove historical DSA attribution. If precedence among competing
 representations is missing, classify the metric `NEEDS_BUSINESS_RULE`.
+
+## Deliver approved metrics
+
+When the request includes delivery, do not stop after producing a metric list.
+For each approved `VALID` candidate:
+
+1. Render the exact target definition schema.
+2. Generate and validate its closed materialization plan.
+3. Submit the candidate through the discovered Model API.
+4. Preserve review, conflict and immutable-version gates.
+5. Publish the approved package and matching model-release attestation.
+6. Read back the metric ID/version, catalog/package identity, artifact URI and
+   digest.
+7. Return the Persist activation/materialization handoff separately.
+
+A metric is `SUGGESTED` after semantic analysis, `DELIVERED` only after
+immutable publication and digest read-back, and `MATERIALIZED` only after
+Persist evidence. If Model lacks the required API or reusable catalog support,
+mark delivery pending and hand the gap to Dialga. Never silently replace API
+delivery with source, S3, SSM or graph writes.
 
 ## Required output
 
@@ -270,6 +319,14 @@ Suggested metrics
   Coverage:
   Contribution/correction rule:
   Output contract:
+
+Delivered metrics
+  Metric ID/version:
+  Catalog/package identity:
+  Published artifact URI/digest:
+  Compatible model release:
+  Delivery status: DELIVERED | PENDING
+  Persist activation/materialization handoff:
 
 Cannot Be Generated
   Requested output:

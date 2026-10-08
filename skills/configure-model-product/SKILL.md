@@ -1,6 +1,6 @@
 ---
 name: configure-model-product
-description: "Configure and test Model through its existing HTTP API. Use Jirachi for vocabulary lookup, candidate validation, governed changes, ruleset definitions, mapping registrations, meaningful KPI metric-materialization definitions and versioned releases; route service gaps to Dialga."
+description: "Configure and test Model through its existing HTTP API. Use Jirachi to inspect governed data models, suggest meaningful KPIs, deliver metric-materialization definitions, and configure vocabulary, rules, mappings and versioned releases; route service gaps to Dialga."
 ---
 
 # Configure Model
@@ -20,28 +20,36 @@ For business metrics, follow the
    invalid/unauthorized input and relevant replay/recovery cases inside each piece;
    use four as a full walkthrough floor, not a fixed count or a quota for narrow work.
 3. Use the discovered Model API to inspect definitions, validate candidates and apply supported governed publication or release selection. Keep review prerequisites intact and verify artifact/read-back digests. If only the Lexicon artifact/UI contract exists, hand the missing API capability to Dialga; do not substitute direct canonical S3/SSM edits.
-4. For KPI work, start from the report question and a pinned source ledger.
-   Separate Lexicon-backed facts from external inputs. Review one meaningful
-   measure × classifier rule before expanding exact enum members. Reject
-   numeric × enum × path Cartesian generation. Publish only internally `VALID`
-   candidates; return unresolved or unsupported questions under
-   `Cannot Be Generated` with `NEEDS_BUSINESS_RULE` or `REJECTED`.
+4. For KPI work in any domain, start from the business/report question and a
+   pinned source ledger. Inventory meaningful entity, relationship, event,
+   numeric-property, enum-member, current/as-of and path metric families from
+   the exact data model. Separate Lexicon-backed facts from external inputs.
+   Review one meaningful measure × classifier rule before expanding exact enum
+   members. Reject numeric × enum × path Cartesian generation. Return
+   unresolved or unsupported questions under `Cannot Be Generated` with
+   `NEEDS_BUSINESS_RULE` or `REJECTED`.
 5. Require source-grain compatibility, one canonical attribution path,
    once-only contribution identity, deterministic elections/tie-breakers,
    business time/timezone, compatible units, complete triggers and coverage.
    Preserve the target definition schema and generated closed plan. Distinguish
    primitive event metrics from current-state, historical as-of, flow and
    cumulative business metrics.
-6. Use the deployment's verified test adapters for external effects. If it lacks
+6. When delivery is requested, convert every approved `VALID` candidate into
+   the target definition package, run the discovered generator/validator,
+   submit and publish it through the Model API, then read back the immutable
+   catalog/release identity and digest. Do not call a suggestion delivered
+   until this evidence exists. If the API or generic catalog capability is
+   missing, leave delivery pending and hand the gap to Dialga.
+7. Use the deployment's verified test adapters for external effects. If it lacks
    a safe test mode or required capability, leave that check pending and hand a
    redacted reproducer to `dialga`. Do not edit service code, write internal storage,
    or silently fall back to direct AWS mutations to pass a configuration check.
-7. Give the user one copyable API invocation, expected result and at most three
+8. Give the user one copyable API invocation, expected result and at most three
    steps to inspect its actual AWS logs/workflow. Have them run the baseline and
    variant, read back results and return redacted IDs and observations. Wait for
    that evidence before advancing; acceptance, validation, review, publication,
    Persist activation and observed materialization are different states.
-8. Keep secrets in the approved local credential channel. Verify live effects
+9. Keep secrets in the approved local credential channel. Verify live effects
    are covered by the requested scope and record cleanup without removing shared
    resources. Keep mocked execution distinct from actual dependency readiness.
 
@@ -53,7 +61,7 @@ Silvally authors concrete Transform configurations; Model owns shared
 definition validation and governed publication. Use Mew for vocabulary
 lookup/modeling advice without changing its retained specialist role.
 
-Return questions, source evidence, valid suggested definitions,
-`Cannot Be Generated` items, configuration changes, redacted identifiers,
-API/release read-back results, Persist handoff, automated and user/AWS evidence,
-mocked/live status, cleanup and builder handoffs.
+Return questions, source evidence, suggested KPI families, delivered `VALID`
+definitions, `Cannot Be Generated` items, package/release identities, redacted
+identifiers, API/digest read-back results, Persist activation handoff, automated
+and user/AWS evidence, mocked/live status, cleanup and builder handoffs.

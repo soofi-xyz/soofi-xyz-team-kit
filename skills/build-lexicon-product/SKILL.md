@@ -1,6 +1,6 @@
 ---
 name: build-lexicon-product
-description: "Build or maintain the Model HTTP API and its vocabulary lookup, candidate validation, governed changes, ruleset definitions, mapping registrations, financial metric-materialization definitions and versioned releases. Use Dialga; use Jirachi for existing-service configuration."
+description: "Build or maintain the Model HTTP API and its vocabulary lookup, candidate validation, governed changes, ruleset definitions, mapping registrations, data-model-driven KPI metric definitions and versioned releases. Use Dialga; use Jirachi for existing-service configuration."
 disable-model-invocation: true
 ---
 
@@ -30,16 +30,20 @@ No separate API-documentation workstream is added.
 
 Deliver the Model HTTP API while preserving verified Lexicon S3/SSM consumer contracts and release identifiers. Existing artifact/UI surfaces do not prove an API exists. Keep canonical changes reviewed and versioned: API operations may submit/validate candidates and initiate approved publication but must not silently mutate canonical artifacts or bypass source review. Preserve immutable facts, property/index distinctions and consumer compatibility.
 
-Model owns the governed financial metric source package, pinned-Lexicon
+Model owns governed metric source packages for every supported data model,
+pinned-Lexicon
 validation, closed materialization-plan generation/validation, reviewed
 publication, immutable release attestation/discovery and any package-owned exact
-activation allowlist. The current Lexicon reference implements these at
+activation allowlist. Implement this as a reusable model capability, not a
+finance-specific service. The current Lexicon payment reference implements one
+package at
 `src/data/financial-metrics/payment-financial-metrics.v2.json`,
 `scripts/lib/financial-metrics/`, and
 `/lexicon/financial-metrics-catalog-uri`; verify the target revision before
-using those names. Expose authenticated candidate validation, publication
-status/results and exact release URI/digest read-back. Publication must not
-invoke materialization.
+using those names for another domain. Expose authenticated candidate
+validation, publication status/results, catalog enumeration, and exact release
+URI/digest read-back so Jirachi can suggest and deliver approved metrics.
+Publication must not invoke materialization.
 
 Keep Persist storage/runtime validation, plan compilation, Neptune Streams
 processing, recomputation, internal graph writes, mutable generation-isolated
