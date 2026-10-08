@@ -16,15 +16,6 @@ Configure a particular use of **Environment**. Use an existing HTTP API; keep se
 5. Give one copyable API invocation, expected result and at most three steps to inspect the correlated AWS execution or logs. Have the user run the baseline and variant, then report redacted request/execution IDs and their observation. Wait for that evidence before the next piece; distinguish acceptance, completion and resource readiness.
 6. Use only supported operations. If a capability or safe test adapter is absent, leave the affected checkpoint pending and send a reproducible gap to `torterra`; do not bypass the API or build a parallel service. Keep secrets out of fixtures, logs and chat. Separate local tests, synthesis, deployed mocked runs and authorized live effects.
 
-## Configuration bundles
-
-Read [the shared configuration-bundle contract](../skills/build-product-deployer/reference/configuration-bundles.md) for this work.
-Configure installation and readiness of Deploy's shared configuration-bundle provider
-through supported Environment operations. Verify provider compatibility, account/region,
-target API discovery and scoped access. Report missing provider/API prerequisites and
-hand service gaps to Torterra or Corviknight; do not hand-install per-bundle Lambdas or
-claim ready from an accepted setup request.
-
 ## Return
 
 Return configuration changes, API examples, automated results, user observations, AWS evidence, cleanup and remaining gaps. Hand service changes to `torterra`. Never report unperformed checks as passing.

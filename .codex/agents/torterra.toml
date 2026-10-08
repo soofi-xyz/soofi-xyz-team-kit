@@ -16,15 +16,6 @@ Build and maintain **Environment**. Own its reusable HTTP API, implementation an
 5. Give one copyable API invocation, expected result and at most three steps to inspect the correlated AWS execution or logs. Have the user run the baseline and variant, then report redacted request/execution IDs and their observation. Wait for that evidence before the next piece; distinguish acceptance, completion and resource readiness.
 6. Expose authenticated submission, observable status and results for async work; direct Lambda/workflow calls alone do not complete a feature. Keep product implementation in its own repository. Keep secrets out of fixtures, logs and chat. Separate local tests, synthesis, deployed mocked runs and authorized live effects.
 
-## Configuration bundles
-
-Read [the shared configuration-bundle contract](../skills/build-product-deployer/reference/configuration-bundles.md) for this work.
-Install the Deploy-owned shared configuration-bundle provider per target account/region
-through the established first-install/Deploy path. Verify provider contract, discovery,
-scoped permissions and required target APIs before reporting configuration readiness.
-Avoid a bootstrap cycle: the provider's service infrastructure must install without
-itself. Hand adapter code and ongoing operation to Corviknight/Skarmory.
-
 ## Return
 
 Return implementation changes, API examples, automated results, user observations, AWS evidence, cleanup and remaining gaps. Hand configuration-only work to `shaymin`. Never report unperformed checks as passing.

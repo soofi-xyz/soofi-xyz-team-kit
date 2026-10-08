@@ -27,7 +27,8 @@ across bundle stacks; do not generate per-bundle Lambdas. Implement dependency o
 scoped ownership, replay/conflict handling, completion read-back and partial-failure
 reconciliation. Keep installer operation receipts separate from Puller subscriptions
 and installed history; advance installed identity only after declared operations finish.
-Have Environment install the provider; route target API gaps to Kecleon, Lapras or Zygarde.
+Ship the provider with Deploy's service infrastructure through its normal installation
+and update lifecycle; route target API gaps to Kecleon, Lapras or Zygarde.
 
 ## Return
 

@@ -15,10 +15,9 @@ routes or change existing manifest schemas just to match the user-facing name.
 
 | Product / agents | Responsibility |
 | --- | --- |
-| Deploy / Corviknight, Skarmory | Build and operate the shared installer, typed API adapters, run results and Puller integration |
+| Deploy / Corviknight, Skarmory | Build, install and operate the shared provider with Deploy service infrastructure; own typed API adapters, run results and Puller integration |
 | Build / Tinkaton, Metang | Produce and verify configuration assets and portable CDK assemblies with provenance |
 | Marketplace / Regigigas, Registeel | Register, review and publish compatible bundles; verify review-environment prerequisites |
-| Environment / Torterra, Shaymin | Install the Deploy provider and verify initial account/region, discovery and permission readiness |
 | Transform / Kecleon, Silvally | Own mapping API semantics and author/validate mapping configurations |
 | Connect / Lapras, Wingull | Own flow, partner-configuration and activation API semantics and author/validate their configurations |
 | System / Zygarde, Celebi | Own definition, template, flow and waterfall API semantics and compose their configurations |
@@ -41,11 +40,12 @@ actually requires them.
    and maintenance. Keep their code and releases with Deploy, outside consuming
    bundle stacks. Version provider contracts and preserve compatibility with
    installed bundles; plan explicit migrations for breaking changes.
-3. Have Environment install the provider through the established Deploy/bootstrap
-   path. Package provider implementation as service infrastructure without requiring
-   that provider to install itself. Verify provider version, discovery and target
-   API access before accepting a dependent configuration installation. Install the
-   same prerequisites in Marketplace review environments.
+3. Package the provider as part of Deploy's service infrastructure and provision it
+   through Deploy's normal installation/update lifecycle. Keep that infrastructure
+   independent of the provider it installs. Have Deploy verify account/region,
+   provider version, discovery and scoped target API access before accepting a
+   dependent configuration installation. Install the same prerequisites in
+   Marketplace review environments.
 4. Have Build validate and hash configuration assets without calling target APIs.
    Have Deploy verify artifact and payload identity, publish staged assets and run
    the assembly through its authenticated run/status/result surface. Have

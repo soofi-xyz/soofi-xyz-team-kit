@@ -39,12 +39,3 @@ API/test adapters pending for Torterra. Live Account provisioning, DNS/certifica
 changes, credentials and stack changes are excluded from mocked evidence. Replace
 fake identifiers only for a separately authorized live Environment exercise,
 without committing secrets.
-
-## Shared configuration provider
-
-Use the [configuration-bundle contract](../../build-product-deployer/reference/configuration-bundles.md)
-for provider readiness. Fake absent, compatible and incompatible providers, missing
-Transform/Connect/System API access and an interrupted provider install. Verify
-one shared provider per target account/region, no self-install dependency, scoped
-discovery and truthful readiness through Environment/Deploy status. Do not call
-business execution APIs to prove configuration-installation readiness.

@@ -52,8 +52,9 @@ Kangaskhan only when Account behavior is missing or broken.
 Use configuration bundles to install versioned Transform, Connect and System
 configurations through a shared Deploy-owned provider. Corviknight builds the
 installer; Skarmory operates it. Build packages configuration assets and provider
-references, Marketplace reviews and publishes them, and Environment installs the
-shared provider. Each target product keeps ownership of its configuration API.
+references, and Marketplace reviews and publishes them. Deploy installs and updates
+the shared provider with its service infrastructure. Each target product keeps
+ownership of its configuration API.
 
 Read the [configuration-bundle contract](./skills/build-product-deployer/reference/configuration-bundles.md)
 for ownership, lifecycle and synthetic acceptance. These instructions define build
