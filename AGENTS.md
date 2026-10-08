@@ -148,6 +148,7 @@ Run the plugin validation script before preparing a PR. It checks that Copilot a
 ```bash
 scripts/validate-plugin.sh
 python3 scripts/test-product-catalog.py
+python3 scripts/test-model-metric-materialization-contract.py
 python3 scripts/test-build-system-product-contract.py
 python3 scripts/test-system-acceptance.py
 ```

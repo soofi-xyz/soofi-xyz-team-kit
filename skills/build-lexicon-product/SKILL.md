@@ -1,6 +1,6 @@
 ---
 name: build-lexicon-product
-description: "Build or maintain the Model HTTP API and its vocabulary lookup, candidate validation, governed changes, ruleset definitions, mapping registrations, metric definitions and versioned releases. Use Dialga; use Jirachi for existing-service configuration."
+description: "Build or maintain the Model HTTP API and its vocabulary lookup, candidate validation, governed changes, ruleset definitions, mapping registrations, financial metric-materialization definitions and versioned releases. Use Dialga; use Jirachi for existing-service configuration."
 disable-model-invocation: true
 ---
 
@@ -16,6 +16,8 @@ for operations through an existing deployment.
 
 Read [the product contract](reference/PRD.md) and
 [synthetic test data and dependency fakes](reference/test-data.md) before coding.
+For business metric work, also read the
+[KPI-to-materialization contract](../configure-model-product/reference/kpi-to-metric-configuration.md).
 Discover the target repository/revision, supported contract, deployment and
 selected AWS profile; verify the account and region. Record discrepancies between
 the specification and observed implementation without inventing deployed routes.
@@ -28,7 +30,25 @@ No separate API-documentation workstream is added.
 
 Deliver the Model HTTP API while preserving verified Lexicon S3/SSM consumer contracts and release identifiers. Existing artifact/UI surfaces do not prove an API exists. Keep canonical changes reviewed and versioned: API operations may submit/validate candidates and initiate approved publication but must not silently mutate canonical artifacts or bypass source review. Preserve immutable facts, property/index distinctions and consumer compatibility.
 
-Keep Persist storage/validation execution with Conkeldurr/Uxie, Rule evaluation with Gallade/Meditite and Transform mapping execution with Kecleon/Silvally. Silvally authors concrete Transform configurations; Model owns shared definition validation and governed publication. Use Mew for vocabulary lookup/modeling advice without changing its retained specialist role.
+Model owns the governed financial metric source package, pinned-Lexicon
+validation, closed materialization-plan generation/validation, reviewed
+publication, immutable release attestation/discovery and any package-owned exact
+activation allowlist. The current Lexicon reference implements these at
+`src/data/financial-metrics/payment-financial-metrics.v2.json`,
+`scripts/lib/financial-metrics/`, and
+`/lexicon/financial-metrics-catalog-uri`; verify the target revision before
+using those names. Expose authenticated candidate validation, publication
+status/results and exact release URI/digest read-back. Publication must not
+invoke materialization.
+
+Keep Persist storage/runtime validation, plan compilation, Neptune Streams
+processing, recomputation, internal graph writes, mutable generation-isolated
+cells, rebuilds, activation/rollback and search with Conkeldurr/Uxie. Keep Rule
+evaluation with Gallade/Meditite and Transform mapping execution with
+Kecleon/Silvally. Silvally authors concrete Transform configurations; Model
+owns shared definition validation and governed publication. Use Mew for
+vocabulary lookup/modeling advice without changing its retained specialist
+role.
 
 ## Build each feature piece
 

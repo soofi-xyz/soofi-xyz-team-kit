@@ -3,7 +3,7 @@
   "source": {
     "meeting": "Builder Story Planning, 2026-09-30",
     "spreadsheet": "staircase-products export, supplied 2026-09-30",
-    "precedence": "User follow-up retains Conkeldurr for Persist and assigns Zygarde to System. Later requests assign builder/configurer pairs to Account, Environment, Build, Deploy, Model and Console. User follow-up assigns Puller polling, subscriptions and reconciliation to the Deploy product; keep subscriber state separate from its stateless run API. The 2026-10-07 request adds Documentation as a distinct product, superseding the earlier API documentation exclusion. Require the engineering and React/TypeScript/tRPC application skills; keep Site and Document separate and unassigned. The latest Account boundary correction keeps AWS account identity, keys, records, provisioning and bootstrap manifests in Account; moves domains, certificates and initial installation to Environment; reserves console assignments for unassigned Access; and assigns Account catalog registration to Registeel. The configuration-bundle design assigns the shared Transform/Connect/System configuration installer and its service installation/update to Deploy, and each target API and payload semantics to its existing product pair. Use configuration bundles in guidance and CONFIGURATION in bundle/component types; migrate legacy DATA contracts across Build, Marketplace and Deploy. Use a synthetic configuration integration for installer acceptance, without adding a Model pilot or a new product owner."
+    "precedence": "User follow-up retains Conkeldurr for Persist and assigns Zygarde to System. Later requests assign builder/configurer pairs to Account, Environment, Build, Deploy, Model and Console. User follow-up assigns Puller polling, subscriptions and reconciliation to the Deploy product; keep subscriber state separate from its stateless run API. The 2026-10-07 request adds Documentation as a distinct product, superseding the earlier API documentation exclusion. Require the engineering and React/TypeScript/tRPC application skills; keep Site and Document separate and unassigned. The latest Account boundary correction keeps AWS account identity, keys, records, provisioning and bootstrap manifests in Account; moves domains, certificates and initial installation to Environment; reserves console assignments for unassigned Access; and assigns Account catalog registration to Registeel. The configuration-bundle design assigns the shared Transform/Connect/System configuration installer and its service installation/update to Deploy, and each target API and payload semantics to its existing product pair. Use configuration bundles in guidance and CONFIGURATION in bundle/component types; migrate legacy DATA contracts across Build, Marketplace and Deploy. Use a synthetic configuration integration for installer acceptance, without adding a Model pilot or a new product owner. The 2026-10-08 metric-materialization boundary assigns governed definition packages, closed-plan validation, reviewed publication, release attestation and package-owned activation allowlists to Model; Persist owns plan compilation, Streams processing, recomputation, mutable projections, rebuilds, generation activation/rollback and search."
   },
   "workflowSkill": "guide-product-work",
   "products": [
@@ -695,7 +695,7 @@
         57
       ],
       "status": "assigned",
-      "summary": "Model governs vocabulary, definitions and compatible artifact releases.",
+      "summary": "Model governs vocabulary, meaningful metric-materialization definitions and compatible artifact releases.",
       "agents": {
         "build": "dialga",
         "configure": "jirachi"
@@ -705,7 +705,8 @@
         "configure": "configure-model-product"
       },
       "notes": [
-        "Merge spreadsheet rows 34 and 57 into one Model product. Dialga builds Model; Jirachi configures existing APIs and governed releases. Preserve Lexicon artifact contracts and Mew as a retained modeling specialist; API assignment does not establish runtime availability."
+        "Merge spreadsheet rows 34 and 57 into one Model product. Dialga builds Model; Jirachi configures existing APIs and governed releases. Preserve Lexicon artifact contracts and Mew as a retained modeling specialist; API assignment does not establish runtime availability.",
+        "Model owns question-led, source-supported financial metric definition packages, closed-plan validation/generation, immutable publication and release discovery. The current Lexicon payment package and /lexicon/financial-metrics-catalog-uri are verified reference contracts, not proof of a deployed Model API. Catalog publication does not activate or materialize cells."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/model.md"
     },
@@ -974,7 +975,7 @@
         48
       ],
       "status": "assigned",
-      "summary": "Persist ingests and queries graph facts, maintains derived indexes and triggers, and owns lexicon-governed vector search composed through GraphQL.",
+      "summary": "Persist ingests and queries graph facts, maintains derived indexes and materialized metric projections, and owns lexicon-governed search.",
       "agents": {
         "build": "conkeldurr",
         "configure": "uxie"
@@ -985,7 +986,8 @@
       },
       "notes": [
         "User override: retain Conkeldurr for Persist only. Uxie configures existing deployments.",
-        "Requested 2026-10-05: keep embeddings, OpenSearch vector indexing and GraphQL search composition in a separate vector-search feature piece. Model owns lexicon field eligibility; Persist owns implementation and GraphQL source routing. This scope assignment does not establish deployed support."
+        "Requested 2026-10-05: keep embeddings, OpenSearch vector indexing and GraphQL search composition in a separate vector-search feature piece. Model owns lexicon field eligibility; Persist owns implementation and GraphQL source routing. This scope assignment does not establish deployed support.",
+        "For Model-governed metric catalogs, Persist owns plan compilation, Neptune Streams change detection, deterministic source-history recomputation, internal mutable generation-isolated cell writes, checkpoints, rebuilds, generation activation/rollback and metric search. It consumes reviewed package semantics and exact activation allowlists without becoming a second metric authority."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/persist.md"
     },
