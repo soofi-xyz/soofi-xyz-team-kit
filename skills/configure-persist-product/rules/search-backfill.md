@@ -60,8 +60,9 @@ EXEC=$(aws stepfunctions start-execution --state-machine-arn "$SM" --name "$RUN"
   --input "{\"executionId\":\"$RUN\",\"maxConcurrency\":2}")
 
 aws stepfunctions describe-execution --execution-arn "$EXEC" --query '{status:status,error:error,cause:cause}'
-aws stepfunctions list-map-runs --execution-arn "$EXEC" --query 'mapRuns[].mapRunArn' --output text \
-  | xargs -n1 -I{} aws stepfunctions describe-map-run --map-run-arn {} --query '{status:status,items:itemCounts}'
+for MAP_RUN in $(aws stepfunctions list-map-runs --execution-arn "$EXEC" --query 'mapRuns[].mapRunArn' --output text); do
+  aws stepfunctions describe-map-run --map-run-arn "$MAP_RUN" --query '{status:status,items:itemCounts}'
+done
 
 # Resume a failed run.
 aws stepfunctions start-execution --state-machine-arn "$SM" --name "$RUN-resume1" \
