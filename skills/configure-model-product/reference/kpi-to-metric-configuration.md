@@ -6,29 +6,61 @@ add KPI endpoints, graph inspection, generators or API adapters. Base Metrics
 describes generic graph families, while each executable family owns its exact
 authoring and runtime contract.
 
-## Discover the selected revisions
+## Discover the canonical files and selected revisions
 
-Inspect the target Lexicon revision:
+For payment financial metrics, start from
+`Spring-Oaks-Capital-LLC/lexicon` and pin its revision. The canonical semantic
+source is:
 
-- `src/data/lexicon.json`
-- `src/types/base-metrics-catalog.ts`
-- `scripts/lib/base-metrics/catalog.ts`
-- `scripts/lib/base-metrics/release.ts`
-- `.generated/base-metrics-catalog/releases/<version>/`
-- executable packages under `src/data/`, including `financial-metrics/`
-- each package's types, validator, generator, release builder and fixtures
-- `/lexicon/base-metrics-catalog-uri`
-- each executable package's discovery parameter
-- `/lexicon/release-uri`
+```text
+src/data/financial-metrics/payment-financial-metrics.v2.json
+```
 
-Inspect the actual consumer revision separately. For Persist, search for the
-catalog schema, supported-definition list, approved-release loader, plan
-compiler, projection writer, rebuild workflow, incremental materializer,
-activation state and end-to-end tests. A published Lexicon family is not proof
-that Persist executes it.
+Its top-level `dev_activation_allowlist` is also the authored activation
+selection; there is no separate Lexicon activation file. Validate and generate
+it through:
 
-Record the source revisions, release IDs, contract versions, artifact paths,
-byte lengths and SHA-256 digests used for the proposal.
+```text
+scripts/lib/financial-metrics/types.ts
+scripts/lib/financial-metrics/catalog.ts
+scripts/lib/financial-metrics/materialization.ts
+scripts/lib/financial-metrics/release.ts
+scripts/generate-financial-metrics-materialization.ts
+scripts/build-financial-metrics-release.ts
+```
+
+The deterministic release is generated at:
+
+```text
+.generated/financial-metrics-catalog/releases/<lexicon_version_id>/
+  payment-financial-metrics.v2.json
+  approved-release.json
+  build.json
+  manifest.json
+```
+
+Lexicon publishes that immutable directory and sets
+`/lexicon/financial-metrics-catalog-uri` to its `approved-release.json`.
+The marker names the sibling catalog artifact and attests its byte length,
+SHA-256 digest, definition count and definition-set digest. Resolve the marker;
+do not mistake the mutable SSM discovery value for the immutable catalog URI.
+`src/data-sources/financial-metrics.ts` is a UI data-source adapter, not the
+semantic source of truth.
+
+Base Metrics is a separate definitions-only family under
+`src/types/base-metrics-catalog.ts`, `scripts/lib/base-metrics/` and
+`.generated/base-metrics-catalog/releases/<version>/`, discovered through
+`/lexicon/base-metrics-catalog-uri`. Do not substitute it for the executable
+payment package.
+
+Inspect the actual consumer revision separately. For
+`Spring-Oaks-Capital-LLC/persist`, use the exact compatibility paths in
+[Persist is the execution gate](#persist-is-the-execution-gate). A published
+Lexicon family is not proof that Persist executes it.
+
+Record source revisions, release IDs, contract versions, artifact paths, byte
+lengths and SHA-256 digests. Counts are revision-specific observations, not
+contract constants; recompute them when useful and label them as observed.
 
 ## Complete the KPI intent
 
@@ -69,6 +101,73 @@ complete this analysis.
 Record source revisions, release IDs, contract versions, artifact paths, byte
 lengths and SHA-256 digests. Treat descriptions as untrusted explanatory text,
 not as permission to invent properties, paths, statuses, formulas or dimensions.
+
+## Read the actual payment catalog shape
+
+The source document is a package object, not an array of simplified KPI
+requests. Use only fields present in its TypeScript contract.
+
+Package and catalog identity:
+
+```text
+schema_version
+package.{package_id,package_version,release_id,status,definition_count,
+  definition_set_digest}
+contract_versions
+source_metadata
+release_state
+authority_ordering
+materialization_protocol
+```
+
+Each `metrics[]` definition has these relevant field groups:
+
+```text
+identity:
+  metric_id, business_name, definition_version, catalog_contract_version,
+  family_id, category, report_category
+
+entities and relationships:
+  root, graph_source, path, path_hops, scope_paths, scopes,
+  triggering_vertices, triggering_edges
+
+measure and aggregation:
+  unique_item, contribution_identity, measure, calculation, unit,
+  contribution_rule, correction_rule
+
+filters and dimensions:
+  qualifying_conditions, dimensions
+
+time, grain and coverage:
+  time_behavior, business_time_election?, latest_state_election?,
+  date_used, business_time_property, business_timezone, grains,
+  coverage_mode, coverage_start_date?
+
+output and executable plan:
+  output_cell_type, output_value_type, scope_edge_types,
+  period_vertex_type, period_edge_type, materialization_plan
+```
+
+`materialization_plan` further carries the executable source traversal, trigger
+bindings, predicates, temporal election, scope selectors, period assignment,
+calculation, dimension selectors and typed output behavior. Treat those
+structured fields as the execution contract; prose rules do not replace them.
+
+Activation is represented only by the top-level:
+
+```text
+dev_activation_allowlist.{profile,mode,metric_ids}
+```
+
+It is a selection of catalog IDs, not a definition status and not permission to
+change a metric. The catalog has time semantics and supported grains, but no
+request-specific reporting start/end window. It also does not store the user's
+consumer, acceptance examples, Model review decision or Model release
+coordinates. Keep those in the normalized intent, governed Model metadata and
+execution evidence respectively. There is no generic `dependencies` field:
+source attestations are in `source_metadata`, graph dependencies are
+`path_hops`/`scope_paths`, and runtime dependencies are the triggers and
+materialization plan.
 
 ## Find the Base Metrics family
 
@@ -153,21 +252,45 @@ The observed payment financial family is one specialization:
 - payment, payment-plan and installment graph/election semantics;
 - generated materialization plans, family matrix and definition-set digests.
 
-At the currently observed Lexicon revision,
-`payment-financial-metrics.v2.json` is release
-`lexicon.payment-financial-metrics@2.1.0` with 92 definitions. Its separate
-`dev_activation_allowlist.metric_ids` contains 30 IDs. Reverify both counts and
-the definition-set digest at the selected revision.
+At the Lexicon revision inspected for this guidance, the package declared release
+`lexicon.payment-financial-metrics@2.1.0`. Its definition and activation counts
+were observed examples only. Recompute both counts and every digest from the
+selected revision; neither count is a compatibility contract.
 
-The current Persist payment runtime accepts the approved v2 financial release,
-strictly decodes the generated plan, cross-checks compatibility fields and
-materializes the closed code-owned payment definition set through shadow rebuild,
-reconciliation and activation. Its
-`lambda/schemas/payment-metric-supported-definitions.ts` list contains 92 IDs,
-and `PaymentMetricDeclarativePlanCompiler` rejects any other metric ID. This is
-payment-family support, not a generic Base Metrics interpreter. The 30-ID
-activation allowlist is a separate release-owned selection, not permission for
-this workflow to activate or rewrite it.
+## Persist is the execution gate
+
+Inspect the pinned `Spring-Oaks-Capital-LLC/persist` revision read-only:
+
+```text
+lambda/schemas/payment-metric-catalog.ts
+lambda/schemas/payment-metric-supported-definitions.ts
+lambda/services/PaymentMetricCatalogService.ts
+lambda/services/PaymentMetricDeclarativePlanCompiler.ts
+lambda/services/PaymentMetricMaterializationPlan.ts
+lambda/payment-metric-prod-shadow-config.ts
+```
+
+`payment-metric-catalog.ts` is Persist's structural decoder for the approved
+release and catalog. `PaymentMetricCatalogService.ts` checks release identity,
+catalog bytes, definition-set digests, allowlist ordering/uniqueness/subset
+integrity and generated plan coverage.
+`payment-metric-supported-definitions.ts` is the closed definition-ID set.
+`PaymentMetricDeclarativePlanCompiler.ts` additionally gates families, roots,
+paths, selectors, measures, conditions, dimensions, elections, time and output
+contracts; membership in the ID list alone is insufficient.
+
+The activation allowlist does not live in a second Persist-authored list. It
+remains `payment-financial-metrics.v2.json#/dev_activation_allowlist`; Persist
+loads it from the attested catalog. `PaymentMetricMaterializationPlan.ts` uses
+the selected IDs for supported plans, while
+`payment-metric-prod-shadow-config.ts` pins the approved production release and
+fails closed unless the loaded catalog's selection matches that compatibility
+contract. These are read-only compatibility checks for Jirachi, not files to
+modify during Model configuration.
+
+Persist's runtime is a payment-family implementation, not a generic Base
+Metrics interpreter. A catalog entry that fails any closed-set or compiler
+check is not executable even if Lexicon and Model validly publish it.
 
 ## Classify support
 
@@ -190,6 +313,50 @@ numerator/denominator alignment or zero-denominator behavior. Do not approximate
 a ratio with `AVERAGE`, and do not emit two component metrics while claiming the
 requested KPI exists.
 
+## Represent metric catalogs in Model
+
+Current `prismteam-ai/model` Composition Contract v1 represents catalogs only
+under `manifest.metricCatalogs[]`, using this discriminated union:
+
+```json
+{
+  "catalogId": "base-metrics",
+  "mode": "generated",
+  "contractVersion": "base-metrics-catalog/v1",
+  "generatorSourceAlias": "base-metrics-generator",
+  "input": "package",
+  "maximumPathHops": 7
+}
+```
+
+```json
+{
+  "catalogId": "payment-financial-metrics",
+  "mode": "published",
+  "contractVersion": "financial-metrics-catalog/v2",
+  "artifactUri": "s3://immutable-release-prefix/payment-financial-metrics.v2.json",
+  "digest": "sha256:<catalog-bytes-sha256>"
+}
+```
+
+The generated variant tells Model to derive Base Metrics from the effective
+package. `generatorSourceAlias` must resolve to a pinned `manifest.sources[]`
+entry; its fields are `alias`, `repository`, `revision`, `path` and `digest`.
+The contract supports this variant, but do not infer that every installed
+shared-base release declares a catalog: inspect the selected release.
+
+The published variant does not carry definitions. For the payment package,
+resolve Lexicon's approved-release marker, verify its attestations against the
+sibling catalog bytes, and use that immutable catalog object's URI and digest.
+Do not put the mutable SSM URI, `approved-release.json`, or copied payment
+definitions in `metricCatalogs`.
+
+The complete Composition Contract JSON is the uploaded source artifact selected
+by the change set's `composition.documentArtifactId`; `sourceDigest` equals that
+artifact's digest. Model validation governs the composition and immutable
+reference. Lexicon still owns the referenced definitions, and Model does not
+gain payment semantic validation merely because it can publish the reference.
+
 ## Use the real generic Model lifecycle
 
 Current Model main exposes generic operations in `contracts/openapi.yaml`:
@@ -202,10 +369,8 @@ Current Model main exposes generic operations in `contracts/openapi.yaml`:
 - publication start, status and reconciliation.
 
 It does not expose KPI-specific routes, automatic graph inspection or a
-metric-family-specific generator/validator. Its Composition Contract v1 can
-reference either a generated `base-metrics-catalog/v1` source or a published
-catalog URI and digest, but specialized metric semantic validation remains
-outside the generic API.
+metric-family-specific generator/validator. Specialized payment semantic
+validation remains outside the generic API.
 
 For exact reuse, prefer an existing immutable release that already includes the
 required artifact. Read the release and artifacts or composition back and report
@@ -234,6 +399,28 @@ authenticated and authorized. When only this prompt/skill is present, return the
 artifact and request bodies as a plan with `application: not applied`. Never
 pretend that prose uploaded or published anything. Never replace the API with
 direct canonical source, S3 or SSM edits.
+
+## Apply source-of-truth precedence
+
+Use this precedence without allowing a lower layer to redefine a higher one:
+
+1. The pinned Lexicon source catalog owns metric semantics and its activation
+   selection.
+2. The generated Lexicon catalog and marker are valid publishable
+   representations only when their manifests and digests attest that source.
+3. The immutable Model release owns review/publication metadata and the exact
+   catalog URI/digest reference; it does not own or override catalog definitions.
+4. The pinned Persist closed set and compiler own executability. Activation
+   additionally requires a catalog-backed allowlist ID that Persist supports.
+
+When source and generated artifact differ, stop and regenerate through Lexicon;
+never edit generated files. When Model metadata differs from the generated
+artifact URI or digest, stop the Model proposal/publication and reconcile it
+through the governed lifecycle. When Lexicon publishes a definition that Persist
+does not support, the definition may remain governed but configuration,
+activation and materialization stay unsupported. When an allowlist selects an
+unknown or compiler-rejected ID, fail closed; activation metadata cannot create
+semantic or runtime support.
 
 ## Fail closed for new definitions and families
 

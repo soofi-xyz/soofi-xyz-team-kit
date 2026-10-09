@@ -61,24 +61,67 @@ time windows or formulas from labels and descriptions.
 
 ### 2. Gather read-only evidence
 
-Pin repository revisions and release IDs/digests. Inspect the available Lexicon
-schema, property types, directed relationships and existing metric
-catalogs/definitions. Inspect the pinned Persist supported-definition/compiler
-contract separately. Evidence may come from checked-out source artifacts or from
-Model's generic definition, release, composition and artifact reads. Do not claim
-that source inspection, Neptune queries or graph traversal are Model API
-operations.
+Pin repository revisions and release IDs/digests. For payment financial metrics,
+inspect these canonical contracts:
 
-For the currently observed finance package:
+- Lexicon semantic source:
+  `src/data/financial-metrics/payment-financial-metrics.v2.json`;
+- Lexicon type, validation and release contracts:
+  `scripts/lib/financial-metrics/{types,catalog,release}.ts`;
+- generated release:
+  `.generated/financial-metrics-catalog/releases/<lexicon_version_id>/`,
+  containing `payment-financial-metrics.v2.json`, `approved-release.json`,
+  `build.json` and `manifest.json`;
+- discovery marker: `/lexicon/financial-metrics-catalog-uri`, which resolves
+  the immutable generated release's `approved-release.json`;
+- Persist closed set and compiler:
+  `lambda/schemas/payment-metric-supported-definitions.ts` and
+  `lambda/services/PaymentMetricDeclarativePlanCompiler.ts`;
+- Persist decoder/integrity checks:
+  `lambda/schemas/payment-metric-catalog.ts` and
+  `lambda/services/PaymentMetricCatalogService.ts`;
+- Persist production release/activation compatibility pin:
+  `lambda/payment-metric-prod-shadow-config.ts`.
 
-- Lexicon publishes `financial-metrics-catalog/v2`;
-- `payment-financial-metrics.v2.json` contains 92 code-owned definitions;
-- `dev_activation_allowlist.metric_ids` contains 30 separately selected IDs;
-- Persist's `payment-metric-supported-definitions.ts` contains the same closed
-  92-ID set, and its declarative plan compiler rejects any other metric ID.
+Also inspect `src/data/lexicon.json` as read-only Lexicon schema evidence for
+the property types and directed relationships named by the catalog.
 
-Reverify these facts at the selected revisions. A catalog definition proves
-definition availability, not activation or materialization.
+The Lexicon source's top-level `dev_activation_allowlist` is the authored
+activation selection. Persist reads and validates that selection; it does not
+own a second semantic allowlist.
+
+Read the actual shape rather than inventing a normalized metric payload:
+
+- package/catalog identity: `schema_version`, `package.package_id`,
+  `package.package_version`, `package.release_id`, `package.status`,
+  `package.definition_set_digest`, `contract_versions` and `release_state`;
+- definition identity and graph grain: `metrics[].metric_id`, `business_name`,
+  `definition_version`, `catalog_contract_version`, `family_id`, `category`,
+  `root`, `graph_source`, `path`, `path_hops`, `scope_paths`, `scopes` and
+  `grains`;
+- measure and aggregation: `unique_item`, `contribution_identity`, `measure`,
+  `calculation`, `unit`, `contribution_rule` and `correction_rule`;
+- filters, dimensions and time: `qualifying_conditions`, `dimensions`,
+  `time_behavior`, optional elections, `date_used`, `business_time_property`,
+  `business_timezone`, `coverage_mode` and optional `coverage_start_date`;
+- source/runtime dependencies: top-level `source_metadata`, plus each
+  definition's `triggering_vertices`, `triggering_edges` and
+  `materialization_plan`;
+- output: `output_cell_type`, `output_value_type`, `scope_edge_types`,
+  `period_vertex_type` and `period_edge_type`;
+- activation: top-level `dev_activation_allowlist.{profile,mode,metric_ids}`,
+  never a per-definition flag.
+
+A request-specific reporting start/end window, consuming report/API, acceptance
+examples and review decision are represented outside this catalog. Source
+references do not imply runtime support. Recompute counts from the selected
+revision when useful and label them observed examples, never contract constants.
+
+Evidence may come from checked-out source artifacts or from Model's generic
+definition, release, composition and artifact reads. Do not claim that source
+inspection, Neptune queries or graph traversal are Model API operations.
+A catalog definition proves definition availability, not activation or
+materialization.
 
 ### 3. Classify before proposing writes
 
@@ -118,9 +161,27 @@ artifact and a request plan grounded in the discovered OpenAPI:
    release, source and artifact digests.
 
 Model's generic metric-catalog composition contract may pin a generated
-`base-metrics-catalog/v1` source or an immutable published catalog URI/digest.
-It does not provide metric-family-specific semantic validation. Run the selected
-package's real validator/generator before submission and keep Persist
+base catalog or an immutable published catalog. The exact
+`manifest.metricCatalogs[]` variants are:
+
+```text
+generated: catalogId, mode="generated",
+contractVersion="base-metrics-catalog/v1", generatorSourceAlias,
+input="package", maximumPathHops
+
+published: catalogId, mode="published", contractVersion, artifactUri, digest
+```
+
+Use `generated` only when Model must generate Base Metrics from the effective
+package and the named source alias is pinned in `manifest.sources`. For the
+Lexicon payment catalog, verify the generated release marker and catalog bytes,
+then put the immutable catalog artifact URI and its `sha256:` digest in the
+`published` variant. The Model change-set request references the uploaded
+Composition Contract document through `composition.documentArtifactId`; payment
+definitions remain in the Lexicon artifact, not Model request bodies.
+
+Model validates this generic reference contract, not payment-family semantics.
+Run Lexicon's real validator/generator before submission and keep Persist
 compatibility as separate evidence.
 
 If an executable Model API/tool adapter is available and authorized, invoke it.
@@ -142,7 +203,25 @@ Hand Model implementation work to Dialga and Persist implementation work to
 Conkeldurr. Resume governed configuration only after those capabilities exist at
 pinned revisions.
 
-### 6. Separate publication from activation
+### 6. Resolve authority and disagreement
+
+Apply this precedence:
+
+1. pinned Lexicon source owns metric semantics and the activation selection;
+2. its generated release is the digest-attested publishable representation;
+3. a reviewed Model release governs the immutable catalog reference, not the
+   catalog's definitions;
+4. pinned Persist code decides whether a definition is executable.
+
+Fail closed when layers disagree. A generated artifact that does not attest the
+selected Lexicon source must be regenerated through Lexicon. A Model URI/digest
+that does not match the generated catalog cannot be proposed or published. A
+Lexicon definition absent from Persist's closed set or rejected by its compiler
+may remain a valid published definition, but is not an executable configuration.
+The activation allowlist can select only catalog-backed, Persist-supported
+definitions; it cannot override either semantic or compiler compatibility.
+
+### 7. Separate publication from activation
 
 Definition validation, review and publication do not activate a metric. Never
 activate automatically. Never change an activation allowlist, invoke a Persist

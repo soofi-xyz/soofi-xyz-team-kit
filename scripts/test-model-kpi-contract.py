@@ -170,20 +170,144 @@ def assert_real_lifecycle_and_fail_closed_behavior() -> None:
     )
 
 
-def assert_current_finance_boundary() -> None:
-    family = section(REFERENCE, "Select an executable family")
+def assert_canonical_metric_contract() -> None:
+    canonical = section(REFERENCE, "Discover the canonical files and selected revisions")
     require_concepts(
         REFERENCE,
-        family,
+        canonical,
         {
-            "catalog contract": ("financial-metrics-catalog/v2",),
-            "92 definitions": ("92 definitions",),
-            "30 selected IDs": ("contains 30 ids",),
-            "closed Persist list": ("payment-metric-supported-definitions.ts",),
-            "unsupported ID rejection": ("rejects any other metric id",),
-            "activation distinct": ("separate release-owned selection",),
+            "canonical source": (
+                "src/data/financial-metrics/payment-financial-metrics.v2.json",
+            ),
+            "activation source": ("top-level `dev_activation_allowlist`",),
+            "type contract": ("scripts/lib/financial-metrics/types.ts",),
+            "catalog validator": ("scripts/lib/financial-metrics/catalog.ts",),
+            "release builder": ("scripts/lib/financial-metrics/release.ts",),
+            "generated release": (
+                ".generated/financial-metrics-catalog/releases/<lexicon_version_id>/",
+            ),
+            "approved marker": ("approved-release.json",),
+            "discovery parameter": ("/lexicon/financial-metrics-catalog-uri",),
+            "count boundary": ("counts are revision-specific observations",),
         },
     )
+
+    shape = section(REFERENCE, "Read the actual payment catalog shape")
+    require_concepts(
+        REFERENCE,
+        shape,
+        {
+            "package identity": ("package_id", "package_version", "release_id"),
+            "catalog identity": ("schema_version", "contract_versions"),
+            "metric identity": ("metric_id", "definition_version", "family_id"),
+            "entities": ("root", "graph_source"),
+            "relationships": ("path_hops", "scope_paths"),
+            "measure": ("measure",),
+            "aggregation": ("calculation", "unit"),
+            "grain": ("grains", "scopes"),
+            "filters": ("qualifying_conditions",),
+            "dimensions": ("dimensions",),
+            "time": ("time_behavior", "business_time_property", "coverage_mode"),
+            "source references": ("source_metadata",),
+            "runtime dependencies": ("triggering_vertices", "materialization_plan"),
+            "activation": ("dev_activation_allowlist.{profile,mode,metric_ids}",),
+            "no per-definition activation": ("not a definition status",),
+            "reporting window elsewhere": ("no request-specific reporting start/end window",),
+            "consumer elsewhere": ("does not store the user's consumer",),
+            "no invented dependency field": ("there is no generic `dependencies` field",),
+        },
+    )
+
+    persist = section(REFERENCE, "Persist is the execution gate")
+    require_concepts(
+        REFERENCE,
+        persist,
+        {
+            "catalog schema": ("lambda/schemas/payment-metric-catalog.ts",),
+            "closed definitions": (
+                "lambda/schemas/payment-metric-supported-definitions.ts",
+            ),
+            "catalog integrity": (
+                "lambda/services/paymentmetriccatalogservice.ts",
+            ),
+            "compiler gate": (
+                "lambda/services/paymentmetricdeclarativeplancompiler.ts",
+            ),
+            "activation consumer": (
+                "lambda/services/paymentmetricmaterializationplan.ts",
+            ),
+            "production pin": ("lambda/payment-metric-prod-shadow-config.ts",),
+            "no duplicate allowlist": (
+                "does not live in a second persist-authored list",
+            ),
+            "read-only compatibility": ("read-only compatibility checks",),
+        },
+    )
+
+
+def assert_model_catalog_mapping_and_precedence() -> None:
+    model = section(REFERENCE, "Represent metric catalogs in Model")
+    require_concepts(
+        REFERENCE,
+        model,
+        {
+            "manifest location": ("manifest.metriccatalogs[]",),
+            "generated mode": ('"mode": "generated"',),
+            "generated contract": ('"contractversion": "base-metrics-catalog/v1"',),
+            "generator source": ('"generatorsourcealias"',),
+            "generated input": ('"input": "package"',),
+            "maximum path": ('"maximumpathhops"',),
+            "published mode": ('"mode": "published"',),
+            "published URI": ('"artifacturi"',),
+            "published digest": ('"digest": "sha256:',),
+            "payment artifact": ("payment-financial-metrics.v2.json",),
+            "marker is not catalog": (
+                "do not put the mutable ssm uri, `approved-release.json`",
+            ),
+            "composition artifact": ("composition.documentartifactid",),
+            "definitions stay in Lexicon": (
+                "lexicon still owns the referenced definitions",
+            ),
+        },
+    )
+
+    precedence = section(REFERENCE, "Apply source-of-truth precedence")
+    require_concepts(
+        REFERENCE,
+        precedence,
+        {
+            "Lexicon semantics": ("lexicon source catalog owns metric semantics",),
+            "generated attestation": ("generated lexicon catalog and marker",),
+            "Model metadata": (
+                "model release owns review/publication metadata",
+            ),
+            "Persist executability": (
+                "persist closed set and compiler own executability",
+            ),
+            "source mismatch": ("regenerate through lexicon",),
+            "Model mismatch": ("stop the model proposal/publication",),
+            "unsupported consumer": (
+                "configuration, activation and materialization stay unsupported",
+            ),
+        },
+    )
+
+
+def assert_counts_are_not_contracts() -> None:
+    forbidden_count_contracts = (
+        "92 definitions",
+        "92-id",
+        "30 ids",
+        "30-item",
+        "all-92",
+    )
+    for relative in (PROMPT, SKILL, REFERENCE, CAPABILITY_MAP):
+        value = normalized(read(relative))
+        present = [term for term in forbidden_count_contracts if term in value]
+        if present:
+            raise AssertionError(
+                f"{relative} hard-codes revision-specific metric counts as contract: {present}"
+            )
 
 
 def assert_prompt_and_capability_map() -> None:
@@ -194,6 +318,14 @@ def assert_prompt_and_capability_map() -> None:
         {
             "complete intent": ("grain/entity", "acceptance examples"),
             "read-only evidence": ("read-only evidence",),
+            "canonical catalog": (
+                "src/data/financial-metrics/payment-financial-metrics.v2.json",
+            ),
+            "actual shape": ("metrics[]", "qualifying_conditions"),
+            "Model generated catalog": ('mode: "generated"',),
+            "Model published catalog": ('mode: "published"',),
+            "Persist compiler": ("paymentmetricdeclarativeplancompiler.ts",),
+            "precedence": ("apply precedence fail closed",),
             "exact reuse": ("`exact reuse`",),
             "supported configuration": ("`supported configuration/composition`",),
             "new definition": ("`new definition/family`",),
@@ -213,7 +345,14 @@ def assert_prompt_and_capability_map() -> None:
             "intent piece": ("`kpi-intent`",),
             "classification piece": ("`kpi-evidence-classification`",),
             "release piece": ("`kpi-governed-release`",),
-            "current API boundary": ("no automatic graph-inspection operation",),
+            "canonical source": (
+                "src/data/financial-metrics/payment-financial-metrics.v2.json",
+            ),
+            "generated catalog": ("generated base metrics",),
+            "published catalog": ("published immutable lexicon catalog uri/digest",),
+            "precedence": (
+                "lexicon source → generated artifact → model reference → persist support",
+            ),
             "not applied state": ("return `not applied`",),
             "activation separation": ("never activate automatically",),
         },
@@ -233,7 +372,21 @@ def assert_skill_contract() -> None:
             "Lexicon schema evidence": ("lexicon schema",),
             "relationship evidence": ("directed relationships",),
             "consumer compiler evidence": (
-                "persist supported-definition/compiler contract",
+                "lambda/services/paymentmetricdeclarativeplancompiler.ts",
+            ),
+            "canonical catalog": (
+                "src/data/financial-metrics/payment-financial-metrics.v2.json",
+            ),
+            "generated release": (
+                ".generated/financial-metrics-catalog/releases/<lexicon_version_id>/",
+            ),
+            "activation source": ("top-level `dev_activation_allowlist`",),
+            "actual shape": ("qualifying_conditions", "materialization_plan"),
+            "Model generated shape": ('mode="generated"',),
+            "Model published shape": ('mode="published"',),
+            "source precedence": ("pinned lexicon source owns metric semantics",),
+            "Persist precedence": (
+                "pinned persist code decides whether a definition is executable",
             ),
             "exact reuse": ("`exact reuse`",),
             "supported configuration": ("`supported configuration/composition`",),
@@ -268,7 +421,9 @@ def main() -> int:
     assert_intent_contract()
     assert_evidence_and_classification()
     assert_real_lifecycle_and_fail_closed_behavior()
-    assert_current_finance_boundary()
+    assert_canonical_metric_contract()
+    assert_model_catalog_mapping_and_precedence()
+    assert_counts_are_not_contracts()
     assert_prompt_and_capability_map()
     assert_skill_contract()
     assert_domain_boundary()
