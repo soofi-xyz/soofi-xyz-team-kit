@@ -49,3 +49,8 @@ when discovering releases or handling notifications.
 Environment installs the Deploy components and checks initial readiness. Deploy
 owns their subsequent operation. Return implementation/configuration changes,
 expected/actual state, automated and user/AWS evidence, cleanup and remaining gaps.
+
+## Configuration bundles
+
+Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
+Reconcile configuration-bundle results and partial application; advance installed identity only after declared operations complete.

@@ -18,6 +18,15 @@ Configure business outcomes on **System**. Keep framework, compiler and infrastr
 5. Validate with `scripts/check-system-manifest.py`, then run the configuration against the actual System service using mocked leaf services before enabling real integrations. Record expected/actual outcomes and execution traces separately from static checks.
 6. Hand missing runtime features or defects to `zygarde`. Do not fall back to an unrelated custom Lambda pipeline or rebuild a leaf engine.
 
+## Configuration bundles
+
+Read [the shared configuration-bundle contract](../skills/build-product-deployer/reference/configuration-bundles.md) for this work.
+Compose System configuration documents for configuration bundles with pinned Transform
+and Connect references and declared dependencies. Keep the composition manifest distinct
+from verified System API payloads. Preserve scenario and leaf-readiness checks; successful
+installation does not prove the business outcome. Hand publication and installation to
+Registeel/Skarmory and API gaps to Zygarde; do not emit installer Lambdas.
+
 ## Return
 
 Return the outcome, composition/configuration artifacts, versions, target evidence, mock and real test results, learning stage and unresolved dependencies.

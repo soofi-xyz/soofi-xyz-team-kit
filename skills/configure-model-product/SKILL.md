@@ -1,6 +1,6 @@
 ---
 name: configure-model-product
-description: "Configure and test Model through its existing HTTP API. Use Jirachi for KPI-to-metric configuration, vocabulary lookup, candidate validation, governed changes, ruleset definitions, mapping registrations and versioned releases; route service gaps to Dialga."
+description: "Configure and test Model through its existing HTTP API. Use Jirachi to match user-provided business and finance KPIs to supported definitions and to govern vocabulary, candidate, artifact and release changes; route service gaps to Dialga."
 ---
 
 # Configure Model
@@ -17,7 +17,11 @@ Read the relevant [product contract](../build-lexicon-product/reference/PRD.md) 
    synthetic fixture. Use a baseline, materially different supported configuration,
    invalid/unauthorized input and relevant replay/recovery cases inside each piece;
    use four as a full walkthrough floor, not a fixed count or a quota for narrow work.
-3. Use the discovered Model API to inspect definitions, validate candidates and apply supported governed publication or release selection. Keep review prerequisites intact and verify artifact/read-back digests. If only the Lexicon artifact/UI contract exists, hand the missing API capability to Dialga; do not substitute direct canonical S3/SSM edits.
+3. Use only operations present in the discovered Model OpenAPI. Current Model
+   supports generic vocabulary/definition/release reads, change-set submission,
+   artifact upload, validation, review decisions, publication and immutable
+   release/artifact read-back. It does not thereby provide KPI-specific endpoints,
+   live graph inspection or automatic KPI/configuration generation.
 4. Use the deployment's verified test adapters for external effects. If it lacks
    a safe test mode or required capability, leave that check pending and hand a
    redacted reproducer to `dialga`. Do not edit service code, write internal storage,
@@ -30,74 +34,149 @@ Read the relevant [product contract](../build-lexicon-product/reference/PRD.md) 
    are covered by the requested scope and record cleanup without removing shared
    resources. Keep mocked execution distinct from actual dependency readiness.
 
-## Configure a KPI as an existing metric family
+## Configure a business or finance KPI
 
-When a user defines a KPI or asks what can be measured, read the
+When a user provides a KPI, read the
 [KPI-to-metric configuration contract](reference/kpi-to-metric-configuration.md).
-Finance is one configuration family; do not assume every KPI is financial or
-force it into the payment financial-metrics package.
+This workflow is for business outcomes and finance measures, not platform-health
+telemetry. It handles incomplete requests through discovery questions; it does
+not manufacture a KPI from schema fields.
 
-1. Pin the selected Lexicon release and digest. If no Model API release exists,
-   accept a user-supplied artifact for analysis only and keep submission/publication
-   pending. Inventory classes, graph properties, external properties, derived
-   indexes, directed relationships and explicitly evidenced events separately,
-   together with Base Metrics family/operation catalogs, approved executable
-   packages and consumer revisions.
-2. For an open-ended request, derive only a small, bounded set of KPI hypotheses
-   from exact model evidence. For each one show a suggestion ID, business decision,
-   population/root, graph path, family/operation match, executable support,
-   confidence and assumptions. Confidence reflects schema/runtime evidence, not
-   business importance. Suggestions are analysis records, not configuration.
-3. Ask the user to select or refine a suggestion, recording the proposal revision
-   and model digest. Reject stale or unbound selection, and do not generate
-   configuration from an unapproved suggestion. Then normalize the selected
-   intent: decision, population, measure, calculation, numerator/denominator when
-   applicable, exclusions, unique item, unit, output type, time behavior, business
-   time/timezone, coverage, scope, grain and dimensions.
-4. Search for exact semantic reuse, then match the selected KPI to an existing
-   base family by graph source/path, unique item and valid calculation. Select an
-   executable configuration family whose temporal, scope, dimension and consumer
-   contracts support it. Verify the deployed consumer revision independently.
-5. Return `measurable` only when an existing definition can be reused or the
-   selected executable family supports the complete candidate. Return `partial`
-   when Base Metrics identifies a family but no executable package/consumer
-   exists. Return `blocked` for missing graph facts, unsupported formula,
-   calculation, time behavior, scope, grain, unit or consumer capability.
-6. Generate only through the selected family's discovered authoring contract
-   and generator. Never clone generated plans, invent generic metric fields,
-   or treat a unit such as `PERCENT` as formula semantics.
-7. Present the matched family, exact reuse/new-version decision, authored
-   fields, generated evidence and runtime compatibility. Require confirmation
-   before validation and separate confirmation before governed publication or
-   activation. Verify immutable release/read-back digests.
+### 1. Complete the KPI intent contract
 
-For the currently observed payment financial v2/Persist contract, configure by
-exactly reusing existing code-owned metric IDs. The supported configurable surface
-is a sorted, unique, non-empty catalog-backed activation allowlist; it is not a
-license to author new financial definitions, selectors, elections, plans, matrix
-entries, counts or digests. Hand new reusable Model capability to Dialga and
-Persist compiler/runtime support to Conkeldurr.
+Require all of:
+
+- KPI name and business question;
+- grain/entity being measured;
+- measure and aggregation;
+- filters, inclusions and exclusions;
+- time semantics and reporting window, including business time/timezone when relevant;
+- dimensions/grouping;
+- output shape and consuming report, API or decision process;
+- concrete acceptance examples with expected values.
+
+Ask focused questions when any field is missing, ambiguous or contradictory.
+Record assumptions as unresolved; do not infer filters, joins, event semantics,
+time windows or formulas from labels and descriptions.
+
+### 2. Gather read-only evidence
+
+Pin repository revisions and release IDs/digests. Inspect the available Lexicon
+schema, property types, directed relationships and existing metric
+catalogs/definitions. Inspect the pinned Persist supported-definition/compiler
+contract separately. Evidence may come from checked-out source artifacts or from
+Model's generic definition, release, composition and artifact reads. Do not claim
+that source inspection, Neptune queries or graph traversal are Model API
+operations.
+
+For the currently observed finance package:
+
+- Lexicon publishes `financial-metrics-catalog/v2`;
+- `payment-financial-metrics.v2.json` contains 92 code-owned definitions;
+- `dev_activation_allowlist.metric_ids` contains 30 separately selected IDs;
+- Persist's `payment-metric-supported-definitions.ts` contains the same closed
+  92-ID set, and its declarative plan compiler rejects any other metric ID.
+
+Reverify these facts at the selected revisions. A catalog definition proves
+definition availability, not activation or materialization.
+
+### 3. Classify before proposing writes
+
+Choose exactly one classification:
+
+1. `exact reuse` — every intent field matches an existing immutable definition;
+2. `supported configuration/composition` — the KPI uses only existing supported
+   definitions and the selected package/consumer explicitly supports the proposed
+   selection or catalog reference without changing metric semantics;
+3. `new definition/family` — any formula, source/path, filter, time behavior,
+   grain, dimension, output, correction rule or family is not already supported.
+
+A similar name, unit or graph path is not an exact match. Return the exact metric
+IDs for the first two classifications. Unknown IDs, a partial semantic match and
+an unsupported consumer are `new definition/family`, not best-effort
+configuration.
+
+### 4. Plan or apply the generic Model lifecycle
+
+For `exact reuse`, first determine whether an already published immutable Model
+release contains the required artifact; if so, return that release ID/digest and
+read it back rather than creating a duplicate.
+
+For supported configuration/composition that needs a release, prepare the exact
+artifact and a request plan grounded in the discovered OpenAPI:
+
+1. submit a generic change set with an idempotency key and declared artifact
+   digest/length; for Composition Contract v1, select that JSON artifact with
+   `composition.documentArtifactId`, omit legacy proposed revisions and make
+   `sourceDigest` equal the selected artifact digest;
+2. obtain the artifact upload URL and upload the exact bytes;
+3. start validation, poll status and retrieve validation results;
+4. submit review and record an authorized decision using the latest `ETag`,
+   candidate digest and source digest;
+5. start publication and poll the publication run;
+6. read the immutable release and its artifacts or composition back, comparing
+   release, source and artifact digests.
+
+Model's generic metric-catalog composition contract may pin a generated
+`base-metrics-catalog/v1` source or an immutable published catalog URI/digest.
+It does not provide metric-family-specific semantic validation. Run the selected
+package's real validator/generator before submission and keep Persist
+compatibility as separate evidence.
+
+If an executable Model API/tool adapter is available and authorized, invoke it.
+If this prompt/skill is the only available surface, return the exact artifact,
+request bodies and sequence with `application: not applied`. Instructions alone
+do not add an adapter, upload artifacts or publish a release.
+
+### 5. Fail closed for new semantics
+
+For `new definition/family`, do not submit a Model change set. Identify:
+
+- Lexicon catalog source/type changes;
+- the family validator/generator and deterministic generated-release changes;
+- updated approved package/release evidence;
+- Persist supported-definition, family/plan compiler and runtime support;
+- any Model specialized semantic validator that is actually required.
+
+Hand Model implementation work to Dialga and Persist implementation work to
+Conkeldurr. Resume governed configuration only after those capabilities exist at
+pinned revisions.
+
+### 6. Separate publication from activation
+
+Definition validation, review and publication do not activate a metric. Never
+activate automatically. Never change an activation allowlist, invoke a Persist
+activation/rebuild or claim
+materialization unless the user separately authorizes that operation and its
+owner performs it. A release is complete only after immutable read-back returns
+the expected release ID and release digest and all source/artifact digests match.
 
 Return this proposal:
 
 ```text
-KPI / business decision:
-Population / measure / calculation:
-Time / scope / grain / dimensions:
-Lexicon release and graph evidence:
-Base family and operation:
-Executable configuration family:
-Reuse or candidate definition:
-Consumer compatibility:
-Measurability: measurable | partial | blocked
-Ambiguities / unsupported semantics:
-Confirmation: pending | confirmed
-Validation / review / release / activation:
+KPI name / business question:
+Grain/entity:
+Measure / aggregation:
+Filters / exclusions:
+Time / window / timezone:
+Dimensions / grouping:
+Output / consumer:
+Acceptance examples:
+Evidence revisions / release digests:
+Classification: exact reuse | supported configuration/composition | new definition/family
+Exact existing metric IDs:
+Consumer/compiler compatibility:
+Configuration artifact / generic Model request plan:
+Application: applied | not applied
+Validation / review / publication:
+Release ID / release digest / read-back:
+Activation: pending unless separately authorized
+Gaps / owner:
 ```
 
-Exercise exact reuse, a materially different supported configuration, a generic
-family with no executable runtime, an invalid graph reference or unsupported
-composite formula, and deterministic regeneration/replay. Publication is not
+Exercise exact reuse, a materially different supported composition, incomplete
+intent, an unknown metric ID, an unsupported formula/family, unauthorized access,
+idempotent replay, timeout/recovery and digest mismatch. Publication is not
 activation, and activation is not observed materialization.
 
 Keep Persist storage/validation execution with Conkeldurr/Uxie, Rule evaluation with Gallade/Meditite and Transform mapping execution with Kecleon/Silvally. Silvally authors concrete Transform configurations; Model owns shared definition validation and governed publication. Use Mew for vocabulary lookup/modeling advice without changing its retained specialist role.

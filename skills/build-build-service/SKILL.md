@@ -52,3 +52,8 @@ Keep Marketplace publication/review with Regigigas/Registeel and deployment exec
 Return changes, supported API/configuration examples, automated and user evidence,
 AWS observations, cleanup and remaining gaps. Keep reusable product code in its
 target repository; this kit contains guidance and synthetic inputs.
+
+## Configuration bundles
+
+Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
+Package configuration assets and shared-provider declarations; verify digests without calling target APIs or adding per-bundle Lambdas.

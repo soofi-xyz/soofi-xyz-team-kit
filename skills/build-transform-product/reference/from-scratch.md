@@ -5,6 +5,13 @@ repository**. This skill supplies instructions, contracts and examples. Create
 and test the modules described below in that repository; no product runtime,
 bootstrap generator or deployable stack ships with this skill.
 
+Use the module contracts below for SQL conversion. When building the
+`non-deterministic-extraction` feature, add a TypeScript AI SDK Bedrock worker and
+versioned configuration/run contracts from
+[the extraction reference](non-deterministic-extraction.md). Reuse scoped storage,
+admission, HTTP status/results and reporting; do not launch Glue for string
+extraction or reinterpret the v2 SQL schema as supporting this feature.
+
 Deliver [user-tested feature increments](../../guide-product-work/reference/iterations/transform.md).
 The module inventory below describes the eventual product, not permission to
 build every capability before the first AWS test. For each iteration, implement

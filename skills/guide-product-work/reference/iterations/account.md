@@ -1,33 +1,61 @@
 # Account capability map
 
 Use Kangaskhan to implement Account capabilities and Blissey to configure existing
-ones. Follow the [shared workflow](../../SKILL.md). These nine areas form a starting
-inventory, not a fixed iteration count. Select scope, order dependencies and split
-independently useful features further where needed. Keep tests and user/AWS
-feedback inside every piece; narrow work need not cover the entire map.
+ones. Follow the [shared workflow](../../SKILL.md). Start onboarding with one
+three-way question: Prism-managed account, existing client-owned account, or new
+client-owned account outside Prism. Do not infer the answer from email/company
+identity or lead with AWS profiles, roles or API details. Explain the selected
+route with **Prism does / You do / Expect** before collecting minimum non-secret
+inputs.
 
-| Feature ID / usable capability | Dependency | Builder increment / configurer exercise | AWS inspection and acceptance |
+These capabilities form a starting inventory, not a fixed iteration count. Select
+scope, order dependencies and split independently useful features where needed.
+Keep automated tests and user/AWS feedback inside every piece.
+
+## Product boundaries
+
+| Product | Owns |
+| --- | --- |
+| **Account** | Prism identity, account/service keys, backing AWS account record, explicit create-or-adopt provisioning, Prism cross-account service-access readiness, bootstrap manifest and guarded Account offboarding. |
+| **Environment** | Domain and certificate lifecycle, shared routing and initial Prism platform installation. |
+| **Access** | IAM Identity Center and customer AWS Console assignments. Access is currently unassigned; report the gap instead of implementing console access in Account. |
+| **Prism Marketplace** | Account product/catalog registration, operated by Registeel. |
+
+## User-visible milestones
+
+Never summarize all progress as “onboarded.” Report:
+
+1. **Account identity** — the Prism identity exists.
+2. **Request** — create or adopt was accepted; work may still be pending.
+3. **AWS account created or recorded** — AWS returned a new account ID, or the
+   existing account passed record and ownership checks.
+4. **Access ready** — Prism verified its cross-account service role against the
+   expected 12-digit AWS account ID.
+5. **Platform installed** — Environment proved initial installation. Account
+   never infers or owns this milestone.
+
+Every pending/action-required/failure result says what happened, who acts next,
+whether the same request is safe to retry and the next non-secret action.
+
+## Feature inventory
+
+| Feature ID / usable capability | Dependency | Builder increment / configurer exercise | Acceptance |
 | --- | --- | --- | --- |
-| `identity` — create and read an account | Verified HTTP/auth contract | Deliver minimal create/read/update/search with authorization and stable identity; exercise customer and organization fixtures, invalid input and an unauthorized read. | Trace API request and storage logs; read back kind, identity and version, confirm rejection has no write and credentials are redacted. |
-| `confirmation` — activate a customer identity | Identity | Deliver signed confirmation and replay/expiry handling with mocked mail; exercise valid, expired, tampered and repeated callbacks. | Inspect the send/wait/resume states and account/key activation; compare first completion and replay without exposing tokens. |
-| `account-keys` — manage caller credentials | Identity and required confirmation | Deliver mint/list/revoke and scoped authorization; exercise two keys, a revoked-key call and another account's caller. | Inspect API authorization and key-state changes; verify one-time mint output is handled locally and no plaintext reaches logs or evidence. |
-| `provisioning` — make an account ready | Confirmed identity and provider configuration | Deliver create-or-adopt AWS account workflow with the canonical DNS/certificate work required for readiness; configure fake new and pre-provisioned accounts, duplicate starts and provider failure. | Follow submission, polling, DNS validation and terminal status through the API and workflow; an accepted request or mock account ID does not prove real readiness. |
-| `custom-domains` — configure additional domain metadata | Provisioned account | Deliver supported domain/certificate configuration beyond canonical provisioning; vary supported canonical/alias settings and simulate validation failure. | Inspect domain workflow, DNS/ACM results and API read-back; verify no product route mapping is created by Account. |
-| `bootstrap-handoff` — retrieve installation inputs | Provisioning | Deliver authorized bootstrap-manifest retrieval; compare ready and incomplete accounts and reject a caller from another account. | Inspect API checks and a redacted manifest comparison; validate required identifiers without logging bootstrap credentials or claiming stacks were installed. |
-| `service-key-rotation` — replace a service credential | Provisioning and existing shared usage-plan binding | Deliver rotation, overlap and old-key retirement; exercise configured grace periods, concurrent rotation and a failed binding update with fakes. | Trace binding/retirement states; verify new-key usability, old-key rejection after grace and the supported recovery outcome. |
-| `maintenance-access` — grant temporary access | Provisioning and verified identity/approval integration | Deliver approved, single-use, expiring sessions with mocked identity, mail and IAM; exercise approval, denial, expiry and repeated redemption. | Inspect approval/wait/cleanup states and redacted audit records; verify denial/expiry prevents use and cleanup runs. Do not fabricate owner approval or bypass required MFA. |
-| `disable` — retire an account safely | Provisioning and verified consumer-removal prerequisites | Deliver guarded disable, teardown and final status; exercise a fake account with remaining consumers, a clean account and a partial provider failure. | Inspect prerequisite rejection, teardown order and terminal read-back; a blocked account must retain its resources. Mock account closure for acceptance; real closure requires explicit scope. |
+| `identity` — create, confirm and read a Prism Account identity | Verified HTTP/auth contract | Deliver authorized create/read/update plus signed confirmation where supported. Configure a baseline identity, a materially different supported identity and unauthorized/duplicate input. | Read back the stable identity/version. Rejected input has no write; tokens, keys and credentials stay out of logs and chat. |
+| `account-keys` — manage caller and service credentials | Identity and required confirmation | Deliver mint/list/revoke/rotate with one-time secret delivery and scoped authorization. Exercise overlap, revoked use, another account's caller and failed rotation recovery. | Read back metadata only. Verify plaintext never reaches storage/logs/evidence and failed rotation preserves a working prior key. |
+| `provisioning-request` — choose create or adopt explicitly | Identity, capability discovery and authorization | Deliver mutually exclusive `PRISM_MANAGED` and `EXISTING_AWS_ACCOUNT` requests, scoped idempotency and plain status/results. Exercise strategy conflicts, duplicate submission and an undeployed live capability. | An accepted request has a stable ID but does not claim an AWS account or access. Create never accepts an existing ID; adopt never falls back to create. |
+| `prism-managed-account` — request a new Organizations member account | Authorized `PRISM_MANAGED` request and provider configuration | Use a fake Organizations provider first, then a separately gated live provider. Configure identity, desired subdomain and authorization only; Account generates the platform-managed root address. Exercise pending, duplicate, provider failure and recovery. | Provider/effect counts and fake/live mode are observable. Store the returned 12-digit ID only after success; never create or close an account for a smoke test. |
+| `client-owned-account-guidance` — help create a standalone AWS account | Explicit client-owned-new choice; no Prism provider effect | Guide official AWS signup one screen/decision at a time while AWS directly collects root email, payment, phone verification, captcha, password and MFA. After creation, prepare the non-secret existing-account handoff. | No sensitive value enters chat/evidence and Prism Organizations receives zero calls. The handoff contains account ID, subdomain, region and authorized contact, then follows deployed adoption. |
+| `existing-account-adoption` — record a customer-owned AWS account | Authorized `EXISTING_AWS_ACCOUNT` request and deployed adoption provider | Validate the 12-digit ID, uniqueness and requester authorization without changing ownership or organization. Exercise fake success, unauthorized caller, conflicting owner and capability-not-deployed. | Real acceptance requires the deployed adoption path. A fake result or stored ID cannot be reported as live adoption; unsupported adoption fails before partial writes. |
+| `access-readiness` — verify Prism service access | AWS account created/recorded and configured cross-account role | Deliver a least-privilege role handshake whose returned identity must equal the recorded account ID. Exercise not-yet-configured trust, wrong-account response, retryable STS failure and success. | Only a successful live handshake marks access ready. Return plain owner/recovery guidance without credentials or raw SDK errors. Do not create customer console assignments. |
+| `bootstrap-handoff` — retrieve Environment inputs | Access ready | Deliver authorized, non-secret manifest retrieval. Compare complete/incomplete states and reject another account's caller. Include stable identity/account/access handles needed by Environment, not domains, certificates or install success. | Redacted schema validation passes; secret values are absent. Manifest availability does not mean Environment installed the platform. |
+| `offboarding` — disable Account-owned access safely | Existing Account-owned keys/record and explicit authorization | Revoke or retire Account-owned credentials/access and update the record with guarded, idempotent recovery. Keep Environment resources, customer console assignments and customer-owned organization placement outside this workflow. | Fakes prove order, blocked prerequisites and retry behavior. Live account movement/closure stays separately gated and is never implied by disabling a Prism Account. |
 
 Use the [Account contract](../../../build-tenant-account-manager/reference/PRD.md)
 and [synthetic fixtures](../../../build-tenant-account-manager/reference/test-data.md).
 The map specifies required outcomes, not deployed endpoints. Discover exact routes,
-auth, statuses and test adapters in the target revision. Exercise each feature
-through the Account HTTP API; direct Lambda/workflow calls support diagnostics.
-Provide submission/status/results for async capabilities, and route a missing API
-surface to Kangaskhan. Reuse one execution implementation behind those surfaces.
-
-Include canonical DNS in the first complete provisioning path; custom-domain
-management is the separate extension. Keep provisioning and disable separate:
-one creates readiness, the other enforces consumer cleanup before teardown.
-Observe selected features through real test-stack executions with mocked external
-effects before authorized live dependencies. Finish with cumulative acceptance.
+auth, statuses, provider mode and test adapters in the target revision. Exercise
+each feature through the Account HTTP API; direct Lambda/workflow calls support
+diagnostics. Route missing API behavior to Kangaskhan. A specification, local
+fixture, fake provider, synthesis or accepted request does not prove live adoption
+or access. Keep live external effects gated and finish with cumulative acceptance.

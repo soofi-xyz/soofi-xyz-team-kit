@@ -17,8 +17,6 @@ The core artifact is `lexicon.json`: a reviewed graph ontology containing vertex
 - ruleset catalogs used by Rules and downstream decisioning products;
 - Interprose source schemas and snapshot-constrained schemas used by Translate and data-preparation jobs;
 - Interprose-to-Lexicon transform SQL artifacts;
-- generated Base Metrics family/operation catalogs for discovering measurable graph facts;
-- reviewed executable metric-family packages, with payment financial metrics as one current specialization;
 - CloudWatch metric definitions used by products that emit platform metrics;
 - a read-only UI for humans to browse schemas, relationships, rules, and mappings.
 
@@ -43,15 +41,11 @@ The target deployment publishes these SSM parameters:
 | `/lexicon/interprose-data-uri` | `s3://<LexiconDataBucket>/interprose.json` | Translate, mapping authors | Full Interprose source schema |
 | `/lexicon/interprose-snapshots-data-uri` | `s3://<LexiconDataBucket>/inteprose-snapshots.json` | Translate, mapping authors | Snapshot-constrained Interprose source schema; object key preserves the current reference spelling |
 | `/lexicon/interprose-transform-uri` | `s3://<LexiconDataBucket>/interprose/` | Translate, ETL builders | SQL transform prefix with `vertices/` and `edges/` children |
-| `/lexicon/base-metrics-catalog-uri` | Immutable Base Metrics `manifest.json` URI | Model/configuration tools | Generated definitions-only family and operation catalogs |
-| `/lexicon/financial-metrics-catalog-uri` | Immutable approved-release URI | Compatible metric materializers | Reviewed executable payment financial-metric package |
 | `/lexicon/cloudwatch-metrics-uri` | `s3://<LexiconDataBucket>/cloudwatch-metrics.json` | Dashboards, metric checks | Governed metric definitions |
 | `/lexicon/rule-query-artifacts-uri` | `s3://<LexiconDataBucket>/rule-query-artifacts.json` | Rules/tooling | Rule query artifact metadata |
 | `/lexicon/release-uri` | `s3://<LexiconDataBucket>/release.json` | Build, Marketplace, operators | Release metadata tying artifact digests to `lexicon_version_id` |
 
-The target product MUST publish every supported artifact through this S3/SSM
-boundary. Discover the selected revision before claiming a parameter or package
-exists; a generated Base Metrics family is not an executable runtime contract.
+The reference implementation already deploys the first five parameters. The target product MUST also publish the metric, rule-artifact, and release metadata parameters so products that already depend on those source files can consume them through the same S3/SSM boundary.
 
 ### 1.3 Non-goals
 
@@ -59,7 +53,6 @@ exists; a generated Base Metrics family is not an executable runtime contract.
 - Model does **not** allow unrestricted runtime mutation of canonical schemas, rules, metrics or mappings. API operations submit/validate candidates and initiate approved release work; canonical changes remain reviewed source changes and ship as versioned releases.
 - Lexicon does **not** own partner ingestion, translation execution, or source-system credentials. Translate and data pipelines consume Lexicon artifacts; they own execution.
 - Lexicon does **not** own the Main Dashboard. It owns the metric registry that dashboard changes must reference.
-- Lexicon does **not** make every generated Base Metrics family executable. Each executable metric family needs a reviewed package and a compatible consumer; Persist owns its supported materialization runtimes.
 - Lexicon does **not** bypass Marketplace or Build compatibility checks. Release metadata is provenance and dependency input, not an alternate deployment channel.
 - Lexicon does **not** mutate deployed data objects in place outside a reviewed deploy. Rollback is redeploying a previous bundle or restoring a versioned object through an operator-approved runbook.
 
@@ -370,46 +363,7 @@ Each metric vertex type is the canonical metric name. Properties describe requir
 
 The registry is the source of truth for metric names and dimensions; CloudWatch itself is an operational sink, not the registry.
 
-### 3.5 KPI metric catalogs and executable families
-
-Base Metrics derives definitions-only graph families and candidate operations
-from `lexicon.json`. The current contract publishes
-`family-metrics-catalog.json` and `operational-metrics-catalog.json` under an
-immutable `base-metrics-catalog/v1` manifest. Generated families identify graph
-source/path, unique item and type/category-valid calculations; `GENERATED` or
-`NEEDS_CLARIFICATION` does not mean reviewed, executable or active.
-
-An executable metric family is a separate reviewed package. The current payment
-financial package is one specialization: it adds payment-domain scope paths,
-time/election semantics, contribution/correction identity, typed outputs and
-generated materialization plans under `financial-metrics-catalog/v2`. Its
-approved release is consumed only by compatible Persist revisions. Do not force
-non-financial KPIs into that package or infer a generic execution contract from
-its fields.
-
-KPI configuration must first normalize the business definition, search for
-exact semantic reuse, match a Base Metrics family, and then select an executable
-package and consumer that support all requested semantics. A valid family with
-no package/runtime is only partially configurable. A unit such as `PERCENT`
-does not define numerator, denominator, alignment or zero-denominator behavior.
-Unsupported composite formulas remain blocked until Model and the consumer add
-an explicit contract.
-
-Model-driven discovery is a separate, release-pinned capability. It inventories
-graph properties, external properties, derived indexes, directed relationships
-and explicitly evidenced events, then returns a bounded shortlist with opaque
-graph references and deterministic support classification. A user selection is
-bound to the proposal revision and model digest and authorizes generation only.
-Free-form descriptions are untrusted and cannot introduce graph or metric
-references.
-
-Generators own materialization plans, family matrices, counts and digests.
-Authors change only fields accepted by the selected package. Publication,
-activation and observed materialization are separate governed evidence states.
-Use the [KPI-to-metric configuration contract](../../configure-model-product/reference/kpi-to-metric-configuration.md)
-for the configurer workflow.
-
-### 3.6 Interprose schemas and transforms
+### 3.5 Interprose schemas and transforms
 
 `interprose.json` and `inteprose-snapshots.json` describe source-system schemas in the Lexicon shape so the UI and mapping tooling can render source classes with the same components used for the graph ontology.
 
@@ -456,7 +410,7 @@ published artifacts for compatible consumers while publishing the new catalog.
 For graph targets use the explicit [graph mapping format](../../build-transform-product/reference/graph-mappings.md)
 to bind vertex IDs, edge IDs/endpoints, labels and properties.
 
-### 3.7 Release metadata
+### 3.6 Release metadata
 
 Each deploy writes `release.json`:
 
@@ -471,8 +425,6 @@ Each deploy writes `release.json`:
     "interprose.json": { "sha256": "...", "s3_uri": "s3://.../interprose.json" },
     "inteprose-snapshots.json": { "sha256": "...", "s3_uri": "s3://.../inteprose-snapshots.json" },
     "interprose/": { "sha256": "...", "s3_uri": "s3://.../interprose/" },
-    "base-metrics-catalog/": { "sha256": "...", "s3_uri": "s3://.../base-metrics-catalog/releases/..." },
-    "financial-metrics-catalog/": { "sha256": "...", "s3_uri": "s3://.../financial-metrics-catalog/releases/..." },
     "cloudwatch-metrics.json": { "sha256": "...", "s3_uri": "s3://.../cloudwatch-metrics.json" },
     "rule-query-artifacts.json": { "sha256": "...", "s3_uri": "s3://.../rule-query-artifacts.json" }
   }
@@ -498,17 +450,6 @@ Persist consumes `/lexicon/data-uri` at deploy/runtime and uses the pointed `lex
 Persist caches the loaded document for 300 seconds, refreshes through single-flight fetch, and fails closed when refresh fails after expiry. Persist validates payload labels, edge endpoints, required properties, property types, enums, formats, patterns, and multi-value/cardinality semantics. Derived `indexes` metadata is accepted as Lexicon metadata but is not treated as required ingest input.
 
 Candidate validation uses `candidate_lexicon_s3_uri`. Persist accepts candidate URIs only in the same Lexicon data bucket under `ovid-agent-changes/` and ending in `.json`.
-
-Metric materialization is package-specific. Verify the selected Persist revision
-before claiming support. The current payment implementation consumes an immutable
-approved `financial-metrics-catalog/v2`, strictly validates generated
-`payment-metric-materialization-plan/v1` plans, rebuilds a shadow generation,
-reconciles it and activates it separately. It is not a generic interpreter for
-every Base Metrics family. Its current configuration surface is exact reuse of
-code-owned payment definitions through a sorted, unique, non-empty activation
-allowlist; new definitions or traversals require a coordinated Model package and
-Persist compiler change. Model owns definition/release governance; Persist owns
-supported execution, projection state, activation and runtime evidence.
 
 ### 4.2 Rules
 
@@ -548,8 +489,6 @@ All Lexicon changes are source changes. A change may update one or more of:
 - `src/data/lexicon.json`;
 - `src/data/rulesets/**`;
 - `src/data/cloudwatch-metrics.json`;
-- executable metric-family sources such as `src/data/financial-metrics/**`;
-- Base Metrics generator/release code when its derived contract changes;
 - `src/data/rule-query-artifacts.json`;
 - `src/data/interprose*.json`;
 - `src/transform/interprose/**`;
@@ -561,8 +500,6 @@ Schema and ruleset changes must include tests that prove:
 - duplicate labels are intentional and covered by compatibility allowances;
 - required properties are present and not accidentally moved into indexes;
 - enum changes are backed by source-system evidence;
-- KPI definitions reference valid graph families, and executable-family changes
-  regenerate plans/counts/digests deterministically;
 - rules reference existing vertex/edge labels or documented derived/indexed properties;
 - ruleset manifests reference existing rule/query files;
 - deployable ruleset assets exclude docs-only markdown files.
@@ -618,8 +555,6 @@ Minimum suites:
 | `lexicon-data` | top-level shape, edge endpoint references, duplicate labels, property/index separation, index metadata completeness, immutable modeling invariants |
 | `ruleset-structure` | catalog entries, manifest paths, split rule/query files, rule order, docs excluded from deployable prefix |
 | `ruleset-integration` | rule Gremlin references against Lexicon labels/properties/indexes, status-event ordering, account/phone scope semantics |
-| `base-metrics-catalog` | deterministic family/operation generation, category/type-valid calculations, path continuity, review states and manifest digests |
-| `executable-metric-packages` | exact graph references, package-specific semantics, generated plan equivalence, consumer compatibility, release digests and publication/activation separation |
 | `cloudwatch-metrics-data` | metric list, dimensions, enum values, no edge relationships |
 | `interprose-mapping` | source schema and transform SQL references for mapped graph elements |
 | `ui-smoke` | UI renders each registry entry without crashing |
@@ -633,12 +568,10 @@ After deploy:
 2. `/lexicon/data-uri` points at a readable `lexicon.json`.
 3. `/lexicon/rulesets-uri` points at a prefix with `index.json`, `phone-interactions/ruleset.json`, and `sms-interactions/ruleset.json`.
 4. `/lexicon/interprose-transform-uri` points at a prefix containing both `vertices/` and `edges/`.
-5. `/lexicon/base-metrics-catalog-uri` points at an immutable manifest whose payload digests verify.
-6. Every published executable metric-family parameter points at an immutable approved release whose package and Lexicon attestations verify.
-7. `/lexicon/cloudwatch-metrics-uri`, `/lexicon/rule-query-artifacts-uri`, and `/lexicon/release-uri` point at readable objects.
-8. A principal with Persist's runtime policy can read only the core Lexicon object, approved candidate prefix and explicitly supported executable metric packages.
-9. A principal with Rules' runtime policy can read only the rulesets prefix it needs.
-10. A principal with Translate's runtime policy can read the schemas and transform SQL prefix it needs.
+5. `/lexicon/cloudwatch-metrics-uri`, `/lexicon/rule-query-artifacts-uri`, and `/lexicon/release-uri` point at readable objects.
+6. A principal with Persist's runtime policy can read only the core Lexicon object and approved candidate prefix.
+7. A principal with Rules' runtime policy can read only the rulesets prefix it needs.
+8. A principal with Translate's runtime policy can read the schemas and transform SQL prefix it needs.
 
 ---
 
@@ -647,15 +580,13 @@ After deploy:
 The current `../lexicon` implementation already includes:
 
 - Vite + React UI with class, relationship, ruleset, and mapping viewers;
-- `src/data/lexicon.json` with graph vocabulary, derived indexes and the Universal Metric Model;
+- `src/data/lexicon.json` with 38 vertices, 84 edges, common patterns, and debt derived indexes;
 - `src/data/rulesets/index.json` with `phone` and `sms` catalog entries;
 - split ruleset manifests, JSON rule definitions, Gremlin queries, and SQL notes;
-- deterministic Base Metrics catalog/release generation from `lexicon.json`;
-- a reviewed payment financial-metrics package as one executable KPI family;
 - `src/data/cloudwatch-metrics.json`;
 - `src/data/rule-query-artifacts.json`;
 - Interprose schema files and transform SQL under `src/transform/interprose`;
-- CDK stack creating a private website bucket, CloudFront distribution, retained data bucket, immutable catalog deployments, and `/lexicon/*` discovery parameters.
+- CDK stack creating a private website bucket, CloudFront distribution, retained data bucket, data deployments, and the first five `/lexicon/*` SSM parameters.
 
 Target gaps to close while re-creating the product:
 
@@ -675,6 +606,6 @@ Target gaps to close while re-creating the product:
 - `LexiconStack` deploys a private data bucket, static UI, CloudFront distribution, all required SSM parameters, and CloudFormation outputs.
 - All artifacts listed in section 2.2 are present in S3 after deployment with versioning enabled.
 - Persist, Rules, Translate, Build/Marketplace, and metric checks can consume Lexicon only through the S3/SSM contracts in section 4.
-- Tests cover schema integrity, ruleset structure/integration, Base Metrics generation, executable metric packages, metric registry shape, UI smoke rendering, and CDK parameter/prefix contracts.
+- Tests cover schema integrity, ruleset structure, ruleset integration, metric registry shape, UI smoke rendering, and CDK parameter/prefix contracts.
 - The deployed `release.json` records a `lexicon_version_id` and digests for every published artifact group.
 - Existing consumer PRDs reference Lexicon as the owner of these artifacts and do not require consumers to read the Lexicon Git repository at runtime.

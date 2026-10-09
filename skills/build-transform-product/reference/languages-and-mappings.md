@@ -1,5 +1,10 @@
 # Languages and directional SQL mappings
 
+Scope this reference's definition-derived schema and registration rules to SQL
+language mappings. For string extraction, use the configured output JSON Schema
+in [the non-deterministic phase](non-deterministic-extraction.md); validate any
+handoff to SQL against its registered language definition separately.
+
 Implement this configuration contract with Lexicon. Discover existing compatible
 catalog and publication surfaces before adding resources. Treat the paths below
 as a reference layout, not proof of an existing deployment. Keep [the PRD](PRD.md)

@@ -1,9 +1,10 @@
-# KPI-to-metric configuration
+# Business and finance KPI configuration
 
-Turn a business KPI into an existing Lexicon metric configuration in layers.
-Do not invent one universal metric payload: Base Metrics describes generic graph
-families, while each executable family owns its exact authoring and runtime
-contract. Payment financial metrics are the current executable example.
+Map a user-provided KPI to existing governed metric definitions and use only the
+generic lifecycle exposed by the selected Model OpenAPI. This contract does not
+add KPI endpoints, graph inspection, generators or API adapters. Base Metrics
+describes generic graph families, while each executable family owns its exact
+authoring and runtime contract.
 
 ## Discover the selected revisions
 
@@ -21,108 +22,53 @@ Inspect the target Lexicon revision:
 - `/lexicon/release-uri`
 
 Inspect the actual consumer revision separately. For Persist, search for the
-catalog schema, approved-release loader, plan compiler, projection writer,
-rebuild workflow, incremental materializer, activation state and end-to-end
-tests. A published Lexicon family is not proof that Persist executes it.
+catalog schema, supported-definition list, approved-release loader, plan
+compiler, projection writer, rebuild workflow, incremental materializer,
+activation state and end-to-end tests. A published Lexicon family is not proof
+that Persist executes it.
 
 Record the source revisions, release IDs, contract versions, artifact paths,
 byte lengths and SHA-256 digests used for the proposal.
 
-## Discover KPI candidates from a model
+## Complete the KPI intent
 
-When the user has not already defined one KPI, inspect the pinned model before
-authoring anything. Build a bounded shortlist from facts the model actually
-contains; three to seven suggestions is normally enough to expose useful choices
-without treating every property as a KPI.
+Require one precise intent record before matching:
 
-Inventory graph properties, external properties and derived indexes separately.
-Indexes may support reads but are not canonical source properties. Prefer explicit
-event classes, event timestamps and enums; if only names/descriptions imply an
-event, label the candidate `event-like` and require confirmation rather than
-asserting event semantics.
+- name and business question;
+- grain/entity;
+- measure;
+- aggregation;
+- filters, inclusions and exclusions;
+- time semantics and reporting window;
+- dimensions/grouping;
+- output and consuming report, API or decision process;
+- acceptance examples with sample inputs and expected values.
 
-Safe candidate shapes include:
+Ask focused discovery questions when any field is incomplete or contradictory.
+For ratios, also require numerator/denominator populations, alignment and
+zero-denominator behavior. For event measures, require event identity, business
+time/timezone, deduplication identity, late-arrival and correction behavior.
+Do not infer any of these from labels, descriptions or likely business intent.
 
-- counts of vertices/entities in a defined population;
-- sum, average, minimum or maximum of a numeric property;
-- earliest/latest values when the model supplies the relevant temporal fact;
-- enum/status distributions and current-state counts when state semantics exist;
-- counts or existence checks over a direct directed edge;
-- counts over a short, explicit, continuous directed path;
-- event counts or rates only when event identity and event time are modeled.
+The normalized intent is an analysis record, not a Model request payload.
 
-Do not derive metrics from PII merely because the fields exist. Do not infer
-business value from names or descriptions, invent joins or reverse an edge to
-make a candidate work. Avoid composite formulas unless a discovered executable
-family explicitly supports their operands, alignment and zero/error semantics.
+## Gather read-only model evidence
 
-For every suggestion, report:
+Inspect available Lexicon schema bytes and directed relationships as read-only
+evidence. Keep graph properties, external properties and derived indexes
+separate; an index is not a canonical fact. Inspect existing Base Metrics and
+executable metric catalogs/definitions, their generated release manifests and
+the selected consumer's supported-definition/compiler contract.
 
-- a stable suggestion ID scoped to this analysis;
-- KPI hypothesis and the business decision it could inform;
-- population/root class and exact graph/property evidence;
-- Base Metrics family and operation match;
-- executable package and consumer support;
-- `measurable | partial | blocked`;
-- confidence in schema/runtime support and the evidence behind it;
-- assumptions, ambiguities and facts still requiring business confirmation.
+Evidence may come from a pinned source checkout or from Model's generic
+definition, release, composition and release-artifact reads. Do not claim that
+Model inspects Neptune, discovers arbitrary graph paths or generates KPI
+configuration automatically. Do not query or mutate a live graph merely to
+complete this analysis.
 
-Confidence is about model and runtime evidence, not business importance. A
-structurally measurable KPI is still only a suggestion until the user selects or
-refines it. Preserve that selection separately, then normalize and generate only
-the selected candidate. Do not turn the whole shortlist into canonical metric
-configuration.
-
-## Bind selection to the proposal
-
-Give each discovery result a proposal revision and bind it to the model release
-ID and SHA-256 digest. Selection must carry the candidate ID and proposal revision.
-Reject stale selections after the model, candidate inventory or support
-classification changes. Selection confirms the intended business meaning and
-authorizes configuration generation only; it does not approve validation,
-publication, activation or materialization.
-
-Keep contract fit deterministic. A model may rank business plausibility, but it
-must choose only among opaque references and enums produced by validated model and
-metric-package adapters. Never let free-form descriptions create properties,
-paths, enum/status values, calculations or dimensions.
-
-## Normalize the KPI
-
-Collect:
-
-- business name, definition and decision supported;
-- population/root and exclusions;
-- measure and calculation;
-- numerator, denominator, alignment and zero-denominator behavior for a ratio;
-- unique business occurrence and deduplication identity;
-- graph facts and path expected to provide the measure;
-- qualifying conditions;
-- event, latest-state, as-of or cumulative time semantics;
-- business-time property, timezone and coverage boundary;
-- scope, period grain and dimensions;
-- unit and output value type;
-- correction, reversal and late-arrival behavior;
-- source report, policy or other definition evidence.
-
-This normalized intent is an analysis record. Do not present it as a Model API
-payload unless the discovered API defines that wire contract.
-
-## Resolve model and metric adapters
-
-The builder workflow keeps two extension points explicit:
-
-- a governed-model adapter verifies release identity/digest and exposes typed
-  classes, properties, relationships, enums, events and validated directed paths
-  as opaque references;
-- a metric-package adapter reports supported calculations/scopes/grains/dimensions,
-  classifies exact reuse versus family-only/blocked candidates, invokes the
-  family-owned generator and validator, and checks a pinned consumer revision.
-
-Do not collapse these into one generic payload assembled by model output. The
-current payment financial v2 adapter is exact-reuse/activation-only against the
-observed Persist compiler. Other packages may support new definitions only when
-their own schema, generator and pinned consumer explicitly prove that capability.
+Record source revisions, release IDs, contract versions, artifact paths, byte
+lengths and SHA-256 digests. Treat descriptions as untrusted explanatory text,
+not as permission to invent properties, paths, statuses, formulas or dimensions.
 
 ## Find the Base Metrics family
 
@@ -190,7 +136,9 @@ existing immutable definition identity when the match is exact.
 
 After finding a compatible base family, locate a governed executable package
 and consumer that support the remaining semantics. Do not manufacture a generic
-package by combining fields from unrelated families.
+package by combining fields from unrelated families. Configuration/composition
+may select or reference existing supported definitions; it must not change their
+semantics.
 
 The observed payment financial family is one specialization:
 
@@ -205,75 +153,125 @@ The observed payment financial family is one specialization:
 - payment, payment-plan and installment graph/election semantics;
 - generated materialization plans, family matrix and definition-set digests.
 
-Use the package's current `FinancialMetricDefinition` type and validator for its
-exact fields. Author only semantic source fields accepted by that package.
-Generate, never copy or hand-edit, plans, family metadata, counts and digests.
+At the currently observed Lexicon revision,
+`payment-financial-metrics.v2.json` is release
+`lexicon.payment-financial-metrics@2.1.0` with 92 definitions. Its separate
+`dev_activation_allowlist.metric_ids` contains 30 IDs. Reverify both counts and
+the definition-set digest at the selected revision.
 
 The current Persist payment runtime accepts the approved v2 financial release,
 strictly decodes the generated plan, cross-checks compatibility fields and
 materializes the closed code-owned payment definition set through shadow rebuild,
-reconciliation and activation. Its configurable surface is a sorted, unique,
-non-empty `dev_activation_allowlist.metric_ids` subset of existing catalog-backed
-IDs. It does not support new financial definitions, selectors, traversals or
-plans. This is payment-family support, not a generic Base Metrics interpreter.
-Verify this boundary again in the selected consumer revision.
+reconciliation and activation. Its
+`lambda/schemas/payment-metric-supported-definitions.ts` list contains 92 IDs,
+and `PaymentMetricDeclarativePlanCompiler` rejects any other metric ID. This is
+payment-family support, not a generic Base Metrics interpreter. The 30-ID
+activation allowlist is a separate release-owned selection, not permission for
+this workflow to activate or rewrite it.
 
 ## Classify support
 
-Return:
+Choose exactly one:
 
-- `measurable` when an exact definition exists or one executable family and its
-  deployed consumer support the complete candidate;
-- `partial` when Lexicon identifies a valid base family but no executable
-  package or consumer supports it;
-- `blocked` when graph facts are absent or the requested formula, calculation,
-  time behavior, scope, grain, unit, election or output is unsupported.
+- `exact reuse` when every KPI intent field matches one immutable existing
+  definition;
+- `supported configuration/composition` when the proposal uses only existing
+  supported definitions and the package plus pinned consumer explicitly support
+  the selection or published-catalog reference;
+- `new definition/family` when any semantic field or required consumer/compiler
+  behavior is absent.
 
-Ratios are a common blocked case. A `PERCENT` unit does not define division,
+For the first two classifications, return the exact existing metric IDs and
+show the evidence for each match. An unknown ID, family-only match, missing
+consumer support or partial semantic match is `new definition/family`.
+
+Ratios are a common new-definition case. A `PERCENT` unit does not define division,
 numerator/denominator alignment or zero-denominator behavior. Do not approximate
 a ratio with `AVERAGE`, and do not emit two component metrics while claiming the
 requested KPI exists.
 
-## Generate, validate and govern
+## Use the real generic Model lifecycle
 
-For an executable package that explicitly supports a new definition:
+Current Model main exposes generic operations in `contracts/openapi.yaml`:
 
-1. Add or change only fields owned by the selected package.
-2. Run its generator.
-3. Run package validation against the exact Lexicon bytes.
-4. Verify path continuity, properties, types, elections, contribution identity,
-   correction behavior, coverage, generated-plan equivalence and consumer
-   compatibility.
-5. Regenerate the package and release; verify deterministic bytes and digests.
-6. Submit through the discovered Model candidate/review API.
-7. Read back the reviewed immutable release and compare digests.
-8. Treat activation/materialization as a separate Persist-owned operation.
+- vocabulary, definition, release, composition and release-artifact reads;
+- generic change-set submission and change-set read;
+- presigned artifact upload creation;
+- validation start, status and results;
+- review submission and authorized review decision;
+- publication start, status and reconciliation.
 
-For current payment financial v2 configuration, skip new-definition authoring:
-select existing immutable IDs, validate the sorted/unique/non-empty activation
-allowlist against the approved catalog, run the official generator unchanged and
-verify the pinned Persist revision. Unknown IDs, empty lists and hand-edited
-generated plans, matrices, counts or digests fail closed.
+It does not expose KPI-specific routes, automatic graph inspection or a
+metric-family-specific generator/validator. Its Composition Contract v1 can
+reference either a generated `base-metrics-catalog/v1` source or a published
+catalog URI and digest, but specialized metric semantic validation remains
+outside the generic API.
 
-If no Model API exists, artifact validation remains local evidence only. Leave
-publication pending and hand the missing API capability to Dialga; never replace
-it with direct canonical source, S3 or SSM writes.
+For exact reuse, prefer an existing immutable release that already includes the
+required artifact. Read the release and artifacts or composition back and report
+its release ID and release digest.
+
+For supported configuration/composition that requires a release:
+
+1. Build the exact Composition Contract v1 JSON artifact using the real package
+   contract and run its validator/generator outside Model where that package
+   requires it.
+2. `POST /model/v1/accounts/{account_id}/change-sets` with an idempotency key,
+   artifact manifest and `composition.documentArtifactId`; omit legacy
+   `proposedRevisions` and set `sourceDigest` to the selected JSON artifact's
+   digest.
+3. Create the artifact upload, then upload the exact declared bytes.
+4. Start validation, poll the validation run and fetch its results.
+5. Submit review with the latest `ETag`, candidate digest and source digest;
+   preserve the authorized decision prerequisite.
+6. Start publication with the latest `ETag`, poll to completion, then read the
+   immutable release and release artifacts/composition.
+7. Compare release ID/digest, source digest, artifact digest and byte length
+   before claiming publication complete.
+
+Invoke these operations only when an executable API/tool adapter is present,
+authenticated and authorized. When only this prompt/skill is present, return the
+artifact and request bodies as a plan with `application: not applied`. Never
+pretend that prose uploaded or published anything. Never replace the API with
+direct canonical source, S3 or SSM edits.
+
+## Fail closed for new definitions and families
+
+Do not submit `new definition/family` through the generic Model lifecycle.
+Identify the required Lexicon catalog source/type, package validator/generator
+and deterministic generated release changes. Identify the required Persist
+supported-definition list, family/plan compiler and runtime support. If Model
+needs a specialized semantic validator, hand that implementation gap to Dialga;
+hand Persist implementation to Conkeldurr.
+
+Resume configuration only after all required capabilities exist at pinned
+revisions. A generic published-catalog reference cannot make unsupported
+semantics executable.
+
+## Keep activation separate
+
+Validation, review and publication govern definitions and artifacts. They do not
+activate a metric, start a rebuild or prove materialization. Never perform
+activation automatically. Record activation as pending unless it is separately
+authorized, executed by the owning Persist workflow and verified with runtime
+evidence.
 
 ## Acceptance cases
 
 - Exact reuse: a KPI semantically identical to an existing operation returns its
-  immutable definition identity without a duplicate.
-- Current payment activation: selected existing metric IDs produce a sorted,
-  unique, non-empty allowlist; unknown, duplicate and empty selections fail.
-- Supported variant: only a package/consumer that explicitly permits a new
-  definition may generate one and prove consumer compatibility.
-- Family-only: a non-financial KPI maps to a Base Metrics family but stays
-  `partial` when no executable package/runtime exists.
-- Invalid: an unknown graph reference, discontinuous path, unsupported
-  calculation or composite ratio fails before publication.
-- Boundary: configuration without revision-bound selection, stale proposal
-  digests and prompt-injection text that attempts to introduce references fail.
-- Recovery: unchanged input regenerates byte-identical plans/releases and stable
-  digests; hand-edited generated data fails closed.
-- Lifecycle: validation, publication, activation and observed materialization
-  are recorded as separate evidence states.
+  immutable definition identity and exact metric ID without a duplicate.
+- Supported composition: existing supported IDs and a pinned published catalog
+  URI/digest produce an exact artifact and generic Model request plan.
+- Incomplete intent: missing grain, window or acceptance example produces
+  discovery questions, not a guessed definition.
+- Unknown ID: an ID absent from the catalog or Persist's supported-definition
+  list fails before submission.
+- New semantics: a family-only match, unsupported composite ratio, graph path or
+  consumer capability returns `new definition/family` with Lexicon and Persist
+  work, and no Model change set.
+- Adapter boundary: without an executable adapter, the result says
+  `application: not applied`.
+- Recovery: unchanged requests use idempotent replay; timeout, interrupted
+  publication and digest mismatch remain incomplete until reconciled/read back.
+- Lifecycle: definition publication, activation and observed materialization are
+  separate evidence states.

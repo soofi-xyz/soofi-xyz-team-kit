@@ -60,3 +60,13 @@ scheduler and workflows with those fakes. Have the user compare baseline and
 variant through the API and inspect correlated AWS evidence before advancing.
 A simulated response is not a deployed Puller, and an observed poll is not a
 successful product installation. Record cleanup and all deferred live effects.
+
+## Configuration bundles
+
+Use the [shared synthetic acceptance matrix](configuration-bundles.md#synthetic-acceptance)
+for provider sharing, configuration-only updates, preflight, replay/conflict,
+partial failure, completion, activation and retirement. Materialize a synthetic
+Transform/Connect/System integration against controlled API adapters, not a Model
+pilot. Verify zero bundle-specific Lambdas and zero business execution calls.
+Exercise it through Deploy run/status/results and Puller; local fixtures alone
+establish neither installed configuration nor domain readiness.
