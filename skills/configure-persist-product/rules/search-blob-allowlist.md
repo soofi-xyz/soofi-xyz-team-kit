@@ -71,8 +71,8 @@ export const VECTOR_BLOB_SOURCES: Readonly<Record<string, ReadonlyArray<VectorBl
 | 404 | `NotFound`: skipped by the backfill; the stream poller deletes that element's chunks |
 | Throttling, 5xx, timeout (20 s per object) | Retried; a shard or stream page fails rather than skipping content |
 
-PDF, HTML or DOCX need a new extraction policy: route to `conkeldurr`. Evidence
-offsets for `blob_text` hits point into the extracted text, not the URI.
+PDF, HTML or DOCX need a new extraction policy: route to `conkeldurr`. Chunk
+offsets for `blob_text` point into the extracted text, not the URI.
 
 ### Watch
 

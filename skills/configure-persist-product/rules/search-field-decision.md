@@ -65,7 +65,7 @@ note.text             → name "text"           (collides with the property, rej
 
 ## PII decision
 
-Search returns text: every hit carries an evidence snippet of up to 200
+Search returns text: every result carries a `snippet` of up to 200
 characters of highlighted context (lexical) or 240 characters of chunk text
 (vector-only) to any SigV4 caller of `/persist/graphql`.
 

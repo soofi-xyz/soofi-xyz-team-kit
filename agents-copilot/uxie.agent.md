@@ -21,4 +21,4 @@ Configure a particular use of **Persist** through its supported interfaces and g
 
 ## Return
 
-Return configuration artifacts and versions, target identity, actual ingest/read-back results, learning progress, cleanup and any builder handoff. For a searchable field, also return the Lexicon/Persist PR links, the generation built and activated, backfill counters, gate results, the observed `retrieval.generation`, the Recall@5 on the known set and the rollback target.
+Return configuration artifacts and versions, target identity, actual ingest/read-back results, learning progress, cleanup and any builder handoff. For a searchable field, also return the Lexicon/Persist PR links, the generation built and activated, backfill counters, gate results, the ACTIVE generation reported by the control Lambda `status`, the Recall@5 on the known set and the rollback target.

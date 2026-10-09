@@ -34,7 +34,7 @@ Keep the request in a local file that is not committed:
 
 ```json
 {
-  "query": "query($input: SearchInput!) { search(input: $input) { hits { rank score unitId entityKind entityId ownerLabel entity { __typename ... on Note { id } } evidence { property embeddingName chunkOrdinal startOffset endOffset snippet lexicalRank vectorRank } } pageInfo { hasNextPage endCursor } retrieval { mode generation indexName profileId profileVersion model fusion lastCommitAt caughtUpAt } } }",
+  "query": "query($input: SearchInput!) { search(input: $input) { results { id kind snippet entity { __typename ... on Note { id } } } pageInfo { hasNextPage endCursor } } }",
   "variables": {
     "input": { "query": "customer disputes the balance", "mode": "HYBRID", "first": 5, "ownerLabels": ["note"], "embeddingNames": ["note_text_embedding"] }
   }
@@ -44,10 +44,10 @@ Keep the request in a local file that is not committed:
 ```bash
 env -u AWS_PROFILE awscurl --service execute-api --region "$AWS_REGION" -X POST \
   -H 'content-type: application/json' -d @search.json "$API/persist/graphql" \
-  | jq '.data.search | {retrieval, hits: [.hits[] | {rank, unitId, ownerLabel, embeddings: [.evidence[].embeddingName], lexicalRank: .evidence[0].lexicalRank, vectorRank: .evidence[0].vectorRank}]}'
+  | jq '.data.search | {pageInfo, results: [.results | to_entries[] | {rank: (.key + 1), kind: .value.kind, id: .value.id, type: .value.entity.__typename}]}'
 ```
 
-The `jq` projection drops snippets so result text does not land in the
+The `jq` projection drops `snippet` so result text does not land in the
 terminal log or chat. Look at snippets only when the user asks, locally.
 
 | Input | Values |
@@ -62,24 +62,33 @@ terminal log or chat. Look at snippets only when the user asks, locally.
 An unknown label or embedding name is a `VectorSearchInputError` before any
 network call. Exercise all three modes.
 
-### Read the hits
+### Read the results
 
-- `retrieval.generation` must be the generation you activated; it is how a swap
-  or rollback is observed. `lastCommitAt` / `caughtUpAt` show freshness.
-- `unitId` is `<entityKind>:<entityId>`, or `vertex:<owner vertex id>` for an
-  `out_vertex` embedding. One element appears once even when several chunks
-  match.
-- `entity` is the hit as its generated Lexicon type (vertex hits and `out_vertex`
-  hits). It is `null` for an edge hit, or for an element deleted after indexing
-  until the stream removes its chunks; read an edge by `entityId` instead.
-- `score` is the RRF score; compare ranks, not scores across queries.
-- `evidence` has one entry per retrieval arm: `lexicalRank`/`vectorRank` show
-  which arm found it (`null` for the other). A lexical snippet is the highlight
-  (`<em>…</em>`, up to 200 characters of context); a vector-only snippet is the
-  chunk text cut to 240 characters.
-- `startOffset`/`endOffset` are the chunk's span in UTF-16 code units, end
-  exclusive, in the source text: the graph property for `text`, the extracted
-  object text for `blob_text`.
+```graphql
+type SearchConnection { results: [SearchResult!]! pageInfo: SearchPageInfo! }
+type SearchResult { id: ID! kind: SearchEntityKind! entity: SearchEntity snippet: String! }
+type SearchPageInfo { hasNextPage: Boolean! endCursor: String }
+enum SearchEntityKind { VERTEX EDGE }
+```
+
+- `results` is ordered best first; the position is the rank. There is no
+  score, rank, offset or generation field, and selecting one fails GraphQL
+  validation.
+- `id` is the element id, or the owner vertex id for an `out_vertex`
+  embedding; `kind` is `VERTEX` or `EDGE`. One element appears once even when
+  several chunks match.
+- `entity` is the result as its generated Lexicon type (vertex results and
+  `out_vertex` results). It is `null` for an edge result, or for an element
+  deleted after indexing until the stream removes its chunks; read an edge by
+  `id` instead.
+- `snippet` is one passage: the chunk both retrieval arms chose, otherwise the
+  better-ranked arm's chunk. A lexical snippet is the highlight (`<em>…</em>`,
+  up to 200 characters of context); a vector-only snippet is the chunk text cut
+  to 240 characters.
+- The response does not name the generation it read. Confirm the swap with the
+  control Lambda's `{"action":"status"}`
+  ([search-generation-control](search-generation-control.md)) or the
+  `generation` annotation on `GraphQL search completed` log lines.
 
 | `extensions.code` | Meaning |
 | --- | --- |
@@ -96,7 +105,8 @@ network call. Exercise all three modes.
    Keep that list in a local, uncommitted file; never paste the source text.
 2. Run each paraphrase in `SEMANTIC` and `HYBRID` with `first: 5` and the
    field's `embeddingNames`.
-3. Recall@5 = queries whose expected id appears in the top 5 ÷ number of queries.
+3. Recall@5 = queries whose expected id appears among the first 5 `results[].id`
+   ÷ number of queries.
    Report the number and which ids were missed, nothing else.
 4. Search serves only the ACTIVE generation, so measure a candidate by
    activating it and rolling back if it is worse, or pass an offline result to
