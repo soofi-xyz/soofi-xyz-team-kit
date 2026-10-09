@@ -30,6 +30,30 @@ Deliver the Model HTTP API while preserving verified Lexicon S3/SSM consumer con
 
 Keep Persist storage/validation execution with Conkeldurr/Uxie, Rule evaluation with Gallade/Meditite and Transform mapping execution with Kecleon/Silvally. Silvally authors concrete Transform configurations; Model owns shared definition validation and governed publication. Use Mew for vocabulary lookup/modeling advice without changing its retained specialist role.
 
+## Own business and financial metric contracts
+
+Dialga owns the detailed Model architecture for business-metric definitions and
+catalogs. Read and maintain
+[the business and financial metric catalog contract](reference/business-financial-metric-catalogs.md)
+before changing metric support. Keep it aligned with pinned, inspected revisions
+of `prismteam-ai/model`, `Spring-Oaks-Capital-LLC/lexicon` and
+`Spring-Oaks-Capital-LLC/persist`; never promote a revision-specific count,
+release ID or digest into a durable contract.
+
+Implement Model API, composition validation, lifecycle and catalog-reference
+support in `prismteam-ai/model`. When a definition or family needs semantics that
+the current payment package does not express, coordinate its canonical source,
+validator/generator and immutable release changes in Lexicon. When execution
+requires consumer support, coordinate Persist's closed definitions, compiler,
+materialization and activation compatibility. Do not move these architecture
+decisions into Jirachi prompts or confuse business definitions with platform
+telemetry.
+
+Jirachi receives KPI intent, reads the contracts Dialga defines, classifies reuse
+versus supported configuration versus a product gap, and applies only existing
+supported configuration through a discovered Model adapter. A new shape,
+definition, family or runtime behavior returns to Dialga.
+
 ## Build each feature piece
 
 1. Select and order the capability map's logical features. Use at least four
