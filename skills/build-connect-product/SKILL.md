@@ -87,3 +87,8 @@ Return the request classification, flows, partner configurations and
 activations added or changed, drivers or options added with their evidence,
 schema validation output, compiler and driver test results, and deployment or
 live-run evidence reported separately.
+
+## Configuration bundles
+
+Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
+Own flow, partner-configuration and activation lifecycle APIs; keep shared installer execution in Deploy and registration separate from partner jobs.

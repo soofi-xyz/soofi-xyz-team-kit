@@ -3,7 +3,7 @@
   "source": {
     "meeting": "Builder Story Planning, 2026-09-30",
     "spreadsheet": "staircase-products export, supplied 2026-09-30",
-    "precedence": "User follow-up retains Conkeldurr for Persist and assigns Zygarde to System. Later requests assign builder/configurer pairs to Account, Environment, Build, Deploy, Model and Console. User follow-up assigns Puller polling, subscriptions and reconciliation to the Deploy product; keep subscriber state separate from its stateless run API. The 2026-10-07 request adds Documentation as a distinct product, superseding the earlier API documentation exclusion. Require the engineering and React/TypeScript/tRPC application skills; keep Site and Document separate and unassigned."
+    "precedence": "User follow-up retains Conkeldurr for Persist and assigns Zygarde to System. Later requests assign builder/configurer pairs to Account, Environment, Build, Deploy, Model and Console. User follow-up assigns Puller polling, subscriptions and reconciliation to the Deploy product; keep subscriber state separate from its stateless run API. The 2026-10-07 request adds Documentation as a distinct product, superseding the earlier API documentation exclusion. Require the engineering and React/TypeScript/tRPC application skills; keep Site and Document separate and unassigned. The latest Account boundary correction keeps AWS account identity, keys, records, provisioning and bootstrap manifests in Account; moves domains, certificates and initial installation to Environment; reserves console assignments for unassigned Access; and assigns Account catalog registration to Registeel. The configuration-bundle design assigns the shared Transform/Connect/System configuration installer and its service installation/update to Deploy, and each target API and payload semantics to its existing product pair. Use configuration bundles in guidance and CONFIGURATION in bundle/component types; migrate legacy DATA contracts across Build, Marketplace and Deploy. Use a synthetic configuration integration for installer acceptance, without adding a Model pilot or a new product owner."
   },
   "workflowSkill": "guide-product-work",
   "products": [
@@ -38,7 +38,7 @@
       ],
       "sourceRows": [],
       "status": "assigned",
-      "summary": "Account manages identities, keys, provisioning, domains and maintenance access.",
+      "summary": "Account manages Prism identities and keys, guides Prism-managed or client-owned AWS setup, creates or adopts the backing account, verifies Prism service access and emits bootstrap manifests.",
       "agents": {
         "build": "kangaskhan",
         "configure": "blissey"
@@ -48,7 +48,8 @@
         "configure": "configure-account-product"
       },
       "notes": [
-        "Added by explicit user request after the supplied spreadsheet; no source row is claimed. Kangaskhan builds the Account API; Blissey configures existing deployments. Account provisioning does not own product installation or partner credentials."
+        "Added by explicit user request after the supplied spreadsheet; no source row is claimed. Kangaskhan builds the Account API; Blissey guides and configures existing deployments.",
+        "Account owns identity, keys, the AWS account record, explicit create-or-adopt provisioning, Prism cross-account service readiness and bootstrap-manifest output. Its configurer also guides a client through standalone AWS signup before using the same existing-account adoption path. It does not own domains, certificates, initial platform installation, customer console assignments or Prism Marketplace registration."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/account.md"
     },
@@ -60,7 +61,7 @@
         2
       ],
       "status": "unassigned",
-      "summary": "",
+      "summary": "Access will own IAM Identity Center and customer AWS Console assignments.",
       "agents": {
         "build": null,
         "configure": null
@@ -69,7 +70,9 @@
         "build": null,
         "configure": null
       },
-      "notes": []
+      "notes": [
+        "Account onboarding identifies this as an ownership gap. Do not implement temporary customer console users or Identity Center assignments inside Account."
+      ]
     },
     {
       "id": "console",
@@ -174,7 +177,8 @@
         "configure": "operate-marketplace"
       },
       "notes": [
-        "Regigigas builds Marketplace catalog/publication capabilities. Deploy owns Puller subscriptions, polling, installation history and update execution. Marketplace supplies its supported catalog/publication interfaces; verify notification support rather than restoring historical subscription APIs."
+        "Regigigas builds Marketplace catalog/publication capabilities. Deploy owns Puller subscriptions, polling, installation history and update execution. Marketplace supplies its supported catalog/publication interfaces; verify notification support rather than restoring historical subscription APIs.",
+        "Register, review and publish configuration bundles using the CONFIGURATION component type; migrate legacy catalog metadata and publication contracts. Require compatible shared Deploy provider and configuration API prerequisites in review environments; catalog rollback does not reverse applied configuration."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/marketplace.md"
     },
@@ -234,7 +238,8 @@
         "configure": "configure-build-product"
       },
       "notes": [
-        "Tinkaton builds the Build API and runner; Metang configures build jobs. Build provenance does not imply Marketplace publication or Deploy completion."
+        "Tinkaton builds the Build API and runner; Metang configures build jobs. Build provenance does not imply Marketplace publication or Deploy completion.",
+        "Build configuration bundles as portable CDK assemblies containing configuration assets and declarations referencing the shared Deploy provider. Use CONFIGURATION consistently in request, artifact and provenance schemas; validate payload digests and provider contract requirements without executing configuration APIs during builds."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/build.md"
     },
@@ -284,7 +289,7 @@
         13
       ],
       "status": "assigned",
-      "summary": "Deploy installs products and keeps subscribed components updated.",
+      "summary": "Deploy installs products and configuration bundles through a shared installer and keeps subscribed components updated.",
       "agents": {
         "build": "corviknight",
         "configure": "skarmory"
@@ -294,7 +299,8 @@
         "configure": "configure-deploy-product"
       },
       "notes": [
-        "Corviknight builds Deploy, including its Puller subscriber component; Skarmory configures runs, subscriptions, polling, update policy and recovery. Keep subscriber desired state, install history and subscription secrets in the Deploy-owned Puller component, separate from the stateless SigV4 run API. Separate packages or stacks do not create a separate product."
+        "Corviknight builds Deploy, including its Puller subscriber component; Skarmory configures runs, subscriptions, polling, update policy and recovery. Keep subscriber desired state, install history and subscription secrets in the Deploy-owned Puller component, separate from the stateless SigV4 run API. Separate packages or stacks do not create a separate product.",
+        "Own the shared configuration-bundle installer and typed Transform, Connect and System API adapters. Ship the provider as part of Deploy service infrastructure through its normal installation/update lifecycle. Reuse a provider per target account/region across bundle stacks; do not package a custom Lambda per bundle. Keep operation receipts separate from Puller subscriber state. Use configuration bundles and the CONFIGURATION type consistently; migrate legacy type handling and subscription metadata with Build and Marketplace. Follow skills/build-product-deployer/reference/configuration-bundles.md."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/deploy.md"
     },
@@ -923,7 +929,7 @@
         46
       ],
       "status": "assigned",
-      "summary": "Transform converts registered source languages into target languages.",
+      "summary": "Transform converts registered source languages into target languages and extracts schema-validated JSON from strings using configured Bedrock models.",
       "agents": {
         "build": "kecleon",
         "configure": "silvally"
@@ -933,7 +939,9 @@
         "configure": "configure-transform-product"
       },
       "notes": [
-        "Resolve the spreadsheet test-only/configuration mismatch: Silvally authors and tests mappings; Kecleon owns engine implementation. Preserve test-only intent when the user only requests evaluation."
+        "Resolve the spreadsheet test-only/configuration mismatch: Silvally authors and tests mappings; Kecleon owns engine implementation. Preserve test-only intent when the user only requests evaluation.",
+        "Own validation, immutable/versioned registration, read-back and lifecycle semantics for Transform configuration consumed by the shared Deploy installer. Kecleon handles API gaps; Silvally authors and validates mapping payloads under its existing readiness gates. Do not create per-bundle installer code.",
+        "Add non-deterministic extraction as a distinct Transform phase: immutable configuration selects an Amazon Bedrock model, extraction instructions and an output JSON Schema; a TypeScript worker uses the AI SDK to extract validated structured JSON from string input. Kecleon implements the versioned API/runtime capability; Silvally configures it only after deployed support is verified. Preserve the existing Spark SQL contract and production-derived mapping readiness gates. Follow skills/build-transform-product/reference/non-deterministic-extraction.md."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/transform.md"
     },
@@ -1058,7 +1066,9 @@
         "build": "build-connect-product",
         "configure": "operate-connect-configurations"
       },
-      "notes": [],
+      "notes": [
+        "Own flow, partner-configuration and activation API lifecycle semantics consumed by the shared Deploy installer. Lapras handles API gaps; Wingull authors and verifies payloads and secret references. Configuration registration must not implicitly start partner jobs."
+      ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/connect.md"
     },
     {
@@ -1101,7 +1111,8 @@
         "configure": "configure-system-product"
       },
       "notes": [
-        "User override: Zygarde builds System; Celebi configures outcomes. Current scope is the orchestration core, not all historical Product features."
+        "User override: Zygarde builds System; Celebi configures outcomes. Current scope is the orchestration core, not all historical Product features.",
+        "Own definition, template, flow and waterfall configuration API lifecycle semantics consumed by the shared Deploy installer. Zygarde handles API gaps; Celebi composes configurations with pinned leaf references. Registering a configuration bundle must not implicitly invoke a business flow."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/system.md"
     },

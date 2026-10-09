@@ -63,3 +63,8 @@ and status; do not implement a second CloudFormation executor in Puller.
 Return changes, supported API/configuration examples, automated and user evidence,
 AWS observations, cleanup and remaining gaps. Keep reusable product code in its
 target repository; this kit contains guidance and synthetic inputs.
+
+## Configuration bundles
+
+Read [the shared configuration-bundle contract](reference/configuration-bundles.md) when this work involves configuration bundles.
+Implement the shared provider, typed adapters and observable lifecycle; keep operation receipts separate from subscriber state.

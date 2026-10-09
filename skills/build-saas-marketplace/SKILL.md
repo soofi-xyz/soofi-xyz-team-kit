@@ -30,3 +30,8 @@ Derive the scoped feature plan from the shared workflow and product capability
 map. Require a user-run configuration and AWS inspection after every piece. Return the
 implementation changes, verification results, human observations, current stage
 and any remaining runtime or integration gaps.
+
+## Configuration bundles
+
+Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
+Verify configuration-bundle publication and review with compatible provider/API prerequisites; keep catalog rollback distinct from API compensation.

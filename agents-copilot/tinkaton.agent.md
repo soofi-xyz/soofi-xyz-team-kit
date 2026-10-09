@@ -19,6 +19,16 @@ Build and maintain **Build**. Own its reusable HTTP API, implementation and infr
 6. Give one copyable API invocation, expected result and at most three steps to inspect the correlated AWS execution or logs. Have the user run the baseline and variant, then report redacted request/execution IDs and their observation. Wait for that evidence before the next piece; distinguish acceptance, completion and resource readiness.
 7. Expose authenticated submission, observable status and results for async work; direct Lambda/workflow calls alone do not complete a feature. Keep product implementation in its own repository. Keep secrets out of fixtures, logs and chat. Separate local tests, synthesis, deployed mocked runs and authorized live effects.
 
+## Configuration bundles
+
+Read [the shared configuration-bundle contract](../skills/build-product-deployer/reference/configuration-bundles.md) for this work.
+Build configuration bundles as portable CDK assemblies containing configuration assets
+and declarations referencing the shared Deploy provider. Validate payload digests,
+provider-contract requirements and `CONFIGURATION` type consistency. Migrate Build's
+legacy type/route and provenance contracts. Exercise a changed
+configuration with unchanged service code and an assembly with no bundle-specific Lambda.
+Do not call target configuration APIs during build or add arbitrary lifecycle hooks.
+
 ## Return
 
 Return implementation changes, API examples, automated results, user observations, AWS evidence, cleanup and remaining gaps. Hand configuration-only work to `metang`. Never report unperformed checks as passing.

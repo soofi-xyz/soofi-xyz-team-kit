@@ -16,10 +16,17 @@ Treat that repo's `requirements/openapi.yaml`, `README.md`, and `AGENTS.md` as t
 contract. Endpoint shapes and error tags are summarized in
 [api-contract.md](reference/api-contract.md).
 
+For configuration bundles, verify the target supports the `CONFIGURATION`
+component type before registration/publication. Hand missing migration support
+to Regigigas; do not fall back to the legacy bundle type.
+
 This product's v1 surface is **catalog register + publish + review + rollback**.
 It does not deploy into subscriber accounts. Do not invent subscriptions, prices,
 or site publication APIs — the product `AGENTS.md` forbids them. Do not redesign
 Organizations tenancy, StackSets, or Account Manager from this skill.
+Registeel owns catalog registration for every product, including **Account**.
+Registering Account here does not provision a customer AWS account or prove the
+Account service is deployed.
 
 ## Prerequisites
 
@@ -203,7 +210,7 @@ Typical sequence:
 6. Components:
    `POST /ontology/products/{product_id}/components`
    `{ "components": [{ "component_id": "deploy", "type": "SERVICE" }] }`
-   (`SERVICE` or `DATA`)
+   (`SERVICE` or `CONFIGURATION`)
 
 Idempotency: treat `409 CatalogConflict` as success when the entity already
 exists; resolve ids via `GET /ontology`, `GET /ontology/products/by-name?name=`,
@@ -398,3 +405,8 @@ This install does not deliver catalog graph facts to Persist yet: the
 Marketplace account has no Persist or `socap-engagement-events` bus. Do not
 report catalog changes as persisted, and expect `demo.sh`'s Persist check to
 fail until that is connected.
+
+## Configuration bundles
+
+Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
+Publish through the existing workflow, verify provider/API review prerequisites and hand installation to Skarmory; do not bypass review.

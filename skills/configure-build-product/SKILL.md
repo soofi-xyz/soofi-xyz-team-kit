@@ -1,6 +1,6 @@
 ---
 name: configure-build-product
-description: "Configure and test Build through its deployed HTTP API: upload a product source zip, start SERVICE/DATA builds, follow status and logs, read the manifest, download and verify the CDK cloud assembly and its service-builder provenance, and check product build readiness. Use Metang; route service gaps to Tinkaton."
+description: "Configure and test Build through its deployed HTTP API: upload a product source zip, start SERVICE/CONFIGURATION builds, follow status and logs, read the manifest, download and verify the CDK cloud assembly and its service-builder provenance, and check product build readiness. Use Metang; route service gaps to Tinkaton."
 ---
 
 # Configure Build
@@ -15,6 +15,11 @@ Build is deployed. This skill drives its live HTTP API. Authoritative product:
 [`prismteam-ai/build`](https://github.com/prismteam-ai/build). Its
 `requirements/swagger.yml`, `README.md`, `AGENTS.md`, `docs/progress.md` and
 `scripts/` (`demo.sh`, `smoke.sh`) win over this kit when they differ.
+
+For configuration bundles, verify that the target supports `CONFIGURATION`
+and the `/configuration` start/status alias before invoking them. The renamed
+contract is required scope, not a claim of deployment. Hand missing migration
+support to Tinkaton; do not fall back to the legacy bundle type.
 
 Build turns a TypeScript CDK source zip into a portable CDK cloud assembly zip
 with provenance. It never deploys, never publishes to Marketplace, never runs
@@ -127,7 +132,7 @@ Classify the request, then run the lanes it needs, in order.
 | Readiness | Will this product build? A build failed at `VALIDATING` or `BUILDING` | §1 |
 | End-to-end check | Prove a product builds, with one copyable command | §2 |
 | Source intake | Upload a source zip and get a `source_id` | §3 |
-| Start | Start a SERVICE/DATA build, optionally with `callback_url` | §4 |
+| Start | Start a SERVICE/CONFIGURATION build, optionally with `callback_url` | §4 |
 | Follow | Status, logs, failure tag | §5 |
 | Verify artifact | Manifest, download, hashes, `service-builder`, asset policy | §6 |
 | Negative cases | Auth, schema and isolation behavior | §7 |
@@ -186,7 +191,7 @@ missing or cannot verify, with evidence and the concrete change.
   recommended when the manifest sets `base_path`; without it the build still
   succeeds with an `ApiSpecMissing` warning.
 - **Manifest** (closed schema, unknown fields rejected): `component_id`,
-  `component_name`, `bundle_type` (`SERVICE`/`DATA`), optional `entrypoint`
+  `component_name`, `bundle_type` (`SERVICE`/`CONFIGURATION`), optional `entrypoint`
   (defaults to, and must equal, `marketplace/app.ts`),
   `"context_schema_version": "1"`,
   `stacks` (1–50 unique CDK stack ids), optional `base_path`, `requires`
@@ -318,7 +323,7 @@ jq -c '{build_id, build_status, transaction_id}' "$BUILD_TMP/body" | tee "$BUILD
 jq -r .build_id "$BUILD_TMP/body" > "$BUILD_TMP/build_id"
 ```
 
-Use `/service` or `/data` to pin the bundle type. Add `component_id`,
+Use `/service` or `/configuration` to pin the bundle type. Add `component_id`,
 `log_level`, `worker_size` or `build_architecture` only as needed; any other
 field is rejected. For a terminal callback add
 `"callback_url": "https://<receiver you control>/…"`: one unsigned
@@ -447,7 +452,7 @@ credentials; Metang does not run it with its own.
    guess routes.
 2. Select the requested feature pieces from the capability map. In each,
    explain the synthetic fixture, then exercise a baseline, a materially
-   different supported configuration (`/data`, a wrapped zip, `LARGE`/`ARM64`),
+   different supported configuration (`/configuration`, a wrapped zip, `LARGE`/`ARM64`),
    invalid/unauthorized input and relevant replay/recovery cases. Four pieces
    is a floor for a full walkthrough, not a quota for narrow work.
 3. Give the user one copyable invocation (usually `scripts/demo.sh`), the
@@ -474,3 +479,8 @@ creation, not publication or installation.
 Return configuration changes, redacted identifiers, API/read-back results,
 automated and user/AWS evidence, mocked/live status, cleanup and builder
 handoffs.
+
+## Configuration bundles
+
+Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
+Verify configuration assets, `CONFIGURATION` type consistency and shared-provider references; hand source changes to owners and Deploy gaps to Corviknight.

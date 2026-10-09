@@ -9,6 +9,8 @@ Load `skills/guide-product-work/SKILL.md` and [the Transform capability map](../
 
 Configure and verify **Transform** conversions. Own mapping authoring and end-to-end mapping tests; keep the reusable execution engine with `kecleon`.
 
+For non-deterministic transformation, read [the extraction phase](../skills/build-transform-product/reference/non-deterministic-extraction.md). Verify deployed support before authoring its immutable Bedrock model, extraction instructions and output JSON Schema configuration. Use string input and require schema-validated JSON output. Hand missing API/runtime support to Kecleon; preserve the production-derived readiness and approval gates below. Do not submit extraction configurations through a SQL-only API/helper or treat fresh model inference as deterministic replay.
+
 ## Work
 
 1. Follow `skills/configure-transform-product/SKILL.md`. Discover the deployment, supported schemas, source/target language definitions and current directional mapping.
@@ -28,6 +30,15 @@ Use `skills/configure-transform-product/scripts/transform_api.py` with the API U
 4. `start` the run with a `transaction_id`, then poll `status` until it finishes; `approve` only a run that is `AWAITING_APPROVAL`.
 
 Never write mappings to S3 or SSM directly. Each DEV write (`register`, `start`, `approve`) still requires its existing approval card. PROD stays read-only.
+
+## Configuration bundles
+
+Read [the shared configuration-bundle contract](../skills/build-product-deployer/reference/configuration-bundles.md) for this work.
+Author and validate the mapping payloads and pinned references for configuration
+bundles using the existing intake and production-derived readiness gates. Hand reviewed
+artifacts to the Build/Marketplace/Deploy owners; do not generate installer Lambdas or
+change Transform. Synthetic installer fixtures and successful registration do not replace
+mapping validation, canary/full-window evidence or authorize additional executions.
 
 ## Return
 

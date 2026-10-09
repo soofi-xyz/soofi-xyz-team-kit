@@ -2,7 +2,7 @@
 
 Use Lapras for the engine and Wingull for supported partner/flow configurations.
 Apply the [shared workflow](../../SKILL.md) to the requested capabilities. These
-nine areas are an inventory; expand driver, verb and activation families into
+ten areas are an inventory; expand driver, verb and activation families into
 separate usable pieces when their behaviors require separate explanations/tests.
 Use an authorized mock/sandbox, tiny samples, secret references and disabled
 activations. Keep parsing, graph writes and internal product actions outside Connect.
@@ -18,6 +18,7 @@ activations. Keep parsing, graph writes and internal product actions outside Con
 | `webhook-wait` — resume from a callback | Supported callback connection/runtime | Deliver WAIT_FOR_WEBHOOK and correlation; configure valid, mismatched and duplicate test callbacks. | Inspect suspended/resumed execution and callback logs; verify only the correct callback advances it. |
 | `activations` — invoke a pinned flow automatically | Runnable versioned flow | Deliver each required schedule/drop-zone/webhook activation type separately; configure and enable it only for the authorized test, then disable it. | Inspect activation → job correlation, actual execution and cleanup; distinguish trigger receipt from job completion. |
 | `ledger-replay` — suppress duplicates and recover delivery | Relevant exchange/flow | Deliver supported ledger/replay controls; configure duplicate inputs, transient failure and a safe retry. | Inspect actual attempts, ledger decisions and artifacts/replies; prove recovered work does not repeat a completed external effect. |
+| `configuration-lifecycle` — register Connect configurations for bundles | Verified flow, partner-configuration and activation APIs | Deliver/verify stable identities, revisions, replay/conflicts, scoped ownership and supported deactivation/removal for Deploy's shared adapter. Configure secret references and explicit activation policy. | Read back versions and activation state; reject conflicting ownership and preserve shared references. Registration alone causes no partner jobs or traffic. |
 
 Use [the block contracts](../../../build-connect-product/reference/blocks.md)
 and [runtime scope](../../../build-connect-product/reference/aws-runtime.md).
@@ -26,3 +27,6 @@ every provider. Missing runtime support belongs to Lapras. New-partner configura
 selects existing capabilities; it does not rebuild the engine. Preserve the approval
 boundary for production partner reads and never send real messages/files/payments
 to satisfy a teaching checkpoint.
+
+For configuration-bundle work, follow [the shared installer contract](../../../build-product-deployer/reference/configuration-bundles.md).
+Keep the new lifecycle/provider requirements distinct from observed deployment support.

@@ -6,6 +6,13 @@ below and the language/graph references alongside it. Examples are illustrative;
 they do not supersede the schema. Implement matching TypeScript/Python validators in the target repository. Keep
 types, validators, fixtures and the schema synchronized when changing a field.
 
+Scope these v2 definitions to SQL conversion. Use
+[non-deterministic extraction](non-deterministic-extraction.md) for the new
+string-input/model/JSON-Schema configuration contract, and implement an explicit
+versioned extension in the target product. Its configured output JSON Schema
+governs extraction only; do not replace registered language definitions or pass
+extraction fields to the existing v2 validators.
+
 ## Contracts
 
 Reference an individual schema as `urn:transform:contracts:2#/$defs/<Name>`.

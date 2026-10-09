@@ -6,6 +6,12 @@ tags: marketplace, http, openapi
 
 # Marketplace API contract summary
 
+Use `CONFIGURATION` for configuration components in the target contract below.
+The previous contract used `DATA`; verify catalog/publication migration in the
+target revision before configuration-bundle writes. Hand missing support to
+Regigigas instead of falling back to the legacy type. This requirement does not
+prove deployed support; follow [the shared migration requirements](../../build-product-deployer/reference/configuration-bundles.md).
+
 Authoritative source: [`prismteam-ai/marketplace`](https://github.com/prismteam-ai/marketplace)
 → `requirements/openapi.yaml`. Base path is the stack `ApiUrl` output, which
 already ends with `/marketplace`. Auth: shared `x-api-key` on every route.
@@ -36,7 +42,7 @@ already ends with `/marketplace`. Auth: shared `x-api-key` on every route.
 | `GET`/`PATCH` | `/ontology/{families\|categories\|products}/{id}/metadata` | description, homepage, logotype_url, documentation, codex, asana_board_id |
 | `POST`/`GET` | `/ontology/products/{product_id}/configurations` | `{ configuration_description, configured_product_id }` |
 | `GET`/`PATCH`/`DELETE` | `/ontology/products/{product_id}/configurations/{configuration_id}` | |
-| `POST`/`GET` | `/ontology/products/{product_id}/components` | `{ components: [{ component_id, type: SERVICE\|DATA, description? }] }` |
+| `POST`/`GET` | `/ontology/products/{product_id}/components` | `{ components: [{ component_id, type: SERVICE\|CONFIGURATION, description? }] }` |
 | `GET`/`DELETE` | `/ontology/products/{product_id}/components/{component_id}` | |
 | `GET` | `/ontology/components/search/{search_by}` | Search components |
 

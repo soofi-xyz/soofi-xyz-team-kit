@@ -15,10 +15,14 @@ use Git history for superseded schemas and route examples.
 
 ## Ownership and execution
 
-Keep two components within Deploy:
+Keep execution, configuration installation and subscriber responsibilities within Deploy:
 
 - The run service validates and executes artifacts using the current SigV4 run
   API and reports status/results. It does not own subscriber desired state.
+- The shared configuration installer applies bundles through typed Transform, Connect
+  and System API adapters and exposes per-resource results through the run contract.
+  Keep its operation receipts distinct from subscriber state. Follow
+  [the configuration-bundle contract](../../build-product-deployer/reference/configuration-bundles.md).
 - Puller owns local subscriptions, polling schedules, desired/pending/installed
   bundle identities, dependency relationships, installation history, update policy
   and subscription secrets. It submits runs and reconciles their outcomes.

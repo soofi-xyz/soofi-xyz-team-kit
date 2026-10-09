@@ -21,6 +21,10 @@ events → DEV `quiq-to-lexicon` → DEV Persist load and scoped export → DEV 
 
 In Copilot, select `soofi-xyz-team-kit:<agent>`. In Codex, request the named custom agent.
 
+Setting up an AWS account for Prism? Start with the
+[Account onboarding guide](./docs/account-onboarding.md) and Blissey; use
+Kangaskhan only when Account behavior is missing or broken.
+
 ## Product agents
 
 <!-- product-catalog:start -->
@@ -28,20 +32,35 @@ In Copilot, select `soofi-xyz-team-kit:<agent>`. In Codex, request the named cus
 | Product | What it does | Build and maintain | Configure and test |
 | --- | --- | --- | --- |
 | **Documentation** | Documentation publishes product documentation and serves a configurable developer portal with API references, guides and interactive examples. | [`unown`](./agents/unown.md) | [`togetic`](./agents/togetic.md) |
-| **Account** | Account manages identities, keys, provisioning, domains and maintenance access. | [`kangaskhan`](./agents/kangaskhan.md) | [`blissey`](./agents/blissey.md) |
+| **Account** | Account manages Prism identities and keys, guides Prism-managed or client-owned AWS setup, creates or adopts the backing account, verifies Prism service access and emits bootstrap manifests. | [`kangaskhan`](./agents/kangaskhan.md) | [`blissey`](./agents/blissey.md) |
 | **Console** | Console renders reusable authenticated applications from governed, versioned UI configurations. | [`chandelure`](./agents/chandelure.md) | [`vivillon`](./agents/vivillon.md) |
 | **Environment** | Environment prepares tenant environments, shared routing and initial product installations. | [`torterra`](./agents/torterra.md) | [`shaymin`](./agents/shaymin.md) |
 | **Marketplace** | Marketplace catalogs products and reviews, publishes and rolls back bundles. | [`regigigas`](./agents/regigigas.md) | [`registeel`](./agents/registeel.md) |
 | **Build** | Build turns validated source into portable deployment artifacts with provenance. | [`tinkaton`](./agents/tinkaton.md) | [`metang`](./agents/metang.md) |
-| **Deploy** | Deploy installs products and keeps subscribed components updated. | [`corviknight`](./agents/corviknight.md) | [`skarmory`](./agents/skarmory.md) |
+| **Deploy** | Deploy installs products and configuration bundles through a shared installer and keeps subscribed components updated. | [`corviknight`](./agents/corviknight.md) | [`skarmory`](./agents/skarmory.md) |
 | **Model** | Model governs vocabulary, definitions and compatible artifact releases. | [`dialga`](./agents/dialga.md) | [`jirachi`](./agents/jirachi.md) |
-| **Transform** | Transform converts registered source languages into target languages. | [`kecleon`](./agents/kecleon.md) | [`silvally`](./agents/silvally.md) |
+| **Transform** | Transform converts registered source languages into target languages and extracts schema-validated JSON from strings using configured Bedrock models. | [`kecleon`](./agents/kecleon.md) | [`silvally`](./agents/silvally.md) |
 | **Persist** | Persist ingests and queries graph facts, maintains derived indexes and triggers, and owns lexicon-governed vector search composed through GraphQL. | [`conkeldurr`](./agents/conkeldurr.md) | [`uxie`](./agents/uxie.md) |
 | **Rule** | Rule selects entities and evaluates governed predicates. | [`gallade`](./agents/gallade.md) | [`meditite`](./agents/meditite.md) |
 | **Connect** | Connect exchanges files and requests with external partners. | [`lapras`](./agents/lapras.md) | [`wingull`](./agents/wingull.md) |
 | **System** | System orchestrates business outcomes through reusable configured flows. | [`zygarde`](./agents/zygarde.md) | [`celebi`](./agents/celebi.md) |
 
 <!-- product-catalog:end -->
+
+## Configuration bundles
+
+Use configuration bundles to install versioned Transform, Connect and System
+configurations through a shared Deploy-owned provider. Corviknight builds the
+installer; Skarmory operates it. Build packages configuration assets and provider
+references, and Marketplace reviews and publishes them. Deploy installs and updates
+the shared provider with its service infrastructure. Each target product keeps
+ownership of its configuration API.
+
+Read the [configuration-bundle contract](./skills/build-product-deployer/reference/configuration-bundles.md)
+for ownership, lifecycle and synthetic acceptance. These instructions define build
+scope, not deployed support. Use `CONFIGURATION` consistently in bundle/component
+contracts and migrate legacy naming; configuration bundles do not carry their own
+installer Lambda.
 
 ## Installation and updates
 
