@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import tomllib
 from pathlib import Path
@@ -345,6 +346,242 @@ def assert_catalog_reference_needs_definitions() -> None:
         require_all(relative, read(relative), phrases)
 
 
+NON_FINANCE_VERTICES: dict[str, dict[str, tuple[str, ...]]] = {
+    "debt": {"debt_identifier": ()},
+    "phone_call": {
+        "interaction_identifier": (),
+        "direction": ("INBOUND", "OUTBOUND"),
+    },
+}
+NON_FINANCE_EDGES: dict[str, tuple[str, str, dict[str, tuple[str, ...]]]] = {
+    "company_represents_debt": (
+        "company",
+        "debt",
+        {"company_type": (), "status": ("ACTIVE", "DELETED"), "effective_at": ()},
+    ),
+    "debt_has_phone_call": ("debt", "phone_call", {"created_at": ()}),
+    "phone_call_status_changed": (
+        "phone_call",
+        "phone_call",
+        {
+            "status": ("ATTEMPTED", "ANSWERED", "NO_ANSWER"),
+            "duration": (),
+            "effective_at": (),
+        },
+    ),
+    "phone_call_contact_identified": (
+        "phone_call",
+        "phone_call",
+        {"phone_contact_type": ("RIGHT_PARTY",), "effective_at": ()},
+    ),
+}
+
+
+def assert_jirachi_derives_suggestions_from_model() -> None:
+    sources = {
+        JIRACHI: read(JIRACHI),
+        CONFIGURER_SKILL: read(CONFIGURER_SKILL),
+        CONFIGURER_REFERENCE: read(CONFIGURER_REFERENCE),
+    }
+    for relative, value in sources.items():
+        require_all(
+            relative,
+            value,
+            {
+                "Model-derived suggestions": "model itself",
+                "governed release read": "release_id=current",
+                "definition reads": "listdefinitions",
+                "runtime vocabulary read": "getreleasepersistlexicon",
+                "verified OpenAPI": "contracts/openapi.yaml",
+                "Lexicon schema fallback": "src/data/lexicon.json",
+                "anchor entity": "anchor entity",
+                "relationship path": "hop count",
+                "business time": "business-time property",
+                "ranked candidates": "ranked list of candidate metric definitions",
+                "existing shape": "existing metric configuration shape"
+                if relative == JIRACHI
+                else "metrics[]",
+                "no live graph": "live graph",
+            },
+        )
+    require_all(
+        CONFIGURER_REFERENCE,
+        sources[CONFIGURER_REFERENCE],
+        {
+            "per-suggestion graph path": "graph path with relationship direction and hop count",
+            "data-quality caveats": "data-quality caveats",
+            "alternative formulations": "leading/lagging or alternative formulations",
+            "why it answers": "why it answers the kpi",
+            "format template": "as the format template for any domain",
+            "shape gap": "mark that part as a dialga gap",
+        },
+    )
+
+
+def assert_suggestions_not_restricted_to_finance() -> None:
+    for relative in (JIRACHI, CONFIGURER_SKILL, CONFIGURER_REFERENCE):
+        value = read(relative)
+        require_all(
+            relative,
+            value,
+            {
+                "finance is one example": "one existing example of the metric configuration shape"
+                if relative != CONFIGURER_REFERENCE
+                else "one example of the metric",
+                "not the universe": "not the universe of suggestions",
+                "any domain": "any domain",
+            },
+        )
+    require_all(
+        JIRACHI,
+        read(JIRACHI),
+        {"not restricted": "suggestions are not restricted to the finance catalog"},
+    )
+    stale_anchors = (
+        "## Configure a business or finance KPI",
+        "verify the current payment source",
+        "Read and verify existing contracts",
+    )
+    for relative in (JIRACHI, CONFIGURER_SKILL, CONFIGURER_REFERENCE, CAPABILITY_MAP):
+        value = normalized(read(relative))
+        present = [phrase for phrase in stale_anchors if normalized(phrase) in value]
+        if present:
+            raise AssertionError(
+                f"{relative} still anchors Jirachi on the finance catalog: {present}"
+            )
+
+
+def assert_no_invented_elements() -> None:
+    for relative in (JIRACHI, CONFIGURER_SKILL, CONFIGURER_REFERENCE):
+        require_all(
+            relative,
+            read(relative),
+            {
+                "grounded only": "grounded only in elements",
+                "never invent": "never invent entities, edges",
+                "vocabulary gap": "model/vocabulary gap",
+            },
+        )
+    require_all(
+        BUILDER_REFERENCE,
+        read(BUILDER_REFERENCE),
+        {
+            "Dialga adopts proposals": "dialga decides whether to adopt them",
+            "no invented vocabulary": "invent a vocabulary element",
+        },
+    )
+
+
+def assert_per_suggestion_executability() -> None:
+    proposal = "governed proposal — needs dialga for runtime/consumer support"
+    for relative in (JIRACHI, CONFIGURER_SKILL, CONFIGURER_REFERENCE):
+        require_all(
+            relative,
+            read(relative),
+            {
+                "per suggestion": "per suggestion",
+                "executable class": "executable today"
+                if relative != CONFIGURER_SKILL
+                else "can execute",
+                "proposal class": proposal,
+                "compiler source": "paymentmetricdeclarativeplancompiler.ts",
+            },
+        )
+    require_concepts(
+        CONFIGURER_REFERENCE,
+        "\n".join(read(r) for r in (JIRACHI, CONFIGURER_SKILL, CONFIGURER_REFERENCE)),
+        {
+            "executability does not limit suggestions": (
+                "never limits what jirachi suggests",
+                "never used to narrow what jirachi suggests",
+            ),
+        },
+    )
+    require_all(
+        CONFIGURER_REFERENCE,
+        read(CONFIGURER_REFERENCE),
+        {"return field": "executability: executable today | governed proposal"},
+    )
+
+
+def assert_non_finance_example() -> None:
+    reference = read(CONFIGURER_REFERENCE)
+    marker = "### Non-finance:"
+    finance_marker = "### Finance:"
+    if marker not in reference or finance_marker not in reference:
+        raise AssertionError(
+            f"{CONFIGURER_REFERENCE} needs both a non-finance and a finance worked example"
+        )
+    example = reference[reference.index(marker) : reference.index(finance_marker)]
+    names = (
+        set(NON_FINANCE_VERTICES)
+        | set(NON_FINANCE_EDGES)
+        | {prop for props in NON_FINANCE_VERTICES.values() for prop in props}
+        | {prop for _, _, props in NON_FINANCE_EDGES.values() for prop in props}
+        | {
+            value
+            for props in NON_FINANCE_VERTICES.values()
+            for values in props.values()
+            for value in values
+        }
+        | {
+            value
+            for _, _, props in NON_FINANCE_EDGES.values()
+            for values in props.values()
+            for value in values
+        }
+    )
+    missing = sorted(name for name in names if name not in example)
+    if missing:
+        raise AssertionError(
+            f"{CONFIGURER_REFERENCE} non-finance example lacks elements: {missing}"
+        )
+    require_all(
+        CONFIGURER_REFERENCE,
+        example,
+        {
+            "classified": "`new family/capability`",
+            "executability": "governed proposal — needs dialga",
+            "ranked": "ranked suggestions",
+            "caveats": "caveats",
+        },
+    )
+    if re.search(r"\bpayment_\w+", example):
+        raise AssertionError("non-finance example must not depend on payment elements")
+
+    lexicon_path = os.environ.get("MODEL_KPI_LEXICON_JSON")
+    if lexicon_path:
+        assert_example_elements_exist(json.loads(Path(lexicon_path).read_text()))
+
+
+def assert_example_elements_exist(lexicon: dict) -> None:
+    vertices = {vertex["type"]: vertex for vertex in lexicon["vertices"]}
+    edges = {edge["type"]: edge for edge in lexicon["edges"]}
+
+    def check_properties(owner: str, declared: dict, expected: dict) -> None:
+        for prop, values in expected.items():
+            if prop not in declared:
+                raise AssertionError(f"lexicon {owner} has no property {prop}")
+            enum = set(declared[prop].get("enum", ()))
+            unknown = sorted(set(values) - enum)
+            if unknown:
+                raise AssertionError(
+                    f"lexicon {owner}.{prop} lacks enum values {unknown}"
+                )
+
+    for name, props in NON_FINANCE_VERTICES.items():
+        if name not in vertices:
+            raise AssertionError(f"lexicon has no vertex {name}")
+        check_properties(name, vertices[name]["properties"], props)
+    for name, (source, target, props) in NON_FINANCE_EDGES.items():
+        edge = edges.get(name)
+        if edge is None:
+            raise AssertionError(f"lexicon has no edge {name}")
+        if (edge["from"], edge["to"]) != (source, target):
+            raise AssertionError(f"lexicon edge {name} direction differs")
+        check_properties(name, edge["properties"], props)
+
+
 def assert_jirachi_description_scope() -> None:
     descriptions = {
         relative: parse_agent(relative)[0]["description"]
@@ -460,6 +697,11 @@ def main() -> int:
     assert_fail_closed_and_release_verification()
     assert_jirachi_drafts_in_family_variants()
     assert_catalog_reference_needs_definitions()
+    assert_jirachi_derives_suggestions_from_model()
+    assert_suggestions_not_restricted_to_finance()
+    assert_no_invented_elements()
+    assert_per_suggestion_executability()
+    assert_non_finance_example()
     assert_jirachi_description_scope()
     assert_model_prd_has_no_platform_telemetry()
     assert_capability_map_ownership_split()

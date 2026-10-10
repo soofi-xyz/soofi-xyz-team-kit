@@ -2,8 +2,9 @@
 
 Use this contract when building or changing Model support for business and
 financial metrics. Dialga owns this architecture and keeps it synchronized with
-the implementations below. Jirachi reads it to configure an existing capability
-or draft a compiler-supported in-family variant in the existing shape; Jirachi
+the implementations below. Jirachi reads it to configure an existing capability,
+draft a compiler-supported in-family variant in the existing shape, or express
+Model-derived metric suggestions for any domain in that shape; Jirachi
 does not define the schema, artifact layout, precedence or compatibility
 boundary.
 
@@ -291,8 +292,11 @@ support and runtime:
   decoder, compiler, materializer or activation compatibility must change.
 
 Do not submit a generic Model composition to disguise missing semantics or
-consumer support. Do not make Jirachi invent a field, family, measure, path,
-adapter or precedence rule. Jirachi may resume configuration only after the
+consumer support. Jirachi may suggest new-family definitions derived from
+the governed Model vocabulary and expressed in the existing shape, and hands
+them to Dialga as proposals; Dialga decides whether to adopt them. Do not make
+Jirachi invent a vocabulary element, field, adapter or precedence rule, or
+adopt a new family itself. Jirachi may resume configuration only after the
 required capabilities exist at pinned revisions.
 
 This contract is for business and financial metric definitions. Keep platform
