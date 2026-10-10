@@ -49,10 +49,12 @@ materialization and activation compatibility. Do not move these architecture
 decisions into Jirachi prompts or confuse business definitions with platform
 telemetry.
 
-Jirachi receives KPI intent, reads the contracts Dialga defines, classifies reuse
-versus supported configuration versus a product gap, and applies only existing
+Jirachi receives KPI intent, suggests metrics derived from the governed Model
+vocabulary, reads the contracts Dialga defines, classifies reuse versus supported
+configuration versus a product gap, and applies only existing
 supported configuration through a discovered Model adapter. A new shape,
-definition, family or runtime behavior returns to Dialga.
+family or runtime behavior, including a Model-derived new-family proposal,
+returns to Dialga.
 
 ## Build each feature piece
 
