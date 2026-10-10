@@ -21,6 +21,22 @@ CONFIGURER_REFERENCE = (
     "skills/configure-model-product/reference/kpi-to-metric-configuration.md"
 )
 CAPABILITY_MAP = "skills/guide-product-work/reference/iterations/model.md"
+MODEL_PRD = "skills/build-lexicon-product/reference/PRD.md"
+JIRACHI_VARIANTS = (
+    JIRACHI,
+    "agents-copilot/jirachi.agent.md",
+)
+JIRACHI_CODEX = ".codex/agents/jirachi.toml"
+JIRACHI_SCOPE = (
+    "vocabulary lookup",
+    "candidate validation",
+    "governed changes",
+    "ruleset definitions",
+    "mapping registrations",
+    "metric definitions",
+    "kpi configuration",
+    "versioned releases",
+)
 
 CONTRACT_FILES = (
     DIALGA,
@@ -172,7 +188,8 @@ def assert_jirachi_is_only_the_configurer() -> None:
             "classification": (
                 "`exact reuse`",
                 "`supported configuration/composition`",
-                "`new definition/family`",
+                "`in-family variant draft`",
+                "`new family/capability`",
             ),
             "supported lifecycle only": (
                 "use only the discovered, existing model adapter",
@@ -235,6 +252,131 @@ def assert_fail_closed_and_release_verification() -> None:
     )
 
 
+def require_all(relative: str, value: str, phrases: dict[str, str]) -> None:
+    require_concepts(
+        relative, value, {name: (phrase,) for name, phrase in phrases.items()}
+    )
+
+
+def assert_jirachi_drafts_in_family_variants() -> None:
+    require_all(
+        JIRACHI,
+        read(JIRACHI),
+        {
+            "drafts in-family entries": "draft the new lexicon `metrics[]` entry",
+            "exact existing shape": "copying the exact field shape of a sibling",
+            "read-only validation": "validate read-only that its family",
+            "compiler gates": "pass persist's compiler gates",
+            "Lexicon review flow": "lexicon's normal review and release flow",
+            "no direct writes": "never direct s3/ssm edits",
+            "no activation": "never auto-activation",
+            "closed-set prerequisite": "persist's closed id set must add the new id",
+            "new families fail closed": "for a new family, new measure",
+            "builder handoff": "hand the product gap to dialga",
+        },
+    )
+    require_all(
+        CONFIGURER_REFERENCE,
+        "\n".join((read(CONFIGURER_REFERENCE), read(CONFIGURER_SKILL))),
+        {
+            "draft classification": "`in-family variant draft`",
+            "new family classification": "`new family/capability`",
+            "same-family sibling": "same `family_id`",
+            "exact shape copy": "exact keys and value shapes",
+            "generated plan": "omit `materialization_plan`",
+            "compiler source": "paymentmetricdeclarativeplancompiler.ts",
+            "metric-id prefix gate": "metric_id` starts with the family's prefix",
+            "business-time gate": "business_time_property` is supported",
+            "dimension gate": "known selector with exactly one matching string-equality",
+            "condition gate": "enum value is in the compiler's supported sets",
+            "election gate": "family's supported strategy",
+            "gate failure fails closed": "any failure is `new family/capability`",
+            "whole-catalog consumer risk": "one unknown id fails the whole catalog load",
+            "no activation": "keep `dev_activation_allowlist` unchanged",
+            "no direct writes": "never as a model request or direct s3/ssm edit",
+        },
+    )
+    require_all(
+        BUILDER_REFERENCE,
+        read(BUILDER_REFERENCE),
+        {
+            "Jirachi draft boundary": "jirachi may draft an in-family variant",
+            "Dialga owns new families": "dialga owns everything else, including new families",
+            "closed-set coordination": "dialga coordinates that persist change",
+        },
+    )
+    require_all(
+        DIALGA,
+        read(DIALGA),
+        {
+            "Jirachi drafts variants": "jirachi drafts in-family `metrics[]` variants",
+            "Dialga owns new families": "dialga owns new families, new measures",
+        },
+    )
+
+
+def assert_catalog_reference_needs_definitions() -> None:
+    expectations = {
+        JIRACHI: {
+            "definitions required": "at least one `definitions[]` entry",
+            "full package revision": "rides on a full package revision",
+            "Persist reads Lexicon SSM": (
+                "persist resolves the catalog through "
+                "`/lexicon/financial-metrics-catalog-uri`, not model releases"
+            ),
+            "governance metadata": "governance metadata",
+        },
+        CONFIGURER_REFERENCE: {
+            "definitions required": "at least one `definitions[]`",
+            "schema name": "compositioncontractdocumentschema",
+            "schema source": "src/domain/schemas.ts",
+            "cannot submit alone": "cannot be submitted alone",
+            "Persist reads Lexicon SSM": "not from model releases",
+            "governance metadata": "governance metadata",
+        },
+        BUILDER_REFERENCE: {
+            "definitions required": "at least one entry",
+            "cannot submit alone": "cannot be submitted on its own",
+            "Persist deploy-time resolution": "at deploy time",
+            "governance metadata": "governance metadata",
+        },
+    }
+    for relative, phrases in expectations.items():
+        require_all(relative, read(relative), phrases)
+
+
+def assert_jirachi_description_scope() -> None:
+    descriptions = {
+        relative: parse_agent(relative)[0]["description"]
+        for relative in JIRACHI_VARIANTS
+    }
+    descriptions[JIRACHI_CODEX] = tomllib.loads(read(JIRACHI_CODEX))["description"]
+    for relative, description in descriptions.items():
+        require_concepts(
+            relative,
+            description,
+            {term: (term,) for term in JIRACHI_SCOPE}
+            | {
+                "builder handoff": ("use dialga",),
+                "new families": ("new metric families",),
+            },
+        )
+
+
+def assert_model_prd_has_no_platform_telemetry() -> None:
+    prd = read(MODEL_PRD)
+    if ("cloud" + "watch") in prd.casefold():
+        raise AssertionError(f"{MODEL_PRD} still contains platform telemetry metrics")
+    require_concepts(
+        MODEL_PRD,
+        prd,
+        {
+            "financial catalog parameter": ("/lexicon/financial-metrics-catalog-uri",),
+            "financial catalog contract": ("business-financial-metric-catalogs.md",),
+        },
+    )
+
+
 def assert_capability_map_ownership_split() -> None:
     capability_map = read(CAPABILITY_MAP)
     require_concepts(
@@ -248,7 +390,16 @@ def assert_capability_map_ownership_split() -> None:
             ),
             "Jirachi reads": ("jirachi reads this contract",),
             "Jirachi intent": ("jirachi collects",),
-            "classification handoff": ("hand product/schema gaps to dialga",),
+            "classification handoff": (
+                "hand product/schema gaps and new families to dialga",
+            ),
+            "in-family draft": (
+                "in-family variant draft",
+                "draft the lexicon `metrics[]` entry in the existing shape",
+            ),
+            "catalog reference needs definitions": (
+                "at least one `definitions[]` entry",
+            ),
             "existing adapter only": ("jirachi may apply an existing adapter",),
             "release verification": ("verify release id/digest",),
             "no automatic activation": ("never activate automatically",),
@@ -307,6 +458,10 @@ def main() -> int:
     assert_dialga_owns_metric_architecture()
     assert_jirachi_is_only_the_configurer()
     assert_fail_closed_and_release_verification()
+    assert_jirachi_drafts_in_family_variants()
+    assert_catalog_reference_needs_definitions()
+    assert_jirachi_description_scope()
+    assert_model_prd_has_no_platform_telemetry()
     assert_capability_map_ownership_split()
     assert_prompt_synchronization()
     assert_no_stale_counts_or_telemetry_content()

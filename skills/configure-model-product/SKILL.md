@@ -1,6 +1,6 @@
 ---
 name: configure-model-product
-description: "Configure and test Model through its existing HTTP API. Use Jirachi to match user-provided business and finance KPIs to supported definitions and to govern vocabulary, candidate, artifact and release changes; route service gaps to Dialga."
+description: "Configure and test Model through its existing HTTP API: vocabulary lookup, candidate validation, governed changes, ruleset definitions, mapping registrations, metric definitions and KPI configuration (including reviewed drafts of compiler-supported in-family metric variants) and versioned releases. Use Jirachi; route service gaps and new metric families to Dialga."
 ---
 
 # Configure Model
@@ -89,12 +89,18 @@ Choose exactly one classification:
 2. `supported configuration/composition` — the KPI uses only existing supported
    definitions and the selected package/consumer explicitly supports the proposed
    selection or catalog reference without changing metric semantics;
-3. `new definition/family` — any formula, source/path, filter, time behavior,
-   grain, dimension, output, correction rule or family is not already supported.
+3. `in-family variant draft` — no definition matches, but the KPI is a new
+   filter value or dimension inside an existing family whose measure,
+   business-time property, dimensions, conditions/enum values and elections the
+   pinned Persist compiler already supports;
+4. `new family/capability` — a new family or measure, or any formula,
+   source/path, time behavior, grain, output, correction rule, condition,
+   dimension or election the compiler does not already support.
 
 A similar name, unit or graph path is not an exact match. Return the exact metric
-IDs for the first two classifications. Unknown IDs, a partial semantic match and
-an unsupported consumer are `new definition/family`, not best-effort
+IDs for the first two classifications and the drafted ID for the third. Unknown
+IDs, a partial semantic match that is not a compiler-supported in-family variant
+and an unsupported consumer are `new family/capability`, not best-effort
 configuration.
 
 ### 4. Plan or apply the generic Model lifecycle
@@ -102,6 +108,12 @@ configuration.
 For `exact reuse`, first determine whether an already published immutable Model
 release contains the required artifact; if so, return that release ID/digest and
 read it back rather than creating a duplicate.
+
+Model's Composition Contract requires at least one `definitions[]` entry, so a
+metric catalog reference cannot be submitted alone; it rides on a full package
+revision. Persist reads the catalog through Lexicon's
+`/lexicon/financial-metrics-catalog-uri`, not from Model releases, so a Model
+release is governance metadata today.
 
 For supported configuration/composition that needs a release, prepare the exact
 artifact and a request plan grounded in the discovered OpenAPI and Dialga-owned
@@ -124,9 +136,20 @@ If this prompt/skill is the only available surface, return the exact artifact,
 request bodies and sequence with `application: not applied`. Instructions alone
 do not add an adapter, upload artifacts or publish a release.
 
-### 5. Fail closed for new semantics
+### 5. Draft in-family variants as reviewed Lexicon source changes
 
-For `new definition/family`, do not submit a Model change set. Identify:
+For `in-family variant draft`, follow the drafting steps in the
+[KPI-to-metric configuration contract](reference/kpi-to-metric-configuration.md#draft-in-family-metric-variants):
+copy the exact shape of a same-family sibling in the pinned Lexicon catalog,
+validate read-only that every Persist compiler gate already passes, and present
+the entry as a draft through Lexicon's normal review and release flow. Never
+edit S3/SSM directly, change the activation allowlist or activate. Persist's
+closed ID set must add the new ID before that Lexicon release reaches a Persist
+deployment; route that change through Dialga.
+
+### 6. Fail closed for new semantics
+
+For `new family/capability`, do not submit a Model change set. Identify:
 
 - the missing semantic, schema, validator, release or runtime capability;
 - the pinned evidence that demonstrates the gap;
@@ -136,14 +159,14 @@ Hand the product gap to Dialga. Dialga owns Model implementation and coordinates
 any required Lexicon or Persist changes with their owners. Resume governed
 configuration only after those capabilities exist at pinned revisions.
 
-### 6. Resolve authority and disagreement
+### 7. Resolve authority and disagreement
 
 Apply the precedence in the Dialga-owned catalog contract and fail closed when
 any layer disagrees. Do not resolve a mismatch by redefining the source,
 generated artifact, Model reference or consumer contract. A definition rejected
 by the pinned consumer is not an executable configuration.
 
-### 7. Separate publication from activation
+### 8. Separate publication from activation
 
 Definition validation, review and publication do not activate a metric. Never
 activate automatically. Never change an activation allowlist, invoke a Persist
@@ -164,10 +187,10 @@ Dimensions / grouping:
 Output / consumer:
 Acceptance examples:
 Evidence revisions / release digests:
-Classification: exact reuse | supported configuration/composition | new definition/family
-Exact existing metric IDs:
-Consumer/compiler compatibility:
-Configuration artifact / generic Model request plan:
+Classification: exact reuse | supported configuration/composition | in-family variant draft | new family/capability
+Exact existing or drafted metric IDs:
+Consumer/compiler compatibility (per-gate results for drafts):
+Configuration artifact / generic Model request plan / Lexicon draft entry:
 Application: applied | not applied
 Validation / review / publication:
 Release ID / release digest / read-back:
@@ -175,9 +198,10 @@ Activation: pending unless separately authorized
 Gaps / owner:
 ```
 
-Exercise exact reuse, a materially different supported composition, incomplete
-intent, an unknown metric ID, an unsupported formula/family, unauthorized access,
-idempotent replay, timeout/recovery and digest mismatch. Publication is not
+Exercise exact reuse, a materially different supported composition, an
+in-family variant draft, a compiler-rejected variant, incomplete intent, an
+unknown metric ID, an unsupported formula/family, unauthorized access, idempotent
+replay, timeout/recovery and digest mismatch. Publication is not
 activation, and activation is not observed materialization.
 
 Keep Persist storage/validation execution with Conkeldurr/Uxie, Rule evaluation with Gallade/Meditite and Transform mapping execution with Kecleon/Silvally. Silvally authors concrete Transform configurations; Model owns shared definition validation and governed publication. Use Mew for vocabulary lookup/modeling advice without changing its retained specialist role.

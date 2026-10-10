@@ -1,6 +1,6 @@
 # Model product contract and Lexicon artifacts
 
-Use **Model** as the product identity, Dialga as builder and Jirachi as configurer. Preserve the Lexicon vocabulary and artifact identifiers used by existing consumers. Treat the reference implementation in `../lexicon` as a repository to verify, not proof of the current deployment. Model governs graph vocabulary, ruleset data, metric definitions and shared mapping artifacts. Use Mew for retained vocabulary lookup and modeling expertise.
+Use **Model** as the product identity, Dialga as builder and Jirachi as configurer. Preserve the Lexicon vocabulary and artifact identifiers used by existing consumers. Treat the reference implementation in `../lexicon` as a repository to verify, not proof of the current deployment. Model governs graph vocabulary, ruleset data, business and financial metric definitions and shared mapping artifacts. Use Mew for retained vocabulary lookup and modeling expertise.
 
 Deliver Model as an authenticated HTTP API for definition/release lookup, candidate validation, governed change submission and approved publication/status. Discover existing operations before invoking them; missing API capabilities are builder work. Keep review and versioned release gates, and preserve the S3/SSM consumer contracts below. This adds an API requirement, not an assertion that the reference artifact service already has one.
 
@@ -17,7 +17,7 @@ The core artifact is `lexicon.json`: a reviewed graph ontology containing vertex
 - ruleset catalogs used by Rules and downstream decisioning products;
 - Interprose source schemas and snapshot-constrained schemas used by Translate and data-preparation jobs;
 - Interprose-to-Lexicon transform SQL artifacts;
-- CloudWatch metric definitions used by products that emit platform metrics;
+- business and financial metric catalog packages, whose architecture is defined in [the business and financial metric catalog contract](business-financial-metric-catalogs.md);
 - a read-only UI for humans to browse schemas, relationships, rules, and mappings.
 
 Lexicon is deployed before products that depend on those artifacts. Consumers read immutable reviewed artifacts from S3 using SSM parameter names owned by Lexicon; they do not fetch arbitrary GitHub files or embed copies of the schema in their own source.
@@ -30,7 +30,7 @@ Model requires an HTTP API in addition to the verified artifact/viewer interface
 | --- | --- | --- | --- |
 | Product HTTP API | Discover or implement in the target service | Explicit authentication and caller/resource authorization | Read definitions/releases, validate candidates and follow governed publication status/results; required capability, not a claimed deployed route |
 | Static UI | CloudFront distribution output `DistributionUrl` | CloudFront/S3; optional upstream access control in future | Browse graph classes, relationships, rules, and mappings from checked-in data |
-| Data artifacts | S3 URIs published through `/lexicon/*` SSM parameters | AWS IAM + S3 | Machine-readable artifact contract for Persist, Rules, Translate, dashboards, and build/release tooling |
+| Data artifacts | S3 URIs published through `/lexicon/*` SSM parameters | AWS IAM + S3 | Machine-readable artifact contract for Persist, Rules, Translate, and build/release tooling |
 
 The target deployment publishes these SSM parameters:
 
@@ -41,18 +41,17 @@ The target deployment publishes these SSM parameters:
 | `/lexicon/interprose-data-uri` | `s3://<LexiconDataBucket>/interprose.json` | Translate, mapping authors | Full Interprose source schema |
 | `/lexicon/interprose-snapshots-data-uri` | `s3://<LexiconDataBucket>/inteprose-snapshots.json` | Translate, mapping authors | Snapshot-constrained Interprose source schema; object key preserves the current reference spelling |
 | `/lexicon/interprose-transform-uri` | `s3://<LexiconDataBucket>/interprose/` | Translate, ETL builders | SQL transform prefix with `vertices/` and `edges/` children |
-| `/lexicon/cloudwatch-metrics-uri` | `s3://<LexiconDataBucket>/cloudwatch-metrics.json` | Dashboards, metric checks | Governed metric definitions |
+| `/lexicon/financial-metrics-catalog-uri` | `s3://<LexiconDataBucket>/financial-metrics-catalog/releases/<lexicon_version_id>/approved-release.json` | Persist (resolved at deploy time), Model configuration evidence | Approved marker for the immutable business/financial metric catalog; resolve the sibling catalog through the marker |
 | `/lexicon/rule-query-artifacts-uri` | `s3://<LexiconDataBucket>/rule-query-artifacts.json` | Rules/tooling | Rule query artifact metadata |
 | `/lexicon/release-uri` | `s3://<LexiconDataBucket>/release.json` | Build, Marketplace, operators | Release metadata tying artifact digests to `lexicon_version_id` |
 
-The reference implementation already deploys the first five parameters. The target product MUST also publish the metric, rule-artifact, and release metadata parameters so products that already depend on those source files can consume them through the same S3/SSM boundary.
+The reference implementation already deploys the first five parameters together with `/lexicon/financial-metrics-catalog-uri` and `/lexicon/release-uri`. The target product MUST also publish the rule-artifact parameter so products that already depend on that source file can consume it through the same S3/SSM boundary.
 
 ### 1.3 Non-goals
 
 - Lexicon does **not** persist graph facts. Persist owns graph writes, Gremlin reads, Neptune, validation execution, and candidate validation routes.
 - Model does **not** allow unrestricted runtime mutation of canonical schemas, rules, metrics or mappings. API operations submit/validate candidates and initiate approved release work; canonical changes remain reviewed source changes and ship as versioned releases.
 - Lexicon does **not** own partner ingestion, translation execution, or source-system credentials. Translate and data pipelines consume Lexicon artifacts; they own execution.
-- Lexicon does **not** own the Main Dashboard. It owns the metric registry that dashboard changes must reference.
 - Lexicon does **not** bypass Marketplace or Build compatibility checks. Release metadata is provenance and dependency input, not an alternate deployment channel.
 - Lexicon does **not** mutate deployed data objects in place outside a reviewed deploy. Rollback is redeploying a previous bundle or restoring a versioned object through an operator-approved runbook.
 
@@ -109,9 +108,14 @@ s3://<LexiconDataBucket>/
 |-- lexicon.json
 |-- interprose.json
 |-- inteprose-snapshots.json
-|-- cloudwatch-metrics.json
 |-- rule-query-artifacts.json
 |-- release.json
+|-- financial-metrics-catalog/
+|   `-- releases/<lexicon_version_id>/
+|       |-- payment-financial-metrics.v2.json
+|       |-- approved-release.json
+|       |-- build.json
+|       `-- manifest.json
 |-- interprose/
 |   |-- vertices/
 |   |   `-- <lexicon_vertex>.sql
@@ -151,7 +155,7 @@ The UI must show at least:
 - derived indexes and their trigger/query metadata;
 - rulesets and individual rule definitions;
 - Interprose mapping and transform references;
-- CloudWatch metric definitions.
+- business and financial metric definitions.
 
 ### 2.4 SSM parameters and outputs
 
@@ -170,7 +174,7 @@ Stack outputs include:
 | `InterproseS3Uri` | Convenience output for `/lexicon/interprose-data-uri` |
 | `InterproseSnapshotsS3Uri` | Convenience output for `/lexicon/interprose-snapshots-data-uri` |
 | `InterproseTransformS3Uri` | Convenience output for `/lexicon/interprose-transform-uri` |
-| `CloudwatchMetricsS3Uri` | Convenience output for `/lexicon/cloudwatch-metrics-uri` |
+| `FinancialMetricsCatalogS3Uri` | Convenience output for the marker behind `/lexicon/financial-metrics-catalog-uri` |
 | `RuleQueryArtifactsS3Uri` | Convenience output for `/lexicon/rule-query-artifacts-uri` |
 | `ReleaseS3Uri` | Convenience output for `/lexicon/release-uri` |
 
@@ -184,7 +188,7 @@ Consumers receive least-privilege access by artifact group:
 | Rules | `/lexicon/rulesets-uri` | `ListBucket`/`GetObject` for the `rulesets/` prefix |
 | Translate | `/lexicon/data-uri`, `/lexicon/interprose-data-uri`, `/lexicon/interprose-snapshots-data-uri`, `/lexicon/interprose-transform-uri` | `GetObject` for schema files and `ListBucket`/`GetObject` for `interprose/` |
 | Build / Marketplace | `/lexicon/release-uri` when validating compatibility | `GetObject` on `release.json` |
-| Dashboards / metric checks | `/lexicon/cloudwatch-metrics-uri` | `GetObject` on `cloudwatch-metrics.json` |
+| Persist metric materialization | `/lexicon/financial-metrics-catalog-uri`, resolved at deploy time | `GetObject` on the approved marker and its sibling catalog under `financial-metrics-catalog/releases/` |
 
 Lexicon itself does not grant wildcard read to every tenant runtime. Each product's CDK stack requests or receives the minimum read policy it needs.
 
@@ -355,13 +359,11 @@ The `.gremlin` file stores the executable query text. The optional `.sql` file s
 
 The existing Filter adapter selects the default `phone` catalog item only when rule context is absent. Context can select multiple matching manifests; explicit `rule_s3_uris` bypass catalog selection. Follow the [current Rules selection contract](../../build-rules-product/reference/implementation/rules-and-queries.md#selection-semantics) for precedence, matching and compatibility.
 
-### 3.4 CloudWatch metric registry
+### 3.4 Business and financial metric catalogs
 
-`cloudwatch-metrics.json` uses the same `vertices` / `edges` container shape as other schema-like files, but metric definitions are standalone vertices and `edges` is empty.
+Business and financial metric definitions are a separate package, not part of `lexicon.json`. The current payment package is `src/data/financial-metrics/payment-financial-metrics.v2.json`; it references graph labels, properties and directed relationships from `lexicon.json`. The Lexicon build generates an immutable release directory under `financial-metrics-catalog/releases/<lexicon_version_id>/`, and `/lexicon/financial-metrics-catalog-uri` resolves its approved marker.
 
-Each metric vertex type is the canonical metric name. Properties describe required dimensions and accepted enum values. Products that emit CloudWatch metrics must add or update this file in the same PR cycle as the runtime metric emission and dashboard display work.
-
-The registry is the source of truth for metric names and dimensions; CloudWatch itself is an operational sink, not the registry.
+Dialga owns the package schema, generated and published representations, Model catalog representation, source-of-truth precedence and Persist compatibility boundary in [the business and financial metric catalog contract](business-financial-metric-catalogs.md). Do not duplicate those details here.
 
 ### 3.5 Interprose schemas and transforms
 
@@ -425,7 +427,6 @@ Each deploy writes `release.json`:
     "interprose.json": { "sha256": "...", "s3_uri": "s3://.../interprose.json" },
     "inteprose-snapshots.json": { "sha256": "...", "s3_uri": "s3://.../inteprose-snapshots.json" },
     "interprose/": { "sha256": "...", "s3_uri": "s3://.../interprose/" },
-    "cloudwatch-metrics.json": { "sha256": "...", "s3_uri": "s3://.../cloudwatch-metrics.json" },
     "rule-query-artifacts.json": { "sha256": "...", "s3_uri": "s3://.../rule-query-artifacts.json" }
   }
 }
@@ -468,9 +469,11 @@ Translate treats `lexicon`, `interprose`, and `interprose_snapshots` as reserved
 
 Callers cannot register or overwrite these names through Translate's language registration API. Translate may cache the artifacts, but cache invalidation and compatibility checks must respect `release.json` and the `lexicon_version_id` used by the deployed mapping bundle.
 
-### 4.4 Connect and metric-emitting services
+### 4.4 Business and financial metric consumers
 
-Connect and other services that emit CloudWatch metrics do not need a runtime dependency on Lexicon only to emit metrics. Their source changes must update `cloudwatch-metrics.json` and the Main Dashboard in the same PR cycle. Build or CI checks may read `/lexicon/cloudwatch-metrics-uri` in deployed environments to compare released metric definitions with product metadata.
+Persist is the current execution consumer of the payment metric catalog. Its stack resolves `/lexicon/financial-metrics-catalog-uri` at deploy time into the approved-release URI, then reads and verifies the approved marker and sibling catalog. A new Lexicon catalog release reaches Persist only through a Persist deployment.
+
+Persist does not read Model releases. A Model release that references the catalog records governance metadata (the reviewed immutable catalog URI and digest); it does not change what Persist loads or activates. Follow [the business and financial metric catalog contract](business-financial-metric-catalogs.md) for precedence and compatibility.
 
 ### 4.5 Marketplace, Build, and Puller
 
@@ -488,7 +491,7 @@ All Lexicon changes are source changes. A change may update one or more of:
 
 - `src/data/lexicon.json`;
 - `src/data/rulesets/**`;
-- `src/data/cloudwatch-metrics.json`;
+- `src/data/financial-metrics/**`;
 - `src/data/rule-query-artifacts.json`;
 - `src/data/interprose*.json`;
 - `src/transform/interprose/**`;
@@ -512,7 +515,7 @@ Reviewers enforce:
 - no embedded related entities when reusable vertices/edges exist;
 - no destructive removal of active labels, properties, enum values, rules, or metrics without a deprecation/migration path;
 - legal/compliance review for contactability rules;
-- dashboard follow-through for metric registry changes;
+- regenerated release artifacts and coordinated consumer support for metric catalog changes;
 - consumer PRD or code updates when a contract changes.
 
 ### 5.3 Deprecation and compatibility
@@ -555,7 +558,7 @@ Minimum suites:
 | `lexicon-data` | top-level shape, edge endpoint references, duplicate labels, property/index separation, index metadata completeness, immutable modeling invariants |
 | `ruleset-structure` | catalog entries, manifest paths, split rule/query files, rule order, docs excluded from deployable prefix |
 | `ruleset-integration` | rule Gremlin references against Lexicon labels/properties/indexes, status-event ordering, account/phone scope semantics |
-| `cloudwatch-metrics-data` | metric list, dimensions, enum values, no edge relationships |
+| `financial-metrics-data` | package shape, pinned definition count/digests, generated materialization plans and family matrix, Lexicon label/property references |
 | `interprose-mapping` | source schema and transform SQL references for mapped graph elements |
 | `ui-smoke` | UI renders each registry entry without crashing |
 | `cdk` | stack synthesizes, SSM parameter names and S3 deployment prefixes match this PRD |
@@ -568,7 +571,7 @@ After deploy:
 2. `/lexicon/data-uri` points at a readable `lexicon.json`.
 3. `/lexicon/rulesets-uri` points at a prefix with `index.json`, `phone-interactions/ruleset.json`, and `sms-interactions/ruleset.json`.
 4. `/lexicon/interprose-transform-uri` points at a prefix containing both `vertices/` and `edges/`.
-5. `/lexicon/cloudwatch-metrics-uri`, `/lexicon/rule-query-artifacts-uri`, and `/lexicon/release-uri` point at readable objects.
+5. `/lexicon/financial-metrics-catalog-uri` resolves an approved marker whose sibling catalog bytes and digests verify; `/lexicon/rule-query-artifacts-uri` and `/lexicon/release-uri` point at readable objects.
 6. A principal with Persist's runtime policy can read only the core Lexicon object and approved candidate prefix.
 7. A principal with Rules' runtime policy can read only the rulesets prefix it needs.
 8. A principal with Translate's runtime policy can read the schemas and transform SQL prefix it needs.
@@ -583,7 +586,7 @@ The current `../lexicon` implementation already includes:
 - `src/data/lexicon.json` with 38 vertices, 84 edges, common patterns, and debt derived indexes;
 - `src/data/rulesets/index.json` with `phone` and `sms` catalog entries;
 - split ruleset manifests, JSON rule definitions, Gremlin queries, and SQL notes;
-- `src/data/cloudwatch-metrics.json`;
+- `src/data/financial-metrics/payment-financial-metrics.v2.json` with an immutable generated release behind `/lexicon/financial-metrics-catalog-uri`;
 - `src/data/rule-query-artifacts.json`;
 - Interprose schema files and transform SQL under `src/transform/interprose`;
 - CDK stack creating a private website bucket, CloudFront distribution, retained data bucket, data deployments, and the first five `/lexicon/*` SSM parameters.
@@ -591,7 +594,7 @@ The current `../lexicon` implementation already includes:
 Target gaps to close while re-creating the product:
 
 - migrate npm/Bun scripts to the shared `pnpm`/`just` contract;
-- publish `cloudwatch-metrics.json`, `rule-query-artifacts.json`, and `release.json` through S3/SSM;
+- publish `rule-query-artifacts.json` through S3/SSM;
 - add CDK assertions for every SSM parameter and prefix;
 - make production removal policies explicit for the website bucket;
 - document the Marketplace component metadata for Lexicon, including `lexicon_version_id` generation.
@@ -605,7 +608,7 @@ Target gaps to close while re-creating the product:
 
 - `LexiconStack` deploys a private data bucket, static UI, CloudFront distribution, all required SSM parameters, and CloudFormation outputs.
 - All artifacts listed in section 2.2 are present in S3 after deployment with versioning enabled.
-- Persist, Rules, Translate, Build/Marketplace, and metric checks can consume Lexicon only through the S3/SSM contracts in section 4.
-- Tests cover schema integrity, ruleset structure, ruleset integration, metric registry shape, UI smoke rendering, and CDK parameter/prefix contracts.
+- Persist, Rules, Translate, and Build/Marketplace can consume Lexicon only through the S3/SSM contracts in section 4.
+- Tests cover schema integrity, ruleset structure, ruleset integration, financial metric catalog shape, UI smoke rendering, and CDK parameter/prefix contracts.
 - The deployed `release.json` records a `lexicon_version_id` and digests for every published artifact group.
 - Existing consumer PRDs reference Lexicon as the owner of these artifacts and do not require consumers to read the Lexicon Git repository at runtime.
