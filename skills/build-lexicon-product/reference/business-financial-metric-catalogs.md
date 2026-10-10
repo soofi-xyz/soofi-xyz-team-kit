@@ -2,8 +2,9 @@
 
 Use this contract when building or changing Model support for business and
 financial metrics. Dialga owns this architecture and keeps it synchronized with
-the implementations below. Jirachi reads it to configure an existing capability;
-Jirachi does not define the schema, artifact layout, precedence or compatibility
+the implementations below. Jirachi reads it to configure an existing capability
+or draft a compiler-supported in-family variant in the existing shape; Jirachi
+does not define the schema, artifact layout, precedence or compatibility
 boundary.
 
 Pin and inspect the selected revisions before acting. The paths below are verified
@@ -183,6 +184,12 @@ by `composition.documentArtifactId`; the change set's `sourceDigest` equals that
 document artifact digest. Payment definitions stay in the referenced catalog,
 not in Model request bodies.
 
+`compositionContractDocumentSchema` in `src/domain/schemas.ts` requires
+`definitions` to hold at least one entry. A `manifest.metricCatalogs[]`
+reference therefore cannot be submitted on its own; it rides on a full package
+revision. Supporting a catalog-only release is a Model contract change owned
+here.
+
 The generic lifecycle is change-set submission, exact artifact upload,
 validation status/results, review and authorized decision, publication
 status/reconciliation, and immutable release/composition/artifact read-back.
@@ -208,7 +215,15 @@ definition-set integrity, allowlist ordering/uniqueness/subset rules and plan
 coverage. `payment-metric-supported-definitions.ts` is a closed ID set.
 `PaymentMetricDeclarativePlanCompiler.ts` additionally gates family, root, path,
 selectors, predicates, measures, calculations, dimensions, elections, time and
-output. ID membership alone is not executability.
+output. ID membership alone is not executability. `PaymentMetricCatalogService.ts`
+compiles every catalog definition while loading, so a single definition outside
+the closed set or compiler gates fails the whole catalog load, not just that ID.
+
+Persist's stack resolves `/lexicon/financial-metrics-catalog-uri` at deploy time
+into its approved-release URI (with a CDK context override). It does not read
+Model releases. Today a Model release that references the catalog is governance
+metadata; a new Lexicon catalog release reaches Persist only through a Persist
+deployment.
 
 `PaymentMetricMaterializationPlan.ts` uses the selected supported plans.
 `payment-metric-prod-shadow-config.ts` pins release and activation compatibility
@@ -247,7 +262,24 @@ materialization observed
 
 ## Adding definitions, families or runtime support
 
-Dialga owns the decision and implementation boundary:
+Jirachi may draft an in-family variant: a new `metrics[]` entry that copies a
+same-family sibling's exact shape and changes only a filter value or dimension
+that the pinned compiler already supports (family contract, metric-id prefix,
+measure, business-time property, dimension selectors, condition properties and
+enum values, and elections). Jirachi validates those gates read-only and
+presents the entry as a reviewed Lexicon source change through Lexicon's normal
+review and release flow, never as a direct S3/SSM edit or activation. That
+change also regenerates materialization plans, digests and the family matrix
+with Lexicon's generator and updates the hand-maintained count, digest and
+family-count pins in `catalog.ts` and `materialization.ts`. Reporting windows
+are not entries: `grains` and `scopes` are fixed literals.
+
+Each new metric ID also needs Persist's closed set to include it before the
+Lexicon release reaches a Persist deployment. Dialga coordinates that Persist
+change and its sequencing.
+
+Dialga owns everything else, including new families, new measures, new compiler
+support and runtime:
 
 - Change `prismteam-ai/model` for Model API/runtime behavior, composition schema
   and validation, source pins, digest handling, governed publication or a new
@@ -259,9 +291,9 @@ Dialga owns the decision and implementation boundary:
   decoder, compiler, materializer or activation compatibility must change.
 
 Do not submit a generic Model composition to disguise missing semantics or
-consumer support. Do not make Jirachi invent a field, family, path, adapter or
-precedence rule. Jirachi may resume configuration only after the required
-capabilities exist at pinned revisions.
+consumer support. Do not make Jirachi invent a field, family, measure, path,
+adapter or precedence rule. Jirachi may resume configuration only after the
+required capabilities exist at pinned revisions.
 
 This contract is for business and financial metric definitions. Keep platform
 telemetry outside this catalog architecture.
