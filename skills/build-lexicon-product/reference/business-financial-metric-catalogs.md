@@ -41,11 +41,23 @@ configurations/<package>/README.md
 test/<package>.test.ts
 ```
 
-`composition.json` is a Composition Contract v1 document. A business catalog is
-normally carried by a Jirachi-managed extension that imports the governed shared
-base by release ID and digest; the shared base intentionally declares no metric
-catalogs. Composition Contract v1 stores catalog descriptors only under
-`manifest.metricCatalogs[]`.
+`composition.json` is a Composition Contract v1 document. Composition Contract v1
+stores catalog descriptors only under `manifest.metricCatalogs[]`.
+
+Keep domain-neutral metrics domain-neutral. A metric whose root, path, conditions
+and dimensions use only shared-base elements belongs in a domain-neutral catalog
+with a generic package name, namespace and catalog ID and `GLOBAL` or
+shared-base-anchored scopes; never brand it with a business or tenant name.
+Business-specific breakdowns, such as a per-debt scope that needs a
+business-owned vertex, belong in a separate business extension that imports the
+neutral catalog's package and adds only those variants.
+
+Today the shared base intentionally declares no metric catalogs and an extension
+must own a local `topVertex`, so a domain-neutral catalog has no home that does
+not invent or import a business vertex. Deciding that home (for example a
+catalog-carrying base release or an extension without a new top vertex) is
+Dialga work; until it exists, record the neutral catalog as a Dialga gap rather
+than wrapping it in a business extension.
 
 A generated Base Metrics descriptor is:
 
@@ -142,8 +154,9 @@ Dialga owns the Model catalog schema, contract version, validator and generator
 in `prismteam-ai/model`: shape validation, vocabulary validation of every vertex,
 edge, direction, property and enum value against the package's effective
 vocabulary, materialization-plan generation and definition-set digests. Shape
-extensions such as ratio metrics, edge-scoped conditions or non-payment
-latest-state rules are Dialga decisions.
+extensions such as ratio metrics, edge-scoped conditions, non-payment
+latest-state rules or scopes anchored on any vocabulary vertex (the inherited
+shape fixes `scopes` to `DEBT` and `GLOBAL`) are Dialga decisions.
 
 ## Model publication and consumer boundary
 

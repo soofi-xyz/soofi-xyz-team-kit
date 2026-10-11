@@ -144,6 +144,15 @@ pinned types fix (`scopes`, `grains`, contract version). If the shape cannot
 express part of the KPI, say so and mark that part as a Dialga gap rather than
 adding a field.
 
+Keep domain-neutral metrics domain-neutral. When the root, path, conditions and
+dimensions use only shared-base elements, place the entry in a domain-neutral
+catalog with a generic package name, namespace and catalog ID and `GLOBAL` or
+shared-base-anchored scopes; never brand it with a business or tenant name. Put
+business-specific breakdowns, such as a `DEBT` scope that needs a business-owned
+`debt` vertex, in a separate business extension that adds only those variants.
+If no domain-neutral catalog home exists yet, report a Dialga gap rather than
+wrapping the metrics in a business extension.
+
 ## 6. Classify against existing catalogs and executability
 
 For each suggestion, choose exactly one:

@@ -661,6 +661,37 @@ def assert_capability_map_ownership_split() -> None:
     )
 
 
+def assert_domain_neutral_metrics_stay_neutral() -> None:
+    for relative in (JIRACHI, CONFIGURER_SKILL, CONFIGURER_REFERENCE):
+        require_all(
+            relative,
+            read(relative),
+            {
+                "neutral rule": "keep domain-neutral metrics domain-neutral",
+                "no business branding": "business or tenant name",
+                "business breakdowns separate": "separate business extension",
+                "missing home is a gap": "rather than wrapping the metrics in a business extension",
+            },
+        )
+    require_all(
+        BUILDER_REFERENCE,
+        read(BUILDER_REFERENCE),
+        {
+            "neutral rule": "keep domain-neutral metrics domain-neutral",
+            "neutral home is Dialga work": "deciding that home",
+            "scope generalization": "scopes anchored on any vocabulary vertex",
+        },
+    )
+    require_all(
+        DIALGA,
+        read(DIALGA),
+        {
+            "neutral home decision": "decide where a domain-neutral catalog lives",
+            "scope generalization": "generalize `scopes` beyond",
+        },
+    )
+
+
 def assert_no_legacy_metric_source() -> None:
     legacy_sources = (
         "lexicon:src/",
@@ -749,6 +780,7 @@ def main() -> int:
     assert_model_prd_has_no_platform_telemetry()
     assert_capability_map_ownership_split()
     assert_no_legacy_metric_source()
+    assert_domain_neutral_metrics_stay_neutral()
     assert_prompt_synchronization()
     assert_no_stale_counts_or_telemetry_content()
     print("Dialga/Jirachi business-metric ownership contract tests passed")
