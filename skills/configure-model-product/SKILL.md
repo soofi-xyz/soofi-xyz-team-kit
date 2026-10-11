@@ -96,8 +96,11 @@ in the Dialga-owned catalog contract: a metric's home is the lowest package whos
 effective vocabulary contains every element it references. A metric that uses
 only shared-base elements belongs in the shared-base catalog with generic names
 and `GLOBAL` or shared-base-anchored scopes, never a business or tenant name.
-Put business-specific breakdowns, such as per-debt scopes, in a separate
-business extension as new metric IDs that never redefine an inherited ID. If
+Put a business-specific breakdown in a separate business extension as new
+metric IDs that never redefine an inherited ID, and only when that extension
+already has a governed Model release defining every element it needs. Otherwise
+leave it out and report a Model/vocabulary gap; never create an extension, add
+definitions or copy legacy-repository vocabulary to give a metric a home. If
 shared-base catalogs are not supported yet, report a Dialga gap rather than
 wrapping the metrics in a business extension.
 

@@ -108,12 +108,19 @@ Keep domain-neutral metrics domain-neutral. Place every metric deterministically
    name.
 4. An extension catalog only adds metrics. It inherits the imported packages'
    catalogs, never redefines, removes or shadows an inherited `metric_id`, and
-   adds a business-specific breakdown (such as a per-debt scope that needs a
-   business-owned `debt` vertex) as a new metric ID in a separate business
+   adds a business-specific breakdown as a new metric ID in a separate business
    extension.
 5. The effective catalog of a release is the union of its own catalog and every
    imported package's catalog, with `metric_id` unique across that union. Any
    duplicate fails validation.
+6. Only packages that already have a governed Model release can be a home. A
+   metric that references an element no governed release defines has no home:
+   leave it out of the change and report a Model/vocabulary gap. Never create an
+   extension, add definitions, or copy vocabulary from the legacy repository or
+   any composition `sources[]` entry to give a metric a home; extending the
+   vocabulary is a separate governed Model change the user asks for. Drop a
+   scope, together with its `scope_edge_types` output edge, when its anchor is
+   not in governed vocabulary.
 
 Changing a shared-base metric requires a new governed shared-base release;
 extensions adopt it by updating their import pin.
