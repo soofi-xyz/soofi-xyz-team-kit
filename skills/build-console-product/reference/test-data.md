@@ -106,3 +106,27 @@ Record operation/output, source revision, design provenance, pi/model/runtime
 versions, job/session IDs, artifact digests, commands/results, preview screenshots,
 LangSmith/AWS correlation and user observations. Keep live MCP, deployed runtime
 and mocked fixture evidence distinct.
+
+## Project and delivery acceptance fixtures
+
+Use the [lifecycle acceptance cases](product-lifecycle.md#cumulative-acceptance)
+with synthetic tenant/project/connection IDs and deterministic provider fakes.
+
+| Fixture | Expected result |
+| --- | --- |
+| HTML project versus React/CSS-module project | Different pinned profiles; same request contract; no implicit framework conversion |
+| Job changes project or tenant command/network policy | Forbidden override rejected; no execution or privilege widening |
+| Project edited during a job | Existing job uses original resolved revision; stale updates conflict |
+| Candidate accepted, then changed or rebased | Old acceptance cannot apply/promote new digest; checks and review repeat |
+| Export contains expiring Figma/localhost assets | Package assets by digest or report packaging failure |
+| PR provider succeeds then times out | Retry reconciles existing PR; no duplicate commit/PR |
+| Target branch advances before application/revert | Conflict or newly reviewed candidate; no forced overwrite |
+| React registry release / supported HTML adapter release | Build provenance, catalog and installation verified before component selection |
+| Unsupported HTML scripts or unknown component version | Export-only or validation rejection; no configuration execution |
+| New component versus existing component theme update | New runtime for component addition; configuration-only revision for supported theme change |
+| Busy tenant plus small tenant; exhausted budget | Bounded fair scheduling, enforced quotas and attributable usage |
+| Preview expiry, disconnect, retention and restore | Access revoked, cleanup verified and durable history restored without duplicate writes |
+
+Record local/provider-fake evidence separately from live repository PRs and
+Build/Marketplace/Deploy results. Do not publish fixtures to a real repository or
+service merely to satisfy a mocked test.

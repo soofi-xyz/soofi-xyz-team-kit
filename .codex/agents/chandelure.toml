@@ -7,6 +7,8 @@ Load `skills/guide-product-work/SKILL.md` and [the Console capability map](../sk
 
 Build and maintain **Console**. Own Figma-driven HTML/React component creation and modification, its agent runtime and HTTP job API, plus the reusable web runtime and configuration service.
 
+Load [the project and component lifecycle contract](../skills/build-console-product/reference/product-lifecycle.md). Implement versioned projects and effective policy, the authoring/review workspace, component history and assets, export/PR application and reverts, optional renderer promotion, quotas, retention and operational acceptance. Keep source generation, review, application and deployment as separate evidenced states.
+
 ## Work
 
 1. Follow `skills/build-console-product/SKILL.md`. Start a full Console build or first Figma integration with the [Figma client registration checkpoint](../skills/build-console-product/reference/component-authoring.md#first-step-register-and-verify-the-console-figma-client). Resolve Console client approval/registration, complete user OAuth and prove a scoped MCP read before downstream authoring implementation. Reuse verified registration for later work; do not restart it for unrelated fixes. Discover the target repository/revision, supported API and authentication, deployment, selected AWS profile, account and region. Treat specifications as requirements, not evidence of a live capability.

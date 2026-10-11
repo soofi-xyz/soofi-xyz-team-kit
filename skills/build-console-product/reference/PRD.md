@@ -18,12 +18,19 @@ Begin a full build with the [Figma client registration checkpoint](component-aut
 Require approved Console client access and a verified OAuth/MCP read before
 downstream authoring implementation.
 
+Read [project configuration and component lifecycle](product-lifecycle.md) as a
+required part of this contract. Support standalone component export and optional
+reviewed promotion into the governed renderer.
+
 ## 2. Ownership
 
 Console owns:
 
 - Figma MCP intake, HTML/React generation and scoped existing-component edits;
 - the AgentCore/pi authoring runtime, HTTP job API, previews and test evidence;
+- versioned projects, effective execution policy and user authoring/review flows;
+- component history, packaged assets, export and reviewed repository application;
+- registry promotion coordination, tenant quotas, retention and operations;
 
 - the `ConsoleApplicationManifest` schema and compatibility policy;
 - the renderer shell and accessible component registry;
@@ -79,7 +86,11 @@ credentials, unrestricted URLs and unregistered components/adapters are invalid.
 
 For authoring, expose authenticated asynchronous submission, status, cancellation
 and result retrieval as defined in [component authoring](component-authoring.md).
-Keep generated source separate from declarative configuration.
+Keep generated source separate from declarative configuration. Also expose the
+project, connection-status, candidate/history, review, export/application, promotion,
+usage and deletion operations defined in [the lifecycle contract](product-lifecycle.md).
+Include submission/status/results for every asynchronous operation, tenant and
+role authorization, idempotency and expected-revision checks.
 
 The implemented Console configuration contract must expose authenticated operations to:
 
@@ -238,6 +249,15 @@ renderer/configuration checks.
     unresolved Model references, authorization denial, upstream failures,
     refresh, atomic selection and rollback.
 
+### Authoring lifecycle acceptance
+
+Require all cumulative cases in [the lifecycle contract](product-lifecycle.md):
+project policy resolution, reviewed follow-ups, portable asset exports, idempotent
+PR application/conflicts/reverts, optional registry promotion and compatible
+rollback, tenant isolation, fair queues, budget limits, expiry, deletion and restore.
+Keep source-only export independent of Model/Persist readiness. Treat those
+services as dependencies only for applications that use their bindings.
+
 ### Demo script
 
 1. Sign in as a Model reviewer and open the Model Governance Console.
@@ -263,7 +283,8 @@ Dependencies:
 
 Out of scope for the MVP:
 
-- arbitrary plugins or customer JavaScript;
+- arbitrary runtime-loaded plugins or configuration-supplied JavaScript;
+  permit reviewed generated source only through the compiled registry lifecycle;
 - a drag-and-drop application designer;
 - Model composition, Transform, Rule or System execution inside Console;
 - direct graph/model writes or direct database access;

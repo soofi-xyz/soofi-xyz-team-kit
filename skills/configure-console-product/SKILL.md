@@ -10,6 +10,16 @@ Use `vivillon`. Load [guide-product-work](../guide-product-work/SKILL.md) and
 Read the relevant [product contract](../build-console-product/reference/PRD.md) and
 [synthetic test data](../build-console-product/reference/test-data.md).
 
+Read [project configuration and component lifecycle](../build-console-product/reference/product-lifecycle.md).
+Create/read versioned projects through supported APIs, select managed connections
+and execution/review/operations profiles, and verify the resolved job snapshot.
+Exercise review and follow-up flows, standalone export, idempotent PR application
+and reviewed reverts. For optional renderer promotion, track Build/Marketplace/
+Deploy results and verify the installed registry before selecting a manifest.
+Configure quotas, preview expiry and retention within tenant policy; verify denial,
+cleanup, alerts and recovery. Route absent operations to Chandelure without
+substituting local scripts or claiming unsupported delivery.
+
 For creation or modification of components, read [the authoring contract](../build-console-product/reference/component-authoring.md).
 Verify the deployment has completed the authoring contract’s client registration
 checkpoint. Connect the user through its supported OAuth flow; route missing

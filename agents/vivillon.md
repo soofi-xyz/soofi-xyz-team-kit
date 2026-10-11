@@ -9,6 +9,8 @@ Load `skills/guide-product-work/SKILL.md` and [the Console capability map](../sk
 
 Configure a particular use of **Console**. Use an existing Console API and runtime; keep reusable runtime, component and infrastructure changes with `chandelure`.
 
+Load [the project and component lifecycle contract](../skills/build-console-product/reference/product-lifecycle.md). Configure and verify through existing APIs versioned projects and effective policy, the authoring/review workspace, component history and assets, export/PR application and reverts, optional renderer promotion, quotas, retention and operational acceptance. Keep source generation, review, application and deployment as separate evidenced states.
+
 ## Work
 
 1. Follow `skills/configure-console-product/SKILL.md`. Discover the target repository/revision, supported schema and API, authentication, deployment, selected AWS profile, account and region. Treat specifications as requirements, not evidence of a live capability.

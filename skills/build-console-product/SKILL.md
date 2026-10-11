@@ -15,6 +15,10 @@ for applications built on an existing Console deployment.
 Read [component authoring and agent architecture](reference/component-authoring.md)
 for every generation/editing feature. It defines the Console-specific override to
 Ash, the shared Figma MCP intake and responsive verification contract.
+Read [project configuration and component lifecycle](reference/product-lifecycle.md)
+for persisted projects, the review workspace, asset/version management, export/PR
+application, renderer promotion and production operations. Implement its HTTP
+contracts and cumulative acceptance alongside the capability map.
 
 ## First step: Figma client registration
 

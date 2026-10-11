@@ -1,5 +1,11 @@
 # Console component authoring
 
+Read [project configuration and component lifecycle](product-lifecycle.md) for
+configuration precedence, user review, component versions/assets, export and PR
+application, optional registry promotion and production acceptance. Resolve jobs
+against a pinned project revision and named execution profile; the input commands
+below come from that trusted profile, not arbitrary per-job shell strings.
+
 ## Product outcome and inputs
 
 Build a service that creates HTML/CSS or React components from Figma and modifies
