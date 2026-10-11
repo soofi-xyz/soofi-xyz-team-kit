@@ -84,3 +84,49 @@ For each selected capability record:
 - AWS resource/log inspected;
 - refresh or rollback result;
 - whether evidence is local, mocked deployment or authorized live integration.
+
+## Component authoring fixtures
+
+Use synthetic design snapshots and MCP fakes for local tests; label them mocked.
+For live acceptance, use authorized Figma nodes and record actual IDs/digests.
+Do not fabricate a working Figma URL or commit private source/design assets.
+
+| Case | Baseline / variant | Expected evidence |
+| --- | --- | --- |
+| Create HTML | Responsive card / navigation with mobile menu | Semantic HTML/CSS, no React dependency, preview and breakpoint results |
+| Create React | Card with typed props / existing design-system form | Reused components, type/build checks, final-route visual results |
+| Edit HTML | Spacing change / icon and button variant change | Scoped patch, unchanged behavior, failing-before/passing-after design assertion |
+| Edit React | Responsive layout / follow-up typography edit | Preserved handlers/state/API/analytics and props, session continuity, regression results |
+| Figma failure | Denied node / stale or disconnected MCP | Typed issue; no invented design or verified-success claim |
+| Recovery | Duplicate submit / interrupted turn | One logical job, restored context and no repeated side effect |
+| Isolation | Cross-tenant result / path escape / stale base | Denial or conflict with no unauthorized read/write |
+| Cancellation | Cancel during a tool call / cancel queued job | Terminal cancellation, no subsequent application/publication |
+
+Record operation/output, source revision, design provenance, pi/model/runtime
+versions, job/session IDs, artifact digests, commands/results, preview screenshots,
+LangSmith/AWS correlation and user observations. Keep live MCP, deployed runtime
+and mocked fixture evidence distinct.
+
+## Project and delivery acceptance fixtures
+
+Use the [lifecycle acceptance cases](product-lifecycle.md#cumulative-acceptance)
+with synthetic tenant/project/connection IDs and deterministic provider fakes.
+
+| Fixture | Expected result |
+| --- | --- |
+| HTML project versus React/CSS-module project | Different pinned profiles; same request contract; no implicit framework conversion |
+| Job changes project or tenant command/network policy | Forbidden override rejected; no execution or privilege widening |
+| Project edited during a job | Existing job uses original resolved revision; stale updates conflict |
+| Candidate accepted, then changed or rebased | Old acceptance cannot apply/promote new digest; checks and review repeat |
+| Export contains expiring Figma/localhost assets | Package assets by digest or report packaging failure |
+| PR provider succeeds then times out | Retry reconciles existing PR; no duplicate commit/PR |
+| Target branch advances before application/revert | Conflict or newly reviewed candidate; no forced overwrite |
+| React registry release / supported HTML adapter release | Build provenance, catalog and installation verified before component selection |
+| Unsupported HTML scripts or unknown component version | Export-only or validation rejection; no configuration execution |
+| New component versus existing component theme update | New runtime for component addition; configuration-only revision for supported theme change |
+| Busy tenant plus small tenant; exhausted budget | Bounded fair scheduling, enforced quotas and attributable usage |
+| Preview expiry, disconnect, retention and restore | Access revoked, cleanup verified and durable history restored without duplicate writes |
+
+Record local/provider-fake evidence separately from live repository PRs and
+Build/Marketplace/Deploy results. Do not publish fixtures to a real repository or
+service merely to satisfy a mocked test.

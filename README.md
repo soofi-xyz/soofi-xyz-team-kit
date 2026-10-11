@@ -33,7 +33,7 @@ Kangaskhan only when Account behavior is missing or broken.
 | --- | --- | --- | --- |
 | **Documentation** | Documentation publishes product documentation and serves a configurable developer portal with API references, guides and interactive examples. | [`unown`](./agents/unown.md) | [`togetic`](./agents/togetic.md) |
 | **Account** | Account manages Prism identities and keys, guides Prism-managed or client-owned AWS setup, creates or adopts the backing account, verifies Prism service access and emits bootstrap manifests. | [`kangaskhan`](./agents/kangaskhan.md) | [`blissey`](./agents/blissey.md) |
-| **Console** | Console renders reusable authenticated applications from governed, versioned UI configurations. | [`chandelure`](./agents/chandelure.md) | [`vivillon`](./agents/vivillon.md) |
+| **Console** | Console creates and modifies HTML or React components from Figma through MCP, using a Bedrock AgentCore runtime with the pi harness, and renders governed applications. | [`chandelure`](./agents/chandelure.md) | [`vivillon`](./agents/vivillon.md) |
 | **Environment** | Environment prepares tenant environments, shared routing and initial product installations. | [`torterra`](./agents/torterra.md) | [`shaymin`](./agents/shaymin.md) |
 | **Marketplace** | Marketplace catalogs products and reviews, publishes and rolls back bundles. | [`regigigas`](./agents/regigigas.md) | [`registeel`](./agents/registeel.md) |
 | **Build** | Build turns validated source into portable deployment artifacts with provenance. | [`tinkaton`](./agents/tinkaton.md) | [`metang`](./agents/metang.md) |
