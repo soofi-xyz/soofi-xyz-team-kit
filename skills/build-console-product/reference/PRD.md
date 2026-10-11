@@ -2,7 +2,10 @@
 
 ## 1. Purpose
 
-Console is the reusable Prism web runtime. It turns a governed, versioned
+Console creates and modifies HTML or React components from Figma via MCP, using
+Amazon Bedrock AgentCore Runtime and the pi coding harness. Read the required
+[component authoring contract](component-authoring.md) for inputs, HTTP jobs,
+architecture, artifacts and acceptance. Console also provides the reusable Prism web runtime. It turns a governed, versioned
 application manifest into an authenticated UI made from supported components and
 typed product API bindings. One runtime must render materially different
 applications without application-specific forks.
@@ -11,9 +14,23 @@ Console Configuration is not a second product. It is an immutable application
 artifact operated through Console by Vivillon. Chandelure owns the reusable
 runtime and configuration service.
 
+Begin a full build with the [Figma client registration checkpoint](component-authoring.md#first-step-register-and-verify-the-console-figma-client).
+Require approved Console client access and a verified OAuth/MCP read before
+downstream authoring implementation.
+
+Read [project configuration and component lifecycle](product-lifecycle.md) as a
+required part of this contract. Support standalone component export and optional
+reviewed promotion into the governed renderer.
+
 ## 2. Ownership
 
 Console owns:
+
+- Figma MCP intake, HTML/React generation and scoped existing-component edits;
+- the AgentCore/pi authoring runtime, HTTP job API, previews and test evidence;
+- versioned projects, effective execution policy and user authoring/review flows;
+- component history, packaged assets, export and reviewed repository application;
+- registry promotion coordination, tenant quotas, retention and operations;
 
 - the `ConsoleApplicationManifest` schema and compatibility policy;
 - the renderer shell and accessible component registry;
@@ -67,7 +84,15 @@ credentials, unrestricted URLs and unregistered components/adapters are invalid.
 
 ## 4. Required product surface
 
-The implemented Console contract must expose authenticated operations to:
+For authoring, expose authenticated asynchronous submission, status, cancellation
+and result retrieval as defined in [component authoring](component-authoring.md).
+Keep generated source separate from declarative configuration. Also expose the
+project, connection-status, candidate/history, review, export/application, promotion,
+usage and deletion operations defined in [the lifecycle contract](product-lifecycle.md).
+Include submission/status/results for every asynchronous operation, tenant and
+role authorization, idempotency and expected-revision checks.
+
+The implemented Console configuration contract must expose authenticated operations to:
 
 1. discover supported schema, components, adapters and runtime versions;
 2. create/read tenant-scoped application identities;
@@ -87,6 +112,10 @@ Recommended scopes are `console:read`, `console:configure` and
 authorization. Hiding a route or component is not an authorization control.
 
 ## 5. Runtime architecture
+
+Host component authoring in AgentCore Runtime with pi as specified in the
+[authoring architecture](component-authoring.md). The following surfaces describe
+the governed renderer/configuration path, not the coding agent.
 
 Use these logical surfaces unless the target repository has a verified stronger
 pattern:
@@ -176,19 +205,24 @@ ready.
 
 ### Context
 
-Prism has no assigned Console product. Product-specific UIs risk duplicating
+Console is assigned to Chandelure (build) and Vivillon (configure). Product-specific UIs risk duplicating
 rendering, access and deployment behavior. The existing Model UI is a prototype,
 while Model composition contract V1 defines base/extension manifests but does
 not yet establish a deployed runtime composition resolver.
 
 ### Description
 
-Build Console as a reusable configuration-driven runtime, assign Chandelure as
-its builder and Vivillon as its configurer, and integrate it with current Prism
+Build Console for Figma-driven component creation/editing and as a reusable
+configuration-driven runtime with Chandelure and Vivillon, and integrate it with current Prism
 products through public contracts. Prove reuse by rendering two materially
 different applications from independent configurations on one runtime.
 
 ### Acceptance criteria
+
+Require the four HTML/React create/edit paths, Figma MCP access, deployed
+AgentCore/pi execution, preserved behavior, responsive evidence and job recovery
+acceptance in [component authoring](component-authoring.md), plus the following
+renderer/configuration checks.
 
 1. Versioned schemas validate routes, layouts, components, themes, bindings,
    actions and access policies; executable or credential-bearing configuration
@@ -215,6 +249,15 @@ different applications from independent configurations on one runtime.
     unresolved Model references, authorization denial, upstream failures,
     refresh, atomic selection and rollback.
 
+### Authoring lifecycle acceptance
+
+Require all cumulative cases in [the lifecycle contract](product-lifecycle.md):
+project policy resolution, reviewed follow-ups, portable asset exports, idempotent
+PR application/conflicts/reverts, optional registry promotion and compatible
+rollback, tenant isolation, fair queues, budget limits, expiry, deletion and restore.
+Keep source-only export independent of Model/Persist readiness. Treat those
+services as dependencies only for applications that use their bindings.
+
 ### Demo script
 
 1. Sign in as a Model reviewer and open the Model Governance Console.
@@ -240,7 +283,8 @@ Dependencies:
 
 Out of scope for the MVP:
 
-- arbitrary plugins or customer JavaScript;
+- arbitrary runtime-loaded plugins or configuration-supplied JavaScript;
+  permit reviewed generated source only through the compiled registry lifecycle;
 - a drag-and-drop application designer;
 - Model composition, Transform, Rule or System execution inside Console;
 - direct graph/model writes or direct database access;
