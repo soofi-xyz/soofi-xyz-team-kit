@@ -108,8 +108,15 @@ def assert_dialga_owns_metric_architecture() -> None:
             "architecture owner": ("own its reusable http api", "catalog architecture"),
             "builder reference": ("business-financial-metric-catalogs.md",),
             "Model implementation repository": ("prismteam-ai/model",),
-            "coordinated Lexicon work": ("spring-oaks-capital-llc/lexicon",),
+            "Model is the only source": (
+                "only canonical source for metric definitions",
+            ),
+            "legacy repository is not a source": (
+                "legacy implementation of model, not a source",
+            ),
+            "legacy retirement": ("retire legacy metric publication",),
             "coordinated Persist work": ("spring-oaks-capital-llc/persist",),
+            "UI catalog view": ("ui must render catalog contents",),
             "configurer handoff": ("hand configuration-only work to `jirachi`",),
         },
     )
@@ -117,18 +124,25 @@ def assert_dialga_owns_metric_architecture() -> None:
         BUILDER_REFERENCE,
         combined,
         {
-            "canonical source": (
-                "src/data/financial-metrics/payment-financial-metrics.v2.json",
+            "Model is the only source": (
+                "is the only canonical source for metric definitions",
             ),
-            "type contract": ("scripts/lib/financial-metrics/types.ts",),
-            "catalog contract": ("scripts/lib/financial-metrics/catalog.ts",),
-            "materialization contract": (
-                "scripts/lib/financial-metrics/materialization.ts",
+            "legacy repository is not a source": (
+                "is the legacy implementation of model, not a source",
             ),
-            "release contract": ("scripts/lib/financial-metrics/release.ts",),
-            "generated release": (
-                ".generated/financial-metrics-catalog/releases/<lexicon_version_id>/",
+            "legacy-only definitions": ("dialga migration gap",),
+            "Model catalog location": ("configurations/<package>/",),
+            "Model catalog validator": ("vocabulary validation of every vertex",),
+            "published boundary layout": (
+                "financial-metrics-catalog/releases/<release_id>/",
             ),
+            "boundary attests Model release": (
+                "must equal the bytes of the governed model release artifact",
+            ),
+            "immutable Model artifact URI": (
+                "immutable catalog bytes published by a model release",
+            ),
+            "UI catalog view": ("model ui must render catalog contents",),
             "approved marker": ("approved-release.json",),
             "discovery parameter": ("/lexicon/financial-metrics-catalog-uri",),
             "package identity": ("schema_version", "definition_set_digest"),
@@ -154,15 +168,14 @@ def assert_dialga_owns_metric_architecture() -> None:
                 "lambda/payment-metric-prod-shadow-config.ts",
             ),
             "source precedence": (
-                "pinned lexicon source package defines",
-                "generated directory is publishable",
-                "reviewed model release governs",
+                "reviewed model release defines metric semantics",
+                "published consumer boundary is valid only",
                 "persist closed set and compiler decide",
             ),
             "runtime boundary": (
                 "change `prismteam-ai/model`",
-                "coordinate `spring-oaks-capital-llc/lexicon`",
                 "coordinate `spring-oaks-capital-llc/persist`",
+                "retire legacy-repository metric publication",
             ),
             "telemetry boundary": ("keep platform telemetry outside",),
         },
@@ -202,9 +215,8 @@ def assert_jirachi_is_only_the_configurer() -> None:
         CONFIGURER_REFERENCE,
         combined,
         {
-            "canonical read location": (
-                "src/data/financial-metrics/payment-financial-metrics.v2.json",
-            ),
+            "canonical read location": ("configurations/<package>/",),
+            "no legacy fallback": ("never fall back to the legacy",),
             "published read location": ("/lexicon/financial-metrics-catalog-uri",),
             "consumer read location": (
                 "lambda/schemas/payment-metric-supported-definitions.ts",
@@ -264,11 +276,12 @@ def assert_jirachi_drafts_in_family_variants() -> None:
         JIRACHI,
         read(JIRACHI),
         {
-            "drafts in-family entries": "draft the new lexicon `metrics[]` entry",
+            "drafts in-family entries": "draft the new model `metrics[]` entry",
             "exact existing shape": "copying the exact field shape of a sibling",
             "read-only validation": "validate read-only that its family",
             "compiler gates": "pass persist's compiler gates",
-            "Lexicon review flow": "lexicon's normal review and release flow",
+            "Model review flow": "model's review and governed release flow",
+            "never in legacy repository": "never in the legacy lexicon repository",
             "no direct writes": "never direct s3/ssm edits",
             "no activation": "never auto-activation",
             "closed-set prerequisite": "persist's closed id set must add the new id",
@@ -321,9 +334,9 @@ def assert_catalog_reference_needs_definitions() -> None:
         JIRACHI: {
             "definitions required": "at least one `definitions[]` entry",
             "full package revision": "rides on a full package revision",
-            "Persist reads Lexicon SSM": (
+            "Persist reads the published boundary": (
                 "persist resolves the catalog through "
-                "`/lexicon/financial-metrics-catalog-uri`, not model releases"
+                "`/lexicon/financial-metrics-catalog-uri` at deploy time"
             ),
             "governance metadata": "governance metadata",
         },
@@ -332,7 +345,7 @@ def assert_catalog_reference_needs_definitions() -> None:
             "schema name": "compositioncontractdocumentschema",
             "schema source": "src/domain/schemas.ts",
             "cannot submit alone": "cannot be submitted alone",
-            "Persist reads Lexicon SSM": "not from model releases",
+            "Persist reads the published boundary": "not from model releases",
             "governance metadata": "governance metadata",
         },
         BUILDER_REFERENCE: {
@@ -393,7 +406,7 @@ def assert_jirachi_derives_suggestions_from_model() -> None:
                 "definition reads": "listdefinitions",
                 "runtime vocabulary read": "getreleasepersistlexicon",
                 "verified OpenAPI": "contracts/openapi.yaml",
-                "Lexicon schema fallback": "src/data/lexicon.json",
+                "Model-only vocabulary": "never fall back to the legacy",
                 "anchor entity": "anchor entity",
                 "relationship path": "hop count",
                 "business time": "business-time property",
@@ -549,36 +562,37 @@ def assert_non_finance_example() -> None:
     if re.search(r"\bpayment_\w+", example):
         raise AssertionError("non-finance example must not depend on payment elements")
 
-    lexicon_path = os.environ.get("MODEL_KPI_LEXICON_JSON")
-    if lexicon_path:
-        assert_example_elements_exist(json.loads(Path(lexicon_path).read_text()))
+    vocabulary_path = os.environ.get("MODEL_KPI_PERSIST_LEXICON_JSON")
+    if vocabulary_path:
+        assert_example_elements_exist(json.loads(Path(vocabulary_path).read_text()))
 
 
-def assert_example_elements_exist(lexicon: dict) -> None:
-    vertices = {vertex["type"]: vertex for vertex in lexicon["vertices"]}
-    edges = {edge["type"]: edge for edge in lexicon["edges"]}
+def assert_example_elements_exist(vocabulary: dict) -> None:
+    """Check against a Model release's persist-lexicon runtime document."""
+    vertices = {vertex["type"]: vertex for vertex in vocabulary["vertices"]}
+    edges = {edge["type"]: edge for edge in vocabulary["edges"]}
 
     def check_properties(owner: str, declared: dict, expected: dict) -> None:
         for prop, values in expected.items():
             if prop not in declared:
-                raise AssertionError(f"lexicon {owner} has no property {prop}")
+                raise AssertionError(f"Model vocabulary {owner} has no property {prop}")
             enum = set(declared[prop].get("enum", ()))
             unknown = sorted(set(values) - enum)
             if unknown:
                 raise AssertionError(
-                    f"lexicon {owner}.{prop} lacks enum values {unknown}"
+                    f"Model vocabulary {owner}.{prop} lacks enum values {unknown}"
                 )
 
     for name, props in NON_FINANCE_VERTICES.items():
         if name not in vertices:
-            raise AssertionError(f"lexicon has no vertex {name}")
+            raise AssertionError(f"Model vocabulary has no vertex {name}")
         check_properties(name, vertices[name]["properties"], props)
     for name, (source, target, props) in NON_FINANCE_EDGES.items():
         edge = edges.get(name)
         if edge is None:
-            raise AssertionError(f"lexicon has no edge {name}")
+            raise AssertionError(f"Model vocabulary has no edge {name}")
         if (edge["from"], edge["to"]) != (source, target):
-            raise AssertionError(f"lexicon edge {name} direction differs")
+            raise AssertionError(f"Model vocabulary edge {name} direction differs")
         check_properties(name, edge["properties"], props)
 
 
@@ -610,6 +624,7 @@ def assert_model_prd_has_no_platform_telemetry() -> None:
         {
             "financial catalog parameter": ("/lexicon/financial-metrics-catalog-uri",),
             "financial catalog contract": ("business-financial-metric-catalogs.md",),
+            "Model is the only source": ("is their only canonical source",),
         },
     )
 
@@ -632,8 +647,10 @@ def assert_capability_map_ownership_split() -> None:
             ),
             "in-family draft": (
                 "in-family variant draft",
-                "draft the lexicon `metrics[]` entry in the existing shape",
+                "draft the model `metrics[]` entry in the existing shape",
             ),
+            "Model-only vocabulary": ("never a lexicon fallback",),
+            "UI catalog view piece": ("`metric-catalog-view`",),
             "catalog reference needs definitions": (
                 "at least one `definitions[]` entry",
             ),
@@ -642,6 +659,32 @@ def assert_capability_map_ownership_split() -> None:
             "no automatic activation": ("never activate automatically",),
         },
     )
+
+
+def assert_no_legacy_metric_source() -> None:
+    legacy_sources = (
+        "lexicon:src/",
+        "payment-financial-metrics.v2.json",
+        "scripts/lib/financial-metrics/",
+        "lexicon's normal review",
+        "lexicon source change",
+        "or lexicon revision",
+    )
+    for relative in (
+        DIALGA,
+        JIRACHI,
+        CONFIGURER_SKILL,
+        CONFIGURER_REFERENCE,
+        CAPABILITY_MAP,
+        BUILDER_SKILL,
+    ):
+        value = normalized(read(relative))
+        present = [phrase for phrase in legacy_sources if phrase in value]
+        if present:
+            raise AssertionError(
+                f"{relative} still treats the legacy Lexicon repository as a "
+                f"metric source: {present}"
+            )
 
 
 def assert_prompt_synchronization() -> None:
@@ -705,6 +748,7 @@ def main() -> int:
     assert_jirachi_description_scope()
     assert_model_prd_has_no_platform_telemetry()
     assert_capability_map_ownership_split()
+    assert_no_legacy_metric_source()
     assert_prompt_synchronization()
     assert_no_stale_counts_or_telemetry_content()
     print("Dialga/Jirachi business-metric ownership contract tests passed")
