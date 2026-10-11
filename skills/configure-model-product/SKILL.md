@@ -91,12 +91,15 @@ structure of a catalog in a governed Model release or `prismteam-ai/model`
 omit `materialization_plan`. If the shape cannot express part of the KPI, mark
 that part as a Dialga gap instead of adding a field.
 
-Keep domain-neutral metrics domain-neutral. A metric that uses only shared-base
-elements gets a generic catalog, package name and namespace with `GLOBAL` or
-shared-base-anchored scopes, never a business or tenant name. Put
-business-specific breakdowns, such as per-debt scopes, in a separate business
-extension. If no domain-neutral catalog home exists yet, report a Dialga gap
-rather than wrapping the metrics in a business extension.
+Keep domain-neutral metrics domain-neutral by applying the metric placement rule
+in the Dialga-owned catalog contract: a metric's home is the lowest package whose
+effective vocabulary contains every element it references. A metric that uses
+only shared-base elements belongs in the shared-base catalog with generic names
+and `GLOBAL` or shared-base-anchored scopes, never a business or tenant name.
+Put business-specific breakdowns, such as per-debt scopes, in a separate
+business extension as new metric IDs that never redefine an inherited ID. If
+shared-base catalogs are not supported yet, report a Dialga gap rather than
+wrapping the metrics in a business extension.
 
 ### 5. Classify reuse and executability per suggestion
 

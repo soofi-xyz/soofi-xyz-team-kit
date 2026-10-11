@@ -144,14 +144,18 @@ pinned types fix (`scopes`, `grains`, contract version). If the shape cannot
 express part of the KPI, say so and mark that part as a Dialga gap rather than
 adding a field.
 
-Keep domain-neutral metrics domain-neutral. When the root, path, conditions and
-dimensions use only shared-base elements, place the entry in a domain-neutral
-catalog with a generic package name, namespace and catalog ID and `GLOBAL` or
-shared-base-anchored scopes; never brand it with a business or tenant name. Put
-business-specific breakdowns, such as a `DEBT` scope that needs a business-owned
-`debt` vertex, in a separate business extension that adds only those variants.
-If no domain-neutral catalog home exists yet, report a Dialga gap rather than
-wrapping the metrics in a business extension.
+Keep domain-neutral metrics domain-neutral by applying the metric placement rule
+in the Dialga-owned catalog contract. List every element the entry references
+(root, graph source, path and scope edges and endpoints, unique item, measure,
+business-time property, condition and dimension properties and enum values). Its
+home is the lowest package whose effective vocabulary contains all of them: the
+shared-base catalog when every element is in the shared base, with generic names
+and `GLOBAL` or shared-base-anchored scopes and never a business or tenant name.
+Put business-specific breakdowns, such as a `DEBT` scope that needs a
+business-owned `debt` vertex, in a separate business extension as new metric IDs
+that never redefine, remove or shadow an inherited ID. Record the chosen home in
+the return. If shared-base catalogs are not supported yet, report a Dialga gap
+rather than wrapping the metrics in a business extension.
 
 ## 6. Classify against existing catalogs and executability
 
@@ -389,6 +393,7 @@ Ranked suggestions (per suggestion):
   Measure / aggregation / filters / dimensions / grain / time semantics:
   Assumptions / data-quality caveats / why it answers the KPI:
   Metric configuration entry (existing shape):
+  Placement (home package from the placement rule):
   Classification: exact reuse | supported configuration/composition | in-family variant draft | new family/capability
   Exact existing or drafted metric ID:
   Executability: executable today | governed proposal — needs Dialga for runtime/consumer support

@@ -44,21 +44,6 @@ test/<package>.test.ts
 `composition.json` is a Composition Contract v1 document. Composition Contract v1
 stores catalog descriptors only under `manifest.metricCatalogs[]`.
 
-Keep domain-neutral metrics domain-neutral. A metric whose root, path, conditions
-and dimensions use only shared-base elements belongs in a domain-neutral catalog
-with a generic package name, namespace and catalog ID and `GLOBAL` or
-shared-base-anchored scopes; never brand it with a business or tenant name.
-Business-specific breakdowns, such as a per-debt scope that needs a
-business-owned vertex, belong in a separate business extension that imports the
-neutral catalog's package and adds only those variants.
-
-Today the shared base intentionally declares no metric catalogs and an extension
-must own a local `topVertex`, so a domain-neutral catalog has no home that does
-not invent or import a business vertex. Deciding that home (for example a
-catalog-carrying base release or an extension without a new top vertex) is
-Dialga work; until it exists, record the neutral catalog as a Dialga gap rather
-than wrapping it in a business extension.
-
 A generated Base Metrics descriptor is:
 
 ```json
@@ -103,6 +88,41 @@ records `metricCatalogs` as governance metadata without fetching, validating or
 serving the catalog bytes. Carrying the catalog as an artifact of the same change
 set, validating it and serving it from the release is Dialga work in
 `prismteam-ai/model`.
+
+## Metric placement rule
+
+Keep domain-neutral metrics domain-neutral. Place every metric deterministically:
+
+1. List every element the metric references: `root`, `graph_source`, each
+   `path_hops` and `scope_paths` edge and endpoint, `unique_item`, `measure`,
+   `business_time_property`, condition properties and enum values, and dimension
+   properties.
+2. Its home is the lowest package in the import chain whose effective vocabulary
+   contains all of them. If every element is in the shared base, the home is the
+   shared base. Otherwise it is the extension that defines the first missing
+   element; if elements come from several extensions, it is the extension that
+   imports the others.
+3. The shared base carries the domain-neutral metric catalog. Its package
+   name, namespace and catalog IDs are generic, its scopes are `GLOBAL` or
+   anchored on shared-base vertices, and it never carries a business or tenant
+   name.
+4. An extension catalog only adds metrics. It inherits the imported packages'
+   catalogs, never redefines, removes or shadows an inherited `metric_id`, and
+   adds a business-specific breakdown (such as a per-debt scope that needs a
+   business-owned `debt` vertex) as a new metric ID in a separate business
+   extension.
+5. The effective catalog of a release is the union of its own catalog and every
+   imported package's catalog, with `metric_id` unique across that union. Any
+   duplicate fails validation.
+
+Changing a shared-base metric requires a new governed shared-base release;
+extensions adopt it by updating their import pin.
+
+The current shared base intentionally declares no metric catalogs, and an
+extension must own a local `topVertex`. Supporting catalogs on shared-base
+releases, inheritance and the uniqueness check is Dialga work in
+`prismteam-ai/model`. Until it exists, record a domain-neutral catalog as a
+Dialga gap rather than wrapping it in a business extension.
 
 ## Definition shape
 

@@ -668,17 +668,26 @@ def assert_domain_neutral_metrics_stay_neutral() -> None:
             read(relative),
             {
                 "neutral rule": "keep domain-neutral metrics domain-neutral",
+                "deterministic home": "lowest package whose effective vocabulary contains",
+                "base carries neutral metrics": "shared-base catalog",
                 "no business branding": "business or tenant name",
                 "business breakdowns separate": "separate business extension",
-                "missing home is a gap": "rather than wrapping the metrics in a business extension",
+                "no redefinition": "never redefine",
+                "missing support is a gap": "rather than wrapping the metrics in a business extension",
             },
         )
     require_all(
         BUILDER_REFERENCE,
         read(BUILDER_REFERENCE),
         {
-            "neutral rule": "keep domain-neutral metrics domain-neutral",
-            "neutral home is Dialga work": "deciding that home",
+            "placement section": "## metric placement rule",
+            "element list": "list every element the metric references",
+            "deterministic home": "lowest package in the import chain",
+            "base carries neutral metrics": "the shared base carries the domain-neutral metric catalog",
+            "extensions only add": "an extension catalog only adds metrics",
+            "no shadowing": "never redefines, removes or shadows an inherited `metric_id`",
+            "union with unique IDs": "unique across that union",
+            "base change needs a release": "requires a new governed shared-base release",
             "scope generalization": "scopes anchored on any vocabulary vertex",
         },
     )
@@ -686,7 +695,8 @@ def assert_domain_neutral_metrics_stay_neutral() -> None:
         DIALGA,
         read(DIALGA),
         {
-            "neutral home decision": "decide where a domain-neutral catalog lives",
+            "enforces placement": "enforce the metric placement rule",
+            "implements inheritance": "catalog inheritance",
             "scope generalization": "generalize `scopes` beyond",
         },
     )
