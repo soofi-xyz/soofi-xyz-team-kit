@@ -361,9 +361,9 @@ The existing Filter adapter selects the default `phone` catalog item only when r
 
 ### 3.4 Business and financial metric catalogs
 
-Business and financial metric definitions are a separate package, not part of `lexicon.json`. The current payment package is `src/data/financial-metrics/payment-financial-metrics.v2.json`; it references graph labels, properties and directed relationships from `lexicon.json`. The Lexicon build generates an immutable release directory under `financial-metrics-catalog/releases/<lexicon_version_id>/`, and `/lexicon/financial-metrics-catalog-uri` resolves its approved marker.
+Business and financial metric definitions are separate catalog packages, not part of the vocabulary document. `prismteam-ai/model` is their only canonical source: each catalog lives beside the Model package that owns its vocabulary, ships in a governed Model release and is published to the retained `financial-metrics-catalog/releases/<release_id>/` layout, where `/lexicon/financial-metrics-catalog-uri` resolves its approved marker. The legacy `Spring-Oaks-Capital-LLC/lexicon` payment package is not a source; Dialga migrates it into Model and retires its publication.
 
-Dialga owns the package schema, generated and published representations, Model catalog representation, source-of-truth precedence and Persist compatibility boundary in [the business and financial metric catalog contract](business-financial-metric-catalogs.md). Do not duplicate those details here.
+Dialga owns the catalog schema, published representations, Model catalog representation, source-of-truth precedence and Persist compatibility boundary in [the business and financial metric catalog contract](business-financial-metric-catalogs.md). Do not duplicate those details here.
 
 ### 3.5 Interprose schemas and transforms
 
@@ -471,9 +471,9 @@ Callers cannot register or overwrite these names through Translate's language re
 
 ### 4.4 Business and financial metric consumers
 
-Persist is the current execution consumer of the payment metric catalog. Its stack resolves `/lexicon/financial-metrics-catalog-uri` at deploy time into the approved-release URI, then reads and verifies the approved marker and sibling catalog. A new Lexicon catalog release reaches Persist only through a Persist deployment.
+Persist is the current execution consumer of the payment metric catalog. Its stack resolves `/lexicon/financial-metrics-catalog-uri` at deploy time into the approved-release URI, then reads and verifies the approved marker and sibling catalog. A new catalog release reaches Persist only after Model publishes it to that boundary and Persist deploys.
 
-Persist does not read Model releases. A Model release that references the catalog records governance metadata (the reviewed immutable catalog URI and digest); it does not change what Persist loads or activates. Follow [the business and financial metric catalog contract](business-financial-metric-catalogs.md) for precedence and compatibility.
+Persist does not read Model releases directly. Until Model publishes a release to that boundary, the release records governance metadata (the reviewed immutable catalog URI and digest); it does not change what Persist loads or activates. Follow [the business and financial metric catalog contract](business-financial-metric-catalogs.md) for precedence and compatibility.
 
 ### 4.5 Marketplace, Build, and Puller
 
@@ -491,7 +491,7 @@ All Lexicon changes are source changes. A change may update one or more of:
 
 - `src/data/lexicon.json`;
 - `src/data/rulesets/**`;
-- `src/data/financial-metrics/**`;
+- metric catalogs under `prismteam-ai/model` `configurations/<package>/` (never the legacy `src/data/financial-metrics/**`);
 - `src/data/rule-query-artifacts.json`;
 - `src/data/interprose*.json`;
 - `src/transform/interprose/**`;
@@ -558,7 +558,7 @@ Minimum suites:
 | `lexicon-data` | top-level shape, edge endpoint references, duplicate labels, property/index separation, index metadata completeness, immutable modeling invariants |
 | `ruleset-structure` | catalog entries, manifest paths, split rule/query files, rule order, docs excluded from deployable prefix |
 | `ruleset-integration` | rule Gremlin references against Lexicon labels/properties/indexes, status-event ordering, account/phone scope semantics |
-| `financial-metrics-data` | package shape, pinned definition count/digests, generated materialization plans and family matrix, Lexicon label/property references |
+| `financial-metrics-data` | catalog shape, pinned definition count/digests, generated materialization plans and family matrix, references to the owning Model release's labels/properties/enums, descriptor digest and published-boundary bytes |
 | `interprose-mapping` | source schema and transform SQL references for mapped graph elements |
 | `ui-smoke` | UI renders each registry entry without crashing |
 | `cdk` | stack synthesizes, SSM parameter names and S3 deployment prefixes match this PRD |
@@ -586,7 +586,7 @@ The current `../lexicon` implementation already includes:
 - `src/data/lexicon.json` with 38 vertices, 84 edges, common patterns, and debt derived indexes;
 - `src/data/rulesets/index.json` with `phone` and `sms` catalog entries;
 - split ruleset manifests, JSON rule definitions, Gremlin queries, and SQL notes;
-- `src/data/financial-metrics/payment-financial-metrics.v2.json` with an immutable generated release behind `/lexicon/financial-metrics-catalog-uri`;
+- `src/data/financial-metrics/payment-financial-metrics.v2.json` with an immutable generated release behind `/lexicon/financial-metrics-catalog-uri` (legacy, not a source: migrate it into a governed Model catalog and publish the boundary from Model);
 - `src/data/rule-query-artifacts.json`;
 - Interprose schema files and transform SQL under `src/transform/interprose`;
 - CDK stack creating a private website bucket, CloudFront distribution, retained data bucket, data deployments, and the first five `/lexicon/*` SSM parameters.
