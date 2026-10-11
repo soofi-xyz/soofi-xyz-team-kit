@@ -360,19 +360,12 @@ def assert_catalog_reference_needs_definitions() -> None:
 
 
 NON_FINANCE_VERTICES: dict[str, dict[str, tuple[str, ...]]] = {
-    "debt": {"debt_identifier": ()},
     "phone_call": {
         "interaction_identifier": (),
         "direction": ("INBOUND", "OUTBOUND"),
     },
 }
 NON_FINANCE_EDGES: dict[str, tuple[str, str, dict[str, tuple[str, ...]]]] = {
-    "company_represents_debt": (
-        "company",
-        "debt",
-        {"company_type": (), "status": ("ACTIVE", "DELETED"), "effective_at": ()},
-    ),
-    "debt_has_phone_call": ("debt", "phone_call", {"created_at": ()}),
     "phone_call_status_changed": (
         "phone_call",
         "phone_call",
@@ -557,8 +550,14 @@ def assert_non_finance_example() -> None:
             "executability": "governed proposal — needs dialga",
             "ranked": "ranked suggestions",
             "caveats": "caveats",
+            "ungoverned breakdown is a gap": "per-debt breakdown is a model/vocabulary gap",
+            "no extension to house it": "do not create an extension",
         },
     )
+    if re.search(r"\b(?:debt_has_\w+|company_represents_debt)\b", example):
+        raise AssertionError(
+            "non-finance example must not use vocabulary absent from governed Model releases"
+        )
     if re.search(r"\bpayment_\w+", example):
         raise AssertionError("non-finance example must not depend on payment elements")
 
@@ -674,8 +673,33 @@ def assert_domain_neutral_metrics_stay_neutral() -> None:
                 "business breakdowns separate": "separate business extension",
                 "no redefinition": "never redefine",
                 "missing support is a gap": "rather than wrapping the metrics in a business extension",
+                "governed home only": "already has a governed model release",
+                "no extension to house a metric": "never create an extension",
             },
         )
+    require_all(
+        BUILDER_REFERENCE,
+        read(BUILDER_REFERENCE),
+        {
+            "governed home only": "only packages that already have a governed model release can be a home",
+            "ungoverned metric is a gap": "leave it out of the change and report a model/vocabulary gap",
+            "no legacy vocabulary": "copy vocabulary from the legacy repository",
+            "scope output edge": "`scope_edge_types` output edge",
+        },
+    )
+    require_all(
+        DIALGA,
+        read(DIALGA),
+        {
+            "governed home only": "only a package with a governed model release can be a home",
+            "neutral test vocabulary": "shared-base or synthetic test vocabulary",
+        },
+    )
+    for relative in (DIALGA, JIRACHI, CONFIGURER_SKILL, CONFIGURER_REFERENCE, BUILDER_REFERENCE):
+        if "per-debt scope" in normalized(read(relative)):
+            raise AssertionError(
+                f"{relative} still steers ungoverned breakdowns into a business extension"
+            )
     require_all(
         BUILDER_REFERENCE,
         read(BUILDER_REFERENCE),

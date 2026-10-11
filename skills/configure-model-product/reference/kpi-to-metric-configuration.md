@@ -151,10 +151,12 @@ business-time property, condition and dimension properties and enum values). Its
 home is the lowest package whose effective vocabulary contains all of them: the
 shared-base catalog when every element is in the shared base, with generic names
 and `GLOBAL` or shared-base-anchored scopes and never a business or tenant name.
-Put business-specific breakdowns, such as a `DEBT` scope that needs a
-business-owned `debt` vertex, in a separate business extension as new metric IDs
-that never redefine, remove or shadow an inherited ID. Record the chosen home in
-the return. If shared-base catalogs are not supported yet, report a Dialga gap
+Put a business-specific breakdown in a separate business extension as new metric
+IDs that never redefine, remove or shadow an inherited ID, and only when that
+extension already has a governed Model release defining every element it needs.
+Otherwise leave the breakdown out and report a Model/vocabulary gap; never create
+an extension, add definitions or copy legacy-repository vocabulary to give a
+metric a home. Record the chosen home in the return. If shared-base catalogs are not supported yet, report a Dialga gap
 rather than wrapping the metrics in a business extension.
 
 ## 6. Classify against existing catalogs and executability
@@ -319,30 +321,29 @@ the method, not durable constants.
 
 ### Non-finance: outbound right-party contact rate
 
-Intent: "Of the outbound call attempts we make on represented debts each month,
-what share reach the right party, by representing company type?" Consumer: a
-monthly operations report. Elements read from the governed Model release (the
-shared base plus an extension that owns `debt` and its relationships; without
-that extension, `debt` is a Model/vocabulary gap):
+Intent: "Each month, what share of our outbound call attempts reach the right
+party, broken down by debt?" Consumer: a monthly operations report. Elements read
+from the governed shared-base release:
 
 ```text
-vertex debt            debt_identifier
 vertex phone_call      interaction_identifier (required), direction enum INBOUND|OUTBOUND (optional; present when derivable)
-edge company_represents_debt  company -> debt            company_type enum, status enum ACTIVE|DELETED, effective_at
-edge debt_has_phone_call      debt -> phone_call         created_at
 edge phone_call_status_changed     phone_call -> phone_call   status enum incl. ATTEMPTED|ANSWERED|NO_ANSWER, duration (optional), effective_at
 edge phone_call_contact_identified phone_call -> phone_call   phone_contact_type enum incl. RIGHT_PARTY, effective_at
 ```
 
-Ranked suggestions:
+No governed Model release defines `debt` or an edge from it to `phone_call`, so
+the per-debt breakdown is a Model/vocabulary gap: report it and suggest only
+the `GLOBAL` metrics. Do not create an extension or copy `debt` from the legacy
+repository to supply it.
 
-1. Right-party contacts (numerator) — path `company -[company_represents_debt]->
-   debt -[debt_has_phone_call]-> phone_call` (two hops), count of distinct
-   `phone_call.interaction_identifier` with `direction = OUTBOUND` and latest
-   `phone_call_contact_identified.phone_contact_type = RIGHT_PARTY`; business
-   time `phone_call_contact_identified.effective_at`; dimension
-   `company_represents_debt.company_type`; grain MONTH. Lagging outcome.
-2. Outbound attempts (denominator and leading activity) — same path and filter,
+Ranked suggestions (home: shared base):
+
+1. Right-party contacts (numerator) — root `phone_call`, one hop over
+   `phone_call_contact_identified`, count of distinct
+   `phone_call.interaction_identifier` with `direction = OUTBOUND` and any
+   `phone_call_contact_identified.phone_contact_type = RIGHT_PARTY`, counted at
+   the attempt business time; scope `GLOBAL`; grain MONTH. Lagging outcome.
+2. Outbound attempts (denominator and leading activity) — same root and filter,
    counting distinct outbound calls; business time the earliest
    `phone_call_status_changed.effective_at`. The rate is suggestion 1 over
    suggestion 2, aligned on the attempt month; confirm zero-denominator handling.
@@ -352,11 +353,10 @@ Ranked suggestions:
 
 Caveats: `direction` is optional, so the filter drops calls without it; calls
 with no `phone_call_contact_identified` edge count as not right-party; the
-phone_call vertex has no time property of its own, and `debt_has_phone_call.created_at`
-is insert time, not business time. Expressed in the catalog shape, each becomes
-a `metrics[]` entry with `root: "phone_call"`, `graph_source:
-"vertex:phone_call"`, real `path_hops`/`scope_paths` and string-equality
-`qualifying_conditions`. Classification: `new family/capability` — no catalog
+phone_call vertex has no time property of its own, so business time comes from
+`phone_call_status_changed.effective_at`. Expressed in the catalog shape, each
+becomes a `metrics[]` entry with `root: "phone_call"`, real `path_hops`, a
+`GLOBAL` scope and string-equality `qualifying_conditions`. Classification: `new family/capability` — no catalog
 family covers phone_call, and Persist's compiler supports only payment
 families. Executability: `governed proposal — needs Dialga for runtime/consumer
 support`.
@@ -369,9 +369,11 @@ month?" Path `debt -[debt_has_payment_plan]-> payment_plan
 `payment_plan_installment.payment_schedule_identifier`, business time
 `payment_plan_installment_status_changed.scheduled_payment_date`, scope DEBT,
 grain MONTH. Classification: `exact reuse` of `payment_plan_installment.count`
-in family `base.vertex.payment_plan_installment` once that definition is in a
-governed Model catalog; while it exists only in the legacy repository, report a
-Dialga migration gap instead. Executability: `executable today` only when the
+in family `base.vertex.payment_plan_installment` once a governed Model release
+defines every element on that path and catalogs the definition. While `debt`
+and the payment-plan elements are absent from governed Model vocabulary, report
+a Model/vocabulary gap; while the definition exists only in the legacy
+repository, report a Dialga migration gap. Executability: `executable today` only when the
 pinned compiler supports that family and the deployed Persist loads that catalog
 from the Model-published boundary. A filter on a supported enum within the same
 family would instead be an `in-family variant draft`.
