@@ -1,6 +1,6 @@
 ---
 name: configure-console-product
-description: "Configure and test applications through an existing Console API and runtime. Use Vivillon for routes, layouts, themes, components, product bindings, actions, access policies, refresh and rollback; route reusable runtime gaps to Chandelure."
+description: "Submit Figma-to-HTML/React creation/edit jobs and configure applications through an existing Console API and runtime. Use Vivillon for routes, layouts, themes, components, product bindings, actions, access policies, refresh and rollback; route reusable runtime gaps to Chandelure."
 ---
 
 # Configure Console
@@ -9,6 +9,15 @@ Use `vivillon`. Load [guide-product-work](../guide-product-work/SKILL.md) and
 [the Console capability map](../guide-product-work/reference/iterations/console.md).
 Read the relevant [product contract](../build-console-product/reference/PRD.md) and
 [synthetic test data](../build-console-product/reference/test-data.md).
+
+For creation or modification of components, read [the authoring contract](../build-console-product/reference/component-authoring.md).
+Verify the deployment has completed the authoring contract’s client registration
+checkpoint. Connect the user through its supported OAuth flow; route missing
+Console client approval/registration to Chandelure. Do not reuse editor credentials.
+Use only existing API operations to select create/edit, HTML/React, Figma nodes,
+repository revision and scoped paths; retrieve status/results and verify the
+source/diff, preview and executed tests. Do not edit the engine or silently fall
+back to running a local coding agent when the service lacks this capability.
 
 1. Discover the existing Console deployment/revision, supported schema and API,
    authentication, selected AWS profile, account and region. Separate required,

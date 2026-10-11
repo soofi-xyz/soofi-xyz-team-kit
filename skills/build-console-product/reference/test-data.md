@@ -84,3 +84,25 @@ For each selected capability record:
 - AWS resource/log inspected;
 - refresh or rollback result;
 - whether evidence is local, mocked deployment or authorized live integration.
+
+## Component authoring fixtures
+
+Use synthetic design snapshots and MCP fakes for local tests; label them mocked.
+For live acceptance, use authorized Figma nodes and record actual IDs/digests.
+Do not fabricate a working Figma URL or commit private source/design assets.
+
+| Case | Baseline / variant | Expected evidence |
+| --- | --- | --- |
+| Create HTML | Responsive card / navigation with mobile menu | Semantic HTML/CSS, no React dependency, preview and breakpoint results |
+| Create React | Card with typed props / existing design-system form | Reused components, type/build checks, final-route visual results |
+| Edit HTML | Spacing change / icon and button variant change | Scoped patch, unchanged behavior, failing-before/passing-after design assertion |
+| Edit React | Responsive layout / follow-up typography edit | Preserved handlers/state/API/analytics and props, session continuity, regression results |
+| Figma failure | Denied node / stale or disconnected MCP | Typed issue; no invented design or verified-success claim |
+| Recovery | Duplicate submit / interrupted turn | One logical job, restored context and no repeated side effect |
+| Isolation | Cross-tenant result / path escape / stale base | Denial or conflict with no unauthorized read/write |
+| Cancellation | Cancel during a tool call / cancel queued job | Terminal cancellation, no subsequent application/publication |
+
+Record operation/output, source revision, design provenance, pi/model/runtime
+versions, job/session IDs, artifact digests, commands/results, preview screenshots,
+LangSmith/AWS correlation and user observations. Keep live MCP, deployed runtime
+and mocked fixture evidence distinct.
