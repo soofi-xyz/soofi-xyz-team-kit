@@ -64,13 +64,13 @@ entities, edges with `from`/`to` direction and cardinality, properties, types,
 enums and indexes; the persist-lexicon runtime document gives the installed
 `vertices`/`edges` with `required` lists.
 
-When the governed Model release does not yet hold the needed domain graph, read
-the Lexicon schema `Spring-Oaks-Capital-LLC/lexicon:src/data/lexicon.json` at a
-pinned revision as the source: `vertices[].type`, `properties` (type, format,
-enum, `required`, comments) and `edges[].type`, `from`, `to` and `properties`.
-Record which source each element came from and its revision or release digest.
+Model is the only vocabulary source. When the governed Model release does not
+yet hold the needed domain graph, record a Model/vocabulary gap and route it
+through a governed Model extension (Mew can advise on modeling); never fall back
+to the legacy `Spring-Oaks-Capital-LLC/lexicon` repository. Record the release ID
+and digest each element came from.
 
-Model reads and source checkout are schema evidence. Do not query or mutate a
+Model reads and a pinned `prismteam-ai/model` checkout are schema evidence. Do not query or mutate a
 live graph to fill missing intent or to measure data.
 
 ## 3. Map the KPI onto the graph
@@ -88,7 +88,7 @@ For each plausible reading of the KPI, record:
 - filter properties and the exact enum values they test;
 - grouping dimensions and the properties that supply them.
 
-Use only elements present in the pinned Model release or Lexicon schema. Never
+Use only elements present in the pinned Model release. Never
 invent entities, edges, properties, enum values or directions. If the KPI needs
 an element that does not exist, record it as a Model/vocabulary gap and route
 the vocabulary change through Model's governed changes (Mew can advise on
@@ -97,7 +97,7 @@ modeling).
 ## 4. Suggest ranked candidate metric definitions
 
 Return a ranked list of candidate metric definitions grounded only in elements
-that exist in the pinned Model release or Lexicon schema. For each suggestion give:
+that exist in the pinned Model release. For each suggestion give:
 
 - graph path with relationship direction and hop count;
 - measure and aggregation;
@@ -119,9 +119,9 @@ data quality, then by reuse of existing definitions.
 
 ## 5. Express each chosen suggestion in the existing shape
 
-Use the verified `metrics[]` entry structure from
-`Spring-Oaks-Capital-LLC/lexicon:src/data/financial-metrics/payment-financial-metrics.v2.json`
-as the format template for any domain. Read an entry at the pinned revision and
+Use the verified `metrics[]` entry structure from a catalog in a governed Model
+release or `prismteam-ai/model` `configurations/<package>/` as the format
+template for any domain. Read an entry at the pinned release and
 reuse its exact keys and value shapes: `metric_id`, `business_name`,
 `definition_version`, `catalog_contract_version`, `family_id`, `category`,
 `report_category`, `root`, `graph_source`, `path`, `path_hops`, `scope_paths`,
@@ -139,7 +139,7 @@ Fill every value from the mapping in step 3: `path_hops` and `scope_paths` carry
 the real edge types and directions; `graph_source`, `measure`,
 `unique_item`, `business_time_property` and condition properties name real
 vocabulary elements. Use `definition_version: 1` for a new ID and omit
-`materialization_plan`; Lexicon's generator builds it. Keep literal values the
+`materialization_plan`; Model's generator builds it. Keep literal values the
 pinned types fix (`scopes`, `grains`, contract version). If the shape cannot
 express part of the KPI, say so and mark that part as a Dialga gap rather than
 adding a field.
@@ -179,25 +179,29 @@ otherwise mark it `governed proposal — needs Dialga for runtime/consumer
 support`. Executability is reported per suggestion; it never limits what
 Jirachi suggests.
 
-Resolve the deployed catalog marker `/lexicon/financial-metrics-catalog-uri`,
-verify its attested sibling catalog bytes and retain the immutable catalog
-URI/digest when matching. Recompute revision-specific counts and digests when
+Classify against catalogs governed by Model releases. Resolve the Model-published
+catalog marker `/lexicon/financial-metrics-catalog-uri`, verify that its attested
+catalog bytes equal the Model release artifact and retain the immutable catalog
+URI/digest when matching. A definition that exists only in the legacy repository
+is a Dialga migration gap, not `exact reuse`. Recompute revision-specific counts and digests when
 needed; never use observed values as durable contracts.
 
 ## 7. Draft in-family metric variants
 
-Draft an `in-family variant draft` as a reviewed Lexicon source change, never as a
-Model request or direct S3/SSM edit:
+Draft an `in-family variant draft` as a reviewed Model source change in the
+owning `prismteam-ai/model` `configurations/<package>/` catalog, never in the
+legacy Lexicon repository, never as a Model request or direct S3/SSM edit:
 
 1. Select the closest existing sibling with the same `family_id` in the pinned
-   catalog. Copy its exact keys and value shapes; do not add, drop or rename
+   Model catalog. Copy its exact keys and value shapes; do not add, drop or rename
    fields. Change only the variant: `metric_id` (keeping the family's metric-id
    prefix), `business_name`, `contribution_identity`, `qualifying_conditions`,
    `dimensions` and, when the variant changes calculation, the matching
    `calculation`, `unit`, `output_value_type` and `contribution_rule`. Use
    `definition_version: 1` for a new ID. Omit `materialization_plan`;
-   Lexicon's `npm run generate:financial-metrics-materialization` builds it
-   along with the definition-set digests and family matrix.
+   Model's catalog generator builds it along with the definition-set digests
+   and family matrix. If Model does not yet provide that generator, record it
+   as a Dialga gap.
 2. Validate read-only against the pinned
    `PaymentMetricDeclarativePlanCompiler.ts` before presenting the draft:
    family is in the supported family set, root/graph source/path hops match the
@@ -209,17 +213,16 @@ Model request or direct S3/SSM edit:
    `latest_state_election` or `business_time_election` equals the family's
    supported strategy. Record each gate result. Any failure is
    `new family/capability`.
-3. Name the companion source changes the reviewer must make with it:
-   regenerate with the Lexicon generator and its `--check`, and update the
-   hand-maintained pins (`counts`, `package.definition_count`,
-   `source_metadata.report.expected_metric_count`, and the count, digest and
-   family-count constants in `scripts/lib/financial-metrics/catalog.ts` and
-   `materialization.ts`). Do not hand-compute digests.
+3. Name the companion source changes the reviewer must make with it in
+   `prismteam-ai/model`: regenerate with Model's catalog generator, update the
+   package's attested counts and digests (`counts`, `package.definition_count`,
+   `definition_set_digest`), the extension's catalog descriptor digest and the
+   package tests. Do not hand-compute digests.
 4. State the consumer prerequisite. Persist compiles every catalog definition
    and also requires each `metric_id` to be in the closed set in
    `payment-metric-supported-definitions.ts`; one unknown ID fails the whole
    catalog load. Route that closed-set addition through Dialga, and sequence it
-   so Persist accepts the new ID before the Lexicon release reaches a Persist
+   so Persist accepts the new ID before the Model release reaches a Persist
    deployment.
 5. Keep `dev_activation_allowlist` unchanged. Do not activate, open the source
    change against a protected branch without review, or publish a release.
@@ -234,7 +237,7 @@ For `new family/capability`, stop before Model submission. Return the
 Model-derived suggestion in the existing shape, its graph mapping, the
 normalized intent, pinned evidence and the missing capability to Dialga. Dialga
 owns the architecture and Model implementation, decides whether to adopt the
-family, and coordinates any needed Lexicon or Persist work. Jirachi does not
+family, and coordinates any needed Persist work. Jirachi does not
 define a replacement schema, artifact layout, compiler rule or activation path.
 
 ## 9. Apply only supported configuration
@@ -249,10 +252,12 @@ entry (`compositionContractDocumentSchema` in `prismteam-ai/model`
 submitted alone; it rides on a full package revision that carries the package's
 definitions alongside `manifest.metricCatalogs[]`.
 
-Persist reads the catalog through Lexicon's `/lexicon/financial-metrics-catalog-uri`
-parameter, resolved when Persist deploys, not from Model releases. Today a Model
-release referencing the catalog is governance metadata: it records the reviewed
-immutable URI/digest but does not change what Persist loads or activates.
+Persist reads the catalog through the `/lexicon/financial-metrics-catalog-uri`
+parameter, resolved when Persist deploys, not from Model releases. Until Model
+publishes a release to that boundary and Persist deploys, a Model release
+referencing the catalog is governance metadata for Persist: it records the
+reviewed immutable URI/digest but does not change what Persist loads or
+activates.
 
 For supported configuration requiring a release, use only operations present in
 the discovered Model OpenAPI:
@@ -273,8 +278,8 @@ publish artifacts, and direct source/S3/SSM writes do not replace the lifecycle.
 
 ## 10. Fail closed and verify release state
 
-Apply the precedence defined by Dialga. Stop on a source, generated artifact,
-Model URI/digest or Persist compatibility mismatch; do not invent a lower-layer
+Apply the precedence defined by Dialga. Stop on a Model source, catalog artifact,
+Model URI/digest, published boundary or Persist compatibility mismatch; do not invent a lower-layer
 override.
 
 An unchanged request uses idempotent replay. A timeout, interrupted publication
@@ -287,7 +292,7 @@ Claim publication complete only after comparing:
 release ID and release digest
 composition/source digest
 catalog artifact URI, byte length and digest
-the verified Lexicon marker and sibling catalog
+the Model-published marker and catalog bytes, when published
 ```
 
 Publication does not activate a metric or prove materialization. Never activate
@@ -303,7 +308,9 @@ the method, not durable constants.
 
 Intent: "Of the outbound call attempts we make on represented debts each month,
 what share reach the right party, by representing company type?" Consumer: a
-monthly operations report. Elements read from the Lexicon schema:
+monthly operations report. Elements read from the governed Model release (the
+shared base plus an extension that owns `debt` and its relationships; without
+that extension, `debt` is a Model/vocabulary gap):
 
 ```text
 vertex debt            debt_identifier
@@ -349,10 +356,12 @@ month?" Path `debt -[debt_has_payment_plan]-> payment_plan
 `payment_plan_installment.payment_schedule_identifier`, business time
 `payment_plan_installment_status_changed.scheduled_payment_date`, scope DEBT,
 grain MONTH. Classification: `exact reuse` of `payment_plan_installment.count`
-in family `base.vertex.payment_plan_installment`. Executability: `executable
-today`, because the pinned compiler supports that family. A filter on a
-supported enum within the same family would instead be an `in-family variant
-draft`.
+in family `base.vertex.payment_plan_installment` once that definition is in a
+governed Model catalog; while it exists only in the legacy repository, report a
+Dialga migration gap instead. Executability: `executable today` only when the
+pinned compiler supports that family and the deployed Persist loads that catalog
+from the Model-published boundary. A filter on a supported enum within the same
+family would instead be an `in-family variant draft`.
 
 ## Return
 
@@ -365,7 +374,7 @@ Time / window / timezone:
 Dimensions / grouping:
 Output / consumer:
 Acceptance examples:
-Vocabulary source (Model release ID/digest or Lexicon revision):
+Vocabulary source (Model release ID/digest):
 Ranked suggestions (per suggestion):
   Graph path / hops / direction:
   Measure / aggregation / filters / dimensions / grain / time semantics:
@@ -376,7 +385,7 @@ Ranked suggestions (per suggestion):
   Executability: executable today | governed proposal — needs Dialga for runtime/consumer support
   Compiler-gate results (drafts):
 Model/vocabulary gaps:
-Configuration artifact / generic Model request plan / Lexicon draft entry:
+Configuration artifact / generic Model request plan / Model draft entry:
 Application: applied | not applied
 Validation / review / publication:
 Release ID / release digest / read-back:

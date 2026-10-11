@@ -36,16 +36,17 @@ Dialga owns the detailed Model architecture for business-metric definitions and
 catalogs. Read and maintain
 [the business and financial metric catalog contract](reference/business-financial-metric-catalogs.md)
 before changing metric support. Keep it aligned with pinned, inspected revisions
-of `prismteam-ai/model`, `Spring-Oaks-Capital-LLC/lexicon` and
-`Spring-Oaks-Capital-LLC/persist`; never promote a revision-specific count,
-release ID or digest into a durable contract.
+of `prismteam-ai/model` and `Spring-Oaks-Capital-LLC/persist`; never promote a
+revision-specific count, release ID or digest into a durable contract.
 
-Implement Model API, composition validation, lifecycle and catalog-reference
-support in `prismteam-ai/model`. When a definition or family needs semantics that
-the current payment package does not express, coordinate its canonical source,
-validator/generator and immutable release changes in Lexicon. When execution
-requires consumer support, coordinate Persist's closed definitions, compiler,
-materialization and activation compatibility. Do not move these architecture
+`prismteam-ai/model` is the only canonical source for metric definitions.
+Implement Model API, composition and catalog validation, the catalog
+schema/generator, governed lifecycle, consumer-boundary publication and the UI
+catalog view there. `Spring-Oaks-Capital-LLC/lexicon` is the legacy
+implementation: migrate legacy-only definitions into Model and retire its metric
+publication; never extend it. When execution requires consumer support,
+coordinate Persist's closed definitions, compiler, materialization and
+activation compatibility. Do not move these architecture
 decisions into Jirachi prompts or confuse business definitions with platform
 telemetry.
 

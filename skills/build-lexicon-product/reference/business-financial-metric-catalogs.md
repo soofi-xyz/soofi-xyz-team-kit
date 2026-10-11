@@ -12,57 +12,95 @@ Pin and inspect the selected revisions before acting. The paths below are verifi
 current interfaces, not permission to assume a deployment or copy a release ID,
 count or digest into guidance.
 
-## Current canonical payment source
+## Model is the only source
 
-The current payment financial-metric definition package is in
-`Spring-Oaks-Capital-LLC/lexicon`:
+`prismteam-ai/model` is the only canonical source for metric definitions, their
+vocabulary and their governed releases. Author, review, validate, version and
+publish every metric catalog through Model. Map every definition onto the
+vocabulary of the governed Model release it ships with.
 
-```text
-src/data/financial-metrics/payment-financial-metrics.v2.json
-```
+`Spring-Oaks-Capital-LLC/lexicon` is the legacy implementation of Model, not a
+source. Do not author, draft or change metric definitions there, do not read its
+`src/data/lexicon.json` or `src/data/financial-metrics/` files as semantic
+evidence, and never let a copy there override a Model release. The `/lexicon/...`
+SSM parameter names and `financial-metrics-catalog/` S3 layout are retained
+consumer identifiers that Model publishes; they do not make the legacy repository
+authoritative. Migrating any definition that exists only in the legacy repository
+into a governed Model catalog is Dialga work; until it is migrated, treat it as a
+Dialga migration gap rather than a reusable definition.
 
-Its implementation contracts and deterministic builders are:
+## Model catalog source
 
-```text
-scripts/lib/financial-metrics/types.ts
-scripts/lib/financial-metrics/catalog.ts
-scripts/lib/financial-metrics/materialization.ts
-scripts/lib/financial-metrics/release.ts
-scripts/generate-financial-metrics-materialization.ts
-scripts/build-financial-metrics-release.ts
-infra/lib/financial-metrics-release.ts
-infra/lib/lexicon-stack.ts
-```
-
-`src/data-sources/financial-metrics.ts` is a UI adapter, not the semantic source.
-`src/data/lexicon.json` supplies the graph labels, properties and directed
-relationships referenced by the package.
-
-The package currently has these top-level fields:
+Keep each metric catalog with the Model package that owns its vocabulary in
+`prismteam-ai/model`:
 
 ```text
-schema_version
-package
-contract_versions
-source_metadata
-release_state
-authority_ordering
-universal_metric_model
-vocabularies
-global_scope_semantics
-materialization_defaults
-materialization_protocol
-materialization_family_matrix
-immutability
-counts
-dev_activation_allowlist
-metrics
+configurations/<package>/composition.json
+configurations/<package>/<catalog-id>.catalog.json
+configurations/<package>/README.md
+test/<package>.test.ts
 ```
 
-`package` carries `package_id`, `package_version`, `release_id`, `status`,
-`definition_count` and `definition_set_digest`. Treat the count and digest as
-attested values to verify for the pinned revision, not constants to repeat in
-prompts.
+`composition.json` is a Composition Contract v1 document. A business catalog is
+normally carried by a Jirachi-managed extension that imports the governed shared
+base by release ID and digest; the shared base intentionally declares no metric
+catalogs. Composition Contract v1 stores catalog descriptors only under
+`manifest.metricCatalogs[]`.
+
+A generated Base Metrics descriptor is:
+
+```json
+{
+  "catalogId": "base-metrics",
+  "mode": "generated",
+  "contractVersion": "base-metrics-catalog/v1",
+  "generatorSourceAlias": "base-metrics-generator",
+  "input": "package",
+  "maximumPathHops": 7
+}
+```
+
+`generatorSourceAlias` must resolve to a pinned `manifest.sources[]` entry with
+`alias`, `repository`, `revision`, `path` and `digest`.
+
+A curated catalog descriptor is:
+
+```json
+{
+  "catalogId": "communication-delivery-metrics",
+  "mode": "published",
+  "contractVersion": "<model-owned catalog contract version>",
+  "artifactUri": "<immutable Model release artifact URI>",
+  "digest": "sha256:<catalog-bytes-sha256>"
+}
+```
+
+`artifactUri` names the immutable catalog bytes published by a Model release. It
+must not name a mutable SSM parameter, an approved marker, a branch, a squashable
+commit or a legacy-repository file. `digest` is the `sha256:`-prefixed digest of
+those exact bytes.
+
+`compositionContractDocumentSchema` in `src/domain/schemas.ts` requires
+`definitions` to hold at least one entry, and an extension must own its
+`topVertex`. A `manifest.metricCatalogs[]` reference therefore cannot be
+submitted on its own; it rides on a full package revision. Supporting a
+catalog-only release is a Model contract change owned here.
+
+Today the schema accepts only an external `artifactUri` and `digest`, and Model
+records `metricCatalogs` as governance metadata without fetching, validating or
+serving the catalog bytes. Carrying the catalog as an artifact of the same change
+set, validating it and serving it from the release is Dialga work in
+`prismteam-ai/model`.
+
+## Definition shape
+
+Model retains the existing metric configuration shape. A catalog file carries
+package identity and integrity in `schema_version`, `package`,
+`contract_versions`, `source_metadata`, `release_state`, `authority_ordering`
+and digest fields such as `definition_set_digest`, plus top-level
+`dev_activation_allowlist.{profile,mode,metric_ids}` and `metrics[]`. Treat counts
+and digests as attested values to verify for the pinned release, not constants to
+repeat in prompts.
 
 Each `metrics[]` entry currently carries:
 
@@ -95,107 +133,55 @@ runtime and output:
 `schema_version`, `family_id`, `materialization_ready`, `source`,
 `trigger_bindings`, `predicates`, `temporal`, `scopes`, `period`,
 `contribution` and `output`. Do not replace those fields with prose or infer a
-new plan from a metric name.
+new plan from a metric name. Model's generator builds it; authors omit it.
 
-The separate top-level
-`dev_activation_allowlist.{profile,mode,metric_ids}` selects catalog IDs. It is
-not a definition status and cannot alter metric semantics or create runtime
-support.
+`dev_activation_allowlist` selects catalog IDs. It is not a definition status and
+cannot alter metric semantics or create runtime support.
 
-## Generated and published Lexicon representation
+Dialga owns the Model catalog schema, contract version, validator and generator
+in `prismteam-ai/model`: shape validation, vocabulary validation of every vertex,
+edge, direction, property and enum value against the package's effective
+vocabulary, materialization-plan generation and definition-set digests. Shape
+extensions such as ratio metrics, edge-scoped conditions or non-payment
+latest-state rules are Dialga decisions.
 
-The Lexicon build generates one immutable release directory:
+## Model publication and consumer boundary
+
+The governed lifecycle is change-set submission, exact artifact upload,
+validation status/results, review and authorized decision, publication
+status/reconciliation, and immutable release/composition/artifact read-back. The
+complete Composition Contract document is uploaded as the artifact selected by
+`composition.documentArtifactId`; the change set's `sourceDigest` equals that
+document artifact digest. Definitions stay in the catalog artifact, not inline in
+Model request bodies.
+
+Model publishes an approved catalog to the retained consumer boundary:
 
 ```text
-.generated/financial-metrics-catalog/releases/<lexicon_version_id>/
-  payment-financial-metrics.v2.json
+financial-metrics-catalog/releases/<release_id>/
+  <catalog file>
   approved-release.json
   build.json
   manifest.json
 ```
 
-The generated catalog bytes must equal the canonical source bytes. `manifest.json`
-attests the source package, Lexicon source revision/digest, release identity and
-every payload. `build.json` records the release and manifest paths.
-
-`approved-release.json` is a marker. Its `catalog` object contains:
-
-```text
-contract_version
-artifact_path
-sha256
-bytes
-definition_count
-definition_set_sha256
-```
-
-Lexicon deploys the directory under
-`financial-metrics-catalog/releases/<lexicon_version_id>/` with immutable cache
-semantics. `/lexicon/financial-metrics-catalog-uri` resolves the exact
-`approved-release.json` object. Resolve its `catalog.artifact_path` relative to
-the marker to obtain the sibling catalog URI, then verify bytes and digests.
-The SSM value and marker URI are discovery coordinates; neither is the catalog
-URI used by Model's published-catalog reference.
-
-The top-level `/lexicon/release-uri` attestation must agree with the generated
-manifest. Fail closed on a missing object, stale source attestation, mismatched
+`approved-release.json` is a marker whose `catalog` object contains
+`contract_version`, `artifact_path`, `sha256`, `bytes`, `definition_count` and
+`definition_set_sha256`. `/lexicon/financial-metrics-catalog-uri` resolves the
+exact marker; resolve `catalog.artifact_path` relative to it to obtain the catalog
+bytes, then verify bytes and digests. The published bytes must equal the bytes of
+the governed Model release artifact. Fail closed on a missing object, mismatched
 release identity, length or digest.
 
-## Model catalog representation
+Today the legacy repository still writes that boundary. Moving that publication
+into Model, so the marker attests a Model release, is Dialga work; agents must not
+write the boundary directly.
 
-`prismteam-ai/model` owns the reusable Model API, composition contract,
-validation and governed lifecycle. Composition Contract v1 stores catalog
-descriptors only under `manifest.metricCatalogs[]`.
-
-A generated Base Metrics descriptor is:
-
-```json
-{
-  "catalogId": "base-metrics",
-  "mode": "generated",
-  "contractVersion": "base-metrics-catalog/v1",
-  "generatorSourceAlias": "base-metrics-generator",
-  "input": "package",
-  "maximumPathHops": 7
-}
-```
-
-`generatorSourceAlias` must resolve to a pinned `manifest.sources[]` entry with
-`alias`, `repository`, `revision`, `path` and `digest`.
-
-An immutable published catalog descriptor is:
-
-```json
-{
-  "catalogId": "payment-financial-metrics",
-  "mode": "published",
-  "contractVersion": "financial-metrics-catalog/v2",
-  "artifactUri": "s3://immutable-release-prefix/payment-financial-metrics.v2.json",
-  "digest": "sha256:<catalog-bytes-sha256>"
-}
-```
-
-For payment metrics, `artifactUri` names the immutable sibling catalog object
-resolved from the verified Lexicon marker. It must not name the mutable SSM
-parameter, the marker, or a copied definition payload. `digest` is Model's
-`sha256:`-prefixed digest of those exact catalog bytes.
-
-The complete Composition Contract document is uploaded as the artifact selected
-by `composition.documentArtifactId`; the change set's `sourceDigest` equals that
-document artifact digest. Payment definitions stay in the referenced catalog,
-not in Model request bodies.
-
-`compositionContractDocumentSchema` in `src/domain/schemas.ts` requires
-`definitions` to hold at least one entry. A `manifest.metricCatalogs[]`
-reference therefore cannot be submitted on its own; it rides on a full package
-revision. Supporting a catalog-only release is a Model contract change owned
-here.
-
-The generic lifecycle is change-set submission, exact artifact upload,
-validation status/results, review and authorized decision, publication
-status/reconciliation, and immutable release/composition/artifact read-back.
-Implement missing contract validation or runtime/API support in
-`prismteam-ai/model`; prompt guidance is not a runtime adapter.
+The Model UI must render catalog contents, not only the descriptor: catalog ID,
+contract version, families, each metric's graph path, measure, conditions,
+dimensions, time semantics and documented ratios, loaded from the release
+artifact after digest verification. Implementing that view is Dialga work in
+`prismteam-ai/model`.
 
 ## Persist compatibility and activation
 
@@ -221,10 +207,10 @@ compiles every catalog definition while loading, so a single definition outside
 the closed set or compiler gates fails the whole catalog load, not just that ID.
 
 Persist's stack resolves `/lexicon/financial-metrics-catalog-uri` at deploy time
-into its approved-release URI (with a CDK context override). It does not read
-Model releases. Today a Model release that references the catalog is governance
-metadata; a new Lexicon catalog release reaches Persist only through a Persist
-deployment.
+into its approved-release URI (with a CDK context override). A Model catalog
+reaches Persist only after Model publishes it to that boundary and Persist
+deploys. A Model release that is not yet published there is governance metadata
+for Persist.
 
 `PaymentMetricMaterializationPlan.ts` uses the selected supported plans.
 `payment-metric-prod-shadow-config.ts` pins release and activation compatibility
@@ -235,27 +221,24 @@ catalog; it does not own a second semantic allowlist.
 
 Apply this order without allowing a lower layer to redefine a higher one:
 
-1. The pinned Lexicon source package defines current payment metric semantics and
-   activation selection.
-2. Its generated directory is publishable only when the manifest and marker
-   attest the selected source and Lexicon revision.
-3. A reviewed Model release governs the exact immutable catalog URI/digest
-   reference and its publication metadata; it does not rewrite catalog
-   definitions.
-4. The pinned Persist closed set and compiler decide whether a definition is
+1. The reviewed Model release defines metric semantics, vocabulary and activation
+   selection; no legacy-repository copy overrides it.
+2. The published consumer boundary is valid only when its marker and bytes attest
+   that exact Model release artifact.
+3. The pinned Persist closed set and compiler decide whether a definition is
    executable. Activation also requires a catalog-backed selected ID.
 
-Regenerate through Lexicon when source and generated bytes disagree. Stop Model
-validation or publication when the published URI/digest disagrees with the
-attested catalog. A governed definition that Persist rejects may remain
-published, but it is not an executable configuration and cannot be activated.
+Republish through Model when the boundary disagrees with the Model release. Stop
+Model validation or publication when the descriptor URI/digest disagrees with the
+artifact. A governed definition that Persist rejects may remain published, but it
+is not an executable configuration and cannot be activated.
 
 Keep these evidence states separate:
 
 ```text
-definition exists
-artifact generated and attested
-Model release reviewed and published
+definition exists in a reviewed Model release
+catalog artifact published and attested
+consumer boundary published from that release
 consumer supports the definition
 activation authorized and selected
 materialization observed
@@ -268,28 +251,26 @@ same-family sibling's exact shape and changes only a filter value or dimension
 that the pinned compiler already supports (family contract, metric-id prefix,
 measure, business-time property, dimension selectors, condition properties and
 enum values, and elections). Jirachi validates those gates read-only and
-presents the entry as a reviewed Lexicon source change through Lexicon's normal
-review and release flow, never as a direct S3/SSM edit or activation. That
-change also regenerates materialization plans, digests and the family matrix
-with Lexicon's generator and updates the hand-maintained count, digest and
-family-count pins in `catalog.ts` and `materialization.ts`. Reporting windows
-are not entries: `grains` and `scopes` are fixed literals.
+presents the entry as a reviewed Model source change in `prismteam-ai/model`
+through Model's review and governed release flow, never as a direct S3/SSM edit,
+a legacy-repository change or an activation. Reporting windows are not entries:
+`grains` and `scopes` are fixed literals.
 
-Each new metric ID also needs Persist's closed set to include it before the
-Lexicon release reaches a Persist deployment. Dialga coordinates that Persist
-change and its sequencing.
+Each new metric ID also needs Persist's closed set to include it before the Model
+release reaches a Persist deployment. Dialga coordinates that Persist change and
+its sequencing.
 
 Dialga owns everything else, including new families, new measures, new compiler
 support and runtime:
 
 - Change `prismteam-ai/model` for Model API/runtime behavior, composition schema
-  and validation, source pins, digest handling, governed publication or a new
-  reusable catalog capability.
-- Coordinate `Spring-Oaks-Capital-LLC/lexicon` when current canonical payment
-  schema, definition/family semantics, validator/generator, materialization plan
-  generation or immutable release publication must change.
+  and validation, catalog schema, validator and generator, source pins, digest
+  handling, governed publication, consumer-boundary publication, the catalog UI
+  view or a new reusable catalog capability.
 - Coordinate `Spring-Oaks-Capital-LLC/persist` when the consumer's closed set,
   decoder, compiler, materializer or activation compatibility must change.
+- Retire legacy-repository metric publication once Model publishes the boundary;
+  never extend it.
 
 Do not submit a generic Model composition to disguise missing semantics or
 consumer support. Jirachi may suggest new-family definitions derived from

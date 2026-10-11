@@ -65,11 +65,12 @@ Pin the account's governed release through the discovered Model API: resolve
 `getRelease` with `release_id=current` to an immutable release ID/digest, then
 read `listDefinitions`/`getDefinition` at that release, `getReleaseComposition`,
 `getReleasePersistLexicon` and `listReleaseArtifacts`. Verify these operations in
-`prismteam-ai/model` `contracts/openapi.yaml` at the pinned revision. Where the
-Model does not yet hold the domain graph, read
-`Spring-Oaks-Capital-LLC/lexicon:src/data/lexicon.json` (vertices, edges,
-properties) at a pinned revision as the source. Record the source of every
-element. Do not query a live graph to fill missing intent.
+`prismteam-ai/model` `contracts/openapi.yaml` at the pinned revision. Model is
+the only vocabulary source. Where the governed release does not yet hold the
+domain graph, record a Model/vocabulary gap and route it through a governed
+Model extension; never fall back to the legacy `Spring-Oaks-Capital-LLC/lexicon`
+repository. Record the release of every element. Do not query a live graph to
+fill missing intent.
 
 ### 3. Map the KPI onto the graph and suggest ranked candidates
 
@@ -77,8 +78,7 @@ Map the KPI to an anchor entity and identifier, a traversal path across
 relationships with direction and hop count, the measured property or count,
 aggregation, business-time property, filter properties and enum values, and
 grouping dimensions. Return a ranked list of candidate metric definitions
-grounded only in elements that exist in the pinned Model release or Lexicon
-schema. Give each its graph path, measure, aggregation, filters, dimensions,
+grounded only in elements that exist in the pinned Model release. Give each its graph path, measure, aggregation, filters, dimensions,
 grain, time semantics, assumptions, data-quality caveats and why it answers the
 KPI; add leading/lagging or alternative formulations where useful. Never invent
 entities, edges or properties; record missing data as a Model/vocabulary gap.
@@ -86,15 +86,17 @@ entities, edges or properties; record missing data as a Model/vocabulary gap.
 ### 4. Express suggestions in the existing shape
 
 Express each chosen suggestion as a `metrics[]` entry using the verified
-structure of `Spring-Oaks-Capital-LLC/lexicon:src/data/financial-metrics/payment-financial-metrics.v2.json`
-as the format template, for any domain. Fill its values from the graph mapping;
+structure of a catalog in a governed Model release or `prismteam-ai/model`
+`configurations/` as the format template, for any domain. Fill its values from the graph mapping;
 omit `materialization_plan`. If the shape cannot express part of the KPI, mark
 that part as a Dialga gap instead of adding a field.
 
 ### 5. Classify reuse and executability per suggestion
 
-Check each suggestion against existing catalogs, including the deployed marker
-`/lexicon/financial-metrics-catalog-uri` and its attested sibling catalog bytes.
+Check each suggestion against catalogs governed by Model releases, including the
+Model-published marker `/lexicon/financial-metrics-catalog-uri` and its attested
+catalog bytes. A definition that exists only in the legacy repository is a Dialga
+migration gap, not a reusable definition.
 Choose exactly one classification:
 
 1. `exact reuse` — every intent field matches an existing immutable definition;
@@ -118,16 +120,17 @@ and `lambda/services/PaymentMetricDeclarativePlanCompiler.ts`) can execute.
 Mark others `governed proposal — needs Dialga for runtime/consumer support`.
 Executability is reported, never used to narrow what Jirachi suggests.
 
-### 6. Draft in-family variants as reviewed Lexicon source changes
+### 6. Draft in-family variants as reviewed Model source changes
 
 For `in-family variant draft`, follow the drafting steps in the
 [KPI-to-metric configuration contract](reference/kpi-to-metric-configuration.md#7-draft-in-family-metric-variants):
-copy the exact shape of a same-family sibling in the pinned Lexicon catalog,
+copy the exact shape of a same-family sibling in the pinned Model catalog,
 validate read-only that every Persist compiler gate already passes, and present
-the entry as a draft through Lexicon's normal review and release flow. Never
-edit S3/SSM directly, change the activation allowlist or activate. Persist's
-closed ID set must add the new ID before that Lexicon release reaches a Persist
-deployment; route that change through Dialga.
+the entry as a draft in `prismteam-ai/model` through Model's review and governed
+release flow. Never draft in the legacy Lexicon repository, edit S3/SSM directly,
+change the activation allowlist or activate. Persist's closed ID set must add the
+new ID before that Model release reaches a Persist deployment; route that change
+through Dialga.
 
 ### 7. Hand new-family proposals to Dialga
 
@@ -135,8 +138,8 @@ For `new family/capability`, do not submit a Model change set. Hand Dialga the
 Model-derived suggestion in the existing shape, its graph mapping, the pinned
 evidence of the missing semantic, schema, validator, release or runtime
 capability, and the expected acceptance behavior. Dialga owns Model
-implementation, decides on new families and coordinates any required Lexicon or
-Persist changes. Resume governed configuration only after those capabilities
+implementation, decides on new families and coordinates any required Persist
+changes. Resume governed configuration only after those capabilities
 exist at pinned revisions.
 
 ### 8. Apply only supported configuration
@@ -147,9 +150,9 @@ read it back rather than creating a duplicate.
 
 Model's Composition Contract requires at least one `definitions[]` entry, so a
 metric catalog reference cannot be submitted alone; it rides on a full package
-revision. Persist reads the catalog through Lexicon's
-`/lexicon/financial-metrics-catalog-uri`, not from Model releases, so a Model
-release is governance metadata today.
+revision. Persist reads the catalog through `/lexicon/financial-metrics-catalog-uri`
+at deploy time, not from Model releases, so a Model release is governance
+metadata for Persist until Model publishes it to that boundary.
 
 For supported configuration/composition that needs a release, use the generic
 lifecycle in the discovered OpenAPI: submit a change set with an idempotency key,
