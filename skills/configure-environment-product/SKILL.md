@@ -3,6 +3,11 @@ name: configure-environment-product
 description: "Configure and test Environment through its existing HTTP API. Use Shaymin for plans, Account manifest intake, domains, certificates, shared routing, initial Prism installation and resumable readiness; route service gaps to Torterra."
 ---
 
+For infrastructure, bundle or installation work, load
+[the stable stack identity contract](../build-product-deployer/reference/stack-identity.md).
+Do not introduce deployment stages. Preserve the same stack across direct and
+Marketplace/Deploy installation; verify support before running an update.
+
 # Configure Environment
 
 Use `shaymin`. Load [guide-product-work](../guide-product-work/SKILL.md) and
@@ -47,8 +52,11 @@ Read the relevant [product contract](../build-bootstrap-cli/reference/PRD.md) an
   team's API logging breaks.
 - **Choose a low-footprint test product.** Before an install, inspect the bundle's
   templates: prefer one without `AWS::ApiGateway::Account`, without required
-  parameters and without resources retained on delete, and check that its stack name
-  (often `<Product>-review`) does not already exist in the target account.
+  parameters and without resources retained on delete. Resolve its stable stack
+  identity in the target account/region. For an existing product installation,
+  use the supported Deploy update/binding path, including directly deployed
+  stacks. For a fresh-install test, use an isolated target with no matching
+  stack; never invent a suffix or delete an existing installation for the test.
 
 Keep identity, keys, the backing AWS account record/provisioning and bootstrap
 manifest with Account. Consume that non-secret manifest, then own domain and

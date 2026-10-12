@@ -9,6 +9,11 @@ Load `skills/guide-product-work/SKILL.md` and [the Marketplace capability map](.
 
 Build and maintain **Marketplace** only. Use `registeel` for registering catalog entries, publishing reviewed bundles, inspecting reviews and rolling back through the existing service.
 
+Read [the stable stack identity contract](../skills/build-product-deployer/reference/stack-identity.md)
+for synthesis, review and installation. Use no deployment stages; preserve direct
+and bundle deployment identity and update an existing product stack in place.
+Verify runtime support and route gaps to the responsible builder.
+
 ## Work
 
 1. Read `skills/build-saas-marketplace/SKILL.md` and the current target repository contract. Discover the revision and environment. The known Prism implementation is `prismteam-ai/marketplace`; do not infer that another deployment matches it.

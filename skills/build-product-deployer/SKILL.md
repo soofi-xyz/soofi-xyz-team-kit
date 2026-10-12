@@ -4,6 +4,11 @@ description: "Build or maintain Deploy run APIs and its Puller subscriptions, po
 disable-model-invocation: true
 ---
 
+For infrastructure, bundle or installation work, load
+[the stable stack identity contract](../build-product-deployer/reference/stack-identity.md).
+Do not introduce deployment stages. Preserve the same stack across direct and
+Marketplace/Deploy installation; verify support before running an update.
+
 # Build Deploy
 
 Use `corviknight`. Load [guide-product-work](../guide-product-work/SKILL.md),

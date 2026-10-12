@@ -1,9 +1,14 @@
 # Deploy capability map
 
+Apply [stable stack identity](../../../build-product-deployer/reference/stack-identity.md)
+to synthesis, review and installation. Include its direct-to-bundle update and
+legacy-stack binding cases in the relevant feature acceptance checks.
+
+
 Use Corviknight to implement Deploy, including the configuration installer and
 Puller, and Skarmory to configure existing run, configuration-installation and
 subscriber capabilities. Follow the [shared workflow](../../SKILL.md).
-These 16 areas are a starting inventory, not a fixed iteration count. Order dependencies and split
+These 17 areas are a starting inventory, not a fixed iteration count. Order dependencies and split
 independently useful features further. Use at least four pieces for a full-product
 build; narrow work selects only relevant pieces. Keep automated tests and user/AWS
 feedback inside each piece, not as a final testing phase.
@@ -11,6 +16,7 @@ feedback inside each piece, not as a final testing phase.
 | Feature ID / usable capability | Dependency | Builder increment / configurer exercise | AWS inspection and acceptance |
 | --- | --- | --- | --- |
 | `single-stack` — run a validated simple deployment | Verified SigV4 run/status contract and a pinned Build fixture | Deliver authenticated minimal run/status/result for a no-asset stack using fake CloudFormation first. Reject wrong-account callers, bad digests and unsupported artifact shapes before writes. | Correlate API run to worker/workflow and terminal stack result. Verify signed caller scope and zero writes for rejected artifacts; distinguish mocked stacks from real resources. |
+| `existing-stack-update` — take over a directly deployed installation | Validated run execution and verified product/stack identity | Resolve or explicitly bind existing stacks, preserve logical IDs, update through the run API and hand bindings to Puller. Test legacy names, ambiguity, replay and failed updates. | Compare before/after stack ARN, unchanged resource IDs and data; verify no parallel stack and no installed-bundle claim before success. |
 | `assets` — publish and deploy verified file assets | Single-stack path and Build asset manifest | Deliver validated asset publication and references for a stack with a small runtime asset. Vary object versions and inject hash/policy mismatch or upload failure. | Inspect artifact checks, publishing logs and resulting stack asset references; confirm unverified bytes never deploy and secrets stay out of logs. |
 | `parameters-ordering` — deploy parameterized stack dependencies | Validated artifact execution | Deliver supported target parameter rendering and stack order for multi-stack assemblies. Compare two parameter sets, missing required input and failed predecessor. | Inspect resolved non-secret inputs and CloudFormation order; confirm account/region scope and that dependent stacks do not run after a failed prerequisite. |
 | `failure-diagnostics` — explain incomplete deployment runs | Run and stack status | Deliver detailed status/result correlation for stack failure, timeout and supported CloudFormation rollback outcomes. Exercise missing run IDs and unauthorized reads as well as failed execution. | Compare API terminal result with actual stack events and logs; do not convert CloudFormation rollback into a newly invented rollback API or report a partial run as success. |

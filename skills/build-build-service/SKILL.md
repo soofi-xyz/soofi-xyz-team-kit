@@ -4,6 +4,11 @@ description: "Build or maintain the Build HTTP API and its source intake, isolat
 disable-model-invocation: true
 ---
 
+For infrastructure, bundle or installation work, load
+[the stable stack identity contract](../build-product-deployer/reference/stack-identity.md).
+Do not introduce deployment stages. Preserve the same stack across direct and
+Marketplace/Deploy installation; verify support before running an update.
+
 # Build Build
 
 Use `tinkaton`. Load [guide-product-work](../guide-product-work/SKILL.md),

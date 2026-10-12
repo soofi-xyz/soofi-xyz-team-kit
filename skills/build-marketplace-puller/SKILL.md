@@ -4,6 +4,11 @@ description: "Build or configure Deploy's Puller component: subscriptions, catal
 disable-model-invocation: true
 ---
 
+For infrastructure, bundle or installation work, load
+[the stable stack identity contract](../build-product-deployer/reference/stack-identity.md).
+Do not introduce deployment stages. Preserve the same stack across direct and
+Marketplace/Deploy installation; verify support before running an update.
+
 # Deploy Puller component
 
 Use `corviknight` to build Puller and `skarmory` to configure its existing APIs.

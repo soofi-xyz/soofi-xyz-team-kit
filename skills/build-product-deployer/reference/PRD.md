@@ -26,6 +26,14 @@ Load [the Puller skill](../../build-marketplace-puller/SKILL.md) and
 or configuring subscriber features. Include them in full-product planning. A
 complete run API by itself does not complete the Deploy product.
 
+## Stack identity and existing installations
+
+Implement [stable stack identity](stack-identity.md), including adoption of direct
+installations through updates to the same stack. Verify supported explicit stack
+bindings for legacy names; keep durable bindings in Puller and execution in the run
+service. Use no deployment stages and do not assume missing subscriber history
+means a stack must be created. Exercise the contract's acceptance matrix.
+
 ## Run interface
 
 The supplied comparison describes a small IAM SigV4 service with `POST /deploy/run`
