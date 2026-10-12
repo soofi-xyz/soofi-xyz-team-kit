@@ -6,7 +6,7 @@ and test the modules described below in that repository; no product runtime,
 bootstrap generator or deployable stack ships with this skill.
 
 Use the module contracts below for SQL conversion. When building the
-`non-deterministic-extraction` feature, add a TypeScript AI SDK Bedrock worker and
+`non-deterministic-extraction` feature, add a TypeScript AI SDK worker with explicit provider adapters and
 versioned configuration/run contracts from
 [the extraction reference](non-deterministic-extraction.md). Reuse scoped storage,
 admission, HTTP status/results and reporting; do not launch Glue for string
