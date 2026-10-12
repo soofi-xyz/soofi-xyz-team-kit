@@ -50,7 +50,9 @@ Require Account identity, backing AWS account, access-readiness evidence,
 service-key identifier when the target routing contract requires it, supported
 deployment constraints and system-component coordinates. Collect the desired
 domain/region and proof of domain authority as Environment inputs, then create or
-adopt compatible zone/certificate resources through Environment. Refuse an
+adopt compatible certificate and API Gateway Custom Domain Name resources through Environment.
+Make DNS traffic records and hosted-zone management optional; certificate validation
+remains required. Follow [the shared API domain contract](../../guide-product-work/reference/shared-api-domain.md). Refuse an
 incomplete or mismatched manifest before setup. Retrieve secret material only
 through authorized operations into the approved local secret channel.
 
@@ -76,8 +78,9 @@ requirement to force API-key usage onto a SigV4-only Deploy implementation.
 1. **Plan:** read and validate Account/Marketplace inputs, check target scope,
    inspect artifacts and show pinned versions, intended resources and non-secret
    parameter names. Planning and dry-run perform no provisioning writes.
-2. **Shared routing:** create or adopt compatible Environment-owned DNS,
-   certificate, API Gateway domain and shared usage-plan resources. Preserve
+2. **Shared routing:** require a compatible Environment-owned API Gateway Custom Domain Name
+   and validated certificate; create or adopt them idempotently. Configure DNS
+   traffic records only when requested and preserve supported shared usage-plan resources. Preserve
    stage/key binding ownership and published handles; verify existing resources
    agree with account, domain and region before adopting them.
 3. **First Deploy install:** use the operator-run Bootstrap adapter only for the

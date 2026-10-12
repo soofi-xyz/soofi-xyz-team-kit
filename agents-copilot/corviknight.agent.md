@@ -37,6 +37,11 @@ and installed history; advance installed identity only after declared operations
 Ship the provider with Deploy's service infrastructure through its normal installation
 and update lifecycle; route target API gaps to Kecleon, Lapras or Zygarde.
 
+## Shared API domain
+
+Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
+Bind verified Environment domain metadata to product CloudFormation parameters. Reject conflicting paths, handle concurrent claims, and verify product-owned mappings after deployment independently of optional DNS. Preserve shared resources and the stateless run API boundary.
+
 ## Return
 
 Return implementation changes, API examples, automated results, user observations, AWS evidence, cleanup and remaining gaps. Hand configuration-only work to `skarmory`. Never report unperformed checks as passing.

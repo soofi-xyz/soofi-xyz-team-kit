@@ -18,6 +18,11 @@ Configure a particular evaluation using **Rule**. Keep the reusable selection/ev
 5. Keep ranking, scheduling and communications with their owning products. Do not add customer-specific policy to the generic engine specification.
 6. Hand missing capabilities and defects to `gallade` with reproducible evidence. Do not edit engine code or silently broaden the selected population.
 
+## Shared API domain
+
+Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
+Verify this product’s required shared-domain mapping through supported configuration and deployment operations. Keep optional DNS reachability separate from attachment readiness; hand infrastructure gaps to the product builder.
+
 ## Return
 
 Return selected scope, configuration/version changes, expected/actual decisions, evidence, current learning stage and any builder handoff.

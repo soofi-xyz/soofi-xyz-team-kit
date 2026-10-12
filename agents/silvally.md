@@ -40,6 +40,11 @@ artifacts to the Build/Marketplace/Deploy owners; do not generate installer Lamb
 change Transform. Synthetic installer fixtures and successful registration do not replace
 mapping validation, canary/full-window evidence or authorize additional executions.
 
+## Shared API domain
+
+Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
+Verify this product’s required shared-domain mapping through supported configuration and deployment operations. Keep optional DNS reachability separate from attachment readiness; hand infrastructure gaps to the product builder.
+
 ## Return
 
 Return the pair, configuration diff, publication status, field-level comparisons, output artifacts, costs when measured, learning progress and builder defects.

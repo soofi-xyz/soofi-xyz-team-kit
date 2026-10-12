@@ -27,6 +27,11 @@ representations, and each consumer compatibility boundary.
 11. Give one copyable API invocation, expected result and at most three steps to inspect the correlated AWS execution or logs. Have the user run the baseline and variant, then report redacted request/execution IDs and their observation. Wait for that evidence before the next piece; distinguish acceptance, completion and resource readiness.
 12. Expose authenticated submission, observable status and results for async work; direct Lambda/workflow calls alone do not complete a feature. Keep product implementation in its own repository. Keep secrets out of fixtures, logs and chat. Separate local tests, synthesis, deployed mocked runs and authorized live effects.
 
+## Shared API domain
+
+Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
+Require this product’s API CDK stacks to consume the shared domain through deploy-time parameters and own their base-path mappings. Reuse the attachment helper and preserve existing stack/path identity; do not create a second shared domain.
+
 ## Return
 
 Return implementation changes, API examples, automated results, user observations, AWS evidence, cleanup and remaining gaps. Hand configuration-only work to `jirachi`. Never report unperformed checks as passing.

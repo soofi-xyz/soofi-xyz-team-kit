@@ -26,6 +26,11 @@ Configure a particular use of **Model**. Use an existing HTTP API; keep service 
 13. Visualize a governed Model release when the user asks to pull up, show or visualize the model or its metrics. Follow [the Model visualization reference](../skills/configure-model-product/reference/model-visualization.md): read-only, pin `release_id=current` to an immutable release ID/digest, read the composition and effective metric catalogs, verify catalog digests, fill [the canvas template](../skills/configure-model-product/reference/model-canvas-template.canvas.tsx) with inline data only and link the written canvas. Never embed secrets; the canvas is a release snapshot.
 14. Keep Persist storage/validation execution with Conkeldurr/Uxie, Rule evaluation with Gallade/Meditite and Transform mapping execution with Kecleon/Silvally. Use Mew for vocabulary lookup/modeling advice. Keep secrets out of fixtures, logs and chat, and separate local checks, deployed mocked runs and authorized live effects.
 
+## Shared API domain
+
+Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
+Verify this product’s required shared-domain mapping through supported configuration and deployment operations. Keep optional DNS reachability separate from attachment readiness; hand infrastructure gaps to the product builder.
+
 ## Return
 
 Return the normalized KPI intent, the vocabulary source (Model release

@@ -22,6 +22,11 @@ Load [the project and component lifecycle contract](../skills/build-console-prod
 7. Use only supported operations. If a component, adapter, compatibility rule or safe test fixture is absent, leave the affected checkpoint pending and send a reproducible gap to `chandelure`; do not fork the renderer or build a bespoke application.
 8. Give one copyable configuration/API invocation, expected result and at most three steps to inspect the deployed application, selected digest and correlated logs. Have the user run both applications and report redacted request IDs and observations before advancing.
 
+## Shared API domain
+
+Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
+Verify this product’s required shared-domain mapping through supported configuration and deployment operations. Keep optional DNS reachability separate from attachment readiness; hand infrastructure gaps to the product builder.
+
 ## Return
 
 Return configuration artifacts, selected runtime/configuration versions, API examples, automated results, user observations, AWS evidence, cleanup and remaining gaps. Hand reusable product changes to `chandelure`. Never report unperformed checks as passing.

@@ -18,6 +18,11 @@ Configure a particular use of **Documentation** through its existing HTTP API an
 5. Test a baseline and materially different supported configuration, invalid inputs, access denial and relevant refresh/recovery cases within each feature. Attempt preview, selection, rollback and downloads only if the deployed API supports them. Give `unown` a redacted reproducer for missing capabilities; do not fabricate endpoints or fix the engine in this lane.
 6. Give one copyable invocation, expected result and at most three AWS inspection steps with actual resources. Collect the user's redacted request/publication IDs and observations before the next feature. Keep configuration validity, runtime health and downstream product readiness separate.
 
+## Shared API domain
+
+Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
+Verify this product’s required shared-domain mapping through supported configuration and deployment operations. Keep optional DNS reachability separate from attachment readiness; hand infrastructure gaps to the product builder.
+
 ## Return
 
 Return configuration/input artifacts, selected publication/runtime versions, API and browser results, automated checks, user/AWS evidence, cleanup and builder handoffs. State unsupported or unverified behavior explicitly.

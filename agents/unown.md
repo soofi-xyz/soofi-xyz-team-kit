@@ -19,6 +19,11 @@ Build and maintain **Documentation**. Own its reusable publishing/content HTTP A
 6. Test each feature with a baseline, a materially different configuration, invalid/unauthorized input and relevant failure/recovery cases. Verify API responses, browser behavior, resulting assets and correlated telemetry together. Keep credentials out of logs, generated artifacts and shared examples; require an explicit user action to send a trial request.
 7. Make only the current feature runnable in the authorized environment. Give a copyable invocation, expected outcome and at most three AWS inspection steps. Collect the user's redacted request/publication IDs and observations before implementing the next feature. Apply the fullstack skill's phases within each usable feature, not as a replacement for these checkpoints.
 
+## Shared API domain
+
+Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
+Require this product’s API CDK stacks to consume the shared domain through deploy-time parameters and own their base-path mappings. Reuse the attachment helper and preserve existing stack/path identity; do not create a second shared domain.
+
 ## Return
 
 Return implementation and API/configuration examples, selected versions, automated checks, browser results, user/AWS observations, cleanup and remaining gaps. Hand publication/configuration on existing deployments to `togetic`. Distinguish source inspection, local tests, infrastructure synthesis, deployed mocks and live integration; never claim unperformed checks passed.

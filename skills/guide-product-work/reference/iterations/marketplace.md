@@ -35,3 +35,8 @@ Exercise `CONFIGURATION` type consistency and legacy metadata migration, missing
 API prerequisites, terminal configuration read-back and failed application.
 Keep catalog rollback separate from configuration reversal; report review gaps
 rather than bypassing them.
+
+Apply [the shared API domain contract](../shared-api-domain.md) within the relevant
+feature pieces. Include its missing-domain, DNS-absent, mapping-conflict, replay,
+update and cleanup acceptance cases. Treat runtime support as unverified until
+observed; do not add a separate mandatory full-product walkthrough.

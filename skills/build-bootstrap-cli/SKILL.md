@@ -59,3 +59,11 @@ capabilities.
 Return changes, supported API/configuration examples, automated and user evidence,
 AWS observations, cleanup and remaining gaps. Keep reusable product code in its
 target repository; this kit contains guidance and synthetic inputs.
+
+## Shared API domain
+
+For API infrastructure, packaging, review or installation, read and apply
+[the shared API domain contract](../guide-product-work/reference/shared-api-domain.md).
+Require the API Gateway domain and product-owned mappings; keep DNS traffic
+records optional. Verify supported parameter/manifest bindings in the target
+revision and route missing behavior to the responsible builder.

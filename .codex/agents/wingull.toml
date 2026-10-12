@@ -33,6 +33,11 @@ registration, activation and partner traffic. Preserve partner test/approval req
 and hand packaging, publication and installation to their owners. Route missing API
 lifecycle behavior to Lapras; do not add bundle-specific installer code.
 
+## Shared API domain
+
+Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
+Verify this product’s required shared-domain mapping through supported configuration and deployment operations. Keep optional DNS reachability separate from attachment readiness; hand infrastructure gaps to the product builder.
+
 ## Return
 
 Return the request classification; the data profile; credential sources and the Connect-owned copies created (ARNs, no values); the test sample and why it was chosen; the flow, partner configuration, activation and job request with schema validation output; the dev run evidence (job ids, manifests, landed file checksums, reply signatures, latencies, failures); cleanup done; defects handed to `lapras`; and the remaining steps for production.
