@@ -1,6 +1,6 @@
 ---
 name: configure-transform-product
-description: "Author and verify language-pair mappings for an existing Transform engine, including formats, SQL, typed outputs and graph identities. Use Silvally; use Kecleon for engine changes."
+description: "Configure provider connections and structured extraction (including Vercel AI Gateway), and author and verify language-pair mappings for an existing Transform engine, including formats, SQL, typed outputs and graph identities. Use Silvally; use Kecleon for engine changes."
 ---
 
 Use [the Transform capability map](../guide-product-work/reference/iterations/transform.md). Derive the feature pieces from scope and dependencies, then apply the work below within each piece; require a user-run configuration, AWS inspection and feedback before starting the next implementation piece.
@@ -17,7 +17,8 @@ and run supported by their discovered contract.
 
 For non-deterministic extraction, read
 [the extraction phase](../build-transform-product/reference/non-deterministic-extraction.md).
-Verify the deployed configuration/run contract first; configure the model,
+Read [connection and Vercel examples](reference/extraction-connections.md).
+Verify the deployed configuration/run contract first; configure the versioned connection reference, model,
 instructions and output JSON Schema as one immutable revision. Supply string
 input and verify the returned JSON and source-grounded facts. Keep the SQL steps
 below scoped to SQL mappings. Route missing extraction API/helper/runtime support

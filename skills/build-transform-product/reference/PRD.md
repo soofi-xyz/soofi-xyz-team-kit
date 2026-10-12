@@ -2,7 +2,7 @@
 
 Support SQL conversion and the distinct
 [non-deterministic extraction phase](non-deterministic-extraction.md). For that
-phase, resolve a versioned configuration selecting a Bedrock model, extraction
+phase, resolve a versioned configuration selecting a versioned provider connection and model, extraction
 instructions and output JSON Schema, accept string input, and use the TypeScript
 AI SDK worker to produce validated JSON. Implement its versioned HTTP contracts
 in the target product; the v2 request, schema and Glue architecture below specify
@@ -203,7 +203,7 @@ behavior. Local tests and synthesis do not establish live deployment status.
 Follow [the extraction phase contract](non-deterministic-extraction.md) and the
 capability map's `non-deterministic-extraction` feature. Deliver configuration
 validation/registration/read-back, string-input submission/status/results,
-configuration pinning, Bedrock invocation with the AI SDK, structured output
+configuration pinning, configured provider invocation with the AI SDK, structured output
 validation and usage/failure reporting in one usable increment. Keep model and
 schema selection in configuration and source data in the run input. Use a
 TypeScript worker for this phase; preserve the SQL resolver and Glue path.

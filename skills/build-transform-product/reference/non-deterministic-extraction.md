@@ -1,7 +1,7 @@
 # Non-deterministic extraction phase
 
 Implement `non-deterministic-extraction` as a distinct Transform capability:
-**string input → configured Amazon Bedrock model through the AI SDK → JSON
+**string input → configured model through the AI SDK → JSON
 validated against the configured JSON Schema**. Treat the input as unstructured
 source data and the output as structured data. Kecleon builds the capability;
 Silvally authors configurations once the deployed capability is verified.
@@ -22,23 +22,23 @@ Registration must not invoke a model. Include these fields:
 | Field | Required behavior |
 | --- | --- |
 | `id`, `version` | Identify one immutable configuration revision. |
-| `engine` | Require `bedrock-extraction`; select the TypeScript worker explicitly. |
-| `model.provider` | Require `amazon-bedrock`. |
-| `model.modelId` | Require the exact configured Bedrock model ID or supported inference-profile identifier; verify access and structured-output support in the selected account/region. |
+| `engine` | Require `structured-extraction`; select the TypeScript worker explicitly. |
+| `connectionRef` | Require an exact connection `id` and `version`; resolve and pin its content digest. |
+| `model.modelId` | Require the exact configured adapter-specific model ID; verify access and structured-output support for that connection/model/schema. |
 | `outputSchema` | Require an object-root JSON Schema for the generated JSON object; compile it before admission and validate generated values against the same schema. |
 | `instructions` | Store the extraction objective and any domain-specific field, normalization and missing-value rules; include them in the pinned prompt. |
 | `inference` | Bound output tokens, timeout and retries; permit sampling settings only when supported by the selected model. |
 
 For example, author a configuration like this, replacing the model placeholder
-with a verified Bedrock identifier before validation or publication:
+with a verified Bedrock identifier and registered connection before validation or publication:
 
 ```json
 {
   "id": "contact-extraction",
   "version": "1.0.0",
-  "engine": "bedrock-extraction",
+  "engine": "structured-extraction",
+  "connectionRef": { "id": "bedrock-dev", "version": "1.0.0" },
   "model": {
-    "provider": "amazon-bedrock",
     "modelId": "<verified-bedrock-model-id>"
   },
   "outputSchema": {
@@ -56,7 +56,7 @@ with a verified Bedrock identifier before validation or publication:
 ```
 
 Require each run to identify its configuration revision and supply `input` as a
-string. Resolve the configuration once and pin its content digest, model identity,
+string. Resolve the configuration once and pin its content digest, connection revision/digest, model identity,
 schema digest, effective prompt/version and inference settings in the execution
 plan. Reject missing/ambiguous configurations and per-run model/schema overrides.
 Accept text containing JSON, HTML or newlines as literal source text; reject
@@ -65,24 +65,74 @@ the original string. Bound UTF-8 bytes and the full prompt/schema/token budget;
 reject oversized input without truncating it. Define empty/whitespace input as
 an input-validation error for this phase.
 
-Keep credentials and region in the verified deployment environment. Reuse the
-selected AWS credential flow and workload IAM role, with scoped model invocation
-permissions; never put keys or a developer's profile in configuration. Resolve
+Resolve authentication from the pinned connection and verified deployment environment.
+For Bedrock, reuse the selected AWS credential flow and scoped workload IAM role.
+Keep secret values and developer profile names out of configuration and logs;
+resolve secret references only in the worker, and permit credential rotation
+without mutating connection semantics. Resolve
 actual model availability instead of guessing identifiers or replacing an
 unavailable model. Keep an extraction schema as part of its configuration; it
 does not replace a Lexicon language definition. When feeding a later SQL phase,
 explicitly bind and validate the extracted fields against that phase's registered
 input definition.
 
+## Provider connections
+
+Register immutable connection revisions through Transform's HTTP API with the same
+validate/register/read-back and replay/conflict semantics as extraction configs.
+Keep connection settings separate from model/schema/instructions. Use these fields:
+
+| Field | Contract |
+| --- | --- |
+| `id`, `version` | Identify the immutable connection revision. |
+| `adapter` | Select `amazon-bedrock`, `vercel-gateway` or `openai-compatible`. Treat this as the transport implementation, not the model creator. |
+| `baseURL` | Omit for native adapter defaults; require for `openai-compatible`. Validate allowed HTTPS destinations at registration; reject per-run endpoint overrides. |
+| `auth` | Use `{ "type": "aws-credential-chain" }`, `{ "type": "api-key", "secretRef": "<reference>" }` or `{ "type": "vercel-oidc" }` as supported below. Resolve only authorized secret references. |
+| `region` | Require a verified deployment region for Bedrock; verify account and model permissions. |
+| `headers` | Allow optional non-secret static headers; use separately resolved `headerSecretRefs` for sensitive custom headers. Reject collisions with adapter-owned authentication headers. |
+
+- Map `amazon-bedrock` to `@ai-sdk/amazon-bedrock`, the AWS credential chain and
+  verified region. Do not replace AWS signing with a bearer key.
+- Map `vercel-gateway` to the native `createGateway` API. Resolve `api-key`
+  from a managed secret for AWS-hosted workers; permit `vercel-oidc` only with
+  a verified Vercel runtime token/refresh flow. Omit `baseURL` to retain the
+  installed SDK's native gateway endpoint; do not use the OpenAI `/v1` endpoint
+  with this adapter. Require exact `creator/model` identifiers.
+- Map `openai-compatible` to `@ai-sdk/openai-compatible` using its chat-completions
+  protocol, explicit `baseURL` and API-key authentication. For Vercel's compatible
+  endpoint use `https://ai-gateway.vercel.sh/v1`. Verify JSON Schema structured
+  output support for the exact endpoint/model; enable the installed SDK's
+  structured-output option where required. Compatibility alone is not proof.
+- Make authentication selection explicit. Reject missing/mismatched credentials;
+  prevent ambient environment keys from overriding an OIDC selection. Never
+  fall back to another credential source or provider after an auth failure.
+- Default to no model fallback. If gateway routing/fallback is supported, expose
+  it as validated, versioned adapter options; pin allowed upstream providers and
+  models before admission. For Vercel, use `only` to constrain upstream providers
+  when required; `order` alone is a preference and does not prevent fallback.
+  Account for every permitted attempt and record actual provider/model routing
+  when returned, marking unavailable routing evidence explicitly.
+
+Discover any existing `bedrock-extraction`/`model.provider` consumers before
+migration. If present, implement an explicit contract-version adapter to a
+registered Bedrock connection; preserve old revision digests and reject ambiguous
+migration. Do not silently reinterpret existing immutable configurations.
+See [configuration examples](../../configure-transform-product/reference/extraction-connections.md)
+for native Vercel, compatible endpoint and Bedrock connections.
+
 ## Runtime and extraction prompt
 
-Implement the worker in TypeScript with `ai` and `@ai-sdk/amazon-bedrock`. Pin
+Implement the worker in TypeScript with `ai` and the explicitly selected adapter. Pin
 compatible package versions in the target runtime. Check that version's API
 against [structured output](https://ai-sdk.dev/docs/ai-sdk-core/generating-structured-data),
 [JSON Schema validation](https://ai-sdk.dev/docs/reference/ai-sdk-core/json-schema)
 and [Bedrock provider](https://ai-sdk.dev/providers/ai-sdk-providers/amazon-bedrock)
-documentation before coding. Use a direct Bedrock provider instance with the
-verified region and AWS credential provider chain.
+documentation before coding. Also check the installed-version documentation for
+[AI Gateway](https://ai-sdk.dev/providers/ai-sdk-providers/ai-gateway) and
+[OpenAI-compatible providers](https://ai-sdk.dev/providers/openai-compatible-providers).
+Resolve a provider instance through a fixed adapter registry; never load a package
+or executable adapter from user configuration. Do not pass a bare model string
+to `generateText`, which could select the SDK default gateway implicitly.
 
 Compile the configured JSON Schema with a compatible runtime validator such as
 AJV. Reject invalid schemas, unsupported provider keywords and unresolved external
@@ -95,13 +145,13 @@ or on a prompt asking for JSON as validation.
 
 For SDK versions supporting this interface, wire the admitted, pinned values as
 follows. Implement `validateOutput` as the callback described above, and create
-`bedrock` from the authenticated Amazon Bedrock provider:
+`resolvedModel` from the pinned connection adapter and `config.model.modelId`:
 
 ```ts
 import { generateText, jsonSchema, Output } from 'ai';
 
 const result = await generateText({
-  model: bedrock(config.model.modelId),
+  model: resolvedModel,
   output: Output.object({
     schema: jsonSchema(config.outputSchema, { validate: validateOutput }),
   }),
@@ -162,7 +212,7 @@ Record execution/configuration identity, input digest, model, prompt/schema
 digests, attempts, finish reason, token usage and measured or estimated cost
 with their evidence level. Keep raw source text and generated data out of normal
 operational logs. Persist the accepted JSON result and its digest. An idempotent
-retry of a completed run returns that saved result without calling Bedrock again;
+retry of a completed run returns that saved result without invoking a model again;
 require a new execution identity for intentional fresh inference. Pinning a model,
 prompt and schema, or setting temperature to zero, does not guarantee identical
 fresh outputs. Do not promise exactly-once provider invocation after an ambiguous
@@ -177,12 +227,15 @@ Verify within this feature increment:
   for `Contact: Ada Lovelace.`, expect `email: null` without an invented address.
 - Publish a changed schema/instructions revision and verify the new output shape;
   exercise another available model configuration and prove routing uses its ID.
+- Verify Bedrock, native Vercel and compatible-endpoint configuration variants;
+  reject invalid adapter/auth combinations, secret access, endpoint overrides and
+  connection digest drift. Exercise explicit routing and authentication failures.
 - Reject non-string/empty/oversized inputs, bad schemas and unavailable models;
   prove validation/admission failures make no paid inference call.
 - Exercise source text containing instruction-like content, missing required
   facts, schema-invalid output, refusal, truncation, timeout and throttling.
   Use mocked provider failures for repeatable engine tests; verify actual model
-  compatibility and extraction quality with an authorized live Bedrock sample.
+  compatibility and extraction quality with an authorized live sample for each claimed adapter/model combination.
 - Verify completed-run replay makes no extra model call, configuration digests
   cannot drift, and failures leave no successful result. Preserve SQL regressions.
 

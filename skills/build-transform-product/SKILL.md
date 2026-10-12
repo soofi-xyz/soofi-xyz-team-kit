@@ -1,6 +1,6 @@
 ---
 name: build-transform-product
-description: "Implement Transform: registered language-pair SQL conversions and non-deterministic extraction from strings using configurable Amazon Bedrock models, JSON Schema structured output and the AI SDK; include Python/PySpark formats, typed tables, graph mappings and TypeScript orchestration."
+description: "Implement Transform: registered language-pair SQL conversions and non-deterministic extraction from strings using configurable provider connections and models, JSON Schema structured output and the AI SDK; include Python/PySpark formats, typed tables, graph mappings and TypeScript orchestration."
 ---
 
 Use [the Transform capability map](../guide-product-work/reference/iterations/transform.md). Derive the feature pieces from scope and dependencies, then apply the work below within each piece; require a user-run configuration, AWS inspection and feedback before starting the next implementation piece.
@@ -16,7 +16,7 @@ output shape/format; a request supplies only S3 locations. Discover the target r
 source system, fixed language pair or local checkout path.
 
 For non-deterministic transformation, use a separate TypeScript extraction phase:
-string input → configured Bedrock model through the AI SDK → schema-validated JSON.
+string input → configured model through an explicit AI SDK adapter → schema-validated JSON.
 Read [non-deterministic extraction](reference/non-deterministic-extraction.md)
 for its configuration, prompt, runtime, API integration and acceptance contract.
 Keep the SQL rules below scoped to SQL; do not force raw strings into a Spark table.
@@ -80,9 +80,9 @@ defaults for routine choices.
 
 Implement the capability map's `non-deterministic-extraction` increment using
 [the phase contract](reference/non-deterministic-extraction.md). Pin the selected
-configuration's model, JSON Schema, extraction instructions and inference limits.
-Accept only strings and use `ai` with `@ai-sdk/amazon-bedrock` for structured
-generation; validate the result against the configured schema before success.
+configuration's connection revision, model, JSON Schema, extraction instructions and inference limits.
+Accept only strings and use `ai` with explicit Bedrock, Vercel Gateway or
+OpenAI-compatible adapters and separate endpoint/authentication configuration; validate the result against the configured schema before success.
 Keep the phase's configuration and submission/status/result APIs in Transform.
 Version new contracts explicitly; do not add extraction fields to the v2 SQL
 request or claim existing deployment support from this specification.
