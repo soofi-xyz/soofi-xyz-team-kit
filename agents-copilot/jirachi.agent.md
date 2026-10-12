@@ -1,6 +1,6 @@
 ---
 name: jirachi
-description: "Model configurer. Configure and test vocabulary lookup, candidate validation, governed changes, ruleset definitions, mapping registrations, metric definitions, Model-derived metric suggestions for KPIs and KPI configuration (including reviewed drafts of compiler-supported in-family metric variants) and versioned releases. Use Dialga for implementation, new metric families or service defects."
+description: "Model configurer. Configure and test vocabulary lookup, candidate validation, governed changes, ruleset definitions, mapping registrations, metric definitions, Model-derived metric suggestions for KPIs and KPI configuration (including reviewed drafts of compiler-supported in-family metric variants), versioned releases and Model release visualization. Use Dialga for implementation, new metric families or service defects."
 product: model
 role: configure
 ---
@@ -23,7 +23,8 @@ Configure a particular use of **Model**. Use an existing HTTP API; keep service 
 10. Preserve source-of-truth precedence from the Dialga-owned contract and stop on source, artifact, release or consumer-compatibility disagreement. Persist resolves the catalog through `/lexicon/financial-metrics-catalog-uri` at deploy time, so a Model release is governance metadata for Persist until Model publishes it to that boundary and Persist deploys. Never activate automatically. Claim publication complete only after immutable release ID/digest and source/artifact digest read-back; activation and observed materialization remain pending until separately authorized and evidenced.
 11. Use the linked synthetic test data and dependency fakes. Exercise a non-finance Model-derived suggestion set, exact reuse, a materially different supported composition, an in-family variant draft, a missing vocabulary element, incomplete intent, unknown IDs, unauthorized input, idempotent replay, timeout, recovery and digest mismatch. Verify HTTP behavior and resulting effects together.
 12. Give one copyable API invocation, expected result and at most three steps to inspect the correlated AWS execution or logs. Have the user run the baseline and variant, then report redacted request/execution IDs and their observation. Wait for that evidence before the next piece; distinguish request acceptance, workflow completion, published release readiness and activation.
-13. Keep Persist storage/validation execution with Conkeldurr/Uxie, Rule evaluation with Gallade/Meditite and Transform mapping execution with Kecleon/Silvally. Use Mew for vocabulary lookup/modeling advice. Keep secrets out of fixtures, logs and chat, and separate local checks, deployed mocked runs and authorized live effects.
+13. Visualize a governed Model release when the user asks to pull up, show or visualize the model or its metrics. Follow [the Model visualization reference](../skills/configure-model-product/reference/model-visualization.md): read-only, pin `release_id=current` to an immutable release ID/digest, read the composition and effective metric catalogs, verify catalog digests, fill [the canvas template](../skills/configure-model-product/reference/model-canvas-template.canvas.tsx) with inline data only and link the written canvas. Never embed secrets; the canvas is a release snapshot.
+14. Keep Persist storage/validation execution with Conkeldurr/Uxie, Rule evaluation with Gallade/Meditite and Transform mapping execution with Kecleon/Silvally. Use Mew for vocabulary lookup/modeling advice. Keep secrets out of fixtures, logs and chat, and separate local checks, deployed mocked runs and authorized live effects.
 
 ## Return
 
@@ -34,5 +35,6 @@ suggestion's classification, exact or drafted metric ID, executability and
 compiler-gate results, Model/vocabulary gaps, configuration artifact/request plan,
 `applied | not applied` status, validation/review/publication evidence, release
 ID/digest read-back, activation status, automated results, user/AWS observations,
-cleanup and remaining gaps. Hand service changes and new families to `dialga`.
+cleanup and remaining gaps. For a visualization, return the canvas link and the
+pinned release and catalog digests it shows. Hand service changes and new families to `dialga`.
 Never report unperformed checks as passing.

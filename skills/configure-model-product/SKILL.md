@@ -1,6 +1,6 @@
 ---
 name: configure-model-product
-description: "Configure and test Model through its existing HTTP API: vocabulary lookup, candidate validation, governed changes, ruleset definitions, mapping registrations, metric definitions, Model-derived metric suggestions for KPIs and KPI configuration (including reviewed drafts of compiler-supported in-family metric variants) and versioned releases. Use Jirachi; route service gaps and new metric families to Dialga."
+description: "Configure and test Model through its existing HTTP API: vocabulary lookup, candidate validation, governed changes, ruleset definitions, mapping registrations, metric definitions, Model-derived metric suggestions for KPIs and KPI configuration (including reviewed drafts of compiler-supported in-family metric variants), versioned releases and Model release visualization. Use Jirachi; route service gaps and new metric families to Dialga."
 ---
 
 # Configure Model
@@ -196,6 +196,17 @@ draft, a compiler-rejected variant, a missing vocabulary element, incomplete
 intent, an unknown metric ID, unauthorized access, idempotent replay,
 timeout/recovery and digest mismatch. Publication is not activation, and
 activation is not observed materialization.
+
+## Visualize a governed Model release
+
+When the user asks to pull up, show or visualize the model or its metrics,
+follow [the Model visualization reference](reference/model-visualization.md)
+and fill [the canvas template](reference/model-canvas-template.canvas.tsx).
+The workflow is read-only: pin `release_id=current` to an immutable release
+ID/digest, read `getReleaseComposition` and `listReleaseMetricCatalogs`
+(own plus inherited catalogs), verify catalog digests, embed the data inline
+and write one canvas to the workspace `canvases/` directory. Never embed
+secrets. The canvas is a release snapshot; regenerate it on request.
 
 Keep Persist storage/validation execution with Conkeldurr/Uxie, Rule evaluation with Gallade/Meditite and Transform mapping execution with Kecleon/Silvally. Silvally authors concrete Transform configurations; Model owns shared definition validation and governed publication. Use Mew for vocabulary lookup/modeling advice without changing its retained specialist role.
 
