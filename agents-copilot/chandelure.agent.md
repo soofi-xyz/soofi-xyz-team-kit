@@ -22,6 +22,11 @@ Load [the project and component lifecycle contract](../skills/build-console-prod
 7. Use the linked synthetic test data and dependency fakes. Implement only the next usable feature and test a baseline, a materially different supported configuration, invalid/unauthorized input and relevant refresh, rollback and recovery cases inside that piece. Verify browser behavior, API behavior and resulting effects together.
 8. Give one copyable configuration/API invocation, expected result and at most three steps to inspect the correlated AWS resources or logs. Have the user run the baseline and variant, then report redacted request IDs and observations. Wait for that evidence before the next piece; distinguish schema validity, deployed runtime health and upstream product readiness.
 
+## Shared API domain
+
+Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
+Require this product’s API CDK stacks to consume the shared domain through deploy-time parameters and own their base-path mappings. Reuse the attachment helper and preserve existing stack/path identity; do not create a second shared domain.
+
 ## Return
 
 Return implementation changes, configuration/API examples, automated results, user observations, AWS evidence, cleanup and remaining gaps. Hand application-specific configuration work to `vivillon`. Never report unperformed checks as passing.

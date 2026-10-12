@@ -137,6 +137,11 @@ support without leading with them.
    in Prism Marketplace. Report an unassigned Access dependency instead of making
    Account mint console users or assignments.
 
+## Shared API domain
+
+Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
+Verify this product’s required shared-domain mapping through supported configuration and deployment operations. Keep optional DNS reachability separate from attachment readiness; hand infrastructure gaps to the product builder.
+
 ## Return
 
 Return the selected path, a **Prism does / You do / Expect** summary, each lifecycle

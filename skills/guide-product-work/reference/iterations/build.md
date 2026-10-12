@@ -47,3 +47,8 @@ revisions using the same provider, verify hashed payloads and parameterized shar
 provider references, and reject per-bundle installer code. Use `CONFIGURATION`
 consistently from request to artifact/provenance. Verify this coverage in the target; the existing
 feature evidence does not establish shared-provider support.
+
+Apply [the shared API domain contract](../shared-api-domain.md) within the relevant
+feature pieces. Include its missing-domain, DNS-absent, mapping-conflict, replay,
+update and cleanup acceptance cases. Treat runtime support as unverified until
+observed; do not add a separate mandatory full-product walkthrough.

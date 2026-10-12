@@ -32,6 +32,11 @@ shared Deploy provider and controlled target APIs; surface missing prerequisites
 than skipping review. Verify configuration application results without starting business
 jobs. Keep catalog rollback distinct from reversing configuration effects.
 
+## Shared API domain
+
+Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
+Preserve shared-domain endpoint bindings and validate the exact immutable bundle during Marketplace review with review-owned domain prerequisites. Keep optional DNS separate from attachment acceptance.
+
 ## Return
 
 Return the Marketplace implementation change, compatibility impacts, tests, current learning stage and any unimplemented product decision. Hand configuration-only requests to `registeel`.

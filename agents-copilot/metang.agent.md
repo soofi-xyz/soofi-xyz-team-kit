@@ -47,6 +47,11 @@ absence of bundle-specific installer code. Compare two configuration revisions w
 unchanged service code. Hand source changes to their owners and Build gaps to Tinkaton;
 a verified artifact does not establish applied configuration.
 
+## Shared API domain
+
+Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
+Verify Build rejects missing or inconsistent API attachment declarations and retains endpoint bindings. Exercise credentialless synthesis through the existing API; hand missing validation to Tinkaton.
+
 ## Return
 
 Return the lane chosen; the Build revision and `/information` capabilities checked; redacted `build_id`, `source_id` and `transaction_id`; terminal status with `failure.tag`/`phase`/`reason` when failed; verified artifact facts (size, stacks, artifact/manifest/source sha256 agreement, decoded `service-builder` claims, per-asset policy); the product readiness report with any changes the product would need; user observations and AWS evidence; cleanup; handoffs to `tinkaton`, `registeel` or `skarmory`; and remaining gaps.

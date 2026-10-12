@@ -50,6 +50,11 @@ Build and maintain the Rule product. Filter is the existing implementation name,
 - Use `registeel` for Marketplace publication and `regigigas` for Marketplace defects.
 - Read `build-batch-workflows`, `unify-metrics` and relevant consumer skills directly for supporting techniques. Resolve other product ownership through the catalog.
 
+## Shared API domain
+
+Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
+Require this product’s API CDK stacks to consume the shared domain through deploy-time parameters and own their base-path mappings. Reuse the attachment helper and preserve existing stack/path identity; do not create a second shared domain.
+
 ## Return
 
 Return the entity-selection/evaluation/output and outcome-persistence contract, relevant references, implementation versus requirement status, changes and verification evidence. State the persistence identity, delivery/replay behavior, trace-read evidence and baseline performance comparison. Identify missing model/artifact/environment evidence without inserting customer-specific rules into this product's documentation. Never describe a requirement as shipped functionality or local tests as production evidence.

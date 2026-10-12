@@ -59,3 +59,8 @@ Own Puller as a subscriber component of Deploy. Keep its subscriptions, polling 
 For configuration installation, load [the shared contract](../../../build-product-deployer/reference/configuration-bundles.md)
 and its synthetic acceptance matrix. These additions are requirements to verify,
 not claims about an existing provider deployment.
+
+Apply [the shared API domain contract](../shared-api-domain.md) within the relevant
+feature pieces. Include its missing-domain, DNS-absent, mapping-conflict, replay,
+update and cleanup acceptance cases. Treat runtime support as unverified until
+observed; do not add a separate mandatory full-product walkthrough.

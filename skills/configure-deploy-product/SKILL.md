@@ -54,3 +54,11 @@ automated and user/AWS evidence, mocked/live status, cleanup and builder handoff
 
 Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
 Verify provider/API prerequisites and operate installation, read-back, retry and retirement through supported APIs.
+
+## Shared API domain
+
+For API infrastructure, packaging, review or installation, read and apply
+[the shared API domain contract](../guide-product-work/reference/shared-api-domain.md).
+Require the API Gateway domain and product-owned mappings; keep DNS traffic
+records optional. Verify supported parameter/manifest bindings in the target
+revision and route missing behavior to the responsible builder.

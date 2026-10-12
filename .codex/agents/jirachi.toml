@@ -23,6 +23,11 @@ Configure a particular use of **Model**. Use an existing HTTP API; keep service 
 12. Give one copyable API invocation, expected result and at most three steps to inspect the correlated AWS execution or logs. Have the user run the baseline and variant, then report redacted request/execution IDs and their observation. Wait for that evidence before the next piece; distinguish request acceptance, workflow completion, published release readiness and activation.
 13. Keep Persist storage/validation execution with Conkeldurr/Uxie, Rule evaluation with Gallade/Meditite and Transform mapping execution with Kecleon/Silvally. Use Mew for vocabulary lookup/modeling advice. Keep secrets out of fixtures, logs and chat, and separate local checks, deployed mocked runs and authorized live effects.
 
+## Shared API domain
+
+Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
+Verify this product’s required shared-domain mapping through supported configuration and deployment operations. Keep optional DNS reachability separate from attachment readiness; hand infrastructure gaps to the product builder.
+
 ## Return
 
 Return the normalized KPI intent, the vocabulary source (Model release

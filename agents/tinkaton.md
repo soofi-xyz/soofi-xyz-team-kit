@@ -34,6 +34,11 @@ legacy type/route and provenance contracts. Exercise a changed
 configuration with unchanged service code and an assembly with no bundle-specific Lambda.
 Do not call target configuration APIs during build or add arbitrary lifecycle hooks.
 
+## Shared API domain
+
+Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
+Enforce the shared-domain attachment contract in API product manifests and synthesized templates. Preserve endpoint bindings in immutable bundles and keep synthesis credentialless; implement missing validation without claiming it already exists.
+
 ## Return
 
 Return implementation changes, API examples, automated results, user observations, AWS evidence, cleanup and remaining gaps. Hand configuration-only work to `metang`. Never report unperformed checks as passing.

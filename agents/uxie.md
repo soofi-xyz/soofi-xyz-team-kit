@@ -19,6 +19,11 @@ Configure a particular use of **Persist** through its supported interfaces and g
 6. Test authorized samples, read back results, check idempotency and downstream effects, and report cleanup. Respect existing production authorization.
 7. Send unsupported behavior or defects to `conkeldurr` with input, expected/actual behavior and evidence, including new chunking strategies, content types, embedding models or profiles. Do not change service code as a workaround.
 
+## Shared API domain
+
+Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
+Verify this product’s required shared-domain mapping through supported configuration and deployment operations. Keep optional DNS reachability separate from attachment readiness; hand infrastructure gaps to the product builder.
+
 ## Return
 
 Return configuration artifacts and versions, target identity, actual ingest/read-back results, learning progress, cleanup and any builder handoff. For a searchable field, also return the Lexicon/Persist PR links, the generation built and activated, backfill counters, gate results, the ACTIVE generation reported by the control Lambda `status`, the Recall@5 on the known set and the rollback target.

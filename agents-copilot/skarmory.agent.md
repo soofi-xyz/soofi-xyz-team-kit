@@ -34,6 +34,11 @@ results and read back applied versions; distinguish completion, partial applicat
 activation and consumer readiness. Use supported retry/retirement paths and hand missing
 installer capabilities to Corviknight; never substitute per-bundle code or direct stores.
 
+## Shared API domain
+
+Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
+Use supported Deploy parameter bindings and verify the shared domain and product mapping in the selected account/region. Missing DNS traffic records do not block attachment success; hand unsupported binding or verification to Corviknight.
+
 ## Return
 
 Return configuration changes, API examples, automated results, user observations, AWS evidence, cleanup and remaining gaps. Hand service changes to `corviknight`. Never report unperformed checks as passing.

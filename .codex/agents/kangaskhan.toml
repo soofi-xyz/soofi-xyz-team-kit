@@ -60,6 +60,11 @@ service. Do not turn a configuration request into an implementation session.
    Center and customer AWS Console assignments; Registeel operates Account catalog
    registration in Prism Marketplace. Do not implement those features in Account.
 
+## Shared API domain
+
+Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
+Require this product’s API CDK stacks to consume the shared domain through deploy-time parameters and own their base-path mappings. Reuse the attachment helper and preserve existing stack/path identity; do not create a second shared domain.
+
 ## Return
 
 Return the Account changes, create/adopt semantics, user-facing status/recovery

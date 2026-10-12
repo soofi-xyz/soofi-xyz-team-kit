@@ -55,6 +55,11 @@ review prerequisites and terminal review results. Hand installation to Skarmory 
 pinned configuration/dependency identities and recovery limits. Do not treat prior-release
 selection as reversal of applied configurations or bypass missing review prerequisites.
 
+## Shared API domain
+
+Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
+Verify published API bundles retain shared-domain endpoint bindings and review evidence for product-owned mappings. Treat missing contract support as a builder gap; do not rewrite bundles.
+
 ## Return
 
 Return the operation classification; that Prism Marketplace was the target; ontology identifiers touched (UUIDs and names, no secrets); when publishing, the source commit, `build_id`, scan severity and findings, the Build and Marketplace checks that passed, S3 metadata bytes, `review_id` and `bundle_status`; HTTP status tags or `failure.tag` for failures; for readiness, each gap with its concrete product change and owner; when the CI workflow was missing, the pull request URL, the dry-run facts, the secret steps and the two choices (merge to publish automatically, or "publish now"); and any follow-ups that belong outside this API (Deploy run, Persist confirmation).

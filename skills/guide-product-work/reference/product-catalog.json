@@ -120,7 +120,8 @@
       },
       "notes": [
         "Torterra builds Environment; Shaymin configures existing deployments. Bootstrap is its setup adapter, including the initial no-service install path. HTTP API capabilities are required build scope, not a claim that a service is already deployed.",
-        "Environment bootstraps the Deploy run service and installs its Deploy-owned Puller component; ongoing subscriber behavior belongs to Corviknight/Skarmory."
+        "Environment bootstraps the Deploy run service and installs its Deploy-owned Puller component; ongoing subscriber behavior belongs to Corviknight/Skarmory.",
+        "Require an Environment-owned API Gateway Custom Domain Name and validated certificate before API product installation; DNS traffic records are optional. Publish versioned non-secret attachment metadata and preserve product-owned CDK mappings. Follow skills/guide-product-work/reference/shared-api-domain.md."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/environment.md"
     },
@@ -181,7 +182,8 @@
       },
       "notes": [
         "Regigigas builds Marketplace catalog/publication capabilities. Deploy owns Puller subscriptions, polling, installation history and update execution. Marketplace supplies its supported catalog/publication interfaces; verify notification support rather than restoring historical subscription APIs.",
-        "Register, review and publish configuration bundles using the CONFIGURATION component type; migrate legacy catalog metadata and publication contracts. Require compatible shared Deploy provider and configuration API prerequisites in review environments; catalog rollback does not reverse applied configuration."
+        "Register, review and publish configuration bundles using the CONFIGURATION component type; migrate legacy catalog metadata and publication contracts. Require compatible shared Deploy provider and configuration API prerequisites in review environments; catalog rollback does not reverse applied configuration.",
+        "Preserve and review the versioned shared-domain attachment contract in the exact immutable API product bundle; use review-owned domain prerequisites and distinguish mapping readiness from optional DNS. Follow skills/guide-product-work/reference/shared-api-domain.md."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/marketplace.md"
     },
@@ -242,7 +244,8 @@
       },
       "notes": [
         "Tinkaton builds the Build API and runner; Metang configures build jobs. Build provenance does not imply Marketplace publication or Deploy completion.",
-        "Build configuration bundles as portable CDK assemblies containing configuration assets and declarations referencing the shared Deploy provider. Use CONFIGURATION consistently in request, artifact and provenance schemas; validate payload digests and provider contract requirements without executing configuration APIs during builds."
+        "Build configuration bundles as portable CDK assemblies containing configuration assets and declarations referencing the shared Deploy provider. Use CONFIGURATION consistently in request, artifact and provenance schemas; validate payload digests and provider contract requirements without executing configuration APIs during builds.",
+        "Validate required shared-domain parameters, base paths and product-owned mappings in API product assemblies; keep synthesis credentialless and preserve versioned endpoint bindings in immutable bundles. Follow skills/guide-product-work/reference/shared-api-domain.md."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/build.md"
     },
@@ -303,7 +306,8 @@
       },
       "notes": [
         "Corviknight builds Deploy, including its Puller subscriber component; Skarmory configures runs, subscriptions, polling, update policy and recovery. Keep subscriber desired state, install history and subscription secrets in the Deploy-owned Puller component, separate from the stateless SigV4 run API. Separate packages or stacks do not create a separate product.",
-        "Own the shared configuration-bundle installer and typed Transform, Connect and System API adapters. Ship the provider as part of Deploy service infrastructure through its normal installation/update lifecycle. Reuse a provider per target account/region across bundle stacks; do not package a custom Lambda per bundle. Keep operation receipts separate from Puller subscriber state. Use configuration bundles and the CONFIGURATION type consistently; migrate legacy type handling and subscription metadata with Build and Marketplace. Follow skills/build-product-deployer/reference/configuration-bundles.md."
+        "Own the shared configuration-bundle installer and typed Transform, Connect and System API adapters. Ship the provider as part of Deploy service infrastructure through its normal installation/update lifecycle. Reuse a provider per target account/region across bundle stacks; do not package a custom Lambda per bundle. Keep operation receipts separate from Puller subscriber state. Use configuration bundles and the CONFIGURATION type consistently; migrate legacy type handling and subscription metadata with Build and Marketplace. Follow skills/build-product-deployer/reference/configuration-bundles.md.",
+        "Resolve Environment shared-domain metadata into product CloudFormation parameters, reject path conflicts and verify mappings independently of optional DNS. Preserve shared resources and stable stack identity. Follow skills/guide-product-work/reference/shared-api-domain.md."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/deploy.md"
     },

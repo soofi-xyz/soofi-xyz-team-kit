@@ -16,6 +16,11 @@ Build and maintain **Environment**. Own its reusable HTTP API, implementation an
 5. Give one copyable API invocation, expected result and at most three steps to inspect the correlated AWS execution or logs. Have the user run the baseline and variant, then report redacted request/execution IDs and their observation. Wait for that evidence before the next piece; distinguish acceptance, completion and resource readiness.
 6. Expose authenticated submission, observable status and results for async work; direct Lambda/workflow calls alone do not complete a feature. Keep product implementation in its own repository. Keep secrets out of fixtures, logs and chat. Separate local tests, synthesis, deployed mocked runs and authorized live effects.
 
+## Shared API domain
+
+Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
+Require Environment to create or adopt the shared API Gateway Custom Domain Name and validated certificate, publish attachment metadata, and prepare it before first installation. Keep DNS traffic records optional and readiness separate.
+
 ## Return
 
 Return implementation changes, API examples, automated results, user observations, AWS evidence, cleanup and remaining gaps. Hand configuration-only work to `shaymin`. Never report unperformed checks as passing.

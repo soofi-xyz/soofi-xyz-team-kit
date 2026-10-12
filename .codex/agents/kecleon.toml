@@ -52,4 +52,9 @@ Inspect partial artifacts and failed phases before retrying; use fresh paths for
 Keep Transform execution here. Use Lapras for Connect, which lands external partner data as files for the calling product. Use `conkeldurr` for Persist engine dependencies, `uxie` for Persist configuration, `gallade` for Rule engine changes and `registeel` for Marketplace publication. Use `build-batch-workflows` and `unify-metrics` directly as supporting skills. Resolve Model ownership from the catalog; do not assign it to Persist. Use another execution product only when its actual API/runtime contract is requested.
 
 Return the resolved language pair/mapping or extraction configuration/model/schema, definitions/formats and graph bindings when applicable, exact SQL/Python/TypeScript/CDK changes, configuration/deployment status and verification evidence. Distinguish requirements, implemented code and observed runtime behavior.
+
+## Shared API domain
+
+Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
+Require this product’s API CDK stacks to consume the shared domain through deploy-time parameters and own their base-path mappings. Reuse the attachment helper and preserve existing stack/path identity; do not create a second shared domain.
 '''

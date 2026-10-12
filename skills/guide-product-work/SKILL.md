@@ -22,6 +22,15 @@ Marketplace/Deploy installation; update existing stacks rather than creating
 parallel installations. Treat legacy service URLs/names as discovery facts and
 missing runtime support as implementation gaps.
 
+## Shared API domain
+
+For API infrastructure, packaging or installation, load
+[the shared API domain contract](reference/shared-api-domain.md). Require the
+Environment-owned API Gateway Custom Domain Name and product-owned CDK mappings.
+Keep DNS traffic records optional. Apply this to every assigned API product,
+including Environment, Build and Deploy; do not force endpoints onto bundles
+that expose no API. Verify runtime support before claiming compliance.
+
 ## Choose the role
 
 - **Build:** change the reusable product implementation, fix an engine defect,

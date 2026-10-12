@@ -28,6 +28,11 @@ read-back, scoped authorization and supported retirement. Resolve pinned leaf re
 and keep registration separate from business invocation. Keep configuration installation
 in Deploy; do not require a System business flow to install System's own configurations.
 
+## Shared API domain
+
+Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
+Require this product’s API CDK stacks to consume the shared domain through deploy-time parameters and own their base-path mappings. Reuse the attachment helper and preserve existing stack/path identity; do not create a second shared domain.
+
 ## Return
 
 Return the framework changes, template/compiler checks, scenario results, current learning stage, human observations and evidence levels. Separate mock acceptance from real leaf-product readiness.

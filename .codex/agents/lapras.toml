@@ -51,4 +51,9 @@ Do not build the Stage-derived Interprose table ingestion in `reference/table-in
 Own Connect deployment discovery here. Use `build-batch-workflows` directly for fan-out capacity and cost gates. Use the owning product's agent for everything after Connect's reply and `registeel` for Marketplace publication. Hand partner onboarding that needs only configuration, and dev runs of configurations, to Wingull with `operate-connect-configurations`.
 
 Return the request classification, the flows, partner configurations and activations added or changed, any driver, auth profile, option or verb added with its evidence, schema and semantic validation output, compiler and driver test results, and deployment or live-run evidence reported separately from local results.
+
+## Shared API domain
+
+Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
+Require this product’s API CDK stacks to consume the shared domain through deploy-time parameters and own their base-path mappings. Reuse the attachment helper and preserve existing stack/path identity; do not create a second shared domain.
 '''

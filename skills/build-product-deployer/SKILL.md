@@ -73,3 +73,11 @@ target repository; this kit contains guidance and synthetic inputs.
 
 Read [the shared configuration-bundle contract](reference/configuration-bundles.md) when this work involves configuration bundles.
 Implement the shared provider, typed adapters and observable lifecycle; keep operation receipts separate from subscriber state.
+
+## Shared API domain
+
+For API infrastructure, packaging, review or installation, read and apply
+[the shared API domain contract](../guide-product-work/reference/shared-api-domain.md).
+Require the API Gateway domain and product-owned mappings; keep DNS traffic
+records optional. Verify supported parameter/manifest bindings in the target
+revision and route missing behavior to the responsible builder.

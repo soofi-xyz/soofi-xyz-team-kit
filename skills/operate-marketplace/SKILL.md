@@ -417,3 +417,11 @@ fail until that is connected.
 
 Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
 Publish through the existing workflow, verify provider/API review prerequisites and hand installation to Skarmory; do not bypass review.
+
+## Shared API domain
+
+For API infrastructure, packaging, review or installation, read and apply
+[the shared API domain contract](../guide-product-work/reference/shared-api-domain.md).
+Require the API Gateway domain and product-owned mappings; keep DNS traffic
+records optional. Verify supported parameter/manifest bindings in the target
+revision and route missing behavior to the responsible builder.

@@ -51,8 +51,9 @@ Read the relevant [product contract](../build-bootstrap-cli/reference/PRD.md) an
   Restore the recorded role before deleting that product's retained role, or another
   team's API logging breaks.
 - **Choose a low-footprint test product.** Before an install, inspect the bundle's
-  templates: prefer one without `AWS::ApiGateway::Account`, without required
-  parameters and without resources retained on delete. Resolve its stable stack
+  templates: prefer one without `AWS::ApiGateway::Account`, with only supported shared-domain
+  parameters and without resources retained on delete. Require its API mapping
+  even when DNS traffic records are absent. Resolve its stable stack
   identity in the target account/region. For an existing product installation,
   use the supported Deploy update/binding path, including directly deployed
   stacks. For a fresh-install test, use an isolated target with no matching
@@ -69,3 +70,11 @@ capabilities.
 
 Return configuration changes, redacted identifiers, API/read-back results,
 automated and user/AWS evidence, mocked/live status, cleanup and builder handoffs.
+
+## Shared API domain
+
+For API infrastructure, packaging, review or installation, read and apply
+[the shared API domain contract](../guide-product-work/reference/shared-api-domain.md).
+Require the API Gateway domain and product-owned mappings; keep DNS traffic
+records optional. Verify supported parameter/manifest bindings in the target
+revision and route missing behavior to the responsible builder.
