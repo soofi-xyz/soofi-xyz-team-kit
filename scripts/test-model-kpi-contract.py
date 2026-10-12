@@ -22,6 +22,12 @@ CONFIGURER_REFERENCE = (
     "skills/configure-model-product/reference/kpi-to-metric-configuration.md"
 )
 CAPABILITY_MAP = "skills/guide-product-work/reference/iterations/model.md"
+VISUALIZATION_REFERENCE = (
+    "skills/configure-model-product/reference/model-visualization.md"
+)
+VISUALIZATION_TEMPLATE = (
+    "skills/configure-model-product/reference/model-canvas-template.canvas.tsx"
+)
 MODEL_PRD = "skills/build-lexicon-product/reference/PRD.md"
 JIRACHI_VARIANTS = (
     JIRACHI,
@@ -47,6 +53,7 @@ CONTRACT_FILES = (
     CONFIGURER_SKILL,
     CONFIGURER_REFERENCE,
     CAPABILITY_MAP,
+    VISUALIZATION_REFERENCE,
 )
 
 
@@ -777,6 +784,72 @@ def assert_prompt_synchronization() -> None:
             )
 
 
+def assert_jirachi_visualizes_governed_releases() -> None:
+    for relative in (JIRACHI, CONFIGURER_SKILL, CAPABILITY_MAP):
+        require_all(
+            relative,
+            read(relative),
+            {
+                "visualization reference": "model-visualization.md",
+                "canvas template": "model-canvas-template.canvas.tsx",
+                "release pinning": "release_id=current",
+            },
+        )
+    require_all(
+        CAPABILITY_MAP,
+        read(CAPABILITY_MAP),
+        {"capability piece": "`model-visualization`"},
+    )
+    require_all(
+        VISUALIZATION_REFERENCE,
+        read(VISUALIZATION_REFERENCE),
+        {
+            "trigger phrase": "pull up the model",
+            "read-only": "this workflow is read-only",
+            "release pinning": "release_id=current",
+            "immutable release": "immutable release id and release digest",
+            "composition read": "getreleasecomposition",
+            "catalog read": "listreleasemetriccatalogs",
+            "inherited catalogs": "inherited from the pinned base release",
+            "digest verification": "verify catalog digests",
+            "digest mismatch stops": "stop and report a digest mismatch",
+            "inline data": "embed all data inline",
+            "no network": "must never call `fetch(`",
+            "no secrets": "never embed secrets",
+            "snapshot": "release snapshot",
+            "repository fallback label": "repository source, not a governed release",
+            "no legacy fallback": "never use the legacy",
+            "no invented elements": "never invent vertices",
+        },
+    )
+    template = read(VISUALIZATION_TEMPLATE)
+    imports = re.findall(r"""\bfrom\s+["']([^"']+)["']""", template)
+    if not imports or set(imports) != {"cursor/canvas"}:
+        raise AssertionError(
+            f"{VISUALIZATION_TEMPLATE} must import only from cursor/canvas: {imports}"
+        )
+    if re.search(r"\b(?:require|import)\s*\(", template):
+        raise AssertionError(f"{VISUALIZATION_TEMPLATE} must not load modules dynamically")
+    for forbidden in ("fetch(", "XMLHttpRequest", "WebSocket", "EventSource"):
+        if forbidden in template:
+            raise AssertionError(
+                f"{VISUALIZATION_TEMPLATE} must embed data inline, found {forbidden}"
+            )
+    for marker in ("// ===== DATA START =====", "// ===== DATA END =====", "export default"):
+        if marker not in template:
+            raise AssertionError(f"{VISUALIZATION_TEMPLATE} lacks {marker!r}")
+    data = template.split("// ===== DATA START =====", 1)[1].split(
+        "// ===== DATA END =====", 1
+    )[0]
+    for constant in ("RELEASE", "VERTICES", "EDGES", "CATALOGS"):
+        if not re.search(rf"\bconst\s+{constant}\b", data):
+            raise AssertionError(
+                f"{VISUALIZATION_TEMPLATE} data block lacks the {constant} constant"
+            )
+    if re.search(r"(?i)\b(?:bearer\s+[a-z0-9._-]{8,}|x-api-key|api[_-]?key\s*[:=])", data):
+        raise AssertionError(f"{VISUALIZATION_TEMPLATE} data block must not carry credentials")
+
+
 def assert_no_stale_counts_or_telemetry_content() -> None:
     stale_count = re.compile(
         r"\b\d+\s+(?:definitions|families|metric ids|metrics)\b",
@@ -816,6 +889,7 @@ def main() -> int:
     assert_no_legacy_metric_source()
     assert_domain_neutral_metrics_stay_neutral()
     assert_prompt_synchronization()
+    assert_jirachi_visualizes_governed_releases()
     assert_no_stale_counts_or_telemetry_content()
     print("Dialga/Jirachi business-metric ownership contract tests passed")
     return 0
