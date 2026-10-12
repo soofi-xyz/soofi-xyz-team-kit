@@ -3,6 +3,11 @@ name: operate-marketplace
 description: "Operate the deployed Prism Marketplace catalog API from prismteam-ai/marketplace: configure review settings, register ontology (families, categories, products, configurations, components), check product publish readiness, build bundles through the Build service and publish them, poll reviews, and roll back VALID bundles. Use when registering or publishing products to Prism Marketplace or checking review status."
 ---
 
+For infrastructure, bundle or installation work, load
+[the stable stack identity contract](../build-product-deployer/reference/stack-identity.md).
+Do not introduce deployment stages. Preserve the same stack across direct and
+Marketplace/Deploy installation; verify support before running an update.
+
 Use [the Marketplace capability map](../guide-product-work/reference/iterations/marketplace.md). Derive the feature pieces from scope and dependencies, then apply the work below within each piece; require a user-run configuration, AWS inspection and feedback before starting the next implementation piece.
 
 Follow [guide-product-work](../guide-product-work/SKILL.md). Registeel configures Marketplace; Regigigas owns service implementation changes.
@@ -163,7 +168,7 @@ Hand off and stop when:
 | Need Organizations / StackSets control-plane design | Out of scope for this skill |
 | Need subscriptions / prices / site publication | Out of scope for this product; do not invent routes |
 
-## 1. Review settings (once per stage before non-skip publish)
+## 1. Review settings (per Marketplace deployment before non-skip publish)
 
 The sandbox review runs on a separate review Deploy in account `257779860257`
 (`us-east-2`), not in the Marketplace account. Its API is
@@ -230,7 +235,7 @@ needs no pack or publish scripts and no pull request to be published.
    (or the branch the user named) at the remote tip.
 2. Walk [publish-readiness.md](reference/publish-readiness.md) section A:
    Build readiness (the local recipe of configure-build-product §1, no Build
-   call), the registered component, the security scan and the review-stage rule.
+   call), the registered component, the security scan and the stable stack identity rule.
 3. Prove it end to end without a Marketplace write:
    `DRY_RUN=1 python3 "$BUILD_REPO/actions/publish/publish_via_build.py" all <checkout> [--branch <branch>]`.
    It runs the Code and Build steps (one real build) and makes no Marketplace call.
@@ -312,10 +317,12 @@ checkout.
    VALID bundles exist → `202`. `400` otherwise.
 
 The script stops, with the failed step and reason in its JSON report's
-`error`, on a scan at `MEDIUM` or worse, stack names with a live stage
+`error`, on a scan at `MEDIUM` or worse, identity compatibility failures
 (section D of publish-readiness.md), a Build failure (`failure.tag`) or a
 failed review (`review_details`). Report those; route Build defects to
-`tinkaton` and live-stage stack names to the product's owners.
+`tinkaton`, review defects to `regigigas`, existing-stack update gaps to
+`corviknight` and product identity mismatches to the product's owners.
+Treat legacy forced-stage behavior as an implementation gap, not a naming rule.
 
 `skip_review: true` only before the first VALID bundle, and only with explicit
 user acceptance of a draft. Invalid artifacts return `422 BuildArtifactInvalid`.

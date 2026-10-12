@@ -13,6 +13,15 @@ explain the boundary and use that product's configurer. Do not invent a new prod
 name an implementation detail. Treat an unassigned product as an ownership gap,
 not permission to use a general platform agent.
 
+## Deployment identity
+
+For product infrastructure, packaging or installation, load
+[the stable stack identity contract](../build-product-deployer/reference/stack-identity.md).
+Use no deployment-stage concept. Preserve one stack identity across direct and
+Marketplace/Deploy installation; update existing stacks rather than creating
+parallel installations. Treat legacy service URLs/names as discovery facts and
+missing runtime support as implementation gaps.
+
 ## Choose the role
 
 - **Build:** change the reusable product implementation, fix an engine defect,

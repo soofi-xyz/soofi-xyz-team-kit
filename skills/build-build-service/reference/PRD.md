@@ -875,7 +875,11 @@ Stack outputs:
 
 Implemented outputs: `BuildApi-<stage>` exports `BuildApiUrl`, `CallerAApiKeyId`, `CallerBApiKeyId`; `BuildWorkflow-<stage>` and `BuildData-<stage>` export the state machine, CodeBuild project, bucket, table and key names (see the Build README).
 
-Build publishes itself to Prism Marketplace from its own repository, not through the Build or Comply services: `just pack` synthesizes `marketplace/app.ts` without AWS credentials and packs the zip with Build's own checks, `just publish-dry-run` adds the security scan and writes the tokens, and `just publish` uploads through Marketplace `bundle-uploads` (live stages are refused).
+Publish Build like any other product through the Build service and the shared
+`actions/publish/publish_via_build.py` flow. Apply
+[stable stack identity](../../build-product-deployer/reference/stack-identity.md);
+remove forced-stage synthesis and legacy stage-name rejection in the implementation.
+Verify deployed support before publication; do not hand-pack an alternative zip.
 
 ### 8.3 Smoke tests
 

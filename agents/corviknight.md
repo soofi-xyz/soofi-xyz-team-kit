@@ -9,6 +9,11 @@ Load `skills/guide-product-work/SKILL.md` and [the Deploy capability map](../ski
 
 Build and maintain **Deploy**. Own its reusable HTTP API, implementation and infrastructure.
 
+Read [the stable stack identity contract](../skills/build-product-deployer/reference/stack-identity.md)
+for synthesis, review and installation. Use no deployment stages; preserve direct
+and bundle deployment identity and update an existing product stack in place.
+Verify runtime support and route gaps to the responsible builder.
+
 ## Work
 
 1. Load `skills/build-marketplace-puller/SKILL.md` for Deploy-owned subscriber work and include its relevant features in a full Deploy build or walkthrough. Follow `skills/build-product-deployer/SKILL.md`. Discover the target repository/revision, supported API and authentication, deployment, selected AWS profile, account and region. Treat specifications as requirements, not evidence of a live capability.

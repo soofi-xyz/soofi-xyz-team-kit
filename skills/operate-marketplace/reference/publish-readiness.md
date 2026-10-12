@@ -9,14 +9,17 @@ tags: marketplace, publish, build, cloud-assembly, readiness, security-scan
 The Build service builds every bundle Registeel publishes. A product needs no
 pack or publish scripts and no pull request to be published: it is publishable
 when Build accepts its source, the security scan passes and its stack names are
-safe for the sandbox review. `actions/publish/publish_via_build.py` in
+stable across direct deployment, sandbox review and installation.
+`actions/publish/publish_via_build.py` in
 [`prismteam-ai/build`](https://github.com/prismteam-ai/build) (`actions/publish`) runs the
 whole flow from a product checkout, the same way product CI runs it (the
 Build repository's Actions access must allow organization repositories).
 
 Marketplace's own checks live in `prismteam-ai/marketplace`
 `lambda/services/bundle-review.ts` (`inspectBundle`, `assertComplyPassed`,
-`assertCloudAssemblyZip`, `downloadBundle`). They win if this page drifts.
+`assertCloudAssemblyZip`, `downloadBundle`). Use them to establish implemented
+behavior; report deviations from the stable stack identity requirement as
+implementation gaps.
 Build's contract is [the Build API summary](../../configure-build-product/reference/api-contract.md).
 
 Build itself is published like any other product, through this script and the
@@ -39,14 +42,20 @@ the user named). Report each row `ready`, `missing` or `cannot verify`.
 3. **Security scan passes** (section B, step 2): no critical, high or moderate
    production dependency advisory and no cdk-nag error. Each `NagSuppressions`
    entry in the product needs a written reason.
-4. **Review-stage-safe stack names** (section D).
+4. **Stable stack identities** (section D).
 
-A `missing` row in 1, 3 or 4 is a product source change for the product's
-owners. Report the concrete change and the failing evidence; do not create
+A `missing` row in 1 or 3 is a product source change for the product's owners.
+Route row 4 gaps to Build, Marketplace, Deploy or the product owner according to
+section D. Report the concrete change and the failing evidence; do not create
 branches, commits or pull requests in a product repository, and never patch a
 checkout to get a bundle sooner.
 
-## B. What `publish_via_build.py` does
+## B. Publish flow
+
+Verify the script revision implements section D before using this flow. The
+identity checks below describe required behavior; older scripts may still force
+review-stage synthesis. Report that as a Build gap rather than changing product
+names to satisfy the old script.
 
 ```bash
 DRY_RUN=1 python3 "$BUILD_REPO/actions/publish/publish_via_build.py" all <product-checkout> [--branch main]
@@ -76,7 +85,7 @@ Prerequisites step 4. `all` runs three steps; CI runs them one by one
 
    Severity: any critical/high advisory or nag error → `HIGH`; any moderate
    advisory → `MEDIUM`; only low advisories or nag warnings → `LOW`; nothing →
-   `NONE`. `MEDIUM` or worse, or a stack name with a live stage (section D),
+   `NONE`. `MEDIUM` or worse, or an identity compatibility failure (section D),
    stops here, before Build. The `service-comply` token is written only from
    these results, `issuer: registeel/publish-via-build`.
 3. **Build.** Unless `DRY_RUN=1`, first checks the Marketplace key, review
@@ -130,25 +139,24 @@ Example `service-comply` payload:
 }
 ```
 
-## D. Review-stage rule
+## D. Stable stack identity
 
-The sandbox review installs the bundle into the review account `257779860257`,
-where the review Deploy itself runs as `deploy-dev-*`. Build synthesizes every
-product with CDK context `stage=review` (`packedStage` in the build manifest,
-`cloud_assembly.packed_stage` in `service-builder`), so a product that reads
-`stage` gets `-review` stack names; the scan synth sets the same context. The
-script still refuses any CloudFormation stack name with a `dev` or `prod` stage
-segment in its Code step, before Build: that means the product hardcodes a
-live stage.
+Follow [the shared identity contract](../../build-product-deployer/reference/stack-identity.md).
+Build and the scan must synthesize without a deployment stage. Review the exact
+bundle in an isolated account using the same stack identities as direct product
+deployment and subsequent Deploy installation. Do not append a review suffix,
+rewrite the artifact or reject an existing identity solely for a legacy suffix.
 
-Report a refusal to the product's owners: the Marketplace entrypoint must take
-its stage from CDK context. Do not work around it with a product patch, a
-hand-packed zip or `skip_review`.
+Verify the current Build/script and Marketplace revision against this requirement.
+Route forced-stage synthesis, scan guards and provenance migration to Tinkaton;
+review isolation/validation gaps to Regigigas; existing-stack binding/update gaps
+to Corviknight; direct/bundle identity mismatches to the product's builder. Report
+unsupported capabilities without claiming they are implemented or bypassing review.
 
 ## E. How to report
 
 One row per section A item, then: the `build_id`, scan severity and findings,
 and whether the
 product can publish now. Name blockers outside the product (Build not reachable
-with `MARKETPLACE_API_KEY`, review settings not operational, review-stage
-names) with their owner.
+with `MARKETPLACE_API_KEY`, review settings not operational, stack identity
+compatibility) with their owner.

@@ -3,6 +3,11 @@ name: configure-build-product
 description: "Configure and test Build through its deployed HTTP API: upload a product source zip, start SERVICE/CONFIGURATION builds, follow status and logs, read the manifest, download and verify the CDK cloud assembly and its service-builder provenance, and check product build readiness. Use Metang; route service gaps to Tinkaton."
 ---
 
+For infrastructure, bundle or installation work, load
+[the stable stack identity contract](../build-product-deployer/reference/stack-identity.md).
+Do not introduce deployment stages. Preserve the same stack across direct and
+Marketplace/Deploy installation; verify support before running an update.
+
 # Configure Build
 
 Use `metang`. Load [guide-product-work](../guide-product-work/SKILL.md) and

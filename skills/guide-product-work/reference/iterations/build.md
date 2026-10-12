@@ -1,5 +1,10 @@
 # Build capability map
 
+Apply [stable stack identity](../../../build-product-deployer/reference/stack-identity.md)
+to synthesis, review and installation. Include its direct-to-bundle update and
+legacy-stack binding cases in the relevant feature acceptance checks.
+
+
 Use Tinkaton to implement Build and Metang to configure existing
 capabilities. Follow the [shared workflow](../../SKILL.md). These 7 areas are a
 starting inventory, not a fixed iteration count. Order dependencies and split
