@@ -423,5 +423,7 @@ Publish through the existing workflow, verify provider/API review prerequisites 
 For API infrastructure, packaging, review or installation, read and apply
 [the shared API domain contract](../guide-product-work/reference/shared-api-domain.md).
 Require the API Gateway domain and product-owned mappings; keep DNS traffic
-records optional. Verify supported parameter/manifest bindings in the target
+records optional. Publish `base_path` and `requires.domain: true` only;
+`endpoints`/`endpoint_contract_version` need a Build schema change first. Read
+domain metadata from `/account/env-parameters`. Verify support in the target
 revision and route missing behavior to the responsible builder.

@@ -180,6 +180,9 @@ sandbox has an Environment-owned shared domain and `/account/env-parameters` and
 the installing Deploy binds it. Bootstrap the shared domain in the review sandbox
 through Environment shared-routing before publishing domain-required products.
 Do not pass `SharedApiDomainName` from Marketplace; Deploy rejects caller overrides.
+The review sandbox is registered as Account identity
+`413b7b04-db48-49f2-a044-408170dc5976` (`review-sandbox.account.prismteam.ai`);
+its Environment shared routing is still pending.
 
 ## Shared API key status
 

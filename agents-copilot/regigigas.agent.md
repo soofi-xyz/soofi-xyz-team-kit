@@ -35,7 +35,7 @@ jobs. Keep catalog rollback distinct from reversing configuration effects.
 ## Shared API domain
 
 Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
-Preserve shared-domain endpoint bindings and validate the exact immutable bundle during Marketplace review with review-owned domain prerequisites. Keep optional DNS separate from attachment acceptance.
+Validate the exact immutable bundle during Marketplace review with review-owned domain prerequisites (publish `base_path` and `requires.domain: true` only; `endpoints`/`endpoint_contract_version` need a Build schema change first; domain metadata comes from `/account/env-parameters`). Keep optional DNS separate from attachment acceptance.
 
 ## Return
 

@@ -58,7 +58,7 @@ selection as reversal of applied configurations or bypass missing review prerequ
 ## Shared API domain
 
 Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
-Verify published API bundles retain shared-domain endpoint bindings and review evidence for product-owned mappings. Treat missing contract support as a builder gap; do not rewrite bundles.
+Verify published API bundles declare `base_path` and `requires.domain: true` only (`endpoints`/`endpoint_contract_version` need a Build schema change first; domain metadata comes from `/account/env-parameters`) and review evidence for product-owned mappings. Treat missing contract support as a builder gap; do not rewrite bundles.
 
 ## Return
 
