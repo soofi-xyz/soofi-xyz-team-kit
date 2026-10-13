@@ -34,6 +34,19 @@ results and read back applied versions; distinguish completion, partial applicat
 activation and consumer readiness. Use supported retry/retirement paths and hand missing
 installer capabilities to Corviknight; never substitute per-bundle code or direct stores.
 
+## Model lexicon installation into Persist
+
+Verify the target Deploy revision has the Persist lexicon install step; if not, leave
+the checkpoint pending and hand the gap to Corviknight. Never call Persist's lexicon API
+directly. Take release coordinates (`account_id`, `vocabulary_id`, immutable
+`release_id`, `documentDigest`, `artifactOwnership`, `extensionName`) from Jirachi.
+Before running, check `GET /persist/lexicon`: `source: legacy-ssm` means writes fail
+with 409, so stop and report the pending cutover. Install the base first, then each
+extension. Verify afterwards: base and each extension sha256 equal the Model digest
+without `sha256:`, `GET /persist/lexicon/extensions` lists exactly the expected names,
+the merged sha256/ETag is recorded separately, and an identical re-run reports
+`changed: false`.
+
 ## Shared API domain
 
 Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
