@@ -10,9 +10,13 @@ Use `jirachi`. Load [guide-product-work](../guide-product-work/SKILL.md) and
 Read the relevant [product contract](../build-lexicon-product/reference/PRD.md) and
 [synthetic test data](../build-lexicon-product/reference/test-data.md).
 
-1. Discover the existing service/revision, supported API, authentication and
-   resource authorization, selected AWS profile, account and region. Separate
-   required, implemented and observed capabilities. Do not guess route names.
+1. Ask the user which AWS profile to use; never pick one from repository docs or
+   try other local profiles. With that profile, discover the region, AWS account
+   and Model stacks (`ListStacks` filtered to `PrismModel-*`). If there are zero
+   or several stacks, ask. Then discover the supported API, authentication and
+   resource authorization. Ask for anything you can't discover; never guess.
+   Separate required, implemented and observed capabilities. Do not guess route
+   names.
 2. Select the requested feature pieces and dependencies. Explain each with a
    synthetic fixture. Use a baseline, materially different supported configuration,
    invalid/unauthorized input and relevant replay/recovery cases inside each piece;
