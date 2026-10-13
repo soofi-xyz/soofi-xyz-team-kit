@@ -6,7 +6,7 @@
   "trigger": { "type": "schedule", "cron": "0 7 * * ? *", "timezone": "America/New_York" },
   "subscriber": {
     "url": "https://<m2d-intake-endpoint>",
-    "signing_secret_ref": "arn:aws:secretsmanager:<region>:<account>:secret:<subscriber-signing-secret>"
+    "signing_credential": "subscriber-signing"
   },
   "enabled": true
 }

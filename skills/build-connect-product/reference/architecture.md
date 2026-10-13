@@ -27,8 +27,15 @@ Its only interface to internal systems is the job contract in §5: a status API,
 a reply to the caller's callback, and file pointers in S3. Everything after that
 belongs to the calling product.
 
-Treat a vendor-hosted system the company uses (for example Interprose's REST API
-or its customer S3 bucket) as external. Treat a bucket, database or service the
+Treat a vendor-hosted system the company uses (for example Interprose's REST API,
+its customer S3 bucket or its source database) as external.
+
+Table ingestion ([table-ingestion/PRD.md](table-ingestion/PRD.md)) is part of
+Connect. It reads registered external source tables and files, reads its own
+source registrations from Lexicon, and chains its own workflows through
+Connect-owned events. Its run ends at `EXTRACTED`; the calling product runs
+Transform/Persist and calls Connect's acknowledgement boundary to commit the
+checkpoint. Connect never invokes Transform or Persist. Treat a bucket, database or service the
 company owns as internal, even when a partner originally produced the data.
 
 ## 2. Concepts
@@ -36,8 +43,9 @@ company owns as internal, even when a partner originally produced the data.
 | Concept | Meaning |
 | --- | --- |
 | **Partner** | An external organization or system. Namespace for connections, flows and lookups. |
-| **Connection** | A named, typed endpoint of a partner (`http`, `sftp`, `azure_blob`, `s3`, `drop_zone`). Carries location, auth profile and secret references. The type selects a driver. |
-| **Partner configuration** | Per tenant and environment: binds a flow's connection aliases to concrete connections, and holds partner parameters (prefixes, cutoffs, key references, allowed actions). One flow serves many partner configurations. |
+| **Connection** | A named, typed endpoint of a partner (`http`, `sftp`, `azure_blob`, `s3`, `drop_zone`). Carries location, auth profile and the name of its credential. The type selects a driver. |
+| **Credential** | Named secret values of a partner (for example `username`/`password`, an API key, OAuth client credentials, an SFTP key, a PGP key). Set only through the credentials API (§7); connections, keys, webhooks and subscribers name it. |
+| **Partner configuration** | Per tenant and environment: binds a flow's connection aliases to concrete connections, and holds partner parameters (prefixes, cutoffs, key credentials, allowed actions). One flow serves many partner configurations. |
 | **Flow** | A versioned, multi-step, asynchronous interaction written from verbs. Compiled to a STANDARD state machine. |
 | **Lookup** | A single synchronous `CALL`. Compiled to an EXPRESS state machine and answered inline. |
 | **Activation** | Runtime binding of flow + partner configuration + trigger + subscriber, with an `enabled` switch. Schedules, drop zones and partner webhooks are activations. |
@@ -68,7 +76,8 @@ reply-back, metrics or auth plumbing; the compiler adds them to every flow.
 
 ```text
 Trigger (API call | schedule | drop-zone object | partner webhook)
-  → resolve activation / partner configuration (secrets stay references)
+  → resolve activation / partner configuration (credentials stay in their
+    store; the job carries credential names and EventBridge Connection ARNs)
   → create job_id, persist the request, return 202 for API calls
   → run the compiled flow: verbs, waits, loops, choices
   → land every fetched payload in the Connect bucket as file pointers
@@ -98,8 +107,8 @@ and sanitized errors. It never contains credentials.
 
 ## 6. Runtime operability
 
-- Create, update, dry-run and version flows, partner configurations, connections
-  and activations through the API. Never require a CDK deploy per partner,
+- Create, update, dry-run and version flows, partner configurations, connections,
+  credentials and activations through the API. Never require a CDK deploy per partner,
   schedule, drop zone or feature.
 - Deploy shared runtime capacity once (compiler, workers, drivers, webhook
   ingress, scheduler group, drop-zone bucket) in an inactive state; activate
@@ -107,14 +116,50 @@ and sanitized errors. It never contains credentials.
 - Enable or disable an activation without redeploying. A disabled activation
   keeps its ledger.
 
-## 7. Lineage and what changes
+## 7. Credentials
+
+Connect owns partner credentials. Operators set values through the credentials
+API; flows, partner configurations, activations, configuration bundles, logs and
+evidence carry only credential names. Connect writes each credential into the
+store its runtime needs ([aws-runtime.md](aws-runtime.md) §6); operators never
+create, tag or reference those stores.
+
+- `PUT /partners/{partner}/credentials/{credential}` with
+  `{profile, values}` → replace all values; create the backing store on first
+  write.
+- `PATCH /partners/{partner}/credentials/{credential}` with `{values}` → merge
+  the supplied keys and keep the rest.
+- `GET /partners/{partner}/credentials` and
+  `GET /partners/{partner}/credentials/{credential}` → profile, key names with
+  set/unset flags, version, `updated_at` and, for HTTP profiles, the
+  EventBridge Connection state. Never return values.
+- `POST /partners/{partner}/credentials/{credential}/import` with an Account
+  source → copy the values from the Account product and return the affected
+  key names. Verify the Account API exposes the source before relying on it.
+- `DELETE /partners/{partner}/credentials/{credential}` → `409` while a
+  partner configuration, webhook or activation names it.
+
+Validate `values` against the profile's required keys. Responses, errors and
+audit records contain key names, version and caller, never values. A rotation
+takes effect on the next call of running and new jobs without redeploying a
+flow. Accept flows, partner configurations and activations that name a
+credential that is missing or incomplete, so operators can create them before
+credentials exist; report the missing credential names and unset keys on read.
+A job that needs such a credential fails before any partner request.
+
+Keep non-secret auth settings (`header`, `prefix`, `token_url`, `token_path`,
+`scopes`, `role_arn`) on the connection; keep only secret values in the
+credential.
+
+## 8. Lineage and what changes
 
 The design keeps the Staircase Connector model that the
 [Connect service PRD](../../build-connect-service/reference/PRD.md) already ports
 to TypeScript/CDK: vendors, flows, lookups, an ASL-shaped spec with
 `ResourceDefinition.Type`, a compiler workflow, JSONPath state, `Extract.Save`,
 injected retries and reply-back, file pointers for large responses, webhook
-correlation by payload value, and per-tenant partner configuration.
+correlation by payload value, per-tenant partner configuration and
+Connect-owned partner credentials set through its API.
 
 It changes five things that blocked reuse:
 

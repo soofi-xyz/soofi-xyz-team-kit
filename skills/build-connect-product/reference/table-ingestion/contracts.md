@@ -44,7 +44,7 @@ release, never new Python.
 
 | Adapter | `connection` | `Table.source` | Read modes | Cursor | `readConsistency` | Entity context |
 | --- | --- | --- | --- | --- | --- | --- |
-| `postgres-jdbc` | `JdbcConnection`: Glue connection, secret ARN, database | `relation` or reviewed `query` | `full`, `timestamp_window`, `append_window` | registered column value | `read_committed_materialized` | pushed key predicate |
+| `postgres-jdbc` | `JdbcConnection`: Glue connection, Connect credential name, database | `relation` or reviewed `query` | `full`, `timestamp_window`, `append_window` | registered column value | `read_committed_materialized` | pushed key predicate |
 | `s3-file` | `S3FileConnection`: bucket, prefix, `parquet`/`csv`/`xlsx`, reader options, row/byte ceiling | `object` key plus `sheet` for `xlsx` | `full` only | object SHA-256 recorded in `TablePlan.sourceObject` | `single_object_snapshot` | filter over the materialized read |
 
 Add an adapter only with: one `connection` subschema and a conditional branch in
@@ -73,10 +73,10 @@ Read these together:
   [baseline request](examples/baseline-request-file.json). The catalog lists both.
 
 Every reference in the example catalog/source definition has the actual digest
-of the supplied bytes. The example secret ARN/account/connection and price are
+of the supplied bytes. The example credential/account/connection and price are
 synthetic. Materialize `examples/config/*` at local URI-equivalent paths under
 `<localObjectRoot>/connect-local/config/`; local execution uses test tables and
-must not retrieve that secret or contact AWS. On real publication, substitute
+must not resolve that credential or contact AWS. On real publication, substitute
 approved resources, recalculate child-to-parent digests and publish the catalog
 last through Lexicon. Do not copy local fixture credentials into a live source.
 
@@ -164,7 +164,7 @@ annotations explicitly identified as sample-only. Unknown fields/options fail.
 
 Resolve `Plan.observedAt` once from the workflow execution start, always UTC.
 Pin `sourceDefinition`, projection, dependencies, schema/policy/query digests and
-one complete previous checkpoint. Put credential references, never secret values,
+one complete previous checkpoint. Put credential names, never credential values,
 in the plan. Classify first-load tables from `Checkpoint.coverage.initialized`,
 including tables initialized with zero rows. An access failure is not first use.
 

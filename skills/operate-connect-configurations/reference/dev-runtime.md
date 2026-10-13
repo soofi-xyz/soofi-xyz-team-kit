@@ -56,6 +56,9 @@ the credentials.
 | `PUT /connect/activations/{activation_id}` | Create or replace an activation |
 | `GET /connect/activations/{activation_id}` | Read it |
 | `POST /connect/activations/{activation_id}/enable` and `/disable` | Switch it at runtime |
+| `PUT` / `PATCH /connect/partners/{partner}/credentials/{name}` | Replace or merge credential values (responses carry key names only) |
+| `GET /connect/partners/{partner}/credentials/{name}` | Key set/unset flags, version, EventBridge Connection state |
+| `POST /connect/partners/{partner}/credentials/{name}/import` | Copy values from Account |
 | `POST /connect/partners/{partner}/flows/{flow}/jobs` | Start a job (`transaction_id` is the idempotency key) |
 | `POST /connect/partners/{partner}/lookups/{lookup}` | Synchronous lookup (`kind: lookup` flows) |
 | `POST /connect/partners/{partner}/uploads` | Presigned PUT for a file the product delivers |
@@ -87,13 +90,28 @@ aws lambda invoke --function-name connect-dev-schedule \
 
 ## Credentials
 
-- Connect roles read only secrets tagged `connect:partner-secret=dev`, plus the
-  stack's own callback and PagerDuty secrets. Copy partner secrets to
-  `connect/dev/partners/<partner>/<name>` and tag the copy; read source
-  secrets, never change them.
-- Formats: API key as a raw string; Transfer Family SFTP connector secret as
-  `{"Username","Password"}` or `{"Username","PrivateKey"}`; PGP private key and
-  passphrase as separate secrets.
+- Set partner credentials only through the credentials API. Connect stores HTTP
+  auth in its own EventBridge Connections and SFTP auth in its own connector
+  secrets; never create or tag secrets for Connect. Read source secrets, never
+  change them. Verify the routes exist in the target before use; a missing
+  route is a `lapras` gap.
+- Values by profile: `basic` and SFTP `password` as `{username, password}`;
+  `api_key` and `bearer` as `{value}`; `oauth2_client_credentials` as
+  `{client_id, client_secret}`; SFTP `private_key` as `{username, private_key}`;
+  PGP as `{private_key, passphrase}`; table-ingestion `jdbc` as
+  `{username, password}`.
+- Set values without printing them, for example:
+
+```bash
+aws secretsmanager get-secret-value --secret-id <source-secret> \
+  --query SecretString --output text \
+  | jq '{profile: "basic", values: {username: .Username, password: .Password}}' \
+  | curl -sS -X PUT --aws-sigv4 "aws:amz:us-east-2:execute-api" \
+      --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
+      -H "x-amz-security-token: $AWS_SESSION_TOKEN" \
+      -H 'content-type: application/json' --data @- \
+      "${API_URL%/}/connect/partners/<partner>/credentials/<name>"
+```
 - SFTP in Lambda goes through a Transfer Family connector
   (`transfer_connector_id` on the connection). The partner must allowlist the
   connector's static egress IPs. A listing of a missing directory ends after
@@ -108,7 +126,7 @@ aws lambda invoke --function-name connect-dev-schedule \
 teardown against `Connect-dev`, and it runs in CI after every deploy. Reuse its
 helpers (`scripts/dev/`, `test/dev/harness.ts`): the verification endpoint for
 signed replies and fake partners, the Transfer Family test SFTP server, and
-the secret copy scripts. Do not run two suites at once; setup refuses while
+the credential setup scripts. Do not run two suites at once; setup refuses while
 another run's SFTP server is younger than 3 hours.
 
 ## Paging and alarms

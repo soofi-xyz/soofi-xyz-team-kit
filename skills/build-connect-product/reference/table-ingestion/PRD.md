@@ -1,10 +1,11 @@
 # Connect ingestion — product contract
 
-> **Status: set aside.** This Stage-derived table-ingestion track is not part of
-> the Connect block architecture in [`../architecture.md`](../architecture.md).
-> Its Transform/Persist handoff and Persist-gated checkpoint conflict with the
-> rule that Connect only talks to external systems. Do not build it unless the
-> user explicitly asks, and resolve that boundary with them first.
+> **Status: in scope.** Table ingestion is a required Connect capability beside
+> the block architecture in [`../architecture.md`](../architecture.md). It reads
+> external source databases and files; Connect's run ends at `EXTRACTED`. The
+> parent orchestrator invokes Transform/Persist and calls Connect's
+> acknowledgement boundary to commit the checkpoint; Connect never calls them
+> ([AWS workflow](aws-workflow.md) §1).
 
 Build a configurable ingestion product that acquires registered source tables,
 detects record changes and publishes the related data needed to process affected
@@ -48,7 +49,8 @@ advertise only capabilities actually implemented and tested.
 
 Implement `postgres-jdbc` first and `s3-file` second; see the
 [adapter registry](contracts.md#adapters). `postgres-jdbc` reads through
-registered relations or reviewed, digest-pinned read-only SQL views; use Secrets Manager references and private
+registered relations or reviewed, digest-pinned read-only SQL views; name a Connect credential
+([architecture](../architecture.md) §7) and use private
 network access. Require a stable record identity, logical schema and an explicit
 entity-link rule for every table. Support direct links and a current-state bridge;
 express more complex joins as reviewed source-view artifacts with declared

@@ -58,27 +58,27 @@ Then classify:
 
 ## 2. Locate production credentials
 
-- Find where the consuming product keeps the partner secret today (its CDK,
-  config, or Secrets Manager names such as `<product>/<partner>/...`). Record
-  the secret ARN, account, and the JSON keys it holds. Do not read values
-  into the conversation; inspect keys and value lengths only.
+- Find where the production values live today: the Account product, or the
+  consuming product's CDK, config or Secrets Manager (`<product>/<partner>/...`).
+  Record the source, account and the keys it holds. Do not read values into
+  the conversation; inspect keys and value lengths only.
 - Record the partner's side of auth: allowlisted IPs (Connect egress must be
   added), host key fingerprint, OAuth token URL, role ARN and external id.
-- Plan the Connect-owned production copy:
-  `connect/prod/partners/<partner>/<name>`, tagged
-  `connect:partner-secret=prod`. Do not create production copies until a
-  production Connect stack exists and the user approves.
+- Plan the production Connect credential: its name, profile and keys, and
+  whether it is imported from Account or set with `PUT`. Do not set production
+  credentials until a production Connect stack exists and the user approves.
 
 ## 3. Get dev credentials
 
 Prefer, in order:
 
 1. **Partner QA or sandbox** credentials already in the dev account (for
-   example `dev/<partner>/...`). Copy them into
-   `connect/dev/partners/<partner>/<name>` in the format Connect expects (raw
-   string for an API key; `{"Username","Password"}` or
-   `{"Username","PrivateKey"}` for a Transfer Family connector), tagged
-   `connect:partner-secret=dev`. Connect's roles read only tagged secrets.
+   example `dev/<partner>/...`). Set them as a Connect credential with
+   `PUT /connect/partners/<partner>/credentials/<name>` (`{profile, values}`),
+   piping values from the source into the signed request without printing
+   them, or `POST .../import` when Account holds them. Confirm with `GET` that
+   every required key is set and, for HTTP profiles, the EventBridge Connection
+   is `AUTHORIZED`.
 2. **Partner production, read-only**, only with explicit user approval, only
    GET/LIST operations, and only when no QA exists.
 3. **A test partner you control**: a Connect-owned Transfer Family SFTP server,
@@ -86,10 +86,10 @@ Prefer, in order:
    real field names. Use it for anything that writes, sends or deletes at the
    partner.
 
-Keep scripts idempotent (create or update the copy; never duplicate), tag
-everything you create `connect:verify=dev`, and list what you created. See
-[dev runtime](reference/dev-runtime.md) for how the dev stack reads secrets,
-SFTP connectors and cross-account roles.
+Keep scripts idempotent (`PUT` replaces; never create a second credential for
+the same purpose), tag infrastructure you create `connect:verify=dev`, and list
+what you created. See [dev runtime](reference/dev-runtime.md) for the credentials
+API, SFTP connectors and cross-account roles.
 
 ## 4. Select the test sample
 
@@ -119,7 +119,7 @@ Rules for the sample:
   Keep the flow unchanged when it fits; put tenant specifics in the partner
   configuration's `connections` and `parameters`.
 - Name a dev partner configuration `<partner>-dev-<purpose>` and point every
-  `secret_ref` at a Connect-owned dev copy.
+  `credential` at a dev credential set in step 3.
 - Create schedule activations with `"enabled": false` and a cron that never
   fires (`0 5 1 1 ? 2099`); the test enables and fires them explicitly.
 - Set `limits` on every new flow, `Concurrency` on every `Map`, and an explicit
@@ -167,9 +167,10 @@ triggers.
    - landed files' checksums equal the sample's;
    - the reply arrived and its signature verifies;
    - a rerun lands nothing new (ledger);
-   - no secret value appears in the manifest, reply or logs.
+   - no credential value appears in the manifest, reply, logs or API responses.
 5. Record latencies (p50, p95 for lookups), durations, counts and job ids.
-6. Disable the activation, remove test-partner objects, and delete temporary
+6. Disable the activation, remove test-partner objects, delete test
+   credentials no configuration still names, and delete temporary
    infrastructure (Transfer Family servers bill hourly).
 
 When a run fails, read the job's `error_code` and the Step Functions execution
@@ -184,18 +185,18 @@ sample.
   and the error codes it must handle.
 - Add the dev configuration and its test to the Connect repo's dev suite
   (`test/dev/`, `docs/runbooks/dev-verification.md`) so CI keeps proving it.
-- List the production steps: Connect-owned production secret copies, partner
+- List the production steps: production credentials set or imported, partner
   allowlisting of production egress IPs, production partner configuration,
   activation with the real cron, and the user approval needed to enable it.
 
 ## Return
 
 Return the run report: classification, data profile, credential sources and
-copies (ARNs only), sample and expected outcomes, configuration documents with
+Connect credentials set (names and key names only), sample and expected outcomes, configuration documents with
 validation output, dev evidence, cleanup, defects handed to `lapras`, and the
 production steps.
 
 ## Configuration bundles
 
 Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
-Author pinned configuration documents and secret references; preserve partner validation and keep registration separate from activation and traffic.
+Author pinned configuration documents that name credentials and never carry their values; preserve partner validation and keep registration separate from activation and traffic.

@@ -7,7 +7,7 @@
     "Alias": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,31}$" },
     "JsonPath": { "type": "string", "pattern": "^\\$\\." },
     "VarsPath": { "type": "string", "pattern": "^\\$\\.vars\\." },
-    "SecretRef": { "type": "string", "pattern": "^arn:aws:secretsmanager:" },
+    "CredentialName": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,62}$" },
     "ValueOrPath": {},
     "ConnectionType": { "enum": ["http", "sftp", "azure_blob", "s3", "drop_zone"] },
     "JsonSchema": { "type": "object" },
@@ -467,7 +467,7 @@
           "enum": ["none", "basic", "api_key", "bearer", "oauth2_client_credentials", "token_call", "client_certificate",
                    "password", "private_key", "connection_string", "sas", "assume_role", "partner_principal"]
         },
-        "secret_ref": { "$ref": "#/$defs/SecretRef" },
+        "credential": { "$ref": "#/$defs/CredentialName" },
         "header": { "type": "string" },
         "prefix": { "type": "string" },
         "token_url": { "type": "string", "pattern": "^https://" },
@@ -478,7 +478,7 @@
       },
       "allOf": [
         { "if": { "properties": { "profile": { "const": "assume_role" } } }, "then": { "required": ["role_arn"] } },
-        { "if": { "properties": { "profile": { "enum": ["basic", "api_key", "bearer", "oauth2_client_credentials", "token_call", "client_certificate", "password", "private_key", "connection_string", "sas"] } } }, "then": { "required": ["secret_ref"] } }
+        { "if": { "properties": { "profile": { "enum": ["basic", "api_key", "bearer", "oauth2_client_credentials", "token_call", "client_certificate", "password", "private_key", "connection_string", "sas"] } } }, "then": { "required": ["credential"] } }
       ]
     },
 
@@ -561,8 +561,8 @@
           "type": "object",
           "propertyNames": { "$ref": "#/$defs/Alias" },
           "additionalProperties": {
-            "type": "object", "additionalProperties": false, "required": ["secret_ref"],
-            "properties": { "secret_ref": { "$ref": "#/$defs/SecretRef" }, "passphrase_ref": { "$ref": "#/$defs/SecretRef" } }
+            "type": "object", "additionalProperties": false, "required": ["credential"],
+            "properties": { "credential": { "$ref": "#/$defs/CredentialName" } }
           }
         },
         "webhooks": {
@@ -572,11 +572,11 @@
             "type": "object", "additionalProperties": false, "required": ["auth"],
             "properties": {
               "auth": {
-                "type": "object", "additionalProperties": false, "required": ["scheme", "secret_ref"],
+                "type": "object", "additionalProperties": false, "required": ["scheme", "credential"],
                 "properties": {
                   "scheme": { "enum": ["header_secret", "hmac_sha256", "basic"] },
                   "header": { "type": "string" },
-                  "secret_ref": { "$ref": "#/$defs/SecretRef" }
+                  "credential": { "$ref": "#/$defs/CredentialName" }
                 }
               }
             }
@@ -614,8 +614,8 @@
           ]
         },
         "subscriber": {
-          "type": "object", "additionalProperties": false, "required": ["url", "signing_secret_ref"],
-          "properties": { "url": { "type": "string", "pattern": "^https://" }, "signing_secret_ref": { "$ref": "#/$defs/SecretRef" } }
+          "type": "object", "additionalProperties": false, "required": ["url", "signing_credential"],
+          "properties": { "url": { "type": "string", "pattern": "^https://" }, "signing_credential": { "$ref": "#/$defs/CredentialName" } }
         },
         "enabled": { "type": "boolean" }
       }

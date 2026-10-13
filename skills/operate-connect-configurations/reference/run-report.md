@@ -1,7 +1,7 @@
 # Run report template
 
-Fill one report per partner exchange. Keep secret values, customer names and
-raw PII out; use ARNs, identifiers and hashes.
+Fill one report per partner exchange. Keep credential values, customer names and
+raw PII out; use credential and key names, identifiers and hashes.
 
 ```markdown
 # <partner> <purpose> on Connect
@@ -15,11 +15,11 @@ raw PII out; use ARNs, identifiers and hashes.
 - Classification: <configuration only | new flow | hand to lapras | not Connect>
 
 ## 2. Production credentials
-| Purpose | Source secret ARN | Keys | Planned Connect copy |
+| Purpose | Source (Account, secret ARN) | Keys | Planned Connect credential |
 | --- | --- | --- | --- |
 
 ## 3. Dev credentials
-| Purpose | Source (QA, prod read-only, test partner) | Connect copy ARN | Tagged |
+| Purpose | Source (QA, prod read-only, test partner) | Connect credential | Keys set / connection state |
 | --- | --- | --- | --- |
 
 ## 4. Sample
@@ -41,7 +41,7 @@ raw PII out; use ARNs, identifiers and hashes.
 | Checksums match | | |
 | Reply signed | | |
 | Rerun lands nothing | | |
-| No secrets in outputs | | |
+| No credential values in outputs | | |
 | Latency / duration | | |
 
 Cleanup: <activations disabled, objects removed, servers deleted>
@@ -50,5 +50,5 @@ Cleanup: <activations disabled, objects removed, servers deleted>
 - Product contract: <route, configuration_id, payload, reply, error codes>
 - Added to dev suite: <test file, runbook row>
 - Defects handed to lapras: <id, execution ARN, sample>
-- Production steps: <secrets, allowlisting, configuration, activation, approval>
+- Production steps: <credentials, allowlisting, configuration, activation, approval>
 ```

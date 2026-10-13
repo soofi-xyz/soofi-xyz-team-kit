@@ -63,7 +63,7 @@ semantic checks in §6. Worked documents are in [examples/](examples/).
       "type": "azure_blob",
       "account_url": "https://<account>.blob.core.windows.net",
       "containers": ["americor"],
-      "auth": { "profile": "connection_string", "secret_ref": "arn:aws:secretsmanager:<region>:<account>:secret:<name>" }
+      "auth": { "profile": "connection_string", "credential": "americor-blob" }
     }
   },
   "parameters": { "prefix": "TO_SOC/", "pattern": "*.xlsx", "archive_prefix": "TO_SOC/completed/",
@@ -73,8 +73,9 @@ semantic checks in §6. Worked documents are in [examples/](examples/).
 }
 ```
 
-Bind every alias the flow declares. Keep only references to secrets. `keys`
-names PGP or signing keys by reference for `DECRYPT` and webhook auth.
+Bind every alias the flow declares. Name credentials only; set their values
+through the credentials API ([architecture.md](architecture.md) §7). `keys` names
+the PGP or signing key credential for `DECRYPT` and webhook auth.
 `webhooks.<name>.auth` configures inbound webhook authentication
 (`header_secret`, `hmac_sha256`, `basic`).
 
@@ -87,7 +88,7 @@ names PGP or signing keys by reference for `DECRYPT` and webhook auth.
   "flow_version": 4,
   "configuration_id": "americor-prod",
   "trigger": { "type": "schedule", "cron": "0 * * * ? *", "timezone": "America/New_York" },
-  "subscriber": { "url": "https://<claydol-intake-endpoint>", "signing_secret_ref": "arn:aws:secretsmanager:..." },
+  "subscriber": { "url": "https://<claydol-intake-endpoint>", "signing_credential": "claydol-subscriber-signing" },
   "enabled": true
 }
 ```

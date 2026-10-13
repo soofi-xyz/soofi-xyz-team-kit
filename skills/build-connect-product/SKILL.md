@@ -29,7 +29,9 @@ contains instructions, contracts and examples only.
 4. To implement or change the runtime, read
    [AWS runtime](reference/aws-runtime.md) and the
    [Connect service PRD](../build-connect-service/reference/PRD.md) it builds on.
-5. Prove changes with [verification](reference/verification.md).
+5. For source-table ingestion, read
+   [table ingestion](reference/table-ingestion/PRD.md) and its contracts.
+6. Prove changes with [verification](reference/verification.md).
 
 ## Decide the cost of a request
 
@@ -52,13 +54,16 @@ Classify every request before designing anything:
 - Name verbs for actions, never for providers, formats or partners. Keep
   provider details in connection types, tenant details in partner
   configurations, and shared behavior in options.
-- Put auth and secrets on connections as Secrets Manager references. Flows
-  never name secrets.
+- Own partner credentials through the Connect credentials API
+  ([architecture](reference/architecture.md) §7). Connections name a
+  credential; flows never do. Hold HTTP auth in Connect-owned EventBridge
+  Connections used by native HTTP Tasks
+  ([AWS runtime](reference/aws-runtime.md) §6).
 - Land payloads in the Connect bucket and return file pointers with checksums.
   Keep inline responses within `MaxInlineBytes`.
 - Require `limits` on every flow and `Concurrency` on every `Map`.
-- Make everything runtime-operable: flows, partner configurations, connections
-  and activations change through the API, never through a CDK deploy or
+- Make everything runtime-operable: flows, partner configurations, connections,
+  credentials and activations change through the API, never through a CDK deploy or
   context flag.
 - Pin flow versions in activations. Accept legacy task types only as aliases.
 - Do not add a general `CODE` verb.
@@ -72,14 +77,14 @@ Classify every request before designing anything:
 - Use [inbound SFTP workflows](../build-inbound-sftp-workflows/SKILL.md) for
   Transfer Family connector details behind the `sftp` driver.
 
-## Set-aside track
+## Table ingestion
 
-[`reference/table-ingestion/`](reference/table-ingestion/PRD.md) holds the
-Stage-derived Interprose table-ingestion specification (JDBC reads, record
-deltas, entity bundles, Persist-gated checkpoints, Iceberg snapshots). It is
-not part of the block architecture and conflicts with the external-only
-boundary. Do not build from it unless the user explicitly asks, and resolve
-that boundary with them first.
+Build source-table ingestion from
+[`reference/table-ingestion/`](reference/table-ingestion/PRD.md) (JDBC and file
+reads, record deltas, entity bundles, acknowledgement-gated checkpoints,
+Iceberg snapshots) whenever a product needs registered source tables. End each
+run at `EXTRACTED`; the calling product runs Transform/Persist and acknowledges.
+Name source credentials through the credentials API like any connection.
 
 ## Return
 
