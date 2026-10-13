@@ -27,17 +27,44 @@ Preserve [stable stack identity](../../build-product-deployer/reference/stack-id
 - Product stacks own APIs, API Gateway stages and mappings. Never create or delete
   the Environment-owned domain, certificate or DNS from an ordinary product stack.
   Keep Environment's shared resources in its own stable infrastructure boundary.
-- Publish versioned non-secret metadata: contract version, account ID, region,
-  domain name, endpoint type, domain status and DNS configuration status. Expose
-  supported API read-back and preserve verified SSM compatibility outputs. Include
-  alias target/hosted-zone data only where DNS configuration needs it; mappings
-  need the domain name, not certificate management permissions.
+- Publish versioned non-secret metadata through the verified source below. Expose
+  supported API read-back without changing its shape. Mappings need the domain
+  name, not certificate management permissions.
 - Prepare shared-domain resources before the first API product installation.
   Before service APIs exist, use Environment's authorized Bootstrap adapter and
   shared execution logic to create/adopt prerequisites and pass the same resolved
   parameters into the first Deploy install. Adopt/read back non-secret results
   through Environment once available. Do not require Environment's own API to be
   running before creating its domain or introduce a second deployment engine.
+
+## Shared domain metadata source
+
+Environment shared-routing writes SSM `/account/env-parameters` in the customer
+account/region with schema `environment.shared-routing.outputs.v1`, plus
+`/account/shared-usage-plan-id`:
+
+```json
+{
+  "schema_version": "environment.shared-routing.outputs.v1",
+  "account_id": "<account-id>",
+  "aws_account_id": "<aws-account-id>",
+  "region": "<region>",
+  "domain": {
+    "fqdn": "api.example.com",
+    "certificate_arn": "arn:aws:acm:...",
+    "regional_domain_name": "d-xxxx.execute-api.<region>.amazonaws.com",
+    "regional_hosted_zone_id": "<zone-id>",
+    "additional_fqdns": ["optional"]
+  },
+  "usage_plan": { "id": "<id>", "name": "<name>" },
+  "dns": { "mode": "EXTERNAL" }
+}
+```
+
+`dns.mode` is `EXTERNAL` or `MANAGED_ALIAS`; `additional_fqdns` is optional.
+Build reads this parameter and maps it conditionally; Deploy's reader is being
+wired to the same parameter. Read this parameter; do not invent another name,
+route or shape. Reject unsupported `schema_version` values.
 
 ## Bundle and CDK boundary
 
@@ -49,37 +76,32 @@ Keep the base path a stable product declaration without a leading/trailing slash
 reject empty/root claims and duplicate paths. Do not derive it from bundle version
 or a deployment-stage selector. Preserve an existing verified path during adoption.
 
-Extend the existing `marketplace.product.json` declarative manifest, retaining
-`base_path` and `requires.domain: true`. Use the following versioned endpoint
-binding shape as the target contract; migrate consumers together before use:
+Publish only `base_path` and `requires.domain: true` for the shared domain in
+`marketplace.product.json`, keeping other existing fields:
 
 ```json
 {
   "base_path": "persist",
-  "requires": { "domain": true },
-  "endpoint_contract_version": "1",
-  "endpoints": [
-    {
-      "stack_artifact_id": "PersistApi",
-      "domain_parameter": "SharedApiDomainName",
-      "base_path": "persist",
-      "mapping_logical_id": "SharedApiMapping",
-      "url_output": "ProductApiUrl"
-    }
-  ]
+  "requires": { "domain": true }
 }
 ```
 
-Keep other existing manifest fields. For multiple endpoints, declare every mapping
-and its unique path; keep the legacy `base_path` consistent with the primary
-endpoint. Validate that stack artifact, parameter, mapping logical ID and output
-exist and agree with the template. Reject conditional attachment bypasses and
-API-bearing bundles that omit endpoint declarations. Do not infer that an API is
-absent solely because its manifest omitted `base_path`.
+Build's manifest schema is closed and rejects unknown fields. Do not add
+`endpoint_contract_version`, `endpoints` or other undeclared fields; Marketplace
+publish fails with `MarketplaceManifestInvalid … unknown field(s)`. A versioned
+`endpoints[]` binding (stack artifact, domain parameter, base path, mapping
+logical ID, URL output) is a future target that first requires a Build schema
+change, then coordinated Marketplace and Deploy migration.
+
+Until then, validate endpoint agreement in product tests and the stack: the
+`SharedApiDomainName` parameter, the mapping logical ID, its base path matching
+the manifest `base_path`, and the URL output. Reject conditional attachment
+bypasses. Do not infer that an API is absent solely because its manifest omitted
+`base_path`.
 
 Reuse or implement a shared CDK attachment helper that accepts the domain token,
 product base path and product API/stage, creates the native mapping and emits the
-endpoint binding/output. Keep the helper in the verified shared CDK package;
+URL output. Keep the helper in the verified shared CDK package;
 do not invent a published package or require synth-time AWS lookups. Use native
 CloudFormation mappings rather than per-product custom-resource Lambdas.
 
@@ -113,18 +135,18 @@ Use the same templates, parameters and logical IDs for direct and bundle install
 
 ## Build, review and installation
 
-1. Build/Tinkaton validates manifest/template agreement and required mappings
-   during credentialless synthesis/assembly validation. Preserve endpoint bindings
-   in the sanitized deployment manifest and cover them with artifact integrity
-   checks. Do not resolve target domains or call configuration APIs during builds.
-2. Marketplace/Regigigas preserves and reviews the exact immutable artifact with
-   compatible review-owned domain prerequisites. Supply review parameter values;
-   do not rewrite bundles or borrow production domains for review.
-3. Deploy/Corviknight resolves authenticated Environment metadata for the verified
-   target account/region and passes the bound domain as a CloudFormation parameter.
-   Keep caller values from overriding the verified domain. Reject unavailable or
-   incompatible domains and unsupported contract versions before product writes.
-   Resolve existing stack ownership before accepting an existing mapping as its own.
+1. Build/Tinkaton validates the closed manifest schema, `base_path` and
+   `requires.domain` during credentialless synthesis/assembly validation and
+   covers them with artifact integrity checks. Do not resolve target domains or
+   call configuration APIs during builds.
+2. Marketplace/Regigigas preserves and reviews the exact immutable artifact in
+   its review environment (below). Do not rewrite bundles or borrow production
+   domains for review.
+3. Deploy/Corviknight reads `/account/env-parameters` for the verified target
+   account/region and binds `domain.fqdn` to `SharedApiDomainName`. Reject caller
+   overrides of `SharedApiDomainName`. Reject unavailable or incompatible domains
+   and unsupported schema versions before product writes. Resolve existing stack
+   ownership before accepting an existing mapping as its own.
 4. Check path claims and serialize competing attachment operations using supported
    orchestration. Do not treat a preflight read as an atomic reservation. Preserve
    existing foreign mappings; reconcile concurrent CloudFormation conflicts without
@@ -135,9 +157,10 @@ Use the same templates, parameters and logical IDs for direct and bundle install
    Puller advance installed identity. Preserve previous identity on failed updates
    and reconcile partial effects before retrying.
 6. Report domain-resource readiness, attachment readiness, DNS configuration and
-   observed reachability separately. Missing optional DNS traffic records must not
-   fail domain or mapping acceptance. A URL output is a declared address, not proof
-   of public reachability. Test API behavior through a supported reachable endpoint
+   observed reachability separately; report reachability `UNVERIFIED` until
+   traffic is tested. Missing optional DNS traffic records must not fail domain or
+   mapping acceptance. Neither a URL output nor mapping read-back proves public
+   reachability. Test API behavior through a supported reachable endpoint
    and test custom-domain traffic when routing exists; preserve API authentication.
 7. Delete only the product-owned mapping on product retirement. Preserve the shared
    domain, certificate, DNS and sibling mappings. Do not silently disable the direct
@@ -147,12 +170,40 @@ Use Metang, Registeel and Skarmory to exercise their existing service capabiliti
 route schema, validation or execution gaps to their respective builders. Do not
 claim older deployed behavior or deferred custom-domain work meets this contract.
 
+## Review environment
+
+Marketplace review installs products in sandbox account `257779860257` and sends
+only `product`, `artifact_url` and `target`, with no CloudFormation parameters.
+A product requiring `SharedApiDomainName` fails review (`The following
+CloudFormation Parameters are missing a value: SharedApiDomainName`) unless the
+sandbox has an Environment-owned shared domain and `/account/env-parameters` and
+the installing Deploy binds it. Bootstrap the shared domain in the review sandbox
+through Environment shared-routing before publishing domain-required products.
+Do not pass `SharedApiDomainName` from Marketplace; Deploy rejects caller overrides.
+
+## Shared API key status
+
+API Gateway API keys and usage plans work only on REST APIs. Current state:
+
+- Build and Marketplace require API keys on the shared usage plan.
+- Environment and Model use Account's request authorizer on `x-api-key`; some
+  Model routes are IAM-only.
+- Deploy, Transform, Connect and System are IAM SigV4 only. Deploy's shared API
+  key for its run/Puller APIs is pending prismteam-ai/deploy PR #13.
+- Persist is an HTTP API with an IAM authorizer. HTTP APIs have no usage plans;
+  add a Lambda authorizer on `x-api-key` via Account.
+- Configuration bundles (SmsSendFlow, SmsInterproseFork, TransformConfiguration)
+  expose no API and are exempt.
+
+Verify the target revision before assuming key support.
+
 ## Acceptance within the relevant feature
 
 - Install two products with distinct paths against one domain with no traffic DNS;
   require both mappings and explicit unverified public reachability.
-- Reject missing/unavailable domain, wrong account/region, inconsistent endpoint
-  metadata and a missing or conditional mapping before successful installation.
+- Reject missing/unavailable domain, wrong account/region, a caller
+  `SharedApiDomainName` override, a base path disagreeing with the mapping and a
+  missing or conditional mapping before successful installation.
 - Reject duplicate/unauthorized path claims; exercise concurrent claims and preserve
   the successful owner without overwriting its mapping.
 - Repeat installation and update a directly deployed product through Deploy;
