@@ -10,9 +10,16 @@ Use `jirachi`. Load [guide-product-work](../guide-product-work/SKILL.md) and
 Read the relevant [product contract](../build-lexicon-product/reference/PRD.md) and
 [synthetic test data](../build-lexicon-product/reference/test-data.md).
 
-1. Discover the existing service/revision, supported API, authentication and
-   resource authorization, selected AWS profile, account and region. Separate
-   required, implemented and observed capabilities. Do not guess route names.
+1. Use only the Model API URL, API key and Model `account_id` the user provides;
+   ask for any that are missing. Never use AWS credentials, profiles, stack
+   outputs or API Gateway to find them. The user sets the key in their own
+   terminal (for example `export MODEL_API_KEY=...`); never ask them to paste it
+   into chat and never echo it. The shared base is installed under `account_id`
+   `model`, never an AWS account number. Then discover the supported API,
+   authentication and resource authorization from the API and
+   `prismteam-ai/model` `contracts/openapi.yaml`. Ask for anything you can't
+   discover; never guess. Separate required, implemented and observed
+   capabilities. Do not guess route names.
 2. Select the requested feature pieces and dependencies. Explain each with a
    synthetic fixture. Use a baseline, materially different supported configuration,
    invalid/unauthorized input and relevant replay/recovery cases inside each piece;
