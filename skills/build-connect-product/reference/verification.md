@@ -20,7 +20,8 @@ does not prove a live partner integration.
 - Negative cases must fail with an exact path: provider-named verb, `Map`
   without `Concurrency`, write outside `$.vars`, missing `limits`, unknown
   option, state without `Next`/`End`, `CALL` without `Path`, inline limit above
-  256 KB, auth profile without `secret_ref`, non-HTTPS base URL, a field from
+  256 KB, auth profile without `credential`, a Secrets Manager ARN or literal secret
+  value in place of a credential name, non-HTTPS base URL, a field from
   another connection type, activation without subscriber, internal trigger
   type such as `eventbridge`.
 
@@ -63,6 +64,8 @@ Azurite, MinIO or moto) and, before release, a real test account:
 | Decrypt | Valid PGP decrypts; wrong key fails non-retryable; plaintext never logged |
 | Limits | Timeout, `max_items`, `max_bytes` and `max_cost_usd` stop the job with a `PARTIAL` or `FAILED` manifest |
 | Replies | URL callback is signed and retried; task-token callback resumes the caller; unattended runs reach the activation subscriber |
+| Credentials | `PUT` replaces and `PATCH` merges values; reads, errors, audit records and manifests never contain values; `DELETE` of a bound credential returns `409`; a missing or incomplete credential fails before any partner request; rotation applies to the next call without redeploying; Account import returns only affected key names |
+| Credential stores | Each HTTP profile creates and updates one `connect-*` EventBridge Connection encrypted with the Connect KMS key; one compiled flow calls two partner configurations through their own connections; OAuth tokens refresh without Connect code; HTTP workers read the same connection secret; a `DEAUTHORIZED` connection surfaces as a credential failure; SFTP connectors read the Connect-managed secret |
 | Runtime operation | Creating, disabling and re-enabling a schedule, drop zone or webhook activation needs no deploy |
 
 ## 5. Use-case acceptance

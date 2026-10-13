@@ -12,7 +12,7 @@
       "host_key_fingerprint": "SHA256:<fingerprint>",
       "username": "<username>",
       "egress": "static_ip",
-      "auth": { "profile": "private_key", "secret_ref": "arn:aws:secretsmanager:<region>:<account>:secret:<sftp-secret>" }
+      "auth": { "profile": "private_key", "credential": "sftp" }
     }
   },
   "parameters": {

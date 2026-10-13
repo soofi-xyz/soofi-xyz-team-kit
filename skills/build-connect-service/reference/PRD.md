@@ -14,14 +14,18 @@ classification, graph writes and internal business orchestration belong to consu
 - Use the current `/connect/partners/{partner}/flows/{flow}/jobs` family and the
   flow, partner-configuration and activation surfaces. Verify complete routes in
   the target repository. The service uses IAM SigV4, not the old vendor API-key surface.
-- Keep secrets in tagged Secrets Manager references on connections. Do not restore
-  the old Connect credential vault, token APIs or vendor CRUD.
+- Own partner credentials through the Connect credentials API
+  ([architecture](../../build-connect-product/reference/architecture.md) §7),
+  backed by Connect-owned EventBridge Connections for HTTP auth. Replace tagged
+  Secrets Manager references when the target still uses them. Do not restore
+  the old vendor API-key surface or vendor CRUD.
 - Compile flow definitions in the API runtime into Step Functions execution.
   Keep workflow control in Step Functions; compilation itself is not a separate
   Step Functions compiler workflow in the reported implementation.
 - Use the implemented worker families and imported AWS Transfer Family connectors.
   Static-IP egress, native HTTP tasks, Fargate Runner and connector provisioning
-  are not established as shipped by the supplied comparison.
+  are not established as shipped by the supplied comparison. Native HTTP Tasks
+  with EventBridge Connections are the required HTTP auth target.
 - Use landing-bucket job prefixes, SSE-KMS, webhook/drop-zone SQS queues and DLQs.
   Validate the target's Draft 2020-12 JSON Schema using its existing Ajv setup;
   do not replace it merely because the historical PRD mandated Zod.

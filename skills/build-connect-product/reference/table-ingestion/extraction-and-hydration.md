@@ -7,7 +7,8 @@ pipeline for the real Glue entry point and local integration tests.
 
 ## 1. Plan safe source reads
 
-Resolve credentials only in the job through the verified secret reference. Use
+Resolve credentials only in the job through the Connect-managed secret of the
+source's credential. Use
 the configured Glue connection/VPC, TLS, read-only database grants and a pinned
 JDBC driver. Keep database names, source SQL and partition policies registered.
 Never log credentials, complete JDBC URLs containing secrets or source rows.

@@ -11,7 +11,7 @@
   },
   "subscriber": {
     "url": "https://<kadabra-quiq-events-endpoint>",
-    "signing_secret_ref": "arn:aws:secretsmanager:<region>:<account>:secret:<subscriber-signing-secret>"
+    "signing_credential": "subscriber-signing"
   },
   "enabled": true
 }

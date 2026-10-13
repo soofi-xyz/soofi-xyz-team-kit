@@ -9,7 +9,7 @@ Evidence comes from reading the repositories on 2026-09-24 (no live AWS checks):
 `sms-workflow` (SMS, codename Kadabra), `claydol-agent` (DSA workflows), and
 `m2d-pipeline` with `seller-media-transfer-workflow`,
 `seller-media-transfer-m2d-trigger` and `seller-media-upload-workflow` (M2D).
-Interprose table ingestion (the `stage` lineage) is set aside; see
+Interprose table ingestion (the `stage` lineage) is specified in
 [table-ingestion/PRD.md](table-ingestion/PRD.md).
 
 ## 1. In scope: external systems

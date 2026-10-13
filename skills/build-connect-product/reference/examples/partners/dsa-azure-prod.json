@@ -8,14 +8,14 @@
       "type": "azure_blob",
       "account_url": "https://<storage-account>.blob.core.windows.net",
       "containers": ["americor"],
-      "auth": { "profile": "connection_string", "secret_ref": "arn:aws:secretsmanager:<region>:<account>:secret:<azure-blob-secret>" }
+      "auth": { "profile": "connection_string", "credential": "azure-blob" }
     },
     "outbox": {
       "type": "azure_blob",
       "account_url": "https://<storage-account>.blob.core.windows.net",
       "containers": ["americor"],
       "root": "FROM_SOC/",
-      "auth": { "profile": "connection_string", "secret_ref": "arn:aws:secretsmanager:<region>:<account>:secret:<azure-blob-secret>" }
+      "auth": { "profile": "connection_string", "credential": "azure-blob" }
     }
   },
   "parameters": {

@@ -98,8 +98,9 @@ passes the driver conformance suite in [verification.md](verification.md).
 Capabilities include atomic move, etag availability, server-side copy and
 maximum object size; the compiler checks verbs and options against them.
 
-Secrets are always Secrets Manager references on the connection. Flows never
-name a secret.
+Auth names a Connect credential (`auth.credential`); its values are set only
+through the credentials API ([architecture.md](architecture.md) §7). Flows never
+name a credential.
 
 ## 4. Shared options
 

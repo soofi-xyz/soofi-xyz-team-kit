@@ -7,7 +7,7 @@
     "provider": {
       "type": "http",
       "base_url": "https://<tenant>.goquiq.com",
-      "auth": { "profile": "basic", "secret_ref": "arn:aws:secretsmanager:<region>:<account>:secret:<quiq-api-secret>" }
+      "auth": { "profile": "basic", "credential": "quiq-api" }
     },
     "drop": {
       "type": "drop_zone",
@@ -18,10 +18,10 @@
   },
   "webhooks": {
     "events": {
-      "auth": { "scheme": "header_secret", "header": "X-Webhook-Secret", "secret_ref": "arn:aws:secretsmanager:<region>:<account>:secret:<quiq-webhook-secret>" }
+      "auth": { "scheme": "header_secret", "header": "X-Webhook-Secret", "credential": "quiq-webhook" }
     },
     "status": {
-      "auth": { "scheme": "header_secret", "header": "X-Webhook-Secret", "secret_ref": "arn:aws:secretsmanager:<region>:<account>:secret:<quiq-webhook-secret>" }
+      "auth": { "scheme": "header_secret", "header": "X-Webhook-Secret", "credential": "quiq-webhook" }
     }
   }
 }

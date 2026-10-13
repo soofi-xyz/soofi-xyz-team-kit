@@ -2020,9 +2020,9 @@
           "type": "string",
           "minLength": 1
         },
-        "credentialsSecretArn": {
+        "credential": {
           "type": "string",
-          "pattern": "^arn:[a-z-]+:secretsmanager:"
+          "pattern": "^[a-z][a-z0-9-]{1,62}$"
         },
         "database": {
           "type": "string",
@@ -2031,7 +2031,7 @@
       },
       "required": [
         "glueConnectionName",
-        "credentialsSecretArn",
+        "credential",
         "database"
       ],
       "additionalProperties": false

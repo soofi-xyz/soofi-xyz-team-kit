@@ -1074,7 +1074,7 @@
         "configure": "operate-connect-configurations"
       },
       "notes": [
-        "Own flow, partner-configuration and activation API lifecycle semantics consumed by the shared Deploy installer. Lapras handles API gaps; Wingull authors and verifies payloads and secret references. Configuration registration must not implicitly start partner jobs."
+        "Own flow, partner-configuration and activation API lifecycle semantics consumed by the shared Deploy installer. Lapras handles API gaps; Lapras owns the credentials API and its EventBridge Connection stores; Wingull authors and verifies payloads and sets credentials through that API. Configuration registration must not implicitly start partner jobs."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/connect.md"
     },
