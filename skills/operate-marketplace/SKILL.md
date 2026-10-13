@@ -235,7 +235,8 @@ needs no pack or publish scripts and no pull request to be published.
    (or the branch the user named) at the remote tip.
 2. Walk [publish-readiness.md](reference/publish-readiness.md) section A:
    Build readiness (the local recipe of configure-build-product §1, no Build
-   call), the registered component, the security scan and the stable stack identity rule.
+   call), the registered component, the security scan, the stable stack identity
+   rule and, for API products, shared domain plus shared `x-api-key` support.
 3. Prove it end to end without a Marketplace write:
    `DRY_RUN=1 python3 "$BUILD_REPO/actions/publish/publish_via_build.py" all <checkout> [--branch <branch>]`.
    It runs the Code and Build steps (one real build) and makes no Marketplace call.

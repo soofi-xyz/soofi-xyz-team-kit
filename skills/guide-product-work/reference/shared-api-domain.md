@@ -181,8 +181,22 @@ the installing Deploy binds it. Bootstrap the shared domain in the review sandbo
 through Environment shared-routing before publishing domain-required products.
 Do not pass `SharedApiDomainName` from Marketplace; Deploy rejects caller overrides.
 The review sandbox is registered as Account identity
-`413b7b04-db48-49f2-a044-408170dc5976` (`review-sandbox.account.prismteam.ai`);
-its Environment shared routing is still pending.
+`413b7b04-db48-49f2-a044-408170dc5976`. Verified 2026-10-13: it has the
+Environment shared domain `review-sandbox.account.prismteam.ai` (REGIONAL,
+TLS 1.2, AVAILABLE), populated `/account/env-parameters` and shared usage plan
+`rpx73d` (`/account/shared-usage-plan-id`).
+
+Before publishing a domain-required product, require both: the sandbox has the
+Environment shared domain and `/account/env-parameters`, and the sandbox Deploy
+host (`deploy-dev-*`) runs a Deploy whose TakeSource binds `SharedApiDomainName`
+(prismteam-ai/deploy PR #18). Deploy's own publish then succeeded (review
+`9e0a0dd0-4827-48ca-bd05-7f47a80e27bb`; mapping `/deploy` to `deploy-review-api`
+stage `review`).
+
+The sandbox holds two Deploys: the host `deploy-dev-*` and the review install
+`deploy-review-*`. Do not deploy the host's deploy-api stack there directly; it
+would claim the same `/deploy` path on the review domain. Update only the host's
+workflow stack. Moving the host out of the sandbox is an open design decision.
 
 ## Shared API key status
 
@@ -199,6 +213,24 @@ API Gateway API keys and usage plans work only on REST APIs. Current state:
   expose no API and are exempt.
 
 Verify the target revision before assuming key support.
+
+### Publish readiness gate
+
+An API product is not publish-ready unless every customer-facing API method
+accepts the environment's single shared key on the `x-api-key` header through:
+
+1. REST methods with `apiKeyRequired: true` and the stage attached to the shared
+   usage plan read from `/account/shared-usage-plan-id` (deploy-time or runtime
+   attachment, like Build/Marketplace), or
+2. Account's request authorizer on `x-api-key` (like Environment/Model).
+
+HTTP APIs need a Lambda authorizer that validates `x-api-key` with Account. Keep
+IAM SigV4 only for service-to-service/internal routes, never as the only customer
+path. Configuration bundles are exempt. Registeel checks this with the shared-domain
+readiness (`base_path`, `requires.domain: true`, `SharedApiMapping`) from the
+synthesized template/source revision and reports failures as not ready. Route
+implementation to the product builder (Corviknight, Kecleon, Lapras, Zygarde,
+Conkeldurr, or Dialga for IAM-only Model routes); never publish anyway.
 
 ## Acceptance within the relevant feature
 
