@@ -64,7 +64,7 @@ Azurite, MinIO or moto) and, before release, a real test account:
 | Decrypt | Valid PGP decrypts; wrong key fails non-retryable; plaintext never logged |
 | Limits | Timeout, `max_items`, `max_bytes` and `max_cost_usd` stop the job with a `PARTIAL` or `FAILED` manifest |
 | Replies | URL callback is signed and retried; task-token callback resumes the caller; unattended runs reach the activation subscriber |
-| Credentials | `PUT` replaces and `PATCH` merges values; reads, errors, audit records and manifests never contain values; `DELETE` of a bound credential returns `409`; a missing or incomplete credential fails before any partner request; rotation applies to the next call without redeploying; Account import returns only affected key names |
+| Credentials | `PUT` replaces and `PATCH` merges values; reads, errors, audit records and manifests never contain values; `DELETE` of a bound credential returns `409`; a flow, partner configuration or activation naming a missing or incomplete credential saves and reports it on read, and its job fails before any partner request; rotation applies to the next call without redeploying; Account import returns only affected key names |
 | Credential stores | Each HTTP profile creates and updates one `connect-*` EventBridge Connection encrypted with the Connect KMS key; one compiled flow calls two partner configurations through their own connections; OAuth tokens refresh without Connect code; HTTP workers read the same connection secret; a `DEAUTHORIZED` connection surfaces as a credential failure; SFTP connectors read the Connect-managed secret |
 | Runtime operation | Creating, disabling and re-enabling a schedule, drop zone or webhook activation needs no deploy |
 

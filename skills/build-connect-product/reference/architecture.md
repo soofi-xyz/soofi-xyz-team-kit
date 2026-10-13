@@ -142,8 +142,10 @@ create, tag or reference those stores.
 Validate `values` against the profile's required keys. Responses, errors and
 audit records contain key names, version and caller, never values. A rotation
 takes effect on the next call of running and new jobs without redeploying a
-flow. A partner configuration that names a missing or incomplete credential is
-rejected on save, and a job fails before any partner request.
+flow. Accept flows, partner configurations and activations that name a
+credential that is missing or incomplete, so operators can create them before
+credentials exist; report the missing credential names and unset keys on read.
+A job that needs such a credential fails before any partner request.
 
 Keep non-secret auth settings (`header`, `prefix`, `token_url`, `token_path`,
 `scopes`, `role_arn`) on the connection; keep only secret values in the
