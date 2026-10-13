@@ -19,15 +19,13 @@ This workflow is read-only: it issues only `GET` operations and never submits
 change sets, uploads artifacts, records review decisions, publishes or
 activates anything.
 
-1. Discover the deployment, account, vocabulary and authentication exactly as in
-   step 1 of the [configurer skill](../SKILL.md). Verify every operation below in
-   `prismteam-ai/model` `contracts/openapi.yaml` at the pinned revision. Real
-   stacks use an Account bearer token; a fake-auth review stack uses its
-   generated test API key plus `X-Test-Account-Id`. Take the Model `account_id`
-   from the stack's `ProductBaseAccountId` output, never from the AWS account
-   number or README examples. Ask the user before reading any key value (for
-   example `get-api-key --include-value`), and keep it in an unexported shell
-   variable; never echo it.
+1. Get the Model API URL, API key and `account_id` from the user as in step 1 of
+   the [configurer skill](../SKILL.md); never use AWS credentials or profiles.
+   Verify every operation below in `prismteam-ai/model` `contracts/openapi.yaml`
+   at the pinned revision. Send the key in the `x-api-key` header on every
+   `/model/*` request; a fake-auth review stack also needs `X-Test-Account-Id`
+   equal to the path `account_id`. Keep the key in an unexported shell variable;
+   never echo it.
 2. Pin the release. Unless the user names a release, call `getRelease` with
    `release_id=current` and resolve it to the immutable release ID and release
    digest. Use that immutable release ID for every later read; never render
@@ -45,7 +43,7 @@ activates anything.
    the raw artifact bytes, not the parsed `document`. Compare the listed digest
    with the composition `manifest.metricCatalogs[].digest`. When raw bytes are
    available (for example the same file at the pinned repository revision), hash
-   those exact bytes. Never hash re-serialized JSON. If no raw bytes are
+   those exact bytes with SHA-256. Never hash re-serialized JSON. If no raw bytes are
    available, report "digest present, bytes not verified". Stop and report
    a digest mismatch, a `404` or a `502` instead of rendering partial content.
 6. For an extension release, resolve imported endpoints: each
@@ -120,9 +118,9 @@ vertex definitions, do not write a canvas; report what is missing.
 
 ## Fallback without a deployment
 
-Only when discovery finds no Model stack, or the API's `/health` fails, and the
-user explicitly agrees after being told the result will not be a governed
-release, read a checkout pinned to `origin/main` (state its commit and asset
+Only when the provided URL's `/health` fails, and the user explicitly agrees
+after being told the result will not be a governed release, read a
+`prismteam-ai/model` checkout pinned to `origin/main` (state its commit and asset
 version): `assets/shared-base/<version>/composition.json`, its
 `metric-catalogs.json`, and `configurations/<package>/` catalogs. Set
 `RELEASE.source` to `repository-checkout`, put the repository revision in
