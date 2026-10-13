@@ -60,5 +60,10 @@ Verify provider/API prerequisites and operate installation, read-back, retry and
 For API infrastructure, packaging, review or installation, read and apply
 [the shared API domain contract](../guide-product-work/reference/shared-api-domain.md).
 Require the API Gateway domain and product-owned mappings; keep DNS traffic
-records optional. Verify supported parameter/manifest bindings in the target
-revision and route missing behavior to the responsible builder.
+records optional. Deploy binds `SharedApiDomainName` from Environment's
+`/account/env-parameters` only and rejects caller overrides; do not pass it.
+Puller claims base paths, rejects duplicates and advances installed identity only
+after mapping read-back; retirement removes only that product's mapping. Report
+reachability `UNVERIFIED` until traffic is tested. Deploy's run/Puller APIs use
+IAM SigV4 only until the shared API key lands (prismteam-ai/deploy PR #13).
+Route missing behavior to the responsible builder.

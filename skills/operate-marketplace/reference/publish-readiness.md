@@ -43,8 +43,15 @@ the user named). Report each row `ready`, `missing` or `cannot verify`.
    production dependency advisory and no cdk-nag error. Each `NagSuppressions`
    entry in the product needs a written reason.
 4. **Stable stack identities** (section D).
+5. **Shared domain and shared API key** (API products only; configuration bundles
+   are exempt). From the synthesized template/source revision: `base_path`,
+   `requires.domain: true` and `SharedApiMapping`, and every customer-facing method
+   accepts the shared `x-api-key` per the
+   [publish readiness gate](../../guide-product-work/reference/shared-api-domain.md#publish-readiness-gate).
+   IAM SigV4 as the only customer path is `missing`.
 
-A `missing` row in 1 or 3 is a product source change for the product's owners.
+A `missing` row in 1, 3 or 5 is a product source change for the product's owners.
+Route row 5 to the product builder named in the gate; never publish anyway.
 Route row 4 gaps to Build, Marketplace, Deploy or the product owner according to
 section D. Report the concrete change and the failing evidence; do not create
 branches, commits or pull requests in a product repository, and never patch a

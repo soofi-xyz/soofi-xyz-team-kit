@@ -40,7 +40,7 @@ and update lifecycle; route target API gaps to Kecleon, Lapras or Zygarde.
 ## Shared API domain
 
 Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
-Bind verified Environment domain metadata to product CloudFormation parameters. Reject conflicting paths, handle concurrent claims, and verify product-owned mappings after deployment independently of optional DNS. Preserve shared resources and the stateless run API boundary.
+Bind `SharedApiDomainName` only from Environment's `/account/env-parameters` (`environment.shared-routing.outputs.v1`) and reject caller overrides. In Puller, claim base paths, reject duplicates, handle concurrent claims and advance installed identity only after mapping read-back; on retirement remove only that product's mapping. Report reachability `UNVERIFIED`; mapping read-back is not reachability proof. Verify mappings independently of optional DNS. Run/Puller APIs are IAM SigV4 only; the shared API key is pending prismteam-ai/deploy PR #13. Do not add unknown `marketplace.product.json` fields; Build's manifest schema is closed. Preserve shared resources and the stateless run API boundary.
 
 ## Return
 

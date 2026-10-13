@@ -37,7 +37,7 @@ installer capabilities to Corviknight; never substitute per-bundle code or direc
 ## Shared API domain
 
 Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
-Use supported Deploy parameter bindings and verify the shared domain and product mapping in the selected account/region. Missing DNS traffic records do not block attachment success; hand unsupported binding or verification to Corviknight.
+Deploy binds `SharedApiDomainName` from Environment's `/account/env-parameters` only; do not pass it as a run parameter (caller overrides are rejected). Expect Puller to claim base paths, reject duplicates and advance installed identity only after mapping read-back; retirement removes only that product's mapping. Verify the shared domain and product mapping in the selected account/region and record reachability as `UNVERIFIED` until traffic is tested; read-back is not reachability. Missing DNS traffic records do not block attachment success. Deploy's run/Puller APIs are IAM SigV4 only until the shared API key lands (prismteam-ai/deploy PR #13). Hand unsupported binding or verification to Corviknight.
 
 ## Return
 
