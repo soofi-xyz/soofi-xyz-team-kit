@@ -12,3 +12,4 @@ skills/use-oracle/runtime/cdk.context.json
 .DS_Store
 __pycache__/
 *.pyc
+.idea/

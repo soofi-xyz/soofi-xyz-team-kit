@@ -36,6 +36,7 @@ jobs:
       - name: Check shell scripts
         run: |
           bash -n scripts/sync-copilot-agents.sh
+          bash -n scripts/sync-claude-agents.sh
           bash -n scripts/validate-plugin.sh
           bash -n scripts/local-cursor-plugin.sh
           bash -n skills/use-oracle/scripts/oracle-paths.sh

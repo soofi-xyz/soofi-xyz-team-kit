@@ -1,6 +1,6 @@
 # Soofi product team kit
 
-Product builders and configurers for Cursor, GitHub Copilot CLI and OpenAI Codex.
+Product builders and configurers for Cursor, GitHub Copilot CLI, OpenAI Codex and Claude Code.
 
 ## Quick start
 
@@ -20,6 +20,7 @@ events → DEV `quiq-to-lexicon` → DEV Persist load and scoped export → DEV 
 [`chains.json`](./skills/validate-transform-configuration/reference/chains.json).
 
 In Copilot, select `soofi-xyz-team-kit:<agent>`. In Codex, request the named custom agent.
+In Claude Code, use the `soofi-xyz-team-kit:<agent>` subagent.
 
 Setting up an AWS account for Prism? Start with the
 [Account onboarding guide](./docs/account-onboarding.md) and Blissey; use
@@ -127,6 +128,39 @@ Start a new thread after installation or updates. The plugin supplies skills;
 custom agents are project-scoped in `.codex/agents/` when working in this checkout.
 
 To remove: `codex plugin remove soofi-xyz-team-kit`.
+
+</details>
+
+<details>
+<summary>Claude Code</summary>
+
+```bash
+claude plugin marketplace add soofi-xyz/soofi-xyz-team-kit
+claude plugin install soofi-xyz-team-kit@soofi-xyz
+```
+
+This installs at user scope, so the kit is available in every project you open. To limit it
+to one project instead, run the same commands inside that project with `--scope project`;
+they then write to its `.claude/settings.json`, and teammates get the kit from the committed
+settings:
+
+```bash
+claude plugin marketplace add soofi-xyz/soofi-xyz-team-kit --scope project
+claude plugin install soofi-xyz-team-kit@soofi-xyz --scope project
+```
+
+Agents load as `soofi-xyz-team-kit:<agent>` subagents, skills as `/soofi-xyz-team-kit:<skill>`,
+and the bundled `elephant` MCP server connects from `mcp.json`.
+
+To update (Claude Code only picks up a new release when the manifest `version` changes):
+
+```bash
+claude plugin marketplace update soofi-xyz
+claude plugin update soofi-xyz-team-kit@soofi-xyz
+```
+
+To remove: `claude plugin uninstall soofi-xyz-team-kit@soofi-xyz`, adding `--scope project`
+if that is how it was installed.
 
 </details>
 

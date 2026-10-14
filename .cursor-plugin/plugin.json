@@ -1,12 +1,12 @@
 {
   "name": "soofi-xyz-team-kit",
   "description": "Product builders and configurers with guided feature increments for Documentation, Account, Console, Environment, Build, Deploy, Model, Marketplace, Transform, Persist, Rule, Connect and System.",
-  "version": "0.97.0",
+  "version": "0.98.0",
   "author": {
     "name": "Soofi XYZ"
   },
-  "homepage": "https://github.com/soofi-xyz/cursor-plugin",
-  "repository": "https://github.com/soofi-xyz/cursor-plugin",
+  "homepage": "https://github.com/soofi-xyz/soofi-xyz-team-kit",
+  "repository": "https://github.com/soofi-xyz/soofi-xyz-team-kit",
   "license": "MIT",
   "keywords": [
     "agents",
