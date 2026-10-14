@@ -1,0 +1,20 @@
+{
+  "configuration_id": "sale-availability-source-dev",
+  "partner": "sale-availability-source",
+  "tenant": "elephant",
+  "environment": "dev",
+  "connections": {
+    "inbox": {
+      "type": "s3",
+      "bucket": "<prepared-source-bucket>",
+      "region": "<region>",
+      "root": "sale-availability/",
+      "auth": { "profile": "assume_role", "role_arn": "arn:aws:iam::<account>:role/<connect-read-role>" }
+    }
+  },
+  "parameters": {
+    "prefix": "incoming/",
+    "pattern": "*.jsonl",
+    "archive_prefix": "processed/"
+  }
+}

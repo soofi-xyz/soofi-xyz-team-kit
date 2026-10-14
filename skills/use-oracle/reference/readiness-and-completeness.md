@@ -59,7 +59,7 @@ any gate is `BLOCKED`. This applies when `onboard-county` is invoked directly.
 
 At intake, automatically begin bounded source/jurisdiction enumeration, adapter
 fingerprinting and implementation scaffolds, AWS remote BBB execution setup, destination
-proof, Filebase credential-readiness checks, and named records-request preparation. These
+proof, upload-node and Atlas-PR readiness checks, and named records-request preparation. These
 independent preparation tracks continue while a readiness gate is blocked; bulk traversal
 and pilots do not.
 
@@ -147,15 +147,15 @@ Before writes, independently prove through `bootstrap-oracle-infra` and
 - Required schemas and tables
 - Advisory-lock namespace
 - Idempotency and source-key contracts
-- Publication bucket and IPNS ownership when publication is in scope
+- Upload-node availability and Atlas repository/county-page access when publication is in scope
 
 Refuse to write if the target cannot be independently proven. Do not open writer connections
 from this plugin.
 
-Start destination and publication readiness at intake. Verify the Filebase credential by
-secret identifier/availability and a safe runtime check—never by storing its value in the
-catalog—plus the target bucket and IPNS owner. If access is missing, request secret injection
-immediately and continue independent discovery and adapter work.
+Start destination and publication readiness at intake. Verify upload credentials by secret
+identifier/availability and a safe runtime check—never by storing values in the source
+catalog—and verify Atlas repository access plus the county-page path. If access is missing,
+request it immediately and continue independent discovery and adapter work.
 
 When `destination.writes_in_scope` is true and `proven` is true, list at least two
 `independent_identity_sources` (for example Neon console project/branch **and** configured
@@ -163,9 +163,20 @@ branch/endpoint IDs). Do not copy expected IDs from the connection under test.
 
 ### Enrichment readiness gate
 
-BBB and places do not control permit-capture completeness. Identity-baseline readiness
-(Sunbiz legal entities plus official DBPR licensing) is a predecessor of permit harvest
-and of permit identity resolution; do not classify it as optional post-permit enrichment.
+BBB and places do not control permit-capture completeness. When a permit prints a
+license number, resolve it by official license-detail lookup, then the Sunbiz company.
+Use the permit license number, person name, and company name only as DBPR search
+keys. Persist company, person, and license from the DBPR record. If DBPR returns no
+match, write no contractor, person, or license. Write
+`property_improvement_has_contractor` from `property_improvement` to `company` (the
+contractor is the company, not a separate class), `contractor_has_license` from
+`company` to `license` (relationship objects are only `from` and `to`; the license
+id is `license_identifier` on class `license`), and `contractor_has_person` from
+`company` to `person` (schema title `company_to_person`; the person is an object
+with `first_name` and `last_name`, not a string field, and there is no license field
+on the person). Do not classify that lookup as optional enrichment, and do not wait
+for a statewide relationship extract before reading permits that already carry a
+license.
 If `enrichment.bbb.expected_count`
 equals `advertised_listing_count`, the catalog must also set `listing_page_cap` and
 `cap_acknowledged: true`. Advertised directory totals are not harvestable census counts.
@@ -223,7 +234,7 @@ Drive `monitoring-county-ingestion` for artifact vs Neon counts. Map:
 - normalized / unique_logical → transform outputs (`build-county-transform`)
 - committed / loaded → Neon counts from `query-db-loading-matching`
 - linked / valid_unlinked → match results (null property links are valid unmatched records)
-- published → query-table / coverage IPNS after remote readback
+- published → Atlas county page merged, global Atlas IPNS verified, MCP SQL synchronized
 
 ## Completeness evidence gates
 
@@ -245,46 +256,41 @@ exist.
 **IDEMPOTENCE GATE.** An identical reload produces the same logical counts and no duplicate
 source keys.
 
-**QUERY GATE.** Published property and permit rows match the frozen loaded IDs, and remote
-Donphan queries succeed.
+**QUERY GATE.** Atlas tables reconcile to the validated CARs, and scoped MCP 2.0 queries
+succeed from the synchronized Atlas SQL snapshot.
 
 **PROVENANCE GATE.** The completeness flag is derived from frozen manifests — not adapter
 counts, dashboard labels, or pilot success.
 
 Never set `oracle_dataset_coverage.expected_count` as if a source were complete unless these
 gates pass for that source. Reputation/places gaps (BBB, places) must not silently change
-core permit-capture completeness. Identity-baseline gaps (Sunbiz, DBPR) block automatic
-identity edges and enqueue official-source acquisition; they are not a terminal wait
-and do not authorize permit harvest first.
+core permit-capture completeness. A missing Sunbiz detail URL or license-detail lookup
+blocks automatic identity edges for that permit and enqueues the official lookup. A
+missing public-records extract blocks only historical qualification when the permit has
+no license number. Neither authorizes a name match.
 
 ## Publish fail-closed
 
 Before publication:
 
-- create privacy-approved derivatives;
-- reconcile artifact rows with loaded logical IDs;
-- verify schema and joins;
-- hash immutable bytes;
-- upload immutable content first;
-- perform remote readback;
-- verify counts and representative queries;
-- add a catalog entry only after readback passes.
+- finish internal folio, watermark, tombstone, identity-edge, roof-age, and enrichment
+  reconciliation;
+- validate every lexicon group;
+- build and validate one CAR per county/data group;
+- derive normalized tables only with `elephant-cli export-tables`;
+- upload archive and tables roots and perform remote CID readback;
+- let `export-tables --atlas-page` write the county group entry;
+- merge one Atlas county-page PR only after `validate` passes;
+- verify the global Atlas IPNS and synchronize MCP 2.0 SQL.
 
-Existing query-table GATE still applies: parquet rows == distinct folio in the query DB, 0
-dup/null folios — never skip the reconcile. Regenerate `PROPERTY_QUERY_TABLE_MAP` from this
-kit's bundled `skills/use-oracle/runtime/catalog/published-counties.json` (via
-`npm run catalog:sync-mcp-json --prefix skills/use-oracle/runtime`) or MCP
-`listPublishedCounties`. Do not embed a four-county default list in this skill.
-
-**PII publish is human-approved, then automated:** dry-run until a human POSTs
-`Publish/<county>/approve`; then `tick` uploads. Do not skip approval, and do not require the
-human to run the upload command except as break-glass.
+The Query DB is an internal reconciliation store, not publication input. Do not upload its
+working tables or coverage artifacts. Do not create a parallel county registry or pointer.
 
 Apply the atomic completion and snapshot-drift rules in
 [`continuous-ingestion.md`](./continuous-ingestion.md). A capture or load milestone is not
-done; completion requires remote publication readback and MCP visibility. A newer loaded
-watermark marks publication stale and automatically queues a replacement immutable snapshot;
-execute that queue under [`continuous-safe-optimization.md`](./continuous-safe-optimization.md).
+done; completion requires Atlas readback and MCP visibility. A newer loaded watermark marks
+the published Atlas group stale and queues a replacement CAR/table/Atlas-PR sequence; execute
+that queue under [`continuous-safe-optimization.md`](./continuous-safe-optimization.md).
 
 Availability must be typed `unsupported`, `supported_partial`, or `supported_full`. Never
 represent unsupported access as zero records.

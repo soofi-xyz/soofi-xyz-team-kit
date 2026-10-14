@@ -26,7 +26,9 @@
  */
 
 import AdmZipCtor from "adm-zip";
+import { createHash } from "node:crypto";
 import { mkdir, readdir, readFile, writeFile, access, copyFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runCountyTransform } from "../../core/transform-runner.mjs";
@@ -44,11 +46,6 @@ import { collectGeometryPoints, assertGeometryInCounty, assertManifestReconciled
 
 const RUNTIME_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const QUERY_TABLE_SCHEMA_FIELDS = duvalEnrichmentProfile.queryTable.schemaFields;
-const {
-  bucket: QUERY_TABLE_BUCKET,
-  queryTableIpnsLabel: QUERY_TABLE_IPNS_LABEL,
-  coverageIpnsLabel: COVERAGE_IPNS_LABEL,
-} = duvalEnrichmentProfile.publication;
 export const TRANSFORMS_DIR = path.join(RUNTIME_ROOT, "counties", "duval", "transforms");
 export const FLOW_PATH = path.join(RUNTIME_ROOT, "counties", "duval", "flow.json");
 export const STATIC_PARTS_PATH = path.join(RUNTIME_ROOT, "counties", "duval", "static-parts.csv");
@@ -66,6 +63,8 @@ export const REQUIRED_DATA_ARTIFACTS = Object.freeze(["property.json", "address.
 export const MIN_TRANSFORMED_ZIP_BYTES = 200;
 export const ZIP_LOCAL_FILE_MAGIC = Buffer.from([0x50, 0x4b, 0x03, 0x04]);
 export const DEFAULT_JOB_ID = "duval-ingest";
+export const RAW_CAPTURE_BODY_FILENAME = "response-body.html";
+export const RAW_CAPTURE_RECEIPT_FILENAME = "raw-capture-receipt.json";
 
 const COJ_FETCH_HEADERS = {
   Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -283,6 +282,114 @@ export async function fetchCojDetailHtml(url) {
     throw new Error(`COJ detail HTTP ${response.status} for ${url}`);
   }
   return response.text();
+}
+
+/**
+ * Require raw captures to stay in OS-temporary storage or the runtime's
+ * gitignored `.scratch/` directory. This prevents a live response from being
+ * written into a trackable source or fixture path.
+ *
+ * @param {string} outputDir - Requested capture directory.
+ * @returns {string} Absolute, validated output directory.
+ */
+export function requireRawCaptureOutputDir(outputDir) {
+  const candidate = path.resolve(toText(outputDir));
+  const runtimeRoot = path.resolve(RUNTIME_ROOT);
+  const tempRoot = path.resolve(tmpdir());
+  const scratchRoot = path.resolve(RUNTIME_ROOT, ".scratch");
+  const isWithin = (root) =>
+    candidate === root || candidate.startsWith(`${root}${path.sep}`);
+  const insideRuntime = isWithin(runtimeRoot);
+  const allowed =
+    (insideRuntime && isWithin(scratchRoot)) ||
+    (!insideRuntime && isWithin(tempRoot));
+  if (!allowed) {
+    throw new Error(
+      `Raw capture output must be under the OS temp directory (${tempRoot}) ` +
+        `or the runtime gitignored scratch directory (${scratchRoot})`,
+    );
+  }
+  return candidate;
+}
+
+/**
+ * Capture one Duval appraisal response without transforming it. The HTTP body
+ * is read as bytes, validated against the requested RE number using an
+ * in-memory decoded copy, and written byte-for-byte. Request/response metadata
+ * and the body digest are written to a separate receipt.
+ *
+ * @param {{
+ *   seedRow: Record<string, string>,
+ *   outputDir: string,
+ *   fetchImpl?: typeof fetch,
+ *   capturedAt?: string,
+ * }} options - One seed row, safe scratch directory, and injectable test seams.
+ * @returns {Promise<{
+ *   bodyPath: string,
+ *   receiptPath: string,
+ *   receipt: Record<string, unknown>,
+ * }>} Raw-body and receipt paths.
+ */
+export async function captureRawProperty({
+  seedRow,
+  outputDir,
+  fetchImpl = globalThis.fetch,
+  capturedAt = new Date().toISOString(),
+}) {
+  const safeOutputDir = requireRawCaptureOutputDir(outputDir);
+  const requestUrl = toCojCaptureUrl(seedRow);
+  if (typeof fetchImpl !== "function") {
+    throw new Error("Raw capture requires a fetch implementation");
+  }
+
+  const response = await fetchImpl(requestUrl, {
+    headers: COJ_FETCH_HEADERS,
+    redirect: "follow",
+  });
+  if (!response.ok) {
+    throw new Error(`COJ detail HTTP ${response.status} for ${requestUrl}`);
+  }
+
+  const body = Buffer.from(await response.arrayBuffer());
+  const observedIdentifier = assertHtmlMatchesRequestedRe(
+    body.toString("utf8"),
+    seedRow.source_identifier,
+  );
+  const bodySha256 = createHash("sha256").update(body).digest("hex");
+  const bodyPath = path.join(safeOutputDir, RAW_CAPTURE_BODY_FILENAME);
+  const receiptPath = path.join(
+    safeOutputDir,
+    RAW_CAPTURE_RECEIPT_FILENAME,
+  );
+  const receipt = {
+    schemaVersion: "elephant.raw-capture.v1",
+    county: COUNTY_KEY,
+    parcelId: toText(seedRow.parcel_id) || toText(seedRow.source_identifier),
+    requestIdentifier: toText(seedRow.source_identifier),
+    capturedAt,
+    request: {
+      method: toText(seedRow.method) || "GET",
+      url: requestUrl,
+    },
+    response: {
+      finalUrl: toText(response.url) || requestUrl,
+      status: response.status,
+      statusText: toText(response.statusText),
+      contentType: response.headers.get("content-type"),
+      byteLength: body.length,
+      sha256: bodySha256,
+    },
+    validation: {
+      kind: "coj_re_number",
+      observedIdentifier,
+      matched: true,
+    },
+  };
+
+  await mkdir(safeOutputDir, { recursive: true });
+  await writeFile(bodyPath, body);
+  await writeFile(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, "utf8");
+  return { bodyPath, receiptPath, receipt };
 }
 
 /**
@@ -521,26 +628,23 @@ export async function validateRun(manifest, options = {}) {
 }
 
 /**
- * @typedef {object} PublicationArtifacts
+ * @typedef {object} ReconciliationArtifacts
  * @property {string} county
  * @property {string} parquetPath
  * @property {string} coveragePath
  * @property {string} manifestPath
- * @property {string} bucket
- * @property {string} queryTableIpnsLabel
- * @property {string} coverageIpnsLabel
  * @property {number} rowCount
  * @property {number} expectedCount
  */
 
 /**
- * @typedef {object} BuildPublicationArtifactsOptions
+ * @typedef {object} BuildReconciliationArtifactsOptions
  * @property {string} outputDir - Ingest run directory (holds `<parcel_id>/transformed.zip` per parcel).
  * @property {readonly Record<string, string>[]} seedRows - Seed rows the ingest run attempted.
- * @property {string} publishDir - Destination directory for the Parquet/coverage/manifest files.
+ * @property {string} workingDir - Destination directory for the private Parquet/coverage/manifest files.
  * @property {boolean} [allowEmpty] - When true, permit writing a zero-row
  *   query table for a non-empty seed (Global Constraint fail-closed gate;
- *   see {@link buildPublicationArtifacts}). Defaults to false.
+ *   see {@link buildReconciliationArtifacts}). Defaults to false.
  */
 
 /**
@@ -553,13 +657,13 @@ export async function validateRun(manifest, options = {}) {
  *
  * Fails closed on an empty export: if the seed was non-empty but zero
  * parcels produced a row (e.g. every parcel failed), this throws *before*
- * writing any Parquet/coverage file, rather than silently publishing a
+ * writing any Parquet/coverage file, rather than silently writing a
  * zero-row table, unless `options.allowEmpty` is explicitly `true`.
  *
- * @param {BuildPublicationArtifactsOptions} run - Ingest output, seed rows, destination directory, and options.
- * @returns {Promise<PublicationArtifacts>} Written artifact paths and counts.
+ * @param {BuildReconciliationArtifactsOptions} run - Ingest output, seed rows, destination directory, and options.
+ * @returns {Promise<ReconciliationArtifacts>} Written artifact paths and counts.
  */
-export async function buildPublicationArtifacts({ outputDir, seedRows, publishDir, allowEmpty = false }) {
+export async function buildReconciliationArtifacts({ outputDir, seedRows, workingDir, allowEmpty = false }) {
   const expectedCount = seedRows.length;
   /** @type {Record<string, unknown>[]} */
   const rows = [];
@@ -585,15 +689,15 @@ export async function buildPublicationArtifacts({ outputDir, seedRows, publishDi
   }
   if (expectedCount > 0 && rows.length === 0 && allowEmpty !== true) {
     throw new Error(
-      `Refusing to publish an empty Duval query table: 0 of ${expectedCount} seed rows produced a successful, ` +
+      `Refusing to write an empty Duval reconciliation table: 0 of ${expectedCount} seed rows produced a successful, ` +
         `complete parcel. Pass { allowEmpty: true } (CLI: --allow-empty) to permit an empty export.`,
     );
   }
 
-  await mkdir(publishDir, { recursive: true });
-  const parquetPath = path.join(publishDir, "query-table.parquet");
-  const coveragePath = path.join(publishDir, "dataset-coverage.json");
-  const manifestPath = path.join(publishDir, "manifest.json");
+  await mkdir(workingDir, { recursive: true });
+  const parquetPath = path.join(workingDir, "query-table.parquet");
+  const coveragePath = path.join(workingDir, "dataset-coverage.json");
+  const manifestPath = path.join(workingDir, "manifest.json");
   await writeQueryTableParquet({ parquetPath, schemaFields: QUERY_TABLE_SCHEMA_FIELDS, rows });
 
   const exportedAt = new Date().toISOString();
@@ -603,7 +707,6 @@ export async function buildPublicationArtifacts({ outputDir, seedRows, publishDi
     ingestedCount: rows.length,
     expectedCount,
     exportedAt,
-    ipnsLabel: COVERAGE_IPNS_LABEL,
   });
   await writeFile(coveragePath, `${JSON.stringify(coverage, null, 2)}\n`, "utf8");
 
@@ -612,9 +715,6 @@ export async function buildPublicationArtifacts({ outputDir, seedRows, publishDi
     parquetPath,
     coveragePath,
     manifestPath,
-    bucket: QUERY_TABLE_BUCKET,
-    queryTableIpnsLabel: QUERY_TABLE_IPNS_LABEL,
-    coverageIpnsLabel: COVERAGE_IPNS_LABEL,
     rowCount: rows.length,
     expectedCount,
   };
@@ -632,7 +732,8 @@ export const duvalAdapter = {
   transformsDir: TRANSFORMS_DIR,
   flowPath: FLOW_PATH,
   buildSeed: buildDuvalSeedFiles,
+  captureRawProperty,
   captureAndTransform,
   validateRun,
-  buildPublicationArtifacts,
+  buildReconciliationArtifacts,
 };

@@ -1,0 +1,180 @@
+{
+  "contractVersion": 2,
+  "systemId": "sale-availability",
+  "productName": "sale-availability",
+  "title": "Sale availability lookup",
+  "outcome": "Given an address or parcelId, return sale availability and evidence from curated Connect/Transform artifacts via a System invocation. Unknown identifiers fail closed. No scrape-on-request.",
+  "orchestration": {
+    "mode": "system-service",
+    "invocationMode": "single",
+    "notes": "Serve through the current System deployment; template-backed flows only."
+  },
+  "products": [
+    {
+      "product": "system",
+      "role": "serve",
+      "notes": "System definition, schemas, flow template and template-backed flow."
+    },
+    {
+      "product": "model",
+      "role": "reference-only",
+      "notes": "Reuse governed vocabulary; no Model runtime or agent is assumed."
+    },
+    {
+      "product": "connect",
+      "role": "execute",
+      "notes": "Land prepared source objects with the existing partner-file-intake flow; partner configuration + activation only, no new verbs."
+    },
+    {
+      "product": "transform",
+      "role": "execute",
+      "notes": "Translate source language to sale-availability language (contractVersion 2)."
+    },
+    {
+      "product": "deploy",
+      "role": "reference-only",
+      "notes": "Resolve deployment prerequisites separately; no Deploy agent is assigned."
+    }
+  ],
+  "configRefs": {
+    "productDefinition": {
+      "kind": "product-definition",
+      "path": "emits/product/product.definition.stub.json",
+      "ownerAgent": "celebi"
+    },
+    "productFlowTemplate": {
+      "kind": "product-flow-template",
+      "path": "emits/product/flow-templates/sale_availability_lookup.stub.json",
+      "ownerAgent": "celebi"
+    },
+    "productFlow": {
+      "kind": "product-flow",
+      "path": "emits/product/product-flows/default.stub.json",
+      "ownerAgent": "celebi"
+    },
+    "productInvocation": {
+      "kind": "product-invocation",
+      "path": "emits/product/invocation.contract.md",
+      "ownerAgent": "celebi"
+    },
+    "lexiconCatalog": {
+      "kind": "lexicon-catalog",
+      "path": "emits/lexicon/catalog.stub.json",
+      "ownerAgent": "silvally"
+    },
+    "connectPartner": {
+      "kind": "connect-partner",
+      "path": "emits/connect/partner.stub.json",
+      "ownerAgent": "wingull"
+    },
+    "connectActivation": {
+      "kind": "connect-activation",
+      "path": "emits/connect/activation.stub.json",
+      "ownerAgent": "wingull"
+    },
+    "transformRequest": {
+      "kind": "transform-request",
+      "path": "emits/transform/request.stub.json",
+      "ownerAgent": "silvally"
+    },
+    "deployEnvironment": {
+      "kind": "deploy-environment",
+      "path": "emits/deploy/environment.stub.json"
+    }
+  },
+  "workflow": [
+    {
+      "id": "publish-lexicon",
+      "product": "transform",
+      "configRef": "lexiconCatalog",
+      "agent": "silvally",
+      "gate": "languages-and-mapping-proposed"
+    },
+    {
+      "id": "register-source",
+      "product": "connect",
+      "configRef": "connectPartner",
+      "agent": "wingull",
+      "gate": "partner-configuration-accepted"
+    },
+    {
+      "id": "schedule-intake",
+      "product": "connect",
+      "configRef": "connectActivation",
+      "agent": "wingull",
+      "gate": "activation-registered-disabled"
+    },
+    {
+      "id": "translate",
+      "product": "transform",
+      "configRef": "transformRequest",
+      "agent": "silvally",
+      "gate": "curated-sale-availability-artifacts-written"
+    },
+    {
+      "id": "configure-product",
+      "product": "system",
+      "configRef": "productDefinition",
+      "agent": "celebi",
+      "gate": "product-schemas-accepted"
+    },
+    {
+      "id": "compile-flow-template",
+      "product": "system",
+      "configRef": "productFlowTemplate",
+      "agent": "celebi",
+      "gate": "flow-template-compiled"
+    },
+    {
+      "id": "bind-product-flow",
+      "product": "system",
+      "configRef": "productFlow",
+      "agent": "celebi",
+      "gate": "flow-template-name-bound"
+    },
+    {
+      "id": "invoke-contract",
+      "product": "system",
+      "configRef": "productInvocation",
+      "agent": "celebi",
+      "gate": "invocation-contract-documented"
+    }
+  ],
+  "successCriteria": [
+    {
+      "id": "manifest-valid",
+      "description": "scripts/check-system-manifest.py passes: schema, references, emit contracts.",
+      "verify": "schema"
+    },
+    {
+      "id": "template-backed-flow",
+      "description": "Every product flow stub sets flow_template_name to an emitted template; no legacy default connector pipeline.",
+      "verify": "schema"
+    },
+    {
+      "id": "invocation-known-key",
+      "description": "Known address/parcelId invocation returns availability + evidence (deferred until System + leaf wiring).",
+      "verify": "deferred"
+    },
+    {
+      "id": "unknown-id-closed",
+      "description": "Unknown address/parcelId fails closed with typed error (deferred).",
+      "verify": "deferred"
+    },
+    {
+      "id": "no-scrape",
+      "description": "Request path does not perform live website scraping.",
+      "verify": "manual"
+    }
+  ],
+  "dependencies": {
+    "repos": [],
+    "env": [],
+    "notes": "Discover the current System and leaf repositories. Resolve Model/Deploy prerequisites without assigning them to an unrelated agent."
+  },
+  "deploy": {
+    "activationEnabled": false,
+    "costCeilingUsd": 25,
+    "notes": "Do not enable activation without account/region authorization and product wiring evidence."
+  }
+}

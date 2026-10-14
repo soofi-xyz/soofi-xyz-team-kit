@@ -20,8 +20,7 @@ Gates:
      plus embedded non-localhost connection-string credentials. Public
      Filebase/IPNS URLs and Git provenance SHA citations are allowlisted —
      see ALLOWLIST_PATTERNS — since both are long, high-entropy-looking
-     strings that legitimately appear throughout the bundled catalog and
-     source-provenance docs.
+     strings that legitimately appear in Atlas and source-provenance docs.
   2. No tracked generated runtime directories (`node_modules/`,
      `downloads/`) and no tracked `.env*` file other than `.env.example`.
   3. No prohibited source-repository install/clone instruction on the
@@ -263,11 +262,7 @@ def check_broken_symlinks(root: Path, symlink_paths: list[str]) -> list[str]:
 
 def check_runtime_bundle_present(root: Path) -> list[str]:
     findings = []
-    required = [
-        f"{RUNTIME_PREFIX}package.json",
-        f"{RUNTIME_PREFIX}catalog/published-counties.json",
-        f"{RUNTIME_PREFIX}catalog/mcp-overlays.json",
-    ]
+    required = [f"{RUNTIME_PREFIX}package.json"]
     for rel in required:
         if not (root / rel).is_file():
             findings.append(f"{rel}: required Oracle runtime file is missing")
@@ -340,14 +335,6 @@ def run_self_test() -> int:
         _write(
             tmp / "skills" / "use-oracle" / "runtime" / "package.json",
             '{"name": "fixture"}\n',
-        )
-        _write(
-            tmp / "skills" / "use-oracle" / "runtime" / "catalog" / "published-counties.json",
-            '{"counties": []}\n',
-        )
-        _write(
-            tmp / "skills" / "use-oracle" / "runtime" / "catalog" / "mcp-overlays.json",
-            '{"counties": []}\n',
         )
         _write(
             tmp / "skills" / "use-oracle" / "runtime" / "fixtures" / "oversized.html",
@@ -490,8 +477,8 @@ def run_self_test() -> int:
         empty_tmp = Path(tempfile.mkdtemp(prefix="clean-room-self-test-empty-"))
         try:
             _expect(
-                len(check_runtime_bundle_present(empty_tmp)) == 3,
-                "self-test: an empty checkout must fail all three runtime-bundle presence checks",
+                len(check_runtime_bundle_present(empty_tmp)) == 1,
+                "self-test: an empty checkout must fail the runtime-package presence check",
                 errors,
             )
         finally:

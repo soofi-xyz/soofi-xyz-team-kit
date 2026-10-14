@@ -2,7 +2,7 @@
   "name": "@soofi-xyz-team-kit/oracle-runtime",
   "version": "0.9.0",
   "private": true,
-  "description": "Self-contained Elephant county-ingestion, enrichment, coverage-only repair, and county-neutral roof-age estimation runtime bundled with the soofi-xyz-team-kit plugin.",
+  "description": "Self-contained Elephant county-ingestion, internal reconciliation, enrichment, and county-neutral roof-age estimation runtime bundled with the soofi-xyz-team-kit plugin.",
   "type": "module",
   "engines": {
     "node": ">=22.18.0"
@@ -18,7 +18,6 @@
     "test": "vitest run && npm run test:transforms",
     "test:watch": "vitest",
     "test:transforms": "node scripts/run-transform-tests.mjs",
-    "test:catalog": "vitest run tests/catalog",
     "test:roof-age": "vitest run tests/roof-age-*.test.ts",
     "roof-age:typecheck": "tsc -p tsconfig.roof-age.json",
     "roof-age:audit": "node bin/roof-age-backfill.mjs",
@@ -33,11 +32,7 @@
     "batch:submit": "tsx bin/enrichment-batch.ts submit",
     "batch:status": "tsx bin/enrichment-batch.ts status",
     "batch:recover-blocked": "tsx bin/enrichment-batch.ts recover-blocked",
-    "cdk:synth": "cdk synth",
-    "catalog:update": "node scripts/catalog/update-published-county-catalog.mjs",
-    "catalog:mcp-maps": "node scripts/catalog/print-mcp-env-maps.mjs",
-    "catalog:merge-mcp-maps": "node scripts/catalog/merge-mcp-env-maps.mjs",
-    "catalog:sync-mcp-json": "node scripts/catalog/sync-mcp-json.mjs"
+    "cdk:synth": "cdk synth"
   },
   "dependencies": {
     "@aws-sdk/client-batch": "^3.1127.0",

@@ -1,9 +1,8 @@
 /**
- * County-agnostic query-table helpers: JSON coercion, transformed-zip
- * reading, Parquet row writing, and dataset-coverage snapshot building.
+ * County-agnostic internal reconciliation-table helpers: JSON coercion,
+ * transformed-zip reading, Parquet row writing, and coverage snapshots.
  *
- * Adapted from `oracle-node@ff68b0b6`
- * `scripts/publish-pinellas-pilot-to-filebase.mjs` (`toNumber`, `toText`,
+ * Adapted from historical `oracle-node@ff68b0b6` table helpers (`toNumber`, `toText`,
  * `parseUnnormalizedAddress`, `readTransformedZipJsonFiles`,
  * `toParquetRecord`, `buildPinellasPilotCoverage`), generalized so any
  * county query-table module can reuse them.
@@ -193,10 +192,9 @@ export async function writeQueryTableParquet({ parquetPath, schemaFields, rows }
  * @param {number} params.ingestedCount - Distinct parcel ids written to the query table.
  * @param {number} params.expectedCount - Seed row count.
  * @param {string} params.exportedAt - ISO timestamp.
- * @param {string} params.ipnsLabel - Filebase IPNS label for this coverage dataset.
  * @returns {CoverageSnapshot} Coverage JSON.
  */
-export function buildCoverageSnapshot({ county, source, ingestedCount, expectedCount, exportedAt, ipnsLabel }) {
+export function buildCoverageSnapshot({ county, source, ingestedCount, expectedCount, exportedAt }) {
   return {
     county,
     exportedAt,
@@ -209,7 +207,7 @@ export function buildCoverageSnapshot({ county, source, ingestedCount, expectedC
         first_loaded_at: exportedAt,
         last_loaded_at: exportedAt,
         cid: null,
-        ipns_label: ipnsLabel,
+        ipns_label: null,
       },
     ],
   };

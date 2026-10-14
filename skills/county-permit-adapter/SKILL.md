@@ -153,8 +153,8 @@ When deep permit enrichment exceeds local single-IP bandwidth (e.g. 500k+ permit
    (`status/<folio>.json` — monitoring counts these against the eligible total). Work
    must be re-runnable without duplication (see `durable-workflow-builder` pattern 3).
    The harvester writes artifacts + `status/<folio>.json` only — it never merges into
-   the DB and never signals publish itself; DB merging and publish signaling happen via
-   `PermitFeed` → `Loader` (which calls `Publish.requestPublish()` after a permits merge).
+   the DB or publishes. DB merging and watermarks happen via `PermitFeed` → the
+   county-keyed `Loader`. Atlas publication begins only after group validation.
 5. **DB row mapping** — MAP extracted permits to `@elephant-xyz/query-db` (the npm
    package published from the `elephant-query-db` repo) row CSVs staged under the job
    dir. The actual merge runs via `Loader.load({jobId, tracks:["permits"],

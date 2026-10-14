@@ -1,6 +1,6 @@
 ---
 name: overture-places-ingest
-description: "Ingest Overture Maps places for a county with taxonomy, boundary, source-licence, Neon coverage, and IPFS publication gates. Use when a county needs business/POI category data, when refreshing an Overture release, or when publishing a county places table."
+description: "Ingest Overture Maps places for a county with pinned release, county-boundary, taxonomy, source-licence, and internal-reconciliation gates, producing lexicon places records ready for Atlas publication. Use when a county needs business/POI category data or when refreshing an Overture release."
 metadata: {"author":"elephant-xyz"}
 ---
 # Overture Places Ingest
@@ -10,11 +10,13 @@ pipeline's category source: Sunbiz describes legal entities, BBB is selected for
 contractor reputation, and neither is a general location taxonomy.
 
 > **Implementation status:** Lee County, Florida is verified end to end through
-> extraction, Neon load, validation, and dedicated Filebase/IPNS publication. The
-> implemented extract/export/validation code is in `oracle-node`; the places schema,
-> bulk-loader track, coverage upsert, and Filebase uploader are in
-> `elephant-query-db`. Parcel-link population, counties other than Lee, and an
-> automated monthly refresh remain unimplemented.
+> extraction, internal query DB load, and validation. The implemented
+> extract/export/validation code is in `oracle-node`; the places schema, bulk-loader
+> track, and coverage upsert are in `elephant-query-db`. The earlier dedicated
+> per-county places Filebase/IPNS publication is retired: public publication now runs
+> through the `places` data group in the Atlas CAR/table sequence (`use-oracle`).
+> Parcel-link population, counties other than Lee, and an automated monthly refresh
+> remain unimplemented.
 
 ## Non-negotiable gates
 
@@ -26,13 +28,15 @@ contractor reputation, and neither is a general location taxonomy.
    `categories.primary`; retain it only as `legacy_category_primary` while the source
    still supplies it.
 4. Run the mandatory, case-insensitive source-dataset gate after extraction and again
-   against the loaded source rows immediately before publication. `osm` and every
-   unknown provider are hard stops.
+   against the loaded source rows immediately before the lexicon handoff. `osm` and
+   every unknown provider are hard stops.
 5. Set `oracle_dataset_coverage.expected_count` to `NULL`. Overture supplies a
    numerator, not an authoritative denominator for all county businesses.
-6. Publish places from a separate per-county Filebase bucket and IPNS name. Include
-   the required root `NOTICE.txt` and machine-readable attribution in `index.json`.
-7. Never commit extracted JSONL, Parquet, credentials, or generated publish artifacts.
+6. Publish places only as lexicon records in the `places` data group through the
+   normal CAR/table/Atlas sequence. Carry the Overture citation, per-provider licences,
+   and the Foursquare notice in the group's source metadata. Never create a separate
+   places pointer, standalone places Parquet, or specialized public query path.
+7. Never commit extracted JSONL, Parquet, credentials, or generated artifacts.
 
 ## Taxonomy contract
 
@@ -91,7 +95,7 @@ catalog URL, retrieval time, and TIGER vintage must still be written to
 
 ## 2. Clip to the county boundary
 
-Use the five-digit county FIPS from the county catalog. Lee is `12071`. Select that
+Use the five-digit county FIPS from the county profile. Lee is `12071`. Select that
 `GEOID` from a pinned TIGER/Line county shapefile.
 
 The required two-stage predicate is implemented in
@@ -150,10 +154,10 @@ closed:
 - if any value is outside the approved set, stop for human licence review;
 - never auto-extend the allowlist from observed data.
 
-Repeat this gate against `business_location_sources` immediately before export/upload.
-The published NOTICE is valid only for the providers it names.
+Repeat this gate against `business_location_sources` immediately before the lexicon
+handoff. The attribution you publish is valid only for the providers it names.
 
-## 4. Load and reconcile in Neon
+## 4. Load and reconcile in the internal query DB
 
 Load the chunked `places/places-part-NNNN.jsonl` and
 `manifest/summary.json` through the query DB's `--tracks places` bulk-loader track.
@@ -189,70 +193,42 @@ expected_count = NULL
 
 Do not manufacture 100% completion by setting `expected_count = ingested_count`.
 
-## 5. Export, validate, and publish
+The query DB is not the public source. Its working Parquet/coverage outputs are internal.
 
-Export current Neon rows, not the raw extract:
+## 5. Validate, transform to lexicon, and hand off to Atlas
+
+Validate the current query DB rows, not the raw extract:
 
 ```bash
-node scripts/export-overture-places-table.mjs \
-  --from-neon \
-  --env-file ../elephant-query-db/.env.local \
-  --county lee \
-  --release 2026-07-22.0 \
-  --out downloads/overture-places/lee/2026-07-22.0/publish
-
 node scripts/validate-overture-places-table.mjs \
   --from-neon \
   --env-file ../elephant-query-db/.env.local \
   --county lee \
   --release 2026-07-22.0 \
-  --parquet downloads/overture-places/lee/2026-07-22.0/publish/lee/places-table.parquet
+  --parquet downloads/overture-places/lee/2026-07-22.0/working/lee/places-table.parquet
 ```
 
-The publish gate requires:
+The handoff gate requires:
 
-- Parquet rows equal current Neon rows for that county/release;
+- working rows equal current query DB rows for that county/release;
 - zero duplicate GERS IDs;
 - zero null geometries;
 - `taxonomy.hierarchy` serialized as a `/`-delimited scalar;
 - the live source/licence gate passes.
 
-Publish each county's places artifact to its own resources:
+Transform the reconciled rows into lexicon-compliant places records with exact source
+provenance and validate every record against the live lexicon. Include the Overture
+citation and access date, per-provider licences, the Foursquare copyright notice, and
+Elephant's own change statement/date in the group's source metadata, plus release, row
+count, and the PII decision.
 
-```text
-Filebase bucket: elephant-oracle-open-data-<county>-places
-IPNS label:      oracle-open-data-<county>-places
-```
+Hand the validated `places` group directory to `use-oracle`, which runs: validate the
+group → hash one county places CAR → validate the CAR → export normalized tables and
+update the Atlas county page → upload archive and tables with readback → merge the
+Atlas county-page PR → verify the global Atlas IPNS and MCP 2.0 sync.
 
-Never share either resource with property, permit, or query-table artifacts. Fixed
-object keys and IPNS repointing can otherwise clobber or unpin another artifact family.
-
-The published directory must contain:
-
-```text
-NOTICE.txt
-<county>/index.json
-<county>/places-table.parquet
-```
-
-`NOTICE.txt` is part of the IPFS DAG and must include the Overture citation and access
-date, per-provider licences, the Foursquare copyright notice, and Elephant's own change
-statement/date. `index.json` must repeat attribution in a machine-readable block and
-record release, row count, validation/PII decisions, and the artifact path.
-
-### DuckDB Querying of Places over IPNS
-
-When querying `places-table.parquet` hosted on Filebase IPNS via DuckDB or the MCP:
-```sql
-INSTALL httpfs;
-LOAD httpfs;
-SET unsafe_disable_etag_checks = true;
-SELECT * FROM 'https://ipfs.filebase.io/ipns/<places-ipns-key>/<county>/places-table.parquet' LIMIT 10;
-```
-
-Register the stable places-table URL in the county catalog only after public-gateway
-verification confirms `NOTICE.txt`, `index.json`, and Parquet all resolve from the
-places-family IPNS name.
+Do not publish a standalone places Parquet, a county catalog entry, or a per-county
+IPNS name.
 
 ## Verified Lee result
 
@@ -268,7 +244,8 @@ Reference run: Lee County, Florida, FIPS `12071`, TIGER
 - hosted-service flag: 956 records from the five approved full paths;
 - Lee PII decision: approved 2026-08-12 to publish public business `emails` and
   `phones` as-is;
-- dedicated Lee places Filebase/IPNS publication: verified.
+- the earlier dedicated Lee places Filebase/IPNS publication is retired; re-publish
+  Lee through the `places` data group in Atlas.
 
 The loaded source spellings were `AllThePlaces`, `BrightQuery`, `DAC`, `Foursquare`,
 `meta`, `Microsoft`, `Overture`, `Overture-signals`, `PinMeTo`, and `RenderSEO`.
@@ -287,9 +264,9 @@ The first county run is a full extract. Later releases are upserts/diffs:
 - absence from a release is not business closure;
 - use `operating_status` for Overture's explicit closure state.
 
-Re-run extraction, source gate, Neon reconciliation, export validation, attribution,
-and IPNS repointing for every release. Automated monthly discovery/execution is not
-implemented; refreshes are operator-run until that workflow lands.
+Re-run extraction, source gate, internal reconciliation, lexicon validation, attribution,
+and the Atlas CAR/table sequence for every release. Automated monthly discovery/execution
+is not implemented; refreshes are operator-run until that workflow lands.
 
 ## Open questions and intentionally unimplemented work
 
@@ -303,3 +280,7 @@ implemented; refreshes are operator-run until that workflow lands.
   the verified Lee implementation passes Overture labels through.
 
 Persist run notes and source decisions, but never extracted place data or secrets.
+
+Return release, county/FIPS, TIGER vintage, bbox and clipped counts, source/licence gate,
+hosted-service rule version, internal reconciliation counts, attribution, places group
+validation, CAR/tables roots, Atlas PR, global index CID, and MCP sync result.

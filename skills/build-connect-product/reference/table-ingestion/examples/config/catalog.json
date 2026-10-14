@@ -1,0 +1,26 @@
+{
+  "contractVersion": 1,
+  "revision": "example-1",
+  "sources": [
+    {
+      "source": {
+        "id": "crm",
+        "version": "1.0.0"
+      },
+      "artifact": {
+        "s3Uri": "s3://connect-local/config/source.json",
+        "sha256": "1910cd8e9b4e125478007394e717af02f36446a3dc010954943e0274adc74f9f"
+      }
+    },
+    {
+      "source": {
+        "id": "sheet",
+        "version": "1.0.0"
+      },
+      "artifact": {
+        "s3Uri": "s3://connect-local/config/source-file.json",
+        "sha256": "cae821e69ee21429b1692c69e6990bf94d37c6b52ebd8e5f71b829f79e8a58f1"
+      }
+    }
+  ]
+}

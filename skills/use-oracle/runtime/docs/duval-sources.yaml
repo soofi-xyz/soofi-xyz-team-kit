@@ -47,19 +47,19 @@ permits:
     - jurisdiction_key: baldwin
       status: no-public-historical-search
   publication_scope:
-    destination_bucket: elephant-oracle-query-table
-    permit_ipns_label: oracle-permit-table-duval
-    property_ipns_label: oracle-query-table-duval
-    coverage_ipns_label: oracle-dataset-coverage-duval
+    registry: atlas
+    county_page: counties/FL/duval.json
+    data_groups:
+      - county
+      - property_improvement
     public_artifacts:
-      - canonical 20-column normalized permit Parquet
-      - property query table with exact permit flags and counts
-      - dataset coverage and integrity manifests
+      - validated CAR per data group
+      - CLI-exported normalized tables per data group
     private_artifacts:
       - raw portal payloads
       - contractor and license evidence
       - inspection and related-record evidence
-  public_schema:
+  internal_reconciliation_schema:
     schema_version: elephant.permit-table.v1
     column_count: 20
     columns:
@@ -205,32 +205,18 @@ source_inventory:
 
 destination:
   writes_in_scope: true
-  proven: true
-  mode: Filebase S3 publication with stable IPNS routes and immutable CID fallbacks
-  bucket: elephant-oracle-query-table
-  public_prefix: duval/
-  private_harvest_boundary: AWS S3 run artifacts; not published to Filebase
+  proven: false
+  mode: internal Query DB reconciliation
+  migration_note: re-verify database project, branch, endpoint, and role before the next load
+  private_harvest_boundary: AWS S3 run artifacts; never an MCP or publication source
 
-publication:
-  status: published-and-donphan-verified
-  completed_at: "2026-09-12T15:18:46.000Z"
-  bucket: elephant-oracle-query-table
-  property_query_table_ipns_label: oracle-query-table-duval
-  property_query_table_ipns_name: k51qzi5uqu5dle7swd06u9ebrgw375b5vhhhtiiz7un7udfsar0rci53x2w5y4
-  property_query_table_cid: QmVBXXV3UKuCHE7QCTzT3o6ULaFj7XJL1f1Tzrk8DsLsvD
-  permit_table_ipns_label: oracle-permit-table-duval
-  permit_table_ipns_name: k51qzi5uqu5dll7nwe1o7s1htngeoxrou8k593xieuziw9521444vh3pd7v4y1
-  permit_table_cid: QmTKvaWBmwaVGQheEAWSw59EXZqifPxNxaXx5AMpsSqM62
-  coverage_ipns_label: oracle-dataset-coverage-duval
-  coverage_ipns_name: k51qzi5uqu5dgqc52fnea1o42e27dr4os0mrdf5ixonuv8kdztdnxclflazf4w
-  coverage_cid: QmXKwxHyj9c8JmqH5G1PZQQwFT4CvbmCkM5EZXPdU4pjGs
-  permit_coverage_cid: Qme3r6LCKSZZc5aCdEqW7RNcnsg5BntFLvP6wDGse38NxG
-  privacy_approval_required: true
-  exact_byte_approval_recorded: true
-  donphan_verification:
-    publication_scope: full
+atlas_publication:
+  status: requires-car-republication
+  county_page: counties/FL/duval.json
+  privacy_review: required-for-current-atlas-artifacts
+  historical_internal_reconciliation:
+    observed_at: "2026-09-12T15:18:46.000Z"
     denominator_basis: county_total
-    permit_schema_column_count: 20
     permit_count: 3415527
     linked_permit_count: 3353717
     valid_unlinked_permit_count: 61810
@@ -247,7 +233,7 @@ enrichment:
     requested_delivery: licensed bulk AVM extract keyed and validated by FIPS 12031 plus Duval folio/APN
     required_value_contract: value, valuation date, model method, confidence score, high/low bounds, and stable vendor property ID
     approved_source_profiles: []
-    publication_requirement: durable public Filebase/IPFS redistribution rights
+    publication_requirement: durable public Atlas redistribution rights
     request_template: skills/use-oracle/runtime/docs/duval-avm-source-request.md
     candidate_providers:
       - ATTOM AVM bulk

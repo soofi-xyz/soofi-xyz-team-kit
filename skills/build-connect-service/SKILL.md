@@ -1,32 +1,36 @@
 ---
 name: build-connect-service
-description: "Implementing or changing the Connect service from its PRD — partner integrations, flows, credentials, webhooks, file transfer, connector jobs. Read reference/PRD.md first."
+description: "Maintain the current Connect service runtime and caller compatibility. Use Lapras for engine changes and Wingull for partner configuration."
 disable-model-invocation: true
 ---
 
-# Build Connect Service
+# Build Connect
 
-This skill is intentionally thin. Use it as a loader for [`reference/PRD.md`](./reference/PRD.md), not as a requirements copy.
+Use `lapras` for the reusable product implementation and `wingull` for
+configuration on an existing deployment. Follow
+[guide-product-work](../guide-product-work/SKILL.md) and
+[engineering guidelines](../apply-engineering-guidelines/SKILL.md).
 
-## Required Reading
+Read [the block skill](../build-connect-product/SKILL.md) for generic verbs, connections and flow contracts.
 
-1. Read [`reference/PRD.md`](./reference/PRD.md) before planning or coding.
-2. Read [`../apply-engineering-guidelines/SKILL.md`](../apply-engineering-guidelines/SKILL.md) for Golden Path constraints.
-3. Read [`../build-inbound-sftp-workflows/SKILL.md`](../build-inbound-sftp-workflows/SKILL.md) whenever the PRD task touches SFTP polling, Transfer Family connectors, or partner file intake.
+Read [the current scope](reference/PRD.md) before implementation. Discover the
+target repository, revision and environment. Reuse an existing service when
+appropriate; agent availability does not prove deployment or feature support.
 
-## Use With Plugin Agents
+Separate historical requirements, current implementation and live evidence.
+Where references conflict, inspect the target contract and tests and record the
+resolution. Do not silently restore obsolete features or remove working behavior.
 
-- Use `conkeldurr` first for platform product classification, existing-deployment checks, and build-vs-integrate decisions.
-- Use `machamp` for Step Functions, Distributed Map, batch executions, cost gates, throttling, idempotency, and workflow verification.
-- Use `regigigas` only when Connect must be packaged, released, subscribed, or deployed through the marketplace ecosystem.
+Use supporting skills directly for workflow capacity, metrics and model reasoning.
+Resolve other products through the catalog. Do not use a general platform owner.
+Use Registeel for Marketplace publication; keep deployment prerequisites explicit.
 
-## Implementation Rules
+Derive the scoped feature plan from the shared workflow and product capability
+map. Require a user-run configuration and AWS inspection after every piece. Return the
+implementation changes, verification results, human observations, current stage
+and any remaining runtime or integration gaps.
 
-- Treat the PRD as the single source of truth for routes, flow-spec primitives, data contracts, resource shapes, IAM scopes, env vars, error tags, workflows, and verification.
-- Do not implement from this `SKILL.md` alone.
-- For an existing Connect deployment, author flows or integrate through the PRD's public API and webhook contracts instead of provisioning a duplicate service.
-- If any old skill or rule file conflicts with the PRD, the PRD wins; update stale guidance instead of layering compatibility shims.
+## Configuration bundles
 
-## Expected Output
-
-Return the product fit, existing-vs-new deployment verdict, PRD sections used, files/stacks/contracts to change, companion agents/skills loaded, and the PRD verification path.
+Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
+Verify configuration lifecycle API primitives for the shared installer; route payload authoring to Wingull and installer implementation to Corviknight.

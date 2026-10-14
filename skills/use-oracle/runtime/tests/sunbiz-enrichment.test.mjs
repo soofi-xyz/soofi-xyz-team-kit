@@ -9,7 +9,9 @@ import {
   filterSunbizDirectory,
   findZipMatchedAddresses,
   parseCorporateDataRecord,
+  sunbizCompanyDetailUrl,
   transformSunbizExtract,
+  transformSunbizRecord,
 } from "../src/enrichment/sunbiz.mjs";
 import { enrichQueryTableWithSunbiz } from "../src/enrichment/query-table-sunbiz.mjs";
 import { validateSunbizArchiveEntries } from "../src/enrichment/sunbiz-archive.mjs";
@@ -87,6 +89,24 @@ async function readParquetRows(parquetPath) {
   }
   return rows;
 }
+
+describe("Sunbiz company provenance", () => {
+  it("maps each document number to its own official detail URL", () => {
+    const documentNumber = "F94000002850";
+    const transformed = transformSunbizRecord({
+      entity: { documentNumber, entityName: "EXAMPLE COMPANY" },
+      matchedAddresses: [],
+    });
+    const company = transformed.classes.company[0];
+    expect(company.request_identifier).toBe(`sunbiz:${documentNumber}:company`);
+    expect(company.source_http_request).toEqual({
+      method: "GET",
+      url: sunbizCompanyDetailUrl(documentNumber),
+    });
+    expect(company.source_http_request.url).toContain(documentNumber);
+    expect(company.source_http_request.url).not.toContain("data-downloads");
+  });
+});
 
 describe("Sunbiz Duval enrichment", () => {
   it("rejects unsafe, unexpected, and oversized archive entries before extraction", () => {

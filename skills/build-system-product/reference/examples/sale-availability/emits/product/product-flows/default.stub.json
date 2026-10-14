@@ -1,0 +1,8 @@
+{
+  "name": "default",
+  "flow_template_name": "sale_availability_lookup",
+  "active": true,
+  "default_product_flow": true,
+  "default_vendor_flow": false,
+  "tags": ["curated", "no-scrape"]
+}

@@ -1,0 +1,78 @@
+{
+  "version": "3",
+  "flow_name": "interprose-debt-documents",
+  "kind": "flow",
+  "description": "For each requested debt, list its Interprose documents and land every document body (returned base64 in JSON) as a file.",
+  "connections": {
+    "api": { "types": ["http"] }
+  },
+  "parameters": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["debt_ids"],
+    "properties": {
+      "debt_ids": { "type": "array", "minItems": 1, "maxItems": 10000, "items": { "type": "string" } }
+    }
+  },
+  "triggers": ["api"],
+  "limits": { "timeout_seconds": 21600, "max_items": 10000, "max_bytes": 53687091200 },
+  "definition": {
+    "StartAt": "PerDebt",
+    "States": {
+      "PerDebt": {
+        "Type": "Map",
+        "Items": "$.request.debt_ids",
+        "Concurrency": 10,
+        "Iterator": {
+          "StartAt": "ListDocuments",
+          "States": {
+            "ListDocuments": {
+              "Type": "Task",
+              "ResourceDefinition": {
+                "Type": "CALL",
+                "Connection": "api",
+                "Method": "GET",
+                "Path": "/api/account/{debtId}/documents",
+                "PathParameters": { "debtId": "$.item" },
+                "Response": { "Format": "json", "Mode": "inline", "MaxInlineBytes": 200000 },
+                "SaveOutputTo": "$.vars.documents"
+              },
+              "Next": "PerDocument"
+            },
+            "PerDocument": {
+              "Type": "Map",
+              "Items": "$.vars.documents",
+              "Concurrency": 5,
+              "Iterator": {
+                "StartAt": "DownloadDocument",
+                "States": {
+                  "DownloadDocument": {
+                    "Type": "Task",
+                    "ResourceDefinition": {
+                      "Type": "CALL",
+                      "Connection": "api",
+                      "Method": "GET",
+                      "Path": "/api/document/{documentId}",
+                      "PathParameters": { "documentId": "$.item.id" },
+                      "Response": {
+                        "Format": "json",
+                        "Mode": "file",
+                        "DecodePath": "$.content",
+                        "Decode": "base64",
+                        "FileNamePath": "$.fileName"
+                      },
+                      "SaveOutputTo": "$.vars.landed"
+                    },
+                    "End": true
+                  }
+                }
+              },
+              "End": true
+            }
+          }
+        },
+        "End": true
+      }
+    }
+  }
+}

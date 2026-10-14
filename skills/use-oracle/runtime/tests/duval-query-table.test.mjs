@@ -156,16 +156,16 @@ describe("query-table uniqueness (Global Constraint)", () => {
         liveFetch: false,
       });
       // Duplicate the successful parcel's output under a second parcel_id
-      // directory so buildPublicationArtifacts sees two rows sharing the
+      // directory so buildReconciliationArtifacts sees two rows sharing the
       // same underlying source_identifier (RE Number).
       const { cp } = await import("node:fs/promises");
       await cp(path.join(outputDir, PARCEL_ID), path.join(outputDir, duplicateRow.parcel_id), { recursive: true });
 
       await expect(
-        duvalAdapter.buildPublicationArtifacts({
+        duvalAdapter.buildReconciliationArtifacts({
           outputDir,
           seedRows: [seedRows[0], duplicateRow],
-          publishDir: path.join(tempDir, "publish"),
+          workingDir: path.join(tempDir, "reconciliation"),
         }),
       ).rejects.toThrow(/duplicate request_identifier/);
     } finally {

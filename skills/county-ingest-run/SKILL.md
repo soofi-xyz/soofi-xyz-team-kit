@@ -1,6 +1,6 @@
 ---
 name: county-ingest-run
-description: "Operate the end-to-end property-first ingestion run for an onboarded county on the local durable stack - pilot batch first, source-feasibility gate, then the full backpressure-aware run with stepwise concurrency ramp-up, plus the streamed incremental load+publish that lands the county in the query DB and re-publishes the query-table as the run ingests. Use when starting, scaling, resuming, monitoring failure classes, streaming load+publish, or wrapping up a county ingestion run."
+description: "Operate the end-to-end property-first ingestion run for an onboarded county: pilot batch, source-feasibility gate, backpressure-aware full run with stepwise ramp-up, and the streamed internal load that reconciles the county before Atlas publication. Use when starting, scaling, resuming, or wrapping up a county ingestion run."
 metadata: {"author":"elephant-xyz"}
 ---
 # County Ingest Run
@@ -25,7 +25,9 @@ sustained traffic to county websites and should never start on guessed inputs.
 ## Run shape
 
 Property-first: each parcel flows prepare → transform → validate (fail-closed) →
-eligibility branch → permit harvest → query DB, individually. County-level identity
+eligibility branch → permit harvest → internal query DB, individually. The query DB is a
+private reconciliation store: loading it does not publish anything. Public publication
+happens later through the Atlas CAR/table sequence in `use-oracle`. County-level identity
 registries (Sunbiz + official DBPR) are a predecessor of this permit harvest, not a later
 enrichment join. Input is ONLY the seed CSV
 at `data/seeds/<county>.csv` (never re-derive work from the DB). The `CountyIngest`
@@ -190,29 +192,55 @@ Restate redispatches. Machine crash or reboot: compose restarts the stack
 supervised/detached for multi-day runs — see the `bootstrap-oracle-infra` gotchas);
 the run then resumes from its journals — no watchdog, no re-streaming.
 
-## 6. Streamed load + publish — queryable AS it ingests
+## 6. Streamed internal load + reconciliation — reconciled AS it ingests
 
-Runs alongside the full run so the county lands in the query DB and re-publishes
-incrementally, not in one batch at the end. (`Loader` and `Publish` must be authored
-per `durable-workflow-builder` patterns 8–10 before first use.)
+Runs alongside the full run so the county lands in the internal query DB
+incrementally, not in one batch at the end. (`Loader` must be authored per
+`durable-workflow-builder` patterns 8–9 before first use.)
 
 - `Loader` (virtual object keyed `<county>`) merges new artifacts into the DB
   incrementally — single-writer per county, so bulk merges never deadlock. Don't also
   bulk-load appraisal by hand mid-run; the incremental merge already covers it.
-- `Publish.requestPublish` marks the county pending; the `Publish` object's
-  self-scheduling `tick` runs the full publish sequence (consolidation first, then the
-  query-table — `durable-workflow-builder` pattern 10), coalescing all tracks' signals.
-- **PII gate**: the publish loop is a dry-run until a human approves once:
+  Different counties may run in parallel; appraisal and permit merges for one county
+  stay serialized.
+- Require deterministic folio/request-identifier parcel keys; source-scoped, FK-safe
+  reloads and idempotent upserts; one artifact sweep over ready markers (not per-parcel
+  filesystem stats); a content-aware watermark of `(path, artifact hash)` per track; a
+  ready-hash gate so partially regenerated output cannot load; tombstone consumption for
+  dead/invalid records that were previously loaded; and final watermarks covering
+  appraisal, permits, and each requested enrichment track.
+- Do not use digits-only parcel normalization as a conflict key. Do not truncate shared
+  addresses, companies, people, or parent tables with cascade.
+- There is no runtime publisher and no per-county public pointer. Loading the query DB
+  is not a publication step.
 
-  ```bash
-  curl localhost:8080/restate/call/Publish/<county>/approve --json '{}'
-  ```
+Details: `query-db-loading-matching` (loading/merges/matching).
 
-  Approval is durable state on the county's Publish object — flip it only when you
-  intend to publish per-property PII publicly.
+### Permit and official identity reconciliation
 
-Details: `query-db-loading-matching` (loading/merges) and `county-query-table-publish`
-(export/publish).
+- Link a permit from the harvest request's target-parcel evidence; preserve permits
+  that cannot be linked.
+- Preserve raw contractor names and omitted license values.
+- Resolve contractor companies from an official licence number or one unique company
+  plus a temporally valid licensed qualifier. Record resolver version and
+  identity-snapshot digests.
+- Set `permit_contacts.company_id` only for accepted official evidence. Set
+  `property_improvements.contractor_company_id` only when all contractor contacts on
+  the permit resolve to one company.
+- Keep unresolved, ambiguous, conflicting, stale, and orphaned edges explicit. Verify
+  indexes on both company-link columns before product queries.
+
+### Roof age and enrichment
+
+Run the shared roof-age estimator after permit and company-edge reconciliation.
+Preserve accepted work and lifecycle-status mapping, the selected permit or built-year
+fallback, source profile and digest, evidence date precision, confidence and
+historical-coverage caveats, and the as-of date and terminal reason. Do not infer
+replacement from generic repair text, open permits, coatings, accessory roofs, or
+impossible dates.
+
+Run BBB, places, HOA/property management, and AVM as separate enrichment tracks. They
+may add useful evidence but never establish corporate or licensing identity.
 
 ## 7. Redrives
 
@@ -257,13 +285,14 @@ just has no data.
 
 - `CountyIngest` completing means appraisal DISPATCH is done — permit harvests it sent
   are still draining under their own caps. Wrap up only when: permit status artifacts
-  exist for every eligible parcel, the `Loader` watermark covers the final artifacts, and
-  a `Publish` tick ran after the last load. Reconcile with `monitoring-county-ingestion`:
+  exist for every eligible parcel, the `Loader` watermark covers the final artifacts,
+  and tombstones are reconciled. Reconcile with `monitoring-county-ingestion`:
   at appraisal terminal state `seed = ready + dead + current-invalid`; DB completion is
   verified separately (the `Loader` watermark covers the final artifacts, the distinct
   DB folio count covers `ready`); then permit-eligible vs permits loaded.
-- Final publish: confirm the `Publish` tick ran post-approval and a smoke query answers
-  for the county (`county-query-table-publish`).
+- When public publication is in scope, hand the validated lexicon group directories to
+  `use-oracle` for the Atlas CAR/table sequence. Do not run a runtime publisher or
+  create a per-county public pointer.
 - Before wrap-up, backfill existing `permit_contacts.company_id` with the current
   versioned official-registry resolver. Set
   `property_improvements.contractor_company_id` only when all contractor-role contacts
@@ -272,3 +301,6 @@ just has no data.
   `use-oracle/reference/roof-age-and-identity-reingest.md`.
 - PR findings and any transform-script changes to `Counties-trasform-scripts`
   (`gh pr create`); commit code/docs, never data.
+- Return pilot/full counts, source rates, failure classes, watermarks, tombstones,
+  folio reconciliation, permit links, official identity edges, roof-age/enrichment
+  coverage, and the validated group directories ready for the Atlas sequence.

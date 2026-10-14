@@ -1,0 +1,25 @@
+{
+  "configuration_id": "seller-example-prod",
+  "partner": "example-seller",
+  "tenant": "socapital",
+  "environment": "prod",
+  "connections": {
+    "inbox": {
+      "type": "sftp",
+      "host": "sftp.<seller-domain>",
+      "host_key_fingerprint": "SHA256:<fingerprint>",
+      "username": "<username>",
+      "auth": { "profile": "password", "credential": "seller-sftp" }
+    }
+  },
+  "keys": {
+    "transfer": {
+      "credential": "pgp-private-key"
+    }
+  },
+  "parameters": {
+    "prefix": "outgoing/",
+    "pattern": "*.pgp",
+    "archive_prefix": "outgoing/archive/"
+  }
+}

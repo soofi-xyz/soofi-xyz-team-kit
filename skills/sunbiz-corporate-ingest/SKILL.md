@@ -41,7 +41,7 @@ The implementation lives in `skills/use-oracle/runtime/src/enrichment/` and is e
 through `elephant-county`. It validates the archive entry list and SHA-256, expands with
 system `unzip`, streams every fixed-width record once, writes checksummed JSONL chunks,
 transforms them to lexicon records, and writes the Sunbiz identity rows used by the
-county query table. The CLI still uses `sunbiz-enrich`; that command is identity-baseline
+internal reconciliation store. The CLI still uses `sunbiz-enrich`; that command is identity-baseline
 load, not post-permit enrichment.
 
 ```bash
@@ -104,6 +104,20 @@ The transform step maps matched records to `business-registration-v1`: emits
 `business_registration_party`, companies, de-duplicated addresses, and relationship
 records — a single `classes/` + `relationships/` tree plus `summary.json` with counters.
 Complete when `invalidRecordCount == 0` and `transformedRecordCount == sourceRecordCount`.
+
+Apply this for every county. Do not special-case one county.
+
+1. Acquire the official quarterly `cordata.zip`.
+2. Filter with that county's ZIP profile.
+3. Transform.
+4. For each company, set `source_http_request` to a GET of the unique official Sunbiz detail URL calculated from that company's document number. `request_identifier` stays `sunbiz:<documentNumber>:company`.
+5. Load only after that stamp is on the company.
+
+The detail URL is:
+
+`https://search.sunbiz.org/Inquiry/CorporationSearch/SearchResultDetail?inquirytype=DocumentNumber&directionType=Initial&searchNameOrder=&aggregateId=&searchTerm=<documentNumber>`
+
+`sunbizCompanyDetailUrl()` in `skills/use-oracle/runtime/src/enrichment/sunbiz.mjs` builds it. The bulk page `https://dos.fl.gov/sunbiz/other-services/data-downloads/` is the archive source. Do not write it onto the company. Address rows keep their own source rule.
 
 Load with the enrichment prefix per `query-db-loading-matching`:
 `--sunbiz-prefix enrichment/sunbiz/<quarter>/<county>/business-registration-v1/classes/`.

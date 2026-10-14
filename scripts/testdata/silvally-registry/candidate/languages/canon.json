@@ -1,0 +1,9 @@
+{
+  "vertices": [
+    { "type": "member", "is_deprecated": false, "properties": { "display_name": { "type": "string" }, "tier": { "type": "string" }, "nickname": { "type": "string" } }, "indexes": {} },
+    { "type": "ledger", "is_deprecated": false, "properties": { "units": { "type": "integer" } }, "indexes": {} }
+  ],
+  "edges": [
+    { "type": "member_has_ledger", "is_deprecated": false, "from": "member", "to": "ledger", "properties": {}, "indexes": {} }
+  ]
+}

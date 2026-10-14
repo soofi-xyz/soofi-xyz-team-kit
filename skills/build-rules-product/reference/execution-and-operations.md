@@ -88,5 +88,5 @@ after adding outcome persistence; define the no-regression threshold before
 testing and do not release a Filter-phase regression beyond its measurement
 tolerance. Carry entity/adapter and artifact versions in bounded run metadata;
 avoid high-cardinality IDs as metric dimensions. Coordinate shared metric
-definitions with Porygon. Keep sensitive entity data in authorized artifacts
+definitions with the metrics supporting skill. Keep sensitive entity data in authorized artifacts
 rather than logs or generic documentation.

@@ -19,9 +19,6 @@ import {
   ownerNameFromRecord,
   mapTransformedFilesToQueryTableRow,
   QUERY_TABLE_SCHEMA_FIELDS,
-  QUERY_TABLE_BUCKET,
-  QUERY_TABLE_IPNS_LABEL,
-  COVERAGE_IPNS_LABEL,
 } from "../src/counties/pinellas/query-table.mjs";
 import { pinellasAdapter } from "../src/counties/pinellas/adapter.mjs";
 import { createRequire } from "node:module";
@@ -68,7 +65,6 @@ describe("core query-table coercion helpers", () => {
       ingestedCount: 1,
       expectedCount: 1,
       exportedAt: "2026-01-01T00:00:00.000Z",
-      ipnsLabel: COVERAGE_IPNS_LABEL,
     });
     expect(snapshot.datasets).toHaveLength(1);
     expect(snapshot.datasets[0]).toMatchObject({
@@ -77,7 +73,7 @@ describe("core query-table coercion helpers", () => {
       ingested_count: 1,
       expected_count: 1,
       cid: null,
-      ipns_label: COVERAGE_IPNS_LABEL,
+      ipns_label: null,
     });
   });
 });
@@ -95,10 +91,7 @@ describe("Pinellas query-table row mapping (Gate B fixture)", () => {
     expect(ownerNameFromRecord({})).toBeNull();
   });
 
-  it("exposes the Pinellas Filebase destination constants", () => {
-    expect(QUERY_TABLE_BUCKET).toBe("elephant-oracle-query-table-pinellas");
-    expect(QUERY_TABLE_IPNS_LABEL).toBe("oracle-query-table-pinellas");
-    expect(COVERAGE_IPNS_LABEL).toBe("oracle-dataset-coverage-pinellas");
+  it("exposes the Pinellas internal reconciliation schema", () => {
     expect(Object.keys(QUERY_TABLE_SCHEMA_FIELDS)).toContain("property_id");
     expect(Object.keys(QUERY_TABLE_SCHEMA_FIELDS)).toContain("ownership_estate_type");
   });

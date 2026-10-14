@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile, mkdir } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdtemp, readFile, readdir, rm, writeFile, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,11 +22,15 @@ import {
   assertTransformedCounty,
   classifyDuvalFailure,
   hasCompletedTransform,
+  captureRawProperty,
+  requireRawCaptureOutputDir,
   captureAndTransform,
   validateRun,
-  buildPublicationArtifacts,
+  buildReconciliationArtifacts,
   duvalAdapter,
   ZIP_LOCAL_FILE_MAGIC,
+  RAW_CAPTURE_BODY_FILENAME,
+  RAW_CAPTURE_RECEIPT_FILENAME,
   TRANSFORMS_DIR,
 } from "../src/counties/duval/adapter.mjs";
 
@@ -112,6 +117,154 @@ describe("COJ detail-page guards", () => {
   it("fails closed when the captured RE # does not match the requested parcel", () => {
     expect(() => assertHtmlMatchesRequestedRe(validHtml, "0000000001R")).toThrow(/does not match requested/);
     expect(assertHtmlMatchesRequestedRe(validHtml, RE_NUMBER)).toBe("096925-0000");
+  });
+});
+
+describe("raw single-property capture", () => {
+  it("writes the official response byte-for-byte with metadata, without transform output", async () => {
+    const tempDir = await mkdtemp(path.join(tmpdir(), "duval-raw-capture-"));
+    try {
+      const [seedRow] = await loadFixtureSeedRows();
+      const body = Buffer.from(
+        '<html><span id="ctl00_cphBody_lblRealEstateNumber">096925-0000</span><p>café</p></html>',
+        "utf8",
+      );
+      const fetchImpl = async (url, options) => {
+        expect(url).toBe(
+          `https://paopropertysearch.coj.net/Basic/Detail.aspx?RE=${RE_NUMBER}`,
+        );
+        expect(options.redirect).toBe("follow");
+        return new Response(body, {
+          status: 200,
+          statusText: "OK",
+          headers: { "content-type": "text/html; charset=utf-8" },
+        });
+      };
+
+      const result = await captureRawProperty({
+        seedRow,
+        outputDir: tempDir,
+        fetchImpl,
+        capturedAt: "2026-09-30T12:00:00.000Z",
+      });
+
+      expect(await readFile(result.bodyPath)).toEqual(body);
+      expect((await readdir(tempDir)).sort()).toEqual(
+        [RAW_CAPTURE_BODY_FILENAME, RAW_CAPTURE_RECEIPT_FILENAME].sort(),
+      );
+      expect(result.receipt).toMatchObject({
+        schemaVersion: "elephant.raw-capture.v1",
+        county: "duval",
+        parcelId: PARCEL_ID,
+        requestIdentifier: RE_NUMBER,
+        capturedAt: "2026-09-30T12:00:00.000Z",
+        response: {
+          status: 200,
+          contentType: "text/html; charset=utf-8",
+          byteLength: body.length,
+          sha256: createHash("sha256").update(body).digest("hex"),
+        },
+        validation: {
+          kind: "coj_re_number",
+          observedIdentifier: "096925-0000",
+          matched: true,
+        },
+      });
+      expect(
+        JSON.parse(await readFile(result.receiptPath, "utf8")),
+      ).toEqual(result.receipt);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("writes nothing when the response is blocked or belongs to another parcel", async () => {
+    const tempRoot = await mkdtemp(path.join(tmpdir(), "duval-raw-reject-"));
+    try {
+      const [seedRow] = await loadFixtureSeedRows();
+      const blockedDir = path.join(tempRoot, "blocked");
+      await expect(
+        captureRawProperty({
+          seedRow,
+          outputDir: blockedDir,
+          fetchImpl: async () =>
+            new Response("<html>Request Blocked</html>", { status: 200 }),
+        }),
+      ).rejects.toThrow(/blocked or challenged/);
+
+      const mismatchedDir = path.join(tempRoot, "mismatched");
+      await expect(
+        captureRawProperty({
+          seedRow,
+          outputDir: mismatchedDir,
+          fetchImpl: async () =>
+            new Response(
+              '<span id="ctl00_cphBody_lblRealEstateNumber">000000-0001</span>',
+              { status: 200 },
+            ),
+        }),
+      ).rejects.toThrow(/does not match requested/);
+
+      expect(await readdir(tempRoot)).toEqual([]);
+    } finally {
+      await rm(tempRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects trackable runtime paths before contacting the source", async () => {
+    let fetchCalled = false;
+    const [seedRow] = await loadFixtureSeedRows();
+    await expect(
+      captureRawProperty({
+        seedRow,
+        outputDir: path.join(RUNTIME_ROOT, "fixtures", "raw-capture"),
+        fetchImpl: async () => {
+          fetchCalled = true;
+          return new Response("", { status: 200 });
+        },
+      }),
+    ).rejects.toThrow(/must be under the OS temp directory/);
+    expect(fetchCalled).toBe(false);
+    expect(
+      requireRawCaptureOutputDir(
+        path.join(RUNTIME_ROOT, ".scratch", "one-property"),
+      ),
+    ).toContain(path.join(".scratch", "one-property"));
+  });
+
+  it("refuses a multi-property seed before any live capture", async () => {
+    const tempDir = await mkdtemp(path.join(tmpdir(), "duval-raw-bounded-"));
+    try {
+      const fixtureSeed = (
+        await readFile(path.join(FIXTURE_DIR, "seed.csv"), "utf8")
+      )
+        .trimEnd()
+        .split("\n");
+      const seedPath = path.join(tempDir, "two-properties.csv");
+      await writeFile(
+        seedPath,
+        `${fixtureSeed[0]}\n${fixtureSeed[1]}\n${fixtureSeed[1]}\n`,
+        "utf8",
+      );
+      const { runCaptureRaw } = await import(
+        "../bin/elephant-county.mjs"
+      );
+      await expect(
+        runCaptureRaw([
+          "--county",
+          "duval",
+          "--seed",
+          seedPath,
+          "--output",
+          path.join(tempDir, "capture"),
+        ]),
+      ).rejects.toThrow(/requires exactly one seed row; received 2/);
+      expect((await readdir(tempDir)).sort()).toEqual([
+        "two-properties.csv",
+      ]);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
   });
 });
 
@@ -257,9 +410,12 @@ describe("captureAndTransform (Gate B fixture, no network)", () => {
   });
 
   it("exposes the same captureAndTransform/validateRun functions on the duvalAdapter object", () => {
+    expect(duvalAdapter.captureRawProperty).toBe(captureRawProperty);
     expect(duvalAdapter.captureAndTransform).toBe(captureAndTransform);
     expect(duvalAdapter.validateRun).toBe(validateRun);
-    expect(duvalAdapter.buildPublicationArtifacts).toBe(buildPublicationArtifacts);
+    expect(duvalAdapter.buildReconciliationArtifacts).toBe(
+      buildReconciliationArtifacts,
+    );
     expect(duvalAdapter.key).toBe("duval");
     expect(duvalAdapter.countyName).toBe("Duval");
   });
@@ -398,7 +554,7 @@ describe("all-fail empty-export gate (Review finding #1, fail-closed by default)
     expect(validation).toEqual({ valid: true, checked: 0, issues: [] });
   });
 
-  it("buildPublicationArtifacts throws on a 1-of-1 all-failure run by default, and writes a zero-row table with allowEmpty", async () => {
+  it("buildReconciliationArtifacts rejects an all-failure run unless allowEmpty is explicit", async () => {
     const tempDir = await mkdtemp(path.join(tmpdir(), "duval-all-fail-export-"));
     try {
       const [fixtureRow] = await loadFixtureSeedRows();
@@ -411,19 +567,25 @@ describe("all-fail empty-export gate (Review finding #1, fail-closed by default)
         liveFetch: false,
       });
 
-      const publishDir = path.join(tempDir, "publish");
+      const workingDir = path.join(tempDir, "reconciliation");
       await expect(
-        buildPublicationArtifacts({ outputDir, seedRows: [missingRow], publishDir }),
-      ).rejects.toThrow(/Refusing to publish an empty Duval query table/);
+        buildReconciliationArtifacts({
+          outputDir,
+          seedRows: [missingRow],
+          workingDir,
+        }),
+      ).rejects.toThrow(/Refusing to write an empty Duval reconciliation table/);
 
       // Nothing was written on the rejected attempt.
       const { access } = await import("node:fs/promises");
-      await expect(access(path.join(publishDir, "query-table.parquet"))).rejects.toThrow();
+      await expect(
+        access(path.join(workingDir, "query-table.parquet")),
+      ).rejects.toThrow();
 
-      const artifacts = await buildPublicationArtifacts({
+      const artifacts = await buildReconciliationArtifacts({
         outputDir,
         seedRows: [missingRow],
-        publishDir,
+        workingDir,
         allowEmpty: true,
       });
       expect(artifacts.rowCount).toBe(0);
@@ -440,13 +602,13 @@ describe("all-fail empty-export gate (Review finding #1, fail-closed by default)
     }
   });
 
-  it("buildPublicationArtifacts never throws the empty-export error for a genuinely empty seed (seedRows === 0)", async () => {
+  it("buildReconciliationArtifacts allows a genuinely empty seed", async () => {
     const tempDir = await mkdtemp(path.join(tmpdir(), "duval-zero-seed-export-"));
     try {
-      const artifacts = await buildPublicationArtifacts({
+      const artifacts = await buildReconciliationArtifacts({
         outputDir: path.join(tempDir, "ingest"),
         seedRows: [],
-        publishDir: path.join(tempDir, "publish"),
+        workingDir: path.join(tempDir, "reconciliation"),
       });
       expect(artifacts.rowCount).toBe(0);
       expect(artifacts.expectedCount).toBe(0);
@@ -457,7 +619,7 @@ describe("all-fail empty-export gate (Review finding #1, fail-closed by default)
 });
 
 describe("runReplay (in-process pipeline)", () => {
-  it("runs the full offline pipeline: seed -> capture/transform -> artifacts -> credential-free dry-run", async () => {
+  it("runs the offline pipeline through internal reconciliation artifacts", async () => {
     const tempDir = await mkdtemp(path.join(tmpdir(), "duval-replay-inprocess-"));
     try {
       const replay = await runReplay({ adapter: duvalAdapter, fixtureDir: FIXTURE_DIR, outputDir: tempDir, skipValidate: false });
@@ -475,12 +637,6 @@ describe("runReplay (in-process pipeline)", () => {
       expect(replay.validation).toEqual({ valid: true, checked: 1, issues: [] });
       expect(replay.artifacts.rowCount).toBe(1);
       expect(replay.artifacts.expectedCount).toBe(1);
-      expect(replay.publishResult).toEqual({
-        dryRun: true,
-        bucket: "elephant-oracle-query-table",
-        queryTableIpnsLabel: "oracle-query-table-duval",
-        coverageIpnsLabel: "oracle-dataset-coverage-duval",
-      });
 
       const rows = await readParquetRows(replay.artifacts.parquetPath);
       expect(rows).toHaveLength(1);
@@ -500,7 +656,7 @@ describe("runReplay (in-process pipeline)", () => {
 });
 
 describe("elephant-county replay (public CLI, subprocess)", () => {
-  it("produces required transformed JSON, a valid ZIP, one Parquet row, matching one-row coverage, and a dry-run publish for --county duval", async () => {
+  it("produces Duval transformed JSON and matching private reconciliation artifacts", async () => {
     const tempDir = await mkdtemp(path.join(tmpdir(), "duval-replay-cli-"));
     const cwdDir = await mkdtemp(path.join(tmpdir(), "duval-replay-cwd-"));
     try {
@@ -514,18 +670,8 @@ describe("elephant-county replay (public CLI, subprocess)", () => {
       expect(summary.county).toBe("duval");
       expect(summary.manifest.results[0].transformSuccess).toBe(true);
 
-      expect(summary.artifacts.bucket).toBe("elephant-oracle-query-table");
-      expect(summary.artifacts.queryTableIpnsLabel).toBe("oracle-query-table-duval");
-      expect(summary.artifacts.coverageIpnsLabel).toBe("oracle-dataset-coverage-duval");
       expect(summary.artifacts.rowCount).toBe(1);
       expect(summary.artifacts.expectedCount).toBe(1);
-
-      expect(summary.publishResult).toEqual({
-        dryRun: true,
-        bucket: "elephant-oracle-query-table",
-        queryTableIpnsLabel: "oracle-query-table-duval",
-        coverageIpnsLabel: "oracle-dataset-coverage-duval",
-      });
 
       const zipPath = path.join(tempDir, "ingest", PARCEL_ID, "transformed.zip");
       const zipBytes = await readFile(zipPath);

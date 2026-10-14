@@ -6,8 +6,8 @@ The Duval property table reserves `avm_value`, but appraisal
 ## Access request
 
 > Which licensed AVM provider should Oracle use for Duval, and can Data
-> Partnerships provide a folio-keyed bulk extract plus written permission to
-> publish the AVM value in the public Filebase/IPFS query table?
+> Partnerships provide a folio-keyed bulk extract plus written permission to include
+> the AVM value in the validated Atlas county data group?
 
 The provider agreement must explicitly allow durable storage and public
 redistribution or publication of the selected AVM value. A short-lived API

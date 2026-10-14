@@ -37,7 +37,7 @@ async function readParquetRows(parquetPath) {
 }
 
 describe("runReplay (in-process pipeline)", () => {
-  it("runs the full offline pipeline: seed -> capture/transform -> artifacts -> credential-free dry-run", async () => {
+  it("runs the offline pipeline through reconciliation artifacts", async () => {
     const tempDir = await mkdtemp(path.join(tmpdir(), "pinellas-replay-inprocess-"));
     try {
       const replay = await runReplay({
@@ -54,12 +54,6 @@ describe("runReplay (in-process pipeline)", () => {
       expect(replay.validation).toEqual({ valid: true, checked: 1, issues: [] });
       expect(replay.artifacts.rowCount).toBe(1);
       expect(replay.artifacts.expectedCount).toBe(1);
-      expect(replay.publishResult).toEqual({
-        dryRun: true,
-        bucket: "elephant-oracle-query-table-pinellas",
-        queryTableIpnsLabel: "oracle-query-table-pinellas",
-        coverageIpnsLabel: "oracle-dataset-coverage-pinellas",
-      });
 
       const rows = await readParquetRows(replay.artifacts.parquetPath);
       expect(rows).toHaveLength(1);
@@ -79,7 +73,7 @@ describe("runReplay (in-process pipeline)", () => {
 });
 
 describe("elephant-county replay (public CLI, subprocess)", () => {
-  it("produces required transformed JSON, a valid ZIP, one Parquet row, matching one-row coverage, and a dry-run publish, independent of the caller's cwd", async () => {
+  it("produces transformed JSON and matching internal reconciliation artifacts independent of cwd", async () => {
     const tempDir = await mkdtemp(path.join(tmpdir(), "pinellas-replay-cli-"));
     const cwdDir = await mkdtemp(path.join(tmpdir(), "pinellas-replay-cwd-"));
     try {
@@ -93,20 +87,8 @@ describe("elephant-county replay (public CLI, subprocess)", () => {
       expect(summary.county).toBe("pinellas");
       expect(summary.manifest.results[0].transformSuccess).toBe(true);
 
-      // Pinellas source identity.
-      expect(summary.artifacts.bucket).toBe("elephant-oracle-query-table-pinellas");
-      expect(summary.artifacts.queryTableIpnsLabel).toBe("oracle-query-table-pinellas");
-      expect(summary.artifacts.coverageIpnsLabel).toBe("oracle-dataset-coverage-pinellas");
       expect(summary.artifacts.rowCount).toBe(1);
       expect(summary.artifacts.expectedCount).toBe(1);
-
-      // Credential-free Filebase dry-run: no live network call, no env credentials needed.
-      expect(summary.publishResult).toEqual({
-        dryRun: true,
-        bucket: "elephant-oracle-query-table-pinellas",
-        queryTableIpnsLabel: "oracle-query-table-pinellas",
-        coverageIpnsLabel: "oracle-dataset-coverage-pinellas",
-      });
 
       // Valid ZIP (PKZIP local-file magic bytes).
       const zipPath = path.join(tempDir, "ingest", STRAP, "transformed.zip");

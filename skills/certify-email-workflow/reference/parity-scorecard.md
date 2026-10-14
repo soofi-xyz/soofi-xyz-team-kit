@@ -1,6 +1,8 @@
 # Email Workflow Parity Scorecard
 
-Version: `email-workflow-certification-v1`
+Version: `email-workflow-certification-v3`
+
+Version 3 adds the fail-closed channel-neutral control-equivalence map across exact CloudFormation, ASL, code, ownership, failure, operations, security, and provenance evidence. Version 2 introduced the top-level `STANDARD` Step Functions invariant. The frozen PR 1 calibration remains a version 1 historical record.
 
 Score capabilities, not file similarity. Use only bands `0`, `25`, `50`, `75`, or `100`.
 
@@ -32,9 +34,24 @@ When the operator explicitly requests only part of the workflow:
 
 Label the result `FOCUSED_DIAGNOSTIC`. A high focused score proves only the selected capability and never implies full-workflow certification.
 
+## Control-map scoring
+
+Map control IDs to dimensions using `control-equivalence-map.md`.
+
+- A required `MISSING` row forces every affected selected dimension to `0%`.
+- A required `BLOCKED` row caps every affected selected dimension at `25%`.
+- Source intent or isolated tests without deployed linkage cap the affected dimension at `25%`.
+- Implemented controls with tests but no relevant runtime evidence cap it at `50%`.
+- Commit-linked end-to-end evidence without required scale or failure proof caps it at `75%`.
+- `100%` requires complete commit-linked runtime, scale, and failure evidence applicable to the dimension.
+- `REQUIRED_EQUIVALENT` and `CHANNEL_ADAPTED` have equal scoring potential.
+- `EXTRA_JUSTIFIED` adds no points and cannot compensate for a required row.
+
 ## Dimensions
 
 ### 1. Audience and compliance — 15
+
+Control rows: `AUD-01`.
 
 Prove:
 
@@ -48,6 +65,8 @@ A historical Filter output with no freshness control cannot exceed `25%`.
 
 ### 2. Deterministic recipient identity — 10
 
+Control rows: `IDENTITY-01`.
+
 Prove:
 
 - one selected email action per debt under the declared policy;
@@ -57,6 +76,8 @@ Prove:
 - retries cannot create a second logical action.
 
 ### 3. Legal scheduling and capacity — 15
+
+Control rows: `SCHEDULE-01`.
 
 Prove:
 
@@ -69,6 +90,8 @@ Prove:
 
 ### 4. Rendering and handoff — 10
 
+Control rows: `RENDER-01`.
+
 Prove:
 
 - a reviewed Git template inventory is the runtime source of truth;
@@ -77,7 +100,9 @@ Prove:
 - per-row rendering failures are durable and do not silently disappear;
 - the execution artifact is complete enough for Chatot without re-ranking or re-deriving audience.
 
-### 5. SES backlog and send controls — 15
+### 5. Provider backlog and send controls — 15
+
+Control rows: `SEND-01`, `SEND-02`.
 
 Prove:
 
@@ -89,18 +114,25 @@ Prove:
 
 ### 6. Correlation, feedback, and lifecycle closure — 15
 
+Control rows: `FEEDBACK-01`, `FEEDBACK-02`, `PERSIST-01`, `PERSIST-02`.
+
 Prove:
 
 - local message ID, SES/provider message ID, and internal interaction ID remain correlated;
 - delivery, bounce, complaint, unsubscribe, and response events are normalized;
 - events persist idempotently to the internal source of truth;
-- unresolved correlation or persistence remains retryable;
+- the concrete writer and orchestration handoff are identified;
+- failed persistence writes are durably parked and redriven to one internal fact without provider resubmission;
+- unresolved correlation or persistence remains retryable and observable;
 - external reporting is downstream and does not substitute for lifecycle closure.
 
 ### 7. Reliability, replay, and overflow — 10
 
+Control rows: `ORCH-01`, `SEND-02`, `PERSIST-02`, `REPLAY-01`, `OPS-01`.
+
 Prove:
 
+- an active, deployed top-level `STANDARD` Step Functions state machine substantively owns the communication workflow and its replay boundary rather than wrapping another orchestrator;
 - immutable run and artifact identity;
 - explicit partial-success versus infrastructure-failure semantics;
 - exact selected/overflow/hourly reconciliation;
@@ -110,9 +142,13 @@ Prove:
 
 ### 8. Observability, security, and evidence — 10
 
+Control rows: `ORCH-01`, `OPS-01`, `SEC-01`, `PROV-01`.
+
 Prove:
 
 - commit-to-deployment provenance;
+- every required control row maps exact pinned SMS and Email source, CloudFormation, ASL, code, runtime, and evidence identities;
+- linked source construct and sequencing evidence, a healthy CloudFormation `AWS::StepFunctions::StateMachine` resource, an active `STANDARD` state machine ARN, and an exact or valid alias/version-qualified execution binding;
 - metrics, alarms, DLQs, cost controls, and run summaries;
 - PII-free logs, Step Functions state, metrics, alerts, and queue control messages;
 - encrypted data artifacts and least-privilege roles;

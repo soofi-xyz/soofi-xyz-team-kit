@@ -1,0 +1,16 @@
+{
+  "$schema": "https://cursor.com/schemas/mcp.json",
+  "mcpServers": {
+    "elephant": {
+      "command": "bash",
+      "args": [
+        "-c",
+        "PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\"; at_least_2218() { [ -n \"$1\" ] && [ \"$(printf '%s\\nv22.18.0\\n' \"$1\" | sort -V | head -1)\" = \"v22.18.0\" ]; }; for bin in $(ls -d \"$HOME/.nvm/versions/node\"/*/bin 2>/dev/null | sort -Vr); do if at_least_2218 \"$(\"$bin/node\" -v 2>/dev/null)\"; then PATH=\"$bin:$PATH\"; break; fi; done; export PATH; command -v node >/dev/null || { echo 'elephant MCP: node not found (need Node 22.18+ on PATH)' >&2; exit 127; }; at_least_2218 \"$(node -v)\" || { echo \"elephant MCP: node $(node -v) is too old (need 22.18+); remove or upgrade the older node earlier on PATH\" >&2; exit 1; }; exec npx -y @elephant-xyz/mcp@2 mcp"
+      ],
+      "env": {
+        "ATLAS_IPNS": "k51qzi5uqu5dhzmj1jtn06idud425ozwdjjjn4eu7q01g2t814h7rw4du0nd04",
+        "ATLAS_GATEWAYS": "https://ipfs.filebase.io,https://ipfs.io,https://dweb.link,https://w3s.link"
+      }
+    }
+  }
+}

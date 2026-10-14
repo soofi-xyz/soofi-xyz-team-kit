@@ -1,0 +1,35 @@
+{
+  "version": "3",
+  "flow_name": "interprose-account-lookup",
+  "kind": "lookup",
+  "description": "Synchronous read of one Interprose account, for callers with a tight latency budget such as the LiveVox payment-link check.",
+  "connections": {
+    "api": { "types": ["http"] }
+  },
+  "parameters": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["debt_id"],
+    "properties": { "debt_id": { "type": "string" } }
+  },
+  "triggers": ["api"],
+  "limits": { "timeout_seconds": 5 },
+  "definition": {
+    "StartAt": "GetAccount",
+    "States": {
+      "GetAccount": {
+        "Type": "Task",
+        "ResourceDefinition": {
+          "Type": "CALL",
+          "Connection": "api",
+          "Method": "GET",
+          "Path": "/api/account/{debtId}",
+          "PathParameters": { "debtId": "$.request.debt_id" },
+          "Response": { "Format": "json", "Mode": "inline", "MaxInlineBytes": 65536 },
+          "SaveOutputTo": "$.vars.account"
+        },
+        "End": true
+      }
+    }
+  }
+}

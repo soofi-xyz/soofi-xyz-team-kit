@@ -1,0 +1,28 @@
+{
+  "version": "3",
+  "flow_name": "partner-webhook-receipt",
+  "kind": "flow",
+  "description": "Receive partner-initiated webhook events (for example Quiq delivery status). The activation batches events into one landed file, so high volume does not mean one execution per event.",
+  "connections": {
+    "provider": { "types": ["http"] }
+  },
+  "webhooks": {
+    "events": {
+      "connection": "provider",
+      "content_type": "application/json",
+      "response": { "accepted_status": 202, "unmatched_status": 202 }
+    }
+  },
+  "triggers": ["webhook"],
+  "limits": { "timeout_seconds": 300, "max_bytes": 1073741824 },
+  "definition": {
+    "StartAt": "Receipt",
+    "States": {
+      "Receipt": {
+        "Type": "Pass",
+        "Comment": "The webhook trigger already landed the batch at $.trigger.file; the compiler adds the reply to the subscriber.",
+        "End": true
+      }
+    }
+  }
+}

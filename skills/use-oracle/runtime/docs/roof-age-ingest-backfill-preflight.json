@@ -11,7 +11,7 @@
     "stack": "aws",
     "stackEvidence": [
       "skills/use-oracle/runtime/cdk.json",
-      "skills/use-oracle/runtime/catalog/published-counties.json"
+      "skills/use-oracle/runtime/package.json"
     ],
     "node": {
       "status": "available",
@@ -23,8 +23,8 @@
       "install": "npm ci completed"
     },
     "queryDatabaseSchema": {
-      "status": "available",
-      "path": "skills/use-elephant-query-db/reference/query-db-schema/schema"
+      "status": "owned-by-query-db-package",
+      "path": "skills/query-db-loading-matching/SKILL.md"
     },
     "deterministicFixtures": {
       "status": "available",

@@ -1,34 +1,81 @@
 ---
 name: build-lexicon-product
-description: "Implementing or changing the Lexicon product from its PRD — governed vocabulary, rulesets, metric definitions, artifact publication, schema browsing. Read reference/PRD.md first."
+description: "Build or maintain the Model HTTP API and its vocabulary lookup, candidate validation, governed changes, ruleset definitions, mapping registrations, metric definitions and versioned releases. Use Dialga; use Jirachi for existing-service configuration."
 disable-model-invocation: true
 ---
 
-# Build Lexicon Product
+# Build Model
 
-This skill is intentionally thin. Use it as a loader for [`reference/PRD.md`](./reference/PRD.md), not as a requirements copy.
+Use `dialga`. Load [guide-product-work](../guide-product-work/SKILL.md),
+[the Model capability map](../guide-product-work/reference/iterations/model.md)
+and [engineering guidelines](../apply-engineering-guidelines/SKILL.md).
+Use `jirachi` with [configure-model-product](../configure-model-product/SKILL.md)
+for operations through an existing deployment.
 
-## Required Reading
+## Scope and contract
 
-1. Read [`reference/PRD.md`](./reference/PRD.md) before planning or coding.
-2. Read [`../apply-engineering-guidelines/SKILL.md`](../apply-engineering-guidelines/SKILL.md) for Golden Path constraints.
-3. Read lexicon, Rules, Persist, Translate, and metrics skills whenever Lexicon work touches graph ontology changes, ruleset artifacts, validation contracts, mapping artifacts, or CloudWatch metric registration.
-4. Read [`build-transform-product`](../build-transform-product/SKILL.md) when registering Transform languages (the Lexicon language definition is their schema), directional SQL mappings or generic catalog publication. Keep configuration authoring/publication here and coordinate Python/PySpark execution with `kecleon`; use its explicit graph ID/endpoint bindings for graph mappings.
+Read [the product contract](reference/PRD.md) and
+[synthetic test data and dependency fakes](reference/test-data.md) before coding.
+Discover the target repository/revision, supported contract, deployment and
+selected AWS profile; verify the account and region. Record discrepancies between
+the specification and observed implementation without inventing deployed routes.
 
-## Use With Plugin Agents
+Deliver an HTTP API with explicit authentication, caller/resource authorization,
+request validation, correlated errors and observable results. Expose submission,
+status and results for async capabilities. Reuse execution logic behind CLI,
+workflow and API adapters; a direct workflow call does not complete API acceptance.
+No separate API-documentation workstream is added.
 
-- Use `conkeldurr` first for platform product classification, existing-deployment checks, and build-vs-integrate decisions.
-- Use `unown` when Lexicon work changes vertices, edges, properties, enums, formats, or immutability rules.
-- Use `porygon` when Lexicon work changes metric definitions or dashboard-facing metric semantics.
-- Use `regigigas` only when Lexicon must be packaged, released, subscribed, or deployed through the marketplace ecosystem.
+Deliver the Model HTTP API while preserving verified Lexicon S3/SSM consumer contracts and release identifiers. Existing artifact/UI surfaces do not prove an API exists. Keep canonical changes reviewed and versioned: API operations may submit/validate candidates and initiate approved publication but must not silently mutate canonical artifacts or bypass source review. Preserve immutable facts, property/index distinctions and consumer compatibility.
 
-## Implementation Rules
+Keep Persist storage/validation execution with Conkeldurr/Uxie, Rule evaluation with Gallade/Meditite and Transform mapping execution with Kecleon/Silvally. Silvally authors concrete Transform configurations; Model owns shared definition validation and governed publication. Use Mew for vocabulary lookup/modeling advice without changing its retained specialist role.
 
-- Treat the PRD as the single source of truth for artifact contracts, S3 object shapes, SSM parameters, release metadata, resource shapes, IAM scopes, env vars, metrics, error tags, and verification.
-- Do not implement from this `SKILL.md` alone.
-- For an existing Lexicon deployment, integrate through the PRD's S3/SSM artifact contract instead of provisioning a duplicate product.
-- If any old skill or rule file conflicts with the PRD, the PRD wins; update stale guidance instead of layering compatibility shims.
+## Own business and financial metric contracts
 
-## Expected Output
+Dialga owns the detailed Model architecture for business-metric definitions and
+catalogs. Read and maintain
+[the business and financial metric catalog contract](reference/business-financial-metric-catalogs.md)
+before changing metric support. Keep it aligned with pinned, inspected revisions
+of `prismteam-ai/model` and `Spring-Oaks-Capital-LLC/persist`; never promote a
+revision-specific count, release ID or digest into a durable contract.
 
-Return the product fit, existing-vs-new deployment verdict, PRD sections used, files/stacks/contracts to change, companion agents/skills loaded, and the PRD verification path.
+`prismteam-ai/model` is the only canonical source for metric definitions.
+Implement Model API, composition and catalog validation, the catalog
+schema/generator, governed lifecycle, consumer-boundary publication and the UI
+catalog view there. `Spring-Oaks-Capital-LLC/lexicon` is the legacy
+implementation: migrate legacy-only definitions into Model and retire its metric
+publication; never extend it. When execution requires consumer support,
+coordinate Persist's closed definitions, compiler, materialization and
+activation compatibility. Do not move these architecture
+decisions into Jirachi prompts or confuse business definitions with platform
+telemetry.
+
+Jirachi receives KPI intent, suggests metrics derived from the governed Model
+vocabulary, reads the contracts Dialga defines, classifies reuse versus supported
+configuration versus a product gap, and applies only existing
+supported configuration through a discovered Model adapter. A new shape,
+family or runtime behavior, including a Model-derived new-family proposal,
+returns to Dialga.
+
+## Build each feature piece
+
+1. Select and order the capability map's logical features. Use at least four
+   increments for a full-product build; scope narrow fixes to relevant pieces.
+   Bring the minimal API and authorized test deployment into the first usable
+   increment so the person can try it before further implementation.
+2. Show the next feature with synthetic data, then implement only that piece.
+   Mock external dependencies and effects first. Use the linked fixture matrix
+   to test baseline, a supported variant, invalid/unauthorized input and relevant
+   replay, timeout and recovery paths. Verify effects, redaction and HTTP results.
+3. Make the piece runnable through the API in the authorized test environment.
+   Give one invocation, expected output and at most three AWS inspection steps
+   using actual resource names. Have the user run the baseline and variant and
+   return request/execution IDs and observations. Wait for their evidence before
+   implementing the next piece; fix a failed current check before advancing.
+4. Finish selected pieces with cumulative acceptance and requested, authorized
+   live dependencies. Keep local unit tests, synthesis, deployed mocked runs and
+   real effects distinct. Never claim a mock dependency proves its live service.
+
+Return changes, supported API/configuration examples, automated and user evidence,
+AWS observations, cleanup and remaining gaps. Keep reusable product code in its
+target repository; this kit contains guidance and synthetic inputs.

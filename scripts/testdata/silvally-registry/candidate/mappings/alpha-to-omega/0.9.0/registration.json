@@ -1,0 +1,48 @@
+{
+  "id": "alpha-to-omega",
+  "version": "0.9.0",
+  "status": "ENABLED",
+  "engine": "spark-sql",
+  "from": "alpha",
+  "to": "omega",
+  "sqlOptions": {
+    "ansiEnabled": true
+  },
+  "inputs": [
+    {
+      "table": "members",
+      "view": "source_members",
+      "format": "jsonl",
+      "options": {
+        "multiLine": false,
+        "mode": "FAILFAST"
+      }
+    }
+  ],
+  "output": {
+    "shape": "tabular",
+    "format": "csv",
+    "options": {
+      "delimiter": ";",
+      "header": true,
+      "quote": "",
+      "escape": "",
+      "nullValue": ""
+    }
+  },
+  "outputs": [
+    {
+      "dataset": "member_report",
+      "requiredInputs": [
+        "members"
+      ],
+      "queries": [
+        {
+          "path": "queries/member_report.sql",
+          "sha256": "cc0ad56cbfa061eee7b419879659a072c903a439c6b2afcd22ff81ec4b50ed0c"
+        }
+      ],
+      "dependsOn": []
+    }
+  ]
+}

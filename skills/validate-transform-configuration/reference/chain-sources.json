@@ -1,0 +1,159 @@
+{
+  "id": "chain-sources.json",
+  "contractVersion": 1,
+  "description": "PROD-derived first-step inputs of chained validations, read-only. Each source names where its real PROD events live, the exact read method, how source_events.py turns them into the first mapping's input language (declarative expressions, no mapping-specific code), which rows are quarantined and why, and which fields are sensitive. A source with no PROD producer of the input language is normalized here from the provider's own events; the normalization rules are data, versioned with this catalog, and every quarantine reason is counted.",
+  "sources": {
+    "quiq-lifecycle": {
+      "language": "quiq",
+      "dataset": "lifecycle",
+      "outputFormat": "jsonl",
+      "meaning": "Quiq SMS lifecycle observations as the quiq language (lexicon src/data/quiq.json, dataset lifecycle) that quiq-to-lexicon reads. No PROD system emits this language: sms-workflow consumes the raw Quiq BI exports (sender/src/lambdas/process-quiq-events.ts) and writes graph facts and Interprose files instead, so the lifecycle rows are normalized from the raw events plus the send context sms-workflow stored when it sent each message.",
+      "prodAccount": "014948052063",
+      "region": "us-east-2",
+      "producerEvidence": {
+        "rawEvents": "Quiq delivers BI exports to the PROD bucket so-quiq-events under quiq-inbound/bi-data/springoakscapital/<UTC day>/<EventType>-<id>.json (verified read-only 2026-10-01: 2026-09-30 holds NotificationsDeliverabilityStatus 1433, CustomerOptOutStatusChanged 2635, ConversationClosed 364 and other conversation/agent families)",
+        "sendContext": "sms-workflow SendContextTable (PROD DynamoDB KadabraSendLifecycleStack-SendContextTable*, hash key providerMessageId, TTL attribute ttl enabled): debtId, phoneNumber, interactionIdentifier, templateIdentifier, messageId, batchId, sentAt per accepted send (docs/contracts/send-lifecycle.md 'Send Context')",
+        "processedBatches": "sms-workflow lifecycle artifact bucket kadabrasendlifecyclestack-lifecycleartifactbucket4-miqsjse65y6b, sms-lifecycle/processed-batches/<YYYY/MM/DD of sentAt>/<batchId>.json: batch.items[] (message_id, rendered_message_s3_uri) and results[] (messageId, providerMessageId)",
+        "renderedBodies": "the exact rendered_message_s3_uri object of each send (Jigglypuff text artifact, text/plain)",
+        "phoneLocation": "Persist-owned PROD Iceberg graph_call_outputs.phone_number (phone_number, location_type)",
+        "earlierRun": "the DEV evidence s3://transformpipelinestack-databuckete3889a50-rmklq0v3to8q/test/sms-mapping/quiq/2026-09-19/run-20260923T133500Z/ (130,892 observations: 130,321 accepted, 501 missing_debt, 70 missing_send_context) was produced by a one-off script with exactly this bridge (providerMessageId -> results.messageId -> batch.items.message_id -> interaction_identifier), the same phone-location policy and template_is_known false; lexicon PRs #782 and #788 carry the language and mappings, not the producer"
+      },
+      "readMethod": {
+        "listing": {
+          "bucket": "so-quiq-events",
+          "prefix": "quiq-inbound/bi-data/springoakscapital/{day}/",
+          "dayFolders": [0, 1],
+          "familyFrom": "filename-prefix",
+          "detail": "list the window day's folder and the next day's (late exports of the window's events), read only objects of the declared families, keep observations whose effective_at lies in the half-open UTC window"
+        },
+        "aws": "aws s3api list-objects-v2 / s3 cp (download only), dynamodb list-tables / batch-get-item (read-only) with the operator's PROD profile; silvally_io refuses every PROD write verb",
+        "boundedBy": "one window day plus one spill day of listed objects; send-context reads only for the window's provider ids (100 per batch-get-item); processed batches and rendered bodies only for resolved sends; the canary resolves observations in deterministic order until it has 10 accepted rows (at most --canary-scan-limit)"
+      },
+      "families": {
+        "NotificationsDeliverabilityStatus": {
+          "rows": "data.updates",
+          "timeField": "effective_at",
+          "lookups": ["sendContext", "processedBatchItem", "renderedArtifact"],
+          "fields": {
+            "interaction_identifier": {"first": [{"path": "ctx.interactionIdentifier"}, {"path": "batchItem.interaction_identifier"}]},
+            "provider_message_identifier": {"normalize": {"path": "row.id"}, "as": "trim"},
+            "provider": {"const": "QUIQ"},
+            "canonical_status": {"normalize": {"path": "row.status"}, "as": "status-token"},
+            "effective_at": {"normalize": {"first": [{"path": "row.time"}, {"path": "doc.timestamp"}]}, "as": "utc-millis"},
+            "observed_at": {"normalize": {"first": [{"path": "row.time"}, {"path": "doc.timestamp"}]}, "as": "utc-millis"},
+            "direction": {"const": "OUTBOUND"},
+            "message_type": {"if": {"path": "row.assets"}, "then": {"const": "MMS"}, "else": {"const": "SMS"}},
+            "provider_result": {"normalize": {"path": "row.status"}, "as": "trim"},
+            "provider_tracking_code": {"const": "Outbound SMS"},
+            "debt_id": {"normalize": {"path": "ctx.debtId"}, "as": "int"},
+            "debt_identifier": {"normalize": {"path": "ctx.debtId"}, "as": "trim"},
+            "phone_number": {"normalize": {"first": [{"path": "ctx.phoneNumber"}, {"path": "row.handle"}]}, "as": "phone10"},
+            "phone_location_type": {"path": "lookup.phoneLocation"},
+            "template_is_known": {"const": false}
+          },
+          "quarantine": [
+            {"reason": "missing_send_context", "when": {"blank": {"path": "ctx.providerMessageId"}}, "detail": "no SendContext row for the provider id (never sent through sms-workflow, or expired by its TTL)"},
+            {"reason": "missing_debt", "when": {"blank": {"path": "ctx.debtId"}}},
+            {"reason": "unknown_status", "when": {"notIn": {"path": "out.canonical_status"}, "values": "language-enum:canonical_status"}},
+            {"reason": "invalid_phone", "when": {"blank": {"path": "out.phone_number"}}}
+          ]
+        },
+        "CustomerOptOutStatusChanged": {
+          "rows": "data.updates",
+          "timeField": "effective_at",
+          "lookups": [],
+          "fields": {
+            "interaction_identifier": {"first": [{"path": "row.interaction_identifier"}, {"path": "row.message_id"}, {"path": "doc.id"}]},
+            "provider_message_identifier": {"normalize": {"path": "doc.id"}, "as": "trim"},
+            "provider": {"const": "QUIQ"},
+            "canonical_status": {"if": {"path": "row.optedOut"}, "then": {"const": "OPTED_OUT"}, "else": {"const": "OPTED_IN"}},
+            "effective_at": {"normalize": {"path": "doc.timestamp"}, "as": "utc-millis"},
+            "observed_at": {"normalize": {"path": "doc.timestamp"}, "as": "utc-millis"},
+            "direction": {"const": "INBOUND"},
+            "message_type": {"const": "SMS"},
+            "provider_result": {"if": {"path": "row.optedOut"}, "then": {"const": "OPTED_OUT"}, "else": {"const": "OPTED_IN"}},
+            "provider_tracking_code": {"const": "Inbound SMS"},
+            "debt_id": {"normalize": {"first": [{"path": "row.debt_id"}, {"path": "row.debtId"}, {"path": "row.customer.custom.accountNumber"}, {"path": "row.custom.accountNumber"}]}, "as": "int"},
+            "debt_identifier": {"normalize": {"first": [{"path": "row.debt_id"}, {"path": "row.debtId"}, {"path": "row.customer.custom.accountNumber"}, {"path": "row.custom.accountNumber"}]}, "as": "trim"},
+            "phone_number": {"normalize": {"first": [{"path": "row.handle"}, {"path": "row.phoneNumber"}]}, "as": "phone10"},
+            "phone_location_type": {"path": "lookup.phoneLocation"},
+            "template_is_known": {"const": false}
+          },
+          "quarantine": [
+            {"reason": "missing_debt", "when": {"blank": {"path": "out.debt_identifier"}}, "detail": "opt events carry no debt reference and have no SendContext; on 2026-09-19 all 501 were quarantined this way"},
+            {"reason": "invalid_phone", "when": {"blank": {"path": "out.phone_number"}}}
+          ]
+        }
+      },
+      "excludedFamilies": {
+        "ConversationClosed": "conversation transcript, not a delivery lifecycle observation; its outbound messages are already observed through NotificationsDeliverabilityStatus (on 2026-09-19 every one was quarantined missing_send_context)",
+        "ConversationActivated": "conversation routing event, not an SMS lifecycle observation",
+        "ConversationDeniedAsSpam": "conversation routing event, not an SMS lifecycle observation",
+        "ConversationEnqueued": "conversation routing event, not an SMS lifecycle observation",
+        "ConversationInactivated": "conversation routing event, not an SMS lifecycle observation",
+        "ConversationMergedAsDangling": "conversation routing event, not an SMS lifecycle observation",
+        "ConversationOwnerChanged": "conversation routing event, not an SMS lifecycle observation",
+        "ConversationRequested": "conversation routing event, not an SMS lifecycle observation",
+        "AgentSessionMetrics": "agent metric, not an SMS lifecycle observation",
+        "AgentStatusChanged": "agent status, not an SMS lifecycle observation"
+      },
+      "lookups": {
+        "sendContext": {
+          "kind": "dynamodb-batch-get",
+          "tableNamePrefix": "KadabraSendLifecycleStack-SendContextTable",
+          "keyAttribute": "providerMessageId",
+          "key": {"normalize": {"path": "row.id"}, "as": "trim"},
+          "bind": "ctx",
+          "pageSize": 100
+        },
+        "processedBatchItem": {
+          "kind": "s3-json-select",
+          "bucket": "kadabrasendlifecyclestack-lifecycleartifactbucket4-miqsjse65y6b",
+          "key": {"format": "sms-lifecycle/processed-batches/{day}/{batch}.json",
+                  "args": {"day": {"normalize": {"path": "ctx.sentAt"}, "as": "utc-date-path"}, "batch": {"path": "ctx.batchId"}}},
+          "requires": ["ctx.batchId", "ctx.sentAt"],
+          "select": {"array": "batch.items", "match": "message_id", "equals": {"path": "ctx.messageId"}},
+          "bind": "batchItem"
+        },
+        "renderedArtifact": {
+          "kind": "s3-artifact",
+          "uri": {"path": "batchItem.rendered_message_s3_uri"},
+          "selectorByContentType": {"text/plain": "TEXT", "application/json": "JSON_BODY"},
+          "fields": {"uri": "artifact_uri", "contentType": "artifact_content_type", "sha256": "artifact_content_sha256", "selector": "artifact_body_selector"},
+          "detail": "the object is copied byte-for-byte into the DEV package (artifacts/<sha256 of the source URI>/<basename>) and artifact_uri names that DEV copy, so DEV Transform and the DEV Persist export hydrate from DEV; the SHA-256 is computed from the bytes"
+        },
+        "phoneLocation": {
+          "kind": "rows-file",
+          "keysFrom": "out.phone_number",
+          "keyColumn": "phone_number",
+          "valueColumn": "location_type",
+          "keyNormalize": "phone10",
+          "valid": ["MOBILE", "HOME", "WORK", "UNKNOWN", "FAX", "OTHER"],
+          "reduce": {"agree": "value", "conflict": "MOBILE", "validWithInvalid": "valid", "none": "MOBILE"},
+          "read": "iceberg_snapshot_read.py --profile <prod-profile> --table graph_call_outputs.phone_number --columns phone_number,location_type,updated_at --key-column phone_number --keys-file <private>/lookup-keys/phoneLocation.txt --current-state-as-of <now> --data-max-column updated_at --private-dir <private>/phone-location (a key-bounded current-state read of the window's phones; rows stay private)",
+          "detail": "the approved policy of the earlier run: agreeing valid values collapse, conflicting valid values become MOBILE, a valid value beats an invalid one, no valid value or no row becomes MOBILE"
+        }
+      },
+      "normalizationNotes": [
+        "template_is_known is always false: SendContext carries templateIdentifier but not the governed template metadata (name, family, content URI and commit, language) the quiq language requires when true. Every resulting sms_log row has an empty txt_msg_template_id; source_events.py expect counts rows whose SendContext names a template as templateMetadataUnresolved (a coverage gap reported per run, not a mismatch).",
+        "observed_at equals effective_at: the BI export records one time per update."
+      ],
+      "requiredFields": ["interaction_identifier", "provider_message_identifier", "provider", "canonical_status", "effective_at", "observed_at", "direction", "message_type", "provider_result", "provider_tracking_code", "debt_id", "debt_identifier", "phone_number", "phone_location_type", "template_is_known"],
+      "enums": {
+        "canonical_status": ["CANCELLED", "COMPLAINT", "DELIVERED", "DELIVERY_DELAYED", "FAILED", "OPTED_IN", "OPTED_OUT", "PENDING", "REJECTED", "RESTRICTED", "SENT", "SMS_RESOLVED"]
+      },
+      "statusAliases": {"SUCCESS": "SMS_RESOLVED"},
+      "canary": {"eventTimeField": "effective_at", "eventKeyField": ["provider_message_identifier", "interaction_identifier"], "outcomeField": "provider_result", "perSlice": 10},
+      "daySelection": {
+        "rule": "the most recent complete UTC day whose folder holds objects of every family in requiredFamilies, within a 14-day lookback",
+        "requiredFamilies": ["NotificationsDeliverabilityStatus"],
+        "command": "source_events.py days --catalog reference/chain-sources.json --source quiq-lifecycle --profile <prod-profile> --lookback-days 14 --out source-days.json (object counts per UTC day and family; --slice-days and --input-days input of source_window.py data-days)"
+      },
+      "sensitiveFields": {
+        "inputs": ["lifecycle.phone_number", "artifacts (rendered message bodies)"],
+        "outputs": ["phone_number", "msg"],
+        "decision": "ownerDecisions.sensitiveFieldStaging = stage-real-values-to-dev; without it source_events.py build stops with SensitiveStagingDecisionRequired before any PROD read"
+      }
+    }
+  }
+}

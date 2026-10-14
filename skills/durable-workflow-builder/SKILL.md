@@ -19,8 +19,8 @@ Three service kinds — pick by state and keying:
 - **Service** — stateless handlers, N concurrent invocations. Use for per-item work:
   `Parcel.process`, `PermitHarvest.harvestParcel`.
 - **Virtual Object** — keyed, single-threaded per key, durable K/V state (`ctx.set/get`).
-  Use where exactly-one-writer matters: `Loader` (key `<county>`, serial DB merges),
-  `Publish` (key `<county>`, export→approve→IPNS loop).
+  Use where exactly-one-writer matters: `Loader` (key `<county>`, serial DB merges) and
+  other internal reconciliation state.
 - **Workflow** — a keyed `run` handler that executes exactly once per key. Use for jobs:
   `CountyIngest` (key `<county>-<jobId>`) and its `IngestChunk` children
   (key `<county>-<jobId>-c<N>`), `PermitFeed` (key = `<CountyIngest key>-permits`, so a
@@ -48,7 +48,7 @@ re-streaming, no watchdogs.
 3. Long-blocking steps need raised service timeouts. Server defaults are **1 min
    inactivity / 10 min abort** — a handler stuck inside one `ctx.run` longer than that is
    aborted and the step re-runs from its start, forever. For services with
-   multi-minute steps (`Loader` bulk loads, `Publish` export/upload, enrichment scans,
+   multi-minute steps (`Loader` bulk loads, enrichment scans,
    `PermitHarvest` detail-heavy parcels and `Parcel` heavy captures — or split those
    into journaled search/list/detail steps),
    raise `inactivityTimeout`/`abortTimeout` in the service definition's options (or per
@@ -236,8 +236,8 @@ export const parcel = restate.service({
 ```
 
 Virtual objects follow the same shape with `restate.object({ name, handlers })` and a
-`restate.ObjectContext`. Patterns 8–10 below define the `Loader` and `Publish`
-*contracts* — behavioral specs you author the same way, not code that already exists.
+`restate.ObjectContext`. Patterns 8–10 below define loader, approval-handoff, and
+reconciliation-loop contracts — behavioral specs you author, not prebuilt services.
 Permit portal modules themselves live in `county-permit-adapter`; `PermitHarvest` just
 routes to them. `PermitFeed` is the permit-side twin of the appraisal feeder — author it
 from the `CountyIngest`/`IngestChunk` skeleton above with this contract. Keys derive

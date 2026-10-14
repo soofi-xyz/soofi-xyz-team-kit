@@ -1,0 +1,7 @@
+{
+  "transaction_id": "m2d-cap-2026-09-24-001",
+  "configuration_id": "interprose-prod",
+  "request_payload": { "debt_ids": ["1000001", "1000002"] },
+  "callback": { "task_token": "<caller-step-functions-task-token>" },
+  "dry_run": false
+}

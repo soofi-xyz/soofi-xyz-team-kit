@@ -1,0 +1,321 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://soofi.xyz/schemas/system/composition.manifest.schema.json",
+  "title": "SystemCompositionManifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "systemId",
+    "outcome",
+    "products",
+    "configRefs",
+    "workflow",
+    "successCriteria",
+    "dependencies",
+    "deploy"
+  ],
+  "properties": {
+    "contractVersion": {
+      "type": "integer",
+      "const": 2,
+      "description": "System composition contract version. Use 2 for canonical product ownership."
+    },
+    "systemId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "minLength": 2,
+      "maxLength": 64
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "outcome": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 2000
+    },
+    "products": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "product",
+          "role"
+        ],
+        "properties": {
+          "product": {
+            "type": "string",
+            "enum": [
+              "system",
+              "model",
+              "connect",
+              "transform",
+              "persist",
+              "deploy",
+              "rule",
+              "schedule"
+            ]
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "configure",
+              "execute",
+              "activate",
+              "serve",
+              "reference-only"
+            ]
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        }
+      }
+    },
+    "configRefs": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "path"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "product-definition",
+              "product-schema",
+              "product-flow-template",
+              "product-flow",
+              "product-waterfall",
+              "product-invocation",
+              "lexicon-catalog",
+              "connect-partner",
+              "connect-activation",
+              "transform-request",
+              "transform-mapping",
+              "persist-ingest",
+              "system-fixtures",
+              "deploy-environment",
+              "other"
+            ]
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          },
+          "name": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$",
+            "description": "Name the artifact is saved under in the target service, when the artifact file itself does not carry it (System definitions, templates and flows are named by their API path)."
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "description": "Content digest. Required for remote (scheme://) paths; optional for paths relative to the manifest."
+          },
+          "ownerAgent": {
+            "type": "string",
+            "enum": [
+              "celebi",
+              "wingull",
+              "silvally",
+              "uxie",
+              "meditite",
+              "registeel"
+            ]
+          }
+        }
+      }
+    },
+    "workflow": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "product",
+          "configRef",
+          "agent",
+          "gate"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "product": {
+            "type": "string",
+            "enum": [
+              "system",
+              "model",
+              "connect",
+              "transform",
+              "persist",
+              "deploy",
+              "rule",
+              "schedule"
+            ]
+          },
+          "configRef": {
+            "type": "string",
+            "minLength": 1
+          },
+          "agent": {
+            "type": "string",
+            "enum": [
+              "celebi",
+              "wingull",
+              "silvally",
+              "uxie",
+              "meditite",
+              "registeel"
+            ]
+          },
+          "gate": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        }
+      }
+    },
+    "successCriteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "description"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "verify": {
+            "type": "string",
+            "enum": [
+              "schema",
+              "fixture",
+              "openapi",
+              "invocation",
+              "integration",
+              "manual",
+              "deferred"
+            ]
+          }
+        }
+      }
+    },
+    "dependencies": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repos": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "env": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "purpose"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "purpose": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 2000
+        }
+      }
+    },
+    "deploy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "activationEnabled"
+      ],
+      "properties": {
+        "activationEnabled": {
+          "type": "boolean",
+          "const": false,
+          "description": "System CDK stubs stay inactive by default."
+        },
+        "costCeilingUsd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "regionHint": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 2000
+        }
+      }
+    },
+    "productName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Named outcome in the System service; retain this field for package compatibility."
+    },
+    "orchestration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "const": "system-service"
+        },
+        "invocationMode": {
+          "type": "string",
+          "enum": [
+            "single",
+            "waterfall"
+          ]
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 2000
+        }
+      }
+    }
+  }
+}
