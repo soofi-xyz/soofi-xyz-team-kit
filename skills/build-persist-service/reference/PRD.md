@@ -7,6 +7,9 @@ semantic/hybrid search, load [the separate vector-search piece](vector-search.md
 Use its GraphQL search-source/root-discovery guidance where this baseline limits
 OpenSearch to Neptune FTS or external sources to existing entity leaf fields.
 Verify the target revision; neither reference proves deployed support.
+For lexicon/extension graph metadata, use
+[the current-only catalog contract](lexicon-catalog.md) alongside existing
+artifact consumption; reconcile definitions in place without graph history.
 
 ---
 

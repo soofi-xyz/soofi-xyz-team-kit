@@ -45,3 +45,20 @@ do not pretend the existing leaf-only adapter already provides it. Verify the
 target GraphQL runtime, source ports, collection capabilities and live deployment
 before claiming support. This request changes the kit's implementation guidance,
 not deployed services or published API documentation.
+
+## Requested current-only lexicon catalog (2026-10-14)
+
+Load [the catalog contract](lexicon-catalog.md) for lexicon/extension creation,
+updates and current vertex/edge definition lookup. Maintain only the current
+accepted catalog as native Neptune property-graph metadata. Reconcile stable
+identities and definition hashes with an added/changed/removed diff; atomically
+commit the graph changes and applied revision with optimistic concurrency.
+Store no RDF/OWL semantics, historical version vertices or `latest` relationships.
+
+Keep Model authoritative for definitions and history and Deploy responsible for
+managed Model release installation. Attach graph reconciliation to Persist's
+verified base/extension acceptance path; preserve existing HTTP preconditions and
+business-fact ingestion. Uxie previews, configures and verifies supported behavior;
+Conkeldurr builds missing APIs/runtime. This requested scope extends artifact-only
+lexicon consumption in the older PRD; it does not prove deployed support or
+authorize changes to services or API documentation during a kit update.

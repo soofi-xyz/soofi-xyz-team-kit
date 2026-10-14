@@ -1,6 +1,6 @@
 ---
 name: build-persist-service
-description: "Build or maintain Persist graph ingestion, queries, indexes, triggers and lexicon-governed vector search through GraphQL. Use Conkeldurr; use Uxie for particular configurations."
+description: "Build or maintain Persist graph ingestion, queries, a current-only lexicon catalog, indexes, triggers and lexicon-governed vector search through GraphQL. Use Conkeldurr; use Uxie for particular configurations."
 disable-model-invocation: true
 ---
 
@@ -34,6 +34,20 @@ resolution. Do not silently restore obsolete features or remove working behavior
 Use supporting skills directly for workflow capacity, metrics and model reasoning.
 Resolve other products through the catalog. Do not use a general platform owner.
 Use Registeel for Marketplace publication; keep deployment prerequisites explicit.
+
+## Current-only lexicon catalog
+
+For base lexicons, extensions and vertex/edge definition updates, load
+[the catalog contract](reference/lexicon-catalog.md). Build feature `lexicon-catalog`
+as native property-graph metadata containing only the current accepted definitions.
+Reconcile complete snapshots by stable identity and content hash, including
+deletions, and commit the diff plus revision atomically with an expected-revision
+check. Keep versions out of IDs and retain history in Model artifacts, not graph
+vertices. Preserve business facts, extension scope and Deploy installation
+ownership. Deliver the HTTP preview/reconciliation/status surface and Gremlin
+read-back needed by Uxie; verify actual support before claiming availability.
+
+## Verification and handoff
 
 Derive the scoped feature plan from the shared workflow and product capability
 map. Require a user-run configuration and AWS inspection after every piece. Return the
