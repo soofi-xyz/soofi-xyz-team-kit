@@ -152,6 +152,11 @@ soofi-xyz-plugin-kit/
 
 Run the plugin validation script before preparing a PR. It checks that Copilot, Codex, and Claude Code agent copies are synced, manifests are consistent, agent and skill frontmatter is valid, source names match paths, generated agents are real files, skills stay under 500 lines, `oracle-paths.sh` resolves independent of cwd, and the bundled Oracle runtime package/catalog are present.
 
+The Python checks import `jsonschema` and `pyarrow`. CI installs them from
+`skills/validate-transform-configuration/scripts/requirements-silvally.txt`; locally, install that file into a
+virtual environment and point `PYTHON` at its interpreter, for example
+`PYTHON=.venv/bin/python scripts/validate-plugin.sh`.
+
 ```bash
 scripts/validate-plugin.sh
 python3 scripts/test-product-catalog.py
