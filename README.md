@@ -154,7 +154,8 @@ claude plugin marketplace update soofi-xyz
 claude plugin update soofi-xyz-team-kit@soofi-xyz
 ```
 
-To remove: `claude plugin uninstall soofi-xyz-team-kit@soofi-xyz`.
+To remove: `claude plugin uninstall soofi-xyz-team-kit@soofi-xyz --scope project`. A plugin
+enabled at project scope refuses a plain `uninstall`; the scope flag must match.
 
 </details>
 

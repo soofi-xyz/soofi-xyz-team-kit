@@ -5,8 +5,8 @@
   "author": {
     "name": "Soofi XYZ"
   },
-  "homepage": "https://github.com/soofi-xyz/cursor-plugin",
-  "repository": "https://github.com/soofi-xyz/cursor-plugin",
+  "homepage": "https://github.com/soofi-xyz/soofi-xyz-team-kit",
+  "repository": "https://github.com/soofi-xyz/soofi-xyz-team-kit",
   "license": "MIT",
   "keywords": [
     "agents",
@@ -28,7 +28,7 @@
       "Interactive",
       "Write"
     ],
-    "websiteURL": "https://github.com/soofi-xyz/cursor-plugin",
+    "websiteURL": "https://github.com/soofi-xyz/soofi-xyz-team-kit",
     "defaultPrompt": [
       "Use Unown to build Documentation with React, TypeScript and tRPC.",
       "Use Togetic to publish and test documentation on an existing deployment.",
