@@ -134,23 +134,19 @@ To remove: `codex plugin remove soofi-xyz-team-kit`.
 <details>
 <summary>Claude Code</summary>
 
-Pick a scope. `--scope project` records the marketplace and the plugin in the current
-project's `.claude/settings.json`, so the kit loads only there and teammates get it from
-the committed settings. Without `--scope`, Claude Code installs at user scope and enables
-the kit in every project you open.
+```bash
+claude plugin marketplace add soofi-xyz/soofi-xyz-team-kit
+claude plugin install soofi-xyz-team-kit@soofi-xyz
+```
 
-Per project (run inside that project):
+This installs at user scope, so the kit is available in every project you open. To limit it
+to one project instead, run the same commands inside that project with `--scope project`;
+they then write to its `.claude/settings.json`, and teammates get the kit from the committed
+settings:
 
 ```bash
 claude plugin marketplace add soofi-xyz/soofi-xyz-team-kit --scope project
 claude plugin install soofi-xyz-team-kit@soofi-xyz --scope project
-```
-
-For every project:
-
-```bash
-claude plugin marketplace add soofi-xyz/soofi-xyz-team-kit
-claude plugin install soofi-xyz-team-kit@soofi-xyz
 ```
 
 Agents load as `soofi-xyz-team-kit:<agent>` subagents, skills as `/soofi-xyz-team-kit:<skill>`,
@@ -163,8 +159,8 @@ claude plugin marketplace update soofi-xyz
 claude plugin update soofi-xyz-team-kit@soofi-xyz
 ```
 
-To remove, pass the same scope you installed with: `claude plugin uninstall
-soofi-xyz-team-kit@soofi-xyz --scope project`, or without `--scope` for a user-scope install.
+To remove: `claude plugin uninstall soofi-xyz-team-kit@soofi-xyz`, adding `--scope project`
+if that is how it was installed.
 
 </details>
 
