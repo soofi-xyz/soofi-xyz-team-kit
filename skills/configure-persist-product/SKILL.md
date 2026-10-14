@@ -1,6 +1,6 @@
 ---
 name: configure-persist-product
-description: "Configure and test ingestion, queries, governed indexes, triggers or GraphQL vector search on an existing Persist deployment, including making a vertex or edge field searchable end to end. Use Uxie; hand service implementation changes to Conkeldurr."
+description: "Configure and test the current lexicon catalog, ingestion, queries, governed indexes, triggers or GraphQL vector search on an existing Persist deployment. Use Uxie to sync/query current definitions or make a field searchable; hand engine changes to Conkeldurr."
 ---
 
 Use [the Persist capability map](../guide-product-work/reference/iterations/persist.md). Derive the feature pieces from scope and dependencies, then apply the work below within each piece; require a user-run configuration, AWS inspection and feedback before starting the next implementation piece.
@@ -40,6 +40,20 @@ searchable](#make-a-field-searchable).
 Return configuration/version changes, observed results, learning stage,
 cleanup, limitations and any builder handoff. Do not claim live verification
 when only local fixtures were exercised.
+
+## Sync or query the current lexicon catalog
+
+For “sync this lexicon”, “refresh this extension” or current vertex/edge schema
+lookup, follow [Configure with Uxie](../build-persist-service/reference/lexicon-catalog.md#configure-with-uxie).
+Discover supported APIs and resolve the approved source, target and scope from
+context. Present a digest-bound diff preview, coordinate managed release
+installation with Skarmory, and reconcile an already accepted source only through
+a supported Persist operation. Apply within the user's existing authorization.
+Give a copyable read-only Gremlin query and compare its result with the applied
+source digest. Verify a no-op repeat and scoped removal without changing facts.
+Report absent preview/reconciliation support as a Conkeldurr gap; never simulate
+it with direct graph writes or invent endpoint names. Keep only current metadata
+in the graph; do not introduce historical versions, `latest` links or RDF/OWL.
 
 ## Make a field searchable
 

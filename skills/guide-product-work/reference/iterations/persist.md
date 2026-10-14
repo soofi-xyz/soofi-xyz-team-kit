@@ -1,7 +1,7 @@
 # Persist capability map
 
 Use Conkeldurr to implement capabilities and Uxie to configure existing ones.
-Derive the scoped plan using the [shared workflow](../../SKILL.md). These eleven
+Derive the scoped plan using the [shared workflow](../../SKILL.md). These twelve
 capability areas are a starting inventory, not a fixed count for either agent.
 Select requested features, order dependencies, and split further where a usable
 capability needs its own checkpoint. Apply tests and user/AWS feedback to every
@@ -9,6 +9,7 @@ selected piece; do not reserve failure testing for the end.
 
 | Feature ID / usable capability | Dependency | Builder increment / configurer exercise | AWS inspection and acceptance |
 | --- | --- | --- | --- |
+| `lexicon-catalog` — sync and query current schema definitions | Approved base/extension artifacts and verified Persist acceptance/Deploy installation contracts | Deliver the [current-only catalog](../../../build-persist-service/reference/lexicon-catalog.md), stable IDs/hash diff, HTTP preview/reconciliation and atomic revision checks. Have Uxie exercise a base, an extension, a changed/removed definition and current Gremlin lookup. | Inspect source/applied digests, scoped diff and completion logs; prove metadata removal, unchanged facts, no historical graph versions, no-op replay, stale/concurrent update rejection and transaction rollback. |
 | `fact-ingestion` — store and retrieve facts | Approved model and IDs | Deliver the minimal validated ingestion/read-back path; configure one vertex type and compare valid, invalid and repeated input. | Inspect ingest logs/execution and read back the exact fact; prove validation and stable identity. |
 | `relationships` — connect facts | Fact ingestion | Deliver edge validation and a minimal relationship read; configure related records and edges, including a missing endpoint. | Inspect endpoint validation/write logs and the actual relationship query; compare complete IDs and rejection. |
 | `graph-queries` — select and project graph data | Ingested facts; relationships for traversals | Deliver supported read-only Gremlin queries, projections and explain behavior; run different selectors and an empty result. | Inspect correlated query logs and query/explain output; identify why the selected facts match. |
