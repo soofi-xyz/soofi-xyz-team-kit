@@ -268,3 +268,7 @@ Skills with `disable-model-invocation: true` are hidden from the model's skill l
 - [OpenAI Codex plugins](https://developers.openai.com/codex/plugins)
 - [OpenAI Codex skills](https://developers.openai.com/codex/skills)
 - [OpenAI Codex custom agents](https://developers.openai.com/codex/subagents)
+- [Claude Code plugins](https://code.claude.com/docs/en/plugins)
+- [Claude Code plugins reference](https://code.claude.com/docs/en/plugins-reference)
+- [Claude Code plugin marketplaces](https://code.claude.com/docs/en/plugin-marketplaces)
+- [Claude Code subagents](https://code.claude.com/docs/en/sub-agents)
