@@ -13,8 +13,10 @@ Regigigas instead of falling back to the legacy type. This requirement does not
 prove deployed support; follow [the shared migration requirements](../../build-product-deployer/reference/configuration-bundles.md).
 
 Authoritative source: [`prismteam-ai/marketplace`](https://github.com/prismteam-ai/marketplace)
-→ `requirements/openapi.yaml`. Base path is the stack `ApiUrl` output, which
-already ends with `/marketplace`. Auth: shared `x-api-key` on every route.
+→ `requirements/openapi.yaml`. Base URL is the Marketplace account's shared
+domain, `https://prism-marketplace.account.prismteam.ai/marketplace`; do not
+use the stack's raw `execute-api` `ApiUrl`. Auth: shared `x-api-key` on every
+route, never IAM (SigV4).
 
 ## Settings
 
