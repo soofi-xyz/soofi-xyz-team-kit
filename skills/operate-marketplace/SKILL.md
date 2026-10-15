@@ -35,13 +35,18 @@ Account service is deployed.
 
 ## Prerequisites
 
-1. Use this Prism Marketplace base URL:
-   `https://1ubssdfzw2.execute-api.us-east-2.amazonaws.com/dev/marketplace`.
+1. Use this Prism Marketplace base URL, on the Marketplace account's shared
+   domain:
+   `https://prism-marketplace.account.prismteam.ai/marketplace`.
    It runs in the Marketplace account `848665034107`, `us-east-2`.
    The path must end with `/marketplace` (no trailing slash when concatenating).
    Honor `MARKETPLACE_BASE_URL` only when the user sets a different one.
-   Repo scripts default to an older host and refuse bases outside their allowed
-   path — pass this URL as `MARKETPLACE_BASE_URL` when running them.
+   Never call raw `execute-api` URLs and never sign requests with IAM (SigV4);
+   the shared address plus `x-api-key` is the only way in.
+   The Marketplace repo scripts default to an older `execute-api` host — pass
+   this URL as `MARKETPLACE_BASE_URL` when running them. If their base-URL
+   guard refuses it, make the calls manually instead of falling back to the
+   older host.
 2. Require `MARKETPLACE_API_KEY` (shared usage-plan `x-api-key`). Prism
    Marketplace does not mint keys. It uses the key named `shared-environment`
    on the usage plan stored at SSM `/account/shared-usage-plan-id` in the
@@ -96,7 +101,7 @@ Account service is deployed.
    request; it prints only the HTTP status:
 
    ```bash
-   curl -s -o /dev/null -w '%{http_code}\n' -H "x-api-key: $MARKETPLACE_API_KEY" "${MARKETPLACE_BASE_URL:-https://1ubssdfzw2.execute-api.us-east-2.amazonaws.com/dev/marketplace}/settings/status"
+   curl -s -o /dev/null -w '%{http_code}\n' -H "x-api-key: $MARKETPLACE_API_KEY" "${MARKETPLACE_BASE_URL:-https://prism-marketplace.account.prismteam.ai/marketplace}/settings/status"
    ```
 
    `200` means the key works. `401` or `403` means the key is missing, stale, or
@@ -109,7 +114,7 @@ Account service is deployed.
    `MARKETPLACE_API_KEY` is also the Build key. Never ask for a Build key.
    Use this Build API URL (also `DEFAULT_BUILD_BASE_URL` in the publish
    script, step 4):
-   `https://5b45a3h1bd.execute-api.us-east-2.amazonaws.com/dev`.
+   `https://prism-marketplace.account.prismteam.ai/build`.
    Honor `MARKETPLACE_BUILD_BASE_URL` only when the user
    sets a different one, and confirm that URL with them before any publish.
    Check that Build accepts the key with this read-only call; it prints only
@@ -171,20 +176,22 @@ Hand off and stop when:
 ## 1. Review settings (per Marketplace deployment before non-skip publish)
 
 The sandbox review runs on a separate review Deploy in account `257779860257`
-(`us-east-2`), not in the Marketplace account. Its API is
-`https://bnxj2o10y7.execute-api.us-east-2.amazonaws.com/dev`, and it accepts
-IAM-signed calls from the Marketplace account. Check status first; these
-settings are usually already in place.
+(`us-east-2`), not in the Marketplace account. Marketplace reaches it only on
+that account's shared domain, `https://review-sandbox.account.prismteam.ai`,
+at `https://<shared-domain>/deploy/run` with `review_api_key` as `x-api-key`.
+Deploy has no IAM (SigV4) API. Check status first; these settings are usually
+already in place.
 
 1. `GET /settings/status` — if `status.component_publication.is_operational`
    is `true`, skip to publishing.
 2. Otherwise `PUT /settings` with
-   `{ "review_api_key": "...", "review_environment_hosts": ["https://bnxj2o10y7.execute-api.us-east-2.amazonaws.com/dev"] }`.
-   Marketplace probes each host with an IAM-signed call before saving; a
-   `422 ReviewEnvironmentInvalid` means the review Deploy is unreachable or
-   does not trust the Marketplace account. Marketplace only stores
-   `review_api_key` and requires it to be non-empty; Deploy authorizes review
-   calls with IAM, not with this key.
+   `{ "review_api_key": "...", "review_environment_hosts": ["https://review-sandbox.account.prismteam.ai"] }`.
+   Each host is the review account's shared domain origin (`domain.fqdn` from
+   its `/account/env-parameters`) with no `/deploy` path; Marketplace appends
+   `deploy/run`. `review_api_key` is the review account's Prism Account key on
+   its shared usage plan. Marketplace probes each host with that key before
+   saving; a `422 ReviewEnvironmentInvalid` means the host is wrong, its
+   `/deploy` mapping is missing or Deploy refused the key, and nothing is stored.
 3. Require `is_operational: true` before publishing with `skip_review: false`.
 4. Do not print `review_api_key`. SSM paths on the Marketplace side are
    `/marketplace/{stage}/review-api-key` and
@@ -395,8 +402,10 @@ cannot use it. The repository needs one secret,
 
 ## Safety
 
-- Use `https://1ubssdfzw2.execute-api.us-east-2.amazonaws.com/dev/marketplace`.
-  If the user names a different base URL, confirm it before any write.
+- Use `https://prism-marketplace.account.prismteam.ai/marketplace` and
+  `https://prism-marketplace.account.prismteam.ai/build` with
+  `MARKETPLACE_API_KEY` only. Never use raw `execute-api` URLs or IAM (SigV4)
+  signing. If the user names a different base URL, confirm it before any write.
 - Never print secrets (`MARKETPLACE_API_KEY`, `review_api_key`).
 - Do not claim Marketplace deployed a stack into a tenant — it only stores
   reviewed bundles.
