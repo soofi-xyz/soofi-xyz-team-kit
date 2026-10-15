@@ -49,8 +49,21 @@ the user named). Report each row `ready`, `missing` or `cannot verify`.
    accepts the shared `x-api-key` per the
    [publish readiness gate](../../guide-product-work/reference/shared-api-domain.md#publish-readiness-gate).
    IAM SigV4 as the only customer path is `missing`.
+6. **Publish workflow** (repositories in `prismteam-ai`). `.github/workflows/marketplace.yml`
+   uses `prismteam-ai/build/actions/publish@main` (Build itself uses `./actions/publish`)
+   with `secrets.MARKETPLACE_API_KEY`, publishes on push to the default branch, and
+   runs a dry run on every pull request: a `pull_request` trigger, checkout and `ref`
+   of `github.event.pull_request.head.sha || github.sha`, `branch` of
+   `github.head_ref || github.ref_name`, and `dry_run: true` for pull requests. A
+   workflow without the pull request dry run is `missing`. When the latest dry run or
+   publish stopped at the Build key check, the repository's `MARKETPLACE_API_KEY`
+   secret is stale: report it for the repository owner to reset; never read or print it.
 
-A `missing` row in 1, 3 or 5 is a product source change for the product's owners.
+**Verdict.** Any `missing` row in 1, 3, 5 or 6 makes the verdict `REJECTED`: do not
+publish, do not tell anyone to merge a pull request that publishes, and do not report
+an already published bundle as done even when its review `SUCCEEDED` and it is
+`VALID`. Report `REJECTED` with each failing row first, then the builder brief.
+A `missing` row in 1, 3, 5 or 6 is a product source change for the product's owners.
 Route row 5 to the product builder named in the gate; never publish anyway.
 Route row 4 gaps to Build, Marketplace, Deploy or the product owner according to
 section D. Report the concrete change and the failing evidence; do not create

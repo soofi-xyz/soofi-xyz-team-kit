@@ -59,7 +59,7 @@ selection as reversal of applied configurations or bypass missing review prerequ
 
 Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
 Verify published API bundles declare `base_path` and `requires.domain: true` only (`endpoints`/`endpoint_contract_version` need a Build schema change first; domain metadata comes from `/account/env-parameters`) and review evidence for product-owned mappings. Treat missing contract support as a builder gap; do not rewrite bundles.
-Before publishing an API product, apply the contract's publish readiness gate: every customer-facing method accepts the shared `x-api-key` (REST `apiKeyRequired` on the `/account/shared-usage-plan-id` plan, or Account's request authorizer; HTTP APIs need an Account-validating Lambda authorizer). IAM SigV4 as the only customer path is not ready. Report it as not ready and route to the product builder; never modify product code or publish anyway.
+Before publishing an API product, apply the contract's publish readiness gate: every customer-facing method accepts the shared `x-api-key` (REST `apiKeyRequired` on the `/account/shared-usage-plan-id` plan, or Account's request authorizer; HTTP APIs need an Account-validating Lambda authorizer). IAM SigV4 as the only customer path is not ready. The product's publish workflow must also run a dry run on every pull request (see the publish readiness checklist). Either failure makes the verdict `REJECTED`: report it first, route to the product builder, never modify product code or publish anyway, never approve merging a pull request that publishes, and never report an already `VALID` bundle as done.
 
 ## Return
 
