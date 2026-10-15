@@ -171,24 +171,39 @@ Hand off and stop when:
 ## 1. Review settings (per Marketplace deployment before non-skip publish)
 
 The sandbox review runs on a separate review Deploy in account `257779860257`
-(`us-east-2`), not in the Marketplace account. Its API is
-`https://bnxj2o10y7.execute-api.us-east-2.amazonaws.com/dev`, and it accepts
-IAM-signed calls from the Marketplace account. Check status first; these
-settings are usually already in place.
+(`us-east-2`), not in the Marketplace account. Marketplace calls that Deploy's
+key API on the review account's shared domain
+`https://review-sandbox.account.prismteam.ai`, sending `review_api_key` as
+`x-api-key` (prismteam-ai/marketplace PR #9, prismteam-ai/deploy PR #28).
+Check status first; these settings are usually already in place.
 
 1. `GET /settings/status` — if `status.component_publication.is_operational`
    is `true`, skip to publishing.
 2. Otherwise `PUT /settings` with
-   `{ "review_api_key": "...", "review_environment_hosts": ["https://bnxj2o10y7.execute-api.us-east-2.amazonaws.com/dev"] }`.
-   Marketplace probes each host with an IAM-signed call before saving; a
-   `422 ReviewEnvironmentInvalid` means the review Deploy is unreachable or
-   does not trust the Marketplace account. Marketplace only stores
-   `review_api_key` and requires it to be non-empty; Deploy authorizes review
-   calls with IAM, not with this key.
+   `{ "review_api_key": "...", "review_environment_hosts": ["https://review-sandbox.account.prismteam.ai"] }`.
+   `review_api_key` is the review account's Prism Account key (on its shared
+   usage plan `rpx73d`), not `MARKETPLACE_API_KEY`. Each host is an HTTPS
+   shared-domain origin with no `/deploy` path; Marketplace appends
+   `deploy/run`. Marketplace probes each host with that key before saving and
+   stores nothing on failure; a `422 ReviewEnvironmentInvalid` means the host
+   is unreachable or has no `/deploy` mapping, or Deploy refused the key
+   (wrong key, or not on the review account's shared usage plan).
 3. Require `is_operational: true` before publishing with `skip_review: false`.
+   A review failing with `Deploy request failed (403): Forbidden` in
+   `marketplace_logs` means Deploy refused the saved key or host (for example
+   the old `execute-api` host): save the settings again as in step 2.
 4. Do not print `review_api_key`. SSM paths on the Marketplace side are
-   `/marketplace/{stage}/review-api-key` and
+   `/marketplace/{stage}/review-api-key` (SecureString) and
    `/marketplace/{stage}/review-environment-hosts`.
+
+Marketplace must be deployed with `REVIEW_ACCOUNT_ID=257779860257`; unset,
+reviews target the Marketplace account and the review Deploy rejects them.
+IAM SigV4 is only the opt-in rollback for a Marketplace deployed with
+`DEPLOY_AUTH_MODE=sigv4`: the host is then the review Deploy's `execute-api`
+URL (`https://bnxj2o10y7.execute-api.us-east-2.amazonaws.com/dev`) and that
+Deploy's `DEPLOY_INVOKER_ACCOUNT_IDS` must include `848665034107`. Report a
+wrong `REVIEW_ACCOUNT_ID` or auth mode as a Marketplace deployment gap for
+`regigigas`; do not change either from this skill.
 
 The review account is new. If a review fails at the sandbox deploy with
 CodeBuild `AccountLimitExceededException` ("Cannot have more than 0 builds in
