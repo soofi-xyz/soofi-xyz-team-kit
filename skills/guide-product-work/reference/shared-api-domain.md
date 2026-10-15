@@ -205,8 +205,10 @@ API Gateway API keys and usage plans work only on REST APIs. Current state:
 - Build and Marketplace require API keys on the shared usage plan.
 - Environment and Model use Account's request authorizer on `x-api-key`; some
   Model routes are IAM-only.
-- Deploy, Transform, Connect and System are IAM SigV4 only. Deploy's shared API
-  key for its run/Puller APIs is pending prismteam-ai/deploy PR #13.
+- Deploy serves its run/Puller routes on a key API mapped at `/deploy` on the
+  shared domain (prismteam-ai/deploy PR #20); Marketplace review calls it with
+  `review_api_key`. Its IAM APIs remain for SigV4 callers.
+- Transform, Connect and System are IAM SigV4 only.
 - Persist is an HTTP API with an IAM authorizer. HTTP APIs have no usage plans;
   add a Lambda authorizer on `x-api-key` via Account.
 - Configuration bundles (SmsSendFlow, SmsInterproseFork, TransformConfiguration)

@@ -20,7 +20,7 @@ already ends with `/marketplace`. Auth: shared `x-api-key` on every route.
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| `PUT` | `/settings` | `{ review_api_key, review_environment_hosts[] }` |
+| `PUT` | `/settings` | `{ review_api_key, review_environment_hosts[] }`; each HTTPS host is probed at `{host}/deploy/run` with `review_api_key` as `x-api-key` before saving |
 | `GET` | `/settings/status` | `component_publication.is_operational`, `conflicts[]` |
 
 ## Ontology
