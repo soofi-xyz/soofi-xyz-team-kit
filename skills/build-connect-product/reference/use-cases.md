@@ -97,7 +97,10 @@ binds the Meet API with `oauth2_jwt_bearer`; the flow
 [meeting-transcript-entries](examples/flows/meeting-transcript-entries.json)
 reads one transcript's entries as the user named in the job request
 (`Subject: "$.request.user"`), with the user pinned to the domain by the flow's
-`parameters` schema.
+`parameters` schema. It takes the transcript's full resource name
+(`conferenceRecords/<id>/transcripts/<id>`, as the event carries it) in one
+`{+transcript}` path placeholder (Connect main, PR #26), so the consumer passes
+the name through unchanged.
 
 - Keep the connection's `scopes` within the scopes granted to the service
   account's client id in the domain-wide-delegation grant; a scope outside the
@@ -129,7 +132,7 @@ topic, delivered by a **push** subscription to
   ([workspace-transcript-events](examples/activations/workspace-transcript-events.json)).
   The subscriber parses each event, dedupes and calls
   [meeting-transcript-entries](examples/flows/meeting-transcript-entries.json)
-  for the transcript it names.
+  with the transcript name from the event and the subscription's user.
 - Pub/Sub acknowledges on any 2xx. While the activation is enabled, the flow's
   webhook answers `202` for every authorized event; with no enabled activation
   Connect answers `404`. A `404`, `401` (bad token) or `503` (key endpoint

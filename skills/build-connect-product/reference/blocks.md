@@ -54,6 +54,16 @@ Valid on `http` connections.
 | `POLL` | `Call` (a `CALL` definition), `Until` (Choice rule) | `IntervalSeconds`, `Backoff` (`linear` \| `exponential`), `MaxAttempts` | Final `CALL` output |
 | `WAIT_FOR_WEBHOOK` | `Webhook` (declared on the flow), `Correlate` (`ValuePath`, `ExpectedPath`) | `Conditions`, `TimeoutSeconds`, `EarlyArrival` (`reject` \| `buffer`), `SaveResponseToFile` | Webhook body inline or as `FileRef` |
 
+`Path` placeholders take their values from `PathParameters`. `{name}` is one
+segment: the value is URL-encoded, so a `/` becomes `%2F`. `{+name}` (RFC 6570
+reserved expansion, restricted to `/`; Connect main, PR #26) spans several
+segments: the value is split on `/`, each segment is URL-encoded and the
+slashes are kept, so a resource name such as
+`conferenceRecords/c1/transcripts/t1` fills `/v2/{+name}/entries`. An empty
+value, or a `{+name}` value with an empty, `.` or `..` segment (including a
+leading or trailing `/`), fails with `ValidationFailed` before any request.
+Pin the shape of a `{+name}` value in the flow's `parameters` schema.
+
 `Subject` (a value or JSONPath, often `$.request.user`) is the user an
 `oauth2_jwt_bearer` connection acts as for that call; it overrides the
 connection's `auth.subject`. `POLL` inherits it from its `Call`. Connect does

@@ -2,17 +2,16 @@
   "version": "3",
   "flow_name": "meeting-transcript-entries",
   "kind": "flow",
-  "description": "Read every entry of one meeting transcript as a named domain user (service account with domain-wide delegation) and land them as one JSONL file. The user is pinned to the domain by the parameters schema because Connect does not restrict the subject a job may name.",
+  "description": "Read every entry of one meeting transcript as a named domain user (service account with domain-wide delegation) and land them as one JSONL file. The transcript is its full resource name, filled into one {+transcript} placeholder. The user is pinned to the domain by the parameters schema because Connect does not restrict the subject a job may name.",
   "connections": {
     "provider": { "types": ["http"] }
   },
   "parameters": {
     "type": "object",
     "additionalProperties": false,
-    "required": ["conference_record", "transcript", "user"],
+    "required": ["transcript", "user"],
     "properties": {
-      "conference_record": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" },
-      "transcript": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" },
+      "transcript": { "type": "string", "pattern": "^conferenceRecords/[A-Za-z0-9_-]+/transcripts/[A-Za-z0-9_-]+$" },
       "user": { "type": "string", "pattern": "^[^@]+@example\\.com$" }
     }
   },
@@ -27,11 +26,8 @@
           "Type": "CALL",
           "Connection": "provider",
           "Method": "GET",
-          "Path": "/v2/conferenceRecords/{conferenceRecord}/transcripts/{transcript}/entries",
-          "PathParameters": {
-            "conferenceRecord": "$.request.conference_record",
-            "transcript": "$.request.transcript"
-          },
+          "Path": "/v2/{+transcript}/entries",
+          "PathParameters": { "transcript": "$.request.transcript" },
           "Subject": "$.request.user",
           "Query": { "pageSize": "100" },
           "Response": { "Format": "json" },

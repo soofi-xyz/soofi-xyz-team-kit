@@ -145,6 +145,9 @@ Rules for the sample:
   `parameters` schema with a `pattern` for the allowed users (for example
   `^[^@]+@example\.com$`, or an explicit alternation). Connect has no subject
   allowlist; record the gap for `lapras` rather than leaving the field open.
+- When the partner addresses resources by multi-segment names (for example
+  `conferenceRecords/<id>/transcripts/<id>`), fill one `{+name}` placeholder
+  and pin the name's shape in `parameters`; use `{name}` for single segments.
 - Validate every document with the Connect repo's spec module (the same
   schema and semantic checks the API applies) before touching dev. Kinds:
   `Flow`, `PartnerConfiguration`, `Activation`, `JobRequest`,

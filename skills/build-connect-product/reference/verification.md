@@ -62,6 +62,7 @@ Azurite, MinIO or moto) and, before release, a real test account:
 | Area | Must prove |
 | --- | --- |
 | Ledger | Claim, commit on success, release on failure, lease expiry, two concurrent pollers never both claim one item, `replay` re-admits named items, disabled activation keeps state |
+| Path expansion | `{name}` encodes `/` as `%2F`; `{+name}` keeps `/` and encodes each segment; an empty value, or a `{+name}` value with an empty, `.` or `..` segment (including a leading or trailing `/`), fails `ValidationFailed` before any request, in `CALL` and in `POLL` |
 | Pagination | Each style; `MaxPages` stop; `Collect: file` lands JSONL; resume on retry |
 | Signed-token webhooks | A valid RS256 token from the JWKS passes; missing token, malformed token, unknown `kid`, bad signature, wrong `iss` or `aud`, expired or not-yet-valid token, and a `required_claims` mismatch each answer `401 WebhookUnauthorized` with only the reason logged; an unreachable or non-JWKS key endpoint answers `503`; keys are reused within the bounded `max-age` and an unknown `kid` refetches at most once per 60 s; schema rejects `signed_token` with a `credential` or `header`, a non-HTTPS `jwks_url`, or no `required_claims` |
 | Webhooks | Auth rejection; correlation by value; conditions; `EarlyArrival: buffer` delivers an event that arrives before the wait; batch closes on `max_events` and on `max_seconds` |
