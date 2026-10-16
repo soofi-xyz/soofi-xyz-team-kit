@@ -1,0 +1,33 @@
+{
+  "configuration_id": "workspace-meet-prod",
+  "partner": "workspace",
+  "tenant": "example",
+  "environment": "prod",
+  "connections": {
+    "provider": {
+      "type": "http",
+      "base_url": "https://meet.googleapis.com",
+      "auth": {
+        "profile": "oauth2_jwt_bearer",
+        "credential": "workspace-service-account",
+        "token_url": "https://oauth2.googleapis.com/token",
+        "scopes": ["https://www.googleapis.com/auth/meetings.space.readonly"],
+        "subject": "connect-reader@example.com"
+      }
+    }
+  },
+  "webhooks": {
+    "events": {
+      "auth": {
+        "scheme": "signed_token",
+        "issuer": "https://accounts.google.com",
+        "jwks_url": "https://www.googleapis.com/oauth2/v3/certs",
+        "audience": "https://connect.example.com/connect/webhooks/workspace-meet-prod/events",
+        "required_claims": {
+          "email": "pubsub-push@example-project.iam.gserviceaccount.com",
+          "email_verified": true
+        }
+      }
+    }
+  }
+}

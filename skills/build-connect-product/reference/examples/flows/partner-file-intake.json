@@ -28,7 +28,7 @@
           "Type": "LIST",
           "Connection": "inbox",
           "Match": { "Prefix": "$.partner.prefix", "Pattern": "$.partner.pattern", "ModifiedSince": "$.partner.cutoff" },
-          "Ledger": { "Key": ["path", "etag", "size"], "LeaseSeconds": 900 },
+          "Ledger": { "Key": ["path", "etag", "size"], "LeaseSeconds": 3900 },
           "SaveOutputTo": "$.vars.new_files"
         },
         "Next": "PerFile"
@@ -59,7 +59,8 @@
                 "Connection": "inbox",
                 "File": "$.item",
                 "To": "$.partner.archive_prefix",
-                "IfExists": "skip"
+                "IfExists": "fail",
+                "PreservePath": true
               },
               "End": true
             }

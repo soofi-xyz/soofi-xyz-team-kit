@@ -35,7 +35,9 @@ user. Ask only for what you cannot recover.
   `drop_zone`; host or account, paths or endpoints, pagination, rate limits,
   static-IP allowlisting.
 - **Auth.** Profile (API key header, basic, bearer, OAuth client credentials,
-  SFTP password or private key, assume role with external id, PGP keys).
+  OAuth refresh token for one user's grant, service-account JWT bearer acting
+  as a user, SFTP password or private key, assume role with external id, PGP
+  keys). For a user-scoped API, record which user or users Connect acts as.
 - **Shape.** For each object: format, field names as the partner really sends
   them, size range (p50, max), counts per run, encoding (base64, PGP, zip),
   naming pattern, and how the partner marks "already processed" (archive
@@ -47,13 +49,23 @@ user. Ask only for what you cannot recover.
 Read one real example of every object before writing configuration. Field
 names in partner documentation are often wrong; the observed payload wins.
 
+**Push or pull for queue sources.** When the partner offers a message queue
+with both (for example Google Pub/Sub), choose push: a push subscription with
+payload unwrapping (`--push-no-wrapper --push-no-wrapper-write-metadata`) and
+OIDC push authentication, received by a `signed_token` webhook and a webhook
+activation ([signed-token push source](../build-connect-product/reference/use-cases.md#signed-token-push-source)).
+The queue acknowledges on Connect's 2xx. Do not build a pull flow: Connect
+cannot decode an inline base64 message body or project `ackId`s with `[*]`,
+so it cannot acknowledge. Event metadata moved to headers by unwrapping does
+not reach the trigger event; the consumer filters on the body and dedupes.
+
 Then classify:
 
 | Finding | Deliver |
 | --- | --- |
 | Pattern matches a reference flow in `contracts/examples/flows/` | Partner configuration + activation or job request; flow unchanged |
 | Known verbs and options compose it | A new flow, validated and tested like a reference flow |
-| Needs a driver, auth profile, verb or option Connect lacks | Stop; hand to `lapras` with the data profile |
+| Needs a driver, auth profile, verb or option Connect lacks (for example decoding an inline base64 field to JSON, `[*]` projection in `Extract.Save`, a subject allowlist) | Stop; hand to `lapras` with the data profile |
 | Parsing, classification, graph writes, events | Not Connect; the product owns it after the reply |
 
 ## 2. Locate production credentials
@@ -63,7 +75,10 @@ Then classify:
   Record the source, account and the keys it holds. Do not read values into
   the conversation; inspect keys and value lengths only.
 - Record the partner's side of auth: allowlisted IPs (Connect egress must be
-  added), host key fingerprint, OAuth token URL, role ARN and external id.
+  added), host key fingerprint, OAuth token URL, granted scopes (for a service
+  account, the domain-wide-delegation grant on its client id), role ARN and
+  external id. Check every pair in the
+  [values-that-must-match checklist](reference/dev-runtime.md#values-that-must-match).
 - Plan the production Connect credential: its name, profile and keys, and
   whether it is imported from Account or set with `PUT`. Do not set production
   credentials until a production Connect stack exists and the user approves.
@@ -76,9 +91,11 @@ Prefer, in order:
    example `dev/<partner>/...`). Set them as a Connect credential with
    `PUT /connect/partners/<partner>/credentials/<name>` (`{profile, values}`),
    piping values from the source into the signed request without printing
-   them, or `POST .../import` when Account holds them. Confirm with `GET` that
-   every required key is set and, for HTTP profiles, the EventBridge Connection
-   is `AUTHORIZED`.
+   them. Use `POST .../import` from Account only when the target ships that
+   route (Connect main does not). Confirm with `GET` that `state` is `SET`,
+   every key of the profile is `true` and `used_by` lists the expected
+   configurations. Never paste tokens, refresh tokens or key files into chat,
+   logs or evidence.
 2. **Partner production, read-only**, only with explicit user approval, only
    GET/LIST operations, and only when no QA exists.
 3. **A test partner you control**: a Connect-owned Transfer Family SFTP server,
@@ -124,6 +141,13 @@ Rules for the sample:
   fires (`0 5 1 1 ? 2099`); the test enables and fires them explicitly.
 - Set `limits` on every new flow, `Concurrency` on every `Map`, and an explicit
   `Overwrite` on every `PUT`.
+- When a `CALL` sets `Subject` from `$.request`, pin that field in the flow's
+  `parameters` schema with a `pattern` for the allowed users (for example
+  `^[^@]+@example\.com$`, or an explicit alternation). Connect has no subject
+  allowlist; record the gap for `lapras` rather than leaving the field open.
+- When the partner addresses resources by multi-segment names (for example
+  `conferenceRecords/<id>/transcripts/<id>`), fill one `{+name}` placeholder
+  and pin the name's shape in `parameters`; use `{name}` for single segments.
 - Validate every document with the Connect repo's spec module (the same
   schema and semantic checks the API applies) before touching dev. Kinds:
   `Flow`, `PartnerConfiguration`, `Activation`, `JobRequest`,
@@ -160,7 +184,9 @@ triggers.
    partner configuration and activation.
 3. Trigger exactly as production will: enable and fire the schedule, drop the
    object in the drop zone, post the partner webhook, or start the job or
-   lookup with a verification callback.
+   lookup with a verification callback. For a `signed_token` webhook, enable
+   the activation before pointing the partner's push at it, then send one real
+   signed event; a hand-made token cannot pass.
 4. Poll `GET /connect/jobs/{job_id}` until it is terminal. Check:
    - status (`SUCCEEDED` or the expected `PARTIAL`) and per-item errors;
    - the manifest validates against `#/$defs/ResultManifest`;

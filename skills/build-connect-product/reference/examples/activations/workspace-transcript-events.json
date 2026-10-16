@@ -1,0 +1,12 @@
+{
+  "activation_id": "workspace-transcript-events",
+  "flow_name": "partner-webhook-receipt",
+  "flow_version": 1,
+  "configuration_id": "workspace-meet-prod",
+  "trigger": { "type": "webhook", "webhook": "events", "batch": { "max_events": 100, "max_seconds": 60 } },
+  "subscriber": {
+    "url": "https://consumer.example.com/connect/transcript-events",
+    "signing_credential": "subscriber-signing"
+  },
+  "enabled": false
+}

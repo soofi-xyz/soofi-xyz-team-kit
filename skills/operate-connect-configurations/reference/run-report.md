@@ -19,7 +19,7 @@ raw PII out; use credential and key names, identifiers and hashes.
 | --- | --- | --- | --- |
 
 ## 3. Dev credentials
-| Purpose | Source (QA, prod read-only, test partner) | Connect credential | Keys set / connection state |
+| Purpose | Source (QA, prod read-only, test partner) | Connect credential | `state` / keys set / `used_by` |
 | --- | --- | --- | --- |
 
 ## 4. Sample
@@ -30,6 +30,8 @@ raw PII out; use credential and key names, identifiers and hashes.
 - Flow: <name>@<version> (<reference, unchanged | new>)
 - Partner configuration: <configuration_id>
 - Activation / job request: <id>
+- Subject pinning: <parameters pattern for the user field | n/a>
+- Values that must match: <each pair checked, or the mismatch found>
 - Schema validation: <command and result>
 - Local proof: <command and result>
 
@@ -41,6 +43,7 @@ raw PII out; use credential and key names, identifiers and hashes.
 | Checksums match | | |
 | Reply signed | | |
 | Rerun lands nothing | | |
+| Signed-token webhook: real event accepted (2xx), bad token `401` with logged reason | | |
 | No credential values in outputs | | |
 | Latency / duration | | |
 

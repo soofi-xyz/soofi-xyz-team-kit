@@ -16,7 +16,7 @@
       "bucket": "<interprose-customer-bucket>",
       "root": "<customer-prefix>/",
       "region": "<region>",
-      "auth": { "profile": "assume_role", "role_arn": "arn:aws:iam::<interprose-account>:role/<access-role>", "external_id": "<external-id>" }
+      "auth": { "profile": "assume_role", "role_arn": "arn:aws:iam::<interprose-account>:role/<access-role>", "external_id": "connect-interprose-prod" }
     }
   }
 }

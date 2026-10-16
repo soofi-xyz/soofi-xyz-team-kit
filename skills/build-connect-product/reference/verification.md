@@ -23,7 +23,11 @@ does not prove a live partner integration.
   256 KB, auth profile without `credential`, a Secrets Manager ARN or literal secret
   value in place of a credential name, non-HTTPS base URL, a field from
   another connection type, activation without subscriber, internal trigger
-  type such as `eventbridge`.
+  type such as `eventbridge`, `oauth2_refresh_token` or `oauth2_jwt_bearer`
+  without `token_url`, a non-HTTPS `token_url`, a credential `PUT` with an
+  unknown key or a missing required key for its profile, a `signed_token`
+  webhook that names a `credential` or lacks `issuer`, `jwks_url`, `audience`
+  or `required_claims`.
 
 ## 2. Compiler tests
 
@@ -58,13 +62,16 @@ Azurite, MinIO or moto) and, before release, a real test account:
 | Area | Must prove |
 | --- | --- |
 | Ledger | Claim, commit on success, release on failure, lease expiry, two concurrent pollers never both claim one item, `replay` re-admits named items, disabled activation keeps state |
+| Path expansion | `{name}` encodes `/` as `%2F`; `{+name}` keeps `/` and encodes each segment; an empty value, or a `{+name}` value with an empty, `.` or `..` segment (including a leading or trailing `/`), fails `ValidationFailed` before any request, in `CALL` and in `POLL` |
 | Pagination | Each style; `MaxPages` stop; `Collect: file` lands JSONL; resume on retry |
+| Signed-token webhooks | A valid RS256 token from the JWKS passes; missing token, malformed token, unknown `kid`, bad signature, wrong `iss` or `aud`, expired or not-yet-valid token, and a `required_claims` mismatch each answer `401 WebhookUnauthorized` with only the reason logged; an unreachable or non-JWKS key endpoint answers `503`; keys are reused within the bounded `max-age` and an unknown `kid` refetches at most once per 60 s; schema rejects `signed_token` with a `credential` or `header`, a non-HTTPS `jwks_url`, or no `required_claims` |
 | Webhooks | Auth rejection; correlation by value; conditions; `EarlyArrival: buffer` delivers an event that arrives before the wait; batch closes on `max_events` and on `max_seconds` |
 | Large payloads | Responses above `MaxInlineBytes` land as files; base64 bodies decode to the right bytes and content type |
 | Decrypt | Valid PGP decrypts; wrong key fails non-retryable; plaintext never logged |
 | Limits | Timeout, `max_items`, `max_bytes` and `max_cost_usd` stop the job with a `PARTIAL` or `FAILED` manifest |
 | Replies | URL callback is signed and retried; task-token callback resumes the caller; unattended runs reach the activation subscriber |
 | Credentials | `PUT` replaces and `PATCH` merges values; reads, errors, audit records and manifests never contain values; `DELETE` of a bound credential returns `409`; a flow, partner configuration or activation naming a missing or incomplete credential saves and reports it on read, and its job fails before any partner request; rotation applies to the next call without redeploying; Account import returns only affected key names |
+| Renewing tokens | `oauth2_refresh_token` posts `grant_type=refresh_token` with the client id and secret, and sends `scope` only when `scopes` is set; `oauth2_jwt_bearer` signs RS256 with `iss` = `client_email`, `aud` = `audience` or `token_url`, `scope`, `sub` and `kid` = `private_key_id`; a CALL `Subject` overrides `auth.subject`; tokens are reused per subject until 60 s before `expires_in` and two subjects never share a token; concurrent calls share one token request; a rejected exchange is `AuthFailed` with only the status and OAuth error code; a non-PKCS#8 key fails without echoing it; no token, assertion or key appears in logs, errors or manifests |
 | Credential stores | Each HTTP profile creates and updates one `connect-*` EventBridge Connection encrypted with the Connect KMS key; one compiled flow calls two partner configurations through their own connections; OAuth tokens refresh without Connect code; HTTP workers read the same connection secret; a `DEAUTHORIZED` connection surfaces as a credential failure; SFTP connectors read the Connect-managed secret |
 | Runtime operation | Creating, disabling and re-enabling a schedule, drop zone or webhook activation needs no deploy |
 
