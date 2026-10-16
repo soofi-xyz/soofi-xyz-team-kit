@@ -1,0 +1,133 @@
+{
+  "page": "home",
+  "status": "visual_hint values are proposed; the concept skill treats them as one of its 3 options, not the answer",
+  "sections": [
+    {
+      "section_id": "home.hero",
+      "assertion": "Redesign work for the age of AI agents.",
+      "body": "AI tools are spreading. Work still gets stuck in the same handoffs. Prism helps leadership teams build agent fluency, identify workflow bottlenecks, and create a governed operating model for human-agent work.",
+      "evidence": "",
+      "cta": [
+        "Schedule a Starter Exercise →",
+        "Read the Prism Method"
+      ],
+      "pattern_type": "focus",
+      "visual_hint": "A single beam enters the logo's prism geometry and leaves as ordered, parallel spectrum rays.",
+      "background": "bands-hero",
+      "replaces": [
+        "hero-glow",
+        "hero-beam"
+      ]
+    },
+    {
+      "section_id": "home.problem",
+      "assertion": "AI tools do not make an organization AI-native.",
+      "body": "Most enterprises already have AI tools and pilots underway. But the structure of work often stays the same. That is not transformation. It is the old model moving faster.",
+      "evidence": [
+        "Manual handoffs",
+        "Approval chasing",
+        "Status checking",
+        "Context transfer"
+      ],
+      "cta": [],
+      "pattern_type": "distinguishing",
+      "visual_hint": "Unchanged gray block workflow with colored tool tiles bolted on; the four frictions marked as gaps between gray blocks.",
+      "background": "bands-soft-01",
+      "replaces": [
+        "bottleneck-group13",
+        "problem-underline"
+      ]
+    },
+    {
+      "section_id": "home.bottleneck",
+      "assertion": "Your people are not the bottleneck. Your workflow is.",
+      "body": "Legacy workflows turn people into connectors between systems, teams, and decisions. Agents can expand capacity, but only when roles, access, escalation paths, and review points are designed.",
+      "evidence": "Without that model, agents become another layer of fragmentation.",
+      "cta": [],
+      "pattern_type": "focus",
+      "visual_hint": "Gray system blocks connected only by human nodes stretched between them.",
+      "background": "bands-soft-02",
+      "replaces": [
+        "mobile-light-rays",
+        "bottleneck-group12"
+      ]
+    },
+    {
+      "section_id": "home.plan",
+      "assertion": "Start with one governed agent.",
+      "body": "Prism gives leaders a practical way to begin.",
+      "evidence": [
+        "Build fluency",
+        "Find bottlenecks",
+        "Redesign work with governance"
+      ],
+      "cta": [
+        "Read the Prism Method →"
+      ],
+      "pattern_type": "focus",
+      "visual_hint": "Three-step sequence: one framed agent node → gray workflow with human-connector points highlighted → redesigned framed network.",
+      "background": "grid-faint",
+      "replaces": []
+    },
+    {
+      "section_id": "home.what-changes",
+      "assertion": "Move from agent experimentation to managed agent adoption.",
+      "body": "With Prism, leaders define where agents belong, where humans remain accountable, who owns each agent, what agents can access, when agents escalate, how agents are reviewed, and when agents are reused, updated, or retired.",
+      "evidence": "The goal is not more agents. The goal is a managed agent workforce.",
+      "cta": [],
+      "pattern_type": "distinguishing",
+      "visual_hint": "Scattered unframed spectrum nodes vs. fewer connected nodes inside a registry frame; managed side has fewer agents.",
+      "background": "bands-soft-03",
+      "replaces": [
+        "outcomes-left-glow",
+        "outcomes-right-glow"
+      ]
+    },
+    {
+      "section_id": "home.produces",
+      "assertion": "Concrete artifacts, not generic AI enablement.",
+      "body": "",
+      "evidence": [
+        "First governed agent and registry entry",
+        "Bottleneck map",
+        "Human-agent workflow design",
+        "Agent Resources blueprint",
+        "Governance seed and scale path",
+        "Fit decision"
+      ],
+      "cta": [],
+      "pattern_type": "focus",
+      "visual_hint": "One beam refracts into six rays, each ending at one artifact. System reference visual.",
+      "background": "bands-soft-02",
+      "replaces": [
+        "outcomes-connector"
+      ]
+    },
+    {
+      "section_id": "home.not-outsourced",
+      "assertion": "Prism is not for outsourced transformation.",
+      "body": "Prism works with leadership teams prepared to engage directly.",
+      "evidence": "",
+      "cta": [],
+      "pattern_type": "background",
+      "visual_hint": "Background only; a qualifier, not a core claim.",
+      "background": "grid-faint",
+      "replaces": []
+    },
+    {
+      "section_id": "home.cta",
+      "assertion": "Ready to lead how work changes?",
+      "body": "Start with a Starter Exercise and give your leadership team a practical path from AI tools to AI-native work.",
+      "evidence": "",
+      "cta": [
+        "Schedule a Starter Exercise →"
+      ],
+      "pattern_type": "background",
+      "visual_hint": "Bookends the hero: same bands, compositional blur.",
+      "background": "bands-soft-01",
+      "replaces": [
+        "cta-glow"
+      ]
+    }
+  ]
+}

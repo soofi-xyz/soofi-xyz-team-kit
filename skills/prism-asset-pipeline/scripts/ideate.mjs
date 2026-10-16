@@ -1,0 +1,177 @@
+#!/usr/bin/env node
+// Ideation. Run: node scripts/ideate.mjs --copy "<headline>" [--body "..."] [--evidence "a|b|c"] [--pattern focus] [--id hero] [--run <page>/<stamp>] [--top 1]
+//   or:          node scripts/ideate.mjs <section.json> [--run <dir>] [--top 1]
+//   critic only: node scripts/ideate.mjs --ideas <file.ideas.json>   (candidates written elsewhere; adds critiques to the file)
+// Relative paths resolve against the runs root (see prism-paths.mjs), not the cwd.
+// Claude reads the section and the art direction and writes readings and eight ideas. A separate critic reads each idea
+// as plain visual description, without the copy, and says what it communicates. Claude then picks, and writes desktop and
+// mobile prompts into the run's readings.json for `node scripts/gen.mjs --reading`.
+
+import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { resolve } from "node:path";
+import { artDirection, loadEnv, pipelineFile, runPath, skillFile } from "./prism-paths.mjs";
+
+await loadEnv();
+const args = process.argv.slice(2);
+const flag = (name, fallback) => {
+  const index = args.indexOf(`--${name}`);
+  return index >= 0 ? args[index + 1] : fallback;
+};
+const ideasPath = flag("ideas", null);
+
+for (const key of ideasPath ? ["OPENAI_API_KEY"] : ["ANTHROPIC_API_KEY", "OPENAI_API_KEY"]) {
+  if (!process.env[key]) {
+    console.error(`Missing ${key} in .env.`);
+    process.exit(2);
+  }
+}
+
+const config = JSON.parse(await readFile(pipelineFile("models.config.json"), "utf8")).ideate;
+const parseJson = (text) => JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
+
+if (ideasPath) {
+  const file = runPath(ideasPath);
+  const written = JSON.parse(await readFile(file, "utf8"));
+  written.critic = config.critic;
+  written.critiques = await critique(written.section, written.candidates);
+  await writeFile(file, JSON.stringify(written, null, 2));
+  process.exit(0);
+}
+
+const sectionPath = args[0] && !args[0].startsWith("--") ? args[0] : null;
+const section = sectionPath
+  ? JSON.parse(await readFile(runPath(sectionPath), "utf8"))
+  : {
+      id: flag("id", "section"),
+      assertion: flag("copy", ""),
+      body: flag("body", ""),
+      evidence: (flag("evidence", "") || "").split("|").filter(Boolean),
+      pattern_type: flag("pattern", ""),
+    };
+if (!section.assertion) {
+  console.error('Give a section file or --copy "<headline>".');
+  process.exit(2);
+}
+const runDir = runPath(flag("run", "ideate"));
+const top = Number(flag("top", "1"));
+await mkdir(runDir, { recursive: true });
+
+async function resolveModel() {
+  if (config.model !== "latest-opus") return config.model;
+  const res = await fetch("https://api.anthropic.com/v1/models?limit=100", {
+    headers: { "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
+  });
+  if (!res.ok) throw new Error(`models ${res.status} ${await res.text()}`);
+  const opus = (await res.json()).data.find((model) => model.id.includes("opus"));
+  if (!opus) throw new Error("No Opus model listed; set ideate.model in models.config.json.");
+  return opus.id;
+}
+const model = await resolveModel();
+console.log(`author: ${model}, critic: ${config.critic}`);
+
+async function claude(system, user) {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": process.env.ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 32000,
+      thinking: { type: "enabled", budget_tokens: config.thinking_budget },
+      system,
+      messages: [{ role: "user", content: user }],
+    }),
+  });
+  if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+  const data = await res.json();
+  return data.content.filter((part) => part.type === "text").map((part) => part.text).join("");
+}
+
+async function critic(text) {
+  const res = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ model: config.critic, reasoning: { effort: "medium" }, input: [{ role: "user", content: text }] }),
+  });
+  if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+  const data = await res.json();
+  return data.output
+    .filter((item) => item.type === "message")
+    .flatMap((item) => item.content)
+    .filter((part) => part.type === "output_text")
+    .map((part) => part.text)
+    .join("");
+}
+
+const read = (path) => readFile(path, "utf8");
+const art = (name) => read(resolve(artDirection, name));
+const system = [
+  "You are the Prism visual agent. You decide what a graphic should show so that it makes one section's claim easier to understand. Follow these documents exactly.",
+  `# prompt-writer skill\n${await read(skillFile("prism-prompt-writer"))}`,
+  `# art-direction.md\n${await art("art-direction.md")}`,
+  `# prismatic-symbolism.md\n${await art("prismatic-symbolism.md")}`,
+  `# tokens.json\n${await art("tokens.json")}`,
+  `# system.json\n${await art("system.json")}`,
+].join("\n\n");
+
+const readingsPath = resolve(runDir, "readings.json");
+const readings = JSON.parse(await readFile(readingsPath, "utf8").catch(() => "[]"));
+const used = [...new Set(["a line opening into a ray", ...readings.map((reading) => reading.structure).filter(Boolean)])];
+
+const ideas = parseJson(
+  await claude(
+    system,
+    `Section:\n${JSON.stringify(section, null, 2)}\n\nStructures already used (precedents; baseline to beat, never the starting point): ${used.join("; ")}\n\n` +
+      `Do steps 1 and 2 of the prompt-writer skill. Run visual_slots.selection first: emphasis, then subject, then feeling, then copy to validate. Follow motif_sourcing. Read sources/approved-motifs.json with the other sources. An approved motif is a candidate. Use it only when it is the best fit for this section. From sources/prism-feelings-proposed.json, take the situation name only and map it onto the elements after it is named. If no source yields a situation that fits, stop. The situation is already locked. Illustrate that one situation. Do not propose a different situation. Draw it with the line and the subject. A composition may contain more than one ray, and each ray takes one job. Place the shape by how it relates to the line. When the subject is associated with the path, leave about 16 pixels of ground between the shape's edge and the line. The line stays whole and passes beside the shape. When the shape is not associated with the line and reads as something that floats, the distance is whatever the composition needs. When the shape is the start or the end of the line, the line touches the shape's edge there and stops. That is the only time the line meets the shape. A shape that is the start or the end of the line is small and filled: a dot at the small-mark size, a circle about 5 to 7 percent of the desktop frame height, filled with the pair's graphic color, with no separate stroke. A large outline circle with no fill is only for a shape that is not connected to the line, one that sits beside the path or floats. The drawing has to read as the locked motif. For each solution, write "motif" as the situation in a few words, and "image" as what a viewer literally sees. No metaphors in "image".\n\n` +
+      `Return JSON only: {"concept": "", "pair": "", "candidates": [{"n": 1, "motif": "", "structure": "", "hard_stretch": "", "subject": "", "outcome": "", "image": "", "intended": "the motif", "precedent": false}]}`,
+  ),
+);
+
+const critiques = await critique(section, ideas.candidates);
+
+async function critique(section, candidates) {
+  return Promise.all(
+  candidates.map(async (candidate) => {
+    const blind = await critic(
+      `An abstract image will sit on a website. You have not seen any of the words on the page. The image shows:\n"""${candidate.image}"""\n\nIn one sentence, say what idea it communicates to a first-time viewer. Then name its most likely misreading. Be plain and literal. Do not flatter.`,
+    );
+    const verdict = parseJson(
+      await critic(
+        `Headline: "${section.assertion}"\nIntended idea: "${candidate.intended}"\nA viewer who had not seen the headline read the image as:\n"""${blind}"""\n\n` +
+          `Return JSON only: {"blind_match": 1-5 for how closely the viewer's reading matches the intended idea, "headline_fit": 1-5 for how much the image makes this specific headline easier to understand, "generic": true if it could sit under almost any headline, "gap": "one sentence"}`,
+      ),
+    );
+    console.log(`${candidate.n}. ${candidate.structure}: blind ${verdict.blind_match}/5, headline ${verdict.headline_fit}/5${verdict.generic ? ", generic" : ""}`);
+    return { n: candidate.n, blind, ...verdict };
+  }),
+  );
+}
+
+const decision = parseJson(
+  await claude(
+    system,
+    `Section:\n${JSON.stringify(section, null, 2)}\n\nYour candidates:\n${JSON.stringify(ideas.candidates, null, 2)}\n\nBlind critic results:\n${JSON.stringify(critiques, null, 2)}\n\n` +
+      `Pick the ${top} strongest by blind_match and headline_fit; drop generic ones; a precedent wins only if clearly higher. Say why the pick beats the runner-up. ` +
+      `For each pick, do steps 3 and 4 of the prompt-writer skill for desktop (1536x1024) and mobile (1024x1536), recomposing mobile rather than cropping. geometry is the elements that made the cut. Before light_prompt, decide each ray's role per composition.jobs.light.role and record ray_role and ray_from. A ray is never placed at random. light_prompt covers only the region that feeling gives to the ray. When the feeling has no ray, light_prompt is empty ground.\n\n` +
+      `Return JSON only: {"picks": [{"n": 1, "why": ""}], "runner_up": {"n": 0, "why_not": ""}, "readings": [{"n": 1, "breakpoint": "desktop|mobile", "size": "", "structure": "", "concept": "", "pair": "", "geometry": "", "ray_role": "", "ray_from": "", "light_prompt": ""}]}`,
+  ),
+);
+
+const entries = decision.readings.map((reading) => ({
+  id: `${section.id}.idea${reading.n}.${reading.breakpoint}`,
+  copy: section.assertion,
+  ...reading,
+}));
+const ids = new Set(entries.map((entry) => entry.id));
+await writeFile(readingsPath, JSON.stringify([...readings.filter((reading) => !ids.has(reading.id)), ...entries], null, 2));
+await writeFile(
+  resolve(runDir, `${section.id}.ideas.json`),
+  JSON.stringify({ model, critic: config.critic, section, ...ideas, critiques, picks: decision.picks, runner_up: decision.runner_up }, null, 2),
+);
+
+for (const pick of decision.picks) console.log(`pick ${pick.n}: ${pick.why}`);
+console.log(`runner-up ${decision.runner_up.n}: ${decision.runner_up.why_not}`);
+console.log(`next: node ${resolve(import.meta.dirname, "gen.mjs")} --reading ${readingsPath} ${[...ids].join(" ")}`);

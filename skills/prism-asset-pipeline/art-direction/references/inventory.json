@@ -1,0 +1,1019 @@
+{
+  "source": "prismteam/public/assets, reconciled with live prismteam.ai on 2026-09-28. Live pages load these same files. They are not a second set.",
+  "grouping": "Breakpoint crops share one entry. marketing/ai-* files repeat the ai-native-work graphics and are listed under duplicates.",
+  "style_description": "Soft abstract light on a near-black ground. Large blurred wedges, beams, and ovals, as if flat colored shapes were thrown out of focus. A bright inner color wears a darker rim: gold with a red edge, cyan with an orange edge, blue with a purple edge. Dark gaps stay open between the shapes. Light moves on a diagonal, tapers to a point, or pools in a soft oval. Some marks are small and almost sharp: a short glowing underline, a thin horizontal connector, a vertical tick, an elbow line. Nothing is a picture of an object. No letters, no icons, no people, no photorealism, no 3D gloss. The frame crops the light so it bleeds off the edge. The same family is reused as page atmosphere, as a small emphasis under type, or as a simple diagram of light splitting, meeting, or being pinched. One graphic uses only the pairs it already has. A single mark uses one pair. The full set is the family, not the default fill.",
+  "graphics": [
+    {
+      "id": "home.hero-glow",
+      "files": [
+        "home/hero-glow-desktop.svg",
+        "home/hero-glow-mobile.svg"
+      ],
+      "page": "home",
+      "section": "hero",
+      "copy": "Redesign work for the age of AI agents. AI tools are spreading. Work still gets stuck in the same handoffs. Prism helps leadership teams build agent fluency, identify workflow bottlenecks, and create a governed operating model for human-agent work.",
+      "communicates": "page break",
+      "visual": "Two thick diagonal beams on black, cropped by the frame. One is gold with a red rim, the other blue with a purple rim. Heavy blur softens both into glowing wedges. A dark gap stays open between them. Light runs from the upper left toward the right.",
+      "shipped_files": [
+        "home/hero-glow-desktop.svg",
+        "home/hero-glow-mobile.svg"
+      ],
+      "unshipped_files": [],
+      "ships": true,
+      "live_placement": "behind the home hero, stacked with the indigo beam",
+      "copy_source": "live prismteam.ai, 2026-09-28"
+    },
+    {
+      "id": "home.hero-beam",
+      "files": [
+        "home/hero-beam-desktop.svg",
+        "home/hero-beam-mobile.svg"
+      ],
+      "page": "home",
+      "section": "hero",
+      "copy": "Redesign work for the age of AI agents. AI tools are spreading. Work still gets stuck in the same handoffs. Prism helps leadership teams build agent fluency, identify workflow bottlenecks, and create a governed operating model for human-agent work.",
+      "communicates": "page break",
+      "visual": "A near-black indigo wash, blurred until it is almost the ground. A faint darker field behind the beams, not a separate object.",
+      "shipped_files": [
+        "home/hero-beam-desktop.svg",
+        "home/hero-beam-mobile.svg"
+      ],
+      "unshipped_files": [],
+      "ships": true,
+      "live_placement": "behind the home hero, the indigo wash under the glow",
+      "copy_source": "live prismteam.ai, 2026-09-28"
+    },
+    {
+      "id": "home.problem-underline",
+      "files": [
+        "home/problem-underline-desktop.svg",
+        "home/problem-underline-mobile.svg"
+      ],
+      "page": "home",
+      "section": "problem",
+      "copy": "AI tools do not make an organization AI-native. Most enterprises already have AI tools and pilots underway. But the structure of work often stays the same. That is not transformation. It is the old model moving faster. Manual handoffs. Approval chasing. Status checking. Context transfer.",
+      "communicates": "emphasis",
+      "visual": "A short horizontal capsule. Cyan core, blue rim, softly blurred, small enough to sit under one line of type.",
+      "shipped_files": [
+        "home/problem-underline-desktop.svg",
+        "home/problem-underline-mobile.svg"
+      ],
+      "unshipped_files": [],
+      "ships": true,
+      "live_placement": "under each of the four evidence lines: Manual handoffs; Approval chasing; Status checking; Context transfer",
+      "copy_source": "live prismteam.ai, 2026-09-28"
+    },
+    {
+      "id": "home.bottleneck-group13",
+      "files": [
+        "home/bottleneck-group13-desktop-l.svg",
+        "home/bottleneck-group13-desktop-s.svg",
+        "home/bottleneck-group13-desktop.svg",
+        "home/bottleneck-group13-mobile-l.svg",
+        "home/bottleneck-group13-mobile.svg",
+        "home/bottleneck-group13-tablet.svg",
+        "home/bottleneck-group13-wide.svg"
+      ],
+      "page": "home",
+      "section": "problem",
+      "copy": "AI tools do not make an organization AI-native. Most enterprises already have AI tools and pilots underway. But the structure of work often stays the same. That is not transformation. It is the old model moving faster. Manual handoffs. Approval chasing. Status checking. Context transfer.",
+      "communicates": "emphasis",
+      "visual": "Four thin vertical cyan strokes, evenly spaced, each ending in a small foot. Almost sharp. They tick down a list. They do not picture the claim.",
+      "shipped_files": [
+        "home/bottleneck-group13-desktop-l.svg",
+        "home/bottleneck-group13-desktop-s.svg",
+        "home/bottleneck-group13-mobile-l.svg",
+        "home/bottleneck-group13-mobile.svg",
+        "home/bottleneck-group13-tablet.svg",
+        "home/bottleneck-group13-wide.svg"
+      ],
+      "unshipped_files": [
+        "home/bottleneck-group13-desktop.svg"
+      ],
+      "ships": "partial",
+      "live_placement": "two jobs. On small screens it connects the four problem cards. On desktop it is the small mark at the pinch of the bottleneck rays",
+      "copy_source": "live prismteam.ai, 2026-09-28"
+    },
+    {
+      "id": "home.bottleneck-group14",
+      "files": [
+        "home/bottleneck-group14-desktop-l.svg",
+        "home/bottleneck-group14-desktop-s.svg",
+        "home/bottleneck-group14-desktop.svg",
+        "home/bottleneck-group14-mobile.svg",
+        "home/bottleneck-group14-tablet.svg",
+        "home/bottleneck-group14-wide.svg"
+      ],
+      "page": "home",
+      "section": "problem",
+      "copy": "AI tools do not make an organization AI-native. Most enterprises already have AI tools and pilots underway. But the structure of work often stays the same. That is not transformation. It is the old model moving faster. Manual handoffs. Approval chasing. Status checking. Context transfer.",
+      "communicates": "comprehension",
+      "visual": "Four cyan elbow lines, sharp, no blur. They drop from the top edge, turn a corner, and continue down. A diagram of routes, not a glow.",
+      "shipped_files": [
+        "home/bottleneck-group14-desktop-l.svg",
+        "home/bottleneck-group14-desktop-s.svg",
+        "home/bottleneck-group14-tablet.svg",
+        "home/bottleneck-group14-wide.svg"
+      ],
+      "unshipped_files": [
+        "home/bottleneck-group14-desktop.svg",
+        "home/bottleneck-group14-mobile.svg"
+      ],
+      "ships": "partial",
+      "live_placement": "elbow routes between the four problem cards at tablet and up. Not the bottleneck section",
+      "copy_source": "live prismteam.ai, 2026-09-28"
+    },
+    {
+      "id": "home.bottleneck-group12",
+      "files": [
+        "home/bottleneck-group12-desktop.svg",
+        "home/bottleneck-group12-mobile-l.svg",
+        "home/bottleneck-group12-mobile.svg"
+      ],
+      "page": "home",
+      "section": "bottleneck",
+      "copy": "Your people are not the bottleneck. Your workflow is. Legacy workflows turn people into connectors between systems, teams, and decisions. Agents can expand capacity, but only when roles, access, escalation paths, and review points are designed. Without that model, agents become another layer of fragmentation.",
+      "communicates": "page break",
+      "visual": "One soft diagonal wedge of cyan light, blurred, pointing across the frame. A section transition, not a symbol.",
+      "shipped_files": [
+        "home/bottleneck-group12-mobile-l.svg",
+        "home/bottleneck-group12-mobile.svg"
+      ],
+      "unshipped_files": [
+        "home/bottleneck-group12-desktop.svg"
+      ],
+      "ships": "partial",
+      "live_placement": "mobile only, stacked with mobile-light-rays behind the bottleneck",
+      "copy_source": "live prismteam.ai, 2026-09-28"
+    },
+    {
+      "id": "home.bottleneck-group10",
+      "files": [
+        "home/bottleneck-group10-desktop.svg",
+        "home/bottleneck-group10-mobile-l.svg",
+        "home/bottleneck-group10-mobile.svg"
+      ],
+      "page": "home",
+      "section": "bottleneck",
+      "copy": "Your people are not the bottleneck. Your workflow is. Legacy workflows turn people into connectors between systems, teams, and decisions. Agents can expand capacity, but only when roles, access, escalation paths, and review points are designed. Without that model, agents become another layer of fragmentation.",
+      "communicates": "page break",
+      "visual": "The same cyan diagonal wedge drawn in three layers: a sharper near layer, a softer mid layer, and a wide faint halo. Light feathers out from one beam.",
+      "shipped_files": [],
+      "unshipped_files": [
+        "home/bottleneck-group10-desktop.svg",
+        "home/bottleneck-group10-mobile-l.svg",
+        "home/bottleneck-group10-mobile.svg"
+      ],
+      "ships": false,
+      "live_placement": "not referenced by any live page fetched on 2026-09-28",
+      "copy_source": "live prismteam.ai, 2026-09-28"
+    },
+    {
+      "id": "home.bottleneck-group11",
+      "files": [
+        "home/bottleneck-group11-desktop.svg",
+        "home/bottleneck-group11-mobile-l.svg",
+        "home/bottleneck-group11-mobile.svg"
+      ],
+      "page": "home",
+      "section": "bottleneck",
+      "copy": "Your people are not the bottleneck. Your workflow is. Legacy workflows turn people into connectors between systems, teams, and decisions. Agents can expand capacity, but only when roles, access, escalation paths, and review points are designed. Without that model, agents become another layer of fragmentation.",
+      "communicates": "page break",
+      "visual": "A second copy of the layered cyan wedge, same near/mid/far blur, placed as the other side of the bottleneck field.",
+      "shipped_files": [],
+      "unshipped_files": [
+        "home/bottleneck-group11-desktop.svg",
+        "home/bottleneck-group11-mobile-l.svg",
+        "home/bottleneck-group11-mobile.svg"
+      ],
+      "ships": false,
+      "live_placement": "not referenced by any live page fetched on 2026-09-28",
+      "copy_source": "live prismteam.ai, 2026-09-28"
+    },
+    {
+      "id": "home.bottleneck-group3",
+      "files": [
+        "home/bottleneck-group3-desktop.svg",
+        "home/bottleneck-group3-mobile-l.svg",
+        "home/bottleneck-group3-mobile.svg"
+      ],
+      "page": "home",
+      "section": "bottleneck",
+      "copy": "Your people are not the bottleneck. Your workflow is. Legacy workflows turn people into connectors between systems, teams, and decisions. Agents can expand capacity, but only when roles, access, escalation paths, and review points are designed. Without that model, agents become another layer of fragmentation.",
+      "communicates": "page break",
+      "visual": "Layered blue and cyan marks. A tight blur sits inside a much wider halo, so the color pools and then dissolves into black.",
+      "shipped_files": [],
+      "unshipped_files": [
+        "home/bottleneck-group3-desktop.svg",
+        "home/bottleneck-group3-mobile-l.svg",
+        "home/bottleneck-group3-mobile.svg"
+      ],
+      "ships": false,
+      "live_placement": "not referenced by any live page fetched on 2026-09-28",
+      "copy_source": "live prismteam.ai, 2026-09-28"
+    },
+    {
+      "id": "home.bottleneck-group4",
+      "files": [
+        "home/bottleneck-group4-desktop.svg",
+        "home/bottleneck-group4-mobile-l.svg",
+        "home/bottleneck-group4-mobile.svg"
+      ],
+      "page": "home",
+      "section": "bottleneck",
+      "copy": "Your people are not the bottleneck. Your workflow is. Legacy workflows turn people into connectors between systems, teams, and decisions. Agents can expand capacity, but only when roles, access, escalation paths, and review points are designed. Without that model, agents become another layer of fragmentation.",
+      "communicates": "page break",
+      "visual": "The matching layered blue and cyan halo, the other half of the same pooled light.",
+      "shipped_files": [],
+      "unshipped_files": [
+        "home/bottleneck-group4-desktop.svg",
+        "home/bottleneck-group4-mobile-l.svg",
+        "home/bottleneck-group4-mobile.svg"
+      ],
+      "ships": false,
+      "live_placement": "not referenced by any live page fetched on 2026-09-28",
+      "copy_source": "live prismteam.ai, 2026-09-28"
+    },
+    {
+      "id": "home.bottleneck-rays",
+      "files": [
+        "home/bottleneck-ray-top-left-desktop.png",
+        "home/bottleneck-ray-top-left-mobile-l.png",
+        "home/bottleneck-ray-top-left-mobile.png",
+        "home/bottleneck-ray-top-right-desktop.png",
+        "home/bottleneck-ray-top-right-mobile-l.png",
+        "home/bottleneck-ray-top-right-mobile.png",
+        "home/bottleneck-ray-inner-left-desktop.png",
+        "home/bottleneck-ray-inner-left-mobile-l.png",
+        "home/bottleneck-ray-inner-left-mobile.png",
+        "home/bottleneck-ray-inner-right-desktop.png",
+        "home/bottleneck-ray-inner-right-mobile-l.png",
+        "home/bottleneck-ray-inner-right-mobile.png",
+        "home/bottleneck-rays-composite-mobile-l.png",
+        "home/bottleneck-rays-composite-mobile.png"
+      ],
+      "page": "home",
+      "section": "bottleneck",
+      "copy": "Your people are not the bottleneck. Your workflow is. Legacy workflows turn people into connectors between systems, teams, and decisions. Agents can expand capacity, but only when roles, access, escalation paths, and review points are designed. Without that model, agents become another layer of fragmentation.",
+      "communicates": "comprehension",
+      "visual": "Cyan beams on pure black, wide at one end and pinched to a point at the other. Placed as four rays around a center. Light is squeezed through a gap. The composite stacks those rays into one field.",
+      "shipped_files": [
+        "home/bottleneck-ray-top-left-desktop.png",
+        "home/bottleneck-ray-top-right-desktop.png",
+        "home/bottleneck-ray-inner-left-desktop.png",
+        "home/bottleneck-ray-inner-right-desktop.png"
+      ],
+      "unshipped_files": [
+        "home/bottleneck-ray-top-left-mobile-l.png",
+        "home/bottleneck-ray-top-left-mobile.png",
+        "home/bottleneck-ray-top-right-mobile-l.png",
+        "home/bottleneck-ray-top-right-mobile.png",
+        "home/bottleneck-ray-inner-left-mobile-l.png",
+        "home/bottleneck-ray-inner-left-mobile.png",
+        "home/bottleneck-ray-inner-right-mobile-l.png",
+        "home/bottleneck-ray-inner-right-mobile.png",
+        "home/bottleneck-rays-composite-mobile-l.png",
+        "home/bottleneck-rays-composite-mobile.png"
+      ],
+      "ships": "partial",
+      "live_placement": "desktop rays behind the bottleneck. Mobile ray crops do not ship",
+      "copy_source": "live prismteam.ai, 2026-09-28"
+    },
+    {
+      "id": "home.bottleneck-ray-trials",
+      "files": [
+        "home/bottleneck-rays-composite-mobile-bleed.png",
+        "home/bottleneck-rays-composite-mobile-cleantrial.png",
+        "home/bottleneck-rays-composite-mobile-figma-bleed.png",
+        "home/bottleneck-rays-composite-mobile-figma.png",
+        "home/bottleneck-rays-composite-mobile-hybrid.png",
+        "home/bottleneck-rays-composite-mobile-l-bleed.png",
+        "home/bottleneck-rays-composite-mobile-l-cleantrial.png",
+        "home/bottleneck-rays-composite-mobile-l-figma-bleed.png",
+        "home/bottleneck-rays-composite-mobile-l-figma.png",
+        "home/bottleneck-rays-composite-mobile-l-hybrid.png",
+        "home/bottleneck-rays-composite-mobile-l-punchout.png",
+        "home/bottleneck-rays-composite-mobile-l-rebuilt.png",
+        "home/bottleneck-rays-composite-mobile-l-stemless.png",
+        "home/bottleneck-rays-composite-mobile-l-topblend.png",
+        "home/bottleneck-rays-composite-mobile-punchout.png",
+        "home/bottleneck-rays-composite-mobile-rebuilt.png",
+        "home/bottleneck-rays-composite-mobile-stemless.png",
+        "home/bottleneck-rays-composite-mobile-topblend.png"
+      ],
+      "page": "home",
+      "section": "bottleneck",
+      "copy": "Your people are not the bottleneck. Your workflow is. Legacy workflows turn people into connectors between systems, teams, and decisions. Agents can expand capacity, but only when roles, access, escalation paths, and review points are designed. Without that model, agents become another layer of fragmentation.",
+      "communicates": "page break",
+      "visual": "Export trials of the same pinched cyan rays: bleed, punchout, stemless, rebuilt, hybrid. Same light, different masking. Not separate messages.",
+      "shipped_files": [],
+      "unshipped_files": [
+        "home/bottleneck-rays-composite-mobile-bleed.png",
+        "home/bottleneck-rays-composite-mobile-cleantrial.png",
+        "home/bottleneck-rays-composite-mobile-figma-bleed.png",
+        "home/bottleneck-rays-composite-mobile-figma.png",
+        "home/bottleneck-rays-composite-mobile-hybrid.png",
+        "home/bottleneck-rays-composite-mobile-l-bleed.png",
+        "home/bottleneck-rays-composite-mobile-l-cleantrial.png",
+        "home/bottleneck-rays-composite-mobile-l-figma-bleed.png",
+        "home/bottleneck-rays-composite-mobile-l-figma.png",
+        "home/bottleneck-rays-composite-mobile-l-hybrid.png",
+        "home/bottleneck-rays-composite-mobile-l-punchout.png",
+        "home/bottleneck-rays-composite-mobile-l-rebuilt.png",
+        "home/bottleneck-rays-composite-mobile-l-stemless.png",
+        "home/bottleneck-rays-composite-mobile-l-topblend.png",
+        "home/bottleneck-rays-composite-mobile-punchout.png",
+        "home/bottleneck-rays-composite-mobile-rebuilt.png",
+        "home/bottleneck-rays-composite-mobile-stemless.png",
+        "home/bottleneck-rays-composite-mobile-topblend.png"
+      ],
+      "ships": false,
+      "live_placement": "not referenced by any live page fetched on 2026-09-28",
+      "copy_source": "live prismteam.ai, 2026-09-28"
+    },
+    {
+      "id": "home.mobile-light-rays",
+      "files": [
+        "home/mobile-light-rays.png"
+      ],
+      "page": "home",
+      "section": "bottleneck",
+      "copy": "Your people are not the bottleneck. Your workflow is. Legacy workflows turn people into connectors between systems, teams, and decisions. Agents can expand capacity, but only when roles, access, escalation paths, and review points are designed. Without that model, agents become another layer of fragmentation.",
+      "communicates": "page break",
+      "visual": "Two mirrored lobes of cyan light with a narrow black slit between them. Brighter pools sit inside each lobe. A soft bow of light, symmetric, used as a mobile transition.",
+      "shipped_files": [
+        "home/mobile-light-rays.png"
+      ],
+      "unshipped_files": [],
+      "ships": true,
+      "live_placement": "mobile page-break field behind the bottleneck",
+      "copy_source": "live prismteam.ai, 2026-09-28"
+    },
+    {
+      "id": "home.outcomes-left-glow",
+      "files": [
+        "home/outcomes-left-glow-desktop.svg",
+        "home/outcomes-left-glow-mobile.svg"
+      ],
+      "page": "home",
+      "section": "produces",
+      "copy": "Concrete artifacts, not generic AI enablement. First governed agent and registry entry. Bottleneck map. Human-agent workflow design. Agent Resources blueprint. Governance seed and scale path. Fit decision.",
+      "communicates": "page break",
+      "visual": "A soft horizontal oval. Cyan center, warm orange rim, heavily blurred, floating on black. Atmosphere beside the copy, not a diagram.",
+      "shipped_files": [
+        "home/outcomes-left-glow-desktop.svg",
+        "home/outcomes-left-glow-mobile.svg"
+      ],
+      "unshipped_files": [],
+      "ships": true,
+      "live_placement": "behind the produces section, left edge. Not the what-changes section",
+      "copy_source": "live prismteam.ai, 2026-09-28"
+    },
+    {
+      "id": "home.outcomes-right-glow",
+      "files": [
+        "home/outcomes-right-glow-desktop.svg",
+        "home/outcomes-right-glow-mobile.svg"
+      ],
+      "page": "home",
+      "section": "produces",
+      "copy": "Concrete artifacts, not generic AI enablement. First governed agent and registry entry. Bottleneck map. Human-agent workflow design. Agent Resources blueprint. Governance seed and scale path. Fit decision.",
+      "communicates": "page break",
+      "visual": "The same soft cyan-and-orange oval, placed on the other side.",
+      "shipped_files": [
+        "home/outcomes-right-glow-desktop.svg",
+        "home/outcomes-right-glow-mobile.svg"
+      ],
+      "unshipped_files": [],
+      "ships": true,
+      "live_placement": "behind the produces section, right edge. Not the what-changes section",
+      "copy_source": "live prismteam.ai, 2026-09-28"
+    },
+    {
+      "id": "home.outcomes-connector",
+      "files": [
+        "home/outcomes-connector-desktop.svg",
+        "home/outcomes-connector-mobile.svg"
+      ],
+      "page": "home",
+      "section": "produces",
+      "copy": "Concrete artifacts, not generic AI enablement. First governed agent and registry entry. Bottleneck map. Human-agent workflow design. Agent Resources blueprint. Governance seed and scale path. Fit decision.",
+      "communicates": "emphasis",
+      "visual": "A very short horizontal cyan stroke, almost sharp, with only a slight shadow. A link between list items, not a beam.",
+      "shipped_files": [
+        "home/outcomes-connector-desktop.svg",
+        "home/outcomes-connector-mobile.svg"
+      ],
+      "unshipped_files": [],
+      "ships": true,
+      "live_placement": "between each artifact card",
+      "copy_source": "live prismteam.ai, 2026-09-28"
+    },
+    {
+      "id": "home.governance-glow",
+      "files": [
+        "home/governance-glow-desktop.svg",
+        "home/governance-glow-mobile.svg"
+      ],
+      "page": "home",
+      "section": "plan",
+      "copy": "Start with one governed agent. Prism gives leaders a practical way to begin. Build fluency \u2014 Leaders build, register, test, and observe one governed agent tied to real work. Find bottlenecks \u2014 Prism maps where humans are being used as workflow connectors. Redesign work with governance \u2014 Leadership teams define human-agent workflows, Agent Resources, and progressive governance.",
+      "communicates": "emphasis",
+      "visual": "A soft warm halo. Orange core, red rim, heavy blur, meant to sit behind a card.",
+      "shipped_files": [],
+      "unshipped_files": [
+        "home/governance-glow-desktop.svg",
+        "home/governance-glow-mobile.svg"
+      ],
+      "ships": false,
+      "live_placement": "does not ship. The plan section has no graphic",
+      "copy_source": "live prismteam.ai, 2026-09-28"
+    },
+    {
+      "id": "home.agent-resources-glow",
+      "files": [
+        "home/agent-resources-glow-desktop.svg",
+        "home/agent-resources-glow-mobile.svg"
+      ],
+      "page": "home",
+      "section": "plan",
+      "copy": "Start with one governed agent. Prism gives leaders a practical way to begin. Build fluency \u2014 Leaders build, register, test, and observe one governed agent tied to real work. Find bottlenecks \u2014 Prism maps where humans are being used as workflow connectors. Redesign work with governance \u2014 Leadership teams define human-agent workflows, Agent Resources, and progressive governance.",
+      "communicates": "emphasis",
+      "visual": "A soft cool halo. Blue core, purple rim, heavy blur, the card-glow pair to the warm governance halo.",
+      "shipped_files": [],
+      "unshipped_files": [
+        "home/agent-resources-glow-desktop.svg",
+        "home/agent-resources-glow-mobile.svg"
+      ],
+      "ships": false,
+      "live_placement": "does not ship. The plan section has no graphic",
+      "copy_source": "live prismteam.ai, 2026-09-28"
+    },
+    {
+      "id": "home.cta-glow",
+      "files": [
+        "home/cta-glow-desktop.svg",
+        "home/cta-glow-mobile.svg"
+      ],
+      "page": "home",
+      "section": "cta",
+      "copy": "Ready to lead how work changes? Start with a Starter Exercise and give your leadership team a practical path from AI tools to AI-native work.",
+      "communicates": "page break",
+      "visual": "A wide horizontal oval. Blue core, purple rim, heavy blur. The cool bookend that answers the hero.",
+      "shipped_files": [
+        "home/cta-glow-desktop.svg",
+        "home/cta-glow-mobile.svg"
+      ],
+      "unshipped_files": [],
+      "ships": true,
+      "live_placement": "behind the closing CTA. Also loaded on method, ai-native-work, about, workshops, contact, and litepaper",
+      "copy_source": "live prismteam.ai, 2026-09-28"
+    },
+    {
+      "id": "ai-native-work.hero-ray",
+      "files": [
+        "ai-native-work/hero-ray-desktop-l.svg",
+        "ai-native-work/hero-ray-desktop-s.svg",
+        "ai-native-work/hero-ray-mobile-l.svg",
+        "ai-native-work/hero-ray-mobile.svg",
+        "ai-native-work/hero-ray-tablet.svg",
+        "ai-native-work/hero-ray-wide.svg"
+      ],
+      "page": "ai-native-work",
+      "section": "hero",
+      "copy": "AI transformation is not a tool rollout. Tools make individuals faster. They do not redesign how work moves through the enterprise.",
+      "communicates": "page break",
+      "visual": "One diagonal gold beam with a red rim, heavily blurred, cropped. A single streak of warm light on black.",
+      "shipped_files": [
+        "ai-native-work/hero-ray-mobile-l.svg",
+        "ai-native-work/hero-ray-mobile.svg",
+        "ai-native-work/hero-ray-tablet.svg"
+      ],
+      "unshipped_files": [
+        "ai-native-work/hero-ray-desktop-l.svg",
+        "ai-native-work/hero-ray-desktop-s.svg",
+        "ai-native-work/hero-ray-wide.svg"
+      ],
+      "ships": "partial",
+      "live_placement": "ships",
+      "copy_source": "inventory draft; live page was checked for asset URLs only"
+    },
+    {
+      "id": "ai-native-work.venn-ray",
+      "files": [
+        "ai-native-work/venn-ray-desktop-l.svg",
+        "ai-native-work/venn-ray-desktop-s.svg",
+        "ai-native-work/venn-ray-mobile-l.svg",
+        "ai-native-work/venn-ray-mobile.svg",
+        "ai-native-work/venn-ray-tablet.svg",
+        "ai-native-work/venn-ray-wide.svg"
+      ],
+      "page": "ai-native-work",
+      "section": "copilots-and-agents",
+      "copy": "Copilots help with tasks. Agents coordinate workflows.",
+      "communicates": "comprehension",
+      "visual": "Two gold lobes with red rims, facing each other, pulled into a dark waist at the center. A bowtie of light. Two fields meet and the middle stays dark.",
+      "shipped_files": [
+        "ai-native-work/venn-ray-mobile-l.svg",
+        "ai-native-work/venn-ray-mobile.svg",
+        "ai-native-work/venn-ray-tablet.svg"
+      ],
+      "unshipped_files": [
+        "ai-native-work/venn-ray-desktop-l.svg",
+        "ai-native-work/venn-ray-desktop-s.svg",
+        "ai-native-work/venn-ray-wide.svg"
+      ],
+      "ships": "partial",
+      "live_placement": "ships",
+      "copy_source": "inventory draft; live page was checked for asset URLs only"
+    },
+    {
+      "id": "ai-native-work.offramp-gradient",
+      "files": [
+        "ai-native-work/offramp-gradient-desktop-l.svg",
+        "ai-native-work/offramp-gradient-desktop-s.svg",
+        "ai-native-work/offramp-gradient-mobile-l.svg",
+        "ai-native-work/offramp-gradient-mobile.svg",
+        "ai-native-work/offramp-gradient-tablet.svg",
+        "ai-native-work/offramp-gradient-wide.svg"
+      ],
+      "page": "ai-native-work",
+      "section": "offramp",
+      "copy": "Faster cars do not solve an offramp problem. Work still stalls at human handoffs.",
+      "communicates": "page break",
+      "visual": "A soft horizontal oval. Blue core, purple rim, heavy blur. Page atmosphere for the offramp section.",
+      "shipped_files": [
+        "ai-native-work/offramp-gradient-desktop-l.svg",
+        "ai-native-work/offramp-gradient-desktop-s.svg",
+        "ai-native-work/offramp-gradient-mobile-l.svg",
+        "ai-native-work/offramp-gradient-mobile.svg",
+        "ai-native-work/offramp-gradient-tablet.svg",
+        "ai-native-work/offramp-gradient-wide.svg"
+      ],
+      "unshipped_files": [],
+      "ships": true,
+      "live_placement": "ships",
+      "copy_source": "inventory draft; live page was checked for asset URLs only"
+    },
+    {
+      "id": "ai-native-work.agent-card-glow",
+      "files": [
+        "ai-native-work/agent-card-glow-desktop.svg",
+        "ai-native-work/agent-card-glow-mobile-l.svg",
+        "ai-native-work/agent-card-glow-mobile.svg",
+        "ai-native-work/agent-card-glow-tablet.svg"
+      ],
+      "page": "ai-native-work",
+      "section": "hybrid-team",
+      "copy": "The future team is hybrid. Humans own judgment. Agents handle repeatable coordination.",
+      "communicates": "emphasis",
+      "visual": "The cool card halo again: blue core, purple rim, sitting behind a card rather than across the page.",
+      "shipped_files": [
+        "ai-native-work/agent-card-glow-desktop.svg"
+      ],
+      "unshipped_files": [
+        "ai-native-work/agent-card-glow-mobile-l.svg",
+        "ai-native-work/agent-card-glow-mobile.svg",
+        "ai-native-work/agent-card-glow-tablet.svg"
+      ],
+      "ships": "partial",
+      "live_placement": "ships",
+      "copy_source": "inventory draft; live page was checked for asset URLs only"
+    },
+    {
+      "id": "ai-native-work.bottom-glow",
+      "files": [
+        "ai-native-work/bottom-glow-desktop-l.svg",
+        "ai-native-work/bottom-glow-desktop-s.svg",
+        "ai-native-work/bottom-glow-mobile-l.svg",
+        "ai-native-work/bottom-glow-mobile.svg",
+        "ai-native-work/bottom-glow-tablet.svg",
+        "ai-native-work/bottom-glow-wide.svg"
+      ],
+      "page": "ai-native-work",
+      "section": "close",
+      "copy": "Leaders must own the operating model.",
+      "communicates": "page break",
+      "visual": "The same blue-and-purple oval, used as the bottom bookend.",
+      "shipped_files": [
+        "ai-native-work/bottom-glow-desktop-l.svg",
+        "ai-native-work/bottom-glow-desktop-s.svg",
+        "ai-native-work/bottom-glow-mobile-l.svg",
+        "ai-native-work/bottom-glow-mobile.svg",
+        "ai-native-work/bottom-glow-tablet.svg",
+        "ai-native-work/bottom-glow-wide.svg"
+      ],
+      "unshipped_files": [],
+      "ships": true,
+      "live_placement": "ships",
+      "copy_source": "inventory draft; live page was checked for asset URLs only"
+    },
+    {
+      "id": "method.hero-rays",
+      "files": [
+        "marketing/method-hero-rays.svg"
+      ],
+      "page": "method",
+      "section": "hero",
+      "copy": "The Prism Method starts with one governed agent, then helps leaders redesign coordination, define Agent Resources, and scale governance as adoption grows.",
+      "communicates": "comprehension",
+      "visual": "Two pale cyan triangles rising toward a shared peak, with a dark notch between them. Light splits upward from a base. Soft blur, simple geometry.",
+      "shipped_files": [
+        "marketing/method-hero-rays.svg"
+      ],
+      "unshipped_files": [],
+      "ships": true,
+      "live_placement": "ships",
+      "copy_source": "live prismteam.ai, 2026-09-28"
+    },
+    {
+      "id": "method.hero-glow",
+      "files": [
+        "marketing/method-hero-glow.svg"
+      ],
+      "page": "method",
+      "section": "hero",
+      "copy": "The Prism Method starts with one governed agent, then helps leaders redesign coordination, define Agent Resources, and scale governance as adoption grows.",
+      "communicates": "page break",
+      "visual": "An indigo wash, blurred into the ground, the dark field behind the hero rays.",
+      "shipped_files": [
+        "marketing/method-hero-glow.svg"
+      ],
+      "unshipped_files": [],
+      "ships": true,
+      "live_placement": "ships",
+      "copy_source": "live prismteam.ai, 2026-09-28"
+    },
+    {
+      "id": "method.cta-glow",
+      "files": [
+        "marketing/method-cta-glow.svg"
+      ],
+      "page": "method",
+      "section": "close",
+      "copy": "Schedule a Starter Exercise. Read the Litepaper.",
+      "communicates": "page break",
+      "visual": "The blue-and-purple oval bookend.",
+      "shipped_files": [
+        "marketing/method-cta-glow.svg"
+      ],
+      "unshipped_files": [],
+      "ships": true,
+      "live_placement": "ships",
+      "copy_source": "live prismteam.ai, 2026-09-28"
+    },
+    {
+      "id": "about.hero-ray",
+      "files": [
+        "marketing/about-hero-ray-wide.svg",
+        "marketing/about-hero-ray.svg"
+      ],
+      "page": "about",
+      "section": "hero",
+      "copy": "A method for leaders building human-agent organizations.",
+      "communicates": "page break",
+      "visual": "A diagonal beam. Blue body, cyan rim, heavily blurred.",
+      "shipped_files": [
+        "marketing/about-hero-ray-wide.svg",
+        "marketing/about-hero-ray.svg"
+      ],
+      "unshipped_files": [],
+      "ships": true,
+      "live_placement": "ships",
+      "copy_source": "inventory draft; live page was checked for asset URLs only"
+    },
+    {
+      "id": "about.hero-glow",
+      "files": [
+        "marketing/about-hero-glow-mobile-l.svg",
+        "marketing/about-hero-glow.svg"
+      ],
+      "page": "about",
+      "section": "hero",
+      "copy": "A method for leaders building human-agent organizations.",
+      "communicates": "page break",
+      "visual": "An indigo wash behind the hero ray.",
+      "shipped_files": [
+        "marketing/about-hero-glow-mobile-l.svg",
+        "marketing/about-hero-glow.svg"
+      ],
+      "unshipped_files": [],
+      "ships": true,
+      "live_placement": "ships",
+      "copy_source": "inventory draft; live page was checked for asset URLs only"
+    },
+    {
+      "id": "about.mid-ray",
+      "files": [
+        "marketing/about-mid-ray-wide.svg",
+        "marketing/about-mid-ray.svg"
+      ],
+      "page": "about",
+      "section": "why-prism-exists",
+      "copy": "AI adoption has outpaced the operating model around it.",
+      "communicates": "page break",
+      "visual": "A diagonal gold beam with a red rim, the warm mid-page streak.",
+      "shipped_files": [
+        "marketing/about-mid-ray-wide.svg",
+        "marketing/about-mid-ray.svg"
+      ],
+      "unshipped_files": [],
+      "ships": true,
+      "live_placement": "ships",
+      "copy_source": "inventory draft; live page was checked for asset URLs only"
+    },
+    {
+      "id": "about.mid-glow",
+      "files": [
+        "marketing/about-mid-glow-desktop-l.svg",
+        "marketing/about-mid-glow.svg"
+      ],
+      "page": "about",
+      "section": "why-prism-exists",
+      "copy": "AI adoption has outpaced the operating model around it.",
+      "communicates": "page break",
+      "visual": "An indigo wash behind the mid-page ray.",
+      "shipped_files": [
+        "marketing/about-mid-glow-desktop-l.svg",
+        "marketing/about-mid-glow.svg"
+      ],
+      "unshipped_files": [],
+      "ships": true,
+      "live_placement": "ships",
+      "copy_source": "inventory draft; live page was checked for asset URLs only"
+    },
+    {
+      "id": "about.cta-glow",
+      "files": [
+        "marketing/about-cta-glow-desktop-s.svg",
+        "marketing/about-cta-glow-mobile-l.svg",
+        "marketing/about-cta-glow-mobile.svg",
+        "marketing/about-cta-glow-tablet.svg",
+        "marketing/about-cta-glow.svg"
+      ],
+      "page": "about",
+      "section": "cta",
+      "copy": "Schedule a Starter Exercise.",
+      "communicates": "page break",
+      "visual": "The blue-and-purple oval bookend.",
+      "shipped_files": [
+        "marketing/about-cta-glow-desktop-s.svg",
+        "marketing/about-cta-glow-mobile-l.svg",
+        "marketing/about-cta-glow-mobile.svg",
+        "marketing/about-cta-glow-tablet.svg",
+        "marketing/about-cta-glow.svg"
+      ],
+      "unshipped_files": [],
+      "ships": true,
+      "live_placement": "ships",
+      "copy_source": "inventory draft; live page was checked for asset URLs only"
+    },
+    {
+      "id": "workshops.hero-ray",
+      "files": [
+        "marketing/workshops-hero-ray-wide.svg",
+        "marketing/workshops-hero-ray.svg"
+      ],
+      "page": "workshops",
+      "section": "hero",
+      "copy": "Start with one governed agent. The first agent is not the destination. It is the first lesson in how agent adoption must be managed.",
+      "communicates": "page break",
+      "visual": "A diagonal beam. Cyan body, orange rim, heavily blurred.",
+      "shipped_files": [
+        "marketing/workshops-hero-ray-wide.svg",
+        "marketing/workshops-hero-ray.svg"
+      ],
+      "unshipped_files": [],
+      "ships": true,
+      "live_placement": "ships",
+      "copy_source": "inventory draft; live page was checked for asset URLs only"
+    },
+    {
+      "id": "workshops.hero-glow",
+      "files": [
+        "marketing/workshops-hero-glow-desktop-l.svg",
+        "marketing/workshops-hero-glow.svg"
+      ],
+      "page": "workshops",
+      "section": "hero",
+      "copy": "Start with one governed agent.",
+      "communicates": "page break",
+      "visual": "An indigo wash behind the hero ray.",
+      "shipped_files": [
+        "marketing/workshops-hero-glow-desktop-l.svg",
+        "marketing/workshops-hero-glow.svg"
+      ],
+      "unshipped_files": [],
+      "ships": true,
+      "live_placement": "ships",
+      "copy_source": "inventory draft; live page was checked for asset URLs only"
+    },
+    {
+      "id": "workshops.cta-glow",
+      "files": [
+        "marketing/workshops-cta-glow-desktop-s.svg",
+        "marketing/workshops-cta-glow-mobile-l.svg",
+        "marketing/workshops-cta-glow-mobile.svg",
+        "marketing/workshops-cta-glow-tablet.svg",
+        "marketing/workshops-cta-glow.svg"
+      ],
+      "page": "workshops",
+      "section": "close",
+      "copy": "Prism is for leaders who want agent adoption to scale with control.",
+      "communicates": "page break",
+      "visual": "The blue-and-purple oval bookend.",
+      "shipped_files": [
+        "marketing/workshops-cta-glow-desktop-s.svg",
+        "marketing/workshops-cta-glow-mobile-l.svg",
+        "marketing/workshops-cta-glow-mobile.svg",
+        "marketing/workshops-cta-glow-tablet.svg",
+        "marketing/workshops-cta-glow.svg"
+      ],
+      "unshipped_files": [],
+      "ships": true,
+      "live_placement": "ships",
+      "copy_source": "inventory draft; live page was checked for asset URLs only"
+    },
+    {
+      "id": "contact.form-glow",
+      "files": [
+        "marketing/contact-form-glow-desktop-s.svg",
+        "marketing/contact-form-glow-desktop.svg",
+        "marketing/contact-form-glow-mobile-l.svg",
+        "marketing/contact-form-glow-mobile.svg",
+        "marketing/contact-form-glow-tablet.svg",
+        "marketing/contact-form-glow.svg"
+      ],
+      "page": "contact",
+      "section": "form",
+      "copy": "Let's find out if Prism is the right fit.",
+      "communicates": "emphasis",
+      "visual": "The blue-and-purple oval, placed as a glow behind the form rather than as a full-page band.",
+      "shipped_files": [
+        "marketing/contact-form-glow-desktop-s.svg",
+        "marketing/contact-form-glow-desktop.svg",
+        "marketing/contact-form-glow-mobile-l.svg",
+        "marketing/contact-form-glow-mobile.svg",
+        "marketing/contact-form-glow-tablet.svg"
+      ],
+      "unshipped_files": [
+        "marketing/contact-form-glow.svg"
+      ],
+      "ships": "partial",
+      "live_placement": "ships",
+      "copy_source": "inventory draft; live page was checked for asset URLs only"
+    },
+    {
+      "id": "litepaper.top-ray",
+      "files": [
+        "marketing/litepaper-top-ray.svg"
+      ],
+      "page": "litepaper",
+      "section": "hero",
+      "copy": "From AI pressure to human-agent operating models.",
+      "communicates": "page break",
+      "visual": "A diagonal beam. Blue body, cyan rim, heavily blurred, opening the page.",
+      "shipped_files": [
+        "marketing/litepaper-top-ray.svg"
+      ],
+      "unshipped_files": [],
+      "ships": true,
+      "live_placement": "ships",
+      "copy_source": "inventory draft; live page was checked for asset URLs only"
+    },
+    {
+      "id": "litepaper.bottom-glow",
+      "files": [
+        "marketing/litepaper-bottom-glow.svg"
+      ],
+      "page": "litepaper",
+      "section": "close",
+      "copy": "Leaders must own how work changes.",
+      "communicates": "page break",
+      "visual": "The blue-and-purple oval bookend under the litepaper page.",
+      "shipped_files": [
+        "marketing/litepaper-bottom-glow.svg"
+      ],
+      "unshipped_files": [],
+      "ships": true,
+      "live_placement": "ships",
+      "copy_source": "inventory draft; live page was checked for asset URLs only"
+    },
+    {
+      "id": "agents.background",
+      "files": [
+        "marketing/agents-background-desktop-l.svg",
+        "marketing/agents-background-desktop-s.svg",
+        "marketing/agents-background-mobile-l.svg",
+        "marketing/agents-background-mobile.svg",
+        "marketing/agents-background-tablet.svg",
+        "marketing/agents-background-wide.svg"
+      ],
+      "page": "agents",
+      "section": "page",
+      "copy": "No section copy is recorded for a standalone agents page in prism-site-copy.md.",
+      "communicates": "page break",
+      "visual": "A full field. Indigo ground, with a gold band edged in red and a cyan band edged in orange, both heavily blurred. Diagonal light, dark gaps, cropped hard by the frame. This is the page's identity, not a diagram.",
+      "shipped_files": [],
+      "unshipped_files": [
+        "marketing/agents-background-desktop-l.svg",
+        "marketing/agents-background-desktop-s.svg",
+        "marketing/agents-background-mobile-l.svg",
+        "marketing/agents-background-mobile.svg",
+        "marketing/agents-background-tablet.svg",
+        "marketing/agents-background-wide.svg"
+      ],
+      "ships": false,
+      "live_placement": "not referenced by any live page fetched on 2026-09-28",
+      "copy_source": "inventory draft; live page was checked for asset URLs only"
+    }
+  ],
+  "duplicates": [
+    {
+      "same_as": "ai-native-work.hero-ray",
+      "files": [
+        "marketing/ai-hero-ray-desktop.svg",
+        "marketing/ai-hero-ray-mobile-l.svg",
+        "marketing/ai-hero-ray-mobile.svg",
+        "marketing/ai-hero-ray-tablet.svg"
+      ],
+      "ships": false,
+      "note": "Live ai-native-work loads ai-native-work/*, not marketing/ai-*."
+    },
+    {
+      "same_as": "ai-native-work.venn-ray",
+      "files": [
+        "marketing/ai-venn-ray-desktop.svg",
+        "marketing/ai-venn-ray-mobile-l.svg",
+        "marketing/ai-venn-ray-mobile.svg",
+        "marketing/ai-venn-ray-tablet.svg"
+      ],
+      "ships": false,
+      "note": "Live ai-native-work loads ai-native-work/*, not marketing/ai-*."
+    },
+    {
+      "same_as": "ai-native-work.offramp-gradient",
+      "files": [
+        "marketing/ai-offramp-gradient-desktop.svg",
+        "marketing/ai-offramp-gradient-mobile-l.svg",
+        "marketing/ai-offramp-gradient-mobile.svg",
+        "marketing/ai-offramp-gradient-tablet.svg"
+      ],
+      "ships": false,
+      "note": "Live ai-native-work loads ai-native-work/*, not marketing/ai-*."
+    },
+    {
+      "same_as": "ai-native-work.agent-card-glow",
+      "files": [
+        "marketing/ai-agent-card-glow-desktop.svg",
+        "marketing/ai-agent-card-glow-mobile-l.svg",
+        "marketing/ai-agent-card-glow-mobile.svg",
+        "marketing/ai-agent-card-glow-tablet.svg"
+      ],
+      "ships": false,
+      "note": "Live ai-native-work loads ai-native-work/*, not marketing/ai-*."
+    },
+    {
+      "same_as": "ai-native-work.bottom-glow",
+      "files": [
+        "marketing/ai-bottom-glow-desktop.svg",
+        "marketing/ai-bottom-glow-mobile-l.svg",
+        "marketing/ai-bottom-glow-mobile.svg",
+        "marketing/ai-bottom-glow-tablet.svg"
+      ],
+      "ships": false,
+      "note": "Live ai-native-work loads ai-native-work/*, not marketing/ai-*."
+    }
+  ],
+  "reconciliation": {
+    "checked": "https://prismteam.ai and /method /ai-native-work /about /workshops /contact /litepaper",
+    "same_files": "Every live /assets/ URL is a file already in this inventory. Local app/page.tsx does not reference them; the published site does.",
+    "ships_nowhere": [
+      "home.bottleneck-group10",
+      "home.bottleneck-group11",
+      "home.bottleneck-group3",
+      "home.bottleneck-group4",
+      "home.bottleneck-ray-trials",
+      "home.governance-glow",
+      "home.agent-resources-glow",
+      "agents.background"
+    ],
+    "partial_breakpoint": [
+      "home.bottleneck-group13",
+      "home.bottleneck-group14",
+      "home.bottleneck-group12",
+      "home.bottleneck-rays",
+      "ai-native-work.hero-ray",
+      "ai-native-work.venn-ray",
+      "ai-native-work.agent-card-glow",
+      "contact.form-glow"
+    ],
+    "home_sections_with_no_graphic": [
+      "plan",
+      "what-changes",
+      "not-outsourced",
+      "framework"
+    ],
+    "copy": "Home and method copy fields were replaced with the live page text. Other pages still carry the draft copy."
+  }
+}
