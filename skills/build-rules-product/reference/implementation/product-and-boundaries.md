@@ -11,9 +11,9 @@ explicit until a compatible migration lands.
 | Owner | Boundary |
 | --- | --- |
 | Gallade | Rule evaluation, contact candidate selection, outputs, capacity, snapshots, eligibility writeback and service verification |
-| Xatu | Downstream audience boundaries, suppression acceptance criteria and runtime intake packaging |
-| Machamp | Supporting workflow, throttling, cost, idempotency and recovery expertise |
-| Porygon | Metric definitions, reconciliation, Lexicon metric registration and shared dashboard integration |
+| the audience supporting skill | Downstream audience boundaries, suppression acceptance criteria and runtime intake packaging |
+| the batch supporting skill | Supporting workflow, throttling, cost, idempotency and recovery expertise |
+| the metrics supporting skill | Metric definitions, reconciliation, Lexicon metric registration and shared dashboard integration |
 | Conkeldurr | Separate changes to Persist, Lexicon and other platform dependencies |
 | Regigigas | Marketplace distribution, dependency ordering and tenant installation |
 

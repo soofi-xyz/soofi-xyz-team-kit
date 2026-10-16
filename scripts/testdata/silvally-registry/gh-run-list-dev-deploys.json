@@ -1,0 +1,18 @@
+[
+  {"databaseId": 1700, "headSha": "cccccccccccccccccccccccccccccccccccccccc", "headBranch": "feat/in-progress", "status": "in_progress", "conclusion": "",
+   "createdAt": "2026-09-30T21:50:00Z", "updatedAt": "2026-09-30T21:58:00Z", "attempt": 1, "event": "pull_request", "workflowName": "DEV CI/CD"},
+  {"databaseId": 1690, "headSha": "dddddddddddddddddddddddddddddddddddddddd", "headBranch": "feat/failed-deploy", "status": "completed", "conclusion": "failure",
+   "createdAt": "2026-09-30T21:45:00Z", "updatedAt": "2026-09-30T21:55:00Z", "attempt": 1, "event": "pull_request", "workflowName": "DEV CI/CD"},
+  {"databaseId": 1680, "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "headBranch": "feat/other-pr", "status": "completed", "conclusion": "success",
+   "createdAt": "2026-09-30T19:51:14Z", "updatedAt": "2026-09-30T20:08:34Z", "attempt": 2, "event": "pull_request", "workflowName": "DEV CI/CD"},
+  {"databaseId": 1670, "headSha": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "headBranch": "main", "status": "completed", "conclusion": "success",
+   "createdAt": "2026-09-30T21:59:00Z", "updatedAt": "2026-09-30T22:10:00Z", "attempt": 1, "event": "push", "workflowName": "DEV CI/CD"},
+  {"databaseId": 1660, "headSha": "ffffffffffffffffffffffffffffffffffffffff", "headBranch": "feat/cancelled", "status": "completed", "conclusion": "cancelled",
+   "createdAt": "2026-09-30T20:30:00Z", "updatedAt": "2026-09-30T22:05:00Z", "attempt": 1, "event": "pull_request", "workflowName": "DEV CI/CD"},
+  {"databaseId": 1650, "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "headBranch": "cursor/pinned-candidate", "status": "completed", "conclusion": "success",
+   "createdAt": "2026-09-30T17:36:42Z", "updatedAt": "2026-09-30T21:40:46Z", "attempt": 2, "event": "pull_request", "workflowName": "DEV CI/CD"},
+  {"databaseId": 1640, "headSha": "abababababababababababababababababababab", "headBranch": "feat/same-completion-earlier-created", "status": "completed", "conclusion": "success",
+   "createdAt": "2026-09-30T17:30:00Z", "updatedAt": "2026-09-30T21:40:46Z", "attempt": 1, "event": "pull_request", "workflowName": "DEV CI/CD"},
+  {"databaseId": 1200, "headSha": "9999999999999999999999999999999999999999", "headBranch": "agent/session/older-task", "status": "completed", "conclusion": "success",
+   "createdAt": "2026-09-04T15:27:00Z", "updatedAt": "2026-09-04T15:35:54Z", "attempt": 1, "event": "pull_request", "workflowName": "DEV CI/CD"}
+]

@@ -121,6 +121,8 @@ def rewrite_marketplace(data):
             plugin["name"] = local_name
 
 rewrite_json(target / ".github" / "plugin" / "marketplace.json", rewrite_marketplace)
+rewrite_json(target / ".claude-plugin" / "plugin.json", lambda data: data.__setitem__("name", local_name))
+rewrite_json(target / ".claude-plugin" / "marketplace.json", rewrite_marketplace)
 
 print(target)
 PY
@@ -139,7 +141,7 @@ PY
   echo "  1. In Cursor, run Developer: Reload Window. If the plugin is not detected, fully restart Cursor."
   echo "  2. Open Settings > Plugins and confirm '${LOCAL_PLUGIN_NAME}' is installed."
   echo "  3. Disable or remove other soofi-xyz-team-kit plugin installs while testing if duplicate agent/skill names appear."
-  echo "  4. Run a small smoke prompt, for example: /arceus Reply with exactly: ok"
+  echo "  4. Run a small smoke prompt, for example: /conkeldurr Reply with exactly: ok"
   echo "  5. If you touched skills/use-oracle/runtime/, also run (Node 22.18+):"
   echo "       (cd skills/use-oracle/runtime && npm ci) && npm test --prefix skills/use-oracle/runtime"
   echo "       python3 scripts/check-plugin-clean-room.py"

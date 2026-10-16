@@ -1,24 +1,24 @@
 {
-  "contractVersion": 1,
+  "contractVersion": 2,
   "systemId": "sale-availability",
   "productName": "sale-availability",
   "title": "Sale availability lookup",
-  "outcome": "Given an address or parcelId, return sale availability and evidence from curated Connect/Transform artifacts via a Product invocation. Unknown identifiers fail closed. No scrape-on-request.",
+  "outcome": "Given an address or parcelId, return sale availability and evidence from curated Connect/Transform artifacts via a System invocation. Unknown identifiers fail closed. No scrape-on-request.",
   "orchestration": {
-    "mode": "product-service",
+    "mode": "system-service",
     "invocationMode": "single",
-    "notes": "Serve through Product APIs once a deployment is integrated or provisioned. Template-backed flow only."
+    "notes": "Serve through the current System deployment; template-backed flows only."
   },
   "products": [
     {
-      "product": "product-orchestration",
+      "product": "system",
       "role": "serve",
-      "notes": "Product definition, schemas, flow template, and product flow (flow_template_name required)."
+      "notes": "System definition, schemas, flow template and template-backed flow."
     },
     {
-      "product": "lexicon",
-      "role": "configure",
-      "notes": "Publish source and sale-availability languages plus mapping."
+      "product": "model",
+      "role": "reference-only",
+      "notes": "Reuse governed vocabulary; no Model runtime or agent is assumed."
     },
     {
       "product": "connect",
@@ -32,120 +32,112 @@
     },
     {
       "product": "deploy",
-      "role": "activate",
-      "notes": "Keep activationEnabled false until authorized."
+      "role": "reference-only",
+      "notes": "Resolve deployment prerequisites separately; no Deploy agent is assigned."
     }
   ],
   "configRefs": {
     "productDefinition": {
       "kind": "product-definition",
       "path": "emits/product/product.definition.stub.json",
-      "ownerAgent": "conkeldurr"
+      "ownerAgent": "celebi"
     },
     "productFlowTemplate": {
       "kind": "product-flow-template",
       "path": "emits/product/flow-templates/sale_availability_lookup.stub.json",
-      "ownerAgent": "machamp"
+      "ownerAgent": "celebi"
     },
     "productFlow": {
       "kind": "product-flow",
       "path": "emits/product/product-flows/default.stub.json",
-      "ownerAgent": "conkeldurr"
+      "ownerAgent": "celebi"
     },
     "productInvocation": {
       "kind": "product-invocation",
       "path": "emits/product/invocation.contract.md",
-      "ownerAgent": "zygarde"
+      "ownerAgent": "celebi"
     },
     "lexiconCatalog": {
       "kind": "lexicon-catalog",
       "path": "emits/lexicon/catalog.stub.json",
-      "ownerAgent": "conkeldurr"
+      "ownerAgent": "silvally"
     },
     "connectPartner": {
       "kind": "connect-partner",
       "path": "emits/connect/partner.stub.json",
-      "ownerAgent": "lapras"
+      "ownerAgent": "wingull"
     },
     "connectActivation": {
       "kind": "connect-activation",
       "path": "emits/connect/activation.stub.json",
-      "ownerAgent": "lapras"
+      "ownerAgent": "wingull"
     },
     "transformRequest": {
       "kind": "transform-request",
       "path": "emits/transform/request.stub.json",
-      "ownerAgent": "kecleon"
+      "ownerAgent": "silvally"
     },
     "deployEnvironment": {
       "kind": "deploy-environment",
-      "path": "emits/deploy/environment.stub.json",
-      "ownerAgent": "conkeldurr"
+      "path": "emits/deploy/environment.stub.json"
     }
   },
   "workflow": [
     {
       "id": "publish-lexicon",
-      "product": "lexicon",
+      "product": "transform",
       "configRef": "lexiconCatalog",
-      "agent": "conkeldurr",
+      "agent": "silvally",
       "gate": "languages-and-mapping-proposed"
     },
     {
       "id": "register-source",
       "product": "connect",
       "configRef": "connectPartner",
-      "agent": "lapras",
+      "agent": "wingull",
       "gate": "partner-configuration-accepted"
     },
     {
       "id": "schedule-intake",
       "product": "connect",
       "configRef": "connectActivation",
-      "agent": "lapras",
+      "agent": "wingull",
       "gate": "activation-registered-disabled"
     },
     {
       "id": "translate",
       "product": "transform",
       "configRef": "transformRequest",
-      "agent": "kecleon",
+      "agent": "silvally",
       "gate": "curated-sale-availability-artifacts-written"
     },
     {
       "id": "configure-product",
-      "product": "product-orchestration",
+      "product": "system",
       "configRef": "productDefinition",
-      "agent": "conkeldurr",
+      "agent": "celebi",
       "gate": "product-schemas-accepted"
     },
     {
       "id": "compile-flow-template",
-      "product": "product-orchestration",
+      "product": "system",
       "configRef": "productFlowTemplate",
-      "agent": "machamp",
+      "agent": "celebi",
       "gate": "flow-template-compiled"
     },
     {
       "id": "bind-product-flow",
-      "product": "product-orchestration",
+      "product": "system",
       "configRef": "productFlow",
-      "agent": "conkeldurr",
+      "agent": "celebi",
       "gate": "flow-template-name-bound"
     },
     {
       "id": "invoke-contract",
-      "product": "product-orchestration",
+      "product": "system",
       "configRef": "productInvocation",
-      "agent": "zygarde",
+      "agent": "celebi",
       "gate": "invocation-contract-documented"
-    },
-    {
-      "id": "deploy-stub",
-      "product": "deploy",
-      "configRef": "deployEnvironment",
-      "agent": "conkeldurr",
-      "gate": "synth-with-activation-disabled"
     }
   ],
   "successCriteria": [
@@ -161,7 +153,7 @@
     },
     {
       "id": "invocation-known-key",
-      "description": "Known address/parcelId invocation returns availability + evidence (deferred until Product + leaf wiring).",
+      "description": "Known address/parcelId invocation returns availability + evidence (deferred until System + leaf wiring).",
       "verify": "deferred"
     },
     {
@@ -176,19 +168,9 @@
     }
   ],
   "dependencies": {
-    "repos": [
-      "StaircaseAPI/product",
-      "elephant-xyz/lexicon",
-      "elephant-xyz/connect",
-      "elephant-xyz/transform"
-    ],
-    "env": [
-      {
-        "name": "ELEPHANT_LEXICON_ROOT",
-        "purpose": "Local or checkout path to Elephant Lexicon for catalog resolution."
-      }
-    ],
-    "notes": "Primary runtime is Product (StaircaseAPI/product / build-product-service). Thin System package is out of scope unless orchestration.mode is thin-package-deferred."
+    "repos": [],
+    "env": [],
+    "notes": "Discover the current System and leaf repositories. Resolve Model/Deploy prerequisites without assigning them to an unrelated agent."
   },
   "deploy": {
     "activationEnabled": false,

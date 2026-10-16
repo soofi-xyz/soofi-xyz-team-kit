@@ -9,13 +9,12 @@
       "host": "sftp.<seller-domain>",
       "host_key_fingerprint": "SHA256:<fingerprint>",
       "username": "<username>",
-      "auth": { "profile": "password", "secret_ref": "arn:aws:secretsmanager:<region>:<account>:secret:<seller-sftp-secret>" }
+      "auth": { "profile": "password", "credential": "seller-sftp" }
     }
   },
   "keys": {
     "transfer": {
-      "secret_ref": "arn:aws:secretsmanager:<region>:<account>:secret:<pgp-private-key>",
-      "passphrase_ref": "arn:aws:secretsmanager:<region>:<account>:secret:<pgp-passphrase>"
+      "credential": "pgp-private-key"
     }
   },
   "parameters": {

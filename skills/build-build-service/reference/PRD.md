@@ -1,6 +1,12 @@
 # Build Service - Product Requirements Document (PRD)
 
-Authoritative blueprint for building the **Build** product. It captures the target feature set, artifact contract, validation rules, runtime behaviour, and infrastructure topology that the service must enforce. The current reference implementation at `../staircase/build` is a Python 3.9 + Serverless Framework service that uses CodeBuild to package Serverless Framework bundles. This PRD specifies the canonical replacement: **TypeScript everywhere**, **AWS CDK only**, `pnpm`, Vitest, ESLint, Prettier, Lambda `nodejs24.x` on ARM64, and **built CDK cloud assemblies** as the only marketplace build artifact.
+Use `CONFIGURATION` for configuration bundles and `/configuration` for their
+start/status alias in the target contract below. Migrate the legacy type and
+route with Marketplace and Deploy using [the shared contract](../../build-product-deployer/reference/configuration-bundles.md).
+Verify implementation/deployment separately; this rename is required scope,
+not evidence that the new contract is already available.
+
+Authoritative blueprint for building the **Build** product. It captures the target feature set, artifact contract, validation rules, runtime behaviour, and infrastructure topology that the service must enforce. The implementation is [`prismteam-ai/build`](https://github.com/prismteam-ai/build); its `README.md`, `requirements/swagger.yml` and `docs/progress.md` record what is deployed, and §1.4 lists where it deliberately differs from this document. It replaces the legacy Python 3.9 + Serverless Framework service (`StaircaseAPI/build`) that used CodeBuild to package Serverless Framework bundles; nothing is migrated from it. This PRD specifies the canonical replacement: **TypeScript everywhere**, **AWS CDK only**, `pnpm`, Vitest, ESLint, Prettier, Lambda `nodejs24.x` on ARM64, and **built CDK cloud assemblies** as the only marketplace build artifact.
 
 The intentional product change is direct: **Build actually builds the service.** Build accepts TypeScript AWS CDK source as input, runs the checks and CDK synth/bundling in CodeBuild, and emits a portable CDK cloud assembly containing synthesized CloudFormation templates plus staged file assets. Build no longer emits source snapshots, `config.json`, `artifacts/<module>/update.json`, Serverless Framework packages, or product-owned deployment scripts.
 
@@ -25,7 +31,7 @@ Build is the marketplace ecosystem's **artifact construction and provenance serv
 
 Build is upstream of Marketplace and Deployer:
 
-1. CI or an operator calls Build with a presigned `source_url`.
+1. CI or an operator calls Build with a presigned `source_url`, or uploads the zip through `POST /sources` and passes the returned `source_id`.
 2. Build validates and synthesizes that source into an immutable **Build artifact**.
 3. The caller submits Build's `artifact_url` to Marketplace `PUT /ontology/products/{product_id}/components/{component_id}/bundles`.
 4. Marketplace validates the Build metadata, runs its review pipeline, re-hosts the artifact, and notifies subscribers.
@@ -40,13 +46,16 @@ A single **AWS API Gateway REST API** mounted at `https://<subdomain>/infra-buil
 
 | Group | Routes | Purpose |
 | --- | --- | --- |
-| **Build runs** | `POST /builds`, `POST /service`, `POST /data` | Start a CDK cloud-assembly build. `/service` defaults `bundle_type=SERVICE`; `/data` defaults `bundle_type=DATA`; `/builds` requires or infers the type from `marketplace.product.json`. |
-| **Build status** | `GET /builds/{build_id}`, `GET /service/{build_id}`, `GET /data/{build_id}` | Poll in-flight/terminal status and retrieve the Build artifact URL when complete. Legacy aliases route here but do not alter the artifact contract. |
+| **Build runs** | `POST /builds`, `POST /service`, `POST /configuration` | Start a CDK cloud-assembly build. `/service` defaults `bundle_type=SERVICE`; `/configuration` defaults `bundle_type=CONFIGURATION`; `/builds` requires or infers the type from `marketplace.product.json`. |
+| **Source uploads** | `POST /sources` | Presigned S3 POST form (15 minutes, `application/zip`, at most 256 MiB) for one source zip; returns a `source_id` bound to the calling API key (§4.0). |
+| **Build status** | `GET /builds/{build_id}`, `GET /service/{build_id}`, `GET /configuration/{build_id}` | Poll in-flight/terminal status and retrieve the Build artifact URL when complete. The `/service` and `/configuration` aliases cover start and status only; logs and manifest live under `/builds/{build_id}` for every build. |
 | **Build logs** | `GET /builds/{build_id}/logs` | Return bounded CodeBuild and validation logs for operators and CI. |
 | **Artifact manifest** | `GET /builds/{build_id}/manifest` | Return Build's persisted validation manifest without minting a new artifact URL. |
 | **Internal - service info** | `GET /information` | Static service metadata (API Gateway `MOCK`, no API key). |
 
-Successful POSTs return `202 Accepted` with `{ build_id, build_status: "QUEUED", transaction_id }`. The status routes return:
+Every build read is authorized by the API key id that created the build; another caller's build is `404 BuildNotFound`, indistinguishable from an unknown id. The public surface has no signing-key route (`/keys`), no cancel route and no other alias sub-routes.
+
+Successful build POSTs return `202 Accepted` with `{ build_id, build_status: "QUEUED", transaction_id }`. The status routes return:
 
 ```ts
 type BuildStatusResponse = {
@@ -55,10 +64,10 @@ type BuildStatusResponse = {
   transaction_id: string;
   component_id?: string;
   component_name?: string;
-  bundle_type?: "SERVICE" | "DATA";
+  bundle_type?: "SERVICE" | "CONFIGURATION";
   source_hash?: string;
   artifact_hash?: string;
-  artifact_url?: string;               // present only when SUCCEEDED; presigned, default TTL 1 h
+  artifact_url?: string;               // present only when SUCCEEDED; presigned (implementation: 15 minutes)
   artifact_url_expires_at?: string;
   service_builder?: ServiceBuilderMetadata;
   failure?: { tag: string; reason: string; phase?: string };
@@ -76,7 +85,24 @@ type BuildStatusResponse = {
 - Build does **not** embed AWS credentials, API keys, presigned source URLs, callback secrets, or tenant configuration in artifacts or manifests.
 - Build does **not** include product CDK source, TypeScript Lambda source, tests, or package manager state in the output artifact. CloudFormation templates remain visible to Marketplace and Deployer, and Lambda runtime bundles are visible as deployable assets, so the security requirement is that **runtime Lambda assets are minified, obfuscated, and source-map-free before Build uploads the artifact**.
 - Build does **not** support Docker image assets in the first production contract. CDK Docker image assets require a build/push step at deployment time; until Build has a platform-owned prebuilt-image artifact contract, products must use file assets or managed images that do not require Deployer to build product source.
-- Build does **not** support legacy `FRONTEND`, `FRONTEND_CONFIG`, `CHAT`, or `CONTRACT` bundle types. Those product lines must be represented as CDK `SERVICE` or `DATA` components.
+- Build does **not** support legacy `FRONTEND`, `FRONTEND_CONFIG`, `CHAT`, or `CONTRACT` bundle types. Those product lines must be represented as CDK `SERVICE` or `CONFIGURATION` components.
+- Build does **not** create `service-comply`. Comply scanning stays with the product's publish step (Registeel); Build forwards an inbound `service-comply` verbatim.
+
+### 1.4 Implemented contract and deliberate differences
+
+The deployed implementation (`prismteam-ai/build`) settles these points. Keep them unless the user changes the decision:
+
+- **Routes.** The recorded implementation uses `/service` and legacy `/data` for start/status; the target migration replaces `/data` and `DATA` with `/configuration` and `CONFIGURATION`. Verify the target revision before calls. Keep `POST /sources` (§4.0). Signing was removed by decision: no KMS signing keys and no `GET /keys`. No cancel route (`CANCELLED` stays in the status type; nothing sets it).
+- **Callbacks.** PRD §5.8 only: one best-effort, unsigned POST (up to 3 attempts in one invocation), sent at most once. No SQS queue, DLQ or signature; a callback never changes a build's outcome. `callback_url`, `source_url`, upload forms and presigned `artifact_url`s (including the one in the callback payload) are bearer secrets: never returned, logged or passed through Step Functions input.
+- **Auth.** Build creates its own usage plan with two test keys per stage (`build-<stage>-caller-a` / `-b`). Attaching to the Bootstrap shared usage plan, real consumer keys, the `/infra-builder` custom domain and `DisableExecuteApiEndpoint` are deferred; the base URL is the stack output `BuildApiUrl` of `BuildApi-<stage>`.
+- **Stacks.** `BuildData-<stage>` → `BuildWorkflow-<stage>` → `BuildApi-<stage>` (the roles of §2.1's DataStack, WorkflowStack and BuildStack).
+- **Runner.** CodeBuild in a VPC with endpoint-only routes. The runner receives no `source_url`; `FetchSource` stages the zip. Product code (install, `tsc`, synth) runs without AWS credentials or registry tokens as a separate `build-product` user behind a fail-closed isolation probe. The runner role reaches only the exchange bucket's `inbox/*`/`outbox/*` and CodeArtifact reads; Lambdas own the run row and the artifact bucket.
+- **Checks.** The fixed checks are the install picked by the source's single lockfile, `pnpm install --frozen-lockfile --ignore-scripts --ignore-pnpmfile` or `npm ci --ignore-scripts` (`DependencyInstallFailed`), `tsc --noEmit -p tsconfig.json` (`CdkSynthFailed`, "Type check failed") and synth. Lint, tests and OpenAPI freshness (§5.4) are not run yet.
+- **Entrypoint.** `marketplace/app.ts` runs as a normal CDK app (`new App()` … `app.synth()`) with `tsx`; there is no `createMarketplaceApp` factory (§5.5). Build accepts what Prism Marketplace accepts: `entrypoint` may be omitted (it defaults to, and must equal, `marketplace/app.ts`), and a missing `requirements/swagger.yml` with `base_path` set is an `ApiSpecMissing` warning in the status and `build.manifest.json`, not a failure (§3.1 deviation). npm products (`package-lock.json`) are accepted alongside pnpm; exactly one lockfile must be present.
+- **Lambda asset policy** (`lambda-asset-policy.v2`). Build inspects the final assets, not the construct package (§3.4, §5.6). Every Node.js function's entry file must be `javascript-obfuscator` output (at least 20 `_0x…` identifiers), minified, with no source maps or TypeScript sources; CDK's own handlers are exempt. Any violation fails the build with `LambdaAssetPolicyViolation`, so every `SUCCEEDED` build is publishable. Container images, inline code, pre-zipped assets and non-Node.js product runtimes are rejected.
+- **Artifact.** `marketplace.product.json` + `build/build.manifest.json` (`build.manifest.v2`: Deploy's pack-manifest fields plus provenance) + `cdk.out/`. No separate `validation-report.json` / `synth-report.json`; the status response carries `validation` and `asset_policy`.
+- **`service-builder`.** Unsigned and JWT-shaped with the claims in §3.3.
+- **Self-publication.** Build is itself a Prism Marketplace product (`Build`, component `build`, `base_path: infra-builder`). Its repository packs, scans and publishes its own bundle (`just pack`, `just publish-dry-run`, `just publish`); the Build and Comply services are not used to build Build.
 
 ---
 
@@ -114,7 +140,7 @@ bin/app.ts
 
 #### 2.2.1 KMS
 
-- **`DataKey`** - symmetric customer-managed key (alias `alias/build_encryption_key`) used to encrypt DynamoDB tables, S3 bucket objects when SSE-KMS is selected, and callback-token material. Runtime roles receive only the `kms:Encrypt|Decrypt|GenerateDataKey|DescribeKey` actions needed by their route or worker, constrained with `kms:ViaService` where possible.
+- **`DataKey`** - symmetric customer-managed key (alias `alias/build_encryption_key`) used to encrypt DynamoDB tables, S3 bucket objects when SSE-KMS is selected, and the run row's `source_url`/`callback_url` (no signing keys; §1.4). Runtime roles receive only the `kms:Encrypt|Decrypt|GenerateDataKey|DescribeKey` actions needed by their route or worker, constrained with `kms:ViaService` where possible.
 
 #### 2.2.2 Storage
 
@@ -141,7 +167,7 @@ All tables use `PAY_PER_REQUEST`, KMS-CMK SSE (`DataKey`), Point-In-Time Recover
 #### 2.3.1 IAM roles
 
 - **`StateMachineRole`** - assumed by `states.amazonaws.com`; starts CodeBuild builds using `codebuild:StartBuild` / `BatchGetBuilds`, invokes workflow Lambdas, and reads/writes Build tables through scoped DynamoDB actions.
-- **`CodeBuildRunnerRole`** - assumed by `codebuild.amazonaws.com`; reads the presigned source URL, writes only to Build-owned S3 buckets, writes Build status/events to Build-owned tables, and calls configured Assess/Test/Comply-adjacent services only when the corresponding instance setting is enabled. It has no CloudFormation create/update/delete permissions and no CDK bootstrap bucket/ECR publish permissions.
+- **`CodeBuildRunnerRole`** - assumed by `codebuild.amazonaws.com` (the implementation narrows it further; §1.4); reads the presigned source URL, writes only to Build-owned S3 buckets, writes Build status/events to Build-owned tables, and calls configured Assess/Test/Comply-adjacent services only when the corresponding instance setting is enabled. It has no CloudFormation create/update/delete permissions and no CDK bootstrap bucket/ECR publish permissions.
 - **`ApiRole` / per-handler roles** - API handlers can validate request shape, write an initial row, mint presigned artifact URLs, and start the state machine. They cannot invoke arbitrary CodeBuild projects or mutate artifacts directly.
 - **`CallbackWorkerRole`** - posts terminal callbacks to caller-supplied `callback_url`s with retry and redaction; it cannot read source archives or cloud assemblies.
 
@@ -265,7 +291,7 @@ Environment variables:
 
 ### 3.1 Input source archive
 
-`source_url` MUST resolve to an immutable HTTPS zip archive with `Content-Length <= MAX_SOURCE_BYTES`. Build performs SSRF-safe URL validation: HTTPS only, no redirects, no private IP literals, no DNS A/AAAA records resolving to private ranges, and a 3 second reachability check before starting the state machine.
+The source is either a `source_id` from `POST /sources` (§4.0) or a `source_url`. `source_url` MUST resolve to an immutable HTTPS zip archive with `Content-Length <= MAX_SOURCE_BYTES`. Build performs SSRF-safe URL validation: HTTPS only, no redirects, no private IP literals, no DNS A/AAAA records resolving to private ranges, and a 3 second reachability check before starting the state machine. An uploaded `source_id` skips the URL probe.
 
 Required source layout:
 
@@ -284,7 +310,7 @@ source.zip
 |-- src/
 |   `-- ...
 `-- requirements/
-    `-- swagger.yml              # required when the component exposes an API
+    `-- swagger.yml              # required when the component exposes an API (manifest sets base_path)
 ```
 
 Allowed top-level additions include `test/`, `scripts/generate-openapi.ts`, `docs/`, `gremlin/`, `glue/`, and product-specific runtime directories when referenced by CDK constructs. Disallowed top-level content includes `.git/`, `node_modules/`, `cdk.out/`, `.serverless/`, generated coverage, local env files, private keys, and any legacy `artifacts/` deployment layout.
@@ -336,6 +362,8 @@ build-artifact.zip
     `-- ...
 ```
 
+The implementation emits `marketplace.product.json`, `build/build.manifest.json` and `cdk.out/` only (exactly one `cdk.out/manifest.json`; every stack declares at least one resource); see §1.4.
+
 The output artifact intentionally excludes `marketplace/app.ts`, `lib/`, `src/`, `lambda/`, `test/`, `node_modules`, `.git`, local caches, source maps, local env files, and any files matched by the platform denylist. Deployer receives only the built deployment product: stack templates, CDK assembly metadata, and staged file assets. If a construct would require source code at deploy time, Build fails the run.
 
 `cdk.out/manifest.json` is the authoritative CDK cloud assembly manifest. Build validates it with the CDK cloud assembly schema and records the schema version in `build/build.manifest.json`. Asset manifest files in `cdk.out` may contain file assets only for the first production contract; `dockerImages` entries are rejected.
@@ -351,7 +379,7 @@ type BuildManifest = {
   transactionId: string;
   componentId: string;
   componentName: string;
-  bundleType: "SERVICE" | "DATA";
+  bundleType: "SERVICE" | "CONFIGURATION";
   artifactKind: "CDK_CLOUD_ASSEMBLY";
   deployerContractVersion: "1";
   sourceHash: string;              // SHA-256 of downloaded input bytes
@@ -419,62 +447,38 @@ Build rejects a cloud assembly when:
 
 ### 3.3 S3 metadata headers
 
-Build uploads the output zip to `BuildArtifactsBucket` with JWT-shaped metadata headers. The JWTs are unsigned in the existing platform style (`<base64url header>.<base64url JSON payload>.`) and are decoded without signature verification by Marketplace/Deployer.
+Build uploads the output zip to `BuildArtifactsBucket` with JWT-shaped metadata headers. The JWTs are unsigned in the existing platform style (`<base64url header>.<base64url JSON payload>.`) and are decoded without signature verification by Marketplace/Deployer. Build holds no signing key.
 
-Required `x-amz-meta-service-builder` payload:
+Required `x-amz-meta-service-builder` token: header `{"alg":"none","typ":"JWT"}`, base64url JSON claims, empty signature segment, at most 1200 bytes (leaving room in S3's 2 KB metadata limit for `service-comply`). Claims, as Marketplace's `inspectBundle` reads them:
 
 ```ts
-type ServiceBuilderMetadata = {
-  version: "2.0";
-  status: "SUCCEEDED";
-  issuer: string;                         // https://<host>/infra-builder
-  timestamp: number;                      // epoch seconds
-  id: string;                             // build_id
-  build_id: string;
-  component_id: string;
-  component_name: string;
-  bundle_type: "SERVICE" | "DATA";
+type ServiceBuilderClaims = {
+  iss: "build";
+  sub: string;                            // build_id
+  iat: number;                            // epoch seconds
   artifact_kind: "CDK_CLOUD_ASSEMBLY";
   deployer_contract_version: "1";
-  source_hash: string;
-  normalized_source_hash: string;
-  assembly_hash: string;
-  assembly_manifest_hash: string;
-  artifact_hash: string;
-  marketplace_manifest_hash: string;
-  lockfile_hash: string;
-  lexicon_version_id?: string;             // Lexicon product release id used for Marketplace compatibility checks
-  cdk: {
-    stacks: string[];
-    cdk_version: string;
-    aws_cdk_lib_version: string;
-    cloud_assembly_schema_version: string;
-    synthesizer: "DefaultStackSynthesizer" | "PlatformMarketplaceSynthesizer";
-    bootstrap_qualifier: string;
-  };
-  cloud_assembly: {
-    manifest_path: "cdk.out/manifest.json";
-    template_hashes: Record<string, string>;
-    file_asset_hashes: Record<string, string>;
-    docker_image_assets: [];
-  };
-  deployment_parameters: {
-    required: string[];
-    optional: Record<string, string>;
-  };
-  lambda_asset_policy: {
-    minified: true;
-    obfuscated: true;
-    source_maps: false;
-    approved_construct_package: string;
-    approved_construct_version: string;
-    validator_version: string;
-    checked_asset_hashes: string[];
-  };
+  component_id: string;
+  source_hash: `sha256:${string}`;        // uploaded/downloaded source zip bytes
+  assembly_hash: `sha256:${string}`;      // Deploy's directory hash over cdk.out/
+  artifact_hash: `sha256:${string}`;      // output zip bytes
+  cloud_assembly: { stacks: string[] };
+  deployment_parameters: Record<string, never>; // always {} today
+  lambda_asset_policy: { minified: true; obfuscated: true; source_maps: false };
+  // optional, added in this order while the token stays within 1200 bytes:
+  service_comply_sha256?: string;         // binds an inbound service-comply
+  bundle_type?: "SERVICE" | "CONFIGURATION";
+  build_manifest_sha256?: string;
+  source_commit?: string;                 // from an inbound service-code token
+  repository?: string;
+  runner_version?: string;
+  codebuild_build_id?: string;
 };
 ```
 
-Build may preserve inbound `service-assessor`, `service-test`, or `service-comply` headers only when those blocks come from the corresponding upstream service or Build's configured integration. It must never fabricate a successful Comply decision.
+`build/build.manifest.json` always carries every value, including ones that did not fit the token. Metadata on the artifact is written in priority order `service-builder`, `service-comply`, `service-code`, then other inbound `service-*` values while they fit.
+
+Build preserves inbound `x-amz-meta-service-*` headers (for example `service-code`, `service-comply`) verbatim, from the source download or the `POST /sources` upload fields. It never creates or fabricates `service-comply`; without one the status reports `service_comply: "ABSENT"`. Marketplace pairs the two tokens by `service-comply.source_hash == service-builder.source_hash`.
 
 ### 3.4 Lambda asset minification and obfuscation
 
@@ -502,11 +506,27 @@ The platform standard for Node.js Lambda runtime code is:
 - Write a per-function obfuscation manifest into the synthesized asset directory before CDK asset publishing. The manifest includes the handler entry, bundle hash, obfuscator version/profile hash, minification flag, source-map flag, and source hash.
 - Never include `.map` files, original `.ts` handler source, test fixtures, local env files, or unbundled implementation directories inside Lambda code assets.
 
+The implementation does not require a specific construct package or obfuscation manifest: products bundle with any `NodejsFunction` setup that meets the bundling options above and then run `javascript-obfuscator` on each bundle (deterministic seed). Build's check of the final assets (§5.6) is the gate.
+
 Build proves this policy by source validation and by inspecting the final staged Lambda assets in `cdk.out`. Deployer proves it again against the same built asset bytes immediately before publishing them. Marketplace stores the proof as artifact metadata but does not inspect Lambda bundles.
 
 ---
 
 ## 4. Synchronous APIs
+
+### 4.0 `POST /sources`
+
+For callers that do not host the archive. Body empty or `{}` (closed schema; unknown fields `400 UnknownField`). Returns `201`:
+
+```json
+{
+  "source_id": "src_01J...",
+  "upload": { "url": "https://<source-cache-bucket>.s3.<region>.amazonaws.com/", "fields": { "key": "uploads/...", "Content-Type": "application/zip", "Policy": "...", "X-Amz-Signature": "..." } },
+  "expires_at": "2026-10-02T12:15:00.000Z"
+}
+```
+
+The caller POSTs the fields plus `file` (last) as `multipart/form-data` within 15 minutes; S3 answers `204`. The policy requires `Content-Type: application/zip`, 1 byte to 256 MiB, and names two optional fields, `x-amz-meta-service-code` and `x-amz-meta-service-comply` (send both, empty when absent), which are forwarded like a `source_url`'s `x-amz-meta-service-*` headers. The form is a bearer secret and is never logged. The upload key embeds a hash of the API key id: an unknown, expired or other caller's `source_id` is `404 SourceNotFound` at `POST /builds`. Uploads expire after 1 day and may start several builds until then.
 
 ### 4.1 `POST /builds`
 
@@ -514,10 +534,11 @@ Request:
 
 ```ts
 type StartBuildRequest = {
-  source_url: string;
+  source_url?: string;                   // exactly one of source_url | source_id
+  source_id?: string;                    // from POST /sources
   component_id?: string;                 // optional; if present must match marketplace.product.json
   component_name?: string;
-  bundle_type?: "SERVICE" | "DATA";      // optional when manifest declares it
+  bundle_type?: "SERVICE" | "CONFIGURATION";      // optional when manifest declares it
   callback_url?: string;
   log_level?: "INFO" | "DEBUG";
   worker_size?: "STANDARD" | "LARGE";
@@ -537,8 +558,8 @@ type StartBuildRequest = {
 
 Validation order:
 
-1. Closed schema decode; unknown fields return `400 BadRequest`.
-2. `source_url` SSRF-safe validation and streaming `HEAD`/`GET` probe with `Content-Length`.
+1. Closed schema decode; unknown fields return `400 UnknownField`; both or neither of `source_url`/`source_id` is `400 BadRequest`. The implementation returns `400 InvalidBuildOption` for `checks`, `synth_context` and `allow_docker_assets`, which it does not support yet.
+2. `source_url` SSRF-safe validation (skipped for `source_id`, which must name the caller's own upload) and streaming `HEAD`/`GET` probe with `Content-Length`.
 3. Size guard: `Content-Length <= MAX_SOURCE_BYTES`.
 4. `callback_url`, when present, must be HTTPS and pass the same SSRF-safe host checks.
 5. `allow_docker_assets=true` is rejected in production until the platform defines a prebuilt image artifact contract.
@@ -554,20 +575,20 @@ Response:
 }
 ```
 
-### 4.2 `POST /service` and `POST /data`
+### 4.2 `POST /service` and `POST /configuration`
 
 Aliases for CI compatibility:
 
 - `/service` behaves like `/builds` with `bundle_type = "SERVICE"` unless the request explicitly sets the same value.
-- `/data` behaves like `/builds` with `bundle_type = "DATA"` unless the request explicitly sets the same value.
+- `/configuration` behaves like `/builds` with `bundle_type = "CONFIGURATION"` unless the request explicitly sets the same value.
 
 If the source manifest declares a different `bundle_type`, Build returns `422 BundleTypeMismatch`.
 
-Legacy routes `/frontend`, `/frontend-config`, `/chat`, and `/smart-contract` are not part of the target public API. If compatibility aliases are temporarily retained during migration, they MUST return `410 Gone` with remediation text directing callers to CDK `SERVICE`/`DATA` builds.
+Legacy routes `/frontend`, `/frontend-config`, `/chat`, and `/smart-contract` are not part of the target public API. If compatibility aliases are temporarily retained during migration, they MUST return `410 Gone` with remediation text directing callers to CDK `SERVICE`/`CONFIGURATION` builds.
 
 ### 4.3 `GET /builds/{build_id}`
 
-Reads `BuildRunsTable` and returns the status response. On `SUCCEEDED`, it mints a fresh presigned artifact URL for `s3://BuildArtifactsBucket/artifacts/<component_id>/<build_id>/cloud-assembly.zip`. On missing row, returns `404 BuildNotFound`.
+Reads `BuildRunsTable` and returns the status response. On `SUCCEEDED`, it mints a fresh presigned artifact URL for `s3://BuildArtifactsBucket/artifacts/<component_id>/<build_id>/cloud-assembly.zip`. On missing row, or a row created by another API key, returns `404 BuildNotFound`. The implementation stores artifacts at `assemblies/<build_id>/cloud-assembly.zip` and presigns for 15 minutes with a read-only role.
 
 The response never returns the original `source_url`, API keys, or callback secrets.
 
@@ -588,11 +609,13 @@ Returns bounded logs:
 }
 ```
 
+The implementation serves the runner's CodeBuild log stream as `{ build_id, build_status, entries: [{ timestamp, message }], next_token? }`, oldest first, with `?limit=1..500&next_token=`; unknown query parameters are `400 UnknownField`.
+
 The handler redacts `source_url`, `x-api-key`, `authorization`, `secret`, `token`, `access_key`, `secret_key`, and `session_token`.
 
 ### 4.5 `GET /builds/{build_id}/manifest`
 
-Returns the stored `BuildManifest` when the build reached `SUCCEEDED` or `FAILED` after manifest creation. It does not mint an S3 artifact URL. Missing manifest returns `404 BuildManifestNotFound`.
+Returns the stored `BuildManifest` when the build reached `SUCCEEDED` or `FAILED` after manifest creation. It does not mint an S3 artifact URL. Missing manifest returns `404 BuildManifestNotFound`. The implementation returns the stored bytes unchanged, so their SHA-256 equals `provenance.build_manifest_sha256`; a failed or expired build has none.
 
 ### 4.6 `GET /information`
 
@@ -616,7 +639,7 @@ The CodeBuild runner is a TypeScript program in the Build implementation repo. I
 1. Read `marketplace.product.json`.
 2. Validate `component_id`, `component_name`, `bundle_type`, `entrypoint`, `context_schema_version`, `stacks[]`, `base_path`, and `requires`.
 3. Assert `entrypoint === "marketplace/app.ts"`.
-4. Assert `package.json`, `pnpm-lock.yaml`, `tsconfig.json`, and `marketplace/app.ts` exist.
+4. Assert `package.json`, exactly one of `pnpm-lock.yaml` / `package-lock.json`, `tsconfig.json`, and `marketplace/app.ts` exist.
 5. Assert no legacy `config.json`, `artifacts/<module>/update.json`, `serverless.yml` deployment package, Terraform/Pulumi/SAM config, or deploy-engine selector is present.
 6. Assert the request's `component_id` / `bundle_type`, when provided, match the manifest.
 
@@ -695,6 +718,8 @@ Build validates the staged cloud assembly:
 
 The validation result is written to both `build/validation-report.json` and `service-builder.lambda_asset_policy`.
 
+Implemented policy (`lambda-asset-policy.v2`, see §1.4): Build checks every `AWS::Lambda::Function` and `AWS::Lambda::LayerVersion` in every template and the asset each uses, without checking which construct produced it. Each Node.js function's entry file needs at least 20 `_0x[0-9a-f]{4,}` identifiers (`javascript-obfuscator` output); JS files must be minified and name-mangled; no `*.map`, `sourceMappingURL` or TypeScript sources; container images, inline `ZipFile`, pre-zipped assets and non-Node.js product runtimes are rejected. Assets byte-identical to files shipped by `aws-cdk-lib` / `@aws-cdk/*` are exempt (`framework: true`). Any finding fails the build with `LambdaAssetPolicyViolation`; findings appear on the status response's `asset_policy`, and `service-builder.lambda_asset_policy` is always `{minified: true, obfuscated: true, source_maps: false}` on a successful build.
+
 ### 5.7 Package and upload
 
 1. Build writes sanitized `marketplace.product.json`, `build/build.manifest.json`, `build/validation-report.json`, and `build/synth-report.json`.
@@ -713,7 +738,7 @@ type BuildTerminalCallback = {
   build_id: string;
   transaction_id: string;
   component_id?: string;
-  bundle_type?: "SERVICE" | "DATA";
+  bundle_type?: "SERVICE" | "CONFIGURATION";
   artifact_url?: string;                 // SUCCEEDED only
   artifact_url_expires_at?: string;
   artifact_hash?: string;
@@ -721,7 +746,7 @@ type BuildTerminalCallback = {
 };
 ```
 
-Callbacks are best-effort with bounded retries. A callback outage never changes the Build run's terminal status.
+Callbacks are best-effort with bounded retries. A callback outage never changes the Build run's terminal status. The implementation makes up to 3 attempts in one invocation (5 s each; network errors, `429` and `5xx` retried), claims the callback on the run row so it is sent at most once, and uses no queue, DLQ or signature. The payload's `artifact_url` is a bearer secret; neither it nor `callback_url` is logged.
 
 ---
 
@@ -750,6 +775,8 @@ Every HTTP error uses:
   }
 }
 ```
+
+The implementation adds `error.tag`. It keeps two non-PRD tags because no PRD tag fits: `404 SourceNotFound` (unknown, expired or other caller's `POST /sources` upload) and the persisted `422 DependencyInstallFailed` (`pnpm install --frozen-lockfile` or `npm ci` failed, a product error before synth). PRD tags it never emits: `BuildAlreadyRunningForSource`, `LegacyBundleTypeGone`, `ArtifactTooLarge`, `OpenApiStale`, `AssessmentFailed`, `ArtifactUploadFailed`, `CallbackTimeout`. A missing or rejected API key is API Gateway's `403 ApiKeyDenied`.
 
 ---
 
@@ -821,7 +848,8 @@ Expected implementation modules:
 - Node.js 22+ locally; Lambda runtime is Node.js 24.
 - pnpm.
 - CDK bootstrap completed in the Build service account.
-- API Gateway custom domain and shared Usage Plan created by Bootstrap/Account.
+- API Gateway custom domain, certificate and shared Usage Plan created by
+  Environment through its Bootstrap adapter.
 - S3/DynamoDB/KMS/CodeBuild/Step Functions/Lambda/API Gateway permissions for the Build stacks.
 - Approved platform construct package published and available to product source repositories.
 - Product source repositories follow the Marketplace CDK source input layout; Build output follows the Deployer cloud assembly artifact layout.
@@ -845,6 +873,14 @@ Stack outputs:
 - `BuildEventsTableName`
 - `KmsKeyArn`
 
+Implemented outputs: `BuildApi-<stage>` exports `BuildApiUrl`, `CallerAApiKeyId`, `CallerBApiKeyId`; `BuildWorkflow-<stage>` and `BuildData-<stage>` export the state machine, CodeBuild project, bucket, table and key names (see the Build README).
+
+Publish Build like any other product through the Build service and the shared
+`actions/publish/publish_via_build.py` flow. Apply
+[stable stack identity](../../build-product-deployer/reference/stack-identity.md);
+remove forced-stage synthesis and legacy stage-name rejection in the implementation.
+Verify deployed support before publication; do not hand-pack an alternative zip.
+
 ### 8.3 Smoke tests
 
 After every deploy:
@@ -854,8 +890,10 @@ After every deploy:
 3. Poll `GET /builds/{build_id}` until `SUCCEEDED`.
 4. Download `artifact_url`; verify it is a zip containing `marketplace.product.json`, `cdk.out/manifest.json`, at least one stack template, asset manifests, staged file assets, and `build/build.manifest.json`, and that it does not contain product source directories.
 5. Decode `x-amz-meta-service-builder`; verify `artifact_kind=CDK_CLOUD_ASSEMBLY`, `deployer_contract_version=1`, `lambda_asset_policy.minified=true`, `lambda_asset_policy.obfuscated=true`, `cloud_assembly.manifest_path="cdk.out/manifest.json"`, and `artifact_hash` matches bytes.
-6. Submit a fixture that uses raw `NodejsFunction` without the approved construct; expect `FAILED` with `LambdaAssetPolicyViolation`.
+6. Submit a fixture whose Lambda is minified but not obfuscated; expect `FAILED` with `LambdaAssetPolicyViolation`.
 7. Submit a fixture containing `config.json` + `artifacts/foo/update.json`; expect `FAILED` with `LegacyArtifactShape`.
+
+In the implementation, `scripts/smoke.sh --skip-codebuild <stage>` runs the checks that start no build, `--one-build` adds one uploaded baseline build with provenance and download checks, and the full mode runs every fixture. `scripts/demo.sh <git-repo> [ref]` builds one product end to end through the API; with `BUILD_BASE_URL` and `BUILD_API_KEY` set it needs no AWS credentials.
 
 ### 8.4 Rollback
 
@@ -866,7 +904,7 @@ After every deploy:
 
 ### 8.5 Common runbook items
 
-- **`LambdaAssetPolicyViolation`**: update product source to use the approved platform Lambda construct and remove raw `Code.fromAsset` Node handlers.
+- **`LambdaAssetPolicyViolation`**: read `asset_policy.findings`; bundle each Node.js Lambda minified without source maps, run `javascript-obfuscator` on it, and remove raw `Code.fromAsset` Node handlers.
 - **`CdkSynthFailed`**: inspect `GET /builds/{build_id}/logs` and `build/synth-report.json`; common causes are missing parameter declarations, AWS lookups at synth time, or product code calling AWS SDK during synth.
 - **`SourceUrlUnavailable`**: presigned URL expired before CodeBuild downloaded it; retry with a fresh URL.
 - **`ArtifactTooLarge`**: remove generated files from the source tree or split static assets into CDK assets loaded from product-owned buckets.
@@ -886,7 +924,7 @@ After every deploy:
 8. **DynamoDB repositories**: build runs, events, reports.
 9. **CDK stacks**: DataStack, WorkflowStack, BuildStack, with least-privilege IAM and shared usage-plan attachment.
 10. **OpenAPI generator**: route definitions drive `scripts/generate-openapi.ts`; generated spec checked in.
-11. **Fixtures**: valid CDK service, valid CDK data bundle, raw-lambda violation, legacy Serverless artifact, unsafe zip paths.
+11. **Fixtures**: valid CDK service, valid CDK configuration bundle (`CONFIGURATION` wire type), raw-lambda violation, legacy Serverless artifact, unsafe zip paths.
 12. **Smoke/integration tests**: deployed Build API exercise happy path and the two failure fixtures.
 
 ---
@@ -898,9 +936,9 @@ A re-implementation is complete when:
 - `POST /builds` accepts a valid CDK source archive and returns a `SUCCEEDED` Build artifact that Marketplace can ingest without manual transformation.
 - The output artifact is a Deployer-compatible CDK cloud assembly with `marketplace.product.json`, `cdk.out/manifest.json`, stack templates, asset manifests, staged file assets, `build/build.manifest.json`, and JWT-shaped `x-amz-meta-service-builder` metadata.
 - The output artifact contains no product source directories, legacy `config.json`, `artifacts/<module>/update.json`, Serverless Framework deployment package, product-owned deploy script, `.git`, `node_modules`, source maps, local env files, or secrets.
-- `service-builder` metadata includes `artifact_kind=CDK_CLOUD_ASSEMBLY`, `deployer_contract_version=1`, `component_id`, `bundle_type`, source/assembly/artifact hashes, CDK versions, cloud assembly schema version, template/asset hashes, deployment parameters, and `lambda_asset_policy` with `minified=true`, `obfuscated=true`, and `source_maps=false`.
+- `service-builder` metadata is the unsigned token of §3.3: `artifact_kind=CDK_CLOUD_ASSEMBLY`, `deployer_contract_version=1`, `component_id`, `sha256:` source/assembly/artifact hashes, `cloud_assembly`, deployment parameters, and `lambda_asset_policy` with `minified=true`, `obfuscated=true`, and `source_maps=false`; CDK versions and per-file hashes live in `build/build.manifest.json`.
 - Build rejects source that declares product-supplied synth/deploy/build commands or any non-CDK deploy engine.
-- Build rejects TypeScript/JavaScript Lambda code that does not use the approved minifying/obfuscating platform construct package.
+- Build rejects TypeScript/JavaScript Lambda assets that are not minified, obfuscated and source-map-free (the implementation checks the final assets, not the construct package; §1.4).
 - Build's CDK synth succeeds without AWS credentials, AWS lookups, shell hooks, or product-side SDK effects.
 - Build rejects cloud assemblies that contain concrete Build account/region values, Docker image assets, local source paths, or tenant-varying values not represented as CloudFormation parameters.
 - Marketplace `PUT /bundles` validates Build provenance and stores the artifact without weakening the dependency or review pipeline.
@@ -908,3 +946,10 @@ A re-implementation is complete when:
 - All Lambdas in the Build service itself use `nodejs24.x`, ARM64, ESM bundling, minification, and the `createRequire` banner.
 - IAM follows least privilege; CodeBuild cannot deploy CloudFormation and API handlers cannot mutate artifacts outside their route contracts.
 - All structured logs and metrics include `build_id`, `transaction_id`, `component_id`, and `phase`, with secrets redacted.
+
+## Configuration bundles
+
+Follow [the shared configuration-bundle contract](../../build-product-deployer/reference/configuration-bundles.md).
+Keep the supported CDK assembly and use the `CONFIGURATION` type consistently in requests, manifests, status, callbacks and provenance. Validate configuration assets and shared-provider references; changing only configuration must change the affected payload identity. Build never applies the configurations.
+Treat these additions as required scope to verify in the target revision, not as
+proof that provider support or the target API lifecycle is already deployed.

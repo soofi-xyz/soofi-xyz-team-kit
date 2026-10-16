@@ -1,0 +1,68 @@
+{
+  "id": "canon-to-omega",
+  "version": "1.0.0",
+  "status": "ENABLED",
+  "engine": "spark-sql",
+  "from": "canon",
+  "to": "omega",
+  "sqlOptions": {
+    "ansiEnabled": true
+  },
+  "inputs": [
+    {
+      "table": "vertex-member",
+      "view": "source_vertex_member",
+      "format": "parquet",
+      "options": {},
+      "graph": {
+        "kind": "vertex",
+        "label": "member",
+        "idColumn": "~id",
+        "properties": [
+          {
+            "column": "display_name:String",
+            "name": "display_name",
+            "type": "String"
+          },
+          {
+            "column": "tier:String",
+            "name": "tier",
+            "type": "String"
+          },
+          {
+            "column": "nickname:String",
+            "name": "nickname",
+            "type": "String",
+            "optional": true
+          }
+        ]
+      }
+    }
+  ],
+  "output": {
+    "shape": "tabular",
+    "format": "csv",
+    "options": {
+      "delimiter": ";",
+      "header": true,
+      "quote": "",
+      "escape": "",
+      "nullValue": ""
+    }
+  },
+  "outputs": [
+    {
+      "dataset": "member_report",
+      "requiredInputs": [
+        "vertex-member"
+      ],
+      "queries": [
+        {
+          "path": "queries/member_report.sql",
+          "sha256": "df07737fa683bb8a2237f99f52f08c9b3fc888ed469308d2e22769e2f78a8215"
+        }
+      ],
+      "dependsOn": []
+    }
+  ]
+}

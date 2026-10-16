@@ -1,0 +1,9 @@
+{
+  "vertices": [
+    { "type": "member_report", "is_deprecated": false, "deprecated_properties": {}, "required": ["member_id"],
+      "properties": { "member_id": { "type": "string" }, "display_name": { "type": "string" }, "tier": { "type": "string" } } },
+    { "type": "ledger_summary", "is_deprecated": false, "deprecated_properties": {}, "required": ["member_id"],
+      "properties": { "member_id": { "type": "string" }, "ledger_count": { "type": "integer" }, "total_units": { "type": "integer" }, "last_activity": { "type": "string" } } }
+  ],
+  "edges": []
+}

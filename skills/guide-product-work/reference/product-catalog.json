@@ -1,0 +1,1263 @@
+{
+  "catalogVersion": 1,
+  "source": {
+    "meeting": "Builder Story Planning, 2026-09-30",
+    "spreadsheet": "staircase-products export, supplied 2026-09-30",
+    "precedence": "User follow-up retains Conkeldurr for Persist and assigns Zygarde to System. Later requests assign builder/configurer pairs to Account, Environment, Build, Deploy, Model and Console. User follow-up assigns Puller polling, subscriptions and reconciliation to the Deploy product; keep subscriber state separate from its stateless run API. The 2026-10-07 request adds Documentation as a distinct product, superseding the earlier API documentation exclusion. Require the engineering and React/TypeScript/tRPC application skills; keep Site and Document separate and unassigned. The latest Account boundary correction keeps AWS account identity, keys, records, provisioning and bootstrap manifests in Account; moves domains, certificates and initial installation to Environment; reserves console assignments for unassigned Access; and assigns Account catalog registration to Registeel. The configuration-bundle design assigns the shared Transform/Connect/System configuration installer and its service installation/update to Deploy, and each target API and payload semantics to its existing product pair. Use configuration bundles in guidance and CONFIGURATION in bundle/component types; migrate legacy DATA contracts across Build, Marketplace and Deploy. Use a synthetic configuration integration for installer acceptance, without adding a Model pilot or a new product owner."
+  },
+  "workflowSkill": "guide-product-work",
+  "products": [
+    {
+      "id": "documentation",
+      "name": "Documentation",
+      "legacyNames": [],
+      "sourceRows": [],
+      "status": "assigned",
+      "summary": "Documentation publishes product documentation and serves a configurable developer portal with API references, guides and interactive examples.",
+      "agents": {
+        "build": "unown",
+        "configure": "togetic"
+      },
+      "skills": {
+        "build": "build-documentation-product",
+        "configure": "configure-documentation-product"
+      },
+      "notes": [
+        "Added by explicit user request on 2026-10-07 after review of site-tech-ui and documentation; no spreadsheet row is claimed. Documentation is the canonical product name, not an alias for Site or Document.",
+        "Unown builds the reusable publishing API and developer portal; Togetic configures existing capabilities. Require apply-engineering-guidelines and build-frontend-backends with React, strict TypeScript and tRPC. Historical sources describe behavior, not the approved implementation stack or a verified deployment.",
+        "The reviewed UI depends on a separate site-tech-api absent from the supplied projects. Discover and verify that contract before claiming integration. Preserve Account, Model, Console, Build, Marketplace, Environment and Deploy ownership."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/documentation.md"
+    },
+    {
+      "id": "account",
+      "name": "Account",
+      "legacyNames": [
+        "Account Manager",
+        "Tenant Account Manager"
+      ],
+      "sourceRows": [],
+      "status": "assigned",
+      "summary": "Account manages Prism identities and keys, guides Prism-managed or client-owned AWS setup, creates or adopts the backing account, verifies Prism service access and emits bootstrap manifests.",
+      "agents": {
+        "build": "kangaskhan",
+        "configure": "blissey"
+      },
+      "skills": {
+        "build": "build-tenant-account-manager",
+        "configure": "configure-account-product"
+      },
+      "notes": [
+        "Added by explicit user request after the supplied spreadsheet; no source row is claimed. Kangaskhan builds the Account API; Blissey guides and configures existing deployments.",
+        "Account owns identity, keys, the AWS account record, explicit create-or-adopt provisioning, Prism cross-account service readiness and bootstrap-manifest output. Its configurer also guides a client through standalone AWS signup before using the same existing-account adoption path. It does not own domains, certificates, initial platform installation, customer console assignments or Prism Marketplace registration."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/account.md"
+    },
+    {
+      "id": "access",
+      "name": "Access",
+      "legacyNames": [],
+      "sourceRows": [
+        2
+      ],
+      "status": "unassigned",
+      "summary": "Access will own IAM Identity Center and customer AWS Console assignments.",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": [
+        "Account onboarding identifies this as an ownership gap. Do not implement temporary customer console users or Identity Center assignments inside Account."
+      ]
+    },
+    {
+      "id": "console",
+      "name": "Console",
+      "legacyNames": [],
+      "sourceRows": [
+        3
+      ],
+      "status": "assigned",
+      "summary": "Console creates and modifies HTML or React components from Figma through MCP, using a Bedrock AgentCore runtime with the pi harness, and renders governed applications.",
+      "agents": {
+        "build": "chandelure",
+        "configure": "vivillon"
+      },
+      "skills": {
+        "build": "build-console-product",
+        "configure": "configure-console-product"
+      },
+      "notes": [
+        "Assigned by explicit user request on 2026-10-06. Chandelure builds the reusable Console runtime and configuration API; Vivillon configures applications on existing deployments. Console configuration is an artifact, not a separate product. Keep Model composition, Persist facts, Account identity and System execution with their owning products.",
+        "The 2026-10-10 scope adds Figma-to-HTML/React creation and existing-component modification. Retain Chandelure/Vivillon ownership. Reuse Sylveon design adaptation, Hoopa Figma MCP intake and responsive design tests; apply Ash state, memory and telemetry patterns with a Console-specific AgentCore Runtime/pi harness exception.",
+        "Begin full Console builds with official Figma MCP client registration/approval and OAuth/read verification. Keep downstream authoring pending until the checkpoint succeeds; reuse existing verified approval for later tasks.",
+        "Require versioned project configuration, authoring/review workspace, component identity/assets/history, standalone export and reviewed PR application/revert, optional compiled-registry promotion through Build/Marketplace/Deploy, and bounded tenant operations with lifecycle acceptance."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/console.md"
+    },
+    {
+      "id": "environment",
+      "name": "Environment",
+      "legacyNames": [
+        "Bootstrap"
+      ],
+      "sourceRows": [
+        4
+      ],
+      "status": "assigned",
+      "summary": "Environment prepares tenant environments, shared routing and initial product installations.",
+      "agents": {
+        "build": "torterra",
+        "configure": "shaymin"
+      },
+      "skills": {
+        "build": "build-bootstrap-cli",
+        "configure": "configure-environment-product"
+      },
+      "notes": [
+        "Torterra builds Environment; Shaymin configures existing deployments. Bootstrap is its setup adapter, including the initial no-service install path. HTTP API capabilities are required build scope, not a claim that a service is already deployed.",
+        "Environment bootstraps the Deploy run service and installs its Deploy-owned Puller component; ongoing subscriber behavior belongs to Corviknight/Skarmory.",
+        "Require an Environment-owned API Gateway Custom Domain Name and validated certificate before API product installation; DNS traffic records are optional. Publish versioned non-secret attachment metadata and preserve product-owned CDK mappings. Follow skills/guide-product-work/reference/shared-api-domain.md."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/environment.md"
+    },
+    {
+      "id": "finance",
+      "name": "Finance",
+      "legacyNames": [],
+      "sourceRows": [
+        5
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "host",
+      "name": "Host",
+      "legacyNames": [],
+      "sourceRows": [
+        6
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "marketplace",
+      "name": "Marketplace",
+      "legacyNames": [],
+      "sourceRows": [
+        7
+      ],
+      "status": "assigned",
+      "summary": "Marketplace catalogs products and reviews, publishes and rolls back bundles.",
+      "agents": {
+        "build": "regigigas",
+        "configure": "registeel"
+      },
+      "skills": {
+        "build": "build-saas-marketplace",
+        "configure": "operate-marketplace"
+      },
+      "notes": [
+        "Regigigas builds Marketplace catalog/publication capabilities. Deploy owns Puller subscriptions, polling, installation history and update execution. Marketplace supplies its supported catalog/publication interfaces; verify notification support rather than restoring historical subscription APIs.",
+        "Register, review and publish configuration bundles using the CONFIGURATION component type; migrate legacy catalog metadata and publication contracts. Require compatible shared Deploy provider and configuration API prerequisites in review environments; catalog rollback does not reverse applied configuration.",
+        "Review the exact immutable API product bundle against the shared-domain contract (base_path and requires.domain only; endpoints need a Build schema change first); use review-owned domain prerequisites and distinguish mapping readiness from optional DNS. Follow skills/guide-product-work/reference/shared-api-domain.md."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/marketplace.md"
+    },
+    {
+      "id": "setup",
+      "name": "Setup",
+      "legacyNames": [],
+      "sourceRows": [
+        8
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "assess",
+      "name": "Assess",
+      "legacyNames": [],
+      "sourceRows": [
+        9
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "build",
+      "name": "Build",
+      "legacyNames": [],
+      "sourceRows": [
+        10
+      ],
+      "status": "assigned",
+      "summary": "Build turns validated source into portable deployment artifacts with provenance.",
+      "agents": {
+        "build": "tinkaton",
+        "configure": "metang"
+      },
+      "skills": {
+        "build": "build-build-service",
+        "configure": "configure-build-product"
+      },
+      "notes": [
+        "Tinkaton builds the Build API and runner; Metang configures build jobs. Build provenance does not imply Marketplace publication or Deploy completion.",
+        "Build configuration bundles as portable CDK assemblies containing configuration assets and declarations referencing the shared Deploy provider. Use CONFIGURATION consistently in request, artifact and provenance schemas; validate payload digests and provider contract requirements without executing configuration APIs during builds.",
+        "Validate required shared-domain parameters, base paths and product-owned mappings in API product assemblies; keep synthesis credentialless and the manifest schema closed (base_path and requires.domain only; endpoints need a Build schema change first). Follow skills/guide-product-work/reference/shared-api-domain.md."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/build.md"
+    },
+    {
+      "id": "code",
+      "name": "Code",
+      "legacyNames": [],
+      "sourceRows": [
+        11
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "comply",
+      "name": "Comply",
+      "legacyNames": [],
+      "sourceRows": [
+        12
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "deploy",
+      "name": "Deploy",
+      "legacyNames": [],
+      "sourceRows": [
+        13
+      ],
+      "status": "assigned",
+      "summary": "Deploy installs products and configuration bundles through a shared installer and keeps subscribed components updated.",
+      "agents": {
+        "build": "corviknight",
+        "configure": "skarmory"
+      },
+      "skills": {
+        "build": "build-product-deployer",
+        "configure": "configure-deploy-product"
+      },
+      "notes": [
+        "Corviknight builds Deploy, including its Puller subscriber component; Skarmory configures runs, subscriptions, polling, update policy and recovery. Keep subscriber desired state, install history and subscription secrets in the Deploy-owned Puller component, separate from the stateless SigV4 run API. Separate packages or stacks do not create a separate product.",
+        "Own the shared configuration-bundle installer and typed Transform, Connect and System API adapters. Ship the provider as part of Deploy service infrastructure through its normal installation/update lifecycle. Reuse a provider per target account/region across bundle stacks; do not package a custom Lambda per bundle. Keep operation receipts separate from Puller subscriber state. Use configuration bundles and the CONFIGURATION type consistently; migrate legacy type handling and subscription metadata with Build and Marketplace. Follow skills/build-product-deployer/reference/configuration-bundles.md.",
+        "Resolve Environment shared-domain metadata from /account/env-parameters into product CloudFormation parameters, reject path conflicts and verify mappings independently of optional DNS. Preserve shared resources and stable stack identity. Follow skills/guide-product-work/reference/shared-api-domain.md."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/deploy.md"
+    },
+    {
+      "id": "health",
+      "name": "Health",
+      "legacyNames": [],
+      "sourceRows": [
+        14
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "pipeline",
+      "name": "Pipeline",
+      "legacyNames": [],
+      "sourceRows": [
+        15
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "asset",
+      "name": "Asset",
+      "legacyNames": [],
+      "sourceRows": [
+        16
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "credit",
+      "name": "Credit",
+      "legacyNames": [],
+      "sourceRows": [
+        17
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "employment",
+      "name": "Employment",
+      "legacyNames": [],
+      "sourceRows": [
+        18
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "identity",
+      "name": "Identity",
+      "legacyNames": [],
+      "sourceRows": [
+        19
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "income",
+      "name": "Income",
+      "legacyNames": [],
+      "sourceRows": [
+        20
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "tax",
+      "name": "Tax",
+      "legacyNames": [],
+      "sourceRows": [
+        21
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "appraisal",
+      "name": "Appraisal",
+      "legacyNames": [],
+      "sourceRows": [
+        22
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "listing",
+      "name": "Listing",
+      "legacyNames": [],
+      "sourceRows": [
+        23
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "property",
+      "name": "Property",
+      "legacyNames": [],
+      "sourceRows": [
+        24
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "valuation",
+      "name": "Valuation",
+      "legacyNames": [],
+      "sourceRows": [
+        25
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "compliance",
+      "name": "Compliance",
+      "legacyNames": [],
+      "sourceRows": [
+        26
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "fraud",
+      "name": "Fraud",
+      "legacyNames": [],
+      "sourceRows": [
+        27
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "government",
+      "name": "Government",
+      "legacyNames": [],
+      "sourceRows": [
+        28
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "insurance",
+      "name": "Insurance",
+      "legacyNames": [],
+      "sourceRows": [
+        29
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "rating",
+      "name": "Rating",
+      "legacyNames": [],
+      "sourceRows": [
+        30
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "document",
+      "name": "Document",
+      "legacyNames": [],
+      "sourceRows": [
+        31
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "electronic",
+      "name": "Electronic",
+      "legacyNames": [],
+      "sourceRows": [
+        32
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "fee",
+      "name": "Fee",
+      "legacyNames": [],
+      "sourceRows": [
+        33
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "model",
+      "name": "Model",
+      "legacyNames": [
+        "Lexicon"
+      ],
+      "sourceRows": [
+        34,
+        57
+      ],
+      "status": "assigned",
+      "summary": "Model governs vocabulary, definitions and compatible artifact releases.",
+      "agents": {
+        "build": "dialga",
+        "configure": "jirachi"
+      },
+      "skills": {
+        "build": "build-lexicon-product",
+        "configure": "configure-model-product"
+      },
+      "notes": [
+        "Merge spreadsheet rows 34 and 57 into one Model product. Dialga builds Model; Jirachi configures existing APIs and governed releases. Preserve Lexicon artifact contracts and Mew as a retained modeling specialist; API assignment does not establish runtime availability."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/model.md"
+    },
+    {
+      "id": "notary",
+      "name": "Notary",
+      "legacyNames": [],
+      "sourceRows": [
+        35
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "price",
+      "name": "Price",
+      "legacyNames": [],
+      "sourceRows": [
+        36
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "signature",
+      "name": "Signature",
+      "legacyNames": [],
+      "sourceRows": [
+        37
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "title",
+      "name": "Title",
+      "legacyNames": [],
+      "sourceRows": [
+        38
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "approval",
+      "name": "Approval",
+      "legacyNames": [],
+      "sourceRows": [
+        39
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "boarding",
+      "name": "Boarding",
+      "legacyNames": [],
+      "sourceRows": [
+        40
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "closing",
+      "name": "Closing",
+      "legacyNames": [],
+      "sourceRows": [
+        41
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "los",
+      "name": "LOS",
+      "legacyNames": [],
+      "sourceRows": [
+        42
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "pos",
+      "name": "POS",
+      "legacyNames": [],
+      "sourceRows": [
+        43
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "servicing",
+      "name": "Servicing",
+      "legacyNames": [],
+      "sourceRows": [
+        44
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "content",
+      "name": "Content",
+      "legacyNames": [],
+      "sourceRows": [
+        45
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "transform",
+      "name": "Transform",
+      "legacyNames": [
+        "Language",
+        "Translate"
+      ],
+      "sourceRows": [
+        46
+      ],
+      "status": "assigned",
+      "summary": "Transform converts registered source languages into target languages and extracts schema-validated JSON from strings using configured models through Bedrock, Vercel AI Gateway or compatible endpoints.",
+      "agents": {
+        "build": "kecleon",
+        "configure": "silvally"
+      },
+      "skills": {
+        "build": "build-transform-product",
+        "configure": "configure-transform-product"
+      },
+      "notes": [
+        "Resolve the spreadsheet test-only/configuration mismatch: Silvally authors and tests mappings; Kecleon owns engine implementation. Preserve test-only intent when the user only requests evaluation.",
+        "Own validation, immutable/versioned registration, read-back and lifecycle semantics for Transform configuration consumed by the shared Deploy installer. Kecleon handles API gaps; Silvally authors and validates mapping payloads under its existing readiness gates. Do not create per-bundle installer code.",
+        "Add non-deterministic extraction as a distinct Transform phase: immutable configuration selects a versioned provider connection, model, extraction instructions and an output JSON Schema; a TypeScript worker uses the AI SDK to extract validated structured JSON from string input. Kecleon implements the versioned API/runtime capability; Silvally configures it only after deployed support is verified. Preserve the existing Spark SQL contract and production-derived mapping readiness gates. Follow skills/build-transform-product/reference/non-deterministic-extraction.md."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/transform.md"
+    },
+    {
+      "id": "ml",
+      "name": "ML",
+      "legacyNames": [],
+      "sourceRows": [
+        47
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "persist",
+      "name": "Persist",
+      "legacyNames": [
+        "Persistence"
+      ],
+      "sourceRows": [
+        48
+      ],
+      "status": "assigned",
+      "summary": "Persist ingests and queries graph facts, maintains a current-only lexicon catalog, derived indexes and triggers, and owns lexicon-governed vector search composed through GraphQL.",
+      "agents": {
+        "build": "conkeldurr",
+        "configure": "uxie"
+      },
+      "skills": {
+        "build": "build-persist-service",
+        "configure": "configure-persist-product"
+      },
+      "notes": [
+        "User override: retain Conkeldurr for Persist only. Uxie configures existing deployments.",
+        "Requested 2026-10-05: keep embeddings, OpenSearch vector indexing and GraphQL search composition in a separate vector-search feature piece. Model owns lexicon field eligibility; Persist owns implementation and GraphQL source routing. This scope assignment does not establish deployed support.",
+        "Requested 2026-10-14: Conkeldurr builds a current-only Gremlin lexicon catalog and Uxie configures/verifies it. Reconcile accepted base/extension definitions using stable IDs, content hashes and an added/changed/removed diff; atomically update metadata and the applied revision with optimistic concurrency. Store no RDF/OWL semantics, historical definition vertices or latest links. Model owns definitions/history; Deploy owns managed release installation. This is requested implementation guidance, not deployed support."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/persist.md"
+    },
+    {
+      "id": "rule",
+      "name": "Rule",
+      "legacyNames": [],
+      "sourceRows": [
+        49
+      ],
+      "status": "assigned",
+      "summary": "Rule selects entities and evaluates governed predicates.",
+      "agents": {
+        "build": "gallade",
+        "configure": "meditite"
+      },
+      "skills": {
+        "build": "build-rules-product",
+        "configure": "configure-rule-product"
+      },
+      "notes": [],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/rule.md"
+    },
+    {
+      "id": "site",
+      "name": "Site",
+      "legacyNames": [],
+      "sourceRows": [
+        50
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "turker",
+      "name": "Turker",
+      "legacyNames": [],
+      "sourceRows": [
+        51
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "connect",
+      "name": "Connect",
+      "legacyNames": [
+        "Connection"
+      ],
+      "sourceRows": [
+        52
+      ],
+      "status": "assigned",
+      "summary": "Connect exchanges files and requests with external partners.",
+      "agents": {
+        "build": "lapras",
+        "configure": "wingull"
+      },
+      "skills": {
+        "build": "build-connect-product",
+        "configure": "operate-connect-configurations"
+      },
+      "notes": [
+        "Own flow, partner-configuration and activation API lifecycle semantics consumed by the shared Deploy installer. Lapras handles API gaps; Lapras owns the credentials API and its credential stores; Wingull authors and verifies payloads and sets credentials through that API. Configuration registration must not implicitly start partner jobs."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/connect.md"
+    },
+    {
+      "id": "job",
+      "name": "Job",
+      "legacyNames": [],
+      "sourceRows": [
+        53
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "system",
+      "name": "System",
+      "legacyNames": [
+        "Product",
+        "Product orchestration"
+      ],
+      "sourceRows": [
+        54
+      ],
+      "status": "assigned",
+      "summary": "System orchestrates business outcomes through reusable configured flows.",
+      "agents": {
+        "build": "zygarde",
+        "configure": "celebi"
+      },
+      "skills": {
+        "build": "build-system-product",
+        "configure": "configure-system-product"
+      },
+      "notes": [
+        "User override: Zygarde builds System; Celebi configures outcomes. Current scope is the orchestration core, not all historical Product features.",
+        "Own definition, template, flow and waterfall configuration API lifecycle semantics consumed by the shared Deploy installer. Zygarde handles API gaps; Celebi composes configurations with pinned leaf references. Registering a configuration bundle must not implicitly invoke a business flow."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/system.md"
+    },
+    {
+      "id": "workflow",
+      "name": "Workflow",
+      "legacyNames": [],
+      "sourceRows": [
+        55
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "discover",
+      "name": "Discover",
+      "legacyNames": [],
+      "sourceRows": [
+        56
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "schedule",
+      "name": "Schedule",
+      "legacyNames": [],
+      "sourceRows": [
+        58
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "report",
+      "name": "Report",
+      "legacyNames": [],
+      "sourceRows": [
+        59
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    },
+    {
+      "id": "predict",
+      "name": "Predict",
+      "legacyNames": [],
+      "sourceRows": [
+        60
+      ],
+      "status": "unassigned",
+      "summary": "",
+      "agents": {
+        "build": null,
+        "configure": null
+      },
+      "skills": {
+        "build": null,
+        "configure": null
+      },
+      "notes": []
+    }
+  ],
+  "retainedAgents": [
+    "abra",
+    "alakazam",
+    "ampharos",
+    "arceus",
+    "ash",
+    "audino",
+    "braviary",
+    "castform",
+    "chatot",
+    "delibird",
+    "ditto",
+    "donphan",
+    "eevee",
+    "espeon",
+    "hoopa",
+    "hypno",
+    "kirlia",
+    "klefki",
+    "linoone",
+    "lucario",
+    "machamp",
+    "magnezone",
+    "meowth",
+    "metagross",
+    "mew",
+    "noctowl",
+    "oracle",
+    "oranguru",
+    "pelipper",
+    "porygon",
+    "rotom",
+    "slowbro",
+    "slowking",
+    "smeargle",
+    "sylveon",
+    "watchog",
+    "wigglytuff",
+    "xatu"
+  ]
+}

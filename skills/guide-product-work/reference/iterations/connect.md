@@ -1,0 +1,34 @@
+# Connect capability map
+
+Use Lapras for the engine and Wingull for supported partner/flow configurations.
+Apply the [shared workflow](../../SKILL.md) to the requested capabilities. These
+twelve areas are an inventory; expand driver, verb and activation families into
+separate usable pieces when their behaviors require separate explanations/tests.
+Use an authorized mock/sandbox, tiny samples, named credentials set through the Connect API and disabled
+activations. Keep parsing, graph writes and internal product actions outside Connect.
+
+| Feature ID / usable capability | Dependency | Builder increment / configurer exercise | AWS inspection and acceptance |
+| --- | --- | --- | --- |
+| `direct-exchange` — fetch or call once | One approved connection | Deliver one supported verb through job submission, execution and reply; configure a single safe exchange and an invalid resource. | Inspect job/task logs and returned artifact/reply; match status, payload pointer and checksum. |
+| `connection-drivers` — reuse flows with another transport/auth | Direct exchange | Add each requested driver/auth capability as its own increment; configure connections that name credentials without embedding values in flows. Renewing HTTP tokens (`oauth2_refresh_token`, `oauth2_jwt_bearer` with per-call `Subject`) are in Connect main: configure one against a sandbox user, pin the allowed subjects in the flow `parameters`, and hand an engine subject allowlist to Lapras. | Inspect resolved driver and sanitized auth diagnostics; compare successful and rejected credentials using safe fixtures. For renewing tokens, show a successful call as the pinned user, a rejected job for a user outside the `parameters` pattern, and an `AuthFailed` carrying only the status and OAuth error code for a revoked grant or out-of-grant scope. |
+| `credentials` — set, rotate and import partner credentials | Direct exchange | Deliver the credentials API (replace, merge, status, guarded delete; Account import when required) with HTTP auth in Connect-owned EventBridge Connections as the target store; Connect main ships replace, merge, status and guarded delete over Connect-managed Secrets Manager secrets. Configure a credential, rotate one key and bind it to two partner configurations. | Inspect API responses (`state`, key flags, `used_by`), audit records and the target store's metadata; prove no response, log or manifest contains a value and a rotated value applies to the next call without redeploying. |
+| `listing-pagination` — enumerate a bounded source | A listing-capable driver | Deliver LIST/pagination limits; configure different prefixes, page sizes and empty results. | Inspect page/worker logs and the final inventory; verify counts, termination and limit handling. |
+| `flow-composition` — run dependent or bounded parallel tasks | Direct exchange; listing for fan-out | Deliver the required sequencing/bindings and Map concurrency; configure a small multi-task flow and vary its limits. | Inspect task transitions, bindings, concurrency and partial failure; show downstream input derives from the expected result. |
+| `outbound-verbs` — deliver or move an external artifact | Relevant driver and safe destination | Deliver each requested PUT/MOVE or other supported write verb in separate pieces where independently useful; configure a sandbox destination. | Inspect execution and delivery receipts/checksums; test safe duplicate/error behavior without contacting real recipients. |
+| `polling` — await partner completion | CALL-capable connection | Deliver bounded POLL behavior; configure completion, timeout and transient-error fixtures. | Inspect attempts, wait states and terminal result; prove polling stops at the configured bound. |
+| `webhook-wait` — resume from a callback | Supported callback connection/runtime | Deliver WAIT_FOR_WEBHOOK and correlation; configure valid, mismatched and duplicate test callbacks. | Inspect suspended/resumed execution and callback logs; verify only the correct callback advances it. |
+| `activations` — invoke a pinned flow automatically | Runnable versioned flow | Deliver each required schedule/drop-zone/webhook activation type separately; configure and enable it only for the authorized test, then disable it. Webhook auth by `signed_token` (OIDC bearer checked against `issuer`, `jwks_url`, `audience`, `required_claims`) is in Connect main: configure a sandbox push source (for example Pub/Sub push with payload unwrapping) instead of a pull flow, which needs unshipped base64 decode and `[*]` projection. | Inspect activation → job correlation, actual execution and cleanup; distinguish trigger receipt from job completion. For signed-token webhooks, show a real partner event accepted, a wrong-audience or wrong-claim token answered `401` with only the reason logged, and the source's acknowledgement on 2xx. |
+| `ledger-replay` — suppress duplicates and recover delivery | Relevant exchange/flow | Deliver supported ledger/replay controls; configure duplicate inputs, transient failure and a safe retry. | Inspect actual attempts, ledger decisions and artifacts/replies; prove recovered work does not repeat a completed external effect. |
+| `table-ingestion` — ingest registered source tables | Credentials | Deliver source registration, baseline and delta extraction, entity bundles, acknowledgement-gated commit and snapshot refresh as separate pieces; configure one source with a sample and a baseline run. | Inspect the Glue run, result manifest, counts and checkpoint state; prove an unacknowledged run never commits and the snapshot job has no source credential grant. |
+| `configuration-lifecycle` — register Connect configurations for bundles | Verified flow, partner-configuration and activation APIs | Deliver/verify stable identities, revisions, replay/conflicts, scoped ownership and supported deactivation/removal for Deploy's shared adapter. Configure credential names (never values) and explicit activation policy. | Read back versions and activation state; reject conflicting ownership and preserve shared references. Registration alone causes no partner jobs or traffic. |
+
+Use [the block contracts](../../../build-connect-product/reference/blocks.md)
+and [runtime scope](../../../build-connect-product/reference/aws-runtime.md).
+Driver/verb entries describe scoped feature families, not permission to implement
+every provider. Missing runtime support belongs to Lapras. New-partner configuration
+selects existing capabilities; it does not rebuild the engine. Preserve the approval
+boundary for production partner reads and never send real messages/files/payments
+to satisfy a teaching checkpoint.
+
+For configuration-bundle work, follow [the shared installer contract](../../../build-product-deployer/reference/configuration-bundles.md).
+Keep the new lifecycle/provider requirements distinct from observed deployment support.

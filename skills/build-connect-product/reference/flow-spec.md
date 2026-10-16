@@ -40,6 +40,10 @@ semantic checks in §6. Worked documents are in [examples/](examples/).
   capabilities, so a flow that works for Azure also works for SFTP and S3.
 - `parameters` and `partner_parameters` are JSON Schemas for `$.request` and
   `$.partner`. Undeclared fields are rejected.
+- When a `CALL` takes `Subject` from `$.request`, pin the field with a
+  `pattern` (for example `^[^@]+@example\.com$`). Connect has no subject
+  allowlist, so the schema is the only control on which user a job caller may
+  act as.
 - `triggers` lists which activation kinds may run the flow (`api`,
   `schedule`, `drop_zone`, `webhook`).
 - `webhooks` declares named inbound webhooks and their correlation contract;
@@ -63,7 +67,7 @@ semantic checks in §6. Worked documents are in [examples/](examples/).
       "type": "azure_blob",
       "account_url": "https://<account>.blob.core.windows.net",
       "containers": ["americor"],
-      "auth": { "profile": "connection_string", "secret_ref": "arn:aws:secretsmanager:<region>:<account>:secret:<name>" }
+      "auth": { "profile": "connection_string", "credential": "americor-blob" }
     }
   },
   "parameters": { "prefix": "TO_SOC/", "pattern": "*.xlsx", "archive_prefix": "TO_SOC/completed/",
@@ -73,10 +77,42 @@ semantic checks in §6. Worked documents are in [examples/](examples/).
 }
 ```
 
-Bind every alias the flow declares. Keep only references to secrets. `keys`
-names PGP or signing keys by reference for `DECRYPT` and webhook auth.
+Bind every alias the flow declares. Name credentials only, never values or
+Secrets Manager ARNs; set their values through the credentials API
+([architecture.md](architecture.md) §7). A configuration may name a credential
+that is not set yet; a job that needs it fails before any partner request.
+`keys` names `pgp_key` credentials (the key and its passphrase) for `DECRYPT`.
 `webhooks.<name>.auth` configures inbound webhook authentication
-(`header_secret`, `hmac_sha256`, `basic`).
+(`header_secret` and `hmac_sha256` name a `webhook_secret` credential, `basic`
+a `basic` one). `signed_token` (Connect main, PR #30) names no credential: it
+checks an `Authorization: Bearer` token signed RS256 by a key published at
+`jwks_url`.
+
+```json
+"webhooks": {
+  "events": {
+    "auth": {
+      "scheme": "signed_token",
+      "issuer": "https://accounts.google.com",
+      "jwks_url": "https://www.googleapis.com/oauth2/v3/certs",
+      "audience": "https://connect.example.com/connect/webhooks/workspace-meet-prod/events",
+      "required_claims": { "email": "pubsub-push@example-project.iam.gserviceaccount.com", "email_verified": true }
+    }
+  }
+}
+```
+
+| Field | Rule |
+| --- | --- |
+| `issuer` | One string compared exactly with `iss`. Google can emit `accounts.google.com` without `https://`; confirm the value in one dev run and configure that exact string |
+| `jwks_url` | HTTPS only. Keys are cached for the response's `max-age`, bounded to 60 s–24 h (300 s without one); an unknown `kid` refetches at most once per 60 s |
+| `audience` | Compared with `aud` |
+| `required_claims` | Top-level claims compared with `===` (strings, numbers or booleans); required, use `{}` only when issuer and audience alone identify the sender |
+
+`exp` is required (60 s clock skew). A missing, malformed, wrongly signed,
+expired or mismatched token answers `401 WebhookUnauthorized`; an unreachable
+or invalid key endpoint answers `503` so the sender retries. Webhook headers
+are used only for auth and content-type parsing; trigger events carry the body.
 
 ## 3. Activation
 
@@ -87,7 +123,7 @@ names PGP or signing keys by reference for `DECRYPT` and webhook auth.
   "flow_version": 4,
   "configuration_id": "americor-prod",
   "trigger": { "type": "schedule", "cron": "0 * * * ? *", "timezone": "America/New_York" },
-  "subscriber": { "url": "https://<claydol-intake-endpoint>", "signing_secret_ref": "arn:aws:secretsmanager:..." },
+  "subscriber": { "url": "https://<claydol-intake-endpoint>", "signing_credential": "claydol-subscriber-signing" },
   "enabled": true
 }
 ```
@@ -151,7 +187,9 @@ phase, code, retryability and item key, never payloads or credentials.
    capabilities), and every option is valid for its verb.
 3. JSONPaths resolve against declared schemas; writes go only to `$.vars`.
 4. `Map` has `Concurrency`; `ItemsFrom` points at a `FileRef`; bodies terminate.
-5. `WAIT_FOR_WEBHOOK` names a declared webhook; its partner auth is configured.
+5. `WAIT_FOR_WEBHOOK` names a declared webhook; its partner auth is configured
+   (a credential for secret schemes, or `issuer`, `jwks_url`, `audience` and
+   `required_claims` for `signed_token`).
 6. `Ledger` keys exist on the listed item. `ModifiedSince` resolves to a
    timestamp when present; an absent optional partner parameter disables that
    filter rather than failing the job.

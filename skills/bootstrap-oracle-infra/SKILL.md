@@ -3,6 +3,7 @@ name: bootstrap-oracle-infra
 description: "Verify and bootstrap the local pipeline stack required for county ingestion: the durable workflow server, data directories, the internal database, and the bundled runtime services process. Use when starting county onboarding, when a run or registration fails because the stack is down, or when setting up on a fresh machine."
 metadata: {"author":"elephant-xyz"}
 ---
+
 # Bootstrap Oracle Infra
 
 Everything runs locally: Docker Compose (Restate + Postgres) plus one Node

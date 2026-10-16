@@ -33,21 +33,20 @@ TRANSFORM_SCHEMA = SKILLS / "build-transform-product" / "reference" / "contracts
 EXAMPLES = SYSTEM_REFERENCE / "examples"
 
 KIND_PRODUCT = {
-    "product-definition": "product-orchestration",
-    "product-schema": "product-orchestration",
-    "product-flow-template": "product-orchestration",
-    "product-flow": "product-orchestration",
-    "product-waterfall": "product-orchestration",
-    "product-invocation": "product-orchestration",
-    "lexicon-catalog": "lexicon",
+    "product-definition": "system",
+    "product-schema": "system",
+    "product-flow-template": "system",
+    "product-flow": "system",
+    "product-waterfall": "system",
+    "product-invocation": "system",
+    "lexicon-catalog": "transform",
     "connect-partner": "connect",
     "connect-activation": "connect",
     "transform-request": "transform",
     "transform-mapping": "transform",
-    "persist-collection": "persist",
+    "persist-ingest": "persist",
     "deploy-environment": "deploy",
-    "system-openapi": "system-runtime",
-    "system-fixtures": "system-runtime",
+    "system-fixtures": "system",
 }
 SERVE_KINDS = ("product-definition", "product-flow-template", "product-flow")
 REMOTE = re.compile(r"^[a-z][a-z0-9+.-]*://")
@@ -161,10 +160,15 @@ class ManifestCheck:
 
     def check_workflow(self) -> None:
         declared = {item["product"]: item["role"] for item in self.manifest["products"]}
+        catalog = _load_json(SKILLS / "guide-product-work" / "reference" / "product-catalog.json")
+        configurers = {p["id"]: p["agents"]["configure"] for p in catalog["products"]}
         used: set[str] = set()
         for index, step in enumerate(self.manifest["workflow"]):
             where = f"workflow/{index}"
             used.add(step["product"])
+            expected_agent = configurers.get(step["product"])
+            if step["agent"] != expected_agent:
+                self.fail(where, f"{step['agent']!r} is not the assigned configurer for {step['product']!r}")
             if step["product"] not in declared:
                 self.fail(where, f"product {step['product']!r} is not declared in products")
             ref = self.config_refs.get(step["configRef"])
@@ -194,30 +198,17 @@ class ManifestCheck:
         roles = {item["product"]: item["role"] for item in manifest["products"]}
         kinds = {ref["kind"] for ref in self.config_refs.values()}
         orchestration = manifest.get("orchestration", {})
-        mode = orchestration.get("mode", "product-service")
-        product_serves = roles.get("product-orchestration") in ("serve", "execute")
+        mode = orchestration.get("mode", "system-service")
+        product_serves = roles.get("system") in ("serve", "execute")
 
-        if mode == "product-service" and "product-orchestration" not in roles:
-            self.fail("products", "orchestration mode product-service requires product-orchestration")
+        if mode == "system-service" and "system" not in roles:
+            self.fail("products", "orchestration mode system-service requires system")
         if product_serves:
             for kind in SERVE_KINDS:
                 if kind not in kinds:
-                    self.fail("configRefs", f"product-orchestration serves but no {kind} ref is declared")
+                    self.fail("configRefs", f"system serves but no {kind} ref is declared")
         if orchestration.get("invocationMode") == "waterfall" and "product-waterfall" not in kinds:
             self.fail("configRefs", "invocationMode waterfall requires a product-waterfall ref")
-
-        thin = mode == "thin-package-deferred" or (roles.get("system-runtime") == "serve" and not product_serves)
-        if thin:
-            if "system-runtime" not in roles:
-                self.fail("products", "thin-package-deferred requires a system-runtime product")
-            if not any(
-                item.get("verify") == "deferred" and "product" in item["description"].lower()
-                for item in manifest["successCriteria"]
-            ):
-                self.fail(
-                    "successCriteria",
-                    "a thin System package needs a deferred criterion naming the Product cutover",
-                )
 
     def check_dependencies(self) -> None:
         dependencies = self.manifest["dependencies"]
@@ -250,6 +241,9 @@ class ManifestCheck:
                 self.fail(where, f"path {path!r} must stay inside the composition package")
                 continue
             target = (base / path).resolve()
+            if not target.is_relative_to(base):
+                self.fail(where, f"path {path!r} resolves outside the composition package")
+                continue
             if not target.exists():
                 self.fail(where, f"path {path!r} does not resolve to a file next to the manifest")
                 continue
@@ -285,23 +279,35 @@ class ManifestCheck:
             if ref["kind"] == kind and isinstance(self.emits.get(name), dict)
         }
 
+    def _saved_name(self, ref_name: str, document: dict) -> str | None:
+        """The artifact's own `name`, else the name its configRef says it is saved under."""
+        return document.get("name") or self.config_refs[ref_name].get("name")
+
     def check_product_emits(self) -> None:
+        # Two shapes are accepted: the compatibility shapes (`name`, template `definition`,
+        # `flow_template_name`) and System's API payloads, which are named by their API path
+        # (configRef `name`), keep StartAt/States at the template's top level and name the
+        # flow's template and definition in `template` and `definition`.
         product_name = self.manifest.get("productName", self.manifest["systemId"])
+        definition_names: set[str] = set()
         for name, definition in self._emits_of("product-definition").items():
-            if definition.get("name") != product_name:
+            saved = self._saved_name(name, definition)
+            definition_names.add(saved or "")
+            if saved != product_name:
                 self.fail(
                     f"configRefs/{name}",
-                    f"product definition name {definition.get('name')!r} does not match {product_name!r}",
+                    f"product definition name {saved!r} does not match {product_name!r}",
                 )
 
         template_names: set[str] = set()
         for name, template in self._emits_of("product-flow-template").items():
             where = f"configRefs/{name}"
-            if not template.get("name"):
-                self.fail(where, "flow template has no name")
+            saved = self._saved_name(name, template)
+            if not saved:
+                self.fail(where, "flow template has no name; set it in the template or its configRef")
             else:
-                template_names.add(template["name"])
-            definition = template.get("definition", {})
+                template_names.add(saved)
+            definition = template["definition"] if "definition" in template else template
             states = definition.get("States", {})
             if definition.get("StartAt") not in states:
                 self.fail(where, f"StartAt {definition.get('StartAt')!r} is not a state")
@@ -311,12 +317,14 @@ class ManifestCheck:
         flow_names: set[str] = set()
         for name, flow in self._emits_of("product-flow").items():
             where = f"configRefs/{name}"
-            flow_names.add(flow.get("name", ""))
-            template = flow.get("flow_template_name")
+            flow_names.add(self._saved_name(name, flow) or "")
+            template = flow.get("flow_template_name") or flow.get("template")
             if not template:
-                self.fail(where, "product flow must set flow_template_name")
+                self.fail(where, "product flow must set flow_template_name or template")
             elif template not in template_names:
-                self.fail(where, f"flow_template_name {template!r} does not match an emitted flow template")
+                self.fail(where, f"flow template {template!r} does not match an emitted flow template")
+            if "definition" in flow and flow["definition"] not in definition_names:
+                self.fail(where, f"flow definition {flow['definition']!r} does not match an emitted product definition")
 
         for name, waterfall in self._emits_of("product-waterfall").items():
             for index, entry in enumerate(waterfall.get("waterfall", [])):
@@ -367,6 +375,9 @@ class ManifestCheck:
             if environment.get("activationEnabled") is not False:
                 self.fail(where, "deploy environment must keep activationEnabled false")
             for component in environment.get("components", []):
+                declared = {item["product"] for item in self.manifest["products"]}
+                if component.get("product") not in declared:
+                    self.fail(where, f"component product {component.get('product')!r} is not declared in products")
                 for ref in component.get("refs", []):
                     if ref not in self.config_refs:
                         self.fail(where, f"component ref {ref!r} does not exist in configRefs")

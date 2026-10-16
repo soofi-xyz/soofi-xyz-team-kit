@@ -39,6 +39,14 @@ npm test --prefix skills/use-oracle/runtime
 Record transformed/validated counts and reconciliation-artifact counts. Offline replay
 does not upload, mutate a public pointer, update Atlas, or require Filebase credentials.
 
+## Raw single-property diagnostic
+
+For a one-property, no-transformation request, follow
+[`raw-property-capture.md`](./raw-property-capture.md) and use `capture-raw`, not
+`ingest`. The command requires one seed row, preserves the source body byte-for-byte,
+and writes only a separate receipt. It must not produce transform, reconciliation, or
+publication artifacts.
+
 ## Bounded live pilot
 
 Run only after county readiness PASS. Require explicit `--live-fetch`, a one- or two-row

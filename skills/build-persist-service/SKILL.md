@@ -1,33 +1,55 @@
 ---
 name: build-persist-service
-description: "Implementing or changing the Persist service from its PRD — graph persistence, validated ingest, bulk load, query interfaces, read surfaces. Read reference/PRD.md first."
+description: "Build or maintain Persist graph ingestion, queries, a current-only lexicon catalog, indexes, triggers and lexicon-governed vector search through GraphQL. Use Conkeldurr; use Uxie for particular configurations."
 disable-model-invocation: true
 ---
 
-# Build Persist Service
+Use [the Persist capability map](../guide-product-work/reference/iterations/persist.md). Derive the feature pieces from scope and dependencies, then apply the work below within each piece; require a user-run configuration, AWS inspection and feedback before starting the next implementation piece.
 
-This skill is intentionally thin. Use it as a loader for [`reference/PRD.md`](./reference/PRD.md), not as a requirements copy.
+# Build Persist
 
-## Required Reading
+Use `conkeldurr` for the reusable product implementation and `uxie` for
+configuration on an existing deployment. Follow
+[guide-product-work](../guide-product-work/SKILL.md) and
+[engineering guidelines](../apply-engineering-guidelines/SKILL.md).
 
-1. Read [`reference/PRD.md`](./reference/PRD.md) before planning or coding.
-2. Read [`../apply-engineering-guidelines/SKILL.md`](../apply-engineering-guidelines/SKILL.md) for Golden Path constraints.
-3. Read lexicon skills when the PRD task changes graph schema validation, vertex/edge contracts, properties, enums, or immutability rules.
+Read [current scope](reference/current-scope.md) before the detailed PRD. Resolve reported differences against the target revision.
 
-## Use With Plugin Agents
+For embeddings or semantic/hybrid search, load [the separate vector-search
+piece](reference/vector-search.md). Keep its eligibility consumption, model
+evaluation, embedding/index maintenance and GraphQL search composition together
+under `vector-search`, with its own user-run configuration and AWS checkpoint.
+Use a separate GraphQL search data source and resolver composition; preserve
+the existing Gremlin/Neptune FTS surface. Route lexicon declaration changes to
+Model's assigned agents; keep physical source routing in Persist's resolution map.
 
-- Use `conkeldurr` first for platform product classification, existing-deployment checks, and build-vs-integrate decisions.
-- Use `machamp` for the Neptune CSV workflow, async processing, cost gates, throttling, idempotency, and workflow verification.
-- Use `regigigas` only when Persist must be packaged, released, subscribed, or deployed through the marketplace ecosystem.
-- Read the `integrating-interprose` skill when a PRD task touches Interprose-sourced GraphQL fields, to pick correct endpoints and request/response shapes for the whitelisted resolver operations.
+Read relevant [implementation details](reference/PRD.md) under that reconciliation. Discover the
+target repository, revision and environment. Reuse an existing service when
+appropriate; agent availability does not prove deployment or feature support.
 
-## Implementation Rules
+Separate historical requirements, current implementation and live evidence.
+Where references conflict, inspect the target contract and tests and record the
+resolution. Do not silently restore obsolete features or remove working behavior.
 
-- Treat the PRD as the single source of truth for routes, GraphSON contracts, Persist Blob handling, data contracts, resource shapes, IAM scopes, env vars, error tags, workflows, and verification.
-- Do not implement from this `SKILL.md` alone.
-- For an existing Persist deployment, integrate through the PRD's `/persist/*` API contracts instead of provisioning a duplicate service.
-- If any old skill or rule file conflicts with the PRD, the PRD wins; update stale guidance instead of layering compatibility shims.
+Use supporting skills directly for workflow capacity, metrics and model reasoning.
+Resolve other products through the catalog. Do not use a general platform owner.
+Use Registeel for Marketplace publication; keep deployment prerequisites explicit.
 
-## Expected Output
+## Current-only lexicon catalog
 
-Return the product fit, existing-vs-new deployment verdict, PRD sections used, files/stacks/contracts to change, companion agents/skills loaded, and the PRD verification path.
+For base lexicons, extensions and vertex/edge definition updates, load
+[the catalog contract](reference/lexicon-catalog.md). Build feature `lexicon-catalog`
+as native property-graph metadata containing only the current accepted definitions.
+Reconcile complete snapshots by stable identity and content hash, including
+deletions, and commit the diff plus revision atomically with an expected-revision
+check. Keep versions out of IDs and retain history in Model artifacts, not graph
+vertices. Preserve business facts, extension scope and Deploy installation
+ownership. Deliver the HTTP preview/reconciliation/status surface and Gremlin
+read-back needed by Uxie; verify actual support before claiming availability.
+
+## Verification and handoff
+
+Derive the scoped feature plan from the shared workflow and product capability
+map. Require a user-run configuration and AWS inspection after every piece. Return the
+implementation changes, verification results, human observations, current stage
+and any remaining runtime or integration gaps.

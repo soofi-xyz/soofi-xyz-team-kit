@@ -69,8 +69,10 @@ Create/import these components:
   concurrent execution per job, no automatic paid-work retry, 60-minute timeout.
   Use at most four JDBC connections and 5,000-key hydration batches initially;
   these are tunable starting limits, not universal throughput claims.
-- A private JDBC Glue connection with source security-group rules, Secrets Manager
-  credential access and required S3/SSM/Secrets endpoints or approved egress.
+- A private JDBC Glue connection with source security-group rules, reading the
+  Connect-managed secret of the source's credential
+  ([AWS runtime](../aws-runtime.md) §6), and required S3/SSM/Secrets endpoints
+  or approved egress.
   Capture source grants/network tests before a live pilot.
 - TypeScript Node 22 handlers for resolution, reporting, commit and snapshot
   planning/receipts; default 1 GiB memory and five-minute timeout. Use Powertools

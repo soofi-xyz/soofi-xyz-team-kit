@@ -127,6 +127,50 @@ async function readSeedRows(seedPath) {
 }
 
 /**
+ * `elephant-county capture-raw --county <key> --seed <one-row.csv> --output <scratch-dir> [--stdout]`
+ *
+ * Captures exactly one official source response as bytes. It does not run a
+ * transform, create reconciliation artifacts, load Query DB, or publish.
+ *
+ * @param {readonly string[]} argv - Arguments after `capture-raw`.
+ * @returns {Promise<void>} Resolves once the raw body and receipt are written.
+ */
+async function runCaptureRaw(argv) {
+  const flags = parseFlags(argv, ["stdout"]);
+  const county = requireStringFlag(flags, "county");
+  const adapter = requireAdapter(county);
+  if (typeof adapter.captureRawProperty !== "function") {
+    throw new Error(
+      `County adapter "${county}" does not support raw single-property capture`,
+    );
+  }
+  const seedRows = await readSeedRows(requireStringFlag(flags, "seed"));
+  if (seedRows.length !== 1) {
+    throw new Error(
+      `Raw capture requires exactly one seed row; received ${seedRows.length}`,
+    );
+  }
+
+  const result = await adapter.captureRawProperty({
+    seedRow: seedRows[0],
+    outputDir: requireStringFlag(flags, "output"),
+  });
+  const event = {
+    event: "raw_capture_complete",
+    county,
+    bodyPath: result.bodyPath,
+    receiptPath: result.receiptPath,
+    receipt: result.receipt,
+  };
+  if (flags.stdout === true) {
+    console.error(JSON.stringify(event));
+    process.stdout.write(await readFile(result.bodyPath));
+    return;
+  }
+  console.log(JSON.stringify(event, null, 2));
+}
+
+/**
  * `elephant-county ingest --county <key> --seed <csv> --html-dir <dir> [--as-of-date YYYY-MM-DD] [--skip-validate] [--live-fetch] [--allow-empty] --output <run-dir>`
  *
  * Fails closed on live fetch: a missing local HTML file is an error unless
@@ -855,6 +899,7 @@ async function runPermitBulkExportCommand(argv) {
  */
 async function main() {
   const [command, ...rest] = process.argv.slice(2);
+  if (command === "capture-raw") return runCaptureRaw(rest);
   if (command === "ingest") return runIngest(rest);
   if (command === "reconcile-export") return runReconciliationExport(rest);
   if (command === "replay") return runReplayCommand(rest);
@@ -888,7 +933,8 @@ async function main() {
     return runPermitBulkExportCommand(rest);
   }
   console.error(
-    "Usage: elephant-county <ingest|reconcile-export|replay|sunbiz-prepare|sunbiz-filter|sunbiz-transform|sunbiz-enrich|avm-enrich|hoa-enrich|hoa-pm-index|hoa-pm-overlay-sync|hoa-pm-enrich|bbb-harvest|bbb-reconcile|bbb-link|enrichment-finalize|permit-probe|permit-bounded-harvest|permit-resume|permit-reconcile|permit-export|permit-bulk-export> [...flags]\n" +
+    "Usage: elephant-county <capture-raw|ingest|reconcile-export|replay|sunbiz-prepare|sunbiz-filter|sunbiz-transform|sunbiz-enrich|avm-enrich|hoa-enrich|hoa-pm-index|hoa-pm-overlay-sync|hoa-pm-enrich|bbb-harvest|bbb-reconcile|bbb-link|enrichment-finalize|permit-probe|permit-bounded-harvest|permit-resume|permit-reconcile|permit-export|permit-bulk-export> [...flags]\n" +
+      "  capture-raw --county <key> --seed <one-row.csv> --output <temp-or-runtime-scratch-dir> [--stdout]\n" +
       "  ingest  --county <key> --seed <csv> --html-dir <dir> [--skip-validate] [--live-fetch] [--allow-empty] --output <run-dir>\n" +
       "  reconcile-export --county <key> --seed <csv> --run <run-dir> --output <working-dir> [--allow-empty]\n" +
       "  replay  --county <key> --fixture <dir> --output <dir>\n" +
@@ -928,6 +974,7 @@ if (isDirectRun) {
 export {
   main,
   requireAdapter,
+  runCaptureRaw,
   runIngest,
   runReconciliationExport,
   runReplayCommand,

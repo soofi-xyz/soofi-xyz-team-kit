@@ -50,9 +50,25 @@ Valid on `http` connections.
 
 | Verb | Required | Optional | Output |
 | --- | --- | --- | --- |
-| `CALL` | `Connection`, `Method`, `Path` | `PathParameters`, `Query`, `Headers`, `Body`, `RequestFormat` (`json` \| `xml` \| `form` \| `multipart` \| `base64` \| `binary`), `Response`, `Paginate`, `Idempotency`, `Extract`, `AcceptStatus` | Parsed body inline, or a landed `FileRef` |
+| `CALL` | `Connection`, `Method`, `Path` | `PathParameters`, `Query`, `Headers`, `Body`, `Subject`, `RequestFormat` (`json` \| `xml` \| `form` \| `multipart` \| `base64` \| `binary`), `Response`, `Paginate`, `Idempotency`, `Extract`, `AcceptStatus` | Parsed body inline, or a landed `FileRef` |
 | `POLL` | `Call` (a `CALL` definition), `Until` (Choice rule) | `IntervalSeconds`, `Backoff` (`linear` \| `exponential`), `MaxAttempts` | Final `CALL` output |
 | `WAIT_FOR_WEBHOOK` | `Webhook` (declared on the flow), `Correlate` (`ValuePath`, `ExpectedPath`) | `Conditions`, `TimeoutSeconds`, `EarlyArrival` (`reject` \| `buffer`), `SaveResponseToFile` | Webhook body inline or as `FileRef` |
+
+`Path` placeholders take their values from `PathParameters`. `{name}` is one
+segment: the value is URL-encoded, so a `/` becomes `%2F`. `{+name}` (RFC 6570
+reserved expansion, restricted to `/`; Connect main, PR #26) spans several
+segments: the value is split on `/`, each segment is URL-encoded and the
+slashes are kept, so a resource name such as
+`conferenceRecords/c1/transcripts/t1` fills `/v2/{+name}/entries`. An empty
+value, or a `{+name}` value with an empty, `.` or `..` segment (including a
+leading or trailing `/`), fails with `ValidationFailed` before any request.
+Pin the shape of a `{+name}` value in the flow's `parameters` schema.
+
+`Subject` (a value or JSONPath, often `$.request.user`) is the user an
+`oauth2_jwt_bearer` connection acts as for that call; it overrides the
+connection's `auth.subject`. `POLL` inherits it from its `Call`. Connect does
+not restrict which subject a job may name: pin the allowed users in the flow's
+`parameters` schema ([flow-spec.md](flow-spec.md) §1).
 
 `Response` has `Format` (`json` \| `xml` \| `text` \| `binary`), `Mode`
 (`inline` \| `file`), `MaxInlineBytes`, and `DecodePath` + `Decode` for bodies
@@ -86,7 +102,7 @@ Native ASL `Choice`, `Wait`, `Pass`, `Fail` stay intact. `Map` is open:
 
 | Type | Location fields | Auth profiles | Verbs | Notes |
 | --- | --- | --- | --- | --- |
-| `http` | `base_url` | `none`, `basic`, `api_key`, `bearer`, `oauth2_client_credentials`, `token_call`, `client_certificate` | `CALL`, `POLL`, `WAIT_FOR_WEBHOOK` | `egress: default \| static_ip`. Inline calls compile to native HTTP Tasks with an EventBridge Connection |
+| `http` | `base_url` | `none`, `basic`, `api_key`, `bearer`, `oauth2_client_credentials`, `oauth2_refresh_token`, `oauth2_jwt_bearer`, `token_call`, `client_certificate` | `CALL`, `POLL`, `WAIT_FOR_WEBHOOK` | `egress: default \| static_ip`. Inline calls compile to native HTTP Tasks with an EventBridge Connection |
 | `sftp` | `host`, `port`, `root`, `host_key_fingerprint` | `password`, `private_key` | `LIST`, `FETCH`, `PUT`, `MOVE`, `DELETE` | Runs through AWS Transfer Family connectors; no SSH client in Lambda |
 | `azure_blob` | `account_url`, `containers` (name or `*` with `exclude`), `root` | `connection_string`, `sas` | `LIST`, `FETCH`, `PUT`, `MOVE`, `DELETE` | Streams to S3; `*` treats each container as a tenant path segment |
 | `s3` | `bucket`, `root`, `region` | `assume_role` (`role_arn`, `external_id`) | `LIST`, `FETCH`, `PUT`, `MOVE`, `DELETE` | For partner-owned buckets. `MOVE` is copy + delete and is declared non-atomic |
@@ -98,8 +114,37 @@ passes the driver conformance suite in [verification.md](verification.md).
 Capabilities include atomic move, etag availability, server-side copy and
 maximum object size; the compiler checks verbs and options against them.
 
-Secrets are always Secrets Manager references on the connection. Flows never
-name a secret.
+Auth names a Connect credential (`auth.credential`); its values are set only
+through the credentials API ([architecture.md](architecture.md) §7). Flows never
+name a credential.
+
+### Renewing HTTP tokens
+
+Two `http` auth profiles obtain a short-lived access token before each call and
+renew it themselves (implemented in Connect main, PR #29):
+
+| Profile | Credential keys | Connection settings | Token request |
+| --- | --- | --- | --- |
+| `oauth2_refresh_token` | `client_id`, `client_secret`, `refresh_token` | `token_url` (required), optional `scopes` | `grant_type=refresh_token` with the client id and secret in the form |
+| `oauth2_jwt_bearer` | `client_email`, `private_key` (PKCS#8 PEM), optional `private_key_id` | `token_url` (required), optional `scopes` (JWT `scope`), `subject` (JWT `sub`), `audience` (JWT `aud`, defaults to `token_url`) | RS256 assertion (`kid` = `private_key_id`, lifetime 1 h) posted as `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer` |
+
+- Use `oauth2_refresh_token` when one user granted access once (delegated
+  sign-in). For Google, leave `scopes` off: the refresh token already carries
+  the granted scopes.
+- Use `oauth2_jwt_bearer` for a service account. For Google, the credential
+  keys are the same names as in the service-account key file, `token_url` is
+  `https://oauth2.googleapis.com/token`, and `subject` names the user to act as
+  through domain-wide delegation.
+- The driver reads the token at `$.access_token` and caches it per subject
+  (one entry when no subject applies) until 60 s before `expires_in`;
+  concurrent calls share one in-flight token request. The cache lives in one
+  worker invocation, so each worker task fetches its own token.
+- A rejected token request fails with `AuthFailed` (not retryable), carrying
+  only the HTTP status and a standard OAuth error code such as
+  `invalid_grant`. Key material, assertions and tokens never appear in errors
+  or logs.
+- A rotated `refresh_token` or key applies to the next call once the
+  credential cache (60 s) expires.
 
 ## 4. Shared options
 

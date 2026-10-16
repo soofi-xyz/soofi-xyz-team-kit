@@ -49,7 +49,7 @@ Its own worker-capacity admission protects infrastructure and is distinct from t
 business capacity optimized by a solver.
 
 Debt is an example source entity for such a handoff, not a required solver domain.
-Use Abra for solver design and Xatu/Oranguru for communication-runtime integration.
+Use the solver supporting skill for solver design and the audience supporting skill/the runtime supporting skill for communication-runtime integration.
 The existing [solver parity reference](../../assemble-communication-runtime/reference/current-solver-parity.md)
 is an optional consumer example. It does not define the generic product's output
 schema, score model, rules or scheduling policy.

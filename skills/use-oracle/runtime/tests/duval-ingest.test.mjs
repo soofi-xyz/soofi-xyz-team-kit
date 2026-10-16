@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile, mkdir } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdtemp, readFile, readdir, rm, writeFile, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,11 +22,15 @@ import {
   assertTransformedCounty,
   classifyDuvalFailure,
   hasCompletedTransform,
+  captureRawProperty,
+  requireRawCaptureOutputDir,
   captureAndTransform,
   validateRun,
   buildReconciliationArtifacts,
   duvalAdapter,
   ZIP_LOCAL_FILE_MAGIC,
+  RAW_CAPTURE_BODY_FILENAME,
+  RAW_CAPTURE_RECEIPT_FILENAME,
   TRANSFORMS_DIR,
 } from "../src/counties/duval/adapter.mjs";
 
@@ -112,6 +117,154 @@ describe("COJ detail-page guards", () => {
   it("fails closed when the captured RE # does not match the requested parcel", () => {
     expect(() => assertHtmlMatchesRequestedRe(validHtml, "0000000001R")).toThrow(/does not match requested/);
     expect(assertHtmlMatchesRequestedRe(validHtml, RE_NUMBER)).toBe("096925-0000");
+  });
+});
+
+describe("raw single-property capture", () => {
+  it("writes the official response byte-for-byte with metadata, without transform output", async () => {
+    const tempDir = await mkdtemp(path.join(tmpdir(), "duval-raw-capture-"));
+    try {
+      const [seedRow] = await loadFixtureSeedRows();
+      const body = Buffer.from(
+        '<html><span id="ctl00_cphBody_lblRealEstateNumber">096925-0000</span><p>café</p></html>',
+        "utf8",
+      );
+      const fetchImpl = async (url, options) => {
+        expect(url).toBe(
+          `https://paopropertysearch.coj.net/Basic/Detail.aspx?RE=${RE_NUMBER}`,
+        );
+        expect(options.redirect).toBe("follow");
+        return new Response(body, {
+          status: 200,
+          statusText: "OK",
+          headers: { "content-type": "text/html; charset=utf-8" },
+        });
+      };
+
+      const result = await captureRawProperty({
+        seedRow,
+        outputDir: tempDir,
+        fetchImpl,
+        capturedAt: "2026-09-30T12:00:00.000Z",
+      });
+
+      expect(await readFile(result.bodyPath)).toEqual(body);
+      expect((await readdir(tempDir)).sort()).toEqual(
+        [RAW_CAPTURE_BODY_FILENAME, RAW_CAPTURE_RECEIPT_FILENAME].sort(),
+      );
+      expect(result.receipt).toMatchObject({
+        schemaVersion: "elephant.raw-capture.v1",
+        county: "duval",
+        parcelId: PARCEL_ID,
+        requestIdentifier: RE_NUMBER,
+        capturedAt: "2026-09-30T12:00:00.000Z",
+        response: {
+          status: 200,
+          contentType: "text/html; charset=utf-8",
+          byteLength: body.length,
+          sha256: createHash("sha256").update(body).digest("hex"),
+        },
+        validation: {
+          kind: "coj_re_number",
+          observedIdentifier: "096925-0000",
+          matched: true,
+        },
+      });
+      expect(
+        JSON.parse(await readFile(result.receiptPath, "utf8")),
+      ).toEqual(result.receipt);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("writes nothing when the response is blocked or belongs to another parcel", async () => {
+    const tempRoot = await mkdtemp(path.join(tmpdir(), "duval-raw-reject-"));
+    try {
+      const [seedRow] = await loadFixtureSeedRows();
+      const blockedDir = path.join(tempRoot, "blocked");
+      await expect(
+        captureRawProperty({
+          seedRow,
+          outputDir: blockedDir,
+          fetchImpl: async () =>
+            new Response("<html>Request Blocked</html>", { status: 200 }),
+        }),
+      ).rejects.toThrow(/blocked or challenged/);
+
+      const mismatchedDir = path.join(tempRoot, "mismatched");
+      await expect(
+        captureRawProperty({
+          seedRow,
+          outputDir: mismatchedDir,
+          fetchImpl: async () =>
+            new Response(
+              '<span id="ctl00_cphBody_lblRealEstateNumber">000000-0001</span>',
+              { status: 200 },
+            ),
+        }),
+      ).rejects.toThrow(/does not match requested/);
+
+      expect(await readdir(tempRoot)).toEqual([]);
+    } finally {
+      await rm(tempRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects trackable runtime paths before contacting the source", async () => {
+    let fetchCalled = false;
+    const [seedRow] = await loadFixtureSeedRows();
+    await expect(
+      captureRawProperty({
+        seedRow,
+        outputDir: path.join(RUNTIME_ROOT, "fixtures", "raw-capture"),
+        fetchImpl: async () => {
+          fetchCalled = true;
+          return new Response("", { status: 200 });
+        },
+      }),
+    ).rejects.toThrow(/must be under the OS temp directory/);
+    expect(fetchCalled).toBe(false);
+    expect(
+      requireRawCaptureOutputDir(
+        path.join(RUNTIME_ROOT, ".scratch", "one-property"),
+      ),
+    ).toContain(path.join(".scratch", "one-property"));
+  });
+
+  it("refuses a multi-property seed before any live capture", async () => {
+    const tempDir = await mkdtemp(path.join(tmpdir(), "duval-raw-bounded-"));
+    try {
+      const fixtureSeed = (
+        await readFile(path.join(FIXTURE_DIR, "seed.csv"), "utf8")
+      )
+        .trimEnd()
+        .split("\n");
+      const seedPath = path.join(tempDir, "two-properties.csv");
+      await writeFile(
+        seedPath,
+        `${fixtureSeed[0]}\n${fixtureSeed[1]}\n${fixtureSeed[1]}\n`,
+        "utf8",
+      );
+      const { runCaptureRaw } = await import(
+        "../bin/elephant-county.mjs"
+      );
+      await expect(
+        runCaptureRaw([
+          "--county",
+          "duval",
+          "--seed",
+          seedPath,
+          "--output",
+          path.join(tempDir, "capture"),
+        ]),
+      ).rejects.toThrow(/requires exactly one seed row; received 2/);
+      expect((await readdir(tempDir)).sort()).toEqual([
+        "two-properties.csv",
+      ]);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
   });
 });
 
@@ -257,6 +410,7 @@ describe("captureAndTransform (Gate B fixture, no network)", () => {
   });
 
   it("exposes the same captureAndTransform/validateRun functions on the duvalAdapter object", () => {
+    expect(duvalAdapter.captureRawProperty).toBe(captureRawProperty);
     expect(duvalAdapter.captureAndTransform).toBe(captureAndTransform);
     expect(duvalAdapter.validateRun).toBe(validateRun);
     expect(duvalAdapter.buildReconciliationArtifacts).toBe(
