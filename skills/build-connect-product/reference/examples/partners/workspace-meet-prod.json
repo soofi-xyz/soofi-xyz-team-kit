@@ -15,5 +15,19 @@
         "subject": "connect-reader@example.com"
       }
     }
+  },
+  "webhooks": {
+    "events": {
+      "auth": {
+        "scheme": "signed_token",
+        "issuer": "https://accounts.google.com",
+        "jwks_url": "https://www.googleapis.com/oauth2/v3/certs",
+        "audience": "https://connect.example.com/connect/webhooks/workspace-meet-prod/events",
+        "required_claims": {
+          "email": "pubsub-push@example-project.iam.gserviceaccount.com",
+          "email_verified": true
+        }
+      }
+    }
   }
 }

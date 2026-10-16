@@ -583,12 +583,32 @@
             "type": "object", "additionalProperties": false, "required": ["auth"],
             "properties": {
               "auth": {
-                "type": "object", "additionalProperties": false, "required": ["scheme", "credential"],
+                "type": "object", "required": ["scheme"],
                 "properties": {
-                  "scheme": { "enum": ["header_secret", "hmac_sha256", "basic"] },
-                  "header": { "type": "string" },
-                  "credential": { "$ref": "#/$defs/CredentialName" }
-                }
+                  "scheme": { "enum": ["header_secret", "hmac_sha256", "basic", "signed_token"] }
+                },
+                "allOf": [
+                  { "if": { "properties": { "scheme": { "enum": ["header_secret", "hmac_sha256", "basic"] } } }, "then": {
+                    "additionalProperties": false, "required": ["credential"],
+                    "properties": {
+                      "scheme": true,
+                      "header": { "type": "string" },
+                      "credential": { "$ref": "#/$defs/CredentialName" }
+                    } } },
+                  { "if": { "properties": { "scheme": { "const": "signed_token" } } }, "then": {
+                    "additionalProperties": false,
+                    "required": ["issuer", "jwks_url", "audience", "required_claims"],
+                    "properties": {
+                      "scheme": true,
+                      "issuer": { "type": "string", "minLength": 1, "maxLength": 2048 },
+                      "jwks_url": { "type": "string", "pattern": "^https://" },
+                      "audience": { "type": "string", "minLength": 1, "maxLength": 2048 },
+                      "required_claims": {
+                        "type": "object",
+                        "additionalProperties": { "type": ["string", "number", "boolean"] }
+                      }
+                    } } }
+                ]
               }
             }
           }

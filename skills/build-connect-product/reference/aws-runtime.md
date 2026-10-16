@@ -44,7 +44,7 @@ short-circuit.
 | `api` | Existing job and lookup routes |
 | `schedule` | EventBridge Scheduler schedule created by the activation API in the shared Connect schedule group, targeting the job starter with the activation ID |
 | `drop_zone` | Per-partner prefix in the Connect drop-zone bucket; object-created notifications → SQS → starter, ledger dedupe on `(path, etag)` |
-| `webhook` | Per-partner webhook route with partner auth; events land in SQS; a batcher writes JSONL files by `max_events` / `max_seconds` and starts one job per batch |
+| `webhook` | Per-partner webhook route with partner auth; events land in SQS; a batcher writes JSONL files by `max_events` / `max_seconds` and starts one job per batch. `signed_token` auth fetches the configured `jwks_url` over HTTPS from the ingress (3 s timeout) and caches the keys in memory; give the ingress HTTPS egress to the key endpoint |
 
 The activation API creates, updates, enables and disables these resources at
 runtime. Deploy the scheduler group, drop-zone bucket, webhook ingress and
@@ -83,7 +83,9 @@ products copy what they need to keep.
 Emit per job: flow, version, partner configuration, trigger, status, duration,
 items succeeded/failed/skipped, bytes landed and estimated cost. Alert on
 repeated activation failures, ledger lease expiry storms, webhook
-authentication failures and callback delivery failures. Follow the shared
+authentication failures (`webhook_unauthorized`; a `signed_token` rejection
+logs only its reason, such as `issuer_mismatch`, never the token) and callback
+delivery failures. Follow the shared
 engineering guidelines for alarms and paging.
 
 ## 6. Credential stores
@@ -111,7 +113,7 @@ target store as an engine-change feature piece:
 | `oauth2_refresh_token`, `oauth2_jwt_bearer` | Connect-managed Secrets Manager secret (EventBridge Connections cannot sign a per-subject JWT assertion or hold a user refresh token as a client-credentials grant) | HTTP worker: exchanges the refresh token or signs the assertion, then caches the access token per subject inside one invocation |
 | `password`, `private_key` | Connect-managed Secrets Manager secret | Transfer Family connector `SftpConfig.UserSecretId` |
 | `jdbc` (table-ingestion sources) | Connect-managed Secrets Manager secret | Glue JDBC connection and the extraction job only; snapshot jobs get no grant |
-| `client_certificate`, `connection_string`, `sas`, PGP `keys`, webhook auth, subscriber signing | Credentials table (DynamoDB, client-side encrypted with the Connect KMS key) | Driver or transform worker, webhook ingress, reply signer |
+| `client_certificate`, `connection_string`, `sas`, PGP `keys`, secret-based webhook auth, subscriber signing (`signed_token` webhooks store nothing) | Credentials table (DynamoDB, client-side encrypted with the Connect KMS key) | Driver or transform worker, webhook ingress, reply signer |
 
 In the target, `PUT` and `PATCH` call `CreateConnection` / `UpdateConnection`,
 `PutSecretValue` or a versioned table write; status reads use

@@ -159,6 +159,10 @@ Profiles and their keys (Connect main `src/credentials/profiles.ts`):
 | `webhook_secret` (`header_secret`, `hmac_sha256` webhooks) | `secret` | — |
 | `signing_secret` (subscriber signing) | `secret` | — |
 
+A `signed_token` webhook names no credential: the webhook ingress verifies the
+sender's token against public keys fetched from `jwks_url`
+([flow-spec.md](flow-spec.md) §2).
+
 Validate `values` against the profile's required keys and reject unknown keys. Responses, errors and
 audit records contain key names, version and caller, never values. A rotation
 takes effect on the next call of running and new jobs without redeploying a

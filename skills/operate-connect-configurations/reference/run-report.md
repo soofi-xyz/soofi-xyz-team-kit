@@ -43,6 +43,7 @@ raw PII out; use credential and key names, identifiers and hashes.
 | Checksums match | | |
 | Reply signed | | |
 | Rerun lands nothing | | |
+| Signed-token webhook: real event accepted (2xx), bad token `401` with logged reason | | |
 | No credential values in outputs | | |
 | Latency / duration | | |
 

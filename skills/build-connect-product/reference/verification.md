@@ -25,7 +25,9 @@ does not prove a live partner integration.
   another connection type, activation without subscriber, internal trigger
   type such as `eventbridge`, `oauth2_refresh_token` or `oauth2_jwt_bearer`
   without `token_url`, a non-HTTPS `token_url`, a credential `PUT` with an
-  unknown key or a missing required key for its profile.
+  unknown key or a missing required key for its profile, a `signed_token`
+  webhook that names a `credential` or lacks `issuer`, `jwks_url`, `audience`
+  or `required_claims`.
 
 ## 2. Compiler tests
 
@@ -61,6 +63,7 @@ Azurite, MinIO or moto) and, before release, a real test account:
 | --- | --- |
 | Ledger | Claim, commit on success, release on failure, lease expiry, two concurrent pollers never both claim one item, `replay` re-admits named items, disabled activation keeps state |
 | Pagination | Each style; `MaxPages` stop; `Collect: file` lands JSONL; resume on retry |
+| Signed-token webhooks | A valid RS256 token from the JWKS passes; missing token, malformed token, unknown `kid`, bad signature, wrong `iss` or `aud`, expired or not-yet-valid token, and a `required_claims` mismatch each answer `401 WebhookUnauthorized` with only the reason logged; an unreachable or non-JWKS key endpoint answers `503`; keys are reused within the bounded `max-age` and an unknown `kid` refetches at most once per 60 s; schema rejects `signed_token` with a `credential` or `header`, a non-HTTPS `jwks_url`, or no `required_claims` |
 | Webhooks | Auth rejection; correlation by value; conditions; `EarlyArrival: buffer` delivers an event that arrives before the wait; batch closes on `max_events` and on `max_seconds` |
 | Large payloads | Responses above `MaxInlineBytes` land as files; base64 bodies decode to the right bytes and content type |
 | Decrypt | Valid PGP decrypts; wrong key fails non-retryable; plaintext never logged |

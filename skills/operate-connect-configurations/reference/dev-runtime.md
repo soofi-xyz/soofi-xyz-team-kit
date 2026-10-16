@@ -86,7 +86,11 @@ aws lambda invoke --function-name connect-dev-schedule \
   SSE-KMS, so ETags are not content hashes: a byte-identical re-upload is a new
   object to the ledger.
 - **Webhook.** Post the partner's payload to the webhook route with the
-  partner's auth header; batched webhooks reply once per batch window.
+  partner's auth header; batched webhooks reply once per batch window. A
+  `signed_token` webhook accepts only a token the partner signed, so trigger
+  it from the partner side (for example publish one test message to the topic
+  behind the push subscription) and read the ingress log's rejection reason on
+  a `401`.
 - **Job or lookup.** Call the API with a `callback.url` you control (a
   verification endpoint that checks the reply signature) or a task token.
 
@@ -158,6 +162,14 @@ in Connect's validation.
 | Service-account key file | Credential keys `client_email`, `private_key`, `private_key_id` | `AuthFailed` (`invalid_grant` or key parse failure) |
 | Scopes granted to the service account's client id (domain-wide delegation) or consented by the user | Connection `auth.scopes` (subset of the grant; leave off for Google refresh tokens) | `AuthFailed` (`unauthorized_client` or `invalid_scope`) |
 | The user whose data is read | Connection `auth.subject` or CALL `Subject`, and the `parameters` pattern that pins it | `AuthFailed`, or 403/404 from the API |
+| Event subscription target (Workspace Events `targetResource` user) | The same user as the subject, inside the pinned pattern | Events for one user, reads as another (403/404) |
+| Push endpoint URL | `<ApiUrl>/connect/webhooks/<configuration_id>/<webhook>` with the configuration's id and webhook name | `401` (unknown configuration or webhook), Pub/Sub redelivers |
+| Push audience (defaults to the push endpoint URL) | `signed_token.audience`, character for character | `401` (`audience_mismatch` in Connect logs) |
+| Push authentication service account | `required_claims.email` (plus `email_verified: true`) | `401` (`claim_mismatch`) |
+| Token issuer actually sent | `signed_token.issuer` (`https://accounts.google.com`, or `accounts.google.com` without the scheme) | `401` (`issuer_mismatch`) |
+| Signing keys | `signed_token.jwks_url` (`https://www.googleapis.com/oauth2/v3/certs` for Google) | `401` (`key_unknown`), or `503` when unreachable |
+| Payload unwrapping on the push subscription | Flow and consumer expect the raw event JSON as the body | Body is the Pub/Sub envelope with base64 `message.data` |
+| Enabled activation for the webhook | Activation `enabled: true` before push starts | `404`, Pub/Sub redelivers |
 
 ## Existing dev verification
 

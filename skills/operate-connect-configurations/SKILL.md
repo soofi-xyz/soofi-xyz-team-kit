@@ -49,13 +49,23 @@ user. Ask only for what you cannot recover.
 Read one real example of every object before writing configuration. Field
 names in partner documentation are often wrong; the observed payload wins.
 
+**Push or pull for queue sources.** When the partner offers a message queue
+with both (for example Google Pub/Sub), choose push: a push subscription with
+payload unwrapping (`--push-no-wrapper --push-no-wrapper-write-metadata`) and
+OIDC push authentication, received by a `signed_token` webhook and a webhook
+activation ([signed-token push source](../build-connect-product/reference/use-cases.md#signed-token-push-source)).
+The queue acknowledges on Connect's 2xx. Do not build a pull flow: Connect
+cannot decode an inline base64 message body or project `ackId`s with `[*]`,
+so it cannot acknowledge. Event metadata moved to headers by unwrapping does
+not reach the trigger event; the consumer filters on the body and dedupes.
+
 Then classify:
 
 | Finding | Deliver |
 | --- | --- |
 | Pattern matches a reference flow in `contracts/examples/flows/` | Partner configuration + activation or job request; flow unchanged |
 | Known verbs and options compose it | A new flow, validated and tested like a reference flow |
-| Needs a driver, auth profile, verb or option Connect lacks | Stop; hand to `lapras` with the data profile |
+| Needs a driver, auth profile, verb or option Connect lacks (for example decoding an inline base64 field to JSON, `[*]` projection in `Extract.Save`, a subject allowlist) | Stop; hand to `lapras` with the data profile |
 | Parsing, classification, graph writes, events | Not Connect; the product owns it after the reply |
 
 ## 2. Locate production credentials
@@ -171,7 +181,9 @@ triggers.
    partner configuration and activation.
 3. Trigger exactly as production will: enable and fire the schedule, drop the
    object in the drop zone, post the partner webhook, or start the job or
-   lookup with a verification callback.
+   lookup with a verification callback. For a `signed_token` webhook, enable
+   the activation before pointing the partner's push at it, then send one real
+   signed event; a hand-made token cannot pass.
 4. Poll `GET /connect/jobs/{job_id}` until it is terminal. Check:
    - status (`SUCCEEDED` or the expected `PARTIAL`) and per-item errors;
    - the manifest validates against `#/$defs/ResultManifest`;

@@ -64,6 +64,9 @@ Classify every request before designing anything:
   `oauth2_jwt_bearer`, [blocks](reference/blocks.md) §3). Own the missing
   engine subject allowlist; until it ships, configurations pin the users a job
   may name in the flow's `parameters` schema.
+- Verify signed inbound webhooks with `signed_token` against the partner's
+  published keys; never store a secret for them
+  ([flow specification](reference/flow-spec.md) §2).
 - Land payloads in the Connect bucket and return file pointers with checksums.
   Keep inline responses within `MaxInlineBytes`.
 - Require `limits` on every flow and `Concurrency` on every `Map`.

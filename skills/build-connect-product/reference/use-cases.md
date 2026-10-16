@@ -62,6 +62,7 @@ listed cost.
 | Seller on Box, Google Drive or FTPS | One driver; every file verb and flow works with it |
 | Partner with unusual signed-request auth | One auth profile on `http` |
 | Partner API acting for a user (refresh token or service account with delegation) | Partner configuration with `oauth2_refresh_token` or `oauth2_jwt_bearer` (§5) |
+| Partner pushing events with a signed OIDC token (for example Pub/Sub push) | Partner configuration with a `signed_token` webhook + webhook activation (§5) |
 
 ## 4. Known product-side follow-ups
 
@@ -104,3 +105,48 @@ reads one transcript's entries as the user named in the job request
 - Connect does not restrict which subject a job may name. Pin the user field in
   the flow's `parameters` schema; an engine-level subject allowlist is a
   Connect builder follow-up.
+
+### Signed-token push source
+
+A partner pushes events to Connect and proves its identity with a signed bearer
+token (OIDC) instead of a shared secret. Implemented in Connect main (PR #30)
+as the `signed_token` webhook scheme; no live run is recorded here.
+
+Example: Google Workspace Events (for example Meet
+`google.workspace.meet.transcript.v2.fileGenerated`) published to a Pub/Sub
+topic, delivered by a **push** subscription to
+`POST /connect/webhooks/workspace-meet-prod/events`:
+
+- Create the push subscription with payload unwrapping
+  (`--push-no-wrapper --push-no-wrapper-write-metadata`) and push
+  authentication by a dedicated service account, so the body is the event JSON
+  itself and the `Authorization` header carries a Google-signed OIDC token.
+- Configure the webhook with `signed_token`: issuer, Google's JWKS, the push
+  audience and `required_claims` pinning the push service account's `email`
+  and `email_verified` ([workspace-meet-prod](examples/partners/workspace-meet-prod.json)).
+- Run the reference [partner-webhook-receipt](examples/flows/partner-webhook-receipt.json)
+  flow unchanged through a batched webhook activation
+  ([workspace-transcript-events](examples/activations/workspace-transcript-events.json)).
+  The subscriber parses each event, dedupes and calls
+  [meeting-transcript-entries](examples/flows/meeting-transcript-entries.json)
+  for the transcript it names.
+- Pub/Sub acknowledges on any 2xx. While the activation is enabled, the flow's
+  webhook answers `202` for every authorized event; with no enabled activation
+  Connect answers `404`. A `404`, `401` (bad token) or `503` (key endpoint
+  down) makes Pub/Sub redeliver, so enable the activation before creating the
+  push subscription and attach a dead-letter topic.
+
+Caveats:
+
+- With unwrapping, the event type and message id move to `ce-*` and
+  `x-goog-pubsub-*` headers. Connect uses webhook headers only for auth, so
+  trigger events do not carry them: filter on the body's shape and dedupe in
+  the consuming product.
+- Confirm in one dev run that push authentication still sends the token with
+  unwrapping enabled, and record the `iss` value Google sends.
+
+Pull subscriptions are not supported for this source today: a pulled Pub/Sub
+message carries the event as base64 in `message.data`, and Connect has no step
+that decodes an inline base64 field to JSON, no `[*]` array projection in
+`Extract.Save` to collect the `ackId`s, and so no way to acknowledge. Both
+gaps belong to the Connect builder; do not work around them in a flow.
