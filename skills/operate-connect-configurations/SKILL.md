@@ -15,7 +15,7 @@ language lives in [build-connect-product](../build-connect-product/SKILL.md):
 [flow spec](../build-connect-product/reference/flow-spec.md),
 [blocks](../build-connect-product/reference/blocks.md),
 [use cases](../build-connect-product/reference/use-cases.md). The Connect
-repository (`Spring-Oaks-Capital-LLC/connect`) is authoritative for
+repository that deploys the target stack is authoritative for
 `contracts/flow.schema.json`, `contracts/examples/` and the dev runbook.
 
 Work through the seven steps in order. Record each step's output in the run

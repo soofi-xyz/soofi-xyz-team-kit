@@ -9,13 +9,14 @@ repository's `docs/runbooks/dev-verification.md` and
 | Item | Value |
 | --- | --- |
 | Stack | `Connect-dev` |
-| Account | `951132547414` (development) |
+| Account | The account hosting the target Connect deployment; get it from the user or the deployment's Environment/Account records and never assume a default |
 | Region | `us-east-2` only |
-| Deploy | Pull requests to `main` in `Spring-Oaks-Capital-LLC/connect` run the shared DEV CI/CD workflow; do not deploy by hand |
+| Deploy | Pull requests to the default branch of the Connect repository that owns the target stack run its DEV CI/CD workflow; do not deploy by hand |
 
 ```bash
 export AWS_PROFILE=<selected-profile> AWS_REGION=us-east-2
-test "$(aws sts get-caller-identity --query Account --output text)" = 951132547414
+CONNECT_ACCOUNT=<target-account-id>
+test "$(aws sts get-caller-identity --query Account --output text)" = "$CONNECT_ACCOUNT"
 aws cloudformation describe-stacks --stack-name Connect-dev \
   --query 'Stacks[0].[StackStatus,Outputs]'
 ```
