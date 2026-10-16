@@ -37,8 +37,9 @@ internal-service orchestration engine.
 
 - Write flows from verbs (`LIST`, `FETCH`, `PUT`, `MOVE`, `DELETE`, `CALL`, `POLL`, `WAIT_FOR_WEBHOOK`, `DECRYPT`, `DECODE`) and native control states. Never create a verb named for a provider, format or partner.
 - Keep provider specifics in connection types, tenant specifics in partner configurations, shared behavior in options (`Match`, `Ledger`, `Paginate`, `Idempotency`, `Extract`, `SaveResponseToFile`, `Runner`, `Retry`/`Catch`).
-- Own partner credentials through the Connect credentials API in `reference/architecture.md` §7: `PUT` replaces, `PATCH` merges, reads return key names and set/unset flags only, Account import copies values in. Connections, keys, webhooks and subscribers name a credential; never accept a Secrets Manager ARN or an operator-created secret.
-- Store HTTP auth (`basic`, `api_key`, `bearer`, `oauth2_client_credentials`, OAuth-shaped `token_call`) in Connect-owned EventBridge Connections and call partners through native Step Functions HTTP Tasks. Use the other stores in `reference/aws-runtime.md` §6 only for profiles EventBridge cannot hold. Keep values out of flows, logs, manifests and evidence.
+- Own partner credentials through the Connect credentials API in `reference/architecture.md` §7: `PUT` replaces, `PATCH` merges, reads return `state`, key names, set/unset flags and `used_by` only; build Account import when a request needs it. Connections, keys, webhooks and subscribers name a credential; never accept a Secrets Manager ARN or an operator-created secret.
+- Target Connect-owned EventBridge Connections and native Step Functions HTTP Tasks for HTTP auth that EventBridge can hold (`basic`, `api_key`, `bearer`, `oauth2_client_credentials`, OAuth-shaped `token_call`). Connect main still keeps every credential in its Secrets Manager prefix and calls from the HTTP worker; report that as the implemented state, not the target. Keep values out of flows, logs, manifests and evidence.
+- Keep renewing tokens (`oauth2_refresh_token`, `oauth2_jwt_bearer`, CALL/POLL `Subject`) in the HTTP driver as `reference/blocks.md` §3 describes. Own the missing engine subject allowlist: until it ships, Wingull pins allowed subjects in flow `parameters`.
 - Require `limits` on every flow, `Concurrency` on every `Map`, and an explicit `Overwrite` on every `PUT`. Land large or binary payloads as files.
 - Add a driver only with the full driver interface and conformance suite. Add a verb or option only with evidence from at least two use cases that the catalog cannot compose. Do not add a general `CODE` verb.
 - Keep everything runtime-operable: flows, partner configurations and activations change through the API, with pinned flow versions. Provision shared runtime inactive; never gate a feature behind a CDK context flag.
@@ -53,7 +54,7 @@ Build and maintain source-table ingestion from `reference/table-ingestion/` as a
 
 Own Connect deployment discovery here. Use `build-batch-workflows` directly for fan-out capacity and cost gates. Use the owning product's agent for everything after Connect's reply and `registeel` for Marketplace publication. Hand partner onboarding that needs only configuration, and dev runs of configurations, to Wingull with `operate-connect-configurations`.
 
-Return the request classification, the flows, partner configurations and activations added or changed, any driver, auth profile, option or verb added with its evidence, credentials API and credential-store changes (EventBridge Connection names and states, never values), schema and semantic validation output, compiler and driver test results, and deployment or live-run evidence reported separately from local results.
+Return the request classification, the flows, partner configurations and activations added or changed, any driver, auth profile, option or verb added with its evidence, credentials API and credential-store changes (store names and credential states, never values), schema and semantic validation output, compiler and driver test results, and deployment or live-run evidence reported separately from local results.
 
 ## Shared API domain
 

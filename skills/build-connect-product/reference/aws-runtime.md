@@ -8,8 +8,9 @@ and imported Transfer Family connectors.
 The table below preserves design targets. Static-IP egress and Fargate Runner
 are not established as shipped; do not require or expose them without
 implementation evidence or an explicit engine-change request. Native HTTP Tasks
-with EventBridge Connections are the required target for HTTP auth (§6); when the
-target does not ship them yet, plan them as an engine-change feature piece. Follow the target worker/compiler conformance tests.
+with EventBridge Connections are the required target for HTTP auth (§6); Connect
+main does not ship them yet (every HTTP call runs in the HTTP worker), so plan
+them as an engine-change feature piece. Follow the target worker/compiler conformance tests.
 
 ## 1. Compilation targets
 
@@ -87,20 +88,33 @@ engineering guidelines for alarms and paging.
 
 ## 6. Credential stores
 
-The credentials API (architecture §7) is the only write path. Connect stores each
-credential once, in the store its runtime reads natively, encrypted with the
-Connect KMS key:
+The credentials API (architecture §7) is the only write path.
+
+**Implemented in Connect main.** Every profile is stored as one Secrets Manager
+secret per credential, `connect/<stage>/credentials/<partner>/<credential>`
+(`connect/credentials/` in a Marketplace install), holding
+`{profile, values, version, updated_at}`. Only the API function writes that
+prefix; workers and the webhook ingress read it through a resolver that caches
+values for 60 s. HTTP calls, including `oauth2_refresh_token` and
+`oauth2_jwt_bearer` token requests, run in the HTTP worker; Connect main has no
+EventBridge Connections or native HTTP Tasks yet.
+
+**Design target.** Store each credential once, in the store its runtime reads
+natively, encrypted with the Connect KMS key. Treat moving a profile to the
+target store as an engine-change feature piece:
 
 | Profile or use | Store | Runtime read |
 | --- | --- | --- |
 | `basic`, `api_key`, `bearer`, `oauth2_client_credentials` | EventBridge Connection `connect-<partner>-<credential>` (`BASIC`, `API_KEY`, `API_KEY` with `Authorization: Bearer …`, `OAUTH_CLIENT_CREDENTIALS`) created with `KmsKeyIdentifier` | Native HTTP Task `Authentication.ConnectionArn`, resolved per job from the partner configuration; EventBridge fetches and refreshes OAuth tokens |
 | `token_call` | EventBridge Connection as `OAUTH_CLIENT_CREDENTIALS` with `OAuthHttpParameters` when the token endpoint returns `access_token`; otherwise the credentials table | HTTP Task, or the HTTP worker performing the token call |
 | HTTP worker calls (`Mode: file`, `Collect: file`, `static_ip`) on the profiles above | The same EventBridge Connection | The worker reads the connection's managed secret (`SecretArn` from `DescribeConnection`); never a second copy |
+| `oauth2_refresh_token`, `oauth2_jwt_bearer` | Connect-managed Secrets Manager secret (EventBridge Connections cannot sign a per-subject JWT assertion or hold a user refresh token as a client-credentials grant) | HTTP worker: exchanges the refresh token or signs the assertion, then caches the access token per subject inside one invocation |
 | `password`, `private_key` | Connect-managed Secrets Manager secret | Transfer Family connector `SftpConfig.UserSecretId` |
 | `jdbc` (table-ingestion sources) | Connect-managed Secrets Manager secret | Glue JDBC connection and the extraction job only; snapshot jobs get no grant |
 | `client_certificate`, `connection_string`, `sas`, PGP `keys`, webhook auth, subscriber signing | Credentials table (DynamoDB, client-side encrypted with the Connect KMS key) | Driver or transform worker, webhook ingress, reply signer |
 
-`PUT` and `PATCH` call `CreateConnection` / `UpdateConnection`, `PutSecretValue`
-or a versioned table write. Status reads use `DescribeConnection` and item
-metadata. Surface a `DEAUTHORIZED` connection as a credential failure in the job
-manifest. Never log request bodies or provider responses from these calls.
+In the target, `PUT` and `PATCH` call `CreateConnection` / `UpdateConnection`,
+`PutSecretValue` or a versioned table write; status reads use
+`DescribeConnection` and item metadata; a `DEAUTHORIZED` connection surfaces as
+a credential failure in the job manifest. In every store, never log request
+bodies, token responses or provider responses from these calls.

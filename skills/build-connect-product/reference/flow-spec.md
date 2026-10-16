@@ -40,6 +40,10 @@ semantic checks in §6. Worked documents are in [examples/](examples/).
   capabilities, so a flow that works for Azure also works for SFTP and S3.
 - `parameters` and `partner_parameters` are JSON Schemas for `$.request` and
   `$.partner`. Undeclared fields are rejected.
+- When a `CALL` takes `Subject` from `$.request`, pin the field with a
+  `pattern` (for example `^[^@]+@example\.com$`). Connect has no subject
+  allowlist, so the schema is the only control on which user a job caller may
+  act as.
 - `triggers` lists which activation kinds may run the flow (`api`,
   `schedule`, `drop_zone`, `webhook`).
 - `webhooks` declares named inbound webhooks and their correlation contract;
@@ -73,11 +77,14 @@ semantic checks in §6. Worked documents are in [examples/](examples/).
 }
 ```
 
-Bind every alias the flow declares. Name credentials only; set their values
-through the credentials API ([architecture.md](architecture.md) §7). `keys` names
-the PGP or signing key credential for `DECRYPT` and webhook auth.
+Bind every alias the flow declares. Name credentials only, never values or
+Secrets Manager ARNs; set their values through the credentials API
+([architecture.md](architecture.md) §7). A configuration may name a credential
+that is not set yet; a job that needs it fails before any partner request.
+`keys` names `pgp_key` credentials (the key and its passphrase) for `DECRYPT`.
 `webhooks.<name>.auth` configures inbound webhook authentication
-(`header_secret`, `hmac_sha256`, `basic`).
+(`header_secret` and `hmac_sha256` name a `webhook_secret` credential, `basic`
+a `basic` one).
 
 ## 3. Activation
 

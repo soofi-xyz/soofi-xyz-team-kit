@@ -61,6 +61,7 @@ listed cost.
 | Partner API returning paged JSON | `CALL` + `Paginate` |
 | Seller on Box, Google Drive or FTPS | One driver; every file verb and flow works with it |
 | Partner with unusual signed-request auth | One auth profile on `http` |
+| Partner API acting for a user (refresh token or service account with delegation) | Partner configuration with `oauth2_refresh_token` or `oauth2_jwt_bearer` (§5) |
 
 ## 4. Known product-side follow-ups
 
@@ -73,3 +74,33 @@ migration plan for each product rather than into Connect:
   layout checks and Input QC.
 - M2D subscribes to seller and Elevate intake replies and starts its own
   preprocessing; unpacking stays in M2D.
+
+## 5. Generic patterns
+
+These patterns are tenant-neutral. The Google Workspace examples use fake
+values; they show the configuration shape, not an observed deployment.
+
+### OAuth2 delegated sign-in
+
+A partner API returns data that belongs to one user, so Connect must call it as
+that user. Implemented in Connect main (PR #29); no live run is recorded here.
+
+| Situation | Auth profile | Credential keys | Connection settings |
+| --- | --- | --- | --- |
+| One user granted access once (consent screen) | `oauth2_refresh_token` | `client_id`, `client_secret`, `refresh_token` | `token_url`; leave `scopes` off for Google |
+| An administrator delegated scopes to a service account for the domain | `oauth2_jwt_bearer` | `client_email`, `private_key`, `private_key_id` (the service-account key file's names) | `token_url`, `scopes`, default `subject`; optional `audience` |
+
+Example: Google Workspace APIs with domain-wide delegation. The partner
+configuration [workspace-meet-prod](examples/partners/workspace-meet-prod.json)
+binds the Meet API with `oauth2_jwt_bearer`; the flow
+[meeting-transcript-entries](examples/flows/meeting-transcript-entries.json)
+reads one transcript's entries as the user named in the job request
+(`Subject: "$.request.user"`), with the user pinned to the domain by the flow's
+`parameters` schema.
+
+- Keep the connection's `scopes` within the scopes granted to the service
+  account's client id in the domain-wide-delegation grant; a scope outside the
+  grant fails the token request (`AuthFailed`, `unauthorized_client`).
+- Connect does not restrict which subject a job may name. Pin the user field in
+  the flow's `parameters` schema; an engine-level subject allowlist is a
+  Connect builder follow-up.

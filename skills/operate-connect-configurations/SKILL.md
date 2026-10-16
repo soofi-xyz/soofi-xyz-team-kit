@@ -35,7 +35,9 @@ user. Ask only for what you cannot recover.
   `drop_zone`; host or account, paths or endpoints, pagination, rate limits,
   static-IP allowlisting.
 - **Auth.** Profile (API key header, basic, bearer, OAuth client credentials,
-  SFTP password or private key, assume role with external id, PGP keys).
+  OAuth refresh token for one user's grant, service-account JWT bearer acting
+  as a user, SFTP password or private key, assume role with external id, PGP
+  keys). For a user-scoped API, record which user or users Connect acts as.
 - **Shape.** For each object: format, field names as the partner really sends
   them, size range (p50, max), counts per run, encoding (base64, PGP, zip),
   naming pattern, and how the partner marks "already processed" (archive
@@ -63,7 +65,10 @@ Then classify:
   Record the source, account and the keys it holds. Do not read values into
   the conversation; inspect keys and value lengths only.
 - Record the partner's side of auth: allowlisted IPs (Connect egress must be
-  added), host key fingerprint, OAuth token URL, role ARN and external id.
+  added), host key fingerprint, OAuth token URL, granted scopes (for a service
+  account, the domain-wide-delegation grant on its client id), role ARN and
+  external id. Check every pair in the
+  [values-that-must-match checklist](reference/dev-runtime.md#values-that-must-match).
 - Plan the production Connect credential: its name, profile and keys, and
   whether it is imported from Account or set with `PUT`. Do not set production
   credentials until a production Connect stack exists and the user approves.
@@ -76,9 +81,11 @@ Prefer, in order:
    example `dev/<partner>/...`). Set them as a Connect credential with
    `PUT /connect/partners/<partner>/credentials/<name>` (`{profile, values}`),
    piping values from the source into the signed request without printing
-   them, or `POST .../import` when Account holds them. Confirm with `GET` that
-   every required key is set and, for HTTP profiles, the EventBridge Connection
-   is `AUTHORIZED`.
+   them. Use `POST .../import` from Account only when the target ships that
+   route (Connect main does not). Confirm with `GET` that `state` is `SET`,
+   every key of the profile is `true` and `used_by` lists the expected
+   configurations. Never paste tokens, refresh tokens or key files into chat,
+   logs or evidence.
 2. **Partner production, read-only**, only with explicit user approval, only
    GET/LIST operations, and only when no QA exists.
 3. **A test partner you control**: a Connect-owned Transfer Family SFTP server,
@@ -124,6 +131,10 @@ Rules for the sample:
   fires (`0 5 1 1 ? 2099`); the test enables and fires them explicitly.
 - Set `limits` on every new flow, `Concurrency` on every `Map`, and an explicit
   `Overwrite` on every `PUT`.
+- When a `CALL` sets `Subject` from `$.request`, pin that field in the flow's
+  `parameters` schema with a `pattern` for the allowed users (for example
+  `^[^@]+@example\.com$`, or an explicit alternation). Connect has no subject
+  allowlist; record the gap for `lapras` rather than leaving the field open.
 - Validate every document with the Connect repo's spec module (the same
   schema and semantic checks the API applies) before touching dev. Kinds:
   `Flow`, `PartnerConfiguration`, `Activation`, `JobRequest`,

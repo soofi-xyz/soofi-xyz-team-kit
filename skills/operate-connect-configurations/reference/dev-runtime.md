@@ -57,9 +57,10 @@ the credentials.
 | `PUT /connect/activations/{activation_id}` | Create or replace an activation |
 | `GET /connect/activations/{activation_id}` | Read it |
 | `POST /connect/activations/{activation_id}/enable` and `/disable` | Switch it at runtime |
-| `PUT` / `PATCH /connect/partners/{partner}/credentials/{name}` | Replace or merge credential values (responses carry key names only) |
-| `GET /connect/partners/{partner}/credentials/{name}` | Key set/unset flags, version, EventBridge Connection state |
-| `POST /connect/partners/{partner}/credentials/{name}/import` | Copy values from Account |
+| `PUT /connect/partners/{partner}/credentials/{name}` | Set `{profile, values}`, replacing all values (responses carry key names only) |
+| `PATCH /connect/partners/{partner}/credentials/{name}` | Merge `{values}` into an existing credential |
+| `GET /connect/partners/{partner}/credentials` and `.../{name}` | `state` (`SET` / `MISSING`), key set/unset flags, version, `updated_at`, `used_by` |
+| `DELETE /connect/partners/{partner}/credentials/{name}` | Delete a credential nothing names (`409 CredentialInUse` otherwise) |
 | `POST /connect/partners/{partner}/flows/{flow}/jobs` | Start a job (`transaction_id` is the idempotency key) |
 | `POST /connect/partners/{partner}/lookups/{lookup}` | Synchronous lookup (`kind: lookup` flows) |
 | `POST /connect/partners/{partner}/uploads` | Presigned PUT for a file the product delivers |
@@ -91,16 +92,21 @@ aws lambda invoke --function-name connect-dev-schedule \
 
 ## Credentials
 
-- Set partner credentials only through the credentials API. Connect stores HTTP
-  auth in its own EventBridge Connections and SFTP auth in its own connector
-  secrets; never create or tag secrets for Connect. Read source secrets, never
-  change them. Verify the routes exist in the target before use; a missing
-  route is a `lapras` gap.
-- Values by profile: `basic` and SFTP `password` as `{username, password}`;
-  `api_key` and `bearer` as `{value}`; `oauth2_client_credentials` as
-  `{client_id, client_secret}`; SFTP `private_key` as `{username, private_key}`;
-  PGP as `{private_key, passphrase}`; table-ingestion `jdbc` as
-  `{username, password}`.
+- Set partner credentials only through the credentials API. Connect main stores
+  each credential in its own Secrets Manager prefix
+  (`connect/<stage>/credentials/<partner>/<name>`); never create, tag or edit
+  secrets for Connect. Read source secrets, never change them. Verify the routes
+  exist in the target before use; a missing route is a `lapras` gap.
+- Values by profile (Connect main): `basic` as `{username, password}`; `api_key`
+  as `{api_key}`; `bearer` as `{token}`; `oauth2_client_credentials` and
+  `token_call` as `{client_id, client_secret}`; `oauth2_refresh_token` as
+  `{client_id, client_secret, refresh_token}`; `oauth2_jwt_bearer` as
+  `{client_email, private_key, private_key_id?}`; `client_certificate` as
+  `{cert, key, ca?}`; SFTP `password` as `{password}` and `private_key` as
+  `{private_key}` (the SFTP `username` is a connection field);
+  `connection_string`; `sas`; `pgp_key` as `{private_key, passphrase?}`;
+  `webhook_secret` and `signing_secret` as `{secret}`. Unknown keys are
+  rejected. Table-ingestion `jdbc` applies only where the target defines it.
 - Set values without printing them, for example:
 
 ```bash
@@ -113,6 +119,26 @@ aws secretsmanager get-secret-value --secret-id <source-secret> \
       -H 'content-type: application/json' --data @- \
       "${API_URL%/}/connect/partners/<partner>/credentials/<name>"
 ```
+
+- For `oauth2_jwt_bearer`, take the three keys straight from the
+  service-account key file the partner admin issued (its names match the
+  profile). Keep the file out of the repository and the conversation, and
+  delete local copies after the `PUT`:
+
+```bash
+jq '{profile: "oauth2_jwt_bearer",
+     values: {client_email, private_key, private_key_id}}' <key-file.json> \
+  | curl -sS -X PUT --aws-sigv4 "aws:amz:us-east-2:execute-api" \
+      --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
+      -H "x-amz-security-token: $AWS_SESSION_TOKEN" \
+      -H 'content-type: application/json' --data @- \
+      "${API_URL%/}/connect/partners/<partner>/credentials/<name>" \
+  | jq '{state, keys, version}'
+```
+
+- For `oauth2_refresh_token`, set `{client_id, client_secret, refresh_token}`
+  from where the consent flow stored them, the same way. When the partner
+  rotates the refresh token, `PATCH` only `refresh_token`.
 - SFTP in Lambda goes through a Transfer Family connector
   (`transfer_connector_id` on the connection). The partner must allowlist the
   connector's static egress IPs. A listing of a missing directory ends after
@@ -120,6 +146,18 @@ aws secretsmanager get-secret-value --secret-id <source-secret> \
   fail with `NotFound`.
 - `assume_role` connections may name roles in other accounts only, and the
   partner's trust policy must name the Connect worker role that uses it.
+
+## Values that must match
+
+Check each pair before the first dev run; a mismatch fails at the partner, not
+in Connect's validation.
+
+| Partner side | Connect side | Mismatch shows as |
+| --- | --- | --- |
+| OAuth token endpoint | Connection `auth.token_url` (`https://oauth2.googleapis.com/token` for Google) | `AuthFailed`, HTTP 4xx |
+| Service-account key file | Credential keys `client_email`, `private_key`, `private_key_id` | `AuthFailed` (`invalid_grant` or key parse failure) |
+| Scopes granted to the service account's client id (domain-wide delegation) or consented by the user | Connection `auth.scopes` (subset of the grant; leave off for Google refresh tokens) | `AuthFailed` (`unauthorized_client` or `invalid_scope`) |
+| The user whose data is read | Connection `auth.subject` or CALL `Subject`, and the `parameters` pattern that pins it | `AuthFailed`, or 403/404 from the API |
 
 ## Existing dev verification
 

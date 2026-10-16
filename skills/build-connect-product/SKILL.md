@@ -1,6 +1,6 @@
 ---
 name: build-connect-product
-description: "Build Connect, the only layer that talks to external systems, as configurable blocks: generic verbs (LIST, FETCH, PUT, MOVE, CALL, POLL, WAIT_FOR_WEBHOOK, DECRYPT) over typed connections (http, sftp, azure_blob, s3, drop_zone), shared options (ledger, pagination, file landing), partner configurations, activations (schedule, drop zone, webhook) and a job API, compiled to Step Functions. Use for Connect engine changes, drivers and verbs; use Wingull for partner configurations."
+description: "Build Connect, the only layer that talks to external systems, as configurable blocks: generic verbs (LIST, FETCH, PUT, MOVE, CALL, POLL, WAIT_FOR_WEBHOOK, DECRYPT) over typed connections (http, sftp, azure_blob, s3, drop_zone) with renewing OAuth token profiles, shared options (ledger, pagination, file landing), partner configurations, activations (schedule, drop zone, webhook) and a job API, compiled to Step Functions. Use for Connect engine changes, drivers and verbs; use Wingull for partner configurations."
 ---
 
 Use [the Connect capability map](../guide-product-work/reference/iterations/connect.md). Derive the feature pieces from scope and dependencies, then apply the work below within each piece; require a user-run configuration, AWS inspection and feedback before starting the next implementation piece.
@@ -56,9 +56,14 @@ Classify every request before designing anything:
   configurations, and shared behavior in options.
 - Own partner credentials through the Connect credentials API
   ([architecture](reference/architecture.md) §7). Connections name a
-  credential; flows never do. Hold HTTP auth in Connect-owned EventBridge
-  Connections used by native HTTP Tasks
+  credential; flows never do. Target Connect-owned EventBridge Connections
+  used by native HTTP Tasks for HTTP auth; Connect main still stores every
+  credential in its own Secrets Manager prefix and calls from the HTTP worker
   ([AWS runtime](reference/aws-runtime.md) §6).
+- Renew user-scoped tokens in the HTTP driver (`oauth2_refresh_token`,
+  `oauth2_jwt_bearer`, [blocks](reference/blocks.md) §3). Own the missing
+  engine subject allowlist; until it ships, configurations pin the users a job
+  may name in the flow's `parameters` schema.
 - Land payloads in the Connect bucket and return file pointers with checksums.
   Keep inline responses within `MaxInlineBytes`.
 - Require `limits` on every flow and `Concurrency` on every `Map`.

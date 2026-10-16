@@ -44,7 +44,7 @@ company owns as internal, even when a partner originally produced the data.
 | --- | --- |
 | **Partner** | An external organization or system. Namespace for connections, flows and lookups. |
 | **Connection** | A named, typed endpoint of a partner (`http`, `sftp`, `azure_blob`, `s3`, `drop_zone`). Carries location, auth profile and the name of its credential. The type selects a driver. |
-| **Credential** | Named secret values of a partner (for example `username`/`password`, an API key, OAuth client credentials, an SFTP key, a PGP key). Set only through the credentials API (§7); connections, keys, webhooks and subscribers name it. |
+| **Credential** | Named secret values of a partner (for example `username`/`password`, an API key, OAuth client credentials, a refresh token, a service-account key, an SFTP key, a PGP key). Set only through the credentials API (§7); connections, keys, webhooks and subscribers name it. |
 | **Partner configuration** | Per tenant and environment: binds a flow's connection aliases to concrete connections, and holds partner parameters (prefixes, cutoffs, key credentials, allowed actions). One flow serves many partner configurations. |
 | **Flow** | A versioned, multi-step, asynchronous interaction written from verbs. Compiled to a STANDARD state machine. |
 | **Lookup** | A single synchronous `CALL`. Compiled to an EXPRESS state machine and answered inline. |
@@ -77,7 +77,7 @@ reply-back, metrics or auth plumbing; the compiler adds them to every flow.
 ```text
 Trigger (API call | schedule | drop-zone object | partner webhook)
   → resolve activation / partner configuration (credentials stay in their
-    store; the job carries credential names and EventBridge Connection ARNs)
+    store; the job carries credential names, never values)
   → create job_id, persist the request, return 202 for API calls
   → run the compiled flow: verbs, waits, loops, choices
   → land every fetched payload in the Connect bucket as file pointers
@@ -130,16 +130,36 @@ create, tag or reference those stores.
 - `PATCH /partners/{partner}/credentials/{credential}` with `{values}` → merge
   the supplied keys and keep the rest.
 - `GET /partners/{partner}/credentials` and
-  `GET /partners/{partner}/credentials/{credential}` → profile, key names with
-  set/unset flags, version, `updated_at` and, for HTTP profiles, the
-  EventBridge Connection state. Never return values.
-- `POST /partners/{partner}/credentials/{credential}/import` with an Account
-  source → copy the values from the Account product and return the affected
-  key names. Verify the Account API exposes the source before relying on it.
-- `DELETE /partners/{partner}/credentials/{credential}` → `409` while a
-  partner configuration, webhook or activation names it.
+  `GET /partners/{partner}/credentials/{credential}` → `state` (`SET` or
+  `MISSING` for a name a configuration uses but nobody set), profile, key names
+  with set/unset flags, version, `updated_at` and `used_by` (the configurations,
+  webhooks and activations naming it). Never return values.
+- `DELETE /partners/{partner}/credentials/{credential}` → `409`
+  (`CredentialInUse`) while a partner configuration, webhook or activation
+  names it.
+- Account import (`POST .../credentials/{credential}/import`) is a design
+  target. Connect main does not ship the route; verify it in the target before
+  relying on it.
 
-Validate `values` against the profile's required keys. Responses, errors and
+Profiles and their keys (Connect main `src/credentials/profiles.ts`):
+
+| Profile | Required keys | Optional keys |
+| --- | --- | --- |
+| `basic` | `username`, `password` | — |
+| `api_key` | `api_key` | — |
+| `bearer` | `token` | — |
+| `oauth2_client_credentials`, `token_call` | `client_id`, `client_secret` | — |
+| `oauth2_refresh_token` | `client_id`, `client_secret`, `refresh_token` | — |
+| `oauth2_jwt_bearer` | `client_email`, `private_key` | `private_key_id` |
+| `client_certificate` | `cert`, `key` | `ca` |
+| `password` (SFTP) | `password` | — |
+| `private_key` (SFTP) | `private_key` | — |
+| `connection_string`, `sas` (Azure) | `connection_string` / `sas` | — |
+| `pgp_key` (`keys.*`) | `private_key` | `passphrase` |
+| `webhook_secret` (`header_secret`, `hmac_sha256` webhooks) | `secret` | — |
+| `signing_secret` (subscriber signing) | `secret` | — |
+
+Validate `values` against the profile's required keys and reject unknown keys. Responses, errors and
 audit records contain key names, version and caller, never values. A rotation
 takes effect on the next call of running and new jobs without redeploying a
 flow. Accept flows, partner configurations and activations that name a
@@ -148,8 +168,8 @@ credentials exist; report the missing credential names and unset keys on read.
 A job that needs such a credential fails before any partner request.
 
 Keep non-secret auth settings (`header`, `prefix`, `token_url`, `token_path`,
-`scopes`, `role_arn`) on the connection; keep only secret values in the
-credential.
+`scopes`, `subject`, `audience`, `role_arn`, `external_id`) and SFTP
+`username` on the connection; keep only secret values in the credential.
 
 ## 8. Lineage and what changes
 
