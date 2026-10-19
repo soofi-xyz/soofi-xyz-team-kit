@@ -6,7 +6,7 @@ legacy-stack binding cases in the relevant feature acceptance checks.
 
 
 Use Regigigas for service features and Registeel for supported catalog operations.
-Apply the [shared workflow](../../SKILL.md). These six capabilities have separate
+Apply the [shared workflow](../../SKILL.md). These seven capabilities have separate
 user-visible outcomes; derive the scoped plan and dependency order from the target
 [operation contract](../../../operate-marketplace/reference/api-contract.md).
 Use only authorized catalog objects and genuine CDK cloud-assembly bundles that
@@ -19,6 +19,7 @@ the Build service built from a product's merged default branch.
 | `bundle-publication` — submit a cloud-assembly bundle | Registered component and an authorized cloud-assembly bundle | Deliver bundle intake, immutable provenance and publication request; configure a valid publication plus an invalid artifact case. | Inspect intake logs, bundle identity and review handoff; distinguish accepted publication from VALID status. |
 | `review-lifecycle` — understand validation status | Bundle publication | Deliver asynchronous review, supported settings and failure diagnostics; configure allowed review policy variants and inspect success/failure. | Follow the actual review execution/worker logs to terminal status; identify the failing check and corrected review. |
 | `rollback` — select a prior valid bundle | Existing VALID versions | Deliver supported rollback/provenance; configure rollback between authorized test versions and a disallowed target. | Inspect rollback logs and active-version read-back; verify provenance and rejection of invalid targets. |
+| `api-description` — require and publish an API description | Bundle publication and review lifecycle; the [API description contract](../api-description.md) | Deliver the review and store-step spec checks under `API_SPEC_POLICY` and Documentation publication of VALID SERVICE bundles; exercise a valid spec, a missing one (`ApiSpecMissing`), a configuration bundle and a Documentation rejection. | Inspect `review_details.api_spec_logs` and `documentation_logs` and the Documentation catalog entry; prove a failed publication leaves the bundle VALID. |
 | `publication-notifications` — observe a publication event | Supported publication transition | Deliver supported notification routing/delivery; configure a test destination and a failed/retried delivery case where available. | Inspect publication and delivery logs independently; compare event identity, recipient test receipt and retry outcome. |
 
 Keep tests within each feature. Registering one component usually selects one

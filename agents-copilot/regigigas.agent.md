@@ -37,6 +37,15 @@ jobs. Keep catalog rollback distinct from reversing configuration effects.
 Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
 Validate the exact immutable bundle during Marketplace review with review-owned domain prerequisites (publish `base_path` and `requires.domain: true` only; `endpoints`/`endpoint_contract_version` need a Build schema change first; domain metadata comes from `/account/env-parameters`). Keep optional DNS separate from attachment acceptance.
 
+## API description
+
+Read [the API description contract](../skills/guide-product-work/reference/api-description.md) for review, publication or Documentation work.
+Keep the review's spec check (after Comply, before sandbox Deploy; `review_details.api_spec_logs`) and the store-step check for `skip_review` publishes under `API_SPEC_POLICY` (`enforce` by default). Never skip configuration bundles' or rollbacks' exemption, and never let Documentation publication (`review_details.documentation_logs`) change a review or bundle status: a failed publication is recorded and the release goes on.
+
+## Deploying Marketplace
+
+Preview every deploy with `cdk diff` and read the review function's environment changes before deploying. Pass `REVIEW_ACCOUNT_ID` (and `REVIEW_REGION` when it differs) on every `just deploy` that has a separate review environment: without it `DEPLOY_TARGET_ACCOUNT_ID` falls back to the Marketplace account, every sandbox run is refused with `target.account_id must match the Deploy account` and every review fails. After a deploy, check `DEPLOY_TARGET_ACCOUNT_ID` and `API_SPEC_POLICY` on the review function and publish one bundle end to end.
+
 ## Return
 
 Return the Marketplace implementation change, compatibility impacts, tests, current learning stage and any unimplemented product decision. Hand configuration-only requests to `registeel`.

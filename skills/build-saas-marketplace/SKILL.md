@@ -41,6 +41,16 @@ and any remaining runtime or integration gaps.
 Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
 Verify configuration-bundle publication and review with compatible provider/API prerequisites; keep catalog rollback distinct from API compensation.
 
+## API description
+
+For review, publication or Documentation work, read and apply
+[the API description contract](../guide-product-work/reference/api-description.md).
+Marketplace checks the packed `requirements/swagger.yml` under `API_SPEC_POLICY`
+and sends each VALID SERVICE bundle's spec to Documentation without ever changing
+the review or bundle status. Pass `REVIEW_ACCOUNT_ID` on every deploy with a
+separate review environment, and preview the review function's environment first:
+without it every review targets the Marketplace account and fails.
+
 ## Shared API domain
 
 For API infrastructure, packaging, review or installation, read and apply
