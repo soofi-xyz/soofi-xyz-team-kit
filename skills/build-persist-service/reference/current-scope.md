@@ -13,8 +13,9 @@ updates, runtime index/trigger CRUD or webhook trigger delivery by default.
 
 Check these reported differences explicitly when the task touches them:
 
-- Gremlin `/explain` and the shadow-only payment-metric materializer are reported
-  as implemented but underrepresented in the older instructions.
+- Gremlin `/explain` is reported as implemented but underrepresented in the
+  older instructions. The shadow-only payment-metric materializer was removed;
+  metrics are real-time `metric_cell`s (see the 2026-10-21 section below).
 - Trigger delivery uses EventBridge, SQS/DLQ and occurrence identities. Distinguish
   emitted trigger events from the incoming `GraphFactProduced` ingestion path.
 - The graph represents one company; historical per-tenant deployment wording
@@ -62,3 +63,15 @@ business-fact ingestion. Uxie previews, configures and verifies supported behavi
 Conkeldurr builds missing APIs/runtime. This requested scope extends artifact-only
 lexicon consumption in the older PRD; it does not prove deployed support or
 authorize changes to services or API documentation during a kit update.
+
+## Real-time metrics and the API-managed metrics catalog (2026-10-21)
+
+Load [the metrics reference](metrics-catalog.md) for metric cells, backfill,
+activation or catalog changes. Persist projects every payment metric into
+`metric_cell` vertices from the Neptune stream through per-debt and GLOBAL FIFO
+lanes, and makes definitions visible only through the activation pointer. The
+catalog (v3 catalog plus its v2 base) is read from Persist's API-managed pointer
+(`PUT /persist/metrics/catalog`, Persist PR #347) first, and from the
+Model/Lexicon-published SSM boundary only while no pointer exists. Model stays
+authoritative for definitions; Persist validates, installs and projects them.
+Verify the target revision before claiming the API exists.

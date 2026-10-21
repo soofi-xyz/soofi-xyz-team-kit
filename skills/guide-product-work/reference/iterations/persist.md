@@ -1,7 +1,7 @@
 # Persist capability map
 
 Use Conkeldurr to implement capabilities and Uxie to configure existing ones.
-Derive the scoped plan using the [shared workflow](../../SKILL.md). These twelve
+Derive the scoped plan using the [shared workflow](../../SKILL.md). These thirteen
 capability areas are a starting inventory, not a fixed count for either agent.
 Select requested features, order dependencies, and split further where a usable
 capability needs its own checkpoint. Apply tests and user/AWS feedback to every
@@ -20,11 +20,14 @@ selected piece; do not reserve failure testing for the end.
 | `index-rebuild` — initialize or backfill derived facts | Ingested facts and governed index definition | Deliver supported initial materialization/rebuild; configure dry-run and authorized write variants with matching/nonmatching records. | Inspect rebuild/shard execution and summary, read the initial index values and verify the bootstrap watermark/checkpoint. |
 | `index-maintenance` — keep derived facts current | Initialized index and valid stream checkpoint | Deliver incremental maintenance; configure source changes and interrupted/replayed processing. | Follow poller/materializer logs and index read-back; verify freshness, idempotency and checkpoint advancement only after completed writes. |
 | `triggers` — emit a configured occurrence | Ingested facts and change delivery | Deliver governed trigger evaluation/delivery; configure a predicate with matching/nonmatching changes and duplicate delivery. | Inspect actual evaluation and EventBridge/SQS consumer logs, occurrence identity and any DLQ; prove no duplicate effect. |
+| `metrics` — project governed metrics into real-time cells | Approved Model metric catalog release; ingested facts; stream checkpoint; stream export for date backfills | Deliver or exercise [real-time metrics and the metrics catalog](../../../build-persist-service/reference/metrics-catalog.md): validated `PUT /persist/metrics/catalog`, per-debt/GLOBAL projection, backfill and gated activation; configure a catalog change, a confirmed backfill window and an `ACTIVATE` plan. | Inspect the catalog `GET` version, projector logs naming the catalog source, activation `STATUS` sync and gates, backfill counters and coverage, and one debt's cell read-back; prove a refused invalid catalog, 409 while Lexicon-published, a no-op replay and rollback to the recorded previous generation. |
 | `vector-search` — find graph facts by meaning through GraphQL | Approved Model-owned field eligibility; ingested facts; verified GraphQL source/root discovery and OpenSearch capabilities | Deliver the [separate vector-search piece](../../../build-persist-service/reference/vector-search.md): evaluated/pinned embeddings, complete FTS text, backfill/stream maintenance and a search data source with GraphQL ranking/hydration; configure lexical, semantic and hybrid queries over marked vertex/edge fields. | Inspect model/profile and lexicon versions, index generation, backfill status, stream lag and correlated GraphQL/source logs; prove ranked graph read-back, exclusion of unmarked fields from embeddings, replay/delete recovery and existing FTS compatibility. |
 
 Use [current-scope reconciliation](../../../build-persist-service/reference/current-scope.md)
 and relevant [implementation details](../../../build-persist-service/reference/PRD.md).
-Do not combine indexes and triggers into one generic “downstream effect”. Discover
+Do not combine indexes and triggers into one generic “downstream effect”, and keep
+metrics separate from both: a metric definition change is a catalog install
+followed by backfill and activation, never a derived-index rebuild. Discover
 supported publication procedures; never assume runtime CRUD or a state machine.
 Table order is not deployment order: verify the target async implementation and
 complete its bulk-loading dependency before claiming an end-to-end async ingest.

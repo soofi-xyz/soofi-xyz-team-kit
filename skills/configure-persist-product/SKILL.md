@@ -1,6 +1,6 @@
 ---
 name: configure-persist-product
-description: "Configure and test the current lexicon catalog, ingestion, queries, governed indexes, triggers or GraphQL vector search on an existing Persist deployment. Use Uxie to sync/query current definitions or make a field searchable; hand engine changes to Conkeldurr."
+description: "Configure and test the current lexicon catalog, ingestion, queries, the metrics catalog with metric backfill and activation, governed indexes, triggers or GraphQL vector search on an existing Persist deployment. Use Uxie to sync/query current definitions, install metric definitions or make a field searchable; hand engine changes to Conkeldurr."
 ---
 
 Use [the Persist capability map](../guide-product-work/reference/iterations/persist.md). Derive the feature pieces from scope and dependencies, then apply the work below within each piece; require a user-run configuration, AWS inspection and feedback before starting the next implementation piece.
@@ -54,6 +54,24 @@ source digest. Verify a no-op repeat and scoped removal without changing facts.
 Report absent preview/reconciliation support as a Conkeldurr gap; never simulate
 it with direct graph writes or invent endpoint names. Keep only current metadata
 in the graph; do not introduce historical versions, `latest` links or RDF/OWL.
+
+## Install metric definitions, backfill and activate
+
+For “install these metrics”, “backfill this metric” or “activate the new
+metrics”, follow [Configure with Uxie](../build-persist-service/reference/metrics-catalog.md#configure-with-uxie).
+Confirm `PUT /persist/metrics/catalog` exists in the target revision; without it,
+report the catalog as Model/Lexicon-published and hand the gap to Conkeldurr.
+
+1. Install only an approved Model catalog release; send definition authoring to
+   Jirachi. Read `GET /persist/metrics/catalog` and stop at `source: legacy-ssm`
+   until the Model owners retire that boundary.
+2. `PUT` `{ catalog, base }` with `If-Match` on the version read. Treat a 400 as
+   the compile report and fix the catalog through Model, never by editing it here.
+3. After the five-minute catalog cache, confirm activation `STATUS` is in sync.
+4. Backfill quarter-sized `RANGE` windows newest first, planning each before its
+   confirmed run, one confirmed run at a time.
+5. `ACTIVATE` only when `STATUS.gates` pass, plan first, and record the rollback
+   generation. Ask before every write; work DEV first.
 
 ## Make a field searchable
 

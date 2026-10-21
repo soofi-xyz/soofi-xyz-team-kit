@@ -981,7 +981,7 @@
         48
       ],
       "status": "assigned",
-      "summary": "Persist ingests and queries graph facts, maintains a current-only lexicon catalog, derived indexes and triggers, and owns lexicon-governed vector search composed through GraphQL.",
+      "summary": "Persist ingests and queries graph facts, maintains a current-only lexicon catalog, real-time metrics from an API-managed metrics catalog, derived indexes and triggers, and owns lexicon-governed vector search composed through GraphQL.",
       "agents": {
         "build": "conkeldurr",
         "configure": "uxie"
@@ -993,7 +993,8 @@
       "notes": [
         "User override: retain Conkeldurr for Persist only. Uxie configures existing deployments.",
         "Requested 2026-10-05: keep embeddings, OpenSearch vector indexing and GraphQL search composition in a separate vector-search feature piece. Model owns lexicon field eligibility; Persist owns implementation and GraphQL source routing. This scope assignment does not establish deployed support.",
-        "Requested 2026-10-14: Conkeldurr builds a current-only Gremlin lexicon catalog and Uxie configures/verifies it. Reconcile accepted base/extension definitions using stable IDs, content hashes and an added/changed/removed diff; atomically update metadata and the applied revision with optimistic concurrency. Store no RDF/OWL semantics, historical definition vertices or latest links. Model owns definitions/history; Deploy owns managed release installation. This is requested implementation guidance, not deployed support."
+        "Requested 2026-10-14: Conkeldurr builds a current-only Gremlin lexicon catalog and Uxie configures/verifies it. Reconcile accepted base/extension definitions using stable IDs, content hashes and an added/changed/removed diff; atomically update metadata and the applied revision with optimistic concurrency. Store no RDF/OWL semantics, historical definition vertices or latest links. Model owns definitions/history; Deploy owns managed release installation. This is requested implementation guidance, not deployed support.",
+        "Requested 2026-10-21: Conkeldurr builds and Uxie configures real-time metric cells and the API-managed metrics catalog (PUT/GET /persist/metrics/catalog, Persist PR #347). Persist reads its API pointer first and the Model/Lexicon SSM boundary only while no pointer exists; Model owns metric definitions. Metric changes are catalog install, backfill and gated activation, separate from derived indexes. This does not establish deployed support."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/persist.md"
     },
