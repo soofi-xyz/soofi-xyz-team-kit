@@ -1188,17 +1188,21 @@
       "sourceRows": [
         59
       ],
-      "status": "unassigned",
-      "summary": "",
+      "status": "assigned",
+      "summary": "Report runs configured Persist and Athena queries on a schedule into an append-only ledger and writes Athena SQL datasets as JSON outputs.",
       "agents": {
-        "build": null,
-        "configure": null
+        "build": "bronzong",
+        "configure": "bronzor"
       },
       "skills": {
-        "build": null,
-        "configure": null
+        "build": "build-report-product",
+        "configure": "configure-report-product"
       },
-      "notes": []
+      "notes": [
+        "Assigned by explicit user request on 2026-10-21. Bronzong builds the Report service in prismteam-ai/report; Bronzor writes, validates, bundles and tests report-1 configurations through its API.",
+        "Report holds no report-specific code and shows nothing: each refresh writes every dataset as JSON under outputs/<report>/latest/ (docs/outputs.md), and Console (Vivillon) draws it. Configurations and bundles carry no secrets."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/report.md"
     },
     {
       "id": "predict",
