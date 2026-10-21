@@ -45,14 +45,15 @@ body: exactly the GET /sale-availability/requests/{requestId} body
 ```
 
 The schema is in the System repository's `requirements/swagger.yml`
-(OpenAPI 3.1), as a `callbacks` entry on `POST /sale-availability/requests`
-keyed `{$request.body#/callbackUrl}`. Use it instead of copying the body shape.
+(OpenAPI 3.1), as the `resultReady` entry under `callbacks` on
+`POST /sale-availability/requests`, keyed `{$request.body#/callbackUrl}`. Use it
+instead of copying the body shape.
 
 ## Authentication and exposure risk
 
 The callback carries the environment API key of the environment where System is
 deployed. The dispatcher reads it on every delivery from Secrets Manager
-`system/<resourceIdentity or stage>/shared-api-key` (env
+`system/<stage>/shared-api-key` (env
 `SHARED_API_KEY_SECRET_NAME`) and never logs it. System PR #30 or an operator
 provisions the secret. There is no signing secret.
 
@@ -92,6 +93,10 @@ Errors on `POST /sale-availability/requests`:
   (`CallbackRetried`), then moved to `CallbackDlq` (alarmed).
 - Other 4xx: not retried (`CallbackRejected` metric and alarm).
 - Delivery is at least once. Receivers drop duplicates by `X-System-Delivery-Id`.
+- If EventBridge cannot put a finished run on the callback queue, the raw event
+  goes to `CallbackRuleDlq` (alarmed).
+- `CallbackQueueAgeAlarm` fires when a callback has waited over 3600 s. One
+  callback's retries can take about 45 min, so older means the dispatcher is stuck.
 
 Metrics are in namespace `System/ExternalFacade`: `CallbackDelivered`,
 `CallbackSkipped`, `CallbackRejected`, `CallbackRetried`.
@@ -130,10 +135,13 @@ Also send one case where the receiver returns 400 and expect no retry and
 ## What to inspect after each case
 
 Find these through the System stack outputs `CallbackQueueUrl`,
-`CallbackDlqUrl` and `CallbackDispatcherLogGroup`.
+`CallbackDlqUrl`, `CallbackRuleDlqUrl`, `CallbackDispatcherLogGroup`,
+`CallbackDlqAlarmName`, `CallbackRuleDlqAlarmName` and `CallbackQueueAgeAlarmName`.
 
 - Step Functions: the sale-availability lookup execution ARN and final status.
-- Callback queue and `CallbackDlq`: message count and the `invocationId`.
+- Callback queue, `CallbackDlq` and `CallbackRuleDlq`: message count and the
+  `invocationId`. `CallbackRuleDlq` should stay empty.
+- The three callback alarms: only `CallbackDlqAlarm` should fire, and only in case 7.
 - Dispatcher log group: entries for the request id with attempt number, status
   code and outcome; confirm the key never appears.
 - Metrics in `System/ExternalFacade` for the case.
