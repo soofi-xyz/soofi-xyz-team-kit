@@ -11,7 +11,8 @@ Include named definitions, input/output schemas, reusable flow templates compile
 to Step Functions, template-backed flows, optional waterfalls and invocations.
 Include correlation, telemetry, retries and failure reporting required to run
 those flows. Every executable flow must specify `flow_template_name` or the
-verified equivalent field in the target contract.
+verified equivalent field in the target contract. Include result callbacks on
+the client facade ([result callbacks](../../configure-system-product/reference/result-callbacks.md)).
 
 Exclude reports, SMS, email, blobs, widgets, short links, partner ordering and
 marketplace packaging from this version. Historical Product features are not

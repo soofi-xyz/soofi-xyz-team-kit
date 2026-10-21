@@ -38,6 +38,23 @@ Rule with Gallade/Meditite. Resolve other ownership from the product catalog.
 Use retained specialists for supporting work without reassigning product ownership.
 Never invent leaf engines inside System.
 
+## Result callbacks
+
+Own the result-callback framework on the sale-availability client facade:
+URL validation, the invocation-record field, the dispatcher, retries, DLQ and
+alarms. See [result callbacks](../configure-system-product/reference/result-callbacks.md).
+Keep these rules:
+
+- Accept only URLs under a client's allowlisted prefixes, HTTPS on port 443,
+  without credentials or fragments.
+- Refuse redirects and hosts that resolve to non-public addresses.
+- Read the environment API key from Secrets Manager on every delivery; never log it.
+- Deliver at least once with a stable `X-System-Delivery-Id`; bound retries and
+  send exhausted deliveries to a DLQ with alarms.
+- Send exactly the GET result body and document it as an OpenAPI `callbacks` entry.
+
+Celebi owns per-client configuration and delivery tests.
+
 ## Acceptance
 
 Derive usable feature increments from the System capability map and the requested

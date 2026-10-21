@@ -40,6 +40,9 @@ security requirement changes. Prefer generating the file from the request schema
 validate with (zod, Effect Schema), so request bodies cannot drift; then test that the committed
 file equals the generator's output.
 
+Describe outbound callbacks with an OpenAPI 3.1 `callbacks` entry on the operation that
+accepts the URL: reuse the GET response schema for the body and document the auth header.
+
 Request schemas should refuse what the parsers refuse. Check a few valid and invalid payloads
 against both the schema and the real parser; they must agree. Cross-field rules JSON Schema
 cannot express belong in the request description.
