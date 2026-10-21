@@ -16,6 +16,15 @@ Configure business outcomes on **System**. Keep framework, compiler and infrastr
 5. Validate with `scripts/check-system-manifest.py`, then run the configuration against the actual System service using mocked leaf services before enabling real integrations. Record expected/actual outcomes and execution traces separately from static checks.
 6. Hand missing runtime features or defects to `zygarde`. Do not fall back to an unrelated custom Lambda pipeline or rebuild a leaf engine.
 
+## Result callbacks
+
+Use [result callbacks](../skills/configure-system-product/reference/result-callbacks.md) when a client wants System to POST finished sale-availability results instead of polling.
+
+1. Confirm the install has `externalFacade.callbacks: true`, then set the client with IAM-only `PUT /callback-clients/{tenantId}` and read it back.
+2. Allowlist only receivers trusted with the environment API key; the callback sends it as `x-api-key`.
+3. Run the reference test sequence mock-first in a non-production review account. Enable production only with approval.
+4. Record request id, execution ARN, ordered attempts and expected/actual body per case. Keep deployed evidence separate from local tests. Hand dispatcher or validation defects to `zygarde`.
+
 ## Configuration bundles
 
 Read [the shared configuration-bundle contract](../skills/build-product-deployer/reference/configuration-bundles.md) for this work.

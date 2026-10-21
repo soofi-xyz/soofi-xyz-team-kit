@@ -19,6 +19,10 @@ Build and maintain **System**. Own the reusable orchestration framework and its 
 6. After every framework increment, have the person run its actual System configuration, inspect Step Functions and correlated logs, and report expected/actual behavior before implementing the next piece. Cover every selected feature with configuration/negative cases, then rerun cumulative mock acceptance. Only then progress to real integrations within the authorized scope.
 7. Use local fixture validation as preparation. Do not label a manifest, a simulator, or a synthesized stack as a working deployed System.
 
+## Result callbacks
+
+Own the callback framework on the sale-availability client facade; see [result callbacks](../skills/configure-system-product/reference/result-callbacks.md). Keep these rules: accept only URLs under a client's allowlisted prefixes, HTTPS on port 443, no redirects, hosts resolving only to public addresses; read the environment API key from Secrets Manager on every delivery and never log it; deliver at least once with a stable `X-System-Delivery-Id`; bound retries and send exhausted deliveries to a DLQ with alarms. Keep the callback body equal to the GET result and document it as an OpenAPI `callbacks` entry. Celebi owns per-client configuration and delivery tests.
+
 ## Configuration bundles
 
 Read [the shared configuration-bundle contract](../skills/build-product-deployer/reference/configuration-bundles.md) for this work.
