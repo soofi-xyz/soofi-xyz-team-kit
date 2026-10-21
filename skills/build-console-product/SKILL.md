@@ -46,7 +46,11 @@ selection, refresh/rollback behavior and telemetry. Reject arbitrary executable
 configuration and fail unsupported schemas, components and bindings explicitly.
 
 Keep Account identity and authorization, Model definitions/composition, Persist
-facts/queries and System workflows with their owning products. Integrate only
+facts/queries, Report queries/datasets and System workflows with their owning
+products. Render Report outputs with the generic report components and the
+read-only `report` dataset binding defined in the product contract; read only
+Report's `report-output-1` files under `outputs/` and keep report-specific
+layouts in configuration. Integrate only
 through verified public contracts. Keep Build artifact creation, Marketplace
 publication and Deploy installation with those products. A bespoke Model UI is a
 candidate Console configuration, not the reusable Console implementation.

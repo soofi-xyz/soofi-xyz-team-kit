@@ -95,7 +95,8 @@
         "Assigned by explicit user request on 2026-10-06. Chandelure builds the reusable Console runtime and configuration API; Vivillon configures applications on existing deployments. Console configuration is an artifact, not a separate product. Keep Model composition, Persist facts, Account identity and System execution with their owning products.",
         "The 2026-10-10 scope adds Figma-to-HTML/React creation and existing-component modification. Retain Chandelure/Vivillon ownership. Reuse Sylveon design adaptation, Hoopa Figma MCP intake and responsive design tests; apply Ash state, memory and telemetry patterns with a Console-specific AgentCore Runtime/pi harness exception.",
         "Begin full Console builds with official Figma MCP client registration/approval and OAuth/read verification. Keep downstream authoring pending until the checkpoint succeeds; reuse existing verified approval for later tasks.",
-        "Require versioned project configuration, authoring/review workspace, component identity/assets/history, standalone export and reviewed PR application/revert, optional compiled-registry promotion through Build/Marketplace/Deploy, and bounded tenant operations with lifecycle acceptance."
+        "Require versioned project configuration, authoring/review workspace, component identity/assets/history, standalone export and reviewed PR application/revert, optional compiled-registry promotion through Build/Marketplace/Deploy, and bounded tenant operations with lifecycle acceptance.",
+        "The 2026-10-21 scope adds generic report visualization components and a read-only `report` dataset binding over Report's `report-output-1` outputs, derived from the visuals shared by existing reports. Chandelure builds them; Vivillon maps a report's datasets to them. Report keeps queries, refreshes and dataset shape."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/console.md"
     },

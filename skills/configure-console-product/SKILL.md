@@ -44,15 +44,21 @@ back to running a local coding agent when the service lacks this capability.
    and resolved compositions, Persist queries and System actions. Verify route,
    component and action authorization server-side. Do not write product databases
    or bypass an owning product's API.
-5. Verify a Model network begins at the declared top vertex, preserves canonical
+5. For an existing Report, read its `outputs/<report>/latest/manifest.json`
+   columns first, then map them to report components through `report`
+   bindings (`read-dataset`, scope `report:read`). Verify values against the
+   dataset file and that a newer Report refresh appears without a Console
+   change. Route missing datasets to `bronzor`; route missing components,
+   formats or an absent `report` adapter to `chandelure`.
+6. Verify a Model network begins at the declared top vertex, preserves canonical
    identities and distinguishes base and extension concepts. A missing composition
    resolver, query, component or compatibility rule remains pending and is handed
    to `chandelure` or the owning upstream builder with a redacted reproducer.
-6. Give the user one copyable API invocation, expected result and at most three
+7. Give the user one copyable API invocation, expected result and at most three
    steps to inspect the hosted application, selected digest and correlated logs.
    Have them run two different applications on the same runtime, inspect the
    result and return redacted IDs and observations before advancing.
-7. Verify a published configuration refresh without rebuilding the runtime, then
+8. Verify a published configuration refresh without rebuilding the runtime, then
    roll back to the prior immutable revision. Keep schema validity, deployment
    health and upstream readiness as separate evidence.
 
