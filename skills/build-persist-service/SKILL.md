@@ -1,6 +1,6 @@
 ---
 name: build-persist-service
-description: "Build or maintain Persist graph ingestion, queries, a current-only lexicon catalog, indexes, triggers and lexicon-governed vector search through GraphQL. Use Conkeldurr; use Uxie for particular configurations."
+description: "Build or maintain Persist graph ingestion, queries, a current-only lexicon catalog, real-time metrics and their API-managed catalog, indexes, triggers and lexicon-governed vector search through GraphQL. Use Conkeldurr; use Uxie for particular configurations."
 disable-model-invocation: true
 ---
 
@@ -46,6 +46,17 @@ check. Keep versions out of IDs and retain history in Model artifacts, not graph
 vertices. Preserve business facts, extension scope and Deploy installation
 ownership. Deliver the HTTP preview/reconciliation/status surface and Gremlin
 read-back needed by Uxie; verify actual support before claiming availability.
+
+## Real-time metrics and the metrics catalog
+
+For metric cells, backfill, activation or catalog acceptance, load [the metrics
+reference](reference/metrics-catalog.md) and build feature `metrics`. Accept the
+catalog (v3 catalog plus v2 base) through `PUT /persist/metrics/catalog` on the
+shared configuration-source pattern: API pointer first, Model/Lexicon SSM only
+for a definitively missing pointer, 409 while that boundary resolves, and the
+real loader compiled for DEV and PROD before any write. Keep one writer per cell,
+visibility through the activation pointer only, and backfill as notices into the
+same lanes. Route definition and catalog-schema changes to Model's agents.
 
 ## Verification and handoff
 

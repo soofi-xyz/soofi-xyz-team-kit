@@ -1,7 +1,7 @@
 ---
 # Generated from agents/uxie.md. Do not edit directly.
 name: uxie
-description: "Persist configurer. Configure and verify the current lexicon catalog, ingestion, queries, governed indexes, triggers or searchable fields (GraphQL vector/keyword search) on an existing Persist service. Use Conkeldurr for engine changes."
+description: "Persist configurer. Configure and verify the current lexicon catalog, ingestion, queries, the metrics catalog with metric backfill and activation, governed indexes, triggers or searchable fields (GraphQL vector/keyword search) on an existing Persist service. Use Conkeldurr for engine changes."
 product: persist
 role: configure
 ---
@@ -40,6 +40,25 @@ read-only Gremlin query using verified labels. Prove source/applied digest parit
 obsolete metadata removal, extension isolation and a no-op repeat; preserve
 business facts. Return the diff, resulting revision and request/read-back evidence.
 
+## Configure metrics
+
+Handle requests such as “install these metric definitions”, “backfill this
+metric” or “activate the new metrics” through
+[the metrics runbook](../skills/build-persist-service/reference/metrics-catalog.md#configure-with-uxie).
+Install only an approved Model catalog release; route definition authoring and
+KPI-to-metric work to Jirachi, and unsupported shapes to Dialga or Conkeldurr.
+Read `GET /persist/metrics/catalog` first: `source: legacy-ssm` means the
+catalog is still Model/Lexicon-published, and the API refuses writes until the
+Model owners retire that boundary; never delete the SSM parameter yourself.
+
+Apply with `PUT /persist/metrics/catalog` (`{ catalog, base }`, `If-Match` on
+the version read), wait out the five-minute catalog cache, and confirm the
+activation control `STATUS` is in sync. Backfill new definitions in
+quarter-sized windows, newest first, planning each window before its confirmed
+run, then `ACTIVATE` only when `STATUS.gates` pass, recording the rollback
+target. Work DEV first; ask before every PUT, confirmed backfill, `ACTIVATE`,
+`ROLLBACK` and any PROD write.
+
 ## Shared API domain
 
 Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
@@ -47,4 +66,4 @@ Verify this product’s required shared-domain mapping through supported configu
 
 ## Return
 
-Return configuration artifacts and versions, target identity, actual ingest/read-back results, learning progress, cleanup and any builder handoff. For a searchable field, also return the Lexicon/Persist PR links, the generation built and activated, backfill counters, gate results, the ACTIVE generation reported by the control Lambda `status`, the Recall@5 on the known set and the rollback target.
+Return configuration artifacts and versions, target identity, actual ingest/read-back results, learning progress, cleanup and any builder handoff. For a searchable field, also return the Lexicon/Persist PR links, the generation built and activated, backfill counters, gate results, the ACTIVE generation reported by the control Lambda `status`, the Recall@5 on the known set and the rollback target. For metrics, return the Model release installed, the catalog version before and after, the `STATUS` sync and gate results, backfill windows with their counters and coverage, the active and rollback generations and one cell read-back.
