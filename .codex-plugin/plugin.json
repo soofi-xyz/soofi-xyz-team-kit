@@ -1,7 +1,7 @@
 {
   "name": "soofi-xyz-team-kit",
-  "description": "Product builders and configurers with guided feature increments for Documentation, Account, Console, Environment, Build, Deploy, Model, Marketplace, Transform, Persist, Rule, Connect and System.",
-  "version": "0.102.0",
+  "description": "Product builders and configurers with guided feature increments for Documentation, Account, Console, Environment, Build, Deploy, Model, Marketplace, Transform, Persist, Rule, Connect, System and Report.",
+  "version": "0.103.0",
   "author": {
     "name": "Soofi XYZ"
   },
@@ -21,7 +21,7 @@
   "interface": {
     "displayName": "Soofi XYZ",
     "shortDescription": "Build and configure Soofi products with guided workflows.",
-    "longDescription": "Product builders and configurers with guided feature increments for Documentation, Account, Console, Environment, Build, Deploy, Model, Marketplace, Transform, Persist, Rule, Connect and System.",
+    "longDescription": "Product builders and configurers with guided feature increments for Documentation, Account, Console, Environment, Build, Deploy, Model, Marketplace, Transform, Persist, Rule, Connect, System and Report.",
     "developerName": "Soofi XYZ",
     "category": "Productivity",
     "capabilities": [
