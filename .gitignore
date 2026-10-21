@@ -17,3 +17,5 @@ __pycache__/
 # Shipped art direction lives in skills/prism-asset-pipeline/art-direction/; new runs go to $PRISM_RUNS_DIR.
 /art-direction/
 .idea/
+
+.venv/

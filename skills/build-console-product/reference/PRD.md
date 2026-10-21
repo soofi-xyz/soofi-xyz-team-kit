@@ -47,6 +47,7 @@ Console does not own:
   belong to Model;
 - facts, graph storage or query execution, which belong to Persist;
 - workflow orchestration, which belongs to System;
+- report queries, refreshes and dataset computation, which belong to Report;
 - source builds, catalog publication or installation, which belong to Build,
   Marketplace and Deploy respectively.
 
@@ -69,6 +70,8 @@ typed action against an owning product's public API.
 - Pinned or controlled-current upstream product references.
 - Model-owned view definitions and resolved effective-model metadata.
 - Data and action results returned by public product APIs.
+- Report dataset files published under Report's `report-output-1` reader
+  contract (`docs/outputs.md` in `prismteam-ai/report`).
 
 Configuration must be declarative. Inline JavaScript, remote executable code,
 credentials, unrestricted URLs and unregistered components/adapters are invalid.
@@ -146,6 +149,49 @@ The MVP component registry must include:
 - network graph with relationship detail;
 - loading, empty, unsupported, unauthorized and upstream-error states.
 
+### Report visualization components
+
+The registry must also include generic, configuration-driven report components.
+Derive the set from the visuals existing reports use, not from one report:
+
+- `reportHeader`: title, subtitle, summary, static metadata and the dataset's
+  generated-at time and window;
+- `callout`: tone, title, body and items, optionally from a dataset column;
+- `kpiGrid`: cards with a measure, format, note, tone thresholds and an optional
+  comparison (difference, percent change or value) with good/bad direction;
+- `factList`: labelled measures;
+- `dataTable`: formatted columns, alignment, search, sorting, pagination, group
+  and totals rows, status badges, in-cell meters and CSV export of visible rows;
+- `barList`: ranked or progress bars with limit, order and tone thresholds;
+- `chart`: bar, line or area; vertical or horizontal; grouped, stacked or 100%
+  stacked series; legend and value labels;
+- `funnel`: stages from rows or from columns of one row, with conversion rates;
+- `heatmap`: row, column and value mapping with an intensity scale.
+
+Components map dataset columns declaratively: column references, row filters,
+aggregates (`first`, `sum`, `avg`, `min`, `max`, `count`), value formats
+(number, integer, currency, percent, ratio, duration, date, datetime), tone
+rules and a full-width span. Charts render as accessible SVG without
+configuration-supplied code. A mapped column missing from the dataset renders an
+explicit unsupported-mapping state; inline preview data is validated at
+submission. Page-wide filters, tabs, scatter and waterfall charts are later
+increments.
+
+### Report dataset binding
+
+Register a `report` product adapter with a read operation `read-dataset`
+(`reportId`, `datasetId`; required scope `report:read`). It reads
+`outputs/<report>/latest/manifest.json`, then the dataset's `refreshKey`, so one
+page never mixes refreshes. It rejects any `contractVersion` other than
+`report-output-1`, a file whose report, dataset or refresh does not match its
+manifest, and objects above a bounded size, and returns Console's generic
+tabular dataset (`columns`, `rows`, `generatedAt`, `window`). The output bucket
+is resolved from Report's SSM parameter (`/report/<stack>/output-bucket`) at
+deploy time, never from configuration, and Console holds only `s3:GetObject` on
+`outputs/*`. Without that parameter the deployment keeps a fail-closed adapter.
+Report's output files are its published reader contract; Console must not read
+its ledger, staging or Athena results.
+
 Every data binding names a registered product adapter and operation, typed input
 mapping, output contract and bounded refresh/pagination policy. Every action
 names a registered owning-product operation, confirmation behavior, required
@@ -194,6 +240,8 @@ The network view must:
 - **Persist:** bounded graph/fact queries through its public query contract.
 - **System:** typed workflow invocation and status operations for configured
   actions.
+- **Report:** read-only `report-output-1` dataset files and manifests from the
+  `outputs/` prefix of Report's output bucket.
 - **Build:** source validation and immutable runtime artifact/provenance.
 - **Marketplace:** Console bundle catalog, review, publication and rollback.
 - **Deploy:** runtime/API/CDN installation and compatible configuration delivery.
@@ -245,7 +293,11 @@ renderer/configuration checks.
      detail and review views; and
    - an Operations Graph Explorer with Persist fact traversal, filters, details
      and an optional System action.
-10. Tests cover schema/component compatibility, cycles and traversal bounds,
+10. The same runtime renders an existing Report output (pilot
+    `portal-performance`) and a materially different report configuration
+    using only report components and `report` bindings, with values matching
+    the source dataset files.
+11. Tests cover schema/component compatibility, cycles and traversal bounds,
     unresolved Model references, authorization denial, upstream failures,
     refresh, atomic selection and rollback.
 
@@ -278,6 +330,7 @@ Dependencies:
 
 - Model runtime composition resolution and resolved-model/view APIs;
 - a bounded Persist graph-query contract;
+- Report's `report-output-1` output contract and output-bucket SSM parameter;
 - Account browser and service authorization contracts;
 - Build, Marketplace and Deploy support for the selected artifact shapes.
 
