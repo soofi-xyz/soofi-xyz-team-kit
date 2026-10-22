@@ -104,16 +104,21 @@ Run these stages in order:
    lacks those edges or the license source fields, record the gap and do not
    substitute another edge.
 5. **Internal reconciliation:** `query-db-loading-matching`.
-6. **Enrichment:** For HOA names, fees, and frequencies, follow
-   `reference/hoa-web-ingestion.md`: preserve raw receipts, validate the exact
-   source-rendered address, retain every explicit amount/frequency tuple, and
-   keep official CTMH/Sunbiz identity separate from web observations. Treat
-   NetSuite `-unit_holding_hoa_dues_cost` as paid-cost truth; never use
-   `actual_dip`. Target missing/nonpositive Prism fees and fee gaps over 7.5%.
-   Run the monthly/quarterly/semiannual/annual query matrix only for unresolved,
-   conflicting, or non-improving properties. Require the full-cohort shadow run
-   to improve both coverage and NetSuite error before publishing through Atlas.
-   Run BBB, places, AVM, and roof age as applicable.
+6. **Enrichment:** For HOA names, fees, and frequencies, run the playbook in
+   `reference/hoa-web-ingestion.md`: freeze the cohort and gap fields, pilot
+   8–12 rows, then pass 1 (exact-address search, open the top 2–4 ranked links,
+   period query matrix only when no fee is found), offline adjudication, pass 2
+   for gap rows only (unopened pass-1 links, address variants on host-targeted
+   queries, Sunbiz ACTIVE exact base, validated association pages, neighbour
+   listings for names only), re-adjudication, verification, and a new versioned
+   output. Accept fees only from tier-2 exact-property pages (address, unit, and
+   city or ZIP agree), keep raw receipts and every explicit tuple, keep master and
+   sub-association fees separate, and keep CTMH/Sunbiz identity separate from web
+   observations. Use the runtime's `hoa-web-*` rules, the adaptive limiter, and
+   resumable checkpoints. Treat NetSuite `-unit_holding_hoa_dues_cost` as
+   paid-cost truth; never use `actual_dip`. Require the full-cohort shadow run to
+   improve both coverage and NetSuite error before publishing through Atlas. Run
+   BBB, places, AVM, and roof age as applicable.
 
 Preserve these internal contracts:
 
@@ -131,7 +136,8 @@ Preserve these internal contracts:
   caveats.
 - Keep reputation and places separate from legal identity.
 - Never stamp an HOA name, fee, or frequency from a search snippet or a
-  same-community/different-property page.
+  same-community/different-property page. Never validate a name for a city-only
+  community, a placeholder, a manager, or an out-of-area source.
 - Never default a missing fee frequency to monthly. Preserve master and
   sub-association observations separately unless exact-property evidence proves
   both apply.

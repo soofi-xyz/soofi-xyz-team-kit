@@ -1,9 +1,10 @@
 {
   "schemaVersion": "elephant.hoa-web-evidence-fixtures.v1",
-  "description": "Synthetic regression cases for HOA web evidence scope, address validation, fee-period conversion, NetSuite gap scoring, and diagnosis.",
+  "description": "Synthetic regression cases for HOA web evidence scope, address validation, fee extraction, fee and name adjudication, fee-period conversion, NetSuite gap scoring, and diagnosis. Every address, community, and URL is invented. Replayed by skills/use-oracle/runtime/tests/hoa-web-evidence.test.mjs; the `check` field selects the evaluator.",
   "cases": [
     {
       "id": "explicit-annual-must-stay-annual",
+      "check": "observations",
       "requestedAddress": "100 Example Cove Ln, Jacksonville, FL 32218",
       "observedAddress": "100 Example Cove Ln, Jacksonville, FL 32218",
       "scope": "exact_property",
@@ -20,6 +21,7 @@
     },
     {
       "id": "missing-frequency-must-not-default-monthly",
+      "check": "observations",
       "requestedAddress": "200 Example Dr, Orlando, FL 32826",
       "observedAddress": "200 Example Dr, Orlando, FL 32826",
       "scope": "exact_property",
@@ -36,6 +38,7 @@
     },
     {
       "id": "same-community-other-property-is-discovery-only",
+      "check": "observations",
       "requestedAddress": "300 Example Way, Parrish, FL 34219",
       "observedAddress": "304 Example Way, Parrish, FL 34219",
       "scope": "same_community_other_property",
@@ -53,6 +56,7 @@
     },
     {
       "id": "equivalent-monthly-and-semiannual-representations",
+      "check": "observations",
       "requestedAddress": "400 Example Pl, Orlando, FL 32826",
       "observedAddress": "400 Example Pl, Orlando, FL 32826",
       "scope": "exact_property",
@@ -76,6 +80,7 @@
     },
     {
       "id": "same-amount-different-period-is-frequency-conflict",
+      "check": "observations",
       "requestedAddress": "500 Example Trl, Jacksonville, FL 32225",
       "observedAddress": "500 Example Trl, Jacksonville, FL 32225",
       "scope": "exact_property",
@@ -99,6 +104,7 @@
     },
     {
       "id": "master-and-sub-association-fees-stay-separate",
+      "check": "observations",
       "requestedAddress": "600 Example Ct Unit 12, Maitland, FL 32751",
       "observedAddress": "600 Example Ct Unit 12, Maitland, FL 32751",
       "scope": "exact_property",
@@ -126,6 +132,7 @@
     },
     {
       "id": "raw-correct-output-wrong-is-transformation-problem",
+      "check": "rawVersusOutput",
       "requestedAddress": "700 Example Rd, Fleming Island, FL 32003",
       "observedAddress": "700 Example Rd, Fleming Island, FL 32003",
       "scope": "exact_property",
@@ -141,6 +148,7 @@
     },
     {
       "id": "exact-source-supports-control-not-scraper-error",
+      "check": "rawVersusOutput",
       "requestedAddress": "800 Example St, Homestead, FL 33033",
       "observedAddress": "800 Example St, Homestead, FL 33033",
       "scope": "exact_property",
@@ -160,6 +168,7 @@
     },
     {
       "id": "same-amount-unique-alternative-period-is-review-candidate",
+      "check": "frequencyCandidate",
       "amountUsd": 690,
       "storedFrequency": "Monthly",
       "actualDay": 1.89,
@@ -170,6 +179,7 @@
     },
     {
       "id": "netsuite-gap-below-threshold-is-not-targeted",
+      "check": "netsuiteGap",
       "actualDay": 1,
       "prismDay": 1.074,
       "expectedFeeGapPct": 0.074,
@@ -177,6 +187,7 @@
     },
     {
       "id": "netsuite-gap-above-threshold-is-targeted",
+      "check": "netsuiteGap",
       "actualDay": 1,
       "prismDay": 1.076,
       "expectedFeeGapPct": 0.076,
@@ -184,15 +195,354 @@
     },
     {
       "id": "missing-prism-fee-is-targeted",
+      "check": "netsuiteGap",
       "actualDay": 1,
       "prismDay": null,
       "expectedReviewGap": true
     },
     {
       "id": "nonpositive-prism-fee-is-targeted",
+      "check": "netsuiteGap",
       "actualDay": 1,
       "prismDay": 0,
       "expectedReviewGap": true
+    },
+    {
+      "id": "rounded-badge-beside-structured-fee-is-same-fee",
+      "check": "pageAdjudication",
+      "requestedAddress": "910 Example Heron Way, Sampleton, FL 32999",
+      "pages": [
+        {
+          "url": "https://listing-a.example/homedetails/910-Example-Heron-Way-Sampleton-FL-32999",
+          "title": "910 Example Heron Way, Sampleton, FL 32999",
+          "markdown": "# 910 Example Heron Way, Sampleton, FL 32999\n$12/mo HOA\n\n## Community and HOA\nAssociation Fee: 143\nAssociation Fee Frequency: Annually\n",
+          "expectedTier": 2
+        }
+      ],
+      "expectedFinal": {
+        "fee": 143,
+        "frequency": "Annually",
+        "annualizedUsd": 143,
+        "basis": "structured_exact_property",
+        "confidence": "high"
+      },
+      "expectedPatterns": ["rounded_badge_same_fee"]
+    },
+    {
+      "id": "four-digit-amounts-are-not-split",
+      "check": "pageAdjudication",
+      "requestedAddress": "920 Example Marsh Ct, Sampleton, FL 32999",
+      "pages": [
+        {
+          "url": "https://listing-a.example/homedetails/920-Example-Marsh-Ct-Sampleton-FL-32999",
+          "title": "920 Example Marsh Ct",
+          "markdown": "# 920 Example Marsh Ct, Sampleton, FL 32999\nHOA Fee: 1350.0\nHOA Fee Frequency: Quarterly\n",
+          "expectedTier": 2,
+          "expectedClaims": [{ "kind": "primary", "amount": 1350, "frequency": "Quarterly" }]
+        },
+        {
+          "url": "https://listing-b.example/property/920-example-marsh-ct-sampleton-fl-32999",
+          "title": "920 Example Marsh Ct",
+          "markdown": "# 920 Example Marsh Ct, Sampleton, FL 32999\nAssociation Fee: 1029 Quarterly\n",
+          "expectedTier": 2,
+          "expectedClaims": [{ "kind": "primary", "amount": 1029, "frequency": "Quarterly" }]
+        }
+      ],
+      "neverAmountUsd": [135, 9, 0]
+    },
+    {
+      "id": "association-number-label-is-not-a-fee",
+      "check": "pageAdjudication",
+      "requestedAddress": "925 Example Egret Ln, Sampleton, FL 32999",
+      "pages": [
+        {
+          "url": "https://listing-a.example/homedetails/925-Example-Egret-Ln-Sampleton-FL-32999",
+          "title": "925 Example Egret Ln",
+          "markdown": "# 925 Example Egret Ln, Sampleton, FL 32999\nAssociation #2 Fee Frequency: Monthly\nHOA Fee: $210\nHOA Fee Frequency: Monthly\nSecondary Association Fee: $40 Monthly\n",
+          "expectedTier": 2,
+          "expectedClaims": [
+            { "kind": "primary", "amount": 210, "frequency": "Monthly" },
+            { "kind": "secondary", "amount": 40, "frequency": "Monthly" }
+          ]
+        }
+      ],
+      "neverAmountUsd": [2],
+      "expectedFinal": {
+        "fee": 210,
+        "frequency": "Monthly",
+        "annualizedUsd": 2520,
+        "secondFee": 40,
+        "totalAnnualUsd": 2520
+      },
+      "expectedPatterns": ["second_fee_unconfirmed"]
+    },
+    {
+      "id": "rent-tax-utility-and-one-time-values-are-not-hoa-fees",
+      "check": "pageAdjudication",
+      "requestedAddress": "930 Example Palm Dr, Sampleton, FL 32999",
+      "pages": [
+        {
+          "url": "https://listing-a.example/homedetails/930-Example-Palm-Dr-Sampleton-FL-32999",
+          "title": "930 Example Palm Dr",
+          "markdown": "# 930 Example Palm Dr, Sampleton, FL 32999\nRental Estimate: $2,400/mo\nInternet: monthly fee $60\nPool maintenance monthly fee $85\nSeptic service annual fee $300\nCDD Fee: $1,200 Annually\nTax: $3,100/yr HOA\nTransfer Fee: $250 One-Time\nYear Built: 2004\nCalculated Total Monthly Association Fees: 0\n",
+          "expectedTier": 2,
+          "expectedClaims": []
+        }
+      ],
+      "neverAmountUsd": [2400, 60, 85, 300, 1200, 3100, 250, 2004, 0],
+      "expectedFinal": {
+        "fee": null,
+        "frequency": null,
+        "basis": "unresolved_no_fee"
+      }
+    },
+    {
+      "id": "idx-widget-is-monthly-equivalent-with-billing-suffix",
+      "check": "pageAdjudication",
+      "requestedAddress": "940 Example Ibis Ln, Sampleton, FL 32999",
+      "pages": [
+        {
+          "url": "https://agent-site.example/idx/940-example-ibis-ln-sampleton-fl-32999",
+          "title": "940 Example Ibis Ln, Sampleton FL 32999",
+          "markdown": "# 940 Example Ibis Ln, Sampleton, FL 32999\nBeds 3 | Baths 2\nHOA Fees $54/ann\n",
+          "expectedTier": 2
+        }
+      ],
+      "expectedFinal": {
+        "fee": 648,
+        "frequency": "Annually",
+        "annualizedUsd": 648,
+        "basis": "idx_monthly_equivalent_with_billing_suffix",
+        "confidence": "low"
+      },
+      "expectedPatterns": ["idx_monthly_equivalent"]
+    },
+    {
+      "id": "quarterly-amount-labelled-monthly-resolves-to-monthly-fee",
+      "check": "pageAdjudication",
+      "requestedAddress": "945 Example Pelican Ct, Sampleton, FL 32999",
+      "pages": [
+        {
+          "url": "https://listing-a.example/homedetails/945-Example-Pelican-Ct-Sampleton-FL-32999",
+          "title": "945 Example Pelican Ct",
+          "markdown": "# 945 Example Pelican Ct, Sampleton, FL 32999\nHOA Fee: $450\nHOA Fee Frequency: Monthly\n",
+          "expectedTier": 2
+        },
+        {
+          "url": "https://listing-b.example/property/945-example-pelican-ct-sampleton-fl-32999",
+          "title": "945 Example Pelican Ct",
+          "markdown": "# 945 Example Pelican Ct, Sampleton, FL 32999\nHOA Fee: $150\nHOA Fee Frequency: Monthly\n",
+          "expectedTier": 2
+        }
+      ],
+      "expectedDiagnostic": "source_conflict",
+      "expectedFinal": {
+        "fee": 150,
+        "frequency": "Monthly",
+        "annualizedUsd": 1800,
+        "basis": "structured_mislabel_resolved",
+        "confidence": "medium"
+      },
+      "expectedPatterns": ["quarterly_labelled_monthly"]
+    },
+    {
+      "id": "wrong-unit-page-is-rejected",
+      "check": "pageAdjudication",
+      "requestedAddress": "950 Example Bay Blvd Unit 12, Sampleton, FL 32999",
+      "pages": [
+        {
+          "url": "https://listing-a.example/homedetails/950-Example-Bay-Blvd-Unit-14-Sampleton-FL-32999",
+          "title": "950 Example Bay Blvd #14, Sampleton, FL 32999",
+          "markdown": "# 950 Example Bay Blvd #14, Sampleton, FL 32999\nHOA Fee: $500\nHOA Fee Frequency: Monthly\n",
+          "expectedTier": 0
+        },
+        {
+          "url": "https://listing-b.example/property/950-example-bay-blvd-unit-12-sampleton-fl-32999",
+          "title": "950 Example Bay Blvd Unit 12, Sampleton, FL 32999",
+          "markdown": "# 950 Example Bay Blvd Unit 12, Sampleton, FL 32999\nHOA Fee: $320\nHOA Fee Frequency: Monthly\n",
+          "expectedTier": 2
+        }
+      ],
+      "neverAmountUsd": [500],
+      "expectedFinal": {
+        "fee": 320,
+        "frequency": "Monthly",
+        "annualizedUsd": 3840,
+        "basis": "structured_exact_property_single"
+      }
+    },
+    {
+      "id": "building-page-listing-many-units-is-not-the-property",
+      "check": "pageAdjudication",
+      "requestedAddress": "960 Example Gulf Dr Apt 3B, Sampleton, FL 32999",
+      "legalDescription": "UNIT 3B BLDG 1 EXAMPLE GULF TOWERS A CONDOMINIUM",
+      "pages": [
+        {
+          "url": "https://listing-c.example/building/960-example-gulf-dr-sampleton-fl-32999",
+          "title": "960 Example Gulf Dr, Sampleton, FL 32999",
+          "markdown": "# 960 Example Gulf Dr, Sampleton, FL 32999\nUnits in this building\n- Unit 3B sold\n- Unit 101 for sale\n- Unit 205 for sale\n- Unit 410 pending\nHOA Fee: $610\nHOA Fee Frequency: Monthly\n",
+          "expectedTier": 0
+        }
+      ],
+      "neverAmountUsd": [610],
+      "expectedFinal": {
+        "fee": null,
+        "frequency": null
+      }
+    },
+    {
+      "id": "master-plus-sub-fee-confirmed-by-listing-total",
+      "check": "pageAdjudication",
+      "requestedAddress": "990 Example Lagoon Ter Unit 5, Sampleton, FL 32999",
+      "pages": [
+        {
+          "url": "https://listing-a.example/homedetails/990-Example-Lagoon-Ter-Unit-5-Sampleton-FL-32999",
+          "title": "990 Example Lagoon Ter Unit 5, Sampleton, FL 32999",
+          "markdown": "# 990 Example Lagoon Ter Unit 5, Sampleton, FL 32999\n$150/mo HOA\nHOA Fee: $100\nHOA Fee Frequency: Monthly\nAssociation #2 Fee: $150\nAssociation #2 Fee Frequency: Quarterly\n",
+          "expectedTier": 2
+        }
+      ],
+      "expectedDiagnostic": "association_scope_difference",
+      "expectedFinal": {
+        "fee": 100,
+        "frequency": "Monthly",
+        "annualizedUsd": 1200,
+        "secondFee": 150,
+        "secondFrequency": "Quarterly",
+        "totalAnnualUsd": 1800
+      },
+      "expectedPublishTuple": null,
+      "expectedPatterns": ["listing_total_of_associations"]
+    },
+    {
+      "id": "city-only-community-cannot-validate-city-name",
+      "check": "nameAdjudication",
+      "requestedAddress": "970 Example Dune Rd, Seaview, FL 32999",
+      "county": "example",
+      "legalDescription": "SEAVIEW SEC 21 LOT 5 BLK 3",
+      "subdivision": "SEAVIEW SEC 21",
+      "candidates": [
+        {
+          "name": "Seaview Homeowners Association, Inc.",
+          "source": "association_level_page",
+          "url": "https://hoa-directory.example/fl/seaview-homeowners-association",
+          "mentionsLocality": true
+        }
+      ],
+      "expectedName": null,
+      "expectedRejections": ["reject_city_only_community"]
+    },
+    {
+      "id": "out-of-area-association-pages-and-registrations",
+      "check": "nameAdjudication",
+      "requestedAddress": "980 Example Cypress Ct, Sampleton, FL 32999",
+      "county": "example",
+      "legalDescription": "LOT 9 MAPLEWOOD GLEN PB 12 PG 34",
+      "subdivision": "MAPLEWOOD GLEN",
+      "candidates": [
+        {
+          "name": "Maplewood Glen Homeowners Association",
+          "source": "association_level_page",
+          "url": "https://hoa-directory.example/oh/maplewood-glen",
+          "mentionsLocality": false
+        },
+        {
+          "name": "Maplewood Glen Homeowners Association, Inc.",
+          "source": "sunbiz_record",
+          "url": "https://registry.example/detail/N00000000001",
+          "local": false
+        }
+      ],
+      "expectedName": "Maplewood Glen Homeowners Association, Inc",
+      "expectedBasis": "sunbiz_active_validated",
+      "expectedConfidence": "low",
+      "expectedRejections": ["reject_out_of_area"]
+    },
+    {
+      "id": "placeholder-original-name-is-blanked",
+      "check": "nameAdjudication",
+      "requestedAddress": "985 Example Birch Way, Sampleton, FL 32999",
+      "county": "example",
+      "legalDescription": "LOT 14 BIRCH HOLLOW PB 7 PG 8",
+      "subdivision": "BIRCH HOLLOW",
+      "currentHoaName": "Condominium or Homeowner Association",
+      "candidates": [],
+      "expectedName": null,
+      "expectedBasis": "blanked",
+      "expectedRejections": ["reject_placeholder"]
+    },
+    {
+      "id": "manager-law-firm-and-sentence-fragments-are-not-associations",
+      "check": "nameAdjudication",
+      "requestedAddress": "987 Example Fern Ct, Sampleton, FL 32999",
+      "county": "example",
+      "legalDescription": "LOT 3 FERNWOOD TRACE PB 9 PG 10",
+      "subdivision": "FERNWOOD TRACE",
+      "candidates": [
+        { "name": "Example Property Management Group", "source": "association_level_page", "url": "https://manager.example/fernwood", "mentionsLocality": true },
+        { "name": "Smith & Example Law Firm, P.A.", "source": "association_level_page", "url": "https://lawfirm.example/fernwood", "mentionsLocality": true },
+        { "name": "Fernwood Trace has offered exceptional Community Association", "source": "association_level_page", "url": "https://manager.example/about", "mentionsLocality": true },
+        { "name": "Plaintiff Fernwood Trace Homeowners Association, Inc.", "source": "association_level_page", "url": "https://court-records.example/case/1", "mentionsLocality": true }
+      ],
+      "expectedName": "Fernwood Trace Homeowners Association, Inc",
+      "expectedBasis": "association_level_validated",
+      "expectedConfidence": "medium",
+      "expectedRejections": ["reject_manager", "reject_sentence_fragment"]
+    },
+    {
+      "id": "name-propagated-across-unrelated-communities-is-placeholder",
+      "check": "placeholderPropagation",
+      "rows": [
+        { "id": "a", "current_hoa_name": "Example Shores Community Association", "community": "MAPLE RUN" },
+        { "id": "b", "current_hoa_name": "Example Shores Community Association", "community": "CEDAR BLUFF ESTATES" },
+        { "id": "c", "current_hoa_name": "Example Shores Community Association", "community": "OSPREY LANDING" },
+        { "id": "d", "current_hoa_name": "Example Shores Community Association", "community": "EXAMPLE SHORES" },
+        { "id": "e", "current_hoa_name": "Quillsample Bend Homeowners Association", "community": "QUILLSAMPLE BEND" }
+      ],
+      "expectedFlaggedIds": ["a", "b", "c"]
+    },
+    {
+      "id": "ocr-split-and-truncated-legal-description",
+      "check": "legalCommunity",
+      "examples": [
+        {
+          "legalDescription": "UNIT 4 BLDG 7 & PT OF COMM ON AREA AS REC O R 1234 PG 567 TH E COTTAGES @ EXAMPLE PLANTATIO",
+          "subdivision": "THE COTTAGES @ EXAMPLE PLANTATION",
+          "expectedCommunity": "THE COTTAGES @ EXAMPLE PLANTATION"
+        }
+      ]
+    },
+    {
+      "id": "legal-description-recording-noise-is-stripped",
+      "check": "legalCommunity",
+      "examples": [
+        {
+          "legalDescription": "12-34 21-5S-28E; TOWNHOMES OF SAMPLE GROVE SECTION TWO; LOT 154",
+          "subdivision": null,
+          "expectedCommunity": "TOWNHOMES OF SAMPLE GROVE"
+        },
+        {
+          "legalDescription": "CONDO 4 OF SAMPLE HARBOR CONDOS UNIT 103 PER CDO BK/PG: 1111/222",
+          "subdivision": null,
+          "expectedCommunity": "SAMPLE HARBOR CONDOS",
+          "expectedInferredAssociation": "Sample Harbor Condominiums Association, Inc."
+        },
+        {
+          "legalDescription": "UNIT 202 BLDG 2 COACH HOMES AT SAMPLE COVE PH2 PI#12345.6789/9",
+          "subdivision": null,
+          "expectedCommunity": "COACH HOMES AT SAMPLE COVE"
+        },
+        {
+          "legalDescription": "LOT 220",
+          "subdivision": null,
+          "expectedCommunity": null
+        },
+        {
+          "legalDescription": "LOT 8 BLK 2",
+          "subdivision": "04521 SAMPLE TOWNHOMS PHASE 3",
+          "expectedSubdivisionCommunity": "SAMPLE TOWNHOMS"
+        }
+      ]
     }
   ]
 }

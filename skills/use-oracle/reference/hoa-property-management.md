@@ -37,6 +37,10 @@ after its address and evidence-scope gates pass.
   rows. Keep all raw tuples, reject snippet-only and neighboring-property
   values, and apply a tuple only when source evidence passes and it improves
   the NetSuite absolute error.
+- Treat web names whose basis is not `exact_property_page` (Sunbiz exact base,
+  association page, same-community listing, neighbour, inferred from the legal
+  description) as candidates. Resolve them through the rules below before
+  stamping an association or company edge.
 - Run the full target cohort as an unpublished shadow ingest and require both
   coverage and NetSuite paid-HOA accuracy to improve before generating the
   validated HOA data group for the Atlas publication path.
@@ -64,7 +68,23 @@ manager may be registered outside the property county.
 - Match normalized association bases exactly.
 - Never use edit distance, token score, address proximity, or a human favorite.
 - Reject people, lawyers, law firms, and registered-agent designations as associations
-  or managers.
+  or managers. Reject management companies as associations; they are manager
+  candidates only.
+- Strip court-caption prefixes (Plaintiff, Defendant, Petitioner, Respondent) and
+  reject scraped sentence fragments before lookup.
+- Reject placeholders: names without distinctive words, catch-all values
+  ("Condominium or Homeowner Association"), and one name propagated across three or
+  more communities it shares no distinctive words with. Mark the row
+  `placeholder_name` and do not carry the placeholder forward.
+- Do not resolve a city-only community. When the parsed community's words are only
+  the city, county, or a known place name (for example `PALM COAST`), do not accept
+  a "<City> Homeowners Association" from Sunbiz, an association page, or a
+  neighbour listing. Record `city_only_community`; only an exact-property page may
+  name the HOA.
+- Require an association-level or Sunbiz candidate to be in area. A page must
+  mention the property's city, ZIP, or county. A Sunbiz entity whose principal and
+  mailing addresses are outside the property's ZIP3 and city stays low confidence,
+  because a same-name association may exist elsewhere.
 - Preserve all candidates and terminal status.
 
 When multiple ACTIVE candidates remain, apply in order:
@@ -77,6 +97,13 @@ When multiple ACTIVE candidates remain, apply in order:
 5. one existing CTMH or parcel-linked declaration document number.
 
 Keep `not_unique` when ambiguity remains.
+
+For a web-gap Sunbiz lookup by community, compare normalized bases exactly (generic
+entity words dropped, number words and plurals canonicalized, tokens sorted). Accept
+an ACTIVE name with an association word directly; accept an `INC` without one only
+when its detail page says Not For Profit. Confirm ACTIVE on the detail page and record
+`no_active_exact_match`, `detail_not_active`, or
+`inc_without_association_word_not_nonprofit` on a miss.
 
 ## Estate-type gate
 
@@ -170,6 +197,9 @@ Keep misses explicit, including:
 - `sunbiz_not_unique`
 - `no_agent_company`
 - `agent_not_in_sunbiz`
+- `no_active_exact_match`
+- `placeholder_name`
+- `city_only_community`
 - clerk missing/not-unique/conflicting states
 
 Do not clear a prior accepted HOA or manager on a later miss. Preserve it with an explicit
