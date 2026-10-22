@@ -48,7 +48,9 @@ Keep these rules:
 - Accept only URLs under a client's allowlisted prefixes, HTTPS on port 443,
   without credentials or fragments.
 - Refuse redirects and hosts that resolve to non-public addresses.
-- Read the environment API key from Secrets Manager on every delivery; never log it.
+- Send the client's own key in the client's configured header, read from a
+  Secrets Manager secret under `system/<stage>/callback-clients/<tenantId>/` on
+  every delivery; never send the environment's shared API key and never log a key.
 - Deliver at least once with a stable `X-System-Delivery-Id`; bound retries and
   send exhausted deliveries to a DLQ with alarms.
 - Send exactly the GET result body and document it as an OpenAPI `callbacks` entry.

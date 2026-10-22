@@ -24,7 +24,7 @@ Configure business outcomes on **System**. Keep framework, compiler and infrastr
 Use [result callbacks](../skills/configure-system-product/reference/result-callbacks.md) when a client wants System to POST finished sale-availability results instead of polling.
 
 1. Confirm the install has `externalFacade.callbacks: true`, then set the client with IAM-only `PUT /callback-clients/{tenantId}` and read it back.
-2. Allowlist only receivers trusted with the environment API key; the callback sends it as `x-api-key`.
+2. Allowlist only the client's own endpoints, and set `auth` to the header its endpoint checks and a secret under `system/<stage>/callback-clients/<tenantId>/` holding the client's key. Provision the secret value out of band; the callback never carries the environment's shared API key.
 3. Run the reference test sequence mock-first in a non-production review account. Enable production only with approval.
 4. Record request id, execution ARN, ordered attempts and expected/actual body per case. Keep deployed evidence separate from local tests. Hand dispatcher or validation defects to `zygarde`.
 

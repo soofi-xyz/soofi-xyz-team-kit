@@ -3,7 +3,9 @@
 System can POST a finished request's result to a client-supplied URL instead of
 making the client poll. Zygarde owns the framework (validation, dispatcher,
 retries, alarms). Celebi enables it per client and tests it. Implemented in
-[prismteam-ai/system#32](https://github.com/prismteam-ai/system/pull/32).
+[prismteam-ai/system#32](https://github.com/prismteam-ai/system/pull/32); the
+per-client auth header below is on the System branch
+`feat/callback-client-auth-header`.
 
 Scope: the sale-availability client facade only (`POST /sale-availability/requests`).
 The generic `POST /flows/{name}/invocations` route, Connect/Transform callbacks
@@ -23,7 +25,8 @@ and progress updates are out of scope.
    `{invocationId}`. The callback dispatcher reloads the record and client
    settings, builds exactly the `GET /sale-availability/requests/{requestId}`
    body and POSTs it. Succeeded, failed and cached requests each send one.
-5. The host must resolve only to public addresses. Redirects are not followed.
+5. The callback carries the client's own key in the header the client chose.
+   The host must resolve only to public addresses. Redirects are not followed.
 
 ```text
 client ─POST /sale-availability/requests {callbackUrl}─▶ facade ─▶ Step Functions
@@ -37,31 +40,54 @@ receiver ◀─POST callbackUrl── dispatcher ◀─ queue ◀─ EventBridge
 ```
 POST <callbackUrl>
 content-type: application/json
-x-api-key:            <environment API key>
+<auth.header>:        <the client's own key>   e.g. x-api-key or Authorization
 X-System-Timestamp:   <unix seconds>
 X-System-Delivery-Id: <requestId>:<status>   same on every retry and resend
 X-System-Attempt:     1, 2, ...
+X-System-Signature:   sha256=<hex>             only when the client has signing
 body: exactly the GET /sale-availability/requests/{requestId} body
 ```
 
-The schema is in the System repository's `requirements/swagger.yml`
-(OpenAPI 3.1), as the `resultReady` entry under `callbacks` on
-`POST /sale-availability/requests`, keyed `{$request.body#/callbackUrl}`. Use it
-instead of copying the body shape.
+The schema is in the System repository's
+`requirements/sale-availability.swagger.yml` (OpenAPI 3.1), as the
+`resultReady` entry under `callbacks` on `POST /sale-availability/requests`,
+keyed `{$request.body#/callbackUrl}`. Use it instead of copying the body shape.
 
-## Authentication and exposure risk
+## Authentication
 
-The callback carries the environment API key of the environment where System is
-deployed. The dispatcher reads it on every delivery from Secrets Manager
-`system/<stage>/shared-api-key` (env
-`SHARED_API_KEY_SECRET_NAME`) and never logs it. System PR #30 or an operator
-provisions the secret. There is no signing secret.
+The client's endpoint authenticates System by comparing one header with its
+stored copy of a key the client issued. System stores its copy per tenant and
+sends it on every callback:
 
-This key has the same value as the customer's Account key and opens every
-product on the shared domain and Marketplace. System sends it only to
-allowlisted HTTPS origins and refuses redirects, but every allowlisted receiver,
-including an external client, gets the key. Allowlist only receivers you trust
-with that key. Never paste the key into tickets, logs or evidence.
+- `auth.header` names the header, e.g. `x-api-key` or `Authorization`. System
+  stores it lowercase. `x-system-*`, `content-type`, `content-length`, `host`,
+  `connection`, `transfer-encoding` and `user-agent` are refused.
+- `auth.secretId` is the Secrets Manager name or ARN of the secret holding the
+  exact header value (for `Authorization`, the full `Bearer <key>`). It must be
+  under `system/<stage>/callback-clients/<tenantId>/`.
+- Optional `signing.secretId`, under the same prefix, adds
+  `X-System-Signature: sha256=<hex>`: the HMAC-SHA256, keyed with that secret,
+  of `<X-System-Timestamp>.<X-System-Delivery-Id>.<raw body>`.
+
+The dispatcher reads the secret on every delivery, so a rotation applies at
+once, and never logs it. Its IAM policy allows only
+`system/<stage>/callback-clients/*`, so it cannot read or send the environment's
+shared API key or the client's System service key. While the secret is missing,
+empty or not a valid header value, nothing is sent and the delivery is retried
+(`CLIENT_SECRET_MISSING`, `CLIENT_SECRET_INVALID`; `SIGNING_SECRET_*` for the
+signing secret). Settings saved without `auth` send nothing
+(`AUTH_NOT_CONFIGURED`), and the facade answers `CALLBACKS_NOT_ENABLED`.
+
+The settings API stores only secret names. Provision values out of band, for
+example:
+
+```bash
+aws secretsmanager create-secret \
+  --name system/<stage>/callback-clients/<tenantId>/auth-header \
+  --secret-string file://client-callback-key.txt
+```
+
+Never paste a key into tickets, logs or evidence.
 
 ## Enable for a client
 
@@ -71,10 +97,19 @@ with that key. Never paste the key into tickets, logs or evidence.
 
    ```http
    PUT /callback-clients/{tenantId}
-   { "enabled": true, "allowedUrlPrefixes": ["https://receiver.example/system/"] }
+   {
+     "enabled": true,
+     "allowedUrlPrefixes": ["https://receiver.example/system/"],
+     "auth": {
+       "header": "x-api-key",
+       "secretId": "system/<stage>/callback-clients/<tenantId>/auth-header"
+     }
+   }
    ```
 
-   A prefix is an HTTPS origin plus a path ending in `/`.
+   A prefix is an HTTPS origin plus a path ending in `/`. `auth` is required;
+   add `"signing": { "secretId": "..." }` to sign. A secret outside the
+   client's prefix gets `400 CALLBACK_SETTINGS_INVALID`.
 3. Read back with `GET /callback-clients/{tenantId}`.
 4. Disable with `PUT` and `"enabled": false`.
 
@@ -88,7 +123,7 @@ Errors on `POST /sale-availability/requests`:
 ## Delivery and retries
 
 - 2xx: delivered (`CallbackDelivered`).
-- 408, 429, 5xx, timeouts and a missing environment key: retried with jittered
+- 408, 429, 5xx, timeouts and a missing or invalid client secret: retried with jittered
   backoff starting at 30 s and doubling, at most 15 min apart, up to 8 attempts
   (`CallbackRetried`), then moved to `CallbackDlq` (alarmed).
 - Other 4xx: not retried (`CallbackRejected` metric and alarm).
@@ -103,19 +138,40 @@ Metrics are in namespace `System/ExternalFacade`: `CallbackDelivered`,
 
 ## Receiver checklist
 
-1. Compare `x-api-key` with the environment key using a constant-time compare.
-   Reject on mismatch.
-2. Reject a stale `X-System-Timestamp`, for example more than 300 s from now
+1. Compare the configured header with your stored key using a constant-time
+   compare. Answer 401 on a missing or different key; System does not retry it.
+2. With signing on, recompute `X-System-Signature` over the raw body and
+   compare it in constant time.
+3. Reject a stale `X-System-Timestamp`, for example more than 300 s from now
    in either direction.
-3. Store `X-System-Delivery-Id`; ignore one already processed.
-4. Return 2xx quickly and process asynchronously. Slow replies become retries.
-5. Answer at the callback URL itself. System does not follow redirects.
+4. Store `X-System-Delivery-Id`; ignore one already processed.
+5. Return 2xx quickly and process asynchronously. Slow replies become retries.
+6. Answer at the callback URL itself. System does not follow redirects.
+7. To rotate, accept both keys briefly, update System's secret, then retire the
+   old key. A key System does not hold yet gets 401 and is not retried.
+
+## Local test (no AWS)
+
+Run this before any deployed test. In a System checkout on the branch above:
+
+```bash
+npm ci
+npm run callbacks:local-demo           # or: just callback-local-demo
+```
+
+It runs the real delivery code against a mock receiver on `127.0.0.1` and prints
+PASS or FAIL for: correct key, wrong key (401, not retried), missing key, no key
+provisioned (nothing sent, DLQ), 500 then 200, duplicate delivery id, URL
+outside the prefix, production URL rules refusing the local receiver, key
+rotation, HMAC signing, and no secret in logs or other headers. Local mode needs
+`SYSTEM_CALLBACK_LOCAL_DEV=1`, which the scripts set; no stack sets it and no
+deployed handler reads it. A passing local run is not a delivered callback.
 
 ## Test sequence
 
 Run mock-first in a non-production review account. Enable callbacks in
 production only with explicit approval. Use a capture receiver under an
-allowlisted prefix that records headers (with `x-api-key` redacted to
+allowlisted prefix that records headers (with the auth header redacted to
 match/mismatch), body and arrival time.
 
 | # | Case | Setup | Expected |
@@ -128,6 +184,8 @@ match/mismatch), body and arrival time.
 | 6 | Retry then success | receiver returns 503, then 200 | attempts 1..n with one delivery id; `CallbackRetried` then `CallbackDelivered` |
 | 7 | Retries exhausted | receiver always returns 503 | 8 attempts, message in `CallbackDlq`, alarm fires |
 | 8 | Client disabled | `enabled: false`, then send with `callbackUrl` | `400 CALLBACKS_NOT_ENABLED` |
+| 9 | Wrong key | receiver stores another key | one attempt, 401, `CallbackRejected`, no retry |
+| 10 | Key rotation | change the receiver's key, then the secret | 401 before, delivered after, no redeploy |
 
 Also send one case where the receiver returns 400 and expect no retry and
 `CallbackRejected`.
@@ -143,7 +201,7 @@ Find these through the System stack outputs `CallbackQueueUrl`,
   `invocationId`. `CallbackRuleDlq` should stay empty.
 - The three callback alarms: only `CallbackDlqAlarm` should fire, and only in case 7.
 - Dispatcher log group: entries for the request id with attempt number, status
-  code and outcome; confirm the key never appears.
+  code and outcome; confirm neither the client key nor any System key appears.
 - Metrics in `System/ExternalFacade` for the case.
 - Receiver capture: ordered attempts with delivery id, timestamp and attempt
   header, and the body diffed against `GET /sale-availability/requests/{requestId}`.
