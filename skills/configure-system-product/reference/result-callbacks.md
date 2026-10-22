@@ -4,8 +4,8 @@ System can POST a finished request's result to a client-supplied URL instead of
 making the client poll. Zygarde owns the framework (validation, dispatcher,
 retries, alarms). Celebi enables it per client and tests it. Implemented in
 [prismteam-ai/system#32](https://github.com/prismteam-ai/system/pull/32); the
-per-client auth header below is on the System branch
-`feat/callback-client-auth-header`.
+per-client auth header, the one-URL rule and the install parameter below are in
+[prismteam-ai/system#40](https://github.com/prismteam-ai/system/pull/40).
 
 Scope: the sale-availability client facade only (`POST /sale-availability/requests`).
 The generic `POST /flows/{name}/invocations` route, Connect/Transform callbacks
@@ -19,8 +19,11 @@ and progress updates are out of scope.
 2. The facade validates the URL and stores it on the invocation record:
    HTTPS, port 443, no credentials, no IP literal or `localhost`, no fragment,
    and it must start with one of the client's allowlisted prefixes.
-3. A repeat with the same `Idempotency-Key` and a `callbackUrl` points the
-   request at that URL; if the request already finished, System resends.
+3. A request's callback URL is set once. A repeat with the same
+   `Idempotency-Key` and the same `callbackUrl` (or one for a request that had
+   none) is idempotent and, if the request already finished, resends it; one
+   with another `callbackUrl` gets `409 IDEMPOTENCY_CONFLICT` and changes
+   nothing. A repeat without `callbackUrl` changes nothing.
 4. When the Step Functions run finishes, an EventBridge rule queues
    `{invocationId}`. The callback dispatcher reloads the record and client
    settings, builds exactly the `GET /sale-availability/requests/{requestId}`
@@ -91,8 +94,10 @@ Never paste a key into tickets, logs or evidence.
 
 ## Enable for a client
 
-1. Install with `externalFacade.callbacks: true`. It is off by default; with it
-   off, no callback resources exist.
+1. Install with the Marketplace parameter `ExternalFacadeCallbacks` `true`
+   (`externalFacade.callbacks: true` for a direct deployment). It is `false`
+   by default; with it off, no callback resources exist. Turning it on enables
+   no client.
 2. Set the client with IAM-signed (SigV4) calls only:
 
    ```http
