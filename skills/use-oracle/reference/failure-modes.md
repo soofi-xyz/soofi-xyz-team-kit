@@ -82,6 +82,61 @@ declared scope.
 **Skip lists.** When adding categories, skip profile URLs already harvested so later loads
 dedupe instead of overwriting.
 
+## HOA web enrichment
+
+See [`hoa-web-ingestion.md`](./hoa-web-ingestion.md) for the full playbook.
+
+**Snippet ≠ evidence.** A search snippet can choose which link to open. It never
+supplies a name or fee. Open the page and quote it.
+
+**JavaScript-rendered fee section.** Zillow markdown usually lacks the HOA section;
+realtor.com and redfin.com often list no fee. A full-content rescrape
+(`onlyMainContent: false` plus `waitFor`) revealed nothing in 16 of 16 tests. Prefer
+another host over a rescrape.
+
+**Carousel cut removes the fee.** Cutting at every "Similar homes" mention removed
+the HOA section from Compass pages. Cut only at short heading-like lines.
+
+**Glued and split numbers.** `$376/moHOA Fees` needs a space before `HOA`. An amount
+pattern without a required thousands group read `1350.0` as 135 and
+`1029 Quarterly` as 9. Match four-digit amounts whole and re-read structured fields.
+
+**Labels that look like fees.** `Association #2` read as $2; `Secondary Association
+Fee` is not the primary fee; rental estimates, internet, pool, septic, CDD, taxes,
+one-time/transfer/capital fees, a year read as an amount, and `Calculated Total
+Monthly Association Fees: 0` are not HOA dues.
+
+**Badge ≠ conflict.** A rounded monthly badge beside an annual structured fee is the
+same fee (175 of 210 measured conflicts). A larger listing figure can be master plus
+sub-association. A monthly figure about 3× another is a quarterly amount mislabelled
+monthly. Adjudicate these patterns instead of reporting a conflict.
+
+**IDX widget periods.** `HOA Fees $X/ann` is a monthly equivalent billed annually.
+Convert at low confidence; never read it as $X per year.
+
+**Wrong unit, building page.** A property was matched to pages for three different
+units. A page listing three or more units is building-level. Require the unit, and
+cap condo confidence when the page shows only the street address.
+
+**City-only community.** A community that is only the city or a place name (Palm
+Coast sections) validated "<City> Homeowners Association" for 117 rows before the
+rule was added. Do not validate community-level names for such rows.
+
+**Placeholder propagation.** One HOA name stamped across many unrelated communities
+is a placeholder for every row whose own community it does not match.
+
+**Out-of-area registration.** An ACTIVE Sunbiz name match registered outside the
+property's ZIP3 and city may be a same-name association elsewhere. Keep it low; keep
+several matches `not_unique`.
+
+**Rate limit at the plan cap.** At 50 concurrent requests the provider's 500
+requests/minute limit returns 429. Use the adaptive limiter and back off; do not
+retry 429 in a tight loop.
+
+**Duplicate runs and stale checkpoints.** A trial run twice in parallel doubles spend
+and interleaves checkpoints. Hold an exclusive lock file. Bump the parser version
+when logic changes so stale checkpoint rows are recomputed from cache.
+
 ## Credentials and environments
 
 **Runtime secrets inject at process start.** Adding AWS or upload-node credentials does not
@@ -139,3 +194,7 @@ Keep these distinct: `pilot`, `enumerating`, `running`, `cooling_down`, `paused`
 `source_cap`, `source_missing`, `checkpoint_stale`, `manual_captcha_required`,
 `login_required`, `no_anonymous_search`, `custodian_only`, `software_transport`,
 `captured_complete`, `loaded_complete`, `supported_partial`, `supported_full`.
+
+HOA web rows use the diagnostics in `hoa-web-ingestion.md` (`confirmed_match`,
+`partial_match`, `source_conflict`, `insufficient_evidence`, `fetch_error`, and the
+others listed there) rather than these county statuses.
