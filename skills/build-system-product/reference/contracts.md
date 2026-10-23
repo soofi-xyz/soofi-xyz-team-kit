@@ -35,6 +35,16 @@ its top level; a flow names its `template` and `definition`. A kit `product-*`
 artifact kind names a compatibility configuration shape, not a separate product.
 Use `persist-ingest` rather than the removed historical collection API concept.
 
+A `Batch` runs at most 4 items at once unless it sets `MaxConcurrency` (1 to
+1000) or `MaxConcurrency.$` (a dotted path read when the batch starts); see
+[batch concurrency](../../configure-system-product/reference/batch-concurrency.md).
+For `MaxConcurrency.$` the compiler writes `$.steps.<Batch>.concurrency` at the
+batch's name (4 when the value is missing or null), checks it at
+`<Batch>.System.Check`, fails at `<Batch>.System.Invalid` with
+`System.InvalidMaxConcurrency`, and runs `<Batch>.System.Map` with
+`MaxConcurrencyPath`. Step Functions caps a state name at 80 characters and a
+System step name is up to 64, so keep a new generated suffix to 16 characters.
+
 Run:
 
 ```bash
