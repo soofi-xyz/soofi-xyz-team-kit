@@ -63,6 +63,11 @@ target. Work DEV first; ask before every PUT, confirmed backfill, `ACTIVATE`,
 Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
 Verify this product’s required shared-domain mapping through supported configuration and deployment operations. Keep optional DNS reachability separate from attachment readiness; hand infrastructure gaps to the product builder.
 
+## Marketplace image access
+
+Read [the Marketplace image access contract](../skills/guide-product-work/reference/marketplace-image-access.md) when an install fails at `Custom::MarketplaceImageAccess` or async Gremlin fails with `GremlinAsyncWorkerImagePullFailed`.
+The install grants itself pull access through Marketplace's image access API; a refused grant fails the install with Marketplace's reason. For `403`, the account must be listed in Marketplace's `IMAGE_ACCESS_CUSTOMER_ACCOUNT_IDS`: hand that to Regigigas, then rerun the install. Never edit the registry policy or call the image access API by hand.
+
 ## Return
 
 Return configuration artifacts and versions, target identity, actual ingest/read-back results, learning progress, cleanup and any builder handoff. For a searchable field, also return the Lexicon/Persist PR links, the generation built and activated, backfill counters, gate results, the ACTIVE generation reported by the control Lambda `status`, the Recall@5 on the known set and the rollback target. For metrics, return the Model release installed, the catalog version before and after, the `STATUS` sync and gate results, backfill windows with their counters and coverage, the active and rollback generations and one cell read-back.
