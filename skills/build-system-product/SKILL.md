@@ -48,12 +48,23 @@ Keep these rules:
 - Accept only URLs under a client's allowlisted prefixes, HTTPS on port 443,
   without credentials or fragments.
 - Refuse redirects and hosts that resolve to non-public addresses.
-- Read the environment API key from Secrets Manager on every delivery; never log it.
+- Send the client's callback key in the client's configured header, read from a
+  Secrets Manager secret under `system/<stage>/callback-clients/<tenantId>/` on
+  every delivery; never send the environment's shared API key and never log a key.
 - Deliver at least once with a stable `X-System-Delivery-Id`; bound retries and
   send exhausted deliveries to a DLQ with alarms.
 - Send exactly the GET result body and document it as an OpenAPI `callbacks` entry.
 
 Celebi owns per-client configuration and delivery tests.
+
+## Tiered review
+
+Own the Tier 2 shadow-verification worker, ledger, budget reservation and
+auto-off alarms behind the `TieredReview` install parameter and its AppConfig
+flag. See [tiered review](../configure-system-product/reference/tiered-review.md).
+Keep the facade, GET body and callbacks independent of it, Tier 1 always final,
+the flag OFF at 0% on every install, and Tier 2 spend reserved against the
+per-call, daily and monthly caps before each call. Celebi operates the flag.
 
 ## Acceptance
 

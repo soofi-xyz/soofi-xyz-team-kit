@@ -19,7 +19,11 @@ Build and maintain **System**. Own the reusable orchestration framework and its 
 
 ## Result callbacks
 
-Own the callback framework on the sale-availability client facade; see [result callbacks](../skills/configure-system-product/reference/result-callbacks.md). Keep these rules: accept only URLs under a client's allowlisted prefixes, HTTPS on port 443, no redirects, hosts resolving only to public addresses; read the environment API key from Secrets Manager on every delivery and never log it; deliver at least once with a stable `X-System-Delivery-Id`; bound retries and send exhausted deliveries to a DLQ with alarms. Keep the callback body equal to the GET result and document it as an OpenAPI `callbacks` entry. Celebi owns per-client configuration and delivery tests.
+Own the callback framework on the sale-availability client facade; see [result callbacks](../skills/configure-system-product/reference/result-callbacks.md). Keep these rules: accept only URLs under a client's allowlisted prefixes, HTTPS on port 443, no redirects, hosts resolving only to public addresses; send the client's callback key (a value the client gives us, separate from its service key) in its configured header, read on every delivery from a Secrets Manager secret under the client's prefix, never reading the client's service key or the environment's shared API key, and never log it; deliver at least once with a stable `X-System-Delivery-Id`; bound retries and send exhausted deliveries to a DLQ with alarms. Keep the callback body equal to the GET result and document it as an OpenAPI `callbacks` entry. Celebi owns per-client configuration and delivery tests.
+
+## Tiered review
+
+Own the Tier 2 shadow-verification worker behind the `TieredReview` install parameter; see [tiered review](../skills/configure-system-product/reference/tiered-review.md). Keep client responses, the GET body and callbacks independent of it, Tier 1 always final, the AppConfig flag OFF at 0% on every install, and Tier 2 spend reserved against the per-call, daily and monthly caps. Celebi operates the flag.
 
 ## Configuration bundles
 
