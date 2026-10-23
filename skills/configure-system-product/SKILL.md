@@ -33,6 +33,12 @@ Read [the System scope](../build-system-product/reference/PRD.md),
 Return the composition, versions, validated files, actual scenario results,
 learning stage, unresolved dependencies and readiness for real integration.
 
+## Batch concurrency
+
+Read [batch concurrency](reference/batch-concurrency.md) before writing a `Batch`
+state: the default of 4, a fixed `MaxConcurrency`, or `MaxConcurrency.$` from an
+invocation input, and how each is validated.
+
 ## Result callbacks
 
 Read [result callbacks](reference/result-callbacks.md) to enable a client's
