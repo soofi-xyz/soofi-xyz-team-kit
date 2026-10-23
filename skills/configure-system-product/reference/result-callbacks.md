@@ -38,8 +38,8 @@ and progress updates are out of scope.
    `{invocationId}`. The callback dispatcher reloads the record and client
    settings, builds exactly the `GET /sale-availability/requests/{requestId}`
    body and POSTs it. Succeeded, failed and cached requests each send one.
-5. The callback carries the client's callback key (never its service key) in
-   the header the client chose.
+5. The callback carries the client's callback key in the header the client
+   chose. System never reads the service key for it.
    The host must resolve only to public addresses. Redirects are not followed.
 6. Polling does not change. `GET /sale-availability/requests/{requestId}`
    stays the source of truth: invocation records are kept 30 days, with or
@@ -80,9 +80,10 @@ Use these three names with clients and in evidence, never "the key":
 | System calls the client's `callbackUrl` | **Callback key**, a value the client gives us at onboarding | `auth.header`, chosen by the client | the exact header value in `auth.secretId` |
 | Optional signing | **Signing secret**, a third value | `X-System-Signature` (HMAC; the secret is not sent) | `signing.secretId` |
 
-- A callback never carries the service key, the environment's shared API key
-  or any other System credential: only the callback key, as stored, plus the
-  `X-System-*` headers.
+- System never reads the service key, the environment's shared API key or any
+  other System credential for a callback: it sends only the callback key, as
+  stored, plus the `X-System-*` headers. If a client chose the same value for
+  both keys, that value is what is sent.
 - Nothing prevents a client from choosing a callback key equal to its service
   key; System keeps only the service key's fingerprint and never compares them.
   Recommend a separate value: a leak of one does not expose the other, they
