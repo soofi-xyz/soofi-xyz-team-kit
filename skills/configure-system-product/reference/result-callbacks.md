@@ -7,6 +7,16 @@ retries, alarms). Celebi enables it per client and tests it. Implemented in
 per-client auth header, the one-URL rule and the install parameter below are in
 [prismteam-ai/system#40](https://github.com/prismteam-ai/system/pull/40).
 
+Production status: System-prod has had `ExternalFacadeCallbacks` `true` since
+the 2026-10-23 13:14 UTC install of #40 and
+[#41](https://github.com/prismteam-ai/system/pull/41). The install turns on no
+client: each one needs `PUT /callback-clients/{tenantId}`. #41, in the same
+install, lets the service-key admin role tag the API keys it mints; before it,
+`POST /service-keys` and rotate failed with 502 `KEY_UPSTREAM_FAILED`.
+The client-facing guide is the OpenDoor portal's Result callbacks section,
+from [elephant-xyz/opendoor-documentation](https://github.com/elephant-xyz/opendoor-documentation);
+never put operator settings, secret names or IAM routes there.
+
 Scope: the sale-availability client facade only (`POST /sale-availability/requests`).
 The generic `POST /flows/{name}/invocations` route, Connect/Transform callbacks
 and progress updates are out of scope.
@@ -30,6 +40,9 @@ and progress updates are out of scope.
    body and POSTs it. Succeeded, failed and cached requests each send one.
 5. The callback carries the client's own key in the header the client chose.
    The host must resolve only to public addresses. Redirects are not followed.
+6. Polling does not change. `GET /sale-availability/requests/{requestId}`
+   stays the source of truth: invocation records are kept 30 days, with or
+   without a `callbackUrl`.
 
 ```text
 client ─POST /sale-availability/requests {callbackUrl}─▶ facade ─▶ Step Functions
@@ -94,6 +107,19 @@ Never paste a key into tickets, logs or evidence.
 
 ## Enable for a client
 
+Collect from the client first, through the secure channel used for its
+service key:
+
+- the HTTPS URL prefix its `callbackUrl` values will start with (an origin on
+  port 443 plus a path ending in `/`);
+- the header name its endpoint checks, e.g. `x-api-key` or `Authorization`;
+- the exact header value (the key, or `Bearer <key>`), stored as
+  `system/<stage>/callback-clients/<tenantId>/auth-header`;
+- whether it wants signed callbacks; if so, a signing secret stored under the
+  same prefix and shared with the client the same way.
+
+The `tenantId` is the tenant of the client's System service key.
+
 1. Install with the Marketplace parameter `ExternalFacadeCallbacks` `true`
    (`externalFacade.callbacks: true` for a direct deployment). It is `false`
    by default; with it off, no callback resources exist. Turning it on enables
@@ -127,6 +153,7 @@ Errors on `POST /sale-availability/requests`:
 
 ## Delivery and retries
 
+- Each attempt times out after 10 s.
 - 2xx: delivered (`CallbackDelivered`).
 - 408, 429, 5xx, timeouts and a missing or invalid client secret: retried with jittered
   backoff starting at 30 s and doubling, at most 15 min apart, up to 8 attempts
@@ -157,7 +184,7 @@ Metrics are in namespace `System/ExternalFacade`: `CallbackDelivered`,
 
 ## Local test (no AWS)
 
-Run this before any deployed test. In a System checkout on the branch above:
+Run this before any deployed test. In a System checkout of `main`:
 
 ```bash
 npm ci
