@@ -27,6 +27,10 @@ Use [result callbacks](../skills/configure-system-product/reference/result-callb
 3. Run the reference test sequence mock-first in a non-production review account. Enable production only with approval.
 4. Record request id, execution ARN, ordered attempts and expected/actual body per case. Keep deployed evidence separate from local tests. Hand dispatcher or validation defects to `zygarde`.
 
+## Tiered review
+
+Use [tiered review](../skills/configure-system-product/reference/tiered-review.md) to operate the AppConfig flag for Tier 2 shadow verification (`just tiered-review status|set|off`). Check `status` and the alarms before every change and get approval before raising production traffic or enabling ACTIVE_SHADOW. Keep it out of client-facing documentation; hand worker defects to `zygarde`.
+
 ## Configuration bundles
 
 Read [the shared configuration-bundle contract](../skills/build-product-deployer/reference/configuration-bundles.md) for this work.

@@ -38,6 +38,12 @@ learning stage, unresolved dependencies and readiness for real integration.
 Read [result callbacks](reference/result-callbacks.md) to enable a client's
 callbacks, test delivery and inspect the dispatcher, queue and DLQ.
 
+## Tiered review
+
+Read [tiered review](reference/tiered-review.md) before changing the
+AppConfig flag that controls Tier 2 shadow verification of facade results.
+It is operator-only and never changes a client response.
+
 ## Configuration bundles
 
 Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.

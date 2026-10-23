@@ -57,6 +57,15 @@ Keep these rules:
 
 Celebi owns per-client configuration and delivery tests.
 
+## Tiered review
+
+Own the Tier 2 shadow-verification worker, ledger, budget reservation and
+auto-off alarms behind the `TieredReview` install parameter and its AppConfig
+flag. See [tiered review](../configure-system-product/reference/tiered-review.md).
+Keep the facade, GET body and callbacks independent of it, Tier 1 always final,
+the flag OFF at 0% on every install, and Tier 2 spend reserved against the
+per-call, daily and monthly caps before each call. Celebi operates the flag.
+
 ## Acceptance
 
 Derive usable feature increments from the System capability map and the requested
