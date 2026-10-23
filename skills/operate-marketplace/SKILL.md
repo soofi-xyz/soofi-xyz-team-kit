@@ -410,6 +410,12 @@ cannot use it. The repository needs one secret,
 - Do not claim Marketplace deployed a stack into a tenant — it only stores
   reviewed bundles.
 - Record HTTP method, path, status, and error `tag` for every failed call.
+- Image pull access is granted by each install's product stack through
+  Marketplace's image access API, never by this skill. Never edit the registry
+  policy. A review or install that fails on image access carries Marketplace's
+  reason; for an account outside the organization, hand the listing in
+  `IMAGE_ACCESS_CUSTOMER_ACCOUNT_IDS` to Regigigas. See [the Marketplace image
+  access contract](../guide-product-work/reference/marketplace-image-access.md).
 
 ## Return
 
