@@ -48,7 +48,7 @@ Keep these rules:
 - Accept only URLs under a client's allowlisted prefixes, HTTPS on port 443,
   without credentials or fragments.
 - Refuse redirects and hosts that resolve to non-public addresses.
-- Send the client's own key in the client's configured header, read from a
+- Send the client's callback key in the client's configured header, read from a
   Secrets Manager secret under `system/<stage>/callback-clients/<tenantId>/` on
   every delivery; never send the environment's shared API key and never log a key.
 - Deliver at least once with a stable `X-System-Delivery-Id`; bound retries and

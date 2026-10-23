@@ -38,7 +38,8 @@ and progress updates are out of scope.
    `{invocationId}`. The callback dispatcher reloads the record and client
    settings, builds exactly the `GET /sale-availability/requests/{requestId}`
    body and POSTs it. Succeeded, failed and cached requests each send one.
-5. The callback carries the client's own key in the header the client chose.
+5. The callback carries the client's callback key (never its service key) in
+   the header the client chose.
    The host must resolve only to public addresses. Redirects are not followed.
 6. Polling does not change. `GET /sale-availability/requests/{requestId}`
    stays the source of truth: invocation records are kept 30 days, with or
@@ -56,7 +57,7 @@ receiver ◀─POST callbackUrl── dispatcher ◀─ queue ◀─ EventBridge
 ```
 POST <callbackUrl>
 content-type: application/json
-<auth.header>:        <the client's own key>   e.g. x-api-key or Authorization
+<auth.header>:        <the client's callback key>   e.g. x-api-key or Authorization
 X-System-Timestamp:   <unix seconds>
 X-System-Delivery-Id: <requestId>:<status>   same on every retry and resend
 X-System-Attempt:     1, 2, ...
@@ -69,11 +70,34 @@ The schema is in the System repository's
 `resultReady` entry under `callbacks` on `POST /sale-availability/requests`,
 keyed `{$request.body#/callbackUrl}`. Use it instead of copying the body shape.
 
-## Authentication
+## Authentication: which key is which
+
+Use these three names with clients and in evidence, never "the key":
+
+| Direction | Credential | Header | System keeps |
+| --- | --- | --- | --- |
+| Client calls the facade (`POST`/`GET /sale-availability/requests…`) | **Service key** (the client's Prism client key), from `POST /service-keys` | `x-api-key` | only an HMAC-SHA256 fingerprint |
+| System calls the client's `callbackUrl` | **Callback key**, a value the client gives us at onboarding | `auth.header`, chosen by the client | the exact header value in `auth.secretId` |
+| Optional signing | **Signing secret**, a third value | `X-System-Signature` (HMAC; the secret is not sent) | `signing.secretId` |
+
+- A callback never carries the service key, the environment's shared API key
+  or any other System credential: only the callback key, as stored, plus the
+  `X-System-*` headers.
+- Nothing prevents a client from choosing a callback key equal to its service
+  key; System keeps only the service key's fingerprint and never compares them.
+  Recommend a separate value: a leak of one does not expose the other, they
+  rotate independently, and the service key, which can call the API, then
+  never sits in webhook logs.
+- Rotation: the client sends the new callback key, you update the secret, and
+  the next delivery sends it. No redeploy. The client's endpoint should accept
+  both keys until the new one arrives. The service key rotates separately
+  (`POST /service-keys/{id}/rotate`).
+- The client-facing wording of this section is the OpenDoor portal's
+  "Authentication: which key is which" under Result callbacks.
 
 The client's endpoint authenticates System by comparing one header with its
-stored copy of a key the client issued. System stores its copy per tenant and
-sends it on every callback:
+stored copy of the callback key. System stores its copy per tenant and sends it
+on every callback:
 
 - `auth.header` names the header, e.g. `x-api-key` or `Authorization`. System
   stores it lowercase. `x-system-*`, `content-type`, `content-length`, `host`,
@@ -113,10 +137,12 @@ service key:
 - the HTTPS URL prefix its `callbackUrl` values will start with (an origin on
   port 443 plus a path ending in `/`);
 - the header name its endpoint checks, e.g. `x-api-key` or `Authorization`;
-- the exact header value (the key, or `Bearer <key>`), stored as
-  `system/<stage>/callback-clients/<tenantId>/auth-header`;
-- whether it wants signed callbacks; if so, a signing secret stored under the
-  same prefix and shared with the client the same way.
+- the callback key: the exact header value (the key, or `Bearer <key>`),
+  stored as `system/<stage>/callback-clients/<tenantId>/auth-header`.
+  Recommend a value different from its service key;
+- whether it wants signed callbacks; if so, a signing secret, separate from
+  both keys, stored under the same prefix and shared with the client the same
+  way.
 
 The `tenantId` is the tenant of the client's System service key.
 
@@ -158,7 +184,8 @@ Errors on `POST /sale-availability/requests`:
 - 408, 429, 5xx, timeouts and a missing or invalid client secret: retried with jittered
   backoff starting at 30 s and doubling, at most 15 min apart, up to 8 attempts
   (`CallbackRetried`), then moved to `CallbackDlq` (alarmed).
-- Other 4xx: not retried (`CallbackRejected` metric and alarm).
+- Any other answer (other 4xx, and 3xx since redirects are not followed): not
+  retried (`CallbackRejected` metric and alarm).
 - Delivery is at least once. Receivers drop duplicates by `X-System-Delivery-Id`.
 - If EventBridge cannot put a finished run on the callback queue, the raw event
   goes to `CallbackRuleDlq` (alarmed).
@@ -170,8 +197,8 @@ Metrics are in namespace `System/ExternalFacade`: `CallbackDelivered`,
 
 ## Receiver checklist
 
-1. Compare the configured header with your stored key using a constant-time
-   compare. Answer 401 on a missing or different key; System does not retry it.
+1. Compare the configured header with your stored callback key (not your
+   service key) using a constant-time compare. Answer 401 on a missing or different key; System does not retry it.
 2. With signing on, recompute `X-System-Signature` over the raw body and
    compare it in constant time.
 3. Reject a stale `X-System-Timestamp`, for example more than 300 s from now
@@ -179,8 +206,8 @@ Metrics are in namespace `System/ExternalFacade`: `CallbackDelivered`,
 4. Store `X-System-Delivery-Id`; ignore one already processed.
 5. Return 2xx quickly and process asynchronously. Slow replies become retries.
 6. Answer at the callback URL itself. System does not follow redirects.
-7. To rotate, accept both keys briefly, update System's secret, then retire the
-   old key. A key System does not hold yet gets 401 and is not retried.
+7. To rotate the callback key, accept both old and new briefly, have System's
+   secret updated, then retire the old key. A key System does not hold yet gets 401 and is not retried.
 
 ## Local test (no AWS)
 
