@@ -37,6 +37,12 @@ searchable](#make-a-field-searchable).
 6. Hand missing capabilities or defects to `conkeldurr`. Do not broaden the data
    scope, edit the engine or provision another Persist instance to make tests pass.
 
+When an install fails at `Custom::MarketplaceImageAccess`, or async Gremlin fails
+with `GremlinAsyncWorkerImagePullFailed`, follow [the Marketplace image access
+contract](../guide-product-work/reference/marketplace-image-access.md). Access is
+granted by the install itself. For a `403`, the account must be listed in
+Marketplace's configuration (hand it to Regigigas). Never edit the registry policy.
+
 Return configuration/version changes, observed results, learning stage,
 cleanup, limitations and any builder handoff. Do not claim live verification
 when only local fixtures were exercised.

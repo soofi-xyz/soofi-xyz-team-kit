@@ -58,6 +58,11 @@ install are open team decisions; do not invent them.
 Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
 Bind `SharedApiDomainName` only from Environment's `/account/env-parameters` (`environment.shared-routing.outputs.v1`) and reject caller overrides. In Puller, claim base paths, reject duplicates, handle concurrent claims and advance installed identity only after mapping read-back; on retirement remove only that product's mapping. Report reachability `UNVERIFIED`; mapping read-back is not reachability proof. Verify mappings independently of optional DNS. Run/Puller APIs are IAM SigV4 only; the shared API key is pending prismteam-ai/deploy PR #13. Do not add unknown `marketplace.product.json` fields; Build's manifest schema is closed. Preserve shared resources and the stateless run API boundary.
 
+## Marketplace image access
+
+Read [the Marketplace image access contract](../skills/guide-product-work/reference/marketplace-image-access.md) for installs of bundles that run prebuilt images.
+The product stack grants its account pull access through Marketplace's image access API. Do not add registry grants, ECR policy edits or image access calls to Deploy or Puller. A refused grant fails the install at the product's image access resource; keep that resource's CloudFormation status reason (Marketplace's reason) in run results, and do not treat it as a Deploy defect.
+
 ## Return
 
 Return implementation changes, API examples, automated results, user observations, AWS evidence, cleanup and remaining gaps. Hand configuration-only work to `skarmory`. Never report unperformed checks as passing.

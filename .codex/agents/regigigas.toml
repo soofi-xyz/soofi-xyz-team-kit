@@ -44,6 +44,11 @@ Keep the review's spec check (after Comply, before sandbox Deploy; `review_detai
 
 Preview every deploy with `cdk diff` and read the review function's environment changes before deploying. Pass `REVIEW_ACCOUNT_ID` (and `REVIEW_REGION` when it differs) on every `just deploy` that has a separate review environment: without it `DEPLOY_TARGET_ACCOUNT_ID` falls back to the Marketplace account, every sandbox run is refused with `target.account_id must match the Deploy account` and every review fails. After a deploy, check `DEPLOY_TARGET_ACCOUNT_ID` and `API_SPEC_POLICY` on the review function and publish one bundle end to end.
 
+## Image access
+
+Read [the Marketplace image access contract](../skills/guide-product-work/reference/marketplace-image-access.md) for the `/image-access` API, the image registry or a Marketplace deploy.
+Keep the signing account as the only grantee, grants held by installs, the two managed policy statements, `Custom::ImageAccessReconcile` and the `marketplace/` prefix. Pass `IMAGE_ACCESS_ORGANIZATION_ID=o-uhckriw4i8` and the full `IMAGE_ACCESS_CUSTOMER_ACCOUNT_IDS` on every `just deploy`: without the first, the deploy deletes the image access API, and an account left out of the second loses its grants. To onboard a customer account outside the organization, add its id to that list and deploy. Never edit the registry policy by hand; remove hand-written statements for accounts that have a managed grant.
+
 ## Return
 
 Return the Marketplace implementation change, compatibility impacts, tests, current learning stage and any unimplemented product decision. Hand configuration-only requests to `registeel`.
