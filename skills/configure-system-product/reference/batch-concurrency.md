@@ -15,9 +15,10 @@ already run, such as `$.steps.Plan.output.limit`; it cannot read `$.item`.
 System rejects, when the template is saved, a fixed value that is not an
 integer from 1 to 1000, a path that is not dotted or that the batch cannot read,
 and a batch that sets both fields. A referenced value that is present but is not
-an integer from 1 to 1000 (`0`, `-1`, `2.5`, `"4"`) fails the run at
-`<Batch>.System.Invalid` with `System.InvalidMaxConcurrency` before any item
-starts; the batch's `Catch` does not apply. Bound the input in the definition's
+an integer from 1 to 1000 (`0`, `-1`, `2.5`, `"4"`) fails the run at the
+batch's own name with `System.InvalidMaxConcurrency` before any item starts; the
+batch's `Catch` does not apply. (Before System redrive the run ended at
+`<Batch>.System.Invalid`; compiled templates now have no `Fail` state.) Bound the input in the definition's
 `inputSchema` (`"type": "integer"`, `minimum`, `maximum`) so a caller's bad value
 is refused at invocation instead.
 

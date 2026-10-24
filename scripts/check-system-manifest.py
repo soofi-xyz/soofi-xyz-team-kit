@@ -115,6 +115,30 @@ def _template_targets(definition: dict) -> set[str]:
     return targets
 
 
+def _fail_entries(states: dict, prefix: str = "") -> list[str]:
+    """States that go to a Fail state other than by catching an error, batch item steps included.
+
+    System refuses these: a redrive resumes a run at the state it stopped in, so a run must stop at
+    the step that failed. A Fail state may only name a caught error; FailWhen fails a deciding step.
+    """
+    problems: list[str] = []
+    is_fail = lambda name: isinstance(states.get(name), dict) and states[name].get("Type") == "Fail"
+    for name, state in states.items():
+        if not isinstance(state, dict):
+            continue
+        nexts = [state.get("Next"), state.get("Default")]
+        nexts += [choice.get("Next") for choice in state.get("Choices", []) if isinstance(choice, dict)]
+        for target in sorted({next_ for next_ in nexts if isinstance(next_, str) and is_fail(next_)}):
+            problems.append(
+                f"{prefix}{name} goes to Fail {target}; a run must stop at the step that failed so a redrive "
+                "runs it again: use FailWhen on the step that decides it"
+            )
+        steps = state.get("Steps")
+        if isinstance(steps, dict) and isinstance(steps.get("States"), dict):
+            problems += _fail_entries(steps["States"], f"{prefix}{name} item step ")
+    return problems
+
+
 class ManifestCheck:
     def __init__(self, manifest_path: Path):
         self.path = manifest_path
@@ -313,6 +337,8 @@ class ManifestCheck:
                 self.fail(where, f"StartAt {definition.get('StartAt')!r} is not a state")
             for target in sorted(_template_targets(definition) - set(states)):
                 self.fail(where, f"transition to unknown state {target!r}")
+            for problem in _fail_entries(states):
+                self.fail(where, problem)
 
         flow_names: set[str] = set()
         for name, flow in self._emits_of("product-flow").items():
