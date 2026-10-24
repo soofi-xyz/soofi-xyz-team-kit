@@ -39,6 +39,13 @@ Read [batch concurrency](reference/batch-concurrency.md) before writing a `Batch
 state: the default of 4, a fixed `MaxConcurrency`, or `MaxConcurrency.$` from an
 invocation input, and how each is validated.
 
+## Failures and redrive
+
+Read [failures and redrive](reference/failures-and-redrive.md) before writing a
+`Catch`, a `Fail` state or a business-rule failure: a template may not reach a
+`Fail` state except by catching an error, `FailWhen` fails the step that decides,
+and a failed run is resumed with `POST /invocations/{id}/redrive`.
+
 ## Result callbacks
 
 Read [result callbacks](reference/result-callbacks.md) to enable a client's

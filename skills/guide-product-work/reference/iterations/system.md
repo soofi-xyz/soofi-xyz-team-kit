@@ -2,7 +2,7 @@
 
 Use Zygarde for framework capabilities and Celebi for supported configurations.
 Apply the [shared workflow](../../SKILL.md) to the scoped dependency plan. These
-nine capability areas are a starting inventory; a feature may need several
+ten capability areas are a starting inventory; a feature may need several
 increments. Scenario families and the four fixture configurations are test
 coverage, not a count of implementation pieces.
 
@@ -15,6 +15,7 @@ coverage, not a count of implementation pieces.
 | `retry-policy` — recover a failed step | Executable flows | Deliver scoped configurable retries, timeouts and catches; configure a transient mock failure and an exhausted retry case. | Inspect actual attempts/backoff, timeout/catch and terminal cause; verify successful recovery and bounded failure. |
 | `waterfalls` — try another flow | Reusable flows and failure propagation | Deliver ordered primary/fallback attempts; configure fallback success and all-failed cases. | Inspect both flow attempts, outputs and error logs; prove success stops further attempts and terminal failure is preserved. |
 | `invocation-lifecycle` — inspect and safely repeat a run | Template invocation; richer flows for coverage | Complete supported invocation status/result/correlation and replay behavior beyond the minimal first run; configure duplicate/repeated calls with stable identities. | Correlate request, execution and leaf logs; compare status/result and duplicate-write behavior. Verify supported lifecycle semantics before claiming replay support. |
+| `redrive` — resume a failed run at the step that failed | Executable flows, retry policy and batches | Deliver native redrive (`POST /invocations/{id}/redrive`), templates without `Fail` states, `FailWhen` and merged batch results; configure a step that fails until fixed and a batch that fails midway, using the [failures test sequence](../../../configure-system-product/reference/failures-and-redrive.md). | Inspect the execution history before and after: earlier steps have no new events, only failed or unstarted batch children are redriven, a run that fails again stays redrivable, and the reported error is the template's name. |
 | `result-callbacks` — push a finished result to a client | Invocation lifecycle and the client facade | Deliver callback URL validation, per-client allowlists, the dispatcher, bounded retries, DLQ and alarms; configure an allowlisted receiver and run the [callback test sequence](../../../configure-system-product/reference/result-callbacks.md). | Inspect the execution, callback queue, DLQ and dispatcher logs against the receiver capture; the body must equal the GET result, retries keep one delivery id, rejected URLs queue nothing and the key is never logged. |
 | `configuration-lifecycle` — install definitions for configuration bundles | Verified definition, template, flow and waterfall APIs | Deliver/verify stable registration identities, version/conflict behavior, pinned leaf references, read-back and supported retirement for Deploy's shared adapter. Keep bundle installation independent of a System business invocation. | Inspect stored references/revisions and invalid dependency rejection; register without invoking flows. Preserve separate mocked and real scenario readiness. |
 

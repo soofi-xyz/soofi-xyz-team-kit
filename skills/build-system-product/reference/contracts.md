@@ -39,11 +39,28 @@ A `Batch` runs at most 4 items at once unless it sets `MaxConcurrency` (1 to
 1000) or `MaxConcurrency.$` (a dotted path read when the batch starts); see
 [batch concurrency](../../configure-system-product/reference/batch-concurrency.md).
 For `MaxConcurrency.$` the compiler writes `$.steps.<Batch>.concurrency` at the
-batch's name (4 when the value is missing or null), checks it at
-`<Batch>.System.Check`, fails at `<Batch>.System.Invalid` with
-`System.InvalidMaxConcurrency`, and runs `<Batch>.System.Map` with
-`MaxConcurrencyPath`. Step Functions caps a state name at 80 characters and a
-System step name is up to 64, so keep a new generated suffix to 16 characters.
+batch's name (4 when the value is missing or null), checks it there and fails
+that state itself with `System.InvalidMaxConcurrency`, then runs
+`<Batch>.System.Map` with `MaxConcurrencyPath`. Step Functions caps a state name
+at 80 characters and a System step name is up to 64, so keep a new generated
+suffix to 16 characters.
+
+Compiled state machines contain no `Fail` state, so a redrive
+(`POST /invocations/{id}/redrive`, Step Functions' `RedriveExecution`) resumes at
+the step that failed; see
+[failures and redrive](../../configure-system-product/reference/failures-and-redrive.md).
+The compiler drops a `Catch` into a `Fail` state and the service reports the
+`Fail` state's `Error` from the execution history's last entered state; it
+refuses a template that reaches a `Fail` state any other way. `FailWhen` steps
+compile to JSONata states whose `Output` raises `$error("[System.Fail <ERROR>]
+<cause>")`; the service reads the last marker in the cause. Every `Batch` is a
+Distributed Map with STANDARD children, never an inline Map, and an
+`OUTPUTS_JSONL` batch is followed by `<Batch>.System.Results`, a built-in Lambda
+that merges every attempt's succeeded files into
+`merged/<Step>/<map run>/SUCCEEDED.jsonl` for `succeededResultsUri`. The API role
+needs `states:RedriveExecution` and `states:GetExecutionHistory` on template
+executions, and the workflow role `states:RedriveExecution` for Map Run
+children.
 
 Run:
 
