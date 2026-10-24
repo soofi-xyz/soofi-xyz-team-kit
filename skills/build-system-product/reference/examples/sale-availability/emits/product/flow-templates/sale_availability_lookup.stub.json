@@ -13,23 +13,15 @@
             "parcelId.$": "$.flow_input.parcelId"
           }
         },
-        "Next": "Found"
-      },
-      "Found": {
-        "Type": "Choice",
-        "Choices": [
+        "Next": "Done",
+        "FailWhen": [
           {
             "Variable": "$.states.ResolveSaleAvailability.output.parcelId",
-            "IsPresent": true,
-            "Next": "Done"
+            "IsPresent": false,
+            "Error": "UNKNOWN_IDENTIFIER",
+            "Cause": "No curated sale-availability record for the requested address or parcelId."
           }
-        ],
-        "Default": "UnknownIdentifier"
-      },
-      "UnknownIdentifier": {
-        "Type": "Fail",
-        "Error": "UNKNOWN_IDENTIFIER",
-        "Cause": "No curated sale-availability record for the requested address or parcelId."
+        ]
       },
       "Done": {
         "Type": "Succeed"

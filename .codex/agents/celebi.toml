@@ -16,6 +16,14 @@ Configure business outcomes on **System**. Keep framework, compiler and infrastr
 5. Validate with `scripts/check-system-manifest.py`, then run the configuration against the actual System service using mocked leaf services before enabling real integrations. Record expected/actual outcomes and execution traces separately from static checks.
 6. Hand missing runtime features or defects to `zygarde`. Do not fall back to an unrelated custom Lambda pipeline or rebuild a leaf engine.
 
+## Failures and redrive
+
+Use [failures and redrive](../skills/configure-system-product/reference/failures-and-redrive.md) for every template failure and for resuming failed runs.
+
+1. Reach a `Fail` state only from a `Catch`, placed after any recovering catch. Move a business-rule failure onto the deciding step with `FailWhen`; compute `States.*` values in a `Set` before it.
+2. Run the template check, then the failures test sequence mock-first: fail a step, redrive it, fail a batch midway and confirm only failed or unstarted items run again.
+3. Record `failedStep`, the reported and executed errors, `redriveCount` and, for batches, each child's redrive count before and after. Hand compiler or redrive defects to `zygarde`.
+
 ## Result callbacks
 
 Use [result callbacks](../skills/configure-system-product/reference/result-callbacks.md) when a client wants System to POST finished sale-availability results instead of polling.
