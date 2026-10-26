@@ -24,7 +24,7 @@ For creation or modification of components, read [the authoring contract](../bui
 Verify the deployment has completed the authoring contract’s client registration
 checkpoint. Connect the user through its supported OAuth flow; route missing
 Console client approval/registration to Chandelure. Do not reuse editor credentials.
-Use only existing API operations to select create/edit, HTML/React, Figma nodes,
+Use only existing API operations to select create/edit, HTML/React/email HTML, Figma nodes,
 repository revision and scoped paths; retrieve status/results and verify the
 source/diff, preview and executed tests. Do not edit the engine or silently fall
 back to running a local coding agent when the service lacks this capability.

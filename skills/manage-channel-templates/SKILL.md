@@ -97,6 +97,18 @@ Expose a runtime-friendly inventory that downstream systems can trust:
 - explicit family/variant semantics
 - no hidden dependence on operational-only columns
 
+## Email Templates From Figma
+
+When a requester provides a Figma design for an email body, call Console's
+authoring job API with `output: email-html` instead of hand-writing the HTML.
+Send the Figma node, the declared render variables and template language, and
+for an edit the current HTML with its `content_sha256`. Poll the job and use the
+returned HTML, variable list and previews. Reject a result that drops or adds a
+variable, then continue the normal flow: write the HTML and metadata through the
+template pull request, request approvals and certify rendering before merge.
+Console does not commit, approve or send; those steps stay here. Read the
+[Console email HTML target](../build-console-product/reference/component-authoring.md#email-html-target).
+
 ## Boundaries
 
 `Jigglypuff` does not own:

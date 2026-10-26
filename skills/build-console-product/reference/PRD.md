@@ -2,7 +2,7 @@
 
 ## 1. Purpose
 
-Console creates and modifies HTML or React components from Figma via MCP, using
+Console creates and modifies HTML, email HTML or React components from Figma via MCP, using
 Amazon Bedrock AgentCore Runtime and the pi coding harness. Read the required
 [component authoring contract](component-authoring.md) for inputs, HTTP jobs,
 architecture, artifacts and acceptance. Console also provides the reusable Prism web runtime. It turns a governed, versioned
@@ -240,6 +240,9 @@ The network view must:
 - **Persist:** bounded graph/fact queries through its public query contract.
 - **System:** typed workflow invocation and status operations for configured
   actions.
+- **Callers of the authoring job API:** external systems such as Jigglypuff call
+  the `email-html` target through the shared domain with an environment key and
+  keep their own repository, approval and delivery steps.
 - **Report:** read-only `report-output-1` dataset files and manifests from the
   `outputs/` prefix of Report's output bucket.
 - **Build:** source validation and immutable runtime artifact/provenance.
