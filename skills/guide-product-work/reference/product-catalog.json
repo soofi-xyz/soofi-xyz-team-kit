@@ -1171,17 +1171,21 @@
       "sourceRows": [
         58
       ],
-      "status": "unassigned",
-      "summary": "",
+      "status": "assigned",
+      "summary": "Schedule turns configured cohort and contact-history queries into a daily contact plan with counts, precedence, rotation, cooldowns and optional hour and capacity planning.",
       "agents": {
-        "build": null,
-        "configure": null
+        "build": "klinklang",
+        "configure": "klink"
       },
       "skills": {
-        "build": null,
-        "configure": null
+        "build": "build-schedule-product",
+        "configure": "configure-schedule-product"
       },
-      "notes": []
+      "notes": [
+        "Assigned by explicit user request on 2026-10-26. Klinklang builds the Schedule service in prismteam-ai/schedule (created by the first build piece); Klink writes, validates, bundles, simulates and runs schedule-1 configurations through its API.",
+        "Schedule generalizes earlier single-channel calling, text and email solvers. It holds no channel, cohort or client logic: business meaning comes from configured queries and column roles. The first acceptance case is a fixed daily count from one cohort with a one-day cooldown rotation. It contacts nobody; consuming workflows send, dial or render its outputs."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/schedule.md"
     },
     {
       "id": "report",

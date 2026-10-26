@@ -45,6 +45,7 @@ Kangaskhan only when Account behavior is missing or broken.
 | **Rule** | Rule selects entities and evaluates governed predicates. | [`gallade`](./agents/gallade.md) | [`meditite`](./agents/meditite.md) |
 | **Connect** | Connect exchanges files and requests with external partners. | [`lapras`](./agents/lapras.md) | [`wingull`](./agents/wingull.md) |
 | **System** | System orchestrates business outcomes through reusable configured flows. | [`zygarde`](./agents/zygarde.md) | [`celebi`](./agents/celebi.md) |
+| **Schedule** | Schedule turns configured cohort and contact-history queries into a daily contact plan with counts, precedence, rotation, cooldowns and optional hour and capacity planning. | [`klinklang`](./agents/klinklang.md) | [`klink`](./agents/klink.md) |
 | **Report** | Report runs configured Persist and Athena queries on a schedule into an append-only ledger and writes Athena SQL datasets as JSON outputs. | [`bronzong`](./agents/bronzong.md) | [`bronzor`](./agents/bronzor.md) |
 
 <!-- product-catalog:end -->
