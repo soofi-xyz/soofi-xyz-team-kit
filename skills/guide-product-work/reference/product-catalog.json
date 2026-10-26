@@ -96,7 +96,8 @@
         "The 2026-10-10 scope adds Figma-to-HTML/React creation and existing-component modification. Retain Chandelure/Vivillon ownership. Reuse Sylveon design adaptation, Hoopa Figma MCP intake and responsive design tests; apply Ash state, memory and telemetry patterns with a Console-specific AgentCore Runtime/pi harness exception.",
         "Begin full Console builds with official Figma MCP client registration/approval and OAuth/read verification. Keep downstream authoring pending until the checkpoint succeeds; reuse existing verified approval for later tasks.",
         "Require versioned project configuration, authoring/review workspace, component identity/assets/history, standalone export and reviewed PR application/revert, optional compiled-registry promotion through Build/Marketplace/Deploy, and bounded tenant operations with lifecycle acceptance.",
-        "The 2026-10-21 scope adds generic report visualization components and a read-only `report` dataset binding over Report's `report-output-1` outputs, derived from the visuals shared by existing reports. Chandelure builds them; Vivillon maps a report's datasets to them. Report keeps queries, refreshes and dataset shape."
+        "The 2026-10-21 scope adds generic report visualization components and a read-only `report` dataset binding over Report's `report-output-1` outputs, derived from the visuals shared by existing reports. Chandelure builds them; Vivillon maps a report's datasets to them. Report keeps queries, refreshes and dataset shape.",
+        "The 2026-10-26 scope adds an `email-html` authoring target for Figma-designed email template bodies, with Jigglypuff calling the job API through the shared domain (SOC DEV first, then PROD). Console generates the body only; Jigglypuff keeps template PRs, approvals, real-debt render certification and sending."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/console.md"
     },

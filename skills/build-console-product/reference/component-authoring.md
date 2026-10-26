@@ -14,7 +14,8 @@ as the builder and Vivillon as the operator of supported service capabilities.
 This contract extends the governed renderer; generated source is a reviewable
 artifact, never executable application configuration.
 
-Collect operation (`create` or `edit`), output (`html` or `react`), exact Figma
+Collect operation (`create` or `edit`), output (`html`, `react` or
+`email-html`; see [email HTML target](#email-html-target)), exact Figma
 section/node URLs, repository and base revision, component paths, styling and
 component conventions, requested states/breakpoints, and preview/test commands.
 For edits, preserve handlers, state, API calls, analytics, accessibility and public
@@ -111,6 +112,50 @@ preserve the repository's language, props, imports and styling conventions. For
 edits, inspect recent history for overrides and produce a minimal base-relative
 patch; do not overwrite unrelated changes.
 
+## Email HTML target
+
+Support `output: email-html` for transactional and marketing email bodies built
+from Figma. Email clients are not browsers, so this target has its own rules:
+
+- Produce one self-contained HTML document: table-based layout, inline styles
+  (optionally mirrored in a single head `<style>` for clients that honour it),
+  a fixed content width taken from the design (default 600px), and a hidden
+  preheader when the design or request supplies one.
+- Never emit scripts, event handlers, forms, iframes, embedded fonts that must
+  load at runtime, external stylesheets or CSS that common clients drop
+  (positioning, flex/grid as the only layout, custom properties). Provide
+  bulletproof buttons and web-safe font fallbacks.
+- Reference images by absolute HTTPS URL or by the caller's registered asset
+  key; package Figma exports as job artifacts with digests and never point at
+  transient Figma URLs. Require alt text for every image.
+- Preserve template placeholders exactly. Accept the caller's declared variable
+  list and template language (Jigglypuff uses Nunjucks), map design text to
+  those variables when the request names them, and never invent, rename or drop
+  a variable. Keep required compliance blocks, for example the unsubscribe link
+  `{{ unsubscribe_url }}`, where the caller's contract requires them.
+- Return the HTML, the referenced-variable list, image/asset manifest, a
+  `content_sha256` of the HTML bytes, rendered previews (desktop, mobile, dark
+  mode) with sample variables, and the executed checks: HTML validity, executable
+  content rejection, inline-style coverage, link and image checks and an
+  undeclared-variable check. Editing an existing email returns a minimal patch
+  that keeps unrelated bytes, links, variables and conditional blocks intact.
+- Console generates the email body only. It does not commit to a template
+  repository, request legal approval, render real recipients, mint links or send
+  email; the calling system owns those steps.
+
+### Jigglypuff consumer
+
+Jigglypuff (`Spring-Oaks-Capital-LLC/jigglypuff-agent`) is the first `email-html`
+consumer. It calls Console's authenticated job API through the environment's
+shared domain (`https://<shared-domain>/console`, `x-api-key` from managed
+secrets), submits the Figma node, the declared Nunjucks variables and, for an
+edit, the current linked HTML and its `content_sha256` from `templates-inventory`,
+then polls status and retrieves the result. Jigglypuff writes the HTML and its
+metadata through its existing linked-HTML pull-request flow, keeps legal and
+engineering approval tasks, and certifies rendering with real debts before
+merge. Roll out against SOC DEV first, then PROD, with a separate key per
+environment.
+
 ## Agent architecture: explicit Ash exception
 
 Read [Ash](../../../agents/ash.md) and
@@ -179,7 +224,10 @@ to Build, publication to Marketplace and installation to Deploy when requested.
 
 ## Verification and acceptance
 
-Exercise all four paths: create HTML, create React, edit HTML and edit React.
+Exercise all six paths: create HTML, create React, create email HTML, edit
+HTML, edit React and edit email HTML. For email HTML, verify the declared
+variables survive byte-for-byte, executable content is rejected and the previews
+render across desktop, mobile and dark mode.
 Include a follow-up edit on an existing session and a materially different design.
 For each path inspect the rendered component and its final composed route.
 
