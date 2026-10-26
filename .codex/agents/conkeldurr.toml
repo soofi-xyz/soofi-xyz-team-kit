@@ -67,6 +67,11 @@ definitions; route definition and catalog-schema changes to Dialga.
 Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
 Require this product’s API CDK stacks to consume the shared domain through deploy-time parameters and own their base-path mappings. Reuse the attachment helper and preserve existing stack/path identity; do not create a second shared domain.
 
+## Marketplace image access
+
+Read [the Marketplace image access contract](../skills/guide-product-work/reference/marketplace-image-access.md) for Fargate images, the Marketplace bundle or an install that fails on image access.
+Installs get pull access to `marketplace/persist` themselves through `Custom::MarketplaceImageAccess` in `NeptuneStack`; keep it there and make every new image-running stack depend on `NeptuneStack`. Run new images `prebuilt`, pinned by digest. Update images by copying them into `marketplace/persist`, then changing the digests in `marketplace/container-images.json`. Never edit the registry policy or add pull grants by hand. An account outside the organization is listed in Marketplace's configuration, not granted in Persist.
+
 ## Return
 
 Return the Persist change, affected contracts and state, verification results, migration/rollback requirements, current learning stage and remaining deployment or runtime evidence. For the vector-search piece, include the lexicon eligibility version, embedding evaluation and pinned profile, index generation, GraphQL composition evidence and its separate acceptance checkpoint.

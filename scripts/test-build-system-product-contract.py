@@ -266,6 +266,37 @@ def assert_emit_contracts() -> None:
         "transition to unknown state 'Nowhere'",
     )
     assert_rejects(
+        "template reaching a Fail state from a Choice",
+        lambda p, _m: edit_emit(
+            p,
+            "emits/product/flow-templates/sale_availability_lookup.stub.json",
+            lambda d: d["definition"]["States"].update(
+                ResolveSaleAvailability={**d["definition"]["States"]["ResolveSaleAvailability"], "Next": "Found"},
+                Found={
+                    "Type": "Choice",
+                    "Choices": [{"Variable": "$.states.ResolveSaleAvailability.output.parcelId", "IsPresent": True, "Next": "Done"}],
+                    "Default": "UnknownIdentifier",
+                },
+                UnknownIdentifier={"Type": "Fail", "Error": "UNKNOWN_IDENTIFIER"},
+            ),
+        ),
+        "Found goes to Fail UnknownIdentifier; a run must stop at the step that failed",
+    )
+    assert_accepts(
+        "template naming a caught error with a Fail state",
+        lambda p, _m: edit_emit(
+            p,
+            "emits/product/flow-templates/sale_availability_lookup.stub.json",
+            lambda d: d["definition"]["States"].update(
+                ResolveSaleAvailability={
+                    **d["definition"]["States"]["ResolveSaleAvailability"],
+                    "Catch": [{"ErrorEquals": ["States.ALL"], "Next": "LookupFailed"}],
+                },
+                LookupFailed={"Type": "Fail", "Error": "LOOKUP_FAILED"},
+            ),
+        ),
+    )
+    assert_rejects(
         "product definition name mismatch",
         lambda p, _m: edit_emit(p, "emits/product/product.definition.stub.json", lambda d: d.update(name="other")),
         "does not match 'sale-availability'",

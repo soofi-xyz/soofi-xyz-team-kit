@@ -58,6 +58,16 @@ real loader compiled for DEV and PROD before any write. Keep one writer per cell
 visibility through the activation pointer only, and backfill as notices into the
 same lanes. Route definition and catalog-schema changes to Model's agents.
 
+## Marketplace image access
+
+For Fargate images or the Marketplace bundle, load [the Marketplace image access
+contract](../guide-product-work/reference/marketplace-image-access.md). The bundle
+runs digest-pinned images from `marketplace/persist`, and `Custom::MarketplaceImageAccess`
+in `NeptuneStack` grants the installing account pull access while the stack exists.
+Make every image-running stack depend on `NeptuneStack`. Update images by copying
+them into `marketplace/persist`, then changing `marketplace/container-images.json`.
+Never edit the registry policy or add pull grants by hand.
+
 ## Verification and handoff
 
 Derive the scoped feature plan from the shared workflow and product capability

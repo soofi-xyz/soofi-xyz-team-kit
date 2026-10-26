@@ -19,6 +19,10 @@ Build and maintain **System**. Own the reusable orchestration framework and its 
 6. After every framework increment, have the person run its actual System configuration, inspect Step Functions and correlated logs, and report expected/actual behavior before implementing the next piece. Cover every selected feature with configuration/negative cases, then rerun cumulative mock acceptance. Only then progress to real integrations within the authorized scope.
 7. Use local fixture validation as preparation. Do not label a manifest, a simulator, or a synthesized stack as a working deployed System.
 
+## Failures and redrive
+
+Own redrive and failure compilation; see [failures and redrive](../skills/configure-system-product/reference/failures-and-redrive.md). Keep these rules: compile no `Fail` state, including engine checks, which fail their own state; drop catches into `Fail` and report the Fail state's name from the failed state; refuse any other way into a `Fail` state; redrive only with Step Functions' native redrive, keeping the invocation id; compile every `Batch` as a Distributed Map with STANDARD children; merge an `OUTPUTS_JSONL` batch's results across attempts. Verify each change live: fail a step and a batch midway, redrive, and check only failed or unstarted work ran again. Celebi owns template migrations and configuration tests.
+
 ## Result callbacks
 
 Own the callback framework on the sale-availability client facade; see [result callbacks](../skills/configure-system-product/reference/result-callbacks.md). Keep these rules: accept only URLs under a client's allowlisted prefixes, HTTPS on port 443, no redirects, hosts resolving only to public addresses; read the environment API key from Secrets Manager on every delivery and never log it; deliver at least once with a stable `X-System-Delivery-Id`; bound retries and send exhausted deliveries to a DLQ with alarms. Keep the callback body equal to the GET result and document it as an OpenAPI `callbacks` entry. Celebi owns per-client configuration and delivery tests.

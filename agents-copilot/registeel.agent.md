@@ -61,6 +61,11 @@ Read [the shared API domain contract](../skills/guide-product-work/reference/sha
 Verify published API bundles declare `base_path` and `requires.domain: true` only (`endpoints`/`endpoint_contract_version` need a Build schema change first; domain metadata comes from `/account/env-parameters`) and review evidence for product-owned mappings. Treat missing contract support as a builder gap; do not rewrite bundles.
 Before publishing an API product, apply the contract's publish readiness gate: every customer-facing method accepts the shared `x-api-key` (REST `apiKeyRequired` on the `/account/shared-usage-plan-id` plan, or Account's request authorizer; HTTP APIs need an Account-validating Lambda authorizer). IAM SigV4 as the only customer path is not ready. Report it as not ready and route to the product builder; never modify product code or publish anyway.
 
+## Image access
+
+Read [the Marketplace image access contract](../skills/guide-product-work/reference/marketplace-image-access.md) when a bundle runs prebuilt images or a review fails on image access.
+Installs, review installs included, get pull access themselves through the product stack. A refused grant fails the install with Marketplace's reason; report that reason. Requests to admit an account outside the organization are Marketplace configuration (`IMAGE_ACCESS_CUSTOMER_ACCOUNT_IDS` and a deploy), so hand them to Regigigas. Never edit the registry policy or call the image access API yourself.
+
 ## Return
 
 Return the operation classification; that Prism Marketplace was the target; ontology identifiers touched (UUIDs and names, no secrets); when publishing, the source commit, `build_id`, scan severity and findings, the Build and Marketplace checks that passed, S3 metadata bytes, `review_id` and `bundle_status`; HTTP status tags or `failure.tag` for failures; for readiness, each gap with its concrete product change and owner; when the CI workflow was missing, the pull request URL, the dry-run facts, the secret steps and the two choices (merge to publish automatically, or "publish now"); and any follow-ups that belong outside this API (Deploy run, Persist confirmation).

@@ -1,6 +1,6 @@
 ---
 name: operate-sms-campaigns
-description: Prepares, certifies, and starts SOCAPITAL SMS campaigns through the mandatory standard or payfail Filter contract, live Interprose SMS cleanup, PRIMARY ZIP validation, same-day provider dedupe, template checks, reservation, and SMS orchestration. Use for bulk SMS, trigger SMS, credit-reporting sets, portfolio SMS, payfail SMS, workflow payloads, or SMS send readiness.
+description: Prepares, certifies, and starts SOCAPITAL SMS campaigns through the mandatory standard or payfail Filter contract, live Interprose SMS cleanup (including SLDBCK, worklist 1151, and SMS opt-out/STOP history), PRIMARY ZIP validation, operator opt-out suppression lists with Quiq opt-outs after the list cut-off, same-day provider dedupe, final-build DNT recount, template checks, reservation, and SMS orchestration. Use for bulk SMS, trigger SMS, credit-reporting sets, portfolio SMS, payfail SMS, suppression-list scrubs, workflow payloads, or SMS send readiness.
 ---
 
 # Operate SMS campaigns
@@ -10,9 +10,12 @@ Prepare every SMS campaign as:
 ```text
 source membership
   -> mandatory SMS Filter contract
-  -> live Interprose SMS scrub
+  -> live Interprose SMS scrub (incl. SLDBCK, worklist 1151, opt-out/STOP)
   -> live PRIMARY ZIP gate
+  -> opt-out suppression list + Quiq after list cut-off (when a list is supplied)
+  -> operator-requested debt removals
   -> same-day provider/admission dedupe
+  -> final build: Quiq refresh + read-only account DNT recount
   -> template/campaign collision checks
   -> encrypted final audience + reservation + payload
   -> SMS workflow only with explicit approval
@@ -260,6 +263,16 @@ input = passed + rejected + not_loaded
 Also prove source/pass/reject membership, no gaps or duplicates, expected file
 totals, nonempty aggregate output, and AES256.
 
+The Filter Distributed Map tolerates failed items, so a top-level `SUCCEEDED`
+execution can omit an input file (for example a Neptune `503` after retries).
+Treat any failed child or `failed_files_count > 0` in
+`aggregated-statistics.json` as a certification failure. A succeeded execution
+cannot be redriven: rerun only the failed input file(s) as a separate Filter
+execution with the same ordered contract and business date, then certify the
+merge. Require the original's only failures to be exactly those files, the
+retry to be fully clean, both runs' inputs to cover the source exactly once,
+and the merged totals to reconcile to the full source.
+
 ## Run live Interprose SMS scrub
 
 Run after Filter through production PrivateLink in one read-only
@@ -284,17 +297,32 @@ approved VPC-connected compute; do not expose the database publicly.
 Retain a debt only when:
 
 - exactly one current SPRING account exists;
+- neither `debt_status_code` nor `last_status_code` is `SLDBCK` (sold back);
+- the debt is not on sell-back worklist `1151`: check both
+  `spring.account.worklist_id` and `spring.worklist_debt`, because either can
+  be set without the other;
 - account `active=true`, `debt_status_code=ACT`, `currentbal>0`;
 - `do_not_txt` and `do_not_call` are not true;
 - at least one supplied phone same-debt matches current
   `demographic_phone`;
 - phone is valid US 10 digits, `active=true`, and `no_contact=false`;
-- no same-debt/global SPRING row marks it bad, invalid, wrong, reassigned,
-  consumer-blocked, DNC, do-not-call/contact, inactive, or disconnected;
-- it is not currently opted out and has no historical SMS opt-out event/date.
+- phone status is `NEW`, `VERIFIED`, or `ACTIVE`, and no same-debt/global
+  SPRING row marks it bad, invalid, wrong, reassigned, consumer-blocked, DNC,
+  do-not-call/contact, inactive, or disconnected;
+- no same-debt or global SPRING `demographic_phone` row has
+  `txt_msg_status=OPTED_OUT` or a `txt_msg_opt_out_date`;
+- `spring.txt_msg_log` holds no STOP-style reply or opt-out result for that
+  debt and phone.
+
+Apply the SLDBCK and worklist 1151 checks to every SMS campaign, standard or
+payfail, even when Filter's `not_sold_back` rule already passed. Report their
+hit counts separately from the other account reasons so they stay visible when
+a debt would fail another gate anyway.
 
 Remove unsafe phones and drop debts left with no safe SMS phone. Publish
-account/phone exclusion evidence, counts, hashes, and transaction proof.
+account/phone exclusion evidence, counts, hashes, and transaction proof. See
+[reference/interprose-sms-scrub.md](reference/interprose-sms-scrub.md) for the
+query shapes, gate order, and STOP-word rule.
 
 ## Require live PRIMARY ZIP
 
@@ -307,11 +335,45 @@ snapshots for this gate.
 `12345`, `12345-6789`, or `123456789` to `12345`; reject missing values or
 values with fewer than five digits.
 
+## Apply opt-out suppression lists
+
+When the operator supplies a phone suppression list (for example an incident
+`combined-suppression-<date>/union_suppression.csv` with its `summary.json`),
+apply it after the PRIMARY ZIP gate and before dedupe. Do not skip it because
+Filter and the Interprose scrub already removed opt-outs; the list carries
+sources neither reads.
+
+1. Record the list's SHA-256, row count, and last-modified time. Require one
+   unique 10-digit `phone` per row; fail closed on any other value.
+2. Remove every audience phone whose last 10 digits are on the list. Drop
+   debts left with no phone.
+3. Close the gap after the list was built: read Quiq
+   `CustomerOptOutStatusChanged` events after the list's Quiq cut-off and also
+   remove phones whose latest SMS event is `optedOut=true`. Opt-ins never
+   remove a number from suppression.
+4. Prove 0 final overlap with the list and those Quiq opt-outs.
+
+Take the list's Quiq cut-off from its newest `refresh_*` block
+(`quiq_delta.latest_event_included_utc`), not the older top-level window in
+`summary.json`. Publish an opt-out summary with debts/phones in and out,
+`phones_removed_by_source` (`list`, `quiq_after_list`), and debts dropped. Keep
+phone-level removal detail local only. See
+[reference/optout-suppression.md](reference/optout-suppression.md).
+
+## Apply operator-requested removals
+
+Remove debts the operator names after the suppression step and before dedupe,
+so a removed debt cannot keep a shared phone that another debt needed. Confirm
+every requested debt was present, record counts in a final-build audit, and
+never echo the debt ids into shared reports.
+
 ## Deduplicate against today's sends
 
 Before creating the final payload, build a current provider/admission
 inventory from lifecycle executions, selected-action artifacts, dispatch
-backlog, and active reservations.
+backlog, and active reservations. Re-run it immediately before starting SMS
+when time has passed since the audience was built: trigger campaigns started
+later the same day add new overlaps.
 
 - Include running/succeeded and actually admitted/enqueued/submitted
   campaigns.
@@ -325,11 +387,27 @@ backlog, and active reservations.
 Default to zero overlap. Proceed with known overlap only when the user
 explicitly authorizes it; record that exception in the final audit.
 
+## Run the final build
+
+After dedupe, and again whenever the audience is rebuilt:
+
+- re-read Quiq opt-out events since the suppression step's read and remove any
+  matching final phones;
+- recount in a fresh read-only `REPEATABLE READ` Interprose transaction over
+  the final debts: accounts with `do_not_txt=true` and final phones currently
+  SMS opted out on any SPRING debt must both be 0;
+- prove unique final debts and phones and 0 overlap with the suppression list
+  and today's inventory;
+- write a debt-phone reservation and a counts-only final-build audit.
+
 ## Certify template, campaign, and payload
 
-Verify the Git-backed template is active and its ID/name/channel match. Check
-the campaign identifier against Step Functions, lifecycle, backlog, send
-context, and reservations.
+Verify the Git-backed template is active on `main` and its ID/name/channel
+match. A template ID that exists only in an open pull request fails this gate.
+Check the campaign identifier against Step Functions, lifecycle, backlog, send
+context, and reservations. Choose the campaign identifier independently of the
+template so a template chosen late does not change identifiers already
+recorded in evidence.
 
 Publish:
 
@@ -368,9 +446,17 @@ Preparing or returning a payload does not authorize starting SMS. Start
 start/send. Verify `RUNNING` and return the execution link. Do not separately
 start assignment, rendering, dispatch, or provider sending.
 
+When the operator requires the SMS Do-Not-Text compliance page, submit the
+send record as the last scrub step, following hoothoot-agent
+`docs/sms-dnt-compliance-source-contract.md`, and wait for the send to show
+`PASS` before asking for approval. Submit a new revision when the audience
+changes, unless the operator explicitly waives it.
+
 ## Report
 
-Return source, Filter pass/reject/not-loaded, Interprose exclusions, safe
-phones, ZIP exclusions, provider debt/phone overlaps, final debt/phone counts,
-rule contract name/count, execution links, final/audit/reservation URIs,
-payload, and whether SMS was started.
+Return source, Filter pass/reject/not-loaded (and any part retry), Interprose
+exclusions including SLDBCK and worklist 1151 counts, safe phones, ZIP
+exclusions, suppression-list and Quiq removals, operator removals, provider
+debt/phone overlaps, account DNT recount, final debt/phone counts, rule
+contract name/count, execution links, final/audit/reservation URIs, payload,
+and whether SMS was started.
