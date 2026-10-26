@@ -1,6 +1,6 @@
 ---
 name: build-transform-product
-description: "Implement Transform: registered language-pair SQL conversions and non-deterministic extraction from strings using configurable provider connections and models, JSON Schema structured output and the AI SDK; include Python/PySpark formats, typed tables, graph mappings and TypeScript orchestration."
+description: "Implement Transform: registered language-pair SQL conversions, single-transaction mappings and non-deterministic extraction from strings using configurable provider connections and models, JSON Schema structured output and the AI SDK; include Python/PySpark formats, typed tables, graph mappings and TypeScript orchestration."
 ---
 
 Use [the Transform capability map](../guide-product-work/reference/iterations/transform.md). Derive the feature pieces from scope and dependencies, then apply the work below within each piece; require a user-run configuration, AWS inspection and feedback before starting the next implementation piece.
@@ -20,6 +20,11 @@ string input → configured model through an explicit AI SDK adapter → schema-
 Read [non-deterministic extraction](reference/non-deterministic-extraction.md)
 for its configuration, prompt, runtime, API integration and acceptance contract.
 Keep the SQL rules below scoped to SQL; do not force raw strings into a Spark table.
+
+For one small transaction per run, use the separate transactional JavaScript
+phase: registered `javascript` mapping → fresh in-process sandbox → GraphSON for
+Persist. Read [transactional JavaScript mappings](reference/transactional-javascript.md).
+Keep the Spark batch path unchanged.
 
 ## Required reading
 
@@ -87,13 +92,24 @@ Keep the phase's configuration and submission/status/result APIs in Transform.
 Version new contracts explicitly; do not add extraction fields to the v2 SQL
 request or claim existing deployment support from this specification.
 
+## Transactional JavaScript phase
+
+Implement the capability map's `transactional-javascript` increment using
+[its contract](reference/transactional-javascript.md). Select it through the
+registered mapping's `engine` and the synchronous transaction route, never a
+deploy-time flag. Resolve one enabled mapping per pair and engine. Verify the
+script digest, run it in a fresh QuickJS (WASM) sandbox with memory and time
+limits and no host functions, and serialize the mapping's own ids as GraphSON
+`g:UUID` values; Persist validates against Lexicon and assigns hashed ids. Do not
+translate SQL, change `spark-sql` validation or add Lexicon validation to this path.
+
 ## Companion products and output
 
 Load [Lexicon](../build-lexicon-product/SKILL.md) for language definition and
 mapping publication and [Persist](../build-persist-service/SKILL.md) only for requested
 graph loading. Keep their deployment details outside this general product spec.
 
-Return the resolved pair/mapping or extraction configuration/model/schema,
+Return the resolved pair/mapping (with engine) or extraction configuration/model/schema,
 definitions/formats and graph role bindings when
 applicable, implementation/migration changes, publication/deployment status and
 verification evidence. Mark unsupported deployment capabilities explicitly.

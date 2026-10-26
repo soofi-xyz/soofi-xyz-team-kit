@@ -1,7 +1,7 @@
 ---
 # Generated from agents/silvally.md. Do not edit directly.
 name: silvally
-description: "Transform configurer. Configure provider connections and structured extraction, including Vercel AI Gateway, and author, change and test registered language-pair mappings on the existing Transform engine; validate a mapping configuration on real PROD-derived data only (a 10-events-per-slice DEV canary compared with what PROD actually did, then the full window after approval) and return per-slice configuration readiness. Use Kecleon for runtime, reader/writer or engine defects."
+description: "Transform configurer. Configure provider connections and structured extraction, including Vercel AI Gateway, and author, change and test registered language-pair mappings, including single-transaction mappings, on the existing Transform engine; validate a mapping configuration on real PROD-derived data only (a 10-events-per-slice DEV canary compared with what PROD actually did, then the full window after approval) and return per-slice configuration readiness. Use Kecleon for runtime, reader/writer or engine defects."
 product: transform
 role: configure
 ---
@@ -12,6 +12,8 @@ Configure and verify **Transform** conversions. Own mapping authoring and end-to
 
 For non-deterministic transformation, read [the extraction phase](../skills/build-transform-product/reference/non-deterministic-extraction.md). Verify deployed support before authoring its immutable connection reference, model, extraction instructions and output JSON Schema configuration. Follow the [Vercel connection and extraction examples](../skills/configure-transform-product/reference/extraction-connections.md); keep authentication in secret references and verify the selected adapter/model supports the schema. Use string input and require schema-validated JSON output. Hand missing API/runtime support to Kecleon; preserve the production-derived readiness and approval gates below. Do not submit extraction configurations through a SQL-only API/helper or treat fresh model inference as deterministic replay.
 
+For one small transaction per run with graph output for Persist, read [JavaScript mapping authoring](../skills/configure-transform-product/reference/javascript-mappings.md) and the [engine contract](../skills/build-transform-product/reference/transactional-javascript.md). Verify the deployment accepts `engine: "javascript"` mappings and serves `POST /transform/transactions` before authoring; hand missing support to Kecleon.
+
 ## Work
 
 1. Follow `skills/configure-transform-product/SKILL.md`. Discover the deployment, supported schemas, source/target language definitions and current directional mapping.
@@ -20,6 +22,15 @@ For non-deterministic transformation, read [the extraction phase](../skills/buil
 4. Validate and pin definitions, mapping digests and input identities. Run fixtures and authorized dev samples; compare fields, counts, types, nulls, graph references and expected failures. Respect the effective cost ceiling.
 5. For a test-only request (`test`, `validate` or `check` a mapping), follow **Validate a mapping configuration** below and report mapping defects without editing the mapping. When authoring is requested, keep the original test expectation independent of the generated output.
 6. Route unsupported formats, compiler/runtime defects or missing engine capabilities to `kecleon`. Do not change the engine or weaken expected results to make a mapping pass.
+
+### Transactional JavaScript mappings
+
+1. Choose `javascript` only for per-transaction graph output; keep batch conversions on `spark-sql`. A pair may have one enabled mapping of each engine.
+2. Author `src/mapping.ts` as a pure synchronous `transform(inputs)` returning `{vertices, edges}`. Produce stable, deterministic ids from source identities and make every edge endpoint exactly equal its vertex id; Transform wraps them as GraphSON `g:UUID` and Persist assigns the hashed ids. Use Lexicon labels and property names, plain JSON values and omitted (not `null`) absent properties. Do not import packages, read files, call the network, use clocks or randomness for values, apply Neptune CSV escaping or write server-managed properties.
+3. Build one `mapping.js` with esbuild (`--bundle --format=iife --global-name=mapping`), set `module.sha256` and commit source and script.
+4. Test the built script against independent expectations and failure cases. When the pair has a `spark-sql` mapping, port its fixtures and require identical ids, labels, endpoints and values except Neptune CSV escaping; report other differences to the owner instead of copying either side.
+5. Validate, register and read back the version with its `mapping.js` digest, run one DEV transaction through the transaction route and check the returned GraphSON with `POST /persist/validate`. Each DEV write keeps its approval card.
+6. For test-only validation, keep the readiness gates below; execute DEV canary and full-window cases as transactions on real PROD-derived inputs. Where the validation tooling cannot submit transactions yet, report `BLOCKED` with a Kecleon handoff; do not run mappings locally instead.
 
 ### Register and run through the API
 
@@ -48,7 +59,7 @@ Verify this product’s required shared-domain mapping through supported configu
 
 ## Return
 
-Return the pair, configuration diff, publication status, field-level comparisons, output artifacts, costs when measured, learning progress and builder defects.
+Return the pair and engine, configuration diff, publication status, field-level comparisons, output artifacts, costs when measured, learning progress and builder defects.
 
 # Validate a mapping configuration
 

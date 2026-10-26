@@ -1,12 +1,14 @@
 # Transform capability map
 
 Use Kecleon for engine features and Silvally for language/mapping configuration.
-Derive the dependency plan with the [shared workflow](../../SKILL.md). These twelve
+Derive the dependency plan with the [shared workflow](../../SKILL.md). These thirteen
 capability areas reflect the current [product contract](../../../build-transform-product/reference/PRD.md);
 select and split them by the requested scope, rather than targeting a fixed count.
 Pin definitions/mappings and keep one enabled directional SQL mapping per pair.
 For the extraction phase, pin the selected configuration, connection revision, model, prompt
 and JSON Schema using [its contract](../../../build-transform-product/reference/non-deterministic-extraction.md).
+For transactional mappings, keep one enabled mapping per pair and engine and pin the
+script digest using [its contract](../../../build-transform-product/reference/transactional-javascript.md).
 
 | Feature ID / usable capability | Dependency | Builder increment / configurer exercise | AWS inspection and acceptance |
 | --- | --- | --- | --- |
@@ -22,6 +24,7 @@ and JSON Schema using [its contract](../../../build-transform-product/reference/
 | `pinned-replay` — reproduce a conversion | Resolved/pinned mappings and output manifests | Complete immutable input/configuration pinning and replay controls; configure repeated input and a changed-artifact conflict. | Inspect plan digests, workflow/Glue logs and manifests; compare results and reject incompatible drift. |
 | `configuration-lifecycle` — register mappings for configuration bundles | Verified mapping configuration API and ownership contract | Deliver/verify validation, immutable registration, identical replay, changed-content conflict and read-back for Deploy's shared adapter; preserve Silvally's existing mapping-readiness gates. | Inspect registration IDs/digests and rejected writes; no implicit Transform run. Synthetic adapter tests do not establish production-derived mapping readiness. |
 | `non-deterministic-extraction` — extract structured JSON from a string | Versioned extraction configuration and HTTP run contracts, verified adapter/model access and schema support | Deliver configuration selection/pinning, a TypeScript AI SDK worker with explicit provider adapters, extraction prompt and JSON Schema validation; configure a model/schema variant and exercise missing facts, non-string input and invalid model output. Keep SQL conversion available independently. | Inspect the actual workflow/worker logs, selected model and configuration/schema digests, structured output, token usage and bounded failures. Have the user run and inspect an authorized sample. Saved-result replay must avoid another model call; fresh inference may vary. |
+| `transactional-javascript` — map one small transaction to a graph synchronously | Configuration API, Lexicon definitions for the pair, verified Persist GraphSON ingest | Deliver `engine: "javascript"` registration (script digest, compile-only validation), per-engine pair resolution, the synchronous transaction route, a fresh QuickJS sandbox per transaction with memory/time limits and GraphSON serialization of mapping ids; configure one mapping and exercise a script throw, timeout, invalid output and a dangling edge. Keep `spark-sql` registration and batch runs unchanged. | Inspect the Lambda logs (mapping digest, per-step durations, counts), the returned GraphSON and `POST /persist/validate` on it; prove sandbox probes fail closed; measure cold start and warm p50/p99 on the deployed route. |
 
 Include validation, negative cases, replay/idempotency appropriate to the feature
 and operational logs in each increment. The replay row is for the actual pinned

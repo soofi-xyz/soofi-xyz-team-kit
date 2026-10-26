@@ -1,6 +1,6 @@
 ---
 name: configure-transform-product
-description: "Configure provider connections and structured extraction (including Vercel AI Gateway), and author and verify language-pair mappings for an existing Transform engine, including formats, SQL, typed outputs and graph identities. Use Silvally; use Kecleon for engine changes."
+description: "Configure provider connections and structured extraction (including Vercel AI Gateway), and author and verify language-pair mappings for an existing Transform engine, including formats, SQL, single-transaction mappings, typed outputs and graph identities. Use Silvally; use Kecleon for engine changes."
 ---
 
 Use [the Transform capability map](../guide-product-work/reference/iterations/transform.md). Derive the feature pieces from scope and dependencies, then apply the work below within each piece; require a user-run configuration, AWS inspection and feedback before starting the next implementation piece.
@@ -23,6 +23,18 @@ instructions and output JSON Schema as one immutable revision. Supply string
 input and verify the returned JSON and source-grounded facts. Keep the SQL steps
 below scoped to SQL mappings. Route missing extraction API/helper/runtime support
 to Kecleon, and preserve Silvally's existing readiness gates.
+
+For one small transaction per run with graph output for Persist, author a
+`javascript` mapping instead of SQL. Read
+[JavaScript mapping authoring](reference/javascript-mappings.md) and the
+[engine contract](../build-transform-product/reference/transactional-javascript.md).
+Verify the deployment accepts `engine: "javascript"` and serves the transaction
+route first. Write a pure `transform(inputs)` that returns `{vertices, edges}`
+with stable mapping-produced ids, build it to one `mapping.js`, pin its sha256,
+test the built script against independent expectations (and against the pair's
+`spark-sql` fixtures when one exists), then validate, register, read back and run
+one transaction. Do not translate SQL, re-implement Lexicon validation or apply
+Neptune CSV escaping. Keep the SQL steps below scoped to SQL mappings.
 
 1. Discover the existing engine, source/target definitions, mapping and publication
    mechanism. Read the API URL from SSM `/<stackName>/api-url` and list
