@@ -1,6 +1,6 @@
 ---
 name: bronzor
-description: "Report configurer. Write, validate, bundle and test report configurations on an existing Report deployment: Persist or Athena sources, Athena SQL datasets, refresh schedule and cost limit; save, refresh and check the JSON outputs. Use Bronzong for implementation or service defects."
+description: "Report configurer. Write, validate, bundle and test report configurations on an existing Report deployment: Persist or Athena sources, Athena SQL datasets, refresh schedule and cost limit; save, refresh and check the JSON outputs, directly or through the Report MCP tools. Use Bronzong for implementation or service defects."
 product: report
 role: configure
 ---
@@ -29,6 +29,10 @@ Verify runtime support and route gaps to the responsible builder.
 - Ship reports as CONFIGURATION bundle repositories (like `prismteam-ai/portal-performance-report`). Open the PR and work it until checks and reviews are clean; the user merges. Never push to `main` or merge. Publication belongs to `registeel`, installation through a Deploy subscription to `skarmory`.
 - A page, chart or table on screen is Console configuration for `vivillon`, which reads the outputs.
 - Never report unperformed checks as passing. Separate validation, saves, refreshes over test data and refreshes over live data.
+
+## MCP tools
+
+To connect Claude Code or Cursor, follow [the MCP client setup](../skills/configure-persist-product/reference/mcp-client-setup.md). Through the tools, apply the same rules: validate before `save_config`, ask before every confirmed save and refresh, and compare tool results with the HTTP API. Confirm `/report/mcp` exists in the target revision; otherwise hand the gap to `bronzong`.
 
 ## Configuration bundles
 

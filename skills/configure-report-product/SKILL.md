@@ -1,6 +1,6 @@
 ---
 name: configure-report-product
-description: "Configure and test reports on an existing Report deployment: write a report-1 configuration (sources, Athena SQL datasets, refresh schedule and cost limit), validate it, put it in a configuration bundle, save it, start a refresh, follow it and check the JSON outputs. Use Bronzor; route service gaps to Bronzong."
+description: "Configure and test reports on an existing Report deployment: write a report-1 configuration (sources, Athena SQL datasets, refresh schedule and cost limit), validate it, put it in a configuration bundle, save it, start a refresh, follow it and check the JSON outputs, through the API or the Report MCP tools. Use Bronzor; route service gaps to Bronzong."
 ---
 
 For infrastructure, bundle or installation work, load
@@ -131,6 +131,14 @@ user merges. Never push or merge yourself.
 5. Give the user at most three AWS inspection steps from the capability map (the `Refresh`
    execution, the Athena queries, the output files), then wait for their redacted refresh
    id and observation in a guided walkthrough.
+
+## Use the MCP tools
+
+Connect clients with [the MCP client setup](../configure-persist-product/reference/mcp-client-setup.md)
+once [the Report MCP server](../build-report-product/reference/mcp-server.md) is
+deployed. `validate_config`, `save_config` (`confirm: true`), `refresh_and_wait`,
+`get_status` and `get_outputs` follow the same rules as the API steps above; check
+each result against the API before relying on it.
 
 ## Hand off
 

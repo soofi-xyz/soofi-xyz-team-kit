@@ -5,7 +5,7 @@ to synthesis, review and installation: one stack, `Report`, with no deployment s
 updated in place whether it was deployed directly or installed from Marketplace.
 
 Use Bronzong to implement Report and Bronzor to configure reports on an existing
-deployment. Follow the [shared workflow](../../SKILL.md). These 7 areas are a starting
+deployment. Follow the [shared workflow](../../SKILL.md). These 10 areas are a starting
 inventory, not a fixed iteration count. Order dependencies and split independently
 useful features further. Use at least four pieces for a full-product build; narrow work
 selects only relevant pieces. Keep automated tests and user/AWS feedback inside each
@@ -24,6 +24,9 @@ Console reads the outputs and draws them.
 | `datasets` — shape ledger rows with Athena SQL | A source in the ledger | Deliver datasets with the sources and earlier datasets in front as `WITH` clauses, `{{ledger.<source>}}` and window variables, `maxRows`. Compare a dataset over this refresh's rows with one over the whole ledger, and one above `maxRows`. | Read the Athena executions of the dataset steps and the staged results; confirm the row cap fails the refresh instead of cutting a file. |
 | `outputs` — publish every dataset as JSON | Datasets | Deliver the publish step: dataset files and manifest under `outputs/<report>/refreshes/<refresh>/`, then `latest/` with the manifest last, stale files removed, `GET /reports/{id}/outputs`. Compare a refresh after renaming a dataset, a retried publish and a refresh overtaken by a newer one. | List `outputs/<report>/` in the bucket named by SSM `/report/Report/output-bucket`; check `refreshId` in each file and the history tag `report-output=history`. |
 | `schedule-recovery` — refresh on schedule and recover | Outputs | Deliver EventBridge Scheduler schedules per report, `manual`, timeouts, the reconciler for `TIMED_OUT`/`ABORTED` executions and the alarms. Exercise a schedule change, a timed-out refresh and deleting a report. | Inspect the schedule in group `Report`, the failed refresh record and alarms `RefreshFailed`, `ScheduleDeadLetters`, `ReconcileDeadLetters`, `ApiErrors`; confirm delete removes outputs and schedule but never the ledger. |
+| `mcp-read` — read reports from Claude Code and Cursor | Configuration; outputs; shared API domain and key | Deliver [the Report MCP server](../../../build-report-product/reference/mcp-server.md) at `/report/mcp` with `list_reports`, `get_report`, `list_versions`, `get_status` and `get_outputs`; connect both clients. | Inspect the MCP Lambda's logs; compare each tool result with its HTTP route and confirm the key appears in no result or log. |
+| `mcp-validate-save` — validate and save through MCP | MCP read | Deliver `validate_config` and `save_config` requiring `confirm: true`; exercise an invalid configuration, an unconfirmed save and a confirmed save. | Read the saved DynamoDB version and `GET /reports/{id}`; confirm the refused saves wrote nothing. |
+| `mcp-refresh` — refresh and wait through MCP | MCP validate/save; schedule-recovery | Deliver `refresh_and_wait` within `costLimitUsd` and the wait limit; exercise a completed refresh, an over-limit refresh and a wait that ends while `RUNNING`. | Follow the Refresh execution and the output manifest's `refreshId`; confirm the cost gate refused before any source query. |
 
 The baseline seven areas are deployed in `prismteam-ai/report`; its `README.md`,
 `docs/configuration-contract.md`, `docs/outputs.md` and `requirements/swagger.yml` are

@@ -1,6 +1,6 @@
 ---
 name: build-report-product
-description: "Build or maintain the Report product: its configuration API, the refresh state machine (cost gate, Persist and Athena sources appending to a ledger, Athena datasets, JSON outputs), schedules, alarms and packaging. Use Bronzong; use Bronzor to configure reports on an existing deployment."
+description: "Build or maintain the Report product: its configuration API, the refresh state machine (cost gate, Persist and Athena sources appending to a ledger, Athena datasets, JSON outputs), schedules, alarms, packaging and the Report MCP server. Use Bronzong; use Bronzor to configure reports on an existing deployment."
 disable-model-invocation: true
 ---
 
@@ -73,6 +73,14 @@ for where things are and how a refresh runs.
 Return changes, API examples, automated results (local, Trino, synth), deployed refresh
 evidence, AWS observations, cleanup and remaining gaps. Keep the difference between a
 local test, a deployed refresh over test data and a refresh over live data explicit.
+
+## MCP server
+
+For MCP tools, load [the Report MCP server contract](reference/mcp-server.md) and
+build `mcp-read`, `mcp-validate-save` and `mcp-refresh` as separate pieces. Serve
+`/report/mcp` as a stateless Streamable HTTP Lambda behind the shared key, call
+management code in process, keep `save_config` the only confirmed write and keep the
+key out of arguments, results and logs.
 
 ## Configuration bundles
 

@@ -1,6 +1,6 @@
 # Generated from agents/bronzong.md. Do not edit directly.
 name = "bronzong"
-description = "Report builder. Build, maintain or fix the Report product: configuration API, refresh state machine (cost gate, Persist and Athena sources appending to an append-only ledger, Athena SQL datasets, JSON outputs), schedules, alarms and packaging. Use Bronzor for configuring reports on an existing deployment."
+description = "Report builder. Build, maintain or fix the Report product: configuration API, refresh state machine (cost gate, Persist and Athena sources appending to an append-only ledger, Athena SQL datasets, JSON outputs), schedules, alarms, packaging and the Report MCP server. Use Bronzor for configuring reports on an existing deployment."
 developer_instructions = '''
 
 Load `skills/guide-product-work/SKILL.md` and [the Report capability map](../skills/guide-product-work/reference/iterations/report.md). Derive usable feature pieces from scope and dependencies; use four as a minimum for full-product work, never an exact count. A narrow task selects only relevant pieces. Have the user run each piece's API configuration, inspect actual AWS logs/workflows and give concise feedback before advancing. Apply `skills/apply-engineering-guidelines/SKILL.md` to implementation work.
@@ -21,6 +21,10 @@ Verify runtime support and route gaps to the responsible builder.
 5. Test each piece locally (`npm run check`, and the Trino comparison when dataset SQL changes), synthesize with cdk-nag (`just synth`), regenerate `requirements/swagger.yml` when routes change, preview with `npx cdk diff` and deploy with `just deploy` to the user's test account. Never replace the bucket, table or Glue database.
 6. Give one copyable API invocation, expected result and at most three steps to inspect the correlated `Refresh` execution, Athena queries or output files. Have the user run the baseline and variant, then report redacted refresh ids and their observation. Wait for that evidence before the next piece; distinguish acceptance (`202`), completion (`SUCCEEDED`/`FAILED`) and written outputs.
 7. Open PRs and work them until checks and reviews are clean; the user merges. Merging to `main` publishes Report to Marketplace; publication and review belong to Registeel, installation to Skarmory.
+
+## MCP server
+
+For MCP tools at `/report/mcp`, load [the Report MCP server contract](../skills/build-report-product/reference/mcp-server.md) and build pieces `mcp-read`, `mcp-validate-save` and `mcp-refresh` separately. Keep `save_config` the only write, behind `confirm: true`; keep `refresh_and_wait` within `costLimitUsd` and the wait limit; derive tool schemas from the configuration contract and `requirements/swagger.yml` with a contract test; keep the key out of arguments, results and logs. Persist's server belongs to `conkeldurr`.
 
 ## Configuration bundles
 

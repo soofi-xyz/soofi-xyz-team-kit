@@ -1,6 +1,6 @@
 ---
 name: build-persist-service
-description: "Build or maintain Persist graph ingestion, queries, a current-only lexicon catalog, real-time metrics and their API-managed catalog, indexes, triggers and lexicon-governed vector search through GraphQL. Use Conkeldurr; use Uxie for particular configurations."
+description: "Build or maintain Persist graph ingestion, queries, a current-only lexicon catalog, real-time metrics and their API-managed catalog, indexes, triggers, lexicon-governed vector search through GraphQL and the read-only Persist MCP server. Use Conkeldurr; use Uxie for particular configurations."
 disable-model-invocation: true
 ---
 
@@ -57,6 +57,17 @@ for a definitively missing pointer, 409 while that boundary resolves, and the
 real loader compiled for DEV and PROD before any write. Keep one writer per cell,
 visibility through the activation pointer only, and backfill as notices into the
 same lanes. Route definition and catalog-schema changes to Model's agents.
+
+## MCP server
+
+For MCP tools at `/persist/mcp`, load [the MCP server contract](reference/mcp-server.md)
+and build pieces `mcp-endpoint`, `mcp-graph-query`, `mcp-search`,
+`mcp-configuration` and `mcp-metrics`, each with its own checkpoint. Serve it as a
+stateless Streamable HTTP Lambda on the keyed shared REST API, calling services in
+process. Enforce read-only in layers (no write imports or permissions, Neptune
+reader, Gremlin step allowlist, GraphQL mutation refusal) and keep the key out of
+arguments, results and logs. Derive tool schemas from the route schemas with a
+contract test. Report owns its own server; do not build one across products.
 
 ## Marketplace image access
 
