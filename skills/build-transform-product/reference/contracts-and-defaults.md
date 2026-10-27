@@ -245,4 +245,6 @@ missing/extra datasets, unexpected paths, mismatched schemas, non-success status
 and file/byte mismatches. Validate nonnegative row counts against the worker's
 completed validation/count actions; acceptance tests independently reread them.
 Do not count an unfinished directory as a successful result or silently overwrite
-it on replay. Keep the result contract format-neutral.
+it on replay. Keep the result contract format-neutral. When the plan declares
+[record quality checks](record-quality-checks.md), `quarantine/` and `warnings/`
+are expected paths and `Result.checks[]` must equal their line counts.

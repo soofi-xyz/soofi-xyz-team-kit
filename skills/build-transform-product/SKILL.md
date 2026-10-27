@@ -1,6 +1,6 @@
 ---
 name: build-transform-product
-description: "Implement Transform: registered language-pair SQL conversions, single-transaction mappings and non-deterministic extraction from strings using configurable provider connections and models, JSON Schema structured output and the AI SDK; include Python/PySpark formats, typed tables, graph mappings and TypeScript orchestration."
+description: "Implement Transform: registered language-pair SQL conversions, single-transaction mappings, record-level quality checks with quarantine and alerts, and non-deterministic extraction from strings using configurable provider connections and models, JSON Schema structured output and the AI SDK; include Python/PySpark formats, typed tables, graph mappings and TypeScript orchestration."
 ---
 
 Use [the Transform capability map](../guide-product-work/reference/iterations/transform.md). Derive the feature pieces from scope and dependencies, then apply the work below within each piece; require a user-run configuration, AWS inspection and feedback before starting the next implementation piece.
@@ -25,6 +25,10 @@ For one small transaction per run, use the separate transactional JavaScript
 phase: registered `javascript` mapping → fresh in-process sandbox → GraphSON for
 Persist. Read [transactional JavaScript mappings](reference/transactional-javascript.md).
 Keep the Spark batch path unchanged.
+
+To keep incomplete or unusable records out of the output without failing the run,
+implement declarative per-record checks registered with the mapping. Read
+[record quality checks](reference/record-quality-checks.md).
 
 ## Required reading
 
@@ -102,6 +106,17 @@ script digest, run it in a fresh QuickJS (WASM) sandbox with memory and time
 limits and no host functions, and serialize the mapping's own ids as GraphSON
 `g:UUID` values; Persist validates against Lexicon and assigns hashed ids. Do not
 translate SQL, change `spark-sql` validation or add Lexicon validation to this path.
+
+## Record quality checks
+
+Implement the capability map's `record-quality-checks` increment using
+[its contract](reference/record-quality-checks.md). Checks are generic,
+declarative and pinned with the mapping version: a stage, a declared dataset,
+a subject id, optional `when` scoping, `warn`/`reject` severity and rules from a
+fixed list. Quarantine rejected records and dependent edges, keep warned records,
+report per-check counts in `_metadata.json`, alert above thresholds and never
+record failing values. Keep definition-derived validation failing the run, and do
+not add source-specific checks or free-form predicates to the engine.
 
 ## Companion products and output
 

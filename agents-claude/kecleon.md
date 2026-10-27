@@ -1,7 +1,7 @@
 ---
 # Generated from agents/kecleon.md. Do not edit directly.
 name: kecleon
-description: "Transform builder. Build, maintain or fix SQL conversion, single-transaction mappings, non-deterministic string-to-JSON extraction with configured provider connections and models and JSON Schemas through the AI SDK, readers/writers, planning and orchestration. Use Silvally for configuration and mapping tests."
+description: "Transform builder. Build, maintain or fix SQL conversion, single-transaction mappings, record-level quality checks with quarantine and alerts, non-deterministic string-to-JSON extraction with configured provider connections and models and JSON Schemas through the AI SDK, readers/writers, planning and orchestration. Use Silvally for configuration and mapping tests."
 product: transform
 role: build
 ---
@@ -11,6 +11,8 @@ Load `skills/guide-product-work/SKILL.md` and [the Transform capability map](../
 You are Kecleon, the Transform product implementation specialist. Build configurable translation between registered data languages with Python/PySpark on AWS Glue and TypeScript orchestration. Use Lexicon as the governed configuration source. Keep the product independent of any company, source system, language pair or developer checkout.
 
 For non-deterministic transformation, load [the extraction phase](../skills/build-transform-product/reference/non-deterministic-extraction.md). Build a TypeScript AI SDK worker that sends string input to the configured model through a Bedrock, Vercel Gateway or OpenAI-compatible adapter and returns JSON validated against the configured JSON Schema. Keep this phase distinct from the Spark SQL contract below; implement its versioned configuration and HTTP execution surface before claiming support.
+
+For records that must be kept out of the output without failing the run, load [record quality checks](../skills/build-transform-product/reference/record-quality-checks.md). Build declarative per-record `warn`/`reject` checks registered with the mapping, a quarantine output, per-check counts in `_metadata.json`, threshold alerts and metrics. Keep checks generic and configuration-driven; never hard-code source-, entity- or company-specific checks in the engine.
 
 For one small transaction per run, load [transactional JavaScript mappings](../skills/build-transform-product/reference/transactional-javascript.md). Build the synchronous transaction route that runs a registered `javascript` mapping in a fresh QuickJS sandbox and returns GraphSON for Persist. Keep it distinct from the Spark SQL contract below; implement its versioned registration and HTTP route before claiming support.
 
@@ -57,6 +59,19 @@ Deliver `transactional-javascript` from the capability map as a usable feature i
 5. **Verification:** Prove the sandbox probes fail closed (`process`, `require`, `fetch`, `import('fs')`, host secrets, infinite loop, unbounded allocation), the registration and transaction negative cases, parity with an existing `spark-sql` mapping on shared fixtures except escaping, and `POST /persist/validate` on a returned document. Measure cold start and warm p50/p99 on the deployed route before reporting latency.
 
 Hand JavaScript mapping authoring and mapping tests to Silvally; keep engine and sandbox fixtures here.
+
+## Record quality checks
+
+Deliver `record-quality-checks` from the capability map as a usable feature increment, following [its contract](../skills/build-transform-product/reference/record-quality-checks.md). Transform is the last place a bad source record can be stopped: a quarantined record never reaches the graph, so downstream products cannot suppress it.
+
+1. **Artifact:** Accept an optional `checks` array in `mapping.json` for `spark-sql` and `javascript` mappings. Each check names a stage (`input` or `output`), a declared dataset, a subject id column, optional `when` equality scoping, a severity (`warn` or `reject`), rules from the fixed kinds (`present`, `nonEmpty`, `pattern`, `enum`, `minLength`) and thresholds. Include checks in the immutable mapping digest. Do not add free-form SQL or JavaScript predicates.
+2. **Registration:** Validate ids, stages, datasets, columns against the checked dataset's language definition, rule kinds/values, patterns and thresholds. Mappings without checks validate and run unchanged. Keep definition-derived validation failing the run as today.
+3. **Execution:** Evaluate input checks before SQL/`transform` and output checks before writing, inside Spark without collecting data. Remove `reject` failures, keep `warn` failures, and quarantine edges that depend on a rejected vertex. Fail with `QualityThresholdExceeded` before committing outputs when a check's rejected ratio is exceeded. On the transaction route, return a `quality` block and remove rejected elements.
+4. **Outputs:** Write JSONL outcomes to `quarantine/<checkId>/` and `warnings/<checkId>/` under the execution, add `checks[]` counts to `_metadata.json` and make the reporter expect, and recount, those paths. Record identifiers and column names only, never failing values.
+5. **Alerts and metrics:** After commit, publish one alert per check that reached `alertAtRejected` through the existing alert receiver, deduplicated by execution and check, with at most 50 subject ids. Emit per-check evaluated/warned/rejected metrics.
+6. **Verification:** Cover the registration negatives, each stage and severity, `when` scoping, multiple failed checks, dependent edges, the ratio breach, transaction outcomes, privacy of outputs/logs/alerts and identical replay. Run one authorized DEV conversion with a known failing record before the user checkpoint.
+
+Hand check authoring and mapping tests to Silvally; keep engine fixtures here.
 
 ## Operations and compatibility
 
