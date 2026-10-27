@@ -76,7 +76,7 @@ Searchable fields stay governed by the lexicon; the server only reports them.
 
 | Piece | Delivers | Acceptance |
 | --- | --- | --- |
-| `mcp-endpoint` | Endpoint, key auth, error mapping, call logging, `describe_schema`, bundle wiring, client setup | Claude Code and Cursor connect with the documented setup and list the tools; the schema returns meeting, media, utterance, action, person and email with their edges and searchable fields; key absent from transcripts and logs. |
+| `mcp-endpoint` | Endpoint, key auth, error mapping, call logging, `describe_schema`, bundle wiring, client setup | Claude Code and Cursor connect with the documented setup and list the tools; the schema returns meeting, media, utterance, person and email with their edges and searchable fields; key absent from transcripts and logs. |
 | `mcp-graph-query` | `run_gremlin`, `run_graphql`, `count_by_label`, `date_range`, read-only layers | Meeting count equals a verified direct query; earliest and latest meeting `started_at` are correct over mixed epoch-ms and ISO values; a Gremlin write step, CSV load, lexicon or catalog change and GraphQL mutation are refused with a clear message. |
 | `mcp-search` | `search` with source-id paths | A RAG question about a known meeting returns utterance text with utterance, media and meeting ids a direct query confirms. Requires a deployed `vector-search` piece. |
 | `mcp-configuration` | Configuration API, saved queries as tools | Disabling a tool, lowering the row limit and adding a saved query take effect without a redeploy; the saved query lists as its own tool. |
