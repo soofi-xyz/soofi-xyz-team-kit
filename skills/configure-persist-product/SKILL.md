@@ -1,6 +1,6 @@
 ---
 name: configure-persist-product
-description: "Configure and test the current lexicon catalog, ingestion, queries, the metrics catalog with metric backfill and activation, governed indexes, triggers or GraphQL vector search on an existing Persist deployment. Use Uxie to sync/query current definitions, install metric definitions or make a field searchable; hand engine changes to Conkeldurr."
+description: "Configure and test the current lexicon catalog, ingestion, queries, the metrics catalog with metric backfill and activation, governed indexes, triggers, GraphQL vector search or the Persist MCP server on an existing Persist deployment. Use Uxie to sync/query current definitions, install metric definitions, make a field searchable or configure MCP tools; hand engine changes to Conkeldurr."
 ---
 
 Use [the Persist capability map](../guide-product-work/reference/iterations/persist.md). Derive the feature pieces from scope and dependencies, then apply the work below within each piece; require a user-run configuration, AWS inspection and feedback before starting the next implementation piece.
@@ -78,6 +78,25 @@ report the catalog as Model/Lexicon-published and hand the gap to Conkeldurr.
    confirmed run, one confirmed run at a time.
 5. `ACTIVATE` only when `STATUS.gates` pass, plan first, and record the rollback
    generation. Ask before every write; work DEV first.
+
+## Configure the MCP server
+
+For “connect Cursor to Persist”, “turn off this tool”, “lower the row limit” or
+“add a saved query”, read [the MCP server contract](../build-persist-service/reference/mcp-server.md).
+Confirm `/persist/mcp` and `GET /persist/mcp/configuration` exist in the target
+revision; otherwise hand the gap to Conkeldurr.
+
+1. Connect clients with [the client setup](reference/mcp-client-setup.md). The key
+   stays in the person's environment and the client header; never in chat,
+   arguments or results.
+2. Read the configuration and its version. `PUT` enabled tools, limits (rows,
+   timeout, search results, reader target) and saved queries with `If-Match`.
+   Saved queries are read-only parameterised Gremlin; a `400` names the refused step.
+3. After the cache window, confirm `tools/list` reflects the change and a saved
+   query appears as `query_<name>`, without a redeploy.
+4. Verify against direct queries: meeting count, mixed epoch-ms/ISO `started_at`
+   range, a cited `search` result and a refused write. Ask before every `PUT`;
+   work DEV first.
 
 ## Make a field searchable
 

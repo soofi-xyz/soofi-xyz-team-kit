@@ -998,7 +998,8 @@
         "User override: retain Conkeldurr for Persist only. Uxie configures existing deployments.",
         "Requested 2026-10-05: keep embeddings, OpenSearch vector indexing and GraphQL search composition in a separate vector-search feature piece. Model owns lexicon field eligibility; Persist owns implementation and GraphQL source routing. This scope assignment does not establish deployed support.",
         "Requested 2026-10-14: Conkeldurr builds a current-only Gremlin lexicon catalog and Uxie configures/verifies it. Reconcile accepted base/extension definitions using stable IDs, content hashes and an added/changed/removed diff; atomically update metadata and the applied revision with optimistic concurrency. Store no RDF/OWL semantics, historical definition vertices or latest links. Model owns definitions/history; Deploy owns managed release installation. This is requested implementation guidance, not deployed support.",
-        "Requested 2026-10-21: Conkeldurr builds and Uxie configures real-time metric cells and the API-managed metrics catalog (PUT/GET /persist/metrics/catalog, Persist PR #347). Persist reads its API pointer first and the Model/Lexicon SSM boundary only while no pointer exists; Model owns metric definitions. Metric changes are catalog install, backfill and gated activation, separate from derived indexes. This does not establish deployed support."
+        "Requested 2026-10-21: Conkeldurr builds and Uxie configures real-time metric cells and the API-managed metrics catalog (PUT/GET /persist/metrics/catalog, Persist PR #347). Persist reads its API pointer first and the Model/Lexicon SSM boundary only while no pointer exists; Model owns metric definitions. Metric changes are catalog install, backfill and gated activation, separate from derived indexes. This does not establish deployed support.",
+        "Requested 2026-10-27: Conkeldurr builds and Uxie configures the read-only Persist MCP server at /persist/mcp (describe_schema, search with source ids, run_gremlin, run_graphql, count_by_label, date_range, lookup_metric, saved queries), configured through GET/PUT /persist/mcp/configuration without a redeploy. This does not establish deployed support."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/persist.md"
     },
@@ -1209,7 +1210,8 @@
       },
       "notes": [
         "Assigned by explicit user request on 2026-10-21. Bronzong builds the Report service in prismteam-ai/report; Bronzor writes, validates, bundles and tests report-1 configurations through its API.",
-        "Report holds no report-specific code and shows nothing: each refresh writes every dataset as JSON under outputs/<report>/latest/ (docs/outputs.md), and Console (Vivillon) draws it. Configurations and bundles carry no secrets."
+        "Report holds no report-specific code and shows nothing: each refresh writes every dataset as JSON under outputs/<report>/latest/ (docs/outputs.md), and Console (Vivillon) draws it. Configurations and bundles carry no secrets.",
+        "Requested 2026-10-27: Bronzong builds and Bronzor uses the Report MCP server at /report/mcp (list, get, versions, validate, confirmed save, refresh-and-wait, status, outputs). This does not establish deployed support."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/report.md"
     },
