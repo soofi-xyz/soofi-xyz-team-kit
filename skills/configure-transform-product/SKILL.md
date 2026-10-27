@@ -1,6 +1,6 @@
 ---
 name: configure-transform-product
-description: "Configure provider connections and structured extraction (including Vercel AI Gateway), and author and verify language-pair mappings for an existing Transform engine, including formats, SQL, single-transaction mappings, typed outputs and graph identities. Use Silvally; use Kecleon for engine changes."
+description: "Configure provider connections and structured extraction (including Vercel AI Gateway), and author and verify language-pair mappings for an existing Transform engine, including formats, SQL, single-transaction mappings, record-level quality checks, typed outputs and graph identities. Use Silvally; use Kecleon for engine changes."
 ---
 
 Use [the Transform capability map](../guide-product-work/reference/iterations/transform.md). Derive the feature pieces from scope and dependencies, then apply the work below within each piece; require a user-run configuration, AWS inspection and feedback before starting the next implementation piece.
@@ -23,6 +23,13 @@ instructions and output JSON Schema as one immutable revision. Supply string
 input and verify the returned JSON and source-grounded facts. Keep the SQL steps
 below scoped to SQL mappings. Route missing extraction API/helper/runtime support
 to Kecleon, and preserve Silvally's existing readiness gates.
+
+To keep incomplete or unusable source records out of a mapping's output while
+writing every valid record, add declarative `checks` to the mapping. Read
+[authoring record quality checks](reference/record-quality-checks.md) and the
+[engine contract](../build-transform-product/reference/record-quality-checks.md).
+Verify the deployment accepts `checks` first; do not filter such records in SQL
+or by making Lexicon properties `required`.
 
 For one small transaction per run with graph output for Persist, author a
 `javascript` mapping instead of SQL. Read
