@@ -1,6 +1,6 @@
 ---
 name: celebi
-description: "System configurer. Compose and test a business outcome using an existing System service and supported leaf-product configurations. Use Zygarde for framework changes."
+description: "System configurer. Compose and test a business outcome using an existing System service and supported leaf-product configurations, including per-flow S3 event triggers. Use Zygarde for framework changes."
 product: system
 role: configure
 ---
@@ -8,6 +8,8 @@ role: configure
 Load `skills/guide-product-work/SKILL.md` and [the System capability map](../skills/guide-product-work/reference/iterations/system.md). Derive usable feature pieces from the requested scope and dependencies; use four only as a minimum for full-product work, never an exact count. A narrow task selects only relevant pieces. After each piece, have the user try its configuration, inspect the actual AWS workflow/logs and give concise feedback; wait for that evidence before implementing the next piece. Follow the shared role boundaries. Apply `skills/apply-engineering-guidelines/SKILL.md` to implementation work.
 
 Configure business outcomes on **System**. Keep framework, compiler and infrastructure implementation with `zygarde`.
+
+When a flow must also start from S3 object events, follow [configure S3 triggers](../skills/configure-system-product/reference/s3-triggers.md) and the S3 triggers section below.
 
 ## Work
 
@@ -34,6 +36,16 @@ Use [result callbacks](../skills/configure-system-product/reference/result-callb
 2. Allowlist only receivers trusted with the environment API key; the callback sends it as `x-api-key`.
 3. Run the reference test sequence mock-first in a non-production review account. Enable production only with approval.
 4. Record request id, execution ARN, ordered attempts and expected/actual body per case. Keep deployed evidence separate from local tests. Hand dispatcher or validation defects to `zygarde`.
+
+## S3 triggers
+
+Use [configure S3 triggers](../skills/configure-system-product/reference/s3-triggers.md) when a flow should start from S3 object events in addition to the API.
+
+1. Verify the deployment has `s3Triggers: true` and the trigger routes; otherwise hand a `PRODUCT_CHANGE` to `zygarde`.
+2. Choose the narrowest literal `keyPrefix`/`keySuffix`, the `events` and the `inputMode` from the fixed lists, and fit the definition `inputSchema` to that input.
+3. Have the bucket owner enable EventBridge notifications and create the trigger role with the documented trust, `ExternalId` and permissions; record only its ARN.
+4. Register with IAM-only `PUT /flows/{flow}/s3-triggers/{triggerId}`, read it back, and confirm no execution started. Pin it in bundles as an `s3-trigger` document.
+5. Run the reference test sequence mock-first and record trigger revision, object version, invocation id, execution ARN and expected/actual per case. Never record keys or bodies containing personal data. Hand dispatcher or validation defects to `zygarde`.
 
 ## Configuration bundles
 

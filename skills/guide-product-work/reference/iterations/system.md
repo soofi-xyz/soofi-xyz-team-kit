@@ -2,7 +2,7 @@
 
 Use Zygarde for framework capabilities and Celebi for supported configurations.
 Apply the [shared workflow](../../SKILL.md) to the scoped dependency plan. These
-ten capability areas are a starting inventory; a feature may need several
+eleven capability areas are a starting inventory; a feature may need several
 increments. Scenario families and the four fixture configurations are test
 coverage, not a count of implementation pieces.
 
@@ -17,6 +17,7 @@ coverage, not a count of implementation pieces.
 | `invocation-lifecycle` — inspect and safely repeat a run | Template invocation; richer flows for coverage | Complete supported invocation status/result/correlation and replay behavior beyond the minimal first run; configure duplicate/repeated calls with stable identities. | Correlate request, execution and leaf logs; compare status/result and duplicate-write behavior. Verify supported lifecycle semantics before claiming replay support. |
 | `redrive` — resume a failed run at the step that failed | Executable flows, retry policy and batches | Deliver native redrive (`POST /invocations/{id}/redrive`), templates without `Fail` states, `FailWhen` and merged batch results; configure a step that fails until fixed and a batch that fails midway, using the [failures test sequence](../../../configure-system-product/reference/failures-and-redrive.md). | Inspect the execution history before and after: earlier steps have no new events, only failed or unstarted batch children are redriven, a run that fails again stays redrivable, and the reported error is the template's name. |
 | `result-callbacks` — push a finished result to a client | Invocation lifecycle and the client facade | Deliver callback URL validation, per-client allowlists, the dispatcher, bounded retries, DLQ and alarms; configure an allowlisted receiver and run the [callback test sequence](../../../configure-system-product/reference/result-callbacks.md). | Inspect the execution, callback queue, DLQ and dispatcher logs against the receiver capture; the body must equal the GET result, retries keep one delivery id, rejected URLs queue nothing and the key is never logged. |
+| `s3-triggers` — start a flow from S3 object events | Template invocation, invocation lifecycle and configuration lifecycle | Deliver per-flow trigger registration (fixed events/input modes, literal prefix/suffix, `roleArn` assumed with a fixed `ExternalId`), the forwarding rule, dispatcher, idempotency per object version, invocation `source`, DLQs and alarms; configure a same-account and a cross-account bucket and run the [S3 trigger test sequence](../../../configure-system-product/reference/s3-triggers.md). | Inspect the bucket-account rule, trigger queue/DLQs, dispatcher logs and the execution input/`source`; registration starts nothing, one object version starts one run, rejected objects do not retry, and no key or body is logged. |
 | `configuration-lifecycle` — install definitions for configuration bundles | Verified definition, template, flow and waterfall APIs | Deliver/verify stable registration identities, version/conflict behavior, pinned leaf references, read-back and supported retirement for Deploy's shared adapter. Keep bundle installation independent of a System business invocation. | Inspect stored references/revisions and invalid dependency rejection; register without invoking flows. Preserve separate mocked and real scenario readiness. |
 
 Order independent features by the requested outcome; lifecycle work can precede
@@ -30,3 +31,7 @@ selected feature before introducing real integrations within scope.
 
 For configuration-bundle work, follow [the shared installer contract](../../../build-product-deployer/reference/configuration-bundles.md).
 Keep the new lifecycle/provider requirements distinct from observed deployment support.
+
+For S3 trigger work, pin each trigger with its flow in the versioned configuration
+and follow [the S3 trigger contract](../../../build-system-product/reference/s3-triggers.md);
+it is a requirement, not evidence of deployed support.
