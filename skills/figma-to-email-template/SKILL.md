@@ -26,13 +26,57 @@ local scripts are not. Do not build a local server or script to replace a
 Jigglypuff tool; the gates live in Jigglypuff so every path enforces them the
 same way.
 
+## One-time setup
+
+This workflow uses **two MCP servers** in Cursor: Figma's, to read the design,
+and Jigglypuff's, to do everything after the read. Walk a new user through
+these steps once, in order.
+
+| Server | What it does | How you sign in | Status |
+| --- | --- | --- | --- |
+| Figma MCP (Figma's official remote server, `https://mcp.figma.com/mcp`) | Reads the email frame, its screenshot and its image assets | Your Figma account, in the browser, when you click **Connect** | Available now |
+| Jigglypuff MCP (Spring Oaks, hosted) | Hosts images, validates, previews, opens the PR, certifies, translates, requests approval | Your Spring Oaks Microsoft work account (Cognito sign-in page, then Microsoft through `AzureAD`) | Not available yet; use the stopgap |
+
+1. **Update the kit.** In Cursor, open **Settings > Plugins**, install or update
+   `soofi-xyz-team-kit`, then run **Developer: Reload Window**.
+2. **Connect the Figma MCP.** Follow Figma's
+   [remote server setup for Cursor](https://developers.figma.com/docs/figma-mcp-server/remote-server-installation/):
+   1. In a Cursor chat, enter `/add-plugin figma` and click **Add Plugin** (or
+      install Figma from the Cursor Marketplace).
+   2. Open **Cursor Settings > Tools & MCP**. Under installed MCP servers, click
+      **Connect** next to Figma.
+   3. In the browser, sign in with the Figma account that can **edit** the
+      design file or has **Dev Mode** access to it, then click **Allow access**.
+      Check which account the browser is signed in to first; Figma connects that
+      one.
+   4. Without the plugin, add a custom MCP server with
+      `{"mcpServers": {"figma": {"url": "https://mcp.figma.com/mcp"}}}` and
+      click **Connect**.
+   5. Ask the agent to call Figma's `whoami` tool and confirm the account and
+      seat. Use a Dev or Full seat; View and Collab seats get only a handful of
+      Figma MCP calls a month.
+3. **Connect the Jigglypuff MCP (when it ships).** It is not available yet. It
+   will ship in this kit's `mcp.json` once the DEV server is certified (see the
+   [contract](reference/jigglypuff-mcp-contract.md)). After that, a plugin
+   update is enough: open **Cursor Settings > Tools & MCP**, enable the
+   Jigglypuff server, click **Connect** and sign in with your Spring Oaks
+   Microsoft work account. Until then, use the
+   [stopgap](#interim-path-until-the-jigglypuff-mcp-is-deployed): open the PR
+   from Cursor, then in the Asana story attach the exported images and ask
+   Jigglypuff to take over the PR.
+4. **Sign in to GitHub CLI (stopgap only).** The stopgap opens the PR with
+   `gh`. Run `gh auth login` once and confirm with `gh auth status` that the
+   account can push branches to `Spring-Oaks-Capital-LLC/templates-inventory`.
+
 ## Prerequisites
 
 Check these before reading the design. Read
-[reference/figma-read.md](reference/figma-read.md) for the details.
+[reference/figma-read.md](reference/figma-read.md) for the details, and
+[One-time setup](#one-time-setup) when anything below is missing.
 
-1. The Figma MCP is connected in Cursor (**Settings > MCP**). Call `whoami` and
-   tell the user which Figma account and seat it is signed in as.
+1. The Figma MCP is connected in Cursor (**Cursor Settings > Tools & MCP**).
+   Call `whoami` and tell the user which Figma account and seat it is signed in
+   as.
 2. That account can **edit** the file or has **Dev Mode** access on a paid seat.
    Without it, Figma rejects reads with "you don't have edit access to this
    file".
@@ -136,8 +180,9 @@ hosted and certification passes, through a follow-up change on the PR.
    metadata rules in
    [reference/email-conventions.md](reference/email-conventions.md), and run
    `npm test` in the inventory checkout.
-4. In the Asana user story, ask Jigglypuff to take over (adopt) the PR, upload
-   the images, certify with real debts and request approvals.
+4. In the Asana user story, attach the exported images and ask Jigglypuff to
+   take over (adopt) the PR, upload the images, certify with real debts and
+   request approvals.
 
 ## Hand-off to Jigglypuff
 
@@ -149,7 +194,8 @@ hosting state and the approval tasks to the requester.
 ## Troubleshooting
 
 Read [reference/troubleshooting.md](reference/troubleshooting.md) for the known
-failures: no edit access, View-seat limits, validator `template_id` and
+failures: Figma MCP not connected, Jigglypuff MCP not available yet, no edit
+access, View-seat limits, validator `template_id` and
 `FILE_IMPORT` rules, sandboxed tools that cannot read local files, and DEV
 running one Jigglypuff branch at a time.
 

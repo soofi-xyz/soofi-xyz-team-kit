@@ -1,11 +1,38 @@
 # Troubleshooting
 
+## Figma MCP not connected / no Figma tools available
+
+Symptoms: the agent has no Figma tools (`whoami`, `get_metadata`,
+`get_design_context`), says Figma is not connected, or a Figma call returns an
+authentication error.
+
+1. Open **Cursor Settings > Tools & MCP**. If Figma is missing, install it with
+   `/add-plugin figma` in a chat, or add a custom server with URL
+   `https://mcp.figma.com/mcp`
+   ([Figma setup guide](https://developers.figma.com/docs/figma-mcp-server/remote-server-installation/)).
+2. Click **Connect** next to Figma and click **Allow access** in the browser.
+3. Run **Developer: Reload Window**.
+4. Ask the agent to call `whoami` and confirm the account and seat.
+
+A personal Figma account connects fine but fails on the design with "you don't
+have edit access to this file". To switch accounts, disconnect Figma in
+**Cursor Settings > Tools & MCP**, sign in to figma.com in the browser with the
+work account that can edit (or has Dev Mode access to) the file, then click
+**Connect** again and confirm with `whoami`.
+
+## Jigglypuff MCP not available
+
+Expected until it ships. The Jigglypuff server joins this kit's `mcp.json` only
+after its DEV server is certified, so there is nothing to enable yet. Use the
+interim path in the skill: open the PR from Cursor with `gh`, then in the Asana
+story attach the exported images and ask Jigglypuff to take over the PR.
+
 ## "You don't have edit access to this file"
 
 The Figma account signed in to Cursor's Figma MCP cannot edit the file and has
 no Dev Mode access. Call `whoami` to see which account is connected. Either ask
 the file owner to share the file with that account as **can edit**, or
-disconnect Figma in **Settings > MCP** and sign in with an account that already
+disconnect Figma in **Cursor Settings > Tools & MCP** and sign in with an account that already
 has edit or Dev Mode access. Access granted to a different email address does
 not help until Cursor is signed in as that address.
 
