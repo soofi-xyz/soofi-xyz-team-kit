@@ -1,6 +1,6 @@
 ---
 name: configure-documentation-product
-description: "Configure, publish and test product documentation through an existing Documentation API and portal. Use Togetic for OpenAPI, overviews, assets, guides, navigation, examples and supported publication settings; route implementation gaps to Unown."
+description: "Configure, publish and test product documentation through an existing Documentation API and portal. Use Togetic for OpenAPI, MCP server descriptions, overviews, assets, guides, navigation, examples and supported publication settings; route implementation gaps to Unown."
 ---
 
 # Configure Documentation
@@ -41,7 +41,11 @@ do not authorize runtime changes during configuration. Hand implementation to
    replacement, rollback or deletion only when their contracts are implemented
    and the action is within scope. Treat a submitted request as pending until
    content and status agree.
-5. Verify navigation, endpoint parameters/schemas/responses, overview images,
+5. For a product with MCP tools, prepare `requirements/mcp.json` to the deployed
+   contract, read back the publication's `mcp.status`/`mcp.diagnostics` and verify
+   the portal MCP section (address, tools, inputs, read/write, confirmation,
+   per-environment tools) against the product's MCP doc. Check snippets show only
+   `PRISM_API_KEY` placeholders. Verify navigation, endpoint parameters/schemas/responses, overview images,
    guide links and supported downloads in the portal. Check that every output
    corresponds to the same publication and that an update has the expected merge
    or replacement behavior. Do not write the product's storage directly.

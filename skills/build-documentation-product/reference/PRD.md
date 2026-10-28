@@ -72,6 +72,12 @@ metrics/dashboard, critical-failure alerts and self-resolving DLQ alarm requirem
   surface missing assets and reject executable content. Support guide listing,
   basic discovery and documented download formats; test PDF output visually.
 
+- Publish a product's MCP server description (`requirements/mcp.json`, carried by
+  Build and sent by Marketplace with the OpenAPI spec) on the same publication.
+  Judge it apart from the spec: an invalid description is a diagnostic on the
+  publication and leaves the API reference published with no MCP section. Serve
+  it only from the selected publication, so it carries the reference's version.
+
 ## Developer experience
 
 Render methods, paths, authentication requirements, parameters, nested schemas,
@@ -85,6 +91,16 @@ rendering a page must not execute it. Use synthetic requests for demonstrations,
 surface errors/timeouts and keep secrets out of logs, stored content, shared code
 snippets and downloadable collections. Do not adopt legacy browser credential
 persistence or credential-logging behavior without an explicit supported design.
+
+Show each product's MCP server beside its API reference: the address
+`https://<domain>/<base_path>/<path>` with `<domain>` as the environment's shared
+domain, the environment `x-api-key`, every tool with its description and required
+and optional inputs, read-only or write behavior and any confirmation argument, and
+copyable Cursor (`.cursor/mcp.json`, header from `${env:PRISM_API_KEY}`) and Claude
+Code (`claude mcp add --transport http …`) snippets. Snippets hold only
+environment-variable placeholders, never a key. Explain tools each environment
+configures (for example Persist's `query_<name>`) as a pattern, not a fixed list.
+Show no MCP section for products without one.
 
 Configure branding, welcome/family pages, navigation and supported content blocks
 through validated settings. Include loading, empty, missing-content, unauthorized
