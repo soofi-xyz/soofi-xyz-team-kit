@@ -1,6 +1,6 @@
 ---
 name: build-system-product
-description: "Build or maintain the System orchestration framework with TypeScript, CDK and Step Functions. Use Zygarde for runtime changes and a guided mock-first build; use Celebi for outcome configuration."
+description: "Build or maintain the System orchestration framework with TypeScript, CDK and Step Functions. Includes per-flow S3 event triggers. Use Zygarde for runtime changes and a guided mock-first build; use Celebi for outcome configuration."
 ---
 
 Use [the System capability map](../guide-product-work/reference/iterations/system.md). Derive the feature pieces from scope and dependencies, then apply the work below within each piece; require a user-run configuration, AWS inspection and feedback before starting the next implementation piece.
@@ -23,6 +23,7 @@ outcome on an existing deployment. Follow
 4. Use [sale availability](reference/worked-example-sale-availability.md) as a
    configuration example, not a statement of deployment or product readiness.
 5. Apply [engineering guidelines](../apply-engineering-guidelines/SKILL.md).
+6. For flows started by S3 object events, read [S3 triggers](reference/s3-triggers.md).
 
 ## Ownership
 
@@ -54,6 +55,22 @@ Keep these rules:
 - Send exactly the GET result body and document it as an OpenAPI `callbacks` entry.
 
 Celebi owns per-client configuration and delivery tests.
+
+## S3 triggers
+
+Own per-flow S3 triggers as a second entry point beside the invocation API; see
+[S3 triggers](reference/s3-triggers.md). Keep these rules:
+
+- Accept only the fixed `events` and `inputMode` options and literal
+  prefix/suffix filters; no free-form predicates or per-source code.
+- Assume only the trigger's `roleArn` with the documented `ExternalId`; store no
+  credentials.
+- Validate at registration, create nothing on failure and never invoke the flow.
+- Start runs through the API's invocation path with an idempotency key per
+  object version, and record the trigger as the invocation `source`.
+- Bound retries into a DLQ with alarms; log key hashes, never keys or bodies.
+
+Celebi owns per-flow trigger configuration and tests.
 
 ## Acceptance
 

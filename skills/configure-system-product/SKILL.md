@@ -1,6 +1,6 @@
 ---
 name: configure-system-product
-description: "Compose and test a business outcome as configuration of the existing System framework. Use Celebi for definitions, templates, flows, waterfalls and invocations; use Zygarde for framework changes."
+description: "Compose and test a business outcome as configuration of the existing System framework. Use Celebi for definitions, templates, flows, waterfalls, invocations and per-flow S3 triggers; use Zygarde for framework changes."
 ---
 
 Use [the System capability map](../guide-product-work/reference/iterations/system.md). Derive the feature pieces from scope and dependencies, then apply the work below within each piece; require a user-run configuration, AWS inspection and feedback before starting the next implementation piece.
@@ -50,6 +50,12 @@ and a failed run is resumed with `POST /invocations/{id}/redrive`.
 
 Read [result callbacks](reference/result-callbacks.md) to enable a client's
 callbacks, test delivery and inspect the dispatcher, queue and DLQ.
+
+## S3 triggers
+
+Read [S3 triggers](reference/s3-triggers.md) to start a flow from S3 object
+events: verify deployed support, choose the fixed options, prepare the bucket
+role, register per flow and run the test sequence.
 
 ## Configuration bundles
 
