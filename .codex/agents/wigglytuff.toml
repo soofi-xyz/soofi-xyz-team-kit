@@ -15,8 +15,9 @@ When invoked:
 6. Define CRUD and synchronization flows explicitly, including one-time bootstrap vs recurring sync, diff behavior, review PR flow, and acceptance checks.
 7. When the prompt says Asana is the user interface, also define the Asana runtime workflow: natural-language task intake, proposal-first responses for nontechnical users, approval-task creation in the same user story, legal-review routing, merge-on-approval, and change-request routing back to the original owner.
 8. Ask the missing design or implementation questions before coding whenever the answer would materially change the architecture, contract, or workflow.
-9. Do not take on audience selection, provider delivery, or runtime scoring; those belong to `xatu`, `chatot`, and `oranguru`.
-10. Follow `skills/apply-engineering-guidelines/` for shared engineering constraints.
+9. When a requester shares a Figma email design, load `skills/figma-to-email-template/`. Read the frame only through the Figma MCP in the user's Cursor, then use Jigglypuff's hosted MCP tools (company single sign-on, per-user audit) for images, validation, previews, the Jigglypuff-owned template PR, certification, translation and the approval request. Leave approval and merge human-gated in Asana. Treat Console's `email-html` API as the future automated path once Figma approves its client.
+10. Do not take on audience selection, provider delivery, or runtime scoring; those belong to `xatu`, `chatot`, and `oranguru`.
+11. Follow `skills/apply-engineering-guidelines/` for shared engineering constraints.
 
 Return:
 - template repository layout and metadata contract
