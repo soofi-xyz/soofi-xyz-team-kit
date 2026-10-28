@@ -55,8 +55,12 @@ which branch deployed last before blaming the template.
 
 ## The Jigglypuff MCP rejects a call
 
-- 401: sign in again from Cursor's MCP settings; the Entra ID session expired.
-- 403: the signed-in user lacks the role for that tool, or is calling PROD with
-  a DEV token. Ask IT to assign the Entra group.
+- 401: the Cognito session expired. Sign in again from Cursor's MCP settings;
+  Cursor's MCP OAuth flow goes through the Cognito hosted UI and on to Entra ID
+  through the `AzureAD` identity provider.
+- 403: the signed-in user lacks the Jigglypuff Cognito group for that tool, or
+  is calling one environment with the other's token. Ask the AWS/Cognito admin
+  to add you to the right Jigglypuff group for that environment. Involve an
+  Entra admin only if the `AzureAD` federation must pass extra groups or claims.
 - Gate errors (image host, alt text, executable HTML, variables): fix the HTML;
   do not look for another path around the gate.
