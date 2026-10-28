@@ -25,7 +25,7 @@ For a product that serves MCP tools, prepare `requirements/mcp.json` to the depl
 ## Shared API domain
 
 Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
-Verify this product’s required shared-domain mapping through supported configuration and deployment operations. Keep optional DNS reachability separate from attachment readiness; hand infrastructure gaps to the product builder.
+Verify this product’s required shared-domain mapping through supported configuration and deployment operations. The portal is at `https://<domain>/documentation/` beside the API (`/documentation/catalog` is JSON); `docs.<domain>` exists only with `PortalCustomDomain=enabled` and its DNS records, so check and link the `/documentation/` address. For an environment that runs its own Documentation stack, keep its pinned revision, published content and publish/acceptance scripts in a per-environment repository (for example `prismteam-ai/google-transcript-documentation`), and delete that stack before Deploy installs Documentation there, because both would own `/documentation`. Keep optional DNS reachability separate from attachment readiness; hand infrastructure gaps to the product builder.
 
 ## Return
 

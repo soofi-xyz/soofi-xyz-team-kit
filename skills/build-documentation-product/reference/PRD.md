@@ -92,6 +92,10 @@ surface errors/timeouts and keep secrets out of logs, stored content, shared cod
 snippets and downloadable collections. Do not adopt legacy browser credential
 persistence or credential-logging behavior without an explicit supported design.
 
+Serve the portal at `https://<domain>/documentation/` beside the API through public
+proxy routes to its Amplify branch, listed in `marketplace.shared-api.json`; keep
+`docs.<domain>` optional so an environment's portal needs no DNS records.
+
 Show each product's MCP server beside its API reference: the address
 `https://<domain>/<base_path>/<path>` with `<domain>` as the environment's shared
 domain, the environment `x-api-key`, every tool with its description and required

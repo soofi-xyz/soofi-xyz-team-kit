@@ -26,6 +26,8 @@ Treat a product's `requirements/mcp.json` as a second description on the same pu
 Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
 Require this product’s API CDK stacks to consume the shared domain through deploy-time parameters and own their base-path mappings. Reuse the attachment helper and preserve existing stack/path identity; do not create a second shared domain.
 
+Serve the portal beside the API at `https://<domain>/documentation/`: build it for the `/documentation/` base path and expose public `GET /`, `/api/{proxy+}`, `/assets/{proxy+}` and `/config.json` routes that proxy to its Amplify branch with `Accept-Encoding: identity`, as Console serves `/console/app`. List every public route in `marketplace.shared-api.json` and keep a stack test that compares that list with the synthesized public methods. Keep Amplify rewrites for `/documentation/*` so one build serves every address. Treat `docs.<domain>` as optional (`PortalCustomDomain`, enabled by default for the central install); never make DNS records a prerequisite for an environment's portal.
+
 ## Return
 
 Return implementation and API/configuration examples, selected versions, automated checks, browser results, user/AWS observations, cleanup and remaining gaps. Hand publication/configuration on existing deployments to `togetic`. Distinguish source inspection, local tests, infrastructure synthesis, deployed mocks and live integration; never claim unperformed checks passed.
