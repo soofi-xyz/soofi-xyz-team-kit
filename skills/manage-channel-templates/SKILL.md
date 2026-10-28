@@ -99,14 +99,30 @@ Expose a runtime-friendly inventory that downstream systems can trust:
 
 ## Email Templates From Figma
 
-When a requester provides a Figma design for an email body, call Console's
-authoring job API with `output: email-html` instead of hand-writing the HTML.
-Send the Figma node, the declared render variables and template language, and
-for an edit the current HTML with its `content_sha256`. Poll the job and use the
-returned HTML, variable list and previews. Reject a result that drops or adds a
-variable, then continue the normal flow: write the HTML and metadata through the
-template pull request, request approvals and certify rendering before merge.
-Console does not commit, approve or send; those steps stay here. Read the
+When a requester provides a Figma design for an email body, use the Cursor
+workflow in [figma-to-email-template](../figma-to-email-template/SKILL.md):
+
+1. Read the email frame through the Figma MCP in the user's Cursor. Figma only
+   serves approved MCP clients, so no Jigglypuff, Console or local process reads
+   Figma directly.
+2. Call Jigglypuff's hosted MCP server, signed in with company single sign-on,
+   for image export and hosting, validation, previews, the template pull
+   request, certification, Spanish translation and the approval request. The
+   server enforces the same gates as the Asana path. Its contract is in
+   [jigglypuff-mcp-contract.md](../figma-to-email-template/reference/jigglypuff-mcp-contract.md).
+3. Keep approval and merge in Asana. Jigglypuff creates and owns the PR, so no
+   adoption is needed.
+
+Until the Jigglypuff MCP server is deployed, open the PR from Cursor and ask
+Jigglypuff in the Asana story to take it over, as the skill's interim path
+describes.
+
+Console's authoring job API with `output: email-html` remains the future fully
+automated path once Figma approves Console's MCP client. When it exists, send
+the Figma node, declared variables, template language and, for an edit, the
+current HTML with its `content_sha256`; reject a result that drops or adds a
+variable; then continue through the same pull request, certification and
+approval flow. Console does not commit, approve or send. Both paths follow the
 [Console email HTML target](../build-console-product/reference/component-authoring.md#email-html-target).
 
 ## Boundaries
