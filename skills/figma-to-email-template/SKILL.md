@@ -39,7 +39,8 @@ Check these before reading the design. Read
 3. Warn about seat limits. View and Collab seats get only a handful of Figma MCP
    calls a month, and one email takes several. Prefer a Dev or Full seat.
 4. The Jigglypuff MCP server for the target environment is connected and the
-   user signed in with company single sign-on (Microsoft Entra ID). Start with
+   user signed in with company single sign-on (the shared Cognito broker
+   federated to Microsoft Entra ID). Start with
    DEV. If the server is not deployed yet, use the interim path below.
 5. The user has a template name, a subject and, when known, the Asana user
    story the work belongs to.
