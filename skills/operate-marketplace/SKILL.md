@@ -31,9 +31,7 @@ for its base URL when not given; never list, store or guess custom
 marketplaces. Name the target in every report, and state it with its base URL
 and ask the user to confirm it before any register, publish or rollback write.
 For a custom marketplace, verify `GET /settings/status` before any write and
-stop when it does not return `200` with `is_operational: true`. Before its
-first real configuration, offer the
-[smoke configuration](reference/targets.md#smoke-configuration).
+stop when it does not return `200` with `is_operational: true`.
 
 For configuration bundles, verify the target supports the `CONFIGURATION`
 component type before registration/publication. Hand missing migration support

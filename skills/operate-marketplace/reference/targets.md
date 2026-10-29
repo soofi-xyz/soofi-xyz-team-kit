@@ -56,26 +56,3 @@ id, for example
 `"dependencies": [{ "product_id": "<Prism Marketplace product_id>", "component_id": "connect" }]`.
 Deploy then installs that service from Prism Marketplace. Add a missing bare
 entry only when a configuration needs it, and confirm it with the user first.
-
-## Smoke configuration
-
-Before a custom marketplace's first real configuration, offer to publish the
-smoke configuration in
-[`templates/smoke-configuration/`](../templates/smoke-configuration/). It is the
-smallest Connect configuration bundle (`component_id` `marketplace-smoke`): one
-flow whose only step is a `Pass` state, and one partner configuration pointing
-at `https://example.invalid` with no credentials. It has no activation, so
-installing it starts nothing and calls no partner. A `VALID` bundle proves that
-marketplace's Build, review Deploy and publication work end to end.
-
-1. The user copies the template into a repository they own, unchanged, and
-   merges it to its default branch. Publishing archives a commit that exists on
-   the remote, so a local copy is not enough.
-2. Register in the custom marketplace (§2 of the skill): a configuration
-   `marketplace-smoke` on its bare `Connect` entry (`configured_product_id`),
-   then a `CONFIGURATION` component `marketplace-smoke` on that configuration.
-3. Dry-run, confirm the target, then publish once (publish-readiness.md
-   section B). Report `review_id` and `bundle_status`; success is `VALID`.
-
-Installing the bundle in an environment belongs to Skarmory. Keep the smoke
-bundle out of production subscriptions.
