@@ -1,0 +1,17 @@
+{
+  "version": "3",
+  "flow_name": "marketplace-smoke",
+  "kind": "flow",
+  "description": "Marketplace smoke flow. Its only step is a Pass state, so a job calls no connection. It has no activation and runs only when invoked through the API.",
+  "connections": {
+    "probe": { "types": ["http"] }
+  },
+  "triggers": ["api"],
+  "limits": { "timeout_seconds": 60 },
+  "definition": {
+    "StartAt": "Done",
+    "States": {
+      "Done": { "Type": "Pass", "End": true }
+    }
+  }
+}

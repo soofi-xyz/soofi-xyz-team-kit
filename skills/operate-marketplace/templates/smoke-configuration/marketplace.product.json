@@ -1,0 +1,6 @@
+{
+  "component_id": "marketplace-smoke",
+  "component_name": "Marketplace smoke configuration",
+  "bundle_type": "CONFIGURATION",
+  "dependencies": [{ "product_id": "562afa37-5bff-4cd5-9b25-9f04140aae27", "component_id": "connect" }]
+}

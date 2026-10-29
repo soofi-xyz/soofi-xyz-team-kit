@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "1",
+  "bundle": "marketplace-smoke",
+  "description": "Smallest Connect configuration bundle: one flow whose only step is a Pass state and one partner configuration that is never called. It proves Build, review, publication and installation for a marketplace without touching a partner.",
+  "parameters": {
+    "environmentName": {
+      "description": "Environment label on the partner configuration (dev, staging or prod)",
+      "default": "dev"
+    }
+  },
+  "configurations": [
+    {
+      "id": "marketplace-smoke-flow",
+      "product": "connect",
+      "kind": "flow",
+      "source": "connect/flows/marketplace-smoke.json"
+    },
+    {
+      "id": "marketplace-smoke-partner",
+      "product": "connect",
+      "kind": "partner-configuration",
+      "source": "connect/partner-configurations/marketplace-smoke.json",
+      "dependsOn": ["marketplace-smoke-flow"]
+    }
+  ]
+}
