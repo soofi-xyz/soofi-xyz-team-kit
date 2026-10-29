@@ -5,13 +5,13 @@
   },
   "metadata": {
     "description": "Company-wide plugins for AI-assisted development.",
-    "version": "0.121.0"
+    "version": "0.121.1"
   },
   "plugins": [
     {
       "name": "soofi-xyz-team-kit",
       "description": "Product builders and configurers with guided feature increments for Documentation, Account, Console, Environment, Build, Deploy, Model, Marketplace, Transform, Persist, Rule, Connect, System, Report and Schedule.",
-      "version": "0.121.0",
+      "version": "0.121.1",
       "author": {
         "name": "Soofi XYZ"
       },
