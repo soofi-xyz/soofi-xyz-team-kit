@@ -144,9 +144,11 @@ files it pins. Select the payload by the rule's `engine` (absent means
 | `javascript` | `module` `{ path: "mapping.js", sha256 }`; no `outputs` or `queries` | `{ rule, module: { "mapping.js": "<source>" } }` |
 
 - Verify every pinned file's sha256 against the bundle bytes before any write, and
-  reject a pinned file that is missing, a file in the folder that nothing pins, a
-  `javascript` rule with `queries` or a `spark-sql` rule with `module`, and an
-  unknown `engine`.
+  reject a pinned file that is missing, a `javascript` rule with `queries` or a
+  `spark-sql` rule with `module`, and an unknown `engine`.
+- Reject a file in a `javascript` mapping's folder that nothing pins. Keep
+  `spark-sql` folders as before: files the rule does not reference (such as a
+  README) are left behind, not sent, because installed bundles rely on it.
 - Treat the `javascript` rule's `output` (`graph`/`graphson` or `json`/`json`)
   and `inputs` as Transform semantics: pass them through unchanged and let
   Transform validate them.
@@ -184,7 +186,7 @@ adapters. Keep user-run API and AWS observations inside each feature increment.
 | Scenario | Required observation |
 | --- | --- |
 | Baseline | Install a fixture mapping, Connect flow/partner configuration and System flow referencing them; read back all applied identities and make zero business-run calls |
-| Mapping engines | Install a bundle with a `spark-sql` and a `javascript` mapping; read back each version's `engine` and digests; reject a `javascript` mapping whose `mapping.js` bytes differ from `module.sha256`, an unpinned file and a mixed `module`/`queries` rule before any write |
+| Mapping engines | Install a bundle with a `spark-sql` and a `javascript` mapping; read back each version's `engine` and digests; reject a `javascript` mapping whose `mapping.js` bytes differ from `module.sha256`, an unpinned file in a `javascript` folder and a mixed `module`/`queries` rule before any write |
 | Type migration | Build, publish and install with `CONFIGURATION` in requests, metadata and artifacts; migrate existing mutable metadata without identity/reference changes, preserve historical artifact hashes, and reject retired legacy writes/routes with migration guidance |
 | Changed configuration | Change one document with unchanged provider/service code; verify changed asset digest, intended resource update and preserved unaffected configurations |
 | Shared provider | Install two bundles using the same provider; verify no per-bundle Lambda and no ownership collision or cross-bundle mutation |
