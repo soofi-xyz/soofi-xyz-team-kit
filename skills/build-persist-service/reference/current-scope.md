@@ -5,6 +5,17 @@ reconciliation records the supplied 2026-09-30 product comparison; it is not a
 fresh inspection of a deployed service. Verify the target revision and tests
 before deciding whether a difference is a documentation error or missing code.
 
+Persist has two repositories with the same engine code (`lib/`, `lambda/`):
+
+- `prismteam-ai/persist` is the base product. Its CDK app is `marketplace/app.ts`
+  and its CI publishes the `persist` component to Prism Marketplace.
+- `Spring-Oaks-Capital-LLC/persist` is the SOC DEV/PROD deployment (`bin/app.ts`,
+  SOC sizing, legacy SSM lexicon, SOC integrations).
+
+Make base-product changes in `prismteam-ai/persist`; make an engine change in both
+repositories until one consumes the other. Leave SOC-only wiring in the SOC
+repository.
+
 Treat Persist as the single-company, IAM SigV4 graph service. Preserve its
 deterministic IDs, idempotent ingestion, vertex references, staged bulk loading,
 read-only Gremlin queries, governed model artifacts and stream-driven indexes.
