@@ -127,6 +127,9 @@ rejected elements and dependent edges, and add a `quality` block to the
 A transaction whose every output element is rejected returns `200` with an empty
 graph and the `quality` block; it is not a `MappingFailed` error.
 
+A `json` output mapping returns a document, not labeled elements: evaluate its
+input checks as above and reject output-stage checks at registration.
+
 ## Outputs
 
 Write outcomes next to the run's datasets and bind them in `_metadata.json`:

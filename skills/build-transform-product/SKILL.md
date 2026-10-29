@@ -23,7 +23,8 @@ Keep the SQL rules below scoped to SQL; do not force raw strings into a Spark ta
 
 For one small transaction per run, use the separate transactional JavaScript
 phase: registered `javascript` mapping → fresh in-process sandbox → GraphSON for
-Persist. Read [transactional JavaScript mappings](reference/transactional-javascript.md).
+Persist, or a plain JSON document (`json` output) for a caller that delivers to
+another system. Read [transactional JavaScript mappings](reference/transactional-javascript.md).
 Keep the Spark batch path unchanged.
 
 To keep incomplete or unusable records out of the output without failing the run,
@@ -104,8 +105,10 @@ registered mapping's `engine` and the synchronous transaction route, never a
 deploy-time flag. Resolve one enabled mapping per pair and engine. Verify the
 script digest, run it in a fresh QuickJS (WASM) sandbox with memory and time
 limits and no host functions, and serialize the mapping's own ids as GraphSON
-`g:UUID` values; Persist validates against Lexicon and assigns hashed ids. Do not
-translate SQL, change `spark-sql` validation or add Lexicon validation to this path.
+`g:UUID` values; Persist validates against Lexicon and assigns hashed ids. For a
+mapping that declares `output: { shape: "json", format: "json" }`, return its
+object or array unchanged as `result` instead. Do not translate SQL, change
+`spark-sql` validation or add Lexicon validation to this path.
 
 ## Record quality checks
 
