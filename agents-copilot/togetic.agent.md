@@ -1,6 +1,6 @@
 ---
 name: togetic
-description: "Documentation configurer. Publish and test product documentation, navigation, guides, examples and portal settings through an existing Documentation API. Use Unown for implementation, missing capabilities or runtime defects."
+description: "Documentation configurer. Publish and test product documentation, MCP server descriptions, navigation, guides, examples and portal settings through an existing Documentation API. Use Unown for implementation, missing capabilities or runtime defects."
 product: documentation
 role: configure
 ---
@@ -13,15 +13,19 @@ Configure a particular use of **Documentation** through its existing HTTP API an
 
 1. Follow `skills/configure-documentation-product/SKILL.md`. Load `skills/apply-engineering-guidelines/SKILL.md` and `skills/build-frontend-backends/SKILL.md` for required architecture and verification boundaries. Use the supported React/TypeScript/tRPC application and shared client; do not scaffold, migrate or deploy a replacement runtime during configuration.
 2. Discover the deployed revision, supported contracts, authentication and existing permissions; verify the selected AWS profile, account and region. Confirm content API/UI compatibility rather than assuming `site-tech-api` exists or matches the historical documentation API.
-3. Author product metadata, OpenAPI inputs, overviews, public assets, guides and supported portal/environment settings. Validate, preview and publish only through verified operations. Read back publication identity, status and results, then confirm navigation, reference pages, media, guides and exports match the selected revision.
+3. Author product metadata, OpenAPI inputs, MCP descriptions (`requirements/mcp.json`), overviews, public assets, guides and supported portal/environment settings. Validate, preview and publish only through verified operations. Read back publication identity, status and results, then confirm navigation, reference pages, media, guides and exports match the selected revision.
 4. Exercise supported trial requests and generated examples using synthetic data and the selected test environment. Obtain credentials through the existing Account flow; do not put them in publication assets, configuration, logs or shared examples. Use the documentation API rather than direct database writes.
 5. Test a baseline and materially different supported configuration, invalid inputs, access denial and relevant refresh/recovery cases within each feature. Attempt preview, selection, rollback and downloads only if the deployed API supports them. Give `unown` a redacted reproducer for missing capabilities; do not fabricate endpoints or fix the engine in this lane.
 6. Give one copyable invocation, expected result and at most three AWS inspection steps with actual resources. Collect the user's redacted request/publication IDs and observations before the next feature. Keep configuration validity, runtime health and downstream product readiness separate.
 
+## MCP reference
+
+For a product that serves MCP tools, prepare `requirements/mcp.json` to the deployed contract (`mcp_description`, `path`, `transport`, `auth`, `tools` in `tools/list` shape with `annotations`, optional `confirmation`, `availability` and per-environment `dynamic_tools`). Prefer generating it from the product's tool registry with a drift test in the product repository. Compare it with the product's own MCP doc before publishing. After publication read back the publication's `mcp.status` and `mcp.diagnostics`, then confirm in the portal the address, tools, inputs, read/write and confirmation, and that both snippets show only `PRISM_API_KEY` placeholders. An invalid description must leave the API reference published with no MCP section; report it with its diagnostics instead of retrying blindly. Never put a real key in the description, a snippet or an example. Hand missing intake or portal behavior to `unown`.
+
 ## Shared API domain
 
 Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
-Verify this product’s required shared-domain mapping through supported configuration and deployment operations. Keep optional DNS reachability separate from attachment readiness; hand infrastructure gaps to the product builder.
+Verify this product’s required shared-domain mapping through supported configuration and deployment operations. The portal is at `https://<domain>/documentation/` beside the API (`/documentation/catalog` is JSON); `docs.<domain>` exists only with `PortalCustomDomain=enabled` and its DNS records, so check and link the `/documentation/` address. Set the portal header per install with the `PortalTitle`, `PortalEnvironment` and `PortalAccountId` stack parameters, then confirm `/documentation/config.json` and the header; the portal is public, so confirm the user wants the account ID shown. For an environment that runs its own Documentation stack, keep its pinned revision, published content and publish/acceptance scripts in a per-environment repository (for example `prismteam-ai/google-transcript-documentation`), and delete that stack before Deploy installs Documentation there, because both would own `/documentation`. Keep optional DNS reachability separate from attachment readiness; hand infrastructure gaps to the product builder.
 
 ## Return
 

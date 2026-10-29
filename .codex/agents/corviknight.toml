@@ -27,6 +27,9 @@ Read [the shared configuration-bundle contract](../skills/build-product-deployer
 Use `CONFIGURATION` in bundle validation and subscription metadata; migrate legacy
 type handling with Build and Marketplace. Build the shared configuration-bundle
 installer as a Deploy component with typed Transform, Connect and System API adapters.
+Install Transform mappings of both engines, selected by the rule's `engine`: `spark-sql`
+(pinned `queries/`) and `javascript` (pinned `mapping.js` sent as `module`), following
+the contract's Transform mapping payloads.
 Reuse the provider per target account/region
 across bundle stacks; do not generate per-bundle Lambdas. Implement dependency ordering,
 scoped ownership, replay/conflict handling, completion read-back and partial-failure

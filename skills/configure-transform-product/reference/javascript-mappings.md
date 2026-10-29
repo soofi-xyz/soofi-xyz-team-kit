@@ -1,8 +1,10 @@
 # Author transactional JavaScript mappings
 
 Use a `javascript` mapping when one run covers one small transaction (one event,
-document or record set) and the output is a graph for Persist. Keep batch
-conversions on `spark-sql`. Read the engine contract in
+document or record set) and the output is either a graph for Persist (`graph`
+output) or a JSON document for a caller that delivers it to another system
+(`json` output, see [JSON output](#json-output)). Keep batch conversions on
+`spark-sql`. Read the engine contract in
 [transactional JavaScript mappings](../../build-transform-product/reference/transactional-javascript.md)
 and verify the deployment supports it before authoring: list the pair's
 registered versions and confirm the API accepts `engine: "javascript"` and serves
@@ -84,6 +86,45 @@ export function transform({ document, document_text }: Inputs) {
 - Run the tests against the built `mapping.js` as well as the source, so the
   registered bytes are what passed.
 
+## JSON output
+
+Choose `json` output when the transaction's result is not a Persist graph,
+typically the API payloads a System flow sends to a partner through Connect.
+Declare `"output": { "shape": "json", "format": "json" }` and return any JSON
+object or array from `transform`; the transaction returns it unchanged as
+`data.result`. Verify the deployment accepts that output first and hand missing
+support to Kecleon.
+
+- Shape the document for its caller's plain JSONPath: an array of flat objects
+  the caller can iterate, each with the identifiers and request body it needs.
+- Keep the same purity rules: no clocks, randomness, network or packages.
+- Return `[]` when nothing applies; `null`, strings, numbers and booleans fail as
+  `InvalidMappingOutput`.
+- Use input-stage quality checks only; output-stage checks need a graph.
+
+Example: map an opt-out event plus an account's phone records to the records to
+patch:
+
+```ts
+type Phone = { demographicPhoneID: number; phoneNumber: string }
+type Inputs = { event: { phone_number: string; dnt_status: boolean; debt_id: string }; phones: Phone[] }
+
+export function transform({ event, phones }: Inputs) {
+  const digits = (value: string) => value.replace(/\D/g, "").slice(-10)
+  const status = event.dnt_status ? "OPTED_OUT" : "OPTED_IN"
+  return phones
+    .filter((phone) => digits(phone.phoneNumber) === digits(event.phone_number))
+    .map((phone) => ({
+      debt_id: event.debt_id,
+      demographic_phone_id: phone.demographicPhoneID,
+      body: { txtMsgStatus: status },
+    }))
+}
+```
+
+Test the document like a graph: independent expected arrays per fixture,
+including no match, several matches and malformed input.
+
 ## Register and run
 
 Register through Transform's configuration API as for SQL mappings: validate,
@@ -122,6 +163,8 @@ Until `scripts/transform_api.py` supports `module` bodies and the transaction
 route, use the API directly as above and hand helper support to Kecleon.
 
 Inspect the returned `mapping` identity and digest, `counts` and `graph`, then
-check the document with Persist's `POST /persist/validate` before any ingest.
+check the document with Persist's `POST /persist/validate` before any ingest. For
+a `json` mapping, inspect `result` against the fixture's expected document and
+confirm its caller reads it with the paths it uses.
 Report the returned `durationMs` and the Lambda log durations; do not claim
 latency from local runs.

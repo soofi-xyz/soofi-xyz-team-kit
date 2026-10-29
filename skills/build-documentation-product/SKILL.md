@@ -1,6 +1,6 @@
 ---
 name: build-documentation-product
-description: "Build or maintain Documentation's publishing API and React/TypeScript developer portal, including OpenAPI reference, guides, previews, interactive requests and exports. Use Unown; use Togetic to configure an existing deployment."
+description: "Build or maintain Documentation's publishing API and React/TypeScript developer portal, including OpenAPI reference, MCP server reference, guides, previews, interactive requests and exports. Use Unown; use Togetic to configure an existing deployment."
 ---
 
 # Build Documentation
@@ -65,16 +65,20 @@ as external runtime dependencies of a newly built product.
    navigation, references, guides, examples or exports. Make every representation
    traceable to the same selected publication. Test replacement versus multi-spec
    merging explicitly; keep last-known-good content when validation fails.
-4. Test a baseline and materially different supported configuration plus invalid,
+4. Judge a product's MCP description (`requirements/mcp.json`) apart from its
+   OpenAPI spec on the same publication: a bad description is a diagnostic, never
+   a rejected reference. Serve it only from the selected publication and keep
+   connection snippets to environment-variable placeholders (`mcp-reference`).
+5. Test a baseline and materially different supported configuration plus invalid,
    unauthorized and relevant recovery cases. Use the synthetic scenarios and
    dependency fakes first. Check browser results, API status/results, generated
    artifacts and correlated AWS evidence together. Validate generated examples
    against the actual request they claim to represent.
-5. Give one copyable API invocation/fixture, expected output and at most three
+6. Give one copyable API invocation/fixture, expected output and at most three
    AWS inspection steps with verified resource names. Have the user run the
    baseline and variant, inspect state/logs and return redacted IDs and an
    observation. Wait for that evidence before implementing the next increment.
-6. Run cumulative acceptance after the selected features. Report source/local
+7. Run cumulative acceptance after the selected features. Report source/local
    checks, infrastructure synthesis, deployed mocks and real integrations
    separately. Use live dependencies only within the authorized scope.
 

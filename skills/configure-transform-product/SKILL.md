@@ -31,8 +31,9 @@ writing every valid record, add declarative `checks` to the mapping. Read
 Verify the deployment accepts `checks` first; do not filter such records in SQL
 or by making Lexicon properties `required`.
 
-For one small transaction per run with graph output for Persist, author a
-`javascript` mapping instead of SQL. Read
+For one small transaction per run, with graph output for Persist or `json`
+output for a caller delivering to another system, author a `javascript` mapping
+instead of SQL. Read
 [JavaScript mapping authoring](reference/javascript-mappings.md) and the
 [engine contract](../build-transform-product/reference/transactional-javascript.md).
 Verify the deployment accepts `engine: "javascript"` and serves the transaction

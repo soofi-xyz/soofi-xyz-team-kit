@@ -5,6 +5,11 @@ so Cursor users can call Jigglypuff directly instead of through Asana. The kit
 only documents it; the Jigglypuff repository owns the implementation, tests and
 deployment. Build DEV first, certify it, then PROD.
 
+Implementation:
+[jigglypuff-agent#116](https://github.com/Spring-Oaks-Capital-LLC/jigglypuff-agent/pull/116)
+(ADR 0011). DEV runs it; PROD stays off until `PROD_ENABLE_MCP_SERVER=true`
+after DEV certification.
+
 The MCP server is a new front door to capabilities Jigglypuff already has. Reuse
 the existing runtime tools and their gates instead of writing parallel logic:
 
@@ -27,33 +32,33 @@ There is deliberately no merge, approve or activate tool.
 
 - Remote MCP over **Streamable HTTP**, served from the Jigglypuff stack in each
   environment's AWS account. One endpoint per environment:
-  - DEV: `https://<jigglypuff-dev-host>/mcp` (open question: host)
-  - PROD: `https://<jigglypuff-prod-host>/mcp` (after DEV certification)
+  - DEV: `https://cwwm2to8hk.execute-api.us-east-2.amazonaws.com/mcp`
+  - PROD: not provisioned until PROD enablement (see the open questions)
 - Stateless request/response is sufficient; no tool needs server-initiated
   messages. Long work (asset export, certification) returns within the request
   when it fits the platform timeout, otherwise returns a `job_id` that
   `get_template_pr_status` reports on.
 - Limit request bodies to what the tools need (base64 images up to 1 MB each
   plus HTML); reject larger bodies before parsing.
-- Users add the server in Cursor with its URL and, with the pre-registered
-  client (see the open questions), the public Cognito client id and scopes. The
+- Users add the server in Cursor with its URL, the public Cognito client id and
+  scopes (the stack output `McpServerMcpCursorConfig` prints this entry). The
   client id is not a secret:
 
 ```json
 {
   "mcpServers": {
     "jigglypuff-dev": {
-      "url": "https://<jigglypuff-dev-host>/mcp",
+      "url": "https://cwwm2to8hk.execute-api.us-east-2.amazonaws.com/mcp",
       "auth": {
-        "CLIENT_ID": "<jigglypuff-dev-cognito-client-id>",
-        "scopes": ["openid", "profile", "email", "jigglypuff-mcp/tools"]
+        "CLIENT_ID": "3s3lpf8lfqm30e7teq9rmkbmbb",
+        "scopes": ["openid", "profile", "email"]
       }
     }
   }
 }
 ```
 
-Add the entry to this kit's `mcp.json` only once the DEV URL and sign-in are
+Add the entry to this kit's `mcp.json` only once DEV sign-in and the tools are
 certified.
 
 ## Authentication and authorization
@@ -106,16 +111,24 @@ building.
   pools, so no cross-account access and no Hoothoot change are needed.
 - **App client:** Jigglypuff's own CDK imports that environment's pool with
   `UserPool.fromUserPoolId`, as Hoothoot does, and adds a **new Jigglypuff
-  `UserPoolClient`**: public (no secret), authorization code with PKCE only,
-  supported identity provider `AzureAD`, scopes `openid profile email` plus one
-  resource-server scope for the MCP API (for example `jigglypuff-mcp/tools`),
-  and the Cursor callback URLs listed in the open questions. The same CDK
-  creates that resource server; it is the only new pool-level resource, since
-  Hoothoot uses none. Do not reuse a Hoothoot app client.
-- **Resource server:** the MCP endpoint publishes OAuth Protected Resource
-  Metadata (RFC 9728) at `/.well-known/oauth-protected-resource`, naming the
-  Cognito authorization server for that environment, and answers
-  unauthenticated calls with `401` and
+  `UserPoolClient`**: public (no secret), authorization code with PKCE plus
+  refresh token, supported identity provider `AzureAD` only, scopes
+  `openid profile email`, and Cursor's two fixed callbacks
+  (`http://localhost:8787/callback` and
+  `https://www.cursor.com/agents/mcp/oauth/callback`, per
+  [Cursor's MCP docs](https://cursor.com/docs/context/mcp#static-redirect-url)).
+  DEV client: `3s3lpf8lfqm30e7teq9rmkbmbb`. No resource server or custom scope.
+  Do not reuse a Hoothoot app client.
+- **OAuth metadata proxy:** Cognito publishes only OpenID Connect discovery,
+  without `code_challenge_methods_supported` or the `none` token auth method,
+  and returns 400 at every RFC 8414 location; MCP clients must refuse an
+  authorization server that does not advertise PKCE. So the MCP endpoint
+  publishes its own RFC 9728 protected-resource metadata and RFC 8414
+  authorization-server metadata. Its `/oauth2/authorize` checks client,
+  redirect URI, PKCE, `resource` and scopes, then redirects to the Cognito
+  hosted UI with `identity_provider=AzureAD`; `/oauth2/token` forwards only the
+  grant fields. It stores nothing, and the tokens stay Cognito's.
+- **Unauthenticated calls:** answer `401` with
   `WWW-Authenticate: Bearer resource_metadata="..."` so Cursor starts its
   browser sign-in.
 - **Roles (default):** map roles from the `cognito:groups` claim in the access
@@ -147,8 +160,8 @@ the Asana path.
   `https://cognito-idp.us-east-2.amazonaws.com/us-east-2_7tpH6X78q`; PROD:
   `https://cognito-idp.us-east-2.amazonaws.com/us-east-2_aM3jiFwEM`), whose
   client is that environment's Jigglypuff app client, with a valid signature
-  from the pool JWKS (`<issuer>/.well-known/jwks.json`), unexpired, carrying the
-  MCP resource-server scope and a role for the tool. Cognito access tokens carry
+  from the pool JWKS (`<issuer>/.well-known/jwks.json`), unexpired, and with a
+  role group for the tool. Cognito access tokens carry
   the client in `client_id`, not `aud`; check `client_id` (API Gateway JWT
   authorizers accept either).
 - DEV and PROD use different pools and app clients. DEV rejects PROD tokens and
@@ -166,16 +179,15 @@ identity when present (`identities[].providerName` = `AzureAD` and its
 `userId`), SHA-256 of the input, repository, branch, PR number, head commit and
 Asana task. The access token carries `sub`, `username` and `cognito:groups`;
 read `email` and `identities` from the Cognito `userInfo` endpoint (no
-pre-token-generation trigger exists to add them to the token). Keep the audit store append-only. Add
-`Requested-by: <email>` to commit messages and name the requester in the PR
-body.
+pre-token-generation trigger exists to add them to the token). Keep the audit
+store append-only. Add `Requested-by: <email>` to commit messages and name the
+requester in the PR body.
 
 ### Who does what
 
-- **Jigglypuff (its CDK and runtime):** creates the app client, resource server
-  and scope, callback and logout URLs, and role groups in each environment's
-  pool, and implements the resource metadata, token validation, role checks and
-  audit.
+- **Jigglypuff (its CDK and runtime):** creates the app client, callback URLs
+  and role groups in each environment's pool, and implements the metadata
+  proxy, token validation, role checks and audit.
 - **AWS/Cognito admin** (DEV `951132547414`, PROD `014948052063`): reviews the
   Jigglypuff deployment that changes the pool and assigns users to the role
   groups.
@@ -186,36 +198,20 @@ body.
 
 ### Open questions
 
-1. **Cursor redirect URIs.** Cursor's
-   [MCP documentation](https://cursor.com/docs/context/mcp#static-redirect-url)
-   lists fixed callbacks: `http://localhost:8787/callback` for the desktop app
-   and `https://www.cursor.com/agents/mcp/oauth/callback` for web and Cursor
-   Agents. Confirm which surfaces Spring Oaks users sign in from and register
-   only those on each app client.
-2. **Client registration.** Cognito, like Entra, does not support OAuth Dynamic
-   Client Registration. Cursor documents
-   [static OAuth for remote servers](https://cursor.com/docs/context/mcp#static-oauth-for-remote-servers):
-   an `auth` object in `mcp.json` with `CLIENT_ID` (secret optional) and
-   `scopes`; without `scopes`, Cursor reads `scopes_supported` from
-   `/.well-known/oauth-authorization-server`. Cursor signs in with
-   authorization code and PKCE, finds the authorization server through RFC 9728
-   metadata and sends an RFC 8707 resource indicator
-   ([Authentication](https://cursor.com/docs/context/mcp#authentication)).
-   Decide between:
-   - **Pre-registered client (preferred):** ship the public Cognito client id
-     and scopes in `mcp.json` `auth`. Verify in DEV that Cursor completes
-     discovery against Cognito, which publishes OpenID Connect discovery
-     (`<issuer>/.well-known/openid-configuration`) rather than RFC 8414
-     metadata and serves its endpoints from the hosted UI domain, and that
-     Cognito accepts or ignores the `resource` parameter.
-   - **Thin authorization proxy:** a Jigglypuff-owned endpoint that publishes
-     RFC 9728 protected-resource metadata and RFC 8414 authorization-server
-     metadata and forwards authorize and token requests to Cognito. Use it only
-     if the pre-registered client fails that DEV check.
-3. **Group membership automation.** Whether to keep admin-assigned Cognito
-   groups or populate them from Entra groups: which Entra groups map to the
-   three roles per environment, whether `AzureAD` already passes group
-   membership, and who owns the pre-token-generation trigger if it is added.
+Resolved by jigglypuff-agent#116: the redirect URIs (both Cursor callbacks),
+client registration (a pre-registered public client in `mcp.json` `auth`, since
+Cognito has no dynamic client registration), and Cursor metadata and
+`resource` compatibility (the OAuth metadata proxy).
+
+1. **PROD enablement.** Certify DEV first: Cursor sign-in end to end, a Figma
+   email rebuilt under a scratch template name, certification, an approval
+   request in a test Asana task, and the audit records. Then set
+   `PROD_ENABLE_MCP_SERVER=true`, record the PROD URL and client id here, and
+   add the entries to this kit's `mcp.json`.
+2. **Group membership automation.** Membership is admin-assigned. Decide
+   whether to populate the groups from Entra groups: which Entra groups map to
+   the three roles per environment, whether `AzureAD` can pass group claims,
+   and who owns the pre-token-generation trigger if it is added.
 
 ## Gates every tool enforces
 
