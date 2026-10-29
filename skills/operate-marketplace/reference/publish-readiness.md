@@ -71,10 +71,10 @@ python3 "$BUILD_REPO/actions/publish/publish_via_build.py" all <product-checkout
 
 `$BUILD_REPO` is the `prismteam-ai/build` clone from the skill's
 Prerequisites step 4. The script defaults to Prism Marketplace and its Build.
-For SOC Marketplace, run it with `MARKETPLACE_BASE_URL` set to the SOC
-Marketplace base URL, `MARKETPLACE_BUILD_BASE_URL` set to SOC's Build in
-`649445653420` and the SOC-MARKETPLACE key as `MARKETPLACE_API_KEY` ([targets.md](targets.md)), so the bundle is built by SOC's Build
-and reviewed by SOC's review Deploy. `all` runs three steps; CI runs them one by one
+For a custom marketplace, run it with `MARKETPLACE_BASE_URL` set to its base
+URL, `MARKETPLACE_BUILD_BASE_URL` set to its Build and its key as
+`MARKETPLACE_API_KEY` ([targets.md](targets.md)), so the bundle is built by its
+Build and reviewed by its review Deploy. `all` runs three steps; CI runs them one by one
 (`code <checkout> --work-dir DIR`, `build --work-dir DIR`,
 `publish --work-dir DIR`), passing state through `DIR/state.json`.
 
@@ -166,7 +166,7 @@ unsupported capabilities without claiming they are implemented or bypassing revi
 
 ## E. How to report
 
-Name the target (Prism Marketplace or SOC Marketplace). One row per section A
+Name the target (Prism Marketplace or the custom marketplace's base URL). One row per section A
 item, then: the `build_id`, scan severity and findings,
 and whether the
 product can publish now. Name blockers outside the product (Build not reachable

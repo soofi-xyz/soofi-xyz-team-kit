@@ -1,6 +1,6 @@
 ---
 name: operate-marketplace
-description: "Operate a deployed Marketplace catalog API from prismteam-ai/marketplace — Prism Marketplace (default) or SOC Marketplace: configure review settings, register ontology (families, categories, products, configurations, components), check product publish readiness, build bundles through the Build service and publish them, poll reviews, and roll back VALID bundles. Use when registering or publishing products or configurations to Prism Marketplace or SOC Marketplace or checking review status."
+description: "Operate a deployed Marketplace catalog API from prismteam-ai/marketplace — Prism Marketplace (default) or a custom marketplace the user names: configure review settings, register ontology (families, categories, products, configurations, components), check product publish readiness, build bundles through the Build service and publish them, poll reviews, and roll back VALID bundles. Use when registering or publishing products or configurations to Prism Marketplace or a custom marketplace or checking review status."
 ---
 
 For infrastructure, bundle or installation work, load
@@ -12,7 +12,7 @@ Use [the Marketplace capability map](../guide-product-work/reference/iterations/
 
 Follow [guide-product-work](../guide-product-work/SKILL.md). Registeel configures Marketplace; Regigigas owns service implementation changes.
 
-# Operate Prism Marketplace and SOC Marketplace
+# Operate Prism Marketplace and custom marketplaces
 
 Use `registeel`. This skill drives the live HTTP API of one named Marketplace
 target per request. Do not label a target by stage (DEV, prod).
@@ -24,14 +24,14 @@ contract. Endpoint shapes and error tags are summarized in
 
 ## Targets
 
-Resolve the target before any call: from the user's wording ("SOC Marketplace",
-"SOC configuration", "Prism Marketplace"), else `MARKETPLACE_TARGET` (`prism` or
-`soc`), else Prism Marketplace; ask when they disagree. Name the target in every
-report, and state it with its base URL and ask the user to confirm it before any
-register, publish or rollback write. Each target's base URL, accounts, Build,
-review Deploy, key and catalog purpose are in [targets.md](reference/targets.md).
-For SOC Marketplace, verify `GET /settings/status` before any write and stop
-when it does not return `200` with `is_operational: true`.
+Resolve the target before any call as [targets.md](reference/targets.md)
+describes: Prism Marketplace unless the user asks for another marketplace or
+`MARKETPLACE_BASE_URL` is set to another base. For a custom marketplace, ask
+for its base URL when not given; never list, store or guess custom
+marketplaces. Name the target in every report, and state it with its base URL
+and ask the user to confirm it before any register, publish or rollback write.
+For a custom marketplace, verify `GET /settings/status` before any write and
+stop when it does not return `200` with `is_operational: true`.
 
 For configuration bundles, verify the target supports the `CONFIGURATION`
 component type before registration/publication. Hand missing migration support
@@ -50,13 +50,11 @@ Account service is deployed.
 1. Use the resolved target's base URL from [Targets](#targets). For Prism
    Marketplace that is the Marketplace account's shared domain,
    `https://prism-marketplace.account.prismteam.ai/marketplace`
-   (Marketplace account `848665034107`, `us-east-2`); for SOC Marketplace,
-   `https://soc-marketplace.springoakscapital.com/marketplace`.
+   (Marketplace account `848665034107`, `us-east-2`); for a custom marketplace,
+   the `https://<host>/marketplace` base the user gave.
    The path must end with `/marketplace` (no trailing slash when concatenating).
-   For SOC Marketplace, export `MARKETPLACE_BASE_URL` with its base URL so the
-   commands and scripts below reach it.
-   Honor a `MARKETPLACE_BASE_URL` that matches neither target only when the
-   user sets it, and confirm it before any write.
+   For a custom marketplace, export `MARKETPLACE_BASE_URL` with its base URL so
+   the commands and scripts below reach it, and confirm it before any write.
    Never call raw `execute-api` URLs and never sign requests with IAM (SigV4);
    the shared address plus `x-api-key` is the only way in.
    The Marketplace repo scripts default to an older `execute-api` host — pass
@@ -64,9 +62,9 @@ Account service is deployed.
    guard refuses it, make the calls manually instead of falling back to the
    older host.
 2. Require `MARKETPLACE_API_KEY` (the target's `x-api-key`). The key must
-   belong to the resolved target; a Prism key does not open SOC Marketplace.
-   For SOC Marketplace, get the key as [targets.md](reference/targets.md#soc-marketplace-key)
-   describes instead of a and b, then set and check it below.
+   belong to the resolved target; a Prism key does not open a custom marketplace.
+   For a custom marketplace, the key is its own Account key from its owner;
+   set and check it below.
    Prism Marketplace does not mint keys. It uses the key named `shared-environment`
    on the usage plan stored at SSM `/account/shared-usage-plan-id` in the
    Marketplace account `848665034107`, `us-east-2`. If the variable is unset,
@@ -109,7 +107,7 @@ Account service is deployed.
 
    `200` means the key works. `401` or `403` means the key is missing, stale, or
    for a different Marketplace: stop and give the get-and-set steps above.
-   For SOC Marketplace, a connection or DNS failure means it is not live yet:
+   For a custom marketplace, a connection or DNS failure means it is not live:
    stop and report that.
 
    Pass the key to `curl` only as `-H "x-api-key: $MARKETPLACE_API_KEY"`, never
@@ -122,10 +120,10 @@ Account service is deployed.
    `https://prism-marketplace.account.prismteam.ai/build`.
    Honor `MARKETPLACE_BUILD_BASE_URL` only when the user
    sets a different one, and confirm that URL with them before any publish.
-   For SOC Marketplace, SOC configuration bundles are built by SOC's Build in
-   `649445653420` at `https://soc-marketplace.springoakscapital.com/build`:
-   set it as `MARKETPLACE_BUILD_BASE_URL` and confirm it before any publish.
-   Never build a SOC bundle with Prism Marketplace's Build.
+   For a custom marketplace, its bundles are built by its own Build, by
+   default `https://<host>/build` on the same host: set it as
+   `MARKETPLACE_BUILD_BASE_URL` and confirm it before any publish. Never build
+   a custom marketplace's bundle with Prism Marketplace's Build.
    Check that Build accepts the key with this read-only call; it prints only
    the HTTP status:
 
@@ -188,9 +186,9 @@ The sandbox review runs on a separate review Deploy in account `257779860257`
 (`us-east-2`), not in the Marketplace account. Marketplace reaches it only on
 that account's shared domain, `https://review-sandbox.account.prismteam.ai`,
 at `https://<shared-domain>/deploy/run` with `review_api_key` as `x-api-key`.
-Deploy has no IAM (SigV4) API. SOC Marketplace's review Deploy runs in
-`919643791264`: use `https://soc-marketplace-review.springoakscapital.com` as its
-review host (Deploy at `/deploy`) and that account's key as `review_api_key`.
+Deploy has no IAM (SigV4) API. A custom marketplace has its own review Deploy:
+ask the user for its review host (Deploy at `/deploy`) and have them set that
+account's key as `review_api_key`.
 Check status first; these settings are usually already in place.
 
 1. `GET /settings/status` — if `status.component_publication.is_operational`
@@ -240,8 +238,8 @@ exists; resolve ids via `GET /ontology`, `GET /ontology/products/by-name?name=`,
 or list routes. Deletes return `409` while children or references remain —
 delete bottom-up.
 
-In SOC Marketplace, register a Prism product (for example `Connect`) as a bare
-product with steps 1–3 only, no `SERVICE` component, then attach SOC
+In a custom marketplace, register a Prism product (for example `Connect`) as a
+bare product with steps 1–3 only, no `SERVICE` component, then attach its
 configurations to it with step 4 and their `CONFIGURATION` components with
 step 6.
 
@@ -286,7 +284,7 @@ checkout.
    No match: run the script with `DRY_RUN=1` (step 1), then go to §5, open
    the CI pull request and stop with the two choices (merge it to publish
    automatically, or "publish now" for a one-time publish with step 1).
-   For SOC Marketplace, skip this check and §5 (the CI action targets Prism
+   For a custom marketplace, skip this check and §5 (the CI action targets Prism
    Marketplace): dry-run, confirm the target, then publish with step 1.
 
    A match (`<workflow>`): CI publishes every merge, so check its run for the
@@ -390,7 +388,7 @@ repository, whose Actions access setting must allow organization repositories
 (Build repo Settings, Actions, Access); a product outside that organization
 cannot use it. The repository needs one secret,
 `MARKETPLACE_API_KEY`; the Marketplace and Build URLs are built in, so this
-lane targets Prism Marketplace only. For SOC Marketplace, skip this lane: after
+lane targets Prism Marketplace only. For a custom marketplace, skip this lane: after
 the dry run, ask whether to publish once with §3 step 1.
 
 1. The product's component must already be registered (§2) and its review
@@ -440,7 +438,7 @@ the dry run, ask whether to publish once with §3 step 1.
 
 ## Return
 
-Report: lane chosen; the target (Prism Marketplace or SOC Marketplace); entities touched (names + ids); publish
+Report: lane chosen; the target (Prism Marketplace or the custom marketplace's base URL); entities touched (names + ids); publish
 source commit, `build_id`, scan severity, `review_id` and final `bundle_status` when relevant (never the presigned URLs);
 Persist confirmation only if `demo.sh` or an equivalent check was run; and any
 handoff outside Marketplace.

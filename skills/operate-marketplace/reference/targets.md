@@ -1,70 +1,58 @@
 ---
 title: Marketplace targets
 impact: HIGH
-tags: marketplace, targets, prism, soc, api-key
+tags: marketplace, targets, prism, custom-marketplace, api-key
 ---
 
 # Marketplace targets
 
-Registeel operates one named target per request. Both run the same
+Registeel operates one target per request: Prism Marketplace (the default) or a
+custom marketplace the user names. Every target runs the same
 `prismteam-ai/marketplace` service; only the values below differ.
 
-| | Prism Marketplace (default) | SOC Marketplace |
+| | Prism Marketplace (default) | Custom marketplace |
 | --- | --- | --- |
-| Base URL | `https://prism-marketplace.account.prismteam.ai/marketplace` | `https://soc-marketplace.springoakscapital.com/marketplace` |
-| Marketplace account | `848665034107`, `us-east-2` | `649445653420`, `us-east-2` |
-| Build | `https://prism-marketplace.account.prismteam.ai/build` (same account) | `https://soc-marketplace.springoakscapital.com/build` (SOC's Build in `649445653420`, same account and key) |
-| Review Deploy | `257779860257`, host `https://review-sandbox.account.prismteam.ai` | `919643791264`, `https://soc-marketplace-review.springoakscapital.com/deploy` (host `https://soc-marketplace-review.springoakscapital.com`) |
-| `MARKETPLACE_API_KEY` | `shared-environment` key on the shared usage plan (skill Prerequisites step 2) | The SOC-MARKETPLACE Account key (Account `a0064d81-c26d-48c5-880d-1cedeab56a11`) |
-| Catalog | Prism products and their service bundles | SOC-specific configurations (for example SMS opt-out/opt-in, email, voicemail) and SOC-only products |
+| Base URL | `https://prism-marketplace.account.prismteam.ai/marketplace` | `https://<host>/marketplace`, given by the user |
+| Build | `https://prism-marketplace.account.prismteam.ai/build` | `https://<host>/build` (its own Build, same host and key) unless the user gives another |
+| `MARKETPLACE_API_KEY` | `shared-environment` key on the shared usage plan (skill Prerequisites step 2) | That marketplace's Account key, from its owner |
+| Catalog | Prism products and their service bundles | That organization's configurations and its own products |
 
-## SOC Marketplace catalog
+Never store, list or guess custom marketplace hosts, accounts or catalog ids
+in this kit or in output beyond the user's own request.
 
-SOC Marketplace takes products such as Connect from Prism Marketplace. It holds
-a bare product entry for each (no service bundle) only so SOC configurations can
-attach: Marketplace validates `configured_product_id` locally. Never publish a
-Prism product's service bundle to SOC Marketplace, and never register SOC
-configurations in Prism Marketplace.
+## Resolve the target
 
-SOC configuration bundles are built by SOC's Build in `649445653420` and
-reviewed by SOC's review Deploy in `919643791264`. Never build a SOC bundle
-with Prism Marketplace's Build.
+Use Prism Marketplace unless the user asks for another marketplace or
+`MARKETPLACE_BASE_URL` is set to a base other than Prism's. For a custom
+marketplace, ask for its base URL when the user has not given it; accept only
+`https://<host>/marketplace` on a custom domain, never a raw `execute-api` host.
+Ask when the user's wording and `MARKETPLACE_BASE_URL` disagree. Confirm the
+target's base URL and Build URL before any write.
 
-Registered bare entries (family `Prism`, category `Platform`, no components).
-Each Marketplace mints its own UUIDs, so the two ids differ:
+## Check a custom marketplace before writes
 
-| Product | SOC Marketplace `product_id` (use as `configured_product_id`) | Prism Marketplace `product_id` (use in `dependencies`) | `component_id` |
-| --- | --- | --- | --- |
-| System | `eabe1e56-93b9-4961-978f-0ecacada36f5` | `f0d72585-e739-45dc-831d-1e579fdbee07` | `system` |
-| Connect | `4cdec29f-9a9d-4622-940e-b135eabc3ca7` | `562afa37-5bff-4cd5-9b25-9f04140aae27` | `connect` |
-| Transform | `b2266fdd-23e5-4e62-9f3d-3f5cc478d683` | `1d50ab1f-2e78-4b11-8444-59094eb3b4d3` | `transform` |
-
-A SOC configuration attaches to the SOC entry (`configured_product_id`) and
-declares the Prism service it needs in its `marketplace.product.json`, for
-example `"dependencies": [{ "product_id": "562afa37-5bff-4cd5-9b25-9f04140aae27", "component_id": "connect" }]`.
-Deploy then installs Connect from Prism Marketplace. Read the current ids with
-`GET /ontology` before registering; add a missing bare entry only when a SOC
-configuration needs it, and confirm it with the user first.
-
-## Check SOC Marketplace before writes
-
-Before any SOC write, run the skill's key check (`GET /settings/status`)
-against the SOC base URL. Stop and report when it does not return `200` with
+Before any write, run the skill's key check (`GET /settings/status`) against
+its base URL. Stop and report when it does not return `200` with
 `component_publication.is_operational: true`: a connection or DNS failure
-means the SOC domain is down; `401` or `403` means the key is wrong; listed
-conflicts mean review settings are missing. Do not fall back to Prism
+means the domain is not live; `401` or `403` means the key is wrong; listed
+conflicts mean its review settings are missing. Do not fall back to Prism
 Marketplace or an `execute-api` host.
 
-## SOC Marketplace key
+## Custom marketplace catalog
 
-Use the SOC-MARKETPLACE Account key (Account
-`a0064d81-c26d-48c5-880d-1cedeab56a11`). Never ask the user to paste it into
-chat and never ask for AWS access. The user gets it from its owner, or exports
-it from their local Account key file in their own terminal:
+A custom marketplace takes products such as Connect from Prism Marketplace. It
+holds a bare product entry for each (no service bundle) only so its
+configurations can attach: Marketplace validates `configured_product_id`
+locally. Never publish a Prism product's service bundle to a custom
+marketplace, and never register its configurations in Prism Marketplace.
+Build and review its bundles with its own Build and review Deploy, never
+Prism Marketplace's.
 
-```bash
-export MARKETPLACE_API_KEY="$(tr -d '\n' < ~/.prism/keys/soc-marketplace.account-key)"
-```
-
-Then set, restart and check exactly as the skill's Prerequisites step 2
-describes.
+Each marketplace mints its own UUIDs, so one product has different ids in
+each. A configuration attaches to the custom marketplace's entry
+(`configured_product_id`, read from its `GET /ontology`) and declares the Prism
+service it needs in its `marketplace.product.json` with the Prism Marketplace
+id, for example
+`"dependencies": [{ "product_id": "<Prism Marketplace product_id>", "component_id": "connect" }]`.
+Deploy then installs that service from Prism Marketplace. Add a missing bare
+entry only when a configuration needs it, and confirm it with the user first.
