@@ -3,9 +3,11 @@
 Implement `transactional-javascript` as a distinct Transform capability for
 **one small transaction per run** (one event, document or record set) where the
 batch path's startup time dominates. Run a registered JavaScript mapping in a
-fresh in-process sandbox, synchronously, and return a GraphSON v3 document for
-Persist. Keep the Spark SQL path, its mappings and its v2 contracts unchanged;
-batch and transactional mappings may use different languages.
+fresh in-process sandbox, synchronously, and return either a GraphSON v3 document
+for Persist (`graph` output) or a plain JSON document for a caller that delivers
+to another system (`json` output, see [JSON output](#json-output)). Keep the
+Spark SQL path, its mappings and its v2 contracts unchanged; batch and
+transactional mappings may use different languages.
 
 Use this as an implementation requirement, not evidence of a deployed API.
 Kecleon builds the capability; Silvally authors and tests the mappings once the
@@ -46,6 +48,11 @@ the existing configuration API as one immutable version:
 }
 ```
 
+`output` is exactly one of `{ "shape": "graph", "format": "graphson" }` and
+`{ "shape": "json", "format": "json" }`. Validate it as a union discriminated by
+`shape`, so a mismatched pair (for example `json`/`graphson`) is rejected at
+`rule.output.format` and an unknown shape at `rule.output.shape`.
+
 | Input `format` | Value passed to the mapping |
 | --- | --- |
 | `json` | the parsed JSON value |
@@ -56,11 +63,13 @@ the existing configuration API as one immutable version:
   synchronous `transform(inputs)` function, as produced by
   `esbuild src/mapping.ts --bundle --format=iife --global-name=mapping`.
   It has no imports and no `require`.
-- `transform` returns `{ vertices, edges }`:
+- A `graph` mapping's `transform` returns `{ vertices, edges }`:
   - vertex: `{ id, label, properties }`
   - edge: `{ id, label, from, to, properties? }`, where `from`/`to` are vertex `id`s
   - `id`, `from` and `to` are non-empty strings produced by the mapping;
     property values are JSON strings, numbers, booleans or arrays.
+- A `json` mapping's `transform` returns any JSON object or array (see
+  [JSON output](#json-output)).
 - Extend the configuration API body to `{ rule, module: { "mapping.js": "<source>" } }`
   for `engine: "javascript"`. Validate: the rule fields above, `module.path`
   equals `mapping.js`, the declared `sha256` matches the bytes, the script is at
@@ -75,7 +84,7 @@ Add a versioned synchronous route next to the existing run routes:
 
 | Route | Body | Result |
 | --- | --- | --- |
-| `POST /transform/transactions` | `{ contractVersion: 3, from, to, inputs: { <table>: { value } \| { s3Uri } }, transaction_id? }` | `200 { transaction_id, mapping: { id, version, sha256 }, graph, counts: { vertices, edges }, durationMs }` |
+| `POST /transform/transactions` | `{ contractVersion: 3, from, to, inputs: { <table>: { value } \| { s3Uri } }, transaction_id? }` | `graph`: `200 { transaction_id, mapping: { id, version, sha256 }, graph, counts: { vertices, edges }, durationMs }`; `json`: `200 { transaction_id, mapping, result, durationMs }` |
 
 - `value` carries a `json`/`text` input inline (a `jsonl` input inline is an
   array). `s3Uri` reads one object inside the approved input scope; use it for
@@ -102,10 +111,13 @@ Run the route in a Node.js Lambda (arm64). Per transaction:
    limit (default 64 MiB) and an interrupt-handler deadline (default 2 s), evaluate
    `mapping.js`, pass the inputs as one JSON string, call `mapping.transform`,
    and return its result as a JSON string. Dispose the runtime afterwards.
-5. Check only the output shape needed to serialize: arrays, non-empty string
-   ids, unique vertex ids, edge endpoints present among the vertices. Do not
-   re-validate against Lexicon; Persist validates every GraphSON ingest.
-6. Serialize GraphSON v3 (below) and return it.
+5. For `graph` output, check only the output shape needed to serialize: arrays,
+   non-empty string ids, unique vertex ids, edge endpoints present among the
+   vertices. Do not re-validate against Lexicon; Persist validates every
+   GraphSON ingest. For `json` output, require an object or array.
+6. Serialize GraphSON v3 (below) for `graph` output, or return the document
+   unchanged as `result` for `json` output. Apply the synchronous response size
+   limit, `transaction_id` storage and replay to both shapes alike.
 
 Read limits from runtime configuration (SSM/AppConfig), not deployment
 constants. Log transaction id, mapping id/version/digest, per-step durations and
@@ -125,6 +137,34 @@ filesystem and environment credentials:
 
 Use `isolated-vm` instead only after a measured CPU-bound mapping needs V8 JIT,
 and record why. Do not use full Node sandboxes for this pure-function contract.
+
+## JSON output
+
+Use `json` output when the transaction's result goes to a system other than
+Persist, typically a target system's API payloads that an orchestrator delivers
+through Connect. GraphSON is the wrong shape for that caller: its values sit
+under `@value` keys, which simple JSONPath orchestrators (System accepts only
+`$.a.b[0]`) cannot read, and graph-only checks reject legitimate documents.
+
+- The mapping returns any JSON object or array, for example one API payload per
+  record to change:
+
+  ```json
+  [{ "debt_id": "110398220", "demographic_phone_id": 7035273, "body": { "txtMsgStatus": "OPTED_OUT" } }]
+  ```
+
+- Return it unchanged as `data.result`, with no `graph` or `counts`. A `null`,
+  string, number or boolean result is `422 InvalidMappingOutput`; reject
+  non-finite numbers as for graphs.
+- Keep everything else identical to `graph` mappings: registration, digest
+  pinning, sandbox, limits, idempotent `transaction_id` and error types.
+- Input-stage record quality checks apply as usual. Output-stage checks select
+  vertex or edge labels, so reject them at registration for `json` mappings.
+- Document both response forms in the published API specification as a `oneOf`:
+  `graph` and `counts` required for `graph` mappings, an object-or-array
+  `result` required for `json` mappings.
+- Delivering the document is the caller's step; do not add partner calls or
+  credentials to Transform.
 
 ## GraphSON serialization
 
@@ -183,6 +223,10 @@ vertices and edges from their content and returns the final ids:
 - Transactions: resolution per engine, unknown/disabled/ambiguous pair, missing
   required and unknown inputs, S3 input outside scope, idempotent
   `transaction_id`, script throw, invalid output shape, dangling edge.
+- JSON output: a `json` mapping validates and returns its array as `result`
+  with no `graph`; `null`, string, number and boolean results are
+  `InvalidMappingOutput`; `json`/`graphson` and output-stage checks on a `json`
+  mapping are rejected at registration; replay returns the stored `result`.
 - Parity: where a `spark-sql` mapping exists for the same pair, the JavaScript
   mapping produces the same ids, labels, endpoints and property values on the
   shared fixtures, except Neptune CSV escaping.
