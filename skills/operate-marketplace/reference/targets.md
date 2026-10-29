@@ -59,13 +59,11 @@ Marketplace or an `execute-api` host.
 
 Use the SOC-MARKETPLACE Account key (Account
 `a0064d81-c26d-48c5-880d-1cedeab56a11`). Never ask the user to paste it into
-chat. Offer to export it from the user's local Account key file, or to read it
-in their own terminal from AWS Secrets Manager in `649445653420` (`us-east-2`)
-with a profile for that account (`AWS_PROFILE=<selected-profile>`):
+chat and never ask for AWS access. The user gets it from its owner, or exports
+it from their local Account key file in their own terminal:
 
 ```bash
-export AWS_REGION=us-east-2
-aws secretsmanager get-secret-value --secret-id soc-marketplace/operator-api-key --query SecretString --output text
+export MARKETPLACE_API_KEY="$(tr -d '\n' < ~/.prism/keys/soc-marketplace.account-key)"
 ```
 
 Then set, restart and check exactly as the skill's Prerequisites step 2

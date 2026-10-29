@@ -76,26 +76,10 @@ Account service is deployed.
    Do not run the lookup yourself, do not print the value, and do not ask the
    user to paste it into chat.
 
-   Offer both ways to get the key; the user picks the one that fits. The key
-   is the only credential publishing needs, so neither way requires AWS access
-   after this step.
-
-   **a. Someone gave you the key** (for example a teammate, through a secure
-   channel). Go straight to setting it below.
-
-   **b. You have AWS access to the Prism Marketplace account `848665034107`.**
-   Read it in your own terminal (prints only there), with a profile for that
-   account (`AWS_PROFILE=<selected-profile>`), region `us-east-2`:
-
-   ```bash
-   export AWS_REGION=us-east-2
-   aws apigateway get-usage-plan-keys \
-     --usage-plan-id "$(aws ssm get-parameter --name /account/shared-usage-plan-id --query Parameter.Value --output text)" \
-     --query "items[?name=='shared-environment'].value | [0]" \
-     --output text
-   ```
-
-   Without either, ask someone with access to `848665034107` to share the key.
+   The key is the only credential Registeel uses; it works only through the
+   Marketplace and Build APIs and never asks for AWS access or an AWS profile.
+   The user gets the key from its owner (for example a teammate, through a
+   secure channel) and sets it below.
 
    Set it for the process that launches Cursor, then fully quit and reopen Cursor
    so the agent can see it. An export in a terminal started after Cursor will
