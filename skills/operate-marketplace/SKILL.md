@@ -30,8 +30,8 @@ Resolve the target before any call: from the user's wording ("SOC Marketplace",
 report, and state it with its base URL and ask the user to confirm it before any
 register, publish or rollback write. Each target's base URL, accounts, Build,
 review Deploy, key and catalog purpose are in [targets.md](reference/targets.md).
-SOC Marketplace is not yet live: verify it with `GET /settings/status` before
-any write and stop when that does not return `200`.
+For SOC Marketplace, verify `GET /settings/status` before any write and stop
+when it does not return `200` with `is_operational: true`.
 
 For configuration bundles, verify the target supports the `CONFIGURATION`
 component type before registration/publication. Hand missing migration support
