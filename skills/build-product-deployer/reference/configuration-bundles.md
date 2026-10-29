@@ -132,6 +132,35 @@ the environment was restored. Keep consumer readiness and business-flow validati
 separate from installation completion. Log safe run/resource/operation IDs and
 versions, not credentials, signed URLs or sensitive configuration payloads.
 
+## Transform mapping payloads
+
+A Transform mapping configuration's `source` folder holds `mapping.json` and the
+files it pins. Select the payload by the rule's `engine` (absent means
+`spark-sql`) and never infer it from which files happen to exist:
+
+| `engine` | Pinned files | Request body |
+| --- | --- | --- |
+| `spark-sql` | Every `outputs[].queries[]` `{ path, sha256 }` under `queries/` | `{ rule, queries: { "<path>": "<SQL text>" } }` |
+| `javascript` | `module` `{ path: "mapping.js", sha256 }`; no `outputs` or `queries` | `{ rule, module: { "mapping.js": "<source>" } }` |
+
+- Verify every pinned file's sha256 against the bundle bytes before any write, and
+  reject a pinned file that is missing, a file in the folder that nothing pins, a
+  `javascript` rule with `queries` or a `spark-sql` rule with `module`, and an
+  unknown `engine`.
+- Treat the `javascript` rule's `output` (`graph`/`graphson` or `json`/`json`)
+  and `inputs` as Transform semantics: pass them through unchanged and let
+  Transform validate them.
+- Call `POST /transform/mappings/validate`, then
+  `PUT /transform/mappings/{mapping_id}/versions/{version}` with the same body:
+  `201` created, `200` identical content, `409` changed content under an existing
+  version (a failure: the bundle must publish a new version).
+- Read the version back and compare `engine` and the pinned digests (`mapping.js`
+  or every query) before reporting it applied. Report `version` in run results
+  for both engines.
+- Registering a `javascript` mapping does not enable transactions or pin
+  `activeVersions`; those are Transform installation settings, not bundle
+  configuration. Do not write SSM or Transform's buckets to set them.
+
 ## Target API and authoring handoffs
 
 Have Kecleon, Lapras and Zygarde verify validation, stable registration identity,
@@ -155,6 +184,7 @@ adapters. Keep user-run API and AWS observations inside each feature increment.
 | Scenario | Required observation |
 | --- | --- |
 | Baseline | Install a fixture mapping, Connect flow/partner configuration and System flow referencing them; read back all applied identities and make zero business-run calls |
+| Mapping engines | Install a bundle with a `spark-sql` and a `javascript` mapping; read back each version's `engine` and digests; reject a `javascript` mapping whose `mapping.js` bytes differ from `module.sha256`, an unpinned file and a mixed `module`/`queries` rule before any write |
 | Type migration | Build, publish and install with `CONFIGURATION` in requests, metadata and artifacts; migrate existing mutable metadata without identity/reference changes, preserve historical artifact hashes, and reject retired legacy writes/routes with migration guidance |
 | Changed configuration | Change one document with unchanged provider/service code; verify changed asset digest, intended resource update and preserved unaffected configurations |
 | Shared provider | Install two bundles using the same provider; verify no per-bundle Lambda and no ownership collision or cross-bundle mutation |
