@@ -139,7 +139,7 @@ Account service is deployed.
    Honor `MARKETPLACE_BUILD_BASE_URL` only when the user
    sets a different one, and confirm that URL with them before any publish.
    For SOC Marketplace, SOC configuration bundles are built by SOC's Build in
-   `649445653420` (configured through Metang): ask the user for its API URL,
+   `649445653420` at `https://soc-marketplace.springoakscapital.com/build`:
    set it as `MARKETPLACE_BUILD_BASE_URL` and confirm it before any publish.
    Never build a SOC bundle with Prism Marketplace's Build.
    Check that Build accepts the key with this read-only call; it prints only
