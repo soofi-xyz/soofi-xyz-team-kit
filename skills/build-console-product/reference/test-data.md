@@ -74,9 +74,9 @@ from automated tests. Policy: `allowedDomains: [allowed.example]`,
 | Personal account | `email: cy@gmail.com`, no `hd` | Denied, `domain_not_allowed` |
 | Unverified email | Allowed `hd`, `email_verified: false` | Denied |
 | Replayed callback | Same `state` used twice | Second callback denied |
-| No session | Any application route or API read | API `UNAUTHORIZED`; renderer redirects to `/auth/google/start` |
-| Sign-out | `POST /auth/signout`, then a read | Read rejected and redirected |
-| Expiry | Read at 901 seconds | Rejected and redirected |
+| No session | Any application route or API read | API `UNAUTHORIZED`; renderer shows Google sign-in and loads no data |
+| Sign-out | `POST /viewer/signout`, then a read | Read rejected; renderer shows sign-in again |
+| Expiry | Read at 901 seconds | Rejected; sign-in shows again |
 | Password disabled | `POST /viewer/session` | `NOT_FOUND` |
 
 **Builder change test:** with the policy on, add one new page to a fixture
