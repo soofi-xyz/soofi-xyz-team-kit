@@ -3,7 +3,7 @@
 Use feature `metrics` for real-time metric cells and the metrics catalog that
 defines them. Verify the target revision, account and region before claiming
 any behavior below: `PUT /persist/metrics/catalog` arrives with
-`Spring-Oaks-Capital-LLC/persist` PR #347, and a deployment without it reads the
+`prismteam-ai/persist` PR #347, and a deployment without it reads the
 catalog only from the Model/Lexicon-published SSM boundary. Follow
 [current scope](current-scope.md) and the Persist capability map.
 

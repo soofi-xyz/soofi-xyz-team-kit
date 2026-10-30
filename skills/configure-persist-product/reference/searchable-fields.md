@@ -9,7 +9,7 @@ deployment. It never edits the Persist engine.
 
 The capability ships in two pull requests:
 
-- Persist: [Spring-Oaks-Capital-LLC/persist#276](https://github.com/Spring-Oaks-Capital-LLC/persist/pull/276) (`feat/vector-search-capability`)
+- Persist: [prismteam-ai/persist#276](https://github.com/prismteam-ai/persist/pull/276) (`feat/vector-search-capability`)
 - Lexicon: [Spring-Oaks-Capital-LLC/lexicon#831](https://github.com/Spring-Oaks-Capital-LLC/lexicon/pull/831) (`feat/embeddings-schema`)
 
 Do not configure a searchable field in PROD until both are merged and deployed

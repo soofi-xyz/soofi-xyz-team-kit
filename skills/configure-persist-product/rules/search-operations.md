@@ -31,7 +31,7 @@ tags: vector-search, operations, dev, prod, alarms, data-handling
   stage deletes them on the next poll.
 - Do not activate, roll back or retire while a Persist CI run (deploy or E2E)
   is in progress on DEV; a run that reads search would see the pointer move
-  under it: `gh run list -R Spring-Oaks-Capital-LLC/persist --status in_progress`.
+  under it: `gh run list -R prismteam-ai/persist --status in_progress`.
 
 ### DEV first, PROD read-only until approved
 
