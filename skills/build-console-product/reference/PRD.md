@@ -37,12 +37,17 @@ Console owns:
 - route, layout, navigation, theme and presentation behavior;
 - typed data/action binding validation and runtime adapters;
 - route, component and action authorization enforcement;
+- the `google-oidc` access policy: Google Workspace sign-in, allowed domains,
+  users and groups, sessions and sign-out, as defined in
+  [Google sign-in](google-sign-in.md);
 - immutable configuration revisions, active selection, refresh and rollback;
 - browser/runtime telemetry and explicit loading, empty and error states.
 
 Console does not own:
 
-- identity, credentials or authorization claims, which belong to Account;
+- identity, credentials or authorization claims, which belong to Account
+  (Google remains the identity provider for the `google-oidc` policy, and
+  Account keeps API keys and operator credentials);
 - vocabulary, model composition, top-vertex semantics or view meaning, which
   belong to Model;
 - facts, graph storage or query execution, which belong to Persist;
@@ -225,6 +230,8 @@ The network view must:
   configuration-supplied URLs.
 - Apply CSP, safe output encoding and dependency security checks to the runtime.
 - Bound graph traversal, pagination, retries, timeouts and response sizes.
+- Require sign-in on every application route by default when an access policy
+  is configured, and keep OAuth client secrets in the secret store only.
 - Never place credentials, tokens or sensitive upstream payloads in static
   assets, configuration artifacts, URLs or telemetry.
 - Make configuration submission idempotent and publication/selection
