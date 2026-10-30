@@ -13,7 +13,7 @@ chunks for it. Skip this rule for `content: "text"`.
 ### The one-line Persist PR
 
 Edit `VECTOR_BLOB_SOURCES` in `lib/vector-search-stage.ts` of
-[Spring-Oaks-Capital-LLC/persist](https://github.com/Spring-Oaks-Capital-LLC/persist),
+[prismteam-ai/persist](https://github.com/prismteam-ai/persist),
 one entry per stage that needs it:
 
 ```ts

@@ -225,7 +225,9 @@ artifact after digest verification. Implementing that view is Dialga work in
 
 ## Persist compatibility and activation
 
-`Spring-Oaks-Capital-LLC/persist` is the current execution consumer. Inspect:
+`prismteam-ai/persist` is the current execution consumer: its `bin/app.ts`
+deploys SOC DEV/PROD and its `marketplace/app.ts` is the Marketplace base
+product, over the same engine code. Inspect:
 
 ```text
 lambda/schemas/payment-metric-catalog.ts
@@ -307,8 +309,8 @@ support and runtime:
   and validation, catalog schema, validator and generator, source pins, digest
   handling, governed publication, consumer-boundary publication, the catalog UI
   view or a new reusable catalog capability.
-- Coordinate `Spring-Oaks-Capital-LLC/persist` when the consumer's closed set,
-  decoder, compiler, materializer or activation compatibility must change.
+- Change `prismteam-ai/persist` when the consumer's closed set, decoder,
+  compiler, materializer or activation compatibility must change.
 - Retire legacy-repository metric publication once Model publishes the boundary;
   never extend it.
 
