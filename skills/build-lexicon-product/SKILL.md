@@ -36,8 +36,8 @@ Dialga owns the detailed Model architecture for business-metric definitions and
 catalogs. Read and maintain
 [the business and financial metric catalog contract](reference/business-financial-metric-catalogs.md)
 before changing metric support. Keep it aligned with pinned, inspected revisions
-of `prismteam-ai/model` and Persist (`prismteam-ai/persist`, the base product, and
-`Spring-Oaks-Capital-LLC/persist`, the SOC deployment); never promote a
+of `prismteam-ai/model` and Persist (`prismteam-ai/persist`, which holds both the
+base product and the SOC deployment); never promote a
 revision-specific count, release ID or digest into a durable contract.
 
 `prismteam-ai/model` is the only canonical source for metric definitions.

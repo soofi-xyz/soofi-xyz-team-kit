@@ -122,7 +122,7 @@ def assert_dialga_owns_metric_architecture() -> None:
                 "legacy implementation of model, not a source",
             ),
             "legacy retirement": ("retire legacy metric publication",),
-            "coordinated Persist work": ("spring-oaks-capital-llc/persist",),
+            "coordinated Persist work": ("prismteam-ai/persist",),
             "UI catalog view": ("ui must render catalog contents",),
             "configurer handoff": ("hand configuration-only work to `jirachi`",),
         },
@@ -181,7 +181,7 @@ def assert_dialga_owns_metric_architecture() -> None:
             ),
             "runtime boundary": (
                 "change `prismteam-ai/model`",
-                "coordinate `spring-oaks-capital-llc/persist`",
+                "change `prismteam-ai/persist` when the consumer",
                 "retire legacy-repository metric publication",
             ),
             "telemetry boundary": ("keep platform telemetry outside",),

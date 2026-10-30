@@ -183,7 +183,7 @@ Then state executability per suggestion. Today only families supported by
 Persist's code-owned compiler can execute:
 
 ```text
-Spring-Oaks-Capital-LLC/persist
+prismteam-ai/persist
   lambda/schemas/payment-metric-supported-definitions.ts
   lambda/services/PaymentMetricDeclarativePlanCompiler.ts
 ```

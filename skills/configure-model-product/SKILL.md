@@ -135,7 +135,7 @@ Choose exactly one classification:
 A similar name, unit or graph path is not an exact match. Then state
 executability per suggestion: today only families supported by Persist's
 code-owned compiler
-(`Spring-Oaks-Capital-LLC/persist:lambda/schemas/payment-metric-supported-definitions.ts`
+(`prismteam-ai/persist:lambda/schemas/payment-metric-supported-definitions.ts`
 and `lambda/services/PaymentMetricDeclarativePlanCompiler.ts`) can execute.
 Mark others `governed proposal — needs Dialga for runtime/consumer support`.
 Executability is reported, never used to narrow what Jirachi suggests.
