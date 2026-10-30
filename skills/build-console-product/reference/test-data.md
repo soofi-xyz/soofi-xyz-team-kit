@@ -61,6 +61,29 @@ own scope.
 | Unauthorized route | `model-reader` opens review | Server-side `FORBIDDEN`; no upstream review call |
 | Cross-account application | Caller account differs from application account | Server-side `FORBIDDEN` |
 
+## Google sign-in fixtures
+
+Use a fake issuer with a local JWKS and signed test ID tokens. Never call Google
+from automated tests. Policy: `allowedDomains: [allowed.example]`,
+`sessionSeconds: 900`, `passwordSignIn: disabled`.
+
+| Fixture | Claims or action | Expected |
+| --- | --- | --- |
+| Allowed user | `email: ana@allowed.example`, `hd: allowed.example`, verified | Session; application and report reads succeed |
+| Other domain | `email: bo@other.example`, `hd: other.example` | Denied, `domain_not_allowed`, no session record |
+| Personal account | `email: cy@gmail.com`, no `hd` | Denied, `domain_not_allowed` |
+| Unverified email | Allowed `hd`, `email_verified: false` | Denied |
+| Replayed callback | Same `state` used twice | Second callback denied |
+| No session | Any application route or API read | API `UNAUTHORIZED`; renderer redirects to `/auth/google/start` |
+| Sign-out | `POST /auth/signout`, then a read | Read rejected and redirected |
+| Expiry | Read at 901 seconds | Rejected and redirected |
+| Password disabled | `POST /viewer/session` | `NOT_FOUND` |
+
+**Builder change test:** with the policy on, add one new page to a fixture
+application and change an existing page's layout. Both routes must redirect
+without a session and render with the allowed user, and the sign-in suite and
+route inventory must pass without editing the guard.
+
 ## Upstream failure fixtures
 
 - Model returns an unsupported composition/view version.
