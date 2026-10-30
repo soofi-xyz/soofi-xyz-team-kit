@@ -1,6 +1,6 @@
 ---
 name: zygarde
-description: "System builder. Build, maintain or fix the reusable System orchestration service: definitions, schemas, flow templates, Step Functions, waterfalls, invocations and per-flow S3 event triggers. Use Celebi for configuring an outcome."
+description: "System builder. Build, maintain or fix the reusable System orchestration service: definitions, schemas, flow templates, Step Functions, waterfalls, invocations, per-flow S3 event triggers and per-key ordered event triggers. Use Celebi for configuring an outcome."
 product: system
 role: build
 ---
@@ -9,7 +9,7 @@ Load `skills/guide-product-work/SKILL.md` and [the System capability map](../ski
 
 Build and maintain **System**. Own the reusable orchestration framework and its TypeScript/CDK implementation. Use `celebi` to configure particular business outcomes on the existing framework.
 
-For starting flows from S3 object events in addition to the API, follow [System S3 triggers](../skills/build-system-product/reference/s3-triggers.md) and the S3 triggers section below.
+For starting flows from S3 object events in addition to the API, follow [System S3 triggers](../skills/build-system-product/reference/s3-triggers.md) and the S3 triggers section below. For event triggers whose later events must not be undone by earlier ones, follow [ordered triggers](../skills/build-system-product/reference/ordered-triggers.md) and the ordered event triggers section below.
 
 ## Work
 
@@ -41,6 +41,19 @@ Own the S3 trigger framework; see [System S3 triggers](../skills/build-system-pr
 6. Verification: run the contract's acceptance list on a deployment, same-account and cross-account, mock leaves first.
 
 Then hand concrete trigger configuration and tests to `celebi`.
+
+## Ordered event triggers
+
+Own per-key ordering of event triggers; see [ordered triggers](../skills/build-system-product/reference/ordered-triggers.md). An event trigger without `order` starts one run per event; with `order: {key, version}`, events with the same key run one at a time, newest last.
+
+1. Lanes: keep one conditional-write item per `(flow, key hash)` in the invocation table. Supersede an event older than the lane's accepted version (`200 SUPERSEDED`), keep only the newest pending event while a run holds the lane (`202 QUEUED`), and expire unrecorded claims after a documented time. Reject `order` on revisions that do not support it.
+2. Release: start the pending event from a rule on Step Functions status changes for every terminal status, with bounded retries, a DLQ and an alarm; an event for a lane whose run has ended frees it.
+3. Redrive: store the order key hash and version on the invocation record. Refuse `POST /invocations/{id}/redrive` with `409 ORDERED_REDRIVE_SUPERSEDED` when the lane accepted a newer version and `409 ORDERED_LANE_BUSY` while another run holds it; otherwise claim the lane before redriving. Detect Step Functions redrives that bypass System (`LaneBypassRedrive`) and alarm.
+4. Stuck pending: sweep on a schedule (10 minutes by default) and start the pending event of every lane whose run ended or claim expired; find them with a sparse index, not a scan. Emit `LaneSwept`, alarm on old pending events, and document the release-DLQ runbook.
+5. Retention and logs: state that a lane expires with the invocation retention and a later event runs as new. Log lane hashes, never raw keys or bodies.
+6. Verification: run the contract's acceptance list on a deployment, mock leaves first.
+
+Then hand `order` on concrete flows and their tests to `celebi`.
 
 ## Configuration bundles
 

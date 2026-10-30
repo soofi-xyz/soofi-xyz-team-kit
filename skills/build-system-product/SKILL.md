@@ -1,6 +1,6 @@
 ---
 name: build-system-product
-description: "Build or maintain the System orchestration framework with TypeScript, CDK and Step Functions. Includes per-flow S3 event triggers. Use Zygarde for runtime changes and a guided mock-first build; use Celebi for outcome configuration."
+description: "Build or maintain the System orchestration framework with TypeScript, CDK and Step Functions. Includes per-flow S3 event triggers and per-key ordered event triggers. Use Zygarde for runtime changes and a guided mock-first build; use Celebi for outcome configuration."
 ---
 
 Use [the System capability map](../guide-product-work/reference/iterations/system.md). Derive the feature pieces from scope and dependencies, then apply the work below within each piece; require a user-run configuration, AWS inspection and feedback before starting the next implementation piece.
@@ -24,6 +24,8 @@ outcome on an existing deployment. Follow
    configuration example, not a statement of deployment or product readiness.
 5. Apply [engineering guidelines](../apply-engineering-guidelines/SKILL.md).
 6. For flows started by S3 object events, read [S3 triggers](reference/s3-triggers.md).
+7. For event triggers whose later events must not be undone by earlier ones, read
+   [ordered triggers](reference/ordered-triggers.md).
 
 ## Ownership
 
@@ -71,6 +73,23 @@ Own per-flow S3 triggers as a second entry point beside the invocation API; see
 - Bound retries into a DLQ with alarms; log key hashes, never keys or bodies.
 
 Celebi owns per-flow trigger configuration and tests.
+
+## Ordered event triggers
+
+Own per-key ordering of event triggers (`order: {key, version}`); see
+[ordered triggers](reference/ordered-triggers.md). Keep these rules:
+
+- Run events with the same key one at a time, newest last: supersede older
+  versions, keep only the newest pending event, release on every terminal run.
+- Never let a redrive bypass the lane: refuse a superseded or lane-busy redrive
+  and claim the lane for an allowed one; detect Step Functions redrives that
+  bypass System.
+- Never leave a pending event waiting for another event: sweep on a schedule,
+  find pending lanes with a query, and alarm on old pending events and the
+  release DLQ.
+- State the lane retention limit; log key hashes, never raw keys.
+
+Celebi owns `order` on concrete flows and their tests.
 
 ## Acceptance
 
