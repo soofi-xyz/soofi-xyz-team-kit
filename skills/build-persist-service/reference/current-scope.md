@@ -88,3 +88,21 @@ catalog (v3 catalog plus its v2 base) is read from Persist's API-managed pointer
 Model/Lexicon-published SSM boundary only while no pointer exists. Model stays
 authoritative for definitions; Persist validates, installs and projects them.
 Verify the target revision before claiming the API exists.
+
+## Meeting-report metric capabilities (2026-10-31)
+
+The conversation-memory catalog adds MEETING and PERSON scopes beside DEBT.
+Six of the report's fourteen metrics (Model's catalog has 15; the report leaves
+out `person.meeting.talk.count`) need four engine capabilities: business
+time from a vertex off the scope path, three-hop paths, two edges to the same
+vertex and Person-or-Email unions. Build them in `prismteam-ai/persist` as
+generic, opt-in compiler and projector features, following [the metrics
+reference](metrics-catalog.md#meeting-report-engine-capabilities), and keep
+SOC's debt and payment metrics unchanged. Three-hop routing is in flight in
+`prismteam-ai/persist#377`; rebase on it and on #358, and check the reference
+for the other open metrics PRs. Stream routing follows only each family's read
+plan, so every capability also extends `routingPlan` and
+`MetricStreamScopeResolver`, with update-path tests. Model's exporter does not
+emit the new shapes yet and must be updated to, and each new metric must be on
+Model's `dev_activation_allowlist`. This is
+requested scope, not evidence of deployment.

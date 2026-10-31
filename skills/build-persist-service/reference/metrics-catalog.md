@@ -13,18 +13,21 @@ Every metric is a count or sum held in `metric_cell` vertices in Neptune. The
 stack is `PersistRealtimeMetricsStack` (`lib/persist-realtime-metrics-stack.ts`,
 code in `lambda/metrics/` and `lambda/metric-*/`).
 
-1. The stream poller reads Neptune Streams and routes each changed payment,
-   status event or edge through the catalog's `notice_routing` to a scope (a
-   debt). It sends a notice to the DEBT FIFO queue, one message group per debt.
-   A change fanning out past `max_fan_out` becomes a backfill request instead.
-2. The debt projector recounts the whole debt from current graph state and
-   writes only the DAY cells that changed (absolute recompute, diff upsert).
-   One lane per debt gives every cell exactly one writer.
-3. The GLOBAL projector rolls debt partials into company-wide cells through
+1. The stream poller reads Neptune Streams and routes each changed item, status
+   event or edge in the family's read plan to its scopes (a debt, a meeting or
+   a person); see [How changes reach a metric](#how-changes-reach-a-metric). It sends a notice to the scope FIFO queue
+   (`METRIC_SCOPE_QUEUE_URL`), one message group per scope lane from the
+   family's `lane_key_template` (`DEBT#…`, `MEETING#…`, `PERSON#…`). A change
+   fanning out past `max_fan_out` becomes a backfill request instead.
+2. The scope projector (the `metric-debt-projector` Lambda, which serves every
+   scope despite its name) recounts the whole scope from current graph state
+   and writes only the DAY cells that changed (absolute recompute, diff
+   upsert). One lane per scope gives every cell exactly one writer.
+3. The GLOBAL projector rolls scope partials into company-wide cells through
    the catalog's rollup eligibility path; a DynamoDB lane lease keeps one
    writer per family and business year.
 4. `PersistMetricBackfillWorkflow` never writes cells: it sends `BACKFILL`
-   notices for selected scopes into the same DEBT queue, so the projectors
+   notices for selected scopes into the same scope queue, so the projectors
    recount them. It only plans unless the input carries `"confirm": true`.
 5. Consumers read only the generation named by
    `metric_projection_state.active_generation_id`, and only definitions in that
@@ -99,6 +102,290 @@ the deployed catalog's ACTIVE, BACKFILLING and RETIRED ids.
 - Never make cells visible by rewriting them: visibility changes only through
   the activation pointer and generation state.
 
+## Scopes and family shapes
+
+A family projects items into one scope. Families of one scope must agree on its
+vertex, identifier, `lane_key_template` and `scope_edge`. The table lists the
+families in Model's `v3.3.0` export; Persist's own test fixture
+(`test/fixtures/metrics-catalog-v3/conversation-memory.put-body.json`) has only
+five of them (no `meeting_action` and no `*_invited` families).
+
+| Scope | Families today | Items | Shape |
+| --- | --- | --- | --- |
+| `DEBT` | `payment` and its status families | payments on one debt | `EXCLUDE_ALL`, `scope_link`, status events and election, GLOBAL rollup |
+| `MEETING` | `meeting` (self scope, `path_from_scope: []`), `meeting_media`, `meeting_utterance` (meeting → media → utterance), `meeting_action` | the meeting, its media, utterances and actions | `EXCLUDE_ALL`, no scope link or status events, business time `meeting.started_at` |
+| `MEETING` | `meeting_person`, `meeting_person_invited` | people who attended or were invited | `ALLOW_SHARED` (one person sits in many meetings), `NON_MERGEABLE`, no rollup |
+| `PERSON` | `person_meeting`, `person_meeting_invited` | meetings a person attended or was invited to | `ALLOW_SHARED`, `NON_MERGEABLE`, no rollup |
+
+What compiles today, in `compiler.ts`:
+
+- Selectors read only the item (`ItemProperty`), the scope vertex
+  (`ScopeProperty`), the status-event edge (`EventProperty`,
+  `ElectedEventProperty`) or a constant. Business time is `ItemProperty` or
+  `ScopeProperty` for `BUSINESS_KEY` identity, and `EventProperty` for
+  `STATUS_EVENT_KEY`.
+- Predicates are `PRESENT` and `EQ` on those selectors. There is no predicate
+  on a vertex in the middle of the path, and no edge-absence predicate.
+- An item is linked to its scope by one `path_from_scope` chain. There is no
+  second, parallel edge requirement and no alternative (OR) edge.
+- Stream routing follows only the read plan (below);
+  `prismteam-ai/persist#377` adds the vertices between scope and item.
+- Dimensions need a pinning `EQ` predicate; an unpinned group-by fails.
+
+Model's exporter (`prismteam-ai/model` `src/domain/persist-metrics-export.ts`)
+applies its own, stricter rules before Persist sees a definition: at most two
+path hops, conditions only on the item or scope, and business time only on the
+item or scope. It excludes what fails and lists the reasons in the release's
+`*.report.json`; documented waivers (`DROP_PREDICATE`, `DROP_DIMENSION`) are
+in `configurations/<catalog>/persist-export.json`. Read both before deciding
+whether a gap is Model's or Persist's. A definition is exported only when its
+id is on the catalog's `dev_activation_allowlist` (`selection:
+dev_activation_allowlist` in `persist-export.json`); every new metric must be
+added there too.
+
+## How changes reach a metric
+
+A metric updates without a backfill only when a stream change is routed to its
+scope. In `prismteam-ai/persist` `main`, routing is narrower than the catalog
+fields suggest:
+
+- **Links:** `routingPlan` (`lambda/metrics/streamRouting.ts`) routes only the
+  edges in the family's read plan: the `path_from_scope` hops, the rollup
+  eligibility path and the status-event edge.
+- **Records:** `relevantVertex` accepts only the scope vertex and the counted
+  item vertex.
+- `source.edge_labels` is only a compile-time check (`compiler.ts`): a path or
+  trigger edge must be listed there. Listing an edge does not route it.
+- `notice_routing` supplies only fan-out limits at runtime (`max_fan_out` and
+  `overflow`, read by `MetricStreamScopeResolver`). Its `EDGE_ENDPOINT`
+  triggers, `start` and route kinds are checked when compiling but not read
+  when changes arrive, and nor are the compiler's `triggerEdgeLabels` and
+  `triggerVertexLabels`.
+
+So if a metric depends on a record or link outside its read plan (a longer
+path, a second link between the same records, a choice between two record
+types, or a value such as business time taken from a record off the path), the
+builder must:
+
+1. add it to the read plan so `routingPlan` routes it;
+2. extend `MetricStreamScopeResolver` to map that change back to the affected
+   scope ids;
+3. still list it in `source.edge_labels` and `notice_routing`, so the
+   definition compiles;
+4. test the update path, not just the backfill: backfill a cell, apply one
+   change on the new record or link, and check that the cell updates without
+   another backfill. Add a negative test where the change must not alter the
+   count, such as a duplicate or a record that fails a condition.
+
+Examples from the meeting report:
+
+| Shape | Example | Routing must also watch |
+| --- | --- | --- |
+| Longer path | speakers per meeting | the media and utterance vertices and both in-between edges, resolved back to the meeting |
+| Two links | show rate (invited and attended) | the second (parallel) edge, resolved to the scope at the right endpoint |
+| Either of two types | actions assigned to a person or an email | both assignment edges, resolved from the action to its meeting |
+| Value off the path | lines per person per day, dated by the meeting | the anchor-path edges and the anchor vertex, resolved anchor → item → scope |
+
+## Meeting-report engine capabilities
+
+Model's `conversation-memory-metrics` catalog has 15 definitions; the 14 in
+the meeting report leave out `person.meeting.talk.count`. Six of them (Model
+`v3.3.0`) need four engine
+capabilities. Build each as a generic, opt-in compiler and projector feature
+that leaves debt and payment plans byte-for-byte identical. The definition
+shapes below use the names agreed with the Model owners on 2026-10-31
+(`time.business_time_anchor`, `scope.parallel_edges`, `ANCHOR_PATH`,
+`EDGE_EXISTS` with `any_of` and the new exclusion reasons). Model's exporter
+does not emit them yet and must be updated to, and each new metric must be on
+Model's `dev_activation_allowlist`. Today `action.assigned.count`,
+`person.action.assigned.count`, `person.meeting.invited_attended.count` and
+`meeting.invited_attendee.person.count` are not, so they are not exported.
+
+Every capability touches the same modules, in this order:
+
+1. `lambda/metrics/catalogSchema.ts`: the new optional family or base field.
+2. `lambda/metrics/compiler.ts`: compile it into the `ReadPlan` and selectors,
+   and refuse everything else with a named issue.
+3. `MetricScopeSnapshotReader.ts`: read the extra vertices or edges in the same
+   per-scope traversal. `MetricScopeProjector.ts`: count from that snapshot.
+4. `streamRouting.ts` (`routingPlan`, `relevantVertex`) and
+   `MetricStreamScopeResolver.ts`: add every new edge and vertex to the read
+   plan and map its changes back to scope ids, within the family's fan-out
+   limit. Catalog fields alone route nothing.
+5. `MetricBackfillPlanner.ts`, `backfill.ts` and
+   `lambda/metric-backfill/athenaPlan.ts`: plan date windows and drain
+   overflow requests for the new labels. `identity.ts` when items are elected
+   or excluded differently. `businessTime.ts` only for new time parsing.
+6. `lambda/metric-stream-poller/` and `lib/persist-realtime-metrics-stack.ts`
+   only if a new label needs stream filters, permissions or sizing.
+7. `docs/metrics-realtime-cutover.md`: the new shapes and their backfill.
+
+### 1. Business time from a vertex off the scope path
+
+- **Metrics:** `person.utterance.spoken.count` (PERSON scope, item `utterance`
+  through `person_spoke_utterance`) and `person.action.assigned.count` (PERSON
+  scope, item `action` through `person_assigned_action`). Both take business
+  time from `meeting.started_at`, which is neither the item nor the scope.
+- **Shape:** a family-level time anchor, a path from the item to exactly one
+  vertex holding the business time,
+  `time.business_time_anchor: { path: [media_has_utterance, meeting_has_media], vertex: meeting }`,
+  and a base business-time selector on that vertex. Compile it to a new
+  selector tag (for example `AnchorProperty`). An item with zero or several
+  anchors is excluded (`MISSING_ANCHOR`, `AMBIGUOUS_ANCHOR`), never dated
+  arbitrarily.
+- **Families:** two new PERSON families, for example `person_utterance` over
+  `[person_spoke_utterance]` and `person_action` over `[person_assigned_action]`,
+  plus the `MISSING_ANCHOR` and `AMBIGUOUS_ANCHOR` exclusion reasons.
+- **Routing:** a change to an anchor-path edge or the anchor vertex must walk
+  anchor → item → scope. Add the anchor path to the read plan so `routingPlan`
+  routes its edges and `relevantVertex` accepts the anchor vertex, and resolve
+  it to scopes in `MetricStreamScopeResolver`. Declare it in the catalog as
+  route kind `ANCHOR_PATH` so it compiles (the compiler accepts a
+  `REVERSE_PATH` only when it equals `path_from_scope`); Model's exporter must
+  be updated to emit it. A meeting's
+  `started_at` never changes in place (identity is a content hash), so edge
+  adds and removals carry most changes.
+- **Backfill:** the planner dates windows from the anchor's time, not the
+  item's, including the Athena planner (`lambda/metric-backfill/athenaPlan.ts`),
+  which today prunes stream-export partitions by an item or scope property.
+- **Cost:** a PERSON lane recounts every meeting that person was in. Set
+  `max_items` from the largest real person and check the recount time.
+
+### 2. Three-hop paths
+
+- **Metric:** `meeting.speaker.person.count` (MEETING scope, item `person`
+  through meeting → media → utterance ← person, `ALLOW_SHARED`, one count per
+  meeting and person however many utterances).
+- **Shape:** an ordinary `path_from_scope` of three hops; business time is the
+  scope's `meeting.started_at`. No new schema field.
+- **Routing:** `prismteam-ai/persist#377` routes changes on the in-between
+  media and utterance vertices and edges in the read plan and resolver, and
+  adds `conversationMemorySpeakers.test.ts`; check that it includes an
+  update-path test. `prismteam-ai/model#47` lifts the
+  exporter's two-hop limit. Build on both rather than repeating them.
+
+### 3. Two edges to the same vertex
+
+- **Metrics:** `person.meeting.invited_attended.count` (PERSON scope, item
+  `meeting`) and `meeting.invited_attendee.person.count` (MEETING scope, item
+  `person`). Count a pair only when both `person_invited_to_meeting` and
+  `person_attended_meeting` join the same person and meeting.
+- **Shape:** keep one edge as `path_from_scope` and require the other in
+  parallel,
+  `scope.parallel_edges: [{ edge_type: person_invited_to_meeting, from: person, to: meeting }]`.
+  The reader keeps an item only when every parallel edge joins it to the same
+  scope vertex.
+- **Families:** two new `ALLOW_SHARED` families, one per scope. List the
+  parallel edge in `source.edge_labels` and `notice_routing` so the definition
+  compiles; that alone does not route it.
+- **Routing:** add the parallel edge to the read plan so `routingPlan` routes
+  it, and resolve its changes in `MetricStreamScopeResolver` to the scope at
+  its `from` (PERSON) or `to` (MEETING) endpoint, so adding or removing either
+  edge recounts the scope.
+
+### 4. Person-or-Email unions
+
+- **Metric:** `action.assigned.count`, a GLOBAL count of actions with at least
+  one `person_assigned_action` or `email_assigned_action`, once per action.
+- **Shape:** Persist reaches GLOBAL only through a rollup, so project it as a
+  MEETING-scoped family over `meeting_has_action` with an any-of edge-exists
+  predicate,
+  `{ selector: { kind: "EDGE_EXISTS", any_of: ["person_assigned_action", "email_assigned_action"] }, operator: "PRESENT" }`,
+  and roll it up to GLOBAL. An action with both edges, or several assignees,
+  still counts once. An action with more than one owning meeting fails closed.
+- **Routing:** add both assignment edges to the read plan so `routingPlan`
+  routes them, and resolve their changes in `MetricStreamScopeResolver` from
+  the action over `meeting_has_action` to its meeting. Also list them in
+  `source.edge_labels` and `notice_routing` so the definition compiles.
+  Keep the family `EXCLUDE_ALL`: `ALLOW_SHARED` families cannot roll up.
+- `person.action.assigned.count` counts Person edges only: Email-only
+  assignment never implies a Person.
+
+### Decisions (2026-10-31)
+
+Quinlen decided these for the six metrics; reopen them only with the Model
+owners:
+
+- **Waive** `media.media_type eq TRANSCRIPT` and
+  `media_supersedes_media not_exists` on `person.utterance.spoken.count` and
+  `meeting.speaker.person.count` (`DROP_PREDICATE`), as
+  `utterance.recorded.count` already does. Google Meet writes only TRANSCRIPT
+  media and no supersedes edges, so counts are unchanged. A second media source
+  or re-transcription reopens this for all three metrics.
+- **Drop** the `action.action_type` grouping on `person.action.assigned.count`
+  (`DROP_DIMENSION`), as `action.recorded.count` does. The report reads totals.
+- **Names:** `time.business_time_anchor`, route kind `ANCHOR_PATH`,
+  `scope.parallel_edges`, base selector `EDGE_EXISTS` with `any_of`, and
+  exclusion reasons `MISSING_ANCHOR` and `AMBIGUOUS_ANCHOR`. Agreed with the
+  Model owners, but Model's exporter does not emit them yet and must be
+  updated to. Each new metric must also be on Model's
+  `dev_activation_allowlist`; `action.assigned.count`,
+  `person.action.assigned.count`, `person.meeting.invited_attended.count` and
+  `meeting.invited_attendee.person.count` are not today, so they are not
+  exported.
+
+Still open:
+
+- Open metrics PRs: rebase on `prismteam-ai/persist#377` (three-hop routing)
+  and #358 (it also changes the schema, compiler and reader). #353 conflicts
+  and was largely superseded by merged #356; #357 is voice-mail and debt work
+  that conflicts. Their owners decide whether to close or rebase them.
+- `person.meeting.talk.count` needs a compound `PERSON_MEETING` scope (one lane
+  per person and meeting). It is optional and outside these six metrics.
+
+Put waivers in Model's `persist-export.json`, never in Persist.
+
+Build one capability at a time, in this order: three-hop paths, two edges,
+unions, then the off-path anchor (the largest). Hold a review checkpoint after
+each. Whether they merge separately or together, every merge is one commit that
+ships both ways.
+
+## Test the capabilities
+
+Use TinkerGraph, extending `test/metrics/conversationMemory*.test.ts` (and
+`conversationMemorySpeakers.test.ts` from #377) with the seeders in
+`test/metrics/graphSeed.ts` (`seedConversationVertex`, `seedConversationEdge`)
+and the put-body helpers in `test/metrics/support.ts`. Model's `v3.3.0` export
+leaves these definitions out, so hand-build the families and base definitions
+in the conversation-memory fixture, and switch to Model's real export once it
+emits them. For each capability, test one positive and one negative case
+through the real reader and projector, plus the update path: backfill a cell,
+apply one stream change on the new edge or vertex, and check that the cell
+updates without another backfill, and that a change which must not alter the
+count (a duplicate, or a record that fails a condition) leaves it unchanged:
+
+| Capability | Positive | Negative | Update path |
+| --- | --- | --- | --- |
+| Off-path business time | an utterance counts on its meeting's New York date | an utterance with no owning meeting, or two, is excluded | adding the `meeting_has_media` edge dates an already-backfilled utterance; a second owning meeting removes it |
+| Three-hop paths | 5 + 1 utterances by two people count 2 speakers | an utterance never linked to media counts 0 (TRANSCRIPT is waived, so there is no media-type case) | a new utterance by a third person raises the count; another utterance by an existing speaker does not |
+| Two edges, same vertex | invited and attended counts 1 | an invitee who did not attend, and a walk-in who was not invited, count 0 | adding the attended edge to an invitee raises both scopes; removing the invite lowers them |
+| Person-or-Email union | Person-only, Email-only and both-edge actions each count once | an action assigned by email only adds nothing to `person.action.assigned.count` | adding an email assignment to an unassigned action counts it; adding a second assignee does not |
+
+Keep the existing debt and payment tests (`hoothootGolden`, `debtProjectorBatch`,
+`globalRollup`, `streamRouting`) passing unchanged, and add a regression test
+that the payment catalog compiles to the same plan. Compile every new
+definition with the real loader (`loadMetricsCatalogV3`) for DEV and PROD.
+
+## Ship one change two ways
+
+Merge once to `prismteam-ai/persist` `main`; never change `persist-fork`.
+
+- **Prism Marketplace:** `marketplace/app.ts` (tolerant `lexiconSearchPolicy`, portable
+  sizing). Build, Marketplace review and a VALID `persist` bundle; each
+  environment's Puller installs it (soofi-safavi runs AUTO). Confirm the new
+  bundle id replaced the previous one.
+- **SOC:** `bin/app.ts` (strict `lexiconSearchPolicy`, SOC sizing). SOC's shared deploy
+  workflows (`Spring-Oaks-Capital-LLC/github-workflows`) deploy SOC DEV; check
+  that debt and payment cells are unchanged, then promote to SOC PROD through
+  those workflows only with SOC's approval.
+
+The lexicon mode is `lexiconSearchPolicy` (`strict` or `tolerant`,
+`lambda/config/lexicon-search-policy.ts`; `lib/marketplace-app.ts` sets the
+tolerant default). It governs the FTS definition and GraphQL resolution, not
+ingest, and the metrics loader does not read it. Before SOC DEV, confirm SOC's strict lexicon declares every label and edge the new
+families read (for example `email_assigned_action`), or leave those
+definitions `BACKFILLING` there.
+
 ## Configure with Uxie
 
 1. Resolve the request ("add NSF amount by month", "retire this metric",
@@ -150,6 +437,25 @@ the deployed catalog's ACTIVE, BACKFILLING and RETIRED ids.
 7. Retiring a definition is a catalog change that sets it `RETIRED`; its cells
    drop lazily on the next projection. Change semantics with a new
    `definition_version`, not by editing an `ACTIVE` definition in place.
+
+### Backfill and verify meeting and person scopes
+
+New MEETING or PERSON definitions follow the same steps, one scope at a time:
+
+1. After the catalog is in sync, plan the MEETING backfill without `confirm`.
+   Review the scope count, windows and expected notices, then run it with
+   `"confirm": true`. Wait for the scope queue and its DLQ to drain, then do
+   the same for PERSON.
+2. Read `STATUS`: every gate must pass and coverage must be complete for the
+   new definitions.
+3. Plan `ACTIVATE`, then run it with `"confirm": true` and the
+   `expectedActiveGenerationId` read from `STATUS`. Record the previous
+   generation as the rollback target.
+4. Compare the active generation's DAY cells with direct graph counts for
+   every metric, using a read-only check script. For the meeting report that is
+   Quinlen's `verify_metrics.py`, which is not in a repository: ask for it. Also check for duplicate or detached cells,
+   that re-running the backfill adds none, and that metrics already ACTIVE
+   kept their totals. Then read the report itself.
 
 Work in DEV first and ask before every PUT, confirmed backfill, `ACTIVATE` or
 `ROLLBACK`, and any PROD write.

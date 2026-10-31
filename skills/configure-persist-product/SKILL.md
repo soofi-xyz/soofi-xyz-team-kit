@@ -78,6 +78,10 @@ report the catalog as Model/Lexicon-published and hand the gap to Conkeldurr.
    confirmed run, one confirmed run at a time.
 5. `ACTIVATE` only when `STATUS.gates` pass, plan first, and record the rollback
    generation. Ask before every write; work DEV first.
+6. For MEETING and PERSON definitions, follow [Backfill and verify meeting and
+   person scopes](../build-persist-service/reference/metrics-catalog.md#backfill-and-verify-meeting-and-person-scopes):
+   one scope at a time, then compare cells with direct graph counts using a
+   read-only check script.
 
 ## Configure the MCP server
 
