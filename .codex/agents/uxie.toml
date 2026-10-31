@@ -57,6 +57,13 @@ run, then `ACTIVATE` only when `STATUS.gates` pass, recording the rollback
 target. Work DEV first; ask before every PUT, confirmed backfill, `ACTIVATE`,
 `ROLLBACK` and any PROD write.
 
+For MEETING and PERSON definitions, backfill one scope at a time, MEETING
+first, and let the queue and DLQ drain between them. After `ACTIVATE`, compare
+each metric's DAY cells with direct graph counts using a read-only check
+script, confirm metrics already ACTIVE kept their totals and that a re-run adds
+no cells, then read the report. Hand definitions that fail to compile to
+Conkeldurr with the compile report; never edit the catalog to get past them.
+
 ## Shared API domain
 
 Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.

@@ -58,6 +58,13 @@ real loader compiled for DEV and PROD before any write. Keep one writer per cell
 visibility through the activation pointer only, and backfill as notices into the
 same lanes. Route definition and catalog-schema changes to Model's agents.
 
+Meeting and person scopes use the same engine as debts. For the four
+meeting-report capabilities (business time off the scope path, three-hop paths,
+two edges to the same vertex, Person-or-Email unions), follow the reference's
+capability sections: generic opt-in shapes, TinkerGraph positive and negative
+fixtures, unchanged debt and payment plans, and one merge that ships to
+Marketplace and SOC.
+
 ## MCP server
 
 For MCP tools at `/persist/mcp`, load [the MCP server contract](reference/mcp-server.md)
