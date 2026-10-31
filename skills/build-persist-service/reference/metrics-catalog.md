@@ -143,8 +143,8 @@ whether a gap is Model's or Persist's.
 Six `conversation-memory-metrics` definitions (Model `v3.3.0`) need four engine
 capabilities. Build each as a generic, opt-in compiler and projector feature
 that leaves debt and payment plans byte-for-byte identical. The definition
-shapes below use the names decided on 2026-10-31; confirm them with Dialga,
-because Model's exporter must emit them.
+shapes below use the names confirmed with the Model owners on 2026-10-31;
+Model's exporter emits exactly these.
 
 Every capability touches the same modules, in this order:
 
@@ -251,8 +251,8 @@ owners:
   (`DROP_DIMENSION`), as `action.recorded.count` does. The report reads totals.
 - **Names:** `time.business_time_anchor`, route kind `ANCHOR_PATH`,
   `scope.parallel_edges`, base selector `EDGE_EXISTS` with `any_of`, and
-  exclusion reasons `MISSING_ANCHOR` and `AMBIGUOUS_ANCHOR`. Confirm them with
-  Dialga so Model's exporter emits exactly these.
+  exclusion reasons `MISSING_ANCHOR` and `AMBIGUOUS_ANCHOR`. Confirmed with the
+  Model owners; Model's exporter emits exactly these.
 
 Still open:
 
