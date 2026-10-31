@@ -61,7 +61,8 @@ same lanes. Route definition and catalog-schema changes to Model's agents.
 Meeting and person scopes use the same engine as debts. For the four
 meeting-report capabilities (business time off the scope path, three-hop paths,
 two edges to the same vertex, Person-or-Email unions), follow the reference's
-capability sections: generic opt-in shapes, TinkerGraph positive and negative
+capability sections: generic opt-in shapes, read-plan routing in `routingPlan`
+and `MetricStreamScopeResolver`, TinkerGraph positive, negative and update-path
 fixtures, unchanged debt and payment plans, and one merge that ships to
 Marketplace and SOC.
 

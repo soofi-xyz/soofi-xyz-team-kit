@@ -64,8 +64,9 @@ For MEETING and PERSON definitions, backfill one scope at a time, MEETING
 first, and let the queue and DLQ drain between them. After `ACTIVATE`, compare
 each metric's DAY cells with direct graph counts using a read-only check
 script, confirm metrics already ACTIVE kept their totals and that a re-run adds
-no cells, then read the report. Hand definitions that fail to compile to
-Conkeldurr with the compile report; never edit the catalog to get past them.
+no cells, then read the report. Hand definitions that fail to compile to Conkeldurr with the compile report; never edit the catalog to get past them.
+A metric missing from Model's export is often not on Model's
+`dev_activation_allowlist`; route that to Jirachi.
 
 ## Shared API domain
 

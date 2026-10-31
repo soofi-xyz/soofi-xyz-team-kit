@@ -67,8 +67,10 @@ For meeting and person metrics, select `metrics-graph-shapes` and follow the
 reference's capability sections. Before coding, explain each requested
 capability (business time off the scope path, three-hop paths, two edges to
 the same vertex, Person-or-Email unions): the definition shape that must
-compile, the modules it touches, how stream changes route back to the scope,
-and its positive and negative TinkerGraph fixtures. Return a dry-run plan of
+compile, the modules it touches, how stream changes route back to the scope (the read-plan
+edges and vertices `routingPlan` must route and the `MetricStreamScopeResolver`
+mapping to scope ids; `source.edge_labels` and `notice_routing` only make it
+compile), and its positive, negative and update-path TinkerGraph fixtures. Return a dry-run plan of
 modules, fixtures and order, naming open PRs to rebase on and Model waivers
 still to decide, and wait for review. Keep debt and payment plans unchanged,
 and ship one merge to both Marketplace (`marketplace/app.ts`) and SOC
@@ -89,5 +91,5 @@ Installs get pull access to `marketplace/persist` themselves through `Custom::Ma
 Return the Persist change, affected contracts and state, verification results, migration/rollback requirements, current learning stage and remaining deployment or runtime evidence. For the vector-search piece, include the lexicon eligibility version, embedding evaluation and pinned profile, index generation, GraphQL composition evidence and its separate acceptance checkpoint.
 For the catalog piece, include the source and applied digests, scoped diff summary, HTTP/Gremlin read-back, replay/concurrency evidence and remaining deployment gaps.
 For the metrics piece, include the catalog API behavior proven (apply, refusal, legacy guard, replay, tamper), the catalog source the projectors logged, TinkerGraph projector results and remaining deployment or cutover gaps.
-For `metrics-graph-shapes`, include each capability's compile results for DEV and PROD, the SOC lexicon check for new labels, its positive and negative test results, the unchanged debt and payment results, and the commit both delivery paths shipped.
+For `metrics-graph-shapes`, include each capability's compile results for DEV and PROD, the SOC lexicon check for new labels, its positive, negative and update-path test results, the unchanged debt and payment results, and the commit both delivery paths shipped.
 '''
