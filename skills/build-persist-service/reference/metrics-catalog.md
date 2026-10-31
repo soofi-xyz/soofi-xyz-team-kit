@@ -143,8 +143,8 @@ whether a gap is Model's or Persist's.
 Six `conversation-memory-metrics` definitions (Model `v3.3.0`) need four engine
 capabilities. Build each as a generic, opt-in compiler and projector feature
 that leaves debt and payment plans byte-for-byte identical. The definition
-shapes below are proposals: agree the exact field names with Dialga, because
-Model's exporter must emit them.
+shapes below use the names decided on 2026-10-31; confirm them with Dialga,
+because Model's exporter must emit them.
 
 Every capability touches the same modules, in this order:
 
@@ -170,18 +170,19 @@ Every capability touches the same modules, in this order:
   scope, item `action` through `person_assigned_action`). Both take business
   time from `meeting.started_at`, which is neither the item nor the scope.
 - **Shape:** a family-level time anchor, a path from the item to exactly one
-  vertex holding the business time, for example
+  vertex holding the business time,
   `time.business_time_anchor: { path: [media_has_utterance, meeting_has_media], vertex: meeting }`,
   and a base business-time selector on that vertex. Compile it to a new
   selector tag (for example `AnchorProperty`). An item with zero or several
-  anchors is excluded with a reason, never dated arbitrarily.
+  anchors is excluded (`MISSING_ANCHOR`, `AMBIGUOUS_ANCHOR`), never dated
+  arbitrarily.
 - **Families:** two new PERSON families, for example `person_utterance` over
   `[person_spoke_utterance]` and `person_action` over `[person_assigned_action]`,
-  plus `ExclusionReason` values for an item with no anchor or several.
+  plus the `MISSING_ANCHOR` and `AMBIGUOUS_ANCHOR` exclusion reasons.
 - **Routing:** a change to an anchor-path edge or the anchor vertex must walk
   anchor → item → scope. The compiler accepts a `REVERSE_PATH` only when it
-  equals `path_from_scope`, so this is a new route kind (for example
-  `ANCHOR_PATH`), which Model's exporter must also emit. A meeting's
+  equals `path_from_scope`, so this is a new route kind, `ANCHOR_PATH`, which
+  Model's exporter must also emit. A meeting's
   `started_at` never changes in place (identity is a content hash), so edge
   adds and removals carry most changes.
 - **Backfill:** the planner dates windows from the anchor's time, not the
@@ -209,7 +210,7 @@ Every capability touches the same modules, in this order:
   `person`). Count a pair only when both `person_invited_to_meeting` and
   `person_attended_meeting` join the same person and meeting.
 - **Shape:** keep one edge as `path_from_scope` and require the other in
-  parallel, for example
+  parallel,
   `scope.parallel_edges: [{ edge_type: person_invited_to_meeting, from: person, to: meeting }]`.
   The reader keeps an item only when every parallel edge joins it to the same
   scope vertex.
@@ -225,7 +226,7 @@ Every capability touches the same modules, in this order:
   one `person_assigned_action` or `email_assigned_action`, once per action.
 - **Shape:** Persist reaches GLOBAL only through a rollup, so project it as a
   MEETING-scoped family over `meeting_has_action` with an any-of edge-exists
-  predicate, for example
+  predicate,
   `{ selector: { kind: "EDGE_EXISTS", any_of: ["person_assigned_action", "email_assigned_action"] }, operator: "PRESENT" }`,
   and roll it up to GLOBAL. An action with both edges, or several assignees,
   still counts once. An action with more than one owning meeting fails closed.
@@ -235,24 +236,32 @@ Every capability touches the same modules, in this order:
 - `person.action.assigned.count` counts Person edges only: Email-only
   assignment never implies a Person.
 
-### Decisions to record before building
+### Decisions (2026-10-31)
 
-- `media.media_type eq TRANSCRIPT` and `media_supersedes_media not_exists` on
-  both utterance metrics: waive them, as `utterance.recorded.count` already
-  does (Google Meet writes only TRANSCRIPT media and no supersedes edges), or
-  build intermediate-vertex and edge-absence predicates.
-- `person.action.assigned.count` groups by unpinned `action.action_type`: waive
-  it with `DROP_DIMENSION`, as `action.recorded.count` does, or build it.
-- `person.meeting.talk.count` needs a compound `PERSON_MEETING` scope (one lane
-  per person and meeting). It is optional and outside these six metrics.
+Quinlen decided these for the six metrics; reopen them only with the Model
+owners:
 
-- The field and route-kind names (`business_time_anchor`, `ANCHOR_PATH`,
-  `parallel_edges`, `EDGE_EXISTS`, the new exclusion reasons), agreed with
-  Dialga so Model's exporter emits them.
+- **Waive** `media.media_type eq TRANSCRIPT` and
+  `media_supersedes_media not_exists` on `person.utterance.spoken.count` and
+  `meeting.speaker.person.count` (`DROP_PREDICATE`), as
+  `utterance.recorded.count` already does. Google Meet writes only TRANSCRIPT
+  media and no supersedes edges, so counts are unchanged. A second media source
+  or re-transcription reopens this for all three metrics.
+- **Drop** the `action.action_type` grouping on `person.action.assigned.count`
+  (`DROP_DIMENSION`), as `action.recorded.count` does. The report reads totals.
+- **Names:** `time.business_time_anchor`, route kind `ANCHOR_PATH`,
+  `scope.parallel_edges`, base selector `EDGE_EXISTS` with `any_of`, and
+  exclusion reasons `MISSING_ANCHOR` and `AMBIGUOUS_ANCHOR`. Confirm them with
+  Dialga so Model's exporter emits exactly these.
+
+Still open:
+
 - Open metrics PRs: rebase on `prismteam-ai/persist#377` (three-hop routing)
   and #358 (it also changes the schema, compiler and reader). #353 conflicts
   and was largely superseded by merged #356; #357 is voice-mail and debt work
   that conflicts. Their owners decide whether to close or rebase them.
+- `person.meeting.talk.count` needs a compound `PERSON_MEETING` scope (one lane
+  per person and meeting). It is optional and outside these six metrics.
 
 Put waivers in Model's `persist-export.json`, never in Persist.
 
@@ -276,7 +285,7 @@ stream route:
 | Capability | Positive | Negative |
 | --- | --- | --- |
 | Off-path business time | an utterance counts on its meeting's New York date | an utterance with no owning meeting, or two, is excluded |
-| Three-hop paths | 5 + 1 utterances by two people count 2 speakers | an utterance never linked to media counts 0; if the TRANSCRIPT condition is built rather than waived, a speaker on non-TRANSCRIPT media counts 0 |
+| Three-hop paths | 5 + 1 utterances by two people count 2 speakers | an utterance never linked to media counts 0 (TRANSCRIPT is waived, so there is no media-type case) |
 | Two edges, same vertex | invited and attended counts 1 | an invitee who did not attend, and a walk-in who was not invited, count 0 |
 | Person-or-Email union | Person-only, Email-only and both-edge actions each count once | an action assigned by email only adds nothing to `person.action.assigned.count` |
 
