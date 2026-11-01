@@ -32,7 +32,8 @@ There is deliberately no merge, approve or activate tool.
 
 - Remote MCP over **Streamable HTTP**, served from the Jigglypuff stack in each
   environment's AWS account. One endpoint per environment:
-  - DEV: `https://cwwm2to8hk.execute-api.us-east-2.amazonaws.com/mcp`
+  - DEV: read from the stack output (see [DEV values](#dev-values)); it changes
+    when the stack is recreated
   - PROD: not provisioned until PROD enablement (see the open questions)
 - Stateless request/response is sufficient; no tool needs server-initiated
   messages. Long work (asset export, certification) returns within the request
@@ -41,16 +42,31 @@ There is deliberately no merge, approve or activate tool.
 - Limit request bodies to what the tools need (base64 images up to 1 MB each
   plus HTML); reject larger bodies before parsing.
 - Users add the server in Cursor with its URL, the public Cognito client id and
-  scopes (the stack output `McpServerMcpCursorConfig` prints this entry). The
-  client id is not a secret:
+  scopes. The client id is not a secret.
+
+### DEV values
+
+Do not treat the DEV endpoint or client id as permanent. Read them from the
+Jigglypuff stack output `McpServerMcpCursorConfig`, which prints the exact
+Cursor entry. Use the profile selected through your verified AWS access flow
+for DEV account `951132547414`:
+
+```bash
+AWS_PROFILE=<selected-profile> aws cloudformation describe-stacks \
+  --region us-east-2 --stack-name JigglypuffAgentStack \
+  --query "Stacks[0].Outputs[?starts_with(OutputKey,'McpServerMcpCursorConfig')].OutputValue" \
+  --output text
+```
+
+Example output as of 2026-11-01 (DEV):
 
 ```json
 {
   "mcpServers": {
     "jigglypuff-dev": {
-      "url": "https://cwwm2to8hk.execute-api.us-east-2.amazonaws.com/mcp",
+      "url": "https://9to5x3py18.execute-api.us-east-2.amazonaws.com/mcp",
       "auth": {
-        "CLIENT_ID": "3s3lpf8lfqm30e7teq9rmkbmbb",
+        "CLIENT_ID": "5esdg99f25e2k4el2ijjovff6t",
         "scopes": ["openid", "profile", "email"]
       }
     }
@@ -58,8 +74,13 @@ There is deliberately no merge, approve or activate tool.
 }
 ```
 
+Until jigglypuff-agent#116 merges, any other Jigglypuff PR's DEV deploy
+replaces the stack without the MCP server. Re-deploy #116 to DEV to restore it;
+the endpoint and client id may change, so read the stack output again and
+update `mcp.json`.
+
 Add the entry to this kit's `mcp.json` only once DEV sign-in and the tools are
-certified.
+certified and the values are stable (#116 merged).
 
 ## Authentication and authorization
 
@@ -117,7 +138,8 @@ building.
   (`http://localhost:8787/callback` and
   `https://www.cursor.com/agents/mcp/oauth/callback`, per
   [Cursor's MCP docs](https://cursor.com/docs/context/mcp#static-redirect-url)).
-  DEV client: `3s3lpf8lfqm30e7teq9rmkbmbb`. No resource server or custom scope.
+  Read the DEV client id from the stack output (see [DEV values](#dev-values)).
+  No resource server or custom scope.
   Do not reuse a Hoothoot app client.
 - **OAuth metadata proxy:** Cognito publishes only OpenID Connect discovery,
   without `code_challenge_methods_supported` or the `none` token auth method,
