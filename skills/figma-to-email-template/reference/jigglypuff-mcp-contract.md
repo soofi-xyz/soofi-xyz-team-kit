@@ -32,7 +32,8 @@ There is deliberately no merge, approve or activate tool.
 
 - Remote MCP over **Streamable HTTP**, served from the Jigglypuff stack in each
   environment's AWS account. One endpoint per environment:
-  - DEV: `https://cwwm2to8hk.execute-api.us-east-2.amazonaws.com/mcp`
+  - DEV: read from the stack output (see [DEV values](#dev-values)); it changes
+    when the stack is recreated
   - PROD: not provisioned until PROD enablement (see the open questions)
 - Stateless request/response is sufficient; no tool needs server-initiated
   messages. Long work (asset export, certification) returns within the request
@@ -41,16 +42,31 @@ There is deliberately no merge, approve or activate tool.
 - Limit request bodies to what the tools need (base64 images up to 1 MB each
   plus HTML); reject larger bodies before parsing.
 - Users add the server in Cursor with its URL, the public Cognito client id and
-  scopes (the stack output `McpServerMcpCursorConfig` prints this entry). The
-  client id is not a secret:
+  scopes. The client id is not a secret.
+
+### DEV values
+
+Do not treat the DEV endpoint or client id as permanent. Read them from the
+Jigglypuff stack output `McpServerMcpCursorConfig`, which prints the exact
+Cursor entry. Use the profile selected through your verified AWS access flow
+for DEV account `951132547414`:
+
+```bash
+AWS_PROFILE=<selected-profile> aws cloudformation describe-stacks \
+  --region us-east-2 --stack-name JigglypuffAgentStack \
+  --query "Stacks[0].Outputs[?starts_with(OutputKey,'McpServerMcpCursorConfig')].OutputValue" \
+  --output text
+```
+
+Example output as of 2026-11-01 (DEV):
 
 ```json
 {
   "mcpServers": {
     "jigglypuff-dev": {
-      "url": "https://cwwm2to8hk.execute-api.us-east-2.amazonaws.com/mcp",
+      "url": "https://9to5x3py18.execute-api.us-east-2.amazonaws.com/mcp",
       "auth": {
-        "CLIENT_ID": "3s3lpf8lfqm30e7teq9rmkbmbb",
+        "CLIENT_ID": "5esdg99f25e2k4el2ijjovff6t",
         "scopes": ["openid", "profile", "email"]
       }
     }
@@ -58,8 +74,13 @@ There is deliberately no merge, approve or activate tool.
 }
 ```
 
+Until jigglypuff-agent#116 merges, any other Jigglypuff PR's DEV deploy
+replaces the stack without the MCP server. Re-deploy #116 to DEV to restore it;
+the endpoint and client id may change, so read the stack output again and
+update `mcp.json`.
+
 Add the entry to this kit's `mcp.json` only once DEV sign-in and the tools are
-certified.
+certified and the values are stable (#116 merged).
 
 ## Authentication and authorization
 
@@ -117,7 +138,8 @@ building.
   (`http://localhost:8787/callback` and
   `https://www.cursor.com/agents/mcp/oauth/callback`, per
   [Cursor's MCP docs](https://cursor.com/docs/context/mcp#static-redirect-url)).
-  DEV client: `3s3lpf8lfqm30e7teq9rmkbmbb`. No resource server or custom scope.
+  Read the DEV client id from the stack output (see [DEV values](#dev-values)).
+  No resource server or custom scope.
   Do not reuse a Hoothoot app client.
 - **OAuth metadata proxy:** Cognito publishes only OpenID Connect discovery,
   without `code_challenge_methods_supported` or the `none` token auth method,
@@ -131,27 +153,32 @@ building.
 - **Unauthenticated calls:** answer `401` with
   `WWW-Authenticate: Bearer resource_metadata="..."` so Cursor starts its
   browser sign-in.
-- **Roles (default):** map roles from the `cognito:groups` claim in the access
-  token, the pattern Hoothoot already uses. Jigglypuff's CDK creates one
-  Cognito group per role in each environment's pool
-  (`jigglypuff-templates-read`, `jigglypuff-templates-author`,
-  `jigglypuff-templates-maintainer`), and a Cognito admin assigns users to
-  them.
-- **Roles (alternative):** populate those groups automatically from Entra group
-  membership passed through `AzureAD`, using a pre-token-generation trigger.
-  Nothing like it exists today; see the open questions. Do not use per-role
-  resource-server scopes: Cognito grants any scope the app client permits, so
-  scopes alone do not authorize a user.
+- **Access model:** no per-user Cognito group work. Derive roles from the
+  signed-in identity and Jigglypuff configuration:
+  - **Read and Author:** any authenticated Spring Oaks user federated through
+    the `AzureAD` identity provider (`identities[].providerName` = `AzureAD`;
+    the Cognito `username` starts with `AzureAD_`) whose `email` domain is on
+    the environment's allowed-domain list, default `springoakscapital.com`.
+    Compare the whole domain after `@`, case-insensitively; never match a
+    suffix. No group is needed.
+  - **Maintainer:** an Author whose email is on the short per-environment
+    allow-list in Jigglypuff configuration, `JIGGLYPUFF_MCP_MAINTAINER_EMAILS`
+    (comma-separated, compared case-insensitively). Optionally also accept
+    members of the legacy `jigglypuff-templates-maintainer` Cognito group. An
+    empty list and no group means no maintainers.
+  - Do not use per-role resource-server scopes: Cognito grants any scope the
+    app client permits, so scopes alone do not authorize a user.
 
-| Role | Tools |
-| --- | --- |
-| `Templates.Read` | `validate_email_html`, `render_email_preview`, `get_template_pr_status` |
-| `Templates.Author` | Read, plus `upload_email_image`, `export_figma_assets`, `create_email_template_pr`, `add_files_to_template_pr`, `certify_template`, `translate_email_template`, `request_template_approval` |
-| `Templates.Maintainer` | Author, plus `adopt_template_pr` for PRs Jigglypuff did not create |
+| Role | Who | Tools |
+| --- | --- | --- |
+| `Templates.Read` | Any allowed-domain `AzureAD` user | `validate_email_html`, `render_email_preview`, `get_template_pr_status` |
+| `Templates.Author` | Any allowed-domain `AzureAD` user | Read, plus `upload_email_image`, `export_figma_assets`, `create_email_template_pr`, `add_files_to_template_pr`, `certify_template`, `translate_email_template`, `request_template_approval` |
+| `Templates.Maintainer` | `JIGGLYPUFF_MCP_MAINTAINER_EMAILS` (optionally the legacy group) | Author, plus `adopt_template_pr` for PRs Jigglypuff did not create |
 
 Approval and merge are not roles here. Approvers act on the Asana approval
 tasks, and Jigglypuff merges only after every task is complete, exactly as in
-the Asana path.
+the Asana path. Broad Author access is safe because every write lands in a
+Jigglypuff-owned, inactive PR behind the same gates and human approvals.
 
 ### Token validation
 
@@ -160,14 +187,17 @@ the Asana path.
   `https://cognito-idp.us-east-2.amazonaws.com/us-east-2_7tpH6X78q`; PROD:
   `https://cognito-idp.us-east-2.amazonaws.com/us-east-2_aM3jiFwEM`), whose
   client is that environment's Jigglypuff app client, with a valid signature
-  from the pool JWKS (`<issuer>/.well-known/jwks.json`), unexpired, and with a
-  role group for the tool. Cognito access tokens carry
+  from the pool JWKS (`<issuer>/.well-known/jwks.json`), and unexpired. Then
+  read the identity from `userInfo` and apply the access model above. Cognito
+  access tokens carry
   the client in `client_id`, not `aud`; check `client_id` (API Gateway JWT
   authorizers accept either).
 - DEV and PROD use different pools and app clients. DEV rejects PROD tokens and
   PROD rejects DEV tokens; the issuer and `client_id` checks each enforce this.
-- Reject ID tokens, tokens from Hoothoot or any other app client, and tokens
-  without a role group.
+- Reject ID tokens and tokens from Hoothoot or any other app client with
+  `401`. Answer `403` for a valid token whose user is not federated through
+  `AzureAD`, has no email or an email outside the allowed domains, or calls a
+  Maintainer tool without being a maintainer.
 - **No token passthrough:** never forward the user's token to GitHub, Asana or
   AWS. Jigglypuff calls them with its own credentials and records the user.
 
@@ -177,7 +207,8 @@ Record every call with request id, timestamp, environment, tool, result, token
 issuer, `client_id`, Cognito `sub`, `username`, `email`, the federated Entra
 identity when present (`identities[].providerName` = `AzureAD` and its
 `userId`), SHA-256 of the input, repository, branch, PR number, head commit and
-Asana task. The access token carries `sub`, `username` and `cognito:groups`;
+Asana task, plus the role granted and why (domain, maintainer list or legacy
+group). The access token carries `sub`, `username` and `cognito:groups`;
 read `email` and `identities` from the Cognito `userInfo` endpoint (no
 pre-token-generation trigger exists to add them to the token). Keep the audit
 store append-only. Add `Requested-by: <email>` to commit messages and name the
@@ -185,15 +216,16 @@ requester in the PR body.
 
 ### Who does what
 
-- **Jigglypuff (its CDK and runtime):** creates the app client, callback URLs
-  and role groups in each environment's pool, and implements the metadata
-  proxy, token validation, role checks and audit.
+- **Jigglypuff (its CDK and runtime):** creates the app client and callback
+  URLs in each environment's pool, owns the allowed-domain list and
+  `JIGGLYPUFF_MCP_MAINTAINER_EMAILS` per environment, and implements the
+  metadata proxy, token validation, access checks and audit. Changing the
+  maintainer list is a reviewed Jigglypuff configuration change.
 - **AWS/Cognito admin** (DEV `951132547414`, PROD `014948052063`): reviews the
-  Jigglypuff deployment that changes the pool and assigns users to the role
-  groups.
-- **Entra admin:** needed only to automate group membership from Entra, if the
-  `AzureAD` federation must pass group claims. No new Entra app registration is
-  required.
+  Jigglypuff deployment that adds the app client. No per-user group
+  assignment.
+- **Entra admin:** not needed. No new Entra app registration and no group
+  claims are required.
 - **Hoothoot:** no change.
 
 ### Open questions
@@ -208,10 +240,11 @@ Cognito has no dynamic client registration), and Cursor metadata and
    request in a test Asana task, and the audit records. Then set
    `PROD_ENABLE_MCP_SERVER=true`, record the PROD URL and client id here, and
    add the entries to this kit's `mcp.json`.
-2. **Group membership automation.** Membership is admin-assigned. Decide
-   whether to populate the groups from Entra groups: which Entra groups map to
-   the three roles per environment, whether `AzureAD` can pass group claims,
-   and who owns the pre-token-generation trigger if it is added.
+2. **Entra group automation (optional, future).** If Read or Author access
+   ever needs to narrow below the whole domain, or the maintainer list grows,
+   map roles from Entra groups passed through `AzureAD` (a group claim plus a
+   pre-token-generation trigger). Not planned; the domain and email
+   allow-list model needs no IT work.
 
 ## Gates every tool enforces
 
@@ -410,9 +443,12 @@ job progress.
 
 ## Acceptance for the Jigglypuff implementation
 
-- Sign-in from Cursor works through the Cognito broker federated to Entra ID; a
-  user without a role group gets 403; a DEV token is rejected by PROD and a
-  PROD token by DEV; a Hoothoot token is rejected.
+- Sign-in from Cursor works through the Cognito broker federated to Entra ID,
+  and an allowed-domain `AzureAD` user can use every Read and Author tool with
+  no group. A non-`AzureAD` user, an email outside the allowed domains or a
+  look-alike domain (for example `springoakscapital.com.evil.test`), and a
+  non-maintainer calling `adopt_template_pr` each get 403. A DEV token is
+  rejected by PROD and a PROD token by DEV; a Hoothoot token is rejected.
 - Rebuilding PR
   [templates-inventory#346](https://github.com/Spring-Oaks-Capital-LLC/templates-inventory/pull/346)
   through the tools produces the same HTML bytes, `content_sha256`,

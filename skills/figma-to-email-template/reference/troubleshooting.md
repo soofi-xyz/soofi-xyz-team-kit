@@ -27,6 +27,22 @@ after its DEV server is certified, so there is nothing to enable yet. Use the
 interim path in the skill: open the PR from Cursor with `gh`, then in the Asana
 story attach the exported images and ask Jigglypuff to take over the PR.
 
+## jigglypuff-dev suddenly fails to connect / 404 / host not found
+
+DEV was redeployed. Until jigglypuff-agent#116 merges, another Jigglypuff PR's
+DEV deploy removes the MCP server, and re-deploying #116 recreates it with a new
+endpoint and client id.
+
+1. Read the current entry from the `McpServerMcpCursorConfig` stack output, as
+   shown in the contract's
+   [DEV values](jigglypuff-mcp-contract.md#dev-values). If the output is
+   missing, the MCP server is not deployed; ask the Jigglypuff owners to
+   re-deploy #116 to DEV.
+2. Replace the `jigglypuff-dev` `url` and `auth.CLIENT_ID` in your
+   `~/.cursor/mcp.json` with the new values.
+3. In **Cursor Settings > Tools & MCP**, disconnect `jigglypuff-dev`, click
+   **Connect** and sign in again.
+
 ## "You don't have edit access to this file"
 
 The Figma account signed in to Cursor's Figma MCP cannot edit the file and has
@@ -85,9 +101,15 @@ which branch deployed last before blaming the template.
 - 401: the Cognito session expired. Sign in again from Cursor's MCP settings;
   Cursor's MCP OAuth flow goes through the Cognito hosted UI and on to Entra ID
   through the `AzureAD` identity provider.
-- 403: the signed-in user lacks the Jigglypuff Cognito group for that tool, or
-  is calling one environment with the other's token. Ask the AWS/Cognito admin
-  to add you to the right Jigglypuff group for that environment. Involve an
-  Entra admin only if the `AzureAD` federation must pass extra groups or claims.
+- 403: you signed in with an account that is not a Spring Oaks work account
+  (`@springoakscapital.com`) or not through Microsoft, or you called a
+  maintainer tool such as `adopt_template_pr` without being on that
+  environment's maintainer list. Disconnect Jigglypuff in **Cursor Settings >
+  Tools & MCP**, click **Connect** again and choose your Spring Oaks Microsoft
+  account. For maintainer tools, ask the Jigglypuff owners to add your email to
+  `JIGGLYPUFF_MCP_MAINTAINER_EMAILS`, or ask Jigglypuff in Asana to adopt the
+  PR instead. No Cognito group or IT request is needed.
+- 401 right after signing in: you are probably calling one environment with
+  the other's token. Check the server URL, then reconnect.
 - Gate errors (image host, alt text, executable HTML, variables): fix the HTML;
   do not look for another path around the gate.
