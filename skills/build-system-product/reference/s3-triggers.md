@@ -116,7 +116,7 @@ before any rule is written.
 | Code | Refused when |
 | --- | --- |
 | `400 CONFIGURATION_INVALID` | a field is missing, unknown or malformed: an option outside the fixed lists, an empty prefix, a bad id, bucket or role ARN |
-| `400 FLOW_INVALID` | two triggers share an id; `OBJECT_JSON` is combined with `OBJECT_REMOVED`; a sample `OBJECT_REFERENCE` input for a selected event fails the definition `inputSchema`; two triggers of the flow can match the same object (same bucket, one prefix extends the other, suffixes compatible, a shared event) |
+| `400 FLOW_INVALID` | two triggers share an id; `OBJECT_JSON` is combined with `OBJECT_REMOVED`; an `OBJECT_JSON` trigger's definition `inputSchema` has a `type` that excludes `object`; a sample `OBJECT_REFERENCE` input for a selected event fails the definition `inputSchema`; two triggers of the flow can match the same object (same bucket, one prefix extends the other, suffixes compatible, a shared event) |
 | `400 ROLE_NOT_ASSUMABLE` | System cannot assume `roleArn` with the `ExternalId` |
 | `400 BUCKET_NOT_FOUND` | the role cannot list the bucket under `keyPrefix` |
 | `400 BUCKET_EVENTBRIDGE_DISABLED` | the bucket's notification configuration has no EventBridge, or the role cannot read it |
@@ -149,7 +149,8 @@ seconds after saving a trigger before writing objects.
    trigger is skipped (`TriggerSkipped`).
 3. **Input.** `OBJECT_REFERENCE` builds the reference from the event.
    `OBJECT_JSON` refuses an object larger than 192 KiB from the event's size
-   before reading, then assumes the trigger role and reads the object: exactly
+   before reading, and an event with neither `version-id` nor `etag` without
+   reading it. Otherwise it assumes the trigger role and reads the object: exactly
    the event's version, or in an unversioned bucket only while its ETag is still
    the event's (`If-Match`), so a later write is never read for an earlier
    event. The body must parse as a JSON object.
@@ -167,7 +168,8 @@ seconds after saving a trigger before writing objects.
 - **Rejected, not retried** (`TriggerRejected`): `OBJECT_TOO_LARGE`,
   `OBJECT_NOT_JSON` (not JSON, an array, a scalar or no body),
   `OBJECT_VERSION_GONE` (the version, or the ETag-matched write, no longer
-  exists), and `INPUT_SCHEMA_INVALID` (the definition `inputSchema` refuses the
+  exists), `OBJECT_IDENTITY_MISSING` (the event has neither `version-id` nor
+  `etag`, so the object is not read), and `INPUT_SCHEMA_INVALID` (the definition `inputSchema` refuses the
   input). Other 4xx refusals of the start, except 429, are also not retried.
   Each is recorded as a [rejection](#rejections).
 - **Retried** with jitter, 30 s doubling to at most 15 min apart, 8 attempts
@@ -186,20 +188,23 @@ whichever way it came: API, event trigger or S3 trigger. Read them with
 domain with the shared key.
 
 - Newest first; `limit` 1–100 (default 50); `cursor` is the previous page's
-  `nextCursor`, absent on the last page. Unknown flow `404`; bad `limit` or
+  `nextCursor`, absent on the last page (even one exactly `limit` long).
+  Unknown flow `404`; bad `limit` or
   `cursor` `400 REQUEST_INVALID`.
 - `503 REJECTIONS_NOT_READY` while the index is still being built after the
   install that added it; retry after a few minutes.
 - Each item has `rejectionId`, `flow`, `rejectedAt`, `error`, `problems`,
   `source` (for S3 the trigger, bucket, key and version), `idempotencyKey` and,
-  for a service-key caller, `tenantId`. The input is not stored.
+  for a service-key caller, `tenantId`. The input is not stored. `problems`
+  keeps at most the first 20, each cut to 500 characters, plus a final
+  `…and N more problems` line when there were more.
 - `error` is `REQUEST_INVALID`, `INPUT_INVALID` (the definition `inputSchema`
   or the flow's input normalizer refused the input),
   `INPUT_NORMALIZER_UNAVAILABLE` (the start answered `503` because the input
   normalizer could not be reached and the flow refuses in that case),
   `IDEMPOTENCY_CONFLICT`, `FLOW_INVALID`, `NOT_FOUND` (definition or template),
   or from the S3 dispatcher `OBJECT_NOT_JSON`, `OBJECT_TOO_LARGE`,
-  `OBJECT_VERSION_GONE`. A schema-invalid S3 input is recorded as
+  `OBJECT_VERSION_GONE`, `OBJECT_IDENTITY_MISSING`. A schema-invalid S3 input is recorded as
   `INPUT_INVALID` with its S3 `source`.
 - An `INPUT_INVALID` or `INPUT_NORMALIZER_UNAVAILABLE` reply's `invocationId`
   is its `rejectionId`.
@@ -243,7 +248,8 @@ bucket:
    none.
 4. A repeated event for the same version is a `TriggerDuplicate`; a new version
    starts a new run.
-5. `OBJECT_JSON` with a non-JSON, array, oversized or schema-invalid body starts
+5. `OBJECT_JSON` with a non-JSON, array, oversized or schema-invalid body, or
+   an event with neither version nor ETag, starts
    no run, is not retried and appears in `GET /flows/{name}/rejections` with its
    key and reason; a good body starts one run with the body as input.
 6. A role that cannot be assumed at dispatch retries and lands in

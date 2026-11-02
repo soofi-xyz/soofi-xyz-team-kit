@@ -35,7 +35,8 @@ For `OBJECT_REFERENCE`, make the definition `inputSchema` accept
 `{"s3": {"bucket", "key", "versionId", "etag", "size", "eventType", "eventTime"}}`
 for every selected event (a deleted object has no `etag` or `size`); saving
 checks a sample. For `OBJECT_JSON`, the schema validates the file body itself
-when each object arrives.
+when each object arrives, and its `type`, if set, must include `object` or the
+save is refused with `FLOW_INVALID`.
 
 A wrong option, prefix or schema is a `CONFIGURATION` finding you fix here.
 Missing engine behavior is a `PRODUCT_CHANGE` for `zygarde`.
@@ -118,11 +119,14 @@ prepare your own bucket and role instead.
 ## 6. Rejections, failed runs and recovery
 
 - An object refused before a run exists (`OBJECT_NOT_JSON`, `OBJECT_TOO_LARGE`,
-  `OBJECT_VERSION_GONE`, or `INPUT_INVALID` for an input the schema or the
+  `OBJECT_VERSION_GONE`, `OBJECT_IDENTITY_MISSING` for an event with neither
+  version nor ETag, or `INPUT_INVALID` for an input the schema or the
   flow's input normalizer refuses) is a rejection: read it with
   `GET /flows/{name}/rejections?limit=&cursor=`. Fix the object or the schema,
   then write the object again; a new version starts a new run. Rejections are
-  kept 30 days.
+  kept 30 days; each keeps at most 20 `problems` of up to 500 characters, plus
+  an `…and N more problems` line. Page with `cursor` until `nextCursor` is
+  absent.
 - A run that started and failed is an ordinary invocation: recover it with
   `POST /invocations/{id}/redrive`
   ([failures and redrive](failures-and-redrive.md)), like any other run, not by
