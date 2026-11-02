@@ -226,6 +226,12 @@ describe("fee extraction and adjudication", () => {
     expect(contentBeforeSimilarHomes(body)).not.toContain("$500");
   });
 
+  it("keeps the facts section below navigation bullets and short sentences that mention nearby homes", () => {
+    const body = "- [Recently sold homes](https://listing-a.example/sold)\nSee similar homes nearby.\nHOA Fee: $90 Monthly\n## Similar Homes\nHOA Fee: $500 Monthly";
+    expect(contentBeforeSimilarHomes(body)).toContain("$90");
+    expect(contentBeforeSimilarHomes(body)).not.toContain("$500");
+  });
+
   it("never defaults a missing period, and infers one only from a second agreeing signal", () => {
     const bare = decideFee({}, [page("HOA Fee: $400")], "sfh");
     expect(bare).toMatchObject({ fee: null, frequency: null, basis: "unresolved_frequency_missing" });
