@@ -55,7 +55,8 @@ callbacks, test delivery and inspect the dispatcher, queue and DLQ.
 
 Read [S3 triggers](reference/s3-triggers.md) to start a flow from S3 object
 events: verify deployed support, choose the fixed options, prepare the bucket
-role, register per flow and run the test sequence.
+role, save `s3Triggers` with the flow, wait for the rule to settle, run the test
+sequence, read rejections and redrive failed runs.
 
 ## Configuration bundles
 

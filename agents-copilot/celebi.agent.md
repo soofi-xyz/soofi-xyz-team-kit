@@ -41,11 +41,12 @@ Use [result callbacks](../skills/configure-system-product/reference/result-callb
 
 Use [configure S3 triggers](../skills/configure-system-product/reference/s3-triggers.md) when a flow should start from S3 object events in addition to the API.
 
-1. Verify the deployment has `s3Triggers: true` and the trigger routes; otherwise hand a `PRODUCT_CHANGE` to `zygarde`.
+1. Verify the deployed revision has the trigger stack outputs (and, for `OBJECT_JSON` or rejections, the revision that adds them); otherwise hand a `PRODUCT_CHANGE` to `zygarde`. There is no install switch to turn on.
 2. Choose the narrowest literal `keyPrefix`/`keySuffix`, the `events` and the `inputMode` from the fixed lists, and fit the definition `inputSchema` to that input.
-3. Have the bucket owner enable EventBridge notifications and create the trigger role with the documented trust, `ExternalId` and permissions; record only its ARN.
-4. Register with IAM-only `PUT /flows/{flow}/s3-triggers/{triggerId}`, read it back, and confirm no execution started. Pin it in bundles as an `s3-trigger` document.
-5. Run the reference test sequence mock-first and record trigger revision, object version, invocation id, execution ARN and expected/actual per case. Never record keys or bodies containing personal data. Hand dispatcher or validation defects to `zygarde`.
+3. Have the bucket owner enable EventBridge notifications and create the trigger role with the documented trust, `ExternalId` `system:<account>:<stage>:<flow>:<id>` and permissions; record only its ARN.
+4. Add the triggers as `s3Triggers` in the flow and save it with `PUT /flows/{name}` (SigV4 or the shared `x-api-key`); read the flow back and confirm no execution started. Bundles carry triggers inside the flow document.
+5. Wait about 30 seconds after saving a new trigger before writing test objects; a new EventBridge rule takes a short while to match.
+6. Run the reference test sequence mock-first and record flow, trigger id, object version, invocation or rejection id, execution ARN and expected/actual per case. Read refused objects from `GET /flows/{name}/rejections`; redrive a failed run with `POST /invocations/{id}/redrive`; rejected starts have no run and are not replayed. Never record keys or bodies containing personal data. Hand dispatcher or validation defects to `zygarde`.
 
 ## Configuration bundles
 

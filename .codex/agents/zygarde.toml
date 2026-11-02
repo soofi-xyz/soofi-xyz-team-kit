@@ -29,14 +29,14 @@ Own the callback framework on the sale-availability client facade; see [result c
 
 ## S3 triggers
 
-Own the S3 trigger framework; see [System S3 triggers](../skills/build-system-product/reference/s3-triggers.md). Each flow has its own triggers; the API entry point stays unchanged.
+Own the S3 trigger framework; see [System S3 triggers](../skills/build-system-product/reference/s3-triggers.md). Triggers are part of the flow configuration; the API entry point stays unchanged.
 
-1. Artifact: accept `PUT /flows/{flow}/s3-triggers/{triggerId}` (IAM-only, `If-Match` revisions) with `enabled`, `bucket`, `keyPrefix`, optional `keySuffix`, `events` and `inputMode` from the fixed lists, and `roleArn`. Gate everything behind `s3Triggers: true`. Add the `s3-trigger` configuration-bundle document.
-2. Registration: run the contract's validation in order (flow, options, schema fit, role assumable with the documented `ExternalId`, bucket and EventBridge notifications, overlap, revision); create nothing on failure and never invoke the flow.
-3. Execution: with the assumed role, manage rule `system-s3-<triggerId>` on the bucket account's default bus targeting System's trigger bus; queue events; have the dispatcher build the input, validate it against the definition and start the invocation through the API's code path with key `s3:<triggerId>:<bucket>/<key>@<versionId|sequencer>`.
-4. Outputs: store `source` on every invocation record (`s3` or `api`), expose `lastRejection` and the replay route, and publish the documented stack outputs.
-5. Alerts: emit `System/S3Triggers` metrics, bound retries into `S3TriggerDlq`, alarm on both DLQs, queue age and rejections. Log only the key hash, never bodies, full keys or credentials.
-6. Verification: run the contract's acceptance list on a deployment, same-account and cross-account, mock leaves first.
+1. Artifact: accept `s3Triggers` (1–10) on `PUT /flows/{name}`, saved with the rest of the flow on the IAM API and on the shared domain with the shared `x-api-key`. Each has `id`, `enabled`, `bucket`, `keyPrefix`, optional `keySuffix`, `events` and `inputMode` from the fixed lists, and `roleArn`. There is no separate trigger endpoint and no install switch: every installation, System-prod included, has the trigger bus, queue, dispatcher, DLQs and alarms. Bundles carry triggers inside the flow document.
+2. Saving: refuse with the contract's codes (`CONFIGURATION_INVALID`, `FLOW_INVALID`, `ROLE_NOT_ASSUMABLE` with ExternalId `system:<account>:<stage>:<flow>:<id>`, `BUCKET_NOT_FOUND`, `BUCKET_EVENTBRIDGE_DISABLED`, `502 RULE_SETUP_FAILED`); check every trigger before writing any rule, store nothing on failure and never invoke the flow.
+3. Execution: as the assumed role, manage the hashed `system-s3-*` rule on the bucket account's default bus targeting System's trigger bus; queue events; have the dispatcher re-check the flow's current triggers, build the `OBJECT_REFERENCE` input or read the `OBJECT_JSON` body as the role (exact version, or `If-Match` ETag when unversioned) and start the invocation through the API's code path with key `s3:<id>:<sha-256 of bucket/key@version or sequencer>`.
+4. Outputs: record `source` (`api`, `event`, `s3` with trigger details) on every run; record every refused start (API, event or S3) as a rejection listed by `GET /flows/{name}/rejections`; publish the documented stack outputs. A failed S3-started run recovers with `POST /invocations/{id}/redrive` like any other run; a rejected start has no run to redrive. Add no per-trigger redrive route and no replay of rejections.
+5. Alerts: emit `System/S3Triggers` metrics, reject `OBJECT_TOO_LARGE`, `OBJECT_NOT_JSON`, `OBJECT_VERSION_GONE`, `OBJECT_IDENTITY_MISSING` and `INPUT_SCHEMA_INVALID` without retry, bound other retries into `S3TriggerDlq`, alarm on both DLQs, queue age and rejections. Log only the key hash, never bodies, full keys or credentials.
+6. Verification: run the contract's acceptance list on a deployment, same-account and cross-account, mock leaves first, waiting about 30 seconds after saving a trigger before writing objects. System's `npm run test:e2e` uses the `System-s3-trigger-e2e` fixtures stack; CI assumes `arn:aws:iam::904370092316:role/system-e2e-github` through GitHub OIDC.
 
 Then hand concrete trigger configuration and tests to `celebi`.
 
