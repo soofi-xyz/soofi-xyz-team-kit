@@ -35,7 +35,8 @@ For `OBJECT_REFERENCE`, make the definition `inputSchema` accept
 `{"s3": {"bucket", "key", "versionId", "etag", "size", "eventType", "eventTime"}}`
 for every selected event (a deleted object has no `etag` or `size`); saving
 checks a sample. For `OBJECT_JSON`, the schema validates the file body itself
-when each object arrives, and its `type`, if set, must include `object` or the
+when each object arrives (after the flow's input normalizer, if it has one),
+and its `type`, if set, must include `object` or the
 save is refused with `FLOW_INVALID`.
 
 A wrong option, prefix or schema is a `CONFIGURATION` finding you fix here.
@@ -126,7 +127,7 @@ prepare your own bucket and role instead.
   then write the object again; a new version starts a new run. Rejections are
   kept 30 days; each keeps at most 20 `problems` of up to 500 characters, plus
   an `…and N more problems` line. Page with `cursor` until `nextCursor` is
-  absent.
+  absent; never send an empty `cursor` (`400 REQUEST_INVALID`).
 - A run that started and failed is an ordinary invocation: recover it with
   `POST /invocations/{id}/redrive`
   ([failures and redrive](failures-and-redrive.md)), like any other run, not by

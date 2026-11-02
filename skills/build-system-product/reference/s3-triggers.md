@@ -20,8 +20,9 @@ Lambda pipeline beside System.
 ## Relation to existing behavior
 
 - The API path does not change. The dispatcher starts runs through the API's
-  invocation path, so input validation, template binding, retries, redrive and
-  result callbacks behave as for an API call.
+  invocation path, so input validation, input normalizers (the dispatcher may
+  invoke ProductCallFn), template binding, retries, redrive and result callbacks
+  behave as for an API call.
 - Saving a flow with triggers never starts it (configuration-lifecycle rule).
 - A definition's `inputSchema` stays the single input contract.
 - Every installation, System-prod included, has the trigger bus, queue,
@@ -190,7 +191,7 @@ domain with the shared key.
 - Newest first; `limit` 1–100 (default 50); `cursor` is the previous page's
   `nextCursor`, absent on the last page (even one exactly `limit` long).
   Unknown flow `404`; bad `limit` or
-  `cursor` `400 REQUEST_INVALID`.
+  `cursor`, including an empty `?cursor=`, is `400 REQUEST_INVALID`.
 - `503 REJECTIONS_NOT_READY` while the index is still being built after the
   install that added it; retry after a few minutes.
 - Each item has `rejectionId`, `flow`, `rejectedAt`, `error`, `problems`,
@@ -203,6 +204,8 @@ domain with the shared key.
   `INPUT_NORMALIZER_UNAVAILABLE` (the start answered `503` because the input
   normalizer could not be reached and the flow refuses in that case),
   `IDEMPOTENCY_CONFLICT`, `FLOW_INVALID`, `NOT_FOUND` (definition or template),
+  `TRIGGER_MAPPING_FAILED` (an event trigger's input mapping failed; `source`
+  `{"type": "event"}`),
   or from the S3 dispatcher `OBJECT_NOT_JSON`, `OBJECT_TOO_LARGE`,
   `OBJECT_VERSION_GONE`, `OBJECT_IDENTITY_MISSING`. A schema-invalid S3 input is recorded as
   `INPUT_INVALID` with its S3 `source`.
@@ -262,7 +265,12 @@ bucket:
 10. No full key, body or credential appears in dispatcher logs.
 
 The System repository's `npm run test:e2e` covers this after each pull request's
-dev deploy, through the shared domain with the shared key. Its S3 cases need AWS
+dev deploy, through the shared domain with the shared key. Besides the
+`OBJECT_REFERENCE` and `OBJECT_JSON` cases it checks that each object write
+starts one run and a repeated idempotency key returns that run, that dispatcher
+logs carry key hashes and never keys, that a read blocked by a temporary
+bucket-policy Deny is retried and starts its run once the Deny is gone, and that
+`POST /invocations/{id}/redrive` resumes a failed S3 run. Its S3 cases need AWS
 credentials for the System account: CI assumes
 `arn:aws:iam::904370092316:role/system-e2e-github` through GitHub OIDC. The
 fixtures are the CloudFormation stack `System-s3-trigger-e2e`: bucket
