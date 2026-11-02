@@ -111,6 +111,12 @@ increase (the redrive was not accepted); keep it when the count increased (the
 call failed after Step Functions accepted it). A stale record would make a later
 console redrive look like System's own and hide `LaneBypassRedrive`.
 
+The lane claim follows the same re-check. When the count increased, the redriven
+run is running: keep the lane claimed for it (with its invocation id), so new
+events for the key wait and the release rule frees the lane when it ends. Free
+the claim only when the redrive was not accepted, or when the re-check itself
+failed and the run is not active.
+
 ## Stuck pending events
 
 A pending event must not depend on a later event for the same key. If the release
@@ -159,7 +165,9 @@ Verify on a deployment with mock leaves first:
    run holds the lane returns `409 ORDERED_LANE_BUSY`; redriving the newest run on
    a free lane claims the lane and new events wait for it.
 7. A Step Functions console redrive of an ordered run emits `LaneBypassRedrive`,
-   including after a System redrive of the same run was rejected.
+   including after a System redrive of the same run was rejected. A redrive
+   accepted by Step Functions whose call still errored keeps the lane claimed, so
+   a new event for the key waits until the redriven run ends.
 8. A start that throws, or gets a 5xx or 429 naming no run, puts the event back as pending (or keeps a
    newer pending one) and the sweep starts it; a 4xx rejection emits
    `LaneStartRejected` and is not retried; a retried arriving event whose start
