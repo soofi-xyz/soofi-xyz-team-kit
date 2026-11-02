@@ -85,8 +85,8 @@ Own per-key ordering of event triggers (`order: {key, version}`); see
   thrown start or a 5xx/429 naming no run; alarm on a 4xx rejection instead of retrying.
 - Never let a redrive bypass the lane: refuse a superseded or lane-busy redrive
   and claim the lane for an allowed one; detect Step Functions redrives that
-  bypass System, and keep the recorded redrive count true when a redrive call
-  fails.
+  bypass System, and keep the recorded redrive count and the lane claim true
+  when a redrive call fails.
 - Never leave a pending event waiting for another event: sweep on a schedule,
   find pending lanes with a query, and alarm on old pending events and the
   release DLQ.
