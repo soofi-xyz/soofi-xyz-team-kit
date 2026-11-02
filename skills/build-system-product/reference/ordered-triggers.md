@@ -69,6 +69,22 @@ the key (never the raw key), written only with a conditional revision check.
    documented time (one minute), then expires.
 5. **Next-event recovery.** An event for a lane whose run has ended frees the
    lane itself, so a lost release never blocks a key that receives more events.
+6. **A run that fails to start keeps its event.** Taking an event off the lane
+   and claiming the lane for it happen in one write, so a failed start must give
+   the event back:
+   - On a thrown start (throttling or a service error), or a 5xx or 429 reply
+     that names no run, clear the claim and put the event back as the lane's
+     pending event, unless a newer one is already pending. The sweep then retries
+     it. A reply that names a run which already ended counts as started; putting
+     it back would replay a finished run. This covers events started by a release or the sweep,
+     whose trigger already received `202 QUEUED` and will not resend.
+   - On a permanent rejection (a 4xx such as invalid input or a missing flow),
+     clear the claim and do not retry. Log it, emit `LaneStartRejected` and alarm:
+     a rejected event is a configuration fault someone must fix, not a retry.
+   - A retried arriving event whose idempotency key matches a claim with no run
+     (an expired claim, or one cleared after a failed start) starts again; the
+     duplicate check answers `QUEUED` only while that claim's run is active or
+     the event is pending behind an active run.
 
 ## Redrive
 
@@ -86,6 +102,14 @@ needs no event. Step Functions' own console or API redrive bypasses System; dete
 it from the execution status rule (a run of an ordered flow becomes `RUNNING`
 without holding its lane), emit `LaneBypassRedrive` and alarm on it. Document
 that ordered flows are redriven only through System.
+
+To tell its own redrives from bypasses, System records the redrive count it is
+about to make before calling Step Functions. That record must match what Step
+Functions accepted: if the redrive call fails, read the execution's
+`redriveCount` again and restore the previous record when the count did not
+increase (the redrive was not accepted); keep it when the count increased (the
+call failed after Step Functions accepted it). A stale record would make a later
+console redrive look like System's own and hide `LaneBypassRedrive`.
 
 ## Stuck pending events
 
@@ -116,7 +140,7 @@ retention must bound that lateness (an SQS replay queue keeps messages at most
 
 Metrics in `System/OrderedTriggers` with dimension `Flow`: `LaneStarted`,
 `LaneQueued`, `LaneSuperseded`, `LaneReleased`, `LaneSwept`,
-`LaneRedriveRefused`, `LaneBypassRedrive`. Logs carry the flow, lane hash,
+`LaneRedriveRefused`, `LaneBypassRedrive`, `LaneStartRejected`. Logs carry the flow, lane hash,
 idempotency key, versions and invocation id; never the raw key (it can be a phone
 number or other PII) or event bodies.
 
@@ -134,9 +158,14 @@ Verify on a deployment with mock leaves first:
    `409 ORDERED_REDRIVE_SUPERSEDED` and redrives nothing; redriving while another
    run holds the lane returns `409 ORDERED_LANE_BUSY`; redriving the newest run on
    a free lane claims the lane and new events wait for it.
-7. A Step Functions console redrive of an ordered run emits `LaneBypassRedrive`.
-8. Triggers without `order` are unchanged.
-9. No raw key or event body appears in logs.
+7. A Step Functions console redrive of an ordered run emits `LaneBypassRedrive`,
+   including after a System redrive of the same run was rejected.
+8. A start that throws, or gets a 5xx or 429 naming no run, puts the event back as pending (or keeps a
+   newer pending one) and the sweep starts it; a 4xx rejection emits
+   `LaneStartRejected` and is not retried; a retried arriving event whose start
+   failed starts again instead of answering `QUEUED`.
+9. Triggers without `order` are unchanged.
+10. No raw key or event body appears in logs.
 
 Celebi configures `order` on concrete flows only after this support is verified on
 the target deployment.
