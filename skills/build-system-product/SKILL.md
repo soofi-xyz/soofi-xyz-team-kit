@@ -63,14 +63,23 @@ Celebi owns per-client configuration and delivery tests.
 Own per-flow S3 triggers as a second entry point beside the invocation API; see
 [S3 triggers](reference/s3-triggers.md). Keep these rules:
 
+- Keep triggers in the flow configuration: `s3Triggers` on `PUT /flows/{name}`,
+  saved like every other flow setting (SigV4 or shared `x-api-key`). Add no
+  separate trigger endpoint and no install switch; every installation has the
+  trigger infrastructure.
 - Accept only the fixed `events` and `inputMode` options and literal
   prefix/suffix filters; no free-form predicates or per-source code.
 - Assume only the trigger's `roleArn` with the documented `ExternalId`; store no
   credentials.
-- Validate at registration, create nothing on failure and never invoke the flow.
+- Check every trigger before writing any rule, store nothing on a refused save
+  and never invoke the flow.
 - Start runs through the API's invocation path with an idempotency key per
   object version, and record the trigger as the invocation `source`.
-- Bound retries into a DLQ with alarms; log key hashes, never keys or bodies.
+- Record every refused start, from any entry point, as a rejection listed by
+  `GET /flows/{name}/rejections`; reject unusable objects without retry.
+- Bound other retries into a DLQ with alarms; log key hashes, never keys or bodies.
+- Recover a failed S3-started run with `POST /invocations/{id}/redrive`; add no
+  per-trigger redrive route and no replay of rejections.
 
 Celebi owns per-flow trigger configuration and tests.
 

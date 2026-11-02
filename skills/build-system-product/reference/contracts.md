@@ -62,10 +62,12 @@ needs `states:RedriveExecution` and `states:GetExecutionHistory` on template
 executions, and the workflow role `states:RedriveExecution` for Map Run
 children.
 
-Every invocation record carries `source`: `{"type": "api"}` or, for a flow
-started by an [S3 trigger](s3-triggers.md), `{"type": "s3", "triggerId",
-"triggerRevision", "bucket", "key", "versionId", "sequencer", "eventTime"}`. A
-configuration bundle may contain `s3-trigger` documents pinned to their flow.
+Every invocation record carries `source`: `{"type": "api"}`,
+`{"type": "event"}` or, for a flow started by an [S3 trigger](s3-triggers.md),
+`{"type": "s3", "triggerId", "bucket", "key", "versionId", "sequencer",
+"eventTime"}`. S3 triggers are the flow's `s3Triggers`, so a configuration
+bundle carries them inside the flow document. Refused starts are listed by
+`GET /flows/{name}/rejections`.
 
 Run:
 
