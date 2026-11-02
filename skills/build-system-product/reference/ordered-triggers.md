@@ -103,6 +103,14 @@ it from the execution status rule (a run of an ordered flow becomes `RUNNING`
 without holding its lane), emit `LaneBypassRedrive` and alarm on it. Document
 that ordered flows are redriven only through System.
 
+To tell its own redrives from bypasses, System records the redrive count it is
+about to make before calling Step Functions. That record must match what Step
+Functions accepted: if the redrive call fails, read the execution's
+`redriveCount` again and restore the previous record when the count did not
+increase (the redrive was not accepted); keep it when the count increased (the
+call failed after Step Functions accepted it). A stale record would make a later
+console redrive look like System's own and hide `LaneBypassRedrive`.
+
 ## Stuck pending events
 
 A pending event must not depend on a later event for the same key. If the release
@@ -150,7 +158,8 @@ Verify on a deployment with mock leaves first:
    `409 ORDERED_REDRIVE_SUPERSEDED` and redrives nothing; redriving while another
    run holds the lane returns `409 ORDERED_LANE_BUSY`; redriving the newest run on
    a free lane claims the lane and new events wait for it.
-7. A Step Functions console redrive of an ordered run emits `LaneBypassRedrive`.
+7. A Step Functions console redrive of an ordered run emits `LaneBypassRedrive`,
+   including after a System redrive of the same run was rejected.
 8. A start that throws, or gets a 5xx or 429 naming no run, puts the event back as pending (or keeps a
    newer pending one) and the sweep starts it; a 4xx rejection emits
    `LaneStartRejected` and is not retried; a retried arriving event whose start
