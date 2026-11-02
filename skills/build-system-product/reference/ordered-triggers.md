@@ -72,9 +72,11 @@ the key (never the raw key), written only with a conditional revision check.
 6. **A run that fails to start keeps its event.** Taking an event off the lane
    and claiming the lane for it happen in one write, so a failed start must give
    the event back:
-   - On a thrown start, a 5xx or throttling, clear the claim and put the event
-     back as the lane's pending event, unless a newer one is already pending. The
-     sweep then retries it. This covers events started by a release or the sweep,
+   - On a thrown start (throttling or a service error), or a 5xx or 429 reply
+     that names no run, clear the claim and put the event back as the lane's
+     pending event, unless a newer one is already pending. The sweep then retries
+     it. A reply that names a run which already ended counts as started; putting
+     it back would replay a finished run. This covers events started by a release or the sweep,
      whose trigger already received `202 QUEUED` and will not resend.
    - On a permanent rejection (a 4xx such as invalid input or a missing flow),
      clear the claim and do not retry. Log it, emit `LaneStartRejected` and alarm:
@@ -149,7 +151,7 @@ Verify on a deployment with mock leaves first:
    run holds the lane returns `409 ORDERED_LANE_BUSY`; redriving the newest run on
    a free lane claims the lane and new events wait for it.
 7. A Step Functions console redrive of an ordered run emits `LaneBypassRedrive`.
-8. A start that throws or gets a 5xx puts the event back as pending (or keeps a
+8. A start that throws, or gets a 5xx or 429 naming no run, puts the event back as pending (or keeps a
    newer pending one) and the sweep starts it; a 4xx rejection emits
    `LaneStartRejected` and is not retried; a retried arriving event whose start
    failed starts again instead of answering `QUEUED`.
