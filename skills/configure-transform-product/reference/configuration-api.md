@@ -20,7 +20,7 @@ directly.
 | Route | Body | Result |
 | --- | --- | --- |
 | `POST /transform/mappings/validate` | `{rule, queries}` | `200 {mapping_id, version, files: [{path, sha256}]}`; stores nothing |
-| `PUT /transform/mappings/{mapping_id}/versions/{version}` | `{rule, queries}` | `201` created; `200` identical content already registered; `409 MappingVersionConflict` for different content |
+| `PUT /transform/mappings/{mapping_id}/versions/{version}` | `{rule, queries}`; javascript: `{rule, module, activate?}` | `201` created; `200` identical content already registered; `409 MappingVersionConflict` for different content. `"activate": true` (javascript only) makes this the version transactions serve and returns `activated_at` |
 | `GET /transform/mappings/{mapping_id}/versions/{version}` | none | `rule`, `files` with `sha256`, `created_at`, `created_by`; `404 MappingNotFound` |
 | `GET /transform/mappings/{mapping_id}/versions` | none | registered versions with `created_at`, `created_by` |
 

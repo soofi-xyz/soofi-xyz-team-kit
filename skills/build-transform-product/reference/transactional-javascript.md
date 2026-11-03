@@ -16,12 +16,18 @@ deployed capability is verified.
 ## Selection
 
 - Select the engine through the registered mapping (`engine: "javascript"`) and
-  the transaction route below. Never gate availability on a CDK context, build
-  flag or other deploy-time switch; deploy the route inactive-safe and activate
-  it through runtime configuration.
+  the transaction route below, never through a CDK context or build flag. Deploy
+  the route inactive-safe: it serves only when the install parameter
+  `TransactionsEnabled` (default `disabled`) or the optional SSM runtime
+  configuration enables it. A runtime `enabled` value, when set, wins. See
+  [installation options](installation-options.md#enabling-transactions-transactionsenabled).
 - Resolve exactly one enabled mapping per `from`/`to` pair **and engine**. A pair
   may have one enabled `spark-sql` mapping for batch runs and one enabled
-  `javascript` mapping for transactions. Reject missing or ambiguous pairs.
+  `javascript` mapping for transactions. Reject missing or ambiguous pairs. Choose
+  between several `javascript` versions only explicitly: first an SSM
+  `activeVersions` pin, then the most recently registered with
+  `"activate": true`, never the newest by default. See
+  [installation options](installation-options.md#choosing-the-active-javascript-version-activate).
 - Never translate SQL into JavaScript or into another SQL dialect, and do not add
   publication checks that can reject existing `spark-sql` mappings.
 

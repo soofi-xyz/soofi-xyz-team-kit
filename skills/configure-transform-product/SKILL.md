@@ -44,6 +44,12 @@ test the built script against independent expectations (and against the pair's
 one transaction. Do not translate SQL, re-implement Lexicon validation or apply
 Neptune CSV escaping. Keep the SQL steps below scoped to SQL mappings.
 
+When a run's output goes to another product's bucket, the install must list
+that location in `OutputS3WriteArns`. Otherwise, on an install that sets the
+parameter, the run is rejected before it starts. Ask the installer to set the
+parameter. Never add IAM or SSM changes by hand. See
+[installation options](../build-transform-product/reference/installation-options.md).
+
 1. Discover the existing engine, source/target definitions, mapping and publication
    mechanism. Read the API URL from SSM `/<stackName>/api-url` and list
    registered versions through the API. Distinguish a requested mapping change

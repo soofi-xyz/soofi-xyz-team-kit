@@ -110,6 +110,20 @@ mapping that declares `output: { shape: "json", format: "json" }`, return its
 object or array unchanged as `result` instead. Do not translate SQL, change
 `spark-sql` validation or add Lexicon validation to this path.
 
+## Installation options
+
+A product flow must run on a fresh install without hand-made IAM or SSM
+changes. Read [installation options](reference/installation-options.md) when
+a run writes into another product's bucket, or when transactions must be
+enabled and one javascript version chosen. Use install parameter
+`OutputS3WriteArns`: it grants the Glue role and the reporter access to the
+listed locations, and when set, the run API rejects other output locations
+before the run starts. Use `TransactionsEnabled` to enable transactions, with
+the SSM runtime value still overriding it. Choose the active version by
+registering with `"activate": true`. Keep every default identical to the
+previous behaviour, and make new checks opt-in or warnings. Never make the
+newest version win implicitly, and prove the unchanged default with a test.
+
 ## Record quality checks
 
 Implement the capability map's `record-quality-checks` increment using
