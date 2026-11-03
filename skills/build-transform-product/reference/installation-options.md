@@ -72,12 +72,17 @@ OutputS3WriteArns=arn:aws:s3:::connect-drop-zone-<account>-us-east-2/voapps/voic
     `HeadBucket(ExpectedBucketOwner=<install account>)`.
   - Keep install-account buckets allowed, so opting in for one cross-product
     location does not break the install's other callers.
-- **Encryption:** SSE-S3 and SSE-KMS with the bucket's default `aws/s3` key need
-  no extra IAM in the same account. A customer-managed key needs a key-policy or
-  grant change from the bucket owner. A bucket in another account needs the
-  owner's bucket policy and a customer-managed key, because `aws/s3` cannot be
-  used across accounts. Report those as the owning product's changes, for
-  example Connect's.
+- **Encryption:** the parameter grants no KMS permissions.
+  - SSE-S3 and SSE-KMS with the bucket's default `aws/s3` key need no extra
+    IAM in the same account.
+  - A customer-managed key needs its owner's key policy or grant to allow these
+    roles. It also needs identity permissions in the install account:
+    `kms:GenerateDataKey` and `kms:Decrypt` for the Glue role, and `kms:Decrypt`
+    for the reporter. Document both requirements.
+  - A bucket in another account needs its owner's bucket policy. If the bucket
+    uses SSE-KMS, it also needs a customer-managed key, because `aws/s3` cannot
+    be used across accounts.
+  - Report the owner-side changes to the owning product, for example Connect.
 - Do not widen the default grant, and do not add per-request IAM roles.
 
 ## Enabling transactions (`TransactionsEnabled`)
