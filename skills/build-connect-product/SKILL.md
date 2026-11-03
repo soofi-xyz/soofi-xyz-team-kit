@@ -54,6 +54,15 @@ Classify every request before designing anything:
 - Name verbs for actions, never for providers, formats or partners. Keep
   provider details in connection types, tenant details in partner
   configurations, and shared behavior in options.
+- Fix value-expression defects in shared CALL/POLL compilation, not partner
+  workarounds. Apply [the value-expression contract](reference/blocks.md#value-expressions)
+  consistently across supported body, multipart, query and path-parameter
+  positions; distinguish source facts from live observations and intended support.
+- Preserve existing installs, configurations and callers by default. Require
+  explicit `EvaluateFormat: true` on CALL (or POLL.Call) for the planned Format
+  evaluation; do not claim it is available before verifying the target revision.
+  Keep existing path semantics and literal arrays. Add no required parameters,
+  changed defaults or stricter validation rejecting accepted inputs; warn instead.
 - Own partner credentials through the Connect credentials API
   ([architecture](reference/architecture.md) §7). Connections name a
   credential; flows never do. Target Connect-owned EventBridge Connections
@@ -80,6 +89,9 @@ Classify every request before designing anything:
 
 - Apply [engineering guidelines](../apply-engineering-guidelines/SKILL.md) for
   TypeScript CDK, testing, observability and alerting.
+- Implement product code in TypeScript. Use TDD for expression behavior changes
+  and include a Compatibility PR section proving unchanged default behavior and
+  explicit opt-in behavior with [verification](reference/verification.md).
 - Use [batch workflows](../build-batch-workflows/SKILL.md) for fan-out capacity,
   throttling and cost gates.
 - Use [inbound SFTP workflows](../build-inbound-sftp-workflows/SKILL.md) for

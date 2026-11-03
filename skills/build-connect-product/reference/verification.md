@@ -42,6 +42,34 @@ does not prove a live partner integration.
 - A flow that references Persist, EventBridge, SNS, a product queue or an
   internal URL is rejected.
 
+For value-expression changes, use TypeScript TDD in the product repository:
+
+- First reproduce the intended opted-in Format result as a failing test, then
+  implement the shared CALL/POLL compiler fix. Separate that local reproduction
+  from the reported SOC DEV campaign-name observation and pin the source revision.
+- Test absent and false `EvaluateFormat` with existing paths, nested objects,
+  ordinary Format-shaped payloads (including malformed shapes previously
+  accepted) and literal arrays; require unchanged results and acceptance.
+- With `EvaluateFormat: true`, prove the same path and Format value resolves in
+  JSON bodies, multipart `Body.fields`, `Query`, `PathParameters`, `Headers`
+  and `Subject`, for CALL and POLL.Call. For job `job-42`, require `dev-job-42`,
+  not serialized Format JSON or the literal `$.job.job_id` string.
+- Exercise mixed literal/path arguments, escaping and invalid opted-in
+  expressions; check explicit diagnostics without leaking values. Preserve
+  literal arrays outside Format Args, nested ordinary objects, scalar values
+  and existing supported expressions. Do not extend evaluation to structural
+  fields or introduce stricter validation for non-opted-in flows.
+- Check compiled ASL and execute against an HTTP fake that captures decoded
+  JSON, multipart fields/files, query and path values. Assert evaluation occurs
+  before existing serialization and URL encoding, including `/`, spaces and
+  non-ASCII characters; preserve file bytes and content type. A compiler
+  snapshot alone does not prove the outbound request.
+- Include a **Compatibility** PR section with before/after evidence for
+  unchanged installs/configurations/callers and absent/false opt-in cases,
+  separate explicit-opt-in results, and any unavailable live evidence. For an
+  authorized SOC DEV rerun, record deployed revision, flow version and job ID
+  plus a sanitized campaign-name receipt; use a safe fixture, not real recipients.
+
 ## 3. Driver conformance
 
 Run the same suite for every driver against a local fake (SFTP container,

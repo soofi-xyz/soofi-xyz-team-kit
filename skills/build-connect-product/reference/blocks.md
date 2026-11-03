@@ -75,6 +75,48 @@ not restrict which subject a job may name: pin the allowed users in the flow's
 that embed base64 content. `Mode: inline` requires `MaxInlineBytes` within the
 Step Functions payload limit; otherwise the compiler forces `file`.
 
+#### Value expressions
+
+Distinguish these evidence levels before proposing a fix:
+
+- **Reported SOC DEV observation:** `voapps-connect` flow
+  `voice-mail-batch-send` sent the literal JSON value
+  `{"Format":{"Template":"dev-{}","Args":["$.job.job_id"]}}` from multipart
+  `Body.fields.name` as the campaign name. This does not prove that JSON-body
+  Format evaluation works or that multipart path resolution is broken.
+- **Inspected source baseline:** in `prismteam-ai/connect` revision
+  `033a3ceddd6af92d616fb3cc89eba5e1c6c0e272`, `src/compiler/args.ts` resolves
+  paths recursively through objects in `PathParameters`, `Query`, `Headers`,
+  `Body` and `Subject`, shared by CALL and POLL.Call. Arrays remain literal;
+  authored `Format` has no expression handler and is traversed as an ordinary
+  object. Its `Args` array therefore retains the literal path string. Do not
+  confuse compiler-generated `States.Format` intrinsics with authored support.
+- **Intended, opt-in contract:** implement optional `EvaluateFormat: true` on
+  CALL and on POLL.Call in the product repository. This guidance does not ship
+  the runtime option or add it to this kit's schema; verify support in the
+  target revision before authoring an opted-in flow.
+
+Without the opt-in (absent or false), preserve existing object traversal,
+path resolution and ordinary Format-object behavior exactly. Do not introduce
+new required parameters, changed defaults or validation errors for previously
+accepted inputs; warn about unsupported intent instead of rejecting it.
+
+With the opt-in, evaluate paths and recognized Format expressions consistently
+within the supported CALL value positions above, including nested JSON body
+values, multipart `Body.fields`, `Query` and `PathParameters`. Resolve the
+example to `dev-job-42` for `$.job.job_id = "job-42"` before transport encoding.
+Use the same expression compilation for CALL and POLL.Call. Preserve literal
+arrays outside the opted-in Format `Args` syntax; do not expand expression
+support to arbitrary array elements or structural fields such as `Method`,
+`RequestFormat` or the `Path` template. Keep existing URL expansion/encoding,
+multipart file handling and ordinary payload serialization unchanged.
+
+Treat missing or inconsistent expression support as a shared product defect
+owned by Lapras. Do not solve it with a VoApps-only naming rule, a hard-coded
+campaign name, partner-side precomputation or a multipart-only interpreter.
+Require the regression and compatibility evidence in
+[verification](verification.md#2-compiler-tests) before claiming support.
+
 ### Transport-encoding verbs
 
 | Verb | Required | Output |
