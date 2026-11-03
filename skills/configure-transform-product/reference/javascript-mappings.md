@@ -132,6 +132,17 @@ register, then get the version and confirm the `mapping.json` and `mapping.js`
 digests. The body is `{ rule, module: { "mapping.js": "<source>" } }`. Versions
 are immutable; publish every change as a new version.
 
+Once a pair has a second javascript version, transactions return
+`409 AmbiguousMapping` until one version is chosen. Choose it through the API
+rather than by editing SSM: register the version with `"activate": true` in
+the body (`{ rule, module, "activate": true }`), then confirm `activated_at` on
+the read-back. To roll back, register the earlier version again with identical
+content and `"activate": true`. An SSM `activeVersions` pin, when present,
+still wins over activation. Ask the owner before you remove an existing pin. The
+route serves only on installs deployed with `TransactionsEnabled=enabled` or
+with SSM `enabled: true`. Hand a missing `activate` or `TransactionsEnabled`
+to Kecleon.
+
 Run one transaction through the synchronous route with SigV4, using the API URL
 from SSM `/<stackName>/api-url`:
 

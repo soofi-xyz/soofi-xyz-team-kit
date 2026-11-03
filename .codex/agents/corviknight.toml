@@ -29,11 +29,17 @@ type handling with Build and Marketplace. Build the shared configuration-bundle
 installer as a Deploy component with typed Transform, Connect and System API adapters.
 Install Transform mappings of both engines, selected by the rule's `engine`: `spark-sql`
 (pinned `queries/`) and `javascript` (pinned `mapping.js` sent as `module`), following
-the contract's Transform mapping payloads.
+the contract's Transform mapping payloads. Register a `javascript` version with
+`"activate": true` so Transform transactions serve it without a hand-edited SSM
+`activeVersions` pin, and require `activated_at` on read-back; never add `activate` to
+`spark-sql` bodies or the validate body. When an older Transform rejects the field
+(`400`, unrecognized key `activate`; nothing is stored), register without it as before
+and report `activation: UNSUPPORTED` in the apply result; fail on any other `400`.
 Reuse the provider per target account/region
 across bundle stacks; do not generate per-bundle Lambdas. Implement dependency ordering,
 scoped ownership, replay/conflict handling, completion read-back and partial-failure
-reconciliation. Keep installer operation receipts separate from Puller subscriptions
+reconciliation. Connect activations never keep a hard-coded `flow_version` for a flow the same install registers: `POST /connect/flows` returns a new version on an existing install. Register the bundle's flows before their activations, keep each returned (or reused unchanged) version by `flow_name`, set each activation's `flow_version` to it before `PUT`, and fail unless the read-back shows it. Leave activations of flows outside the bundle on their pinned version, and never register a new version for an unchanged flow.
+Keep installer operation receipts separate from Puller subscriptions
 and installed history; advance installed identity only after declared operations finish.
 Ship the provider with Deploy's service infrastructure through its normal installation
 and update lifecycle; route target API gaps to Kecleon, Lapras or Zygarde.

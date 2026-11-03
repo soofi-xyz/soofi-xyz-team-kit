@@ -28,6 +28,8 @@ outcome on an existing deployment. Follow
    [ordered triggers](reference/ordered-triggers.md).
 8. For how event triggers are routed from EventBridge, read
    [event triggers](reference/event-triggers.md).
+9. For flows that start on a cron, read
+   [flow schedules](../configure-system-product/reference/flow-schedules.md).
 
 ## Ownership
 
@@ -42,6 +44,29 @@ Lapras/Wingull, Transform with Kecleon/Silvally, Persist with Conkeldurr/Uxie an
 Rule with Gallade/Meditite. Resolve other ownership from the product catalog.
 Use retained specialists for supporting work without reassigning product ownership.
 Never invent leaf engines inside System.
+
+## Invocation errors, step secrets and readable buckets
+
+Keep these rules; see [invocation errors](../configure-system-product/reference/invocation-errors.md)
+and [step secrets and readable buckets](../configure-system-product/reference/secrets-and-buckets.md):
+
+- Never let an API route throw: API Gateway turns an unhandled error into a bare
+  `502 Internal server error` that names no cause. State reused across requests
+  in a warm Lambda (schema compilers, caches, clients) must accept the same
+  configuration read again; test a save and an invocation repeated in one
+  service instance. Keep System's own 502 for a failed run distinct in the body.
+- Resolve a step's secret only in a System-owned function that sends the
+  request; keep only the ARN in templates, state and logs, and redact a value a
+  product echoes back. Scope secrets by an install parameter listing full ARNs
+  (`StepSecretArns`), the same list in IAM, at save and at send. Refuse
+  `Secrets` on steps Step Functions sends itself.
+- Treat `ReadableBuckets` as an install prerequisite covering every bucket a
+  flow reads. Warn, without refusing, at template and flow save when an
+  `ItemsFile` or `ReadObject` reads outside it.
+- Keep every change opt-in: no changed defaults, no new required parameters,
+  and no stricter save that refuses what was accepted; warn instead. List what
+  existing installs, configurations and callers see in the pull request, with a
+  test that proves the unchanged behavior.
 
 ## Result callbacks
 
@@ -102,6 +127,26 @@ Own per-key ordering of event triggers (`order: {key, version}`); see
 - State the lane retention limit; log key hashes, never raw keys.
 
 Celebi owns `order` on concrete flows and their tests.
+
+## Flow schedules
+
+Own scheduled flow runs as the third entry point beside the API and triggers;
+see [flow schedules](../configure-system-product/reference/flow-schedules.md).
+Keep these rules:
+
+- Keep the schedule in the flow configuration and one EventBridge Scheduler
+  schedule per scheduled flow inside the System stack; never a hand-made rule,
+  custom Step Functions workflow or outside timer caller.
+- Start each time through the API's invocation path with the time's `runKey`
+  as idempotency key, and derive `runDate` in the schedule's timezone.
+- Skip and record, never queue, a time while a scheduled run of the flow is
+  still running.
+- Show the schedule, next run time and recent scheduled runs on
+  `GET /flows/{name}`; disable without deleting.
+- Leave flows without a schedule exactly as before, with no new install
+  parameter, and verify on a deployment with a short test schedule.
+
+Celebi owns schedules on concrete flows and their tests.
 
 ## Acceptance
 

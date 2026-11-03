@@ -46,6 +46,21 @@ Read [failures and redrive](reference/failures-and-redrive.md) before writing a
 `Fail` state except by catching an error, `FailWhen` fails the step that decides,
 and a failed run is resumed with `POST /invocations/{id}/redrive`.
 
+## Invocation errors
+
+Read [invocation errors](reference/invocation-errors.md) before acting on a 5xx
+from an invocation: tell API Gateway's `Internal server error` (System's API
+Lambda threw) from System's own 502 for a failed run, join the access log to
+the ApiFn log by `requestId`, and diagnose a child flow's answer in a parent step.
+
+## Step secrets and readable buckets
+
+Read [step secrets and readable buckets](reference/secrets-and-buckets.md) when a
+step needs a secret value or a run reads S3: send secrets with `Secrets` on a
+shared-domain api step and list their ARNs in `StepSecretArns`, never in input,
+bindings or staged files; list every bucket a flow reads in `ReadableBuckets` as
+an install prerequisite, and treat save `warnings` as a failed install check.
+
 ## Result callbacks
 
 Read [result callbacks](reference/result-callbacks.md) to enable a client's
@@ -56,6 +71,15 @@ callbacks, test delivery and inspect the dispatcher, queue and DLQ.
 Read [S3 triggers](reference/s3-triggers.md) to start a flow from S3 object
 events: verify deployed support, choose the fixed options, prepare the bucket
 role, register per flow and run the test sequence.
+
+## Flow schedules
+
+Read [flow schedules](reference/flow-schedules.md) when a flow must start at a
+time: put `schedule` (cron, IANA timezone, input with `$.runDate`/`$.runKey`,
+offset, `enabled`) in the flow, never a hand-made EventBridge rule or timer
+caller. Verify with a short test schedule (on-time start, a skipped time
+during a long run, no start after disabling) before the real cron, and install
+through Marketplace and Puller.
 
 ## Configuration bundles
 

@@ -59,21 +59,31 @@ column the configuration points at:
 | "Payfail first, then …" | One selection per group, in precedence order; earlier selections take subjects first |
 | "Call these N times a week" | `weeklyTarget` with a history source |
 | "Never contact these" | A source listed in the selection's `exclude` |
+| "Use today's output of product X" (Filter, Transform, …) | An `s3-files` source over its run-dated prefix (`…/run_date={{run.date}}/…/`) with `format` and declared `columns`; join it in an `athena-sql` source as `{{sources.<id>}}` |
 | "Only in legal hours, at most X per hour" | A `delivery` block; offsets and allowed hours as column roles |
 
 1. Start from the repository example closest to the request. Give the schedule a lower-case
    `id` (`^[a-z][a-z0-9-]{1,62}$`).
 2. Write each source as one read-only `SELECT` (or Persist query) with `maxScanGiB` and
-   `maxRows`. Use only `{{run.date}}`, `{{run.timezone}}` and `{{ledger.actions}}`. Read
-   the tables or graph the user names; when they name a concept without a table, find the
-   table, show the query and its row count, and confirm before saving.
-3. Map column roles (`subject`, `contact`, `allowedHours`, `utcOffset`) and `rank` keys to
+   `maxRows`. Use only `{{run.date}}`, `{{run.timezone}}`, `{{ledger.actions}}` and
+   `{{sources.<id>}}` (an `s3-files` source of the same schedule). Read the tables or
+   graph the user names; when they name a concept without a table, find the table, show
+   the query and its row count, and confirm before saving.
+3. Read another product's run output in place with an `s3-files` source. Do not create
+   Glue databases or tables by hand, and do not filter a shared table by `"$path"`.
+   Schedule creates its table per run. Declare the file header's columns in order, and
+   confirm that the install's `SourceS3ReadArns` covers the bucket and the prefix (route
+   a missing grant to `skarmory`). A run whose prefix has no data fails
+   `SOURCE_NO_DATA`; that is the expected answer when the producer has not run, never a
+   reason to point the source at another date. If validation says `s3-files` is
+   unknown or not supported, the deployed Schedule predates it; route to `klinklang`.
+4. Map column roles (`subject`, `contact`, `allowedHours`, `utcOffset`) and `rank` keys to
    real columns. Keep passthrough columns to what the downstream consumer needs.
-4. Set `run` (`schedule`, `timezone`, `costLimitUsd`, `timeoutMinutes`). Use the hours,
+5. Set `run` (`schedule`, `timezone`, `costLimitUsd`, `timeoutMinutes`). Use the hours,
    counts and capacities the user asked for; never drop an hour or lower a count on your
    own. If timing makes one look infeasible, ask first.
-5. Put no credentials, tokens or personal data in a configuration.
-6. Validate without saving and fix every problem it lists:
+6. Put no credentials, tokens or personal data in a configuration.
+7. Validate without saving and fix every problem it lists:
 
    ```bash
    curl -sS -X POST -H "x-api-key: $SCHEDULE_API_KEY" -H 'content-type: application/json' \

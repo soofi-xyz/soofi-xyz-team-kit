@@ -75,6 +75,12 @@ wildcard permissions as described by AWS. Do not replace all IAM with `*` grants
 A catalog and all definition/SQL artifacts it references must be inside the configured
 Lexicon publication prefix for the baseline IAM policy. Different publication
 locations require explicit reviewed prefix grants, not unrestricted bucket access.
+Output locations that the default grant does not cover, such as another
+product's drop zone, are listed at install in `OutputS3WriteArns` and granted
+to the Glue role and the reporter, never added as a hand-made inline policy.
+With the parameter set, the run API rejects output outside the allowed scope
+before the run starts. See
+[installation options](installation-options.md#output-write-scope-outputs3writearns).
 Deployments using customer-managed KMS keys must add the matching decrypt/encrypt
 grants through the shared engineering flow before a pilot.
 

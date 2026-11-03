@@ -53,6 +53,7 @@ a cohort, a campaign or a client.
 | `athena-sql` | `sql` (one `SELECT`), `maxScanGiB`, `maxRows` | Read-only. May reference `{{run.date}}`, `{{run.timezone}}` and `{{ledger.actions}}` |
 | `persist-gremlin` | `query`, `maxRows` | Through Persist's async query API with the stack's IAM role |
 | `s3-json` | `uri` (object or prefix of `{"results": [...]}` documents), `maxRows` | For callers that hand over already prepared rows; `uri` usually comes from a run override |
+| `s3-files` | `uri` (prefix templated by `{{run.date}}`), `format` (`csv`, `jsonl`), `columns`, `maxScanGiB`, `maxRows` | Another product's run output, read in place. Schedule creates and drops the catalog table in its own work database; an empty prefix fails the run. athena-sql sources read it as `{{sources.<id>}}` |
 
 Sources hold no credentials. Every source is cost-estimated before any data is read; the
 run stops above `costLimitUsd`.

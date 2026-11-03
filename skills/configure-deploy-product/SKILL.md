@@ -55,6 +55,14 @@ automated and user/AWS evidence, mocked/live status, cleanup and builder handoff
 Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
 Verify provider/API prerequisites and operate installation, read-back, retry and retirement through supported APIs.
 
+When a bundle installs Connect flows and activations, check that each activation reads back
+the `flow_version` the same install registered for its `flow_name`, never the number pinned
+in the activation file. A mismatch (`SemanticCheckFailed`, `UnboundConnection`) is an
+installer defect: hand a redacted reproducer to `corviknight`; re-pinning the version by
+hand is only a recorded workaround. For a `javascript` Transform mapping, read the run
+result's `activation`: `ACTIVATED` needs no SSM pin; `UNSUPPORTED` means the target
+Transform predates `activate`, so hand the upgrade to `kecleon` rather than editing SSM.
+
 ## Shared API domain
 
 For API infrastructure, packaging, review or installation, read and apply
