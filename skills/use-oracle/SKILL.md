@@ -80,7 +80,8 @@ Run these stages in order:
 1. **Intake and readiness:** `onboard-county`, `county-discovery`,
    `county-readiness-preflight`.
 2. **Parcel backbone:** `county-seed-data`, `county-appraisal-onboarding`,
-   `build-county-transform`.
+   `build-county-transform`. In Florida build the `county` group for the whole county
+   from the DOR NAL roll with `florida-nal-publish` instead of scraping appraiser pages.
 3. **Official identity baseline:** corporate registry, then licensing authority. In
    Florida run `sunbiz-corporate-ingest`, then `dbpr-license-ingest`. Stamp each
    Sunbiz company with a GET of `search.sunbiz.org` by document number

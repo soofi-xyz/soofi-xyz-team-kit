@@ -37,7 +37,8 @@ separate, and stop. Do not continue into the pipeline below.
 1. Run `onboard-county` intake, `county-discovery`, and
    `county-readiness-preflight`. Stop seed, pilot, and full ingest on a non-zero gate.
 2. Build the parcel backbone with `county-seed-data`,
-   `county-appraisal-onboarding`, and `build-county-transform`.
+   `county-appraisal-onboarding`, and `build-county-transform`. In Florida build the
+   full-county `county` group from the DOR NAL roll with `florida-nal-publish`.
 3. Load the official corporate registry and licensing authority before writing
    contractor records. In Florida run `sunbiz-corporate-ingest`, then
    `dbpr-license-ingest`. Stamp each Sunbiz company with its own detail URL: a GET
