@@ -72,6 +72,15 @@ Read [S3 triggers](reference/s3-triggers.md) to start a flow from S3 object
 events: verify deployed support, choose the fixed options, prepare the bucket
 role, register per flow and run the test sequence.
 
+## Flow schedules
+
+Read [flow schedules](reference/flow-schedules.md) when a flow must start at a
+time: put `schedule` (cron, IANA timezone, input with `$.runDate`/`$.runKey`,
+offset, `enabled`) in the flow, never a hand-made EventBridge rule or timer
+caller. Verify with a short test schedule (on-time start, a skipped time
+during a long run, no start after disabling) before the real cron, and install
+through Marketplace and Puller.
+
 ## Configuration bundles
 
 Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.

@@ -10,7 +10,7 @@ Load `skills/guide-product-work/SKILL.md` and [the System capability map](../ski
 
 Build and maintain **System**. Own the reusable orchestration framework and its TypeScript/CDK implementation. Use `celebi` to configure particular business outcomes on the existing framework.
 
-For starting flows from S3 object events in addition to the API, follow [System S3 triggers](../skills/build-system-product/reference/s3-triggers.md) and the S3 triggers section below. For event triggers whose later events must not be undone by earlier ones, follow [ordered triggers](../skills/build-system-product/reference/ordered-triggers.md) and the ordered event triggers section below.
+For starting flows from S3 object events in addition to the API, follow [System S3 triggers](../skills/build-system-product/reference/s3-triggers.md) and the S3 triggers section below. For event triggers whose later events must not be undone by earlier ones, follow [ordered triggers](../skills/build-system-product/reference/ordered-triggers.md) and the ordered event triggers section below. For flows that start on a cron, follow [flow schedules](../skills/configure-system-product/reference/flow-schedules.md) and the flow schedules section below.
 
 ## Work
 
@@ -64,6 +64,19 @@ Own per-key ordering of event triggers; see [ordered triggers](../skills/build-s
 6. Verification: run the contract's acceptance list on a deployment, mock leaves first.
 
 Then hand `order` on concrete flows and their tests to `celebi`.
+
+## Flow schedules
+
+Own scheduled flow runs; see [flow schedules](../skills/configure-system-product/reference/flow-schedules.md). A flow schedule is an optional `schedule` in the flow (cron, IANA timezone, fixed input with `$.runDate`, `$.runKey` and `$.scheduledTime`, `runDateOffsetDays`, `enabled`). Use it whenever a flow must start at a time; never hand-make an EventBridge rule, a custom Step Functions workflow or an outside timer caller, which are legacy.
+
+1. Scheduler: keep one EventBridge Scheduler schedule per scheduled flow in the stack's group, created, updated and deleted when the flow is saved, with no new install parameter. The target sends only the flow and `<aws.scheduler.scheduled-time>`; the function reads the flow when the time comes.
+2. Start: go through the API's invocation path (same validation and rejections) with `runKey = schedule:<flow>:<time>` as the idempotency key, and record `source.type: "schedule"`. Derive `runDate` in the schedule's timezone, never in UTC, and test it across both DST changes.
+3. No overlap: skip and record a time while a run the schedule started is running or redriving; never queue it. API runs do not hold the schedule.
+4. API: return `scheduleStatus` (`nextRunAt`, recent runs with status) on `GET /flows/{name}` only for a scheduled flow, and keep `PUT /flows/{name}/schedule/enabled` as the switch that disables without deleting.
+5. Compatibility: a flow without `schedule` must save, read and run byte-for-byte as before and never call Scheduler; prove it with a test and list new stack resources in the PR's Compatibility section.
+6. Verification: run a short test schedule on the dev stage (e2e) and on the target environment after a Marketplace and Puller install: on-time starts, a skipped time during a long run, and no starts after disabling.
+
+Hand concrete schedules on business flows and their checks to `celebi`.
 
 ## Configuration bundles
 

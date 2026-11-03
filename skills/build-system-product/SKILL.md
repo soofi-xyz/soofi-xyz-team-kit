@@ -26,6 +26,8 @@ outcome on an existing deployment. Follow
 6. For flows started by S3 object events, read [S3 triggers](reference/s3-triggers.md).
 7. For event triggers whose later events must not be undone by earlier ones, read
    [ordered triggers](reference/ordered-triggers.md).
+8. For flows that start on a cron, read
+   [flow schedules](../configure-system-product/reference/flow-schedules.md).
 
 ## Ownership
 
@@ -116,6 +118,26 @@ Own per-key ordering of event triggers (`order: {key, version}`); see
 - State the lane retention limit; log key hashes, never raw keys.
 
 Celebi owns `order` on concrete flows and their tests.
+
+## Flow schedules
+
+Own scheduled flow runs as the third entry point beside the API and triggers;
+see [flow schedules](../configure-system-product/reference/flow-schedules.md).
+Keep these rules:
+
+- Keep the schedule in the flow configuration and one EventBridge Scheduler
+  schedule per scheduled flow inside the System stack; never a hand-made rule,
+  custom Step Functions workflow or outside timer caller.
+- Start each time through the API's invocation path with the time's `runKey`
+  as idempotency key, and derive `runDate` in the schedule's timezone.
+- Skip and record, never queue, a time while a scheduled run of the flow is
+  still running.
+- Show the schedule, next run time and recent scheduled runs on
+  `GET /flows/{name}`; disable without deleting.
+- Leave flows without a schedule exactly as before, with no new install
+  parameter, and verify on a deployment with a short test schedule.
+
+Celebi owns schedules on concrete flows and their tests.
 
 ## Acceptance
 
