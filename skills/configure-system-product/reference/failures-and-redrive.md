@@ -85,6 +85,13 @@ product steps (Persist, Transform) on shorter timing unless they call a partner.
 Note in the flow's README how long a run can wait before it fails, because an
 ordered trigger's other events for the same key wait behind it.
 
+A retry only reaches the partner again if Connect sees a new request. Connect
+stores a lookup's result under its `transaction_id` and replays it for the same
+id, so a read-only lookup that sends a fixed `transaction_id` gets the first
+failure back on every retry and redrive. Send no `transaction_id` on read-only
+lookups (Connect then makes one per attempt); keep stable transaction ids on
+writes and jobs, where replaying the same request is what makes a retry safe.
+
 ## Redrive a run
 
 | Answer | Meaning |
