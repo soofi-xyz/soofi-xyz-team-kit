@@ -46,6 +46,21 @@ Read [failures and redrive](reference/failures-and-redrive.md) before writing a
 `Fail` state except by catching an error, `FailWhen` fails the step that decides,
 and a failed run is resumed with `POST /invocations/{id}/redrive`.
 
+## Invocation errors
+
+Read [invocation errors](reference/invocation-errors.md) before acting on a 5xx
+from an invocation: tell API Gateway's `Internal server error` (System's API
+Lambda threw) from System's own 502 for a failed run, join the access log to
+the ApiFn log by `requestId`, and diagnose a child flow's answer in a parent step.
+
+## Step secrets and readable buckets
+
+Read [step secrets and readable buckets](reference/secrets-and-buckets.md) when a
+step needs a secret value or a run reads S3: send secrets with `Secrets` on a
+shared-domain api step and list their ARNs in `StepSecretArns`, never in input,
+bindings or staged files; list every bucket a flow reads in `ReadableBuckets` as
+an install prerequisite, and treat save `warnings` as a failed install check.
+
 ## Result callbacks
 
 Read [result callbacks](reference/result-callbacks.md) to enable a client's

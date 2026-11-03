@@ -23,6 +23,15 @@ For starting flows from S3 object events in addition to the API, follow [System 
 
 Own redrive and failure compilation; see [failures and redrive](../skills/configure-system-product/reference/failures-and-redrive.md). Keep these rules: compile no `Fail` state, including engine checks, which fail their own state; drop catches into `Fail` and report the Fail state's name from the failed state; refuse any other way into a `Fail` state; redrive only with Step Functions' native redrive, keeping the invocation id; compile every `Batch` as a Distributed Map with STANDARD children; merge an `OUTPUTS_JSONL` batch's results across attempts. Verify each change live: fail a step and a batch midway, redrive, and check only failed or unstarted work ran again. Celebi owns template migrations and configuration tests.
 
+## Invocation errors, step secrets and readable buckets
+
+Own these framework guarantees; see [invocation errors](../skills/configure-system-product/reference/invocation-errors.md) and [step secrets and readable buckets](../skills/configure-system-product/reference/secrets-and-buckets.md).
+
+1. Invocation 5xx: diagnose from the response body first (`{"message":"Internal server error"}` means the API Lambda threw; a body with `status: FAILED` is System's own 502 for a failed run), then join the API access log to the ApiFn log by `requestId`. Reproduce with the reported flow's definition, template and input on mock leaves, calling at least twice in one warm service, and add that regression test. Never let a route throw; make per-container state accept the same configuration read again.
+2. Step secrets: resolve a secret only in the System function that sends the request, and keep only its ARN in templates, state, history and logs; redact echoed values. Scope it by the `StepSecretArns` install parameter (full ARNs), with the same list in IAM, at save and at send. Refuse `Secrets` on workflow, function and signed api steps.
+3. Readable buckets: document `ReadableBuckets` as an install prerequisite covering every bucket a flow reads, and warn, without refusing, at template and flow save when an `ItemsFile` or `ReadObject` reads outside it.
+4. Compatibility: keep every change opt-in, with no changed defaults, no new required parameters and no stricter validation (warn instead). Give each pull request a Compatibility section listing what existing users see, backed by a test of the unchanged behavior.
+
 ## Result callbacks
 
 Own the callback framework on the sale-availability client facade; see [result callbacks](../skills/configure-system-product/reference/result-callbacks.md). Keep these rules: accept only URLs under a client's allowlisted prefixes, HTTPS on port 443, no redirects, hosts resolving only to public addresses; read the environment API key from Secrets Manager on every delivery and never log it; deliver at least once with a stable `X-System-Delivery-Id`; bound retries and send exhausted deliveries to a DLQ with alarms. Keep the callback body equal to the GET result and document it as an OpenAPI `callbacks` entry. Celebi owns per-client configuration and delivery tests.

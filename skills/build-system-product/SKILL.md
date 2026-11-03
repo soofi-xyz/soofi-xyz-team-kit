@@ -41,6 +41,29 @@ Rule with Gallade/Meditite. Resolve other ownership from the product catalog.
 Use retained specialists for supporting work without reassigning product ownership.
 Never invent leaf engines inside System.
 
+## Invocation errors, step secrets and readable buckets
+
+Keep these rules; see [invocation errors](../configure-system-product/reference/invocation-errors.md)
+and [step secrets and readable buckets](../configure-system-product/reference/secrets-and-buckets.md):
+
+- Never let an API route throw: API Gateway turns an unhandled error into a bare
+  `502 Internal server error` that names no cause. State reused across requests
+  in a warm Lambda (schema compilers, caches, clients) must accept the same
+  configuration read again; test a save and an invocation repeated in one
+  service instance. Keep System's own 502 for a failed run distinct in the body.
+- Resolve a step's secret only in a System-owned function that sends the
+  request; keep only the ARN in templates, state and logs, and redact a value a
+  product echoes back. Scope secrets by an install parameter listing full ARNs
+  (`StepSecretArns`), the same list in IAM, at save and at send. Refuse
+  `Secrets` on steps Step Functions sends itself.
+- Treat `ReadableBuckets` as an install prerequisite covering every bucket a
+  flow reads. Warn, without refusing, at template and flow save when an
+  `ItemsFile` or `ReadObject` reads outside it.
+- Keep every change opt-in: no changed defaults, no new required parameters,
+  and no stricter save that refuses what was accepted; warn instead. List what
+  existing installs, configurations and callers see in the pull request, with a
+  test that proves the unchanged behavior.
+
 ## Result callbacks
 
 Own the result-callback framework on the sale-availability client facade:
