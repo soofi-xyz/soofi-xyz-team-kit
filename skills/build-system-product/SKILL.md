@@ -26,7 +26,9 @@ outcome on an existing deployment. Follow
 6. For flows started by S3 object events, read [S3 triggers](reference/s3-triggers.md).
 7. For event triggers whose later events must not be undone by earlier ones, read
    [ordered triggers](reference/ordered-triggers.md).
-8. For flows that start on a cron, read
+8. For how event triggers are routed from EventBridge, read
+   [event triggers](reference/event-triggers.md).
+9. For flows that start on a cron, read
    [flow schedules](../configure-system-product/reference/flow-schedules.md).
 
 ## Ownership
@@ -98,6 +100,13 @@ Own per-flow S3 triggers as a second entry point beside the invocation API; see
 - Bound retries into a DLQ with alarms; log key hashes, never keys or bodies.
 
 Celebi owns per-flow trigger configuration and tests.
+
+## Event trigger routing
+
+Route only the events flows ask for; see [event triggers](reference/event-triggers.md).
+Keep one EventBridge rule per triggered flow (source, detail-type and literal match
+filters), managed with the flow and reconciled on install; never a rule that
+matches by source alone. Celebi owns concrete triggers.
 
 ## Ordered event triggers
 
