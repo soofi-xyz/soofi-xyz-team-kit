@@ -22,10 +22,14 @@ a Lambda run, a configuration read and a log line for every unused event.
 ## Rules
 
 1. **One rule per triggered flow.** For each flow with a trigger, keep an
-   EventBridge rule on the trigger bus, named `system-trigger-<flow>` (or a stable
-   hash when the name is too long), with pattern `source: [trigger.source]`,
-   `detail-type: [trigger.detailType]` and the trigger's literal `match` values as
-   EventBridge content filters. Its target is the trigger queue. No rule matches
+   EventBridge rule on the trigger bus, named
+   `system-trigger-<installation identity>.<flow>` so installations sharing a bus
+   can't collide (a stable hash when the name is too long or the identity contains
+   a dot; IAM and queue policies match `system-trigger-*`), with pattern `source: [trigger.source]`,
+   `detail-type: [trigger.detailType]` and the trigger's literal string `match`
+   values as EventBridge content filters (leave out a path whose values include a
+   number: EventBridge compares numbers as written, while ingest compares parsed
+   values, so `300.0` would never be delivered for `300`). Its target is the trigger queue. No rule matches
    by source alone.
 2. **Managed with the flow.** Saving a flow with a trigger creates or updates its
    rule; changing the trigger updates it; removing the trigger or deleting the flow
