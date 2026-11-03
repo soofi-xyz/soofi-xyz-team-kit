@@ -127,7 +127,7 @@ with `{ rule, module, "activate": true }`.
   strict `{ rule, queries }` schema.
 - Never fall back to the newest version by number or by registration time.
 
-## Run secret parameters (`RunSecretPathPrefix`)
+## Run secret parameters (`RunCredentialPathPrefix`)
 
 A Spark mapping sometimes needs a credential in its output, for example the
 Basic password the SOC voice-mail hourly mapping puts into Connect postback
@@ -140,7 +140,7 @@ instead, the same way extraction connections do:
   `{ "<name>": "secretsmanager:<name>" | "ssm:/<SecureString name>" }`.
   - Names are lowercase SQL column names, 1 to 20 per request.
   - References use the same schema as extraction connections: names, not ARNs.
-- Add an install parameter `RunSecretPathPrefix`. Use the same format and rules
+- Add an install parameter `RunCredentialPathPrefix`. Use the same format and rules
   as `ExtractionCredentialPathPrefix`, but default it to empty, which turns the
   feature off.
   - When the prefix is set, grant only the Glue job role

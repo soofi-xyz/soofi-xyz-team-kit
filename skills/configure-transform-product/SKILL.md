@@ -50,7 +50,7 @@ parameter, the run is rejected before it starts. Ask the installer to set the
 parameter. Never add IAM or SSM changes by hand. When a Spark mapping needs a
 credential, read it from the `source_secret_parameters` view. Have callers send
 the reference in the v2 run's `secretParameters`, under the install's
-`RunSecretPathPrefix`. Never put the value in a staged input file or in the
+`RunCredentialPathPrefix`. Never put the value in a staged input file or in the
 mapping. See
 [installation options](../build-transform-product/reference/installation-options.md).
 
