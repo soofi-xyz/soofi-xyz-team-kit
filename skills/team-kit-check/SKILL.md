@@ -1,6 +1,6 @@
 ---
 name: team-kit-check
-description: "Check a person's Claude Code and team-kit setup: Claude Code install and sign-in, prerequisites, installed Soofi and SOC team kits, available agents, and MCP server connections, with the exact fix for each failure. Use when someone asks whether their setup works, after installing or updating the team kits, or when an agent or MCP server is missing or failing."
+description: "Check a person's Claude Code and team-kit setup: Claude Code install and sign-in, prerequisites, the installed Soofi team kit, available agents, and MCP server connections, with the exact fix for each failure. Use when someone asks whether their setup works, after installing or updating the team kit, or when an agent or MCP server is missing or failing."
 ---
 
 # Team-kit check
@@ -13,7 +13,7 @@ signs in, or changes settings; it prints a fix for each failure instead.
 Run the script from this skill's directory:
 
 ```bash
-bash <this-skill-dir>/scripts/team-kit-check.sh          # install, sign-in, kits, agents, MCP
+bash <this-skill-dir>/scripts/team-kit-check.sh          # install, sign-in, kit, agents, MCP
 bash <this-skill-dir>/scripts/team-kit-check.sh --agents # also list every agent name
 bash <this-skill-dir>/scripts/team-kit-check.sh --test   # also send one test prompt per kit and MCP server
 ```
@@ -37,11 +37,11 @@ requests from the person's Claude plan. Do not run `--test` repeatedly in a loop
 | Section | Passes when | Typical fix it prints |
 | --- | --- | --- |
 | Claude Code | `claude` is on `PATH` and signed in with a Claude subscription on a `@prismteam.ai` account | Add `~/.local/bin` to `PATH`; `/login` inside Claude Code |
-| Prerequisites | `git`, signed-in `gh`, Node 22.18+ | `xcode-select --install`; `gh auth login && gh auth setup-git`; `brew install node` |
-| Team kits | `soofi-xyz-team-kit@soofi-xyz` and `soc-team-kit@socapital` installed, enabled, and current | `claude plugin marketplace add …`, `claude plugin install …`, `claude plugin update …` |
+| Prerequisites | `git`, Node 22.18+ | `xcode-select --install`; `brew install node` |
+| Team kit | `soofi-xyz-team-kit@soofi-xyz` installed, enabled, and current | `claude plugin marketplace add …`, `claude plugin install …`, `claude plugin update …` |
 | Agents | Each kit exposes its agents | Reinstall the kit |
 | MCP servers | Every server in `claude mcp list` is `✔ Connected` | Per-status fix; for `elephant`, Node 22.18+ and network |
-| Test prompts (`--test`) | `soofi-xyz-team-kit:arceus`, `soc-team-kit:chansey`, and an `elephant` tool call each answer `ok` | Accept the updated Consumer Terms; open `/mcp` |
+| Test prompts (`--test`) | `soofi-xyz-team-kit:arceus` and an `elephant` tool call each answer `ok` | Accept the updated Consumer Terms; open `/mcp` |
 
 ## Report
 

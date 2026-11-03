@@ -1,6 +1,6 @@
 ---
 name: move-to-claude-code
-description: "Walk a person who has never used our agents through moving from Cursor to Claude Code, one step at a time with the screenshot for each step: Claude plan and organization, install, sign-in and setup token, installing the Soofi and SOC team kits, checking agents and MCP servers with test prompts, Amp cloud runs, and recreating Cursor automations, loops and cloud agents. Use when someone asks to set up or move to Claude Code, install the team kits in Claude Code, or test the Move to Claude Code guide."
+description: "Walk a person who has never used our agents through moving from Cursor to Claude Code, one step at a time with the screenshot for each step: Claude plan and organization, install, sign-in and setup token, installing the Soofi team kit, checking agents and MCP servers with test prompts, Amp cloud runs, and recreating Cursor automations, loops and cloud agents. Use when someone asks to set up or move to Claude Code, install the team kit in Claude Code, or test the Move to Claude Code guide."
 ---
 
 # Move to Claude Code (guided)

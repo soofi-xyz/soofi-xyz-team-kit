@@ -4,7 +4,7 @@ Product builders and configurers for Cursor, GitHub Copilot CLI, OpenAI Codex an
 
 **New to our agents, or moving from Cursor to Claude Code?** Follow the
 [Move to Claude Code guide](./docs/move-to-claude-code.md): plan and organization, install,
-sign-in, both team kits, one check command, test prompts, and moving the agents you run
+sign-in, the team kit, one check command, test prompts, and moving the agents you run
 today. In Cursor, `/move-to-claude-code` walks you through it step by step.
 
 ## Quick start
@@ -149,15 +149,8 @@ claude plugin marketplace add soofi-xyz/soofi-xyz-team-kit
 claude plugin install soofi-xyz-team-kit@soofi-xyz
 ```
 
-SOCAPITAL team members also install the internal SOC team kit:
-
-```bash
-claude plugin marketplace add Spring-Oaks-Capital-LLC/soc-team-kit
-claude plugin install soc-team-kit@socapital
-```
-
 Check what is installed, which agents are available, and which MCP servers connect, with a
-fix for each failure (`-s -- --test` also sends one test prompt per kit and MCP server):
+fix for each failure (`-s -- --test` also sends one test prompt to an agent and each MCP server):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/soofi-xyz/soofi-xyz-team-kit/main/skills/team-kit-check/scripts/team-kit-check.sh | bash

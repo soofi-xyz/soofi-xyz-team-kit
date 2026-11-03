@@ -1,6 +1,6 @@
 # Move to Claude Code
 
-This guide takes you from a clean Mac to Claude Code with the Soofi and SOC team kits
+This guide takes you from a clean Mac to Claude Code with the Soofi team kit
 installed, checked and tested, and then moves the agents you run in Cursor today. You do not
 need to have used our agents before. Follow the steps in order.
 
@@ -26,7 +26,7 @@ Mykyta Ovsiienko, and add it to the guide afterwards (see [Pass it on](#pass-it-
 1. [Pick the Claude plan and organization](#1-pick-the-claude-plan-and-organization)
 2. [Install Claude Code](#2-install-claude-code)
 3. [Start Claude Code and sign in](#3-start-claude-code-and-sign-in)
-4. [Install the Soofi and SOC team kits](#4-install-the-soofi-and-soc-team-kits)
+4. [Install the Soofi team kit](#4-install-the-soofi-team-kit)
 5. [Check and test everything](#5-check-and-test-everything)
 6. [Set up Amp for cloud runs (token)](#6-set-up-amp-for-cloud-runs-token)
 7. [Move the agents you run today](#7-move-the-agents-you-run-today)
@@ -37,10 +37,8 @@ Mykyta Ovsiienko, and add it to the guide afterwards (see [Pass it on](#pass-it-
 
 ## 0. Before you start
 
-You need a Mac (macOS 13 or later), your Prism Google account (`you@prismteam.ai`), your Ramp
-card, and access to the `Spring-Oaks-Capital-LLC` GitHub organization. If you don't have
-GitHub access yet, ask the `chansey` agent in Cursor for the SOC-email GitHub invitation
-first.
+You need a Mac (macOS 13 or later), your Prism Google account (`you@prismteam.ai`) and your Ramp
+card.
 
 **Open a regular terminal.** Press `⌘ Space`, type `Terminal`, press `Return`. Every
 "regular terminal" step below runs here.
@@ -62,7 +60,7 @@ then run the command again to see the path.
 **If you don't:** if the window says the software is not available, install Xcode from the
 App Store, open it once, and run the command again.
 
-### 0.2 Homebrew, GitHub CLI and Node
+### 0.2 Homebrew and Node
 
 **Where:** regular terminal
 
@@ -70,17 +68,10 @@ App Store, open it once, and run the command again.
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-brew install gh node
-gh auth login
-gh auth setup-git
+brew install node
 ```
 
-For `gh auth login` choose **GitHub.com**, **HTTPS**, **Yes** to authenticate Git, and
-**Login with a web browser**. Sign in with the GitHub account that has
-`Spring-Oaks-Capital-LLC` access.
-
-**You should see:** `gh auth status` prints `✓ Logged in to github.com account …`, and
-`node -v` prints `v22.18.0` or higher.
+**You should see:** `node -v` prints `v22.18.0` or higher.
 
 **If you don't:**
 
@@ -246,11 +237,11 @@ Type `/exit` and press `Return` to go back to the regular terminal.
 
 ---
 
-## 4. Install the Soofi and SOC team kits
+## 4. Install the Soofi team kit
 
 **Where:** regular terminal (not inside Claude Code)
 
-### 4.1 Soofi team kit
+### 4.1 Install
 
 **Run:**
 
@@ -266,26 +257,7 @@ claude plugin install soofi-xyz-team-kit@soofi-xyz
 
 ![claude plugin install soofi-xyz-team-kit@soofi-xyz: Successfully installed plugin (scope: user)](./images/move-to-claude-code/12-plugin-install-soofi.png)
 
-### 4.2 SOC team kit
-
-The SOC team kit lives in an internal repository, so this step uses the GitHub sign-in
-from step 0.2.
-
-**Run:**
-
-```bash
-claude plugin marketplace add Spring-Oaks-Capital-LLC/soc-team-kit
-claude plugin install soc-team-kit@socapital
-```
-
-**You should see:** `✔ Successfully added marketplace: socapital`, then
-`✔ Successfully installed plugin: soc-team-kit@socapital (scope: user)`.
-
-![claude plugin marketplace add Spring-Oaks-Capital-LLC/soc-team-kit: Successfully added marketplace: socapital](./images/move-to-claude-code/13-marketplace-add-soc.png)
-
-![claude plugin install soc-team-kit@socapital: Successfully installed plugin (scope: user)](./images/move-to-claude-code/14-plugin-install-soc.png)
-
-### 4.3 Confirm
+### 4.2 Confirm
 
 **Run:**
 
@@ -293,20 +265,19 @@ claude plugin install soc-team-kit@socapital
 claude plugin list
 ```
 
-**You should see:** both kits with `Status: ✔ enabled`. The line
+**You should see:** `soofi-xyz-team-kit@soofi-xyz` with `Status: ✔ enabled`. The line
 `Note: Default agents/ folder is ignored because the manifest sets "agents"` is expected;
 ignore it.
 
-![claude plugin list showing soc-team-kit@socapital and soofi-xyz-team-kit@soofi-xyz, both enabled](./images/move-to-claude-code/15-plugin-list.png)
+![claude plugin list showing soofi-xyz-team-kit@soofi-xyz enabled](./images/move-to-claude-code/15-plugin-list.png)
 
 **If you don't:**
 
-- `Failed to clone` or `Repository not found` for the SOC kit: your GitHub account has no
-  access to `Spring-Oaks-Capital-LLC`, or git cannot use your sign-in. Run `gh auth status`
-  and `gh auth setup-git`, accept the GitHub organization invitation, then retry.
+- `Failed to clone`: check that you are online and that `git --version` works (step 0.1),
+  then retry.
 - `Marketplace 'soofi-xyz' already exists`: it was added before. Run
   `claude plugin marketplace update soofi-xyz` and continue with the install line.
-- `Plugin not found`: copy the install line exactly, including `@soofi-xyz` or `@socapital`.
+- `Plugin not found`: copy the install line exactly, including `@soofi-xyz`.
 - If Claude Code was open while you installed, type `/reload-plugins` inside it, or quit
   and start it again.
 
@@ -325,7 +296,7 @@ curl -fsSL https://raw.githubusercontent.com/soofi-xyz/soofi-xyz-team-kit/main/s
 ```
 
 It reports what is installed, which agents are available, which MCP servers are connected
-or failing, and sends one test prompt per kit and per MCP server. Each failure comes with
+or failing, and sends one test prompt to an agent and to each MCP server. Each failure comes with
 its fix and where to run it. Drop `-s -- --test` for a quicker check without test prompts,
 or use `--agents` to list every agent name. Inside Claude Code, the same check runs with
 `/soofi-xyz-team-kit:team-kit-check`.
@@ -333,7 +304,7 @@ or use `--agents` to list every agent name. Inside Claude Code, the same check r
 **You should see:** only `✔` lines and, at the end,
 `✔ Everything required is installed and connected.`
 
-![team-kit-check output: Claude Code, prerequisites, team kits, agents, MCP servers and test prompts all passing; one update notice](./images/move-to-claude-code/16-team-kit-check.png)
+![team-kit-check output: Claude Code, prerequisites, team kit, agents, MCP servers and test prompts all passing](./images/move-to-claude-code/16-team-kit-check.png)
 
 A `!` line is a warning, such as a newer kit version being available; apply its fix when
 convenient. Every `✘` line has a fix under it.
@@ -361,15 +332,15 @@ Press `Esc` to close.
 
 ![Claude Code /mcp panel listing plugin:soofi-xyz-team-kit:elephant with a checkmark and 10 tools](./images/move-to-claude-code/19-mcp-panel.png)
 
-Agents appear as `soofi-xyz-team-kit:<agent>` and `soc-team-kit:<agent>`. The check's
-`--agents` option lists all of them; the product agents are described in the
+Agents appear as `soofi-xyz-team-kit:<agent>`. The check's `--agents` option lists all
+of them; the product agents are described in the
 [README](../README.md#product-agents).
 
-### 5.3 One test prompt per kit and MCP server
+### 5.3 One test prompt for an agent and the MCP server
 
 **Where:** inside Claude Code. Type each prompt and press `Return`.
 
-**Soofi kit agent**
+**Agent**
 
 ```text
 Use the soofi-xyz-team-kit:arceus subagent to reply with exactly: ok
@@ -378,17 +349,6 @@ Use the soofi-xyz-team-kit:arceus subagent to reply with exactly: ok
 **You should see:** a `soofi-xyz-team-kit:arceus(…)` line, then `ok`.
 
 ![Claude Code running the soofi-xyz-team-kit:arceus subagent, which replies ok](./images/move-to-claude-code/17-test-soofi-agent.png)
-
-**SOC kit agent**
-
-```text
-Use the soc-team-kit:chansey subagent to reply with exactly: ok
-```
-
-**You should see:** `ok`. The screenshot shows the same prompt run from a regular
-terminal with `claude -p "…"`, which prints only the answer.
-
-![claude -p running the soc-team-kit:chansey subagent, which replies ok](./images/move-to-claude-code/18-test-soc-agent.png)
 
 **Elephant MCP server**
 
@@ -583,14 +543,12 @@ This guide improves each time a new person follows it.
 
 ```bash
 claude plugin marketplace update soofi-xyz && claude plugin update soofi-xyz-team-kit@soofi-xyz
-claude plugin marketplace update socapital && claude plugin update soc-team-kit@socapital
 ```
 
-Claude Code only picks up a new kit release when its version changes. After an update, type
+Claude Code only picks up a new release when its version changes. After an update, type
 `/reload-plugins` inside Claude Code, or start it again.
 
-To remove a kit: `claude plugin uninstall soofi-xyz-team-kit@soofi-xyz` or
-`claude plugin uninstall soc-team-kit@socapital`.
+To remove the kit: `claude plugin uninstall soofi-xyz-team-kit@soofi-xyz`.
 
 Claude Code's own docs: [setup](https://code.claude.com/docs/en/setup),
 [authentication](https://code.claude.com/docs/en/authentication),

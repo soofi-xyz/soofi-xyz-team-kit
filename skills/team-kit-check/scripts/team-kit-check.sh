@@ -73,13 +73,6 @@ KITS = [
         "latest_url": "https://raw.githubusercontent.com/soofi-xyz/soofi-xyz-team-kit/main/.claude-plugin/marketplace.json",
         "test_agent": "arceus",
     },
-    {
-        "plugin": "soc-team-kit",
-        "marketplace": "socapital",
-        "source": "Spring-Oaks-Capital-LLC/soc-team-kit",
-        "latest_url": None,  # internal repository; no anonymous version lookup
-        "test_agent": "chansey",
-    },
 ]
 TERMS_FIX = ("Fix: run `claude` in a regular terminal and answer the 'Updates to Consumer Terms' screen",
              "(pick '2. Accept terms · Help improve our AI models: OFF' for company work), then /exit.")
@@ -153,19 +146,6 @@ else:
     fail("git is missing (Claude Code needs it to add plugin marketplaces)",
          "Fix (regular terminal): xcode-select --install")
 
-if shutil.which("gh"):
-    rc, out, err = run("gh", "auth", "status", timeout=30)
-    if rc == 0:
-        ok("GitHub CLI signed in (needed to clone the internal SOC team kit)")
-    else:
-        fail("GitHub CLI is installed but not signed in",
-             "Fix (regular terminal): gh auth login   (choose GitHub.com, HTTPS, sign in with browser)",
-             "Then: gh auth setup-git")
-else:
-    warn("GitHub CLI (gh) is not installed",
-         "The SOC team kit is an internal repository; Claude Code clones it with your git credentials.",
-         "Fix (regular terminal): brew install gh && gh auth login && gh auth setup-git")
-
 node = shutil.which("node")
 if node:
     v = run("node", "-v", timeout=15)[1].strip()
@@ -180,7 +160,7 @@ else:
          "Fix (regular terminal): brew install node")
 
 # ---------------------------------------------------------------- Plugins
-section("Team kits")
+section("Team kit")
 rc, out, _ = run("claude", "plugin", "marketplace", "list", "--json", timeout=60)
 try:
     marketplaces = {m["name"]: m for m in json.loads(out)}
@@ -257,7 +237,7 @@ def skill_count(install_path):
 
 
 if not installed:
-    fail("No team-kit agents available (install the kits above first)")
+    fail("No team-kit agents available (install the kit above first)")
 for kit, p in installed:
     names = agent_names(p["installPath"])
     if names:
@@ -283,7 +263,7 @@ for raw in out.splitlines():
         servers.append((m.group("name"), m.group("status").strip()))
 if not servers:
     if "No MCP servers" in out:
-        fail("No MCP servers configured (the team kit ships `elephant`; install the kits above first)")
+        fail("No MCP servers configured (the team kit ships `elephant`; install the kit above first)")
     else:
         fail("Could not read `claude mcp list`", f"Output: {(out or err).strip()[:300]}")
 
@@ -315,7 +295,7 @@ for name, status in servers:
 
 # ---------------------------------------------------------------- Test prompts
 if RUN_TESTS:
-    section("Test prompts (one per kit and MCP server)")
+    section("Test prompts (one agent and each MCP server)")
     scratch = Path.home() / ".claude" / "team-kit-check"
     scratch.mkdir(parents=True, exist_ok=True)
 
