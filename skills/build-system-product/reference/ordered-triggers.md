@@ -51,6 +51,13 @@ Triggers without `order` behave exactly as before. A System revision that does
 not support `order` must reject it at registration, so a bundle that relies on it
 cannot install on an older System.
 
+Document `order` in the API spec's flow `Trigger` schema (`order: {key, version}`,
+both required, both using the same simple-JSONPath pattern as `idempotencyKey`,
+`additionalProperties: false`) with a short description of the lane semantics.
+A schema with `additionalProperties: false` that omits it makes generated clients
+and validating gateways reject every ordered flow, even though the service
+accepts it.
+
 ## Lane semantics
 
 Each `(flow, key)` lane is one item in the invocation table, keyed by a hash of
