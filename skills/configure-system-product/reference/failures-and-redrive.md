@@ -63,6 +63,28 @@ runs that step again. `FailWhen` applies to `api` steps (not `ConnectJob`) and
 - A failed run reports the rule's `Error` and `Cause`, with
   `executionError: "States.QueryEvaluationError"`, and `failedStep`.
 
+## Retry timing for partner calls
+
+A step's `Retry` without timing fields uses System's defaults: `IntervalSeconds`
+1, `BackoffRate` 2, `MaxAttempts` 3, so every attempt happens within about 7
+seconds. That is too short for a partner behind Connect (for example a 504 from
+the partner's gateway during a brief outage): the run fails and needs a redrive.
+
+For steps that call a partner through Connect (lookups, jobs, writes), retry
+`Product.Unavailable` with spread-out timing inside System's bounds
+(`IntervalSeconds` 1–60, `MaxAttempts` 0–10, `BackoffRate` 1–5,
+`MaxDelaySeconds` 1–120), for example:
+
+```json
+"Retry": [{ "ErrorEquals": ["Product.Unavailable"], "IntervalSeconds": 10, "BackoffRate": 2, "MaxAttempts": 5, "MaxDelaySeconds": 120 }]
+```
+
+That waits 10, 20, 40, 80 and 120 seconds, about 4.5 minutes in total. Retry only
+writes that are safe to repeat (set a value, not add one), and keep internal
+product steps (Persist, Transform) on shorter timing unless they call a partner.
+Note in the flow's README how long a run can wait before it fails, because an
+ordered trigger's other events for the same key wait behind it.
+
 ## Redrive a run
 
 | Answer | Meaning |
