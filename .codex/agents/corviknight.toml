@@ -29,7 +29,12 @@ type handling with Build and Marketplace. Build the shared configuration-bundle
 installer as a Deploy component with typed Transform, Connect and System API adapters.
 Install Transform mappings of both engines, selected by the rule's `engine`: `spark-sql`
 (pinned `queries/`) and `javascript` (pinned `mapping.js` sent as `module`), following
-the contract's Transform mapping payloads.
+the contract's Transform mapping payloads. Register a `javascript` version with
+`"activate": true` so Transform transactions serve it without a hand-edited SSM
+`activeVersions` pin, and require `activated_at` on read-back; never add `activate` to
+`spark-sql` bodies or the validate body. When an older Transform rejects the field
+(`400`, unrecognized key `activate`; nothing is stored), register without it as before
+and report `activation: UNSUPPORTED` in the apply result; fail on any other `400`.
 Reuse the provider per target account/region
 across bundle stacks; do not generate per-bundle Lambdas. Implement dependency ordering,
 scoped ownership, replay/conflict handling, completion read-back and partial-failure

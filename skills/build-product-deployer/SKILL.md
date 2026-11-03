@@ -81,6 +81,12 @@ bundle's flows before their activations, keep each returned (or reused unchanged
 read-back shows it. Leave activations of flows outside the bundle on their pinned version,
 and never register a new version for an unchanged flow.
 
+Register a `javascript` Transform mapping version with `"activate": true` so transactions
+serve the installed version; an SSM `activeVersions` pin still wins. Keep `spark-sql` and
+validate bodies unchanged. If the target Transform predates `activate` (`400`, unrecognized
+key `activate`), register as before and report `activation: UNSUPPORTED`; never fall back
+to choosing the newest version.
+
 ## Shared API domain
 
 For API infrastructure, packaging, review or installation, read and apply

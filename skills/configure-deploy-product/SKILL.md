@@ -59,7 +59,9 @@ When a bundle installs Connect flows and activations, check that each activation
 the `flow_version` the same install registered for its `flow_name`, never the number pinned
 in the activation file. A mismatch (`SemanticCheckFailed`, `UnboundConnection`) is an
 installer defect: hand a redacted reproducer to `corviknight`; re-pinning the version by
-hand is only a recorded workaround.
+hand is only a recorded workaround. For a `javascript` Transform mapping, read the run
+result's `activation`: `ACTIVATED` needs no SSM pin; `UNSUPPORTED` means the target
+Transform predates `activate`, so hand the upgrade to `kecleon` rather than editing SSM.
 
 ## Shared API domain
 
