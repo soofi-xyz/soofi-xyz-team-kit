@@ -40,6 +40,7 @@ product checks. Atlas archives and CLI-exported tables are the MCP/public source
 8. [`reference/raw-property-capture.md`](./reference/raw-property-capture.md)
 9. [`reference/failure-modes.md`](./reference/failure-modes.md)
 10. [`reference/durable-orchestration.md`](./reference/durable-orchestration.md)
+11. [`reference/candidate-archive-assembly.md`](./reference/candidate-archive-assembly.md)
 
 ## Choose the ingestion stack
 
@@ -182,6 +183,14 @@ Use a public, durable IPFS node for a registrable run. Filebase Kubo RPC is the 
 example. A local node is acceptable only for development unless it remains publicly
 reachable through Atlas merge. Require archive-root and tables-root readback before the
 PR.
+
+## Reuse contributor archives
+
+When validated lexicon archives for the county already exist from several contributors,
+assemble the page from them instead of re-mining: pick one source per data group, combine
+sharded archives into one, and re-seed every other group onto the `county` group's Seed so
+the groups share property CIDs. Atlas `validate` never checks that groups join; prove it.
+Follow [`reference/candidate-archive-assembly.md`](./reference/candidate-archive-assembly.md).
 
 ## Register and verify
 

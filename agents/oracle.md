@@ -156,6 +156,9 @@ separate, and stop. Do not continue into the pipeline below.
   `use-oracle/reference/hoa-property-management.md`.
 - Load, matching, stale rows, identity edges, or roof age: `query-db-loading-matching`.
 - Public publish: `use-oracle` and `car-publication.md` only.
+- County data already mined as lexicon archives by several contributors: assemble one page
+  from them with `use-oracle/reference/candidate-archive-assembly.md` (one source per data
+  group, shards combined, other groups re-seeded onto the `county` Seed, join proven).
 - MCP deployment or synchronization: `deploy-open-data-mcp`.
 - Public data exploration: `use-elephant-mcp`.
 - Status or stalls: `monitoring-county-ingestion` for local runs or
