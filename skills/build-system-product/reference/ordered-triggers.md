@@ -51,6 +51,13 @@ Triggers without `order` behave exactly as before. A System revision that does
 not support `order` must reject it at registration, so a bundle that relies on it
 cannot install on an older System.
 
+Document `order` in the API spec's flow `Trigger` schema (`order: {key, version}`,
+both required, both using the same simple-JSONPath pattern as `idempotencyKey`,
+`additionalProperties: false`) with a short description of the lane semantics.
+A schema with `additionalProperties: false` that omits it makes generated clients
+and validating gateways reject every ordered flow, even though the service
+accepts it.
+
 ## Lane semantics
 
 Each `(flow, key)` lane is one item in the invocation table, keyed by a hash of
@@ -133,6 +140,15 @@ the pending event would wait until someone redrives the DLQ.
 - Keep the release DLQ and its alarm, and document the runbook: inspect the DLQ
   message, check the lane, redrive the DLQ (or let the sweep start the event), and
   confirm the pending event's run started.
+
+## Upgrades
+
+Lanes add a GSI (the pending-lanes index) to the invocation table. CloudFormation
+creates or deletes at most one GSI per table per update, so when another change
+in flight adds a GSI to the same table, an installation that has neither must take
+them in separate releases. State the order in the README's upgrade notes (which
+release to install first, and how to check an installation's current indexes), and
+check it before every install: compare the table's live GSIs with the bundle's.
 
 ## Retention
 
