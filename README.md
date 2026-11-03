@@ -2,6 +2,11 @@
 
 Product builders and configurers for Cursor, GitHub Copilot CLI, OpenAI Codex and Claude Code.
 
+**New to our agents, or moving from Cursor to Claude Code?** Follow the
+[Move to Claude Code guide](./docs/move-to-claude-code.md): plan and organization, install,
+sign-in, the team kit, one check command, test prompts, and moving the agents you run
+today. In Cursor, `/move-to-claude-code` walks you through it step by step.
+
 ## Quick start
 
 Choose a builder to implement or fix a product, or a configurer to use an existing service.
@@ -136,9 +141,19 @@ To remove: `codex plugin remove soofi-xyz-team-kit`.
 <details>
 <summary>Claude Code</summary>
 
+Setting up from scratch? Follow the [Move to Claude Code guide](./docs/move-to-claude-code.md).
+Run these in a regular terminal, not inside Claude Code:
+
 ```bash
 claude plugin marketplace add soofi-xyz/soofi-xyz-team-kit
 claude plugin install soofi-xyz-team-kit@soofi-xyz
+```
+
+Check what is installed, which agents are available, and which MCP servers connect, with a
+fix for each failure (`-s -- --test` also sends one test prompt to an agent and each MCP server):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/soofi-xyz/soofi-xyz-team-kit/main/skills/team-kit-check/scripts/team-kit-check.sh | bash
 ```
 
 This installs at user scope, so the kit is available in every project you open. To limit it
