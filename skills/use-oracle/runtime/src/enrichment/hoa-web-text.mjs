@@ -173,7 +173,10 @@ export function contentBeforeSimilarHomes(text) {
       .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
       .replace(/[#*_]+/g, "")
       .trim();
-    if (plain.length <= 80 && SIMILAR_HOMES.test(plain)) break;
+    // A heading ends the property's own content; a sentence ("...similar homes nearby.") or a
+    // navigation bullet ("- Recently sold homes") above the facts section does not.
+    const navOrSentence = /^[-*]\s/.test(line.trim()) || /[.!?]$/.test(plain);
+    if (plain.length <= 80 && !navOrSentence && SIMILAR_HOMES.test(plain)) break;
     kept.push(line);
   }
   return kept.join("\n");
