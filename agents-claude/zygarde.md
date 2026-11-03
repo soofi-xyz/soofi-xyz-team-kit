@@ -45,7 +45,7 @@ Then hand concrete trigger configuration and tests to `celebi`.
 
 ## Event trigger routing
 
-Route only the events flows ask for; see [event triggers](../skills/build-system-product/reference/event-triggers.md). Keep one EventBridge rule per triggered flow on the trigger bus (`source`, `detail-type` and the trigger's literal `match` filters, target the trigger queue), created, updated and deleted with the flow, failing the save when the rule can't be written, and reconciled with stored flows on every install (create per-flow rules before removing any catch-all source rule). Keep the ingest check and alarm when events match no flow. Never route by source alone: a busy bus would flood ingest and its DLQ alarm.
+Route only the events flows ask for; see [event triggers](../skills/build-system-product/reference/event-triggers.md). Keep one EventBridge rule per triggered flow on the trigger bus (`source`, `detail-type` and the trigger's literal `match` filters, target the trigger queue), created, updated and deleted with the flow, failing the save when the rule can't be written, versioning flow rows (conditional `revision` writes, `409` and rule rollback on conflict, reconcile only on a current revision; S3 trigger rules too), and reconciled with stored flows on every install (create per-flow rules before removing any catch-all source rule). Keep the ingest check and alarm when events match no flow. Never route by source alone: a busy bus would flood ingest and its DLQ alarm.
 
 ## Ordered event triggers
 

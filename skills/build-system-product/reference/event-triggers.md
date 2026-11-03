@@ -35,16 +35,23 @@ a Lambda run, a configuration read and a log line for every unused event.
    rule; changing the trigger updates it; removing the trigger or deleting the flow
    deletes it. Registration fails, and nothing is saved, when the rule cannot be
    written, so the stored flow and its rule never disagree.
-3. **Reconciled on install.** Installing a System revision reconciles rules with
+3. **Versioned with the flow.** Flow rows carry a `revision` written with a
+   conditional update, so a rule write can never disagree with the stored flow:
+   a save reads the revision, writes the rule, then stores the flow only if the
+   revision is unchanged; on a conflict it rolls the rule back to the stored
+   trigger and returns `409`. The reconcile writes a flow's rule only if the
+   revision it read is still current, and rereads otherwise. S3 trigger rules
+   follow the same rule.
+4. **Reconciled on install.** Installing a System revision reconciles rules with
    the stored flows (create missing, update changed, delete orphaned
    `system-trigger-*` rules), so existing flows keep their routing and a stack
    update never drops it. Remove the catch-all source rule only in the same
    install that creates the per-flow rules, with the per-flow rules created first.
-4. **The ingest check stays.** The ingest Lambda still evaluates the trigger
+5. **The ingest check stays.** The ingest Lambda still evaluates the trigger
    (including non-literal paths EventBridge cannot express) and still records
    "matched no flow trigger"; with per-flow rules that should be rare. Alarm if it
    is not.
-5. **Bus changes are cheap.** With per-flow rules, pointing System at a busy bus
+6. **Bus changes are cheap.** With per-flow rules, pointing System at a busy bus
    (`TriggerEventBusName`) only delivers the events registered flows use. State
    this in the README, and check the expected volume per rule before switching a
    PROD installation's bus.
