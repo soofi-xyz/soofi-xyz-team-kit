@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build one Florida county's Atlas `county` archive from the DOR NAL roll.
 #
-#   run-county.sh <slug> [--work DIR] [--shards N] [--limit N] [--atlas DIR] [--car-validate]
+#   run-county.sh <slug> [--work DIR] [--shards N] [--limit N] [--atlas DIR] [--car-validate] [--keep]
 #
 # Steps: download NAL -> generate lexicon property folders (sharded) -> parity check
 # against the published Hardee golden record -> validate shards in parallel ->
@@ -11,7 +11,7 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SLUG="${1:?usage: run-county.sh <slug> [options]}"; shift
-WORK="${TMPDIR:-/tmp}/florida-nal"; SHARDS="$(( $(getconf _NPROCESSORS_ONLN) - 2 ))"; LIMIT=""; ATLAS=""; CAR_VALIDATE=0
+WORK="${TMPDIR:-/tmp}/florida-nal"; SHARDS="$(( $(getconf _NPROCESSORS_ONLN) - 2 ))"; LIMIT=""; ATLAS=""; CAR_VALIDATE=0; KEEP=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --work) WORK="$2"; shift 2;;
@@ -19,6 +19,7 @@ while [ $# -gt 0 ]; do
     --limit) LIMIT="$2"; shift 2;;
     --atlas) ATLAS="$2"; shift 2;;
     --car-validate) CAR_VALIDATE=1; shift;;
+    --keep) KEEP=1; shift;;
     *) echo "unknown option $1" >&2; exit 2;;
   esac
 done
@@ -100,3 +101,6 @@ out = {"slug": slug, "county": county, "properties": gen["written"], "source_url
        "tables_dir": f"{d}/tables", "seconds": int(secs)}
 json.dump(out, open(f"{d}/summary.json", "w"), indent=1); print(json.dumps(out))
 EOF
+
+# 7. Keep only the CAR, tables and summary unless --keep (about 57 KB/parcel in flight, 5 KB kept).
+[ "$KEEP" -eq 1 ] || rm -rf "$D/props" "$D/all" "$D/hashed" "$D/src/csv"

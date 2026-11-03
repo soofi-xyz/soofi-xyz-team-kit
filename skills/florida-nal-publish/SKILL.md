@@ -21,6 +21,7 @@ requires the same property CID, County data CID and archive root.
 | `scripts/nal-to-lexicon.mjs` | NAL CSV → one lexicon property folder per parcel (Seed + County groups) |
 | `scripts/parity-check.sh` | Golden-record check against the published Hardee archive |
 | `scripts/run-county.sh` | Download → generate (sharded) → parity → parallel validate → one CAR → tables (+ Atlas page) |
+| `scripts/run-batch.sh` | Several counties at a time, splitting cores between them |
 
 ## Records produced
 
@@ -49,6 +50,10 @@ S=skills/florida-nal-publish/scripts
 $S/parity-check.sh "$WORK"                       # once per machine or CLI upgrade
 $S/run-county.sh duval --work "$WORK" --shards 16 --atlas ./atlas
 ```
+
+Build many counties with `$S/run-batch.sh --work "$WORK" --parallel 2 miami-dade broward palm-beach`.
+Each county keeps only its CAR, tables and `summary.json` (about 5 KB per parcel) unless
+`--keep` is passed; in-flight folders take about 57 KB per parcel.
 
 `--limit N` builds a sample. `--car-validate` adds a full CAR validation after hashing; it is
 slow (about 10 properties per second) and Atlas runs its own check, so use it only when a shard
