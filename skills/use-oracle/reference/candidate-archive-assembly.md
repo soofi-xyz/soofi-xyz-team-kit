@@ -20,6 +20,9 @@ libraries the CLI writes them with.
 | `car-index.mjs` | `property_cid,request_identifier,parcel_identifier` for every property in an archive |
 | `car-to-folders.mjs` | Unpack an archive into property folders that `elephant-cli hash` reproduces byte for byte |
 | `reseed-group.mjs` | Unpack a data-group archive onto another archive's Seed records |
+| `pin-car.mjs` | Pin a large archive on Filebase shard by shard, then pin the root |
+| `pin-tables.mjs` | Add every Parquet part of a tables directory with the recorded CIDs |
+| `pin-root-check.sh` | Pin a small root CAR and confirm the recursive pin with `pin/ls` |
 
 ## 1. Inventory every contributor, per data group
 
@@ -125,11 +128,36 @@ a bucket named `elephant-oracle-open-data-<county>` (IPFS network). Never upload
 Pinning on the same account as `elephant-atlas` lets `publish` import the blocks; Filebase
 does not serve a bucket's inner blocks to other accounts.
 
-Keep credentials in a mode-600 file outside Git and load them into the environment only for
-the upload (`FILEBASE_ACCESS_KEY`, `FILEBASE_SECRET_KEY`, `FILEBASE_BUCKET`). In zsh, prompt
-for a secret with `read -rs "SK?Secret: "`; `read -p` is a bash form and fails in zsh.
-Upload each archive and tables directory as its own process, in parallel, with
-`--timeout 3600` for multi-gigabyte archives, and keep every `--output-json` summary.
+Keep credentials in a mode-600 file outside Git (`~/.config/elephant/filebase.env` with
+`FILEBASE_ACCESS_KEY`, `FILEBASE_SECRET_KEY`, `FILEBASE_BUCKET`) and load them only for the
+upload. In zsh, prompt for a secret with `read -rs "SK?Secret: "`; `read -p` is a bash form
+and fails in zsh.
+
+`elephant-cli upload` sends a whole CAR, or a whole Parquet part, as one request through
+Node's `fetch`, which gives up when the server sends no response headers for 300 seconds.
+Filebase answers only after it has processed the request, so a multi-gigabyte archive (and a
+large part during a busy upload) fails with a bare `fetch failed`. Use it for small archives;
+for a full county use the piecewise uploaders, which call `curl`:
+
+```bash
+set -a; . ~/.config/elephant/filebase.env; set +a
+DONE_FILE=county.done node --max-old-space-size=24576 pin-car.mjs county.car "$NM" 6
+node pin-tables.mjs county-tables "$NM" --parts-only 4
+pin-root-check.sh county-tables/tables.car <tables root>     # after the archive is pinned
+```
+
+- `pin-car.mjs` imports each shard's subtree as its own CAR, then the root with
+  `pin-roots=true`, requiring every import to report exactly the blocks sent. Import shards
+  before the root: Filebase hung for more than 9 minutes on a root block whose links it did not
+  hold yet. Travis: 89 shards, 11,327,260 blocks, about 12 minutes at 6 in parallel.
+- The final pinned import makes Filebase walk the whole DAG; on 11 million blocks the
+  connection dropped after 27 minutes while the pin still completed. Confirm with `pin/ls`
+  (`pin-root-check.sh` does this) instead of trusting the import response.
+- `pin-tables.mjs` adds every part with the CLI's exact parameters (`cid-version=1`,
+  `raw-leaves=true`, `chunker=size-262144`) and requires the CID the tables index records.
+  The `tables.car` root links to the county archive, so pin it only after the archive.
+- Give Node a large heap for `pin-car.mjs`; with the default heap it ran out of memory after
+  22 shards of a 4 GB archive.
 
 ## 8. Register, merge, verify
 
