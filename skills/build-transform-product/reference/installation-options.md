@@ -127,6 +127,49 @@ with `{ rule, module, "activate": true }`.
   strict `{ rule, queries }` schema.
 - Never fall back to the newest version by number or by registration time.
 
+## Run secret parameters (`RunSecretPathPrefix`)
+
+A Spark mapping sometimes needs a credential in its output, for example the
+Basic password the SOC voice-mail hourly mapping puts into Connect postback
+requests. Today an operator stages that password in an S3 parameters file
+before every run. That puts the value in an input object, the run's pinned
+input snapshot and anything that copies them. Pass secrets by reference
+instead, the same way extraction connections do:
+
+- Accept an optional `secretParameters` on v2 run requests only:
+  `{ "<name>": "secretsmanager:<name>" | "ssm:/<SecureString name>" }`.
+  - Names are lowercase SQL column names, 1 to 20 per request.
+  - References use the same schema as extraction connections: names, not ARNs.
+- Add an install parameter `RunSecretPathPrefix`. Use the same format and rules
+  as `ExtractionCredentialPathPrefix`, but default it to empty, which turns the
+  feature off.
+  - When the prefix is set, grant only the Glue job role
+    `secretsmanager:GetSecretValue` and `ssm:GetParameter` under it, through a
+    conditional policy.
+  - Grant no KMS permissions: secrets use the AWS managed keys.
+- Reject a reference outside the prefix (or any `secretParameters` when the
+  prefix is empty) with `400 ValidationError` before `StartExecution`. Repeat
+  the check in the resolver, because direct `StartExecution` callers skip the
+  API.
+- Pin only the references in the plan. The Glue job resolves the values at run
+  time and exposes them as a one-row view, `source_secret_parameters`, with one
+  non-null string column per name. Mappings join it with `CROSS JOIN`.
+- Keep values out of the plan, the Step Functions input, run status, logs,
+  `_metadata.json` and quality files.
+  - A missing or blank secret fails the run before any output is written.
+  - The error names the parameter and its reference, never the value, and
+    drops the AWS exception text.
+  - A mapping that selects a secret column into its own output dataset writes
+    it there by design; say so in the documentation.
+- Reject the request when a mapping input's view is already
+  `source_secret_parameters`. That check applies only when the request sends
+  secrets, so existing mappings are unaffected.
+- Prove: references are forwarded but not resolved before Glue; the prefix
+  scope, including a sibling such as `transform/runs-other/` against
+  `transform/runs/`; the default install still rejects the field; the view's
+  rows and columns come from real Spark; failure messages contain no value; and
+  a plan without secrets registers no view.
+
 ## Acceptance
 
 - Default parameters synthesize no new IAM statements without a condition. The

@@ -47,7 +47,11 @@ Neptune CSV escaping. Keep the SQL steps below scoped to SQL mappings.
 When a run's output goes to another product's bucket, the install must list
 that location in `OutputS3WriteArns`. Otherwise, on an install that sets the
 parameter, the run is rejected before it starts. Ask the installer to set the
-parameter. Never add IAM or SSM changes by hand. See
+parameter. Never add IAM or SSM changes by hand. When a Spark mapping needs a
+credential, read it from the `source_secret_parameters` view. Have callers send
+the reference in the v2 run's `secretParameters`, under the install's
+`RunSecretPathPrefix`. Never put the value in a staged input file or in the
+mapping. See
 [installation options](../build-transform-product/reference/installation-options.md).
 
 1. Discover the existing engine, source/target definitions, mapping and publication
