@@ -97,14 +97,17 @@ Distinguish these evidence levels before proposing a fix:
   target revision before authoring an opted-in flow.
 
 Without the opt-in (absent or false), preserve existing object traversal,
-path resolution and ordinary Format-object behavior exactly. Do not introduce
-new required parameters, changed defaults or validation errors for previously
-accepted inputs; warn about unsupported intent instead of rejecting it.
+path resolution and ordinary Format-object behavior exactly. Existing paths
+need no opt-in. Do not introduce new required parameters, changed defaults or
+validation errors for previously accepted inputs; warn about unsupported intent
+instead of rejecting it.
 
 With the opt-in, evaluate paths and recognized Format expressions consistently
 within the supported CALL value positions above, including nested JSON body
 values, multipart `Body.fields`, `Query` and `PathParameters`. Resolve the
 example to `dev-job-42` for `$.job.job_id = "job-42"` before transport encoding.
+Interpret only authored expressions: values loaded from state through a path
+remain data, even when they contain a Format-shaped object or path-like string.
 Use the same expression compilation for CALL and POLL.Call. Preserve literal
 arrays outside the opted-in Format `Args` syntax; do not expand expression
 support to arbitrary array elements or structural fields such as `Method`,

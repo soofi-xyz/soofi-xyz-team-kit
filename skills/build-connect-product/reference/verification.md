@@ -57,8 +57,10 @@ For value-expression changes, use TypeScript TDD in the product repository:
 - Exercise mixed literal/path arguments, escaping and invalid opted-in
   expressions; check explicit diagnostics without leaking values. Preserve
   literal arrays outside Format Args, nested ordinary objects, scalar values
-  and existing supported expressions. Do not extend evaluation to structural
-  fields or introduce stricter validation for non-opted-in flows.
+  and existing supported expressions. Prove that expression-shaped data loaded
+  from state stays data, including Format-shaped objects and path-like strings.
+  Do not extend evaluation to structural fields or introduce stricter validation
+  for non-opted-in flows.
 - Check compiled ASL and execute against an HTTP fake that captures decoded
   JSON, multipart fields/files, query and path values. Assert evaluation occurs
   before existing serialization and URL encoding, including `/`, spaces and
