@@ -141,6 +141,15 @@ the pending event would wait until someone redrives the DLQ.
   message, check the lane, redrive the DLQ (or let the sweep start the event), and
   confirm the pending event's run started.
 
+## Upgrades
+
+Lanes add a GSI (the pending-lanes index) to the invocation table. CloudFormation
+creates or deletes at most one GSI per table per update, so when another change
+in flight adds a GSI to the same table, an installation that has neither must take
+them in separate releases. State the order in the README's upgrade notes (which
+release to install first, and how to check an installation's current indexes), and
+check it before every install: compare the table's live GSIs with the bundle's.
+
 ## Retention
 
 A lane expires with the invocation retention (for example 30 days after its last
