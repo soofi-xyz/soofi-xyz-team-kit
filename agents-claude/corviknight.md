@@ -36,7 +36,8 @@ the contract's Transform mapping payloads.
 Reuse the provider per target account/region
 across bundle stacks; do not generate per-bundle Lambdas. Implement dependency ordering,
 scoped ownership, replay/conflict handling, completion read-back and partial-failure
-reconciliation. Keep installer operation receipts separate from Puller subscriptions
+reconciliation. Connect activations never keep a hard-coded `flow_version` for a flow the same install registers: `POST /connect/flows` returns a new version on an existing install. Register the bundle's flows before their activations, keep each returned (or reused unchanged) version by `flow_name`, set each activation's `flow_version` to it before `PUT`, and fail unless the read-back shows it. Leave activations of flows outside the bundle on their pinned version, and never register a new version for an unchanged flow.
+Keep installer operation receipts separate from Puller subscriptions
 and installed history; advance installed identity only after declared operations finish.
 Ship the provider with Deploy's service infrastructure through its normal installation
 and update lifecycle; route target API gaps to Kecleon, Lapras or Zygarde.

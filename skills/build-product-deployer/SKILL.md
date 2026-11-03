@@ -74,6 +74,13 @@ target repository; this kit contains guidance and synthetic inputs.
 Read [the shared configuration-bundle contract](reference/configuration-bundles.md) when this work involves configuration bundles.
 Implement the shared provider, typed adapters and observable lifecycle; keep operation receipts separate from subscriber state.
 
+Connect activations never keep a hard-coded `flow_version` for a flow the same install
+registers: `POST /connect/flows` returns a new version on an existing install. Register the
+bundle's flows before their activations, keep each returned (or reused unchanged) version by
+`flow_name`, set each activation's `flow_version` to it before `PUT`, and fail unless the
+read-back shows it. Leave activations of flows outside the bundle on their pinned version,
+and never register a new version for an unchanged flow.
+
 ## Shared API domain
 
 For API infrastructure, packaging, review or installation, read and apply
