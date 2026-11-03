@@ -58,6 +58,17 @@ it as configuration over generic features; never as a voicemail, cohort or clien
   estimate that stops the run above `costLimitUsd` before any data is read.
 - Keep secrets out of configurations, examples, fixtures, bundles and Git. Sources use the
   stack's IAM roles.
+- Let schedules read other products' run outputs without manual setup. A product's output
+  under a run-dated S3 prefix (CSV or JSONL with a header) is an `s3-files` source: the
+  prefix is templated with `{{run.date}}` and the columns are declared. The run creates the
+  catalog objects it needs in Schedule's own work database and drops them when it
+  finishes. Reads stay within `SourceS3ReadArns`, and a prefix with no data (or with
+  headers that differ from the declared columns) fails the run before any query. Never
+  require hand-made Glue databases or tables, or `"$path"` filters over them.
+- Keep every change backward compatible: a new source kind, variable or option is opt-in.
+  Existing installs, configurations and callers behave exactly as before, with no new
+  required parameters, no changed defaults and no stricter validation of what is accepted
+  today.
 - Keep one stack, `Schedule`, with no stage suffix, the `schedule` base path on the shared
   domain and every route behind the shared `x-api-key`.
 
