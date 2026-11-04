@@ -377,18 +377,43 @@ common ones:
 | `marketplace '…' is not added` / `not installed` | the two lines from step 4 | regular terminal |
 | `plugin:soofi-xyz-team-kit:elephant: ✘ Failed to connect` and the Prerequisites line says Node is missing or too old | Node 22.18+ as in [step 0.2](#02-homebrew-and-node), then run the check again (`/exit` any open Claude Code first) | regular terminal |
 | `plugin:soofi-xyz-team-kit:elephant: ✘ Failed to connect` while Node is already 22.18+ (`connection timed out after 30000ms` or `Connection closed`) | see **Elephant fails while Node is fine** below | regular terminal |
-| `! Needs authentication` | `/mcp`, select the server, **Authenticate** | inside Claude Code |
+| `! Needs authentication` | `/mcp`, select the server, **Authenticate**. `claude mcp login` does not exist (Claude Code 2.1.87: `error: unknown command 'login'`). | inside Claude Code |
+| `claude-design: ! Needs authentication`, and **Authenticate** fails with `HTTP 403: Invalid OAuth error response` and a Cloudflare `Just a moment...` page | see **claude-design will not authenticate** below | regular terminal |
+| `Signed in as …, not a @prismteam.ai account` | `/logout`, then `/login` with your Prism account; check with `claude auth status --text` | inside Claude Code |
+
+**claude-design will not authenticate.** `claude-design` is Anthropic's own design MCP
+server (`https://api.anthropic.com/v1/design/mcp`). Claude Code may add it for you. It is not
+part of the kit and nothing in this guide needs it. On the second walkthrough (2026-11-04)
+Cloudflare blocked its sign-in with `HTTP 403`, also with every VPN off. Remove it:
+
+```bash
+claude mcp remove "claude-design" -s user
+```
+
+To add it back later:
+`claude mcp add --transport http -s user claude-design https://api.anthropic.com/v1/design/mcp`.
+The failed sign-in also switched Claude Code to another (non-Prism) account. Run
+`claude auth status --text`. If the email is not your `@prismteam.ai` address, inside
+Claude Code run `/logout`, then `/login`, and pick your Prism account in the browser.
 
 **Elephant fails while Node is fine.** Claude Code gives the server 30 seconds and reports
 only the lost connection: the `Issue:` line of
 `claude mcp get plugin:soofi-xyz-team-kit:elephant` says `CONNECTION_CLOSED` or a timeout,
-not the server's own error. Run the server yourself as in
-[step 4.3](#43-download-the-elephant-mcp-server-once), with Claude Code closed:
+not the server's own error. `npx` downloads the server again each time it starts, and a
+first download can take about 5 minutes. Each open Claude Code window, `claude mcp list` and
+this check start their own copy. Two copies installing at once fail with npm `ENOTEMPTY`
+under `~/.npm/_npx`. So quit every Claude Code window first and do not run the check
+meanwhile. Then run the server yourself as in
+[step 4.3](#43-download-the-elephant-mcp-server-once):
 
 - It prints `Starting MCP server with stdio transport` and keeps running (embedding, AWS
   credential and Atlas sync errors are expected, see 4.3 and 5.3): it works. Press
   `Ctrl-C`, start `claude` again and run the check again. `/mcp reconnect all` only
   answered `No MCP servers need reconnecting` while the server was failing.
+- It prints `npm error code ENOTEMPTY` with a `rename` under `~/.npm/_npx`: another copy
+  was installing at the same time. Quit every Claude Code window, run `rm -rf ~/.npm/_npx`,
+  and run the command again until it prints `Starting MCP server with stdio transport`
+  (this fixed it on the second walkthrough).
 - It prints a stack trace such as `MODULE_NOT_FOUND … @smithy/core/transport`: the server
   crashes on start. On the first walkthrough (2026-11-03, Node v22.23.4 from nvm) the `npx`
   cache held a broken copy of `@smithy/core` (no `package.json`). Delete the cache and run
@@ -452,8 +477,9 @@ names. The count grows as the server syncs the Atlas index.
   server is fine (step 5.1 showed it connected), but its one-time sync of the Atlas index
   through public gateways was rate-limited, and it does not retry while it runs. `/exit`,
   wait a few minutes, start `claude` again (that starts the server and its sync fresh) and
-  send the prompt again. If it keeps failing, note it in your pass-it-on notes and continue
-  with step 6.
+  send the prompt again. This is a rate limit, not a problem with your setup. On the second
+  walkthrough three restarts still failed. If it keeps failing, tell
+  Mykyta Ovsiienko, note it in your pass-it-on notes and continue with step 6.
 
 ---
 
@@ -513,7 +539,14 @@ and click **Verify & Connect**.
 
 ![Amp "Connect Your Claude Subscription" dialog with Token, Base URL https://api.anthropic.com, Setup Command claude setup-token, and Verify & Connect](./images/move-to-claude-code/24-amp-token-dialog.png)
 
-**You should see:** the Claude subscription shows as connected under Model Routing.
+**You should see:** Amp may first show a **Run Your First Agent** screen; you start a
+thread in step 6.4. Under **Model Routing**, the **Claude Subscription** card (*Used in
+Claude Code mode only*) says **Activated … ago by** your name and shows **Deactivate** and
+**Edit**. It does not say "connected". Under **Claude Usage**, **Subscription Only** is
+selected. **Unavailable** on the **Medium** and **Ultra** modes is expected: Claude Code mode
+uses your subscription.
+
+![Amp Model Routing: Claude Subscription card "Activated 4m ago by …" with Deactivate and Edit, Subscription Only selected, Medium and Ultra modes Unavailable](./images/move-to-claude-code/31-amp-claude-subscription-activated.png)
 
 **If you don't:**
 
@@ -549,13 +582,28 @@ and click **Verify & Connect**.
 
    ![Amp new-thread prompt with Orb, project picker and Claude Code mode](./images/move-to-claude-code/26-amp-project-picker.png)
 
-4. Change the mode to **Claude Code** so the thread uses your Claude subscription.
+4. Change the mode to **Claude Code** so the thread uses your Claude subscription: click
+   the model chip (it may say `GPT-6 Astra`), switch the menu to the **Amp Modes** tab and
+   choose **Claude Code**. The menu may open on **Raw Models**. There, Claude always says
+   `Unavailable: Anthropic only allows Claude subscriptions in Claude Code`.
 
    ![Amp mode picker with Claude Code (uses your Claude subscription) selected](./images/move-to-claude-code/27-amp-claude-code-mode.png)
 
+   ![Amp model menu on the Raw Models tab: Opus 5.5 Unavailable, Anthropic only allows Claude subscriptions in Claude Code](./images/move-to-claude-code/32-amp-raw-models-tab.png)
+
 5. Write a prompt and start the conversation.
 
-**You should see:** the thread running with `Claude Code` shown in the prompt bar.
+**You should see:** the thread running with `Claude Code` shown in the prompt bar. A first
+test such as `List the top-level folders in this repository` lists the repository's folders.
+
+**If you don't:**
+
+- The send arrow is greyed out and the prompt says `Connect GitHub to use this project in an
+  orb.`: GitHub is not connected yet. Click **Connect GitHub** (or do item 1) with the
+  GitHub account that is in the Prism organization. Ask Mykyta Ovsiienko if the Prism
+  organization needs to approve Amp.
+
+  ![Amp new thread with the send arrow disabled and "Connect GitHub to use this project in an orb." with a Connect GitHub button](./images/move-to-claude-code/33-amp-connect-github-banner.png)
 
 **Share a thread:** click **Share** at the top right to get a link. To let others work in
 the thread with you, click **Enable Multiplayer** next to it.
@@ -642,6 +690,7 @@ This guide improves each time a new person follows it.
 | Tester | Date | Machine | Where they got stuck | Pull request |
 | --- | --- | --- | --- | --- |
 | Lucian Lazar | 2026-11-03 | Mac (reused, non-admin user; Homebrew owned by another user) | Elephant MCP: 30 s timeout, then `Connection closed`, hid an `npx` crash of `github:elephant-xyz/elephant-mcp#main` (`MODULE_NOT_FOUND @smithy/core/transport`; Node v22.23.4 from nvm was fine; `/mcp reconnect all` was a no-op). 6.4 did not say to connect GitHub in Amp. 7.1 had nothing to list. After the fix, 5.3's county listing failed with `ATLAS_NOT_INITIALIZED` (`HTTP 429` from all four IPFS gateways during the first sync). `brew install` failed with `Permission denied`. | [#327](https://github.com/soofi-xyz/soofi-xyz-team-kit/pull/327) |
+| Marius Furtuna | 2026-11-04 | macOS 14 (Darwin 23.6), Claude Code 2.1.87 | 5.1: `claude-design` sign-in blocked by Cloudflare (`HTTP 403`) and switched Claude Code to a non-Prism account; `claude mcp login` does not exist; elephant `Failed to connect` from parallel `npx` installs (`ENOTEMPTY`) and a ~5-minute first download; the check could not read `claude mcp list` because 2.1.87 prints `✓`/`✗`. 5.3: `ATLAS_NOT_INITIALIZED` (`HTTP 429` from the IPFS gateways) after three restarts. 6.3: Amp says *Activated*, not *connected*. 6.4: the model menu opened on **Raw Models**, not **Amp Modes**; the first Orb thread needed **Connect GitHub**. 7.1 had nothing to list. | PR_LINK |
 
 ---
 
