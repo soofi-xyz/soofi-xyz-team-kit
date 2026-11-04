@@ -195,8 +195,11 @@ It changes five things that blocked reuse:
    auth profile; the flow names only the connection alias.
 3. **Open loops.** `Map` bodies accept any verb and any number of states, with
    items from state or from a landed file (JSON array, JSONL, CSV).
-4. **Cross-run memory.** A ledger option skips already-seen items, supports
-   cutoffs, leases and explicit replay.
+4. **Per-item file dedupe.** A ledger option on `LIST` and drop-zone triggers
+   skips already-landed files of a file source, with cutoffs, leases and
+   explicit replay. It is not a cursor: configurations stay memoryless, each
+   job is described by its request (scope plus window or item ids) and never
+   carries a position between jobs. Record dedupe belongs downstream.
 5. **Triggers facing partners.** Schedules, drop zones and partner-initiated
    webhooks start jobs through activations; before, only the job API did.
 
