@@ -11,6 +11,8 @@ Use `uxie`. Follow [guide-product-work](../guide-product-work/SKILL.md).
 Read [current scope](../build-persist-service/reference/current-scope.md), then
 the relevant ingest/query/index/trigger sections of the existing implementation
 PRD. Verify the target revision before treating a reference as deployed behavior.
+Make every request as in [Call the Persist API](#call-the-persist-api): the
+shared domain plus the shared `x-api-key`, never SigV4.
 
 For vector search, read [the separate vector-search
 piece](../build-persist-service/reference/vector-search.md). Verify that the
@@ -46,6 +48,66 @@ Marketplace's configuration (hand it to Regigigas). Never edit the registry poli
 Return configuration/version changes, observed results, learning stage,
 cleanup, limitations and any builder handoff. Do not claim live verification
 when only local fixtures were exercised.
+
+## Call the Persist API
+
+Call every Persist route at `https://<shared domain>/persist/...` with the
+environment's shared key in `x-api-key`. This is the only way to reach Persist
+when configuring it. Do not use SigV4, `awscurl`, an `execute-api` URL, the
+`persist-api-url` parameter or `ApiUrl` output, or the cross-account invoke role.
+
+- The shared domain is `domain.fqdn` in SSM `/account/env-parameters` in the
+  target account and region. The stack's `ProductApiUrl` output gives the same
+  `https://<domain>/persist`.
+- The person exports the key in their own terminal as `PRISM_API_KEY`. Never
+  read it from AWS, print it or ask for it in chat; refer to it only as
+  `$PRISM_API_KEY`, as in [the MCP client setup](reference/mcp-client-setup.md#key).
+- This API serves the REST routes (`/persist/ingest`, `/persist/gremlin`,
+  `/persist/lexicon...`, `/persist/metrics/catalog`, `/persist/process-triggers...`
+  and the rest), `POST /persist/graphql`, `GET /persist/graphql/schema`,
+  `/persist/mcp` and `/persist/mcp/configuration`. It alone serves
+  `POST /persist/csv-loads` and `GET /persist/csv-loads/{loadId}`.
+- Configuration writes are accepted with the key; ask before each one.
+- GraphQL treats a key caller as the `shared-api-key` principal and withholds
+  every PII-restricted field (`ssn_last_four`, `full_ssn`). A `null` there is
+  the policy, not missing data.
+- `403 {"ok":false,"error":{"type":"Forbidden","message":"A valid x-api-key header is required."}}`
+  means the key is missing or wrong: have the person check their own
+  environment. `404` means the route is unknown or the revision lacks it.
+- Marketplace installs always have this API. A SOC CDK deploy has it only when
+  deployed with `--context sharedApiDomainName=<fqdn>`. If the target has no
+  `persist` mapping on the shared domain, hand that to Conkeldurr; do not fall
+  back to SigV4.
+
+```bash
+# The person sets the key in their own profile: export PRISM_API_KEY='<shared x-api-key>'
+export AWS_PROFILE=<selected-profile> AWS_REGION=<region>
+PRISM_DOMAIN=$(aws ssm get-parameter --name /account/env-parameters \
+  --query Parameter.Value --output text | jq -r .domain.fqdn)
+
+curl -sS -H "x-api-key: $PRISM_API_KEY" "https://$PRISM_DOMAIN/persist/metrics/catalog"
+
+curl -sS -X POST -H "x-api-key: $PRISM_API_KEY" -H 'content-type: application/json' \
+  -d '{"gremlin":"g.V().limit(1).count()"}' "https://$PRISM_DOMAIN/persist/gremlin"
+```
+
+### Load Neptune CSV
+
+`POST /persist/csv-loads` starts the Neptune CSV workflow and returns 202 with
+its `load_id`. It takes the workflow input (`vertices_s3_uri` and
+`edges_s3_uri`; a shared `s3_uri` prefix needs the `persist-spark` job, so
+Marketplace installs refuse it with 400) and optional `load_id` (`[A-Za-z0-9_-]{1,80}`). A
+retry with the same `load_id` and input returns the same run; different input
+returns 409. `GET /persist/csv-loads/{loadId}` returns `RUNNING`, `SUCCEEDED`,
+`FAILED`, `TIMED_OUT` and so on. `callback.task_token` is for Step Functions
+callers and cannot be combined with `load_id`.
+
+```bash
+curl -sS -X POST -H "x-api-key: $PRISM_API_KEY" -H 'content-type: application/json' \
+  -d '{"load_id":"fixture-001","vertices_s3_uri":"s3://<bucket>/run/vertices/","edges_s3_uri":"s3://<bucket>/run/edges/"}' \
+  "https://$PRISM_DOMAIN/persist/csv-loads"
+curl -sS -H "x-api-key: $PRISM_API_KEY" "https://$PRISM_DOMAIN/persist/csv-loads/fixture-001"
+```
 
 ## Sync or query the current lexicon catalog
 

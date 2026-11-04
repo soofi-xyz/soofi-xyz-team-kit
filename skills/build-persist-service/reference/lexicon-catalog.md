@@ -88,7 +88,8 @@ Keep Model authoritative for vocabulary and publication. Preserve Deploy's typed
 Model release installation described by [Corviknight](../../../agents/corviknight.md#model-lexicon-installation-into-persist)
 and [Skarmory](../../../agents/skarmory.md#model-lexicon-installation-into-persist).
 Verify the target contract for `GET /persist/lexicon`, `PUT /persist/lexicon` and
-`PUT /persist/lexicon/extensions/{vocabularyId}`. Preserve IAM SigV4, document-digest
+`PUT /persist/lexicon/extensions/{vocabularyId}`. Preserve both the IAM SigV4 HTTP API
+and the shared-domain `x-api-key` REST API that serve these routes, document-digest
 checks and chained `If-Match`/`ETag` behavior; `source: legacy-ssm` is a cutover gap,
 not permission to bypass the API. Do not claim these routes already project metadata.
 
@@ -111,7 +112,9 @@ Keep public Gremlin read-only and graph writes on the trusted projection path.
 1. Resolve a request such as “sync core”, “refresh extension X” or “show the current
    Person/worksFor schema” into target, catalog scope and approved source. Reuse
    session context; ask only for missing choices. Verify the account/region,
-   installed source and live capability. For Model source creation/changes use
+   installed source and live capability. Make every request on the shared domain
+   with the shared key, as in [Call the Persist API](../../configure-persist-product/SKILL.md#call-the-persist-api).
+   For Model source creation/changes use
    Jirachi/Dialga; for missing Persist behavior hand the gap to Conkeldurr.
 2. For a lookup, run a read-only query immediately; do not trigger installation.
    For an update, show the supported preview and explain removals in plain language.
