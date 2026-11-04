@@ -62,7 +62,8 @@ listed cost.
 | Seller on Box, Google Drive or FTPS | One driver; every file verb and flow works with it |
 | Partner with unusual signed-request auth | One auth profile on `http` |
 | Partner API acting for a user (refresh token or service account with delegation) | Partner configuration with `oauth2_refresh_token` or `oauth2_jwt_bearer` (§5) |
-| Partner pushing events with a signed OIDC token (for example Pub/Sub push) | Partner configuration with a `signed_token` webhook + webhook activation (§5) |
+| Partner pushing self-contained events with a signed OIDC token (for example Pub/Sub push) | Partner configuration with a `signed_token` webhook + webhook activation (§5) |
+| Mailbox or API source whose push carries only a change cursor (for example Gmail) | Memoryless overlapping-window pull: partner configuration + schedule activation (§5) |
 
 ## 4. Known product-side follow-ups
 
@@ -153,3 +154,22 @@ message carries the event as base64 in `message.data`, and Connect has no step
 that decodes an inline base64 field to JSON, no `[*]` array projection in
 `Extract.Save` to collect the `ackId`s, and so no way to acknowledge. Both
 gaps belong to the Connect builder; do not work around them in a flow.
+
+### Memoryless window pull
+
+Use this when a source's push is only a change signal. Gmail push carries just
+`{emailAddress, historyId}`, needs the previous `historyId` and a watch renewed
+every 7 days, so it would need memory between jobs; Connect configurations are
+memoryless, so reject it.
+
+- A schedule activation runs every 30 minutes; each job queries the last 60
+  minutes (window at least twice the interval) with the source's time filter
+  (Gmail `after:`/`before:`, `modified_since`, `updated_min`) for every mailbox
+  in the configured list, which the `parameters` pattern also pins.
+- `transaction_id` derives from configuration, mailbox and window start, so a
+  re-run lands identical content under the same id.
+- Overlapping windows land some messages twice by design; the product writes
+  them to Persist by identity (`Message-ID` + mailbox).
+- Backfill is the same request with a larger window. Alternatively, a
+  source-side full-content copy (a Workspace routing copy to SES → S3) is read
+  by an `s3` connection.
