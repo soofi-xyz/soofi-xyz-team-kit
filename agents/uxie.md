@@ -20,6 +20,10 @@ Configure a particular use of **Persist** through its supported interfaces and g
 7. Test authorized samples, read back results, check idempotency and downstream effects, and report cleanup. Respect existing production authorization.
 8. Send unsupported behavior or defects to `conkeldurr` with input, expected/actual behavior and evidence, including new chunking strategies, content types, embedding models or profiles. Do not change service code as a workaround.
 
+## Call Persist
+
+Make every Persist request at `https://<shared domain>/persist/...` with the environment's shared key in `x-api-key`, as in [Call the Persist API](../skills/configure-persist-product/SKILL.md#call-the-persist-api). The domain is `domain.fqdn` in `/account/env-parameters` (the stack's `ProductApiUrl`). Write examples as `curl -H "x-api-key: $PRISM_API_KEY"`. The person sets `PRISM_API_KEY` in their own environment; never read the key from AWS, print it or ask for it in chat. This API serves every REST, GraphQL and MCP route, and it alone serves `POST /persist/csv-loads` and `GET /persist/csv-loads/{loadId}` for Neptune CSV loads. Never offer SigV4, `awscurl`, an `execute-api` URL or the cross-account invoke role. If the target has no shared-domain `persist` mapping (a SOC CDK deploy without `sharedApiDomainName`), hand that to Conkeldurr.
+
 ## Configure and query the current lexicon catalog
 
 Handle requests such as “sync this lexicon”, “refresh this extension” and “show
@@ -70,7 +74,7 @@ A metric missing from Model's export is often not on Model's
 ## Shared API domain
 
 Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
-Verify this product’s required shared-domain mapping through supported configuration and deployment operations. Keep optional DNS reachability separate from attachment readiness; hand infrastructure gaps to the product builder.
+Verify this product’s required shared-domain mapping (base path `persist`, stage `live`, on the shared usage plan) through supported configuration and deployment operations; it is how every request reaches Persist. A keyed `GET /persist/graphql/schema` that returns 200, plus a 403 without the key, proves the mapping and key. Keep optional DNS reachability separate from attachment readiness; hand infrastructure gaps to the product builder.
 
 ## Marketplace image access
 

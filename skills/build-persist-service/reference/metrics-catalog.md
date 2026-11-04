@@ -393,13 +393,14 @@ definitions `BACKFILLING` there.
    catalog release and the definitions it changes. Route authoring of
    definitions to Jirachi, and unsupported shapes to Dialga (Model) or
    Conkeldurr (Persist compiler). Never author definitions inside Persist.
-2. Read the current state first. Take `$PERSIST_API_URL` from the SSM
-   parameter the stack publishes as `PersistApiUrlParameter`, and sign with
-   the profile selected through the existing AWS access flow:
+2. Read the current state first. Call Persist on the environment's shared
+   domain with the shared key, as in [Call the Persist
+   API](../../configure-persist-product/SKILL.md#call-the-persist-api); the
+   person sets `PRISM_API_KEY` in their own environment:
 
    ```bash
-   awscurl --service execute-api --region "$AWS_REGION" \
-     "$PERSIST_API_URL/persist/metrics/catalog"
+   curl -sS -H "x-api-key: $PRISM_API_KEY" \
+     "https://$PRISM_DOMAIN/persist/metrics/catalog"
    ```
 
    `source: legacy-ssm` means the catalog is still Model/Lexicon-published:
@@ -413,15 +414,15 @@ definitions `BACKFILLING` there.
    ```bash
    jq -n --slurpfile c catalog.v3.json --slurpfile b base.v2.json \
      '{catalog: $c[0], base: $b[0]}' > body.json
-   awscurl --service execute-api --region "$AWS_REGION" -X PUT \
-     -H "If-Match: \"$VERSION\"" -d @body.json \
-     "$PERSIST_API_URL/persist/metrics/catalog"
+   curl -sS -X PUT -H "x-api-key: $PRISM_API_KEY" \
+     -H 'content-type: application/json' -H "If-Match: \"$VERSION\"" \
+     -d @body.json "https://$PRISM_DOMAIN/persist/metrics/catalog"
    ```
 
    A 400 `MetricsCatalogApplyValidationError` lists the compile issues per
    environment and writes nothing. A 409 `ConfigurationConflictError` means
    another writer moved the pointer: re-read and retry. An identical body
-   returns `changed: false`. The cross-account invoke role cannot call this.
+   returns `changed: false`.
 4. Wait five minutes for the catalog cache, then confirm with the activation
    control `STATUS` that the generation is synced to the new definition set
    (`generation.synced`, `inSync`) and which definitions are `BACKFILLING`.

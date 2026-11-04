@@ -1,32 +1,30 @@
 ---
 title: Verify search results and recall
 impact: HIGH
-tags: vector-search, graphql, sigv4, awscurl, recall, verification
+tags: vector-search, graphql, x-api-key, shared-domain, recall, verification
 ---
 
 ## Verify search results and recall
 
-`search` is a nullable root field on the existing IAM-authorized
-`POST /persist/graphql`. There is no REST search route, and Gremlin
-`Neptune#fts` is unrelated to it.
+`search` is a nullable root field on `POST /persist/graphql`. There is no
+REST search route, and Gremlin `Neptune#fts` is unrelated to it.
 
-### Sign the request
+### Call the API
 
-The API requires SigV4. awscurl's bundled botocore cannot refresh an SSO
-session, so export short-lived credentials first and keep `AWS_PROFILE` out of
-awscurl's environment:
+Call Persist on the environment's shared domain with the shared key, as in
+[Call the Persist API](../SKILL.md#call-the-persist-api). The person sets
+`PRISM_API_KEY` in their own environment; never read it from AWS, print it or
+ask for it in chat.
 
 ```bash
-export AWS_PROFILE=<selected-profile> AWS_REGION=us-east-2
-API=$(aws ssm get-parameter --name persist-api-url --query Parameter.Value --output text)
-eval "$(aws configure export-credentials --profile "$AWS_PROFILE" --format env)"
+export AWS_PROFILE=<selected-profile> AWS_REGION=<region>
+PRISM_DOMAIN=$(aws ssm get-parameter --name /account/env-parameters \
+  --query Parameter.Value --output text | jq -r .domain.fqdn)
 
 # The schema must list search; vertex owners appear in union SearchEntity.
-env -u AWS_PROFILE awscurl --service execute-api --region "$AWS_REGION" "$API/persist/graphql/schema" \
+curl -sS -H "x-api-key: $PRISM_API_KEY" "https://$PRISM_DOMAIN/persist/graphql/schema" \
   | jq -r .sdl | grep -E 'search\(|union SearchEntity'
 ```
-
-Re-run the `export-credentials` line when the credentials expire.
 
 ### Query
 
@@ -42,8 +40,8 @@ Keep the request in a local file that is not committed:
 ```
 
 ```bash
-env -u AWS_PROFILE awscurl --service execute-api --region "$AWS_REGION" -X POST \
-  -H 'content-type: application/json' -d @search.json "$API/persist/graphql" \
+curl -sS -X POST -H "x-api-key: $PRISM_API_KEY" -H 'content-type: application/json' \
+  -d @search.json "https://$PRISM_DOMAIN/persist/graphql" \
   | jq '.data.search | {pageInfo, results: [.results | to_entries[] | {rank: (.key + 1), kind: .value.kind, id: .value.id, type: .value.entity.__typename}]}'
 ```
 

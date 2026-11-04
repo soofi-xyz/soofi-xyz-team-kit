@@ -207,8 +207,14 @@ API Gateway API keys and usage plans work only on REST APIs. Current state:
   Model routes are IAM-only.
 - Deploy, Transform, Connect and System are IAM SigV4 only. Deploy's shared API
   key for its run/Puller APIs is pending prismteam-ai/deploy PR #13.
-- Persist is an HTTP API with an IAM authorizer. HTTP APIs have no usage plans;
-  add a Lambda authorizer on `x-api-key` via Account.
+- Persist meets option 1 of the publish readiness gate below: a separate
+  regional REST API (`lib/persist-shared-api.ts`, persist#324) with
+  `apiKeyRequired` on every method, stage `live` on the shared usage plan and
+  `SharedApiMapping` at base path `persist`. It serves every route of Persist's
+  IAM HTTP API, which remains for SigV4 callers, plus `/persist/csv-loads`.
+  Marketplace installs always have it; SOC CDK deploys only with
+  `--context sharedApiDomainName=<fqdn>`. Configure and call Persist only
+  through `https://<domain>/persist` with the shared key.
 - Configuration bundles (SmsSendFlow, SmsInterproseFork, TransformConfiguration)
   expose no API and are exempt.
 
