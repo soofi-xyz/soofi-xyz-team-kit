@@ -41,6 +41,7 @@ invocation input, and how each is validated.
 
 ## Failures and redrive
 
+Read [consent status sync](reference/consent-status-sync.md) for flows that copy a consent status (for example SMS do-not-text) from graph edges to a partner.
 Read [failures and redrive](reference/failures-and-redrive.md) before writing a
 `Catch`, a `Fail` state or a business-rule failure: a template may not reach a
 `Fail` state except by catching an error, `FailWhen` fails the step that decides,

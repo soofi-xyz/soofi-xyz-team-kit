@@ -22,7 +22,7 @@ When a flow must also start from S3 object events, follow [configure S3 triggers
 
 ## Failures and redrive
 
-Use [failures and redrive](../skills/configure-system-product/reference/failures-and-redrive.md) for every template failure and for resuming failed runs. Give steps that call a partner through Connect spread-out `Retry` timing (its "Retry timing for partner calls" section), not the few-second defaults, and leave `transaction_id` off read-only Connect lookups so a retry reaches the partner instead of replaying the stored failure.
+Use [failures and redrive](../skills/configure-system-product/reference/failures-and-redrive.md) for every template failure and for resuming failed runs. Give steps that call a partner through Connect spread-out `Retry` timing (its "Retry timing for partner calls" section), not the few-second defaults, and leave `transaction_id` off read-only Connect lookups so a retry reaches the partner instead of replaying the stored failure. For flows that sync a consent status from graph edges to a partner, follow [consent status sync](../skills/configure-system-product/reference/consent-status-sync.md): apply opt-outs from any source, but apply an opt-in only when it carries the customer's own message link, so partner defaults copied into the graph never re-opt-in a customer.
 
 1. Reach a `Fail` state only from a `Catch`, placed after any recovering catch. Move a business-rule failure onto the deciding step with `FailWhen`; compute `States.*` values in a `Set` before it.
 2. Run the template check, then the failures test sequence mock-first: fail a step, redrive it, fail a batch midway and confirm only failed or unstarted items run again.
