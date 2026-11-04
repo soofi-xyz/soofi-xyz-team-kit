@@ -37,10 +37,10 @@ requests from the person's Claude plan. Do not run `--test` repeatedly in a loop
 | Section | Passes when | Typical fix it prints |
 | --- | --- | --- |
 | Claude Code | `claude` is on `PATH` and signed in with a Claude subscription on a `@prismteam.ai` account | Add `~/.local/bin` to `PATH`; `/login` inside Claude Code |
-| Prerequisites | `git`, Node 22.18+ | `xcode-select --install`; `brew install node` |
+| Prerequisites | `git`, Node 22.18+ | `xcode-select --install`; `brew install node`, or `nvm install 22` when Homebrew is not yours |
 | Team kit | `soofi-xyz-team-kit@soofi-xyz` installed, enabled, and current | `claude plugin marketplace add …`, `claude plugin install …`, `claude plugin update …` |
 | Agents | Each kit exposes its agents | Reinstall the kit |
-| MCP servers | Every server in `claude mcp list` is `✔ Connected` | Per-status fix; for `elephant`, Node 22.18+ and network |
+| MCP servers | Every server in `claude mcp list` is `✔ Connected` | Per-status fix; for `elephant`, Node 22.18+ and network, or, when Node is already fine, run the server's `npx` command yourself to see the error the timeout hides |
 | Test prompts (`--test`) | `soofi-xyz-team-kit:arceus` and an `elephant` tool call each answer `ok` | Accept the updated Consumer Terms; open `/mcp` |
 
 ## Report

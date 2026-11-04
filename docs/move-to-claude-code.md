@@ -2,7 +2,8 @@
 
 This guide takes you from a clean Mac to Claude Code with the Soofi team kit
 installed, checked and tested, and then moves the agents you run in Cursor today. You do not
-need to have used our agents before. Follow the steps in order.
+need to have used our agents before. It is for new hires as much as for people moving from
+Cursor: if you never used Cursor, step 7 is a quick **none**. Follow the steps in order.
 
 Every step tells you:
 
@@ -13,9 +14,10 @@ Every step tells you:
 - **If you don't**: what to do instead.
 
 > **Want an agent to walk you through it?** In Cursor, ask
-> `/move-to-claude-code walk me through the guide`. It goes one step at a time, shows the
+> `/move-to-claude-code walk me through the guide`; in Claude Code, once step 4 is done, it
+> is `/soofi-xyz-team-kit:move-to-claude-code`. It goes one step at a time, shows the
 > screenshot for each step and notes where you got stuck for the [pass-it-on](#pass-it-on)
-> pull request.
+> pull request. With neither installed yet, follow this page on its own.
 
 **Stuck on something this guide does not cover?** Write down exactly what you saw, ask
 Mykyta Ovsiienko, and add it to the guide afterwards (see [Pass it on](#pass-it-on)).
@@ -64,12 +66,29 @@ App Store, open it once, and run the command again.
 
 **Where:** regular terminal
 
+Skip this whole step if `node -v` already prints `v22.18.0` or higher (for example from
+`nvm`).
+
 **Run** (skip the first line if `brew --version` already prints a version):
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 brew install node
 ```
+
+**Reused Mac, or you are not an admin:** Homebrew is one install per Mac (`/opt/homebrew`),
+not one per user. If `brew` is missing, or `brew install` fails with `Permission denied`
+because another user installed it, skip Homebrew: no `sudo brew`, no permission changes on
+`/opt/homebrew`, no second Homebrew in your home folder. Install
+[nvm](https://github.com/nvm-sh/nvm#installing-and-updating) instead (no admin rights
+needed), open a new terminal window, then run:
+
+```bash
+nvm install 22 && nvm alias default 22
+```
+
+The kit's elephant MCP server finds an nvm Node under `~/.nvm` by itself, and Claude Code
+installs into `~/.local/bin` (step 2), so nothing in this guide needs Homebrew.
 
 **You should see:** `node -v` prints `v22.18.0` or higher.
 
@@ -94,8 +113,13 @@ brew install node
    (`you@prismteam.ai`). Do not use a personal Gmail account.
 3. When asked *How are you planning to use Claude?*, choose **For personal use**.
    Do not choose *With my team*.
-4. Choose the **Ultra** plan.
-5. Pay with your **Ramp card**.
+4. When the plans are listed, choose **Max or Ultra**.
+5. Choose **Ultra**.
+6. Pay with your **Ramp card**.
+7. Finish the extra onboarding screens claude.ai shows after paying, such as
+   **Quick identity check** (*We need to confirm your identity before you can continue.
+   This should only take 2 minutes.*). They are not captured yet; if you can, screenshot
+   them for your pass-it-on pull request.
 
 ![claude.ai onboarding asking "How are you planning to use Claude?" with "For personal use" and "With my team"](./images/move-to-claude-code/01-claude-for-personal-use.png)
 
@@ -107,6 +131,9 @@ in step 3.
 **If you don't:**
 
 - The card is declined: check the Ramp card limit with your manager, then retry.
+- Ramp asks you to create a new business account (company details and so on): stop. You
+  need an invite to Prism's Ramp account, not a new one. Ask your manager for it, then come
+  back to this step.
 - You see a team or enterprise organization instead of `you@prismteam.ai's Organization`:
   open the account menu, choose your personal organization, and continue.
 - Do not buy a second plan if you already have Ultra or Max on this account. Both work.
@@ -116,6 +143,11 @@ in step 3.
 ## 2. Install Claude Code
 
 **Where:** regular terminal
+
+If `claude --version` already prints a version in a new terminal window, Claude Code is
+installed and on your PATH: skip the installer (run `claude update` if it is older than the
+version in the screenshot below), and do not add the PATH line below again (it would only
+duplicate the line in `~/.zshrc`).
 
 **Run:**
 
@@ -184,6 +216,8 @@ Claude Code opens full-screen in the terminal and asks a few one-time questions:
    quits Claude Code.
 
    ![Accessing workspace: trust dialog with "No, exit" and "Yes, I trust this folder"](./images/move-to-claude-code/06-trust-folder.png)
+
+Claude Code may also ask **Use Claude Code's terminal setup?** Choose **Yes**.
 
 ### 3.2 Sign in
 
@@ -281,6 +315,29 @@ ignore it.
 - If Claude Code was open while you installed, type `/reload-plugins` inside it, or quit
   and start it again.
 
+### 4.3 Download the elephant MCP server once
+
+**Where:** regular terminal, with Claude Code closed
+
+The kit's elephant MCP server is fetched by `npx` the first time it starts, which can take
+longer than the 30 seconds Claude Code waits for a server. Fetch it once now:
+
+```bash
+npx -y --package=github:elephant-xyz/elephant-mcp#main mcp
+```
+
+The fetch takes a few minutes and shows little meanwhile. Wait.
+
+**You should see:** a line containing `Starting MCP server with stdio transport`, then the
+server syncing county data. Lines about `No embedding provider available`, `Failed to index
+file` or AWS credentials are expected. An `Atlas startup synchronization failed` line with
+`HTTP 429` means the public gateways rate-limited the sync; the server still works, see the
+last bullet of [step 5.3](#53-one-test-prompt-for-an-agent-and-the-mcp-server). Press
+`Ctrl-C`.
+
+**If you don't:** a stack trace means the server crashes on start; see **Elephant fails
+while Node is fine** in [step 5.1](#51-one-check-command).
+
 ---
 
 ## 5. Check and test everything
@@ -318,8 +375,32 @@ common ones:
 | `Not signed in` | `claude`, then `/login`, option **1** | inside Claude Code |
 | `blocked by the updated Consumer Terms` | `claude`, answer the terms screen (option **2**), `/exit` | inside Claude Code |
 | `marketplace '…' is not added` / `not installed` | the two lines from step 4 | regular terminal |
-| `plugin:soofi-xyz-team-kit:elephant: ✘ Failed to connect` | `brew install node` (needs 22.18+), then `/mcp reconnect all` | regular terminal, then inside Claude Code |
+| `plugin:soofi-xyz-team-kit:elephant: ✘ Failed to connect` and the Prerequisites line says Node is missing or too old | Node 22.18+ as in [step 0.2](#02-homebrew-and-node), then run the check again (`/exit` any open Claude Code first) | regular terminal |
+| `plugin:soofi-xyz-team-kit:elephant: ✘ Failed to connect` while Node is already 22.18+ (`connection timed out after 30000ms` or `Connection closed`) | see **Elephant fails while Node is fine** below | regular terminal |
 | `! Needs authentication` | `/mcp`, select the server, **Authenticate** | inside Claude Code |
+
+**Elephant fails while Node is fine.** Claude Code gives the server 30 seconds and reports
+only the lost connection: the `Issue:` line of
+`claude mcp get plugin:soofi-xyz-team-kit:elephant` says `CONNECTION_CLOSED` or a timeout,
+not the server's own error. Run the server yourself as in
+[step 4.3](#43-download-the-elephant-mcp-server-once), with Claude Code closed:
+
+- It prints `Starting MCP server with stdio transport` and keeps running (embedding, AWS
+  credential and Atlas sync errors are expected, see 4.3 and 5.3): it works. Press
+  `Ctrl-C`, start `claude` again and run the check again. `/mcp reconnect all` only
+  answered `No MCP servers need reconnecting` while the server was failing.
+- It prints a stack trace such as `MODULE_NOT_FOUND … @smithy/core/transport`: the server
+  crashes on start. On the first walkthrough (2026-11-03, Node v22.23.4 from nvm) the `npx`
+  cache held a broken copy of `@smithy/core` (no `package.json`). Delete the cache and run
+  the command again, letting it finish (this fixed it on the first walkthrough):
+
+  ```bash
+  rm -rf ~/.npm/_npx
+  npx -y --package=github:elephant-xyz/elephant-mcp#main mcp
+  ```
+
+  If it still crashes, do not reinstall Node: note the error for your pass-it-on pull
+  request, skip the elephant parts of 5.2 and 5.3, and continue with step 6.
 
 ### 5.2 List agents and MCP servers yourself
 
@@ -367,6 +448,12 @@ names. The count grows as the server syncs the Atlas index.
   `/reload-plugins`, or `/exit` and start `claude` again.
 - Claude asks for permission to use a tool: choose **Yes**.
 - `[ACTION REQUIRED] … Consumer Terms`: see [step 3.3](#33-updated-terms-if-shown).
+- `ATLAS_NOT_INITIALIZED` with `HTTP 429 Too Many Requests` from the IPFS gateways: the
+  server is fine (step 5.1 showed it connected), but its one-time sync of the Atlas index
+  through public gateways was rate-limited, and it does not retry while it runs. `/exit`,
+  wait a few minutes, start `claude` again (that starts the server and its sync fresh) and
+  send the prompt again. If it keeps failing, note it in your pass-it-on notes and continue
+  with step 6.
 
 ---
 
@@ -383,6 +470,9 @@ you share threads with the team. It is what replaces Cursor cloud agents (step 7
 Slab post *Claude code set up plan*), open it and sign in with your Prism Google account.
 
 **You should see:** [ampcode.com](https://ampcode.com/) with the Prism workspace.
+
+If Amp asks you to pick a plan, choose **Megawatt** (the $20 plan). It was free on the first
+walkthrough (a trial, it seems); if it is not, pay with your Ramp card.
 
 ### 6.2 Connect your Claude subscription
 
@@ -438,21 +528,32 @@ and click **Verify & Connect**.
 
 **Run:**
 
-1. Click the **New thread** button at the top left.
+1. Connect GitHub first; Amp asks for it before you can pick a project. Open **Personal
+   Settings** (as in step 6.2) and choose **Integrations & MCP** in the left sidebar. Under
+   **Available**, click **Connect** on the **GitHub** card (*Clone and read private GitHub
+   repositories when the agent needs them*). GitHub then asks you to let Amp act on your
+   behalf with the account you are signed in to in the browser: use a work account on your
+   Prism email, not your personal one. Ask Saman if you only have a personal account, or if
+   the Prism repositories do not show up when you pick a project in item 3.
+
+   ![Amp Integrations & MCP page: GitHub under Available with a Connect button](./images/move-to-claude-code/30-amp-github-connect.png)
+
+2. Click the **New thread** button at the top left. You do not need to start an Orb first:
+   the **Orb** page under **Usage** in Personal Settings can show nothing running.
 
    ![Amp New thread button](./images/move-to-claude-code/25-amp-new-thread.png)
 
-2. Pick a project. Projects cover the GitHub repositories in the Prism organization. Keep
+3. Pick a project. Projects cover the GitHub repositories in the Prism organization. Keep
    **Orb** selected: an Orb is a cloud machine and the preferred place to work. Use your
    own machine as the runner only in edge cases.
 
    ![Amp new-thread prompt with Orb, project picker and Claude Code mode](./images/move-to-claude-code/26-amp-project-picker.png)
 
-3. Change the mode to **Claude Code** so the thread uses your Claude subscription.
+4. Change the mode to **Claude Code** so the thread uses your Claude subscription.
 
    ![Amp mode picker with Claude Code (uses your Claude subscription) selected](./images/move-to-claude-code/27-amp-claude-code-mode.png)
 
-4. Write a prompt and start the conversation.
+5. Write a prompt and start the conversation.
 
 **You should see:** the thread running with `Claude Code` shown in the prompt bar.
 
@@ -486,6 +587,9 @@ the table below up to date while you do.
    interval.
 4. **Deployed agent runtimes:** services that run in AWS, such as the Kirlia, Hypno, Rotom,
    Meowth or Pelipper runtimes. They do not depend on your editor.
+
+If you run none of these, which is normal for a new hire, this step still applies: write
+**none** and go to 7.2.
 
 ### 7.2 Recreate or keep each one
 
@@ -527,13 +631,17 @@ This guide improves each time a new person follows it.
    [`soofi-xyz/soofi-xyz-team-kit`](https://github.com/soofi-xyz/soofi-xyz-team-kit). Edit
    this file and replace screenshots in `docs/images/move-to-claude-code/` with your own
    captures, keeping the file names. Blur personal emails, usernames and private
-   repository names before committing. Add your row to the table below.
+   repository names before committing. Add your row to the table below. `gh` is not needed
+   for steps 0–7; for the pull request use the GitHub website, or put the `gh` binary in
+   `~/.local/bin` (from the macOS zip on [GitHub CLI releases](https://github.com/cli/cli/releases),
+   or `ln -s /opt/homebrew/bin/gh ~/.local/bin/gh` when another user's Homebrew has it).
+   Never `brew install gh` with a Homebrew you do not own.
 4. **Saman reviews each pull request.**
 5. **Hand the updated guide to the next person** once the pull request is merged.
 
 | Tester | Date | Machine | Where they got stuck | Pull request |
 | --- | --- | --- | --- | --- |
-| Lucian Lazar | | | | |
+| Lucian Lazar | 2026-11-03 | Mac (reused, non-admin user; Homebrew owned by another user) | Elephant MCP: 30 s timeout, then `Connection closed`, hid an `npx` crash of `github:elephant-xyz/elephant-mcp#main` (`MODULE_NOT_FOUND @smithy/core/transport`; Node v22.23.4 from nvm was fine; `/mcp reconnect all` was a no-op). 6.4 did not say to connect GitHub in Amp. 7.1 had nothing to list. After the fix, 5.3's county listing failed with `ATLAS_NOT_INITIALIZED` (`HTTP 429` from all four IPFS gateways during the first sync). `brew install` failed with `Permission denied`. | [#327](https://github.com/soofi-xyz/soofi-xyz-team-kit/pull/327) |
 
 ---
 

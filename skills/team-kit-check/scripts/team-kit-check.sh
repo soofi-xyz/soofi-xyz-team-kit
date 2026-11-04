@@ -146,18 +146,34 @@ else:
     fail("git is missing (Claude Code needs it to add plugin marketplaces)",
          "Fix (regular terminal): xcode-select --install")
 
-node = shutil.which("node")
-if node:
-    v = run("node", "-v", timeout=15)[1].strip()
+NODE_FIX = ("Fix (regular terminal): brew install node   (Homebrew not yours, or no admin rights:",
+            "`nvm install 22 && nvm alias default 22`; see docs/move-to-claude-code.md step 0.2)")
+
+
+def node_check(path):
+    v = run(path, "-v", timeout=15)[1].strip()
     parts = [int(x) for x in re.findall(r"\d+", v)[:2]] + [0, 0]
-    if (parts[0], parts[1]) >= (22, 18):
-        ok(f"Node {v} (the elephant MCP server needs 22.18+)")
-    else:
-        fail(f"Node {v} is too old for the elephant MCP server (needs 22.18+)",
-             "Fix (regular terminal): brew install node   (or `nvm install 22`)")
+    return v, (parts[0], parts[1]) >= (22, 18)
+
+
+# Pick Node the way mcp.json's elephant launcher does: the newest nvm Node that is 22.18+,
+# else /opt/homebrew/bin, /usr/local/bin, then the first `node` on this shell's PATH.
+node = next((str(p) for p in sorted((Path.home() / ".nvm" / "versions" / "node").glob("*/bin/node"),
+                                     key=lambda p: [int(x) for x in re.findall(r"\d+", p.parent.parent.name)],
+                                     reverse=True) if node_check(str(p))[1]), None)
+node = node or next((p for p in ("/opt/homebrew/bin/node", "/usr/local/bin/node") if os.access(p, os.X_OK)), None)
+node = node or shutil.which("node")
+v, node_ok = node_check(node) if node else ("", False)
+node_dir = Path(node).parent if node_ok and node != shutil.which("node") else None
+if node_ok and node_dir:
+    ok(f"Node {v} at {node}, which the elephant MCP server picks by itself (not the first node on this shell's PATH)")
+elif node_ok:
+    ok(f"Node {v} (the elephant MCP server needs 22.18+)")
+elif node:
+    fail(f"Node {v} at {node} is too old for the elephant MCP server (needs 22.18+)" if v
+         else f"node at {node} does not run (`node -v` failed); the elephant MCP server needs Node 22.18+", *NODE_FIX)
 else:
-    fail("Node is not installed (the elephant MCP server needs Node 22.18+)",
-         "Fix (regular terminal): brew install node")
+    fail("No Node 22.18+ found on PATH, in /opt/homebrew/bin or /usr/local/bin, or under ~/.nvm", *NODE_FIX)
 
 # ---------------------------------------------------------------- Plugins
 section("Team kit")
@@ -278,12 +294,23 @@ def mcp_fix(name, status):
     if status.startswith("⊘"):
         return ["Fix: inside Claude Code type /mcp, select the server and choose Enable."]
     fix = []
-    if short == "elephant":
-        fix += ["The elephant server needs Node 22.18+ on PATH (see Prerequisites) and network",
-                "access to github.com and npm.",
-                "Fix (regular terminal): brew install node   then   npx -y --package=github:elephant-xyz/elephant-mcp#main mcp --help"]
+    if short == "elephant" and not node_ok:
+        fix += ["The elephant server needs Node 22.18+ on PATH: apply the Prerequisites fix above first."]
+    elif short == "elephant":
+        cmd = "npx -y --package=github:elephant-xyz/elephant-mcp#main mcp"
+        if node_dir:
+            cmd = f'PATH="{node_dir}:$PATH" {cmd}'
+        fix += ["Node is fine. A 30s timeout or 'Connection closed' hides the server's own error. Run its",
+                "command yourself, with no time limit (regular terminal, with Claude Code closed):",
+                f"  {cmd}",
+                "'Starting MCP server with stdio transport' then syncing = it started (embedding, AWS credential",
+                "and Atlas sync errors are expected): press Ctrl-C.",
+                "A stack trace (e.g. MODULE_NOT_FOUND) = it crashes on start: rm -rf ~/.npm/_npx and run it again;",
+                "if it still crashes, note the error for your pass-it-on PR and do not reinstall Node",
+                "(docs/move-to-claude-code.md, step 5.1). It also needs network access to github.com and npm."]
     fix += [f"Details (regular terminal): claude mcp get {name}   (read the `Issue:` line)",
-            "Then inside Claude Code: /mcp reconnect all"]
+            "Then run this check again. In an open Claude Code session, /exit and start `claude` again",
+            "(/mcp reconnect all can answer 'No MCP servers need reconnecting' while a server is failing)."]
     return fix
 
 
