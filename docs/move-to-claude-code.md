@@ -492,8 +492,10 @@ you share threads with the team. It is what replaces Cursor cloud agents (step 7
 
 **Where:** browser
 
-**Run:** ask Mykyta Ovsiienko for the Amp workspace invite link (it is in the internal
-Slab post *Claude code set up plan*), open it and sign in with your Prism Google account.
+**Run:** open the Prism workspace invite,
+[ampcode.com/workspace?invite=33160e42-b4d8-4a34-81ed-22a1cbc5181d](https://ampcode.com/workspace?invite=33160e42-b4d8-4a34-81ed-22a1cbc5181d),
+and sign in with your Prism Google account. If the link says the invite expired or is
+invalid, ask Mykyta Ovsiienko for a new one.
 
 **You should see:** [ampcode.com](https://ampcode.com/) with the Prism workspace.
 
