@@ -18,6 +18,10 @@ step because it seems obvious.
   one as `./images/move-to-claude-code/<file>.png`.
 - When the plugin copy is missing either, use
   `https://github.com/soofi-xyz/soofi-xyz-team-kit/blob/main/docs/move-to-claude-code.md`.
+- The installed plugin can lag behind `main`; Cursor's plugin cache does not update on its
+  own. At the start, compare the plugin copy with
+  `https://raw.githubusercontent.com/soofi-xyz/soofi-xyz-team-kit/main/docs/move-to-claude-code.md`.
+  If they differ, follow the `main` version and take screenshots from `main` too.
 
 ## For every step
 
