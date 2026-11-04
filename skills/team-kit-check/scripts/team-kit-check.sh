@@ -271,7 +271,9 @@ for kit, p in installed:
 # ---------------------------------------------------------------- MCP servers
 section("MCP servers")
 rc, out, err = run("claude", "mcp", "list", timeout=180)
-STATUS = re.compile(r"^(?P<name>\S+): .* - (?P<status>[✔✘!⏸⊘].*)$")
+# Claude Code 2.1.87 prints ✓/✗; older releases print ✔/✘.
+STATUS = re.compile(r"^(?P<name>\S+): .* - (?P<status>[✔✓✘✗!⏸⊘].*)$")
+CONNECTED = ("✔", "✓")
 servers = []
 for raw in out.splitlines():
     m = STATUS.match(raw.strip())
@@ -287,8 +289,7 @@ if not servers:
 def mcp_fix(name, status):
     short = name.split(":")[-1]
     if status.startswith("!"):
-        return ["Fix: inside Claude Code type /mcp, select the server and choose Authenticate,",
-                f"or in a regular terminal run: claude mcp login {name}"]
+        return ["Fix: inside Claude Code type /mcp, select the server and choose Authenticate."]
     if status.startswith("⏸"):
         return ["Fix: run `claude` in that project folder and approve the server when asked."]
     if status.startswith("⊘"):
@@ -300,11 +301,13 @@ def mcp_fix(name, status):
         cmd = "npx -y --package=github:elephant-xyz/elephant-mcp#main mcp"
         if node_dir:
             cmd = f'PATH="{node_dir}:$PATH" {cmd}'
-        fix += ["Node is fine. A 30s timeout or 'Connection closed' hides the server's own error. Run its",
-                "command yourself, with no time limit (regular terminal, with Claude Code closed):",
+        fix += ["Node is fine. A 30s timeout or 'Connection closed' hides the server's own error. Quit every",
+                "Claude Code window first (each one starts its own copy), then run its command yourself, with",
+                "no time limit (regular terminal); a first download can take about 5 minutes:",
                 f"  {cmd}",
                 "'Starting MCP server with stdio transport' then syncing = it started (embedding, AWS credential",
                 "and Atlas sync errors are expected): press Ctrl-C.",
+                "npm error ENOTEMPTY under ~/.npm/_npx = two copies installed at once: rm -rf ~/.npm/_npx and run it again.",
                 "A stack trace (e.g. MODULE_NOT_FOUND) = it crashes on start: rm -rf ~/.npm/_npx and run it again;",
                 "if it still crashes, note the error for your pass-it-on PR and do not reinstall Node",
                 "(docs/move-to-claude-code.md, step 5.1). It also needs network access to github.com and npm."]
@@ -315,7 +318,7 @@ def mcp_fix(name, status):
 
 
 for name, status in servers:
-    if status.startswith("✔"):
+    if status.startswith(CONNECTED):
         ok(f"{name}: {status[1:].strip()}")
     else:
         fail(f"{name}: {status}", *mcp_fix(name, status))
@@ -333,7 +336,7 @@ if RUN_TESTS:
     tests = [(f"{kit['plugin']}:{kit['test_agent']}",
               f"Use the {kit['plugin']}:{kit['test_agent']} subagent to reply with exactly: ok", ())
              for kit, _ in installed]
-    if any(name.endswith(":elephant") and status.startswith("✔") for name, status in servers):
+    if any(name.endswith(":elephant") and status.startswith(CONNECTED) for name, status in servers):
         tests.append(("elephant MCP",
                       "Call the listAtlasCounties tool on the elephant MCP server. "
                       "If the call returns counties reply with exactly: ok",
