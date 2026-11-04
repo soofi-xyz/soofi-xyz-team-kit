@@ -641,7 +641,7 @@ This guide improves each time a new person follows it.
 
 | Tester | Date | Machine | Where they got stuck | Pull request |
 | --- | --- | --- | --- | --- |
-| Lucian Lazar | 2026-11-03 | Mac (reused, non-admin user; Homebrew owned by another user) | Elephant MCP: 30 s timeout, then `Connection closed`, hid an `npx` crash of `github:elephant-xyz/elephant-mcp#main` (`MODULE_NOT_FOUND @smithy/core/transport`; Node v22.23.4 from nvm was fine; `/mcp reconnect all` was a no-op). 6.4 did not say to connect GitHub in Amp. 7.1 had nothing to list. After the fix, 5.3's county listing failed with `ATLAS_NOT_INITIALIZED` (`HTTP 429` from all four IPFS gateways during the first sync). `brew install` failed with `Permission denied`. | _added after the pull request is opened_ |
+| Lucian Lazar | 2026-11-03 | Mac (reused, non-admin user; Homebrew owned by another user) | Elephant MCP: 30 s timeout, then `Connection closed`, hid an `npx` crash of `github:elephant-xyz/elephant-mcp#main` (`MODULE_NOT_FOUND @smithy/core/transport`; Node v22.23.4 from nvm was fine; `/mcp reconnect all` was a no-op). 6.4 did not say to connect GitHub in Amp. 7.1 had nothing to list. After the fix, 5.3's county listing failed with `ATLAS_NOT_INITIALIZED` (`HTTP 429` from all four IPFS gateways during the first sync). `brew install` failed with `Permission denied`. | [#327](https://github.com/soofi-xyz/soofi-xyz-team-kit/pull/327) |
 
 ---
 
