@@ -16,13 +16,14 @@ Authoritative source: [`prismteam-ai/build`](https://github.com/prismteam-ai/bui
 → `requirements/swagger.yml`, `README.md`, `lib/build-api-stack.ts` and
 `src/domain/errors.ts`. When they differ from this page, the repository wins.
 
-Base URL: the `BuildApiUrl` output of stack `BuildApi-<stage>`
-(`https://<api-id>.execute-api.<region>.amazonaws.com/<stage>/`; drop the
-trailing slash when concatenating). There is no `/infra-builder` custom domain
-yet. Auth: API Gateway usage-plan `x-api-key` on every route except
-`GET /information`. Every build and upload is bound to the API key id that
-created it; another key's build is `404 BuildNotFound` and another key's
-upload is `404 SourceNotFound`, identical to an unknown id.
+Base URL: `BUILD_BASE_URL`, `https://<shared domain>/build` where the
+environment maps Build on its shared domain, otherwise the Build URL the user or
+a teammate gives you (drop a trailing slash when concatenating). Never read it
+from stack outputs or any other AWS source. There is no `/infra-builder` custom
+domain. Auth: `x-api-key` (the shared key, or the key that came with the given
+URL) on every route except `GET /information`. Every build and upload is bound
+to the API key id that created it; another key's build is `404 BuildNotFound`
+and another key's upload is `404 SourceNotFound`, identical to an unknown id.
 
 ## Routes
 

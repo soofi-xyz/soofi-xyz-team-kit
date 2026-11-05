@@ -104,9 +104,11 @@ Keep native AWS authentication as a separate adapter:
 ```
 
 Reference this connection from an extraction revision with its verified Bedrock
-model/inference-profile ID. Confirm account, region and scoped workload role access
-through the existing AWS flow; use `AWS_PROFILE=<selected-profile>` for authorized
-operator inspection without storing a developer profile in the connection.
+model/inference-profile ID. Confirm the region and model through the connection
+read-back and one approved test extraction through the Transform API; do not
+inspect AWS or ask for AWS credentials. When the workload role lacks model
+access, record it as a Kecleon builder gap. Never store a developer profile in
+the connection.
 
 ## Register, run and inspect
 

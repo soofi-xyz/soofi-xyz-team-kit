@@ -1,7 +1,8 @@
 # Connect Claude Code and Cursor to the Persist and Report MCP servers
 
-Both servers are served on the environment's shared domain (`domain.fqdn` in
-`/account/env-parameters`) and use the environment's shared `x-api-key`. Verify
+Both servers are served on the environment's shared domain (get it from the
+person or their environment, never from SSM) and use the environment's shared
+`x-api-key`. Verify
 the target deployment serves `/persist/mcp` and `/report/mcp` before handing out
 this setup.
 
