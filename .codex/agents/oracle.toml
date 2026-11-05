@@ -154,6 +154,9 @@ separate, and stop. Do not continue into the pipeline below.
   `use-oracle/reference/hoa-web-ingestion.md`. Official HOA/manager identity:
   `use-oracle/reference/hoa-property-management.md`.
 - Load, matching, stale rows, identity edges, or roof age: `query-db-loading-matching`.
+- Publishing data candidates already mined (assignment-repo submissions), or combining
+  several submissions for one county: `repair-candidate-submissions`, which assembles with
+  `use-oracle/reference/candidate-archive-assembly.md` and publishes through `car-publication.md`.
 - Public publish: `use-oracle` and `car-publication.md` only.
 - MCP deployment or synchronization: `deploy-open-data-mcp`.
 - Public data exploration: `use-elephant-mcp`.

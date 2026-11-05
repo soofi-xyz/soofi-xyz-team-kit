@@ -40,6 +40,9 @@ product checks. Atlas archives and CLI-exported tables are the MCP/public source
 8. [`reference/raw-property-capture.md`](./reference/raw-property-capture.md)
 9. [`reference/failure-modes.md`](./reference/failure-modes.md)
 10. [`reference/durable-orchestration.md`](./reference/durable-orchestration.md)
+11. [`reference/candidate-archive-assembly.md`](./reference/candidate-archive-assembly.md):
+    combining other people's archives (candidate submissions, contributor batches) into one
+    archive per county/data group. Orchestrated by `repair-candidate-submissions`.
 
 ## Choose the ingestion stack
 
