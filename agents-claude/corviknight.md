@@ -29,7 +29,11 @@ Verify runtime support and route gaps to the responsible builder.
 Read [the shared configuration-bundle contract](../skills/build-product-deployer/reference/configuration-bundles.md) for this work.
 Use `CONFIGURATION` in bundle validation and subscription metadata; migrate legacy
 type handling with Build and Marketplace. Build the shared configuration-bundle
-installer as a Deploy component with typed Transform, Connect and System API adapters.
+installer as a Deploy component with typed Transform, Connect, System, Report and Schedule API adapters.
+Add the Console adapter by the contract's Console application payloads: Console's
+existing API is the target, so build no Console-side primitive. Add no Rule adapter
+until Gallade ships Rule's shared-domain configuration API, and no Documentation
+adapter; Documentation ships from each product's repository.
 Install Transform mappings of both engines, selected by the rule's `engine`: `spark-sql`
 (pinned `queries/`) and `javascript` (pinned `mapping.js` sent as `module`), following
 the contract's Transform mapping payloads. Register a `javascript` version with

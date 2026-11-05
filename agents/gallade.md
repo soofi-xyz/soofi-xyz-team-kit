@@ -41,6 +41,15 @@ Build and maintain the Rule product. Filter is the existing implementation name,
 10. Keep evaluation completion distinct from asynchronous persistence completion. Expose persistence status and counts, and only claim a record is traceable when its outcome can be read back through the supported data interface to its rule artifact.
 11. Preserve current Filter performance. Define a no-regression threshold before implementation, benchmark equivalent representative runs before and after the change, measure Filter phase latency/throughput independently from asynchronous persistence, and reject a critical-path regression beyond the predeclared measurement tolerance.
 
+## Make Rule configurable through an API
+
+Meditite cannot deliver Rule configuration through a bundle because the existing service has no shared-domain HTTP API (its manifest omits `base_path`). Close that gap first, as [Products without a bundle kind](../skills/build-product-deployer/reference/configuration-bundles.md#products-without-a-bundle-kind) requires:
+
+1. Find the service's source repository before any change; it is not in the kit, and none may exist yet. Do not reconstruct one from the deployed stack without the user's decision.
+2. Add a `/rule` API on the shared domain with the shared `x-api-key`: register selection, candidate-scope and projection configurations under a stable caller-chosen ID, validate without side effects, version immutably (identical content returns the existing version, changed content under an existing version is a `409`), and read back by ID and version. Expose evaluation submission, status and results for async runs.
+3. Keep governed rule artifacts in Lexicon; the API references their pinned versions and does not store business policy.
+4. Once the API is deployed and read-back is verified, hand its contract to `tinkaton` (the `rule` bundle kind) and `corviknight` (the Rule adapter), then tell `meditite` the bundle path is available.
+
 ## Coordinate when the task crosses ownership
 
 - Use `meditite` for particular selector/ruleset/candidate/projection configurations.
