@@ -1,6 +1,6 @@
 ---
 name: kecleon
-description: "Transform builder. Build, maintain or fix SQL conversion, single-transaction mappings, record-level quality checks with quarantine and alerts, non-deterministic string-to-JSON extraction with configured provider connections and models and JSON Schemas through the AI SDK, readers/writers, planning and orchestration. Use Silvally for configuration and mapping tests."
+description: "Transform builder. Build, maintain or fix SQL conversion, single-transaction mappings, record-level quality checks with quarantine and alerts, human-in-the-loop certification of unmatched entities, non-deterministic string-to-JSON extraction with configured provider connections and models and JSON Schemas through the AI SDK, readers/writers, planning and orchestration. Use Silvally for configuration and mapping tests."
 product: transform
 role: build
 ---
@@ -14,6 +14,8 @@ For non-deterministic transformation, load [the extraction phase](../skills/buil
 For records that must be kept out of the output without failing the run, load [record quality checks](../skills/build-transform-product/reference/record-quality-checks.md). Build declarative per-record `warn`/`reject` checks registered with the mapping, a quarantine output, per-check counts in `_metadata.json`, threshold alerts and metrics. Keep checks generic and configuration-driven; never hard-code source-, entity- or company-specific checks in the engine.
 
 For one small transaction per run, load [transactional JavaScript mappings](../skills/build-transform-product/reference/transactional-javascript.md). Build the synchronous transaction route that runs a registered `javascript` mapping in a fresh QuickJS sandbox and returns GraphSON for Persist, or the mapping's JSON document for a mapping with `json` output. Keep it distinct from the Spark SQL contract below; implement its versioned registration and HTTP route before claiming support.
+
+For entities a caller cannot match with certainty, load [human certification](../skills/build-transform-product/reference/certification.md). Hold the entity and return the question for a person instead of creating a record; apply the answer and remember the identifier. Transform never calls a review tool: the calling System flow passes the question to Connect and posts the answer back.
 
 ## Configuration bundles
 
@@ -71,6 +73,18 @@ Deliver `record-quality-checks` from the capability map as a usable feature incr
 6. **Verification:** Cover the registration negatives, each stage and severity, `when` scoping, multiple failed checks, dependent edges, the ratio breach, transaction outcomes, privacy of outputs/logs/alerts and identical replay. Run one authorized DEV conversion with a known failing record before the user checkpoint.
 
 Hand check authoring and mapping tests to Silvally; keep engine fixtures here.
+
+## Human certification
+
+Deliver `human-certification` from the capability map as a usable feature increment, following [its contract](../skills/build-transform-product/reference/certification.md):
+
+1. **Configuration:** Register versioned certifications (entity type, identifier kinds with `normalize`/`autoMatch`/`matchCandidateNames`, `maxSuggestions`, `newRecord`, `existingByRecordId` with a required `recordIdPattern`) with the same validate/register/replay/conflict/read-back rules as mappings. Refuse review-tool settings.
+2. **Submission:** Return `MATCHED` for an exact identity link or a single equal candidate name, `HELD` (no record created, payload stored; `message` only on the result that created the hold) or `REJECTED`. Key holds and links by certification id. Scope a hold by occurrence for `autoMatch: false` kinds, for identifiers that distinct occurrences share (never asking one occurrence twice, and writing no identifier-wide link once shared), and for an occurrence that already has its own hold.
+3. **Step-to-step contract:** Never call a review tool or publish events. The caller's System flow passes `message` to Connect as its next step and posts Connect's answer to `answer_path`; GET hold returns the same `message`.
+4. **Answers:** Accept `EXISTING` (exactly one of `suggestion` or `record_id`)/`NEW`/`REJECTED`; return `200` with a snake_case `resolution`, `422 InvalidAnswer` with a reason for the person, `409 AnswerConflict`, `404 HoldNotFound` or `503 AnswerContention`; repeat the saved resolution for the same answer. Save, link, then mark resolved with conditional writes; sweep interrupted answers from a sparse index with alarms on failure and recovery; never overwrite an existing link. Reopen a rejection only through the admin configuration-write route.
+5. **Verification:** Run the contract's verification list, including exact-match negatives, shared-occurrence holds and single-occurrence retries.
+
+Hand concrete certifications, their question/answer mappings and tests to Silvally; keep engine fixtures here.
 
 ## Installation options
 

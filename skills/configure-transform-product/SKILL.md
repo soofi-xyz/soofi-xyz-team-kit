@@ -31,6 +31,12 @@ writing every valid record, add declarative `checks` to the mapping. Read
 Verify the deployment accepts `checks` first; do not filter such records in SQL
 or by making Lexicon properties `required`.
 
+When a caller cannot match an entity with certainty and a person must decide,
+register a **certification** and the mappings that turn its `message` into a
+review task and the task back into an answer. Read
+[certification configuration](reference/certifications.md) and the
+[engine contract](../build-transform-product/reference/certification.md).
+
 For one small transaction per run, with graph output for Persist or `json`
 output for a caller delivering to another system, author a `javascript` mapping
 instead of SQL. Read

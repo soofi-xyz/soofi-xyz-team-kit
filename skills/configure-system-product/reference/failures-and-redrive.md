@@ -23,6 +23,12 @@ no `Fail` state:
 
 `scripts/check-system-manifest.py` makes the same check on emitted templates.
 
+A `FailWhen` on a `Set` whose input never changes makes the failure permanent:
+every redrive fails it again. When an operator can fix the cause outside the
+run, put the `FailWhen` on an api step that re-reads that state (for example
+`GET` the record and fail only while it is still `PENDING`). For Connect waits
+that must survive a redrive, see [human waits](human-waits.md).
+
 ## FailWhen: fail the step that decides
 
 Put a business-rule failure on the step whose result decides it, so a redrive

@@ -180,7 +180,9 @@ validation contract.
 
 ## 5. Serialize the explicit graph profile
 
-For a mapping whose `output` is `shape: graph`, `format: csv`, `profile: neptune`:
+For a mapping whose `output` is `shape: graph`, `format: csv`, `profile: neptune`
+(the transaction route's counterpart is `format: neptune-csv`, see
+[Neptune CSV output](transactional-javascript.md#neptune-csv-output)):
 
 - Rename each bound identity/endpoint column to its system header.
 - Emit `~label` from the validated manifest label.

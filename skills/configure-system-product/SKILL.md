@@ -23,7 +23,10 @@ Read [the System scope](../build-system-product/reference/PRD.md),
    and pin referenced artifacts. Use the target service's supported payloads.
 4. Use `wingull`, `silvally`, `uxie` and `meditite` for leaf configuration. An
    unassigned product is a dependency gap, not permission to invent an owner.
-5. Run `python3 scripts/check-system-manifest.py <manifest>` from the kit, then
+5. Point the manifest's System configRefs at the documents that will be
+   registered (System API payloads, named by configRef `name`); the checker
+   rejects files under `emits/` that no configRef references.
+   Run `python3 scripts/check-system-manifest.py <manifest>` from the kit, then
    exercise the configuration on the actual System framework with mocked leaves.
    Keep schema validity, local fixture checks and AWS execution evidence separate.
 6. Record the person's observations and expected/actual results. Introduce real
@@ -45,6 +48,13 @@ Read [failures and redrive](reference/failures-and-redrive.md) before writing a
 `Catch`, a `Fail` state or a business-rule failure: a template may not reach a
 `Fail` state except by catching an error, `FailWhen` fails the step that decides,
 and a failed run is resumed with `POST /invocations/{id}/redrive`.
+
+## Human waits and Connect callbacks
+
+Read [human waits](reference/human-waits.md) before a template waits on a person
+or on a Connect job: chain products step to step with no event hand-offs, never
+retry a `WaitForCallback` Connect step on timeout or 5xx, change its transaction
+id on redrive, and await in rounds under the 86400 s run cap.
 
 ## Invocation errors
 
