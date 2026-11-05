@@ -40,13 +40,15 @@ back to running a local coding agent when the service lacks this capability.
    application, invalid/unauthorized input and relevant refresh/rollback cases
    inside each piece; use four as a full walkthrough floor, not a fixed count.
 3. Author routes, layouts, themes, supported components, typed data/action
-   bindings and access policies. Keep the manifests in a version-controlled
-   repository through a PR the user merges. Deploy has no Console adapter and
-   Build's bundle validator has no `console` kind, so a configuration bundle
-   cannot deliver them yet: do not list them in `bundle.json` or invent a
-   format; record the gap for Corviknight (adapter), Tinkaton (bundle kind) and
-   Chandelure (installable application identity and read-back), and tell the
-   user. Until then, validating and publishing through the Console API is a
+   bindings and access policies. Keep each manifest in the configuration-bundle
+   repository through a PR the user merges. Once Build accepts the `console`
+   kind and Deploy has the Console adapter (check both first), list it in
+   `bundle.json` as a `console` `application` entry per
+   [Console application payloads](../build-product-deployer/reference/configuration-bundles.md#console-application-payloads)
+   and follow the bundle's subscribe, verify and clean-up steps. Until both
+   ship, keep it out of `bundle.json`, record the gap for Corviknight (adapter)
+   and Tinkaton (bundle kind), and tell the user; Console's API already supports
+   the installer. Validating and publishing through the Console API is a
    test-only exception: verify the immutable digest and read back the selected
    revision. Never embed credentials or arbitrary JavaScript in configuration.
 4. Use only verified public contracts for Account identity, Model view definitions

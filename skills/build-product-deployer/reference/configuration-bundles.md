@@ -31,6 +31,8 @@ Build → Marketplace → Deploy path before claiming the migration is complete.
 | Transform / Kecleon, Silvally | Own mapping API semantics and author/validate mapping configurations |
 | Connect / Lapras, Wingull | Own flow, partner-configuration and activation API semantics and author/validate their configurations |
 | System / Zygarde, Celebi | Own definition, template, flow and waterfall API semantics and compose their configurations |
+| Console / Chandelure, Vivillon | Own application, revision and publication API semantics and author application manifests (bundle kind pending; see [Console application payloads](#console-application-payloads)) |
+| Rule / Gallade, Meditite | Own selection, candidate-scope and projection configuration semantics (no bundle kind until Rule has an API; see [Products without a bundle kind](#products-without-a-bundle-kind)) |
 
 Keep these assignments in the product catalog. Do not add a configuration product
 or platform owner. Use a synthetic integration for installer acceptance; do not
@@ -163,6 +165,50 @@ files it pins. Select the payload by the rule's `engine` (absent means
   `activeVersions`; those are Transform installation settings, not bundle
   configuration. Do not write SSM or Transform's buckets to set them.
 
+## Console application payloads
+
+Target contract: Build's `CONFIGURATION_KINDS` and Deploy's adapters do not yet
+include `console`. Console's API already has every primitive the adapter needs, on
+`https://<shared domain>/console` with the shared `x-api-key` (scopes
+`console:configure` and `console:publish`); do not ask Chandelure for new ones.
+Paths below are relative to `/console`.
+
+- **Bundle entry:** `product: "console"`, `kind: "application"`, `source` a
+  `ConsoleApplicationManifest` JSON file (`schemaVersion: "1.0"`). The manifest's
+  `applicationId` is the logical identity; Build rejects a manifest whose
+  `applicationId` repeats in the bundle, and validates it against the manifest
+  schema in `prismteam-ai/console` `requirements/swagger.yml` without calling Console.
+- **Account:** read `accountId` from `GET /session`; never take it from the
+  bundle or a parameter.
+- **Apply:** `GET /accounts/{accountId}/applications/{applicationId}`; on `404`,
+  `POST /accounts/{accountId}/applications` with `{ applicationId, title }`. Then
+  `POST …/{applicationId}/revisions` with the manifest and an `Idempotency-Key`
+  derived from the manifest digest, so a replay returns the same immutable revision.
+- **Activate:** `GET …/{applicationId}/active`. Skip publishing when its
+  `manifestDigest` already equals the revision's. Otherwise
+  `POST …/revisions/{revisionId}/publish` with `If-Match` set to the active ETag, or
+  `*` for the first publication; treat `412` as a concurrent change to surface, not
+  retry blindly.
+- **Read back:** require `/active` to show the revision's `revisionId` and
+  `manifestDigest`; report both in the run result.
+- **Retire or restore:** use `POST …/rollback` only for an explicit restore intent.
+  Console has no application delete; report retirement as unsupported rather than
+  claiming removal.
+
+## Products without a bundle kind
+
+- **Rule:** the existing service has no shared-domain HTTP API, so there is
+  nothing for an adapter to call. Gallade first ships a `/rule` API with stable
+  configuration identity, validation, versioned registration and read-back. Only
+  then do Tinkaton add a `rule` kind and Corviknight a Rule adapter, following
+  that API's contract. Do not install Rule configuration through Step Functions,
+  S3 or SSM.
+- **Documentation:** not a configuration bundle. A product's own repository
+  carries its documentation: Build packs `requirements/swagger.yml` and
+  `requirements/mcp.json`, and Marketplace sends them to `POST /publications`. Unown
+  extends that same path to overviews, media, guides and navigation, with Tinkaton
+  packing and Regigigas forwarding the new files. Do not add a `documentation` kind.
+
 ## Target API and authoring handoffs
 
 Have Kecleon, Lapras and Zygarde verify validation, stable registration identity,
@@ -203,6 +249,8 @@ Before merging, check what the install will replace:
   registered version returns `409` and fails the install.
 - A committed activation with `"enabled": false` disables the live activation
   of the same name.
+- A Console application publishes over the active revision of the same
+  `applicationId`, including one a configurer published directly.
 
 ## Synthetic acceptance
 
