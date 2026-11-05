@@ -18,8 +18,10 @@ the API when a caller decides when to start.
 
 ## Configure
 
-The schedule is part of the flow, saved with `PUT /flows/{name}` (in a Deploy
-configuration repository, the flow file):
+The schedule is part of the flow file in the configuration bundle repository,
+which Deploy installs through `PUT /flows/{name}`. A direct save is test-only:
+send it to `https://<shared domain>/system` with the shared `x-api-key`, never
+SigV4.
 
 ```json
 "schedule": {
@@ -80,8 +82,9 @@ it off across deploys.
 1. Read back: `GET /flows/{name}` shows `schedule` with defaults filled in, and
    `scheduleStatus.nextRunAt` in the expected UTC instant (check one date in
    winter and one in summer when the timezone has DST).
-2. Short test schedule first: save a copy of the flow with
-   `cron(0/5 * * * ? *)` (or every minute), wait for two times, and check
+2. Short test schedule first: save a copy of the flow directly (test-only, on
+   the shared domain with the shared `x-api-key`) with `cron(0/5 * * * ? *)`
+   (or every minute), wait for two times, and check
    `scheduleStatus.recentRuns`:
    - `STARTED` with an `invocationId`, within a minute of `scheduledTime`;
    - `GET /invocations/{id}` shows `source.type: "schedule"` and the expected
@@ -91,6 +94,8 @@ it off across deploys.
    running`, and no second run may exist.
 4. Disable with the switch; no new `STARTED` may appear after it, and
    `nextRunAt` disappears.
+   System has no delete route for flows, so then save the test copy without
+   `schedule` to remove its Scheduler schedule.
 5. Then put the real cron in the flow file and install it through the normal
    Marketplace and Puller path, never by `cdk deploy` or a hand-made rule.
 

@@ -8,45 +8,24 @@ repository's `docs/runbooks/dev-verification.md` and
 
 | Item | Value |
 | --- | --- |
-| Stack | `Connect-dev` |
-| Account | The account hosting the target Connect deployment; get it from the user or the deployment's Environment/Account records and never assume a default |
+| Base URL | `https://<shared domain>/connect`, the environment's shared domain; get it from the user or the deployment's Environment records and never assume a default |
+| Auth | The environment's shared `x-api-key`, exported by the user in their terminal as `PRISM_API_KEY`; never ask for it in chat |
 | Region | `us-east-2` only |
 | Deploy | Pull requests to the default branch of the Connect repository that owns the target stack run its DEV CI/CD workflow; do not deploy by hand |
 
-```bash
-export AWS_PROFILE=<selected-profile> AWS_REGION=us-east-2
-CONNECT_ACCOUNT=<target-account-id>
-test "$(aws sts get-caller-identity --query Account --output text)" = "$CONNECT_ACCOUNT"
-aws cloudformation describe-stacks --stack-name Connect-dev \
-  --query 'Stacks[0].[StackStatus,Outputs]'
-```
-
-Stack outputs: `ApiUrl`, `LandingBucketName`, `DropZoneBucketName`,
-`AlarmTopicArn`, `WarningTopicArn`, `OpsTopicArn`,
-`OperatorRedrivePolicyArn`.
-
 ## API
 
-All routes except partner webhooks use IAM authorization: sign requests with
-SigV4 (service `execute-api`, region `us-east-2`) using credentials of a
-principal in the dev account that is allowed `execute-api:Invoke`. Attach the
-managed policy from the `ApiInvokePolicyArn` stack output to the role you use,
-or use a role that already allows it. Principals in other accounts are refused.
+Call every route below with the shared key. Do not read stack outputs, Secrets
+Manager or SSM, sign with SigV4 or ask for AWS credentials; the IAM API is for
+Connect's internal service-to-service callers.
 
 ```bash
-API_URL=$(aws cloudformation describe-stacks --stack-name Connect-dev \
-  --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text)
-curl -sS --aws-sigv4 "aws:amz:us-east-2:execute-api" \
-  --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
-  -H "x-amz-security-token: $AWS_SESSION_TOKEN" \
-  -H 'content-type: application/json' \
-  "${API_URL%/}/connect/jobs/<job_id>"
+CONNECT_URL=https://<shared domain>/connect
+curl -sS -H "x-api-key: $PRISM_API_KEY" -H 'content-type: application/json' \
+  "$CONNECT_URL/jobs/<job_id>"
 ```
 
-Export short-lived credentials for the selected profile first (for example
-`eval "$(aws configure export-credentials --format env)"`), or sign from code
-with `@smithy/signature-v4` as the Connect repo's dev suite does. Never print
-the credentials.
+Never print the key.
 
 | Method and route | Purpose |
 | --- | --- |
@@ -65,12 +44,21 @@ the credentials.
 | `POST /connect/partners/{partner}/lookups/{lookup}` | Synchronous lookup (`kind: lookup` flows) |
 | `POST /connect/partners/{partner}/uploads` | Presigned PUT for a file the product delivers |
 | `GET /connect/jobs/{job_id}` | Job status, errors and manifest pointer |
-| `POST /connect/webhooks/{configuration_id}/{webhook}` | Partner webhook ingress (unsigned; the webhook's own auth applies) |
+| `POST /connect/webhooks/{configuration_id}/{webhook}` | Partner webhook ingress on Connect's IAM API URL, not the shared domain (unsigned; the webhook's own auth applies) |
 
+Connect has no list routes for flows, partner configurations or activations:
+read each one by name (`GET .../{flow_name}/versions/{version}`,
+`GET .../partner-configurations/{configuration_id}`,
+`GET .../activations/{activation_id}`), so keep the names you registered.
 Connect has no delete API: disable activations; flows and configurations stay
 registered.
 
 ## Triggers in dev
+
+The schedule and drop-zone triggers below and the webhook URL need AWS access
+(a Lambda invoke, the `DropZoneBucketName` bucket, the IAM API URL) that the
+shared key does not give. Treat them as test-only exceptions run by someone
+with that access, and record the missing key route as a `lapras` gap.
 
 - **Schedule.** Enable the activation, then invoke the schedule target exactly
   as EventBridge Scheduler would, and disable it again:
@@ -99,7 +87,8 @@ aws lambda invoke --function-name connect-dev-schedule \
 - Set partner credentials only through the credentials API. Connect main stores
   each credential in its own Secrets Manager prefix
   (`connect/<stage>/credentials/<partner>/<name>`); never create, tag or edit
-  secrets for Connect. Read source secrets, never change them. Verify the routes
+  secrets for Connect, and do not read source secrets yourself: the
+  credential's owner pipes the values from their terminal. Verify the routes
   exist in the target before use; a missing route is a `lapras` gap.
 - Values by profile (Connect main): `basic` as `{username, password}`; `api_key`
   as `{api_key}`; `bearer` as `{token}`; `oauth2_client_credentials` and
@@ -114,14 +103,11 @@ aws lambda invoke --function-name connect-dev-schedule \
 - Set values without printing them, for example:
 
 ```bash
-aws secretsmanager get-secret-value --secret-id <source-secret> \
-  --query SecretString --output text \
-  | jq '{profile: "basic", values: {username: .Username, password: .Password}}' \
-  | curl -sS -X PUT --aws-sigv4 "aws:amz:us-east-2:execute-api" \
-      --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
-      -H "x-amz-security-token: $AWS_SESSION_TOKEN" \
+# The owner exports PARTNER_USERNAME and PARTNER_PASSWORD in their terminal first.
+jq -n '{profile: "basic", values: {username: env.PARTNER_USERNAME, password: env.PARTNER_PASSWORD}}' \
+  | curl -sS -X PUT -H "x-api-key: $PRISM_API_KEY" \
       -H 'content-type: application/json' --data @- \
-      "${API_URL%/}/connect/partners/<partner>/credentials/<name>"
+      "$CONNECT_URL/partners/<partner>/credentials/<name>"
 ```
 
 - For `oauth2_jwt_bearer`, take the three keys straight from the
@@ -132,11 +118,9 @@ aws secretsmanager get-secret-value --secret-id <source-secret> \
 ```bash
 jq '{profile: "oauth2_jwt_bearer",
      values: {client_email, private_key, private_key_id}}' <key-file.json> \
-  | curl -sS -X PUT --aws-sigv4 "aws:amz:us-east-2:execute-api" \
-      --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
-      -H "x-amz-security-token: $AWS_SESSION_TOKEN" \
+  | curl -sS -X PUT -H "x-api-key: $PRISM_API_KEY" \
       -H 'content-type: application/json' --data @- \
-      "${API_URL%/}/connect/partners/<partner>/credentials/<name>" \
+      "$CONNECT_URL/partners/<partner>/credentials/<name>" \
   | jq '{state, keys, version}'
 ```
 
@@ -163,7 +147,7 @@ in Connect's validation.
 | Scopes granted to the service account's client id (domain-wide delegation) or consented by the user | Connection `auth.scopes` (subset of the grant; leave off for Google refresh tokens) | `AuthFailed` (`unauthorized_client` or `invalid_scope`) |
 | The user whose data is read | Connection `auth.subject` or CALL `Subject`, and the `parameters` pattern that pins it | `AuthFailed`, or 403/404 from the API |
 | Event subscription target (Workspace Events `targetResource` user) | The same user as the subject, inside the pinned pattern | Events for one user, reads as another (403/404) |
-| Push endpoint URL | `<ApiUrl>/connect/webhooks/<configuration_id>/<webhook>` with the configuration's id and webhook name | `401` (unknown configuration or webhook), Pub/Sub redelivers |
+| Push endpoint URL | Connect's IAM API URL + `/connect/webhooks/<configuration_id>/<webhook>` with the configuration's id and webhook name (the shared domain does not serve webhooks) | `401` (unknown configuration or webhook), Pub/Sub redelivers |
 | Push audience (defaults to the push endpoint URL) | `signed_token.audience`, character for character | `401` (`audience_mismatch` in Connect logs) |
 | Push authentication service account | `required_claims.email` (plus `email_verified: true`) | `401` (`claim_mismatch`) |
 | Token issuer actually sent | `signed_token.issuer` (`https://accounts.google.com`, or `accounts.google.com` without the scheme) | `401` (`issuer_mismatch`) |

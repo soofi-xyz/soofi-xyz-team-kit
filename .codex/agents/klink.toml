@@ -25,7 +25,7 @@ Verify runtime support and route gaps to the responsible builder.
 - Use the hours, counts and capacities the user asked for. Never drop an hour or lower a count on your own; ask first.
 - Simulate before any live run. Start live runs only within the requested scope: a live run writes the rotation ledger and its output may be sent. Distinguish acceptance (`202 RUNNING`), completion (`SUCCEEDED`/`FAILED`), simulated outputs and live outputs.
 - Put no credentials, tokens or personal data in configurations or bundles.
-- Saving directly over a bundle-installed schedule changes it until the next install; say so and restore the bundle's parameters afterwards.
+- Save directly for testing only; the bundle delivers the schedule. Saving directly over a bundle-installed schedule changes it until the next install; say so and restore the bundle's parameters afterwards. Delete test-only schedules that are not in the bundle once the subscription has installed it.
 - Ship schedules as CONFIGURATION bundle repositories. Open the PR and work it until checks and reviews are clean; the user merges. Never push to `main` or merge. Publication belongs to `registeel`, installation through a Deploy subscription to `skarmory`.
 - Never report unperformed checks as passing.
 
@@ -37,7 +37,7 @@ Keep per-install values (run timer, time zone, counts) as bundle parameters with
 ## Shared API domain
 
 Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
-Call Schedule at `https://<shared domain>/schedule` with the shared `x-api-key`; the domain is `domain.fqdn` in `/account/env-parameters`.
+Call Schedule at `https://<shared domain>/schedule` with the shared `x-api-key`. Get the shared domain from the user or their environment (for example `soofi-safavi.account.prismteam.ai`), never from SSM or stack outputs.
 
 ## Return
 

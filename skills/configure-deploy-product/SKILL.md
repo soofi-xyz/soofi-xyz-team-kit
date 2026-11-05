@@ -19,14 +19,15 @@ Load [the Puller skill](../build-marketplace-puller/SKILL.md) and its
 mode. Keep engine changes with Corviknight. Include subscriber configuration in a
 full Deploy walkthrough; scope run-only or polling-only tasks to their features.
 
-1. Discover the existing service/revision, supported API, authentication and
-   resource authorization, selected AWS profile, account and region. Separate
-   required, implemented and observed capabilities. Do not guess route names.
+1. Discover the existing service/revision, account, region and shared domain.
+   Call Deploy only on `https://<shared domain>/deploy` with the environment's
+   shared `x-api-key`; never ask for AWS credentials or read Secrets Manager, SSM
+   or stack outputs. Separate required, implemented and observed capabilities. Do not guess route names.
 2. Select the requested feature pieces and dependencies. Explain each with a
    synthetic fixture. Use a baseline, materially different supported configuration,
    invalid/unauthorized input and relevant replay/recovery cases inside each piece;
    use four as a full walkthrough floor, not a fixed count or a quota for narrow work.
-3. Sign requests to the discovered Deploy API using the selected credentials; submit a validated artifact with supported parameters and follow status to actual CloudFormation completion. Keep installation history/keys in the verified subscriber component. Do not use old token-deploy payloads or bypass Deploy with direct stack edits.
+3. Send the shared `x-api-key` to the Deploy API; submit a validated artifact with supported parameters and follow status to actual CloudFormation completion. Keep installation history/keys in the verified subscriber component. Do not use old token-deploy payloads or bypass Deploy with direct stack edits.
 4. Configure Puller subscriptions and supported polling schedules through its
    existing API. Compare AUTO and PAUSED behavior, manual and scheduled reconcile,
    installed versus desired versions, and recovery from a missed update. Use
@@ -45,7 +46,7 @@ full Deploy walkthrough; scope run-only or polling-only tasks to their features.
    are covered by the requested scope and record cleanup without removing shared
    resources. Keep mocked execution distinct from actual dependency readiness.
 
-Own Puller as a subscriber component of Deploy. Keep its subscriptions, polling schedules, desired state, installation history and subscription secrets separate from the stateless SigV4 run API. Packages or stacks may remain separate; both belong to Corviknight/Skarmory. Keep Marketplace on catalog/publication and Environment on first installation.
+Own Puller as a subscriber component of Deploy. Keep its subscriptions, polling schedules, desired state, installation history and subscription secrets separate from the stateless run API. Packages or stacks may remain separate; both belong to Corviknight/Skarmory. Keep Marketplace on catalog/publication and Environment on first installation.
 
 Return configuration changes, redacted identifiers, API/read-back results,
 automated and user/AWS evidence, mocked/live status, cleanup and builder handoffs.
@@ -63,6 +64,36 @@ hand is only a recorded workaround. For a `javascript` Transform mapping, read t
 result's `activation`: `ACTIVATED` needs no SSM pin; `UNSUPPORTED` means the target
 Transform predates `activate`, so hand the upgrade to `kecleon` rather than editing SSM.
 
+### Subscribe a handed-off bundle
+
+When Registeel confirms a configuration bundle is published and `VALID`, install it
+through a Puller subscription (step 3 of
+[the handoff](../build-product-deployer/reference/configuration-bundles.md#target-api-and-authoring-handoffs)):
+
+1. `GET /deploy/puller/polling`. When `installs_enabled` is `false`, stop and
+   report it: Deploy's installs are switched off, so a subscription would record
+   intent but install nothing. When `enabled` is `false`, scheduled polling is
+   off: start the reconcile yourself in step 4.
+2. Read the bundle's `bundle.json` `parameters`. Each has a review-safe `default`
+   (Build requires one), so a placeholder such as a Connect `subscriberUrl` of
+   `https://partner.example.invalid` would install as-is. Put the real value of
+   every placeholder parameter in the subscription's `configuration`; Deploy fills
+   `{{parameter:<name>}}` from it, else from the default.
+3. `GET /deploy/puller/subscriptions/{product_id}/{component_id}`. On `404`,
+   `POST /deploy/puller/subscriptions` with `product_id` (the Marketplace product
+   UUID), `component_id`, `marketplace.base_url`, `update_policy: AUTO` (the
+   default is `PAUSED`, which installs nothing), `target.region` and
+   `configuration`. Omit `marketplace.api_key_secret_arn`: Deploy defaults it to
+   the shared key secret. Otherwise `PATCH` the same path with the changed fields.
+4. `POST /deploy/puller/reconciles` with `{product_id, component_id}` and poll
+   `GET /deploy/puller/reconciles/{reconcile_id}` to `SUCCEEDED` or `FAILED`.
+5. Read the install back with `GET /deploy/puller/installs/{product_id}/{component_id}`,
+   then hand the configurer the installed bundle identity for their product API
+   read-back and cleanup of direct test registrations.
+
+Retire a subscription with `DELETE /deploy/puller/subscriptions/{product_id}/{component_id}`;
+that stops updates but leaves installed configurations in place.
+
 ## Shared API domain
 
 For API infrastructure, packaging, review or installation, read and apply
@@ -72,6 +103,7 @@ records optional. Deploy binds `SharedApiDomainName` from Environment's
 `/account/env-parameters` only and rejects caller overrides; do not pass it.
 Puller claims base paths, rejects duplicates and advances installed identity only
 after mapping read-back; retirement removes only that product's mapping. Report
-reachability `UNVERIFIED` until traffic is tested. Deploy's run/Puller APIs use
-IAM SigV4 only until the shared API key lands (prismteam-ai/deploy PR #13).
+reachability `UNVERIFIED` until traffic is tested. Deploy's run and Puller
+routes take only the shared `x-api-key` on `https://<shared domain>/deploy`;
+there is no IAM API.
 Route missing behavior to the responsible builder.

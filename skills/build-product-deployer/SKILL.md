@@ -36,9 +36,9 @@ status and results for async capabilities. Reuse execution logic behind CLI,
 workflow and API adapters; a direct workflow call does not complete API acceptance.
 No separate API-documentation workstream is added.
 
-Verify the current IAM SigV4 POST /deploy/run and status contract. Do not resurrect historical API-key token deploy, review or rollback routes. Validate artifact identity, digest, parameters and target account/region before writes. Keep bounded run diagnostics separate from subscriber installation state; do not add a deployment database merely to imitate old instructions.
+Verify the current `POST /deploy/run` and status contract: run/status and Puller APIs on `https://<shared domain>/deploy` with the shared `x-api-key`; the IAM APIs are removed. Do not resurrect historical API-key token deploy, review or rollback routes. Validate artifact identity, digest, parameters and target account/region before writes. Keep bounded run diagnostics separate from subscriber installation state; do not add a deployment database merely to imitate old instructions.
 
-Own Puller as a subscriber component of Deploy. Keep its subscriptions, polling schedules, desired state, installation history and subscription secrets separate from the stateless SigV4 run API. Packages or stacks may remain separate; both belong to Corviknight/Skarmory. Keep Marketplace on catalog/publication and Environment on first installation.
+Own Puller as a subscriber component of Deploy. Keep its subscriptions, polling schedules, desired state, installation history and subscription secrets separate from the stateless run API. Packages or stacks may remain separate; both belong to Corviknight/Skarmory. Keep Marketplace on catalog/publication and Environment on first installation.
 
 Implement Puller HTTP operations for local subscriptions, scheduled/manual
 reconciliation, update control and observable installation history. Keep polling

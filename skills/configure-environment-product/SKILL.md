@@ -16,8 +16,10 @@ Read the relevant [product contract](../build-bootstrap-cli/reference/PRD.md) an
 [synthetic test data](../build-bootstrap-cli/reference/test-data.md).
 
 1. Discover the existing service/revision, supported API, authentication and
-   resource authorization, selected AWS profile, account and region. Separate
-   required, implemented and observed capabilities. Do not guess route names.
+   resource authorization, account and region. Ask for a selected AWS profile
+   only for customer-account role creation, recording the region's API Gateway
+   CloudWatch role and cold-start Bootstrap (see the guide's Configurer delivery exception). Separate required, implemented and
+   observed capabilities. Do not guess route names.
 2. Select the requested feature pieces and dependencies. Explain each with a
    synthetic fixture. Use a baseline, materially different supported configuration,
    invalid/unauthorized input and relevant replay/recovery cases inside each piece;
@@ -28,9 +30,11 @@ Read the relevant [product contract](../build-bootstrap-cli/reference/PRD.md) an
    redacted reproducer to `torterra`. Do not edit service code, write internal storage,
    or silently fall back to direct AWS mutations to pass a configuration check.
 5. Give the user one copyable API invocation, expected result and at most three
-   steps to inspect its actual AWS logs/workflow. Have them run the baseline and
-   variant, read back results and return redacted IDs and observations. Wait for
-   that evidence before advancing; request acceptance is not async completion.
+   read-back steps through the Environment API; AWS log or workflow inspection
+   is optional, only for a user who has their own AWS access. Have them run the
+   baseline and variant, read back results and return redacted IDs and
+   observations. Wait for that evidence before advancing; request acceptance is
+   not async completion.
 6. Keep secrets in the approved local credential channel. Verify live effects
    are covered by the requested scope and record cleanup without removing shared
    resources. Keep mocked execution distinct from actual dependency readiness.

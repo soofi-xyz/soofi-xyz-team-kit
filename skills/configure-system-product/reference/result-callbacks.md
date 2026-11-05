@@ -67,7 +67,7 @@ with that key. Never paste the key into tickets, logs or evidence.
 
 1. Install with `externalFacade.callbacks: true`. It is off by default; with it
    off, no callback resources exist.
-2. Set the client with IAM-signed (SigV4) calls only:
+2. Set the client:
 
    ```http
    PUT /callback-clients/{tenantId}
@@ -75,6 +75,16 @@ with that key. Never paste the key into tickets, logs or evidence.
    ```
 
    A prefix is an HTTPS origin plus a path ending in `/`.
+
+   **Test-only exception.** `GET` and `PUT /callback-clients/{tenantId}` are
+   still IAM-only: System lists them as SigV4 operator administration and keeps
+   them off the shared domain, which answers `404 ROUTE_NOT_FOUND` with or
+   without the shared key, and a configuration bundle cannot carry callback
+   clients. Configurers hold no AWS credentials, so have an operator with
+   System IAM access run steps 2–4 in a non-production review account, and
+   record the builder gap for `zygarde`:
+   serve callback clients on the shared domain with the shared `x-api-key` and
+   accept them in configuration bundles.
 3. Read back with `GET /callback-clients/{tenantId}`.
 4. Disable with `PUT` and `"enabled": false`.
 
@@ -134,9 +144,14 @@ Also send one case where the receiver returns 400 and expect no retry and
 
 ## What to inspect after each case
 
-Find these through the System stack outputs `CallbackQueueUrl`,
-`CallbackDlqUrl`, `CallbackRuleDlqUrl`, `CallbackDispatcherLogGroup`,
-`CallbackDlqAlarmName`, `CallbackRuleDlqAlarmName` and `CallbackQueueAgeAlarmName`.
+Read the run through the API first (`GET /invocations/{id}` on the shared
+domain with the shared `x-api-key`) and the receiver's capture log. System has
+no API read-back for callback attempts, queues or alarms, so the checks below
+are a test-only exception: an operator with System AWS access finds them
+through the stack outputs `CallbackQueueUrl`, `CallbackDlqUrl`,
+`CallbackRuleDlqUrl`, `CallbackDispatcherLogGroup`, `CallbackDlqAlarmName`,
+`CallbackRuleDlqAlarmName` and `CallbackQueueAgeAlarmName`. Record the builder
+gap for `zygarde`: expose callback delivery state through the API.
 
 - Step Functions: the sale-availability lookup execution ARN and final status.
 - Callback queue, `CallbackDlq` and `CallbackRuleDlq`: message count and the

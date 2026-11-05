@@ -110,10 +110,9 @@ authentication, received by a `signed_token` webhook and a webhook activation
 ([signed-token push source](../build-connect-product/reference/use-cases.md#signed-token-push-source)).
 The queue acknowledges on Connect's 2xx.
 
-Record the decision in the bundle README's `## Ingestion` section (or the run
-report when there is no bundle): mode, why, schedule and window or event
-source, idempotency key, downstream dedupe key and backfill method. The builder
-and operator run from this record.
+Record the decision in the bundle README's `## Ingestion` section: mode, why,
+schedule and window or event source, idempotency key, downstream dedupe key
+and backfill method. The builder and operator run from this record.
 
 ```markdown
 ## Ingestion
@@ -126,10 +125,11 @@ and operator run from this record.
 
 ## 3. Locate production credentials
 
-- Find where the production values live today: the Account product, or the
-  consuming product's CDK, config or Secrets Manager (`<product>/<partner>/...`).
-  Record the source, account and the keys it holds. Do not read values into
-  the conversation; inspect keys and value lengths only.
+- Find where the production values live today (the Account product, or the
+  consuming product's CDK or config) by asking their owner or reading code.
+  Record the source, its owner and the keys it holds. Do not read Secrets
+  Manager, SSM or stack outputs yourself, and never read values into the
+  conversation.
 - Record the partner's side of auth: allowlisted IPs (Connect egress must be
   added), host key fingerprint, OAuth token URL, granted scopes (for a service
   account, the domain-wide-delegation grant on its client id), role ARN and
@@ -143,14 +143,13 @@ and operator run from this record.
 
 Prefer, in order:
 
-1. **Partner QA or sandbox** credentials already in the dev account (for
-   example `dev/<partner>/...`). Set them as a Connect credential with
-   `PUT /connect/partners/<partner>/credentials/<name>` (`{profile, values}`),
-   piping values from the source into the signed request without printing
-   them. Use `POST .../import` from Account only when the target ships that
-   route (Connect main does not). Confirm with `GET` that `state` is `SET`,
-   every key of the profile is `true` and `used_by` lists the expected
-   configurations. Never paste tokens, refresh tokens or key files into chat,
+1. **Partner QA or sandbox** credentials. Have their owner set them as a
+   Connect credential with `PUT /connect/partners/<partner>/credentials/<name>`
+   (`{profile, values}`), piping values from their terminal into the keyed
+   request without printing them. Use `POST .../import` from Account only when
+   the target ships that route (Connect main does not). Confirm with `GET`
+   that `state` is `SET`, every key of the profile is `true` and `used_by`
+   lists the expected configurations. Never paste tokens, refresh tokens or key files into chat,
    logs or evidence.
 2. **Partner production, read-only**, only with explicit user approval, only
    GET/LIST operations, and only when no QA exists.
@@ -238,13 +237,14 @@ rm validate.tmp.ts
 
 ## 7. Run it in dev
 
-Follow [dev runtime](reference/dev-runtime.md) for the API, SigV4 signing and
-triggers.
+Follow [dev runtime](reference/dev-runtime.md) for the shared-domain API, its
+`x-api-key` and triggers.
 
-1. Confirm the account and region, and that the `Connect-dev` stack is
-   `UPDATE_COMPLETE` or `CREATE_COMPLETE`.
-2. Register the flow (`POST /connect/flows`) if it is new, then put the
-   partner configuration and activation.
+1. Confirm the shared domain and key reach Connect: a `GET` of a known
+   activation by name answers `200` or `404`, not `403`.
+2. **Test only:** register the flow (`POST /connect/flows`) if it is new, then
+   put the partner configuration and activation directly. These direct writes
+   prove the configuration; they are not its delivery (step 8).
 3. Trigger exactly as production will: enable and fire the schedule, drop the
    object in the drop zone, post the partner webhook, or start the job or
    lookup with a verification callback. For a `signed_token` webhook, enable
@@ -267,21 +267,39 @@ triggers.
    credentials no configuration still names, and delete temporary
    infrastructure (Transfer Family servers bill hourly).
 
-When a run fails, read the job's `error_code` and the Step Functions execution
-history before changing anything. Fix configuration yourself; hand Connect
-defects to `lapras` with the execution ARN and the smallest reproducing
-sample.
+When a run fails, read the job's `error_code` and per-item errors from
+`GET /connect/jobs/{job_id}` before changing anything. Fix configuration
+yourself; hand Connect defects to `lapras` with the execution ARN and the
+smallest reproducing sample.
 
 ## 8. Hand off and use
 
+- Deliver the configuration as a pull request to the bundle repository created
+  from `prismteam-ai/configuration-bundle-template`, following
+  [the configuration-bundle handoff](../build-product-deployer/reference/configuration-bundles.md#target-api-and-authoring-handoffs):
+  its CI publishes the bundle on merge, Registeel confirms the publish and
+  Skarmory subscribes it. Before opening the PR:
+  - Deploy `PUT`s each committed activation as-is (only a `flow_version` of a
+    flow in the same bundle is replaced), so commit `"enabled": true` only for
+    an activation that should run live; a committed `false` disables the live
+    activation of that name.
+  - Build requires a `default` on every bundle parameter, and the Marketplace
+    review installs the defaults. Give environment-specific values such as a
+    `subscriberUrl` a harmless default (for example
+    `https://partner.example.invalid`) and list them for Skarmory, who sets the
+    real values in the subscription's `configuration`.
+- After the install, read each document back by name (Connect has no list
+  routes) and compare it with the bundle. Disable test-only activations the
+  bundle does not own; Connect has no delete API.
 - Give the product the job contract it calls: route, `configuration_id`,
   request payload, callback or subscriber, the reply shape and file pointers,
   and the error codes it must handle.
 - Add the dev configuration and its test to the Connect repo's dev suite
   (`test/dev/`, `docs/runbooks/dev-verification.md`) so CI keeps proving it.
 - List the production steps: production credentials set or imported, partner
-  allowlisting of production egress IPs, production partner configuration,
-  activation with the real cron, and the user approval needed to enable it.
+  allowlisting of production egress IPs, the production partner configuration
+  and activation with the real cron in the bundle, and the user approval needed
+  to commit it enabled.
 
 ## Return
 
@@ -293,4 +311,4 @@ production steps.
 ## Configuration bundles
 
 Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
-Author pinned configuration documents that name credentials and never carry their values; preserve partner validation and keep registration separate from activation and traffic.
+Author pinned configuration documents that name credentials and never carry their values; preserve partner validation and keep registration separate from activation and traffic. Deliver them through the bundle PR in step 8; direct API registration is for testing only.

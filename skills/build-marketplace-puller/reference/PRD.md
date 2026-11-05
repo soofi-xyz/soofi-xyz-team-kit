@@ -17,8 +17,8 @@ use Git history for superseded schemas and route examples.
 
 Keep execution, configuration installation and subscriber responsibilities within Deploy:
 
-- The run service validates and executes artifacts using the current SigV4 run
-  API and reports status/results. It does not own subscriber desired state.
+- The run service validates and executes artifacts through the run API on the
+  shared domain with the shared `x-api-key` and reports status/results. It does not own subscriber desired state.
 - The shared configuration installer applies bundles through typed Transform, Connect
   and System API adapters and exposes per-resource results through the run contract.
   Keep its operation receipts distinct from subscriber state. Follow
@@ -121,7 +121,7 @@ incomplete. Recheck references when a release changes its dependency graph.
 
 Resolve a current approved artifact reference, retaining pinned bundle identity
 and digest. Refresh expiring access URLs through the supported Marketplace
-interface without silently switching versions. Submit using the verified SigV4
+interface without silently switching versions. Submit using the verified shared-key
 run contract, persist its correlation and follow status. Keep artifact validation,
 asset publication and CloudFormation execution in the run service.
 

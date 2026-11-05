@@ -25,7 +25,8 @@ Gremlin. To make a field searchable, follow [Make a field
 searchable](#make-a-field-searchable).
 
 1. Establish the authorized dataset, existing model, IDs, relationships and
-   expected queries. Discover the deployment and verify AWS account/region.
+   expected queries. Confirm the shared domain with the person and check that
+   the target revision serves the routes you need.
 2. Explain one record's path through validation, ingest, persistence and read-back.
    Prepare a small fixture and independently specified expected results.
 3. Author supported configuration and governed artifacts. Use the discovered
@@ -56,9 +57,9 @@ environment's shared key in `x-api-key`. This is the only way to reach Persist
 when configuring it. Do not use SigV4, `awscurl`, an `execute-api` URL, the
 `persist-api-url` parameter or `ApiUrl` output, or the cross-account invoke role.
 
-- The shared domain is `domain.fqdn` in SSM `/account/env-parameters` in the
-  target account and region. The stack's `ProductApiUrl` output gives the same
-  `https://<domain>/persist`.
+- Get the shared domain from the person or their environment as
+  `PRISM_DOMAIN` (for example `soofi-safavi.account.prismteam.ai`). Do not read
+  it from SSM, stack outputs or any other AWS source.
 - The person exports the key in their own terminal as `PRISM_API_KEY`. Never
   read it from AWS, print it or ask for it in chat; refer to it only as
   `$PRISM_API_KEY`, as in [the MCP client setup](reference/mcp-client-setup.md#key).
@@ -81,9 +82,7 @@ when configuring it. Do not use SigV4, `awscurl`, an `execute-api` URL, the
 
 ```bash
 # The person sets the key in their own profile: export PRISM_API_KEY='<shared x-api-key>'
-export AWS_PROFILE=<selected-profile> AWS_REGION=<region>
-PRISM_DOMAIN=$(aws ssm get-parameter --name /account/env-parameters \
-  --query Parameter.Value --output text | jq -r .domain.fqdn)
+# and the shared domain they gave you: export PRISM_DOMAIN='soofi-safavi.account.prismteam.ai'
 
 curl -sS -H "x-api-key: $PRISM_API_KEY" "https://$PRISM_DOMAIN/persist/metrics/catalog"
 
@@ -135,6 +134,11 @@ report the catalog as Model/Lexicon-published and hand the gap to Conkeldurr.
    until the Model owners retire that boundary.
 2. `PUT` `{ catalog, base }` with `If-Match` on the version read. Treat a 400 as
    the compile report and fix the catalog through Model, never by editing it here.
+   Deliver the catalog through the configuration bundle repository (see
+   [Configurer delivery](../guide-product-work/SKILL.md#configurer-delivery)).
+   No Deploy adapter or Build bundle kind accepts a metrics catalog yet, so
+   this `PUT` is a test-only exception; record the gap for Corviknight (Deploy
+   adapter) and Tinkaton (bundle kind) and tell the person.
 3. After the five-minute catalog cache, confirm activation `STATUS` is in sync.
 4. Backfill quarter-sized `RANGE` windows newest first, planning each before its
    confirmed run, one confirmed run at a time.

@@ -19,19 +19,30 @@ do not authorize runtime changes during configuration. Hand implementation to
 `unown` with [build-documentation-product](../build-documentation-product/SKILL.md).
 
 1. Discover the existing deployment/revision, HTTP/tRPC contract, authentication,
-   content schema and supported operations. Verify the selected AWS profile,
-   account and region. Record missing `site-tech-api` or other adapter dependencies
-   instead of treating historical routes as available.
-2. Select the requested feature IDs and dependencies. Explain the expected portal
+   content schema and supported operations through
+   `https://<shared domain>/documentation` with the shared `x-api-key`. Get the
+   shared domain from the user or their environment (for example
+   `soofi-safavi.account.prismteam.ai`); use no AWS profile or credentials and
+   do not read SSM or stack outputs. Record missing `site-tech-api` or other
+   adapter dependencies instead of treating historical routes as available.
+2. Deliver API and MCP descriptions through the product's own repository: a PR
+   to `requirements/swagger.yml` and `requirements/mcp.json` that the user
+   merges. Build packs them and Marketplace sends them to `POST /publications`
+   when its review passes. Documentation is not a configuration bundle and
+   Deploy has no Documentation adapter; none is needed for these files. Treat a
+   direct `POST /publications` as a test-only exception. Today the API accepts only
+   `spec` and `mcp_spec`, so record overviews, media, guides and navigation as
+   a gap for Unown rather than inventing a delivery path.
+3. Select the requested feature IDs and dependencies. Explain the expected portal
    outcome using synthetic inputs. Use four as a full-walkthrough floor; scope
    narrow publishing requests to relevant features and supported variants.
-3. Prepare product metadata, OpenAPI, overview, media, guides and portal settings
+4. Prepare product metadata, OpenAPI, overview, media, guides and portal settings
    to the deployed schema. Use the existing shared typed client for app/tooling
    changes; do not duplicate API contracts or handwrite another frontend client.
    Validate inputs locally against the deployed schema and inspect diagnostics.
    Use a separate API validation operation only when it exists; do not invent a
    validation route or use a mutating submit operation as a dry run.
-4. Honor requested ordering: when the user asks for a preview before publication,
+5. Honor requested ordering: when the user asks for a preview before publication,
    establish a supported isolated preview first. If preview is unavailable,
    prepare and validate the candidate, report the builder dependency and leave
    publication pending. Do not publish to the active test portal and label its
@@ -41,7 +52,7 @@ do not authorize runtime changes during configuration. Hand implementation to
    replacement, rollback or deletion only when their contracts are implemented
    and the action is within scope. Treat a submitted request as pending until
    content and status agree.
-5. For a product with MCP tools, prepare `requirements/mcp.json` to the deployed
+6. For a product with MCP tools, prepare `requirements/mcp.json` to the deployed
    contract, read back the publication's `mcp.status`/`mcp.diagnostics` and verify
    the portal MCP section (address, tools, inputs, read/write, confirmation,
    per-environment tools) against the product's MCP doc. Check snippets show only
@@ -49,15 +60,15 @@ do not authorize runtime changes during configuration. Hand implementation to
    guide links and supported downloads in the portal. Check that every output
    corresponds to the same publication and that an update has the expected merge
    or replacement behavior. Do not write the product's storage directly.
-6. Configure allowed trial environments and authentication through supported
+7. Configure allowed trial environments and authentication through supported
    settings. Use synthetic data and explicit user-triggered sends; keep secrets
    out of content, logs, shared snippets and exports. Compare runnable requests
    with generated examples and show both success and expected API failures.
-7. Exercise a baseline and materially different supported configuration, invalid
+8. Exercise a baseline and materially different supported configuration, invalid
    input, access denial and relevant refresh/recovery behavior inside each piece.
    Give a copyable invocation and at most three AWS inspection steps, then collect
    the user's redacted IDs and observations before advancing.
-8. Leave unavailable features pending with a reproducible builder handoff. Do not
+9. Leave unavailable features pending with a reproducible builder handoff. Do not
    migrate a legacy backend, invent routes or modify React components to make
    configuration pass. Keep Account, Model, Console and delivery-product ownership
    intact; Documentation is distinct from Site and Document.

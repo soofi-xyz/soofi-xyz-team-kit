@@ -42,7 +42,10 @@ export const VECTOR_BLOB_SOURCES: Readonly<Record<string, ReadonlyArray<VectorBl
 2. Another account: the bucket owner must grant `s3:GetObject` on the prefix to
    the two Persist roles in their bucket policy (and `kms:Decrypt` in the key
    policy for SSE-KMS). Until then every read is `AccessDenied`, skipped and
-   counted. Find the role ARNs:
+   counted. No Persist API route returns the two role ARNs (a builder gap for
+   Conkeldurr). Until one exists, the person runs this in their own terminal
+   with their own AWS access and gives you the names; do not run it yourself
+   or ask for credentials:
 
    ```bash
    aws cloudformation describe-stack-resources --stack-name PersistSearchStack \

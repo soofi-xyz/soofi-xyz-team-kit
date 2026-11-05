@@ -205,8 +205,12 @@ API Gateway API keys and usage plans work only on REST APIs. Current state:
 - Build and Marketplace require API keys on the shared usage plan.
 - Environment and Model use Account's request authorizer on `x-api-key`; some
   Model routes are IAM-only.
-- Deploy, Transform, Connect and System are IAM SigV4 only. Deploy's shared API
-  key for its run/Puller APIs is pending prismteam-ai/deploy PR #13.
+- Deploy, Transform, Connect and System serve their APIs on the shared domain
+  with the shared `x-api-key`. Deploy's IAM run/Puller APIs are removed.
+  IAM-only routes and AWS-only steps include System `/callback-clients` and callback queue/alarm
+  inspection, Connect webhook ingress and schedule and drop-zone test triggers,
+  and Persist's vector backfill workflow, generation control and blob-allowlist
+  role lookup.
 - Persist meets option 1 of the publish readiness gate below: a separate
   regional REST API (`lib/persist-shared-api.ts`, persist#324) with
   `apiKeyRequired` on every method, stage `live` on the shared usage plan and

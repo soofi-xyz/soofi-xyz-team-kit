@@ -18,9 +18,14 @@ BUILDING --retire (no backfill execution running)--> RETIRED
 
 ### Invoke
 
+No Persist API route calls this Lambda (a builder gap for Conkeldurr). Until
+one exists, the person runs these commands in their own terminal with their own
+AWS access; ask them for the function name. Do not read SSM or ask for
+credentials.
+
 ```bash
-export AWS_PROFILE=<selected-profile> AWS_REGION=us-east-2
-FN=$(aws ssm get-parameter --name /persist/opensearch/vector-generation-control-function-name --query Parameter.Value --output text)
+export AWS_PROFILE=<selected-profile> AWS_REGION=us-east-2   # the person's own profile
+FN='<VectorGenerationControl function name from the person>'
 control() { aws lambda invoke --function-name "$FN" --cli-binary-format raw-in-base64-out --payload "$1" /tmp/control.json >/dev/null && jq . /tmp/control.json; }
 
 control '{"action":"status"}'

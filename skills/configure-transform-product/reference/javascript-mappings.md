@@ -138,18 +138,19 @@ rather than by editing SSM: register the version with `"activate": true` in
 the body (`{ rule, module, "activate": true }`), then confirm `activated_at` on
 the read-back. To roll back, register the earlier version again with identical
 content and `"activate": true`. An SSM `activeVersions` pin, when present,
-still wins over activation. Ask the owner before you remove an existing pin. The
-route serves only on installs deployed with `TransactionsEnabled=enabled` or
-with SSM `enabled: true`. Hand a missing `activate` or `TransactionsEnabled`
-to Kecleon.
+still wins over activation; do not read or edit it yourself, and ask the owner
+before an existing pin is removed. The route serves only on installs deployed
+with `TransactionsEnabled=enabled` or with the runtime value `enabled: true`.
+Hand a missing `activate` or `TransactionsEnabled` to Kecleon.
 
-Run one transaction through the synchronous route with SigV4, using the API URL
-from SSM `/<stackName>/api-url`:
+Run one transaction through the synchronous route on the shared domain with the
+shared `x-api-key` the person exports as `PRISM_API_KEY`. Do not read SSM, use
+SigV4 or ask for AWS credentials; when the route rejects the key, record a
+Kecleon builder gap and stop:
 
 ```bash
-curl -sS --aws-sigv4 "aws:amz:${AWS_REGION}:execute-api" \
-  --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
-  -H "x-amz-security-token: $AWS_SESSION_TOKEN" -H "content-type: application/json" \
+export TRANSFORM_API_URL=https://<shared domain>
+curl -sS -H "x-api-key: $PRISM_API_KEY" -H "content-type: application/json" \
   -d @transaction.json "${TRANSFORM_API_URL%/}/transform/transactions"
 ```
 

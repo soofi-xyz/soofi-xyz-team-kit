@@ -177,6 +177,33 @@ Build defects to Tinkaton and publication to Registeel. Bundle installation and
 synthetic installer tests do not replace Silvally's production-derived readiness
 gates or authorize partner traffic or business executions.
 
+Deliver every configuration in this order, through product APIs on the shared
+domain with the shared `x-api-key` and no AWS credentials:
+
+1. **Bundle PR (configurer):** change the repository created from
+   `prismteam-ai/configuration-bundle-template`; its CI validates the bundle and
+   publishes it to Marketplace when the PR merges.
+2. **Publish (Registeel):** confirm the Marketplace publish and that the bundle
+   is `VALID`; Puller installs only the newest `VALID` bundle.
+3. **Subscribe (Skarmory):** create or update the Deploy Puller subscription
+   with `POST /deploy/puller/subscriptions` (or `PATCH` an existing one) and
+   `update_policy: AUTO`, then read the install back with
+   `GET /deploy/puller/installs/{product_id}/{component_id}`.
+4. **Verify (configurer):** read the installed configuration back through the
+   product API and compare it with the bundle.
+5. **Clean up (configurer):** remove direct test registrations that are not in
+   the bundle through the product API.
+
+Before merging, check what the install will replace:
+
+- Deploy writes each document by name (System, Report and Schedule `PUT`, and
+  Connect partner configurations and activations `PUT`), so it overwrites a
+  same-named direct registration that no other component claims.
+- A Transform mapping whose content changed needs a new version; reusing a
+  registered version returns `409` and fails the install.
+- A committed activation with `"enabled": false` disables the live activation
+  of the same name.
+
 ## Synthetic acceptance
 
 Materialize these recipes in target test suites using their actual schemas. Use

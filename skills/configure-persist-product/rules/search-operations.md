@@ -48,7 +48,10 @@ tags: vector-search, operations, dev, prod, alarms, data-handling
 
 ### Alarms and signals
 
-List them with:
+No Persist API route reports these alarms (a builder gap for Conkeldurr).
+Until one exists, the person lists them in their own terminal with their own
+AWS access and tells you the states; do not run it yourself or ask for
+credentials:
 
 ```bash
 aws cloudwatch describe-alarms --query "MetricAlarms[?contains(AlarmName,'Vector')].[AlarmName,StateValue]" --output table
@@ -63,8 +66,8 @@ aws cloudwatch describe-alarms --query "MetricAlarms[?contains(AlarmName,'Vector
 | `VectorStreamBlobUnreadableAlarm` | The poller skipped `blob_text` objects for 15 minutes |
 | `VectorGenerationControlFailuresAlarm` | A control action failed; the pointer did not move |
 
-These alarms have no notification action wired yet: check them yourself after
-every piece. Poller logs: `Vector stream poll complete` (stop reason, cursor,
+These alarms have no notification action wired yet: ask the person to check them
+after every piece. Poller logs: `Vector stream poll complete` (stop reason, cursor,
 lag, counters). Metrics: namespace `persist`, `service=persist-vector-stream`
 (`VectorStreamMaxLagSeconds`, `VectorStreamGenerationFailures`,
 `VectorStreamEligibilityRemovalsPending`), `service=persist-vector-backfill`,

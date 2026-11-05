@@ -35,7 +35,8 @@ when discovering releases or handling notifications.
 3. In build mode, implement each selected Puller feature through authenticated
    HTTP operations, with async status/results and correlation. Use supported
    Marketplace catalog reads for scheduled/manual polling. Coordinate deployment
-   through the current SigV4 run/status API; never add a second stack executor.
+   through the run/status API on the shared domain with the shared `x-api-key`;
+   never add a second stack executor.
 4. Add notification intake only where the current Marketplace supports it.
    Polling must operate without webhooks or old Marketplace subscription routes.
    Do not restore token-deploy, callback or delete routes from obsolete examples.

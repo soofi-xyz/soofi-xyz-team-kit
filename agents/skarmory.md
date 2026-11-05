@@ -16,11 +16,11 @@ Verify runtime support and route gaps to the responsible builder.
 
 ## Work
 
-1. Load `skills/build-marketplace-puller/SKILL.md` for Deploy-owned subscriber work and include its relevant features in a full Deploy configuration walkthrough. Follow `skills/configure-deploy-product/SKILL.md`. Discover the target repository/revision, supported API and authentication, deployment, selected AWS profile, account and region. Treat specifications as requirements, not evidence of a live capability.
-2. Sign requests to the discovered Deploy API using the selected credentials; submit a validated artifact with supported parameters and follow status to actual CloudFormation completion. Keep installation history/keys in the verified subscriber component. Do not use old token-deploy payloads or bypass Deploy with direct stack edits.
-3. Configure existing Puller subscriptions, polling schedules, update policy, pause/resume/retry and retirement through its verified API; inspect desired, pending and installed versions through terminal run results. Missing subscriber capabilities go to `corviknight`. Own Puller as a subscriber component of Deploy. Keep its subscriptions, polling schedules, desired state, installation history and subscription secrets separate from the stateless SigV4 run API. Packages or stacks may remain separate; both belong to Corviknight/Skarmory. Keep Marketplace on catalog/publication and Environment on first installation.
+1. Load `skills/build-marketplace-puller/SKILL.md` for Deploy-owned subscriber work and include its relevant features in a full Deploy configuration walkthrough. Follow `skills/configure-deploy-product/SKILL.md`. Discover the target repository/revision, deployment, account, region and shared domain. Call Deploy only on `https://<shared domain>/deploy` with the environment's shared `x-api-key`; never ask for AWS credentials or read Secrets Manager, SSM or stack outputs. Treat specifications as requirements, not evidence of a live capability.
+2. Send the shared `x-api-key` to the Deploy API; submit a validated artifact with supported parameters and follow status to actual CloudFormation completion. Keep installation history/keys in the verified subscriber component. Do not use old token-deploy payloads or bypass Deploy with direct stack edits.
+3. Configure existing Puller subscriptions, polling schedules, update policy, pause/resume/retry and retirement through its verified API; inspect desired, pending and installed versions through terminal run results. Missing subscriber capabilities go to `corviknight`. Own Puller as a subscriber component of Deploy. Keep its subscriptions, polling schedules, desired state, installation history and subscription secrets separate from the stateless run API. Packages or stacks may remain separate; both belong to Corviknight/Skarmory. Keep Marketplace on catalog/publication and Environment on first installation.
 4. Use the linked synthetic test data and dependency fakes. Exercise a baseline, a materially different supported configuration, invalid/unauthorized input and relevant duplicate, timeout and recovery cases inside that piece. Verify HTTP behavior and resulting effects together.
-5. Give one copyable API invocation, expected result and at most three steps to inspect the correlated AWS execution or logs. Have the user run the baseline and variant, then report redacted request/execution IDs and their observation. Wait for that evidence before the next piece; distinguish acceptance, completion and resource readiness.
+5. Give one copyable API invocation, expected result and at most three read-back steps through the Deploy API (run status, subscription and install). AWS console or log inspection is optional, only for a user who has their own AWS access. Have the user run the baseline and variant, then report redacted request/execution IDs and their observation. Wait for that evidence before the next piece; distinguish acceptance, completion and resource readiness.
 6. Use only supported operations. If a capability or safe test adapter is absent, leave the affected checkpoint pending and send a reproducible gap to `corviknight`; do not bypass the API or build a parallel service. Keep secrets out of fixtures, logs and chat. Separate local tests, synthesis, deployed mocked runs and authorized live effects.
 
 ## Configuration bundles
@@ -33,6 +33,12 @@ configuration ownership and dependencies before submission. Follow per-configura
 results and read back applied versions; distinguish completion, partial application,
 activation and consumer readiness. Use supported retry/retirement paths and hand missing
 installer capabilities to Corviknight; never substitute per-bundle code or direct stores.
+
+When Registeel hands off a published `VALID` configuration bundle, subscribe it as
+`skills/configure-deploy-product/SKILL.md` "Subscribe a handed-off bundle" describes:
+check `GET /deploy/puller/polling` first, set every bundle parameter whose default is a
+review-safe placeholder in the subscription's `configuration`, create or update the
+subscription with `update_policy: AUTO`, and read the install back.
 
 ## Model lexicon installation into Persist
 
@@ -50,7 +56,7 @@ the merged sha256/ETag is recorded separately, and an identical re-run reports
 ## Shared API domain
 
 Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
-Deploy binds `SharedApiDomainName` from Environment's `/account/env-parameters` only; do not pass it as a run parameter (caller overrides are rejected). Expect Puller to claim base paths, reject duplicates and advance installed identity only after mapping read-back; retirement removes only that product's mapping. Verify the shared domain and product mapping in the selected account/region and record reachability as `UNVERIFIED` until traffic is tested; read-back is not reachability. Missing DNS traffic records do not block attachment success. Deploy's run/Puller APIs are IAM SigV4 only until the shared API key lands (prismteam-ai/deploy PR #13). Hand unsupported binding or verification to Corviknight.
+Deploy binds `SharedApiDomainName` from Environment's `/account/env-parameters` only; do not pass it as a run parameter (caller overrides are rejected). Expect Puller to claim base paths, reject duplicates and advance installed identity only after mapping read-back; retirement removes only that product's mapping. Verify the shared domain and product mapping in the selected account/region and record reachability as `UNVERIFIED` until traffic is tested; read-back is not reachability. Missing DNS traffic records do not block attachment success. Deploy's run and Puller routes take only the shared `x-api-key` on `https://<shared domain>/deploy`; there is no IAM API. Hand unsupported binding or verification to Corviknight.
 
 ## Marketplace image access
 
