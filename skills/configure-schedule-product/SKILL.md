@@ -35,15 +35,18 @@ adds); route a missing feature to `klinklang` instead of working around it.
    If it is unset, stop and ask the user to set it in their own terminal
    (`export SCHEDULE_API_KEY=...`). Never read the key from AWS yourself, print it, or ask
    for it in chat.
-2. Find the shared domain and confirm the key with a read-only call that prints only the
-   status code (`200` accepted, `403` rejected):
+2. Get the shared domain from the user or their environment (`PRISM_DOMAIN`, for example
+   `soofi-safavi.account.prismteam.ai`); never read it from SSM or stack outputs. Confirm
+   the key with a read-only call that prints only the status code (`200` accepted, `403`
+   rejected):
 
    ```bash
-   SCHEDULE_URL="https://$(aws ssm get-parameter --name /account/env-parameters --query Parameter.Value --output text | jq -r .domain.fqdn)/schedule"
+   SCHEDULE_URL="https://$PRISM_DOMAIN/schedule"
    curl -sS -o /dev/null -w '%{http_code}\n' -H "x-api-key: $SCHEDULE_API_KEY" "$SCHEDULE_URL/schedules"
    ```
 
-3. Confirm the AWS profile's account and region before any AWS inspection.
+3. Use no AWS credentials. Every checkpoint is an API read-back; AWS inspection is optional
+   evidence the user gathers with their own access.
 
 ## Write a configuration
 
@@ -72,8 +75,10 @@ column the configuration points at:
 3. Read another product's run output in place with an `s3-files` source. Do not create
    Glue databases or tables by hand, and do not filter a shared table by `"$path"`.
    Schedule creates its table per run. Declare the file header's columns in order, and
-   confirm that the install's `SourceS3ReadArns` covers the bucket and the prefix (route
-   a missing grant to `skarmory`). A run whose prefix has no data fails
+   confirm with the user or `skarmory` that the install's `SourceS3ReadArns` covers the
+   bucket and the prefix (route a missing grant to `skarmory`). No Schedule API returns
+   that parameter; record it as a builder gap for `klinklang` rather than reading it from
+   AWS. A run whose prefix has no data fails
    `SOURCE_NO_DATA`; that is the expected answer when the producer has not run, never a
    reason to point the source at another date. If validation says `s3-files` is
    unknown or not supported, the deployed Schedule predates it; route to `klinklang`.
@@ -103,14 +108,19 @@ merges. Never push or merge yourself.
 
 ## Save, simulate, run and check
 
-1. Save and read the result:
+The bundle is how a schedule reaches an environment. Use a direct save for testing only, and
+delete test-only schedules that are not in the bundle with `DELETE /schedules/<id>` once the
+subscription has installed it.
+
+1. Save (testing only) and read the result:
 
    ```bash
    curl -sS -X PUT -H "x-api-key: $SCHEDULE_API_KEY" -H 'content-type: application/json' \
      --data-binary @schedule.json "$SCHEDULE_URL/schedules/<id>" | jq '{version, outcome, schedule}'
    ```
 
-   Saving over a bundle-installed schedule changes it until the next install; say so.
+   Saving over a bundle-installed schedule changes it until the next install; say so and
+   restore the bundle's parameters afterwards.
 2. Simulate first. A simulation runs the real queries (and costs up to `costLimitUsd`)
    but writes no ledger rows, so it never affects rotation:
 
@@ -134,8 +144,9 @@ merges. Never push or merge yourself.
    requested scope; a live run writes the ledger and its output may be sent), then
    simulate D+1. D+1 must contain none of D's subjects while the cooldown holds, and
    never-reached subjects must lead.
-6. Give the user at most three AWS inspection steps from the capability map, then wait for
-   their redacted run id and observation in a guided walkthrough.
+6. In a guided walkthrough, use these API read-backs as the checkpoint; offer at most three
+   optional AWS inspection steps from the capability map for a user with their own access,
+   then wait for their redacted run id and observation.
 
 ## Hand off
 

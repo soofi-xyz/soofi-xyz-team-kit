@@ -11,18 +11,18 @@ Configure a particular use of **Persist** through its supported interfaces and g
 
 ## Work
 
-1. Follow `skills/configure-persist-product/SKILL.md`. Discover the deployment, revision, account, region, data scope and supported configuration surface.
+1. Follow `skills/configure-persist-product/SKILL.md`. Confirm the shared domain with the person, then discover the revision, data scope and supported configuration surface through the Persist API.
 2. Explain the chosen graph entities, IDs, relationships and expected read-back. Reuse approved model definitions; do not silently invent a new model or deploy a second Persist service.
 3. Prepare a small input fixture, expected query result and negative/replay case. Guide the person through the request and inspection of the observed result.
 4. Author the requested ingest/query/index/trigger configuration only where the current deployment supports it. Version and validate artifacts before applying them; preserve identity and relationship integrity.
-5. To make a field searchable ("make `note.text` searchable"), follow [the searchable-fields runbook](../skills/configure-persist-product/reference/searchable-fields.md) end to end: decide and PII-check the field, draft the Lexicon `embeddings` PR (and the Persist blob allowlist PR for `blob_text`), build a generation with `PersistVectorBackfillWorkflow`, promote it through `VectorGenerationControl`, and verify GraphQL `search` and recall. Work DEV first; ask before every PR, backfill, pointer change and any PROD write. Never paste source text, real queries or vectors.
+5. To make a field searchable ("make `note.text` searchable"), follow [the searchable-fields runbook](../skills/configure-persist-product/reference/searchable-fields.md) end to end: decide and PII-check the field, draft the Lexicon `embeddings` PR (and the Persist blob allowlist PR for `blob_text`), build a generation with `PersistVectorBackfillWorkflow`, promote it through `VectorGenerationControl` (the person runs both with their own AWS access until Persist has API routes for them; a Conkeldurr gap), and verify GraphQL `search` and recall. Work DEV first; ask before every PR, backfill, pointer change and any PROD write. Never paste source text, real queries or vectors.
 6. To connect Claude Code or Cursor, or to change MCP tools, limits or saved queries, follow [the MCP client setup](../skills/configure-persist-product/reference/mcp-client-setup.md) and the configure-persist skill's MCP section. Verify tool answers against direct queries; never handle the key in chat.
 7. Test authorized samples, read back results, check idempotency and downstream effects, and report cleanup. Respect existing production authorization.
 8. Send unsupported behavior or defects to `conkeldurr` with input, expected/actual behavior and evidence, including new chunking strategies, content types, embedding models or profiles. Do not change service code as a workaround.
 
 ## Call Persist
 
-Make every Persist request at `https://<shared domain>/persist/...` with the environment's shared key in `x-api-key`, as in [Call the Persist API](../skills/configure-persist-product/SKILL.md#call-the-persist-api). The domain is `domain.fqdn` in `/account/env-parameters` (the stack's `ProductApiUrl`). Write examples as `curl -H "x-api-key: $PRISM_API_KEY"`. The person sets `PRISM_API_KEY` in their own environment; never read the key from AWS, print it or ask for it in chat. This API serves every REST, GraphQL and MCP route, and it alone serves `POST /persist/csv-loads` and `GET /persist/csv-loads/{loadId}` for Neptune CSV loads. Never offer SigV4, `awscurl`, an `execute-api` URL or the cross-account invoke role. If the target has no shared-domain `persist` mapping (a SOC CDK deploy without `sharedApiDomainName`), hand that to Conkeldurr.
+Make every Persist request at `https://<shared domain>/persist/...` with the environment's shared key in `x-api-key`, as in [Call the Persist API](../skills/configure-persist-product/SKILL.md#call-the-persist-api). Get the shared domain from the person or their environment as `PRISM_DOMAIN` (for example `soofi-safavi.account.prismteam.ai`); never read it from SSM or stack outputs. Write examples as `curl -H "x-api-key: $PRISM_API_KEY"`. The person sets `PRISM_API_KEY` in their own environment; never read the key from AWS, print it or ask for it in chat. This API serves every REST, GraphQL and MCP route, and it alone serves `POST /persist/csv-loads` and `GET /persist/csv-loads/{loadId}` for Neptune CSV loads. Never offer SigV4, `awscurl`, an `execute-api` URL or the cross-account invoke role. If the target has no shared-domain `persist` mapping (a SOC CDK deploy without `sharedApiDomainName`), hand that to Conkeldurr.
 
 ## Configure and query the current lexicon catalog
 
@@ -54,6 +54,14 @@ KPI-to-metric work to Jirachi, and unsupported shapes to Dialga or Conkeldurr.
 Read `GET /persist/metrics/catalog` first: `source: legacy-ssm` means the
 catalog is still Model/Lexicon-published, and the API refuses writes until the
 Model owners retire that boundary; never delete the SSM parameter yourself.
+
+Deliver the approved catalog through the environment's configuration bundle
+repository, as in the guide's Configurer delivery rule. Today neither Build's
+bundle validator nor Deploy's adapters accept a Persist metrics catalog (they
+apply Transform, Connect, System, Report and Schedule documents only): record
+that builder gap for Corviknight (Deploy adapter) and Tinkaton (Build bundle
+kind), tell the person, and treat the direct `PUT` as a test-only exception
+until a bundle install supersedes it.
 
 Apply with `PUT /persist/metrics/catalog` (`{ catalog, base }`, `If-Match` on
 the version read), wait out the five-minute catalog cache, and confirm the

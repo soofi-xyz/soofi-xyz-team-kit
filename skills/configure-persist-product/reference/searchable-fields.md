@@ -13,18 +13,25 @@ The capability ships in two pull requests:
 - Lexicon: [Spring-Oaks-Capital-LLC/lexicon#831](https://github.com/Spring-Oaks-Capital-LLC/lexicon/pull/831) (`feat/embeddings-schema`)
 
 Do not configure a searchable field in PROD until both are merged and deployed
-to production. Before every run, prove that the target account has the
-capability instead of assuming it:
+to production. Before every run, prove through the API that the target has the
+capability instead of assuming it. Get `PRISM_DOMAIN` from the person or their
+environment (for example `soofi-safavi.account.prismteam.ai`), never from SSM:
 
 ```bash
-export AWS_PROFILE=<selected-profile> AWS_REGION=us-east-2
-aws sts get-caller-identity --query Account --output text   # DEV is 951132547414; confirm PROD with the user
-aws ssm get-parameter --name /persist/opensearch/vector-backfill-workflow-arn --query Parameter.Value --output text
-aws ssm get-parameter --name /persist/opensearch/vector-generation-control-function-name --query Parameter.Value --output text
+curl -sS -H "x-api-key: $PRISM_API_KEY" "https://$PRISM_DOMAIN/persist/graphql/schema" \
+  | jq -r .sdl | grep -E 'search\(|union SearchEntity'
 ```
 
-If either parameter is missing, the capability is not deployed there. Stop and
+If the schema has no `search`, the capability is not deployed there. Stop and
 report it; do not work around it.
+
+No Persist API route starts `PersistVectorBackfillWorkflow` or calls
+`VectorGenerationControl`, and none returns their ARN or function name. Record
+that builder gap for Conkeldurr. Until those routes exist, the build and
+promotion steps are IAM-only exceptions: ask the person for the state machine
+ARN and the function name, and have them run those commands in their own
+terminal with their own AWS access after confirming the account (DEV is
+951132547414; confirm PROD with them). Do not read SSM or ask for credentials.
 
 ## How the pieces fit
 
@@ -70,12 +77,14 @@ Uxie does without asking (read-only or local):
   the reason for each, and check every naming and source rule.
 - Check whether the owner is under the GraphQL PII resolution map, and whether an
   edge field may hold personal data.
-- Verify the deployment (SSM parameters, account, region), read `status`, and
-  count eligible elements with a read-only query to size the build.
+- Verify the deployment through the GraphQL schema, and count eligible
+  elements with a read-only query to size the build.
 - Draft the Lexicon PR and, for `blob_text`, the Persist allowlist PR; run the
   local validation commands.
-- Run `activate` with `dryRun: true` and explain every gate.
-- Watch executions, read counters, logs and metrics, and report them.
+- Give the person the `status` and `activate` `dryRun: true` commands to run,
+  and explain every gate in the output they return.
+- Read the execution status, counters, logs and metrics the person reports,
+  and report them.
 
 Uxie asks the user before:
 

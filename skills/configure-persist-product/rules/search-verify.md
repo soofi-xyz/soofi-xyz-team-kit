@@ -14,12 +14,11 @@ REST search route, and Gremlin `Neptune#fts` is unrelated to it.
 Call Persist on the environment's shared domain with the shared key, as in
 [Call the Persist API](../SKILL.md#call-the-persist-api). The person sets
 `PRISM_API_KEY` in their own environment; never read it from AWS, print it or
-ask for it in chat.
+ask for it in chat. Get the shared domain from the person or their environment,
+never from SSM or stack outputs.
 
 ```bash
-export AWS_PROFILE=<selected-profile> AWS_REGION=<region>
-PRISM_DOMAIN=$(aws ssm get-parameter --name /account/env-parameters \
-  --query Parameter.Value --output text | jq -r .domain.fqdn)
+export PRISM_DOMAIN='soofi-safavi.account.prismteam.ai'   # the shared domain the person gave you
 
 # The schema must list search; vertex owners appear in union SearchEntity.
 curl -sS -H "x-api-key: $PRISM_API_KEY" "https://$PRISM_DOMAIN/persist/graphql/schema" \

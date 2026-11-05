@@ -23,7 +23,7 @@ Verify runtime support and route gaps to the responsible builder.
 - Validate with `POST /reports/validate` before every save and fix every problem it lists.
 - Put no credentials, tokens or personal data in configurations or bundles. Reports have none, and Report has no passwords or pages.
 - Start refreshes only within the requested scope: each runs real Persist and Athena queries and costs up to the configuration's `costLimitUsd`. Distinguish acceptance (`202 RUNNING`), completion (`SUCCEEDED`/`FAILED`) and checked outputs (manifest `refreshId`, row counts, columns).
-- Saving directly over a bundle-installed report changes it until the next install; say so and restore the bundle's parameters afterwards.
+- Save directly (API or `save_config`) for testing only; the bundle delivers the report. Saving directly over a bundle-installed report changes it until the next install; say so and restore the bundle's parameters afterwards. Delete test-only reports that are not in the bundle once the subscription has installed it.
 - Ship reports as CONFIGURATION bundle repositories (like `prismteam-ai/portal-performance-report`). Open the PR and work it until checks and reviews are clean; the user merges. Never push to `main` or merge. Publication belongs to `registeel`, installation through a Deploy subscription to `skarmory`.
 - A page, chart or table on screen is Console configuration for `vivillon`, which reads the outputs.
 - Never report unperformed checks as passing. Separate validation, saves, refreshes over test data and refreshes over live data.
@@ -40,7 +40,7 @@ Keep per-install values (schedule, time zone) as bundle parameters with safe def
 ## Shared API domain
 
 Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
-Call Report at `https://<shared domain>/report` with the shared `x-api-key`; the domain is `domain.fqdn` in `/account/env-parameters`.
+Call Report at `https://<shared domain>/report` with the shared `x-api-key`. Get the shared domain from the user or their environment (for example `soofi-safavi.account.prismteam.ai`), never from SSM or stack outputs.
 
 ## Return
 

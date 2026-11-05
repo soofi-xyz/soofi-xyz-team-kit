@@ -33,9 +33,12 @@ product-supplied commands and never creates `service-comply`.
 ## Prerequisites
 
 1. Require two environment variables:
-   - `BUILD_BASE_URL`: the `BuildApiUrl` output of stack `BuildApi-<stage>`
-     (`https://<api-id>.execute-api.<region>.amazonaws.com/<stage>/`).
-   - `BUILD_API_KEY`: a key on that stage's usage plan.
+   - `BUILD_BASE_URL`: `https://<shared domain>/build` where the environment maps
+     Build on its shared domain (for example
+     `https://soofi-safavi.account.prismteam.ai/build`); otherwise the Build URL
+     the user or a teammate gives you.
+   - `BUILD_API_KEY`: the environment's shared `x-api-key` for the shared domain,
+     or the key that came with the given URL.
 
    Do not hardcode hosts, account ids or AWS profiles; use the user's values.
    Check presence with exactly this command and never any other expansion of
@@ -73,27 +76,12 @@ product-supplied commands and never creates `service-comply`.
    not call any other endpoint, do not read the values from AWS yourself, and
    do not ask the user to paste the key into chat.
 
-   Offer both ways to get the values; the user picks the one that fits. The
-   key is the only credential the API needs, so neither way requires AWS access
-   after this step.
-
-   **a. Someone gave you the URL and key** (a teammate with access to the Build
-   account, through a secure channel). Go straight to setting them below.
-
-   **b. You have AWS access to the Build account.** Read them in your own
-   terminal (they print only there), with a profile for that account
-   (`AWS_PROFILE=<selected-profile>`), the stage's region and stage name:
-
-   ```bash
-   export AWS_REGION=<region> STAGE=<stage>
-   out() { aws cloudformation describe-stacks --stack-name "BuildApi-$STAGE" --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text; }
-   out BuildApiUrl
-   aws apigateway get-api-key --api-key "$(out CallerAApiKeyId)" --include-value --query value --output text
-   ```
-
-   Without either, ask someone with access to the Build account to share them.
-   Today each stage has only two test keys (`build-<stage>-caller-a` and
-   `-caller-b`); there are no per-consumer keys yet.
+   Get the shared domain and key from the user or their environment, never
+   from stack outputs, API Gateway or any other AWS source; the key is the only
+   credential the API needs. For a Build that is not on a shared domain, ask
+   the user or a teammate with access to share the URL and key through a secure
+   channel. Cross-key isolation checks (§7) need a second key from the same
+   source.
 
    Set them for the process that launches Cursor (for example in `~/.zshrc`,
    then launch Cursor from a new terminal, or with `launchctl setenv` on macOS),
@@ -101,7 +89,7 @@ product-supplied commands and never creates `service-comply`.
    terminal started after Cursor will not reach the agent.
 
    ```bash
-   export BUILD_BASE_URL='<BuildApiUrl output>'
+   export BUILD_BASE_URL='https://<shared domain>/build'
    export BUILD_API_KEY='<the key>'
    ```
 
@@ -414,8 +402,9 @@ covers caller isolation.
 
 ## 8. Service check (`scripts/smoke.sh`)
 
-After a Build change, the user runs from a Build checkout with AWS access to the
-Build account:
+This is a person-run service check, not a configurer step: after a Build
+change, a person with their own AWS access to the Build account may run it from
+a Build checkout. Do not run it yourself or ask for AWS credentials:
 
 ```bash
 AWS_PROFILE=<selected-profile> AWS_REGION=<region> scripts/smoke.sh --skip-codebuild <stage>
@@ -461,11 +450,12 @@ credentials; Metang does not run it with its own.
    invalid/unauthorized input and relevant replay/recovery cases. Four pieces
    is a floor for a full walkthrough, not a quota for narrow work.
 3. Give the user one copyable invocation (usually `scripts/demo.sh`), the
-   expected result and at most three AWS inspection steps: the execution
-   named by the `build_id` on state machine `BuildCloudAssembly-<stage>`; the
-   CodeBuild build of project `BuildAssembly-<stage>`, whose log stream in
-   `/aws/codebuild/BuildAssembly-<stage>` is prefixed by the `build_id`; the
-   artifact object. In a guided walkthrough, have them run the baseline and
+   expected result and at most three read-back steps through the Build API:
+   `GET /builds/{build_id}` (status), `GET /builds/{build_id}/logs` and
+   `GET /builds/{build_id}/manifest`. AWS console or log inspection (state
+   machine `BuildCloudAssembly-<stage>`, CodeBuild log group
+   `/aws/codebuild/BuildAssembly-<stage>`) is optional, only for a user who has
+   their own AWS access. In a guided walkthrough, have them run the baseline and
    variant, then report redacted `build_id`s and observations, and wait for
    that evidence before the next piece. On a direct build or verify request,
    run the baseline yourself and report once.
@@ -496,4 +486,5 @@ For API infrastructure, packaging, review or installation, read and apply
 [the shared API domain contract](../guide-product-work/reference/shared-api-domain.md).
 Require the API Gateway domain and product-owned mappings; keep DNS traffic
 records optional. Publish `base_path` and `requires.domain: true` only; `endpoints`/`endpoint_contract_version` need a Build schema change first.
-Read domain metadata from `/account/env-parameters`; route gaps to the builder.
+Deploy binds the domain from `/account/env-parameters` at install time; do not read it
+from SSM yourself. Route gaps to the builder.

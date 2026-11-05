@@ -40,15 +40,18 @@ table on screen is Console work for `vivillon`, which reads the outputs.
    If it is unset, stop, and ask the user to set it from a teammate or from the shared
    usage plan's key in their own terminal (`export REPORT_API_KEY=...`). Never read the key
    from AWS yourself, print it, or ask for it in chat.
-2. Find the shared domain and confirm the key with a read-only call that prints only the
-   status code (`200` accepted, `403` rejected):
+2. Get the shared domain from the user or their environment (`PRISM_DOMAIN`, for example
+   `soofi-safavi.account.prismteam.ai`); never read it from SSM or stack outputs. Confirm
+   the key with a read-only call that prints only the status code (`200` accepted, `403`
+   rejected):
 
    ```bash
-   REPORT_URL="https://$(aws ssm get-parameter --name /account/env-parameters --query Parameter.Value --output text | jq -r .domain.fqdn)/report"
+   REPORT_URL="https://$PRISM_DOMAIN/report"
    curl -sS -o /dev/null -w '%{http_code}\n' -H "x-api-key: $REPORT_API_KEY" "$REPORT_URL/reports"
    ```
 
-3. Confirm the AWS profile's account and region before any AWS inspection.
+3. Use no AWS credentials. Every checkpoint is an API read-back; AWS inspection is optional
+   evidence the user gathers with their own access.
 
 ## Write and validate a configuration
 
@@ -97,7 +100,11 @@ user merges. Never push or merge yourself.
 
 ## Save, refresh and check
 
-1. Save (in a test environment, or when installing by hand) and read the result:
+The bundle is how a report reaches an environment. Use a direct save for testing only, and
+delete test-only reports that are not in the bundle with `DELETE /reports/<id>` once the
+subscription has installed it.
+
+1. Save (testing only) and read the result:
 
    ```bash
    curl -sS -X PUT -H "x-api-key: $REPORT_API_KEY" -H 'content-type: application/json' \
@@ -126,18 +133,21 @@ user merges. Never push or merge yourself.
    `error.code` and `error.message` (cost limit, scan bound, `maxRows`, query error).
 4. Check the outputs: `GET $REPORT_URL/reports/<id>/outputs` returns the bucket, prefix and
    newest manifest; its `refreshId` must be the refresh you started, and each dataset's
-   `rowCount` and `columns` what the configuration intends. With AWS access, list
-   `s3://<bucket>/outputs/<id>/latest/` (bucket in SSM `/report/Report/output-bucket`).
-5. Give the user at most three AWS inspection steps from the capability map (the `Refresh`
-   execution, the Athena queries, the output files), then wait for their redacted refresh
-   id and observation in a guided walkthrough.
+   `rowCount` and `columns` what the configuration intends. A user with their own AWS
+   access may list `s3://<bucket>/outputs/<id>/latest/`, taking the bucket from that
+   response, never from SSM.
+5. In a guided walkthrough, use these API read-backs as the checkpoint; offer at most three
+   optional AWS inspection steps from the capability map (the `Refresh` execution, the
+   Athena queries, the output files) for a user with their own access, then wait for their
+   redacted refresh id and observation.
 
 ## Use the MCP tools
 
 Connect clients with [the MCP client setup](../configure-persist-product/reference/mcp-client-setup.md)
 once [the Report MCP server](../build-report-product/reference/mcp-server.md) is
 deployed. `validate_config`, `save_config` (`confirm: true`), `refresh_and_wait`,
-`get_status` and `get_outputs` follow the same rules as the API steps above; check
+`get_status` and `get_outputs` follow the same rules as the API steps above (`save_config` is
+testing only, like a direct save); check
 each result against the API before relying on it.
 
 ## Hand off

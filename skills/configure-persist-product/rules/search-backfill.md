@@ -45,9 +45,14 @@ while it is not retired.
 
 ### Start and watch (DEV)
 
+No Persist API route starts or reports this workflow (a builder gap for
+Conkeldurr). Until one exists, the person runs these commands in their own
+terminal with their own AWS access; ask them for the state machine ARN. Do not
+read SSM or ask for credentials.
+
 ```bash
-export AWS_PROFILE=<selected-profile> AWS_REGION=us-east-2
-SM=$(aws ssm get-parameter --name /persist/opensearch/vector-backfill-workflow-arn --query Parameter.Value --output text)
+export AWS_PROFILE=<selected-profile> AWS_REGION=us-east-2   # the person's own profile
+SM='<PersistVectorBackfillWorkflow state machine ARN from the person>'
 
 # 1. Scoped trial of the new field on known elements.
 RUN="vector-note-trial-$(date +%Y%m%dT%H%M%S)"
