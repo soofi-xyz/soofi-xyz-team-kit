@@ -54,7 +54,9 @@ the existing configuration API as one immutable version:
 }
 ```
 
-`output` is exactly one of `{ "shape": "graph", "format": "graphson" }` and
+`output` is exactly one of `{ "shape": "graph", "format": "graphson" }`,
+`{ "shape": "graph", "format": "neptune-csv" }` (see
+[Neptune CSV output](#neptune-csv-output)) and
 `{ "shape": "json", "format": "json" }`. Validate it as a union discriminated by
 `shape`, so a mismatched pair (for example `json`/`graphson`) is rejected at
 `rule.output.format` and an unknown shape at `rule.output.shape`.
@@ -90,7 +92,7 @@ Add a versioned synchronous route next to the existing run routes:
 
 | Route | Body | Result |
 | --- | --- | --- |
-| `POST /transform/transactions` | `{ contractVersion: 3, from, to, inputs: { <table>: { value } \| { s3Uri } }, transaction_id? }` | `graph`: `200 { transaction_id, mapping: { id, version, sha256 }, graph, counts: { vertices, edges }, durationMs }`; `json`: `200 { transaction_id, mapping, result, durationMs }` |
+| `POST /transform/transactions` | `{ contractVersion: 3, from, to, inputs: { <table>: { value } \| { s3Uri } }, transaction_id? }` | `graphson`: `200 { transaction_id, mapping: { id, version, sha256 }, graph, counts: { vertices, edges }, durationMs }`; `neptune-csv`: `200 { transaction_id, mapping, neptune: { vertices, edges }, counts, durationMs }`; `json`: `200 { transaction_id, mapping, result, durationMs }` |
 
 - `value` carries a `json`/`text` input inline (a `jsonl` input inline is an
   array). `s3Uri` reads one object inside the approved input scope; use it for
@@ -119,7 +121,7 @@ Run the route in a Node.js Lambda (arm64). Per transaction:
    and return its result as a JSON string. Dispose the runtime afterwards.
 5. For `graph` output, check only the output shape needed to serialize: arrays,
    non-empty string ids, unique vertex ids, edge endpoints present among the
-   vertices. Do not re-validate against Lexicon; Persist validates every
+   vertices (for `graphson`; `neptune-csv` relaxes the endpoint check, below). Do not re-validate against Lexicon; Persist validates every
    GraphSON ingest. For `json` output, require an object or array.
 6. Serialize GraphSON v3 (below) for `graph` output, or return the document
    unchanged as `result` for `json` output. Apply the synchronous response size
@@ -171,6 +173,41 @@ under `@value` keys, which simple JSONPath orchestrators (System accepts only
   `result` required for `json` mappings.
 - Delivering the document is the caller's step; do not add partner calls or
   credentials to Transform.
+
+## Neptune CSV output
+
+A `{ "shape": "graph", "format": "neptune-csv" }` mapping returns the same
+`{ vertices, edges }` and is written as Neptune bulk-load CSV, the transaction
+counterpart of the batch path's `{ "format": "csv", "profile": "neptune" }`
+(see [graph mappings](graph-mappings.md)):
+
+- Write to `runs/transactions/<transaction_id>/neptune/<first 16 hex of the
+  request sha256>/{vertices,edges}/part-00000.csv` in the data bucket. The
+  prefix depends only on the transaction id and the request, so a retry writes
+  the same bytes to the same place; never use a random prefix.
+- Respond `200 { transaction_id, mapping, neptune: { vertices, edges }, counts,
+  durationMs }`, where `neptune` holds the two S3 prefixes for the load.
+- Ids are the mapping's own, the same id regime as the Spark `neptune` profile.
+  This output bypasses Persist and Lexicon validation; use it only for graphs
+  whose ids are mapping-native.
+- Relax the endpoint check: an edge may end at a vertex outside this output
+  that an earlier Neptune load created. Neptune refuses an edge whose endpoint
+  does not exist, so the caller owns load order.
+- Write ids, labels and single scalar values verbatim, like the Spark profile:
+  no `\` or `;` escaping (Neptune stores other escapes verbatim). A mapping that
+  needs a literal `;` in a vertex property escapes it itself.
+- A vertex property holding an array becomes a multi-valued `name:Type[]`
+  column, values joined with `;` and each `;` inside a value written `\;`. Edge
+  array properties and nested arrays are `InvalidMappingOutput`.
+- A property named `name:Type` keeps that Neptune type; otherwise infer
+  `String`, `Long`, `Double` or `Bool` from the column's values, with `Long` and
+  `Double` together giving `Double`. Other mixed types are
+  `InvalidMappingOutput`.
+- The files expire with the stored transaction results (30 days, or
+  `DataRetentionDays` when smaller). The caller runs the load and grants the
+  Neptune loader read access to the prefix.
+
+Never apply Neptune CSV rules to `graphson` output.
 
 ## GraphSON serialization
 
@@ -228,7 +265,10 @@ vertices and edges from their content and returns the final ids:
   existing `spark-sql` registrations validate unchanged.
 - Transactions: resolution per engine, unknown/disabled/ambiguous pair, missing
   required and unknown inputs, S3 input outside scope, idempotent
-  `transaction_id`, script throw, invalid output shape, dangling edge.
+  `transaction_id`, script throw, invalid output shape, dangling edge (GraphSON).
+- Neptune CSV: deterministic prefix on retry, verbatim `\` and `;` in single
+  values, `name:Type[]` arrays with `\;`, edge arrays and nested arrays refused,
+  `Long` + `Double` → `Double`, an edge to an external vertex accepted.
 - JSON output: a `json` mapping validates and returns its array as `result`
   with no `graph`; `null`, string, number and boolean results are
   `InvalidMappingOutput`; `json`/`graphson` and output-stage checks on a `json`

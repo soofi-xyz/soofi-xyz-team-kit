@@ -148,11 +148,13 @@ Implement the capability map's `human-certification` increment using
   result that created the hold (and on GET hold); the calling System flow passes
   it to Connect and posts Connect's answer back to `answer_path`. Publish no
   events.
-- Match exactly after normalization; hold anything unmatched without creating a
-  record, and never auto-match distinct occurrences that share an identifier in
-  one submission, or an occurrence that already has its own hold.
-- Apply answers idempotently: save, link, then mark resolved; finish
-  interrupted answers on a schedule; never overwrite an existing link.
+- Key holds and links by certification id; match exactly after normalization;
+  hold anything unmatched without creating a record; never ask one occurrence
+  twice, and stop identifier-wide links once distinct occurrences share it.
+- Take explicit answers (`suggestion` or `record_id`), apply them idempotently
+  (save, link, mark resolved), finish interrupted answers from a sparse index,
+  never overwrite an existing link, and reopen rejections only through the
+  admin route.
 - Keep every source-specific rule in the domain's configuration repository.
 
 Silvally owns concrete certifications, their question/answer mappings and tests.
