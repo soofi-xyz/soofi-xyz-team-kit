@@ -36,8 +36,10 @@ means a stack must be created. Exercise the contract's acceptance matrix.
 
 ## Run interface
 
-The supplied comparison describes a small IAM SigV4 service with `POST /deploy/run`
-and run-status retrieval. Inspect the target revision for exact auth, request,
+The supplied comparison describes a small service with `POST /deploy/run`
+and run-status retrieval. Today Deploy serves its run/status and Puller APIs on
+`https://<shared domain>/deploy` with the shared `x-api-key`; the IAM APIs are
+removed. Inspect the target revision for exact auth, request,
 artifact and status shapes. Do not infer them from historical token-deploy APIs.
 Preserve working contracts; record unsupported capabilities as implementation gaps.
 

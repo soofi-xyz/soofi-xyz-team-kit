@@ -1,7 +1,7 @@
 # Deploy test data and dependency fakes
 
 Use synthetic Build-contract fixtures prepared by the target test suite. These
-are fixture recipes, not current run payloads. Discover the exact SigV4 request,
+are fixture recipes, not current run payloads. Discover the exact shared-domain `x-api-key` request,
 artifact reference, parameter and status shapes before sending a request.
 
 | Fixture | Baseline / alternative | Required observation |
