@@ -82,6 +82,7 @@ Then classify:
 | Subject or mailbox allowlist | Fixed in the configuration's `parameters` pattern or scope (a pull iterates a configured list); not a `lapras` gap |
 | Connect cannot perform the single fetch, call or land itself: a missing driver, auth profile, verb or option, or a defect (for example decoding an inline base64 field to JSON) | Stop; hand to `lapras` with the data profile and the smallest failing request |
 | Parsing, classification, graph writes, events | Not Connect; the product owns it after the reply |
+| Human-approval wait (a reviewer completes a task) | `POLL` a `GET` with `Until` on the completion flag, `IntervalSeconds` up to 3600, a state `Retry` on `Connect.Throttled`, `Connect.Timeout` and `Connect.TransientFailure`, the body saved with `SaveOutputTo: $.vars.<name>` and narrowed with the partner's field selector. When the caller's run is capped (System runs at 86400 s), wait in rounds: each round ends `FAILED` with `errors[0].code` `PollExhausted` (phase `poll`, `values` `{}`) and the caller starts the next round with a new `transaction_id` |
 
 ## 2. Decide push or pull
 
@@ -207,6 +208,31 @@ Rules for the sample:
   `parameters` schema with a `pattern` for the allowed users (for example
   `^[^@]+@example\.com$`, or an explicit alternation of the configured
   mailboxes). The pattern is the allowlist; never leave the field open.
+- Arrays in `Body` and `Query` are sent literally: `["$.partner.x"]` sends the
+  string `$.partner.x`. To send an array, point a whole field at a path that
+  resolves to one (`"projects": "$.partner.projects"`) and put the array in the
+  partner configuration (`"projects": ["{{parameter:projectGid}}"]`; Deploy
+  substitutes placeholders in the text, so array elements work). Never split
+  one create into create + attach to work around arrays: a failed second call
+  leaves an orphan.
+- On a create, ask the partner for what the caller needs (Asana
+  `opt_fields=gid,permalink_url`) and `Extract.Save` it. `values` is exactly
+  `$.vars` without `__` keys, so name saved fields as the caller's contract.
+- A flow's `partner_parameters` with `additionalProperties: false` must declare
+  every parameter the partner configuration carries, in every flow bound to it,
+  used or not.
+- `dry_run.response_body` comes back as `values.dry_run`, not as `values`;
+  shape it like the flow's real `values`.
+- A job stopped by `limits.timeout_seconds` sends no reply (only lookups are
+  marked `FAILED` on timeout). For a flow whose caller waits on a callback, the
+  flow must end itself first. Size the worst case, including Connect's default
+  retries (6 attempts, 2 s × 2ⁿ capped at 60 s, about 2 min per call, and up to
+  about 122 s of Lambda service retries):
+  `(MaxAttempts − 1) × IntervalSeconds + MaxAttempts × (retries × HTTP timeout
+  + retry waits + ~122 s) < limits.timeout_seconds < caller wait − 300 s`.
+- A state's own `Retry` is evaluated before Connect's default retries, and Step
+  Functions uses only the first matching rule, so an authored rule replaces the
+  default for its errors. Keep it short inside a deadline.
 - When the partner addresses resources by multi-segment names (for example
   `conferenceRecords/<id>/transcripts/<id>`), fill one `{+name}` placeholder
   and pin the name's shape in `parameters`; use `{name}` for single segments.
@@ -294,6 +320,13 @@ smallest reproducing sample.
 - Give the product the job contract it calls: route, `configuration_id`,
   request payload, callback or subscriber, the reply shape and file pointers,
   and the error codes it must handle.
+- Tell the caller that a repeated `transaction_id` returns the first job and
+  neither attaches the new callback nor resends the reply. A caller that
+  retries or redrives a WaitForCallback step with the same id waits forever.
+  Its wait must cover the flow's `limits.timeout_seconds`, it must not retry on
+  its own timeout, and it must use a new id per intended job (open once, then
+  one id per await or return round). Connect replies with SendTaskSuccess even
+  for `FAILED` jobs, so callers check `status`.
 - Add the dev configuration and its test to the Connect repo's dev suite
   (`test/dev/`, `docs/runbooks/dev-verification.md`) so CI keeps proving it.
 - List the production steps: production credentials set or imported, partner

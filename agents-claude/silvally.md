@@ -52,6 +52,8 @@ Use `skills/configure-transform-product/scripts/transform_api.py` with `TRANSFOR
 3. `get` the version and confirm every file digest matches the bundle.
 4. `start` the run with a `transaction_id`, then poll `status` until it finishes; `approve` only a run that is `AWAITING_APPROVAL`.
 
+For certifications, javascript `module` bodies and `activate`, which `transform_api.py` does not cover, use the configuration repository's registration script with the same validate → register → read-back-digest order and the same approval cards ([certifications](../skills/configure-transform-product/reference/certifications.md)).
+
 Never write mappings to S3 or SSM directly. Each DEV write (`register`, `start`, `approve`) still requires its existing approval card. PROD stays read-only.
 
 ## Configuration bundles

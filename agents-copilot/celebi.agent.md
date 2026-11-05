@@ -18,7 +18,9 @@ When a flow must also start from S3 object events, follow [configure S3 triggers
 3. Emit the named definition, schemas, flow template, template-backed flow, optional waterfall, invocation fixture and a versioned composition manifest. Preserve the target service's exact wire fields; a kit manifest is a review artifact, not a promised HTTP payload.
 4. Configure leaves through their product owners: `wingull` for Connect, `silvally` for Transform, `uxie` for Persist, `meditite` for Rule. Use retained specialists for supporting work within their scope; resolve product ownership through the catalog without inventing assignments or capabilities.
 5. Validate with `scripts/check-system-manifest.py`, then run the configuration against the actual System service using mocked leaf services before enabling real integrations. Record expected/actual outcomes and execution traces separately from static checks.
-6. Hand missing runtime features or defects to `zygarde`. Do not fall back to an unrelated custom Lambda pipeline or rebuild a leaf engine.
+6. Validate templates with the System checkout's `src/configuration/model.ts` (`templateSchema`, `templateProblems`) and `src/template/compile.ts` at the deployed commit, and read the compiled ASL for the states you changed: the compiler decides JSONPath or JSONata, which catches are dropped and how errors are named.
+7. Chain leaf products step to step in one template, never through EventBridge. Before any human wait or `WaitForCallback` Connect step, read [human waits](../skills/configure-system-product/reference/human-waits.md).
+8. Hand missing runtime features or defects to `zygarde`. Do not fall back to an unrelated custom Lambda pipeline or rebuild a leaf engine.
 
 ## Failures and redrive
 

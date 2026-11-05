@@ -84,7 +84,9 @@ Matching is exact after the kind's normalization; there is no fuzzy match.
   asked twice; every other occurrence gets its own hold and message, suggesting
   the record the identifier was certified to, if any.
 - Once shared, answering the identifier's own hold writes no identifier-wide
-  link: the answer reaches only the occurrences that hold contains. A later
+  link: the answer reaches only the occurrences that hold contains. Write the
+  link in one `TransactWriteItems` with a condition that the shared marker is
+  absent, so marking and linking can never interleave. A later
   occurrence with no hold of its own is held on its own and needs an
   `occurrenceId`. A link a person made before the sharing was seen still
   matches later entities that have no hold of their own.
@@ -137,7 +139,10 @@ finishes saved but interrupted answers as saved.
 `POST /transform/certification-holds/{hold_id}/reopen` (no body). It moves a
 `REJECTED` hold back to `PENDING`, retags surviving payloads as waiting and
 returns `200 { hold_id, status: "PENDING", payload_count, message }`; a retry
-returns the same. Any other status is `409 HoldNotRejected`, an unknown hold
+returns the same. Each reopen starts a new **generation** of the hold. A saved
+answer carries its generation and is applied only while the hold is still in
+it, so a delayed retry or sweep never restores the old rejection or removes a
+newer answer. Any other status is `409 HoldNotRejected`, an unknown hold
 `404`, repeated contention `503 ReopenContention`. Reopen is a
 configuration-write route, never on the invoke policy.
 
@@ -150,9 +155,14 @@ configuration-write route, never on the invoke policy.
 - **Recovery.** Holds and identity links tables keep point-in-time recovery:
   links are people's decisions and cannot be rebuilt.
 - **Retention.** Payloads live under `certification-holds/<hold_id>/` in the
-  data bucket. A waiting hold's payloads never expire. Applying an answer tags
-  them `certification-hold=answered`; tagged payloads expire after 30 days, or
-  `DataRetentionDays` when set and smaller. Noncurrent versions and delete
+  data bucket. A waiting hold's payloads never expire. Applying an answer
+  copies every payload the hold has at that moment (read after the answer is
+  saved, so data that joined just before is included) onto itself with the tag
+  `certification-hold=answered`. S3 counts expiry from the new version, so a
+  payload expires 30 days after the answer, or `DataRetentionDays` when set and
+  smaller, however long the hold waited; tagging alone would count from
+  arrival. The answer and sweep functions need `s3:GetObject`, `s3:PutObject`
+  and `s3:PutObjectTagging` on the holds prefix. Noncurrent versions and delete
   markers expire after a day. Rejected and answered holds accept no new
   payloads.
 
@@ -167,7 +177,8 @@ configuration-write route, never on the invoke policy.
 3. Key holds and links by certification id, never by version.
 4. Make every write conditional (claim the hold, append payloads only while
    waiting, save the pending answer, mark resolved, reopen) and every retry
-   idempotent.
+   idempotent. Apply a saved answer to the hold as reloaded after the save, and
+   only within the answer's own generation.
 5. Never put candidates in messages.
 6. IAM: submission, answer and hold routes use the invoke policy; configuration
    routes and reopen use the configuration read/write policies.
@@ -192,11 +203,14 @@ Run the full suite before every push. Cover at least:
   answer finished by the sweep through the sparse index, an existing link to
   another record kept;
 - reopen: REJECTED → PENDING with a fresh message, retry, wrong status, not on
-  the invoke policy;
+  the invoke policy, an answer saved before the reopen never applied after it;
+- retention: payloads copied with the answered tag at apply time, including
+  one that joined between save and apply;
 - exact matching per normalization (one differing character stays `HELD`),
   candidate-name single and multiple matches;
 - shared identifiers in both orders (the wide hold still waiting and already
-  answered): no occurrence asked twice, no identifier-wide link after sharing,
+  answered): no occurrence asked twice, no identifier-wide link after sharing
+  (the link write fails its condition when the marker lands first),
   each occurrence retried alone keeping its own hold and answer;
 - the stack: no event-publishing permission or bus parameter, PITR on both
   tables, sweep alarms with ALARM and OK actions, lifecycle rules on the

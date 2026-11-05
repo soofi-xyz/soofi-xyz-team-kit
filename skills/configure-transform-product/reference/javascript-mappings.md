@@ -31,6 +31,12 @@ npx esbuild src/mapping.ts --bundle --format=iife --global-name=mapping --target
 Then set `module.sha256` to the sha256 of the `mapping.js` bytes. Commit both the
 source and the built script so the registered bytes are reviewable.
 
+A small dependency-free mapping may instead be hand-written as an ES5 IIFE,
+`var mapping = (function () { ... return { transform: transform }; })();`,
+committed as `mapping.js` with no `src/`. Test the committed bytes in a Node
+`vm` context and pin `module.sha256` to them; the repository's `pnpm pin` and
+bundle tooling pin only spark-sql mappings.
+
 ## Write the mapping
 
 - Export one synchronous pure function, `transform(inputs)`, where `inputs` holds
@@ -85,6 +91,20 @@ export function transform({ document, document_text }: Inputs) {
   difference as a decision for the owner instead of copying either side.
 - Run the tests against the built `mapping.js` as well as the source, so the
   registered bytes are what passed.
+
+## Neptune CSV output
+
+`output: { shape: graph, format: graphson }` returns GraphSON for Persist's
+validate route. `format: neptune-csv` writes Neptune bulk-load CSV to the data
+bucket and returns `neptune: { vertices, edges }` (two S3 prefixes for a CSV
+load) and `counts` instead of `graph`; the folder depends only on the
+transaction id and the request, so a retry writes the same files. An edge may
+end at a vertex loaded earlier (for example `source:users/123`). A property
+named `name:Type` keeps that Neptune type; a bare name is typed `String`,
+`Long`, `Double` or `Bool` from its values, and whole and fractional numbers
+together become `Double`. Values are written as they are, with no escaping, so
+escape a literal `;` in a vertex property yourself. Load the files before they
+expire with the transaction results (30 days, or `DataRetentionDays`).
 
 ## JSON output
 
