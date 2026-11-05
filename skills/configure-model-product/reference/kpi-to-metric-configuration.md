@@ -92,7 +92,9 @@ Use only elements present in the pinned Model release. Never
 invent entities, edges, properties, enum values or directions. If the KPI needs
 an element that does not exist, record it as a Model/vocabulary gap and route
 the vocabulary change through Model's governed changes (Mew can advise on
-modeling).
+modeling). Never propose an array-typed property for a gap: model repeated
+values as their own vertex type linked from the parent, as
+[Refuse array properties](../SKILL.md#refuse-array-properties) requires.
 
 ## 4. Suggest ranked candidate metric definitions
 
