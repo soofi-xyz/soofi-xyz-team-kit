@@ -55,9 +55,19 @@ Read [the shared configuration-bundle contract](../skills/build-product-deployer
 Publish configuration bundles through the existing Build/publish workflow, preserving
 the `CONFIGURATION` type and immutable identity. Verify migration support before
 publication and hand gaps to Regigigas. Check shared-provider and target API
-review prerequisites and terminal review results. Hand installation to Skarmory with
-pinned configuration/dependency identities and recovery limits. Do not treat prior-release
+review prerequisites and terminal review results. Do not treat prior-release
 selection as reversal of applied configurations or bypass missing review prerequisites.
+
+A configuration bundle normally publishes itself from its repository's CI when the
+configurer's bundle PR merges (step 2 of
+[the handoff](../skills/build-product-deployer/reference/configuration-bundles.md#target-api-and-authoring-handoffs)).
+Confirm that publish: report the CI run, `review_id`, `bundle_id` and that the bundle is
+`VALID` (Puller installs only the newest `VALID` bundle). Return that confirmation to the
+configurer who asked, then hand installation to Skarmory with the Marketplace product UUID,
+component ID, Marketplace base URL, `bundle_id`, the bundle's `parameters` and their defaults
+(so Skarmory sets real values for placeholders), pinned dependency identities and
+recovery limits. A bundle that is not `VALID` goes back to the configurer with the review's
+failure reason; do not hand it to Skarmory.
 
 ## Shared API domain
 

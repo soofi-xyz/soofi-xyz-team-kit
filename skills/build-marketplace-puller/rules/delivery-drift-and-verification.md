@@ -18,7 +18,7 @@ Run against a throwaway tenant in a non-production marketplace.
 4. **Mutate a stack manually** — change a tag on the live stack. Confirm `cloudformation:DetectStackDrift` next hour reports `DRIFTED`. Within one puller cycle, the puller enqueues a redeploy of the same released version, which clears the drift.
 5. **Outside-window** — set the window to `mon-fri 02:00-04:00 UTC` and run at noon. Confirm drift is logged with `drift_skipped_outside_window` and **not** acted on.
 6. **Pull-only mode** — set mode to `pull-only`, release `1.0.3`. Marketplace push is silent. Within one puller cycle, the tenant-local executor pulls the artifact via the presigned URL and updates the stack to `1.0.3`.
-7. **Auth rotation** — rotate the puller's API key via Account Manager. Confirm next puller invocation reads the new key from Secrets Manager and authenticates.
+7. **Auth rotation** — rotate the puller's API key via Account Manager. Confirm the next reconcile in `GET /deploy/puller/polling` `recent_reconciles` succeeds. The puller reads its key internally; operators never read it from Secrets Manager.
 8. **Disabled** — set `/marketplace/puller/enabled=false`. Confirm next invocation returns `{status: disabled}` without calling marketplace.
 
 ## Alarms

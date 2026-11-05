@@ -19,6 +19,7 @@ def handler(event, context):
         return {"status": "concurrent_run_skipped"}
 
     try:
+        # Internal read by the puller's own role; operators never read this secret.
         api_key = secrets.get(f"/{env_slug}/puller/marketplace-api-key")
         last_etag = ssm.get(f"/marketplace/puller/last-etag")
         desired = get_desired_state(api_key, env_id, if_none_match=last_etag)
