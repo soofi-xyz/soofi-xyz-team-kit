@@ -1,6 +1,6 @@
 ---
 name: build-transform-product
-description: "Implement Transform: registered language-pair SQL conversions, single-transaction mappings, record-level quality checks with quarantine and alerts, and non-deterministic extraction from strings using configurable provider connections and models, JSON Schema structured output and the AI SDK; include Python/PySpark formats, typed tables, graph mappings and TypeScript orchestration."
+description: "Implement Transform: registered language-pair SQL conversions, single-transaction mappings, record-level quality checks with quarantine and alerts, human-in-the-loop certification of unmatched entities, and non-deterministic extraction from strings using configurable provider connections and models, JSON Schema structured output and the AI SDK; include Python/PySpark formats, typed tables, graph mappings and TypeScript orchestration."
 ---
 
 Use [the Transform capability map](../guide-product-work/reference/iterations/transform.md). Derive the feature pieces from scope and dependencies, then apply the work below within each piece; require a user-run configuration, AWS inspection and feedback before starting the next implementation piece.
@@ -30,6 +30,10 @@ Keep the Spark batch path unchanged.
 To keep incomplete or unusable records out of the output without failing the run,
 implement declarative per-record checks registered with the mapping. Read
 [record quality checks](reference/record-quality-checks.md).
+
+When a caller cannot match an incoming entity with certainty, hold it and return
+the question a person must answer, then apply the answer. Read
+[human certification](reference/certification.md).
 
 ## Required reading
 
@@ -134,6 +138,24 @@ fixed list. Quarantine rejected records and dependent edges, keep warned records
 report per-check counts in `_metadata.json`, alert above thresholds and never
 record failing values. Keep definition-derived validation failing the run, and do
 not add source-specific checks or free-form predicates to the engine.
+
+## Human certification
+
+Implement the capability map's `human-certification` increment using
+[its contract](reference/certification.md). Keep these rules:
+
+- Never call a review tool from Transform: return `message` on the `HELD`
+  result that created the hold (and on GET hold); the calling System flow passes
+  it to Connect and posts Connect's answer back to `answer_path`. Publish no
+  events.
+- Match exactly after normalization; hold anything unmatched without creating a
+  record, and never auto-match distinct occurrences that share an identifier in
+  one submission, or an occurrence that already has its own hold.
+- Apply answers idempotently: save, link, then mark resolved; finish
+  interrupted answers on a schedule; never overwrite an existing link.
+- Keep every source-specific rule in the domain's configuration repository.
+
+Silvally owns concrete certifications, their question/answer mappings and tests.
 
 ## Companion products and output
 

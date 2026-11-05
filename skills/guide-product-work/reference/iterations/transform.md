@@ -1,7 +1,7 @@
 # Transform capability map
 
 Use Kecleon for engine features and Silvally for language/mapping configuration.
-Derive the dependency plan with the [shared workflow](../../SKILL.md). These fourteen
+Derive the dependency plan with the [shared workflow](../../SKILL.md). These sixteen
 capability areas reflect the current [product contract](../../../build-transform-product/reference/PRD.md);
 select and split them by the requested scope, rather than targeting a fixed count.
 Pin definitions/mappings and keep one enabled directional SQL mapping per pair.
@@ -11,6 +11,8 @@ For transactional mappings, keep one enabled mapping per pair and engine and pin
 script digest using [its contract](../../../build-transform-product/reference/transactional-javascript.md).
 For record quality checks, pin checks with the mapping version and never record failing values,
 using [its contract](../../../build-transform-product/reference/record-quality-checks.md).
+For human certification, return the question to the caller and never call a review tool,
+using [its contract](../../../build-transform-product/reference/certification.md).
 
 | Feature ID / usable capability | Dependency | Builder increment / configurer exercise | AWS inspection and acceptance |
 | --- | --- | --- | --- |
@@ -29,6 +31,7 @@ using [its contract](../../../build-transform-product/reference/record-quality-c
 | `transactional-javascript` — map one small transaction to a graph synchronously | Configuration API, Lexicon definitions for the pair, verified Persist GraphSON ingest | Deliver `engine: "javascript"` registration (script digest, compile-only validation), per-engine pair resolution, the synchronous transaction route, a fresh QuickJS sandbox per transaction with memory/time limits and GraphSON serialization of mapping ids; configure one mapping and exercise a script throw, timeout, invalid output and a dangling edge. Keep `spark-sql` registration and batch runs unchanged. | Inspect the Lambda logs (mapping digest, per-step durations, counts), the returned GraphSON and `POST /persist/validate` on it; prove sandbox probes fail closed; measure cold start and warm p50/p99 on the deployed route. |
 | `transactional-json-output` — return a JSON document from one transaction | `transactional-javascript` | Deliver `output: { shape: "json", format: "json" }` for `javascript` mappings (a `shape`-discriminated union), return the mapping's object or array unchanged as `result`, reject other result types and output-stage checks, and document both response forms as a `oneOf`; configure one mapping that returns API payloads and exercise a no-match `[]`, a primitive result and a mismatched `json`/`graphson` output. Keep `graph` mappings unchanged. | Inspect a DEV transaction's `result` against an independently expected document, the Lambda log digest and durations, and that the caller (for example a System flow) reads it with plain JSONPath; replay the same `transaction_id` and get the stored `result`. |
 | `record-quality-checks` — keep unusable records out of the output without failing the run | Configuration API, typed conversion, Lexicon definitions for the checked datasets | Deliver `checks` registration (fixed rule kinds, columns validated against definitions), input/output-stage evaluation, `warn`/`reject` severities, quarantine of dependent edges, `_metadata.json` counts, threshold alerts and metrics for both engines; configure one check and exercise a rejected record, a warned record, `when` scoping, a dependent edge and a ratio breach. Keep mappings without checks and definition validation unchanged. | Inspect the quarantine/warnings JSONL, `_metadata.json` `checks[]`, the alert and metrics on a DEV run with a known failing record; prove no failing values appear in outputs, logs or alerts and that replay gives identical outcomes. |
+| `human-certification` — hold an unmatched entity until a person certifies it | Configuration API; a System flow and Connect configuration that carry the question and answer | Deliver certification registration, submission (`MATCHED`/`HELD` with `message`/`REJECTED`), occurrence scoping, the answer route and the sweep; configure one certification and exercise an unknown identifier, a join, an exact-match negative, two occurrences sharing an identifier, each answer decision and a conflicting answer. | Inspect the hold and link records, the `HELD` message, a 422 reason and the sweep log on DEV; prove the stack publishes no events and calls no review tool, and that a certified identifier then matches automatically. |
 
 Include validation, negative cases, replay/idempotency appropriate to the feature
 and operational logs in each increment. The replay row is for the actual pinned
