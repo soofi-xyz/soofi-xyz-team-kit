@@ -51,6 +51,31 @@ that expose no API. Verify runtime support before claiming compliance.
   configuration task. Reuse supplied facts and existing authorization when a
   supporting skill asks for information or approval already established.
 
+## Configurer delivery
+
+- Call product HTTP APIs only, on `https://<shared domain>/<product>` with the
+  environment's shared `x-api-key`. Do not read Secrets Manager, SSM, stack
+  outputs, CloudFormation or the AWS console, and do not ask for AWS credentials.
+- Keep every configuration in a repository created from
+  `prismteam-ai/configuration-bundle-template`. Its CI publishes the bundle to
+  Marketplace on merge; Deploy installs it through a Puller subscription. Follow
+  [the configuration-bundle handoff](../build-product-deployer/reference/configuration-bundles.md#target-api-and-authoring-handoffs).
+- Use direct API writes for testing only. Remove them through the product API
+  once the subscription has installed the bundle.
+- Treat every AWS inspection checkpoint in this skill as a product API read-back
+  for configurers. AWS inspection is optional evidence for builders, never a
+  configurer prerequisite.
+- When a product route is still IAM-only, record it as a builder gap in the
+  handoff to that product's build agent, tell the user, and mark the step a
+  test-only exception.
+- Exception: a few Environment (Shaymin) steps act on AWS before a shared
+  domain or key exists: creating the customer-account role
+  `/prism/environment-target` and recording the region's API Gateway
+  CloudWatch role, and a cold-start Bootstrap run. Only those need a selected
+  AWS profile from an authorized technical operator. Account (Blissey)
+  create-or-adopt provisioning goes through the Account HTTP API; a profile
+  there is only for optional operator inspection.
+
 ## Derive pieces from product features
 
 Load the product's `iterationGuide` from the catalog. Treat it as a capability
@@ -110,7 +135,8 @@ Repeat this loop for **each** iteration:
    names and links, and at most three inspection steps using
    [the AWS inspection guide](reference/aws-inspection.md). Point to the exact
    execution/state and correlated logs, say what to look for, and distinguish
-   success, expected rejection and unexpected failure.
+   success, expected rejection and unexpected failure. For a configurer, replace
+   this with a product API read-back (see Configurer delivery).
 5. **Collect feedback and close:** ask for the request/execution ID and one or
    two sentences about the output and named state/log event. Check that evidence
    against the expected result. Fix misunderstandings or defects and repeat the
@@ -158,6 +184,6 @@ deployed mock execution, and a real integration are different evidence levels.
 
 State the product and role, what the person can now do, changes and evidence,
 current iteration/checkpoint, remaining gaps, and the next concrete step. Keep secrets out of
-the progress record. Use the selected AWS profile and verify account and region
-before environment changes; never embed an individual's profile or environment
-as the reusable default.
+the progress record. When a builder changes an environment, use the selected
+AWS profile and verify account and region first; never embed an individual's
+profile or environment as the reusable default.
