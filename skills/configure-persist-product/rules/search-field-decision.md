@@ -67,7 +67,8 @@ note.text             → name "text"           (collides with the property, rej
 
 Search returns text: every result carries a `snippet` of up to 200
 characters of highlighted context (lexical) or 240 characters of chunk text
-(vector-only) to any SigV4 caller of `/persist/graphql`.
+(vector-only) to any caller of `/persist/graphql`, including every holder of
+the environment's shared API key.
 
 1. Vertex fields: check `config/graphql-resolution-map.json` in the Persist
    revision being configured. A source property routed there with `pii_access`

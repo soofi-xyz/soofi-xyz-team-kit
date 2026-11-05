@@ -167,7 +167,12 @@ claude plugin install soofi-xyz-team-kit@soofi-xyz --scope project
 ```
 
 Agents load as `soofi-xyz-team-kit:<agent>` subagents, skills as `/soofi-xyz-team-kit:<skill>`,
-and the bundled `elephant` MCP server connects from `mcp.json`.
+and the bundled MCP servers connect from `mcp.json`: `elephant`, plus `persist` (Prism memory:
+meetings, Eevee's knowledge and the saved queries from
+[prism-memory-configuration](https://github.com/prismteam-ai/prism-memory-configuration)) and
+`report` on soofi-safavi. `persist` and `report` read soofi-safavi's API key from
+`~/.config/prism/soofi-safavi.key` or `PRISM_API_KEY` (ask Saman Safavi for the key; never paste
+it into a chat). The same `mcp.json` connects them in Cursor.
 
 To update (Claude Code only picks up a new release when the manifest `version` changes):
 

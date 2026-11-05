@@ -196,7 +196,7 @@ renew it themselves (implemented in Connect main, PR #29):
 | Option | Applies to | Contract |
 | --- | --- | --- |
 | `Match` | `LIST` | `Prefix`, `Pattern` (glob), `ModifiedSince` (JSONPath, usually `$.partner.cutoff`), `Exclude` |
-| `Ledger` | `LIST`, drop-zone and webhook triggers | `Key` (fields of the item, e.g. `path`, `etag`, `size`), `Scope` (default partner + flow), `LeaseSeconds`. Claims on list, commits when the item's branch succeeds, releases on failure. `replay` on the job request re-admits named items |
+| `Ledger` | `LIST`, drop-zone and webhook triggers | `Key` (fields of the item, e.g. `path`, `etag`, `size`), `Scope` (default partner + flow), `LeaseSeconds`. Claims on list, commits when the item's branch succeeds, releases on failure. `replay` on the job request re-admits named items. File dedupe only, never a cursor between jobs |
 | `Paginate` | `CALL` | `Style` (`cursor` \| `next_link` \| `offset` \| `page`), the request field and response path for each, `MaxPages`, `Collect` (`inline` \| `file`) |
 | `Idempotency` | `CALL`, `PUT` | `KeyPath`, `Header`; the compiler derives a stable key from job and item when absent |
 | `Extract` | Any verb with output | `Save: {name: JSONPath}` into `$.vars` |

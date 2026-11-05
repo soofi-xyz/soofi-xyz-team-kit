@@ -18,8 +18,27 @@ language lives in [build-connect-product](../build-connect-product/SKILL.md):
 repository that deploys the target stack is authoritative for
 `contracts/flow.schema.json`, `contracts/examples/` and the dev runbook.
 
-Work through the seven steps in order. Record each step's output in the run
+Work through the eight steps in order. Record each step's output in the run
 report ([template](reference/run-report.md)) before moving on.
+
+## Memoryless rule
+
+Every Connect configuration is memoryless. Each job is fully described by its
+request parameters (source scope plus a time window, or explicit item ids); it
+fetches, lands and replies, and nothing depends on state saved by a previous
+job.
+
+- Never design a flow that needs a stored cursor, position or sync token
+  carried between jobs (Gmail `historyId`, Calendar `syncToken`, Drive
+  `pageToken`/changes token). Pagination inside one job is fine.
+- Re-running the same request lands the same content under the same
+  deterministic `transaction_id`.
+- Deduplication across overlapping windows belongs downstream: Persist writes
+  by identity (natural keys such as `Message-ID` + mailbox), not Connect.
+- Use the `LIST`/drop-zone `Ledger` only to skip already-landed files for file
+  sources. It is per-item file dedupe, not a cursor.
+- Do not move the state into System either: it has no flow-usable key/value
+  state (only 30-day idempotency keys and ordered-trigger lanes).
 
 ## 1. Understand the data
 
@@ -44,20 +63,13 @@ user. Ask only for what you cannot recover.
   folder, delete, nothing).
 - **Volume and timing.** Items per run, run frequency, deadline, latency need.
 - **Idempotency.** What identifies a duplicate (path plus ETag or size, a
-  partner id, a transaction id).
+  partner id, a transaction id) and the natural key the consumer writes by
+  downstream.
+- **Time filter.** Whether the source queries by time or modification
+  (`modified_since`, `after:`, `updated_min`), and its granularity.
 
 Read one real example of every object before writing configuration. Field
 names in partner documentation are often wrong; the observed payload wins.
-
-**Push or pull for queue sources.** When the partner offers a message queue
-with both (for example Google Pub/Sub), choose push: a push subscription with
-payload unwrapping (`--push-no-wrapper --push-no-wrapper-write-metadata`) and
-OIDC push authentication, received by a `signed_token` webhook and a webhook
-activation ([signed-token push source](../build-connect-product/reference/use-cases.md#signed-token-push-source)).
-The queue acknowledges on Connect's 2xx. Do not build a pull flow: Connect
-cannot decode an inline base64 message body or project `ackId`s with `[*]`,
-so it cannot acknowledge. Event metadata moved to headers by unwrapping does
-not reach the trigger event; the consumer filters on the body and dedupes.
 
 Then classify:
 
@@ -65,10 +77,54 @@ Then classify:
 | --- | --- |
 | Pattern matches a reference flow in `contracts/examples/flows/` | Partner configuration + activation or job request; flow unchanged |
 | Known verbs and options compose it | A new flow, validated and tested like a reference flow |
-| Needs a driver, auth profile, verb or option Connect lacks (for example decoding an inline base64 field to JSON, `[*]` projection in `Extract.Save`, a subject allowlist) | Stop; hand to `lapras` with the data profile |
+| Needs a saved cursor or position between jobs | Not a Connect gap; redesign as a memoryless pull (or a self-contained push) in step 2 |
+| Cross-job dedupe of records | Persist identity downstream, not Connect |
+| Subject or mailbox allowlist | Fixed in the configuration's `parameters` pattern or scope (a pull iterates a configured list); not a `lapras` gap |
+| Connect cannot perform the single fetch, call or land itself: a missing driver, auth profile, verb or option, or a defect (for example decoding an inline base64 field to JSON) | Stop; hand to `lapras` with the data profile and the smallest failing request |
 | Parsing, classification, graph writes, events | Not Connect; the product owns it after the reply |
 
-## 2. Locate production credentials
+## 2. Decide push or pull
+
+Choose and record exactly one ingestion mode per partner configuration before
+configuring anything:
+
+- **Pull (default).** A scheduled job over an overlapping window (window at
+  least twice the interval, for example every 30 minutes over the last 60)
+  using the source's time or modified filter. Use it whenever the source
+  supports time- or modified-based queries. Backfill is the same pull with a
+  larger window.
+- **Push.** Only when each event is self-contained: the payload carries the
+  full record, or a stable id fetched directly with no prior state (an S3 or
+  drop-zone object created, a webhook whose body is the record or a direct
+  resource URL). Require a deterministic `transaction_id` and a fast plain
+  success reply.
+- **Reject push** when the event is only a change signal that needs a previous
+  cursor (Gmail Pub/Sub `{emailAddress, historyId}`, Drive changes, Calendar
+  sync tokens). Use pull, or a source-side full-content copy (for example a
+  Workspace routing copy to SES → S3, read by an `s3` connection).
+
+For a self-contained push from a queue (for example Pub/Sub carrying a Meet
+transcript name), use a push subscription with payload unwrapping
+(`--push-no-wrapper --push-no-wrapper-write-metadata`) and OIDC push
+authentication, received by a `signed_token` webhook and a webhook activation
+([signed-token push source](../build-connect-product/reference/use-cases.md#signed-token-push-source)).
+The queue acknowledges on Connect's 2xx.
+
+Record the decision in the bundle README's `## Ingestion` section (or the run
+report when there is no bundle): mode, why, schedule and window or event
+source, idempotency key, downstream dedupe key and backfill method. The builder
+and operator run from this record.
+
+```markdown
+## Ingestion
+- Mode: pull — Gmail push carries only `historyId` and needs the previous one
+- Schedule / window: `*/30` cron, `after:` = scheduled time − 60 min, per configured mailbox
+- Idempotency key: `transaction_id` = `<configuration_id>-<mailbox>-<window_start>`
+- Downstream dedupe key: `Message-ID` + mailbox (Persist identity)
+- Backfill: same request with a larger window
+```
+
+## 3. Locate production credentials
 
 - Find where the production values live today: the Account product, or the
   consuming product's CDK, config or Secrets Manager (`<product>/<partner>/...`).
@@ -83,7 +139,7 @@ Then classify:
   whether it is imported from Account or set with `PUT`. Do not set production
   credentials until a production Connect stack exists and the user approves.
 
-## 3. Get dev credentials
+## 4. Get dev credentials
 
 Prefer, in order:
 
@@ -108,7 +164,7 @@ the same purpose), tag infrastructure you create `connect:verify=dev`, and list
 what you created. See [dev runtime](reference/dev-runtime.md) for the credentials
 API, SFTP connectors and cross-account roles.
 
-## 4. Select the test sample
+## 5. Select the test sample
 
 Pick the smallest sample that exercises every branch of the flow:
 
@@ -117,7 +173,11 @@ Pick the smallest sample that exercises every branch of the flow:
   and timeouts (inline lookups must fit under the flow's cap).
 - **Non-matching**: an object the `Match` must skip (a readme, a wrong
   extension).
-- **Duplicate**: the same object again, to prove the ledger lands it once.
+- **Duplicate** (file flows with a `LIST`/drop-zone `Ledger` only): the same
+  object again, to prove the ledger lands it once.
+- **Boundary** (pull flows): a record inside two overlapping windows, to prove
+  neither window misses it.
+- **Replayed event** (push flows): the same event delivered twice.
 - **Broken**: one item the partner or Connect must reject (corrupt PGP, missing
   body, 403 debt) to prove a clean per-item failure and a `PARTIAL` job.
 - **Empty**: a run with nothing to fetch.
@@ -130,21 +190,24 @@ Rules for the sample:
 - Keep PII out of the report: identifiers and hashes only.
 - Put fixtures in the test partner, not in Git, unless they are synthetic.
 
-## 5. Write the configuration
+## 6. Write the configuration
 
 - Start from the closest reference flow and example partner configuration.
   Keep the flow unchanged when it fits; put tenant specifics in the partner
   configuration's `connections` and `parameters`.
 - Name a dev partner configuration `<partner>-dev-<purpose>` and point every
-  `credential` at a dev credential set in step 3.
+  `credential` at a dev credential set in step 4.
+- Put the pull window (or the explicit item ids) in the request, never in a
+  value saved by an earlier job, and derive `transaction_id` from the
+  configuration, scope and window start.
 - Create schedule activations with `"enabled": false` and a cron that never
   fires (`0 5 1 1 ? 2099`); the test enables and fires them explicitly.
 - Set `limits` on every new flow, `Concurrency` on every `Map`, and an explicit
   `Overwrite` on every `PUT`.
 - When a `CALL` sets `Subject` from `$.request`, pin that field in the flow's
   `parameters` schema with a `pattern` for the allowed users (for example
-  `^[^@]+@example\.com$`, or an explicit alternation). Connect has no subject
-  allowlist; record the gap for `lapras` rather than leaving the field open.
+  `^[^@]+@example\.com$`, or an explicit alternation of the configured
+  mailboxes). The pattern is the allowlist; never leave the field open.
 - When the partner addresses resources by multi-segment names (for example
   `conferenceRecords/<id>/transcripts/<id>`), fill one `{+name}` placeholder
   and pin the name's shape in `parameters`; use `{name}` for single segments.
@@ -173,7 +236,7 @@ rm validate.tmp.ts
 - Add new flows as local proofs first: run them against the stand-ins
   (`npm run fakes`, `npm run test:integration`) until they pass.
 
-## 6. Run it in dev
+## 7. Run it in dev
 
 Follow [dev runtime](reference/dev-runtime.md) for the API, SigV4 signing and
 triggers.
@@ -192,7 +255,12 @@ triggers.
    - the manifest validates against `#/$defs/ResultManifest`;
    - landed files' checksums equal the sample's;
    - the reply arrived and its signature verifies;
-   - a rerun lands nothing new (ledger);
+   - file flows with a `Ledger`: a rerun lands nothing new;
+   - pull flows: the boundary record lands in both overlapping windows, a
+     re-run of the same request gives identical content (sha256) and the same
+     `transaction_id`, and the duplicates share one downstream identity key;
+   - push flows: replaying the same event yields the same `transaction_id`
+     and no second run;
    - no credential value appears in the manifest, reply, logs or API responses.
 5. Record latencies (p50, p95 for lookups), durations, counts and job ids.
 6. Disable the activation, remove test-partner objects, delete test
@@ -204,7 +272,7 @@ history before changing anything. Fix configuration yourself; hand Connect
 defects to `lapras` with the execution ARN and the smallest reproducing
 sample.
 
-## 7. Hand off and use
+## 8. Hand off and use
 
 - Give the product the job contract it calls: route, `configuration_id`,
   request payload, callback or subscriber, the reply shape and file pointers,

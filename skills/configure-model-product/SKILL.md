@@ -41,6 +41,16 @@ Read the relevant [product contract](../build-lexicon-product/reference/PRD.md) 
    are covered by the requested scope and record cleanup without removing shared
    resources. Keep mocked execution distinct from actual dependency readiness.
 
+## Refuse array properties
+
+Do not add array-typed properties to a Model composition. Model repeated values
+as their own vertex type linked from the parent, with a deterministic
+identifier, an ordinal when order matters, and a kind enum when one type covers
+several lists. Reject or rewrite a requested change that adds an array, and say
+why: arrays can't be queried in the graph and express no relationships. Apply
+this to every change set, vocabulary gap and modeling proposal you return;
+Dialga executes this decision and does not override it.
+
 ## Suggest Model-derived metrics for a KPI
 
 When a user provides a KPI and says what they want to measure, read the

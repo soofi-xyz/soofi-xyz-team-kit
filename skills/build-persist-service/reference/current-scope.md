@@ -18,7 +18,15 @@ Make every Persist change in `prismteam-ai/persist`, once. Keep SOC-only wiring 
 `bin/app.ts` and the stacks only it creates. `prismteam-ai/persist-fork` is the
 retired pre-transfer copy; never change it.
 
-Treat Persist as the single-company, IAM SigV4 graph service. Preserve its
+Treat Persist as the single-company graph service with two APIs over the same
+handlers. `lib/persist-shared-api.ts` (persist#324, MCP in #363) maps a regional
+REST API onto the environment's shared domain (base path `persist`, stage
+`live`, `apiKeyRequired` on every method, stage on the shared usage plan) and
+outputs `ProductApiUrl`; it alone serves `/persist/csv-loads`. Marketplace
+installs always have it; `bin/app.ts` only with `--context
+sharedApiDomainName=<fqdn>`. The IAM SigV4 HTTP API remains for backward
+compatibility with existing SigV4 callers. Configurers call only the shared-domain API
+with the shared `x-api-key`. Preserve Persist's
 deterministic IDs, idempotent ingestion, vertex references, staged bulk loading,
 read-only Gremlin queries, governed model artifacts and stream-driven indexes.
 Do not restore historical API-key tenant prefixes, collection CRUD, SPARQL
