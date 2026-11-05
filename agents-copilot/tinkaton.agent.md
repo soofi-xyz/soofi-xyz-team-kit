@@ -33,6 +33,11 @@ provider-contract requirements and `CONFIGURATION` type consistency. Migrate Bui
 legacy type/route and provenance contracts. Exercise a changed
 configuration with unchanged service code and an assembly with no bundle-specific Lambda.
 Do not call target configuration APIs during build or add arbitrary lifecycle hooks.
+Accept the `console` `application` kind together with Corviknight's Console adapter,
+validating each manifest as the contract's Console application payloads require.
+Add a `rule` kind only after Gallade ships Rule's configuration API, and never a
+`documentation` kind: pack a product's documentation from its repository alongside
+`requirements/swagger.yml` and `requirements/mcp.json` once Unown's intake accepts it.
 
 ## Shared API domain
 
