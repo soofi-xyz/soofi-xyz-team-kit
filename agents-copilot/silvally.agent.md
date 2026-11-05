@@ -44,7 +44,7 @@ To keep incomplete or unusable source records out of a mapping's output while wr
 
 ### Register and run through the API
 
-Use `skills/configure-transform-product/scripts/transform_api.py` with the API URL from SSM `/<stackName>/api-url`:
+Use `skills/configure-transform-product/scripts/transform_api.py` with `TRANSFORM_API_URL=https://<shared domain>` and the shared key the person exports as `PRISM_API_KEY`; it calls `/transform/...` with `x-api-key` only. Never read the URL or key from SSM, stack outputs or Secrets Manager, and never use SigV4. Deliver mappings through the configuration bundle repository; a direct `register` is for testing only (see [configuration API](../skills/configure-transform-product/reference/configuration-api.md#configuration-repositories)):
 
 1. `validate` the bundle; it stores nothing.
 2. `register` each new version; a changed version is a new version, never an overwrite.

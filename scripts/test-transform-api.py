@@ -49,14 +49,15 @@ class TransformApiTests(unittest.TestCase):
         calls = []
         replies = list(responses or [])
 
-        def fake_request(method, url, region, body=None):
-            calls.append((method, url, region, body))
+        def fake_request(method, url, api_key, body=None):
+            calls.append((method, url, api_key, body))
             if replies:
                 return replies.pop(0)
             return status, {"ok": 200 <= status < 300, "data": {}}
 
         out, err = io.StringIO(), io.StringIO()
-        with mock.patch.object(transform_api, "request", fake_request), redirect_stdout(out), redirect_stderr(err):
+        with mock.patch.object(transform_api, "request", fake_request), \
+                mock.patch.dict("os.environ", {"PRISM_API_KEY": "test-key"}), redirect_stdout(out), redirect_stderr(err):
             code = transform_api.main(["--api-url", "https://api.example/v1", *argv])
         self.stderr = err.getvalue()
         return code, calls, json.loads(out.getvalue())
@@ -71,8 +72,8 @@ class TransformApiTests(unittest.TestCase):
     def test_bundle_sets_query_digests_and_sends_rule_and_queries(self):
         code, calls, _ = self.run_cli(["validate", self.tmp.name])
         self.assertEqual(code, 0)
-        method, url, region, body = calls[0]
-        self.assertEqual((method, url, region), ("POST", "https://api.example/v1/transform/mappings/validate", "us-east-2"))
+        method, url, api_key, body = calls[0]
+        self.assertEqual((method, url, api_key), ("POST", "https://api.example/v1/transform/mappings/validate", "test-key"))
         self.assertEqual(body["queries"], {"queries/member.sql": SQL})
         digest = hashlib.sha256(SQL.encode()).hexdigest()
         self.assertEqual(body["rule"]["outputs"][0]["queries"][0]["sha256"], digest)

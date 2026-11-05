@@ -8,10 +8,10 @@ engine contract is [System S3 triggers](../../build-system-product/reference/s3-
 
 Confirm on the target System stage, not in this kit:
 
-- the install has `s3Triggers: true` and the stack outputs `S3TriggerBusArn`,
-  `S3TriggerQueueUrl` and `S3TriggerDispatcherLogGroup`;
-- `GET /flows/{flow}/s3-triggers/{anyId}` answers `404` rather than
-  `400 S3_TRIGGERS_NOT_ENABLED` or a missing route.
+- read support through the System API at `https://<shared domain>/system`
+  with the shared `x-api-key`, not through stack outputs or the AWS console;
+- `GET /flows/{flow}/s3-triggers/{anyId}` answers `404 NOT_FOUND` rather than
+  `400 S3_TRIGGERS_NOT_ENABLED` or a missing route (`404 ROUTE_NOT_FOUND`).
 
 If support is missing, stop and hand a `PRODUCT_CHANGE` to `zygarde`. Do not
 wire S3 notifications, EventBridge rules or Lambdas yourself.
@@ -59,10 +59,12 @@ PUT /flows/sale-availability/s3-triggers/partner-orders-dev
 }
 ```
 
-Use SigV4. Read back with `GET`, keep the returned `revision` for later updates
-(`If-Match`) and confirm `status: ACTIVE` and the `ruleName`. Registration must
-not start any execution. Add the trigger to a configuration bundle as an
-`s3-trigger` document pinned to the flow reference.
+Deliver the trigger through the configuration bundle repository. A direct save
+is test-only: send it to `https://<shared domain>/system` with the shared
+`x-api-key`, never SigV4. Read back with `GET`, keep the returned `revision`
+for later updates (`If-Match`) and confirm `status: ACTIVE` and the `ruleName`.
+Registration must not start any execution. Add the trigger to a configuration
+bundle as an `s3-trigger` document pinned to the flow reference.
 
 ## 5. Test sequence
 

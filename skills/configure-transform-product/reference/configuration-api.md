@@ -6,12 +6,16 @@ directly.
 
 ## Access
 
-- Base URL: SSM parameter `/<stackName>/api-url` (for example
-  `/TransformPipelineStack/api-url`) in the target account and region.
-- Every route uses IAM SigV4 (service `execute-api`).
-- Stack outputs name the managed policies: `ApiInvokePolicyArn` (start and
-  status), `ApprovalPolicyArn` (approve or reject spend), `ConfigReadPolicyArn`
-  (validate, get, list) and `ConfigWritePolicyArn` (register).
+- Every route below is served on the environment's shared domain as
+  `https://<shared domain>/transform/...` with only the shared `x-api-key`; a
+  missing or wrong key returns `403` `A valid x-api-key header is required.`
+- The person exports the key as `PRISM_API_KEY` in their own terminal. Never
+  read it from AWS, print it or ask for it in chat. Do not use SigV4, the
+  `execute-api` URL, SSM, stack outputs or IAM policies; the IAM API is for
+  service-to-service callers.
+- Any holder of the shared key can approve or reject an over-ceiling run;
+  `reviewedBy` is caller-asserted and the record's `decidedBy` is
+  `apikey:<id>`.
 - Responses use `{ "ok": true, "data": ... }` or
   `{ "ok": false, "error": { "type": ..., "message": ... } }`.
 
@@ -73,18 +77,20 @@ transform/mappings/<mapping_id>/<version>/
   queries/*.sql
 ```
 
-Git is the source of truth. Validate on pull requests (`ConfigReadPolicyArn`)
-and register on merge (`ConfigWritePolicyArn`). Transform's
-`scripts/publish-mappings.ts` implements both steps.
+Git is the source of truth. Keep the mappings in a configuration bundle
+repository created from `prismteam-ai/configuration-bundle-template`; its CI
+publishes the bundle to Marketplace on merge and Deploy installs it through a
+Puller subscription. Use `validate` on pull requests. A direct `register` is for
+testing only. Registered versions are immutable and Transform has no delete
+route, so give a test registration a version the bundle will not reuse.
 
 ## Examples
 
 With the helper, which fills each query's `sha256` from the bundle files:
 
 ```bash
-export AWS_PROFILE=<selected-profile> AWS_REGION=us-east-2
-export TRANSFORM_API_URL="$(aws ssm get-parameter --name /TransformPipelineStack/api-url \
-  --query Parameter.Value --output text)"
+# The person sets the key in their own profile: export PRISM_API_KEY='<shared x-api-key>'
+export TRANSFORM_API_URL=https://<shared domain>
 H=skills/configure-transform-product/scripts/transform_api.py
 python3 "$H" validate <repo>/transform
 python3 "$H" register <repo>/transform
@@ -96,7 +102,8 @@ python3 "$H" status <run-id>
 python3 "$H" approve <run-id> --approve --reviewed-by <name> --comment "<reason>"
 ```
 
-The helper needs `botocore`, prints JSON and exits non-zero on any non-2xx
+The helper needs only the Python standard library and `PRISM_API_KEY`; it calls
+`$TRANSFORM_API_URL/transform/...`, prints JSON and exits non-zero on any non-2xx
 response. `register` reports each version as `created`, `unchanged` or
 `failed`; `get --root` reports each file as `content matches` or
 `content differs` and exits non-zero on any difference.
@@ -104,8 +111,6 @@ response. `register` reports each version as `created`, `unchanged` or
 With curl:
 
 ```bash
-curl -sS --aws-sigv4 "aws:amz:us-east-2:execute-api" \
-  --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
-  -H "x-amz-security-token: $AWS_SESSION_TOKEN" \
+curl -sS -H "x-api-key: $PRISM_API_KEY" \
   "${TRANSFORM_API_URL%/}/transform/mappings/<mapping-id>/versions"
 ```

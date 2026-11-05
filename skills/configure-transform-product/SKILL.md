@@ -55,9 +55,10 @@ mapping. See
 [installation options](../build-transform-product/reference/installation-options.md).
 
 1. Discover the existing engine, source/target definitions, mapping and publication
-   mechanism. Read the API URL from SSM `/<stackName>/api-url` and list
-   registered versions through the API. Distinguish a requested mapping change
-   from an engine defect.
+   mechanism. Call Transform at `https://<shared domain>/transform` with the
+   shared `x-api-key` the person exports as `PRISM_API_KEY` (never SigV4, SSM
+   or stack outputs) and list registered versions through the API. Distinguish
+   a requested mapping change from an engine defect.
 2. Explain a small source/target example. Establish expected values independently
    of generated SQL. Include missing/null values, wrong types and graph references
    when applicable.
@@ -66,10 +67,12 @@ mapping. See
    `from`, `to`, S3 locations and optional cost ceiling; do not invent a separate
    Translate registry or inline JSON preview API.
 4. Validate definition-derived types, declared graph roles, stable IDs and edge
-   endpoints. Publish through Transform's API: validate, register, then get the
-   version and confirm its file digests. Never write mappings to S3 or SSM
-   directly. Registered versions are immutable; publish every change as a new
-   version and do not mutate a moving alias underneath an admitted execution.
+   endpoints. Publish through the configuration bundle repository: validate on
+   the pull request; its merge publishes the bundle and Deploy's subscription
+   registers it. Then get the version and confirm its file digests. A direct
+   register through the API is for testing only. Never write mappings to S3 or
+   SSM directly. Registered versions are immutable; publish every change as a
+   new version and do not mutate a moving alias underneath an admitted execution.
 5. For each implementation iteration, guide the person through its fixture/dev
    run (start the run, poll its status, approve the cost only when it is
    `AWAITING_APPROVAL` and the person approves), output-manifest inspection and

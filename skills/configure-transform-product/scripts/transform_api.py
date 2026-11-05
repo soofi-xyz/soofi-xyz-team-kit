@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""SigV4 client for Transform's configuration and run API.
+"""Shared-domain x-api-key client for Transform's configuration and run API.
 
 Subcommands:
   validate <bundle-root>          POST /transform/mappings/validate per mapping version (stores nothing)
@@ -12,13 +12,13 @@ Subcommands:
   approve <run-id>                POST /transform/runs/{run_id}/approval
 
 A bundle root holds mappings/<id>/<version>/mapping.json plus the queries each
-output declares. The base URL comes from --api-url or TRANSFORM_API_URL (SSM
-/<stackName>/api-url); the region from --region or AWS_REGION (default
-us-east-2). Credentials come from the standard botocore chain and are never
-printed. Every result is printed as JSON on stdout; validate, register and
-get --root also print one summary line per version on stderr. register reports
-each version as created (201), unchanged (200) or failed. Any non-2xx response,
-and any get --root difference, exits 1.
+output declares. The base URL is the environment's shared domain,
+https://<shared domain>, from --api-url or TRANSFORM_API_URL; routes are called
+under /transform there. The shared key comes from PRISM_API_KEY, is sent as
+x-api-key and is never printed. Every result is printed as JSON on stdout;
+validate, register and get --root also print one summary line per version on
+stderr. register reports each version as created (201), unchanged (200) or
+failed. Any non-2xx response, and any get --root difference, exits 1.
 
 The server stores mapping.json as compact JSON, so its sha256 differs from a
 pretty-printed local file with identical content. Compare against the digests
@@ -39,7 +39,6 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
-DEFAULT_REGION = "us-east-2"
 MAPPING_FILE = "mapping.json"
 
 
@@ -110,19 +109,12 @@ def compare_version(version_dir: Path, data: dict[str, Any]) -> list[dict[str, A
     return rows
 
 
-def request(method: str, url: str, region: str, body: Any = None) -> tuple[int, Any]:
-    from botocore.auth import SigV4Auth
-    from botocore.awsrequest import AWSRequest
-    from botocore.session import Session
-
-    credentials = Session().get_credentials()
-    if credentials is None:
-        raise SystemExit("no AWS credentials found; set AWS_PROFILE or credentials in the environment")
+def request(method: str, url: str, api_key: str, body: Any = None) -> tuple[int, Any]:
     data = None if body is None else json.dumps(body).encode("utf-8")
-    headers = {"content-type": "application/json"} if data is not None else {}
-    aws_request = AWSRequest(method=method, url=url, data=data, headers=headers)
-    SigV4Auth(credentials, "execute-api", region).add_auth(aws_request)
-    http_request = urllib.request.Request(url, data=data, method=method, headers=dict(aws_request.headers.items()))
+    headers = {"x-api-key": api_key}
+    if data is not None:
+        headers["content-type"] = "application/json"
+    http_request = urllib.request.Request(url, data=data, method=method, headers=headers)
     try:
         with urllib.request.urlopen(http_request, timeout=60) as response:
             status, text = response.status, response.read().decode("utf-8")
@@ -172,8 +164,15 @@ def summarize(result: dict[str, Any]) -> None:
 def base_url(value: str | None) -> str:
     url = value or os.environ.get("TRANSFORM_API_URL")
     if not url:
-        raise SystemExit("set --api-url or TRANSFORM_API_URL (SSM /<stackName>/api-url)")
+        raise SystemExit("set --api-url or TRANSFORM_API_URL to https://<shared domain>")
     return url if url.endswith("/") else f"{url}/"
+
+
+def shared_api_key() -> str:
+    key = os.environ.get("PRISM_API_KEY")
+    if not key:
+        raise SystemExit("set PRISM_API_KEY to the environment's shared x-api-key in your own terminal")
+    return key
 
 
 def segment(value: str) -> str:
@@ -182,8 +181,7 @@ def segment(value: str) -> str:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--api-url", help="Transform API base URL (default TRANSFORM_API_URL)")
-    parser.add_argument("--region", default=os.environ.get("AWS_REGION", DEFAULT_REGION))
+    parser.add_argument("--api-url", help="shared domain base URL, https://<shared domain> (default TRANSFORM_API_URL)")
     sub = parser.add_subparsers(dest="command", required=True)
     for name in ("validate", "register"):
         sub.add_parser(name).add_argument("bundle_root", type=Path)
@@ -209,6 +207,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     base = base_url(args.api_url)
+    api_key = shared_api_key()
     calls: list[tuple[str, str, str, Any]] = []
     if args.command in ("validate", "register"):
         for package in load_bundle(args.bundle_root):
@@ -240,7 +239,7 @@ def main(argv: list[str] | None = None) -> int:
     results = []
     failed = False
     for label, method, path, body in calls:
-        status, payload = request(method, base + path, args.region, body)
+        status, payload = request(method, base + path, api_key, body)
         ok = 200 <= status < 300
         failed |= not ok
         result: dict[str, Any] = {"target": label, "status": status}

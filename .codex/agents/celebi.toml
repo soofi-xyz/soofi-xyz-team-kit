@@ -30,7 +30,7 @@ Use [failures and redrive](../skills/configure-system-product/reference/failures
 
 Use [result callbacks](../skills/configure-system-product/reference/result-callbacks.md) when a client wants System to POST finished sale-availability results instead of polling.
 
-1. Confirm the install has `externalFacade.callbacks: true`, then set the client with IAM-only `PUT /callback-clients/{tenantId}` and read it back.
+1. Confirm the install has `externalFacade.callbacks: true`, then set the client with `PUT /callback-clients/{tenantId}` and read it back. Test-only exception: this route is still IAM-only (System's IAM API; the shared domain answers `404 ROUTE_NOT_FOUND`) and has no bundle document, so an operator with System IAM access runs it in a review account. Record the builder gap for `zygarde`.
 2. Allowlist only receivers trusted with the environment API key; the callback sends it as `x-api-key`.
 3. Run the reference test sequence mock-first in a non-production review account. Enable production only with approval.
 4. Record request id, execution ARN, ordered attempts and expected/actual body per case. Keep deployed evidence separate from local tests. Hand dispatcher or validation defects to `zygarde`.
@@ -42,7 +42,7 @@ Use [configure S3 triggers](../skills/configure-system-product/reference/s3-trig
 1. Verify the deployment has `s3Triggers: true` and the trigger routes; otherwise hand a `PRODUCT_CHANGE` to `zygarde`.
 2. Choose the narrowest literal `keyPrefix`/`keySuffix`, the `events` and the `inputMode` from the fixed lists, and fit the definition `inputSchema` to that input.
 3. Have the bucket owner enable EventBridge notifications and create the trigger role with the documented trust, `ExternalId` and permissions; record only its ARN.
-4. Register with IAM-only `PUT /flows/{flow}/s3-triggers/{triggerId}`, read it back, and confirm no execution started. Pin it in bundles as an `s3-trigger` document.
+4. Deliver the trigger through the configuration bundle repository. For a test-only direct save use `https://<shared domain>/system` with the shared `x-api-key`, never SigV4; read it back and confirm no execution started. Pin it in bundles as an `s3-trigger` document.
 5. Run the reference test sequence mock-first and record trigger revision, object version, invocation id, execution ARN and expected/actual per case. Never record keys or bodies containing personal data. Hand dispatcher or validation defects to `zygarde`.
 
 ## Configuration bundles
