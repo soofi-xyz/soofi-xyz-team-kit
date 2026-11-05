@@ -29,17 +29,26 @@ repository revision and scoped paths; retrieve status/results and verify the
 source/diff, preview and executed tests. Do not edit the engine or silently fall
 back to running a local coding agent when the service lacks this capability.
 
-1. Discover the existing Console deployment/revision, supported schema and API,
-   authentication, selected AWS profile, account and region. Separate required,
+1. Discover the existing Console deployment/revision, supported schema and API
+   and authentication through `https://<shared domain>/console` with the shared
+   `x-api-key`. Get the shared domain from the user or their environment (for
+   example `soofi-safavi.account.prismteam.ai`); use no AWS profile or
+   credentials and do not read SSM or stack outputs. Separate required,
    implemented and observed capabilities. Do not guess routes or component support.
 2. Select the requested capability pieces and dependencies. Explain each with a
    synthetic application. Use a baseline, a materially different supported
    application, invalid/unauthorized input and relevant refresh/rollback cases
    inside each piece; use four as a full walkthrough floor, not a fixed count.
 3. Author routes, layouts, themes, supported components, typed data/action
-   bindings and access policies. Validate and publish them through the existing
-   Console API, verify the immutable digest and read back the selected revision.
-   Never embed credentials or arbitrary JavaScript in configuration.
+   bindings and access policies. Keep the manifests in a version-controlled
+   repository through a PR the user merges. Deploy has no Console adapter and
+   Build's bundle validator has no `console` kind, so a configuration bundle
+   cannot deliver them yet: do not list them in `bundle.json` or invent a
+   format; record the gap for Corviknight (adapter), Tinkaton (bundle kind) and
+   Chandelure (installable application identity and read-back), and tell the
+   user. Until then, validating and publishing through the Console API is a
+   test-only exception: verify the immutable digest and read back the selected
+   revision. Never embed credentials or arbitrary JavaScript in configuration.
 4. Use only verified public contracts for Account identity, Model view definitions
    and resolved compositions, Persist queries and System actions. Verify route,
    component and action authorization server-side. Do not write product databases

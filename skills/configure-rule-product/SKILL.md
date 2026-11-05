@@ -27,6 +27,19 @@ Rule is the product name; Filter remains an implementation/compatibility name.
    claim that downstream communication or scheduling succeeded.
 6. Send unsupported capabilities to `gallade`; preserve evidence and continue
    independent configuration work. Do not rewrite engine code or expand scope.
+7. Deliver configuration as [Configurer delivery](../guide-product-work/SKILL.md#configurer-delivery)
+   requires, through what Rule supports. Author and publish governed rule
+   artifacts with Lexicon. The existing service has no
+   shared-domain HTTP API (its Marketplace manifest omits `base_path`; see
+   [marketplace and migration](../build-rules-product/reference/implementation/marketplace-and-migration.md)),
+   Deploy has no Rule adapter and Build's bundle validator has no `rule` kind,
+   so no configuration bundle can deliver selection, candidate-scope or
+   projection settings. Do not invent a bundle format. Record the gaps for
+   Gallade (a shared-domain configuration and evaluation API) and Corviknight
+   and Tinkaton (Deploy adapter and bundle kind), and tell the user. Until then,
+   an evaluation that needs IAM is a test-only exception the user runs with
+   their own AWS access; use no AWS profile or credentials and do not read SSM
+   or stack outputs.
 
 Return configuration/version changes, pass/fail evidence, human observations,
 current stage and any builder handoff.

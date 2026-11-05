@@ -15,6 +15,7 @@ Configure a particular evaluation using **Rule**. Keep the reusable selection/ev
 4. Prepare known pass/fail cases and have the person inspect the per-rule explanation. Verify batch or single-entity results, count definitions and any separately requested persistence of outcomes.
 5. Keep ranking, scheduling and communications with their owning products. Do not add customer-specific policy to the generic engine specification.
 6. Hand missing capabilities and defects to `gallade` with reproducible evidence. Do not edit engine code or silently broaden the selected population.
+7. Deliver configuration as the guide's Configurer delivery rule requires, through what Rule actually supports. Governed rule artifacts are authored and published with Lexicon, not in Rule. The existing service has no shared-domain HTTP API (its Marketplace manifest omits `base_path`), Deploy has no Rule adapter and Build's bundle validator has no `rule` kind, so a configuration bundle cannot deliver selection, candidate-scope or projection settings. Do not invent a bundle format: record the gaps for `gallade` (a shared-domain configuration and evaluation API) and `corviknight`/`tinkaton` (Deploy adapter and bundle kind), and tell the user. Until then, any evaluation that needs IAM is a test-only exception the user runs with their own AWS access; use no AWS profile or credentials yourself and do not read SSM or stack outputs.
 
 ## Shared API domain
 
