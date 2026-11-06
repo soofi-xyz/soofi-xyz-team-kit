@@ -8,9 +8,12 @@ disable-model-invocation: true
 
 Kirlia lives in **`soofi-xyz/kirlia-agent`** and runs on Vercel. When someone @-mentions the
 bot user (Kirlia) in a comment on a task of custom task type **Story** in a project the bot
-is a member of, it rewrites the story with an LLM (clear imperative title; WOW-structured
-description: Context / Description / a bulleted list of verb-first Acceptance Criteria /
-Demo Script), updates the task, and creates a review subtask assigned to the mention author.
+is a member of, it rewrites the story with an LLM into three sections: Context (broader background naming the
+product, repository, or finished work it builds on), Description (the body), and 1–8 short
+verb-first MECE Acceptance Criteria. It updates the task and creates a review subtask assigned to
+the mention author. A comment with an assertion is applied as a small patch or a large rewrite,
+and the review subtask says which. `@Kirlia task this` instead adds ordered, roughly 30-minute
+subtasks with 5–7 word names and a "Done when" check, leaving the story unchanged.
 Mentioning the bot again on an already-rewritten story deliberately re-rewrites it from the
 current content and refreshes the existing review subtask in place — it is never duplicated.
 This skill is the operating contract: enable projects, trace processing, diagnose misses,
@@ -20,7 +23,8 @@ CLI drafts or creates stories from Cursor; Kirlia rewrites live Asana Story task
 
 Code map (all paths inside `kirlia-agent`):
 
-- `src/lib/story-agent/` — config, guards, events, mentions, discovery, prompt, LLM, processor, sweeper, Asana client
+- `src/lib/grooming/` — grooming only: prompts, model calls, validation, tasking, product map (`architecture.json`, refreshed with `npm run sync:architecture`). Never imports Asana or the database
+- `src/lib/story-agent/` — the Asana adapter: config, guards, events, mentions, discovery, processor, tasking subtasks, sweeper, Asana client
 - `src/app/api/asana/webhooks/story-agent/route.ts` — webhook receiver (handshake + deliveries)
 - `src/app/api/asana/webhooks/story-agent/sweep/route.ts` — sweeper endpoint (Vercel cron, `*/15 * * * *` in `vercel.json`)
 - `scripts/seed-story-agent.mjs` — org identity registration (stored PATs only; projects come from membership discovery)
@@ -184,16 +188,15 @@ Common causes:
 ## Change The WOW Format
 
 The format lives in one constant: **`STORY_AGENT_SYSTEM_PROMPT` in
-`src/lib/story-agent/prompt.ts`** — it is the founder's (Soofi's) own agent prompt, kept as
-close to his wording as possible, with an output-contract section adapting it to the structured
-pipeline. When a change goes beyond wording, update the three layers together, then run
+`src/lib/grooming/prompt.ts`**, started from the founder's (Soofi's) own agent prompt and following
+*Fifty Quick Ideas to Improve User Stories*. When a change goes beyond wording, update the three layers together, then run
 `npm run test:story-agent`:
 
-1. `prompt.ts` — the system prompt rules (section order, sentence rules).
-2. `llm.ts` (`rewriteSchema`) + `validate.ts` — structural schema and semantic validation; the
+1. `src/lib/grooming/prompt.ts` — the system prompt rules (section order, sentence rules).
+2. `src/lib/grooming/rewriter.ts` (`rewriteSchema`) + `validate.ts` — structural schema and semantic validation; the
    validator's errors drive the one corrective LLM retry, so new rules belong there, not in
    ad-hoc post-processing.
-3. `html-render.ts` — the `<h2>` sections written into Asana. Never remove the trailing
+3. `src/lib/story-agent/html-render.ts` — the sections written into Asana. Never remove the trailing
    `AGENT_MARKER` — it is the idempotency marker.
 
 Model selection: plain `provider/model` strings resolve through the Vercel AI Gateway; default
