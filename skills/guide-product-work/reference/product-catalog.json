@@ -1234,6 +1234,28 @@
         "configure": null
       },
       "notes": []
+    },
+    {
+      "id": "inference",
+      "name": "Inference",
+      "legacyNames": [],
+      "sourceRows": [],
+      "status": "assigned",
+      "summary": "Inference reads a configured source and destination through Persist and Connect, asks a Bedrock model what should change in the destination, and writes typed assertions to Persist for a groomer to apply.",
+      "agents": {
+        "build": "beheeyem",
+        "configure": "elgyem"
+      },
+      "skills": {
+        "build": "build-inference-product",
+        "configure": "configure-inference-product"
+      },
+      "notes": [
+        "Added on 2026-11-06; no spreadsheet row is claimed. Prism Marketplace: family Prism, category Platform, product Inference (54ad9a54-ea96-4b30-a234-c7378bc1a6d0), SERVICE component `inference`. Beheeyem builds the service in prismteam-ai/inference; Elgyem writes, bundles and tests inference-1 configurations through its API.",
+        "Inference holds no source- or destination-specific code: readers, model, prompt and assertion types are configuration. It calls Bedrock directly through its own tagged application inference profile and writes assertions with the Model `inference` extension (prismteam-ai/model); a separate groomer agent applies or rejects them. Persist owns storage, Connect the partner reads, Model the extension.",
+        "The iteration guide's Status table is the only record of what is merged, installed and planned; bundles use product `inference`, kind `configuration`."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/inference.md"
     }
   ],
   "retainedAgents": [

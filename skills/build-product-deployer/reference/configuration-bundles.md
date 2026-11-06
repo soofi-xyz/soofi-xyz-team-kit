@@ -32,6 +32,7 @@ Build → Marketplace → Deploy path before claiming the migration is complete.
 | Connect / Lapras, Wingull | Own flow, partner-configuration and activation API semantics and author/validate their configurations |
 | System / Zygarde, Celebi | Own definition, template, flow and waterfall API semantics and compose their configurations |
 | Console / Chandelure, Vivillon | Own application, revision and publication API semantics and author application manifests (bundle kind pending; see [Console application payloads](#console-application-payloads)) |
+| Inference / Beheeyem, Elgyem | Own configuration API and version semantics and author `inference-1` configurations (see [Inference configuration payloads](#inference-configuration-payloads)) |
 | Rule / Gallade, Meditite | Own selection, candidate-scope and projection configuration semantics (no bundle kind until Rule has an API; see [Products without a bundle kind](#products-without-a-bundle-kind)) |
 
 Keep these assignments in the product catalog. Do not add a configuration product
@@ -195,6 +196,28 @@ Paths below are relative to `/console`.
   Console has no application delete; report retirement as unsupported rather than
   claiming removal.
 
+## Inference configuration payloads
+
+Build (`CONFIGURATION_KINDS`) and Deploy's adapters support product `inference`, kind
+`configuration`; there is no `inference` kind. See
+[the Inference status table](../../guide-product-work/reference/iterations/inference.md#status)
+for where they are installed. Paths below are relative to
+`https://<shared domain>/inference`, with the shared `x-api-key`.
+
+- **Bundle entry:** `product: "inference"`, `kind: "configuration"`, `source` an `inference-1` JSON
+  file. Its `name` is the logical identity and its `version` (semver) the immutable
+  revision; Build rejects a repeated `name` and validates the document against
+  `schemas/inference-configuration.schema.json` without calling Inference.
+- **Apply:** `GET /configurations/{name}?version=<version>`, then
+  `PUT /configurations/{name}`: `201 CREATED`, `200 UPDATED` (new version or rollback to a
+  saved one), `200 UNCHANGED`; `400` invalid and `409 VERSION_CONFLICT` (changed content
+  under a saved version: the bundle must publish a new version) fail the install.
+- **Read back:** `GET /configurations/{name}` must return the bundle's version with
+  byte-identical canonical content; report `name` and `version` in the run result.
+- **Retire or restore:** Inference has no delete; restoring an earlier release saves its
+  version again, which makes it current. Report retirement as unsupported.
+- Installing a configuration starts no run and calls no model.
+
 ## Products without a bundle kind
 
 - **Rule:** the existing service has no shared-domain HTTP API, so there is
@@ -249,6 +272,8 @@ Before merging, check what the install will replace:
   registered version returns `409` and fails the install.
 - A committed activation with `"enabled": false` disables the live activation
   of the same name.
+- An Inference configuration becomes the current version for runs, including over
+  one a configurer saved directly.
 - A Console application publishes over the active revision of the same
   `applicationId`, including one a configurer published directly.
 
