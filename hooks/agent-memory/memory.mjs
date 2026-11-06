@@ -70,7 +70,7 @@ function toText(value) {
 // Builds the GraphSON ingest request. Every vertex holds only stable facts, so
 // resending the agent, prompt version, thread and email on each message upserts
 // the same vertices (Persist hashes IDs from label and properties).
-export function buildGraph({ client, sessionId, agentName, callerAgentName, version, person, messages, secrets = [] }) {
+export function buildGraph({ client, sessionId, turnId, agentName, callerAgentName, version, person, messages, secrets = [] }) {
   const spec = CLIENTS[client];
   if (!spec) throw new Error(`unknown client ${client}`);
   const agentIdentifier = `${version.pluginName}:agent/${agentName}`;
@@ -125,6 +125,11 @@ export function buildGraph({ client, sessionId, agentName, callerAgentName, vers
   edge("agent_thread_with_agent", thread, agent);
   edge("agent_thread_ran_agent_prompt_version", thread, prompt);
   if (person) edge("email_started_agent_thread", vertex("email", { email_address: person.email }), thread, { identity_source: person.source });
+  let turn;
+  if (typeof turnId === "string" && turnId.length > 0) {
+    turn = vertex("agent_turn", { turn_identifier: `${threadIdentifier}/turn/${turnId}`, client_turn_id: turnId });
+    edge("agent_thread_has_agent_turn", thread, turn);
+  }
 
   const byToolCall = new Map();
   for (const message of messages) {
@@ -149,6 +154,7 @@ export function buildGraph({ client, sessionId, agentName, callerAgentName, vers
       content_length: redacted.text.length,
     });
     edge("agent_thread_has_agent_message", thread, node);
+    if (turn) edge("agent_turn_has_agent_message", turn, node);
     if (message.kind === "TOOL_CALL") byToolCall.set(toolCallId ?? message.toolName, node);
     if (message.kind === "TOOL_RESULT") {
       const call = byToolCall.get(toolCallId ?? message.toolName);

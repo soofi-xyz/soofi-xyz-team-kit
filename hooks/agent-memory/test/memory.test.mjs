@@ -179,7 +179,8 @@ test("maps Claude Code events of wingull only", () => {
   const base = { session_id: "s", cwd: "/w" };
   assert.equal(toMemory({ ...base, hook_event_name: "UserPromptSubmit", prompt: "hi" }), undefined);
   assert.equal(toMemory({ ...base, hook_event_name: "UserPromptSubmit", agent_type: "soofi-xyz-team-kit:lapras", prompt: "hi" }), undefined);
-  const prompt = toMemory({ ...base, hook_event_name: "UserPromptSubmit", agent_type: "soofi-xyz-team-kit:wingull", prompt: "hi" }, 10);
+  const prompt = toMemory({ ...base, hook_event_name: "UserPromptSubmit", agent_type: "soofi-xyz-team-kit:wingull", prompt_id: "p-1", prompt: "hi" }, 10);
+  assert.equal(prompt.turnId, "p-1");
   assert.equal(prompt.agentName, "wingull");
   assert.deepEqual(prompt.messages, [{ kind: "USER_PROMPT", content: "hi", occurredAt: 10 }]);
 
@@ -204,20 +205,23 @@ test("maps a Cursor /wingull session as the probe recorded it, and ignores other
   const common = { user_email: "alex@example.com", workspace_roots: ["/w"] };
   const run = (event) => cursor({ ...common, ...event }, { dir, now: 1_000 });
 
-  const prompt = run({ hook_event_name: "beforeSubmitPrompt", conversation_id: parent, prompt: "/wingull List the files" });
+  const turn = "6dd33196-d0f0-4cc9-9228-8a1bab37a315";
+  const prompt = run({ hook_event_name: "beforeSubmitPrompt", conversation_id: parent, generation_id: turn, prompt: "/wingull List the files" });
+  assert.equal(prompt.turnId, turn);
   assert.deepEqual([prompt.agentName, prompt.sessionId, prompt.messages[0].kind, prompt.clientEmail], ["wingull", parent, "USER_PROMPT", "alex@example.com"]);
 
-  const request = run({ hook_event_name: "preToolUse", conversation_id: parent, tool_name: "Task", tool_use_id: task, tool_input: { subagent_type: "wingull", prompt: "count files" } });
+  const request = run({ hook_event_name: "preToolUse", conversation_id: parent, generation_id: turn, tool_name: "Task", tool_use_id: task, tool_input: { subagent_type: "wingull", prompt: "count files" } });
   assert.deepEqual([request.messages[0].kind, request.messages[0].content, request.callerAgentName], ["AGENT_REQUEST", "count files", "cursor-agent"]);
   assert.equal(run({ hook_event_name: "subagentStart", conversation_id: parent, parent_conversation_id: parent, subagent_type: "wingull", tool_call_id: task }), undefined);
 
   // Wingull's own tool call: child conversation, no agent name, only parent_tool_call_id.
-  const tool = run({ hook_event_name: "postToolUse", conversation_id: child, parent_agent_id: parent, parent_tool_call_id: task, tool_name: "Shell", tool_use_id: "t-1", tool_input: { command: "ls" }, tool_output: "a\nb", duration: 40 });
+  const tool = run({ hook_event_name: "postToolUse", conversation_id: child, generation_id: "d33573fe-child-generation", parent_agent_id: parent, parent_tool_call_id: task, tool_name: "Shell", tool_use_id: "t-1", tool_input: { command: "ls" }, tool_output: "a\nb", duration: 40 });
   assert.equal(tool.sessionId, parent);
+  assert.equal(tool.turnId, turn);
   assert.deepEqual(tool.messages.map((m) => [m.kind, m.content, m.occurredAt]), [["TOOL_CALL", '{"command":"ls"}', 960], ["TOOL_RESULT", "a\nb", 1_000]]);
 
-  const reply = run({ hook_event_name: "postToolUse", conversation_id: parent, tool_name: "Task", tool_use_id: task, tool_input: { subagent_type: "wingull", prompt: "count files" }, tool_output: "There are 3 files." });
-  assert.deepEqual([reply.messages[0].kind, reply.messages[0].content], ["AGENT_REPLY", "There are 3 files."]);
+  const reply = run({ hook_event_name: "postToolUse", conversation_id: parent, generation_id: turn, tool_name: "Task", tool_use_id: task, tool_input: { subagent_type: "wingull", prompt: "count files" }, tool_output: "There are 3 files." });
+  assert.deepEqual([reply.messages[0].kind, reply.messages[0].content, reply.turnId], ["AGENT_REPLY", "There are 3 files.", turn]);
 
   run({ hook_event_name: "subagentStop", conversation_id: parent, subagent_type: "wingull", subagent_id: task, tool_call_id: task });
   assert.equal(run({ hook_event_name: "postToolUse", conversation_id: child, parent_tool_call_id: task, tool_name: "Shell", tool_input: {}, tool_output: "late" }), undefined);
@@ -227,4 +231,25 @@ test("maps a Cursor /wingull session as the probe recorded it, and ignores other
   assert.equal(run({ hook_event_name: "postToolUse", conversation_id: "x", tool_name: "Grep", tool_input: {}, tool_output: "f" }), undefined);
   assert.equal(run({ hook_event_name: "preToolUse", conversation_id: "x", tool_name: "Task", tool_use_id: "t-9", tool_input: { subagent_type: "lapras", prompt: "p" } }), undefined);
   assert.equal(run({ hook_event_name: "postToolUse", conversation_id: "y", parent_tool_call_id: "t-9", tool_name: "Shell", tool_input: {}, tool_output: "f" }), undefined);
+});
+
+test("groups a turn's messages under one turn vertex, and omits it without a turn id", () => {
+  const context = { client: "CURSOR", sessionId: "c-1", agentName: "wingull", version: VERSION, messages: [
+    { kind: "TOOL_CALL", toolName: "Shell", toolCallId: "t", content: "{}", occurredAt: 1 },
+    { kind: "TOOL_RESULT", toolName: "Shell", toolCallId: "t", content: "x", occurredAt: 2 },
+  ] };
+  const graph = buildGraph({ ...context, turnId: "g-7" });
+  const [turn] = vertices(graph, "agent_turn");
+  assert.equal(prop(turn, "turn_identifier"), "agent-memory:thread/cursor/c-1/wingull/turn/g-7");
+  assert.deepEqual(Object.keys(turn["@value"].properties).sort(), ["client_turn_id", "turn_identifier"]);
+  const [thread] = vertices(graph, "agent_thread");
+  assert.equal(edges(graph, "agent_thread_has_agent_turn")[0]["@value"].outV["@value"], thread["@value"].id["@value"]);
+  const linked = edges(graph, "agent_turn_has_agent_message").map((e) => [e["@value"].outV["@value"], e["@value"].inV["@value"]]);
+  assert.deepEqual(linked, vertices(graph, "agent_message").map((m) => [turn["@value"].id["@value"], m["@value"].id["@value"]]));
+  assert.equal(edges(graph, "agent_thread_has_agent_message").length, 2);
+
+  const noTurn = buildGraph(context);
+  assert.equal(vertices(noTurn, "agent_turn").length, 0);
+  assert.equal(edges(noTurn, "agent_turn_has_agent_message").length, 0);
+  assert.equal(edges(noTurn, "agent_thread_has_agent_message").length, 2);
 });

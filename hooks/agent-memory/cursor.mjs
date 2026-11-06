@@ -51,7 +51,7 @@ const slashAgent = (prompt) => /^\s*\/([a-z0-9-]+)(?:\s|$)/i.exec(prompt ?? "")?
 
 // Returns the memory context for one Cursor hook event, or undefined.
 export function toMemory(event, { dir = routesDir(), now = Date.now() } = {}) {
-  const base = { client: "CURSOR", clientEmail: event.user_email, cwd: event.workspace_roots?.[0] };
+  const base = { client: "CURSOR", turnId: event.generation_id, clientEmail: event.user_email, cwd: event.workspace_roots?.[0] };
   switch (event.hook_event_name) {
     case "beforeSubmitPrompt": {
       // "/wingull …" typed by the person: the thread is the person's conversation.
@@ -63,7 +63,7 @@ export function toMemory(event, { dir = routesDir(), now = Date.now() } = {}) {
       const agent = event.tool_name === "Task" ? event.tool_input?.subagent_type : undefined;
       if (!hasMemory(agent)) return undefined;
       dropStaleRoutes(dir, now);
-      writeRoute(dir, event.tool_use_id, { agentName: agent, sessionId: event.conversation_id });
+      writeRoute(dir, event.tool_use_id, { agentName: agent, sessionId: event.conversation_id, turnId: event.generation_id });
       return {
         ...base,
         sessionId: event.conversation_id,
@@ -96,6 +96,8 @@ export function toMemory(event, { dir = routesDir(), now = Date.now() } = {}) {
       return {
         ...base,
         sessionId: route.sessionId,
+        // The subagent's own generation_id belongs to its child conversation; the turn is the parent's.
+        turnId: route.turnId,
         agentName: route.agentName,
         messages: [
           { kind: "TOOL_CALL", toolName: event.tool_name, toolCallId: event.tool_use_id, content: asText(event.tool_input), occurredAt: now - (event.duration ?? 0) },

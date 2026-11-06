@@ -15,7 +15,7 @@ const asText = (value) => (typeof value === "string" ? value : JSON.stringify(va
 
 export function toMemory(event, now = Date.now()) {
   const agent = agentName(event.agent_type);
-  const base = { client: "CLAUDE_CODE", sessionId: event.session_id, cwd: event.cwd };
+  const base = { client: "CLAUDE_CODE", sessionId: event.session_id, turnId: event.prompt_id, cwd: event.cwd };
   const at = now;
   switch (event.hook_event_name) {
     case "UserPromptSubmit":
