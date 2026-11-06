@@ -13,7 +13,10 @@ product, repository, or finished work it builds on), Description (the body), and
 verb-first MECE Acceptance Criteria. It updates the task and creates a review subtask assigned to
 the mention author. A comment with an assertion is applied as a small patch or a large rewrite,
 and the review subtask says which. `@Kirlia task this` instead adds ordered, roughly 30-minute
-subtasks with 5–7 word names and a "Done when" check, leaving the story unchanged.
+subtasks with 5–7 word names, the agent to use, and a "Done when" check, leaving the story unchanged.
+Stories list the team-kit agents to use on an **Agents:** line under Description. When work changes
+a base product (it needs a product's build agent), Kirlia always adds a criterion to update the team
+kit so that agent learns the new skills, and tasking always ends with "Update team kit for <agent>".
 Mentioning the bot again on an already-rewritten story deliberately re-rewrites it from the
 current content and refreshes the existing review subtask in place — it is never duplicated.
 This skill is the operating contract: enable projects, trace processing, diagnose misses,
@@ -23,7 +26,8 @@ CLI drafts or creates stories from Cursor; Kirlia rewrites live Asana Story task
 
 Code map (all paths inside `kirlia-agent`):
 
-- `src/lib/grooming/` — grooming only: prompts, model calls, validation, tasking, product map (`architecture.json`, refreshed with `npm run sync:architecture`). Never imports Asana or the database
+- `src/lib/grooming/` — grooming only: prompts, model calls, validation, tasking, agent rules (`agents.ts`), product and agent map (`architecture.json`). Never imports Asana or the database
+- Keep `architecture.json` current: after a product or agent is added, renamed, or reassigned in this kit, run `npm run sync:architecture` in `kirlia-agent` and ship the refreshed file. Kirlia drops agent names that are not in it
 - `src/lib/story-agent/` — the Asana adapter: config, guards, events, mentions, discovery, processor, tasking subtasks, sweeper, Asana client
 - `src/app/api/asana/webhooks/story-agent/route.ts` — webhook receiver (handshake + deliveries)
 - `src/app/api/asana/webhooks/story-agent/sweep/route.ts` — sweeper endpoint (Vercel cron, `*/15 * * * *` in `vercel.json`)
