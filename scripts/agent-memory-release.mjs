@@ -10,6 +10,7 @@
 //   node scripts/agent-memory-release.mjs publish --change-set <id>
 //   node scripts/agent-memory-release.mjs install [--release <id>]   (default: current)
 //   node scripts/agent-memory-release.mjs queries   (educator saved queries for the Persist MCP server)
+//   node scripts/agent-memory-release.mjs accept  --email <you> [--since <time>] [--secret <planted fake>]
 //
 // Environment: PRISM_API_KEY (or ~/.config/prism/soofi-safavi.key), MODEL_ACCOUNT_ID
 // (the Model account the extension belongs to), PRISM_DOMAIN (default
@@ -231,10 +232,69 @@ async function queries() {
   console.log(`Applied version ${result.version} (changed ${result.changed}). The Persist MCP server lists ${[...names].map((name) => `query_${name}`).join(", ")} within 30 seconds.`);
 }
 
-const commands = { check, submit, approve, publish, install, queries };
+const lit = (value) => `'${String(value).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
+const gremlin = async (query) => (await call("POST", `${PERSIST}/gremlin`, { body: { gremlin: query } })).json.data.results;
+
+// Acceptance evidence for one saved thread (subtask 9): reads it back from Persist and checks the
+// story's criteria. Exits 1 when a check fails. A --secret is a planted fake, never a real one.
+async function accept({ email, thread, since, secret }) {
+  if (!email && !thread) throw new Error("Pass --email <the address you used> (newest thread) or --thread <thread_identifier>");
+  if (!thread) {
+    const rows = await gremlin(
+      `g.V().hasLabel('email').has('email_address', ${lit(email)}).out('email_started_agent_thread')` +
+        `.project('thread', 'last').by('thread_identifier').by(__.out('agent_thread_has_agent_message').values('occurred_at').max())` +
+        `${since ? `.where(__.select('last').is(gte(${lit(new Date(since).toISOString())})))` : ""}.order().by(select('last'), desc).limit(1)`,
+    );
+    if (rows.length === 0) throw new Error(`No thread started by ${email}${since ? ` since ${since}` : ""} is in Persist yet`);
+    thread = rows[0].thread;
+  }
+  const [evidence] = await gremlin(
+    `g.V().hasLabel('agent_thread').has('thread_identifier', ${lit(thread)})` +
+      `.project('client', 'agents', 'prompt_versions', 'people', 'turns', 'messages').by('client')` +
+      `.by(__.out('agent_thread_with_agent').values('agent_name').fold())` +
+      `.by(__.out('agent_thread_ran_agent_prompt_version').values('prompt_version_identifier').fold())` +
+      `.by(__.in('email_started_agent_thread').values('email_address').fold())` +
+      `.by(__.out('agent_thread_has_agent_turn').count())` +
+      `.by(__.out('agent_thread_has_agent_message').order().by('occurred_at').by('message_kind')` +
+      `.project('at', 'kind', 'tool', 'failed', 'redactions', 'answers').by('occurred_at').by('message_kind')` +
+      `.by(__.coalesce(__.values('tool_name'), __.constant(''))).by(__.coalesce(__.values('tool_failed'), __.constant(false)))` +
+      `.by(__.coalesce(__.values('redaction_count'), __.constant(0))).by(__.out('agent_message_answers_agent_message').count()).fold())`,
+  );
+  if (!evidence) throw new Error(`Thread ${thread} is not in Persist`);
+  const savedAgents = await gremlin(`g.V().hasLabel('agent').values('agent_name').dedup()`);
+  const leaked = secret ? Number((await gremlin(`g.V().hasLabel('agent_thread').has('thread_identifier', ${lit(thread)}).out('agent_thread_has_agent_message').has('content', containing(${lit(secret)})).count()`))[0]) : undefined;
+
+  const { messages } = evidence;
+  const kinds = messages.map((message) => message.kind);
+  const count = (kind) => kinds.filter((value) => value === kind).length;
+  const memoryAgents = JSON.parse(readFileSync(new URL("../hooks/agent-memory/agents.json", import.meta.url), "utf8")).agents;
+  console.log(`Thread ${thread}`);
+  console.log(`  client ${evidence.client}; agent ${evidence.agents.join(", ")}; person ${evidence.people.join(", ") || "(none)"}`);
+  console.log(`  prompt version ${evidence.prompt_versions.join(", ")}`);
+  console.log(`  ${messages.length} messages in ${evidence.turns} turns, ${messages[0]?.at ?? "-"} to ${messages.at(-1)?.at ?? "-"}`);
+  for (const message of messages) {
+    console.log(`    ${message.at}  ${message.kind}${message.tool ? ` ${message.tool}` : ""}${message.failed ? " (failed)" : ""}${message.redactions ? ` [${message.redactions} redacted]` : ""}`);
+  }
+  const checks = [
+    ["one agent, and it has memory", evidence.agents.length === 1 && memoryAgents.includes(evidence.agents[0])],
+    ["person recorded", evidence.people.length > 0],
+    ["prompt version recorded", evidence.prompt_versions.length > 0],
+    ["timestamps on every message", messages.length > 0 && messages.every((message) => !Number.isNaN(Date.parse(message.at)))],
+    ["what the person or calling agent said", count("USER_PROMPT") + count("AGENT_REQUEST") > 0],
+    ["the agent's reply", count("AGENT_REPLY") > 0],
+    ["at least one tool call, each with its result", count("TOOL_CALL") > 0 && count("TOOL_RESULT") === count("TOOL_CALL")],
+    ["every tool result linked to its call", messages.filter((message) => message.kind === "TOOL_RESULT").every((message) => Number(message.answers) === 1)],
+    ["no agent without memory was saved", savedAgents.every((name) => memoryAgents.includes(name))],
+    ...(secret === undefined ? [] : [["the planted secret is only a placeholder", leaked === 0 && messages.some((message) => Number(message.redactions) > 0)]]),
+  ];
+  for (const [name, passed] of checks) console.log(`${passed ? "PASS" : "FAIL"}  ${name}`);
+  if (checks.some(([, passed]) => !passed)) process.exitCode = 1;
+}
+
+const commands = { check, submit, approve, publish, install, queries, accept };
 const command = commands[process.argv[2]];
 if (!command) {
-  console.log(readFileSync(new URL(import.meta.url), "utf8").split("\n").slice(1, 18).join("\n"));
+  console.log(readFileSync(new URL(import.meta.url), "utf8").split("\n").slice(1, 19).join("\n"));
 } else {
   command(args()).catch((error) => {
     console.error(error.message);
