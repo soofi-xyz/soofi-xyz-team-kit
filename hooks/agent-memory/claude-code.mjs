@@ -3,8 +3,10 @@
 // names the active one in `agent_type` (the --agent main session, or the subagent
 // a hook fires in), so this adapter keeps only events of agents with memory.
 
+import { spawn } from "node:child_process";
 import { existsSync, readdirSync, realpathSync } from "node:fs";
-import { pathToFileURL } from "node:url";
+import { dirname, join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { hasMemory, persistSettings, record } from "./memory.mjs";
 
@@ -73,6 +75,15 @@ async function main() {
   }
   const context = toMemory(event);
   if (!context) return;
+  if (event.hook_event_name === "Stop") {
+    // Claude Code can exit right after Stop (claude -p, Amp turns) and kill a hook still
+    // sending, so the reply goes to a detached sender that outlives this process.
+    const sender = join(dirname(fileURLToPath(import.meta.url)), "memory.mjs");
+    const child = spawn(process.execPath, [sender], { detached: true, stdio: ["pipe", "ignore", "ignore"] });
+    child.stdin.end(JSON.stringify(context));
+    child.unref();
+    return;
+  }
   const { warnings } = await record(context);
   for (const warning of warnings) process.stderr.write(`${warning}\n`);
 }
