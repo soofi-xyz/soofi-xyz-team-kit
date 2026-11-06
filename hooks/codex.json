@@ -1,0 +1,14 @@
+{
+  "description": "Agent memory: save every message of agents listed in hooks/agent-memory/agents.json to soofi-safavi's Persist.",
+  "hooks": {
+    "UserPromptSubmit": [
+      { "hooks": [{ "type": "command", "command": "node \"$PLUGIN_ROOT/hooks/agent-memory/codex.mjs\"", "timeout": 10 }] }
+    ],
+    "PostToolUse": [
+      { "hooks": [{ "type": "command", "command": "node \"$PLUGIN_ROOT/hooks/agent-memory/codex.mjs\"", "timeout": 10 }] }
+    ],
+    "SubagentStop": [
+      { "hooks": [{ "type": "command", "command": "node \"$PLUGIN_ROOT/hooks/agent-memory/codex.mjs\"", "timeout": 10 }] }
+    ]
+  }
+}

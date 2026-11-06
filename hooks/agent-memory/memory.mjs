@@ -149,7 +149,8 @@ export function buildGraph({ client, sessionId, turnId, agentName, callerAgentNa
       tool_name: message.toolName || undefined,
       tool_call_identifier: toolCallId,
       caller_agent_name: message.kind === "AGENT_REQUEST" ? callerAgentName || undefined : undefined,
-      tool_failed: message.kind === "TOOL_RESULT" ? Boolean(message.failed) : undefined,
+      // Left out when the client does not report failures (Codex).
+      tool_failed: message.kind === "TOOL_RESULT" && typeof message.failed === "boolean" ? message.failed : undefined,
       redaction_count: redacted.count,
       content_truncated: truncated,
       content_length: redacted.text.length,

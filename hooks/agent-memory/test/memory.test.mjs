@@ -262,3 +262,65 @@ test("groups a turn's messages under one turn vertex, and omits it without a tur
   assert.equal(edges(noTurn, "agent_turn_has_agent_message").length, 0);
   assert.equal(edges(noTurn, "agent_thread_has_agent_message").length, 2);
 });
+
+test("maps a Codex spawned wingull as the probe recorded it, and ignores the main session", async () => {
+  const { toMemory: codex } = await import("../codex.mjs");
+  const session = "01a1b0a6-6222-7112-bab8-b5adc1e9b7ac";
+  const turn = "01a1b0a6-62d2-7870-8810-0a7fd98b8c35";
+  const inside = { session_id: session, turn_id: turn, agent_id: "01a1b0a6-62cf-7780-9a49-349137bc26af", agent_type: "wingull", cwd: "/w" };
+  // The main session's own events carry no agent_type.
+  assert.equal(codex({ session_id: session, turn_id: "t-main", hook_event_name: "UserPromptSubmit", prompt: "USE_WINGULL list the files" }), undefined);
+  assert.equal(codex({ session_id: session, hook_event_name: "PostToolUse", tool_name: "spawn_agent", tool_input: { agent_type: "wingull" }, tool_response: "{}" }), undefined);
+  assert.equal(codex({ ...inside, agent_type: "lapras", hook_event_name: "UserPromptSubmit", prompt: "x" }), undefined);
+
+  const request = codex({ ...inside, hook_event_name: "UserPromptSubmit", prompt: "SUBTASK: list the files" }, 10);
+  assert.deepEqual([request.client, request.sessionId, request.turnId, request.agentName, request.messages[0].kind], ["CODEX", session, turn, "wingull", "AGENT_REQUEST"]);
+  const tool = codex({ ...inside, hook_event_name: "PostToolUse", tool_name: "Bash", tool_use_id: "call_x8", tool_input: { command: "ls" }, tool_response: "a\nb" }, 10);
+  assert.deepEqual(tool.messages.map((m) => [m.kind, m.content, m.occurredAt, m.failed]), [["TOOL_CALL", '{"command":"ls"}', 9, undefined], ["TOOL_RESULT", "a\nb", 10, undefined]]);
+  // Codex reports no failure flag, so tool_failed is left out rather than saved as false.
+  const [, result] = vertices(buildGraph({ ...tool, version: VERSION }), "agent_message");
+  assert.equal(prop(result, "tool_failed"), undefined);
+  const reply = codex({ ...inside, hook_event_name: "SubagentStop", last_assistant_message: "done: there are some files." });
+  assert.deepEqual([reply.messages[0].kind, reply.messages[0].content, reply.turnId], ["AGENT_REPLY", "done: there are some files.", turn]);
+});
+
+test("maps Copilot CLI wingull as main agent and as a task subagent, saving each event once", async () => {
+  const { toMemory: copilot, lastReply } = await import("../copilot.mjs");
+  const main = "8362096b-0ff5-481d-881b-843c8b19165e";
+  const sub = { sessionId: "16a8424a-416c-4375-8bd5-6783d8a34b2e", agentId: "16a8424a-416c-4375-8bd5-6783d8a34b2e", agentType: "soofi-xyz-team-kit:wingull", parentAgentId: main, cwd: "/w", timestamp: 20 };
+  const tool = { toolName: "bash", toolCallId: "call_x3", toolArgs: { command: "ls", description: "List files" }, toolResult: { resultType: "success", textResultForLlm: "a\nb" } };
+
+  // copilot --agent soofi-xyz-team-kit:wingull: only the agent file's hooks know the agent.
+  const prompt = copilot(["agent", "wingull", "userPromptSubmitted"], { sessionId: main, cwd: "/w", prompt: "List the files", timestamp: 5 });
+  assert.deepEqual([prompt.client, prompt.sessionId, prompt.agentName, prompt.messages[0].kind, prompt.messages[0].occurredAt], ["COPILOT_CLI", main, "wingull", "USER_PROMPT", 5]);
+  assert.equal(copilot(["plugin", "userPromptSubmitted"], { sessionId: main, prompt: "List the files" }), undefined);
+  const call = copilot(["agent", "wingull", "postToolUse"], { sessionId: main, timestamp: 6, ...tool });
+  assert.deepEqual(call.messages.map((m) => [m.kind, m.content, m.failed]), [["TOOL_CALL", '{"command":"ls","description":"List files"}', undefined], ["TOOL_RESULT", "a\nb", false]]);
+  const failure = copilot(["agent", "wingull", "postToolUseFailure"], { sessionId: main, ...tool, toolResult: undefined, error: "exit 1" });
+  assert.deepEqual([failure.messages[1].failed, failure.messages[1].content], [true, '{"error":"exit 1"}']);
+  assert.equal(copilot(["agent", "wingull", "agentStop"], { sessionId: main }).reply, true);
+
+  // The reply comes from the transcript: the last assistant text after the last user message.
+  const line = (type, data, timestamp = "2026-11-06T11:33:34.288Z") => JSON.stringify({ type, data, timestamp });
+  const transcript = [
+    line("user.message", { content: "earlier" }),
+    line("assistant.message", { content: "earlier reply" }),
+    line("user.message", { content: "List the files" }),
+    line("assistant.message", { content: "", toolRequests: [{ name: "bash" }] }),
+    line("assistant.message", { content: "done: there are some files.", toolRequests: [] }),
+  ].join("\n");
+  assert.deepEqual(lastReply(transcript), { content: "done: there are some files.", occurredAt: Date.parse("2026-11-06T11:33:34.288Z") });
+  assert.equal(lastReply([line("user.message", { content: "x" }), line("assistant.message", { content: "", toolRequests: [{}] })].join("\n")), undefined);
+
+  // Called through the task tool: plugin hooks see agentType; the agent file's hooks step aside.
+  const request = copilot(["plugin", "userPromptSubmitted"], { ...sub, prompt: "SUBTASK: list the files" });
+  assert.deepEqual([request.sessionId, request.agentName, request.messages[0].kind], [main, "wingull", "AGENT_REQUEST"]);
+  assert.equal(copilot(["plugin", "postToolUse"], { ...sub, ...tool }).sessionId, main);
+  assert.equal(copilot(["agent", "wingull", "postToolUse"], { ...sub, ...tool }), undefined);
+  assert.equal(copilot(["agent", "wingull", "agentStop"], { ...sub, response: "done" }), undefined);
+  const reply = copilot(["plugin", "subagentStop"], { sessionId: main, agentType: sub.agentType, parentAgentId: main, response: "done: there are some files." });
+  assert.deepEqual([reply.sessionId, reply.messages[0].kind, reply.messages[0].content], [main, "AGENT_REPLY", "done: there are some files."]);
+
+  // Another agent called through task is not saved.
+  assert.equal(copilot(["plugin", "postToolUse"], { ...sub, agentType: "soofi-xyz-team-kit:lapras", ...tool }), undefined);
+});

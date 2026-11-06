@@ -396,12 +396,20 @@ def validate_agent_memory():
     for name in memory_agents:
         if name not in source_agents:
             fail(f"{memory_path.relative_to(root)}: {name} is not an agent in agents/")
-    claude = json.loads((root / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
-    if claude.get("hooks") != "./hooks/claude.json" or not (root / "hooks" / "claude.json").is_file():
-        fail(".claude-plugin/plugin.json: hooks must be ./hooks/claude.json (agent memory)")
-    cursor = json.loads((root / ".cursor-plugin" / "plugin.json").read_text(encoding="utf-8"))
-    if cursor.get("hooks") != "./hooks/cursor.json" or not (root / "hooks" / "cursor.json").is_file():
-        fail(".cursor-plugin/plugin.json: hooks must be ./hooks/cursor.json (agent memory)")
+    for manifest, expected in [
+        (".claude-plugin/plugin.json", "./hooks/claude.json"),
+        (".cursor-plugin/plugin.json", "./hooks/cursor.json"),
+        (".codex-plugin/plugin.json", "./hooks/codex.json"),
+        ("plugin.json", "hooks/copilot.json"),
+    ]:
+        hooks = json.loads((root / manifest).read_text(encoding="utf-8")).get("hooks")
+        if hooks != expected or not (root / expected).is_file():
+            fail(f"{manifest}: hooks must be {expected} (agent memory)")
+    # Copilot main sessions name no agent, so each agent with memory carries its own hooks.
+    for name in memory_agents:
+        copilot_agent = (root / "agents-copilot" / f"{name}.agent.md").read_text(encoding="utf-8")
+        if "hooks/agent-memory/copilot.mjs\\\" agent " + name not in copilot_agent:
+            fail(f"agents-copilot/{name}.agent.md: missing agent memory hooks; run scripts/sync-copilot-agents.sh sync")
     # Claude Code, Cursor and Copilot all load hooks/hooks.json by default, each in its own format.
     if (root / "hooks" / "hooks.json").exists():
         fail("hooks/hooks.json: do not add it; point each manifest at its own hooks file")

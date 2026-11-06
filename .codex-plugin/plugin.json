@@ -18,6 +18,7 @@
     "socapital"
   ],
   "skills": "./skills/",
+  "hooks": "./hooks/codex.json",
   "interface": {
     "displayName": "Soofi XYZ",
     "shortDescription": "Build and configure Soofi products with guided workflows.",
