@@ -15,7 +15,8 @@ const asText = (value) => (typeof value === "string" ? value : JSON.stringify(va
 
 export function toMemory(event, now = Date.now()) {
   const agent = agentName(event.agent_type);
-  const base = { client: "CLAUDE_CODE", sessionId: event.session_id, turnId: event.prompt_id, cwd: event.cwd };
+  // In Amp, Claude Code runs as the signed-in Amp user; elsewhere the person comes from git.
+  const base = { client: "CLAUDE_CODE", sessionId: event.session_id, turnId: event.prompt_id, cwd: event.cwd, clientEmail: process.env.AMP_USER_EMAIL };
   const at = now;
   switch (event.hook_event_name) {
     case "UserPromptSubmit":
