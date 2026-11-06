@@ -13,7 +13,7 @@
 //   node scripts/agent-memory-release.mjs accept  --email <you> [--since <time>] [--secret <planted fake>]
 //
 // Environment: PRISM_API_KEY (or ~/.config/prism/soofi-safavi.key), MODEL_ACCOUNT_ID
-// (the Model account the extension belongs to), PRISM_DOMAIN (default
+// (optional; default: the key's Account id from GET /console/session), PRISM_DOMAIN (default
 // soofi-safavi.account.prismteam.ai). The key is never printed.
 
 import { createHash } from "node:crypto";
@@ -42,10 +42,13 @@ function key() {
   return value;
 }
 
-function account() {
-  const value = process.env.MODEL_ACCOUNT_ID;
-  if (!value) throw new Error("Set MODEL_ACCOUNT_ID to the Model account that owns the agent-memory extension");
-  return value;
+// The environment's Account id (the Model path's {account_id}), as Console's session reports it for
+// this key. MODEL_ACCOUNT_ID overrides it.
+let sessionAccountId;
+async function account() {
+  sessionAccountId ??= process.env.MODEL_ACCOUNT_ID || (await call("GET", `${BASE}/console/session`)).json?.accountId;
+  if (!sessionAccountId) throw new Error("Could not read the Account id from /console/session; set MODEL_ACCOUNT_ID");
+  return sessionAccountId;
 }
 
 async function call(method, url, { body, headers = {}, ok = [200, 201, 202] } = {}) {
@@ -103,8 +106,8 @@ async function check({ composition: path }) {
   if (release.status === 404) problems.push(`Model has no shared-base release ${base.releaseId}`);
   else if (release.json.releaseDigest !== base.releaseDigest) problems.push(`Shared-base digest differs: Model ${release.json.releaseDigest}, composition ${base.releaseDigest}`);
   if (process.env.MODEL_ACCOUNT_ID) {
-    const vocabulary = await call("GET", `${MODEL}/${account()}/vocabularies/${VOCABULARY}`, { ok: [200, 404] });
-    console.log(`Model vocabulary ${account()}/${VOCABULARY}: ${vocabulary.status === 404 ? "not created yet" : "exists"}`);
+    const vocabulary = await call("GET", `${MODEL}/${await account()}/vocabularies/${VOCABULARY}`, { ok: [200, 404] });
+    console.log(`Model vocabulary ${await account()}/${VOCABULARY}: ${vocabulary.status === 404 ? "not created yet" : "exists"}`);
   }
   if (problems.length > 0) {
     console.log("\nNot ready:");
@@ -117,7 +120,7 @@ async function check({ composition: path }) {
 
 async function submit({ composition: path }) {
   const { bytes, digest } = composition(path);
-  const accountId = account();
+  const accountId = await account();
   const vocabulary = await call("POST", `${MODEL}/${accountId}/vocabularies`, {
     headers: { "Idempotency-Key": `${VOCABULARY}-vocabulary-v1` },
     body: { vocabularyId: VOCABULARY, displayName: "Agent memory", description: "Conversations of soofi-xyz-team-kit agents: threads, turns, messages and tool calls." },
@@ -169,7 +172,7 @@ async function approve({ "change-set": changeSetId, reference }) {
   if (!changeSetId || !/^https:\/\/github\.com\/prismteam-ai\/model\/pull\/\d+/.test(reference ?? "")) {
     throw new Error("Pass --change-set <id> and --reference <https://github.com/prismteam-ai/model/pull/N of the approved PR>");
   }
-  const accountId = account();
+  const accountId = await account();
   const current = await call("GET", `${MODEL}/${accountId}/change-sets/${changeSetId}`);
   if (current.json.status !== "IN_REVIEW") throw new Error(`Change set is ${current.json.status}, not IN_REVIEW`);
   const decision = await call("POST", `${MODEL}/${accountId}/change-sets/${changeSetId}/decisions`, {
@@ -182,7 +185,7 @@ async function approve({ "change-set": changeSetId, reference }) {
 
 async function publish({ "change-set": changeSetId }) {
   if (!changeSetId) throw new Error("Pass --change-set <id>");
-  const accountId = account();
+  const accountId = await account();
   const current = await call("GET", `${MODEL}/${accountId}/change-sets/${changeSetId}`);
   const run = (await call("POST", `${MODEL}/${accountId}/change-sets/${changeSetId}/publications`, { headers: { "If-Match": current.etag }, body: { candidateDigest: current.json.candidateDigest } })).json;
   let status = run;
@@ -199,7 +202,7 @@ async function publish({ "change-set": changeSetId }) {
 }
 
 async function install({ release = "current" }) {
-  const accountId = account();
+  const accountId = await account();
   const lexicon = (await call("GET", `${MODEL}/${accountId}/vocabularies/${VOCABULARY}/releases/${release}/runtime/persist-lexicon`)).json;
   const document = { vertices: lexicon.document.vertices, edges: lexicon.document.edges };
   const active = (await call("GET", `${PERSIST}/lexicon`)).json.data;
