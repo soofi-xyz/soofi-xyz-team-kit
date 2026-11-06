@@ -82,6 +82,9 @@ jobs:
       - name: Test Oracle runtime
         run: npm test --prefix skills/use-oracle/runtime
 
+      - name: Test agent memory hooks
+        run: node --test hooks/agent-memory/test/
+
       - name: Validate plugin files
         run: scripts/validate-plugin.sh
 

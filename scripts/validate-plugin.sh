@@ -389,10 +389,29 @@ def validate_skills():
             fail(f"{child.relative_to(root)}: skill directory must contain SKILL.md")
 
 
+def validate_agent_memory():
+    memory_path = root / "hooks" / "agent-memory" / "agents.json"
+    memory_agents = json.loads(memory_path.read_text(encoding="utf-8"))["agents"]
+    source_agents = sorted(path.stem for path in (root / "agents").glob("*.md"))
+    for name in memory_agents:
+        if name not in source_agents:
+            fail(f"{memory_path.relative_to(root)}: {name} is not an agent in agents/")
+    claude = json.loads((root / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    if claude.get("hooks") != "./hooks/claude.json" or not (root / "hooks" / "claude.json").is_file():
+        fail(".claude-plugin/plugin.json: hooks must be ./hooks/claude.json (agent memory)")
+    # Claude Code, Cursor and Copilot all load hooks/hooks.json by default, each in its own format.
+    if (root / "hooks" / "hooks.json").exists():
+        fail("hooks/hooks.json: do not add it; point each manifest at its own hooks file")
+    missing = [name for name in source_agents if name not in memory_agents]
+    if missing:
+        print(f"agent memory defect: {len(missing)} of {len(source_agents)} agents have no memory: {', '.join(missing)}")
+
+
 validate_manifests()
 validate_agents()
 validate_skills()
 validate_oracle_runtime()
+validate_agent_memory()
 
 if errors:
     print("Plugin validation failed:", file=sys.stderr)

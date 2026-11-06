@@ -1,0 +1,26 @@
+{
+  "description": "Agent memory: save every message of agents listed in hooks/agent-memory/agents.json to soofi-safavi's Persist.",
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/agent-memory/claude-code.mjs\"", "timeout": 5 }] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/agent-memory/claude-code.mjs\"", "async": true, "timeout": 30 }] }
+    ],
+    "PreToolUse": [
+      { "matcher": "Agent|Task", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/agent-memory/claude-code.mjs\"", "async": true, "timeout": 30 }] }
+    ],
+    "PostToolUse": [
+      { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/agent-memory/claude-code.mjs\"", "async": true, "timeout": 30 }] }
+    ],
+    "PostToolUseFailure": [
+      { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/agent-memory/claude-code.mjs\"", "async": true, "timeout": 30 }] }
+    ],
+    "Stop": [
+      { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/agent-memory/claude-code.mjs\"", "async": true, "timeout": 30 }] }
+    ],
+    "SubagentStop": [
+      { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/agent-memory/claude-code.mjs\"", "async": true, "timeout": 30 }] }
+    ]
+  }
+}
