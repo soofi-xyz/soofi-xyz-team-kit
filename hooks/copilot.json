@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "hooks": {
+    "userPromptSubmitted": [{ "type": "command", "command": "node \"$PLUGIN_ROOT/hooks/agent-memory/copilot.mjs\" plugin userPromptSubmitted", "timeoutSec": 10 }],
+    "postToolUse": [{ "type": "command", "command": "node \"$PLUGIN_ROOT/hooks/agent-memory/copilot.mjs\" plugin postToolUse", "timeoutSec": 10 }],
+    "postToolUseFailure": [{ "type": "command", "command": "node \"$PLUGIN_ROOT/hooks/agent-memory/copilot.mjs\" plugin postToolUseFailure", "timeoutSec": 10 }],
+    "subagentStop": [{ "type": "command", "command": "node \"$PLUGIN_ROOT/hooks/agent-memory/copilot.mjs\" plugin subagentStop", "timeoutSec": 10 }]
+  }
+}

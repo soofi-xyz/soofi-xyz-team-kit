@@ -1,0 +1,4 @@
+{
+  "description": "Agents whose sessions are saved to soofi-safavi's Persist graph (agent-memory Model extension). Every agent should be listed; scripts/check-agent-memory.py reports the ones that are not.",
+  "agents": ["wingull"]
+}

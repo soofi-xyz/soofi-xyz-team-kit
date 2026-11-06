@@ -272,13 +272,9 @@ def validate_manifests():
     source = codex_entry.get("source", {})
     if source.get("source") != "local":
         fail('.agents/plugins/marketplace.json: source.source must be "local"')
-    if source.get("path") != "./plugins/soofi-xyz-team-kit":
-        fail('.agents/plugins/marketplace.json: source.path must be "./plugins/soofi-xyz-team-kit"')
-    codex_plugin_root = root / "plugins" / "soofi-xyz-team-kit"
-    if not (codex_plugin_root / ".codex-plugin" / "plugin.json").is_file():
-        fail("plugins/soofi-xyz-team-kit/.codex-plugin/plugin.json: missing Codex marketplace plugin manifest")
-    if not (codex_plugin_root / "skills").is_dir():
-        fail("plugins/soofi-xyz-team-kit/skills: missing Codex marketplace plugin skills directory")
+    # Codex copies only real files into its plugin cache, so the plugin is the repository root.
+    if source.get("path") != "./":
+        fail('.agents/plugins/marketplace.json: source.path must be "./" (Codex does not copy symlinked folders)')
 
     policy = codex_entry.get("policy", {})
     if policy.get("installation") not in {"NOT_AVAILABLE", "AVAILABLE", "INSTALLED_BY_DEFAULT"}:
@@ -389,10 +385,40 @@ def validate_skills():
             fail(f"{child.relative_to(root)}: skill directory must contain SKILL.md")
 
 
+def validate_agent_memory():
+    memory_path = root / "hooks" / "agent-memory" / "agents.json"
+    memory_agents = json.loads(memory_path.read_text(encoding="utf-8"))["agents"]
+    source_agents = sorted(path.stem for path in (root / "agents").glob("*.md"))
+    for name in memory_agents:
+        if name not in source_agents:
+            fail(f"{memory_path.relative_to(root)}: {name} is not an agent in agents/")
+    for manifest, expected in [
+        (".claude-plugin/plugin.json", "./hooks/claude.json"),
+        (".cursor-plugin/plugin.json", "./hooks/cursor.json"),
+        (".codex-plugin/plugin.json", "./hooks/codex.json"),
+        ("plugin.json", "hooks/copilot.json"),
+    ]:
+        hooks = json.loads((root / manifest).read_text(encoding="utf-8")).get("hooks")
+        if hooks != expected or not (root / expected).is_file():
+            fail(f"{manifest}: hooks must be {expected} (agent memory)")
+    # Copilot main sessions name no agent, so each agent with memory carries its own hooks.
+    for name in memory_agents:
+        copilot_agent = (root / "agents-copilot" / f"{name}.agent.md").read_text(encoding="utf-8")
+        if "hooks/agent-memory/copilot.mjs\\\" agent " + name not in copilot_agent:
+            fail(f"agents-copilot/{name}.agent.md: missing agent memory hooks; run scripts/sync-copilot-agents.sh sync")
+    # Claude Code, Cursor and Copilot all load hooks/hooks.json by default, each in its own format.
+    if (root / "hooks" / "hooks.json").exists():
+        fail("hooks/hooks.json: do not add it; point each manifest at its own hooks file")
+    missing = [name for name in source_agents if name not in memory_agents]
+    if missing:
+        print(f"agent memory defect: {len(missing)} of {len(source_agents)} agents have no memory: {', '.join(missing)}")
+
+
 validate_manifests()
 validate_agents()
 validate_skills()
 validate_oracle_runtime()
+validate_agent_memory()
 
 if errors:
     print("Plugin validation failed:", file=sys.stderr)

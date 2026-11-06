@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeSubmitPrompt": [{ "command": "node \"${CURSOR_PLUGIN_ROOT}/hooks/agent-memory/cursor.mjs\"", "timeout": 5 }],
+    "preToolUse": [{ "command": "node \"${CURSOR_PLUGIN_ROOT}/hooks/agent-memory/cursor.mjs\"", "timeout": 5 }],
+    "subagentStart": [{ "command": "node \"${CURSOR_PLUGIN_ROOT}/hooks/agent-memory/cursor.mjs\"", "timeout": 5 }],
+    "postToolUse": [{ "command": "node \"${CURSOR_PLUGIN_ROOT}/hooks/agent-memory/cursor.mjs\"", "timeout": 5 }],
+    "postToolUseFailure": [{ "command": "node \"${CURSOR_PLUGIN_ROOT}/hooks/agent-memory/cursor.mjs\"", "timeout": 5 }],
+    "subagentStop": [{ "command": "node \"${CURSOR_PLUGIN_ROOT}/hooks/agent-memory/cursor.mjs\"", "timeout": 5 }]
+  }
+}

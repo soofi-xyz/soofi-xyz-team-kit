@@ -78,9 +78,27 @@ def read_agent(path: Path) -> str:
         raise SystemExit(f"{path.relative_to(root)}: frontmatter must include description")
     return text if text.endswith("\n") else text + "\n"
 
+import json
+
+# Agents with memory carry their own hooks: Copilot runs an agent's frontmatter hooks only while
+# that agent is selected, and main-session payloads do not name the agent.
+memory_agents = set(json.loads((root / "hooks" / "agent-memory" / "agents.json").read_text(encoding="utf-8"))["agents"])
+MEMORY_EVENTS = ["userPromptSubmitted", "postToolUse", "postToolUseFailure", "agentStop"]
+
+def with_memory_hooks(name: str, text: str) -> str:
+    lines = ["hooks:"]
+    for event in MEMORY_EVENTS:
+        command = f'node \\"$PLUGIN_ROOT/hooks/agent-memory/copilot.mjs\\" agent {name} {event}'
+        lines += [f"  {event}:", "    - type: command", f'      command: "{command}"', "      timeoutSec: 10"]
+    end = text.find("\n---\n", 4)
+    return text[:end] + "\n" + "\n".join(lines) + text[end:]
+
 expected = {}
 for source in sorted(source_dir.glob("*.md")):
-    expected[target_dir / f"{source.stem}.agent.md"] = read_agent(source)
+    content = read_agent(source)
+    if source.stem in memory_agents:
+        content = with_memory_hooks(source.stem, content)
+    expected[target_dir / f"{source.stem}.agent.md"] = content
 
 existing = set(target_dir.glob("*.agent.md"))
 expected_paths = set(expected)

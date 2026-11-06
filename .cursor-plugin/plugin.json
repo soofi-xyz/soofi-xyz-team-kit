@@ -1,7 +1,7 @@
 {
   "name": "soofi-xyz-team-kit",
   "description": "Product builders and configurers with guided feature increments for Documentation, Account, Console, Environment, Build, Deploy, Model, Marketplace, Transform, Persist, Rule, Connect, System, Report, Schedule and Inference.",
-  "version": "0.128.0",
+  "version": "0.129.0",
   "author": {
     "name": "Soofi XYZ"
   },
@@ -19,5 +19,6 @@
     "elephant",
     "mcp"
   ],
-  "mcpServers": "mcp.json"
+  "mcpServers": "mcp.json",
+  "hooks": "./hooks/cursor.json"
 }

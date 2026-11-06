@@ -83,7 +83,7 @@ Follow these conventions whenever you touch files in this repo.
 - Cursor auto-discovers `agents/`, `skills/`, `rules/`, `commands/`, `hooks/hooks.json`, and `mcp.json` — only set explicit component paths in `.cursor-plugin/plugin.json` to override discovery.
 - Copilot reads component paths from the root `plugin.json`; keep `"agents": "agents-copilot/"` and `"skills": "skills/"` unless the repository layout changes deliberately.
 - Codex reads plugin metadata from `.codex-plugin/plugin.json`; keep `"skills": "./skills/"` unless the repository layout changes deliberately.
-- Codex repo marketplace points at `plugins/soofi-xyz-team-kit/`, whose `.codex-plugin` and `skills` entries are symlinks back to the canonical root manifest and `skills/` tree. Do not edit through the nested symlink path.
+- Codex repo marketplace points at the repository root (`"path": "./"`). Codex copies only real files into its plugin cache and skips symlinked folders, so a nested plugin folder of symlinks installs without `skills/` or `hooks/`.
 - Codex custom agents are project-scoped TOML files in `.codex/agents/` generated from `agents/`.
 - Claude Code reads `.claude-plugin/plugin.json`; keep `"skills": "./skills/"`, `"mcpServers": "./mcp.json"`, and let `scripts/sync-claude-agents.sh` own the `agents` array.
 
@@ -138,8 +138,6 @@ soofi-xyz-plugin-kit/
 ├── agents/                           # Featured product agents and retained specialists
 ├── agents-copilot/                   # Materialized `.agent.md` copies for Copilot CLI
 ├── agents-claude/                    # Materialized `.md` copies for Claude Code (model stripped)
-├── plugins/
-│   └── soofi-xyz-team-kit/           # Codex marketplace plugin folder with symlinked manifest and skills
 ├── skills/                           # Agent skills, one directory per skill
 ├── scripts/                          # Local validation and maintenance helpers
 ├── docs/                             # User-facing usage guides

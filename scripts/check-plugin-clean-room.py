@@ -34,8 +34,7 @@ Gates:
      fixture size limit (`FIXTURE_SIZE_LIMIT_BYTES`; see
      `skills/use-oracle/reference/self-contained-ingestion.md`), except the
      npm lockfile.
-  5. No broken symlink anywhere in the tracked tree (for example the Codex
-     marketplace plugin symlinks under `plugins/soofi-xyz-team-kit/`).
+  5. No broken symlink anywhere in the tracked tree.
 """
 
 from __future__ import annotations
