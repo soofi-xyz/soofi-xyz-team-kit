@@ -87,8 +87,9 @@ titles plus a permalink. On a re-rewrite the existing review subtask is updated 
 notes, and assignee — never stacked; if it was deleted in Asana it is recreated. It is skipped
 only when no assignee resolves or the assignee is the agent user itself.
 
-Only tasks of Asana custom task type **Story** are rewritten — milestones, approvals, and plain
-tasks are skipped with `not-story-type`. Override the required type with
+An @mention works on any task or subtask, whatever its type (Story, Milestone, plain task, or
+subtask); only approvals are skipped with `not-story-type`. Auto-triage and MCP-created stories
+still need custom task type **Story** (or a milestone). Override that type with
 `STORY_AGENT_REQUIRED_TYPE` (set it to `""` to disable the filter in workspaces without custom
 task types, e.g. personal sandboxes).
 
