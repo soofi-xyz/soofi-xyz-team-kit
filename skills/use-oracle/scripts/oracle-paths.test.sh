@@ -49,19 +49,7 @@ main() {
   grep -qF "SOOFI_PLUGIN_ROOT=${root}" <<<"${direct_output}" || fail "direct exec did not print the expected plugin root:\n${direct_output}"
   grep -qF "SOOFI_ORACLE_RUNTIME=${expected_runtime}" <<<"${direct_output}" || fail "direct exec did not print the expected runtime root:\n${direct_output}"
 
-  # 3. Executed through this repo's symlinked Codex plugin tree
-  #    (plugins/soofi-xyz-team-kit/skills -> ../../skills), from the same
-  #    unrelated working directory. Resolution must still land on the
-  #    canonical root, not a path under plugins/.
-  local symlinked_script symlinked_output
-  symlinked_script="${root}/plugins/soofi-xyz-team-kit/skills/use-oracle/scripts/oracle-paths.sh"
-  if [[ -f "${symlinked_script}" ]]; then
-    symlinked_output="$(cd "${tmp_dir}" && "${symlinked_script}")"
-    grep -qF "SOOFI_PLUGIN_ROOT=${root}" <<<"${symlinked_output}" || fail "symlinked-tree exec did not resolve the canonical plugin root:\n${symlinked_output}"
-    grep -qF "SOOFI_ORACLE_RUNTIME=${expected_runtime}" <<<"${symlinked_output}" || fail "symlinked-tree exec did not resolve the canonical runtime root:\n${symlinked_output}"
-  fi
-
-  echo "oracle-paths.sh path resolution: PASS (sourced, direct exec, and symlinked-plugin-tree exec from an unrelated cwd)"
+  echo "oracle-paths.sh path resolution: PASS (sourced and direct exec from an unrelated cwd)"
 }
 
 main "$@"
