@@ -25,6 +25,7 @@ Follow these conventions whenever you touch files in this repo.
 - Each source agent MUST have a matching materialized Codex file at `.codex/agents/<name>.toml`.
 - Each source agent MUST have a matching materialized Claude Code file at `agents-claude/<name>.md`. The generator drops `model` (source values are Cursor model ids, and Claude Code sends unknown ids to the API verbatim) and turns `readonly: true` into `disallowedTools`.
 - After adding, removing, renaming, or editing agents, run `scripts/sync-copilot-agents.sh sync`, `scripts/sync-codex-agents.sh sync`, and `scripts/sync-claude-agents.sh sync` to refresh generated targets. The Claude sync also rewrites the `agents` file list in `.claude-plugin/plugin.json`, because Claude Code rejects directory paths in that field.
+- After adding, renaming, or reassigning an agent or product, refresh Kirlia's agent map: run `npm run sync:architecture` in `soofi-xyz/kirlia-agent` and open a PR there. Kirlia only names agents in that map when it writes stories and tasks.
 - Add a row to the Agents table in `README.md` when adding or renaming a featured product agent. Keep retained specialists installed without adding them to that table.
 
 ## Product ownership and guided work
