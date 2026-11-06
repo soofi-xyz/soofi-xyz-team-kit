@@ -1,0 +1,47 @@
+{
+  "saved_queries": [
+    {
+      "name": "agent_people",
+      "title": "People using an agent",
+      "description": "Everyone who has talked to an agent, with how many threads each started, most first. Use the email with agent_threads_for_person.",
+      "gremlin": "g.V().hasLabel('agent').has('agent_name', $agent).in('agent_thread_with_agent').in('email_started_agent_thread').groupCount().by('email_address').unfold().order().by(values, desc)",
+      "parameters": [{ "name": "agent", "type": "string", "description": "Agent name, such as wingull." }]
+    },
+    {
+      "name": "agent_threads_for_person",
+      "title": "Agent threads of a person",
+      "description": "One person's agent threads, newest first: agent, tool, plugin versions, first and last message time, and counts of turns, messages and failed tool calls. Read one with agent_thread_transcript.",
+      "gremlin": "g.V().hasLabel('email').has('email_address', $email).out('email_started_agent_thread').project('thread', 'agent', 'client', 'plugin_versions', 'first_message_at', 'last_message_at', 'turns', 'messages', 'failed_tools').by('thread_identifier').by(__.out('agent_thread_with_agent').values('agent_name').fold()).by('client').by(__.out('agent_thread_ran_agent_prompt_version').values('plugin_version').fold()).by(__.out('agent_thread_has_agent_message').values('occurred_at').min()).by(__.out('agent_thread_has_agent_message').values('occurred_at').max()).by(__.out('agent_thread_has_agent_turn').count()).by(__.out('agent_thread_has_agent_message').count()).by(__.out('agent_thread_has_agent_message').has('tool_failed', true).count()).order().by(select('last_message_at'), desc)",
+      "parameters": [{ "name": "email", "type": "string", "description": "The person's email address, as their git or Cursor account reports it." }]
+    },
+    {
+      "name": "agent_thread_transcript",
+      "title": "Agent thread transcript",
+      "description": "Every message of one thread in time order: what the person typed, what the agent replied, and each tool call and result (failed ones marked). Pages with offset.",
+      "gremlin": "g.V().hasLabel('agent_thread').has('thread_identifier', $thread).out('agent_thread_has_agent_message').order().by('occurred_at').by('message_kind').skip($offset).project('at', 'kind', 'tool', 'tool_failed', 'content').by('occurred_at').by('message_kind').by(__.coalesce(__.values('tool_name'), __.constant(''))).by(__.coalesce(__.values('tool_failed'), __.constant(false))).by('content')",
+      "parameters": [
+        { "name": "thread", "type": "string", "description": "thread_identifier from agent_threads_for_person or agent_stuck_turns." },
+        { "name": "offset", "type": "integer", "required": false, "description": "Messages to skip, for the next page." }
+      ],
+      "default_limit": 200
+    },
+    {
+      "name": "agent_stuck_turns",
+      "title": "Turns where an agent got stuck",
+      "description": "Turns of an agent that never got a reply, had a failed tool call, or (when min_tool_calls is above 0) needed at least that many tool calls; newest first, with who asked and what they asked.",
+      "gremlin": "g.V().hasLabel('agent').has('agent_name', $agent).in('agent_thread_with_agent').as('thread').out('agent_thread_has_agent_turn').project('thread', 'person', 'started_at', 'asked', 'tool_calls', 'failed_tools', 'replies').by(__.select('thread').values('thread_identifier')).by(__.select('thread').in('email_started_agent_thread').values('email_address').fold()).by(__.out('agent_turn_has_agent_message').values('occurred_at').min()).by(__.out('agent_turn_has_agent_message').has('message_kind', within('USER_PROMPT', 'AGENT_REQUEST')).values('content').substring(0, 300).fold()).by(__.out('agent_turn_has_agent_message').has('message_kind', 'TOOL_CALL').count()).by(__.out('agent_turn_has_agent_message').has('tool_failed', true).count()).by(__.out('agent_turn_has_agent_message').has('message_kind', 'AGENT_REPLY').count()).where(__.or(__.select('replies').is(0), __.select('failed_tools').is(gt(0)), __.and(__.constant($min_tool_calls).is(gt(0)), __.select('tool_calls').is(gte($min_tool_calls))))).order().by(select('started_at'), desc)",
+      "parameters": [
+        { "name": "agent", "type": "string", "description": "Agent name, such as wingull." },
+        { "name": "min_tool_calls", "type": "integer", "required": false, "description": "Also list turns with at least this many tool calls; 0 or left out turns this test off." }
+      ],
+      "default_limit": 100
+    },
+    {
+      "name": "agent_prompt_versions",
+      "title": "Compare an agent's prompt versions",
+      "description": "Each prompt version of an agent with its threads, turns, tool calls, failed tool calls and turns without a reply, newest use first, to compare a new prompt with the one before it.",
+      "gremlin": "g.V().hasLabel('agent').has('agent_name', $agent).out('agent_has_agent_prompt_version').project('plugin_version', 'prompt_sha256', 'threads', 'turns', 'tool_calls', 'failed_tools', 'turns_without_reply', 'first_used_at', 'last_used_at').by('plugin_version').by('prompt_sha256').by(__.in('agent_thread_ran_agent_prompt_version').count()).by(__.in('agent_thread_ran_agent_prompt_version').out('agent_thread_has_agent_turn').count()).by(__.in('agent_thread_ran_agent_prompt_version').out('agent_thread_has_agent_message').has('message_kind', 'TOOL_CALL').count()).by(__.in('agent_thread_ran_agent_prompt_version').out('agent_thread_has_agent_message').has('tool_failed', true).count()).by(__.in('agent_thread_ran_agent_prompt_version').out('agent_thread_has_agent_turn').not(__.out('agent_turn_has_agent_message').has('message_kind', 'AGENT_REPLY')).count()).by(__.coalesce(__.in('agent_thread_ran_agent_prompt_version').out('agent_thread_has_agent_message').values('occurred_at').min(), __.constant(''))).by(__.coalesce(__.in('agent_thread_ran_agent_prompt_version').out('agent_thread_has_agent_message').values('occurred_at').max(), __.constant(''))).order().by(select('last_used_at'), desc)",
+      "parameters": [{ "name": "agent", "type": "string", "description": "Agent name, such as wingull." }]
+    }
+  ]
+}

@@ -40,8 +40,9 @@ export function toMemory(event, now = Date.now()) {
     case "PostToolUseFailure": {
       if (!hasMemory(agent)) return undefined;
       const call = { kind: "TOOL_CALL", toolName: event.tool_name, toolCallId: event.tool_use_id, content: asText(event.tool_input), occurredAt: at - (event.duration_ms ?? 0) };
-      const output = event.hook_event_name === "PostToolUse" ? event.tool_response : { error: event.error };
-      const result = { kind: "TOOL_RESULT", toolName: event.tool_name, toolCallId: event.tool_use_id, content: asText(output), occurredAt: at };
+      const failed = event.hook_event_name === "PostToolUseFailure";
+      const output = failed ? { error: event.error } : event.tool_response;
+      const result = { kind: "TOOL_RESULT", toolName: event.tool_name, toolCallId: event.tool_use_id, content: asText(output), occurredAt: at, failed };
       return { ...base, agentName: agent, messages: [call, result] };
     }
     default:

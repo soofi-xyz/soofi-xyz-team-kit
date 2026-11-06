@@ -92,7 +92,8 @@ export function toMemory(event, { dir = routesDir(), now = Date.now() } = {}) {
       // A tool call made inside the subagent.
       const route = readRoute(dir, event.parent_tool_call_id);
       if (!route) return undefined;
-      const output = event.hook_event_name === "postToolUse" ? event.tool_output : { error: event.error_message ?? event.error };
+      const failed = event.hook_event_name === "postToolUseFailure";
+      const output = failed ? { error: event.error_message ?? event.error } : event.tool_output;
       return {
         ...base,
         sessionId: route.sessionId,
@@ -101,7 +102,7 @@ export function toMemory(event, { dir = routesDir(), now = Date.now() } = {}) {
         agentName: route.agentName,
         messages: [
           { kind: "TOOL_CALL", toolName: event.tool_name, toolCallId: event.tool_use_id, content: asText(event.tool_input), occurredAt: now - (event.duration ?? 0) },
-          { kind: "TOOL_RESULT", toolName: event.tool_name, toolCallId: event.tool_use_id, content: asText(output), occurredAt: now },
+          { kind: "TOOL_RESULT", toolName: event.tool_name, toolCallId: event.tool_use_id, content: asText(output), occurredAt: now, failed },
         ],
       };
     }

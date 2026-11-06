@@ -9,6 +9,7 @@
 //   node scripts/agent-memory-release.mjs approve --change-set <id> --reference <approved PR URL>
 //   node scripts/agent-memory-release.mjs publish --change-set <id>
 //   node scripts/agent-memory-release.mjs install [--release <id>]   (default: current)
+//   node scripts/agent-memory-release.mjs queries   (educator saved queries for the Persist MCP server)
 //
 // Environment: PRISM_API_KEY (or ~/.config/prism/soofi-safavi.key), MODEL_ACCOUNT_ID
 // (the Model account the extension belongs to), PRISM_DOMAIN (default
@@ -212,10 +213,28 @@ async function install({ release = "current" }) {
   console.log(`Read back ${got.size} labels (${[...got].sort().join(", ")}). Readers pick it up within Persist's 300-second cache.`);
 }
 
-const commands = { check, submit, approve, publish, install };
+// Adds the educator saved queries to Persist's MCP configuration (replacing ours by name, keeping
+// every other saved query and setting), so each shows up as a query_<name> tool.
+async function queries() {
+  const ours = JSON.parse(readFileSync(new URL("../hooks/agent-memory/educator-queries.json", import.meta.url), "utf8")).saved_queries;
+  const names = new Set(ours.map((query) => query.name));
+  const active = (await call("GET", `${PERSIST}/mcp/configuration`)).json.data;
+  const kept = (active.configuration.saved_queries ?? []).filter((query) => !names.has(query.name));
+  console.log(`Persist MCP configuration: source ${active.source}${active.version ? `, version ${active.version}` : ""}; keeping ${kept.length} other saved quer${kept.length === 1 ? "y" : "ies"}, adding ${[...names].join(", ")}`);
+  const result = (await call("PUT", `${PERSIST}/mcp/configuration`, {
+    headers: active.version ? { "If-Match": `"${active.version}"` } : {},
+    body: { ...active.configuration, saved_queries: [...kept, ...ours] },
+  })).json.data;
+  const readBack = (await call("GET", `${PERSIST}/mcp/configuration`)).json.data;
+  const missing = [...names].filter((name) => !readBack.configuration.saved_queries?.some((query) => query.name === name));
+  if (missing.length > 0) throw new Error(`Read-back is missing: ${missing.join(", ")}`);
+  console.log(`Applied version ${result.version} (changed ${result.changed}). The Persist MCP server lists ${[...names].map((name) => `query_${name}`).join(", ")} within 30 seconds.`);
+}
+
+const commands = { check, submit, approve, publish, install, queries };
 const command = commands[process.argv[2]];
 if (!command) {
-  console.log(readFileSync(new URL(import.meta.url), "utf8").split("\n").slice(1, 17).join("\n"));
+  console.log(readFileSync(new URL(import.meta.url), "utf8").split("\n").slice(1, 18).join("\n"));
 } else {
   command(args()).catch((error) => {
     console.error(error.message);

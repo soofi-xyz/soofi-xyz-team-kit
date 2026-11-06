@@ -192,6 +192,12 @@ test("maps Claude Code events of wingull only", () => {
   const tool = toMemory({ ...base, hook_event_name: "PostToolUse", agent_type: "wingull", tool_name: "Bash", tool_use_id: "tu", tool_input: { command: "ls" }, tool_response: { stdout: "a" }, duration_ms: 4 }, 10);
   assert.deepEqual(tool.messages.map((m) => [m.kind, m.content, m.occurredAt]), [["TOOL_CALL", '{"command":"ls"}', 6], ["TOOL_RESULT", '{"stdout":"a"}', 10]]);
 
+  // A failed tool is saved as tool_failed true, a succeeded one as false; the call itself carries neither.
+  const failure = toMemory({ ...base, hook_event_name: "PostToolUseFailure", agent_type: "wingull", tool_name: "Bash", tool_use_id: "tu-2", tool_input: { command: "x" }, error: "exit 1" }, 10);
+  const failed = (event) => vertices(buildGraph({ client: "CLAUDE_CODE", version: VERSION, ...event }), "agent_message").map((m) => prop(m, "tool_failed"));
+  assert.deepEqual(failed(failure), [undefined, true]);
+  assert.deepEqual(failed(tool), [undefined, false]);
+
   const reply = toMemory({ ...base, hook_event_name: "SubagentStop", agent_type: "soofi-xyz-team-kit:wingull", last_assistant_message: "configured" });
   assert.equal(reply.messages[0].kind, "AGENT_REPLY");
 });
@@ -219,6 +225,9 @@ test("maps a Cursor /wingull session as the probe recorded it, and ignores other
   assert.equal(tool.sessionId, parent);
   assert.equal(tool.turnId, turn);
   assert.deepEqual(tool.messages.map((m) => [m.kind, m.content, m.occurredAt]), [["TOOL_CALL", '{"command":"ls"}', 960], ["TOOL_RESULT", "a\nb", 1_000]]);
+  assert.equal(tool.messages[1].failed, false);
+  const failure = run({ hook_event_name: "postToolUseFailure", conversation_id: child, parent_tool_call_id: task, tool_name: "Shell", tool_use_id: "t-2", tool_input: { command: "x" }, error_message: "exit 1" });
+  assert.deepEqual([failure.messages[1].failed, failure.messages[1].content], [true, '{"error":"exit 1"}']);
 
   const reply = run({ hook_event_name: "postToolUse", conversation_id: parent, generation_id: turn, tool_name: "Task", tool_use_id: task, tool_input: { subagent_type: "wingull", prompt: "count files" }, tool_output: "There are 3 files." });
   assert.deepEqual([reply.messages[0].kind, reply.messages[0].content, reply.turnId], ["AGENT_REPLY", "There are 3 files.", turn]);
