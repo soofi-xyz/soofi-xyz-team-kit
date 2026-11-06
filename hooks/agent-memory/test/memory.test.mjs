@@ -194,3 +194,37 @@ test("maps Claude Code events of wingull only", () => {
   const reply = toMemory({ ...base, hook_event_name: "SubagentStop", agent_type: "soofi-xyz-team-kit:wingull", last_assistant_message: "configured" });
   assert.equal(reply.messages[0].kind, "AGENT_REPLY");
 });
+
+test("maps a Cursor /wingull session as the probe recorded it, and ignores other agents", async () => {
+  const { toMemory: cursor } = await import("../cursor.mjs");
+  const dir = mkdtempSync(join(tmpdir(), "cursor-routes-"));
+  const parent = "c19f639e-6023-4c66-a405-0cc19c0cb71d";
+  const child = "9b06fa73-6b5b-4e9d-81e1-a32a52015267";
+  const task = "toolu_01S8DeEvLHNdMSGHftMXk8QT";
+  const common = { user_email: "alex@example.com", workspace_roots: ["/w"] };
+  const run = (event) => cursor({ ...common, ...event }, { dir, now: 1_000 });
+
+  const prompt = run({ hook_event_name: "beforeSubmitPrompt", conversation_id: parent, prompt: "/wingull List the files" });
+  assert.deepEqual([prompt.agentName, prompt.sessionId, prompt.messages[0].kind, prompt.clientEmail], ["wingull", parent, "USER_PROMPT", "alex@example.com"]);
+
+  const request = run({ hook_event_name: "preToolUse", conversation_id: parent, tool_name: "Task", tool_use_id: task, tool_input: { subagent_type: "wingull", prompt: "count files" } });
+  assert.deepEqual([request.messages[0].kind, request.messages[0].content, request.callerAgentName], ["AGENT_REQUEST", "count files", "cursor-agent"]);
+  assert.equal(run({ hook_event_name: "subagentStart", conversation_id: parent, parent_conversation_id: parent, subagent_type: "wingull", tool_call_id: task }), undefined);
+
+  // Wingull's own tool call: child conversation, no agent name, only parent_tool_call_id.
+  const tool = run({ hook_event_name: "postToolUse", conversation_id: child, parent_agent_id: parent, parent_tool_call_id: task, tool_name: "Shell", tool_use_id: "t-1", tool_input: { command: "ls" }, tool_output: "a\nb", duration: 40 });
+  assert.equal(tool.sessionId, parent);
+  assert.deepEqual(tool.messages.map((m) => [m.kind, m.content, m.occurredAt]), [["TOOL_CALL", '{"command":"ls"}', 960], ["TOOL_RESULT", "a\nb", 1_000]]);
+
+  const reply = run({ hook_event_name: "postToolUse", conversation_id: parent, tool_name: "Task", tool_use_id: task, tool_input: { subagent_type: "wingull", prompt: "count files" }, tool_output: "There are 3 files." });
+  assert.deepEqual([reply.messages[0].kind, reply.messages[0].content], ["AGENT_REPLY", "There are 3 files."]);
+
+  run({ hook_event_name: "subagentStop", conversation_id: parent, subagent_type: "wingull", subagent_id: task, tool_call_id: task });
+  assert.equal(run({ hook_event_name: "postToolUse", conversation_id: child, parent_tool_call_id: task, tool_name: "Shell", tool_input: {}, tool_output: "late" }), undefined);
+
+  // The comparison chat: no slash command, no Task for an agent with memory.
+  assert.equal(run({ hook_event_name: "beforeSubmitPrompt", conversation_id: "x", prompt: "List the files" }), undefined);
+  assert.equal(run({ hook_event_name: "postToolUse", conversation_id: "x", tool_name: "Grep", tool_input: {}, tool_output: "f" }), undefined);
+  assert.equal(run({ hook_event_name: "preToolUse", conversation_id: "x", tool_name: "Task", tool_use_id: "t-9", tool_input: { subagent_type: "lapras", prompt: "p" } }), undefined);
+  assert.equal(run({ hook_event_name: "postToolUse", conversation_id: "y", parent_tool_call_id: "t-9", tool_name: "Shell", tool_input: {}, tool_output: "f" }), undefined);
+});

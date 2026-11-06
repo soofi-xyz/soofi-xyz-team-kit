@@ -5,10 +5,10 @@
 
 import { createHash, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, rmdirSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, rmdirSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { knownSecretValues, redact } from "./redact.mjs";
 
@@ -281,4 +281,13 @@ export async function record(context, { env = process.env, root = PLUGIN_ROOT, s
     warnings.push(`agent memory: not saved: ${error?.message ?? error}`);
     return { recorded: false, warnings };
   }
+}
+
+// Run directly with a memory context on stdin (used by adapters that must not
+// wait for the network, such as Cursor's synchronous hooks).
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
+  let input = "";
+  for await (const chunk of process.stdin) input += chunk;
+  const { warnings } = await record(JSON.parse(input));
+  for (const warning of warnings) process.stderr.write(`${warning}\n`);
 }

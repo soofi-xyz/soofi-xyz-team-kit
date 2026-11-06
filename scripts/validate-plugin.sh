@@ -399,6 +399,9 @@ def validate_agent_memory():
     claude = json.loads((root / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
     if claude.get("hooks") != "./hooks/claude.json" or not (root / "hooks" / "claude.json").is_file():
         fail(".claude-plugin/plugin.json: hooks must be ./hooks/claude.json (agent memory)")
+    cursor = json.loads((root / ".cursor-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    if cursor.get("hooks") != "./hooks/cursor.json" or not (root / "hooks" / "cursor.json").is_file():
+        fail(".cursor-plugin/plugin.json: hooks must be ./hooks/cursor.json (agent memory)")
     # Claude Code, Cursor and Copilot all load hooks/hooks.json by default, each in its own format.
     if (root / "hooks" / "hooks.json").exists():
         fail("hooks/hooks.json: do not add it; point each manifest at its own hooks file")

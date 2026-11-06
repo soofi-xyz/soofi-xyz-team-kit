@@ -19,5 +19,6 @@
     "elephant",
     "mcp"
   ],
-  "mcpServers": "mcp.json"
+  "mcpServers": "mcp.json",
+  "hooks": "./hooks/cursor.json"
 }
