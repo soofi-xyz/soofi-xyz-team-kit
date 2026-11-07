@@ -68,20 +68,17 @@ test("builds the same graph for the same message, so a retry cannot duplicate", 
   assert.notEqual(prop(vertices(other, "agent_message")[0], "message_identifier"), prop(vertices(buildGraph(context), "agent_message")[0], "message_identifier"));
 });
 
-test("finds the person without saving a cloud agent's bot account", async () => {
+test("finds the person: client account, then AGENT_MEMORY_EMAIL or CURSOR_USER_EMAIL, then git", async () => {
   const { personEmail } = await import("../memory.mjs");
   const { execFileSync } = await import("node:child_process");
-  // A Cursor Cloud VM: git is the bot account and Cursor passes no user email.
+  // A Cursor Cloud VM: git is the Cloud agent's account and Cursor passes no user email.
   const repo = mkdtempSync(join(tmpdir(), "person-"));
   execFileSync("git", ["init", "-q", repo]);
   execFileSync("git", ["-C", repo, "config", "user.email", "cursoragent@cursor.com"]);
-  assert.equal(personEmail(undefined, repo, {}), undefined);
+  assert.deepEqual(personEmail(undefined, repo, {}), { email: "cursoragent@cursor.com", source: "GIT_CONFIG" });
   assert.deepEqual(personEmail(undefined, repo, { AGENT_MEMORY_EMAIL: " Saman@Example.com " }), { email: "saman@example.com", source: "CLIENT_ACCOUNT" });
   assert.deepEqual(personEmail(undefined, repo, { CURSOR_USER_EMAIL: "ana@example.com" }), { email: "ana@example.com", source: "CLIENT_ACCOUNT" });
-  // The signed-in account wins over the setting; a person's own git email is still used.
   assert.equal(personEmail("ana@example.com", repo, { AGENT_MEMORY_EMAIL: "bo@example.com" }).email, "ana@example.com");
-  execFileSync("git", ["-C", repo, "config", "user.email", "bo@example.com"]);
-  assert.deepEqual(personEmail(undefined, repo, {}), { email: "bo@example.com", source: "GIT_CONFIG" });
 });
 
 test("keeps thread, agent and email vertices stable and records the person", () => {

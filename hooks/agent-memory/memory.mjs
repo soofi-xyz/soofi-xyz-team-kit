@@ -50,14 +50,11 @@ export function promptVersion(client, agentName, root = PLUGIN_ROOT) {
   };
 }
 
-// Accounts that cloud agents commit as; they never identify the person.
-const AGENT_EMAILS = new Set(["cursoragent@cursor.com", "amp@ampcode.com"]);
-
 // The person, in order: the client's signed-in account, an AGENT_MEMORY_EMAIL the person or
-// their cloud environment set (Cursor Cloud Agents pass no user email), Cursor's
-// CURSOR_USER_EMAIL, then git. With none, the thread is saved without a person.
+// their cloud environment set, Cursor's CURSOR_USER_EMAIL, then git. Cursor Cloud Agents pass
+// no user email, so their threads record the Cloud agent's git account (cursoragent@cursor.com).
 export function personEmail(clientEmail, cwd, env = process.env) {
-  const valid = (value) => typeof value === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()) && !AGENT_EMAILS.has(value.trim().toLowerCase());
+  const valid = (value) => typeof value === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
   for (const value of [clientEmail, env.AGENT_MEMORY_EMAIL, env.CURSOR_USER_EMAIL]) {
     if (valid(value)) return { email: value.trim().toLowerCase(), source: "CLIENT_ACCOUNT" };
   }
