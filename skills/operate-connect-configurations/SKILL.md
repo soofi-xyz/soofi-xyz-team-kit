@@ -18,6 +18,10 @@ language lives in [build-connect-product](../build-connect-product/SKILL.md):
 repository that deploys the target stack is authoritative for
 `contracts/flow.schema.json`, `contracts/examples/` and the dev runbook.
 
+When a person is working with you, present every step through
+[guided learning](reference/guided-learning.md): plain words, one action per
+message, and zsh commands they run on their own Mac.
+
 Work through the eight steps in order. Record each step's output in the run
 report ([template](reference/run-report.md)) before moving on.
 
