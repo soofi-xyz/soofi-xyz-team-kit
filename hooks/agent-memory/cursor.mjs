@@ -47,6 +47,21 @@ function dropStaleRoutes(dir, now) {
 }
 
 const asText = (value) => (typeof value === "string" ? value : JSON.stringify(value ?? null));
+// Cursor Cloud gives a subagent's own events no parent id: they carry a new conversation id whose
+// first prompt is the task the parent handed over. A route keyed by that task text links them.
+const taskKey = (task) => `task:${typeof task === "string" ? task : JSON.stringify(task ?? null)}`;
+const conversationKey = (id) => `conversation:${id}`;
+// Newer Cursor answers a Task call with a status ({"status":"success","agentId":…}); the
+// subagent's answer then arrives as subagentStop's summary.
+function isStatusOnly(output) {
+  try {
+    const value = typeof output === "string" ? JSON.parse(output) : output;
+    return Boolean(value && typeof value === "object" && "agentId" in value && "status" in value);
+  } catch {
+    return false;
+  }
+}
+
 const slashAgent = (prompt) => /^\s*\/([a-z0-9-]+)(?:\s|$)/i.exec(prompt ?? "")?.[1]?.toLowerCase();
 
 // Returns the memory context for one Cursor hook event, or undefined.
@@ -56,14 +71,21 @@ export function toMemory(event, { dir = routesDir(), now = Date.now() } = {}) {
     case "beforeSubmitPrompt": {
       // "/wingull …" typed by the person: the thread is the person's conversation.
       const agent = slashAgent(event.prompt);
-      if (!hasMemory(agent)) return undefined;
+      if (!hasMemory(agent)) {
+        // A subagent's own conversation starting with its task: route its tool calls.
+        const route = readRoute(dir, taskKey(event.prompt));
+        if (route && event.conversation_id) writeRoute(dir, conversationKey(event.conversation_id), route);
+        return undefined;
+      }
       return { ...base, sessionId: event.conversation_id, agentName: agent, messages: [{ kind: "USER_PROMPT", content: event.prompt, occurredAt: now }] };
     }
     case "preToolUse": {
       const agent = event.tool_name === "Task" ? event.tool_input?.subagent_type : undefined;
       if (!hasMemory(agent)) return undefined;
       dropStaleRoutes(dir, now);
-      writeRoute(dir, event.tool_use_id, { agentName: agent, sessionId: event.conversation_id, turnId: event.generation_id });
+      const route = { agentName: agent, sessionId: event.conversation_id, turnId: event.generation_id };
+      writeRoute(dir, event.tool_use_id, route);
+      writeRoute(dir, taskKey(event.tool_input?.prompt), route);
       return {
         ...base,
         sessionId: event.conversation_id,
@@ -73,8 +95,10 @@ export function toMemory(event, { dir = routesDir(), now = Date.now() } = {}) {
       };
     }
     case "subagentStart": {
-      if (hasMemory(event.subagent_type) && event.tool_call_id && !readRoute(dir, event.tool_call_id)) {
-        writeRoute(dir, event.tool_call_id, { agentName: event.subagent_type, sessionId: event.parent_conversation_id ?? event.conversation_id });
+      if (hasMemory(event.subagent_type)) {
+        const route = { agentName: event.subagent_type, sessionId: event.parent_conversation_id ?? event.conversation_id, turnId: event.generation_id };
+        if (event.tool_call_id && !readRoute(dir, event.tool_call_id)) writeRoute(dir, event.tool_call_id, route);
+        if (event.task && !readRoute(dir, taskKey(event.task))) writeRoute(dir, taskKey(event.task), route);
       }
       return undefined;
     }
@@ -82,6 +106,7 @@ export function toMemory(event, { dir = routesDir(), now = Date.now() } = {}) {
     case "postToolUseFailure": {
       // Wingull's reply is the Task call's result in the parent conversation.
       if (event.tool_name === "Task" && hasMemory(event.tool_input?.subagent_type)) {
+        if (isStatusOnly(event.tool_output)) return undefined;
         return {
           ...base,
           sessionId: event.conversation_id,
@@ -90,7 +115,7 @@ export function toMemory(event, { dir = routesDir(), now = Date.now() } = {}) {
         };
       }
       // A tool call made inside the subagent.
-      const route = readRoute(dir, event.parent_tool_call_id);
+      const route = readRoute(dir, event.parent_tool_call_id) ?? readRoute(dir, conversationKey(event.conversation_id));
       if (!route) return undefined;
       const failed = event.hook_event_name === "postToolUseFailure";
       const output = failed ? { error: event.error_message ?? event.error } : event.tool_output;
@@ -109,7 +134,15 @@ export function toMemory(event, { dir = routesDir(), now = Date.now() } = {}) {
     case "subagentStop": {
       if (event.tool_call_id) rmSync(routePath(dir, event.tool_call_id), { force: true });
       else if (event.subagent_id) rmSync(routePath(dir, event.subagent_id), { force: true });
-      return undefined;
+      if (event.task) rmSync(routePath(dir, taskKey(event.task)), { force: true });
+      // The subagent's answer, when Cursor reports it here instead of in the Task result.
+      if (!hasMemory(event.subagent_type) || typeof event.summary !== "string" || event.summary.length === 0) return undefined;
+      return {
+        ...base,
+        sessionId: event.parent_conversation_id ?? event.conversation_id,
+        agentName: event.subagent_type,
+        messages: [{ kind: "AGENT_REPLY", content: event.summary, occurredAt: now }],
+      };
     }
     default:
       return undefined;
