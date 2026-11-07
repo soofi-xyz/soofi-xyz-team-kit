@@ -10,7 +10,7 @@
 
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -163,32 +163,6 @@ export function claimEvent(input, { dir = join(dirname(persistSettings().queueDi
   }
 }
 
-// TEMPORARY (remove before merge): records each event's field names, value types and lengths,
-// and only id-like and agent-name values, never content, so we can see where Cursor Cloud puts
-// Wingull's reply and tool calls. Written to ~/.config/prism/agent-memory/cursor-debug.jsonl.
-const DEBUG_VALUES = /^(hook_event_name|tool_name|subagent_type|status|is_background|is_parallel_worker|duration(_ms)?|message_count|tool_call_count|.*(_id|Id))$/;
-function debugShape(event) {
-  try {
-    const shape = (value, depth) => {
-      if (value === null || value === undefined) return String(value);
-      if (Array.isArray(value)) return `array(${value.length})`;
-      if (typeof value === "object") return depth > 1 ? `object{${Object.keys(value).sort()}}` : Object.fromEntries(Object.keys(value).sort().map((k) => [k, shape(value[k], depth + 1)]));
-      return typeof value === "string" ? `string(${value.length})` : typeof value;
-    };
-    const values = Object.fromEntries(Object.entries(event).filter(([k, v]) => DEBUG_VALUES.test(k) && typeof v !== "object"));
-    for (const key of ["tool_input", "tool_output"]) {
-      const inner = event[key];
-      const parsed = typeof inner === "string" && inner.startsWith("{") ? (() => { try { return JSON.parse(inner); } catch { return undefined; } })() : inner;
-      if (parsed && typeof parsed === "object") for (const [k, v] of Object.entries(parsed)) if (DEBUG_VALUES.test(k) && typeof v !== "object") values[`${key}.${k}`] = v;
-    }
-    const dir = dirname(persistSettings().queueDir);
-    mkdirSync(dir, { recursive: true, mode: 0o700 });
-    appendFileSync(join(dir, "cursor-debug.jsonl"), `${JSON.stringify({ at: new Date().toISOString(), values, shape: shape(event, 0) })}\n`, { mode: 0o600 });
-  } catch {
-    // Debugging must never affect memory.
-  }
-}
-
 async function main() {
   let input = "";
   for await (const chunk of process.stdin) input += chunk;
@@ -196,7 +170,6 @@ async function main() {
   process.stdout.write("{}");
   if (!claimEvent(input)) return;
   const event = JSON.parse(input || "{}");
-  debugShape(event);
   const context = toMemory(event);
   if (!context) return;
   const sender = join(dirname(fileURLToPath(import.meta.url)), "memory.mjs");

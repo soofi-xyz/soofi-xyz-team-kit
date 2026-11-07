@@ -36,24 +36,6 @@
         "command": "node hooks/agent-memory/cursor.mjs",
         "timeout": 5
       }
-    ],
-    "sessionStart": [
-      {
-        "command": "node hooks/agent-memory/cursor.mjs",
-        "timeout": 5
-      }
-    ],
-    "afterAgentResponse": [
-      {
-        "command": "node hooks/agent-memory/cursor.mjs",
-        "timeout": 5
-      }
-    ],
-    "stop": [
-      {
-        "command": "node hooks/agent-memory/cursor.mjs",
-        "timeout": 5
-      }
     ]
   }
 }
