@@ -240,6 +240,13 @@ test("maps a Cursor /wingull session as the probe recorded it, and ignores other
   assert.equal(run({ hook_event_name: "postToolUse", conversation_id: "x", tool_name: "Grep", tool_input: {}, tool_output: "f" }), undefined);
   assert.equal(run({ hook_event_name: "preToolUse", conversation_id: "x", tool_name: "Task", tool_use_id: "t-9", tool_input: { subagent_type: "lapras", prompt: "p" } }), undefined);
   assert.equal(run({ hook_event_name: "postToolUse", conversation_id: "y", parent_tool_call_id: "t-9", tool_name: "Shell", tool_input: {}, tool_output: "f" }), undefined);
+
+  // Plugin and project hooks both fire for one event in this repository: only the first records it.
+  const { claimEvent } = await import("../cursor.mjs");
+  const events = mkdtempSync(join(tmpdir(), "cursor-events-"));
+  const input = JSON.stringify({ hook_event_name: "postToolUse", tool_use_id: "t-1" });
+  assert.deepEqual([claimEvent(input, { dir: events, now: 1_000 }), claimEvent(input, { dir: events, now: 1_000 })], [true, false]);
+  assert.equal(claimEvent(JSON.stringify({ hook_event_name: "postToolUse", tool_use_id: "t-2" }), { dir: events, now: 1_000 }), true);
 });
 
 test("groups a turn's messages under one turn vertex, and omits it without a turn id", () => {

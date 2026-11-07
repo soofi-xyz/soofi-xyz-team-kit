@@ -406,6 +406,15 @@ def validate_agent_memory():
         copilot_agent = (root / "agents-copilot" / f"{name}.agent.md").read_text(encoding="utf-8")
         if "hooks/agent-memory/copilot.mjs\\\" agent " + name not in copilot_agent:
             fail(f"agents-copilot/{name}.agent.md: missing agent memory hooks; run scripts/sync-copilot-agents.sh sync")
+    # Cursor Cloud Agents offer only project subagents, so each agent with memory has a project copy
+    # next to .cursor/hooks.json; it must match agents/ byte for byte (the prompt version hashes agents/).
+    for name in memory_agents:
+        project_agent = root / ".cursor" / "agents" / f"{name}.md"
+        if not project_agent.is_file() or project_agent.read_bytes() != (root / "agents" / f"{name}.md").read_bytes():
+            fail(f".cursor/agents/{name}.md: must be a copy of agents/{name}.md; run cp agents/{name}.md .cursor/agents/")
+    for project_agent in (root / ".cursor" / "agents").glob("*.md"):
+        if project_agent.stem not in memory_agents:
+            fail(f"{project_agent.relative_to(root)}: only agents with memory belong in .cursor/agents")
     # Claude Code, Cursor and Copilot all load hooks/hooks.json by default, each in its own format.
     if (root / "hooks" / "hooks.json").exists():
         fail("hooks/hooks.json: do not add it; point each manifest at its own hooks file")
