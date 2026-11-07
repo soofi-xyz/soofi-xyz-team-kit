@@ -68,6 +68,22 @@ test("builds the same graph for the same message, so a retry cannot duplicate", 
   assert.notEqual(prop(vertices(other, "agent_message")[0], "message_identifier"), prop(vertices(buildGraph(context), "agent_message")[0], "message_identifier"));
 });
 
+test("finds the person without saving a cloud agent's bot account", async () => {
+  const { personEmail } = await import("../memory.mjs");
+  const { execFileSync } = await import("node:child_process");
+  // A Cursor Cloud VM: git is the bot account and Cursor passes no user email.
+  const repo = mkdtempSync(join(tmpdir(), "person-"));
+  execFileSync("git", ["init", "-q", repo]);
+  execFileSync("git", ["-C", repo, "config", "user.email", "cursoragent@cursor.com"]);
+  assert.equal(personEmail(undefined, repo, {}), undefined);
+  assert.deepEqual(personEmail(undefined, repo, { AGENT_MEMORY_EMAIL: " Saman@Example.com " }), { email: "saman@example.com", source: "CLIENT_ACCOUNT" });
+  assert.deepEqual(personEmail(undefined, repo, { CURSOR_USER_EMAIL: "ana@example.com" }), { email: "ana@example.com", source: "CLIENT_ACCOUNT" });
+  // The signed-in account wins over the setting; a person's own git email is still used.
+  assert.equal(personEmail("ana@example.com", repo, { AGENT_MEMORY_EMAIL: "bo@example.com" }).email, "ana@example.com");
+  execFileSync("git", ["-C", repo, "config", "user.email", "bo@example.com"]);
+  assert.deepEqual(personEmail(undefined, repo, {}), { email: "bo@example.com", source: "GIT_CONFIG" });
+});
+
 test("keeps thread, agent and email vertices stable and records the person", () => {
   const graph = buildGraph({
     client: "CLAUDE_CODE",
@@ -240,6 +256,13 @@ test("maps a Cursor /wingull session as the probe recorded it, and ignores other
   assert.equal(run({ hook_event_name: "postToolUse", conversation_id: "x", tool_name: "Grep", tool_input: {}, tool_output: "f" }), undefined);
   assert.equal(run({ hook_event_name: "preToolUse", conversation_id: "x", tool_name: "Task", tool_use_id: "t-9", tool_input: { subagent_type: "lapras", prompt: "p" } }), undefined);
   assert.equal(run({ hook_event_name: "postToolUse", conversation_id: "y", parent_tool_call_id: "t-9", tool_name: "Shell", tool_input: {}, tool_output: "f" }), undefined);
+
+  // Plugin and project hooks both fire for one event in this repository: only the first records it.
+  const { claimEvent } = await import("../cursor.mjs");
+  const events = mkdtempSync(join(tmpdir(), "cursor-events-"));
+  const input = JSON.stringify({ hook_event_name: "postToolUse", tool_use_id: "t-1" });
+  assert.deepEqual([claimEvent(input, { dir: events, now: 1_000 }), claimEvent(input, { dir: events, now: 1_000 })], [true, false]);
+  assert.equal(claimEvent(JSON.stringify({ hook_event_name: "postToolUse", tool_use_id: "t-2" }), { dir: events, now: 1_000 }), true);
 });
 
 test("groups a turn's messages under one turn vertex, and omits it without a turn id", () => {

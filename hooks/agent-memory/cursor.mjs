@@ -116,13 +116,27 @@ export function toMemory(event, { dir = routesDir(), now = Date.now() } = {}) {
   }
 }
 
+// In this repository Cursor runs both the plugin's hooks and the project's .cursor/hooks.json
+// (which Cloud Agents need) for the same event. Only the first copy of an event is recorded.
+export function claimEvent(input, { dir = join(dirname(persistSettings().queueDir), "cursor-events"), now = Date.now() } = {}) {
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
+  dropStaleRoutes(dir, now);
+  try {
+    writeFileSync(join(dir, createHash("sha256").update(input).digest("hex").slice(0, 32)), "", { flag: "wx", mode: 0o600 });
+    return true;
+  } catch (error) {
+    if (error?.code === "EEXIST") return false;
+    throw error;
+  }
+}
+
 async function main() {
   let input = "";
   for await (const chunk of process.stdin) input += chunk;
-  const event = JSON.parse(input || "{}");
-  const context = toMemory(event);
   // Cursor reads JSON from some hooks' stdout; an empty object changes nothing.
   process.stdout.write("{}");
+  if (!claimEvent(input)) return;
+  const context = toMemory(JSON.parse(input || "{}"));
   if (!context) return;
   const sender = join(dirname(fileURLToPath(import.meta.url)), "memory.mjs");
   const child = spawn(process.execPath, [sender], { detached: true, stdio: ["pipe", "ignore", "ignore"] });
