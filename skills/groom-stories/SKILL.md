@@ -139,7 +139,10 @@ Answer questions about the story, the work, our products and agents, or what Kir
 
 ## Connect The Kirlia MCP Server (optional)
 
-The server is `POST https://<kirlia-host>/api/mcp` with `Authorization: Bearer kirlia_…`. A
-Kirlia operator mints the key with `npm run mcp:keys -- mint` in `kirlia-agent`. See that repo's
-README, "Build stories from Claude and Cursor", for the Cursor, Claude Code, and Claude Desktop
-config. The endpoint must be reachable without Vercel Deployment Protection.
+The server is `https://kirlia.prismteam.ai/api/mcp` with `Authorization: Bearer kirlia_…`. Ask a
+Kirlia operator for a personal key (minted with `npm run mcp:keys -- mint` in `kirlia-agent`).
+
+- Claude Code: `claude mcp add --transport http kirlia https://kirlia.prismteam.ai/api/mcp --header "Authorization: Bearer <key>"`
+- Cursor: add `"kirlia": { "url": "https://kirlia.prismteam.ai/api/mcp", "headers": { "Authorization": "Bearer <key>" } }` under `mcpServers` in `~/.cursor/mcp.json`
+
+Never paste the key into a chat or commit it.
