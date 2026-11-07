@@ -1,11 +1,59 @@
 {
   "version": 1,
   "hooks": {
-    "beforeSubmitPrompt": [{ "command": "node hooks/agent-memory/cursor.mjs", "timeout": 5 }],
-    "preToolUse": [{ "command": "node hooks/agent-memory/cursor.mjs", "timeout": 5 }],
-    "subagentStart": [{ "command": "node hooks/agent-memory/cursor.mjs", "timeout": 5 }],
-    "postToolUse": [{ "command": "node hooks/agent-memory/cursor.mjs", "timeout": 5 }],
-    "postToolUseFailure": [{ "command": "node hooks/agent-memory/cursor.mjs", "timeout": 5 }],
-    "subagentStop": [{ "command": "node hooks/agent-memory/cursor.mjs", "timeout": 5 }]
+    "beforeSubmitPrompt": [
+      {
+        "command": "node hooks/agent-memory/cursor.mjs",
+        "timeout": 5
+      }
+    ],
+    "preToolUse": [
+      {
+        "command": "node hooks/agent-memory/cursor.mjs",
+        "timeout": 5
+      }
+    ],
+    "subagentStart": [
+      {
+        "command": "node hooks/agent-memory/cursor.mjs",
+        "timeout": 5
+      }
+    ],
+    "postToolUse": [
+      {
+        "command": "node hooks/agent-memory/cursor.mjs",
+        "timeout": 5
+      }
+    ],
+    "postToolUseFailure": [
+      {
+        "command": "node hooks/agent-memory/cursor.mjs",
+        "timeout": 5
+      }
+    ],
+    "subagentStop": [
+      {
+        "command": "node hooks/agent-memory/cursor.mjs",
+        "timeout": 5
+      }
+    ],
+    "sessionStart": [
+      {
+        "command": "node hooks/agent-memory/cursor.mjs",
+        "timeout": 5
+      }
+    ],
+    "afterAgentResponse": [
+      {
+        "command": "node hooks/agent-memory/cursor.mjs",
+        "timeout": 5
+      }
+    ],
+    "stop": [
+      {
+        "command": "node hooks/agent-memory/cursor.mjs",
+        "timeout": 5
+      }
+    ]
   }
 }
