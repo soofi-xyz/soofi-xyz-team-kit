@@ -68,6 +68,19 @@ test("builds the same graph for the same message, so a retry cannot duplicate", 
   assert.notEqual(prop(vertices(other, "agent_message")[0], "message_identifier"), prop(vertices(buildGraph(context), "agent_message")[0], "message_identifier"));
 });
 
+test("finds the person: client account, then AGENT_MEMORY_EMAIL or CURSOR_USER_EMAIL, then git", async () => {
+  const { personEmail } = await import("../memory.mjs");
+  const { execFileSync } = await import("node:child_process");
+  // A Cursor Cloud VM: git is the Cloud agent's account and Cursor passes no user email.
+  const repo = mkdtempSync(join(tmpdir(), "person-"));
+  execFileSync("git", ["init", "-q", repo]);
+  execFileSync("git", ["-C", repo, "config", "user.email", "cursoragent@cursor.com"]);
+  assert.deepEqual(personEmail(undefined, repo, {}), { email: "cursoragent@cursor.com", source: "GIT_CONFIG" });
+  assert.deepEqual(personEmail(undefined, repo, { AGENT_MEMORY_EMAIL: " Saman@Example.com " }), { email: "saman@example.com", source: "CLIENT_ACCOUNT" });
+  assert.deepEqual(personEmail(undefined, repo, { CURSOR_USER_EMAIL: "ana@example.com" }), { email: "ana@example.com", source: "CLIENT_ACCOUNT" });
+  assert.equal(personEmail("ana@example.com", repo, { AGENT_MEMORY_EMAIL: "bo@example.com" }).email, "ana@example.com");
+});
+
 test("keeps thread, agent and email vertices stable and records the person", () => {
   const graph = buildGraph({
     client: "CLAUDE_CODE",
@@ -240,6 +253,38 @@ test("maps a Cursor /wingull session as the probe recorded it, and ignores other
   assert.equal(run({ hook_event_name: "postToolUse", conversation_id: "x", tool_name: "Grep", tool_input: {}, tool_output: "f" }), undefined);
   assert.equal(run({ hook_event_name: "preToolUse", conversation_id: "x", tool_name: "Task", tool_use_id: "t-9", tool_input: { subagent_type: "lapras", prompt: "p" } }), undefined);
   assert.equal(run({ hook_event_name: "postToolUse", conversation_id: "y", parent_tool_call_id: "t-9", tool_name: "Shell", tool_input: {}, tool_output: "f" }), undefined);
+
+  // Plugin and project hooks both fire for one event in this repository: only the first records it.
+  const { claimEvent } = await import("../cursor.mjs");
+  const events = mkdtempSync(join(tmpdir(), "cursor-events-"));
+  const input = JSON.stringify({ hook_event_name: "postToolUse", tool_use_id: "t-1" });
+  assert.deepEqual([claimEvent(input, { dir: events, now: 1_000 }), claimEvent(input, { dir: events, now: 1_000 })], [true, false]);
+  assert.equal(claimEvent(JSON.stringify({ hook_event_name: "postToolUse", tool_use_id: "t-2" }), { dir: events, now: 1_000 }), true);
+});
+
+test("maps a Cursor Cloud /wingull turn as Cloud reported it: child conversation, status-only Task result, summary", async () => {
+  const { toMemory: cursor } = await import("../cursor.mjs");
+  const dir = mkdtempSync(join(tmpdir(), "cursor-cloud-routes-"));
+  const run = (event) => cursor({ user_email: null, workspace_roots: ["/agent/repos/soofi-xyz-team-kit"], ...event }, { dir, now: 5_000 });
+  const parent = "bc-2819e49c-3ce9-44fd-af0d-1a2d32c63158";
+  const child = "bc-e5b02bd9-fa03-5345-bfcf-f69e4fab0ae2";
+  const turn = "a45d7496-4d8f-4627-885d-a34d90cd0d55";
+  const call = "call-ebe47d45-8\nfc_64eb436f_0";
+  const task = "List all files inside skills/operate-connect-configurations.";
+
+  assert.equal(run({ hook_event_name: "preToolUse", conversation_id: parent, generation_id: turn, tool_name: "Task", tool_use_id: call, tool_input: { subagent_type: "wingull", prompt: task } }).messages[0].kind, "AGENT_REQUEST");
+  assert.equal(run({ hook_event_name: "subagentStart", conversation_id: parent, parent_conversation_id: parent, generation_id: turn, subagent_id: "c7951a1e", subagent_type: "wingull", tool_call_id: call, task }), undefined);
+  // The child conversation's first prompt is the task; it is not a person's prompt.
+  assert.equal(run({ hook_event_name: "beforeSubmitPrompt", conversation_id: child, generation_id: "g-child", prompt: task }), undefined);
+  const tool = run({ hook_event_name: "postToolUse", conversation_id: child, generation_id: "g-child-2", tool_name: "Shell", tool_use_id: "631c903e", tool_input: { command: "ls" }, tool_output: "SKILL.md", duration: 82 });
+  assert.deepEqual([tool.sessionId, tool.turnId, tool.agentName, tool.messages.map((m) => m.kind)], [parent, turn, "wingull", ["TOOL_CALL", "TOOL_RESULT"]]);
+  // A conversation the task never started stays unsaved.
+  assert.equal(run({ hook_event_name: "postToolUse", conversation_id: "bc-other", tool_name: "Shell", tool_use_id: "x", tool_input: {}, tool_output: "y" }), undefined);
+
+  const reply = run({ hook_event_name: "subagentStop", conversation_id: parent, parent_conversation_id: parent, generation_id: turn, subagent_id: "c7951a1e", subagent_type: "wingull", status: "completed", task, summary: "There are 3 files." });
+  assert.deepEqual([reply.sessionId, reply.turnId, reply.messages[0].kind, reply.messages[0].content], [parent, turn, "AGENT_REPLY", "There are 3 files."]);
+  // The Task result is only a status, so it is not saved as a second reply.
+  assert.equal(run({ hook_event_name: "postToolUse", conversation_id: parent, generation_id: turn, tool_name: "Task", tool_use_id: call, tool_input: { subagent_type: "wingull", prompt: task }, tool_output: '{"status":"success","agentId":"c7951a1e","durationMs":8668}' }), undefined);
 });
 
 test("groups a turn's messages under one turn vertex, and omits it without a turn id", () => {

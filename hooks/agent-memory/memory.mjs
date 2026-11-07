@@ -50,9 +50,14 @@ export function promptVersion(client, agentName, root = PLUGIN_ROOT) {
   };
 }
 
-export function personEmail(clientEmail, cwd) {
+// The person, in order: the client's signed-in account, an AGENT_MEMORY_EMAIL the person or
+// their cloud environment set, Cursor's CURSOR_USER_EMAIL, then git. Cursor Cloud Agents pass
+// no user email, so their threads record the Cloud agent's git account (cursoragent@cursor.com).
+export function personEmail(clientEmail, cwd, env = process.env) {
   const valid = (value) => typeof value === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-  if (valid(clientEmail)) return { email: clientEmail.trim().toLowerCase(), source: "CLIENT_ACCOUNT" };
+  for (const value of [clientEmail, env.AGENT_MEMORY_EMAIL, env.CURSOR_USER_EMAIL]) {
+    if (valid(value)) return { email: value.trim().toLowerCase(), source: "CLIENT_ACCOUNT" };
+  }
   try {
     const git = execFileSync("git", ["config", "user.email"], { cwd, encoding: "utf8", timeout: 1_000, stdio: ["ignore", "pipe", "ignore"] }).trim();
     if (valid(git)) return { email: git.toLowerCase(), source: "GIT_CONFIG" };
@@ -271,7 +276,7 @@ export async function record(context, { env = process.env, root = PLUGIN_ROOT, s
     const payload = buildGraph({
       ...context,
       version: promptVersion(context.client, context.agentName, root),
-      person: personEmail(context.clientEmail, context.cwd),
+      person: personEmail(context.clientEmail, context.cwd, env),
       secrets: knownSecretValues(env, [settings.key]),
     });
     // Queued payloads go first so a thread's messages reach Persist in order.
