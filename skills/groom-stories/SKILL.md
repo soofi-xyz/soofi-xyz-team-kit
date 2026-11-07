@@ -137,12 +137,14 @@ Print them as a checklist:
 Answer questions about the story, the work, our products and agents, or what Kirlia can do in
 2–5 plain sentences. Answer first, and suggest a next step only when it helps.
 
-## Connect The Kirlia MCP Server (optional)
+## Connect The Kirlia MCP Server
 
-The server is `https://kirlia.prismteam.ai/api/mcp` with `Authorization: Bearer kirlia_…`. Ask a
-Kirlia operator for a personal key (minted with `npm run mcp:keys -- mint` in `kirlia-agent`).
+The team kit ships the Kirlia server (`https://kirlia.prismteam.ai/api/mcp`), so there is
+nothing to install and no key to paste. The first time a Kirlia tool is used, the app asks the
+person to sign in with their `prismteam.ai` Google account:
 
-- Claude Code: `claude mcp add --transport http kirlia https://kirlia.prismteam.ai/api/mcp --header "Authorization: Bearer <key>"`
-- Cursor: add `"kirlia": { "url": "https://kirlia.prismteam.ai/api/mcp", "headers": { "Authorization": "Bearer <key>" } }` under `mcpServers` in `~/.cursor/mcp.json`
+- Claude Code: run `/mcp`, pick `kirlia`, and choose **Authenticate**.
+- Cursor: open **Settings → MCP**, find `kirlia`, and click **Connect** (or **Login**).
 
-Never paste the key into a chat or commit it.
+Only `prismteam.ai` accounts that are in Asana can sign in. Until someone signs in, groom by hand
+with the rules above.
