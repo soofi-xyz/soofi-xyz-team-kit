@@ -108,14 +108,19 @@ following the bucket is the S3 object key, byte for byte. Spaces, `+`, `%`,
   SDK `Bucket`/`Key` parameters take the decoded key; never pre-encode them.
 - Snapshot, plan, audit and Spark paths keep the literal key so the worker reads
   the same object the planner pinned.
+- Spark's file readers expand `{`, `}`, `[`, `]`, `*`, `?` and `\` in a read
+  path as a Hadoop glob. Backslash-escape those characters in every path passed
+  to `spark.read`, so `what?.csv` cannot also read a sibling `whatX.csv`.
 - Literal does not mean unchecked: reject `.` and `..` key segments, because an
   HTTP layer may collapse them and read outside a scoped prefix, and reject
   control characters. Map these to the caller's existing invalid-input or
   scope error rather than an internal failure.
 
 Test parse, head/list, snapshot copy and read with keys containing a space,
-`+`, `%` (including a literal `%20`), `#`, `?` and non-ASCII characters, and
-prove an already-valid ASCII key resolves exactly as before.
+`+`, `%` (including a literal `%20`), `#`, `?` and non-ASCII characters; read
+glob-shaped keys (`?`, `*`, `[ab]`, `{x,y}`) next to siblings the glob would
+match and prove only the pinned object is read; and prove an already-valid ASCII
+key resolves exactly as before.
 
 ## 2. Views, queries and schemas
 
