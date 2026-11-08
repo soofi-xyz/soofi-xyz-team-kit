@@ -68,6 +68,20 @@ and [step secrets and readable buckets](../configure-system-product/reference/se
   existing installs, configurations and callers see in the pull request, with a
   test that proves the unchanged behavior.
 
+## Product-call settings under load
+
+Keep these rules; see [product-call settings](reference/product-call-settings.md):
+
+- Do not read Parameter Store (`/account/env-parameters`) on every product call
+  without an opt-in cache: under bursts it throttles the account and the step
+  fails with a raw `ThrottlingException` no template retries. Cache it behind an
+  optional install parameter that defaults to off, and never cache a missing value.
+- Never cache the shared API key; read it on every call so a rotation applies at once.
+- Name transient settings-read failures `Product.Unavailable` behind the same
+  opt-in, keeping missing values `Product.NotConfigured`.
+- When runs fail in bursts, check `ProductCallFn` logs for `ThrottlingException`
+  before tuning a flow's retries.
+
 ## Result callbacks
 
 Own the result-callback framework on the sale-availability client facade:
