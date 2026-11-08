@@ -65,6 +65,9 @@ cell must not fail an otherwise valid sheet. Resolve the header row like this:
    blank header but contains data in row 7`. Never include the cell value. Do not
    generate a name such as `_col41`: a generated column hides unlabelled data
    from the mapping author, and a mapping can only select a column it can name.
+   A formula counts as data even without a cached result: cached-value reads
+   (`data_only=True`) return `None` for it, so also check blank-header columns
+   in a formula view (`data_only=False`) and never print the formula.
 4. Duplicate non-blank headers keep the existing error
    (`XLSX headers must be non-empty and unique`); do not rename or suffix them.
 5. A sheet with no non-blank header fails as missing its header row.
@@ -80,7 +83,8 @@ identifier, phone number or count.
 
 Test, with synthetic workbooks only: interior and trailing blank all-empty
 columns are dropped and named columns keep their values; a blank-header column
-with one value fails with its position and row but not its value; duplicate
+with one value, or one uncached formula, fails with its position and row but
+not its value; duplicate
 headers keep the error; a whitespace-only header counts as blank; integral
 floats lose `.0` while `1.5`, ints, booleans and dates are unchanged.
 
