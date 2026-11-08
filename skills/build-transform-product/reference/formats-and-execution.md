@@ -104,6 +104,10 @@ following the bucket is the S3 object key, byte for byte. Spaces, `+`, `%`,
   SDK `Bucket`/`Key` parameters take the decoded key; never pre-encode them.
 - Snapshot, plan, audit and Spark paths keep the literal key so the worker reads
   the same object the planner pinned.
+- Literal does not mean unchecked: reject `.` and `..` key segments, because an
+  HTTP layer may collapse them and read outside a scoped prefix, and reject
+  control characters. Map these to the caller's existing invalid-input or
+  scope error rather than an internal failure.
 
 Test parse, head/list, snapshot copy and read with keys containing a space,
 `+`, `%` (including a literal `%20`), `#`, `?` and non-ASCII characters, and

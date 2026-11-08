@@ -147,7 +147,8 @@ belongs in this contract and registered configuration.
    `source/another/`. Treat every `s3://<bucket>/<key>` as a literal key: split
    the bucket from the key without a URL parser, and keep spaces, `+`, `%`, `#`,
    `?` and non-ASCII characters as key characters, never as escapes, queries or
-   fragments. Reject control characters. Check actual bucket and key constraints
+   fragments. Reject `.`/`..` key segments (HTTP layers may collapse them and
+   escape a scoped prefix) and control characters. Check actual bucket and key constraints
    in addition to the schema's URI pattern. Follow the
    [S3 object key rules](formats-and-execution.md#s3-object-keys): decode once
    where an encoded key enters, encode once for `CopySource`, never otherwise.
