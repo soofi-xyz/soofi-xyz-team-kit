@@ -14,7 +14,7 @@ language or anything in the request. The "registered schema" below is always the
 | `parquet` | `spark.read.parquet(...)` | Compare embedded schema with the registered dataset schema; reject incompatible evolution/coercion |
 | `jsonl` | Schema-bound `spark.read.json(...)` | UTF-8, one object per line, `multiLine=false`; use registered types |
 | `csv` | Schema-bound `spark.read.csv(...)` | Explicit header/delimiter/quote/escape/null/date options and registered column types |
-| `xlsx` | Driver-side `pandas.read_excel(..., sheet_name=<sheet>, dtype=str)` → `spark.createDataFrame` | One sheet per dataset (`sheet` defaults to the table name); header row must equal the registered columns; cast with the registered types; reject above the configured row/byte ceiling |
+| `xlsx` | Driver-side bounded workbook read (`openpyxl` read-only or `pandas.read_excel(..., sheet_name=<sheet>, dtype=str)`) → `spark.createDataFrame` | One sheet per dataset (`sheet` defaults to the table name); resolve headers with the [Excel header rules](#excel-header-and-cell-rules); cast with the registered types; reject above the configured row/byte ceiling |
 
 For JSONL use `mode=FAILFAST`; this rejects parse failures but is not complete
 schema validation. Verify required fields, nullability, enums, numeric ranges
@@ -47,6 +47,67 @@ If the registration explicitly makes a table optional, construct an empty view
 using its registered schema. Do not infer string-only views from SQL errors or
 silently skip disappearing objects. Stage mutable inputs when replay requires
 a stable snapshot.
+
+### Excel header and cell rules
+
+Real workbooks often carry stray formatted-but-empty columns. One blank header
+cell must not fail an otherwise valid sheet. Resolve the header row like this:
+
+1. Trim each header cell; a missing cell or one that is empty after trimming is
+   blank.
+2. Read every data row inside the row/byte ceiling, then classify each
+   blank-header column. A blank-header column whose cells are all empty (`None`
+   or a string that is empty after trimming) is ignored: it is not a dataset column and its position is
+   not reported as data.
+3. A blank-header column that holds any value fails the read with a specific
+   error naming the 1-based column position, its Excel letter and the first
+   1-based worksheet row holding a value, for example `XLSX column 41 (AO) has a
+   blank header but contains data in row 7`. Never include the cell value. Do not
+   generate a name such as `_col41`: a generated column hides unlabelled data
+   from the mapping author, and a mapping can only select a column it can name.
+4. Duplicate non-blank headers keep the existing error
+   (`XLSX headers must be non-empty and unique`); do not rename or suffix them.
+5. A sheet with no non-blank header fails as missing its header row.
+6. Every column the mapping or language definition selects still resolves by
+   its exact header name. Ignoring a blank column never shifts or renames a named
+   one.
+
+Stringify cells deterministically. A numeric cell holding an integral finite
+float is written as the integer (`5551234567.0` becomes `5551234567`); other
+floats keep Python's shortest round-trip form; booleans are not numbers; dates
+and datetimes use ISO 8601. Never let `str(float)` add a trailing `.0` to an
+identifier, phone number or count.
+
+Test, with synthetic workbooks only: interior and trailing blank all-empty
+columns are dropped and named columns keep their values; a blank-header column
+with one value fails with its position and row but not its value; duplicate
+headers keep the error; a whitespace-only header counts as blank; integral
+floats lose `.0` while `1.5`, ints, booleans and dates are unchanged.
+
+### S3 object keys
+
+An `s3://<bucket>/<key>` location is literal: everything after the first `/`
+following the bucket is the S3 object key, byte for byte. Spaces, `+`, `%`,
+`#`, `?` and non-ASCII characters are ordinary key characters, not URL syntax.
+
+- Parse S3 URIs by splitting the bucket from the key. Do not use a generic URL
+  parser for the key: WHATWG `new URL()` percent-encodes spaces and non-ASCII
+  in `pathname` and drops anything after `#` or `?`; Python `urlparse` also
+  treats `#`/`?` as fragment/query. Either turns a real key into a missing one,
+  and a prefix listing of the mangled key then reports the dataset as empty.
+- Decode exactly once and only at a boundary that hands you an encoded key:
+  S3 event notifications (URL-encoded, `+` for space) and listings requested
+  with `EncodingType=url`. Decode there, then carry the decoded key everywhere.
+  Never decode a key taken from a request URI or an SDK response.
+- Encode exactly once and only where the wire format requires it, such as the
+  `CopySource` of `CopyObject` (encode each path segment and the version ID).
+  SDK `Bucket`/`Key` parameters take the decoded key; never pre-encode them.
+- Snapshot, plan, audit and Spark paths keep the literal key so the worker reads
+  the same object the planner pinned.
+
+Test parse, head/list, snapshot copy and read with keys containing a space,
+`+`, `%` (including a literal `%20`), `#`, `?` and non-ASCII characters, and
+prove an already-valid ASCII key resolves exactly as before.
 
 ## 2. Views, queries and schemas
 

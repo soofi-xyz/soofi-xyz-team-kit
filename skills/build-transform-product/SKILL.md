@@ -77,6 +77,14 @@ defaults for routine choices.
 - Support Parquet, JSONL, CSV and Excel on both sides; one Excel sheet is one
   dataset. A tabular output is a complete supported result without graph IDs,
   labels or a graph-store dependency.
+- Ignore an Excel column whose header is blank and whose cells are all empty;
+  reject a blank-header column with data by position and row, never by value;
+  keep the duplicate-header error; stringify integral floats without `.0`.
+  Follow [the Excel header rules](reference/formats-and-execution.md#excel-header-and-cell-rules).
+- Treat `s3://<bucket>/<key>` as a literal key. Never parse it with `new URL()`
+  or `urlparse`; decode only where an encoded key enters (S3 events,
+  `EncodingType=url`) and encode only for `CopySource`. Follow
+  [the S3 object key rules](reference/formats-and-execution.md#s3-object-keys).
 - Define graph roles explicitly: a vertex's `idColumn` maps to `~id`; an edge's
   `idColumn`, `from.column` and `to.column` map to `~id`, `~from` and `~to`.
   Bind the returned SQL column names: SQL returning `~id` requires `idColumn: "~id"`,
