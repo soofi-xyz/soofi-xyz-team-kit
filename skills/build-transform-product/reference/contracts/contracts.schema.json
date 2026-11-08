@@ -8,7 +8,7 @@
         "s3Uri": {
           "type": "string",
           "minLength": 1,
-          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/.+$"
         },
         "sha256": {
           "type": "string",
@@ -198,7 +198,7 @@
         "s3Uri": {
           "type": "string",
           "minLength": 1,
-          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/.+$"
         },
         "sha256": {
           "type": "string",
@@ -223,7 +223,7 @@
         "queryS3Uri": {
           "type": "string",
           "minLength": 1,
-          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/.+$"
         },
         "querySha256": {
           "type": "string",
@@ -257,7 +257,7 @@
         "queryS3Uri": {
           "type": "string",
           "minLength": 1,
-          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/.+$"
         },
         "querySha256": {
           "type": "string",
@@ -449,7 +449,7 @@
               "s3Uri": {
                 "type": "string",
                 "minLength": 1,
-                "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+                "pattern": "^s3://[a-z0-9][a-z0-9.-]+/.+$"
               },
               "sha256": {
                 "type": "string",
@@ -541,7 +541,7 @@
         "s3Uri": {
           "type": "string",
           "minLength": 1,
-          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/.+$"
         }
       },
       "required": [
@@ -605,7 +605,7 @@
         "s3Prefix": {
           "type": "string",
           "minLength": 1,
-          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/.+$"
         }
       },
       "required": [
@@ -818,14 +818,14 @@
         "catalogS3Uri": {
           "type": "string",
           "minLength": 1,
-          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/.+$"
         },
         "allowedInputPrefixes": {
           "type": "array",
           "items": {
             "type": "string",
             "minLength": 1,
-            "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+            "pattern": "^s3://[a-z0-9][a-z0-9.-]+/.+$"
           },
           "minItems": 1
         },
@@ -898,7 +898,7 @@
         "s3Uri": {
           "type": "string",
           "minLength": 1,
-          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/.+$"
         },
         "sizeBytes": {
           "type": "integer",
@@ -1010,7 +1010,7 @@
         "s3Prefix": {
           "type": "string",
           "minLength": 1,
-          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/.+$"
         },
         "shape": {
           "enum": [
@@ -1202,7 +1202,7 @@
         "s3Prefix": {
           "type": "string",
           "minLength": 1,
-          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/.+$"
         },
         "rowCount": {
           "type": "integer",
@@ -1219,7 +1219,7 @@
         "schemaS3Uri": {
           "type": "string",
           "minLength": 1,
-          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/.+$"
         }
       },
       "required": [
@@ -1278,7 +1278,7 @@
         "outputManifestS3Uri": {
           "type": "string",
           "minLength": 1,
-          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/.+$"
         },
         "format": {
           "enum": [
@@ -1373,7 +1373,7 @@
         "partialOutputS3Prefix": {
           "type": "string",
           "minLength": 1,
-          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/[^?#]+$"
+          "pattern": "^s3://[a-z0-9][a-z0-9.-]+/.+$"
         },
         "finishedAt": {
           "type": "string",

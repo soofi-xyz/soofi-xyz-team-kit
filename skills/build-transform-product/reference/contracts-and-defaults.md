@@ -144,9 +144,14 @@ belongs in this contract and registered configuration.
 
 1. Validate `Environment` and `Request` before storage mutations. Normalize S3
    prefixes with path-segment boundaries: `source/a/` cannot authorize
-   `source/another/`. Reject dot segments, control characters, percent escapes,
-   backslashes, query strings and fragments in this baseline. Check actual bucket
-   and key constraints in addition to the schema's URI pattern.
+   `source/another/`. Treat every `s3://<bucket>/<key>` as a literal key: split
+   the bucket from the key without a URL parser, and keep spaces, `+`, `%`, `#`,
+   `?` and non-ASCII characters as key characters, never as escapes, queries or
+   fragments. Reject `.`/`..` key segments (HTTP layers may collapse them and
+   escape a scoped prefix) and control characters. Check actual bucket and key constraints
+   in addition to the schema's URI pattern. Follow the
+   [S3 object key rules](formats-and-execution.md#s3-object-keys): decode once
+   where an encoded key enters, encode once for `CopySource`, never otherwise.
 2. Compute the request digest from UTF-8 JSON with recursively sorted object
    keys, no insignificant whitespace, unchanged array order and finite numbers.
    Sort keys lexically by UTF-16 code units, not locale-dependent collation;
@@ -217,7 +222,7 @@ at mapping publication:
 | JSONL write | `ignoreNullFields=false`; optional `compression=gzip`; default uncompressed |
 | Parquet read | No format options; validate embedded schema |
 | Parquet write | `compression=snappy` by default; permit `gzip` or `zstd` |
-| Excel read | No options; `sheet` on the mapping input (default: table name); header row required; definition types applied on the driver |
+| Excel read | No options; `sheet` on the mapping input (default: table name); header row required; blank-header all-empty columns ignored, blank-header columns with data rejected by position, duplicate headers rejected ([rules](formats-and-execution.md#excel-header-and-cell-rules)); integral floats stringify without `.0`; definition types applied on the driver |
 | Excel write | No options; one `<dataset>.xlsx` per dataset with one sheet; rejects rows above the configured ceiling |
 | Neptune profile | Fixed profile header/quote/null behavior; optional `compression=gzip`; reject caller overrides of generic CSV options |
 
