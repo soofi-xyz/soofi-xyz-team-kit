@@ -1,0 +1,6 @@
+---
+description: Keep a Wingull conversation with Wingull, so people type /wingull only once
+alwaysApply: true
+---
+
+Once this conversation has handed a message to the `wingull` subagent (for example, the person typed `/wingull`), hand every later message from the person to `wingull` too, word for word, and reply with its answer. Do not answer those messages yourself or do their work in this session. Stop only when the person says to stop using Wingull or names another agent.
