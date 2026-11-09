@@ -412,6 +412,10 @@ def validate_agent_memory():
         project_agent = root / ".cursor" / "agents" / f"{name}.md"
         if not project_agent.is_file() or project_agent.read_bytes() != (root / "agents" / f"{name}.md").read_bytes():
             fail(f".cursor/agents/{name}.md: must be a copy of agents/{name}.md; run cp agents/{name}.md .cursor/agents/")
+    # Cloud Agents load project rules, not plugin rules, so the rule that keeps a Wingull
+    # conversation with Wingull is copied next to .cursor/hooks.json too.
+    if (root / ".cursor" / "rules" / "wingull.mdc").read_bytes() != (root / "rules" / "wingull.mdc").read_bytes():
+        fail(".cursor/rules/wingull.mdc: must be a copy of rules/wingull.mdc; run cp rules/wingull.mdc .cursor/rules/")
     for project_agent in (root / ".cursor" / "agents").glob("*.md"):
         if project_agent.stem not in memory_agents:
             fail(f"{project_agent.relative_to(root)}: only agents with memory belong in .cursor/agents")
