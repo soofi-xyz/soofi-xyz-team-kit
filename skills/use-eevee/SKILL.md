@@ -13,66 +13,95 @@ NOT publish — drafting stops at a finished artifact in the editor.
 
 - The **agent-eevee** repo is checked out and is the workspace (Eevee's editorial prompts live
   there). If it is elsewhere, read the prompts from that directory.
-- Persist access: the soofi-safavi Persist API key, which the bundled `persist` MCP server uses too.
-  Read [Get Persist access](#get-persist-access).
+- The bundled `persist` MCP server is connected. It needs the soofi-safavi Persist API key; read
+  [Get Persist access](#get-persist-access).
 
 ## Retrieve from Persist (read-only)
 
 Eevee's knowledge (the guidance library, the thumbnail style corpus, and Soofi Safavi's articles
-and posts) lives in soofi-safavi's Persist, in the `eevee-knowledge` graph. Retrieve with the CLI
-bundled in this skill. It is plain `node` (18+) with no dependencies, so it runs under restricted
-command sandboxes, including Cursor's, and from any directory:
+and posts) lives in soofi-safavi's Persist, in the `eevee-knowledge` graph. Retrieve it with the
+`persist` MCP server's `search` tool, always with `mode: "SEMANTIC"` (the tool defaults to
+`HYBRID`) and `linked_to` one of these anchors:
 
-```bash
-node <this skill's directory>/scripts/eevee-retrieve.mjs "<query>" [--top-k N] \
-  [--source guidance|thumbnail|founder|both] [--document-type <type>] [--json]
+| Source | `linked_to` id | `labels` |
+|---|---|---|
+| guidance (books, frameworks, papers, RFPs) | `knowledge_corpus:eevee:corpus/guidance` | `["knowledge_passage"]` |
+| thumbnail style (thumbnail and visual-concept work only) | `knowledge_corpus:eevee:corpus/thumbnail-style` | `["knowledge_passage"]` |
+| founder content (Soofi Safavi's articles and X posts) | `author_profile:eevee:author/soofisafavi` | `["social_post", "article_segment"]` |
+
+```js
+search({ query, mode: "SEMANTIC", limit: 2 * n, labels: ["knowledge_passage"],
+         linked_to: { ids: ["knowledge_corpus:eevee:corpus/guidance"] } })
 ```
 
-It sends the same Persist GraphQL `search` calls as agent-eevee's `lib/persist-knowledge.ts`
-(`SEMANTIC` mode, scoped with `linkedTo`), so it returns the passages Eevee itself sees:
+Derive 1–3 focused queries from the brief and run them against guidance and founder content
+before drafting. Use founder content for **voice, tone, terminology, and framing**. Hits come in
+ranking order without scores. `limit` is capped at 25; page with `after: next_cursor`.
 
-- **guidance** — passages of the Guidance library (books, frameworks, papers, RFPs).
-- **founder** — Soofi Safavi's articles and X posts, one hit per post or article. Use these for
-  **voice, tone, terminology, and framing** when drafting.
-- **thumbnail** — the thumbnail style corpus, for thumbnail and visual-concept work only.
-- **both** (default) — guidance and founder, merged by alternating rank.
+**Full text.** A hit's `text` is a snippet of about 240 characters ending in `…`. Before you
+quote or cite a hit, fetch its full text and citation fields in one `run_graphql` call, with an
+alias per hit:
 
-`--document-type` narrows guidance or thumbnail passages to one Eevee document type, for example
-`lite-paper-reference`, `white-paper-reference`, `framework`, `book`, `rfp`, or
-`thumbnail-house-style`, and selects the matching source. Persist returns a ranking without scores.
+```graphql
+query {
+  p0: knowledge_passage(id: "eevee:passage/…") { text
+    rev_knowledge_document_has_knowledge_passage(first: 1) { id title author_display source_reference
+      document_type style_reference_type
+      supersededBy: rev_knowledge_document_supersedes_knowledge_document(first: 1) { id } } }
+  a0: article_segment(id: "article_segment:eevee:segment/…") { text
+    rev_article_has_article_segment(first: 1) { id title source_uri } }
+  s0: social_post(id: "…") { text title source_uri }
+}
+```
 
-Output line: `#n [<source>] <title> (id: …)` then the passage text. Use `--json` for an array of
-`{ id, content, source, metadata }`. Derive 1–3 focused queries from the brief and run retrieval
-before drafting. If the command fails, STOP and report the exact error and its fix. Do not draft
-ungrounded.
+Drop a passage whose document has a `supersededBy` entry: Eevee wrote a newer revision of it.
+Ask `search` for twice the passages you need so that this still leaves enough.
 
-Optional env: `PERSIST_SEARCH_MODE` (`SEMANTIC` default, `HYBRID`, `KEYWORD`) and
-`PERSIST_API_URL` (default `https://soofi-safavi.account.prismteam.ai`).
+**Type filter.** To narrow guidance or thumbnail passages to one Eevee document type, list the
+corpus documents with `run_graphql`
+(`knowledge_corpus(id) { knowledge_corpus_has_knowledge_document(first: 50, after: "<offset>") { id document_type style_reference_type supersededBy: … } }`),
+keep the current documents of that type, and then:
+
+- 10 or fewer documents: pass their ids as `linked_to.ids`.
+- More than 10: search the corpus and keep hits whose `knowledge_document` source is in the set,
+  paging with `after` (up to about 6 pages).
+
+| Eevee type | Persist `document_type` |
+|---|---|
+| `book`, `framework`, `rfp`, `essay` | `BOOK`, `FRAMEWORK`, `RFP`, `ESSAY` |
+| `white-paper-reference` | `WHITE_PAPER` |
+| `lite-paper-reference` (also `light-paper-reference`) | `LITEPAPER` |
+| `rfp-strategy`, `rfp-supporting-material` | `RFP_RESPONSE_STRATEGY`, `RFP_SUPPORTING_MATERIAL` |
+| `agent-definition`, `funding-application`, `vendor-agreement` | `AGENT_DEFINITION`, `FUNDING_APPLICATION`, `VENDOR_AGREEMENT` |
+| `thumbnail-<x>` (for example `thumbnail-house-style`) | `STYLE_REFERENCE`, with `style_reference_type` `<X>` in upper snake case (`HOUSE_STYLE`); `thumbnail-style-recipe`, `-taxonomy`, `-observation` map to `RECIPE`, `TAXONOMY`, `OBSERVATION` |
+
+**Founder results.** Ask `search` for three times the items you need. Keep one result per post
+or per article: an `article_segment` belongs to the article in its `article_has_article_segment`
+source, and the article keeps the rank of its best segment. For each article, use its best-ranked
+segment that holds more than the article title. Use a segment whose text is only the title (the
+article's headline) only when no fuller segment of that article was returned. Cite the article
+or post `title` and `source_uri`.
+
+If the `persist` tools are missing or return an authentication error, STOP and point the user to
+[Get Persist access](#get-persist-access). Do not draft ungrounded.
 
 ### Get Persist access
 
 1. Ask Saman Safavi for the soofi-safavi Persist API key (it is in the team password manager).
    Never paste it into a chat, a prompt, or a committed file.
-2. Save it once, readable only by you:
+2. Save it once, readable only by you, or export it as `PRISM_API_KEY` in your shell profile:
 
    ```bash
    mkdir -p ~/.config/prism && (umask 077; read -rs KEY && printf '%s' "$KEY" > ~/.config/prism/soofi-safavi.key)
    ```
 
-   Or export it as `PRISM_API_KEY` in your shell profile. The CLI and the bundled `persist` and
-   `report` MCP servers read the same key, from `PRISM_API_KEY` first and then that file.
-3. Check: `node <this skill's directory>/scripts/eevee-retrieve.mjs "what makes a strong pitch" --top-k 2`
-   prints two passages. Without a key it fails with `No Persist API key. ...`.
+3. Restart the editor or reload its MCP servers. The bundled `persist` and `report` servers read
+   the key from `PRISM_API_KEY` first, then from that file. Check by asking the agent to run
+   `search({ query: "pitch narrative", mode: "SEMANTIC", limit: 2, linked_to: { ids: ["knowledge_corpus:eevee:corpus/guidance"] } })`.
 
-### Fallback: the legacy Vercel path
-
-Until every teammate has the Persist key, the old path still works. Set
-`EEVEE_KNOWLEDGE_BACKEND=upstash`, then run the same command from the agent-eevee checkout. The CLI
-hands the query to agent-eevee's `scripts/dist/eevee-retrieve.mjs`, which reads Upstash Vector +
-Redis + Vercel Blob. It needs `npm install` in the checkout and `.env.local` from
-`vercel env pull .env.local` (the OIDC token expires after about 12 hours; pull again on auth
-errors). `--source thumbnail` and `--document-type` need Persist. This fallback will be removed
-once Persist access works for everyone.
+Teammates without Persist access can still use the old Vercel path in agent-eevee:
+`EEVEE_KNOWLEDGE_BACKEND=upstash node scripts/dist/eevee-retrieve.mjs "<query>"` with `.env.local`
+from `vercel env pull .env.local` (see agent-eevee `docs/INSTALL-CURSOR.md`).
 
 ## Eevee's editorial prompts (authoring guide)
 
@@ -120,6 +149,6 @@ is stored privately (never at a public URL); the gate prompts for the per-page p
 
 ## Future-compatibility
 
-Retrieval reads Persist directly and mirrors agent-eevee's `lib/persist-knowledge.ts`; when that
-module's queries change, change `scripts/eevee-retrieve.mjs` with it. Intent-driven prompts leave
+Retrieval follows agent-eevee's `lib/persist-knowledge.ts` through the `persist` MCP server; when
+that module's scoping or type mapping changes, change this skill with it. Intent-driven prompts leave
 room for ontology/KG.

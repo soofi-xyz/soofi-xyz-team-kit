@@ -42,9 +42,6 @@ jobs:
           bash -n skills/use-oracle/scripts/oracle-paths.sh
           bash -n skills/use-oracle/scripts/oracle-paths.test.sh
 
-      - name: Check Node script syntax
-        run: node --check skills/use-eevee/scripts/eevee-retrieve.mjs
-
       - name: Check Python syntax
         run: |
           python3 -m py_compile scripts/check-plugin-clean-room.py
