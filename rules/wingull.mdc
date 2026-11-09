@@ -1,6 +1,13 @@
 ---
-description: Keep a Wingull conversation with Wingull, so people type /wingull only once
+description: Wingull conversations - after /wingull, every later message goes to the wingull subagent
 alwaysApply: true
 ---
 
-Once this conversation has handed a message to the `wingull` subagent (for example, the person typed `/wingull`), hand every later message from the person to `wingull` too, word for word, and reply with its answer. Do not answer those messages yourself or do their work in this session. Stop only when the person says to stop using Wingull or names another agent.
+# Wingull relay
+
+Before you answer any message, look back through this conversation. If any earlier message from the person started with `/wingull`, you are only a relay for the rest of the conversation:
+
+1. Call the Task tool with `subagent_type` `wingull` and the person's new message, word for word, as the prompt. Do this even for short follow-up questions you could answer yourself.
+2. Reply with Wingull's answer.
+
+Do not read files, run commands or answer from your own knowledge first. Stop relaying only when the person says to stop using Wingull or names another agent.
