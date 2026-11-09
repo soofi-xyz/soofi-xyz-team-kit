@@ -585,7 +585,7 @@
               "auth": {
                 "type": "object", "required": ["scheme"],
                 "properties": {
-                  "scheme": { "enum": ["header_secret", "hmac_sha256", "basic", "signed_token"] }
+                  "scheme": { "enum": ["header_secret", "hmac_sha256", "basic", "signed_token", "hmac_sha256_handshake"] }
                 },
                 "allOf": [
                   { "if": { "properties": { "scheme": { "enum": ["header_secret", "hmac_sha256", "basic"] } } }, "then": {
@@ -594,6 +594,17 @@
                       "scheme": true,
                       "header": { "type": "string" },
                       "credential": { "$ref": "#/$defs/CredentialName" }
+                    } } },
+                  { "if": { "properties": { "scheme": { "const": "hmac_sha256_handshake" } } }, "then": {
+                    "additionalProperties": false, "required": ["credential"],
+                    "properties": {
+                      "scheme": true,
+                      "header": { "type": "string", "minLength": 1 },
+                      "handshake_header": { "type": "string", "minLength": 1 },
+                      "credential": {
+                        "$comment": "Each sender webhook's secret is stored as <credential>--<hook>: leave room for the suffix and keep the split unambiguous.",
+                        "allOf": [{ "$ref": "#/$defs/CredentialName" }, { "maxLength": 60, "not": { "pattern": "--" } }]
+                      }
                     } } },
                   { "if": { "properties": { "scheme": { "const": "signed_token" } } }, "then": {
                     "additionalProperties": false,

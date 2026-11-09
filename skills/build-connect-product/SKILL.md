@@ -75,7 +75,12 @@ Classify every request before designing anything:
   may name in the flow's `parameters` schema.
 - Verify signed inbound webhooks with `signed_token` against the partner's
   published keys; never store a secret for them
-  ([flow specification](reference/flow-spec.md) §2).
+  ([flow specification](reference/flow-spec.md) §2). Verify partner-created
+  webhooks that hand over a per-webhook secret in a handshake (Asana) with the
+  opt-in `hmac_sha256_handshake`: a registration token on every handshake and
+  one stored secret per hook.
+- Own the [known Connect gaps](reference/use-cases.md#6-known-connect-gaps)
+  and keep their workarounds current until each ships.
 - Land payloads in the Connect bucket and return file pointers with checksums.
   Keep inline responses within `MaxInlineBytes`.
 - Require `limits` on every flow and `Concurrency` on every `Map`.

@@ -63,6 +63,7 @@ listed cost.
 | Partner with unusual signed-request auth | One auth profile on `http` |
 | Partner API acting for a user (refresh token or service account with delegation) | Partner configuration with `oauth2_refresh_token` or `oauth2_jwt_bearer` (§5) |
 | Partner pushing self-contained events with a signed OIDC token (for example Pub/Sub push) | Partner configuration with a `signed_token` webhook + webhook activation (§5) |
+| Partner that creates webhooks through its own API and gives each one a secret in a handshake (for example Asana) | Partner configuration with an `hmac_sha256_handshake` webhook + webhook activation (§5) |
 | Mailbox or API source whose push carries only a change cursor (for example Gmail) | Memoryless overlapping-window pull: partner configuration + schedule activation (§5) |
 
 ## 4. Known product-side follow-ups
@@ -155,6 +156,37 @@ that decodes an inline base64 field to JSON, no `[*]` array projection in
 `Extract.Save` to collect the `ackId`s, and so no way to acknowledge. Both
 gaps belong to the Connect builder; do not work around them in a flow.
 
+### Handshake-secret push source
+
+A partner creates webhooks through its own API and hands each one its own
+secret in an unsigned handshake. Implemented in Connect main (PR #50) as the
+opt-in `hmac_sha256_handshake` webhook scheme
+([flow-spec.md](flow-spec.md) §2). connect-slowking (partner
+`asana-slowking`) is the first configuration; its live dev run is pending.
+
+Example: Asana story and task events for a set of projects.
+
+- Set the registration token through the credentials API as a `webhook_secret`
+  credential (for example `asana-slowking-registration`) and name it in the
+  partner configuration's `webhooks.events.auth`. Connect writes each per-hook
+  secret itself on handshake; never set those by hand.
+- In the flow, set `webhooks.events.response` to
+  `{"accepted_status": 200, "unmatched_status": 200}` and land the delivery
+  body unchanged; enable a webhook activation before registering hooks.
+- Register one Asana webhook per project (and one per workspace for new
+  projects), each with target
+  `.../connect/webhooks/asana-slowking/events?registration=<token>&hook=<name>`
+  and a distinct hook name (for example `p-<project gid>`, `w-<workspace gid>`).
+  Every handshake needs the token; there is no first-hook exception.
+- Creating the webhook is an Asana `POST` whose body carries that target, so
+  it carries the token, and Connect cannot put a credential value into a body
+  ([known gaps](#6-known-connect-gaps), a). Run creation as an operator
+  script that reads the token from the credential owner's terminal and never
+  prints it. Connect flows list and delete webhooks.
+- Asana sends a heartbeat delivery with no events; the flow fails it as an
+  ignored event and the subscriber drops it. Asana deliveries carry no
+  timestamp or nonce, so the consuming product dedupes by event identity.
+
 ### Memoryless window pull
 
 Use this when a source's push is only a change signal. Gmail push carries just
@@ -173,3 +205,18 @@ memoryless, so reject it.
 - Backfill is the same request with a larger window. Alternatively, a
   source-side full-content copy (a Workspace routing copy to SES → S3) is read
   by an `s3` connection.
+
+## 6. Known Connect gaps
+
+Found while building connect-slowking (Slowking on Prism). Each belongs to the
+Connect builder; until it ships, configurations use the workaround and record
+it in the bundle README. Do not add a partner-specific verb to close one.
+
+| Gap | Blocks | Workaround |
+| --- | --- | --- |
+| a. A request body cannot include a credential value | Creating a GitHub webhook with its `config.secret`; creating an Asana webhook whose target URL carries the registration token | Connect flows list and verify hooks; an operator script run by the credential owner creates them, reading the value from their terminal. A scheduled list-and-poll flow covers sources whose hook is missing |
+| b. No RFC 2047 header encoding and no base64 encode | Non-ASCII email subjects; bodies an API wants base64 encoded (Gmail `raw`) | The caller sends the subject already encoded and the flow's `parameters` pattern accepts printable ASCII only; send Gmail through `/upload/gmail/v1/users/me/messages/send?uploadType=media` with `Content-Type: message/rfc822` and a binary body instead of `raw` |
+| c. Compiled default retries may resend a non-idempotent `POST` | Gmail send can deliver the same email twice | Set a deterministic `Message-ID` from the caller's idempotency key (Gmail threads, but does not dedupe); keep one send per job and retry in the calling product |
+| d. Google token-endpoint `access_denied` surfaces as `AuthFailed` without the OAuth error code | Telling a revoked or missing delegation grant from other credential failures | Treat every `AuthFailed` as a credential incident (not retryable) and check the grant and scopes by hand |
+| e. Webhook intake cannot filter heartbeats or drop redeliveries, and event and delivery-id headers (`X-GitHub-Event`, `X-GitHub-Delivery`, `ce-*`, `x-goog-pubsub-*`) do not reach the flow | Ignoring Asana heartbeats and GitHub pings at the edge; deduping redeliveries | Branch on the body's shape in the flow and fail the ignorable case with a named error the subscriber drops; dedupe in the consuming product by event identity |
+| f. `Choice` has no string pattern match | Finding a hook by URL inside a flow | Land the list as a file and let the caller or operator script match it |

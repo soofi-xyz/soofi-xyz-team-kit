@@ -114,6 +114,45 @@ expired or mismatched token answers `401 WebhookUnauthorized`; an unreachable
 or invalid key endpoint answers `503` so the sender retries. Webhook headers
 are used only for auth and content-type parsing; trigger events carry the body.
 
+`hmac_sha256_handshake` (Connect main, PR #50, opt-in) is for partners that
+create webhooks through their own API and give each one its own secret in an
+unsigned handshake (Asana: `X-Hook-Secret` echoed back, then every delivery
+signed in `X-Hook-Signature`). `credential` names a `webhook_secret` credential
+holding a **registration token** (at most 60 characters, no `--`); optional
+`header` (default `X-Hook-Signature`) and `handshake_header` (default
+`X-Hook-Secret`).
+
+```json
+"webhooks": {
+  "events": {
+    "auth": { "scheme": "hmac_sha256_handshake", "credential": "asana-registration" }
+  }
+}
+```
+
+- Register each partner webhook with the target
+  `https://<webhook host>/connect/webhooks/<configuration_id>/<webhook>?registration=<token>&hook=<name>`.
+  `<name>` is lower-case words joined by single hyphens, unique per partner
+  webhook (for example one per board), and `<credential>--<name>` fits in 63
+  characters. Keep the token URL-safe (letters, digits, `-`, `_`, `.`, `~`).
+- **Handshake:** accepted only with the right `registration` token and a valid
+  `hook`. Connect stores the presented secret as credential
+  `<credential>--<hook>` (`webhook_secret`, tagged `connect:handshake=true`)
+  and echoes it with `200`; it starts no job. A missing or wrong token, a
+  missing or invalid `hook`, or a target credential with another profile or
+  named by a configuration or activation answers `401 WebhookUnauthorized` and
+  stores nothing. A new handshake for the same `hook` replaces its secret.
+- **Deliveries** carry `hook=<name>`; the signature must be the hex
+  HMAC-SHA256 of the raw body under **that** hook's secret, read uncached.
+  Another hook's secret, an older secret or the registration token answers
+  `401`.
+- Asana counts only `200`/`204` as delivered: set the flow's
+  `webhooks.<name>.response` to `{"accepted_status": 200, "unmatched_status": 200}`.
+- Per-hook credentials are ordinary credentials (`used_by` empty):
+  `DELETE .../credentials/<credential>--<hook>` revokes one webhook and is not
+  done for you when a configuration is deleted. Rotating the registration
+  token affects only new handshakes.
+
 ## 3. Activation
 
 ```json

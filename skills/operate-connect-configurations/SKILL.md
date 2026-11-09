@@ -84,6 +84,7 @@ Then classify:
 | Needs a saved cursor or position between jobs | Not a Connect gap; redesign as a memoryless pull (or a self-contained push) in step 2 |
 | Cross-job dedupe of records | Persist identity downstream, not Connect |
 | Subject or mailbox allowlist | Fixed in the configuration's `parameters` pattern or scope (a pull iterates a configured list); not a `lapras` gap |
+| Hits a [known Connect gap](../build-connect-product/reference/use-cases.md#6-known-connect-gaps) | Use its recorded workaround and note it in the bundle README; do not re-raise it to `lapras` |
 | Connect cannot perform the single fetch, call or land itself: a missing driver, auth profile, verb or option, or a defect (for example decoding an inline base64 field to JSON) | Stop; hand to `lapras` with the data profile and the smallest failing request |
 | Parsing, classification, graph writes, events | Not Connect; the product owns it after the reply |
 | Human-approval wait (a reviewer completes a task) | `POLL` a `GET` with `Until` on the completion flag, `IntervalSeconds` up to 3600, a state `Retry` on `Connect.Throttled`, `Connect.Timeout` and `Connect.TransientFailure`, the body saved with `SaveOutputTo: $.vars.<name>` and narrowed with the partner's field selector. When the caller's run is capped (System runs at 86400 s), wait in rounds: each round ends `FAILED` with `errors[0].code` `PollExhausted` (phase `poll`, `values` `{}`) and the caller starts the next round with a new `transaction_id` |
@@ -114,6 +115,13 @@ transcript name), use a push subscription with payload unwrapping
 authentication, received by a `signed_token` webhook and a webhook activation
 ([signed-token push source](../build-connect-product/reference/use-cases.md#signed-token-push-source)).
 The queue acknowledges on Connect's 2xx.
+
+When the partner creates webhooks through its own API and gives each one a
+secret in a handshake (Asana), receive them with an `hmac_sha256_handshake`
+webhook and a webhook activation
+([handshake-secret push source](../build-connect-product/reference/use-cases.md#handshake-secret-push-source)).
+Register hooks with an operator script the credential owner runs, because
+Connect cannot put the registration token into the create request's body.
 
 Record the decision in the bundle README's `## Ingestion` section: mode, why,
 schedule and window or event source, idempotency key, downstream dedupe key
