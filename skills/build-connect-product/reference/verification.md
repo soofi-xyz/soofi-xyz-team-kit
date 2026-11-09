@@ -27,7 +27,9 @@ does not prove a live partner integration.
   without `token_url`, a non-HTTPS `token_url`, a credential `PUT` with an
   unknown key or a missing required key for its profile, a `signed_token`
   webhook that names a `credential` or lacks `issuer`, `jwks_url`, `audience`
-  or `required_claims`.
+  or `required_claims`, an `hmac_sha256_handshake` credential name longer than
+  60 characters or containing `--`, a `handshake_header` on another secret
+  scheme.
 
 ## 2. Compiler tests
 
@@ -95,6 +97,7 @@ Azurite, MinIO or moto) and, before release, a real test account:
 | Path expansion | `{name}` encodes `/` as `%2F`; `{+name}` keeps `/` and encodes each segment; an empty value, or a `{+name}` value with an empty, `.` or `..` segment (including a leading or trailing `/`), fails `ValidationFailed` before any request, in `CALL` and in `POLL` |
 | Pagination | Each style; `MaxPages` stop; `Collect: file` lands JSONL; resume on retry |
 | Signed-token webhooks | A valid RS256 token from the JWKS passes; missing token, malformed token, unknown `kid`, bad signature, wrong `iss` or `aud`, expired or not-yet-valid token, and a `required_claims` mismatch each answer `401 WebhookUnauthorized` with only the reason logged; an unreachable or non-JWKS key endpoint answers `503`; keys are reused within the bounded `max-age` and an unknown `kid` refetches at most once per 60 s; schema rejects `signed_token` with a `credential` or `header`, a non-HTTPS `jwks_url`, or no `required_claims` |
+| Handshake webhooks | `hmac_sha256_handshake` echoes the handshake and stores `<credential>--<hook>` tagged `connect:handshake=true`, with no secret or token in logs or responses; a handshake without the token, with a wrong token or without a valid `hook`, or whose target credential has another profile or is named by a configuration or activation answers `401` and stores nothing; two hooks on one activation each verify only with their own secret; another hook's, an older or the registration token's signature answers `401`; re-handshake replaces the secret; deleting one hook credential revokes only that hook; an `hmac_sha256` webhook given `X-Hook-Secret` still answers `401` and echoes nothing |
 | Webhooks | Auth rejection; correlation by value; conditions; `EarlyArrival: buffer` delivers an event that arrives before the wait; batch closes on `max_events` and on `max_seconds` |
 | Large payloads | Responses above `MaxInlineBytes` land as files; base64 bodies decode to the right bytes and content type |
 | Decrypt | Valid PGP decrypts; wrong key fails non-retryable; plaintext never logged |

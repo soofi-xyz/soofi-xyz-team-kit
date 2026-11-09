@@ -156,7 +156,7 @@ Profiles and their keys (Connect main `src/credentials/profiles.ts`):
 | `private_key` (SFTP) | `private_key` | — |
 | `connection_string`, `sas` (Azure) | `connection_string` / `sas` | — |
 | `pgp_key` (`keys.*`) | `private_key` | `passphrase` |
-| `webhook_secret` (`header_secret`, `hmac_sha256` webhooks) | `secret` | — |
+| `webhook_secret` (`header_secret`, `hmac_sha256` webhooks; the registration token and each per-hook secret of `hmac_sha256_handshake`) | `secret` | — |
 | `signing_secret` (subscriber signing) | `secret` | — |
 
 A `signed_token` webhook names no credential: the webhook ingress verifies the
