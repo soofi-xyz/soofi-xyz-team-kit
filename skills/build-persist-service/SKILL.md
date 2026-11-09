@@ -56,7 +56,9 @@ shared configuration-source pattern: API pointer first, Model/Lexicon SSM only
 for a definitively missing pointer, 409 while that boundary resolves, and the
 real loader compiled for DEV and PROD before any write. Keep one writer per cell,
 visibility through the activation pointer only, and backfill as notices into the
-same lanes. Route definition and catalog-schema changes to Model's agents.
+same lanes. Keep every metric-cell read bounded (ids first, then fixed-size
+by-id chunks) under the writer's 16 s limit, as the reference describes. Route
+definition and catalog-schema changes to Model's agents.
 
 Meeting and person scopes use the same engine as debts. For the four
 meeting-report capabilities (business time off the scope path, three-hop paths,

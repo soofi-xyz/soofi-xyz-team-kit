@@ -101,6 +101,36 @@ the deployed catalog's ACTIVE, BACKFILLING and RETIRED ids.
   fractional arithmetic for metric values.
 - Never make cells visible by rewriting them: visibility changes only through
   the activation pointer and generation state.
+- Read `metric_cell`s in bounded requests. The GLOBAL projector reads on the
+  Neptune writer, under a 16 s limit (`serverEvaluationTimeoutMs`: the 20 s
+  request timeout minus 4 s), not a reader's 30 s. One rollup key (one shard of
+  one business date) holds about 10k DEBT cells on heavy payment days
+  (month-ends, the 15th, Fridays). On 2026-11-09 the single
+  `has(rollup_key).valueMap(...)` read of all of them ran past 16 s during an
+  SMS ingest burst, and the same keys failed on every retry until their
+  notices dead-lettered, blocking each per-year GLOBAL lane for about an hour
+  per message (Persist #429 and #434). `readRollupCells` therefore reads the matching
+  ids from the index alone, then the cells by id in chunks
+  (`ROLLUP_READ_CHUNK`, 250), re-checking `rollup_key` and `generation_id` in
+  each chunk and fetching only `ROLLUP_CELL_PROPERTY_KEYS`, the keys the DEBT
+  side merges from. Follow the same pattern for any new read of a set of cells
+  whose size grows with the data, and add a key to `ROLLUP_CELL_PROPERTY_KEYS`
+  when the merge starts reading it.
+- Size a chunk by ids × keys, not by id count: the other by-id reads fetch all
+  17 keys and keep `BY_ID_READ_CHUNK` (100), because a 250-id, 17-key read
+  still timed out under writer contention. A larger chunk reads no more in
+  total, but every in-flight request is larger, so raise one only after
+  measuring these reads in the Neptune slow-query log and the writer's
+  `MainRequestQueuePendingRequests` under contention. Do not win throughput by
+  raising the projector's `GREMLIN_WRITER_POOL_SIZE`: each connection is one
+  more concurrent query on the one writer every Persist write shares, and about
+  64 concurrent queries slowed every write on 2026-11-09.
+- A GLOBAL read that times out is not retried in place; its notice returns
+  after the 720 s visibility timeout and dead-letters after five receives.
+  Redrive the GLOBAL DLQ (`aws sqs start-message-move-task --source-arn <DLQ
+  ARN>`, FIFO supported, back to the source queue by default) only after the
+  read that dead-lettered the notices is bounded and installed, or they fail
+  again.
 
 ## Scopes and family shapes
 
@@ -466,7 +496,8 @@ Work in DEV first and ask before every PUT, confirmed backfill, `ACTIVATE` or
 - Builder: a valid catalog applies and the projectors log the API source
   (`catalogUriSource: Api`); an invalid one is refused with nothing written;
   a tampered generation file fails closed; the legacy guard returns 409; a
-  replay is a no-op; TinkerGraph projector tests still pass.
+  replay is a no-op; TinkerGraph projector tests still pass; a rollup key
+  larger than one chunk is read in 1 + ⌈n/`ROLLUP_READ_CHUNK`⌉ requests.
 - Configurer: `GET` version and release id after the PUT, `STATUS` in sync,
   backfill counters and coverage, `ACTIVATE` gates and the resulting pointer,
   and cell read-back for one known debt. Keep request IDs and responses;
