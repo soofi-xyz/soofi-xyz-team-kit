@@ -135,6 +135,10 @@ codex plugin add soofi-xyz-team-kit@soofi-xyz-team-kit
 Start a new thread after installation or updates. The plugin supplies skills;
 custom agents are project-scoped in `.codex/agents/` when working in this checkout.
 
+Then open `codex` once in this checkout. When it says hooks need review, choose
+**Trust all and continue**. Codex runs no plugin hook until you do, so agent
+memory saves nothing. It asks again only when an update changes the hooks.
+
 To remove: `codex plugin remove soofi-xyz-team-kit`.
 
 </details>
