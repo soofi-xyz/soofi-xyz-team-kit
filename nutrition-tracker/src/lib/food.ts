@@ -12,7 +12,7 @@ export const MEAL_LABEL: Record<Meal, string> = {
 };
 
 export const TRACKER_NOTE =
-  "Starter portions are rounded from USDA FoodData Central. The whey scoop is a common 30 g label, and brands differ. Targets start at 2,000 kcal and 120 g protein until you change them. This page adds up what you log. It does not replace advice from your own clinician.";
+  "Starter portions are rounded from USDA FoodData Central. The whey scoop is a common 30 g label, and brands differ. Aleyna's goals are no more than 1,500 kcal and at least 170 g protein. Soofi's goals are no more than 2,200 kcal and at least 200 g protein. This page adds up what you log. It does not replace advice from your own clinician.";
 
 const ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

@@ -1,8 +1,8 @@
 import type { Kind, Meal } from "./food";
 
 export const STARTER_PEOPLE = [
-  { slug: "aleyna", name: "Aleyna", calorieTarget: 2000, proteinTarget: 120, sortOrder: 0 },
-  { slug: "soofi", name: "Soofi", calorieTarget: 2000, proteinTarget: 120, sortOrder: 1 },
+  { slug: "aleyna", name: "Aleyna", calorieTarget: 1500, proteinTarget: 170, sortOrder: 0 },
+  { slug: "soofi", name: "Soofi", calorieTarget: 2200, proteinTarget: 200, sortOrder: 1 },
 ] as const;
 
 export type StapleSeed = {

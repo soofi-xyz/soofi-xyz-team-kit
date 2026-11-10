@@ -157,10 +157,17 @@ describe("parsers", () => {
 });
 
 describe("starter catalog", () => {
-  it("fits the database limits and keeps the two people", () => {
+  it("fits the database limits and keeps each person's goals", () => {
     assert.deepEqual(
-      STARTER_PEOPLE.map((person) => person.slug),
-      ["aleyna", "soofi"],
+      STARTER_PEOPLE.map(({ slug, calorieTarget, proteinTarget }) => ({
+        slug,
+        calorieTarget,
+        proteinTarget,
+      })),
+      [
+        { slug: "aleyna", calorieTarget: 1500, proteinTarget: 170 },
+        { slug: "soofi", calorieTarget: 2200, proteinTarget: 200 },
+      ],
     );
     const names = new Set<string>();
     for (const staple of STARTER_STAPLES) {

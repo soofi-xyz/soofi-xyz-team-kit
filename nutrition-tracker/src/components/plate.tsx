@@ -748,7 +748,7 @@ function Targets({
   return (
     <details>
       <summary>Daily targets</summary>
-      <p className="quiet">Starter targets are 2,000 kcal and 120 g protein. Set the numbers you are actually aiming for.</p>
+      <p className="quiet">Calories are daily maximums. Protein is a daily minimum.</p>
       {people.map((person) => (
         <TargetRow key={person.id} person={person} busy={busy} onSave={onSave} />
       ))}
@@ -779,10 +779,10 @@ function TargetRow({
       <label className="field name">Name
         <input value={name} maxLength={40} onChange={(event) => setName(event.target.value)} />
       </label>
-      <label className="field">Calorie target
+      <label className="field">Calorie maximum
         <input inputMode="numeric" value={calorieTarget} onChange={(event) => setCalorieTarget(event.target.value)} />
       </label>
-      <label className="field">Protein target g
+      <label className="field">Protein minimum g
         <input inputMode="decimal" value={proteinTarget} onChange={(event) => setProteinTarget(event.target.value)} />
       </label>
       <button className="primary" type="submit" disabled={busy}>Save</button>
