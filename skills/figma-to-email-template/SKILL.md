@@ -115,6 +115,10 @@ Follow the Console
 rules; do not restate or loosen them here. Apply the Spring Oaks conventions in
 [reference/email-conventions.md](reference/email-conventions.md):
 
+- Stop the authored HTML before the standard Terms and Footer. Do not copy that
+  block from Figma, an existing template or a preview, even when the selected
+  frame contains it. `create_email_template_pr` appends Jigglypuff's canonical,
+  reviewed ending and adds its variables; never recreate or machine-edit it.
 - Reuse variables that existing templates already use; do not invent new data.
 - Use the standard links: `tel:+18334183084`, `{{short_url}}`,
   `{{unsubscribe_url}}` and the privacy policy URL.
@@ -141,17 +145,19 @@ placeholder with the returned URL. Never ship SVG, data URIs or Figma URLs.
 2. Call `render_email_preview` with sample data for each meaningful permutation
    (for example with and without a store brand or vehicle). Check the mobile
    (393px) and desktop screenshots against the Figma screenshot and report
-   broken images.
+   broken images. When previewing the body before PR creation, use the tool's
+   new-template mode so Jigglypuff supplies the canonical Terms and Footer.
 
 ### 5. Create the pull request
 
 Call `create_email_template_pr`. Pass the Figma node URL, template name,
-subject, HTML, declared variables, and, when the email needs debt data, the
-existing template whose query to derive from with the fields to keep. Jigglypuff
-writes the linked-HTML files, metadata, `content_sha256` and query, runs the
-inventory validator and opens the PR on a Jigglypuff-owned branch with
+subject, body HTML without the standard Terms and Footer, body variables, and,
+when the email needs debt data, the existing template whose query to derive
+from with the fields to keep. Jigglypuff appends the canonical ending and its
+variables, writes the linked-HTML files, metadata, `content_sha256` and query,
+runs the inventory validator and opens the PR on a Jigglypuff-owned branch with
 `active: false`. Use `add_files_to_template_pr` for follow-up edits to the same
-PR. Read the contract in
+PR; do not replace or modify the generated ending. Read the contract in
 [reference/jigglypuff-mcp-contract.md](reference/jigglypuff-mcp-contract.md).
 
 ### 6. Certify, translate, request approval
@@ -203,8 +209,9 @@ running one Jigglypuff branch at a time.
 
 - Figma account, seat and file access confirmed with `whoami`.
 - The child email frame was read once, with a screenshot.
-- HTML follows the Email HTML target and Spring Oaks conventions; legal text
-  unchanged; alt text on every image.
+- Authored HTML follows the Email HTML target and Spring Oaks conventions,
+  excludes the standard Terms and Footer, leaves all other legal text
+  unchanged, and has alt text on every image.
 - Every image is hosted through Jigglypuff; no placeholders, SVG or Figma URLs.
 - `validate_email_html` passes and previews match the design.
 - The PR is Jigglypuff-owned, `active: false`, certified, and has approval tasks
