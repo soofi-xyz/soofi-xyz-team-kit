@@ -54,6 +54,81 @@ internal-service orchestration engine.
 - Accept legacy Connect service task types only as compile-time aliases and store the canonical v3 form.
 - Validate every flow, partner configuration, activation, job request and result manifest against `reference/contracts/flow.schema.json` plus the semantic checks in `reference/flow-spec.md`. Before pushing, run Connect's own `prepareFlow` (`src/spec/prepare.ts`) on each flow and `checkBinding` (`src/spec/binding.ts`) on each flow and partner configuration pair.
 
+## Access users
+
+Connect is reachable today by the environment's shared key and by administrators
+only. Keep it that way until this section is delivered: do not open the
+credentials API, flows or job submission to other signed-in people first.
+
+- Never expose a secret value. No API response, job result, manifest, log,
+  error, metric or MCP tool returns a credential value to any caller, including
+  the credential's owner and administrators. Credentials are write-only: reads
+  return state, key names, set/unset flags and `used_by`.
+- Recognise a person signed in through Access with Access's shared verifier.
+  Record an owner on every credential when it is created, and never change it:
+  - created with the environment key: owned by the **environment**;
+  - created by a signed-in person, administrators included: owned by **that
+    person**.
+- Declare the credential to Access as a resource private to its owner, with
+  `use`, `manage` and `remove` actions on one credential and the type-level
+  action `create`, which a role grants. Ask Access's shared decision helper;
+  store no grants in Connect.
+- A personal credential may be used only by its owner and by people or roles
+  the owner shared it with. Administrators and the environment key cannot use
+  it, change its value or share it. They may read its metadata, and remove it
+  once nothing names it: removal keeps the in-use guard, so when its owner has
+  left, an administrator first changes or removes the configurations, webhooks
+  and activations that name it, then removes the credential.
+- A credential name that a configuration, webhook or activation already names
+  and nobody has set is reserved for the environment: only the environment key
+  may set it. A signed-in person, administrators included, gets a conflict and
+  creates nothing, so nobody can take over a name an existing configuration
+  depends on. A personal credential is therefore created before the
+  configuration that names it.
+- An environment credential may be used by the environment key and by
+  administrators. Nobody else may use it unless an administrator shares it.
+- Sharing is a grant of `use` made through Access: by the owner for a personal
+  credential, by an administrator for an environment credential. Sharing never
+  reveals the value and never transfers ownership.
+- Starting a flow needs two things, both checked before any partner or storage
+  call. First, `start` on that flow: declare flows to Access with a `start`
+  action and require it from a role or a grant, so a signed-in person with no
+  permission starts nothing, including a flow that names no credential and runs
+  on Connect's own access. Second, `use` on every credential the job's
+  connections name. Refuse the whole job when either is missing, naming the flow
+  or credential and never a value. Administrators and the environment key may
+  start any flow, subject to the credential rules.
+- Creating a personal credential needs a `create` permission from a role. Flows,
+  partner configurations and activations stay with administrators and the
+  environment key.
+- A schedule, drop-zone or webhook activation has no person. It runs as the
+  environment, so it can use environment credentials only. Refuse to create or
+  enable an activation whose flow names a personal credential. Only the
+  environment key or an administrator may create or enable one, and the
+  activation records who enabled it.
+- Keep environment-key callers working unchanged on environment credentials and
+  record them as the environment. Every credential that exists before this
+  ships is an environment credential.
+- Connect has no SigV4 API. Deliver that first, as its own piece
+  `shared-domain-only` with checks `SD-1` to `SD-6` in `reference/verification.md`
+  §7: serve every route on the shared domain, where callers use the shared key
+  or an Access token and partner webhook ingress is a declared keyless method
+  that applies the webhook's own auth. Remove the existing IAM API as an
+  explicit, requested exception to preserving callers: first serve webhook
+  ingress and the schedule and drop-zone test triggers on the shared domain,
+  then move its service-to-service callers and give each partner the new
+  webhook address with an overlap period, then delete the API. A signed-token
+  webhook compares the sender's audience with the configured one exactly, and
+  that audience is usually the webhook address, so let a webhook accept a list
+  of audiences as an opt-in: add the new address, have the partner re-point,
+  then drop the old one. Have a person
+  confirm and record that every partner was re-pointed before the removal.
+
+Implement checks `UC-1` to `UC-22` in `reference/verification.md` §6 as automated
+tests named by their IDs, against a mock partner; the piece is done only when all
+pass. Route sign-in, token, role and grant-API gaps to `aegislash`. Do not build
+sign-in, roles or a permission store in Connect.
+
 ## Table ingestion
 
 Build and maintain source-table ingestion from `reference/table-ingestion/` as a standing Connect capability. Follow its contracts and AWS workflow: the run ends at `EXTRACTED`, the calling product runs Transform/Persist and calls the acknowledgement boundary, and only then does Connect commit the checkpoint. Never invoke Transform or Persist from Connect. Source database credentials are Connect credentials (`jdbc` profile) backing the Glue connection.

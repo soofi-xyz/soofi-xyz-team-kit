@@ -18,7 +18,7 @@ Keep automated tests and user/AWS feedback inside every piece.
 | --- | --- |
 | **Account** | Prism identity, account/service keys, backing AWS account record, explicit create-or-adopt provisioning, Prism cross-account service-access readiness, bootstrap manifest and guarded Account offboarding. |
 | **Environment** | Domain and certificate lifecycle, shared routing and initial Prism platform installation. |
-| **Access** | IAM Identity Center and customer AWS Console assignments. Access is currently unassigned; report the gap instead of implementing console access in Account. |
+| **Access** | Sign-in, users, roles and permissions for the people who use an environment's products. Login to the AWS website for customer staff is not a Prism capability; do not implement console access in Account. |
 | **Prism Marketplace** | Account product/catalog registration, operated by Registeel. |
 
 ## User-visible milestones

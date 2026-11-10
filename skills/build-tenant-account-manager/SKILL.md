@@ -33,8 +33,10 @@ offboarding. Keep these boundaries:
 
 - Environment owns domain and certificate lifecycle, shared routing and initial
   platform installation.
-- Access owns IAM Identity Center and customer AWS Console assignments. It is
-  currently unassigned; do not fill that gap with temporary IAM users in Account.
+- Access owns sign-in, users, roles and permissions for the people who use an
+  environment's products. Account identifies the company; Access identifies its
+  people. Login to the AWS website for customer staff is not a Prism capability:
+  do not create IAM users or console assignments in Account.
 - Registeel operates Account registration in Prism Marketplace.
 - Connect owns partner credentials.
 

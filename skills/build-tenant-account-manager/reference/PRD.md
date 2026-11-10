@@ -27,14 +27,16 @@ Account does not own:
 - Domains, hosted zones, certificates, shared routing or initial Prism platform
   installation. **Environment** owns these.
 - IAM Identity Center, customer AWS Console users, permission sets or account
-  assignments. **Access** will own these and is currently unassigned.
+  assignments. No product offers these.
+- Sign-in, users, roles and permissions for the people who use an environment's
+  products. **Access** owns these.
 - Account product registration in Prism Marketplace. **Registeel** operates that
   catalog registration.
 - Product bundle execution, partner credentials or arbitrary tenant-plane
   administration. Those remain with Deploy, Connect and the owning products.
 
-Do not recreate out-of-scope behavior under a convenient Account endpoint. Report
-an unassigned Access dependency rather than minting temporary console users.
+Do not recreate out-of-scope behavior under a convenient Account endpoint. Never
+mint temporary console users.
 
 ## Plain-language onboarding
 
@@ -327,7 +329,7 @@ Account is complete for the scoped capability when:
   access ready and Environment-owned platform installation.
 - Every failure provides a plain owner, recovery action and retry safety.
 - Fakes cover every external path and live effects remain gated.
-- Account stores no Environment domain/certificate/install state and no
-  Access-owned console assignment.
+- Account stores no Environment domain/certificate/install state, no console
+  assignment and no Access-owned user, role or permission.
 - Bootstrap-manifest retrieval is authorized, non-secret and does not claim the
   platform is installed.

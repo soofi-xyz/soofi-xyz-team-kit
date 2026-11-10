@@ -16,8 +16,11 @@ repository's `docs/runbooks/dev-verification.md` and
 ## API
 
 Call every route below with the shared key. Do not read stack outputs, Secrets
-Manager or SSM, sign with SigV4 or ask for AWS credentials; the IAM API is for
-Connect's internal service-to-service callers.
+Manager or SSM, sign with SigV4 or ask for AWS credentials. Connect is to have no
+SigV4 API: the IAM API still present in a deployment is being retired by
+`lapras`, and its callers, webhook ingress and test triggers move to the shared
+domain. Where this file still names the IAM API URL, it describes a deployment
+that has not migrated yet; check the target before using it.
 
 ```bash
 CONNECT_URL=https://<shared domain>/connect
@@ -44,7 +47,7 @@ Never print the key.
 | `POST /connect/partners/{partner}/lookups/{lookup}` | Synchronous lookup (`kind: lookup` flows) |
 | `POST /connect/partners/{partner}/uploads` | Presigned PUT for a file the product delivers |
 | `GET /connect/jobs/{job_id}` | Job status, errors and manifest pointer |
-| `POST /connect/webhooks/{configuration_id}/{webhook}` | Partner webhook ingress on Connect's IAM API URL, not the shared domain (unsigned; the webhook's own auth applies) |
+| `POST /connect/webhooks/{configuration_id}/{webhook}` | Partner webhook ingress, with no key; the webhook's own auth applies. Target address: the shared domain. A deployment that has not migrated serves it only on Connect's IAM API URL |
 
 Connect has no list routes for flows, partner configurations or activations:
 read each one by name (`GET .../{flow_name}/versions/{version}`,
@@ -55,10 +58,12 @@ registered.
 
 ## Triggers in dev
 
-The schedule and drop-zone triggers below and the webhook URL need AWS access
-(a Lambda invoke, the `DropZoneBucketName` bucket, the IAM API URL) that the
-shared key does not give. Treat them as test-only exceptions run by someone
-with that access, and record the missing key route as a `lapras` gap.
+The target is to start the schedule and drop-zone triggers below, and to
+receive webhooks, on the shared domain. Where the deployment has not migrated,
+they still need AWS access (a Lambda invoke, the `DropZoneBucketName` bucket,
+the IAM API URL) that the shared key does not give. Treat those as test-only
+exceptions run by someone with that access, and record the missing key route
+as a `lapras` gap.
 
 - **Schedule.** Enable the activation, then invoke the schedule target exactly
   as EventBridge Scheduler would, and disable it again:
@@ -147,7 +152,7 @@ in Connect's validation.
 | Scopes granted to the service account's client id (domain-wide delegation) or consented by the user | Connection `auth.scopes` (subset of the grant; leave off for Google refresh tokens) | `AuthFailed` (`unauthorized_client` or `invalid_scope`) |
 | The user whose data is read | Connection `auth.subject` or CALL `Subject`, and the `parameters` pattern that pins it | `AuthFailed`, or 403/404 from the API |
 | Event subscription target (Workspace Events `targetResource` user) | The same user as the subject, inside the pinned pattern | Events for one user, reads as another (403/404) |
-| Push endpoint URL | Connect's IAM API URL + `/connect/webhooks/<configuration_id>/<webhook>` with the configuration's id and webhook name (the shared domain does not serve webhooks) | `401` (unknown configuration or webhook), Pub/Sub redelivers |
+| Push endpoint URL | `https://<shared domain>/connect/webhooks/<configuration_id>/<webhook>` with the configuration's id and webhook name; on a deployment that has not migrated, Connect's IAM API URL with the same path | `401` (unknown configuration or webhook), Pub/Sub redelivers |
 | Push audience (defaults to the push endpoint URL) | `signed_token.audience`, character for character | `401` (`audience_mismatch` in Connect logs) |
 | Push authentication service account | `required_claims.email` (plus `email_verified: true`) | `401` (`claim_mismatch`) |
 | Token issuer actually sent | `signed_token.issuer` (`https://accounts.google.com`, or `accounts.google.com` without the scheme) | `401` (`issuer_mismatch`) |

@@ -1,7 +1,7 @@
 ---
 # Generated from agents/conkeldurr.md. Do not edit directly.
 name: conkeldurr
-description: "Persist builder. Build, maintain or fix the Persist graph service, ingestion, queries, current-only lexicon catalog, real-time metrics and their API-managed catalog, indexes, triggers, lexicon-governed vector search through GraphQL and the read-only Persist MCP server. Use Uxie for configuring an existing Persist deployment."
+description: "Persist builder. Build, maintain or fix the Persist graph service, ingestion, queries, current-only lexicon catalog, real-time metrics and their API-managed catalog, indexes, triggers, lexicon-governed vector search through GraphQL, the read-only Persist MCP server and per-user access for signed-in people. Use Uxie for configuring an existing Persist deployment."
 product: persist
 role: build
 ---
@@ -79,6 +79,38 @@ still to decide, and wait for review. Keep debt and payment plans unchanged,
 and ship one merge to both Marketplace (`marketplace/app.ts`) and SOC
 (`bin/app.ts`, DEV before PROD).
 
+## Access users
+
+For people signed in through Access, load [the user-scoped access
+contract](../skills/build-persist-service/reference/user-scoped-access.md) and
+select feature `user-scoped-access`. One environment is one company; separate
+users by their graph connections, never by a tenant prefix or key.
+
+Add the Access user as a caller beside the environment key and IAM roles, and
+verify its token with Access's shared verifier. Give a non-administrator user
+GraphQL only. Build each of their reads as a traversal from their own user
+record along the lexicon's access-carrying edges, and apply that rule to lookups
+by identifier, nested fields and counts. Answer not found for a record they
+cannot reach. For search, store each record's access anchors on its search
+document and filter by the caller's anchors inside the index query; never fetch
+hits and filter them afterwards. Refuse them on Gremlin, ingest, lexicon, trigger,
+metrics, MCP and file-load routes, and keep those routes for the environment
+key, IAM roles and Access administrators.
+
+Extend the personal-data field policy to Access roles. Take a caller's roles
+from their verified token, never from the graph. Accept user records, group
+records and grant edges (user or group to anchor) only from Access's own
+service identity, on every write path, and log who wrote
+them; refuse them from the environment key, IAM roles and administrators. Keep
+structural edges beneath an anchor as ordinary ingest, followed in their
+declared direction only, and refuse any edge that touches a user or group
+record from a caller other than Access. Put the whole shared API behind one
+authorizer that accepts the shared key or a verified Access token, as the
+publish readiness gate's option 3 requires for an entire API; decide what each
+caller may reach inside Persist. Take the user record type and edge types from the active
+lexicon; route their definition to `dialga` and sign-in, token or grant-API gaps
+to `aegislash`. Do not build sign-in, roles or a grant store in Persist.
+
 ## Shared API domain
 
 Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
@@ -95,3 +127,4 @@ Return the Persist change, affected contracts and state, verification results, m
 For the catalog piece, include the source and applied digests, scoped diff summary, HTTP/Gremlin read-back, replay/concurrency evidence and remaining deployment gaps.
 For the metrics piece, include the catalog API behavior proven (apply, refusal, legacy guard, replay, tamper), the catalog source the projectors logged, TinkerGraph projector results and remaining deployment or cutover gaps.
 For `metrics-graph-shapes`, include each capability's compile results for DEV and PROD, the SOC lexicon check for new labels, its positive, negative and update-path test results, the unchanged debt and payment results, and the commit both delivery paths shipped.
+For `user-scoped-access`, implement checks `UA-1` to `UA-22` from the contract as automated tests named by their IDs and treat the piece as done only when all pass; include the evidence row per check, the caller kinds recognised, the lexicon edge and anchor types used, the index generation carrying anchors and any Model or Access gap still open.

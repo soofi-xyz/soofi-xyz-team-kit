@@ -1,7 +1,7 @@
 {
   "name": "soofi-xyz-team-kit",
-  "description": "Product builders and configurers with guided feature increments for Documentation, Account, Console, Environment, Build, Deploy, Model, Marketplace, Transform, Persist, Rule, Connect, System, Report, Schedule and Inference.",
-  "version": "0.139.0",
+  "description": "Product builders and configurers with guided feature increments for Documentation, Account, Access, Console, Environment, Build, Deploy, Model, Marketplace, Transform, Persist, Rule, Connect, System, Report, Schedule and Inference.",
+  "version": "0.140.0",
   "author": {
     "name": "Soofi XYZ"
   },
@@ -21,6 +21,7 @@
   ],
   "agents": [
     "./agents-claude/abra.md",
+    "./agents-claude/aegislash.md",
     "./agents-claude/alakazam.md",
     "./agents-claude/ampharos.md",
     "./agents-claude/arceus.md",
@@ -41,6 +42,7 @@
     "./agents-claude/dialga.md",
     "./agents-claude/ditto.md",
     "./agents-claude/donphan.md",
+    "./agents-claude/doublade.md",
     "./agents-claude/eevee.md",
     "./agents-claude/elgyem.md",
     "./agents-claude/espeon.md",

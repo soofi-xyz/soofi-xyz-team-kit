@@ -121,8 +121,9 @@ storage directly or call STS/IAM outside the Account service as a workaround.
    - **Account:** identity, keys, AWS account record/provisioning, Prism
      cross-account service readiness and bootstrap manifest.
    - **Environment:** domains, certificates and initial platform installation.
-   - **Access:** IAM Identity Center and customer AWS Console assignments;
-     currently unassigned, so report the ownership gap.
+   - **Access:** sign-in, users, roles and permissions for the people who use
+     an environment's products. Use `doublade`. Login to the AWS website for
+     customer staff is not a Prism capability.
    - **Prism Marketplace:** Registeel operates Account catalog registration.
 
 Return configured state, redacted IDs, expected/actual results, user/AWS evidence,
