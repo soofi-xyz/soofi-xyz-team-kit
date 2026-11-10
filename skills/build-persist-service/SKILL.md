@@ -1,6 +1,6 @@
 ---
 name: build-persist-service
-description: "Build or maintain Persist graph ingestion, queries, a current-only lexicon catalog, real-time metrics and their API-managed catalog, indexes, triggers, lexicon-governed vector search through GraphQL and the read-only Persist MCP server. Use Conkeldurr; use Uxie for particular configurations."
+description: "Build or maintain Persist graph ingestion, queries, a current-only lexicon catalog, real-time metrics and their API-managed catalog, indexes, triggers, lexicon-governed vector search through GraphQL, the read-only Persist MCP server and per-user access for signed-in people. Use Conkeldurr; use Uxie for particular configurations."
 disable-model-invocation: true
 ---
 
@@ -78,6 +78,18 @@ process. Enforce read-only in layers (no write imports or permissions, Neptune
 reader, Gremlin step allowlist, GraphQL mutation refusal) and keep the key out of
 arguments, results and logs. Derive tool schemas from the route schemas with a
 contract test. Report owns its own server; do not build one across products.
+
+## Access users
+
+For people signed in through Access, load [the user-scoped access
+contract](reference/user-scoped-access.md) and build feature `user-scoped-access`.
+Recognise an Access user as a caller beside the environment key and IAM roles,
+using the shared verifier. Give a non-administrator user GraphQL only, with every
+read built as a traversal from the caller's own user record along the lexicon's
+access-carrying edges. Apply the same rule to lookups by identifier, counts and
+search results. Keep every other route for the environment key, IAM roles and
+administrators. Accept user records and access edges from Access's service
+identity through ingest; route the record type and edge types to Model's agents.
 
 ## Marketplace image access
 

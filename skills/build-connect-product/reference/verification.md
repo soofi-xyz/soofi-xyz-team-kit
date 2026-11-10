@@ -118,3 +118,33 @@ Elevate configuration.
 For a live run, record environment, flow version, activation ID, job ID,
 result manifest URI and the product callback receipt. Never paste landed
 payloads or secrets into evidence.
+
+## 6. Per-user credential acceptance
+
+`user-scoped-credentials` is done only when every check below exists as an
+automated test whose name starts with its ID and passes against a mock partner.
+Use the people from [the Access test data](../../build-access-product/reference/test-data.md)
+and a credential whose value contains a fresh `LEAKCHECK-<random>-connect`
+marker. Record one evidence row per check: ID, level (local or deployed),
+result, job or request identifier and the Connect revision.
+
+| ID | Do | Pass when |
+| --- | --- | --- |
+| UC-1 | Set a credential, then read it as its owner, as `admin` and with the environment key | Each read returns state, key names, set/unset flags, owner and `used_by` only; the marker is in none |
+| UC-2 | Run a job that uses the credential, one that fails partner auth and one that fails validation; then search every response, job result, manifest, error and log line of the run | The marker appears nowhere |
+| UC-3 | `alice` creates a credential; `admin`, signed in, creates one; one is created with the environment key | Owners are `alice`'s user identifier, `admin`'s user identifier and `environment` |
+| UC-4 | `alice` starts a flow that uses her credential | The job runs; the mock partner receives the call |
+| UC-5 | `bob` starts the same flow | `403` naming the credential, never its value; the mock partner receives zero calls |
+| UC-6 | `admin`, signed in, starts the same flow; then it is started with the environment key | `403` for both; zero partner calls |
+| UC-7 | `alice` shares her credential with `bob` through Access; he starts the flow; she revokes; he starts it again | Runs, then `403` with zero partner calls |
+| UC-8 | `admin` and the environment key each try to share `alice`'s credential and to replace its value | `403` for all four; no grant and no change |
+| UC-9 | `admin` reads the metadata of `alice`'s credential, then removes it | Metadata returned without a value; removal succeeds and is audited |
+| UC-10 | The environment key and `admin` each start a flow that uses the environment credential | Both run |
+| UC-11 | `alice` starts that flow; `admin` shares the environment credential with her; she starts it again | `403` with zero partner calls, then it runs |
+| UC-12 | `bob`, holding `use` on one of two credentials a flow names, starts it | `403`; zero partner calls for either connection |
+| UC-13 | `alice` creates and enables a schedule activation; then `admin` does, for a flow on the environment credential | `403` for `alice`; allowed for `admin`, with the activation recording who enabled it; its job runs as the environment |
+| UC-14 | `admin` creates an activation whose flow names `alice`'s personal credential | Refused at create and at enable; no job starts |
+| UC-15 | Make Access's decision helper fail | Every user-started job is refused |
+| UC-16 | Call each Connect route with an expired, an edited and an other-environment token | `401` each; nothing started |
+| UC-17 | Run the existing environment-key suites against credentials that existed before this piece | Unchanged results; each such credential is owned by `environment` |
+| UC-18 | Before per-user checks ship: `alice` calls the credentials, flow and job routes | `403` each. Connect is reachable by the environment key and administrators only |

@@ -143,8 +143,9 @@ the approved business channel for contact information and identifiers.
   bootstrap manifest.
 - **Environment:** domains, certificates, shared routing and initial Prism
   platform installation.
-- **Access:** IAM Identity Center and customer AWS Console assignments. Access is
-  currently unassigned, so Account cannot promise Console access or create a
+- **Access:** sign-in, users, roles and permissions for the people who use an
+  environment's products. Login to the AWS website for customer staff is not a
+  Prism capability, so Account cannot promise Console access or create a
   temporary substitute.
 - **Prism Marketplace:** Account product and catalog registration. Registeel is
   the Marketplace operator for that work.

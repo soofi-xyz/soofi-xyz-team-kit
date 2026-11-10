@@ -33,6 +33,10 @@ configuration with unchanged service code and an assembly with no bundle-specifi
 Do not call target configuration APIs during build or add arbitrary lifecycle hooks.
 Accept the `console` `application` kind together with Corviknight's Console adapter,
 validating each manifest as the contract's Console application payloads require.
+Accept the `access` `application` kind together with Corviknight's Access adapter,
+once Aegislash ships Access's application API: validate each document as the
+contract's Access application payloads require and reject one that carries a
+secret, token, user, role or grant.
 Add a `rule` kind only after Gallade ships Rule's configuration API, and never a
 `documentation` kind: pack a product's documentation from its repository alongside
 `requirements/swagger.yml` and `requirements/mcp.json` once Unown's intake accepts it.

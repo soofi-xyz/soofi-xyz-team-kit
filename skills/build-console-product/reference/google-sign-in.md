@@ -6,7 +6,58 @@ any change to Console pages, components, routes, the renderer shell, the API
 dispatcher or the web runtime. A change that weakens a guarantee below is a
 defect, even when the change was about something else.
 
+## Target: sign-in through Access
+
+Console integrates with Access instead of running its own sign-in. The
+`google-oidc` policy described in the rest of this contract is the existing
+behavior. It stays in force only until Access sign-in is verified on a
+deployment; add no capability to it.
+
+- Register Console as an Access application with its exact callback and
+  sign-out addresses. Access holds the Google client; Console holds no Google
+  client ID or secret after migration.
+- Send an unauthenticated visitor to Access. On return, verify the Access token
+  with Access's shared verifier (signature, issuer, audience, expiry, token
+  type) and issue the Console read session from it. Fail closed on any
+  verification error.
+- Take who may sign in from Access (its allowed Google domains and its users)
+  and who may open a route or run an action from Access roles. Move
+  `allowedDomains`, `allowedUsers` and `allowedGroups` to Access; do not keep a
+  second copy of those rules in Console.
+- Keep every guarantee below that is not about Google itself: deny by default,
+  server-side checks on every route, bounded sessions, sign-out, no credential
+  or token in logs, bundles or static assets, and the route inventory test.
+- Migrate one deployment at a time: verify Access sign-in for the same users,
+  then remove `/console/access-policy`, the Google client secret and the
+  viewer password. Do not run both sign-ins as a permanent state.
+- Access (`aegislash`) owns sign-in, tokens and roles. Console (`chandelure`)
+  owns this integration. A missing Access capability is a gap to report, not a
+  reason to extend `google-oidc`.
+
+### Definition of done for `access-sign-in`
+
+The piece is done only when every check below exists as an automated browser or
+API test whose name starts with its ID and passes against a test deployment with
+Access installed. Use the people from [the Access test data](../../build-access-product/reference/test-data.md),
+with Console registered as an Access application. Record one evidence row per
+check: ID, result, request identifier and the Console revision.
+
+| ID | Do | Pass when |
+| --- | --- | --- |
+| CS-1 | Open a Console page with no session | Redirected to Access sign-in start for the Console application; no page content served |
+| CS-2 | Sign in as `alice` | The page renders; the session's subject is her Access user identifier |
+| CS-3 | A user without the route's role opens the route, then calls its action directly | `403` from the server for both, not only a hidden link |
+| CS-4 | Return to the callback with an expired, an edited and an other-audience token | No session created for any |
+| CS-5 | Disable `dave` in Access, then let his session's token expire | His next request is refused and he is sent to sign in, where he is refused |
+| CS-6 | Sign out, then press back and request a protected route | No protected content served |
+| CS-7 | Run the route inventory, add one page, change another, run it again | Every route requires a session in both runs |
+| CS-8 | After migration, inspect the deployment | No `/console/access-policy` parameter, no Google client secret, the viewer password route answers not found, and Console's role cannot read a Google client secret |
+| CS-9 | Search the run's logs, responses, static assets and bundles for every token issued | None found |
+
 ## Ownership
+
+Until a deployment has migrated:
+
 
 Google is the identity provider. Console owns the policy that decides who may
 open its applications: it verifies Google ID tokens, applies the configured

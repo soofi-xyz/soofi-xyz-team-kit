@@ -176,6 +176,34 @@ the same purpose), tag infrastructure you create `connect:verify=dev`, and list
 what you created. See [dev runtime](reference/dev-runtime.md) for the credentials
 API, SFTP connectors and cross-account roles.
 
+## Credential ownership and sharing
+
+Applies where the deployment enforces per-user checks; confirm it first and
+report a gap to `lapras` otherwise. A credential's owner is fixed when it is
+created and decides who can start a flow that uses it:
+
+| Created | Owner | Who can use it |
+| --- | --- | --- |
+| With the environment key | The environment | The environment key and administrators; others only after an administrator shares it |
+| By a signed-in person, administrators included | That person | That person; others only after the owner shares it. Never an administrator or the environment key |
+
+- Choose the owner on purpose. Use the environment key for a credential that
+  schedules, drop zones or webhooks need, because those run as the environment
+  and cannot use a personal credential. Have the person set their own credential
+  when only they should run the flow.
+- To share: the owner (or an administrator, for an environment credential) asks
+  `doublade` to grant the other person or role `use` on the named credential
+  through the Access API. Sharing never shows the value and can be revoked the
+  same way.
+- Verify a share by having the other person start the flow: it runs after the
+  grant and is refused, with no partner call, after it is revoked.
+- A refusal that names a credential means the caller may not use it. Do not
+  widen a role, copy the secret into a second credential or switch to the
+  environment key to get past it; ask the owner to share.
+- An administrator can read a personal credential's metadata and remove it, for
+  example when its owner leaves, but cannot use it, share it or change its value.
+- No read returns a value, to anyone.
+
 ## 5. Select the test sample
 
 Pick the smallest sample that exercises every branch of the flow:

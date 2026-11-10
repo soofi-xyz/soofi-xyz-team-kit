@@ -32,6 +32,7 @@ Build → Marketplace → Deploy path before claiming the migration is complete.
 | Connect / Lapras, Wingull | Own flow, partner-configuration and activation API semantics and author/validate their configurations |
 | System / Zygarde, Celebi | Own definition, template, flow and waterfall API semantics and compose their configurations |
 | Console / Chandelure, Vivillon | Own application, revision and publication API semantics and author application manifests (bundle kind pending; see [Console application payloads](#console-application-payloads)) |
+| Access / Aegislash, Doublade | Own application API semantics and author application documents (bundle kind pending; see [Access application payloads](#access-application-payloads)) |
 | Inference / Beheeyem, Elgyem | Own configuration API and version semantics and author `inference-1` configurations (see [Inference configuration payloads](#inference-configuration-payloads)) |
 | Rule / Gallade, Meditite | Own selection, candidate-scope and projection configuration semantics (no bundle kind until Rule has an API; see [Products without a bundle kind](#products-without-a-bundle-kind)) |
 
@@ -196,6 +197,35 @@ Paths below are relative to `/console`.
   Console has no application delete; report retirement as unsupported rather than
   claiming removal.
 
+## Access application payloads
+
+Target contract: Build's `CONFIGURATION_KINDS` and Deploy's adapters do not yet
+include `access`, and Access's application API is requested build scope.
+Aegislash ships the API below first; then Tinkaton adds the kind and Corviknight
+the adapter, following the deployed API where it differs. Paths are relative to
+`https://<shared domain>/access`, with the shared `x-api-key`.
+
+- **Bundle entry:** `product: "access"`, `kind: "application"`, `source` an
+  application JSON document. Its `name` is the logical identity; Build rejects a
+  repeated `name` and validates the document against the application schema in
+  the Access repository's `requirements/swagger.yml` without calling Access.
+- **Document:** the application's name, title, exact redirect addresses and
+  exact sign-out addresses. Every address is `https` with no wildcard. The
+  document carries no client secret, token, user, role or grant; Build rejects
+  one that does.
+- **Apply:** `GET /applications/{name}`, then `PUT /applications/{name}` with
+  the document: created, replaced, or unchanged for identical content. An
+  invalid document fails the install before any write.
+- **Read back:** `GET /applications/{name}` must return the bundle's addresses
+  exactly; report `name` and the document digest in the run result.
+- **Retire:** `DELETE /applications/{name}` when a release drops an application
+  that this component owns. Removal ends that application's sessions, so report
+  it as an explicit effect and never remove an application another component or
+  a direct registration claims.
+- Installing an application signs nobody in and changes no user, role or grant.
+  Roles, users, grants and the Google sign-in client are set through the Access
+  API by Doublade, never from a bundle.
+
 ## Inference configuration payloads
 
 Build (`CONFIGURATION_KINDS`) and Deploy's adapters support product `inference`, kind
@@ -276,6 +306,9 @@ Before merging, check what the install will replace:
   one a configurer saved directly.
 - A Console application publishes over the active revision of the same
   `applicationId`, including one a configurer published directly.
+- An Access application replaces the same-named application's redirect and
+  sign-out addresses, including one a configurer registered directly; an address
+  dropped from the document stops working for sign-in at once.
 
 ## Synthetic acceptance
 

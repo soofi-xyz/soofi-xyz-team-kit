@@ -56,9 +56,12 @@ service. Do not turn a configuration request into an implementation session.
    authorization-sensitive. Give technical invocations only after the person
    understands the outcome and only to the operator who needs them.
 9. Keep product boundaries explicit: Environment owns domains, certificates and
-   initial platform installation; Access (currently unassigned) owns IAM Identity
-   Center and customer AWS Console assignments; Registeel operates Account catalog
+   initial platform installation; Access owns sign-in, users, roles and
+   permissions for the people who use an environment's products (`aegislash`
+   builds, `doublade` configures); Registeel operates Account catalog
    registration in Prism Marketplace. Do not implement those features in Account.
+   Login to the AWS website for customer staff is not a Prism capability: never
+   create console users or assignments.
 
 ## Shared API domain
 

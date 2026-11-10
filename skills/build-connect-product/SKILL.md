@@ -81,6 +81,19 @@ Classify every request before designing anything:
   one stored secret per hook.
 - Own the [known Connect gaps](reference/use-cases.md#6-known-connect-gaps)
   and keep their workarounds current until each ships.
+- Never expose a credential value to any caller: not in a response, job result,
+  manifest, log, error or tool output, and not to its owner or an administrator.
+- Keep Connect to the environment key and administrators until per-user
+  checks ship. Then own every credential by its creator: the environment when
+  created with the environment key, the person when created by anyone signed
+  in. A personal credential is usable only by its owner and those the owner
+  shares it with, never by an administrator or the environment key; an
+  environment credential only by the environment key and administrators, unless
+  an administrator shares it.
+- Let credential use decide who may start a flow: the caller needs `use` on
+  every credential the job's connections name. Activations run as the
+  environment, use environment credentials only, and are created only by an
+  administrator or the environment key.
 - Land payloads in the Connect bucket and return file pointers with checksums.
   Keep inline responses within `MaxInlineBytes`.
 - Require `limits` on every flow (`timeout_seconds` at most 5 on a `lookup`)

@@ -60,19 +60,24 @@
       "sourceRows": [
         2
       ],
-      "status": "unassigned",
-      "summary": "Access will own IAM Identity Center and customer AWS Console assignments.",
+      "status": "assigned",
+      "summary": "Access signs a company's users in with Google, manages users, roles, service identities and permission rules, and grants each person the resources and graph records they may use.",
       "agents": {
-        "build": null,
-        "configure": null
+        "build": "aegislash",
+        "configure": "doublade"
       },
       "skills": {
-        "build": null,
-        "configure": null
+        "build": "build-access-product",
+        "configure": "configure-access-product"
       },
       "notes": [
-        "Account onboarding identifies this as an ownership gap. Do not implement temporary customer console users or Identity Center assignments inside Account."
-      ]
+        "Requested 2026-11-10: redefine Access as user sign-in, users, roles, service identities, permission rules and grants. Aegislash builds; Doublade configures existing deployments. Login to the AWS website for customer staff is dropped and belongs to no product. This is requested implementation guidance, not deployed support.",
+        "One environment is one company; separate companies use separate environments. Access separates users inside an environment and has no tenant concept. Sign-in is Google only and is served on the shared domain.",
+        "Access keeps permission rules in Amazon Verified Permissions (one store per environment) and publishes each user to Persist as a graph record. Record access is a graph connection that Access grants through Persist's API and Persist enforces; the user record type and access-carrying edge types are open Model decisions.",
+        "Each product's builder enforces access in that product: Conkeldurr scopes Persist GraphQL and search to the caller, Lapras lets credential use decide who may start a Connect flow, Chandelure signs Console users in through Access. Applications are installable from configuration bundles through Build's `access` `application` kind and Deploy's Access adapter; roles, users and grants are API-only.",
+        "Requested 2026-11-10: Aegislash verifies each Access piece itself against the Access definition of done (automated checks at fake and deployed levels, leak scan, cleanup) and continues without the shared workflow's person-run checkpoint. Only the real-Google sign-in check needs a person. The override applies to Access build work only; Doublade and other products keep the checkpoint."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/access.md"
     },
     {
       "id": "console",
@@ -97,7 +102,8 @@
         "Begin full Console builds with official Figma MCP client registration/approval and OAuth/read verification. Keep downstream authoring pending until the checkpoint succeeds; reuse existing verified approval for later tasks.",
         "Require versioned project configuration, authoring/review workspace, component identity/assets/history, standalone export and reviewed PR application/revert, optional compiled-registry promotion through Build/Marketplace/Deploy, and bounded tenant operations with lifecycle acceptance.",
         "The 2026-10-21 scope adds generic report visualization components and a read-only `report` dataset binding over Report's `report-output-1` outputs, derived from the visuals shared by existing reports. Chandelure builds them; Vivillon maps a report's datasets to them. Report keeps queries, refreshes and dataset shape.",
-        "The 2026-10-26 scope adds an `email-html` authoring target for Figma-designed email template bodies, with Jigglypuff calling the job API through the shared domain (SOC DEV first, then PROD). Console generates the body only; Jigglypuff keeps template PRs, approvals, real-debt render certification and sending."
+        "The 2026-10-26 scope adds an `email-html` authoring target for Figma-designed email template bodies, with Jigglypuff calling the job API through the shared domain (SOC DEV first, then PROD). Console generates the body only; Jigglypuff keeps template PRs, approvals, real-debt render certification and sending.",
+        "Requested 2026-11-10: Console signs users in through Access as a registered application and takes route permissions from Access roles. Its own `google-oidc` policy is existing behavior to migrate away from. This does not establish deployed support."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/console.md"
     },
@@ -999,7 +1005,8 @@
         "Requested 2026-10-05: keep embeddings, OpenSearch vector indexing and GraphQL search composition in a separate vector-search feature piece. Model owns lexicon field eligibility; Persist owns implementation and GraphQL source routing. This scope assignment does not establish deployed support.",
         "Requested 2026-10-14: Conkeldurr builds a current-only Gremlin lexicon catalog and Uxie configures/verifies it. Reconcile accepted base/extension definitions using stable IDs, content hashes and an added/changed/removed diff; atomically update metadata and the applied revision with optimistic concurrency. Store no RDF/OWL semantics, historical definition vertices or latest links. Model owns definitions/history; Deploy owns managed release installation. This is requested implementation guidance, not deployed support.",
         "Requested 2026-10-21: Conkeldurr builds and Uxie configures real-time metric cells and the API-managed metrics catalog (PUT/GET /persist/metrics/catalog, Persist PR #347). Persist reads its API pointer first and the Model/Lexicon SSM boundary only while no pointer exists; Model owns metric definitions. Metric changes are catalog install, backfill and gated activation, separate from derived indexes. This does not establish deployed support.",
-        "Requested 2026-10-27: Conkeldurr builds and Uxie configures the read-only Persist MCP server at /persist/mcp (describe_schema, search with source ids, run_gremlin, run_graphql, count_by_label, date_range, lookup_metric, saved queries), configured through GET/PUT /persist/mcp/configuration without a redeploy. This does not establish deployed support."
+        "Requested 2026-10-27: Conkeldurr builds and Uxie configures the read-only Persist MCP server at /persist/mcp (describe_schema, search with source ids, run_gremlin, run_graphql, count_by_label, date_range, lookup_metric, saved queries), configured through GET/PUT /persist/mcp/configuration without a redeploy. This does not establish deployed support.",
+        "Requested 2026-11-10: Conkeldurr builds and Uxie verifies user-scoped access. A person signed in through Access reaches GraphQL only, and every read, lookup, count and search result is limited to records reachable from their own user record along the lexicon's access-carrying edges; all other routes stay with the environment key, IAM roles and Access administrators. This does not establish deployed support."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/persist.md"
     },
@@ -1081,7 +1088,8 @@
         "configure": "operate-connect-configurations"
       },
       "notes": [
-        "Own flow, partner-configuration and activation API lifecycle semantics consumed by the shared Deploy installer. Lapras handles API gaps; Lapras owns the credentials API and its credential stores; Wingull authors and verifies payloads and sets credentials through that API. Configuration registration must not implicitly start partner jobs."
+        "Own flow, partner-configuration and activation API lifecycle semantics consumed by the shared Deploy installer. Lapras handles API gaps; Lapras owns the credentials API and its credential stores; Wingull authors and verifies payloads and sets credentials through that API. Configuration registration must not implicitly start partner jobs.",
+        "Requested 2026-11-10: Connect never returns a credential value to any caller. It stays limited to the environment key and administrators until Lapras ships per-user checks. Then a credential is owned by its creator: the environment when created with the environment key, the person when created by anyone signed in. A personal credential is usable only by its owner and those the owner shares it with through Access, never by an administrator or the environment key; an environment credential only by the key and administrators unless an administrator shares it. Starting a flow needs `use` on every credential it names; activations run as the environment on environment credentials. This does not establish deployed support."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/connect.md"
     },
