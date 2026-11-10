@@ -12,11 +12,11 @@ partition.
 
 | Caller | How it is recognised | What it may reach |
 | --- | --- | --- |
-| Environment key | The shared key, with no person attached | Everything, as today. Recorded as the environment. Personal-data fields stay denied to it. |
-| IAM role | A signed request from an AWS principal | Everything its role allows, as today. |
-| Access administrator | A verified Access token whose roles include the Persist administrator role | Every route. |
+| Environment key | The shared key, with no person attached | Everything, as today, except writing user records and access-carrying edges. Recorded as the environment. Personal-data fields stay denied to it. |
+| IAM role | A signed request from an AWS principal | Everything its role allows, as today, except writing user records and access-carrying edges. |
+| Access administrator | A verified Access token whose roles include the Persist administrator role | Every route, except writing user records and access-carrying edges. |
 | Access user | A verified Access token without that role | GraphQL only, scoped to what is connected to the user. |
-| Access service identity | A verified Access token naming a service | The actions its permissions name. |
+| Access service identity | A verified Access token naming a service | The actions its permissions name. Access's own identity is the only caller that may write user records and access-carrying edges. |
 
 Verify Access tokens with the shared verifier from Access: signature, issuer,
 audience, expiry and token type. Reject on any verification error. Never read a
@@ -72,26 +72,56 @@ today. The environment key keeps no personal-data access.
 ## Search
 
 Search finds records through a search index, not by traversal, so it is a
-separate entry point. Open it to Access users under the same rule:
+separate entry point. Filter it inside the index by access anchor; do not fetch
+hits and filter them afterwards.
 
-- Run the search, then keep only hits whose record is reachable from the
-  caller. Check reachability in bounded batches against the graph.
-- Return and count only the kept hits. Page until the requested size is filled
-  or the index is exhausted, with a fixed upper bound on index pages read.
-- Apply the rule to the hit's matched text and to every source it cites. A hit
-  the user may read must not cite a record they may not.
-- If reachability cannot be checked, fail the search field. Never return
-  unchecked hits.
+- An **anchor** is a record type the lexicon marks as one that users are
+  connected to. Every other record sits beneath one or more anchors along
+  access-carrying edges.
+- When a record is indexed, compute the identifiers of every anchor it sits
+  beneath and store them on its search document. A record beneath no anchor
+  gets an empty list and is invisible to Access users.
+- At query time, resolve the caller's anchors with one bounded graph read: the
+  anchors connected to their user record directly or through a group. Add them
+  as a filter to the index query, so ranking, paging and totals are computed
+  over readable documents only.
+- Granting or revoking a connection between a user and an anchor changes only
+  the caller's anchor set. It takes effect on the next query and needs no
+  reindexing.
+- A change beneath an anchor does need reindexing: a record that moves to
+  another anchor, or an access-carrying edge added or removed below one.
+  Reindex the affected documents from the same change stream that keeps the
+  index current.
+- The index can lag such a change. Before returning a page, confirm each of its
+  hits is reachable from the caller in the graph. Drop a hit that is not, count
+  it in a metric and queue its document for reindexing. This check covers only
+  the returned page, never the whole result.
+- Apply the anchor filter to every source a hit cites. A hit the user may read
+  must not cite a record they may not.
+- Bound the number of anchors in one filter. Refuse the search with a clear
+  error for a caller above the bound instead of truncating the list.
+- If the caller's anchors cannot be resolved, or the page check cannot run,
+  fail the search field. Never return unfiltered or unchecked hits.
+- Add anchor identifiers with a new index generation and backfill, promoted the
+  way other index changes are. Until a generation with anchors is active,
+  search stays closed to Access users.
+- The environment key, IAM roles and administrators search without the filter,
+  as today.
+
+Anchor record types are a Model decision, like the access-carrying edge types.
 
 ## Writes
 
 An Access user's token is read-only in Persist. Data created on a user's behalf
 is written by an application's backend or a service identity through ingest.
 
-User records and access-carrying edges arrive through ingest from Access's own
-service identity. Treat an access-carrying edge as a privileged write: accept it
-only from Access's service identity or an administrator, and log who wrote it.
-A caller that can write those edges controls who sees what.
+User records and access-carrying edges are written only by Access's own service
+identity, so every grant goes through Access's audited API. Refuse those labels
+from every other caller, including the environment key, IAM roles and
+administrators, on every write path: ingest, async ingest, event ingestion and
+file loads. Log the writer of each accepted one. These labels are new, so no
+existing ingest is affected. A caller that could write those edges would
+control who sees what.
 
 ## Definition of done
 
@@ -116,13 +146,17 @@ connected to nothing.
 | UA-2 | F, D | `alice` looks up `item-b1` by identifier, then an identifier that does not exist | Both answers are not found, with the same response shape |
 | UA-3 | F, D | `alice` selects the `fixture_related` neighbour of `item-a1` | `item-b1` is not returned |
 | UA-4 | F, D | `alice` and `bob` each count items | `2` and `0` |
-| UA-5 | F, D | `alice` and `bob` each search for `quarterly fixture report` | `alice` gets one hit, `item-a1`, with a total of `1` and no cited source under `scope-b`; `bob` gets no hits and a total of `0` |
-| UA-6 | F | Make the reachability check fail during `alice`'s search | The search field returns an error; no hits |
+| UA-5 | F, D | `alice` and `bob` each search for `quarterly fixture report` | `alice` gets one hit, `item-a1`, with a total of `1` and no cited source under `scope-b`; `bob` gets no hits and a total of `0`. The index query carried the anchor filter, and no page was fetched and discarded |
+| UA-6 | F | Make anchor resolution fail during `alice`'s search, then make the page check fail | The search field returns an error both times; no hits |
 | UA-7 | F, D | Connect `group-g` to `scope-b`; `carol` lists items | `item-b1` only |
 | UA-8 | F, D | `alice` calls the Gremlin, ingest, lexicon, process-trigger, metrics-catalog, MCP and file-load routes | `403` each; no query or write ran |
 | UA-9 | F, D | `admin` calls the same routes | Each behaves as it does for the environment key |
 | UA-10 | F, D | Run the existing environment-key and IAM suites | Unchanged results |
-| UA-11 | F, D | A service identity without the grant permission ingests a `fixture_can_access` edge | `403`; no edge written. The same ingest from Access's service identity is accepted and logged with its writer |
+| UA-11 | F, D | The environment key, an IAM role, `admin` and another service identity each ingest a `fixture_can_access` edge and a `fixture_user` record, by ingest and by file load | `403` each; nothing written. The same writes from Access's own service identity are accepted and logged with their writer |
 | UA-12 | F, D | Revoke `alice`'s connection, then repeat `UA-1`, `UA-4` and `UA-5` for her | Empty list, `0`, no hits |
 | UA-13 | F, D | Call GraphQL with an expired token, an edited one and one from another environment | `401` each; zero graph queries issued |
 | UA-14 | F | A role granted a personal-data level, a role without it, and the environment key each select a personal-data field on a reachable record | Returned for the first; a field error for the other two |
+| UA-15 | F | Index 500 items under `scope-b` that match the search phrase and rank above `item-a1`; `alice` searches | She still gets `item-a1` with a total of `1` |
+| UA-16 | F | Move `item-a2` from `scope-a` to `scope-b` and search as `alice` before the reindex runs, then after | Before: `item-a2` is dropped by the page check and counted in the stale-hit metric. After: it is absent with correct totals |
+| UA-17 | F | Connect a caller to more anchors than the bound, then search | A clear error; no partial result |
+| UA-18 | F, D | Search as `alice` while no index generation with anchors is active | The search field returns an error; GraphQL reads still work |

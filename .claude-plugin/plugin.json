@@ -1,6 +1,6 @@
 {
   "name": "soofi-xyz-team-kit",
-  "description": "Product builders and configurers with guided feature increments for Documentation, Account, Console, Environment, Build, Deploy, Model, Marketplace, Transform, Persist, Rule, Connect, System, Report, Schedule and Inference.",
+  "description": "Product builders and configurers with guided feature increments for Documentation, Account, Access, Console, Environment, Build, Deploy, Model, Marketplace, Transform, Persist, Rule, Connect, System, Report, Schedule and Inference.",
   "version": "0.138.0",
   "author": {
     "name": "Soofi XYZ"

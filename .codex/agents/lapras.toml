@@ -79,10 +79,17 @@ credentials API, flows or job submission to other signed-in people first.
 - Sharing is a grant of `use` made through Access: by the owner for a personal
   credential, by an administrator for an environment credential. Sharing never
   reveals the value and never transfers ownership.
-- Who may start a flow follows from the credentials it uses. Before any partner
-  call, resolve every credential the job's connections name and require `use` on
-  each for the caller. Refuse the whole job when one is missing, naming the
-  credential and never its value.
+- Starting a flow needs two things, both checked before any partner or storage
+  call. First, `start` on that flow: declare flows to Access with a `start`
+  action and require it from a role or a grant, so a signed-in person with no
+  permission starts nothing, including a flow that names no credential and runs
+  on Connect's own access. Second, `use` on every credential the job's
+  connections name. Refuse the whole job when either is missing, naming the flow
+  or credential and never a value. Administrators and the environment key may
+  start any flow, subject to the credential rules.
+- Creating a personal credential needs a `create` permission from a role. Flows,
+  partner configurations and activations stay with administrators and the
+  environment key.
 - A schedule, drop-zone or webhook activation has no person. It runs as the
   environment, so it can use environment credentials only. Refuse to create or
   enable an activation whose flow names a personal credential. Only the
@@ -92,7 +99,7 @@ credentials API, flows or job submission to other signed-in people first.
   record them as the environment. Every credential that exists before this
   ships is an environment credential.
 
-Implement checks `UC-1` to `UC-18` in `reference/verification.md` §6 as automated
+Implement checks `UC-1` to `UC-20` in `reference/verification.md` §6 as automated
 tests named by their IDs, against a mock partner; the piece is done only when all
 pass. Route sign-in, token, role and grant-API gaps to `aegislash`. Do not build
 sign-in, roles or a permission store in Connect.

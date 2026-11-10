@@ -32,8 +32,8 @@ results and read back applied versions; distinguish completion, partial applicat
 activation and consumer readiness. Use supported retry/retirement paths and hand missing
 installer capabilities to Corviknight; never substitute per-bundle code or direct stores.
 For Access applications, confirm the Access adapter is deployed, then read each installed
-application back through the Access API; a dropped address stops working for sign-in at
-once, and removal ends that application's sessions, so name both before submitting.
+application back through the Access API; a dropped address or a removed application stops
+working for sign-in at once, so name that effect before submitting.
 
 When Registeel hands off a published `VALID` configuration bundle, subscribe it as
 `skills/configure-deploy-product/SKILL.md` "Subscribe a handed-off bundle" describes:

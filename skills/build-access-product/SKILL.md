@@ -68,8 +68,16 @@ security defects listed there.
 - Use the authorization-code flow with PKCE. Deliver tokens to the application
   through its registered back channel or secure cookies. Never put an access,
   identity or refresh token in a URL.
+- One sign-in serves every product in the environment. Run a single sign-in
+  client per environment. An **application** is a named set of exact redirect
+  and sign-out addresses registered on that client, so another front end can
+  start sign-in from its own address. It is not a separate audience, client
+  secret or permission boundary.
+- Keep the sign-in session on the shared domain. A person who signed in through
+  one application completes sign-in from another without a new prompt, as the
+  same user. Sign-out ends the session for every application.
 - Match redirect and sign-out addresses exactly against the registered
-  application. Reject before issuing a code.
+  applications. Reject before issuing a code.
 - Identify a person by a stable, opaque user identifier. Never use an email
   address as a key, a foreign key or a grant principal.
 - A first sign-in from an allowed domain creates the user with no role, so they
@@ -85,14 +93,18 @@ document the exact names in the target repository's API description:
 | --- | --- |
 | Subject | Stable user identifier, or the service identity name for a non-human caller |
 | Issuer | This environment's Access issuer |
-| Audience or client | The application or product the token was issued for |
+| Audience | This environment's single audience. It is the same whichever application the person signed in through, and every product in the environment accepts it |
+| Client | The registered application the person signed in through. Informational: products never use it to allow or deny |
 | Expiry and issue time | Short access-token lifetime; refresh is a separate token |
 | Token type | Distinguishes access tokens from identity tokens |
 | Roles | Role names assigned to the subject at issue time |
 
 Publish the signing keys. Ship one shared verifier that checks signature, issuer,
-audience, expiry and token type and returns the caller (`subject`, `roles`,
-`kind: user | service`). Verifying a token makes no request to Access.
+the environment's audience, expiry and token type and returns the caller
+(`subject`, `roles`, `kind: user | service`). Every product, Console included,
+verifies the same way: it never switches the audience check off and never
+expects an application-specific audience. A token from another environment is
+rejected by issuer and audience. Verifying a token makes no request to Access.
 
 State the revocation trade-off plainly: a disabled user or changed role takes
 effect when the current access token expires. Keep access tokens to at most 15
@@ -133,8 +145,15 @@ environment, owned by Access.
   declared this way. Do not let the administrator role's rules reach a personal
   resource of a private type.
 - Who may share: the owner for a personal resource, an administrator for an
-  environment-owned one. Sharing grants `use` only and never moves ownership.
+  environment-owned one. Each resource type declares which of its actions may be
+  shared. `manage` and `remove` are never shareable, and a type private to its
+  owner shares `use` only. Reject a grant of any other action. Sharing never
+  moves ownership.
 - Ship an administrator role and refuse to remove or demote the last administrator.
+- Until the first administrator exists, only the environment key can call
+  administrative routes; a signed-in person without a permission is refused.
+  The environment key assigns the first administrator. This makes every piece
+  usable in order, before roles exist.
 - Do not use the store to filter lists. It answers one question about one
   resource. Record access in Persist is decided by graph edges, below.
 
@@ -153,8 +172,9 @@ environment, owned by Access.
 - Access owns granting it. Deliver grant, list and revoke that write and remove
   those edges through Persist's API using Access's own service identity, with an
   audit record for each. Persist enforces; Access keeps no copy of the data.
-- The user record type and the access-carrying edge types are Model decisions.
-  Until Model publishes them, build against a fixture lexicon and report the gap.
+- The user record type, the access-carrying edge types and the anchor record
+  types are Model decisions. Until Model publishes them, build against a fixture
+  lexicon and report the gap.
 
 ### Coexistence with the environment key
 
@@ -179,8 +199,19 @@ These are not optional and are not deferred to a later piece:
   is a rejection, never an acceptance.
 - No test, tool or user-agent bypass in deployed code. Use fixtures and a test
   deployment instead.
-- Every route except sign-in start, sign-in callback and published keys requires
-  a verified caller with a named permission.
+- Every route belongs to exactly one of these classes, and the API description
+  marks which:
+
+  | Class | Routes | Requires |
+  | --- | --- | --- |
+  | Public | Sign-in start, sign-in callback, published keys, capability discovery | Nothing; returns no user data |
+  | Own session | Refresh, sign-out, the caller's own profile | A valid session or token; acts only on the caller, whatever their roles |
+  | Service credential | A service identity's token request | That identity's own secret |
+  | Protected | Everything else | A verified caller with a named permission, or the environment key |
+
+  The list is closed. Adding a route to the first three classes needs this
+  table changed in the same change. A route inventory check fails for any route
+  that is unclassified or behaves outside its class.
 - Never log a request body, code, token, secret or cookie. Log the correlation
   identifier, subject and outcome.
 - Write an audit record for sign-in and for every user, role, grant,
@@ -212,11 +243,13 @@ the fake level and against the deployed test environment, earlier pieces still
 pass, the leak scan is clean and the run cleaned up. Report `verified`,
 `verified-with-gaps` or `not-verified` with the evidence table.
 
-By the user's explicit instruction, Aegislash verifies each piece itself and
-starts the next one without waiting for a person to run it. This replaces the
-shared workflow's stop-and-wait checkpoint for Access build work only. Stop and
-ask in the cases the reference lists. Automated sign-in uses the fake identity
-provider; one human check, `SI-H1`, uses real Google.
+Passing the checks is the evidence Aegislash brings to the shared workflow's
+checkpoint, not a replacement for it. After each piece, give the evidence table
+and have the person run the piece and inspect it before starting the next one.
+Continue without waiting only when the person working with you says so in that
+session; record that instruction and the checkpoint evidence it skipped.
+Automated sign-in uses the fake identity provider; one human check, `SI-H1`,
+uses real Google.
 
 Keep real provider credentials, real invitations and real email behind explicit
 authorization for the exact target. Use a sandbox Google project and test

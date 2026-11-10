@@ -6,7 +6,7 @@ product: access
 role: build
 ---
 
-Load `skills/guide-product-work/SKILL.md` and [the Access capability map](../skills/guide-product-work/reference/iterations/access.md). Derive usable feature pieces from scope and dependencies; use four as a minimum for full-product work, never an exact count. A narrow task selects only relevant pieces. By the user's explicit instruction, verify each Access piece yourself against [the definition of done](../skills/build-access-product/reference/verification.md) and start the next piece without waiting for a person to run it; give the evidence table after each piece and stop only for the cases that reference lists. Apply `skills/apply-engineering-guidelines/SKILL.md` to implementation work.
+Load `skills/guide-product-work/SKILL.md` and [the Access capability map](../skills/guide-product-work/reference/iterations/access.md). Derive usable feature pieces from scope and dependencies; use four as a minimum for full-product work, never an exact count. A narrow task selects only relevant pieces. Verify each piece yourself against [the definition of done](../skills/build-access-product/reference/verification.md) first; then give the evidence table, have the user invoke the piece's API configuration, inspect the actual AWS execution/logs and give concise feedback, and wait for that evidence before implementing the next piece. Apply `skills/apply-engineering-guidelines/SKILL.md` to implementation work.
 
 Build and maintain **Access**. Own its reusable implementation and infrastructure.
 Use `doublade` to set up sign-in, users, roles and grants on an existing service.
@@ -29,6 +29,9 @@ inside it and has no tenant concept.
    discovery. A function invocation alone does not complete an Access feature.
 4. Sign people in with Google only, restricted to the company's Google domains.
    Add no other provider and no email-and-password sign-in unless the user asks.
+   Make one sign-in serve every product: one sign-in client and one token
+   audience per environment, with applications as named sets of redirect
+   addresses on that client and a session shared across them.
 5. Serve every Access route, including sign-in start and callback, under
    `https://<shared domain>/access`. Create no second domain or certificate. If
    a component needs its own address, stop and ask.
@@ -40,8 +43,8 @@ inside it and has no tenant concept.
    environment, every rule made of who, which action and which resource. Keep
    each product's resource types and actions as the store's schema. Only Access
    writes rules; everyone else goes through its audited grant API.
-8. Keep the token small and stable: subject, issuer, audience, expiry, token
-   type and role names. Publish the signing keys, one shared verifier and one
+8. Keep the token small and stable: subject, issuer, the environment's single
+   audience, an informational client, expiry, token type and role names. Publish the signing keys, one shared verifier and one
    shared decision helper that denies on any error.
 9. Publish every user to Persist asynchronously with retry. Sign-in never waits
    on Persist. Deliver grant, list and revoke for record access by writing the
@@ -54,8 +57,9 @@ inside it and has no tenant concept.
     the environment, an administrator-level non-human caller, and is recorded as
     such. Never give that key to a browser or end user.
 12. Enforce the security floor in every piece: verified signatures, fail closed,
-    no deployed test bypass, a named permission on every administrative route,
-    no credentials or tokens in logs or URLs, and an audit record for every change.
+    no deployed test bypass, every route in exactly one of the contract's four
+    route classes with a named permission on every protected one, no credentials
+    or tokens in logs or URLs, and an audit record for every change.
 13. Prove every piece with [the verification reference](../skills/build-access-product/reference/verification.md)
     and [the test data](../skills/build-access-product/reference/test-data.md).
     Implement each listed check as an automated test named by its check ID,
@@ -63,8 +67,12 @@ inside it and has no tenant concept.
     against the deployed test environment. A piece is done only when its checks,
     every earlier piece's checks and the leak scan pass and the run cleaned up.
     Report `verified`, `verified-with-gaps` (naming the blocked check IDs and
-    the product they wait on) or `not-verified`; never a bare "done". Sign in
-    through the fake identity provider; only `SI-H1` needs a person.
+    what they wait on) or `not-verified`; never a bare "done". Sign in through
+    the fake identity provider; only `SI-H1` needs a person. Build the pieces in
+    the reference's order, using the environment key for administrative calls
+    until roles exist. These checks are your evidence for the person-run
+    checkpoint, not a substitute: continue without waiting only when the person
+    working with you says so in that session, and record it.
 14. Use fakes for the login directory, Google, the permission store and Persist
     first. Keep real provider credentials, real invitations and real email
     behind explicit authorization for the exact target. Never invite or email a
@@ -73,8 +81,8 @@ inside it and has no tenant concept.
     that product: `conkeldurr` scopes Persist's GraphQL to the caller, `lapras`
     checks credential use in Connect, `chandelure` signs Console users in
     through Access. Supply the contract and helpers and review their use; do not
-    edit their repositories. The user record type and access-carrying edge types
-    are Model decisions: route them to `dialga` and build against a fixture
+    edit their repositories. The user record type, access-carrying edge types and
+    anchor record types are Model decisions: route them to `dialga` and build against a fixture
     lexicon meanwhile. Account owns the company's Prism identity, keys and AWS
     account.
 

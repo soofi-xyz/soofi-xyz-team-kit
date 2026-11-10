@@ -20,7 +20,7 @@ fake identity provider the test controls:
   only the configured issuer and client differ. Add no branch, flag or header
   that changes behavior for tests.
 - Capability discovery reports the configured issuer. A non-test environment
-  must report Google's issuer; check `SI-11` proves it.
+  must report Google's issuer; check `SI-15` proves it.
 
 One human check (`SI-H1`) uses real Google. Nothing else does.
 
@@ -28,17 +28,22 @@ One human check (`SI-H1`) uses real Google. Nothing else does.
 
 The allowed hosted domain for the test environment is `access-test.example`.
 
-| Key | Email | Hosted-domain claim | Role | Used as |
+| Key | Email | Hosted-domain claim | Role once `permissions` is done | Used as |
 | --- | --- | --- | --- | --- |
-| `admin` | `admin@access-test.example` | `access-test.example` | `administrator` | The only administrator at the start of a run |
-| `alice` | `alice@access-test.example` | `access-test.example` | `member` | Owner of `item-1`; connected to `scope-a` |
-| `bob` | `bob@access-test.example` | `access-test.example` | `member` | Same role as alice, owns nothing, connected to nothing |
-| `carol` | `carol@access-test.example` | `access-test.example` | `viewer` (by invitation) | Narrower role; receives a role grant |
-| `dave` | `dave@access-test.example` | `access-test.example` | `member` | Disabled during the run |
-| `erin` | `erin@access-test.example` | `access-test.example` | none | Signs in without an invitation |
+| `admin` | `admin@access-test.example` | `access-test.example` | `administrator` | Made the first administrator by the environment key in `PM-1` |
+| `alice` | `alice@access-test.example` | `access-test.example` | `member` | Owner of `item-1` and `secret-a`; connected to `scope-a` |
+| `bob` | `bob@access-test.example` | `access-test.example` | `member` | Same role as alice, owns `item-2`, connected to nothing |
+| `carol` | `carol@access-test.example` | `access-test.example` | `viewer` | Invited without a role, assigned `viewer` later; member of `group-g` |
+| `dave` | `dave@access-test.example` | `access-test.example` | none | Disabled during the run |
+| `erin` | `erin@access-test.example` | `access-test.example` | none | Signs in without an invitation and never gets a role |
+| `frank` | `frank@access-test.example` | `access-test.example` | `viewer` | Invited with a role |
+| `grace` | `grace@access-test.example` | `access-test.example` | none | Invited with a role on an already expired invitation |
 | `personal` | `someone@personal-mail.example` | absent | none | A personal account; must be refused |
 | `outsider` | `eve@other-company.example` | `other-company.example` | none | Another company; must be refused |
 | `spoof` | `mallory@access-test.example` | absent | none | Right email suffix, no hosted-domain claim; must be refused |
+
+Until `permissions` is done nobody has a role, and administrative calls use the
+environment key.
 
 Give each person a distinct, stable subject at the fake provider. Access must
 identify them by its own stable user identifier, never by email.
@@ -51,6 +56,8 @@ identify them by its own stable user identifier, never by email.
 | `app-two` | `https://app-two.access-test.example/callback`, `https://app-two.access-test.example/alt-callback` | `https://app-two.access-test.example/signed-out` |
 | `app-direct` | `https://app-direct.access-test.example/callback` | `https://app-direct.access-test.example/signed-out` |
 
+All three are address sets on the environment's one sign-in client. Signing in
+through any of them yields a token with the same audience.
 `app-direct` is registered by a direct API call and is never part of a bundle.
 Addresses that must be refused for `app-one`: the registered address with
 `/extra` appended, with a trailing slash, with an added query string, with
@@ -62,8 +69,8 @@ different path.
 Permission checks use a fixture product so they do not depend on another
 product being deployed.
 
-- Product `fixture` declares one resource type, `fixture:item`, with actions
-  `read`, `use` and `manage`.
+- Product `fixture` declares the resource type `fixture:item` with actions
+  `read`, `use` and `manage`. Its shareable actions are `read` and `use`.
 - `administrator` may perform every action.
 - `member` may `read` any `fixture:item`.
 - `viewer` may perform no action on its own; it receives one role grant in
@@ -74,7 +81,7 @@ Resources: `fixture:item/item-1` owned by `alice`; `fixture:item/item-2` owned
 by `bob`.
 
 The fixture product also declares `fixture:secret`, **private to its owner**,
-with actions `use`, `manage` and `remove`. Resources: `fixture:secret/secret-a`
+with actions `use`, `manage` and `remove`. Its only shareable action is `use`. Resources: `fixture:secret/secret-a`
 owned by `alice`; `fixture:secret/secret-env` owned by the environment.
 
 ## Service identity

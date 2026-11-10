@@ -210,7 +210,8 @@ the adapter, following the deployed API where it differs. Paths are relative to
   repeated `name` and validates the document against the application schema in
   the Access repository's `requirements/swagger.yml` without calling Access.
 - **Document:** the application's name, title, exact redirect addresses and
-  exact sign-out addresses. Every address is `https` with no wildcard. The
+  exact sign-out addresses. An application is a set of addresses on the
+  environment's one sign-in client, not a separate client or audience. Every address is `https` with no wildcard. The
   document carries no client secret, token, user, role or grant; Build rejects
   one that does.
 - **Apply:** `GET /applications/{name}`, then `PUT /applications/{name}` with
@@ -219,9 +220,10 @@ the adapter, following the deployed API where it differs. Paths are relative to
 - **Read back:** `GET /applications/{name}` must return the bundle's addresses
   exactly; report `name` and the document digest in the run result.
 - **Retire:** `DELETE /applications/{name}` when a release drops an application
-  that this component owns. Removal ends that application's sessions, so report
-  it as an explicit effect and never remove an application another component or
-  a direct registration claims.
+  that this component owns. Its addresses stop working for sign-in at once, so
+  report it as an explicit effect and never remove an application another
+  component or a direct registration claims. Removal signs nobody out: the
+  sign-in session is shared by every application in the environment.
 - Installing an application signs nobody in and changes no user, role or grant.
   Roles, users, grants and the Google sign-in client are set through the Access
   API by Doublade, never from a bundle.

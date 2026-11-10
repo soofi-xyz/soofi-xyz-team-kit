@@ -8,7 +8,7 @@ legacy-stack binding cases in the relevant feature acceptance checks.
 Use Corviknight to implement Deploy, including the configuration installer and
 Puller, and Skarmory to configure existing run, configuration-installation and
 subscriber capabilities. Follow the [shared workflow](../../SKILL.md).
-These 18 areas are a starting inventory, not a fixed iteration count. Order dependencies and split
+These 19 areas are a starting inventory, not a fixed iteration count. Order dependencies and split
 independently useful features further. Use at least four pieces for a full-product
 build; narrow work selects only relevant pieces. Keep automated tests and user/AWS
 feedback inside each piece, not as a final testing phase.

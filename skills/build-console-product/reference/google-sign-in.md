@@ -47,7 +47,7 @@ check: ID, result, request identifier and the Console revision.
 | CS-1 | Open a Console page with no session | Redirected to Access sign-in start for the Console application; no page content served |
 | CS-2 | Sign in as `alice` | The page renders; the session's subject is her Access user identifier |
 | CS-3 | A user without the route's role opens the route, then calls its action directly | `403` from the server for both, not only a hidden link |
-| CS-4 | Return to the callback with an expired, an edited and an other-audience token | No session created for any |
+| CS-4 | Return to the callback with an expired token, an edited one and one issued by another environment | No session created for any |
 | CS-5 | Disable `dave` in Access, then let his session's token expire | His next request is refused and he is sent to sign in, where he is refused |
 | CS-6 | Sign out, then press back and request a protected route | No protected content served |
 | CS-7 | Run the route inventory, add one page, change another, run it again | Every route requires a session in both runs |
@@ -56,10 +56,8 @@ check: ID, result, request identifier and the Console revision.
 
 ## Ownership
 
-Until a deployment has migrated:
-
-
-Google is the identity provider. Console owns the policy that decides who may
+This section and those after it describe a deployment that has not yet migrated
+to Access. Google is the identity provider. Console owns the policy that decides who may
 open its applications: it verifies Google ID tokens, applies the configured
 domain/user/group rules and issues its own read session. Account still owns API
 keys, operator credentials and product scopes; do not move them into Console and

@@ -86,10 +86,11 @@ contract](reference/user-scoped-access.md) and build feature `user-scoped-access
 Recognise an Access user as a caller beside the environment key and IAM roles,
 using the shared verifier. Give a non-administrator user GraphQL only, with every
 read built as a traversal from the caller's own user record along the lexicon's
-access-carrying edges. Apply the same rule to lookups by identifier, counts and
-search results. Keep every other route for the environment key, IAM roles and
-administrators. Accept user records and access edges from Access's service
-identity through ingest; route the record type and edge types to Model's agents.
+access-carrying edges. Apply the same rule to lookups by identifier and counts,
+and filter search inside the index by the caller's access anchors. Keep every
+other route for the environment key, IAM roles and administrators. Accept user
+records and access edges only from Access's own service identity; route the
+record, edge and anchor types to Model's agents.
 
 ## Marketplace image access
 

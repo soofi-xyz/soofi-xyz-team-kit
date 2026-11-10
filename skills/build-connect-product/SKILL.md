@@ -90,10 +90,11 @@ Classify every request before designing anything:
   shares it with, never by an administrator or the environment key; an
   environment credential only by the environment key and administrators, unless
   an administrator shares it.
-- Let credential use decide who may start a flow: the caller needs `use` on
-  every credential the job's connections name. Activations run as the
-  environment, use environment credentials only, and are created only by an
-  administrator or the environment key.
+- Require two things to start a flow, before any partner or storage call:
+  `start` on that flow from a role or grant, and `use` on every credential the
+  job's connections name. A flow that names no credential still needs `start`.
+  Activations run as the environment, use environment credentials only, and are
+  created only by an administrator or the environment key.
 - Land payloads in the Connect bucket and return file pointers with checksums.
   Keep inline responses within `MaxInlineBytes`.
 - Require `limits` on every flow (`timeout_seconds` at most 5 on a `lookup`)
