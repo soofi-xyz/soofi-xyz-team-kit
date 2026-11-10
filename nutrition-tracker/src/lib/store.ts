@@ -9,6 +9,8 @@ import {
   type AddInput,
   type Board,
   type CopyInput,
+  type DailyTotal,
+  type DailyTotalInput,
   type Entry,
   type EntryPatch,
   type Person,
@@ -45,6 +47,14 @@ type EntryRow = {
   calories: number;
   protein_g: unknown;
   servings: unknown;
+};
+
+type DailyTotalRow = {
+  id: string;
+  person_id: string;
+  consumed_on: string;
+  calories: number;
+  protein_g: unknown;
 };
 
 const ENTRY_CAP = 80;
@@ -92,6 +102,16 @@ function mapEntry(row: EntryRow): Entry {
   };
 }
 
+function mapDailyTotal(row: DailyTotalRow): DailyTotal {
+  return {
+    id: row.id,
+    personId: row.person_id,
+    date: String(row.consumed_on).slice(0, 10),
+    calories: asNumber(row.calories),
+    protein: Math.round(asNumber(row.protein_g) * 10) / 10,
+  };
+}
+
 function countOf(value: unknown): number {
   const count = asNumber(value);
   if (!Number.isFinite(count)) throw new InputError("Could not read the log.");
@@ -112,6 +132,13 @@ async function personExists(query: Query, householdId: string, personId: string)
     householdId,
   ]);
   if (rows.length === 0) throw new InputError("That person is not on this log.");
+}
+
+async function clearDailyTotal(query: Query, householdId: string, personId: string, date: string): Promise<void> {
+  await query(
+    "delete from daily_totals where household_id = $1 and person_id = $2 and consumed_on = $3::date",
+    [householdId, personId, date],
+  );
 }
 
 async function stapleNameTaken(query: Query, householdId: string, name: string, exceptId?: string): Promise<void> {
@@ -198,12 +225,23 @@ export async function getBoard(householdId: string, date: string): Promise<Board
       [householdId, date],
     )
   ).map(mapEntry);
-  return { date, people, staples, entries };
+  const dailyTotals = (
+    await sql<DailyTotalRow>(
+      `select id, person_id, consumed_on::text as consumed_on, calories, protein_g::float8 as protein_g
+       from daily_totals
+       where household_id = $1
+         and consumed_on between $2::date - 6 and $2::date
+       order by consumed_on asc, person_id asc`,
+      [householdId, date],
+    )
+  ).map(mapDailyTotal);
+  return { date, people, staples, entries, dailyTotals };
 }
 
 export async function addEntry(householdId: string, input: AddInput): Promise<void> {
   await withTx(async (query) => {
     await personExists(query, householdId, input.personId);
+    await clearDailyTotal(query, householdId, input.personId, input.date);
     const counts = await query<{ n: unknown }>(
       "select count(*)::int as n from entries where household_id = $1 and person_id = $2 and eaten_on = $3::date",
       [householdId, input.personId, input.date],
@@ -259,6 +297,7 @@ export async function copyDay(householdId: string, input: CopyInput): Promise<nu
       if (countOf(counts[0]?.n) + rows.length > ENTRY_CAP) {
         throw new InputError("Copying that day would pass 80 items. Remove a few items first.");
       }
+      await clearDailyTotal(query, householdId, input.personId, input.to);
       for (const row of rows) {
         const entry = mapEntry(row);
         await query(
@@ -325,6 +364,10 @@ export async function updateEntry(householdId: string, patch: EntryPatch): Promi
         [next.id, householdId, next.personId, next.meal, next.kind, next.name, next.calories, next.protein, next.servings],
       );
       if (updated.length === 0) throw new InputError("That item is already gone.");
+      await clearDailyTotal(query, householdId, current.personId, current.date);
+      if (next.personId !== current.personId) {
+        await clearDailyTotal(query, householdId, next.personId, next.date);
+      }
     });
   } catch (error) {
     rethrow(error);
@@ -337,6 +380,28 @@ export async function deleteEntry(householdId: string, id: string): Promise<void
     householdId,
   ]).catch(rethrow);
   if (rows.length === 0) throw new InputError("That item is already gone.");
+}
+
+export async function upsertDailyTotal(householdId: string, input: DailyTotalInput): Promise<void> {
+  await withTx(async (query) => {
+    await personExists(query, householdId, input.personId);
+    await query(
+      `insert into daily_totals (id, household_id, person_id, consumed_on, calories, protein_g)
+       values ($1, $2, $3, $4::date, $5, $6)
+       on conflict (household_id, person_id, consumed_on)
+       do update set calories = excluded.calories,
+                     protein_g = excluded.protein_g,
+                     updated_at = now()`,
+      [crypto.randomUUID(), householdId, input.personId, input.date, input.calories, input.protein],
+    );
+  }).catch(rethrow);
+}
+
+export async function deleteDailyTotal(householdId: string, personId: string, date: string): Promise<void> {
+  await sql(
+    "delete from daily_totals where household_id = $1 and person_id = $2 and consumed_on = $3::date",
+    [householdId, personId, date],
+  ).catch(rethrow);
 }
 
 async function insertStaple(query: Query, householdId: string, input: StapleInput, sourceNote = ""): Promise<void> {

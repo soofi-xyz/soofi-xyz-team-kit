@@ -8,6 +8,7 @@ import {
   dayAsText,
   dayNumber,
   dailyRead,
+  effectiveTotals,
   formatKcal,
   formatLongDate,
   formatProtein,
@@ -18,13 +19,14 @@ import {
   lineTotals,
   mealForHour,
   parseAdd,
+  parseDailyTotal,
   parseDate,
   parsePerson,
   parseStaple,
   shiftDate,
-  sumEntries,
   weekdayShort,
   type Board,
+  type DailyTotal,
   type Entry,
   type Kind,
   type Meal,
@@ -43,7 +45,14 @@ function todayIso(now: Date): string {
 }
 
 function isBoard(value: unknown): value is Board {
-  return isRecord(value) && typeof value.date === "string" && Array.isArray(value.people) && Array.isArray(value.staples) && Array.isArray(value.entries);
+  return (
+    isRecord(value) &&
+    typeof value.date === "string" &&
+    Array.isArray(value.people) &&
+    Array.isArray(value.staples) &&
+    Array.isArray(value.entries) &&
+    Array.isArray(value.dailyTotals)
+  );
 }
 
 async function send(url: string, method: string, body?: unknown): Promise<Result> {
@@ -180,6 +189,8 @@ export function Plate() {
   const active = people.find((person) => person.slug === (view === "both" ? logSlug : view)) ?? people[0];
   const shown = view === "both" ? people : people.filter((person) => person.slug === view);
   const dayEntries = (personId: string) => board?.entries.filter((entry) => entry.personId === personId && entry.date === date) ?? [];
+  const totalsFor = (personId: string, iso: string) =>
+    effectiveTotals(board?.entries ?? [], board?.dailyTotals ?? [], personId, iso);
   const yesterday = shiftDate(date, -1);
   const yesterdayCount = active ? board?.entries.filter((entry) => entry.personId === active.id && entry.date === yesterday).length ?? 0 : 0;
   const visibleStaples = (board?.staples ?? [])
@@ -243,7 +254,7 @@ export function Plate() {
 
   async function copyText() {
     if (!active || !date) return;
-    const totals = sumEntries(dayEntries(active.id));
+    const totals = totalsFor(active.id, date);
     const text = dayAsText({
       name: active.name,
       dateLabel: formatLongDate(date),
@@ -294,6 +305,31 @@ export function Plate() {
       `Put ${entry.name} back.`,
     );
     if (saved) setUndo(null);
+  }
+
+  async function saveDailyTotal(input: { personId: string; date: string; calories: string; protein: string }) {
+    const parsed = parseDailyTotal(input);
+    if (!parsed.ok) {
+      tell(parsed.error, true);
+      return false;
+    }
+    const person = people.find((candidate) => candidate.id === parsed.value.personId);
+    return run(
+      () => send("/api/totals", "PUT", parsed.value),
+      `Saved ${formatLongDate(parsed.value.date)} totals for ${person?.name ?? "this person"}.`,
+    );
+  }
+
+  async function clearDailyTotal(personId: string, iso: string) {
+    const person = people.find((candidate) => candidate.id === personId);
+    return run(
+      () =>
+        send(
+          `/api/totals?personId=${encodeURIComponent(personId)}&date=${encodeURIComponent(iso)}`,
+          "DELETE",
+        ),
+      `Using item totals for ${person?.name ?? "this person"} on ${formatLongDate(iso)}.`,
+    );
   }
 
   const days = Array.from({ length: 7 }, (_, index) => shiftDate(date, index - 6));
@@ -348,7 +384,7 @@ export function Plate() {
             <p className="quiet">{formatLongDate(date)}{date === today ? " · today" : ""}</p>
 
             {shown.map((person) => {
-              const totals = sumEntries(dayEntries(person.id));
+              const totals = totalsFor(person.id, date);
               const read = dailyRead({
                 name: person.name,
                 calories: totals.calories,
@@ -356,7 +392,7 @@ export function Plate() {
                 protein: totals.protein,
                 proteinTarget: person.proteinTarget,
                 staples: board.staples,
-                loggedCount: dayEntries(person.id).length,
+                loggedCount: totals.manual ? 1 : dayEntries(person.id).length,
               });
               return (
                 <div className="read" key={person.id}>
@@ -374,9 +410,9 @@ export function Plate() {
 
             <p className="legend"><span><i className="swatch cal" />Calories</span><span><i className="swatch pro" />Protein</span></p>
             {view === "both" ? (
-              <WeekTable days={days} people={people} entries={board.entries} selected={date} onPick={(next) => { setDate(next); setUndo(null); tell(""); }} />
+              <WeekTable days={days} people={people} entries={board.entries} dailyTotals={board.dailyTotals} selected={date} onPick={(next) => { setDate(next); setUndo(null); tell(""); }} />
             ) : (
-              <WeekBars days={days} person={active} entries={board.entries} selected={date} onPick={(next) => { setDate(next); setUndo(null); tell(""); }} />
+              <WeekBars days={days} person={active} entries={board.entries} dailyTotals={board.dailyTotals} selected={date} onPick={(next) => { setDate(next); setUndo(null); tell(""); }} />
             )}
             <p className="micro">
               {view === "both"
@@ -417,6 +453,17 @@ export function Plate() {
               <button type="button" className="text-button" disabled={busy} onClick={() => void restore(undo)}>Undo remove</button>
             ) : null}
             {loadError ? <p className="alert" role="alert">{loadError}</p> : null}
+
+            <WeeklyTracker
+              key={active.id}
+              person={active}
+              days={days}
+              entries={board.entries}
+              dailyTotals={board.dailyTotals}
+              busy={busy}
+              onSave={saveDailyTotal}
+              onClear={clearDailyTotal}
+            />
 
             <div className="meals" role="radiogroup" aria-label="Meal">
               {MEALS.map((slot) => (
@@ -555,23 +602,145 @@ function Remainder({
   );
 }
 
+function WeeklyTracker({
+  person,
+  days,
+  entries,
+  dailyTotals,
+  busy,
+  onSave,
+  onClear,
+}: {
+  person: Person;
+  days: string[];
+  entries: Entry[];
+  dailyTotals: DailyTotal[];
+  busy: boolean;
+  onSave: (input: { personId: string; date: string; calories: string; protein: string }) => Promise<boolean>;
+  onClear: (personId: string, date: string) => Promise<boolean>;
+}) {
+  const [drafts, setDrafts] = useState<Record<string, { calories: string; protein: string }>>({});
+
+  useEffect(() => {
+    setDrafts(
+      Object.fromEntries(
+        days.map((iso) => {
+          const totals = effectiveTotals(entries, dailyTotals, person.id, iso);
+          return [iso, { calories: String(totals.calories), protein: String(totals.protein) }];
+        }),
+      ),
+    );
+  }, [dailyTotals, days, entries, person.id]);
+
+  function update(iso: string, field: "calories" | "protein", value: string) {
+    setDrafts((current) => ({
+      ...current,
+      [iso]: {
+        calories: current[iso]?.calories ?? "0",
+        protein: current[iso]?.protein ?? "0",
+        [field]: value,
+      },
+    }));
+  }
+
+  return (
+    <section className="weekly-editor" aria-labelledby={`weekly-${person.id}`}>
+      <h3 id={`weekly-${person.id}`}>Weekly tracker · {person.name}</h3>
+      <p className="quiet">
+        Enter the full calories and protein consumed each day. A saved total replaces the item sum for that day;
+        adding or editing an item switches that day back to item totals.
+      </p>
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Day</th>
+              <th scope="col">Calories consumed</th>
+              <th scope="col">Protein consumed (g)</th>
+              <th scope="col">Save</th>
+            </tr>
+          </thead>
+          <tbody>
+            {days.map((iso) => {
+              const manual = dailyTotals.some((total) => total.personId === person.id && total.date === iso);
+              const draft = drafts[iso] ?? { calories: "0", protein: "0" };
+              return (
+                <tr key={iso}>
+                  <th scope="row">{weekdayShort(iso)} {dayNumber(iso)}</th>
+                  <td>
+                    <input
+                      aria-label={`${formatLongDate(iso)} calories consumed`}
+                      inputMode="numeric"
+                      value={draft.calories}
+                      onChange={(event) => update(iso, "calories", event.target.value)}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      aria-label={`${formatLongDate(iso)} protein consumed in grams`}
+                      inputMode="decimal"
+                      value={draft.protein}
+                      onChange={(event) => update(iso, "protein", event.target.value)}
+                    />
+                  </td>
+                  <td>
+                    <div className="weekly-actions">
+                      <button
+                        type="button"
+                        className="primary"
+                        disabled={busy}
+                        onClick={() =>
+                          void onSave({
+                            personId: person.id,
+                            date: iso,
+                            calories: draft.calories,
+                            protein: draft.protein,
+                          })
+                        }
+                      >
+                        Save
+                      </button>
+                      {manual ? (
+                        <button
+                          type="button"
+                          className="text-button"
+                          disabled={busy}
+                          onClick={() => void onClear(person.id, iso)}
+                        >
+                          Use items
+                        </button>
+                      ) : null}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 function WeekBars({
   days,
   person,
   entries,
+  dailyTotals,
   selected,
   onPick,
 }: {
   days: string[];
   person: Person;
   entries: Entry[];
+  dailyTotals: DailyTotal[];
   selected: string;
   onPick: (date: string) => void;
 }) {
   return (
     <div className="week" role="list">
       {days.map((iso) => {
-        const totals = sumEntries(entries.filter((entry) => entry.personId === person.id && entry.date === iso));
+        const totals = effectiveTotals(entries, dailyTotals, person.id, iso);
         const calPct = person.calorieTarget === 0 ? 0 : Math.min(100, (totals.calories / person.calorieTarget) * 100);
         const proPct = person.proteinTarget === 0 ? 0 : Math.min(100, (totals.protein / person.proteinTarget) * 100);
         return (
@@ -599,12 +768,14 @@ function WeekTable({
   days,
   people,
   entries,
+  dailyTotals,
   selected,
   onPick,
 }: {
   days: string[];
   people: Person[];
   entries: Entry[];
+  dailyTotals: DailyTotal[];
   selected: string;
   onPick: (date: string) => void;
 }) {
@@ -629,7 +800,7 @@ function WeekTable({
             <tr key={person.id}>
               <th scope="row">{person.name}</th>
               {days.map((iso) => {
-                const totals = sumEntries(entries.filter((entry) => entry.personId === person.id && entry.date === iso));
+                const totals = effectiveTotals(entries, dailyTotals, person.id, iso);
                 return <td key={iso}>{totals.calories}<br />{formatProtein(totals.protein)} g</td>;
               })}
             </tr>

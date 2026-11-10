@@ -4,9 +4,11 @@ import { STARTER_PEOPLE, STARTER_STAPLES } from "./catalog";
 import {
   dailyRead,
   dayAsText,
+  effectiveTotals,
   formatLongDate,
   lineTotals,
   parseAdd,
+  parseDailyTotal,
   parsePerson,
   shiftDate,
   sumEntries,
@@ -33,6 +35,36 @@ describe("dates and totals", () => {
       ]),
       { calories: 194, protein: 21.3 },
     );
+  });
+
+  it("uses a manual daily total instead of itemized totals", () => {
+    const totals = effectiveTotals(
+      [
+        {
+          id: "entry",
+          personId,
+          date: "2026-11-10",
+          meal: "breakfast",
+          kind: "food",
+          name: "Eggs",
+          calories: 144,
+          protein: 12.6,
+          servings: 1,
+        },
+      ],
+      [
+        {
+          id: "total",
+          personId,
+          date: "2026-11-10",
+          calories: 1450,
+          protein: 175,
+        },
+      ],
+      personId,
+      "2026-11-10",
+    );
+    assert.deepEqual(totals, { calories: 1450, protein: 175, manual: true });
   });
 });
 
@@ -153,6 +185,19 @@ describe("parsers", () => {
   it("rejects a calorie target of zero", () => {
     const parsed = parsePerson({ id: personId, name: "Aleyna", calorieTarget: 0, proteinTarget: 120 });
     assert.equal(parsed.ok, false);
+  });
+
+  it("accepts a weekly tracker total", () => {
+    const parsed = parseDailyTotal({
+      personId,
+      date: "2026-11-10",
+      calories: "1450",
+      protein: "175.4",
+    });
+    assert.deepEqual(parsed, {
+      ok: true,
+      value: { personId, date: "2026-11-10", calories: 1450, protein: 175.4 },
+    });
   });
 });
 

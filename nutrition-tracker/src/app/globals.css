@@ -241,6 +241,41 @@ h1 {
 .mini { font-size: 0.72rem; font-variant-numeric: tabular-nums; }
 
 .table-wrap { overflow-x: auto; }
+.weekly-editor {
+  margin: 22px 0;
+  padding: 18px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.weekly-editor h3 { margin: 0 0 4px; font-size: 1rem; }
+.weekly-editor table {
+  width: 100%;
+  min-width: 470px;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+.weekly-editor th, .weekly-editor td {
+  padding: 6px 2px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+}
+.weekly-editor thead th { color: var(--muted); font-weight: 600; }
+.weekly-editor input {
+  width: 100%;
+  min-width: 5rem;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  padding: 7px 8px;
+}
+.weekly-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; }
+.weekly-actions .primary, .weekly-actions .text-button {
+  min-height: 36px;
+  padding: 6px 8px;
+  white-space: nowrap;
+}
 .week-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 0.72rem; font-variant-numeric: tabular-nums; }
 .week-table th, .week-table td { padding: 4px 2px; text-align: right; border-bottom: 1px solid var(--line); white-space: normal; }
 .week-table th:first-child, .week-table td:first-child { text-align: left; width: 4.2rem; }

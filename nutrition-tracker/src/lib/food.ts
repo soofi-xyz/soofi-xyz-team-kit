@@ -46,11 +46,20 @@ export type Entry = {
   servings: number;
 };
 
+export type DailyTotal = {
+  id: string;
+  personId: string;
+  date: string;
+  calories: number;
+  protein: number;
+};
+
 export type Board = {
   date: string;
   people: Person[];
   staples: Staple[];
   entries: Entry[];
+  dailyTotals: DailyTotal[];
 };
 
 export type AddInput = {
@@ -95,6 +104,13 @@ export type PersonPatch = {
   name: string;
   calorieTarget: number;
   proteinTarget: number;
+};
+
+export type DailyTotalInput = {
+  personId: string;
+  date: string;
+  calories: number;
+  protein: number;
 };
 
 export type ParseResult<T> = { ok: true; value: T } | { ok: false; error: string };
@@ -221,6 +237,22 @@ export function sumEntries(entries: { calories: number; protein: number; serving
     },
     { calories: 0, protein: 0 },
   );
+}
+
+export function effectiveTotals(
+  entries: Entry[],
+  dailyTotals: DailyTotal[],
+  personId: string,
+  date: string,
+): { calories: number; protein: number; manual: boolean } {
+  const manual = dailyTotals.find((total) => total.personId === personId && total.date === date);
+  if (manual) {
+    return { calories: manual.calories, protein: manual.protein, manual: true };
+  }
+  return {
+    ...sumEntries(entries.filter((entry) => entry.personId === personId && entry.date === date)),
+    manual: false,
+  };
 }
 
 export function dailyRead(input: {
@@ -475,4 +507,17 @@ export function parsePerson(body: unknown): ParseResult<PersonPatch> {
     ok: true,
     value: { id, name, calorieTarget, proteinTarget },
   };
+}
+
+export function parseDailyTotal(body: unknown): ParseResult<DailyTotalInput> {
+  if (!isRecord(body)) return fail("Expected a daily total.");
+  const personId = parseId(body.personId);
+  const date = parseDate(body.date);
+  const calories = caloriesOf(body.calories);
+  const protein = proteinOf(body.protein);
+  if (!personId) return fail("Choose a person.");
+  if (!date) return fail("Choose a valid day.");
+  if (calories === null) return fail("Enter calories from 0 to 8,000.");
+  if (protein === null) return fail("Enter protein grams from 0 to 500.");
+  return { ok: true, value: { personId, date, calories, protein } };
 }
