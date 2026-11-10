@@ -25,6 +25,10 @@ Verify runtime support and route gaps to the responsible builder.
 6. Give one copyable API invocation, expected result and at most three steps to inspect the correlated `Refresh` execution, Athena queries or output files. Have the user run the baseline and variant, then report redacted refresh ids and their observation. Wait for that evidence before the next piece; distinguish acceptance (`202`), completion (`SUCCEEDED`/`FAILED`) and written outputs.
 7. Open PRs and work them until checks and reviews are clean; the user merges. Merging to `main` publishes Report to Marketplace; publication and review belong to Registeel, installation to Skarmory.
 
+## Outcome metrics
+
+Count an assertion as decided only when its latest outcome is `APPLIED` or `REJECTED`. Count `SKIPPED` and `FAILED` in their own columns and keep an assertion whose latest outcome is one of them open, out of `decided` and the rate denominators. Counting every outcome as decided turned an applied rate of 0.667 into 0.167 on sample rows.
+
 ## MCP server
 
 For MCP tools at `/report/mcp`, load [the Report MCP server contract](../skills/build-report-product/reference/mcp-server.md) and build pieces `mcp-read`, `mcp-validate-save` and `mcp-refresh` separately. Keep `save_config` the only write, behind `confirm: true`; keep `refresh_and_wait` within `costLimitUsd` and the wait limit; derive tool schemas from the configuration contract and `requirements/swagger.yml` with a contract test; keep the key out of arguments, results and logs. Persist's server belongs to `conkeldurr`.
