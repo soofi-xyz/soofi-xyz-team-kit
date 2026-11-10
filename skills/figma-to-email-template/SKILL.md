@@ -114,6 +114,8 @@ rules; do not restate or loosen them here. Apply the Spring Oaks conventions in
   block from Figma, an existing template or a preview, even when the selected
   frame contains it. `create_email_template_pr` appends Jigglypuff's canonical,
   reviewed ending and adds its variables; never recreate or machine-edit it.
+  Keep all rendered content inside `<body>`; Jigglypuff refuses content after
+  `</body>` with `invalid_standard_ending`.
 - Reuse variables that existing templates already use; do not invent new data.
 - Use the standard body links: `tel:+18334183084` and `{{short_url}}`. Do not
   add `{{unsubscribe_url}}` or the privacy-policy link; Jigglypuff supplies
