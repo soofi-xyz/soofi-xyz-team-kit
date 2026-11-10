@@ -13,9 +13,11 @@ Include correlation, telemetry, retries and failure reporting required to run
 those flows. Every executable flow must specify `flow_template_name` or the
 verified equivalent field in the target contract. Include result callbacks on
 the client facade ([result callbacks](../../configure-system-product/reference/result-callbacks.md)).
+Include [failure alerting](failure-alerting.md): issues in Persist and alerts to
+the people who run System.
 
-Exclude reports, SMS, email, blobs, widgets, short links, partner ordering and
-marketplace packaging from this version. Historical Product features are not
+Exclude reports, customer-facing SMS and email, blobs, widgets, short links,
+partner ordering and marketplace packaging from this version. Historical Product features are not
 implicit requirements. Product-shaped wire fields can remain for compatibility;
 those fields do not create a separate Product service in the catalog.
 
