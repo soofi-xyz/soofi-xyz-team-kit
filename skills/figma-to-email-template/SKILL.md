@@ -79,7 +79,7 @@ Check these before reading the design. Read
 4. The Jigglypuff MCP server for the target environment is connected and the
    user signed in with company single sign-on (the shared Cognito broker
    federated to Microsoft Entra ID). Start with
-   DEV. If the server is not deployed yet, follow
+   DEV. If the server is not available, follow
    [When the Jigglypuff MCP is unavailable](#when-the-jigglypuff-mcp-is-unavailable).
 5. The user has a template name, a subject and, when known, the Asana user
    story the work belongs to.
