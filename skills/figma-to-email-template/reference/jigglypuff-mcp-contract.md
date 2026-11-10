@@ -362,7 +362,9 @@ Output: per case and width a private short-lived `preview_url`,
 
 Rules: render with Jigglypuff's Nunjucks environment (`autoescape: true`,
 `throwOnUndefined: true`, `usd`, `date` and `default` filters) so previews fail
-where a send would.
+where a send would. New-template mode previews body `html` with the canonical
+Terms and Footer appended, as `create_email_template_pr` will write it
+(jigglypuff-agent#122).
 
 ### `create_email_template_pr`
 
@@ -376,7 +378,10 @@ Output: `pr_url`, `pr_number`, `branch`, `head_sha`, `files[]`,
 `content_sha256`, `source_template_id`, `variables[]`, `query_fields[]`,
 `validator: { ok, output }`.
 
-Rules: validate first; write `email/consumer_facing/html/<name>.html`,
+Rules: `html` and `declared_variables[]` cover the body only; Jigglypuff
+appends its canonical, reviewed Terms and Footer and adds the ending's
+variables (jigglypuff-agent#122). Validate first; write
+`email/consumer_facing/html/<name>.html`,
 `<name>__english.json` and, with `query`, `<name>__english.query.json` per
 [email-conventions.md](email-conventions.md); `source_system: FILE_IMPORT`;
 `source_template_id` = UUIDv5 of the canonical frame URL; `active: false`; run
@@ -392,7 +397,8 @@ Input: `pr_number`, and one of: full `html` replacement, exact
 Output: `head_sha`, `files[]`, `content_sha256`, `validator`, and
 `invalidated_approvals[]`.
 
-Rules: only Jigglypuff-owned PRs; keep unrelated bytes; refresh
+Rules: only Jigglypuff-owned PRs; keep unrelated bytes; callers never replace or
+edit the generated Terms and Footer; refresh
 `content_sha256` atomically with the HTML; `activate` requires hosted images
 and a passing certification on the current head.
 

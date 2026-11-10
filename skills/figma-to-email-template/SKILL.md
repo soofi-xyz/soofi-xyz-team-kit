@@ -119,6 +119,8 @@ rules; do not restate or loosen them here. Apply the Spring Oaks conventions in
   block from Figma, an existing template or a preview, even when the selected
   frame contains it. `create_email_template_pr` appends Jigglypuff's canonical,
   reviewed ending and adds its variables; never recreate or machine-edit it.
+  The [interim path](#interim-path-until-the-jigglypuff-mcp-is-deployed) is the
+  only exception.
 - Reuse variables that existing templates already use; do not invent new data.
 - Use the standard links: `tel:+18334183084`, `{{short_url}}`,
   `{{unsubscribe_url}}` and the privacy policy URL.
@@ -177,7 +179,9 @@ hosted and certification passes, through a follow-up change on the PR.
 
 ## Interim path until the Jigglypuff MCP is deployed
 
-1. Do steps 1 and 2 in Cursor.
+1. Do steps 1 and 2 in Cursor. Nothing appends the ending on this path, so end
+   the HTML with the standard Terms and Footer copied byte for byte from the
+   current template, and declare its variables.
 2. Export images with Cursor (2x PNG, cropped as rendered) and compute their
    SHA-256. Point the HTML at
    `https://images.springoakscapital.com/email/<template_name>/<sha256>.png`,
@@ -210,8 +214,8 @@ running one Jigglypuff branch at a time.
 - Figma account, seat and file access confirmed with `whoami`.
 - The child email frame was read once, with a screenshot.
 - Authored HTML follows the Email HTML target and Spring Oaks conventions,
-  excludes the standard Terms and Footer, leaves all other legal text
-  unchanged, and has alt text on every image.
+  excludes the standard Terms and Footer (except on the interim path), leaves
+  all other legal text unchanged, and has alt text on every image.
 - Every image is hosted through Jigglypuff; no placeholders, SVG or Figma URLs.
 - `validate_email_html` passes and previews match the design.
 - The PR is Jigglypuff-owned, `active: false`, certified, and has approval tasks

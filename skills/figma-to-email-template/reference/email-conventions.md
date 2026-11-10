@@ -40,8 +40,10 @@ variables but not query fields.
 - When the design's wording looks wrong (for example a double space when an
   optional field is empty), keep it, match the live templates, and flag it for
   legal in the PR description.
-- Keep the debt-collector notice, the electronic-communications opt-out, the
-  paper-copy notice, office hours, mailing address, copyright and unsubscribe.
+- Leave the standard Terms and Footer out of HTML sent to Jigglypuff;
+  `create_email_template_pr` appends the canonical ending and its variables.
+  Only the interim `gh` path copies it, byte for byte, from the current
+  template. Keep every other disclosure in the body as designed.
 
 ## Images and alt text
 
