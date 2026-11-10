@@ -345,7 +345,9 @@ Output: `ok`, `errors[]`, `warnings[]`, `referenced_variables[]`,
 `missing_declarations[]`, `unused_declarations[]`, `images[]` (src, alt),
 `links[]`.
 
-Rules: the Console
+Rules: validates final assembled HTML, so the canonical Terms and Footer and
+its variables must be present; do not call it on body-only HTML
+(jigglypuff-agent#122). Apply the Console
 [Email HTML target](../../build-console-product/reference/component-authoring.md#email-html-target)
 checks plus the gates above; variables come from the Nunjucks syntax tree only,
 excluding filters, tests, loop and `set` variables; flag leftover placeholders
@@ -354,15 +356,21 @@ such as lorem ipsum, TODO or `{{ IMG_BASE }}`.
 ### `render_email_preview`
 
 Input: `html` or (`pr_number` and `template_name`), `subject`,
-`cases: [{ name, data }]`, optional `widths` (default mobile 393 and desktop
-1024).
+`cases: [{ name, data }]`, optional `new_template` (only with `html`; rejected
+with `pr_number`), optional
+`widths` (default mobile 393 and desktop 1024).
 
 Output: per case and width a private short-lived `preview_url`,
 `screenshot_url`, the rendered subject, `broken_images[]` and render errors.
 
 Rules: render with Jigglypuff's Nunjucks environment (`autoescape: true`,
 `throwOnUndefined: true`, `usd`, `date` and `default` filters) so previews fail
-where a send would.
+where a send would. With `new_template: true`, `html` is body-only and the
+preview appends the canonical Terms and Footer, as `create_email_template_pr`
+will write it (jigglypuff-agent#122). It does not supply the ending's values:
+each case's `data` includes `current_creditor_name`, `current_year`,
+`original_creditor_name`, `short_url`, `store_brand_associated_with_account`
+and `unsubscribe_url`.
 
 ### `create_email_template_pr`
 
@@ -376,7 +384,18 @@ Output: `pr_url`, `pr_number`, `branch`, `head_sha`, `files[]`,
 `content_sha256`, `source_template_id`, `variables[]`, `query_fields[]`,
 `validator: { ok, output }`.
 
-Rules: validate first; write `email/consumer_facing/html/<name>.html`,
+Rules: `html` is the body only. `declared_variables[]` lists exactly the
+variables the body or subject references; `[]` is valid. Jigglypuff appends its
+canonical, reviewed Terms and Footer and adds the ending's variables itself
+(jigglypuff-agent#122). With `query`, the reference template's query must
+project `current_creditor_name`, `original_creditor_name` and
+`store_brand_associated_with_account`; `current_year`, `short_url` and
+`unsubscribe_url` are runtime-owned and may be absent from it. Refuse `html`
+that renders content after `</body>` with `invalid_standard_ending`
+(whitespace, closing tags and ordinary comments are allowed; an Outlook
+conditional comment counts as content if it contains copy);
+`render_email_preview` with `new_template: true` applies the same rule.
+Validate first; write `email/consumer_facing/html/<name>.html`,
 `<name>__english.json` and, with `query`, `<name>__english.query.json` per
 [email-conventions.md](email-conventions.md); `source_system: FILE_IMPORT`;
 `source_template_id` = UUIDv5 of the canonical frame URL; `active: false`; run
@@ -392,7 +411,9 @@ Input: `pr_number`, and one of: full `html` replacement, exact
 Output: `head_sha`, `files[]`, `content_sha256`, `validator`, and
 `invalidated_approvals[]`.
 
-Rules: only Jigglypuff-owned PRs; keep unrelated bytes; refresh
+Rules: only Jigglypuff-owned PRs; keep unrelated bytes; a full `html`
+replacement must keep the generated Terms and Footer byte for byte, never omit
+or edit it; refresh
 `content_sha256` atomically with the HTML; `activate` requires hosted images
 and a passing certification on the current head.
 
@@ -404,7 +425,10 @@ Output: `pr_number`, `branch`, `head_sha`, `checks[]` (what Jigglypuff
 verified before taking over).
 
 Rules: `Templates.Maintainer` only; validate the files; record ownership in the
-PR state table. PRs created by `create_email_template_pr` never need this.
+PR state table. Refuse with `adoption_refused` a PR whose email HTML carries the
+standard-ending markers without the exact canonical block, or removes a
+canonical ending that `main` already has (jigglypuff-agent#122). PRs created by
+`create_email_template_pr` never need this.
 
 ### `certify_template`
 
@@ -422,7 +446,10 @@ Output: added files, `head_sha`, and the strings that need legal review.
 
 Rules: translate visible copy only; keep variables, links, conditionals and
 markup identical; legal text comes from approved Spanish wording, not free
-translation.
+translation. The standard Terms and Footer has no Legal-approved Spanish copy
+yet, so every email with the standard ending, which includes every email
+`create_email_template_pr` creates, is refused with `translation_refused`
+(jigglypuff-agent#122).
 
 ### `request_template_approval`
 

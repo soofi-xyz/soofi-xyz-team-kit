@@ -1,6 +1,6 @@
 ---
 name: figma-to-email-template
-description: "Turn a Figma email frame into a Jigglypuff-owned templates-inventory pull request from Cursor: read the frame through the Figma MCP in Cursor, then call Jigglypuff's hosted MCP tools to export and host images, validate, preview, create the PR, certify, translate and request approval. Use when a requester shares a Figma email design or frame link and wants it added or updated as an email template."
+description: "Turn a Figma email frame into a Jigglypuff-owned templates-inventory pull request from Cursor: read the frame through the Figma MCP in Cursor, then call Jigglypuff's hosted MCP tools to export and host images, validate, preview, create the PR, certify and request approval. Use when a requester shares a Figma email design or frame link and wants it added or updated as an email template."
 ---
 
 # Figma Frame To Email Template
@@ -15,8 +15,8 @@ The flow has three parts:
 
 1. Read the design through the **Figma MCP connected in the user's Cursor**.
 2. Call **Jigglypuff's hosted MCP server** for everything after the read: image
-   export and hosting, validation, previews, the pull request, certification,
-   translation and the approval request.
+   export and hosting, validation, previews, the pull request, certification
+   and the approval request.
 3. Leave approval and merge to the humans in Asana. Jigglypuff creates and owns
    the PR, so it needs no adoption step.
 
@@ -35,7 +35,7 @@ these steps once, in order.
 | Server | What it does | How you sign in | Status |
 | --- | --- | --- | --- |
 | Figma MCP (Figma's official remote server, `https://mcp.figma.com/mcp`) | Reads the email frame, its screenshot and its image assets | Your Figma account, in the browser, when you click **Connect** | Available now |
-| Jigglypuff MCP (Spring Oaks, hosted) | Hosts images, validates, previews, opens the PR, certifies, translates, requests approval | Your Spring Oaks Microsoft work account (Cognito sign-in page, then Microsoft through `AzureAD`) | Not available yet; use the stopgap |
+| Jigglypuff MCP (Spring Oaks, hosted) | Hosts images, validates, previews, opens the PR, certifies, requests approval | Your Spring Oaks Microsoft work account (Cognito sign-in page, then Microsoft through `AzureAD`) | Connect when available; otherwise stop before the PR |
 
 1. **Update the kit.** In Cursor, open **Settings > Plugins**, install or update
    `soofi-xyz-team-kit`, then run **Developer: Reload Window**.
@@ -55,18 +55,12 @@ these steps once, in order.
    5. Ask the agent to call Figma's `whoami` tool and confirm the account and
       seat. Use a Dev or Full seat; View and Collab seats get only a handful of
       Figma MCP calls a month.
-3. **Connect the Jigglypuff MCP (when it ships).** It is not available yet. It
-   will ship in this kit's `mcp.json` once the DEV server is certified (see the
-   [contract](reference/jigglypuff-mcp-contract.md)). After that, a plugin
-   update is enough: open **Cursor Settings > Tools & MCP**, enable the
-   Jigglypuff server, click **Connect** and sign in with your Spring Oaks
-   Microsoft work account. Until then, use the
-   [stopgap](#interim-path-until-the-jigglypuff-mcp-is-deployed): open the PR
-   from Cursor, then in the Asana story attach the exported images and ask
-   Jigglypuff to take over the PR.
-4. **Sign in to GitHub CLI (stopgap only).** The stopgap opens the PR with
-   `gh`. Run `gh auth login` once and confirm with `gh auth status` that the
-   account can push branches to `Spring-Oaks-Capital-LLC/templates-inventory`.
+3. **Connect the Jigglypuff MCP when it is available.** Open **Cursor Settings >
+   Tools & MCP**, enable the Jigglypuff server for your environment, click
+   **Connect** and sign in with your Spring Oaks Microsoft work account (see the
+   [contract](reference/jigglypuff-mcp-contract.md)). If it is not available,
+   stop before PR creation (see
+   [When the Jigglypuff MCP is unavailable](#when-the-jigglypuff-mcp-is-unavailable)).
 
 ## Prerequisites
 
@@ -85,7 +79,8 @@ Check these before reading the design. Read
 4. The Jigglypuff MCP server for the target environment is connected and the
    user signed in with company single sign-on (the shared Cognito broker
    federated to Microsoft Entra ID). Start with
-   DEV. If the server is not deployed yet, use the interim path below.
+   DEV. If the server is not available, follow
+   [When the Jigglypuff MCP is unavailable](#when-the-jigglypuff-mcp-is-unavailable).
 5. The user has a template name, a subject and, when known, the Asana user
    story the work belongs to.
 
@@ -115,9 +110,16 @@ Follow the Console
 rules; do not restate or loosen them here. Apply the Spring Oaks conventions in
 [reference/email-conventions.md](reference/email-conventions.md):
 
+- Stop the authored HTML before the standard Terms and Footer. Do not copy that
+  block from Figma, an existing template or a preview, even when the selected
+  frame contains it. `create_email_template_pr` appends Jigglypuff's canonical,
+  reviewed ending and adds its variables; never recreate or machine-edit it.
+  Keep all rendered content inside `<body>`; Jigglypuff refuses content after
+  `</body>` with `invalid_standard_ending`.
 - Reuse variables that existing templates already use; do not invent new data.
-- Use the standard links: `tel:+18334183084`, `{{short_url}}`,
-  `{{unsubscribe_url}}` and the privacy policy URL.
+- Use the standard body links: `tel:+18334183084` and `{{short_url}}`. Do not
+  add `{{unsubscribe_url}}` or the privacy-policy link; Jigglypuff supplies
+  both in the canonical ending.
 - Keep legal and disclosure text exactly as designed or as the current template
   has it. Never reword, shorten or "fix" it; flag doubts for legal instead.
 - Give every `<img>` an `alt` attribute. Use `alt=""` only for decorative
@@ -136,30 +138,47 @@ placeholder with the returned URL. Never ship SVG, data URIs or Figma URLs.
 
 ### 4. Validate and preview
 
-1. Call `validate_email_html` with the HTML, subject and declared variables. Fix
-   every error; review every warning with the user.
-2. Call `render_email_preview` with sample data for each meaningful permutation
-   (for example with and without a store brand or vehicle). Check the mobile
-   (393px) and desktop screenshots against the Figma screenshot and report
-   broken images.
+1. Do not call `validate_email_html` on body-only HTML. That tool audits final
+   assembled HTML and therefore requires the canonical ending and its variables.
+   `create_email_template_pr` appends the ending and performs that strict
+   validation.
+2. Call `render_email_preview` with `new_template: true` and sample data for
+   each meaningful permutation (for example with and without a store brand or
+   vehicle). The appended ending needs its own values, so every case's data
+   also includes `current_creditor_name`, `current_year`,
+   `original_creditor_name`, `short_url`,
+   `store_brand_associated_with_account` and `unsubscribe_url`. Check the
+   mobile (393px) and desktop screenshots against the Figma screenshot and
+   report broken images.
 
 ### 5. Create the pull request
 
 Call `create_email_template_pr`. Pass the Figma node URL, template name,
-subject, HTML, declared variables, and, when the email needs debt data, the
-existing template whose query to derive from with the fields to keep. Jigglypuff
-writes the linked-HTML files, metadata, `content_sha256` and query, runs the
-inventory validator and opens the PR on a Jigglypuff-owned branch with
-`active: false`. Use `add_files_to_template_pr` for follow-up edits to the same
-PR. Read the contract in
+subject, body HTML without the standard Terms and Footer, `declared_variables`
+and, when the email needs debt data, the existing template whose query to derive
+from with the fields to keep. `declared_variables` lists exactly the variables
+the body or subject references; `[]` is valid. Leave out variables that only the
+ending uses. When you pass a query, the reference template's query must project
+`current_creditor_name`, `original_creditor_name` and
+`store_brand_associated_with_account`, which the ending uses; `current_year`,
+`short_url` and `unsubscribe_url` are supplied at runtime. Jigglypuff appends
+the canonical ending and adds its variables, writes the linked-HTML files,
+metadata, `content_sha256` and query, runs the inventory validator and opens the
+PR on a Jigglypuff-owned branch with `active: false`. Use
+`add_files_to_template_pr` for follow-up edits to the same PR. A full `html`
+replacement must keep the generated ending byte for byte; never omit, replace or
+modify it. Read the contract in
 [reference/jigglypuff-mcp-contract.md](reference/jigglypuff-mcp-contract.md).
 
-### 6. Certify, translate, request approval
+### 6. Certify and request approval
 
-1. Call `certify_template` to render the PR branch for real debts across the
-   language and residency permutations. Share the preview links.
-2. Call `translate_email_template` when the requester wants Spanish; it adds the
-   Spanish variant to the same PR for legal review.
+1. Call `certify_template` to render the English template for real debts
+   across the language-preference and residency permutations. Share the
+   preview links.
+2. Do not call `translate_email_template`. The standard Terms and Footer has no
+   Legal-approved Spanish copy yet, so Jigglypuff refuses every new email with
+   `translation_refused`. Tell the requester Spanish is blocked pending approved
+   copy.
 3. Call `request_template_approval` with the Asana user story. Jigglypuff creates
    the legal approval task, and an engineering query review task when the PR
    contains a `.query.json`. Approval binds to the PR head commit.
@@ -169,43 +188,42 @@ Approval and merge stay human-gated in Asana. Do not merge, approve, or activate
 from Cursor. Activate the template (`active: true`) only after its images are
 hosted and certification passes, through a follow-up change on the PR.
 
-## Interim path until the Jigglypuff MCP is deployed
+## When the Jigglypuff MCP is unavailable
 
-1. Do steps 1 and 2 in Cursor.
-2. Export images with Cursor (2x PNG, cropped as rendered) and compute their
-   SHA-256. Point the HTML at
-   `https://images.springoakscapital.com/email/<template_name>/<sha256>.png`,
-   the layout Jigglypuff's image upload produces.
-3. Open the templates-inventory PR yourself with `gh`, following the file and
-   metadata rules in
-   [reference/email-conventions.md](reference/email-conventions.md), and run
-   `npm test` in the inventory checkout.
-4. In the Asana user story, attach the exported images and ask Jigglypuff to
-   take over (adopt) the PR, upload the images, certify with real debts and
-   request approvals.
+Stop before PR creation. Only `create_email_template_pr` may add the standard
+Terms and Footer, so a PR opened any other way would lack the canonical ending
+or carry a hand-copied one.
+
+1. Do steps 1 and 2 in Cursor, and keep the body HTML and the Figma screenshot.
+2. Tell the requester the PR waits for the Jigglypuff MCP. Figma's temporary
+   asset URLs expire after seven days, so plan to read the frame again then.
+3. Do not open the PR with `gh`, copy the ending from Figma or an existing
+   template, or hand-edit legal text.
 
 ## Hand-off to Jigglypuff
 
 Once the PR exists, Jigglypuff owns it: certification with real debts, legal and
-engineering approvals, Spanish translation, image hosting, activation and merge
-after approval. Report the PR URL, the variables, the query note, the image
-hosting state and the approval tasks to the requester.
+engineering approvals, image hosting, activation and merge after approval.
+Report the PR URL, the variables, the query note, the image hosting state, the
+approval tasks and that Spanish is blocked pending approved copy to the
+requester.
 
 ## Troubleshooting
 
 Read [reference/troubleshooting.md](reference/troubleshooting.md) for the known
-failures: Figma MCP not connected, Jigglypuff MCP not available yet, no edit
+failures: Figma MCP not connected, Jigglypuff MCP unavailable, no edit
 access, View-seat limits, validator `template_id` and
-`FILE_IMPORT` rules, sandboxed tools that cannot read local files, and DEV
-running one Jigglypuff branch at a time.
+`FILE_IMPORT` rules, and DEV running one Jigglypuff branch at a time.
 
 ## Checklist
 
 - Figma account, seat and file access confirmed with `whoami`.
 - The child email frame was read once, with a screenshot.
-- HTML follows the Email HTML target and Spring Oaks conventions; legal text
-  unchanged; alt text on every image.
+- Authored HTML follows the Email HTML target and Spring Oaks conventions,
+  excludes the standard Terms and Footer, leaves all other legal text
+  unchanged, and has alt text on every image.
 - Every image is hosted through Jigglypuff; no placeholders, SVG or Figma URLs.
-- `validate_email_html` passes and previews match the design.
+- `new_template: true` previews match the design, and the validation
+  `create_email_template_pr` runs on the assembled HTML passes.
 - The PR is Jigglypuff-owned, `active: false`, certified, and has approval tasks
   in the Asana story.

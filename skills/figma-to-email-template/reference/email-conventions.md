@@ -27,8 +27,12 @@ This page adds the Spring Oaks inventory conventions on top of them.
 | --- | --- |
 | Call or "talk with a specialist" | `tel:+18334183084` |
 | View account, pay, disclosures at link | `{{short_url}}` |
-| Unsubscribe (required) | `{{unsubscribe_url}}` |
-| Privacy policy | `https://www.springoakscapital.com/privacy-policy` |
+| Unsubscribe (canonical ending only) | `{{unsubscribe_url}}` |
+| Privacy policy (canonical ending only) | `https://www.springoakscapital.com/privacy-policy` |
+
+The call and `{{short_url}}` links are the standard body links; keep any other
+link the approved design has. The unsubscribe and privacy links belong to the
+standard Terms and Footer, which Jigglypuff appends.
 
 `short_url` and `unsubscribe_url` are minted at send time; they are template
 variables but not query fields.
@@ -40,8 +44,10 @@ variables but not query fields.
 - When the design's wording looks wrong (for example a double space when an
   optional field is empty), keep it, match the live templates, and flag it for
   legal in the PR description.
-- Keep the debt-collector notice, the electronic-communications opt-out, the
-  paper-copy notice, office hours, mailing address, copyright and unsubscribe.
+- Leave the standard Terms and Footer out of HTML sent to Jigglypuff;
+  `create_email_template_pr` appends the canonical ending and its variables.
+  Never copy it from Figma or an existing template. Keep every other
+  disclosure in the body as designed.
 
 ## Images and alt text
 
@@ -75,5 +81,9 @@ Jigglypuff writes these; check them in the PR.
   derived from an existing template's Gremlin query by keeping only the
   `.project()` fields this email uses, with their `by()` steps copied unchanged
   and the reference's `output_contract` order. `template_key` equals
-  `template_name`. A query file triggers engineering query review.
+  `template_name`. A query file triggers engineering query review. The
+  reference query must project the ending's data fields
+  `current_creditor_name`, `original_creditor_name` and
+  `store_brand_associated_with_account`; `current_year`, `short_url` and
+  `unsubscribe_url` are runtime-owned and may be absent from it.
 - `active: false` until the images are hosted and certification passes.
