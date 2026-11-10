@@ -35,6 +35,45 @@ its top level; a flow names its `template` and `definition`. A kit `product-*`
 artifact kind names a compatibility configuration shape, not a separate product.
 Use `persist-ingest` rather than the removed historical collection API concept.
 
+A flow's bindings are checked against the install's product list (`flowProblems`
+in System's `src/configuration/model.ts`). An api slot bound to a product the
+install lists as another kind fails with "binding <slot> needs an api but
+<product> is not one"; one bound to a product the install does not list resolves
+on the shared domain. Marketplace review's sandbox lists `transform` as its
+workflow product, so bind no api slot to Transform. Call it as an unbound
+shared-domain api step instead: no `Binding` and no `Product`, and a
+`Request.Path` that starts with the product's base path. System checks only
+bound slots and `Product` steps against its product list; for an unbound step it
+checks only that the path starts with a base path.
+
+```json
+"Select": {
+  "Type": "Product",
+  "Invoke": "api",
+  "Request": { "Method": "POST", "Path": "/transform/transactions" }
+}
+```
+
+Incorrect: `"Binding": "transform"` with `"Path": "/transactions"` and the flow
+binding `"transform": { "product": "transform" }` fails the sandbox install.
+
+Before pushing, run System's own checks on the documents, as inference-apply's
+`scripts/check-with-system.mts` does: `definitionSchema` on each definition,
+`templateProblems` and `compileTemplate` on each template, and `flowProblems`
+with `{ sharedDomain: true }` on each flow. Run them once with `SYSTEM_PRODUCTS`
+empty and once with the sandbox's `transform:workflow`. With no products listed
+every api slot resolves on the shared domain, so a wrong-kind binding passes.
+
+An Inference assertion's `status` is an index Persist derives
+(`configurations/inference/composition.json` in `prismteam-ai/model`):
+`PROPOSED` until an outcome exists, then the latest outcome's decision by
+`decided_at`. Writers never send it. A step choosing what to apply skips
+`APPLIED`, `REJECTED`, `SKIPPED` and `FAILED`; a step that treats any non-empty
+status as decided skips every assertion and applies nothing. Test membership in
+that set, so a record not yet indexed still counts as untried. Only `APPLIED`
+and `REJECTED` close an assertion; `SKIPPED` and `FAILED` stay open for reports
+and later runs.
+
 A `Batch` runs at most 4 items at once unless it sets `MaxConcurrency` (1 to
 1000) or `MaxConcurrency.$` (a dotted path read when the batch starts); see
 [batch concurrency](../../configure-system-product/reference/batch-concurrency.md).

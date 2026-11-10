@@ -82,6 +82,24 @@ Keep these rules; see [product-call settings](reference/product-call-settings.md
 - When runs fail in bursts, check `ProductCallFn` logs for `ThrottlingException`
   before tuning a flow's retries.
 
+## Flow bindings and Persist reads
+
+Keep these rules; see [contracts](reference/contracts.md):
+
+- Do not bind an api slot to a product an install may list as another kind:
+  `flowProblems` refuses the flow ("binding <slot> needs an api but <product>
+  is not one"), and Marketplace review's sandbox lists `transform` as a
+  workflow. Call that product as an unbound shared-domain api step whose
+  `Request.Path` starts with its base path, such as `/transform/transactions`.
+- Before pushing, check definitions, templates and flows with System's own
+  model and compiler for an install that lists no products and for one that
+  lists them as the sandbox does (`transform:workflow`). A check with no
+  products listed passes a wrong-kind binding.
+- Treat an Inference assertion as decided or tried when its Persist `status`
+  index is `APPLIED`, `REJECTED`, `SKIPPED` or `FAILED`. The index is
+  `PROPOSED` until an outcome exists, so a test for a non-empty status matches
+  every assertion and applies nothing.
+
 ## Result callbacks
 
 Own the result-callback framework on the sale-availability client facade:

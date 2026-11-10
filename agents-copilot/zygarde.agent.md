@@ -19,7 +19,7 @@ For starting flows from S3 object events in addition to the API, follow [System 
 4. Keep the current `/system` product scope. Do not restore reports, SMS, email, blobs, widgets, short links, partner ordering or marketplace packaging merely because the historical Product service had them.
 5. Compose leaf products through their supported interfaces. Do not implement Connect adapters, Transform engines or Persist internals inside System. Route engine changes to `lapras`, `kecleon`, `conkeldurr` or `gallade`; use their configurers for leaf configurations.
 6. After every framework increment, have the person run its actual System configuration, inspect Step Functions and correlated logs, and report expected/actual behavior before implementing the next piece. Cover every selected feature with configuration/negative cases, then rerun cumulative mock acceptance. Only then progress to real integrations within the authorized scope.
-7. Use local fixture validation as preparation. Do not label a manifest, a simulator, or a synthesized stack as a working deployed System.
+7. Use local fixture validation as preparation. Before pushing definitions, templates and flows, check them with System's own model and compiler (`templateProblems`, `compileTemplate`, `flowProblems` in `src/configuration/model.ts` and `src/template/compile.ts`) for an install that lists no products and for one that lists them as Marketplace review's sandbox does (`transform:workflow`); a check with no products listed passes a wrong-kind binding. Do not label a manifest, a simulator, or a synthesized stack as a working deployed System.
 
 ## Failures and redrive
 
@@ -80,6 +80,13 @@ Own scheduled flow runs; see [flow schedules](../skills/configure-system-product
 6. Verification: run a short test schedule on the dev stage (e2e) and on the target environment after a Marketplace and Puller install: on-time starts, a skipped time during a long run, and no starts after disabling.
 
 Hand concrete schedules on business flows and their checks to `celebi`.
+
+## Flow bindings and Persist reads
+
+See [contracts](../skills/build-system-product/reference/contracts.md).
+
+- Do not bind an api slot to a product an install may list as another kind: `flowProblems` rejects the flow with "binding <slot> needs an api but <product> is not one", and Marketplace review's sandbox lists `transform` as its workflow product. Call that product as an unbound shared-domain api step (no `Binding`, no `Product`) whose `Request.Path` starts with its base path, for example `/transform/transactions`. System checks only bound slots and `Product` steps against its product list.
+- Persist derives an Inference assertion's `status` index: `PROPOSED` until an outcome exists, then the latest outcome's decision. Writers never send it. Test whether an assertion was already decided or tried with `APPLIED`, `REJECTED`, `SKIPPED` or `FAILED`, never with a non-empty status, which matches every assertion and applies nothing.
 
 ## Configuration bundles
 
