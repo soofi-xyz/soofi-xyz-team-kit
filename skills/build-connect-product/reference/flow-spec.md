@@ -39,7 +39,20 @@ semantic checks in §6. Worked documents are in [examples/](examples/).
   The compiler checks every verb against the intersection of those types'
   capabilities, so a flow that works for Azure also works for SFTP and S3.
 - `parameters` and `partner_parameters` are JSON Schemas for `$.request` and
-  `$.partner`. Undeclared fields are rejected.
+  `$.partner`. Undeclared fields are rejected. A partner configuration runs a
+  flow only when its `parameters` fit that flow's `partner_parameters`
+  (`checkBinding`, `InvalidPartnerParameters`, "Partner configuration cannot
+  run this flow"). When one partner configuration serves several flows,
+  declare every field it carries (for example `page_size`, `workspace`) in each
+  of those flows' `partner_parameters`.
+- Every `$.request.<field>` path a `CALL` reads (in `Body`, `Query`,
+  `PathParameters` or any other field) must be present at run time, even when
+  the schema makes it optional: a missing path fails the job with
+  `Connect.ValidationFailed` ("missing path … for state …") before any request
+  ([blocks.md](blocks.md) §2). Branch an optional field with a `Choice` on
+  `IsPresent` into a state that uses it and one that does not (for example
+  `HasParent` → `CreateSubtask` / `CreateTask`); otherwise every caller must
+  send it.
 - When a `CALL` takes `Subject` from `$.request`, pin the field with a
   `pattern` (for example `^[^@]+@example\.com$`). Connect has no subject
   allowlist, so the schema is the only control on which user a job caller may
@@ -50,7 +63,9 @@ semantic checks in §6. Worked documents are in [examples/](examples/).
   their auth lives on the partner configuration.
 - `limits` are required. They bound runtime, item count, bytes and optional
   `max_cost_usd`; the runtime stops the job when a limit is reached.
-- `kind: lookup` allows exactly one `CALL` and compiles to EXPRESS.
+- `kind: lookup` allows exactly one `CALL`, requires `limits.timeout_seconds`
+  of at most 5 (`LookupTimeoutTooLong`; registering a longer one answers
+  `400 Flow is invalid`) and compiles to EXPRESS.
 - `delivery_settings` holds flow-wide default `Retry` / `Catch`; `dry_run`
   holds a mocked response for callers that pass `dry_run: true`.
 
@@ -221,10 +236,14 @@ phase, code, retryability and item key, never payloads or credentials.
 ## 6. Semantic checks
 
 1. Every alias used by a verb is declared in `connections`, and every declared
-   alias is bound by the partner configuration with an accepted type.
+   alias is bound by the partner configuration with an accepted type. The
+   partner configuration's `parameters` validate against the flow's
+   `partner_parameters`.
 2. Every verb is supported by every accepted connection type (driver
    capabilities), and every option is valid for its verb.
 3. JSONPaths resolve against declared schemas; writes go only to `$.vars`.
+   A `CALL` reads an optional `$.request` field only on a branch guarded by
+   `IsPresent`.
 4. `Map` has `Concurrency`; `ItemsFrom` points at a `FileRef`; bodies terminate.
 5. `WAIT_FOR_WEBHOOK` names a declared webhook; its partner auth is configured
    (a credential for secret schemes, or `issuer`, `jwks_url`, `audience` and
@@ -234,7 +253,14 @@ phase, code, retryability and item key, never payloads or credentials.
    filter rather than failing the job.
 7. `DELETE` requires `allow_delete`; `PUT` to a partner requires an explicit
    `Overwrite` policy.
-8. `limits` are present and within environment maxima.
+8. `limits` are present and within environment maxima; a `lookup` sets
+   `timeout_seconds` to at most 5.
 9. Legacy types are rewritten (blocks.md §6) and the canonical form is stored.
 10. No state references internal systems: no Persist, EventBridge, SNS,
     product queues or internal service URLs.
+
+Run these checks locally with Connect's own code before pushing a flow or
+bundle: `prepareFlow` (`src/spec/prepare.ts`: schema plus semantic checks, the
+same call flow registration makes) for each flow and `checkBinding`
+(`src/spec/binding.ts`) for each flow and partner configuration pair. A flow
+these reject fails Marketplace review's sandbox install.
