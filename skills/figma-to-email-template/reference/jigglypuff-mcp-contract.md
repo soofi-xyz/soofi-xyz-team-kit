@@ -391,10 +391,11 @@ canonical, reviewed Terms and Footer and adds the ending's variables itself
 project `current_creditor_name`, `original_creditor_name` and
 `store_brand_associated_with_account`; `current_year`, `short_url` and
 `unsubscribe_url` are runtime-owned and may be absent from it. Refuse `html`
-that renders content after `</body>` with `invalid_standard_ending` (comments,
-whitespace and closing tags are allowed); `render_email_preview` with
-`new_template: true` applies the same rule. Validate first;
-write `email/consumer_facing/html/<name>.html`,
+that renders content after `</body>` with `invalid_standard_ending`
+(whitespace, closing tags and ordinary comments are allowed; an Outlook
+conditional comment counts as content if it contains copy);
+`render_email_preview` with `new_template: true` applies the same rule.
+Validate first; write `email/consumer_facing/html/<name>.html`,
 `<name>__english.json` and, with `query`, `<name>__english.query.json` per
 [email-conventions.md](email-conventions.md); `source_system: FILE_IMPORT`;
 `source_template_id` = UUIDv5 of the canonical frame URL; `active: false`; run
@@ -424,7 +425,10 @@ Output: `pr_number`, `branch`, `head_sha`, `checks[]` (what Jigglypuff
 verified before taking over).
 
 Rules: `Templates.Maintainer` only; validate the files; record ownership in the
-PR state table. PRs created by `create_email_template_pr` never need this.
+PR state table. Refuse with `adoption_refused` a PR whose email HTML carries the
+standard-ending markers without the exact canonical block, or removes a
+canonical ending that `main` already has (jigglypuff-agent#122). PRs created by
+`create_email_template_pr` never need this.
 
 ### `certify_template`
 
