@@ -83,7 +83,14 @@ Classify every request before designing anything:
   and keep their workarounds current until each ships.
 - Land payloads in the Connect bucket and return file pointers with checksums.
   Keep inline responses within `MaxInlineBytes`.
-- Require `limits` on every flow and `Concurrency` on every `Map`.
+- Require `limits` on every flow (`timeout_seconds` at most 5 on a `lookup`)
+  and `Concurrency` on every `Map`. Read an optional `$.request` field only
+  behind a `Choice` on `IsPresent`; a missing path fails the job before any
+  request. Declare every partner configuration parameter in the
+  `partner_parameters` of each flow it runs
+  ([flow specification](reference/flow-spec.md) §1, §6). Validate flows and
+  bindings locally with Connect's `prepareFlow` and `checkBinding` before
+  pushing.
 - Make everything runtime-operable: flows, partner configurations, connections,
   credentials and activations change through the API, never through a CDK deploy or
   context flag.

@@ -251,7 +251,17 @@ domain with the shared `x-api-key` and no AWS credentials:
 
 1. **Bundle PR (configurer):** change the repository created from
    `prismteam-ai/configuration-bundle-template`; its CI validates the bundle and
-   publishes it to Marketplace when the PR merges.
+   publishes it to Marketplace when the PR merges. Before the first merge, set
+   up publishing as the template README's "Publishing" section says: a
+   Marketplace product record for the bundle (a container, not a real product)
+   in the shared category, with a `CONFIGURATION` component whose
+   `component_id` is the bundle name; the repository variable
+   `MARKETPLACE_PRODUCT_NAME` set to that product's name; and the repository
+   secret `MARKETPLACE_API_KEY`. Name Connect configuration records
+   `Connect<Partner>` (`ConnectMarketplace`, `ConnectGoogleWorkspace`,
+   `ConnectAsana`). Without the variable, publishing looks the product up by
+   the manifest's `component_name` and fails with "expected one Marketplace
+   product named …, found 0".
 2. **Publish (Registeel):** confirm the Marketplace publish and that the bundle
    is `VALID`; Puller installs only the newest `VALID` bundle.
 3. **Subscribe (Skarmory):** create or update the Deploy Puller subscription

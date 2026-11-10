@@ -64,6 +64,24 @@ value, or a `{+name}` value with an empty, `.` or `..` segment (including a
 leading or trailing `/`), fails with `ValidationFailed` before any request.
 Pin the shape of a `{+name}` value in the flow's `parameters` schema.
 
+Every state path a `CALL` reads (`Body`, `Query`, `PathParameters` and its
+other fields) must exist: the compiler puts a guard before the task
+(`src/compiler/guards.ts`, from `compileTask` in `src/compiler/tasks.ts`), and
+a missing path fails the job with `Connect.ValidationFailed` ("missing path
+<path> for state <name>") before any request. Read an optional `$.request`
+field only after a `Choice` on `IsPresent`:
+
+```json
+"HasParent": {
+  "Type": "Choice",
+  "Choices": [{ "Variable": "$.request.parent", "IsPresent": true, "Next": "CreateSubtask" }],
+  "Default": "CreateTask"
+}
+```
+
+Incorrect: one `CreateTask` state whose `Body` has `"parent": "$.request.parent"`
+fails every job that omits `parent`.
+
 `Subject` (a value or JSONPath, often `$.request.user`) is the user an
 `oauth2_jwt_bearer` connection acts as for that call; it overrides the
 connection's `auth.subject`. `POLL` inherits it from its `Call`. Connect does
