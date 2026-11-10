@@ -133,10 +133,11 @@ support without leading with them.
    Treat key revocation, real AWS account creation/adoption and offboarding as
    explicit effects. Verify authorization for the exact 12-digit target account.
 7. Keep boundaries explicit: Environment owns domains, certificates and initial
-   platform installation; Access (currently unassigned) owns IAM Identity Center
-   and customer AWS Console assignments; Registeel operates Account registration
-   in Prism Marketplace. Report an unassigned Access dependency instead of making
-   Account mint console users or assignments.
+   platform installation; Access owns sign-in, users, roles and permissions for
+   the people who use an environment's products (`aegislash` builds, `doublade`
+   configures); Registeel operates Account registration in Prism Marketplace.
+   Login to the AWS website for customer staff is not a Prism capability: do not
+   make Account mint console users or assignments.
 
 ## Shared API domain
 

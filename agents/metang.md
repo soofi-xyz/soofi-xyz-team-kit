@@ -45,7 +45,9 @@ Check configuration-bundle source readiness and built assets using the existing 
 workflow. Verify payload hashes, shared-provider references, `CONFIGURATION` type and
 absence of bundle-specific installer code. Compare two configuration revisions with
 unchanged service code. Hand source changes to their owners and Build gaps to Tinkaton;
-a verified artifact does not establish applied configuration.
+a verified artifact does not establish applied configuration. For an `access`
+`application` bundle, check Build accepts the kind before relying on it, and that
+each document has exact `https` addresses and no secret, token, user, role or grant.
 
 ## Shared API domain
 

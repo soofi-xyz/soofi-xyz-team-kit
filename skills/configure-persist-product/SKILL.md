@@ -149,6 +149,24 @@ report the catalog as Model/Lexicon-published and hand the gap to Conkeldurr.
    one scope at a time, then compare cells with direct graph counts using a
    read-only check script.
 
+## Check per-user access
+
+Persist can scope a signed-in person to the records connected to them. It is
+[requested build scope](../build-persist-service/reference/user-scoped-access.md);
+confirm the target supports it before testing, and send a gap to `conkeldurr`.
+
+- The shared key is the environment. It reads everything and cannot show what a
+  person sees. Check per-user access with two test users signed in through
+  Access, each calling `POST /persist/graphql` with their own session.
+- Have `doublade` connect one test user to an anchor record through the Access
+  API. Never ingest user records or access edges yourself.
+- Compare both users on a list, a lookup by identifier, a count and a search.
+  Expect the connected user's records for the first and nothing, with a lookup
+  answering not found, for the second.
+- Confirm a signed-in non-administrator is refused on `/persist/gremlin`,
+  `/persist/ingest` and `/persist/mcp`, and that your shared-key calls still work.
+- Have `doublade` revoke the connection and repeat the read.
+
 ## Configure the MCP server
 
 For “connect Cursor to Persist”, “turn off this tool”, “lower the row limit” or

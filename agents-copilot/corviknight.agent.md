@@ -30,7 +30,11 @@ Use `CONFIGURATION` in bundle validation and subscription metadata; migrate lega
 type handling with Build and Marketplace. Build the shared configuration-bundle
 installer as a Deploy component with typed Transform, Connect, System, Report and Schedule API adapters.
 Add the Console adapter by the contract's Console application payloads: Console's
-existing API is the target, so build no Console-side primitive. Add no Rule adapter
+existing API is the target, so build no Console-side primitive. Add the Access
+adapter by the contract's Access application payloads once Aegislash ships the
+application API: create-or-replace by name, read back the exact addresses, and
+remove only an application this component owns. Install no user, role, grant or
+sign-in client from a bundle. Add no Rule adapter
 until Gallade ships Rule's shared-domain configuration API, and no Documentation
 adapter; Documentation ships from each product's repository.
 Install Transform mappings of both engines, selected by the rule's `engine`: `spark-sql`

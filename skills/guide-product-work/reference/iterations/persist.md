@@ -1,7 +1,7 @@
 # Persist capability map
 
 Use Conkeldurr to implement capabilities and Uxie to configure existing ones.
-Derive the scoped plan using the [shared workflow](../../SKILL.md). These nineteen
+Derive the scoped plan using the [shared workflow](../../SKILL.md). These twenty
 capability areas are a starting inventory, not a fixed count for either agent.
 Select requested features, order dependencies, and split further where a usable
 capability needs its own checkpoint. Apply tests and user/AWS feedback to every
@@ -28,6 +28,7 @@ selected piece; do not reserve failure testing for the end.
 | `mcp-search` — cited retrieval for RAG | MCP endpoint; deployed `vector-search` | Deliver `search` returning matched text with utterance → media → meeting source ids; ask about a known meeting. | Confirm each returned id with a direct query and correlate the GraphQL search source logs. |
 | `mcp-configuration` — change tools and limits without a redeploy | MCP endpoint | Deliver `GET/PUT /persist/mcp/configuration` with enabled tools, limits and saved queries exposed as `query_<name>`; disable a tool, lower a limit, add a saved query and a refused write template. | Inspect the configuration version and pointer; confirm `tools/list` changes after the cache window with no deployment. |
 | `mcp-metrics` — look up metrics through MCP | MCP endpoint; active metrics catalog | Deliver `lookup_metric`; read one debt's cells and exercise a deployment without an active catalog. | Compare the cell read-back with the metrics API and confirm the plain no-catalog message. |
+| `user-scoped-access` — let a signed-in person read only what is connected to them | Access sign-in and its shared verifier; user records and access-carrying edge types in the lexicon; graph queries | Deliver [user-scoped access](../../../build-persist-service/reference/user-scoped-access.md): an Access user as a caller, GraphQL-only for non-administrators, reads that start from the caller's user record, the same rule on lookups and counts, search filtered inside the index by access anchor, and user records, group records and grant edges writable only by Access's own identity while structural edges stay ordinary ingest. Configure two test users where one is connected to an anchor record and the other is not. | Inspect the GraphQL and search logs for both users; the unconnected user gets nothing and a lookup by identifier answers not found. Confirm an Access user is refused on Gremlin, ingest and MCP routes and that environment-key and IAM callers are unchanged. Done only when checks `UA-1` to `UA-22` in the reference pass. |
 
 Use [current-scope reconciliation](../../../build-persist-service/reference/current-scope.md)
 and relevant [implementation details](../../../build-persist-service/reference/PRD.md).

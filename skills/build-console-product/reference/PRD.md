@@ -37,17 +37,19 @@ Console owns:
 - route, layout, navigation, theme and presentation behavior;
 - typed data/action binding validation and runtime adapters;
 - route, component and action authorization enforcement;
-- the `google-oidc` access policy: Google Workspace sign-in, allowed domains,
-  users and groups, sessions and sign-out, as defined in
-  [Google sign-in](google-sign-in.md);
+- signing people in through Access as a registered application, its own read
+  session, sign-out and the route inventory, as defined in
+  [the sign-in contract](google-sign-in.md). The `google-oidc` policy in that
+  contract is existing behavior to migrate away from; add nothing to it;
 - immutable configuration revisions, active selection, refresh and rollback;
 - browser/runtime telemetry and explicit loading, empty and error states.
 
 Console does not own:
 
-- identity, credentials or authorization claims, which belong to Account
-  (Google remains the identity provider for the `google-oidc` policy, and
-  Account keeps API keys and operator credentials);
+- who a person is, who may sign in and what each role may open, which belong
+  to Access (`aegislash` builds, `doublade` configures);
+- the company's Prism identity, API keys and operator credentials, which belong
+  to Account;
 - vocabulary, model composition, top-vertex semantics or view meaning, which
   belong to Model;
 - facts, graph storage or query execution, which belong to Persist;
@@ -64,7 +66,7 @@ typed action against an owning product's public API.
 
 ### Inputs
 
-- Account-issued caller identity, account and scopes.
+- The signed-in person's Access identity, roles and current Access token, which bindings forward to other products so each applies its own per-user rules. Account-issued account context and service scopes apply to operator and configuration calls only, never to a signed-in person's data.
 - A `ConsoleApplicationManifest` containing:
   - schema version, application identity and runtime compatibility;
   - routes, navigation, pages and layouts;
@@ -241,7 +243,8 @@ The network view must:
 
 ## 9. Product integrations
 
-- **Account:** identity, account context, roles/scopes and service authorization.
+- **Access:** sign-in, the person's identity and roles, and the token Console verifies.
+- **Account:** account context, API keys and service authorization.
 - **Model:** resolved model composition plus declarative graph/catalog/detail/
   review view definitions.
 - **Persist:** bounded graph/fact queries through its public query contract.
@@ -289,8 +292,9 @@ renderer/configuration checks.
    state timeline and network views with complete loading/error states.
 3. A Model network starts at the declared top vertex, preserves identities and
    visibly distinguishes base and extension concepts.
-4. Account authorization protects configuration operations, routes, components,
-   data and actions server-side.
+4. Access roles protect routes, components, data and actions for signed-in
+   people, and Account service authorization protects configuration operations,
+   all server-side.
 5. Model, Persist and System are accessed only through verified public APIs.
 6. Runtime and configuration artifacts are immutable, independently versioned,
    digest-verified, compatibility-checked and atomically selectable.
@@ -341,7 +345,7 @@ Dependencies:
 - Model runtime composition resolution and resolved-model/view APIs;
 - a bounded Persist graph-query contract;
 - Report's `report-output-1` output contract and output-bucket SSM parameter;
-- Account browser and service authorization contracts;
+- Access's sign-in, token and role contract, and Account's service authorization contract;
 - Build, Marketplace and Deploy support for the selected artifact shapes.
 
 Out of scope for the MVP:

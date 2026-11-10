@@ -19,9 +19,11 @@ Read [project configuration and component lifecycle](reference/product-lifecycle
 for persisted projects, the review workspace, asset/version management, export/PR
 application, renderer promotion and production operations. Implement its HTTP
 contracts and cumulative acceptance alongside the capability map.
-Read [Google sign-in](reference/google-sign-in.md) before any change to pages,
-components, routes, the renderer shell or the web runtime. Keep its invariants
-and run its sign-in and route-inventory tests with every such change.
+Read [the sign-in contract](reference/google-sign-in.md) before any change to
+pages, components, routes, the renderer shell or the web runtime. Sign users in
+through Access; Console's own `google-oidc` policy is existing behavior to
+migrate away from, not to extend. Keep the contract's invariants and run its
+sign-in and route-inventory tests with every such change.
 
 ## First step: Figma client registration
 
@@ -48,7 +50,7 @@ bindings, access enforcement, compatibility rules, independent runtime/configura
 selection, refresh/rollback behavior and telemetry. Reject arbitrary executable
 configuration and fail unsupported schemas, components and bindings explicitly.
 
-Keep Account identity and authorization, Model definitions/composition, Persist
+Keep Access sign-in, roles and permissions, Account identity and keys, Model definitions/composition, Persist
 facts/queries, Report queries/datasets and System workflows with their owning
 products. Render Report outputs with the generic report components and the
 read-only `report` dataset binding defined in the product contract; read only
