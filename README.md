@@ -31,6 +31,11 @@ Setting up an AWS account for Prism? Start with the
 [Account onboarding guide](./docs/account-onboarding.md) and Blissey; use
 Kangaskhan only when Account behavior is missing or broken.
 
+Opening a ticket with Spring Oaks Capital for a person's access? Paste the
+[SOC request template](./docs/soc-request-template.md). It lists the GitHub org,
+SOC mailbox, remote workspace, Cursor, Asana, and AWS items to ask for in that
+one ticket.
+
 ## Product agents
 
 <!-- product-catalog:start -->
