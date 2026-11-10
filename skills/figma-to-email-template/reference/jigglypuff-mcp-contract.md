@@ -356,7 +356,8 @@ such as lorem ipsum, TODO or `{{ IMG_BASE }}`.
 ### `render_email_preview`
 
 Input: `html` or (`pr_number` and `template_name`), `subject`,
-`cases: [{ name, data }]`, optional `new_template` (with `html`), optional
+`cases: [{ name, data }]`, optional `new_template` (only with `html`; rejected
+with `pr_number`), optional
 `widths` (default mobile 393 and desktop 1024).
 
 Output: per case and width a private short-lived `preview_url`,
@@ -399,8 +400,9 @@ Input: `pr_number`, and one of: full `html` replacement, exact
 Output: `head_sha`, `files[]`, `content_sha256`, `validator`, and
 `invalidated_approvals[]`.
 
-Rules: only Jigglypuff-owned PRs; keep unrelated bytes; callers never replace or
-edit the generated Terms and Footer; refresh
+Rules: only Jigglypuff-owned PRs; keep unrelated bytes; a full `html`
+replacement must keep the generated Terms and Footer byte for byte, never omit
+or edit it; refresh
 `content_sha256` atomically with the HTML; `activate` requires hosted images
 and a passing certification on the current head.
 

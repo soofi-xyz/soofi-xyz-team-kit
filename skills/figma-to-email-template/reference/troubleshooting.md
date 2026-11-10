@@ -23,9 +23,11 @@ work account that can edit (or has Dev Mode access to) the file, then click
 ## Jigglypuff MCP not available
 
 Expected until it ships. The Jigglypuff server joins this kit's `mcp.json` only
-after its DEV server is certified, so there is nothing to enable yet. Use the
-interim path in the skill: open the PR from Cursor with `gh`, then in the Asana
-story attach the exported images and ask Jigglypuff to take over the PR.
+after its DEV server is certified, so there is nothing to enable yet. Stop
+before PR creation, as the skill's
+[When the Jigglypuff MCP is unavailable](../SKILL.md#when-the-jigglypuff-mcp-is-unavailable)
+section describes. Do not open the PR with `gh`; only
+`create_email_template_pr` adds the canonical Terms and Footer.
 
 ## jigglypuff-dev suddenly fails to connect / 404 / host not found
 
@@ -80,14 +82,6 @@ email frame, and read that frame instead.
 The HTML points at content-addressed URLs that are not uploaded yet. Upload
 through `export_figma_assets` or `upload_email_image`; the URLs start working
 without changing the HTML because they are derived from the image bytes.
-
-## Asana attachments from a sandboxed tool
-
-Sandboxed tool runners (for example Executor) cannot read files from the user's
-machine or fetch arbitrary URLs, so they cannot attach local PNGs to an Asana
-task. In the interim Asana path, ask the user to drag the PNGs onto the task.
-The Jigglypuff MCP removes this step: upload images with `upload_email_image` or
-`export_figma_assets` instead.
 
 ## Jigglypuff DEV is missing a feature
 

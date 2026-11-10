@@ -45,8 +45,8 @@ variables but not query fields.
   legal in the PR description.
 - Leave the standard Terms and Footer out of HTML sent to Jigglypuff;
   `create_email_template_pr` appends the canonical ending and its variables.
-  Only the interim `gh` path copies it, byte for byte, from the current
-  template. Keep every other disclosure in the body as designed.
+  Never copy it from Figma or an existing template. Keep every other
+  disclosure in the body as designed.
 
 ## Images and alt text
 
