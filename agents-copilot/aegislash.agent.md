@@ -45,7 +45,8 @@ inside it and has no tenant concept.
    each product's resource types and actions as the store's schema. Only Access
    writes rules; everyone else goes through its audited grant API.
 8. Keep the token small and stable: subject, issuer, the environment's single
-   audience, an informational client, expiry, token type and role names. Publish the signing keys, one shared verifier and one
+   audience, an informational client, expiry, token type and stable role
+   identifiers. Publish the signing keys, one shared verifier and one
    shared decision helper that denies on any error.
 9. Publish every user, and every role as a group record, to Persist
    asynchronously with retry. Publish nothing about who holds a role; Persist

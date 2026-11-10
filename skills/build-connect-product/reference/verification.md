@@ -129,7 +129,9 @@ marker. Record one evidence row per check: ID, level (local or deployed),
 result, job or request identifier and the Connect revision.
 
 Setup: the `member` role allows `create` on credentials and `start` on the test
-flows, so `alice` and `bob` have both. `erin` has no role. `flow-open` names no
+flows, so `alice` and `bob` have both. `alice` creates her credential before
+`flow-a`'s partner configuration names it. `flow-env`'s configuration names the
+credential `main`, which nobody has set when the run starts. `erin` has no role. `flow-open` names no
 credential; `flow-a` names `alice`'s personal credential; `flow-env` names the
 environment credential; `flow-two` names two credentials.
 
@@ -148,7 +150,7 @@ describe the shipped behavior and must all pass together.
 | UC-6 | `admin`, signed in, starts `flow-a`; then it is started with the environment key | `403` for both; zero partner calls |
 | UC-7 | `alice` shares her credential with `bob` through Access; he starts `flow-a`; she revokes; he starts it again | Runs, then `403` with zero partner calls |
 | UC-8 | `admin` and the environment key each try to share `alice`'s credential and to replace its value | `403` for all four; no grant and no change |
-| UC-9 | `admin` reads the metadata of `alice`'s credential, then removes it | Metadata returned without a value; removal succeeds and is audited |
+| UC-9 | `admin` reads the metadata of `alice`'s credential and removes it while `flow-a`'s configuration names it; the configuration is then changed to name nothing and he removes it again | Metadata without a value; `409` (`CredentialInUse`) the first time, with the credential intact; removed and audited the second time |
 | UC-10 | The environment key and `admin` each start `flow-env` | Both run |
 | UC-11 | `alice` starts `flow-env`; `admin` shares the environment credential with her; she starts it again | `403` with zero partner calls, then it runs |
 | UC-12 | `bob`, holding `use` on one of the two credentials `flow-two` names, starts it | `403`; zero partner calls for either connection |
@@ -161,6 +163,7 @@ describe the shipped behavior and must all pass together.
 | UC-19 | Run the existing environment-key suites against credentials that existed before this piece | Unchanged results; each such credential is owned by `environment` |
 | UC-20 | `erin` creates a credential, lists flows and submits a job | `403` each; nothing created or started |
 | UC-21 | Send a SigV4-signed request to start `flow-a` | No Connect API answers it; the same job submitted on the shared domain with the key behaves as `UC-6` |
+| UC-22 | `bob`, then `admin` signed in, each set the unset credential `main` that `flow-env`'s configuration names; then it is set with the environment key | A conflict for both people and nothing created; with the key it is created and owned by `environment` |
 
 ## 7. Shared-domain-only acceptance
 
@@ -170,7 +173,8 @@ ingress and the schedule and drop-zone test triggers on the shared domain,
 then move each service-to-service caller and give each partner its new webhook
 address with an overlap period, then remove the IAM API. Re-pointing real
 partners is a rollout step a person confirms and records; it is not one of the
-checks.
+checks. For a signed-token webhook, list both addresses as accepted audiences
+before the partner re-points and drop the old one after.
 
 | ID | Do | Pass when |
 | --- | --- | --- |
@@ -179,3 +183,4 @@ checks.
 | SD-3 | Trigger a schedule activation and a drop-zone activation through their shared-domain routes with the key, then without it | Both jobs start; `401` without the key |
 | SD-4 | Inspect the synthesized infrastructure, then send a SigV4-signed request to the former IAM API address | No API or route uses IAM authorization; nothing in Connect answers the request |
 | SD-5 | Run the existing environment-key suites | Unchanged results |
+| SD-6 | Configure a signed-token webhook with two accepted audiences, the old address and the shared-domain one; deliver a token for each; remove the old audience and deliver both again | Both accepted while both are listed; afterwards only the shared-domain audience is accepted and the old one answers `401` |

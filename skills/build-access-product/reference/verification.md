@@ -78,7 +78,8 @@ Checks compare these responses. They are part of the contract:
 
 | Situation | Status |
 | --- | --- |
-| No credential, or an invalid, expired or revoked one | `401` |
+| No credential, or a token, key, secret or refresh token that is invalid, expired or revoked | `401` |
+| A one-time code (the provider's or an Access code) that is replayed, expired, or presented with the wrong state, verifier or address | `400` |
 | A verified caller without the needed permission | `403` |
 | A record that does not exist, or that the caller may not learn exists | `404` |
 | An invalid document or parameter | `400`, with no write |
@@ -177,7 +178,7 @@ Administrative calls use the environment key; the fixture people hold no role ye
 | --- | --- | --- | --- |
 | PM-1 | F, D | With the environment key, make `admin` an administrator; `admin` signs in again and lists users. At F, do this on fresh state with no administrator | The assignment is audited with actor `environment`; with his new token `admin` gets `200`. At F it proves the first-administrator path |
 | PM-2 | D | Declare the `fixture` product's resource types and actions | Reading the declaration back returns them exactly, including which type is private, which actions are shareable and which are type-level |
-| PM-3 | D | As `admin`, create the `member` and `viewer` roles, assign `member` to `alice` and `bob` and `viewer` to `carol`, and invite `frank` as `viewer` | Both roles read back; the next tokens for `alice` and `carol` carry `["member"]` and `["viewer"]`; `frank`'s first token carries `["viewer"]` |
+| PM-3 | D | As `admin`, create the `member` and `viewer` roles, assign `member` to `alice` and `bob` and `viewer` to `carol`, and invite `frank` as `viewer` | Both roles read back with a stable identifier each; the next tokens for `alice` and `carol` carry the identifiers of `member` and `viewer`; `frank`'s first token carries `viewer`'s |
 | PM-4 | D | Invite `grace` as `viewer` with an expiry already in the past, then sign in as her | She is created with no role |
 | PM-5 | D | Ask the decision helper the nine questions below | Every answer matches |
 | PM-6 | D | Create a role with `fixture:destroy` | `400`; the number of stored rules is unchanged |
@@ -189,6 +190,7 @@ Administrative calls use the environment key; the fixture people hold no role ye
 | PM-12 | D | Ask the helper about `fixture:secret/secret-a` (personal, owned by `alice`) for `alice`, `bob`, `admin` and the environment | `use`: allow for `alice`, deny for the other three. `remove`: allow for `alice`, `admin` and the environment, deny for `bob`. `manage`: allow for `alice` only |
 | PM-13 | D | Ask about `fixture:secret/secret-env` (owned by the environment) for the environment, `admin` and `alice` | `use`: allow for the environment and `admin`, deny for `alice` |
 | PM-14 | F | On fresh state where `admin` is the only administrator: with the environment key, remove that role from `admin` | Allowed and audited with actor `environment`; his next token carries no administrator role, his current token stops being accepted at its expiry and not before, and the key still works |
+| PM-15 | D | Create a role `temp` that may `read` `fixture:item`, assign it to `erin`, rename it, then delete it and create a new role named `temp` assigned to `frank` | The rename keeps the identifier and `erin`'s `read`. After the delete, `erin`'s still-valid token is denied. The new `temp` has a different identifier and `frank` is denied `read` |
 
 Decisions for `PM-5` (resource `fixture:item/item-1`, owned by `alice`):
 
@@ -214,7 +216,8 @@ Decisions for `PM-5` (resource `fixture:item/item-1`, owned by `alice`):
 | SV-4 | D | Revoke the identity | Token requests are `401`; a token issued earlier is rejected no later than its expiry |
 | SV-5 | D | Ask the helper whether it may `read` and `use` `item-1` | `read` allow; `use` deny |
 | SV-6 | D | Request a token with a wrong secret, 20 times | `401` each, then `429` |
-| SV-7 | D | Confirm Access's own service identity exists for calling Persist | It obtains a token; its subject names Access |
+| SV-7 | D | Confirm Access's own service identity exists for calling Persist | It obtains a token; its subject is the reserved Access identity |
+| SV-8 | D | As `admin` and with the environment key: create an identity with the reserved name and one with a look-alike name in the reserved namespace; rename, change and remove Access's own identity; grant a role and `fixture-service` the action that writes access-plane records | `400` or `403` each; Access's identity is unchanged and nothing else holds that action |
 
 ### `user-records`
 
@@ -260,6 +263,7 @@ user-scoped access.
 | RA-3 | F | Connect the `viewer` role to `scope-b` | One grant edge from its group record `group-g` to `scope-b`; no membership edge is written |
 | RA-9 | F | Inspect every write Access sent to the Persist fake in this piece | Only user records, group records and grant edges; no scope, item or structural edge |
 | RA-10 | F | Make the Persist fake fail, then revoke `alice`'s connection; restore it and revoke again | An error the first time, with the connection still listed and no audit record of a revoke; removed and audited the second time |
+| RA-11 | F | Connect the `viewer` role to `scope-b`, then delete the role; repeat with the Persist fake failing | Its group record and grant edge are removed before the delete reports done. With Persist failing, the delete returns an error and the role, its record and its edge all remain |
 | RA-4 | F | Connect as `bob`, then with no credential | `403`, then `401`; no edge written |
 | RA-5 | F | Send the same connection twice | One edge |
 | RA-6 | F | Scan Access's own stores after the run | They hold connection and audit records only; no item content |
@@ -303,7 +307,7 @@ impossible. A piece that touches the area re-runs its row.
 | Test bypass in production | `NB-1`, `SI-15`, `SI-18`, `SI-19` |
 | Unverified tokens | `TC-3` |
 | Fail-open check | `TC-7`, `PM-8` |
-| Unprotected administration | `RI-1`, `AP-6`, `US-4`, `US-8`, `PM-9`, `RA-4` |
+| Unprotected administration | `RI-1`, `AP-6`, `US-4`, `US-8`, `PM-9`, `RA-4`, `SV-8` |
 | Credentials in logs | `LS-1` |
 | Tokens in URLs | `SI-1`, `SI-17` |
 | Long-lived, weakly bound sessions | `TC-1`, `SI-7`, `SI-8`, `SI-9` |

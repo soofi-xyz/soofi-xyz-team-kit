@@ -66,7 +66,7 @@ typed action against an owning product's public API.
 
 ### Inputs
 
-- The signed-in person's Access identity and roles, and Account-issued account context and service scopes.
+- The signed-in person's Access identity, roles and current Access token, which bindings forward to other products so each applies its own per-user rules. Account-issued account context and service scopes apply to operator and configuration calls only, never to a signed-in person's data.
 - A `ConsoleApplicationManifest` containing:
   - schema version, application identity and runtime compatibility;
   - routes, navigation, pages and layouts;

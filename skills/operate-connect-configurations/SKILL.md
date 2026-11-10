@@ -200,8 +200,12 @@ created and decides who can start a flow that uses it:
 - A refusal that names a credential means the caller may not use it. Do not
   widen a role, copy the secret into a second credential or switch to the
   environment key to get past it; ask the owner to share.
-- An administrator can read a personal credential's metadata and remove it, for
-  example when its owner leaves, but cannot use it, share it or change its value.
+- An administrator can read a personal credential's metadata, and remove it
+  once no configuration, webhook or activation names it, for example when its
+  owner leaves. An administrator cannot use it, share it or change its value.
+- A name a configuration already uses and nobody has set can be set only with
+  the environment key. For a personal credential, have its owner create it
+  first, then name it in the configuration.
 - No read returns a value, to anyone.
 
 ## 5. Select the test sample

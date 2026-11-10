@@ -258,8 +258,10 @@ and Registeel fails any keyless method that is not declared:
    the whole REST API, not per method, so option 3 cannot be mixed with
    option 1 on one API: move all its methods together and re-run the
    environment-key regression. Which callers may use which method is then the
-   product's own authorization, not the gateway's. Access, Persist, Connect and
-   Console's user-facing API need this once they integrate with Access.
+   product's own authorization, not the gateway's. Access, Persist and Connect
+   need this once they integrate with Access. Console does not: its browser
+   routes use Console's own session under option 4, and its operator routes
+   keep the shared key.
 4. **Declared keyless methods.** A closed list per product of methods that take
    neither the shared key nor an Access token, each stating the one credential
    it does take, or none:
@@ -268,6 +270,11 @@ and Registeel fails any keyless method that is not declared:
      code with its verifier); refresh and sign-out (the refresh token); a
      service identity's token request (that identity's secret).
    - Connect: partner webhook ingress (the webhook's own auth).
+   - Console: health and sign-in options (no credential); sign-in start (no
+     credential) and its sign-in callback (a one-time Access code); sign-out
+     and every viewer route (the Console session cookie, which is valid only
+     while it holds an unexpired Access token). The browser never holds the
+     shared key or an Access token.
 
    Adding a method to a product's list changes that product's contract in the
    same change.

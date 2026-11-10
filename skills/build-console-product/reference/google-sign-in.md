@@ -32,9 +32,32 @@ deployment; add no capability to it.
   and who may open a route or run an action from Access roles. Move
   `allowedDomains`, `allowedUsers` and `allowedGroups` to Access; do not keep a
   second copy of those rules in Console.
-- Keep every guarantee below that is not about Google itself: deny by default,
-  server-side checks on every route, bounded sessions, sign-out, no credential
-  or token in logs, bundles or static assets, and the route inventory test.
+- Call other products as the signed-in person. When a page's data or action
+  binding calls Persist, Connect or another product for a signed-in person,
+  send that person's current Access token and never the shared key, so each
+  product applies its own per-user rules. A binding that used the shared key
+  would be the environment and would show every person the same records.
+  Refresh first when the token has expired, and fail the binding closed when
+  the refresh fails.
+- Carry these invariants from the rest of this contract over unchanged: deny by
+  default with a fixed, tested public list (1), server-side enforcement (2),
+  pages are configuration (4) and no credentials outside the secret store (6).
+  The route inventory tests stay.
+- Change these three for a migrated deployment:
+  - **Renderer gate (3).** The sign-in page offers sign-in through Access only.
+    Remove the secondary API-key link: the environment key is never typed into
+    a browser. Operators who need the application sign in through Access with
+    a role; the key stays for tools and automation.
+  - **Expiry (5).** A session ends when its Access token cannot be refreshed,
+    as described above, not at `sessionSeconds`.
+  - **Operator access (7).** A session's permissions are the person's Access
+    roles, including the actions those roles allow. Configuration and publish
+    operations stay behind the environment key and Account's service
+    authorization, called from tools and never from the browser session.
+- The migrated public list is: health, sign-in options, sign-in start and the
+  sign-in callback. Sign-out and every viewer route need the Console session.
+  They are Console's declared keyless methods under
+  [the publish readiness gate](../../guide-product-work/reference/shared-api-domain.md#publish-readiness-gate).
 - Migrate one deployment at a time: verify Access sign-in for the same users,
   then remove `/console/access-policy`, the Google client secret and the
   viewer password. Do not run both sign-ins as a permanent state.
@@ -46,7 +69,8 @@ deployment; add no capability to it.
 
 The piece is done only when every check below exists as an automated browser or
 API test whose name starts with its ID and passes against a test deployment with
-Access installed. Use the people from [the Access test data](../../build-access-product/reference/test-data.md),
+Access installed. `CS-4b` alone runs in the repository against a fake Access
+token endpoint, because a real Access never returns a bad token. Use the people from [the Access test data](../../build-access-product/reference/test-data.md),
 with Console registered as an Access application. Record one evidence row per
 check: ID, result, request identifier and the Console revision.
 
@@ -55,7 +79,8 @@ check: ID, result, request identifier and the Console revision.
 | CS-1 | Open a Console page with no session | Redirected to Access sign-in start for the Console application; no page content served |
 | CS-2 | Sign in as `alice` | The page renders; the session's subject is her Access user identifier |
 | CS-3 | A user without the route's role opens the route, then calls its action directly | `403` from the server for both, not only a hidden link |
-| CS-4 | Return to the callback with an expired token, an edited one and one issued by another environment | No session created for any |
+| CS-4 | Return to Console's callback with an Access code that is replayed, one that has expired and one issued for another application's address | No session created for any; nothing but a one-time code is ever accepted in the callback address |
+| CS-4b | With a fake Access token endpoint, make the code exchange return an expired token, an edited one and one issued by another environment | Console's verifier rejects each; no session created |
 | CS-5 | Disable `dave` in Access, then advance past his access token's expiry | His next request triggers a refresh that fails; the session ends, he is sent to sign in and is refused there |
 | CS-6 | Sign out, then press back and request a protected route | No protected content served |
 | CS-7 | Run the route inventory, add one page, change another, run it again | Every route requires a session in both runs |
@@ -63,6 +88,10 @@ check: ID, result, request identifier and the Console revision.
 | CS-9 | Search the run's logs, responses, static assets and bundles for every token issued | None found |
 | CS-10 | Remove the role that lets `alice` open a route, then advance past her access token's expiry | After the refresh her next request to that route is `403`; routes her remaining roles allow still work |
 | CS-11 | Keep `alice` active across three access-token lifetimes, inspecting her session each time | She is not asked to sign in again; at every moment the session's expiry is no later than that of the Access token it currently holds |
+| CS-12 | `alice`, connected to `scope-a`, and `bob`, connected to nothing, open the same page whose binding lists items from Persist | `alice` sees `item-a1` and `item-a2`; `bob` sees none |
+| CS-13 | Inspect the outbound calls Console made for `CS-12` and for an action a role allows | Each carries that person's Access token and no shared key |
+| CS-14 | A user holding the role for an action runs it | It runs, and the product it calls records that person as the caller |
+| CS-15 | Open the sign-in page after migration | It offers sign-in through Access only; there is no field or link for an API key |
 
 ## Ownership
 

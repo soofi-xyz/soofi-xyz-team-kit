@@ -16,7 +16,7 @@ partition.
 | IAM role | A signed request from an AWS principal | Everything its role allows, as today, except writing the access-plane labels below. |
 | Access administrator | A verified Access token whose roles include the Persist administrator role | Every route, except writing the access-plane labels below. |
 | Access user | A verified Access token without that role | GraphQL only, scoped to what is connected to the user. |
-| Access service identity | A verified Access token naming a service | The actions its permissions name. Access's own identity is the only caller that may write the access-plane labels below. |
+| Access service identity | A verified Access token naming a service | The actions its permissions name. Access's own identity is the only caller that may write the access-plane labels below. Recognise it by the exact reserved subject from this environment's issuer; no other identity can hold that subject or that right, whoever created it. |
 
 Signed-in people, Access administrators and Access's own service identity call
 Persist with an Access token and no shared key. Put the whole shared API behind
@@ -52,6 +52,11 @@ Access publishes each user to Persist as a graph record, and each role as a
 group record. A user may read a record when it is reachable, along edge types
 the lexicon marks as carrying access, from their own record or from the group
 record of a role in their verified token.
+
+A role's group record is keyed by the role's stable identifier, which is what
+the token carries; a role's name is never used to find it. When Access deletes
+a role it removes the group record and its grant edges, so a token that still
+carries the deleted role's identifier reaches nothing.
 
 Take a caller's roles from the token, never from the graph. Who holds a role is
 not stored in Persist, so unassigning a role takes effect when the caller's
@@ -192,7 +197,7 @@ connected to nothing.
 | UA-8 | F, D | `alice` calls the Gremlin, ingest, lexicon, process-trigger, metrics-catalog, MCP and file-load routes | `403` each; no query or write ran |
 | UA-9 | F, D | `admin` calls the same routes | Each behaves as it does for the environment key |
 | UA-10 | F, D | Run the existing environment-key and IAM suites | Unchanged results |
-| UA-11 | F, D | The environment key, an IAM role, `admin` and another service identity each ingest a `fixture_can_access` edge, a `fixture_user` record and a `fixture_group` record, by ingest and by file load | `403` each; nothing written. The same writes from Access's own service identity are accepted and logged with their writer |
+| UA-11 | F, D | The environment key, an IAM role, `admin`, another service identity and one an administrator named to look like Access's each ingest a `fixture_can_access` edge, a `fixture_user` record and a `fixture_group` record, by ingest and by file load | `403` each; nothing written. The same writes from Access's own reserved identity are accepted and logged with their writer |
 | UA-12 | F, D | Revoke `alice`'s connection, then repeat `UA-1`, `UA-4` and `UA-5` for her | Empty list, `0`, no hits |
 | UA-13 | F, D | Call GraphQL with an expired token, an edited one and one from another environment | `401` each; zero graph queries issued |
 | UA-14 | F | A role granted a personal-data level, a role without it, and the environment key each select a personal-data field on a reachable record | Returned for the first; a field error for the other two |
@@ -203,3 +208,4 @@ connected to nothing.
 | UA-19 | F, D | With the environment key, ingest a new item with a `fixture_contains` edge from `scope-a` | Accepted, as ordinary ingest; `alice` then reads the item |
 | UA-20 | F, D | With the environment key, ingest a `fixture_contains` edge from `alice`'s user record to `item-b1`, then one pointing from an item up to a scope | `403` for the edge that touches a user record and `400` from lexicon validation for the wrong direction; nothing written; `alice` still cannot read `item-b1` |
 | UA-21 | F, D | With `group-g` connected to `scope-b`, unassign `viewer` from `carol` and let her token expire; nothing else is republished | With her new token she lists nothing under `scope-b`, and her search returns no hit there |
+| UA-22 | F, D | With the `viewer` role's group connected to `scope-b`, delete the role in Access; `carol` calls with her still-valid token | She lists nothing under `scope-b` and searches nothing there; the group record no longer exists |

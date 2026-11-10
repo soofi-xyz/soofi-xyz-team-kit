@@ -118,7 +118,7 @@ document the exact names in the target repository's API description:
 | Client | The registered application the person signed in through. Informational: products never use it to allow or deny |
 | Expiry and issue time | Short access-token lifetime; refresh is a separate token |
 | Token type | Distinguishes access tokens from identity tokens |
-| Roles | Role names assigned to the subject at issue time |
+| Roles | Stable identifiers of the roles assigned to the subject at issue time. A role's name is a label that may change; its identifier never changes and is never reused |
 
 Publish the signing keys. Ship one shared verifier that checks signature, issuer,
 the environment's audience, expiry and token type and returns the caller
@@ -172,6 +172,13 @@ environment, owned by Access.
   shared. `manage` and `remove` are never shareable, and a type private to its
   owner shares `use` only. Reject a grant of any other action. Sharing never
   moves ownership.
+- Give every role a stable, opaque identifier. Tokens, rules, shares and the
+  role's group record in Persist all refer to the identifier, never the name,
+  so a renamed role keeps its grants and a new role with an old name inherits
+  nothing.
+- Deleting a role removes its assignments, its rules, every share made to it,
+  and its group record and grant edges in Persist, before the delete reports
+  done. Return an error and delete nothing when Persist did not confirm.
 - Ship an administrator role. Refuse a person's request to remove or demote the
   last administrator. The environment key may do it, which returns the
   environment to its key-only state; audit it.
@@ -223,6 +230,12 @@ working and make its meaning explicit:
   User-facing applications use tokens only.
 - Replace environment-key product-to-product calls with service identities one
   product at a time. Do not remove the key in an Access change.
+- Access's own service identity is reserved. It is created at install and
+  cannot be created, renamed, changed or removed through the API with any
+  credential. Refuse any other identity whose name falls in the reserved
+  namespace. The action that lets it write user records, group records and
+  grant edges in Persist is granted to it alone: it is not a declared,
+  grantable action, so no role, share or other identity can hold it.
 
 ## Security floor
 

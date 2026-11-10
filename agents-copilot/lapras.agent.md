@@ -75,8 +75,16 @@ credentials API, flows or job submission to other signed-in people first.
   store no grants in Connect.
 - A personal credential may be used only by its owner and by people or roles
   the owner shared it with. Administrators and the environment key cannot use
-  it, change its value or share it. They may read its metadata and remove it,
-  for example when its owner leaves.
+  it, change its value or share it. They may read its metadata, and remove it
+  once nothing names it: removal keeps the in-use guard, so when its owner has
+  left, an administrator first changes or removes the configurations, webhooks
+  and activations that name it, then removes the credential.
+- A credential name that a configuration, webhook or activation already names
+  and nobody has set is reserved for the environment: only the environment key
+  may set it. A signed-in person, administrators included, gets a conflict and
+  creates nothing, so nobody can take over a name an existing configuration
+  depends on. A personal credential is therefore created before the
+  configuration that names it.
 - An environment credential may be used by the environment key and by
   administrators. Nobody else may use it unless an administrator shares it.
 - Sharing is a grant of `use` made through Access: by the owner for a personal
@@ -102,17 +110,21 @@ credentials API, flows or job submission to other signed-in people first.
   record them as the environment. Every credential that exists before this
   ships is an environment credential.
 - Connect has no SigV4 API. Deliver that first, as its own piece
-  `shared-domain-only` with checks `SD-1` to `SD-5` in `reference/verification.md`
+  `shared-domain-only` with checks `SD-1` to `SD-6` in `reference/verification.md`
   §7: serve every route on the shared domain, where callers use the shared key
   or an Access token and partner webhook ingress is a declared keyless method
   that applies the webhook's own auth. Remove the existing IAM API as an
   explicit, requested exception to preserving callers: first serve webhook
   ingress and the schedule and drop-zone test triggers on the shared domain,
   then move its service-to-service callers and give each partner the new
-  webhook address with an overlap period, then delete the API. Have a person
+  webhook address with an overlap period, then delete the API. A signed-token
+  webhook compares the sender's audience with the configured one exactly, and
+  that audience is usually the webhook address, so let a webhook accept a list
+  of audiences as an opt-in: add the new address, have the partner re-point,
+  then drop the old one. Have a person
   confirm and record that every partner was re-pointed before the removal.
 
-Implement checks `UC-1` to `UC-21` in `reference/verification.md` §6 as automated
+Implement checks `UC-1` to `UC-22` in `reference/verification.md` §6 as automated
 tests named by their IDs, against a mock partner; the piece is done only when all
 pass. Route sign-in, token, role and grant-API gaps to `aegislash`. Do not build
 sign-in, roles or a permission store in Connect.
