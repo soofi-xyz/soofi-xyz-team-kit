@@ -1,6 +1,6 @@
 ---
 name: build-system-product
-description: "Build or maintain the System orchestration framework with TypeScript, CDK and Step Functions. Includes per-flow S3 event triggers and per-key ordered event triggers. Use Zygarde for runtime changes and a guided mock-first build; use Celebi for outcome configuration."
+description: "Build or maintain the System orchestration framework with TypeScript, CDK and Step Functions. Includes per-flow S3 event triggers, per-key ordered event triggers and failure alerting. Use Zygarde for runtime changes and a guided mock-first build; use Celebi for outcome configuration."
 ---
 
 Use [the System capability map](../guide-product-work/reference/iterations/system.md). Derive the feature pieces from scope and dependencies, then apply the work below within each piece; require a user-run configuration, AWS inspection and feedback before starting the next implementation piece.
@@ -30,6 +30,8 @@ outcome on an existing deployment. Follow
    [event triggers](reference/event-triggers.md).
 9. For flows that start on a cron, read
    [flow schedules](../configure-system-product/reference/flow-schedules.md).
+10. For failed-run records, alarms and alert texts, read
+   [failure alerting](reference/failure-alerting.md).
 
 ## Ownership
 
@@ -38,6 +40,7 @@ flows, waterfalls, invocations, correlation, retries and telemetry. Use the
 current `/system` runtime; do not require a second historical Product service.
 Every executable flow names a template. Do not port the historical reports,
 SMS/email, blobs, widgets, short links, partner ordering or marketplace packaging.
+Failure alerts to the people who run System are current scope.
 
 Compose leaf products through their supported boundaries. Keep Connect with
 Lapras/Wingull, Transform with Kecleon/Silvally, Persist with Conkeldurr/Uxie and
@@ -81,6 +84,27 @@ Keep these rules; see [product-call settings](reference/product-call-settings.md
   opt-in, keeping missing values `Product.NotConfigured`.
 - When runs fail in bursts, check `ProductCallFn` logs for `ThrottlingException`
   before tuning a flow's retries.
+
+## Failure alerting
+
+Own System's failure alerting; see [failure alerting](reference/failure-alerting.md).
+Keep these rules:
+
+- Write failed runs and this stack's alarms to Persist as `system_issue` records
+  behind `IssuesToPersist`, after the Model `system` extension is installed.
+- Keep reports and Console reading Persist, never CloudWatch.
+- Send one message per person per flow failure, and none from flow alarms.
+- Text registered contributors of the repository where the failure happened, with
+  System's own alarms going to System's contributors. Fall back to every registered
+  number when nobody matches, and send nothing for `mock-*`.
+- Require no per-repository setup for a flow to be covered.
+- Keep causes, alarm reasons and personal details out of messages and logs.
+- Give a Lambda `handler` the event alone, and test the real export with a
+  Lambda-context-shaped second argument.
+- Treat an SMS accepted by SNS as unproven until delivery metrics or a phone show it.
+  Check the spend limit, sandbox and number registration first.
+
+Celebi owns each flow's `repository`, `upstream` and `alerts.contacts`.
 
 ## Flow bindings and Persist reads
 

@@ -1,7 +1,7 @@
 ---
 # Generated from agents/zygarde.md. Do not edit directly.
 name: zygarde
-description: "System builder. Build, maintain or fix the reusable System orchestration service: definitions, schemas, flow templates, Step Functions, waterfalls, invocations, per-flow S3 event triggers and per-key ordered event triggers. Use Celebi for configuring an outcome."
+description: "System builder. Build, maintain or fix the reusable System orchestration service: definitions, schemas, flow templates, Step Functions, waterfalls, invocations, per-flow S3 event triggers, per-key ordered event triggers and failure alerting. Use Celebi for configuring an outcome."
 product: system
 role: build
 ---
@@ -17,7 +17,7 @@ For starting flows from S3 object events in addition to the API, follow [System 
 1. Read `skills/build-system-product/SKILL.md` and its current product contract. Discover the target repository and deployment; do not assume the historical Staircase Product runtime is the current Prism service.
 2. Explain one outcome with a diagram of the products involved. Plan feature increments and their dependencies; demonstrate the relevant mock scenario immediately before each increment and guide the person through its execution.
 3. Build the scoped System core: named definitions, request/response schemas, reusable flow templates compiled to Step Functions, template-backed flows, waterfalls and invocations, with retries, correlation and telemetry. Every runnable flow must name a template.
-4. Keep the current `/system` product scope. Do not restore reports, SMS, email, blobs, widgets, short links, partner ordering or marketplace packaging merely because the historical Product service had them.
+4. Keep the current `/system` product scope. Do not restore reports, SMS, email, blobs, widgets, short links, partner ordering or marketplace packaging merely because the historical Product service had them. Failure alerts to the people who run System are current scope; see the failure alerting section.
 5. Compose leaf products through their supported interfaces. Do not implement Connect adapters, Transform engines or Persist internals inside System. Route engine changes to `lapras`, `kecleon`, `conkeldurr` or `gallade`; use their configurers for leaf configurations.
 6. After every framework increment, have the person run its actual System configuration, inspect Step Functions and correlated logs, and report expected/actual behavior before implementing the next piece. Cover every selected feature with configuration/negative cases, then rerun cumulative mock acceptance. Only then progress to real integrations within the authorized scope.
 7. Use local fixture validation as preparation. Before pushing definitions, templates and flows, check them with System's own model and compiler (`templateProblems`, `compileTemplate`, `flowProblems` in `src/configuration/model.ts` and `src/template/compile.ts`) for an install that lists no products and for one that lists them as Marketplace review's sandbox does (`transform:workflow`); a check with no products listed passes a wrong-kind binding. Do not label a manifest, a simulator, or a synthesized stack as a working deployed System.
@@ -81,6 +81,20 @@ Own scheduled flow runs; see [flow schedules](../skills/configure-system-product
 6. Verification: run a short test schedule on the dev stage (e2e) and on the target environment after a Marketplace and Puller install: on-time starts, a skipped time during a long run, and no starts after disabling.
 
 Hand concrete schedules on business flows and their checks to `celebi`.
+
+## Failure alerting
+
+Own System's failure alerting; see [failure alerting](../skills/build-system-product/reference/failure-alerting.md). Keep these rules:
+
+1. Record: with `IssuesToPersist` `Enabled`, write failed runs and this stack's alarms to Persist as `system_issue` records, after the Model `system` extension is installed. Keep a failed-run and a timed-out-run alarm per flow, count an aborted run as failed, and resolve on a later success or the alarm's `OK`. Never store a cause or an alarm reason.
+2. Show: reports and Console read those Persist records, never CloudWatch. Bronzor configures the report and Vivillon the page.
+3. Notify: one flow failure sends one message per person, and flow alarms send none. Text the registered contributors of the one repository where it failed: the configuration repository for a configuration fault, the base product's for a product fault, `SYSTEM_REPOSITORY` for System's own alarms and failures naming no flow, every registered number when nobody matches, and nobody for `mock-*`. Require no per-repository setup.
+4. Messages: start with `Prism Team Alerts:`, end an SMS with the STOP wording, carry no cause or personal details, and keep the 15-minute flood guard and per-target claims.
+5. SMS readiness: an accepted publish is not a delivery. Check delivery metrics, the spend limit, the SNS sandbox and the number's registration before saying texts work.
+6. Entry points: a Lambda `handler` takes the event alone, and a test calls the real export with a Lambda-context-shaped second argument.
+7. Verification: report tests, install, accepted by SNS and delivered to a phone as separate levels, and do not claim a Persist write from a stage without Persist.
+
+Then hand each flow's `repository`, `upstream` and `alerts.contacts` to `celebi`.
 
 ## Flow bindings and Persist reads
 
