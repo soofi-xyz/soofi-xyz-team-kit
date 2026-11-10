@@ -49,7 +49,10 @@ Read these from the agent-eevee checkout and follow them when drafting:
 - `.cursor/skills/chief-editor-pitch-agent/` — Chief-Editor workflow and quality bar.
 
 Intent catalog (see `lib/intent.ts`): `pitch`, `yc-application`, `a16z-speedrun`, `lite-paper`,
-`white-paper`, `rfp-response`, `brain-dump-eval`, `battle-card`, `client-deck`, `website-design`.
+`white-paper`, `rfp-response`, `brain-dump-eval`, `battle-card`, `client-deck`, `website-design`,
+`prism-case-study`. Use `prism-case-study` for any Prism / prismteam.ai case study and follow
+`lib/prompts/intents/prism-case-study.md` exactly (canonical copy: `prismteam-ai/prismteam`
+`docs/eevee-case-study-instructions.md`).
 Default to `pitch` when ambiguous.
 
 ## Rules
