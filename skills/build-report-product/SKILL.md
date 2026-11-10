@@ -41,6 +41,10 @@ for where things are and how a refresh runs.
 - Keep queries read-only and bounded: Gremlin through Persist's async API, one `SELECT`
   per Athena source with `maxScanGiB`, datasets as one statement, a metadata-only cost
   estimate before any data is read, `maxRows` on sources and datasets.
+- In outcome metrics, count an assertion as decided only when its latest outcome is
+  `APPLIED` or `REJECTED`. Count `SKIPPED` and `FAILED` in their own columns and keep an
+  assertion whose latest outcome is one of them open. Counting every outcome as decided
+  turned an applied rate of 0.667 into 0.167 on sample rows.
 - Keep one stack, `Report`, with no stage suffix, the `report` base path on the shared
   domain, every route behind the shared `x-api-key`, arm64 Lambdas and minified, obfuscated
   assets (Build's asset policy).
