@@ -81,5 +81,9 @@ Jigglypuff writes these; check them in the PR.
   derived from an existing template's Gremlin query by keeping only the
   `.project()` fields this email uses, with their `by()` steps copied unchanged
   and the reference's `output_contract` order. `template_key` equals
-  `template_name`. A query file triggers engineering query review.
+  `template_name`. A query file triggers engineering query review. The
+  reference query must project the ending's data fields
+  `current_creditor_name`, `original_creditor_name` and
+  `store_brand_associated_with_account`; `current_year`, `short_url` and
+  `unsubscribe_url` are runtime-owned and may be absent from it.
 - `active: false` until the images are hosted and certification passes.

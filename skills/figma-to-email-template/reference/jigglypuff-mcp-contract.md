@@ -384,10 +384,14 @@ Output: `pr_url`, `pr_number`, `branch`, `head_sha`, `files[]`,
 `content_sha256`, `source_template_id`, `variables[]`, `query_fields[]`,
 `validator: { ok, output }`.
 
-Rules: `html` and `declared_variables[]` cover the body only; Jigglypuff
-appends its canonical, reviewed Terms and Footer and adds the ending's
-variables (jigglypuff-agent#122). Validate first; write
-`email/consumer_facing/html/<name>.html`,
+Rules: `html` is the body only. `declared_variables[]` lists exactly the
+variables the body or subject references; `[]` is valid. Jigglypuff appends its
+canonical, reviewed Terms and Footer and adds the ending's variables itself
+(jigglypuff-agent#122). With `query`, the reference template's query must
+project `current_creditor_name`, `original_creditor_name` and
+`store_brand_associated_with_account`; `current_year`, `short_url` and
+`unsubscribe_url` are runtime-owned and may be absent from it. Validate first;
+write `email/consumer_facing/html/<name>.html`,
 `<name>__english.json` and, with `query`, `<name>__english.query.json` per
 [email-conventions.md](email-conventions.md); `source_system: FILE_IMPORT`;
 `source_template_id` = UUIDv5 of the canonical frame URL; `active: false`; run
@@ -435,7 +439,10 @@ Output: added files, `head_sha`, and the strings that need legal review.
 
 Rules: translate visible copy only; keep variables, links, conditionals and
 markup identical; legal text comes from approved Spanish wording, not free
-translation.
+translation. The standard Terms and Footer has no Legal-approved Spanish copy
+yet, so every email with the standard ending, which includes every email
+`create_email_template_pr` creates, is refused with `translation_refused`
+(jigglypuff-agent#122).
 
 ### `request_template_approval`
 
