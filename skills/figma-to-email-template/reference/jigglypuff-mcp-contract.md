@@ -367,7 +367,10 @@ Rules: render with Jigglypuff's Nunjucks environment (`autoescape: true`,
 `throwOnUndefined: true`, `usd`, `date` and `default` filters) so previews fail
 where a send would. With `new_template: true`, `html` is body-only and the
 preview appends the canonical Terms and Footer, as `create_email_template_pr`
-will write it (jigglypuff-agent#122).
+will write it (jigglypuff-agent#122). It does not supply the ending's values:
+each case's `data` includes `current_creditor_name`, `current_year`,
+`original_creditor_name`, `short_url`, `store_brand_associated_with_account`
+and `unsubscribe_url`.
 
 ### `create_email_template_pr`
 

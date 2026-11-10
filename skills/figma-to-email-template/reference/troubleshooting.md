@@ -22,9 +22,8 @@ work account that can edit (or has Dev Mode access to) the file, then click
 
 ## Jigglypuff MCP not available
 
-Expected until it ships. The Jigglypuff server joins this kit's `mcp.json` only
-after its DEV server is certified, so there is nothing to enable yet. Stop
-before PR creation, as the skill's
+When no Jigglypuff server is available for your environment, stop before PR
+creation, as the skill's
 [When the Jigglypuff MCP is unavailable](../SKILL.md#when-the-jigglypuff-mcp-is-unavailable)
 section describes. Do not open the PR with `gh`; only
 `create_email_template_pr` adds the canonical Terms and Footer.

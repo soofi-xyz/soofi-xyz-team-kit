@@ -35,7 +35,7 @@ these steps once, in order.
 | Server | What it does | How you sign in | Status |
 | --- | --- | --- | --- |
 | Figma MCP (Figma's official remote server, `https://mcp.figma.com/mcp`) | Reads the email frame, its screenshot and its image assets | Your Figma account, in the browser, when you click **Connect** | Available now |
-| Jigglypuff MCP (Spring Oaks, hosted) | Hosts images, validates, previews, opens the PR, certifies, translates, requests approval | Your Spring Oaks Microsoft work account (Cognito sign-in page, then Microsoft through `AzureAD`) | Not available yet; stop before the PR |
+| Jigglypuff MCP (Spring Oaks, hosted) | Hosts images, validates, previews, opens the PR, certifies, translates, requests approval | Your Spring Oaks Microsoft work account (Cognito sign-in page, then Microsoft through `AzureAD`) | Connect when available; otherwise stop before the PR |
 
 1. **Update the kit.** In Cursor, open **Settings > Plugins**, install or update
    `soofi-xyz-team-kit`, then run **Developer: Reload Window**.
@@ -55,12 +55,11 @@ these steps once, in order.
    5. Ask the agent to call Figma's `whoami` tool and confirm the account and
       seat. Use a Dev or Full seat; View and Collab seats get only a handful of
       Figma MCP calls a month.
-3. **Connect the Jigglypuff MCP (when it ships).** It is not available yet. It
-   will ship in this kit's `mcp.json` once the DEV server is certified (see the
-   [contract](reference/jigglypuff-mcp-contract.md)). After that, a plugin
-   update is enough: open **Cursor Settings > Tools & MCP**, enable the
-   Jigglypuff server, click **Connect** and sign in with your Spring Oaks
-   Microsoft work account. Until then, stop before PR creation (see
+3. **Connect the Jigglypuff MCP when it is available.** Open **Cursor Settings >
+   Tools & MCP**, enable the Jigglypuff server for your environment, click
+   **Connect** and sign in with your Spring Oaks Microsoft work account (see the
+   [contract](reference/jigglypuff-mcp-contract.md)). If it is not available,
+   stop before PR creation (see
    [When the Jigglypuff MCP is unavailable](#when-the-jigglypuff-mcp-is-unavailable)).
 
 ## Prerequisites
@@ -143,8 +142,12 @@ placeholder with the returned URL. Never ship SVG, data URIs or Figma URLs.
    validation.
 2. Call `render_email_preview` with `new_template: true` and sample data for
    each meaningful permutation (for example with and without a store brand or
-   vehicle). Check the mobile (393px) and desktop screenshots against the Figma
-   screenshot and report broken images.
+   vehicle). The appended ending needs its own values, so every case's data
+   also includes `current_creditor_name`, `current_year`,
+   `original_creditor_name`, `short_url`,
+   `store_brand_associated_with_account` and `unsubscribe_url`. Check the
+   mobile (393px) and desktop screenshots against the Figma screenshot and
+   report broken images.
 
 ### 5. Create the pull request
 
@@ -196,7 +199,7 @@ hosting state and the approval tasks to the requester.
 ## Troubleshooting
 
 Read [reference/troubleshooting.md](reference/troubleshooting.md) for the known
-failures: Figma MCP not connected, Jigglypuff MCP not available yet, no edit
+failures: Figma MCP not connected, Jigglypuff MCP unavailable, no edit
 access, View-seat limits, validator `template_id` and
 `FILE_IMPORT` rules, and DEV running one Jigglypuff branch at a time.
 

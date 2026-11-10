@@ -30,8 +30,9 @@ This page adds the Spring Oaks inventory conventions on top of them.
 | Unsubscribe (canonical ending only) | `{{unsubscribe_url}}` |
 | Privacy policy (canonical ending only) | `https://www.springoakscapital.com/privacy-policy` |
 
-Author only the call and `{{short_url}}` links. The unsubscribe and privacy
-links belong to the standard Terms and Footer, which Jigglypuff appends.
+The call and `{{short_url}}` links are the standard body links; keep any other
+link the approved design has. The unsubscribe and privacy links belong to the
+standard Terms and Footer, which Jigglypuff appends.
 
 `short_url` and `unsubscribe_url` are minted at send time; they are template
 variables but not query fields.
