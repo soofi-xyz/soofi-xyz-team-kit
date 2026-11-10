@@ -172,7 +172,9 @@ Agents load as `soofi-xyz-team-kit:<agent>` subagents, skills as `/soofi-xyz-tea
 and the bundled MCP servers connect from `mcp.json`: `elephant`, plus `persist` (Prism memory:
 meetings, Eevee's knowledge and the saved queries from
 [prism-memory-configuration](https://github.com/prismteam-ai/prism-memory-configuration)) and
-`report` on soofi-safavi. `persist` and `report` read soofi-safavi's API key from
+`report` on soofi-safavi, and `repair-jobs` (read-only county repair job database from the
+private [repair-jobs-mcp](https://github.com/prismteam-ai/repair-jobs-mcp) repo; needs read access
+to `prismteam-ai`). `persist` and `report` read soofi-safavi's API key from
 `~/.config/prism/soofi-safavi.key` or `PRISM_API_KEY` (ask Saman Safavi for the key; never paste
 it into a chat). The same `mcp.json` connects them in Cursor.
 
