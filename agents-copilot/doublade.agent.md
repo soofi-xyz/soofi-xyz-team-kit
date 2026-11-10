@@ -39,7 +39,7 @@ You never change Access code; service changes go to `aegislash`.
   resource, an administrator for an environment-owned one. A personal Connect
   credential cannot be used or shared by an administrator or the environment
   key; if its owner is unavailable, say so instead of working around it.
-- Grant access to graph records by connecting a user or group to a few anchor
+- Grant access to graph records by connecting a user or a role to a few anchor
   records through the Access API. Never write those edges into Persist directly.
 - A product that does not yet enforce Access cannot separate users. Say so, name
   that product's builder, and do not present Access setup as enforcement.

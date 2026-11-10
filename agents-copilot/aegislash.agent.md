@@ -28,6 +28,8 @@ inside it and has no tenant concept.
    discovery. A function invocation alone does not complete an Access feature.
 4. Sign people in with Google only, restricted to the company's Google domains.
    Add no other provider and no email-and-password sign-in unless the user asks.
+   Fix the provider's issuer at install so no API call can change it, and
+   identify a person by issuer and subject together.
    Make one sign-in serve every product: one sign-in client and one token
    audience per environment, with applications as named sets of redirect
    addresses on that client and a session shared across them.
@@ -45,10 +47,14 @@ inside it and has no tenant concept.
 8. Keep the token small and stable: subject, issuer, the environment's single
    audience, an informational client, expiry, token type and role names. Publish the signing keys, one shared verifier and one
    shared decision helper that denies on any error.
-9. Publish every user to Persist asynchronously with retry. Sign-in never waits
-   on Persist. Deliver grant, list and revoke for record access by writing the
-   lexicon's access-carrying edges through Persist's API with Access's own
-   service identity.
+9. Publish every user, and every role as a group record, to Persist
+   asynchronously with retry. Publish nothing about who holds a role; Persist
+   reads roles from the token. Make grant and revoke synchronous: report one
+   done only after Persist confirmed it. Sign-in never waits on Persist. Deliver grant,
+   list and revoke for record access by writing grant edges from a user or role
+   to an anchor record through Persist's API with Access's own service
+   identity. Write no other graph data: the structural edges beneath an anchor
+   are ordinary ingest.
 10. Make applications installable from a configuration bundle by meeting
     [the Access application payload contract](../skills/build-product-deployer/reference/configuration-bundles.md#access-application-payloads).
     Hand the Build kind to `tinkaton` and the Deploy adapter to `corviknight`.
@@ -56,7 +62,7 @@ inside it and has no tenant concept.
     the environment, an administrator-level non-human caller, and is recorded as
     such. Never give that key to a browser or end user.
 12. Enforce the security floor in every piece: verified signatures, fail closed,
-    no deployed test bypass, every route in exactly one of the contract's four
+    no deployed test bypass, every route in exactly one of the contract's five
     route classes with a named permission on every protected one, no credentials
     or tokens in logs or URLs, and an audit record for every change.
 13. Prove every piece with [the verification reference](../skills/build-access-product/reference/verification.md)

@@ -57,17 +57,38 @@ security defects listed there.
 
 - Sign in with Google only. Do not build email-and-password sign-in or another
   provider unless the user asks for it.
+- Fix the identity provider's issuer when the environment is installed. No API
+  call changes it, with any credential, including the environment key; the API
+  sets only the Google client and the allowed domains, and audits each change.
+  Only an environment installed as a test environment may name a test issuer.
+- Identify a person by issuer and subject together. A sign-in from any other
+  issuer never resolves to an existing user, whatever subject, email or domain
+  it presents.
 - Restrict sign-in to the company's Google domains using the provider's
   hosted-domain claim, never the email suffix alone.
 - Serve every Access route under `https://<shared domain>/access`: sign-in
   start, callback, sign-out, published keys and the API. Follow
-  [the shared API domain contract](../guide-product-work/reference/shared-api-domain.md).
+  [the shared API domain contract](../guide-product-work/reference/shared-api-domain.md)
+  and its publish readiness gate, which Access meets with one authorizer for
+  the whole API plus its declared keyless methods.
   Do not create a second domain or certificate for sign-in. If a chosen
   component needs its own address for the provider redirect, stop, record it as
   a gap and ask before adding one.
-- Use the authorization-code flow with PKCE. Deliver tokens to the application
-  through its registered back channel or secure cookies. Never put an access,
-  identity or refresh token in a URL.
+- Sign-in has two legs, each an authorization-code flow with PKCE:
+  1. **Application to Access.** The application starts sign-in with its own
+     code challenge and one of its registered redirect addresses.
+  2. **Access to the provider.** Access redirects to the provider with its own
+     state and challenge. The provider always redirects back to Access's own
+     callback under `/access`, where Access checks them and exchanges the
+     provider's code.
+  Access then redirects the browser to the application's registered address
+  with a one-time **Access code**: single use, valid for at most one minute and
+  bound to that application's challenge and address. The application exchanges
+  it, with its code verifier, at Access's token exchange route for the tokens.
+  An application is a public client and holds no secret.
+- Never put an access, identity or refresh token in a URL. The provider's code
+  appears only in the provider's redirect to Access's callback, and an Access
+  code only in Access's redirect to the application.
 - One sign-in serves every product in the environment. Run a single sign-in
   client per environment. An **application** is a named set of exact redirect
   and sign-out addresses registered on that client, so another front end can
@@ -118,8 +139,10 @@ environment, owned by Access.
 - Every rule has three parts: who (a user, role or service), which action, on
   which resource. Roles are groups of users.
 - Each product declares its resource types and actions (for example a Connect
-  credential with `use` and `manage`). Access keeps that list as the store's
-  schema and rejects an undeclared type or action.
+  credential with `use`, `manage` and `remove`). An action is either on one
+  resource or **type-level**, such as `create`, which applies to the type and
+  is granted by a role. Access keeps that list as the store's schema and
+  rejects an undeclared type or action.
 - Express the rules as:
 
   | Rule | Expression |
@@ -149,7 +172,9 @@ environment, owned by Access.
   shared. `manage` and `remove` are never shareable, and a type private to its
   owner shares `use` only. Reject a grant of any other action. Sharing never
   moves ownership.
-- Ship an administrator role and refuse to remove or demote the last administrator.
+- Ship an administrator role. Refuse a person's request to remove or demote the
+  last administrator. The environment key may do it, which returns the
+  environment to its key-only state; audit it.
 - Until the first administrator exists, only the environment key can call
   administrative routes; a signed-in person without a permission is refused.
   The environment key assigns the first administrator. This makes every piece
@@ -160,7 +185,10 @@ environment, owned by Access.
 ### Users and record access in Persist
 
 - Publish every user to Persist as a graph record after the user is created or
-  changed. Publish asynchronously with retry and safe replay. Sign-in never
+  changed. Publish every role as a group record, so a role can be connected to
+  records like a person can. Do not publish who holds a role: Persist takes a
+  caller's roles from their verified token, so unassigning a role takes effect
+  when their current token expires, whatever the state of publication. Publish asynchronously with retry and safe replay. Sign-in never
   waits on Persist and never fails because Persist is unavailable.
 - Send only the identifier and profile fields the lexicon declares. Never send
   a password, token, code or secret.
@@ -169,9 +197,15 @@ environment, owned by Access.
   same rule covers Persist's search results.
   Connect users to a few anchor records (directly or through a group), not to
   every record.
-- Access owns granting it. Deliver grant, list and revoke that write and remove
-  those edges through Persist's API using Access's own service identity, with an
-  audit record for each. Persist enforces; Access keeps no copy of the data.
+- Access owns granting it. Deliver grant, list and revoke that connect a user
+  or a role to an anchor record by writing and removing grant edges through
+  Persist's API using Access's own service identity, with an audit record for
+  each. A grant or revoke is synchronous: report it done only after Persist
+  confirmed the write, and return an error, leaving the connection listed as it
+  was, when Persist did not. Never queue a revoke silently. Access writes only
+  user records, group records and grant edges. The
+  structural edges beneath an anchor are ordinary data loaded by whoever
+  ingests the records. Persist enforces; Access keeps no copy of the data.
 - The user record type, the access-carrying edge types and the anchor record
   types are Model decisions. Until Model publishes them, build against a fixture
   lexicon and report the gap.
@@ -204,14 +238,18 @@ These are not optional and are not deferred to a later piece:
 
   | Class | Routes | Requires |
   | --- | --- | --- |
-  | Public | Sign-in start, sign-in callback, published keys, capability discovery | Nothing; returns no user data |
-  | Own session | Refresh, sign-out, the caller's own profile | A valid session or token; acts only on the caller, whatever their roles |
+  | Public | Sign-in start, the provider callback, published keys, capability discovery | Nothing; returns no user data |
+  | Sign-in credential | Token exchange, refresh, sign-out | Only the credential the route is about: the one-time Access code with its verifier, or the refresh token |
   | Service credential | A service identity's token request | That identity's own secret |
+  | Own session | The caller's own profile | A valid access token; acts only on the caller, whatever their roles |
   | Protected | Everything else | A verified caller with a named permission, or the environment key |
 
-  The list is closed. Adding a route to the first three classes needs this
-  table changed in the same change. A route inventory check fails for any route
-  that is unclassified or behaves outside its class.
+  The first three classes carry neither the shared key nor an access token.
+  They are Access's declared keyless methods under the publish readiness gate;
+  the last two take the key or an Access token. The list is closed. Adding a
+  route to the first four classes needs this table and the gate's list changed
+  in the same change. A route inventory check fails for any route that is
+  unclassified or behaves outside its class.
 - Never log a request body, code, token, secret or cookie. Log the correlation
   identifier, subject and outcome.
 - Write an audit record for sign-in and for every user, role, grant,

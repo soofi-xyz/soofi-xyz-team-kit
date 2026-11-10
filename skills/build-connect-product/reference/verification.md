@@ -133,8 +133,9 @@ flows, so `alice` and `bob` have both. `erin` has no role. `flow-open` names no
 credential; `flow-a` names `alice`'s personal credential; `flow-env` names the
 environment credential; `flow-two` names two credentials.
 
-Before this piece ships, Connect is reachable by the environment key and
-administrators only. That earlier state is not a check here: these checks
+This piece needs `shared-domain-only` (§7) done first, so Connect has no SigV4
+API when these checks run. Before this piece ships, Connect is reachable by the
+environment key and administrators only. That earlier state is not a check here: these checks
 describe the shipped behavior and must all pass together.
 
 | ID | Do | Pass when |
@@ -159,3 +160,22 @@ describe the shipped behavior and must all pass together.
 | UC-18 | Call each Connect route with an expired token, an edited one and one from another environment | `401` each; nothing started |
 | UC-19 | Run the existing environment-key suites against credentials that existed before this piece | Unchanged results; each such credential is owned by `environment` |
 | UC-20 | `erin` creates a credential, lists flows and submits a job | `403` each; nothing created or started |
+| UC-21 | Send a SigV4-signed request to start `flow-a` | No Connect API answers it; the same job submitted on the shared domain with the key behaves as `UC-6` |
+
+## 7. Shared-domain-only acceptance
+
+`shared-domain-only` is done on the revision where Connect has no SigV4 API and
+every check below passes together. Deliver it in order: first serve webhook
+ingress and the schedule and drop-zone test triggers on the shared domain,
+then move each service-to-service caller and give each partner its new webhook
+address with an overlap period, then remove the IAM API. Re-pointing real
+partners is a rollout step a person confirms and records; it is not one of the
+checks.
+
+| ID | Do | Pass when |
+| --- | --- | --- |
+| SD-1 | Read every route from the API description | Each is served on the shared domain and is either key-or-token or a declared keyless method with its own credential |
+| SD-2 | Deliver a partner webhook to its shared-domain address with valid webhook auth and no key, then with invalid webhook auth | Accepted, then `401`; the method is declared keyless and returns no user data |
+| SD-3 | Trigger a schedule activation and a drop-zone activation through their shared-domain routes with the key, then without it | Both jobs start; `401` without the key |
+| SD-4 | Inspect the synthesized infrastructure, then send a SigV4-signed request to the former IAM API address | No API or route uses IAM authorization; nothing in Connect answers the request |
+| SD-5 | Run the existing environment-key suites | Unchanged results |

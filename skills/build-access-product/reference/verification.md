@@ -18,7 +18,8 @@ A piece is **done** only when all of these hold:
    result, correlation or request identifier, timestamp and the Access revision.
 4. The [cross-cutting checks](#cross-cutting-checks) pass for that run.
 5. Every check of every earlier done piece still passes in the same run.
-6. Cleanup removed everything the run created.
+6. Cleanup removed everything the run created and touched nothing else, as
+   [the test data](test-data.md#cleanup) describes.
 
 Report one of three states for a piece, never a bare "done":
 
@@ -66,8 +67,10 @@ and the ones before it deliver:
 `service-identities` → `user-records` → `resource-sharing` → `record-access` →
 `application-bundles` → `product-integration`
 
-Until `permissions` is done there are no roles: administrative calls use the
-environment key, and every signed-in person is refused on protected routes.
+Until `permissions` is done the fixture people hold no permission:
+administrative calls use the environment key, and every fixture person is
+refused on protected routes. A deployed run shares its test environment with
+whatever is installed there and uses run-suffixed fixture names.
 
 ### Required responses
 
@@ -94,7 +97,7 @@ Run these with every piece, over all routes that exist at that point.
 
 | ID | Level | Do | Pass when |
 | --- | --- | --- | --- |
-| RI-1 | F, D | Read every route from the API description and call each with no credential, with a signed-in person holding no permission, and with the environment key | Each route is marked with exactly one class from the build contract and behaves as that class: public routes answer without user data, own-session routes act only on the caller, protected routes answer `401`, `403` and success in turn |
+| RI-1 | F, D | Read every route from the API description and call each with every caller kind that exists at that point: no credential and the environment key from `applications` on, plus a signed-in fixture person holding no permission from `sign-in` on | Each route is marked with exactly one class from the build contract and behaves as that class: public routes answer without user data; sign-in-credential and service-credential routes answer `401` without their own credential and ignore the key; own-session routes act only on the caller; protected routes answer `401` with no credential, `403` to the signed-in person and success to the environment key |
 | NB-1 | D | Repeat `RI-1` with a user agent that names a test tool | Identical answers |
 | LS-1 | D | Run the [leak scan](#leak-scan) | No match |
 
@@ -118,14 +121,14 @@ Uses the environment key; nobody can sign in yet.
 
 | ID | Level | Do | Pass when |
 | --- | --- | --- | --- |
-| SI-1 | D | Start sign-in for `app-one` | `302` to the configured issuer with a `state`, an S256 code challenge and exactly the registered redirect address; the response carries no token |
-| SI-2 | D | Complete the flow as `alice` | The caller's own profile returns one stable user identifier and `alice`'s email; exactly one user exists for her |
+| SI-1 | D | Start sign-in for `app-one` with the application's code challenge | `302` to the configured issuer with Access's own `state`, an S256 code challenge and Access's own callback under `/access` as the redirect address, never the application's; the response carries no token |
+| SI-2 | D | Complete the flow as `alice` and exchange the result | After the provider callback the browser is sent to exactly `app-one`'s registered address with a one-time Access code and no token; exchanging that code with the application's verifier returns the tokens; her own profile returns one stable user identifier and her email; exactly one user exists for her |
 | SI-3 | D | Sign in as `alice` again; then change her email at the provider and sign in once more | Same user identifier each time; user count unchanged |
 | SI-4 | D | Sign in as `bob` | A different user identifier |
 | SI-5 | D | Sign in as `personal` | `403`; no user created; no session |
 | SI-6 | D | Sign in as `outsider`, then as `spoof` | `403` for both; no user created for either |
-| SI-7 | D | Replay `alice`'s authorization code | `400`; no second session |
-| SI-8 | D | Return to the callback with a changed `state`, then without the code verifier | `400` for both; no session |
+| SI-7 | D | Replay `alice`'s provider code at the callback, then replay her Access code at token exchange | `400` both; no second session and no second set of tokens |
+| SI-8 | D | Return to the callback with a changed `state`; then exchange an Access code with no verifier, with a wrong verifier, and naming `app-two`'s address | `400` each; no session and no tokens |
 | SI-9 | D | Refresh, then sign out, then refresh again | New access token; after sign-out the refresh is `401` |
 | SI-10 | D | Start sign-in for `app-one` with each refused address in the test data | `400` each time, before any redirect to the issuer |
 | SI-11 | D | With `alice` signed in through `app-one`, start sign-in for `app-two` | Completes without a new prompt at the issuer, as the same user identifier |
@@ -134,7 +137,11 @@ Uses the environment key; nobody can sign in yet.
 | SI-14 | F, D | Inspect the synthesized infrastructure and every route used in this piece | One sign-in client; no domain or certificate resource beyond the shared one; every route's host is the shared domain and its path starts with `/access` |
 | SI-15 | F | Read capability discovery under a non-test configuration | The reported issuer is Google's |
 | SI-16 | D | Call sign-in start 50 times in a row from one client | Later calls answer `429`; a single call after the window succeeds |
-| SI-17 | D | Inspect every redirect produced in this piece | None carries an access, identity or refresh token |
+| SI-17 | D | Inspect every redirect produced in this piece | None carries an access, identity or refresh token; a provider code appears only in the provider's redirect to Access's callback, and an Access code only in Access's redirect to the application |
+| SI-18 | D | With the environment key, try to change the identity provider's issuer, then read capability discovery | `400` or `403`; the issuer is unchanged; changing the allowed domains instead succeeds and is audited |
+| SI-19 | D | Return to the callback with a sign-in from the `rogue` issuer presenting `alice`'s subject, email and hosted domain | `400`, as for any code the configured issuer did not issue; no session; `alice`'s user is unchanged and no new user exists |
+| SI-20 | D | Wait past the Access code's lifetime, then exchange it | `400`; no tokens |
+| SI-21 | F | In the fake login directory, resolve a sign-in carrying `alice`'s subject, email and hosted domain under a different issuer | It matches no existing user; `alice`'s record and grants are untouched |
 | SI-H1 | H | A person signs in once with a real company Google account and once with a personal one | The first reaches the application signed in; the second is refused |
 
 ### `token-contract`
@@ -151,7 +158,7 @@ Uses the environment key; nobody can sign in yet.
 
 ### `users`
 
-Administrative calls use the environment key; roles do not exist yet.
+Administrative calls use the environment key; the fixture people hold no role yet.
 
 | ID | Level | Do | Pass when |
 | --- | --- | --- | --- |
@@ -168,19 +175,20 @@ Administrative calls use the environment key; roles do not exist yet.
 
 | ID | Level | Do | Pass when |
 | --- | --- | --- | --- |
-| PM-1 | D | With the environment key, make `admin` the first administrator; `admin` then lists users | The assignment is audited with actor `environment`; `admin` gets `200` |
-| PM-2 | D | Declare the `fixture` product's resource types and actions | Reading the declaration back returns them exactly, including which type is private and which actions are shareable |
+| PM-1 | F, D | With the environment key, make `admin` an administrator; `admin` signs in again and lists users. At F, do this on fresh state with no administrator | The assignment is audited with actor `environment`; with his new token `admin` gets `200`. At F it proves the first-administrator path |
+| PM-2 | D | Declare the `fixture` product's resource types and actions | Reading the declaration back returns them exactly, including which type is private, which actions are shareable and which are type-level |
 | PM-3 | D | As `admin`, create the `member` and `viewer` roles, assign `member` to `alice` and `bob` and `viewer` to `carol`, and invite `frank` as `viewer` | Both roles read back; the next tokens for `alice` and `carol` carry `["member"]` and `["viewer"]`; `frank`'s first token carries `["viewer"]` |
 | PM-4 | D | Invite `grace` as `viewer` with an expiry already in the past, then sign in as her | She is created with no role |
-| PM-5 | D | Ask the decision helper the seven questions below | Every answer matches |
+| PM-5 | D | Ask the decision helper the nine questions below | Every answer matches |
 | PM-6 | D | Create a role with `fixture:destroy` | `400`; the number of stored rules is unchanged |
-| PM-7 | D | Remove `admin`'s role, then remove `admin` | `409` both; `admin` is still an administrator |
+| PM-7 | F | On fresh state where `admin` is the only administrator: as `admin`, remove `admin`'s role, then remove `admin` | `409` both; `admin` is still an administrator |
 | PM-8 | F | Make the permission store fail, time out and throttle | The helper denies each time |
 | PM-9 | D | As `bob` and as `erin`, call every protected route | `403` each; nothing written |
 | PM-10 | D | Create a role using only the environment key | Allowed; the audit record's actor is `environment` |
 | PM-11 | D | Check which principals can write rules to the store | Only Access's own role; every other product role can only ask for a decision |
 | PM-12 | D | Ask the helper about `fixture:secret/secret-a` (personal, owned by `alice`) for `alice`, `bob`, `admin` and the environment | `use`: allow for `alice`, deny for the other three. `remove`: allow for `alice`, `admin` and the environment, deny for `bob`. `manage`: allow for `alice` only |
 | PM-13 | D | Ask about `fixture:secret/secret-env` (owned by the environment) for the environment, `admin` and `alice` | `use`: allow for the environment and `admin`, deny for `alice` |
+| PM-14 | F | On fresh state where `admin` is the only administrator: with the environment key, remove that role from `admin` | Allowed and audited with actor `environment`; his next token carries no administrator role, his current token stops being accepted at its expiry and not before, and the key still works |
 
 Decisions for `PM-5` (resource `fixture:item/item-1`, owned by `alice`):
 
@@ -193,6 +201,8 @@ Decisions for `PM-5` (resource `fixture:item/item-1`, owned by `alice`):
 | `bob` | `use` | deny |
 | `carol` | `read` | deny |
 | `erin` | `read` | deny |
+| `bob` | `create` (type-level, on `fixture:item`) | allow (role) |
+| `erin` | `create` (type-level, on `fixture:item`) | deny |
 
 ### `service-identities`
 
@@ -217,7 +227,8 @@ Prerequisite outside Access for D\*: Persist with a user record type in its lexi
 | UR-3 | F | Deliver the same user event twice | One record, same identifier |
 | UR-4 | F | Change, disable and remove a user | The record is updated, marked disabled and marked removed in turn |
 | UR-5 | F | Compare every published payload with the list of tokens and markers | None present |
-| UR-6 | D\* | Create a user, then read the record through Persist | The record appears within five minutes with the expected identifier and fields |
+| UR-6 | F | Create the `viewer` role, assign it to `carol`, then unassign it | One group record for the role, sent with Access's own identity; nothing published says who holds the role, on assignment or on unassignment |
+| UR-7 | D\* | Create a user, then read the record through Persist | The record appears within five minutes with the expected identifier and fields |
 
 ### `resource-sharing`
 
@@ -244,9 +255,11 @@ user-scoped access.
 
 | ID | Level | Do | Pass when |
 | --- | --- | --- | --- |
-| RA-1 | F | As `admin`, connect `alice` to `scope-a` | Exactly one access edge is written to the Persist fake, by Access's own service identity; audit record written |
+| RA-1 | F | As `admin`, connect `alice` to `scope-a` | Exactly one grant edge is written to the Persist fake, by Access's own service identity; audit record written |
 | RA-2 | F | List `alice`'s connections, then revoke | The list shows `scope-a`; after revoking, the edge is removed |
-| RA-3 | F | Connect `group-g` to `scope-b` | One edge from the group; `carol` is reported as reaching `scope-b` |
+| RA-3 | F | Connect the `viewer` role to `scope-b` | One grant edge from its group record `group-g` to `scope-b`; no membership edge is written |
+| RA-9 | F | Inspect every write Access sent to the Persist fake in this piece | Only user records, group records and grant edges; no scope, item or structural edge |
+| RA-10 | F | Make the Persist fake fail, then revoke `alice`'s connection; restore it and revoke again | An error the first time, with the connection still listed and no audit record of a revoke; removed and audited the second time |
 | RA-4 | F | Connect as `bob`, then with no credential | `403`, then `401`; no edge written |
 | RA-5 | F | Send the same connection twice | One edge |
 | RA-6 | F | Scan Access's own stores after the run | They hold connection and audit records only; no item content |
@@ -287,7 +300,7 @@ impossible. A piece that touches the area re-runs its row.
 
 | Earlier defect | Proven absent by |
 | --- | --- |
-| Test bypass in production | `NB-1`, `SI-15` |
+| Test bypass in production | `NB-1`, `SI-15`, `SI-18`, `SI-19` |
 | Unverified tokens | `TC-3` |
 | Fail-open check | `TC-7`, `PM-8` |
 | Unprotected administration | `RI-1`, `AP-6`, `US-4`, `US-8`, `PM-9`, `RA-4` |
@@ -295,7 +308,7 @@ impossible. A piece that touches the area re-runs its row.
 | Tokens in URLs | `SI-1`, `SI-17` |
 | Long-lived, weakly bound sessions | `TC-1`, `SI-7`, `SI-8`, `SI-9` |
 | Lookup by scan | `AP-7` |
-| Email as identity | `SI-3` |
+| Email as identity | `SI-3`, `SI-21` |
 | Sign-up coupled to another service | `UR-2` |
 
 ## Leak scan
@@ -311,9 +324,9 @@ Run after every deployed run, over the run's time window:
    during the run.
 3. Pass only with zero matches, apart from these expected places:
    - the single response that returned a secret or token to its owner;
-   - an authorization code in the provider's redirect to the Access callback,
-     which the sign-in flow requires. A code anywhere else, including a log
-     line, is a match.
+   - the provider's code in the provider's redirect to the Access callback, and
+     an Access code in Access's redirect to the application, which the sign-in
+     flow requires. A code anywhere else, including a log line, is a match.
 
 A token or marker found anywhere else fails the piece, whatever else passed.
 
@@ -324,7 +337,7 @@ acceptance for the product and needs every piece above.
 
 | Step | Do | Pass when |
 | --- | --- | --- |
-| 1 | The environment key makes `admin` the first administrator; `admin` signs in, creates the roles and invites `carol` | `PM-1`, `PM-3` |
+| 1 | The environment key makes `admin` an administrator; `admin` signs in, creates the roles and invites `carol` | `PM-1`, `PM-3` |
 | 2 | `alice` and `bob` sign in once, through `app-one` | Two distinct users; both records readable in Persist |
 | 3 | `admin` connects `alice` to `scope-a` | One access edge |
 | 4 | With those same sessions, `alice` and `bob` each query Persist's GraphQL for items, and search for `quarterly fixture report` | `alice` gets `item-a1` and `item-a2`, and one search hit; `bob` gets nothing. Neither signed in again |

@@ -94,10 +94,17 @@ hits and filter them afterwards. Refuse them on Gremlin, ingest, lexicon, trigge
 metrics, MCP and file-load routes, and keep those routes for the environment
 key, IAM roles and Access administrators.
 
-Extend the personal-data field policy to Access roles. Accept user records and
-access-carrying edges only from Access's own service identity, on every write
-path, and log who wrote them; refuse them from the environment key, IAM roles
-and administrators. Take the user record type and edge types from the active
+Extend the personal-data field policy to Access roles. Take a caller's roles
+from their verified token, never from the graph. Accept user records, group
+records and grant edges (user or group to anchor) only from Access's own
+service identity, on every write path, and log who wrote
+them; refuse them from the environment key, IAM roles and administrators. Keep
+structural edges beneath an anchor as ordinary ingest, followed in their
+declared direction only, and refuse any edge that touches a user or group
+record from a caller other than Access. Put the whole shared API behind one
+authorizer that accepts the shared key or a verified Access token, as the
+publish readiness gate's option 3 requires for an entire API; decide what each
+caller may reach inside Persist. Take the user record type and edge types from the active
 lexicon; route their definition to `dialga` and sign-in, token or grant-API gaps
 to `aegislash`. Do not build sign-in, roles or a grant store in Persist.
 
@@ -117,5 +124,5 @@ Return the Persist change, affected contracts and state, verification results, m
 For the catalog piece, include the source and applied digests, scoped diff summary, HTTP/Gremlin read-back, replay/concurrency evidence and remaining deployment gaps.
 For the metrics piece, include the catalog API behavior proven (apply, refusal, legacy guard, replay, tamper), the catalog source the projectors logged, TinkerGraph projector results and remaining deployment or cutover gaps.
 For `metrics-graph-shapes`, include each capability's compile results for DEV and PROD, the SOC lexicon check for new labels, its positive, negative and update-path test results, the unchanged debt and payment results, and the commit both delivery paths shipped.
-For `user-scoped-access`, implement checks `UA-1` to `UA-18` from the contract as automated tests named by their IDs and treat the piece as done only when all pass; include the evidence row per check, the caller kinds recognised, the lexicon edge and anchor types used, the index generation carrying anchors and any Model or Access gap still open.
+For `user-scoped-access`, implement checks `UA-1` to `UA-21` from the contract as automated tests named by their IDs and treat the piece as done only when all pass; include the evidence row per check, the caller kinds recognised, the lexicon edge and anchor types used, the index generation carrying anchors and any Model or Access gap still open.
 '''

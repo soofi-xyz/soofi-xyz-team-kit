@@ -89,8 +89,9 @@ read built as a traversal from the caller's own user record along the lexicon's
 access-carrying edges. Apply the same rule to lookups by identifier and counts,
 and filter search inside the index by the caller's access anchors. Keep every
 other route for the environment key, IAM roles and administrators. Accept user
-records and access edges only from Access's own service identity; route the
-record, edge and anchor types to Model's agents.
+records, group records and grant edges only from Access's own service identity;
+keep structural edges beneath an anchor as ordinary ingest. Route the record,
+edge and anchor types to Model's agents.
 
 ## Marketplace image access
 

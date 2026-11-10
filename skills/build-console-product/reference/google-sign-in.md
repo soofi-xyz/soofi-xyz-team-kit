@@ -20,6 +20,14 @@ deployment; add no capability to it.
   with Access's shared verifier (signature, issuer, audience, expiry, token
   type) and issue the Console read session from it. Fail closed on any
   verification error.
+- A Console session is valid only while it holds an unexpired Access token.
+  When that token expires, refresh through Access before serving anything, and
+  carry on with the new token; a failed refresh ends the session. Take the
+  roles from each refreshed token, so a disabled person or a removed role takes
+  effect within one access-token lifetime.
+- How long a person stays signed in overall is Access's refresh lifetime, not a
+  Console setting. After migration Console has no `sessionSeconds`; that value
+  belongs to the `/console/access-policy` parameter, which is removed.
 - Take who may sign in from Access (its allowed Google domains and its users)
   and who may open a route or run an action from Access roles. Move
   `allowedDomains`, `allowedUsers` and `allowedGroups` to Access; do not keep a
@@ -48,11 +56,13 @@ check: ID, result, request identifier and the Console revision.
 | CS-2 | Sign in as `alice` | The page renders; the session's subject is her Access user identifier |
 | CS-3 | A user without the route's role opens the route, then calls its action directly | `403` from the server for both, not only a hidden link |
 | CS-4 | Return to the callback with an expired token, an edited one and one issued by another environment | No session created for any |
-| CS-5 | Disable `dave` in Access, then let his session's token expire | His next request is refused and he is sent to sign in, where he is refused |
+| CS-5 | Disable `dave` in Access, then advance past his access token's expiry | His next request triggers a refresh that fails; the session ends, he is sent to sign in and is refused there |
 | CS-6 | Sign out, then press back and request a protected route | No protected content served |
 | CS-7 | Run the route inventory, add one page, change another, run it again | Every route requires a session in both runs |
 | CS-8 | After migration, inspect the deployment | No `/console/access-policy` parameter, no Google client secret, the viewer password route answers not found, and Console's role cannot read a Google client secret |
 | CS-9 | Search the run's logs, responses, static assets and bundles for every token issued | None found |
+| CS-10 | Remove the role that lets `alice` open a route, then advance past her access token's expiry | After the refresh her next request to that route is `403`; routes her remaining roles allow still work |
+| CS-11 | Keep `alice` active across three access-token lifetimes, inspecting her session each time | She is not asked to sign in again; at every moment the session's expiry is no later than that of the Access token it currently holds |
 
 ## Ownership
 

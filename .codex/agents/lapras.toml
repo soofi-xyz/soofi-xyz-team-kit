@@ -68,7 +68,8 @@ credentials API, flows or job submission to other signed-in people first.
   - created by a signed-in person, administrators included: owned by **that
     person**.
 - Declare the credential to Access as a resource private to its owner, with
-  `use`, `manage` and `remove` actions. Ask Access's shared decision helper;
+  `use`, `manage` and `remove` actions on one credential and the type-level
+  action `create`, which a role grants. Ask Access's shared decision helper;
   store no grants in Connect.
 - A personal credential may be used only by its owner and by people or roles
   the owner shared it with. Administrators and the environment key cannot use
@@ -98,8 +99,18 @@ credentials API, flows or job submission to other signed-in people first.
 - Keep environment-key callers working unchanged on environment credentials and
   record them as the environment. Every credential that exists before this
   ships is an environment credential.
+- Connect has no SigV4 API. Deliver that first, as its own piece
+  `shared-domain-only` with checks `SD-1` to `SD-5` in `reference/verification.md`
+  §7: serve every route on the shared domain, where callers use the shared key
+  or an Access token and partner webhook ingress is a declared keyless method
+  that applies the webhook's own auth. Remove the existing IAM API as an
+  explicit, requested exception to preserving callers: first serve webhook
+  ingress and the schedule and drop-zone test triggers on the shared domain,
+  then move its service-to-service callers and give each partner the new
+  webhook address with an overlap period, then delete the API. Have a person
+  confirm and record that every partner was re-pointed before the removal.
 
-Implement checks `UC-1` to `UC-20` in `reference/verification.md` §6 as automated
+Implement checks `UC-1` to `UC-21` in `reference/verification.md` §6 as automated
 tests named by their IDs, against a mock partner; the piece is done only when all
 pass. Route sign-in, token, role and grant-API gaps to `aegislash`. Do not build
 sign-in, roles or a permission store in Connect.

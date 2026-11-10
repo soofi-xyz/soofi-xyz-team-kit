@@ -219,6 +219,12 @@ API Gateway API keys and usage plans work only on REST APIs. Current state:
   Marketplace installs always have it; SOC CDK deploys only with
   `--context sharedApiDomainName=<fqdn>`. Configure and call Persist only
   through `https://<domain>/persist` with the shared key.
+- Connect is to have no SigV4 API (requested 2026-11-10): Lapras moves its
+  service-to-service callers, webhook ingress and schedule and drop-zone test
+  triggers to the shared domain, then removes the IAM API.
+- Access is requested build scope: one authorizer for the whole API accepts the
+  shared key or an Access token (option 3 below), and its sign-in, token and
+  key-publication methods are declared keyless (option 4).
 - Configuration bundles (SmsSendFlow, SmsInterproseFork, TransformConfiguration)
   expose no API and are exempt.
 
@@ -236,7 +242,38 @@ accepts the environment's single shared key on the `x-api-key` header through:
 
 HTTP APIs need a Lambda authorizer that validates `x-api-key` with Account. Keep
 IAM SigV4 only for service-to-service/internal routes, never as the only customer
-path. Configuration bundles are exempt. Registeel checks this with the shared-domain
+path.
+
+Two further options keep the shared key out of browsers and off methods that
+cannot carry it. Each applies only as the product's API description declares,
+and Registeel fails any keyless method that is not declared:
+
+3. **Key or Access token, for a whole API.** An API that any signed-in person
+   or Access service identity calls puts every key-requiring method behind one
+   authorizer built on Access's shared verifier. The authorizer accepts the
+   shared key from the `x-api-key` header or a verified Access token, and
+   answers `401` for a request with neither. On a REST API it also supplies the
+   usage key for the shared usage plan, so a token-only request is metered
+   without the caller holding the key. API Gateway sets the API key source for
+   the whole REST API, not per method, so option 3 cannot be mixed with
+   option 1 on one API: move all its methods together and re-run the
+   environment-key regression. Which callers may use which method is then the
+   product's own authorization, not the gateway's. Access, Persist, Connect and
+   Console's user-facing API need this once they integrate with Access.
+4. **Declared keyless methods.** A closed list per product of methods that take
+   neither the shared key nor an Access token, each stating the one credential
+   it does take, or none:
+   - Access: sign-in start, the provider callback, published keys and
+     capability discovery (no credential); token exchange (a one-time Access
+     code with its verifier); refresh and sign-out (the refresh token); a
+     service identity's token request (that identity's secret).
+   - Connect: partner webhook ingress (the webhook's own auth).
+
+   Adding a method to a product's list changes that product's contract in the
+   same change.
+
+Every other customer-facing method requires the shared key through option 1, 2
+or 3. Configuration bundles are exempt. Registeel checks this with the shared-domain
 readiness (`base_path`, `requires.domain: true`, `SharedApiMapping`) from the
 synthesized template/source revision and reports failures as not ready. Route
 implementation to the product builder (Corviknight, Kecleon, Lapras, Zygarde,

@@ -95,6 +95,11 @@ Classify every request before designing anything:
   job's connections name. A flow that names no credential still needs `start`.
   Activations run as the environment, use environment credentials only, and are
   created only by an administrator or the environment key.
+- Expose no SigV4 API. Serve every route on the shared domain with the shared
+  key or an Access token, and webhook ingress as a declared keyless method with
+  the webhook's own auth. Migrate the existing IAM API's callers, webhooks and
+  test triggers, then remove it, as the `shared-domain-only` piece before any
+  per-user work.
 - Land payloads in the Connect bucket and return file pointers with checksums.
   Keep inline responses within `MaxInlineBytes`.
 - Require `limits` on every flow (`timeout_seconds` at most 5 on a `lookup`)

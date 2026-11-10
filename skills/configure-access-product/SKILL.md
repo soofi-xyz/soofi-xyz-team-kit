@@ -38,7 +38,7 @@ independent configuration.
 | Users | Invite people with an initial role; disable or remove on request. | User status, role and the audit record. Confirm the user's record appears in Persist. |
 | Roles | Define roles from the resource types and actions each product declares; assign them. Start from the smallest role that does the job. | The role definition and a fresh token's roles for one assigned user. |
 | Resource grant | Share one named resource, such as a Connect credential, with a user or role; revoke on request. Act for whoever may share it: the owner for a personal resource, an administrator for an environment-owned one. For a Connect credential: confirm its owner from Connect's metadata, have that owner (signed in) grant `use` on the named credential to the person or role, then have the recipient start the flow. | The grant list and audit record. The recipient's flow runs after the grant and is refused after revoking; an administrator's attempt to use or share a personal credential is refused. |
-| Record access | Connect a user or group to the anchor records they should read. | With two test users, Persist's GraphQL and its search return the connected records to one and nothing to the other; repeat after revoking. |
+| Record access | Connect a user or a role to the anchor records they should read. | With two test users, Persist's GraphQL and its search return the connected records to one and nothing to the other; repeat after revoking. |
 | Service identity | Create a named caller for one product-to-product path with only the actions it needs; rotate on request. | Metadata only. The secret is delivered once to the operator, never to chat or evidence. |
 
 In every lane exercise a baseline, a materially different supported setup, and

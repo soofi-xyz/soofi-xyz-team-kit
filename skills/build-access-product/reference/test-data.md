@@ -19,8 +19,13 @@ fake identity provider the test controls:
   the issuer. The Access code path is identical for the fake issuer and Google:
   only the configured issuer and client differ. Add no branch, flag or header
   that changes behavior for tests.
-- Capability discovery reports the configured issuer. A non-test environment
-  must report Google's issuer; check `SI-15` proves it.
+- The issuer is fixed when the environment is installed and cannot be changed
+  through the Access API, even with the environment key. Only an environment
+  installed as a test environment may name the fake issuer; every other
+  install uses Google's. Capability discovery reports the issuer; checks
+  `SI-15`, `SI-18` and `SI-19` prove these rules.
+- A second fake issuer, `rogue`, has its own keys and is never configured. It
+  can present any subject and claims, and must never sign anyone in.
 
 One human check (`SI-H1`) uses real Google. Nothing else does.
 
@@ -30,7 +35,7 @@ The allowed hosted domain for the test environment is `access-test.example`.
 
 | Key | Email | Hosted-domain claim | Role once `permissions` is done | Used as |
 | --- | --- | --- | --- | --- |
-| `admin` | `admin@access-test.example` | `access-test.example` | `administrator` | Made the first administrator by the environment key in `PM-1` |
+| `admin` | `admin@access-test.example` | `access-test.example` | `administrator` | Made an administrator by the environment key in `PM-1` |
 | `alice` | `alice@access-test.example` | `access-test.example` | `member` | Owner of `item-1` and `secret-a`; connected to `scope-a` |
 | `bob` | `bob@access-test.example` | `access-test.example` | `member` | Same role as alice, owns `item-2`, connected to nothing |
 | `carol` | `carol@access-test.example` | `access-test.example` | `viewer` | Invited without a role, assigned `viewer` later; member of `group-g` |
@@ -70,9 +75,11 @@ Permission checks use a fixture product so they do not depend on another
 product being deployed.
 
 - Product `fixture` declares the resource type `fixture:item` with actions
-  `read`, `use` and `manage`. Its shareable actions are `read` and `use`.
+  `read`, `use` and `manage` on one item, and the type-level action `create`,
+  which applies to the type and not to any one item. Its shareable actions are
+  `read` and `use`.
 - `administrator` may perform every action.
-- `member` may `read` any `fixture:item`.
+- `member` may `create` a `fixture:item` and `read` any of them.
 - `viewer` may perform no action on its own; it receives one role grant in
   the sharing checks.
 - `fixture:destroy` is an undeclared action and must be rejected.
@@ -93,25 +100,29 @@ owned by `alice`; `fixture:secret/secret-env` owned by the environment.
 Record-access checks use a fixture lexicon so they do not depend on the open
 Model decisions. These labels are fixtures; never add them to a deployed lexicon.
 
-| Kind | Label | Carries access |
-| --- | --- | --- |
-| Record | `fixture_user` | — |
-| Record | `fixture_group` | — |
-| Record | `fixture_scope` (the anchor) | — |
-| Record | `fixture_item` | — |
-| Edge | `fixture_member_of` (user → group) | yes |
-| Edge | `fixture_can_access` (user or group → scope) | yes |
-| Edge | `fixture_contains` (scope → item) | yes |
-| Edge | `fixture_related` (item → item) | **no** |
+| Kind | Label | Carries access | Written by |
+| --- | --- | --- | --- |
+| Record | `fixture_user` | — | Access only |
+| Record | `fixture_group` (a published role) | — | Access only |
+| Record | `fixture_scope` (the anchor) | — | Ordinary ingest |
+| Record | `fixture_item` | — | Ordinary ingest |
+| Grant edge | `fixture_can_access` (user or group → scope) | yes | Access only |
+| Structural edge | `fixture_contains` (scope → item, that direction only) | yes | Ordinary ingest |
+| Ordinary edge | `fixture_related` (item → item) | **no** | Ordinary ingest |
 
 Records and edges:
 
 - `scope-a` contains `item-a1` and `item-a2`. `scope-b` contains `item-b1`.
 - `item-a1` is `fixture_related` to `item-b1`. This ordinary edge exists to
   prove it grants nothing.
-- `group-g` exists with `carol` as a member.
+- `group-g` is the group record Access publishes for the `viewer` role. Nothing
+  in the graph says who holds that role: `carol` and `frank` reach it because
+  their tokens carry `viewer`. The run loads scopes, items and their
+  `fixture_contains` edges with the environment key; Access writes everything
+  marked "Access only".
 - Each item has a text field. `item-a1` and `item-b1` both contain the phrase
-  `quarterly fixture report`, so one search matches both sides.
+  `quarterly fixture report`, so one search matches both sides. Only `item-a2`
+  contains `annual fixture summary`.
 - At the start of a run no user is connected to any scope.
 
 ## Leak markers
@@ -129,6 +140,22 @@ token and refresh token issued during the run. The leak scan in
 
 ## Cleanup
 
-Every run removes what it created: users, invitations, applications, roles,
-grants, record connections, service identities and fixture graph records. A run
-that cannot clean up reports exactly what remains.
+A deployed run shares its test environment with whatever is already installed
+there, such as a registered Console application and other products' service
+identities. It never requires the environment to be empty.
+
+- Give every fixture name a suffix unique to the run (people's emails and
+  subjects, roles, applications, the service identity, graph record
+  identifiers), so a run cannot collide with another run or with leftovers.
+  The names in this file are shown without the suffix.
+- Start by checking that none of this run's suffixed names exists, and stop if
+  one does.
+- Fixture people start with no role and no permission. Checks before
+  `permissions` rely on that, not on the environment having no administrator.
+- Remove everything the run created: users, invitations, applications, roles,
+  grants, record connections, service identities and fixture graph records.
+  Touch nothing else. A run that cannot clean up reports exactly what remains;
+  the next run's fresh suffix is not blocked by it.
+
+Checks about an environment's first or last administrator need an environment
+with no other administrator, so they run at the fake level only, on fresh state.
