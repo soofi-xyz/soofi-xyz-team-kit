@@ -345,7 +345,9 @@ Output: `ok`, `errors[]`, `warnings[]`, `referenced_variables[]`,
 `missing_declarations[]`, `unused_declarations[]`, `images[]` (src, alt),
 `links[]`.
 
-Rules: the Console
+Rules: validates final assembled HTML, so the canonical Terms and Footer and
+its variables must be present; do not call it on body-only HTML
+(jigglypuff-agent#122). Apply the Console
 [Email HTML target](../../build-console-product/reference/component-authoring.md#email-html-target)
 checks plus the gates above; variables come from the Nunjucks syntax tree only,
 excluding filters, tests, loop and `set` variables; flag leftover placeholders
@@ -354,17 +356,17 @@ such as lorem ipsum, TODO or `{{ IMG_BASE }}`.
 ### `render_email_preview`
 
 Input: `html` or (`pr_number` and `template_name`), `subject`,
-`cases: [{ name, data }]`, optional `widths` (default mobile 393 and desktop
-1024).
+`cases: [{ name, data }]`, optional `new_template` (with `html`), optional
+`widths` (default mobile 393 and desktop 1024).
 
 Output: per case and width a private short-lived `preview_url`,
 `screenshot_url`, the rendered subject, `broken_images[]` and render errors.
 
 Rules: render with Jigglypuff's Nunjucks environment (`autoescape: true`,
 `throwOnUndefined: true`, `usd`, `date` and `default` filters) so previews fail
-where a send would. New-template mode previews body `html` with the canonical
-Terms and Footer appended, as `create_email_template_pr` will write it
-(jigglypuff-agent#122).
+where a send would. With `new_template: true`, `html` is body-only and the
+preview appends the canonical Terms and Footer, as `create_email_template_pr`
+will write it (jigglypuff-agent#122).
 
 ### `create_email_template_pr`
 

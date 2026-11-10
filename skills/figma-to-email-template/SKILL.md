@@ -122,8 +122,9 @@ rules; do not restate or loosen them here. Apply the Spring Oaks conventions in
   The [interim path](#interim-path-until-the-jigglypuff-mcp-is-deployed) is the
   only exception.
 - Reuse variables that existing templates already use; do not invent new data.
-- Use the standard links: `tel:+18334183084`, `{{short_url}}`,
-  `{{unsubscribe_url}}` and the privacy policy URL.
+- Use the standard body links: `tel:+18334183084` and `{{short_url}}`. Do not
+  add `{{unsubscribe_url}}` or the privacy-policy link; Jigglypuff supplies
+  both in the canonical ending.
 - Keep legal and disclosure text exactly as designed or as the current template
   has it. Never reword, shorten or "fix" it; flag doubts for legal instead.
 - Give every `<img>` an `alt` attribute. Use `alt=""` only for decorative
@@ -142,13 +143,14 @@ placeholder with the returned URL. Never ship SVG, data URIs or Figma URLs.
 
 ### 4. Validate and preview
 
-1. Call `validate_email_html` with the HTML, subject and declared variables. Fix
-   every error; review every warning with the user.
-2. Call `render_email_preview` with sample data for each meaningful permutation
-   (for example with and without a store brand or vehicle). Check the mobile
-   (393px) and desktop screenshots against the Figma screenshot and report
-   broken images. When previewing the body before PR creation, use the tool's
-   new-template mode so Jigglypuff supplies the canonical Terms and Footer.
+1. Do not call `validate_email_html` on body-only HTML. That tool audits final
+   assembled HTML and therefore requires the canonical ending and its variables.
+   `create_email_template_pr` appends the ending and performs that strict
+   validation.
+2. Call `render_email_preview` with `new_template: true` and sample data for
+   each meaningful permutation (for example with and without a store brand or
+   vehicle). Check the mobile (393px) and desktop screenshots against the Figma
+   screenshot and report broken images.
 
 ### 5. Create the pull request
 
@@ -217,6 +219,7 @@ running one Jigglypuff branch at a time.
   excludes the standard Terms and Footer (except on the interim path), leaves
   all other legal text unchanged, and has alt text on every image.
 - Every image is hosted through Jigglypuff; no placeholders, SVG or Figma URLs.
-- `validate_email_html` passes and previews match the design.
+- `new_template: true` previews match the design, and the validation
+  `create_email_template_pr` runs on the assembled HTML passes.
 - The PR is Jigglypuff-owned, `active: false`, certified, and has approval tasks
   in the Asana story.
