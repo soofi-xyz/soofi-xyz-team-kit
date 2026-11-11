@@ -72,6 +72,10 @@ effect without a redeploy and holds:
 
 Searchable fields stay governed by the lexicon; the server only reports them.
 
+The configuration also holds `indexes`, the registered IPFS indexes an install
+follows when it names its index bucket; see [registered IPFS
+indexes](registered-ipfs-indexes.md). Never give that field a default.
+
 ## Feature pieces
 
 | Piece | Delivers | Acceptance |

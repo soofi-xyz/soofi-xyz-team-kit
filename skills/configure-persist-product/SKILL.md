@@ -186,6 +186,29 @@ revision; otherwise hand the gap to Conkeldurr.
    range, a cited `search` result and a refused write. Ask before every `PUT`;
    work DEV first.
 
+## Turn on and register registered IPFS indexes
+
+For “follow the Elephant Atlas index”, “turn on registered IPFS indexes” or
+“why is the copy not updating”, follow [the registered IPFS indexes
+runbook](reference/registered-ipfs-indexes.md). Say "registered IPFS index",
+never bare "index".
+
+1. Prepare an install-owned index bucket holding the install's copy of
+   `index.json`; a customer-managed KMS key must allow the sync function's role.
+2. Turn the feature on through the Deploy run or Puller subscription
+   `configuration`: `{ "PersistRegisteredIpfsIndexBucketName": "<bucket>" }`.
+3. Register with `PUT /persist/mcp/configuration`, keeping the rest of the
+   document. Expect `501` while the feature is off and `400` for more than 10,
+   a repeated name or a file outside the bucket.
+4. Verify `persist-registered-ipfs-indexes/<name>/active.json` and
+   `versions/<cid>.json`, and the sync log `outcome` (`Activated`,
+   `Unchanged`, `Incomplete`, `Failed`, `Skipped`). The first copy may take
+   several 15-minute runs.
+5. To turn it off, empty the parameter; the next `PUT` must omit `indexes`.
+
+No MCP tool queries the copy yet (Persist PR 3). Ask before every `PUT` and
+deploy change; work DEV first.
+
 ## Make a field searchable
 
 When asked to make a vertex or edge property searchable through GraphQL

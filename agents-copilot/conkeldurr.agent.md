@@ -110,6 +110,31 @@ caller may reach inside Persist. Take the user record type and edge types from t
 lexicon; route their definition to `dialga` and sign-in, token or grant-API gaps
 to `aegislash`. Do not build sign-in, roles or a grant store in Persist.
 
+## Registered IPFS indexes
+
+For IPFS index documents Persist is registered to follow (Elephant's Atlas,
+`atlas-index-v1`), load [the registered IPFS indexes
+reference](../skills/build-persist-service/reference/registered-ipfs-indexes.md)
+and select feature `registered-ipfs-indexes`. Always write "registered IPFS
+index"; bare "index" means a derived index.
+
+Keep the feature off unless the single install parameter
+`PersistRegisteredIpfsIndexBucketName` names a bucket; ask only
+`registeredIpfsIndexesInstall`, pass the bucket with `Fn::If` to
+`AWS::NoValue`, and build every resource inside `underCondition` on
+`PersistRegisteredIpfsIndexesEnabled` so an off install deploys nothing new.
+Hold registrations to their rules: at most 10, `501` while off, `400` for a
+malformed, repeated or outside-bucket registration, and never a default for
+`indexes`. Treat gateways as untrusted: use table lists only through
+`readAtlasTableList` and parts only after `verifyUnixFsFile`. Keep
+`lambda/registered-ipfs-indexes/` free of AWS, HTTP and MCP imports. In the
+sync, keep the cache layout, write `active.json` last and nothing when
+unchanged, read bodies with `Stream.fromReadableStream`, keep reserved
+concurrency 1 and test timing with `it.live`. The DuckDB query and MCP tools
+`list_indexes`, `describe_index` and `query_index` are in progress (Persist
+PR 3); build only from that PR. After any `lambda/` change, run
+`just marketplace-pin-images <run id>` and commit the pins, since CI cannot.
+
 ## Shared API domain
 
 Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
@@ -126,4 +151,5 @@ Return the Persist change, affected contracts and state, verification results, m
 For the catalog piece, include the source and applied digests, scoped diff summary, HTTP/Gremlin read-back, replay/concurrency evidence and remaining deployment gaps.
 For the metrics piece, include the catalog API behavior proven (apply, refusal, legacy guard, replay, tamper), the catalog source the projectors logged, TinkerGraph projector results and remaining deployment or cutover gaps.
 For `metrics-graph-shapes`, include each capability's compile results for DEV and PROD, the SOC lexicon check for new labels, its positive, negative and update-path test results, the unchanged debt and payment results, and the commit both delivery paths shipped.
+For `registered-ipfs-indexes`, include the off-install synth evidence (every added resource under the condition), the registration refusals proven (`400`, `501`), sync outcomes from tests and any live run, and the image pin commit.
 For `user-scoped-access`, implement checks `UA-1` to `UA-22` from the contract as automated tests named by their IDs and treat the piece as done only when all pass; include the evidence row per check, the caller kinds recognised, the lexicon edge and anchor types used, the index generation carrying anchors and any Model or Access gap still open.
