@@ -1,6 +1,6 @@
 ---
 name: explain-story-context
-description: "Produce a standalone context artifact (canvas, or Markdown when no canvas is available) for a story, task, or change: business context first, then why each involved component exists and how it serves the business, then the problem, fix, and done signal. Depth scales with the size and impact of the change. Use when asked for an understanding doc, story context, or an explanation of why a change matters."
+description: "Produce a standalone context artifact (canvas, or Markdown when no canvas is available) for a story, task, or change: business context first, then why each involved component exists and how it serves the business, then the problem, fix, done signal, and the repositories involved. Depth scales with the size and impact of the change. Use when asked for an understanding doc, story context, or an explanation of why a change matters."
 ---
 
 # Explain Story Context
@@ -49,6 +49,13 @@ Open with the business, not with an internal component name.
 5. **Problem and fix.** State the problem in business terms first, then name
    the setting or value that changes.
 6. **Done signal.** The observable evidence that the change worked.
+7. **Repositories.** Link every repository involved, in two groups:
+   - **Directly involved:** repositories the work changes or must inspect.
+     These are the ones to attach to the workspace or agent.
+   - **Context:** repositories behind the other components in the chain,
+     linked for reference. They do not need to be inspected.
+
+   Mark any repository name that could not be confirmed.
 
 ## Supporting detail, when warranted
 
@@ -105,3 +112,6 @@ For a story that raises a call scheduler's capacity for two peak hours:
 - Problem and fix: the peak-hour lists run out and the dialer falls back to a
   backup list. Raise those two hours' capacity.
 - Done signal: the next run summary shows the new capacity for those hours.
+- Repositories: the scheduler repository (directly involved); the filter,
+  integration and orchestration repositories and the shared CI workflows
+  (context).
