@@ -61,11 +61,13 @@ Never assume a team member can access the original local path.
 
 ## Standard SMS contract
 
-Every non-payfail SMS campaign MUST pass the exact ordered contract proven by:
+Every non-payfail SMS campaign MUST pass the exact ordered contract proven by
+the following execution, minus the three rules Lexicon removed in
+[PR #914](https://github.com/Spring-Oaks-Capital-LLC/lexicon/pull/914):
 
 `arn:aws:states:us-east-2:014948052063:execution:FilterStateMachine2E447DC0-TPcQCbFc1gAN:credit-reporting-set-08-sms-deployed-bal25-rerun-20260923T081620Z`
 
-The 54 ordered rule IDs are:
+The 51 ordered rule IDs are:
 
 1. `has_single_version_2_phone_owner`
 2. `not_in_bankruptcy`
@@ -106,31 +108,29 @@ The 54 ordered rule IDs are:
 37. `not_account_level_dnt`
 38. `cease_and_desist`
 39. `sms_curfew`
-40. `sms_frequency_5_in_7`
-41. `daily_account_contact_limit_2`
-42. `daily_sms_limit`
-43. `state_restriction_MA`
-44. `state_restriction_WA`
-45. `state_restriction_DC`
-46. `nyc_zip_restriction`
-47. `oos_restrictions`
-48. `represented_by_attorney`
-49. `in_bankruptcy`
-50. `third_party_placement`
-51. `has_valid_10_digit_phone_number`
-52. `has_single_bundle_for_ssn_identity`
-53. `has_single_debt_for_person_owner`
-54. `balance_over_25`
+40. `daily_sms_limit`
+41. `state_restriction_MA`
+42. `state_restriction_WA`
+43. `state_restriction_DC`
+44. `nyc_zip_restriction`
+45. `oos_restrictions`
+46. `represented_by_attorney`
+47. `in_bankruptcy`
+48. `third_party_placement`
+49. `has_valid_10_digit_phone_number`
+50. `has_single_bundle_for_ssn_identity`
+51. `balance_over_25`
 
 The standard contract intentionally:
 
 - includes `balance_over_25`;
 - excludes `balance_over_250`;
 - excludes `has_single_assigned_address`;
-- uses
-  `communication-compliance-baseline/rules/daily_account_contact_limit_2/`,
-  not the deleted stale
-  `sms-interactions/rules/daily_account_contact_limit_2/`.
+- excludes `sms_frequency_5_in_7`, `daily_account_contact_limit_2` and
+  `has_single_debt_for_person_owner`. Lexicon removed them in
+  [PR #914](https://github.com/Spring-Oaks-Capital-LLC/lexicon/pull/914) with
+  business sign-off, so their rule prefixes no longer exist and Filter fails a
+  run that names any of them.
 
 Resolve each rule ID to its current canonical deployed URI, then compare the
 ordered IDs against this list. Fail closed on any missing, additional,
@@ -138,7 +138,9 @@ duplicate, reordered, stale, or inactive rule.
 
 ## Payfail SMS contract
 
-Use the exact 52-rule contract proven by corrected execution:
+Use the exact 49-rule contract proven by the following corrected execution,
+minus the three rules Lexicon removed in
+[PR #914](https://github.com/Spring-Oaks-Capital-LLC/lexicon/pull/914):
 
 `arn:aws:states:us-east-2:014948052063:execution:FilterStateMachine2E447DC0-TPcQCbFc1gAN:payfail-sms-recovery-20260923-20260923T161906Z`
 
@@ -181,21 +183,18 @@ The ordered rule IDs are:
 35. `not_account_level_dnt`
 36. `cease_and_desist`
 37. `sms_curfew`
-38. `sms_frequency_5_in_7`
-39. `daily_account_contact_limit_2`
-40. `daily_sms_limit`
-41. `state_restriction_MA`
-42. `state_restriction_WA`
-43. `state_restriction_DC`
-44. `nyc_zip_restriction`
-45. `oos_restrictions`
-46. `represented_by_attorney`
-47. `in_bankruptcy`
-48. `third_party_placement`
-49. `has_single_version_2_phone_owner`
-50. `has_valid_10_digit_phone_number`
-51. `has_single_bundle_for_ssn_identity`
-52. `has_single_debt_for_person_owner`
+38. `daily_sms_limit`
+39. `state_restriction_MA`
+40. `state_restriction_WA`
+41. `state_restriction_DC`
+42. `nyc_zip_restriction`
+43. `oos_restrictions`
+44. `represented_by_attorney`
+45. `in_bankruptcy`
+46. `third_party_placement`
+47. `has_single_version_2_phone_owner`
+48. `has_valid_10_digit_phone_number`
+49. `has_single_bundle_for_ssn_identity`
 
 The payfail contract intentionally omits:
 
@@ -204,12 +203,13 @@ The payfail contract intentionally omits:
 - `no_active_payment_plan`;
 - `max_1_rpc_in_7_days`.
 
-It retains `has_single_debt_for_person_owner`. Use the same canonical
-`daily_account_contact_limit_2` path required by the standard contract.
+It also excludes the three rules removed from the standard contract:
+`sms_frequency_5_in_7`, `daily_account_contact_limit_2` and
+`has_single_debt_for_person_owner`.
 
 ### Exact standard versus payfail difference
 
-The contracts share 50 rule IDs.
+The contracts share 47 rule IDs.
 
 Standard-only rules:
 
@@ -222,7 +222,7 @@ Payfail-only rule:
 - `has_failed_or_returned_transaction_today` — requires the qualifying
   failed/returned payment or failed-installment event.
 
-Therefore `54 - 3 + 1 = 52`. Both contracts omit
+Therefore `51 - 3 + 1 = 49`. Both contracts omit
 `has_single_assigned_address` and `balance_over_250`; omission means those two
 rules do not block the campaign. This comparison is limited to the reviewed
 standard and payfail contracts, not every rule that exists in Lexicon.
