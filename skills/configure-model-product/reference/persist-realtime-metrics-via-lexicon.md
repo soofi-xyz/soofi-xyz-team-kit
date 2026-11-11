@@ -35,7 +35,7 @@ it against these gates in order.
 | --- | --- | --- |
 | 1. Vocabulary | Every vertex, edge, property and enum value it names exists in `lexicon.json` at the pinned commit. | `<element> is not in the lexicon` |
 | 2. Family | Its family already has a block in `metrics-catalog.v3.json` and a `families/<family>.json`. | `family <name> has no catalog family block` (a new family is a Dialga decision) |
-| 3. Short format | `npm run generate:metrics-catalog` accepts the file. | The business reason, with the generator's message in parentheses |
+| 3. Short format | `npm run generate:metrics-catalog` accepts the file. | The business reason (inferred when the message names only the first blocker), with the generator's message in parentheses |
 | 4. Persist | `POST /persist/metrics/catalog/validate` accepts the generated catalog, run with `PERSIST_CATALOG_VALIDATION=required npm run check:metrics-catalog-persist` against Persist DEV. | Persist's reasons, verbatim |
 
 Gate 3's message is about the format, so state the business reason it stands for:
@@ -45,11 +45,14 @@ Gate 3's message is about the format, so state the business reason it stands for
 | One count per item dated by its first or latest status (`business_time_election`) | counts each item once by its first/latest status; the family has no such election | `an elected status needs an elected: filter`, `family <f> has no <STRATEGY> election` |
 | An item that reached status A and later B (`qualifying_conditions` on two events) | two status conditions on different events are not supported | same as above |
 | An edge-exists condition, a multi-hop path, a non-text value | the format cannot state `<condition>` | `the short format cannot express this definition: …` |
+| A filter on a vertex the family's items don't reach (for example `template`) | needs a family change | `a filter reads <label>, which family <f> does not reach` |
 | A ratio | ratios are not supported | (not translatable) |
 | A scope other than `DEBT`/`GLOBAL` (for example per phone number) | scope `<x>` is not supported | (not translatable) |
 
 - Check each candidate alone first (add only its file, generate, validate), so a
-  refusal names the metric that caused it. Then check all candidates together.
+  refusal names the metric that caused it, then restore the generated catalogs
+  and `releases.json` before the next one, so no stray release is committed.
+  Then check all candidates together.
 - Gate 4 signs requests with the user's own AWS sign-in for the DEV account. Ask
   the user to sign in; never look for other credentials. If Persist gives no
   verdict (no credentials, 403, or 404 from a Persist without the endpoint),
@@ -68,7 +71,8 @@ different, so:
   separate candidate that says what changed ("counts each SENT event, not each
   message");
 - run all four gates on the rescope;
-- write it only after the user approves it. A proposal that says "no interim
+- write it only after the user approves it. One rescope may stand for several
+  proposals; name them all. A proposal that says "no interim
   per-event metrics" needs the user to override that explicitly. Without a user
   (for example in a subagent run), report rescopes as `held for approval` and do
   not write them.
@@ -87,6 +91,9 @@ environment. Never take evidence from a Persist deployment other than the target
   for another scope.
 - A status with no occurrence evidence: report it as `held for data`, do not
   write it.
+
+A scope the user approved covers the drops it implies (for example a status it
+leaves out because it never occurs).
 
 ## Write the approved buildable ones
 
@@ -133,13 +140,13 @@ When no metric is buildable and approved, open no pull request; return the lists
 
 ```text
 Buildable (N), in Lexicon PR <link> | no PR: <why>:
-1. <definition id> — <name> [rescope of <proposal>, approved by <who>]
+1. <definition id> — <name> [rescope of <proposal>[, <proposal>…], approved by <who>]
    <short definition file>
 
 Not buildable yet (M), handed to Dialga:
 - <proposal>: <gate> — <business reason>
 
-Held (K): <candidate> — held for approval | held for data: <why>
+Held (K): <candidate> — held for approval and/or held for data: <why>
 Unchecked (J): <proposal> — <why Persist gave no verdict>
 Data caveats: …
 Pinned: Lexicon <sha>, catalog release <release id as generated>
@@ -167,7 +174,9 @@ status), plus ratios kept apart in `ratios[]`. Every proposal is filtered to
 
 To rerun it on a checkout of `main`, strip the four `text_message` definitions
 from the short files and from both generated catalogs first, because the
-generator refuses a deleted published file. Keep the family block.
+generator refuses a deleted published file. Delete only those entries with a
+script, run Prettier so the diff is pure deletions, and leave the `counts`
+header for the generator. Keep the family block.
 
 Expected, with the story owner's 11 Nov 2026 approval of the four-metric scope
 (which approves these per-event rescopes):
