@@ -54,6 +54,7 @@ Kangaskhan only when Account behavior is missing or broken.
 | **Schedule** | Schedule turns configured cohort and contact-history queries into a daily contact plan with counts, precedence, rotation, cooldowns and optional hour and capacity planning. | [`klinklang`](./agents/klinklang.md) | [`klink`](./agents/klink.md) |
 | **Report** | Report runs configured Persist and Athena queries on a schedule into an append-only ledger and writes Athena SQL datasets as JSON outputs. | [`bronzong`](./agents/bronzong.md) | [`bronzor`](./agents/bronzor.md) |
 | **Inference** | Inference reads a configured source and destination through Persist and Connect, asks a Bedrock model what should change in the destination, and writes typed assertions to Persist for a groomer to apply. | [`beheeyem`](./agents/beheeyem.md) | [`elgyem`](./agents/elgyem.md) |
+| **Enact** | Enact runs Prism's agents behind one MCP interface so they work the same from a coding agent, Asana or any other surface, with resumable sessions, repository work, and every conversation, tool call and token count recorded. | [`zoroark`](./agents/zoroark.md) | [`zorua`](./agents/zorua.md) |
 
 <!-- product-catalog:end -->
 
