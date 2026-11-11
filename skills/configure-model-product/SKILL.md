@@ -229,6 +229,9 @@ workflow keeps Model as the only source.
    the Lexicon generator, Persist's `POST /persist/metrics/catalog/validate`)
    and keep the first refusal's own wording as its reason. A metric without a
    Persist verdict is `unchecked`, never buildable.
+   A proposal that fails only on how it counts or dates items may get the
+   closest buildable rescope (usually one count per status event), written only
+   after the user approves it.
 2. Write each buildable metric as one `lexicon-short-metric-definition/v1` file,
    `BACKFILLING` everywhere, and commit what the generator writes. Never edit
    generated files, digests, counts or recorded releases by hand.
