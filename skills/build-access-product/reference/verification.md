@@ -126,8 +126,8 @@ Uses the environment key; nobody can sign in yet.
 | SI-2 | D | Complete the flow as `alice` and exchange the result | After the provider callback the browser is sent to exactly `app-one`'s registered address with a one-time Access code and no token; exchanging that code with the application's verifier returns the tokens; her own profile returns one stable user identifier and her email; exactly one user exists for her |
 | SI-3 | D | Sign in as `alice` again; then change her email at the provider and sign in once more | Same user identifier each time; user count unchanged |
 | SI-4 | D | Sign in as `bob` | A different user identifier |
-| SI-5 | D | Sign in as `personal` | `403`; no user created; no session |
-| SI-6 | D | Sign in as `outsider`, then as `spoof` | `403` for both; no user created for either |
+| SI-5 | D | With no allowed domains set, sign in as `personal`, then as `unverified` | `personal` reaches `app-one` signed in as a new user with no role; `unverified` gets `403`, no user and no session |
+| SI-6 | D | Restrict sign-in to `access-test.example`; sign in as `outsider`, as `spoof`, as `personal` and as `alice`; then remove the restriction | `403` for `outsider`, `spoof` and `personal`, with no new user and no session; `alice` signs in; both changes are audited |
 | SI-7 | D | Replay `alice`'s provider code at the callback, then replay her Access code at token exchange | `400` both; no second session and no second set of tokens |
 | SI-8 | D | Return to the callback with a changed `state`; then exchange an Access code with no verifier, with a wrong verifier, and naming `app-two`'s address | `400` each; no session and no tokens |
 | SI-9 | D | Refresh, then sign out, then refresh again | New access token; after sign-out the refresh is `401` |
@@ -143,7 +143,7 @@ Uses the environment key; nobody can sign in yet.
 | SI-19 | D | Return to the callback with a sign-in from the `rogue` issuer presenting `alice`'s subject, email and hosted domain | `400`, as for any code the configured issuer did not issue; no session; `alice`'s user is unchanged and no new user exists |
 | SI-20 | D | Wait past the Access code's lifetime, then exchange it | `400`; no tokens |
 | SI-21 | F | In the fake login directory, resolve a sign-in carrying `alice`'s subject, email and hosted domain under a different issuer | It matches no existing user; `alice`'s record and grants are untouched |
-| SI-H1 | H | A person signs in once with a real company Google account and once with a personal one | The first reaches the application signed in; the second is refused |
+| SI-H1 | H | With no allowed domains set, a person signs in with a real personal Google account; then, with sign-in restricted to the company's domain, signs in with a real company account and with the personal one again | The first two reach the application signed in, each as a user with no role; the last is refused |
 
 ### `token-contract`
 

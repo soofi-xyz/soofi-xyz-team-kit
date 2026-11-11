@@ -1,6 +1,6 @@
 ---
 name: build-access-product
-description: "Build or maintain Access: Google sign-in for a company's users, registered applications, users, roles, service identities, permission rules and the grants other products enforce to tell users apart. Use Aegislash for implementation and Doublade for existing-service configuration."
+description: "Build or maintain Access: Google sign-in for any verified Google account, registered applications, users, roles, service identities, permission rules and the grants other products enforce to tell users apart. Use Aegislash for implementation and Doublade for existing-service configuration."
 disable-model-invocation: true
 ---
 
@@ -59,13 +59,18 @@ security defects listed there.
   provider unless the user asks for it.
 - Fix the identity provider's issuer when the environment is installed. No API
   call changes it, with any credential, including the environment key; the API
-  sets only the Google client and the allowed domains, and audits each change.
+  sets only the Google client and the optional allowed domains, and audits
+  each change.
   Only an environment installed as a test environment may name a test issuer.
 - Identify a person by issuer and subject together. A sign-in from any other
   issuer never resolves to an existing user, whatever subject, email or domain
   it presents.
-- Restrict sign-in to the company's Google domains using the provider's
-  hosted-domain claim, never the email suffix alone.
+- Let any Google account with a verified email sign in. Refuse an account
+  whose email the provider has not verified.
+- Optionally restrict sign-in to listed Google domains. With no allowed domains
+  set, sign-in is open; with a list, only accounts whose provider hosted-domain
+  claim is on it may sign in. Match the hosted-domain claim, never the email
+  suffix alone.
 - Serve every Access route under `https://<shared domain>/access`: sign-in
   start, callback, sign-out, published keys and the API. Follow
   [the shared API domain contract](../guide-product-work/reference/shared-api-domain.md)
@@ -101,8 +106,8 @@ security defects listed there.
   applications. Reject before issuing a code.
 - Identify a person by a stable, opaque user identifier. Never use an email
   address as a key, a foreign key or a grant principal.
-- A first sign-in from an allowed domain creates the user with no role, so they
-  can do nothing until an administrator assigns one. An invitation only
+- A first sign-in creates the user with no role, so they can do nothing until
+  an administrator assigns one. An invitation only
   pre-assigns a role.
 
 ### Token

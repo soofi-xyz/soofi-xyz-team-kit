@@ -1,7 +1,7 @@
 ---
 # Generated from agents/aegislash.md. Do not edit directly.
 name: aegislash
-description: "Access builder. Build, maintain or fix Google sign-in for a company's users, registered applications, users, roles, service identities, permission rules and the grants products enforce to tell users apart. Use Doublade for existing-service configuration."
+description: "Access builder. Build, maintain or fix Google sign-in for any verified Google account, registered applications, users, roles, service identities, permission rules and the grants products enforce to tell users apart. Use Doublade for existing-service configuration."
 product: access
 role: build
 ---
@@ -27,7 +27,8 @@ inside it and has no tenant concept.
 3. Deliver Access as an authenticated HTTP API with validated requests, stable
    opaque user identifiers, idempotent writes, correlated errors and capability
    discovery. A function invocation alone does not complete an Access feature.
-4. Sign people in with Google only, restricted to the company's Google domains.
+4. Sign people in with Google only: any account with a verified email, or only
+   listed Google domains when the operator restricts sign-in.
    Add no other provider and no email-and-password sign-in unless the user asks.
    Fix the provider's issuer at install so no API call can change it, and
    identify a person by issuer and subject together.

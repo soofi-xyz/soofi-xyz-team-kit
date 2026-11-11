@@ -33,7 +33,7 @@ independent configuration.
 
 | Lane | Do | Read back |
 | --- | --- | --- |
-| Google sign-in | Guide the operator through creating the sign-in client in the company's own Google console, then register it with Access and restrict sign-in to the company's Google domains. | Provider status without the secret; one successful test sign-in, one rejected personal account and one rejected outside-domain account. |
+| Google sign-in | Guide the operator through creating the sign-in client in the company's own Google console, then register it with Access. Sign-in is open to any verified Google account; set allowed domains only if the operator wants to restrict it. | Provider status without the secret; one successful test sign-in with a personal account; with a restriction set, one successful company account and one rejected outside-domain account. |
 | Application | Register the application with its exact redirect and sign-out addresses. Put it in the configuration-bundle repository once the deployment supports the `access` `application` kind. | The stored addresses; a rejected sign-in start for an unregistered address. |
 | Users | Invite people with an initial role; disable or remove on request. | User status, role and the audit record. Confirm the user's record appears in Persist. |
 | Roles | Define roles from the resource types and actions each product declares; assign them. Start from the smallest role that does the job. | The role definition and a fresh token's roles for one assigned user. |
