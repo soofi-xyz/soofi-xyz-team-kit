@@ -16,6 +16,8 @@ goes anywhere.
 - Only add a story to Asana when the person explicitly asks for it, and then only through the
   Kirlia MCP `create_story` tool after they confirm the final draft. Without that tool, give them
   the text to paste.
+- To add an image or screenshot to a story you created, follow
+  [`attach-asana-images`](../attach-asana-images/SKILL.md): `create_story` has no image field.
 - Print the story and the subtasks in full in the chat whenever they are created or changed, or
   when the person asks to see them. Never just summarize them.
 - Talk like a helpful teammate: plain, everyday words, short sentences, no jargon. Lead with the
