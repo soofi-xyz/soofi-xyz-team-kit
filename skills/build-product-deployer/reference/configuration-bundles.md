@@ -258,6 +258,11 @@ for where they are installed. Paths below are relative to
   then do Tinkaton add a `rule` kind and Corviknight a Rule adapter, following
   that API's contract. Do not install Rule configuration through Step Functions,
   S3 or SSM.
+- **Enact:** agents are meant to be delivered as bundles, but no Enact API exists yet
+  for an adapter to call. Zoroark first ships the agent API with stable identity,
+  immutable versions and read-back. Only then do Tinkaton add a kind for Enact agents
+  and Corviknight an Enact adapter, following that API's contract. Do not install an
+  agent by writing to Enact's stores directly.
 - **Documentation:** not a configuration bundle. A product's own repository
   carries its documentation: Build packs `requirements/swagger.yml` and
   `requirements/mcp.json`, and Marketplace sends them to `POST /publications`. Unown

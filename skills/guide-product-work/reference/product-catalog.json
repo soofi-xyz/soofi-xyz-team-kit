@@ -1268,6 +1268,29 @@
         "The iteration guide's Status table is the only record of what is merged, installed and planned; bundles use product `inference`, kind `configuration`."
       ],
       "iterationGuide": "skills/guide-product-work/reference/iterations/inference.md"
+    },
+    {
+      "id": "enact",
+      "name": "Enact",
+      "legacyNames": [],
+      "sourceRows": [],
+      "status": "assigned",
+      "summary": "Enact runs Prism's agents behind one MCP interface so they work the same from a coding agent, Asana or any other surface, with resumable sessions, repository work, and every conversation, tool call and token count recorded.",
+      "agents": {
+        "build": "zoroark",
+        "configure": "zorua"
+      },
+      "skills": {
+        "build": "build-enact-product",
+        "configure": "configure-enact-product"
+      },
+      "notes": [
+        "Added on 2026-11-11 from the Enact user story; no spreadsheet row is claimed. Zoroark builds the service; Zorua adds, changes and moves agents on an existing deployment. This is requested implementation guidance: no repository, route or deployment exists yet, and the iteration guide's Status table is the only record of what does.",
+        "Agreed 2026-11-11: the agent loop is the Claude Agent SDK running inside one AWS Lambda MicroVM per session; a session is durable through its stored transcript, not its sandbox. An agent is a directory (settings, instructions, tools, skills, subagents) installed as Enact configuration. AgentCore Runtime and Vercel's eve were considered and not chosen.",
+        "Agreed 2026-11-11: a person's direct runs use their own Claude plan, linked by signing in through Anthropic's own flow to the unmodified Claude Code binary; Enact never collects a token. Asana and service runs use Bedrock. This supersedes the story's wording about saving an authentication code through Access; Access guards the stored sign-in as a resource private to its owner.",
+        "Agreed 2026-11-11: agents work in repositories through one Enact GitHub App (branches and pull requests, never merges), authored by the App with the caller as co-author. GitHub is not an entrance. The trace reuses the agent-memory record types in Persist; token and cost fields are open Model decisions. Oveed is out of scope until described."
+      ],
+      "iterationGuide": "skills/guide-product-work/reference/iterations/enact.md"
     }
   ],
   "retainedAgents": [
