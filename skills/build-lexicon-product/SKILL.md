@@ -58,6 +58,14 @@ supported configuration through a discovered Model adapter. A new shape,
 family or runtime behavior, including a Model-derived new-family proposal,
 returns to Dialga.
 
+## Change governed ruleset rules
+
+Before removing, renaming, loosening or re-thresholding a production rule, read
+[governed ruleset rule changes](reference/ruleset-rule-changes.md). Resolve the
+rule by `id` and semantics, find every reference, use a new id for new
+semantics, split urgent removals from rules that need recertification and
+report missing gates as `BLOCKED`.
+
 ## Build each feature piece
 
 1. Select and order the capability map's logical features. Use at least four
