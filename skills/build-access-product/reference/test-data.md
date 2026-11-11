@@ -31,7 +31,9 @@ One human check (`SI-H1`) uses real Google. Nothing else does.
 
 ## People
 
-The allowed hosted domain for the test environment is `access-test.example`.
+Sign-in in the test environment is open (no allowed domains). `SI-6`
+restricts it to `access-test.example` for its run and then removes the
+restriction. Every person below has a verified email except `unverified`.
 
 | Key | Email | Hosted-domain claim | Role once `permissions` is done | Used as |
 | --- | --- | --- | --- | --- |
@@ -43,9 +45,10 @@ The allowed hosted domain for the test environment is `access-test.example`.
 | `erin` | `erin@access-test.example` | `access-test.example` | none | Signs in without an invitation and never gets a role |
 | `frank` | `frank@access-test.example` | `access-test.example` | `viewer` | Invited with a role |
 | `grace` | `grace@access-test.example` | `access-test.example` | none | Invited with a role on an already expired invitation |
-| `personal` | `someone@personal-mail.example` | absent | none | A personal account; must be refused |
-| `outsider` | `eve@other-company.example` | `other-company.example` | none | Another company; must be refused |
-| `spoof` | `mallory@access-test.example` | absent | none | Right email suffix, no hosted-domain claim; must be refused |
+| `personal` | `someone@personal-mail.example` | absent | none | A personal account; signs in with no role, and is refused while sign-in is restricted |
+| `outsider` | `eve@other-company.example` | `other-company.example` | none | Another company; refused while sign-in is restricted to `access-test.example` |
+| `spoof` | `mallory@access-test.example` | absent | none | Right email suffix, no hosted-domain claim; refused while sign-in is restricted |
+| `unverified` | `uma@personal-mail.example` | absent | none | Email not verified by the provider; always refused |
 
 Until `permissions` is done nobody has a role, and administrative calls use the
 environment key.

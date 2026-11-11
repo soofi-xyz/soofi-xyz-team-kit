@@ -61,7 +61,7 @@
         2
       ],
       "status": "assigned",
-      "summary": "Access signs a company's users in with Google, manages users, roles, service identities and permission rules, and grants each person the resources and graph records they may use.",
+      "summary": "Access signs people in with any verified Google account, manages users, roles, service identities and permission rules, and grants each person the resources and graph records they may use.",
       "agents": {
         "build": "aegislash",
         "configure": "doublade"
