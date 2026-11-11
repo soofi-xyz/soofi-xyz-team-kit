@@ -3,13 +3,13 @@
 Persist can follow index documents published on IPFS (today Elephant's Atlas,
 format `atlas-index-v1`), copy the Parquet data they name into an install-owned
 S3 bucket after checking every byte against its CID, and later answer read-only
-queries over that copy through MCP. It ships in three Persist PRs:
+queries over that copy through REST and MCP. It ships in three Persist PRs:
 
 | Part | Persist PR | State on 2026-11-11 |
 | --- | --- | --- |
 | Install setting, registration in the MCP configuration, pure Atlas reader and CID checks | #458 | Merged to `main` |
 | Scheduled sync into the index bucket | #461 (`feat/registered-ipfs-index-sync`) | Open |
-| DuckDB query Lambda and MCP tools `list_indexes`, `describe_index`, `query_index` | PR 3 | In progress |
+| DuckDB query function, REST routes and MCP tools `list_indexes`, `describe_index`, `query_index` | #463 (`feat/registered-ipfs-index-query`) | Open |
 
 This is implementation guidance, not evidence of deployed support. Check the
 target revision before claiming any part exists. The full rules live in the
@@ -61,7 +61,7 @@ publisher's `index.json`.
 | --- | --- |
 | More than 10 registrations, or an `index_uri` that is not `s3://<bucket>/<key>` with a key of at most 1,024 bytes of S3's safe characters in segments that are not empty, `.` or `..` | `400` on any install (schema) |
 | A well-formed registration while the feature is off | `501 RegisteredIpfsIndexesNotEnabledError` (`registrationIssues`) |
-| A repeated `name`, or an `index_uri` outside the install's index bucket | `400` listing every issue (`registrationIssues`) |
+| A repeated `name`, an `index_uri` outside the install's index bucket, or one inside `persist-registered-ipfs-indexes/` (#463) | `400` listing every issue (`registrationIssues`) |
 
 - `501`, not `400`: no change to the request helps until the install names its
   index bucket.
@@ -176,17 +176,82 @@ once and activated last, nothing written when unchanged, a lying gateway, a
 part that cannot be verified, a wrong-size cached part, 429 retry and
 fall-through, a stalled download, the deadline, and an oversized index.
 
-## Query (PR 3, in progress)
+## Query (#463)
 
-Do not build from details beyond these until PR 3 lands; read it first.
+`lambda/registered-ipfs-index-query/` is the only code that holds DuckDB
+(`@duckdb/node-api`). `lib/registered-ipfs-index-query.ts` builds the query
+function inside `underCondition`: 5-minute timeout, 10,240 MB ephemeral
+storage, `s3:GetObject` only under `persist-registered-ipfs-indexes/*`, no
+write, and `lambda:InvokeFunction` on it for the REST handler and the MCP
+function.
 
-- A DuckDB query Lambda behind MCP tools `list_indexes`, `describe_index` and
-  `query_index`.
-- One read-only `SELECT` per call, reading only the active copy
-  (`active.json`'s version).
-- Every result carries the source CIDs it was read from.
-- Three safety layers: DuckDB lockdown settings, an engine check that the
-  statement is a single `SELECT`, and an IAM role limited to the cache prefix.
+### Callers
+
+- The REST handler and the MCP function invoke it through `invoker.ts`. They
+  learn its name only from `REGISTERED_IPFS_INDEX_QUERY_FUNCTION_NAME`, which
+  exists only under `PersistRegisteredIpfsIndexesEnabled`. Without it the
+  invoker answers `501 RegisteredIpfsIndexesNotEnabledError` and the MCP tools
+  are hidden from `tools/list` and refuse a call.
+- REST (`lambda/routes/registered-ipfs-indexes.router.ts`, on the IAM API and
+  the shared domain): `GET /persist/registered-ipfs-indexes` (LIST),
+  `GET /persist/registered-ipfs-indexes/{name}?scope=&table=` (DESCRIBE) and
+  `POST /persist/registered-ipfs-indexes/{name}/query` with
+  `{ sql, scopes?, max_rows? }` (QUERY). MCP (`lambda/mcp/registered-ipfs-indexes.ts`):
+  `list_indexes`, `describe_index`, `query_index`.
+- The protocol (`protocol.ts`) bounds `sql` at 20,000 characters, `scopes` at
+  50 (`STATE/county/data_group`, for example `FL/baker/county`) and `max_rows`
+  at 1 to 1,000.
+- Statuses: `404` unknown name, `409` registered but no version active yet,
+  `400` bad request or refused SQL or over the read cap, `422` query failed or
+  ran past 20 s, `502` the copy could not be read, `501` feature off. The
+  invoker waits 28 s and answers `503` on a timeout or an unreachable function.
+
+### No `httpfs`
+
+DuckDB never touches S3 or the network, and no `httpfs` extension ships. The
+function downloads the parts a query reads from the copy prefix into
+`/tmp/registered-ipfs-indexes/<name>/<cid>.parquet` (named by CID, so valid
+forever; least recently used removed beyond 8 GiB) and DuckDB reads those
+local files.
+
+### Three safety layers, all required
+
+1. `checkReadOnlySql` (`sqlPolicy.ts`) reads DuckDB's own `json_serialize_sql`
+   tree: exactly one statement; only SELECT, set-operation and CTE nodes; only
+   base tables, joins, subqueries and `VALUES` as sources; every table one of
+   the index's (or a CTE) and unqualified. No table functions. It runs on the
+   SQL and again on the row-limit wrapper.
+2. Each query gets a fresh in-memory DuckDB with no extension install or
+   autoload. Views are created, then `allowed_directories` is set to the
+   index's local folder, `enable_external_access = false` and
+   `lock_configuration = true`. These settings alone still allow `COPY`,
+   `ATTACH` and `glob` inside the allowed folder, which is why layer 1 exists.
+3. The function's role can only `s3:GetObject` under
+   `persist-registered-ipfs-indexes/*` and writes nothing.
+
+### Reads, limits and source
+
+- Every table view adds `atlas_scope` (`STATE/county/data_group`). A query
+  names its scopes, or reads every scope when it names none.
+- It is refused before any download when the parts of the tables it reads
+  exceed 6 GiB. At most 1,000 rows (`truncated` says more were there); DuckDB
+  is interrupted after 20 s.
+- Reads use only the active version (`active.json`).
+- Every answer carries `source`: the index name, `index_uri`, `index_cid`,
+  `generated_from`, `activated_at` and, per scope read, `archive_cid`,
+  `schema_cid`, `table_list_cid`, `published_at` and the part CIDs of only the
+  tables the query read.
+- A first query on a large scope can spend most of the caller's 28 s
+  downloading. The function's own 5-minute timeout lets the download finish,
+  so the next request on that instance reads locally.
+
+### DuckDB packaging (the #456 spike)
+
+Bundle `@duckdb/node-api` as the #456 spike proved: esbuild copies the
+`duckdb.node` addon (`loader: { ".node": "copy" }`), `libduckdb.so` sits
+beside it, and `pnpm.supportedArchitectures` in `package.json` installs the
+linux-arm64 binding on every build host. Keep DuckDB out of every other
+function.
 
 ## Image re-pin after any `lambda/` change
 

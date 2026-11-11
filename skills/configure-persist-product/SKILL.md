@@ -204,10 +204,14 @@ never bare "index".
    `versions/<cid>.json`, and the sync log `outcome` (`Activated`,
    `Unchanged`, `Incomplete`, `Failed`, `Skipped`). The first copy may take
    several 15-minute runs.
-5. To turn it off, empty the parameter; the next `PUT` must omit `indexes`.
+5. Query the copy with `GET /persist/registered-ipfs-indexes`, `GET .../{name}`
+   (`?scope=&table=` for columns) and `POST .../{name}/query` (or MCP
+   `list_indexes`, `describe_index`, `query_index`); cite the answer's
+   `source` CIDs. Expect `404` unknown, `409` not synced yet, `400` refused,
+   `422` failed or timed out, `501` off.
+6. To turn it off, empty the parameter; the next `PUT` must omit `indexes`.
 
-No MCP tool queries the copy yet (Persist PR 3). Ask before every `PUT` and
-deploy change; work DEV first.
+Ask before every `PUT` and deploy change; work DEV first.
 
 ## Make a field searchable
 

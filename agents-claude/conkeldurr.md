@@ -131,9 +131,16 @@ malformed, repeated or outside-bucket registration, and never a default for
 `lambda/registered-ipfs-indexes/` free of AWS, HTTP and MCP imports. In the
 sync, keep the cache layout, write `active.json` last and nothing when
 unchanged, read bodies with `Stream.fromReadableStream`, keep reserved
-concurrency 1 and test timing with `it.live`. The DuckDB query and MCP tools
-`list_indexes`, `describe_index` and `query_index` are in progress (Persist
-PR 3); build only from that PR. After any `lambda/` change, run
+concurrency 1 and test timing with `it.live`. For the query (REST routes and
+MCP tools `list_indexes`, `describe_index`, `query_index`), keep DuckDB in the
+query function only, packaged as the #456 spike proved, with no `httpfs`:
+download parts by CID into `/tmp` and read them locally. Keep all three
+layers (`checkReadOnlySql` on DuckDB's parse, a fresh DuckDB locked with
+`allowed_directories`, `enable_external_access = false` and
+`lock_configuration = true`, and a role that only reads the copy prefix), the
+`atlas_scope` column, the limits (1,000 rows, 20 s, 6 GiB read, 8 GiB cache)
+and the `source` CID block. Give callers the function name only under the
+condition, so off installs answer `501` and hide the tools. After any `lambda/` change, run
 `just marketplace-pin-images <run id>` and commit the pins, since CI cannot.
 
 ## Shared API domain
@@ -152,5 +159,5 @@ Return the Persist change, affected contracts and state, verification results, m
 For the catalog piece, include the source and applied digests, scoped diff summary, HTTP/Gremlin read-back, replay/concurrency evidence and remaining deployment gaps.
 For the metrics piece, include the catalog API behavior proven (apply, refusal, legacy guard, replay, tamper), the catalog source the projectors logged, TinkerGraph projector results and remaining deployment or cutover gaps.
 For `metrics-graph-shapes`, include each capability's compile results for DEV and PROD, the SOC lexicon check for new labels, its positive, negative and update-path test results, the unchanged debt and payment results, and the commit both delivery paths shipped.
-For `registered-ipfs-indexes`, include the off-install synth evidence (every added resource under the condition), the registration refusals proven (`400`, `501`), sync outcomes from tests and any live run, and the image pin commit.
+For `registered-ipfs-indexes`, include the off-install synth evidence (every added resource under the condition), the registration refusals proven (`400`, `501`), sync outcomes from tests and any live run, the query safety-layer refusals and a `source` block from a real query, and the image pin commit.
 For `user-scoped-access`, implement checks `UA-1` to `UA-22` from the contract as automated tests named by their IDs and treat the piece as done only when all pass; include the evidence row per check, the caller kinds recognised, the lexicon edge and anchor types used, the index generation carrying anchors and any Model or Access gap still open.
