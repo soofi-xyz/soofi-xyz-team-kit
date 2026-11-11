@@ -872,6 +872,54 @@ def assert_no_stale_counts_or_telemetry_content() -> None:
             )
 
 
+LEXICON_REALTIME_REFERENCE = (
+    "skills/configure-model-product/reference/persist-realtime-metrics-via-lexicon.md"
+)
+
+
+def assert_jirachi_routes_realtime_metrics_through_lexicon() -> None:
+    reference = read(LEXICON_REALTIME_REFERENCE)
+    require_concepts(
+        LEXICON_REALTIME_REFERENCE,
+        reference,
+        {
+            "short definition format": ("lexicon-short-metric-definition/v1",),
+            "persist decides buildability": ("/persist/metrics/catalog/validate",),
+            "generator gate": ("npm run generate:metrics-catalog",),
+            "existing family gate": ("has no catalog family block",),
+            "no verdict is not buildable": ("unchecked", "not buildable"),
+            "pr only when buildable": ("only when at least one is buildable",),
+            "buildable first": ("buildable metrics first",),
+            "one line per unbuildable": ("one line",),
+            "dialga handoff": ("dialga handoff",),
+            "never activate": ("never write `active`",),
+            "no hand-edited generated files": ("never edit the generated",),
+            "human merges": ("a human merges",),
+            "uxie backfills": ("hand `uxie` the definition ids",),
+            "quiq proof fixture": ("pr #900",),
+        },
+    )
+    for relative, value in (
+        (JIRACHI, read(JIRACHI)),
+        (CONFIGURER_SKILL, read(CONFIGURER_SKILL)),
+    ):
+        require_concepts(
+            relative,
+            value,
+            {
+                "links the lexicon path": ("persist-realtime-metrics-via-lexicon.md",),
+                "only lexicon-writing workflow": (
+                    "only workflow that writes to",
+                ),
+                "model stays the source elsewhere": (
+                    "model as the only source",
+                ),
+                "pr only when buildable": ("only when at least one is buildable",),
+                "hands backfill to uxie": ("`uxie`",),
+            },
+        )
+
+
 def main() -> int:
     assert_dialga_owns_metric_architecture()
     assert_jirachi_is_only_the_configurer()
@@ -891,6 +939,7 @@ def main() -> int:
     assert_prompt_synchronization()
     assert_jirachi_visualizes_governed_releases()
     assert_no_stale_counts_or_telemetry_content()
+    assert_jirachi_routes_realtime_metrics_through_lexicon()
     print("Dialga/Jirachi business-metric ownership contract tests passed")
     return 0
 

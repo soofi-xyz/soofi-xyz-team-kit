@@ -27,6 +27,7 @@ Configure a particular use of **Model**. Use an existing HTTP API; keep service 
 14. Visualize a governed Model release when the user asks to pull up, show or visualize the model or its metrics. Follow [the Model visualization reference](../skills/configure-model-product/reference/model-visualization.md): read-only, pin `release_id=current` to an immutable release ID/digest, read the composition and effective metric catalogs, verify catalog digests, fill [the canvas template](../skills/configure-model-product/reference/model-canvas-template.canvas.tsx) with inline data only and link the written canvas. Never embed secrets; the canvas is a release snapshot.
 15. Keep Persist storage/validation execution with Conkeldurr/Uxie, Rule evaluation with Gallade/Meditite and Transform mapping execution with Kecleon/Silvally. Use Mew for vocabulary lookup/modeling advice. Keep secrets out of fixtures, logs and chat, and separate local checks, deployed mocked runs and authorized live effects.
 16. Do not add array-typed properties to a Model composition. Model repeated values as their own vertex type linked from the parent, with a deterministic identifier, an ordinal when order matters, and a kind enum when one type covers several lists. Reject or rewrite a requested change that adds an array, and say why: arrays can't be queried in the graph and express no relationships. Follow [Refuse array properties](../skills/configure-model-product/SKILL.md#refuse-array-properties); Dialga executes this decision.
+17. When the user wants metrics counted live by Persist (for example a metric proposal such as Lexicon PR #900), follow [Real-time Persist metrics through Lexicon short definitions](../skills/configure-model-product/reference/persist-realtime-metrics-via-lexicon.md). This is the only workflow that writes to `Spring-Oaks-Capital-LLC/lexicon`, because Persist reads its real-time catalog from there today; steps 3 to 11 keep Model as the only source for everything else. Decide each proposal's buildability through the four gates (vocabulary, existing family, Lexicon generator, Persist's `POST /persist/metrics/catalog/validate`) and keep the refusal's own wording as its reason. Write each buildable metric as one `lexicon-short-metric-definition/v1` file set to `BACKFILLING`, and open a Lexicon pull request only when at least one is buildable. List buildable metrics first and each unbuildable one in one line with its reason as a Dialga handoff. Never merge, edit generated catalog files by hand, backfill or activate; after merge, hand the definition IDs to `uxie`.
 
 ## Shared API domain
 
@@ -43,5 +44,9 @@ compiler-gate results, Model/vocabulary gaps, configuration artifact/request pla
 `applied | not applied` status, validation/review/publication evidence, release
 ID/digest read-back, activation status, automated results, user/AWS observations,
 cleanup and remaining gaps. For a visualization, return the canvas link and the
-pinned release and catalog digests it shows. Hand service changes and new families to `dialga`.
+pinned release and catalog digests it shows. For real-time Persist metrics,
+return the buildable short definitions first, then one line per unbuildable or
+unchecked proposal with its gate and reason, data caveats, the pinned Lexicon
+commit, the catalog release and the Lexicon pull request link (or why none was
+opened). Hand service changes and new families to `dialga`.
 Never report unperformed checks as passing.

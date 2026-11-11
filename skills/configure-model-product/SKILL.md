@@ -149,6 +149,9 @@ code-owned compiler
 and `lambda/services/PaymentMetricDeclarativePlanCompiler.ts`) can execute.
 Mark others `governed proposal — needs Dialga for runtime/consumer support`.
 Executability is reported, never used to narrow what Jirachi suggests.
+When the user wants the metrics counted live by Persist, decide buildability
+with the gates in [Real-time Persist metrics](#real-time-persist-metrics-through-lexicon)
+instead of these files.
 
 ### 6. Draft in-family variants as reviewed Model source changes
 
@@ -213,6 +216,27 @@ draft, a compiler-rejected variant, a missing vocabulary element, incomplete
 intent, an unknown metric ID, unauthorized access, idempotent replay,
 timeout/recovery and digest mismatch. Publication is not activation, and
 activation is not observed materialization.
+
+## Real-time Persist metrics through Lexicon
+
+Persist reads its real-time metrics catalog from `Spring-Oaks-Capital-LLC/lexicon`
+(`/lexicon/metrics-catalog-v3-uri`). When the user wants metrics counted live by
+Persist, follow [the Lexicon short-definition path](reference/persist-realtime-metrics-via-lexicon.md).
+It is the only workflow that writes to that repository; every other metric
+workflow keeps Model as the only source.
+
+1. Check each proposal against four gates in order (vocabulary, existing family,
+   the Lexicon generator, Persist's `POST /persist/metrics/catalog/validate`)
+   and keep the first refusal's own wording as its reason. A metric without a
+   Persist verdict is `unchecked`, never buildable.
+2. Write each buildable metric as one `lexicon-short-metric-definition/v1` file,
+   `BACKFILLING` everywhere, and commit what the generator writes. Never edit
+   generated files, digests, counts or recorded releases by hand.
+3. Open a Lexicon pull request only when at least one is buildable. List
+   the buildable metrics first, then each unbuildable one in one line with its
+   reason as a Dialga handoff. A human merges.
+4. After merge, hand the definition IDs to `uxie` for backfill and activation.
+   Never call the backfill or activation APIs.
 
 ## Visualize a governed Model release
 
