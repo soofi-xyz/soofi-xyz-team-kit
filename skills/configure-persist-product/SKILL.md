@@ -193,23 +193,35 @@ For “follow the Elephant Atlas index”, “turn on registered IPFS indexes”
 runbook](reference/registered-ipfs-indexes.md). Say "registered IPFS index",
 never bare "index".
 
-1. Prepare an install-owned index bucket holding the install's copy of
-   `index.json`; a customer-managed KMS key must allow the sync function's role.
+1. Prepare an index bucket (dedicated, SSE-S3, versioned, public access
+   blocked) holding the install's copy of `index.json`, uploaded byte for byte
+   after checking its CID; a customer-managed KMS key must allow the sync and
+   query roles.
 2. Turn the feature on through the Deploy run or Puller subscription
    `configuration`: `{ "PersistRegisteredIpfsIndexBucketName": "<bucket>" }`.
+   A Puller `PATCH` replaces the whole map, so resend every existing key.
+   Resuming a `PAUSED` subscription installs every release since the pause;
+   ask who paused it first.
 3. Register with `PUT /persist/mcp/configuration`, keeping the rest of the
-   document. Expect `501` while the feature is off and `400` for more than 10,
-   a repeated name or a file outside the bucket.
+   document, then `GET` it again to confirm (the `PUT` answer does not echo
+   it). Expect `501` while the feature is off and `400` for more than 10, a
+   repeated name or a file outside the bucket.
 4. Verify `persist-registered-ipfs-indexes/<name>/active.json` and
    `versions/<cid>.json`, and the sync log `outcome` (`Activated`,
    `Unchanged`, `Incomplete`, `Failed`, `Skipped`). The first copy may take
-   several 15-minute runs.
+   several 15-minute runs; gateway 429s on a few parts are normal.
 5. Query the copy with `GET /persist/registered-ipfs-indexes`, `GET .../{name}`
    (`?scope=&table=` for columns) and `POST .../{name}/query` (or MCP
    `list_indexes`, `describe_index`, `query_index`); cite the answer's
-   `source` CIDs. Expect `404` unknown, `409` not synced yet, `400` refused,
-   `422` failed or timed out, `501` off.
-6. To turn it off, empty the parameter; the next `PUT` must omit `indexes`.
+   `source` CIDs. Expect `404` unknown, `409` not synced yet, `400` refused
+   or over 4 MiB, `422` failed or timed out, `501` off, `503` when all 4 query
+   slots are busy. For Atlas, permits are `property_improvement` in the
+   `<ST>/<county>/property_improvement` scope, and dates are text.
+6. Keep the copy current: an OIDC role that only `elephant-xyz/atlas` `main`
+   can assume, allowed `s3:PutObject` on the one object, and the
+   `ATLAS_INDEX_S3_URI`, `ATLAS_INDEX_S3_ROLE_ARN` and `ATLAS_INDEX_S3_REGION`
+   variables on the Atlas repository.
+7. To turn it off, empty the parameter; the next `PUT` must omit `indexes`.
 
 Ask before every `PUT` and deploy change; work DEV first.
 

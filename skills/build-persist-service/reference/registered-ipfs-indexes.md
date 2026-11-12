@@ -202,9 +202,10 @@ function.
   50 (`STATE/county/data_group`, for example `FL/baker/county`) and `max_rows`
   at 1 to 1,000.
 - Statuses: `404` unknown name, `409` registered but no version active yet,
-  `400` bad request or refused SQL or over the read cap, `422` query failed or
-  ran past 20 s, `502` the copy could not be read, `501` feature off. The
-  invoker waits 28 s and answers `503` on a timeout or an unreachable function.
+  `400` bad request, refused SQL, over the read cap or rows over 4 MiB, `422`
+  query failed or ran past 20 s, `502` the copy could not be read, `501`
+  feature off. The invoker waits 28 s and answers `503` on a timeout, an
+  unreachable function or all 4 query slots in use.
 
 ### No `httpfs`
 
@@ -220,7 +221,8 @@ local files.
    tree: exactly one statement; only SELECT, set-operation and CTE nodes; only
    base tables, joins, subqueries and `VALUES` as sources; every table one of
    the index's (or a CTE) and unqualified. No table functions. It runs on the
-   SQL and again on the row-limit wrapper.
+   SQL and again on every wrapper the engine builds around it (`columnsSql`,
+   `boundedSql`).
 2. Each query gets a fresh in-memory DuckDB with no extension install or
    autoload. Views are created, then `allowed_directories` is set to the
    index's local folder, `enable_external_access = false` and
@@ -234,8 +236,8 @@ local files.
 - Every table view adds `atlas_scope` (`STATE/county/data_group`). A query
   names its scopes, or reads every scope when it names none.
 - It is refused before any download when the parts of the tables it reads
-  exceed 6 GiB. At most 1,000 rows (`truncated` says more were there); DuckDB
-  is interrupted after 20 s.
+  exceed 6 GiB. At most 1,000 rows (`truncated` says more were there) and
+  4 MiB of row JSON (see Bounds); DuckDB is interrupted after 20 s.
 - Reads use only the active version (`active.json`).
 - Every answer carries `source`: the index name, `index_uri`, `index_cid`,
   `generated_from`, `activated_at` and, per scope read, `archive_cid`,
@@ -245,6 +247,61 @@ local files.
   downloading. The function's own 5-minute timeout lets the download finish,
   so the next request on that instance reads locally.
 
+### Bounds (#469)
+
+What one query may spend is bounded in three places. Keep all three.
+
+- **Concurrency.** The query function reserves
+  `REGISTERED_IPFS_INDEX_QUERY_CONCURRENCY` (4) executions; each may hold
+  3 GB of memory and 10 GB of local copies. When Lambda throttles
+  (`TooManyRequestsException`), the invoker answers `503` "Every registered
+  IPFS index query slot is in use (4 at once); retry shortly", not the generic
+  "could not reach".
+- **Answer size, in one run.** Never build the rows and then measure them:
+  one wide row (`string_agg` over a table, `repeat`) exhausts memory first.
+  `runReadOnlyQuery` reads the columns alone with `columnsSql` (`… LIMIT 0`),
+  then runs the caller's SQL **once** inside `boundedSql`, which numbers each
+  row (`row_number() OVER ()`), sizes it as JSON
+  (`strlen(CAST(to_json(row) AS VARCHAR))`), keeps a running total over the
+  first `maxRows` rows and has DuckDB empty (`NULL`) every row past
+  `maxRowBytes` (4 MiB) or past `maxRows` before handing chunks to Node. A row
+  whose running total passed the limit refuses the answer
+  (`QueryRefusedError`, 400) without being converted. The escaped total is
+  still checked once more in `catalog.ts`.
+  - Measure and return the same rows. A first version sized the rows in one
+    run and fetched them in a second; a query with `random()` (or any order
+    that is not fixed) could be sized small and fetched large. Never split the
+    measurement from the read.
+  - The row alias `registered_ipfs_index_query` is reserved: a selected column
+    of that name would be sized instead of the row, so `columnsSql` refuses
+    it before any row is read.
+  - Read each row's values from the struct **by column name**, never with
+    `Object.values`: JavaScript enumerates integer-like keys (a column named
+    `"0"`) first. DuckDB already renames repeated columns (`x`, `x_1`), so the
+    names from `columnsSql` match the struct's keys.
+  - Close every streamed result on every way out (`withStream`, then
+    `closeSync()`), so an early refusal does not leave native memory to
+    finalization.
+- **`describe_index` reads.** Describing a table downloads its first part for
+  the columns; refuse it (`IndexRequestError`, 400) before downloading when
+  that part alone exceeds the 6 GiB read cap, as queries already were.
+
+Known cosmetic gap: DuckDB binder errors (`422 QueryFailedError`) quote the
+wrapped SQL, including `registered_ipfs_index_query`; trim the wrapper from the
+message if a caller finds it confusing.
+
+### Tests that pass on CI
+
+- Size oversized-row tests for CI runners: vitest's default is 5 s, and the
+  bounded read sizes every row in DuckDB. Use rows a few times the limit
+  (5 MB against a 1 MiB limit), not 50 MB, and give the test its own timeout.
+- Repeat a refusal test several times (8, twice libuv's 4 threads), then run
+  a normal query: closing DuckDB under a running query can block a worker
+  thread for good.
+- Do not assert synthesized CloudFormation in tests (the repository's test
+  guideline, which CodeRabbit enforces); review grants and settings such as
+  `reservedConcurrentExecutions` in the construct itself.
+
 ### DuckDB packaging (the #456 spike)
 
 Bundle `@duckdb/node-api` as the #456 spike proved: esbuild copies the
@@ -252,6 +309,21 @@ Bundle `@duckdb/node-api` as the #456 spike proved: esbuild copies the
 beside it, and `pnpm.supportedArchitectures` in `package.json` installs the
 linux-arm64 binding on every build host. Keep DuckDB out of every other
 function.
+
+## Live evidence (soofi-safavi, 2026-11-12)
+
+The first install with the feature on. Use these numbers as the baseline when
+judging a change.
+
+- First copy of Elephant's Atlas (38 scopes, 28 counties, 382 Parquet parts,
+  about 3 GB): one 8.5-minute run verified 381 parts; the last answered HTTP
+  429 on all four public gateways and was fetched by the next scheduled run,
+  which reported `Activated`.
+- Queries through the REST route: Travis County property count 1.6 s on a
+  first read, a three-table Travis join 1.8 s, a `GROUP BY atlas_scope` over
+  all 38 scopes 1.8 s. Far inside the 28 s the callers wait.
+- A `COPY` was refused with `400 QueryRefusedError`, and `tools/list` showed
+  the three tools as read-only.
 
 ## Image re-pin after any `lambda/` change
 
@@ -268,4 +340,9 @@ git commit -m "chore(marketplace): re-pin container images for <change>"
 ```
 
 Push that commit to the same branch. The check then passes because the image
-tags do not change.
+tags do not change. Every later code push to the branch makes the pins stale
+again; a push of tests or docs alone does not.
+
+After a stacked pull request below this one is squash-merged, rebase onto
+`main` with `git rebase --onto origin/main <old base tip>`, drop the old pin
+commit (it conflicts and is regenerated anyway) and pin from the new run.
