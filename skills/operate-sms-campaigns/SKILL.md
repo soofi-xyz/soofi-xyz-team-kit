@@ -410,11 +410,9 @@ Check the campaign identifier against Step Functions, lifecycle, backlog, send
 context, and reservations. Choose the campaign identifier independently of the
 template so a template chosen late does not change identifiers already
 recorded in evidence.
-
 Create or reuse the campaign through Campaign Assignment after the audience is
 certified. Campaign Assignment owns the final audience membership plus every
 named template parameter that render-time lookups need later.
-
 When the selected template declares `last_day_to_prevent_placement`:
 
 - place the optional field on `campaign.last_day_to_prevent_placement` in the
@@ -427,7 +425,6 @@ When the selected template declares `last_day_to_prevent_placement`:
   already hold the same parameter value when the operator omits it
 - never change the value for an existing campaign: the same date is idempotent,
   a different date fails closed
-
 If the template does not declare the variable, omit the field from Campaign
 Assignment.
 
