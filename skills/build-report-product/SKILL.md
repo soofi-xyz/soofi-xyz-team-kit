@@ -38,6 +38,12 @@ for where things are and how a refresh runs.
   secret Report reads is the optional PagerDuty routing key `report/pagerduty`.
 - Keep the ledger append-only: files under `ledger/` are written once and never replaced or
   deleted, including when a report is deleted.
+- When an append-only ledger still holds entity keys the current configuration no longer
+  lists (for example a newly boarded code retained from an earlier extract), remapping those
+  grains into an approved residual / company-other bucket at extract and publish time is
+  required. Do not fail validate on the orphan key, and do not rewrite or delete historical
+  ledger partitions to clear it. Keep orphan identifiers out of browser artifacts; a
+  non-identifying orphan count in provenance is allowed.
 - Keep queries read-only and bounded: Gremlin through Persist's async API, one `SELECT`
   per Athena source with `maxScanGiB`, datasets as one statement, a metadata-only cost
   estimate before any data is read, `maxRows` on sources and datasets.
