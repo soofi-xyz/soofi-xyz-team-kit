@@ -24,6 +24,7 @@ Use `Xatu` to define:
 - what rows are allowed to reach the runtime
 - what outer schema and transport the runtime accepts
 - what identifiers and evidence must travel with each eligible record
+- what campaign-scoped launch context must be preserved for downstream validation
 
 For the current SMS service, load `reference/sms-runtime-intake-contract.md`.
 Use `gallade` for Filter/Rules implementation and operations. Read its
@@ -41,6 +42,15 @@ intake and suppression acceptance criteria with `xatu`.
 
 Those belong to `wigglytuff`, `chatot`, or `oranguru`.
 
+## Campaign Launch Context
+
+When a campaign launch accepts `last_day_to_prevent_placement`, keep it optional at the launch boundary but pass enough context for downstream template-aware validation.
+
+- preserve the campaign identifier and any provided `last_day_to_prevent_placement` value in the audience handoff context
+- SMS must validate the field in `ResolveWorkflowContext` before invoking `Filter` when the selected template requires it
+- email must validate the same field right after template pin and before `Filter`
+- if a reused campaign needs the value because the template declares it, require the parameter to already exist in Persist rather than treating omission as an empty default
+
 ## Checklist
 
 Before considering the audience capability ready, confirm:
@@ -49,6 +59,7 @@ Before considering the audience capability ready, confirm:
 - hard-filter ownership is explicit
 - the runtime intake contract is documented
 - required identifiers and evidence fields are present
+- campaign-scoped launch parameters required by templates are carried or resolved explicitly
 - the runtime does not need to re-derive the eligible population from raw source systems
 - the handoff shape is replayable and auditable
 

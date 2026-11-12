@@ -409,6 +409,20 @@ context, and reservations. Choose the campaign identifier independently of the
 template so a template chosen late does not change identifiers already
 recorded in evidence.
 
+When the selected template declares `last_day_to_prevent_placement`:
+
+- place the optional field on `campaign.last_day_to_prevent_placement` in the
+  workflow payload as ISO `YYYY-MM-DD`
+- require the date to be strictly after the run-start day in
+  `America/New_York`
+- on a new campaign launch, collect and pass the value before starting SMS
+- on a reused campaign identifier, require Persist to already hold the same
+  parameter value when the operator omits it
+- never change the value for an existing campaign: the same date is idempotent,
+  a different date fails closed
+
+If the template does not declare the variable, omit the field.
+
 Publish:
 
 - final nonempty `parts/results/`;
@@ -428,10 +442,14 @@ Use:
   "campaign": {
     "name": "<unique-campaign-id>",
     "campaign_identifier": "<unique-campaign-id>",
-    "purpose": "<business purpose>"
+    "purpose": "<business purpose>",
+    "last_day_to_prevent_placement": "2026-11-30"
   }
 }
 ```
+
+Omit `last_day_to_prevent_placement` when the selected template does not use
+it.
 
 Do not use `steps_to_skip:["filter"]` until Filter and every downstream
 certification gate above have passed.

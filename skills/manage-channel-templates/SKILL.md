@@ -50,10 +50,25 @@ Define and document:
 - language and channel fields
 - active/inactive state
 - render variables
+- campaign-scoped variable lookup requirements
 - compliance text or required disclosures
 - versioning or review metadata
 
 Keep the runtime-facing template contract stable even if the source system has extra fields.
+
+## Campaign-Scoped Variables
+
+When a template depends on campaign metadata, declare that dependency explicitly in the template contract and runtime inventory.
+
+For `last_day_to_prevent_placement`:
+
+- keep the launch field optional and name it `last_day_to_prevent_placement`
+- require ISO `YYYY-MM-DD` when the field is present
+- render-time lookups must resolve the value through `{{campaign_identifier}}`
+- support both English and Spanish date filters in the template layer
+- if a source date arrives as epoch milliseconds, format it in UTC before applying a human-readable date filter
+- pass the campaign identifier on every Jigglypuff render batch so campaign-scoped lookups remain deterministic
+- if a reused campaign renders a template that declares this variable, require the parameter to already exist in Persist instead of silently omitting it
 
 ## Sync Workflow
 
@@ -145,5 +160,7 @@ Before considering the template capability ready, confirm:
 - sync behavior is defined if an operational source exists
 - normalized output is deterministic
 - source-only fields are not leaked into the runtime contract
+- campaign-scoped variables are declared explicitly
 - template review happens through PRs or an equivalent auditable flow
 - runtime consumers can read templates without reaching back into the source system
+- render batches carry the campaign identifier when templates resolve campaign-scoped variables

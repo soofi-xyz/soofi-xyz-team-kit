@@ -39,6 +39,18 @@ See [`../reference/current-solver-parity.md`](../reference/current-solver-parity
 - run-summary schema
 - scheduled-send row schema for execution handoff
 
+### Campaign-Scoped Parameter Validation
+
+Treat campaign-scoped template values as contract validation, not best-effort enrichment.
+
+- `last_day_to_prevent_placement` is optional unless the selected or pinned template requires it
+- when present, require ISO `YYYY-MM-DD`
+- compare against the run-start day in `America/New_York`; the value must be strictly later
+- SMS validates the field in `ResolveWorkflowContext` before `Filter`
+- email validates the field immediately after template pin and before `Filter`
+- reused campaigns must already have the parameter in Persist when the template requires it
+- Persist writes must behave as set-once: same-date retries are idempotent, different-date rewrites fail
+
 ### Behavior
 
 - `xatu`-owned hard suppressions are not reimplemented in the runtime

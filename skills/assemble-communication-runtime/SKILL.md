@@ -51,6 +51,7 @@ Before considering the runtime-assembly capability ready, confirm:
 - internal runtime contracts are explicit
 - candidate generation and allocation phases are documented
 - output artifacts are documented
+- campaign-scoped validation points and Persist write semantics are documented
 - retries, replay, and recovery are defined
 - the runtime can be rebuilt from the stored prompt and worker contracts without hidden tribal knowledge
 
