@@ -91,6 +91,17 @@ caller. Verify with a short test schedule (on-time start, a skipped time
 during a long run, no start after disabling) before the real cron, and install
 through Marketplace and Puller.
 
+## Entity creation before data flows
+
+Read [entity creation](../build-system-product/reference/entity-creation.md)
+before a flow creates people or companies, or a data flow links to them: one
+entity-creation flow per source (Connect trigger plus daily sweep) matches
+deterministically on email, E.164 phone and domain against identifiers read
+from Persist; data flows write only edges to existing people through
+`existing_identifiers`; unresolved rows go to one daily Asana review task;
+declare per-run `metrics` on the flow; retry `States.TaskFailed` on Transform
+steps for Glue concurrency.
+
 ## Configuration bundles
 
 Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.

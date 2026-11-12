@@ -1,6 +1,6 @@
 ---
 name: build-system-product
-description: "Build or maintain the System orchestration framework with TypeScript, CDK and Step Functions. Includes per-flow S3 event triggers, per-key ordered event triggers and failure alerting. Use Zygarde for runtime changes and a guided mock-first build; use Celebi for outcome configuration."
+description: "Build or maintain the System orchestration framework with TypeScript, CDK and Step Functions. Includes per-flow S3 event triggers, per-key ordered event triggers, failure alerting, per-flow business metrics and the entity-creation-before-data-flow pattern. Use Zygarde for runtime changes and a guided mock-first build; use Celebi for outcome configuration."
 ---
 
 Use [the System capability map](../guide-product-work/reference/iterations/system.md). Derive the feature pieces from scope and dependencies, then apply the work below within each piece; require a user-run configuration, AWS inspection and feedback before starting the next implementation piece.
@@ -32,6 +32,8 @@ outcome on an existing deployment. Follow
    [flow schedules](../configure-system-product/reference/flow-schedules.md).
 10. For failed-run records, alarms and alert texts, read
    [failure alerting](reference/failure-alerting.md).
+11. For creating people and companies before data flows, with deterministic
+   identity matching, read [entity creation](reference/entity-creation.md).
 
 ## Ownership
 
@@ -203,6 +205,27 @@ Keep these rules:
   parameter, and verify on a deployment with a short test schedule.
 
 Celebi owns schedules on concrete flows and their tests.
+
+## Entity creation before data flows
+
+Keep this pattern; see [entity creation](reference/entity-creation.md):
+
+- One entity-creation flow per source creates people and companies before any
+  data flow: a trigger on new Connect context (mode `job`) and a daily
+  schedule sweep.
+- Match deterministically: people on normalized email or E.164 phone,
+  companies on URL/domain, reading existing identifiers from Persist with
+  `gremlin-async`. Reuse exactly one match; never guess between several.
+- Data flows only write edges to existing people through an
+  `existing_identifiers` input and re-emit the person vertex as Persist holds it.
+- Unresolved rows create nothing; the sweep opens one daily Asana review task
+  through Connect `asana-create-task`.
+- Declare per-run `metrics` on the flow (`System/FlowMetrics`, succeeded runs
+  only); a daily per-source report shows new entities.
+- Retry `States.TaskFailed` on Transform steps: Glue's
+  `ConcurrentRunsExceededException` arrives under that name.
+
+Celebi owns each source's entity-creation flow and its tests.
 
 ## Acceptance
 
