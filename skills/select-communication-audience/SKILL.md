@@ -42,14 +42,23 @@ intake and suppression acceptance criteria with `xatu`.
 
 Those belong to `wigglytuff`, `chatot`, or `oranguru`.
 
-## Campaign Launch Context
+## Campaign Assignment Context
 
-When a campaign launch accepts `last_day_to_prevent_placement`, keep it optional at the launch boundary but pass enough context for downstream template-aware validation.
+When a communication campaign needs template-scoped values such as
+`last_day_to_prevent_placement`, collect and validate them before or during
+Campaign Assignment, not inside the SMS or email workflow start input.
 
-- preserve the campaign identifier and any provided `last_day_to_prevent_placement` value in the audience handoff context
-- SMS must validate the field in `ResolveWorkflowContext` before invoking `Filter` when the selected template requires it
-- email must validate the same field right after template pin and before `Filter`
-- if a reused campaign needs the value because the template declares it, require the parameter to already exist in Persist rather than treating omission as an empty default
+- preserve the audience artifact and campaign identifier needed to create or
+  reuse the campaign through Campaign Assignment
+- place every named template parameter on the campaign record before previews
+  or workflow start
+- render previews and downstream sends by `campaign_id`, so workflows do not
+  need to know parameter names
+- start SMS or email workflows with `campaign_id` and
+  `template_identifier` only
+- if a reused campaign needs a parameter because the template declares it,
+  require the parameter to already exist in Persist or the campaign record
+  rather than treating omission as an empty default
 
 ## Checklist
 
@@ -59,7 +68,7 @@ Before considering the audience capability ready, confirm:
 - hard-filter ownership is explicit
 - the runtime intake contract is documented
 - required identifiers and evidence fields are present
-- campaign-scoped launch parameters required by templates are carried or resolved explicitly
+- campaign-scoped template parameters are attached at Campaign Assignment before workflow start
 - the runtime does not need to re-derive the eligible population from raw source systems
 - the handoff shape is replayable and auditable
 

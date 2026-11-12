@@ -111,16 +111,20 @@ Each row should include at least:
 - rendered `message`
 - `campaign_id`
 - `campaign_identifier`
-- `last_day_to_prevent_placement` when the selected template requires it
 - campaign or routing metadata needed for execution handoff
 
 ## Campaign Assignment And Rendering Handoff
 
 After allocation and template choice:
 
-- pass `last_day_to_prevent_placement` through to `Campaign Assignment v1` when the campaign uses it
-- pass `campaign_id` on every Jigglypuff render batch so template lookups can resolve `{{campaign_identifier}}`
-- keep the scheduled-send artifact explicit enough that downstream execution does not need to refetch or reinterpret campaign parameters
+- create or reuse the campaign through `Campaign Assignment v1` with the final
+  audience and every named template parameter the template declares
+- pass `campaign_id` on every Jigglypuff render batch so template lookups can
+  resolve campaign-scoped values deterministically
+- start the SMS or email workflow with `campaign_id` and
+  `template_identifier` only
+- keep named template parameters behind the Campaign Assignment or Persist
+  boundary instead of copying them into workflow start inputs
 
 ## Execution Boundary
 

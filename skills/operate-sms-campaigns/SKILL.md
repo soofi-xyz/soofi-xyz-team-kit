@@ -17,8 +17,10 @@ source membership
   -> same-day provider/admission dedupe
   -> final build: Quiq refresh + read-only account DNT recount
   -> template/campaign collision checks
-  -> encrypted final audience + reservation + payload
-  -> SMS workflow only with explicit approval
+  -> encrypted final audience + reservation
+  -> Campaign Assignment with audience + campaign-scoped template parameters
+  -> Jigglypuff previews by campaign_id
+  -> SMS workflow start only with explicit approval
 ```
 
 Use the AWS profile selected by the operator. Set it explicitly on every
@@ -400,7 +402,7 @@ After dedupe, and again whenever the audience is rebuilt:
   and today's inventory;
 - write a debt-phone reservation and a counts-only final-build audit.
 
-## Certify template, campaign, and payload
+## Certify template, campaign assignment, previews, and workflow input
 
 Verify the Git-backed template is active on `main` and its ID/name/channel
 match. A template ID that exists only in an open pull request fails this gate.
@@ -409,19 +411,33 @@ context, and reservations. Choose the campaign identifier independently of the
 template so a template chosen late does not change identifiers already
 recorded in evidence.
 
+Create or reuse the campaign through Campaign Assignment after the audience is
+certified. Campaign Assignment owns the final audience membership plus every
+named template parameter that render-time lookups need later.
+
 When the selected template declares `last_day_to_prevent_placement`:
 
 - place the optional field on `campaign.last_day_to_prevent_placement` in the
-  workflow payload as ISO `YYYY-MM-DD`
+  Campaign Assignment input as ISO `YYYY-MM-DD`
 - require the date to be strictly after the run-start day in
   `America/New_York`
-- on a new campaign launch, collect and pass the value before starting SMS
-- on a reused campaign identifier, require Persist to already hold the same
-  parameter value when the operator omits it
+- on a new campaign launch, collect and pass the value before rendering
+  previews or starting SMS
+- on a reused campaign identifier, require Persist or the campaign record to
+  already hold the same parameter value when the operator omits it
 - never change the value for an existing campaign: the same date is idempotent,
   a different date fails closed
 
-If the template does not declare the variable, omit the field.
+If the template does not declare the variable, omit the field from Campaign
+Assignment.
+
+Do not pass named template parameters such as
+`last_day_to_prevent_placement` into the SMS workflow start input. The workflow
+should resolve campaign-scoped values only through `campaign_id`.
+
+Before starting SMS, render previews through Jigglypuff by `campaign_id` for
+representative sample debts and require explicit operator approval of the
+rendered content.
 
 Publish:
 
@@ -430,17 +446,15 @@ Publish:
 - debt-phone reservation;
 - SHA256 manifest and AES256 proof;
 - final certification;
-- SMS orchestration payload.
+- Campaign Assignment request/response and preview-approval evidence;
+- SMS workflow start input.
 
-Use:
+Use Campaign Assignment with the certified audience:
 
 ```json
 {
   "input_s3_uri": "s3://<certified-final>/parts/results/",
-  "template_identifier": "<active-template-id>",
-  "steps_to_skip": ["filter"],
   "campaign": {
-    "name": "<unique-campaign-id>",
     "campaign_identifier": "<unique-campaign-id>",
     "purpose": "<business purpose>",
     "last_day_to_prevent_placement": "2026-11-30"
@@ -448,11 +462,19 @@ Use:
 }
 ```
 
-Omit `last_day_to_prevent_placement` when the selected template does not use
-it.
+Omit `last_day_to_prevent_placement` when the selected template does not use it.
 
-Do not use `steps_to_skip:["filter"]` until Filter and every downstream
-certification gate above have passed.
+Then render previews by `campaign_id` and start the workflow with only:
+
+```json
+{
+  "campaign_id": "<campaign-id>",
+  "template_identifier": "<active-template-id>"
+}
+```
+
+Do not create Campaign Assignment input or start SMS until Filter and every
+downstream certification gate above have passed.
 
 Campaign identifiers beginning with `payfail` automatically enter the SMS
 `PRIORITY` dispatch lane. There is no supported priority input field.

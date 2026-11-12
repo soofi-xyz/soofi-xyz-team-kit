@@ -43,13 +43,20 @@ See [`../reference/current-solver-parity.md`](../reference/current-solver-parity
 
 Treat campaign-scoped template values as contract validation, not best-effort enrichment.
 
-- `last_day_to_prevent_placement` is optional unless the selected or pinned template requires it
+- `last_day_to_prevent_placement` is optional unless the selected template
+  requires it
 - when present, require ISO `YYYY-MM-DD`
-- compare against the run-start day in `America/New_York`; the value must be strictly later
-- SMS validates the field in `ResolveWorkflowContext` before `Filter`
-- email validates the field immediately after template pin and before `Filter`
-- reused campaigns must already have the parameter in Persist when the template requires it
-- Persist writes must behave as set-once: same-date retries are idempotent, different-date rewrites fail
+- compare against the run-start day in `America/New_York`; the value must be
+  strictly later
+- Campaign Assignment validates and persists named template parameters before
+  previews or workflow start
+- SMS and email workflows start with `campaign_id` and `template_identifier`
+  only; they must not accept named template parameters in
+  `ResolveWorkflowContext` or after template pin
+- reused campaigns must already have the parameter in Persist or the campaign
+  record when the template requires it
+- Persist writes must behave as set-once: same-date retries are idempotent,
+  different-date rewrites fail
 
 ### Behavior
 

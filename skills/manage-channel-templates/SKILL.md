@@ -62,13 +62,21 @@ When a template depends on campaign metadata, declare that dependency explicitly
 
 For `last_day_to_prevent_placement`:
 
-- keep the launch field optional and name it `last_day_to_prevent_placement`
+- keep the campaign field optional and name it `last_day_to_prevent_placement`
 - require ISO `YYYY-MM-DD` when the field is present
-- render-time lookups must resolve the value through `{{campaign_identifier}}`
+- Campaign Assignment must persist the value on the campaign record before
+  previews or workflow start
+- render-time lookups must resolve the value from the campaign referenced by
+  `campaign_id`
 - support both English and Spanish date filters in the template layer
 - if a source date arrives as epoch milliseconds, format it in UTC before applying a human-readable date filter
-- pass the campaign identifier on every Jigglypuff render batch so campaign-scoped lookups remain deterministic
-- if a reused campaign renders a template that declares this variable, require the parameter to already exist in Persist instead of silently omitting it
+- pass `campaign_id` on every Jigglypuff render batch so campaign-scoped
+  lookups remain deterministic
+- if a reused campaign renders a template that declares this variable, require
+  the parameter to already exist in Persist instead of silently omitting it
+- keep named template parameters out of the SMS or email workflow start
+  contract; those workflows should start from `campaign_id` plus
+  `template_identifier`
 
 ## Sync Workflow
 
@@ -163,4 +171,4 @@ Before considering the template capability ready, confirm:
 - campaign-scoped variables are declared explicitly
 - template review happens through PRs or an equivalent auditable flow
 - runtime consumers can read templates without reaching back into the source system
-- render batches carry the campaign identifier when templates resolve campaign-scoped variables
+- render batches carry `campaign_id` when templates resolve campaign-scoped variables

@@ -29,14 +29,17 @@ At minimum include:
 - call anchors
 - settlement and payment-plan offer flags for template choice
 - language and any required compliance context
-- any required campaign-scoped template parameters
+- `campaign_id` plus any campaign-scoped context that must be resolved through
+  the stored campaign record
 - any message-rendering fields required to build the final send file
 
 The runtime should assume hard suppressions were already applied upstream by `xatu` and `filter`.
 
 ## Campaign Parameter Contract
 
-When a launch or `Campaign Assignment v1` uses `last_day_to_prevent_placement`, keep the field optional in the external launch contract but persist it as a campaign-scoped fact before rendering or send execution depends on it.
+When `Campaign Assignment v1` uses `last_day_to_prevent_placement`, keep the
+field optional on the campaign contract but persist it as a campaign-scoped
+fact before previews, rendering, or send execution depends on it.
 
 Persist shape:
 
@@ -51,6 +54,9 @@ Write semantics:
 - first write wins
 - a repeat write with the same date is idempotent
 - a repeat write with a different date fails instead of silently rewriting history
+- SMS and email workflow start inputs should reference the campaign only by
+  `campaign_id` plus `template_identifier`; they should not carry named template
+  parameters
 
 ## Required Graph Facts
 

@@ -52,11 +52,18 @@ Keep those boundaries outside Chatot.
 
 ## Campaign-Aware Execution Handoff
 
-When upstream templates or assignments depend on campaign-scoped parameters, keep the execution artifact faithful to the runtime decision.
+When upstream templates or assignments depend on campaign-scoped parameters,
+keep the execution artifact faithful to the runtime decision.
 
 - preserve `campaign_id` and `campaign_identifier` in the execution artifact
-- if rendering happens inside the send workflow, include the campaign identifier on every Jigglypuff render batch so template lookups can resolve campaign parameters consistently
-- consume the runtime-approved `last_day_to_prevent_placement` and assignment outputs as data; do not re-derive, mutate, or backfill campaign parameters at provider dispatch time
+- if rendering happens inside the send workflow, include `campaign_id` on every
+  Jigglypuff render batch so campaign-scoped lookups resolve from the stored
+  campaign record consistently
+- treat named template parameters such as
+  `last_day_to_prevent_placement` as Campaign Assignment data, not ad hoc
+  workflow inputs
+- do not re-derive, mutate, or backfill campaign parameters at provider
+  dispatch time
 
 ## Provider Feedback Persistence
 

@@ -57,29 +57,37 @@ reserved for the intended daily phone-call eligibility producer. Verify live
 Lexicon suppression cases before declaring any channel ready; this schema alone
 does not establish deployed rule coverage.
 
-## Campaign Context Validation
+## Campaign Assignment Validation
 
-If the selected SMS template declares `last_day_to_prevent_placement`, validate it in `ResolveWorkflowContext` before invoking `Filter`.
+If the selected SMS template declares `last_day_to_prevent_placement`, validate
+it before or during Campaign Assignment and persist it on the campaign record.
 
 Rules:
 
-- the launch field remains optional unless the selected template requires it
+- the field remains optional unless the selected template requires it
 - when present, require ISO `YYYY-MM-DD`
-- compare against the run-start day in `America/New_York`; the value must be strictly later
-- do not let `Filter` infer or invent the value; pass explicit campaign context forward
-- if the runtime reuses an existing campaign and the template requires the field, require the parameter to already exist in Persist before continuing
+- compare against the run-start day in `America/New_York`; the value must be
+  strictly later
+- do not let `Filter` or the SMS workflow infer or invent the value
+- if the runtime reuses an existing campaign and the template requires the
+  field, require the parameter to already exist in Persist or the campaign
+  record before continuing
 
 ## Runtime Entrypoint
 
-The current SMS runtime should accept:
+The current SMS workflow should start with:
 
-- `input_s3_uri`
-- a URI that points to one file or an S3 prefix
-- JSON with a top-level `results` array
+- `campaign_id`
+- `template_identifier`
 
-## Outer Record Shape
+Do not accept named template parameters such as
+`last_day_to_prevent_placement` in the workflow start input. Campaign
+Assignment owns those parameters together with the final audience artifact.
 
-The filtered debt payload should preserve the same outer shape the current `solver` already reads.
+## Campaign Audience Record Shape
+
+The audience attached to the campaign should preserve the same outer shape the
+current `solver` already reads.
 
 Required debt fields:
 
@@ -127,4 +135,7 @@ The handoff should remain:
 - auditable
 - stable enough for downstream runtime reuse
 
-When templates resolve campaign-scoped variables, the handoff must preserve the campaign identifier so downstream rendering and assignment can query Persist deterministically.
+When templates resolve campaign-scoped variables, the handoff must preserve the
+campaign identifier and resulting `campaign_id` so downstream rendering and
+assignment can query Persist deterministically without named workflow
+parameters.
