@@ -57,6 +57,18 @@ reserved for the intended daily phone-call eligibility producer. Verify live
 Lexicon suppression cases before declaring any channel ready; this schema alone
 does not establish deployed rule coverage.
 
+## Campaign Context Validation
+
+If the selected SMS template declares `last_day_to_prevent_placement`, validate it in `ResolveWorkflowContext` before invoking `Filter`.
+
+Rules:
+
+- the launch field remains optional unless the selected template requires it
+- when present, require ISO `YYYY-MM-DD`
+- compare against the run-start day in `America/New_York`; the value must be strictly later
+- do not let `Filter` infer or invent the value; pass explicit campaign context forward
+- if the runtime reuses an existing campaign and the template requires the field, require the parameter to already exist in Persist before continuing
+
 ## Runtime Entrypoint
 
 The current SMS runtime should accept:
@@ -114,3 +126,5 @@ The handoff should remain:
 - replayable
 - auditable
 - stable enough for downstream runtime reuse
+
+When templates resolve campaign-scoped variables, the handoff must preserve the campaign identifier so downstream rendering and assignment can query Persist deterministically.

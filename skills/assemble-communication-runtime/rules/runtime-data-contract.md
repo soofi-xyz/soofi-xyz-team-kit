@@ -16,6 +16,7 @@ At minimum include:
 - `debt_id`
 - `phone_number_id`
 - `phone_number_e164`
+- `campaign_identifier`
 - `local_timezone`
 - `current_balance`
 - `tu_score`
@@ -28,9 +29,28 @@ At minimum include:
 - call anchors
 - settlement and payment-plan offer flags for template choice
 - language and any required compliance context
+- any required campaign-scoped template parameters
 - any message-rendering fields required to build the final send file
 
 The runtime should assume hard suppressions were already applied upstream by `xatu` and `filter`.
+
+## Campaign Parameter Contract
+
+When a launch or `Campaign Assignment v1` uses `last_day_to_prevent_placement`, keep the field optional in the external launch contract but persist it as a campaign-scoped fact before rendering or send execution depends on it.
+
+Persist shape:
+
+- vertex label: `campaign_parameter`
+- edge label: `campaign_has_parameter`
+- `parameter_key = last_day_to_prevent_placement`
+- store the date in `date_value`
+- do not set `value_type` on the vertex; Persist reserves that property name
+
+Write semantics:
+
+- first write wins
+- a repeat write with the same date is idempotent
+- a repeat write with a different date fails instead of silently rewriting history
 
 ## Required Graph Facts
 
@@ -107,6 +127,7 @@ Each scheduled send row should include at least:
 - `scheduled_send_ts`
 - `template_family`
 - rendered `message`
+- `campaign_identifier`
 - campaign or routing metadata needed for execution handoff
 
 ## Graph Modeling Rules
