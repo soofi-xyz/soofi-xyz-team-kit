@@ -79,6 +79,22 @@ reader, Gremlin step allowlist, GraphQL mutation refusal) and keep the key out o
 arguments, results and logs. Derive tool schemas from the route schemas with a
 contract test. Report owns its own server; do not build one across products.
 
+## Registered IPFS indexes
+
+For index documents published on IPFS that Persist follows (Elephant's Atlas),
+load [the registered IPFS indexes reference](reference/registered-ipfs-indexes.md)
+and build feature `registered-ipfs-indexes`. Always write "registered IPFS
+index", never bare "index". Keep it off unless the install parameter
+`PersistRegisteredIpfsIndexBucketName` names a bucket, ask
+`registeredIpfsIndexesInstall` and build every resource under
+`underCondition(..., install.registeredIpfsIndexes, ...)`. Treat gateways as
+untrusted and keep `lambda/registered-ipfs-indexes/` pure. Write a version's
+`active.json` last and nothing when the index is unchanged. Keep DuckDB in
+the query function only, with no `httpfs`, and all three query safety layers:
+`checkReadOnlySql`, the locked fresh DuckDB and a role that only reads the
+copy prefix. After any `lambda/` change, re-pin
+the Fargate images with `just marketplace-pin-images <run id>`.
+
 ## Access users
 
 For people signed in through Access, load [the user-scoped access
