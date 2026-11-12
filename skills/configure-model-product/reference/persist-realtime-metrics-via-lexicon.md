@@ -57,8 +57,10 @@ Gate 3's message is about the format, so state the business reason it stands for
   the user to sign in; never look for other credentials. If Persist gives no
   verdict (no credentials, 403, or 404 from a Persist without the endpoint),
   mark the metric `unchecked`, not buildable. A pull request's CI runs the same
-  check, so you may open the pull request as a draft and use CI's verdict; never
-  report a metric as buildable without a Persist verdict.
+  check, but every pull request, draft or not, also deploys its catalog to the
+  shared Lexicon DEV when the check passes; use CI's verdict only after the user
+  agrees to that deploy. Never report a metric as buildable without a Persist
+  verdict.
 
 ## Propose the closest buildable rescope, never adopt it alone
 
@@ -108,7 +110,10 @@ leaves out because it never occurs).
   gate 3. Never copy another family's dimensions.
 - **Direction:** where the item has a direction and both directions occur for the
   counted statuses, write separate inbound and outbound metrics with a direction
-  filter. When every counted status is single-direction, say so and add no filter.
+  filter. A status-event count (`read: EACH_EVENT`) can filter only on the status
+  edge's own properties, so when the direction is on the item, the split is not
+  buildable yet: hand it to Dialga. When every counted status is single-direction,
+  say so and add no filter.
 - **Layout:** expand every nested object with one key per line, as the
   `text_message` files merged in #912 do; then run Prettier.
 - `activation` is `BACKFILLING` in every environment. Never write `ACTIVE`.
