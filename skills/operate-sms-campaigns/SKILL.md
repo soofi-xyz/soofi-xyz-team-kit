@@ -63,11 +63,13 @@ Never assume a team member can access the original local path.
 
 Every non-payfail SMS campaign MUST pass the exact ordered contract proven by
 the following execution, minus the three rules Lexicon removed in
-[PR #914](https://github.com/Spring-Oaks-Capital-LLC/lexicon/pull/914):
+[PR #914](https://github.com/Spring-Oaks-Capital-LLC/lexicon/pull/914), plus
+the two Quiq failure-code phone rules Lexicon added in
+[PR #921](https://github.com/Spring-Oaks-Capital-LLC/lexicon/pull/921):
 
 `arn:aws:states:us-east-2:014948052063:execution:FilterStateMachine2E447DC0-TPcQCbFc1gAN:credit-reporting-set-08-sms-deployed-bal25-rerun-20260923T081620Z`
 
-The 51 ordered rule IDs are:
+The 53 ordered rule IDs are:
 
 1. `has_single_version_2_phone_owner`
 2. `not_in_bankruptcy`
@@ -117,9 +119,11 @@ The 51 ordered rule IDs are:
 46. `represented_by_attorney`
 47. `in_bankruptcy`
 48. `third_party_placement`
-49. `has_valid_10_digit_phone_number`
-50. `has_single_bundle_for_ssn_identity`
-51. `balance_over_25`
+49. `phone_has_no_quiq_invalid_destination`
+50. `phone_has_no_quiq_delivery_error`
+51. `has_valid_10_digit_phone_number`
+52. `has_single_bundle_for_ssn_identity`
+53. `balance_over_25`
 
 The standard contract intentionally:
 
@@ -131,6 +135,12 @@ The standard contract intentionally:
   [PR #914](https://github.com/Spring-Oaks-Capital-LLC/lexicon/pull/914) with
   business sign-off, so their rule prefixes no longer exist and Filter fails a
   run that names any of them.
+- includes `phone_has_no_quiq_invalid_destination` and
+  `phone_has_no_quiq_delivery_error`, which drop a phone by its Quiq failure
+  code (24002 until the number is newly confirmed; 24008 for 30 days, then
+  permanently after a second 24008). Filter fails a run that names them before
+  [PR #921](https://github.com/Spring-Oaks-Capital-LLC/lexicon/pull/921) is
+  deployed.
 
 Resolve each rule ID to its current canonical deployed URI, then compare the
 ordered IDs against this list. Fail closed on any missing, additional,
@@ -138,9 +148,11 @@ duplicate, reordered, stale, or inactive rule.
 
 ## Payfail SMS contract
 
-Use the exact 49-rule contract proven by the following corrected execution,
+Use the exact 51-rule contract proven by the following corrected execution,
 minus the three rules Lexicon removed in
-[PR #914](https://github.com/Spring-Oaks-Capital-LLC/lexicon/pull/914):
+[PR #914](https://github.com/Spring-Oaks-Capital-LLC/lexicon/pull/914), plus
+the two Quiq failure-code phone rules Lexicon added in
+[PR #921](https://github.com/Spring-Oaks-Capital-LLC/lexicon/pull/921):
 
 `arn:aws:states:us-east-2:014948052063:execution:FilterStateMachine2E447DC0-TPcQCbFc1gAN:payfail-sms-recovery-20260923-20260923T161906Z`
 
@@ -192,9 +204,11 @@ The ordered rule IDs are:
 44. `represented_by_attorney`
 45. `in_bankruptcy`
 46. `third_party_placement`
-47. `has_single_version_2_phone_owner`
-48. `has_valid_10_digit_phone_number`
-49. `has_single_bundle_for_ssn_identity`
+47. `phone_has_no_quiq_invalid_destination`
+48. `phone_has_no_quiq_delivery_error`
+49. `has_single_version_2_phone_owner`
+50. `has_valid_10_digit_phone_number`
+51. `has_single_bundle_for_ssn_identity`
 
 The payfail contract intentionally omits:
 
@@ -209,7 +223,7 @@ It also excludes the three rules removed from the standard contract:
 
 ### Exact standard versus payfail difference
 
-The contracts share 47 rule IDs.
+The contracts share 50 rule IDs.
 
 Standard-only rules:
 
@@ -222,7 +236,7 @@ Payfail-only rule:
 - `has_failed_or_returned_transaction_today` — requires the qualifying
   failed/returned payment or failed-installment event.
 
-Therefore `51 - 3 + 1 = 49`. Both contracts omit
+Therefore `53 - 3 + 1 = 51`. Both contracts omit
 `has_single_assigned_address` and `balance_over_250`; omission means those two
 rules do not block the campaign. This comparison is limited to the reviewed
 standard and payfail contracts, not every rule that exists in Lexicon.
