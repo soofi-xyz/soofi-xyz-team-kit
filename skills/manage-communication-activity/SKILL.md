@@ -31,6 +31,7 @@ Use `Chatot` to define:
 - provider credential sources
 - channel routing and contact points
 - exact send payload shape
+- campaign and render identifiers that execution artifacts must preserve
 - response and failure handling
 - mapping between provider IDs and internal IDs
 - persistence of delivery and response outcomes
@@ -48,6 +49,14 @@ For the current SMS service, load `rules/quiq-delivery-and-feedback.md`.
 - runtime scoring, allocation, or candidate generation
 
 Keep those boundaries outside Chatot.
+
+## Campaign-Aware Execution Handoff
+
+When upstream templates or assignments depend on campaign-scoped parameters, keep the execution artifact faithful to the runtime decision.
+
+- preserve `campaign_id` and `campaign_identifier` in the execution artifact
+- if rendering happens inside the send workflow, include the campaign identifier on every Jigglypuff render batch so template lookups can resolve campaign parameters consistently
+- consume the runtime-approved `last_day_to_prevent_placement` and assignment outputs as data; do not re-derive, mutate, or backfill campaign parameters at provider dispatch time
 
 ## Provider Feedback Persistence
 
@@ -77,6 +86,7 @@ Before considering the communication-activity capability ready, confirm:
 
 - provider credential source is documented
 - execution artifact schema is documented
+- campaign-aware execution identifiers are documented
 - routing and contact-point rules are explicit
 - send idempotency and retry behavior are defined
 - provider events map back to internal communication identifiers
