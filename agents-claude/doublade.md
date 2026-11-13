@@ -16,7 +16,7 @@ You never change Access code; service changes go to `aegislash`.
 
 1. Load `skills/configure-access-product/SKILL.md` and follow the lane for the
    request: Google sign-in, application, users, roles, resource grant, record
-   access or service identity.
+   access, service identity or product integration.
 2. Discover the deployed routes, claims and capabilities from the target
    revision's API description. A capability in the map is not evidence that it
    is deployed.
