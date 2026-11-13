@@ -62,8 +62,22 @@ When a template depends on campaign metadata, declare that dependency explicitly
 
 For `last_day_to_prevent_placement`:
 
-- keep the launch field optional and name it `last_day_to_prevent_placement`
-- require ISO `YYYY-MM-DD` when the field is present
+- require launches to place the optional field inside `campaign.parameters` as:
+  ```json
+  "parameters": {
+    "last_day_to_prevent_placement": {
+      "type": "DATE",
+      "value": "YYYY-MM-DD"
+    }
+  }
+  ```
+- reject flat `campaign.last_day_to_prevent_placement` and top-level
+  `last_day_to_prevent_placement` forms
+- derive required parameter keys from the template query
+  `has('parameter_key', ...)` plus the template's variables listing
+- use the same `campaign.parameters` container for SMS and email launches
+- keep the only placement-date business rule at launch time: the DATE value
+  must be strictly after the `America/New_York` run day
 - render-time lookups must resolve the value through `{{campaign_identifier}}`
 - support both English and Spanish date filters in the template layer
 - if a source date arrives as epoch milliseconds, format it in UTC before applying a human-readable date filter

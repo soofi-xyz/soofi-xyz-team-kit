@@ -118,7 +118,28 @@ Each row should include at least:
 
 After allocation and template choice:
 
-- pass `last_day_to_prevent_placement` through to `Campaign Assignment v1` when the campaign uses it
+- keep the launch-by-S3 plus inline `campaign` contract; do not replace it
+  with a campaign-only by-ID launch
+- derive required parameter keys from the selected template query
+  `has('parameter_key', ...)` plus the template's variables listing
+- pass `last_day_to_prevent_placement` through to `Campaign Assignment v1`
+  inside `campaign.parameters` as:
+  ```json
+  "parameters": {
+    "last_day_to_prevent_placement": {
+      "type": "DATE",
+      "value": "YYYY-MM-DD"
+    }
+  }
+  ```
+- reject flat `campaign.last_day_to_prevent_placement` and top-level
+  `last_day_to_prevent_placement` forms
+- use the same `campaign.parameters` container for SMS and email launches;
+  email dry runs keep `submit_to_arda: false`
+- validate the container and pass the whole `campaign` object to
+  `Campaign Assignment v1`
+- apply only one business rule for this key: the DATE value must be strictly
+  after the `America/New_York` run day
 - pass `campaign_id` on every Jigglypuff render batch so template lookups can resolve `{{campaign_identifier}}`
 - keep the scheduled-send artifact explicit enough that downstream execution does not need to refetch or reinterpret campaign parameters
 
