@@ -34,6 +34,7 @@ Build → Marketplace → Deploy path before claiming the migration is complete.
 | Console / Chandelure, Vivillon | Own application, revision and publication API semantics and author application manifests (bundle kind pending; see [Console application payloads](#console-application-payloads)) |
 | Access / Aegislash, Doublade | Own application API semantics and author application documents (bundle kind pending; see [Access application payloads](#access-application-payloads)) |
 | Inference / Beheeyem, Elgyem | Own configuration API and version semantics and author `inference-1` configurations (see [Inference configuration payloads](#inference-configuration-payloads)) |
+| Enact / Zoroark, Zorua | Own agent API and version semantics and author agent directories (see [Enact agent payloads](#enact-agent-payloads)) |
 | Rule / Gallade, Meditite | Own selection, candidate-scope and projection configuration semantics (no bundle kind until Rule has an API; see [Products without a bundle kind](#products-without-a-bundle-kind)) |
 
 Keep these assignments in the product catalog. Do not add a configuration product
@@ -250,6 +251,39 @@ for where they are installed. Paths below are relative to
   version again, which makes it current. Report retirement as unsupported.
 - Installing a configuration starts no run and calls no model.
 
+## Enact agent payloads
+
+Product `enact`, kind `agent`: Deploy's adapter is on prismteam-ai/deploy branch
+`enact-agent-adapter` and Build's kind on prismteam-ai/build branch `enact-agent-kind`. See
+[the Enact status table](../../guide-product-work/reference/iterations/enact.md#status) for where
+they are merged and installed. The contract is `docs/agent-contract.md` in prismteam-ai/enact.
+Paths below are relative to `https://<shared domain>/enact`, with the shared `x-api-key`.
+
+- **Bundle entry:** `product: "enact"`, `kind: "agent"`, `source` one JSON file holding the whole
+  agent document `{ "manifest": …, "files": … }`, the exact `PUT /agents/{name}` body.
+  `manifest.name` is the logical identity and `manifest.version` (semver) the immutable version.
+  Build validates the document against Enact's `schemas/agent-definition.schema.json` and the
+  contract's other rules without calling Enact, rejects a repeated name and any
+  `{{parameter:…}}` or `{{secret:…}}` placeholder (a version has one digest in every
+  environment), and records `name`, `version` and `digest`: `sha256:` and the SHA-256 of the
+  document's canonical JSON, keys sorted at every level. Whether the agent's repositories are
+  allowed in an environment is Enact's check on save.
+- **Preflight:** Deploy fails the install before any write unless the document's
+  `manifest.name`, `manifest.version` and canonical digest equal the entry's `name`, `version`
+  and `digest`.
+- **Apply:** `GET /agents/{name}?version=<version>`: that version saved with another digest is a
+  conflict before any write. Then `PUT /agents/{name}`: `201 CREATED`, `200 UPDATED` (a new
+  version, or a saved one made current again), `200 UNCHANGED` (writes nothing). `400
+  INVALID_DEFINITION` and `409 VERSION_CONFLICT` (changed content under a saved version: the
+  bundle must publish a new version) fail the install; `409 CONCURRENT_CHANGE` wrote nothing and
+  is retried a bounded number of times.
+- **Read back:** `GET /agents/{name}` must return the bundle's version as `current`, with the
+  same `digest` and a byte-identical canonical document; report `name`, `version` and `digest` in
+  the run result.
+- **Retire or restore:** Enact has no agent delete; restoring an earlier release saves its version
+  again, which makes it current. Report retirement as unsupported.
+- Installing an agent starts no run and calls no model. Never write Enact's DynamoDB or S3 stores.
+
 ## Products without a bundle kind
 
 - **Rule:** the existing service has no shared-domain HTTP API, so there is
@@ -258,11 +292,6 @@ for where they are installed. Paths below are relative to
   then do Tinkaton add a `rule` kind and Corviknight a Rule adapter, following
   that API's contract. Do not install Rule configuration through Step Functions,
   S3 or SSM.
-- **Enact:** agents are meant to be delivered as bundles, but no Enact API exists yet
-  for an adapter to call. Zoroark first ships the agent API with stable identity,
-  immutable versions and read-back. Only then do Tinkaton add a kind for Enact agents
-  and Corviknight an Enact adapter, following that API's contract. Do not install an
-  agent by writing to Enact's stores directly.
 - **Documentation:** not a configuration bundle. A product's own repository
   carries its documentation: Build packs `requirements/swagger.yml` and
   `requirements/mcp.json`, and Marketplace sends them to `POST /publications`. Unown
@@ -311,6 +340,9 @@ Before merging, check what the install will replace:
   of the same name.
 - An Inference configuration becomes the current version for runs, including over
   one a configurer saved directly.
+- An Enact agent version becomes current for runs, including over one saved directly; a
+  version already saved with other content fails the install until the bundle publishes a new
+  version.
 - A Console application publishes over the active revision of the same
   `applicationId`, including one a configurer published directly.
 - An Access application replaces the same-named application's redirect and
