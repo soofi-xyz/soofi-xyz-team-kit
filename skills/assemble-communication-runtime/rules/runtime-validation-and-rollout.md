@@ -44,10 +44,27 @@ See [`../reference/current-solver-parity.md`](../reference/current-solver-parity
 Treat campaign-scoped template values as contract validation, not best-effort enrichment.
 
 - `last_day_to_prevent_placement` is optional unless the selected or pinned template requires it
-- when present, require ISO `YYYY-MM-DD`
-- compare against the run-start day in `America/New_York`; the value must be strictly later
-- SMS validates the field in `ResolveWorkflowContext` before `Filter`
-- email validates the field immediately after template pin and before `Filter`
+- required parameter keys come from the selected template query
+  `has('parameter_key', ...)` plus the template's variables listing
+- when present, require the value under `campaign.parameters` as:
+  ```json
+  "parameters": {
+    "last_day_to_prevent_placement": {
+      "type": "DATE",
+      "value": "YYYY-MM-DD"
+    }
+  }
+  ```
+- reject flat `campaign.last_day_to_prevent_placement` and top-level
+  `last_day_to_prevent_placement` forms
+- use the same `campaign.parameters` container for SMS and email launches;
+  email dry runs keep `submit_to_arda: false`
+- keep the launch-by-S3 plus inline `campaign` contract instead of a
+  campaign-only by-ID launch
+- workflows validate the container and pass the whole `campaign` object to
+  Campaign Assignment
+- the only business rule is that the DATE value is strictly after the
+  `America/New_York` run day
 - reused campaigns must already have the parameter in Persist when the template requires it
 - Persist writes must behave as set-once: same-date retries are idempotent, different-date rewrites fail
 

@@ -64,10 +64,26 @@ If the selected SMS template declares `last_day_to_prevent_placement`, validate 
 Rules:
 
 - the launch field remains optional unless the selected template requires it
-- when present, require ISO `YYYY-MM-DD`
-- compare against the run-start day in `America/New_York`; the value must be strictly later
-- do not let `Filter` infer or invent the value; pass explicit campaign context forward
-- if the runtime reuses an existing campaign and the template requires the field, require the parameter to already exist in Persist before continuing
+- required parameter keys come from the selected template query
+  `has('parameter_key', ...)` plus the template's variables listing
+- place the value inside `campaign.parameters` as:
+  ```json
+  "parameters": {
+    "last_day_to_prevent_placement": {
+      "type": "DATE",
+      "value": "YYYY-MM-DD"
+    }
+  }
+  ```
+- reject flat `campaign.last_day_to_prevent_placement` and top-level
+  `last_day_to_prevent_placement` forms
+- use the same `campaign.parameters` container for SMS and email launches
+- the only business rule is that the DATE value is strictly after the
+  `America/New_York` run day
+- do not let `Filter` infer or invent the value; validate the container and
+  pass the whole `campaign` object to Campaign Assignment
+- if the runtime reuses an existing campaign and the template requires the
+  field, require the parameter to already exist in Persist before continuing
 
 ## Runtime Entrypoint
 
@@ -76,6 +92,9 @@ The current SMS runtime should accept:
 - `input_s3_uri`
 - a URI that points to one file or an S3 prefix
 - JSON with a top-level `results` array
+- an inline `campaign` object for Campaign Assignment; do not replace the
+  launch-by-S3 plus inline `campaign` contract with a campaign-only by-ID
+  launch
 
 ## Outer Record Shape
 

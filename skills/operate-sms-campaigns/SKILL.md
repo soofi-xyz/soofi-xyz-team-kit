@@ -408,12 +408,19 @@ Check the campaign identifier against Step Functions, lifecycle, backlog, send
 context, and reservations. Choose the campaign identifier independently of the
 template so a template chosen late does not change identifiers already
 recorded in evidence.
+When the workflow prepares Campaign Assignment, validate the `campaign` object
+and pass it unchanged. Required parameter keys come from the selected
+template's `has('parameter_key', ...)` query plus its variables listing.
 
 When the selected template declares `last_day_to_prevent_placement`:
 
-- place the optional field on `campaign.last_day_to_prevent_placement` in the
-  workflow payload as ISO `YYYY-MM-DD`
-- require the date to be strictly after the run-start day in
+- place the optional field inside `campaign.parameters` as
+  `"last_day_to_prevent_placement": {"type": "DATE", "value": "YYYY-MM-DD"}`
+- reject flat `campaign.last_day_to_prevent_placement` and any top-level
+  `last_day_to_prevent_placement` form
+- use the same `campaign.parameters` container for SMS and email launches;
+  email dry runs keep `submit_to_arda: false`
+- require the DATE value to be strictly after the run day in
   `America/New_York`
 - on a new campaign launch, collect and pass the value before starting SMS
 - on a reused campaign identifier, require Persist to already hold the same
@@ -421,7 +428,8 @@ When the selected template declares `last_day_to_prevent_placement`:
 - never change the value for an existing campaign: the same date is idempotent,
   a different date fails closed
 
-If the template does not declare the variable, omit the field.
+If the template does not declare the variable, omit the key from
+`campaign.parameters` or omit `parameters` entirely.
 
 Publish:
 
@@ -431,6 +439,9 @@ Publish:
 - SHA256 manifest and AES256 proof;
 - final certification;
 - SMS orchestration payload.
+
+Keep the launch-by-S3 plus inline `campaign` contract; the campaign-only by-ID
+rework is dropped.
 
 Use:
 
@@ -443,13 +454,19 @@ Use:
     "name": "<unique-campaign-id>",
     "campaign_identifier": "<unique-campaign-id>",
     "purpose": "<business purpose>",
-    "last_day_to_prevent_placement": "2026-11-30"
+    "parameters": {
+      "last_day_to_prevent_placement": {
+        "type": "DATE",
+        "value": "2026-11-30"
+      }
+    }
   }
 }
 ```
 
-Omit `last_day_to_prevent_placement` when the selected template does not use
-it.
+The workflow validates `campaign.parameters` and passes the whole `campaign`
+object to Campaign Assignment. Omit the
+`last_day_to_prevent_placement` key when the selected template does not use it.
 
 Do not use `steps_to_skip:["filter"]` until Filter and every downstream
 certification gate above have passed.
