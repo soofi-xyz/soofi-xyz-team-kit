@@ -13,10 +13,11 @@ checking each against its CID. REST routes under
 `describe_index` and `query_index` answer read-only SQL over that checked copy
 with DuckDB, and name the CIDs every answer came from.
 
-Confirm the target revision first. Registration (Persist #458) is on `main`;
-the sync (Persist #461) and the query routes and tools (Persist #463) are open
-pull requests on 2026-11-11. Without the sync, registrations are stored but
-nothing is copied; without the query part, nothing reads the copy. Send a missing piece to `conkeldurr`.
+Confirm the target revision first: the install must run a Persist release
+with registration (#458), the sync (#461), the query routes and tools (#463)
+and the query bounds (#469). All four were released on 2026-11-12, and the
+feature has been live in soofi-safavi since then. An install on an older
+bundle needs a Persist upgrade first; send a missing piece to `conkeldurr`.
 Builder detail: [the builder reference](../../build-persist-service/reference/registered-ipfs-indexes.md).
 
 ## 1. Prepare the index bucket
@@ -34,6 +35,25 @@ Builder detail: [the builder reference](../../build-persist-service/reference/re
   to write the copy), and the query function's role decrypt the copy. SSE-S3 needs nothing extra.
 - Persist can read any object in the bucket and can list and write only under
   `persist-registered-ipfs-indexes/`. It never deletes.
+- Prefer a dedicated bucket over an install-owned configuration bucket: the
+  sync role reads every object in the index bucket. soofi-safavi uses
+  `persist-ipfs-indexes-<account>-<region>`, created outside any stack with
+  SSE-S3, versioning on and all four public-access blocks on, tagged
+  `owner=persist-registered-ipfs-indexes`.
+- Upload the publisher's `index.json` byte for byte, after checking its CID.
+  For Atlas, take the file from the newest `Publish index.json <cid>` commit
+  on `elephant-xyz/atlas` `main` (`git show <commit>:index.json`); an index
+  under 256 KiB is one raw block, so its CIDv1 is `raw` + sha2-256 of the
+  bytes. Stop if it differs from the CID in the commit message.
+
+```bash
+aws s3api put-object --bucket <bucket> --key elephant-atlas/index.json \
+  --body index.json --content-type application/json --metadata ipfs-cid=<cid>
+aws s3api get-object --bucket <bucket> --key elephant-atlas/index.json check.json && cmp index.json check.json
+```
+
+- Creating the bucket and uploading are AWS changes in the install's account:
+  ask first, and use the person's own AWS access.
 
 ## 2. Turn the feature on
 
@@ -51,8 +71,29 @@ Deploy run or Puller subscription `configuration` (work with Skarmory):
 - A SOC direct deploy (`bin/app.ts`) has no such setting and is always off;
   hand that to Conkeldurr. Marketplace review installs pass no parameters, so
   they are off too.
-- Turning it on adds the sync function, its schedule, role and log group, and
-  gives the REST handler the bucket. Nothing else changes.
+- Turning it on adds the sync function, its schedule, role and log group, the
+  query function (reserved concurrency 4), its role and log group, and the
+  invoke grants for the REST and MCP functions. Nothing else changes.
+
+On a Puller subscription:
+
+- `PATCH` replaces the whole `configuration` map. Read the subscription
+  first and send every existing key with the new one, with `expected_version`
+  set to the version you read.
+- Add the key only once the newest VALID Persist bundle declares it: Deploy
+  fails the install for a configuration key the template does not declare.
+- A subscription on `update_policy: PAUSED` installs nothing. Setting it to
+  `AUTO` in the same `PATCH` installs the newest VALID bundle, which carries
+  every release published since the pause, not only this feature. Ask who
+  paused it and why before resuming, and say so to the person.
+- Start the install at once with
+  `POST /deploy/puller/reconciles {"product_id","component_id":"persist"}`,
+  then follow `GET /deploy/puller/installs/<product>/persist?limit=1` until
+  the attempt is `SUCCEEDED` (about 10 minutes in soofi-safavi).
+- Check the result read-only: the `PersistStack` parameter
+  `PersistRegisteredIpfsIndexBucketName` equals the bucket, the stack lists
+  the `RegisteredIpfsIndexSync*` and `RegisteredIpfsIndexQuery*` resources,
+  and `GET /persist/registered-ipfs-indexes` answers `200 {"indexes": []}`.
 
 ## 3. Register the index
 
@@ -76,6 +117,10 @@ curl -sS -X PUT -H "x-api-key: $PRISM_API_KEY" -H 'content-type: application/jso
 
 Leave out `If-Match` when `GET` answers `source: default` with no version.
 
+The `PUT` answer carries the new `version` and `changed`, not the
+configuration. `GET` again and confirm the live configuration equals what you
+sent: `indexes` added, `saved_queries` count and every other field unchanged.
+
 | Rule | Refusal |
 | --- | --- |
 | `name`: a lowercase letter, then up to 47 lowercase letters, digits or `_`; unique | `400` for a repeat |
@@ -98,6 +143,15 @@ The `PUT` does not check that the index file exists; the sync does. Never send
   minute before its 15-minute limit; verified parts stay and the next run
   fetches only what is missing. The first copy of a large index can take
   several runs.
+- Public gateways rate-limit. In soofi-safavi the first copy of Atlas (382
+  parts) verified 381 parts in one 8.5-minute run; the last answered HTTP 429
+  on all four gateways and arrived with the next scheduled run, which reported
+  `Activated`. One or two `Incomplete` runs are normal.
+- To avoid waiting 15 minutes for the first run, the person (or you, with
+  their approval and AWS access) can invoke the sync function once:
+  `aws lambda invoke --function-name <RegisteredIpfsIndexSyncFunction> --cli-read-timeout 960 out.json`.
+  Its answer is the same `outcomes` the log shows. Reserved concurrency is 1,
+  so it is throttled while a scheduled run is in progress.
 - A new version becomes active only when every part is in. Until then the
   previous version stays active.
 
@@ -175,22 +229,77 @@ from the describe answers.
 | `404` | No registration has that name. | Check `GET /persist/registered-ipfs-indexes`. |
 | `409` | Registered, but no version has been copied and checked yet. | Wait for the sync; check its `outcome` (step 5). |
 | `400` | The request is malformed, the SQL was refused, a scope or table is unknown, or the tables read exceed 6 GiB. | Fix the SQL, or name fewer scopes. |
-| `422` | DuckDB failed on the query or it ran longer than 20 s. | Filter or aggregate more. |
+| `400` (`QueryRefusedError`, "The rows would take more than … bytes of JSON") | The rows passed the 4 MiB answer limit. | Select fewer columns or rows, or aggregate. |
+| `400` ("… that name is reserved") | A selected column is named `registered_ipfs_index_query`. | Rename the column. |
+| `422` | DuckDB failed on the query or it ran longer than 20 s. | Filter or aggregate more. The message quotes the wrapped SQL; the part after `FROM (` is the caller's. |
 | `501` | The feature is off on this install. | Step 2. |
+| `503` "Every registered IPFS index query slot is in use" | 4 queries are already running. | Retry shortly. |
 | `502` / `503` | The copy could not be read, or the query function failed, timed out or was unreachable. | Repeat once; send a persistent one to Conkeldurr with the request id. |
 
-## 7. Turn it off
+### Querying Elephant's Atlas
+
+- Scopes are `STATE/county/data_group`. Property data is in
+  `<ST>/<county>/county`; **permits are the `property_improvement` table in
+  the separate `<ST>/<county>/property_improvement` scope** (Travis County: 1.99
+  million permits on 237,540 properties); some counties also have
+  `property_management`.
+- Entities carry `cid` and `property_cid`; relationship tables
+  (`property_has_address`, `property_has_sales_history`, …) join through
+  `from_cid` and `to_cid`. Take column names from `describe_index` with
+  `table`; do not guess.
+- Dates are `VARCHAR` (`2011-04-07`): use `left(date, 4)` or
+  `try_cast(date AS DATE)`, not `year(date)`.
+- Some sources do not publish every field. Texas does not disclose sale
+  prices, so Travis `purchase_price_amount` is empty; say so rather than
+  reporting a null median as a finding.
+- `source_http_request` on each record is the exact request to the county's
+  source (for Travis permits, Austin's open-data portal); cite it with the
+  part CIDs when a person asks where a figure came from.
+- Expect 1 to 2 s per query once parts are local (see the builder reference's
+  live evidence).
+
+## 7. Keep the copy current
+
+Persist reads the install's copy of `index.json`, not IPFS, so the copy goes
+stale when the publisher publishes again. For Elephant's Atlas, the publish
+workflow of `elephant-xyz/atlas` has an `index-s3` job (atlas #123) that, after
+each publish, checks the new `index.json` against its CID and uploads it to
+S3. It runs only when the repository variable `ATLAS_INDEX_S3_URI` is set.
+
+1. In the install's account, create a role GitHub Actions can assume through
+   the account's `token.actions.githubusercontent.com` OIDC provider:
+   - trust: `aud` = `sts.amazonaws.com` and `sub` =
+     `repo:elephant-xyz/atlas:ref:refs/heads/main` (the job runs on pushes to
+     `main` and manual runs from it; it uses no GitHub environment);
+   - permissions: only `s3:PutObject` on the one object, for example
+     `arn:aws:s3:::<bucket>/elephant-atlas/index.json`.
+
+   soofi-safavi's is `atlas-index-s3-upload`. Creating an IAM role is an
+   identity change: ask first, and expect the person to run it.
+2. On `elephant-xyz/atlas` (repository admin needed), set the variables
+   `ATLAS_INDEX_S3_URI` (`s3://<bucket>/elephant-atlas/index.json`),
+   `ATLAS_INDEX_S3_ROLE_ARN` and `ATLAS_INDEX_S3_REGION`. Set the region: the
+   job defaults to `us-east-1`.
+3. After the next Atlas publish, check that the `index-s3` job succeeded and
+   that the sync's next run logs `Activated` with the new `indexCid`.
+
+One Atlas repository serves one install this way; a second install needs its
+own copy step.
+
+## 8. Turn it off
 
 Empty the parameter through the same Deploy `configuration`
 (`{ "PersistRegisteredIpfsIndexBucketName": "" }`). The sync function and its
 schedule and the query function are removed; the query routes answer `501`
 and the MCP tools disappear. Stored registrations stay: `GET` still returns them, and
 the next `PUT` must omit `indexes` or it gets `501`. The copy in the bucket is
-not deleted; removing it is the bucket owner's decision.
+not deleted; removing it is the bucket owner's decision. On a Puller
+subscription the `PATCH` still sends every other key. Unset the Atlas
+variables too (or the publish keeps uploading to a bucket nobody reads).
 
 ## Return
 
-Return the bucket and parameter value, the registrations and configuration
+Return the bucket and parameter value, the Atlas copy step (role and variables), the registrations and configuration
 version before and after, each registration's latest `outcome`, `active.json`
 contents and the part count, one query answer with its `source`, and any
 builder handoff.

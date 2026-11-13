@@ -137,7 +137,16 @@ layers (`checkReadOnlySql` on DuckDB's parse, a fresh DuckDB locked with
 `lock_configuration = true`, and a role that only reads the copy prefix), the
 `atlas_scope` column, the limits (1,000 rows, 20 s, 6 GiB read, 8 GiB cache)
 and the `source` CID block. Give callers the function name only under the
-condition, so off installs answer `501` and hide the tools. After any `lambda/` change, run
+condition, so off installs answer `501` and hide the tools. Keep the bounds
+from #469: reserved concurrency 4 with a `503` "slot in use" answer when
+throttled; rows sized and returned in **one** DuckDB run (`boundedSql`:
+numbered, sized with `to_json`, running total, rows past 4 MiB or `maxRows`
+emptied before they reach Node), never a size pass and a separate fetch,
+which a query with `random()` defeats; the row alias
+`registered_ipfs_index_query` refused as a column name; values read by column
+name, never `Object.values`; every streamed result closed; and the 6 GiB cap
+on `describe_index`'s download. Do not assert synthesized CloudFormation in
+tests, and size DuckDB tests for CI's 5 s default. After any `lambda/` change, run
 `just marketplace-pin-images <run id>` and commit the pins, since CI cannot.
 
 ## Shared API domain
