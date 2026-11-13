@@ -92,6 +92,19 @@ Lexicon: `listClassesByDataGroup`, `listPropertiesByClassName`, `getPropertySche
 Removed in 2.0 — do not call: HOA, permit, places, dataset-plan, area/geo, catalog,
 and legacy open-data tools.
 
+## The same data through Persist
+
+A Persist install can also follow Atlas as a registered IPFS index (soofi-safavi
+does, as `elephant_atlas`): its `persist` MCP server then offers `list_indexes`,
+`describe_index` and `query_index` over a CID-checked copy of the same Parquet
+data. This skill stays on `elephant`. Mention the Persist route, and hand the
+question to `uxie`, only when the person needs what the Elephant MCP does not
+give: one SQL query across many counties at once (`atlas_scope` names each
+row's `STATE/county/data_group`), or an answer already inside the Persist
+install they use. There, scopes are named `TX/travis/county`, permits are the
+`property_improvement` table in the `<ST>/<county>/property_improvement` scope,
+and every answer's `source` lists the index, archive and Parquet part CIDs.
+
 ## Evidence and limits
 
 - Report the exact state/county/data-group scope and the tables used.

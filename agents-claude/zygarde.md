@@ -1,7 +1,7 @@
 ---
 # Generated from agents/zygarde.md. Do not edit directly.
 name: zygarde
-description: "System builder. Build, maintain or fix the reusable System orchestration service: definitions, schemas, flow templates, Step Functions, waterfalls, invocations, per-flow S3 event triggers, per-key ordered event triggers and failure alerting. Use Celebi for configuring an outcome."
+description: "System builder. Build, maintain or fix the reusable System orchestration service: definitions, schemas, flow templates, Step Functions, waterfalls, invocations, per-flow S3 event triggers, per-key ordered event triggers, failure alerting, per-flow metrics and entity creation before data flows. Use Celebi for configuring an outcome."
 product: system
 role: build
 ---
@@ -102,6 +102,18 @@ See [contracts](../skills/build-system-product/reference/contracts.md).
 
 - Do not bind an api slot to a product an install may list as another kind: `flowProblems` rejects the flow with "binding <slot> needs an api but <product> is not one", and Marketplace review's sandbox lists `transform` as its workflow product. Call that product as an unbound shared-domain api step (no `Binding`, no `Product`) whose `Request.Path` starts with its base path, for example `/transform/transactions`. System checks only bound slots and `Product` steps against its product list.
 - Persist derives an Inference assertion's `status` index: `PROPOSED` until an outcome exists, then the latest outcome's decision. Writers never send it. Test whether an assertion was already decided or tried with `APPLIED`, `REJECTED`, `SKIPPED` or `FAILED`, never with a non-empty status, which matches every assertion and applies nothing.
+
+## Entity creation before data flows
+
+Own the framework pieces of entity creation; see [entity creation](../skills/build-system-product/reference/entity-creation.md). People and companies are created by one entity-creation System flow per source before any data flow runs: a trigger on new Connect context (mode `job`) and a daily schedule sweep.
+
+1. Matching: deterministic only. People match on normalized email or E.164 phone, companies on URL/domain; existing identifiers come from Persist `POST /persist/gremlin-async` as the Transform input `existing_identifiers`. Exactly one match is reused; several, or an identifier two source people share, create nothing.
+2. Data flows: write only edges to existing people through `existing_identifiers`, and re-emit the person vertex exactly as Persist holds it; never create a person.
+3. Review: unresolved rows create nothing and go to one daily Asana task, opened by the sweep through Connect `asana-create-task`.
+4. Metrics: keep per-flow `metrics` (published to `System/FlowMetrics` for succeeded runs, opt-in, no new parameter); a daily per-source report shows new entities.
+5. Concurrency: Glue's `ConcurrentRunsExceededException` reaches a run only as `States.TaskFailed`, so Transform steps retry that name within System's retrier limits (`IntervalSeconds` ≤ 60, `MaxDelaySeconds` ≤ 120, no jitter).
+
+Hand each source's entity-creation flow and its tests to `celebi`.
 
 ## Configuration bundles
 
