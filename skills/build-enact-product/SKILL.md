@@ -88,15 +88,15 @@ A run, end to end:
 
 ```text
 <agent>/
-├── agent.ts          # model, turn and cost limits, channels, repositories
+├── agent.json        # the manifest: model, turn and cost limits, channels, repositories
 ├── instructions.md   # the prompt
 ├── tools/            # one file per tool
 ├── skills/
 └── subagents/
 ```
 
-- `agent.ts` exports the agent's settings. Packaging turns it into a JSON manifest; the API
-  validates and stores that manifest and never evaluates the TypeScript.
+- `agent.json` is the manifest, as plain JSON. Packaging reads files and runs no code; the API
+  validates and stores the manifest. Enact's `docs/agent-contract.md` defines its fields.
 - Load `instructions.md`, `skills/` and `subagents/` through the SDK's own file loading.
   Register each file in `tools/` as a custom tool through the SDK's in-process tool server.
 - The manifest bounds a run: model, maximum turns, a cost ceiling, the repositories it may
