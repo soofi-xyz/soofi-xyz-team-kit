@@ -56,7 +56,26 @@ When upstream templates or assignments depend on campaign-scoped parameters, kee
 
 - preserve `campaign_id` and `campaign_identifier` in the execution artifact
 - if rendering happens inside the send workflow, include the campaign identifier on every Jigglypuff render batch so template lookups can resolve campaign parameters consistently
-- consume the runtime-approved `last_day_to_prevent_placement` and assignment outputs as data; do not re-derive, mutate, or backfill campaign parameters at provider dispatch time
+- consume the runtime-approved `campaign.parameters` data and assignment
+  outputs as data; do not re-derive, mutate, or backfill campaign parameters at
+  provider dispatch time
+- treat `last_day_to_prevent_placement` as:
+  ```json
+  "parameters": {
+    "last_day_to_prevent_placement": {
+      "type": "DATE",
+      "value": "YYYY-MM-DD"
+    }
+  }
+  ```
+  inside the `campaign` object; reject flat
+  `campaign.last_day_to_prevent_placement` and top-level forms
+- accept only the parameter keys upstream derived from the selected template's
+  `has('parameter_key', ...)` query plus its variables listing
+- use the same `campaign.parameters` container for SMS and email launches and
+  keep email dry runs at `submit_to_arda: false`
+- validate the container before Campaign Assignment and pass the whole
+  `campaign` object through unchanged
 
 ## Provider Feedback Persistence
 

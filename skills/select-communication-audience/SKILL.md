@@ -46,9 +46,28 @@ Those belong to `wigglytuff`, `chatot`, or `oranguru`.
 
 When a campaign launch accepts `last_day_to_prevent_placement`, keep it optional at the launch boundary but pass enough context for downstream template-aware validation.
 
-- preserve the campaign identifier and any provided `last_day_to_prevent_placement` value in the audience handoff context
-- SMS must validate the field in `ResolveWorkflowContext` before invoking `Filter` when the selected template requires it
-- email must validate the same field right after template pin and before `Filter`
+- preserve the launch-by-S3 plus inline `campaign` handoff shape; do not
+  collapse the launch contract to a campaign-only by-ID launch
+- preserve the campaign identifier and any provided parameter values in the
+  audience handoff context
+- place provided values inside `campaign.parameters` as:
+  ```json
+  "parameters": {
+    "last_day_to_prevent_placement": {
+      "type": "DATE",
+      "value": "YYYY-MM-DD"
+    }
+  }
+  ```
+- reject flat `campaign.last_day_to_prevent_placement` and top-level
+  `last_day_to_prevent_placement` forms
+- derive required parameter keys from the selected template query
+  `has('parameter_key', ...)` plus the template's variables listing
+- use the same `campaign.parameters` container for SMS and email launches
+- workflows validate the container and pass the whole `campaign` object to
+  Campaign Assignment
+- the only business rule for this key is that the DATE value is strictly after
+  the `America/New_York` run day
 - if a reused campaign needs the value because the template declares it, require the parameter to already exist in Persist rather than treating omission as an empty default
 
 ## Checklist
@@ -59,7 +78,8 @@ Before considering the audience capability ready, confirm:
 - hard-filter ownership is explicit
 - the runtime intake contract is documented
 - required identifiers and evidence fields are present
-- campaign-scoped launch parameters required by templates are carried or resolved explicitly
+- campaign-scoped launch parameters required by templates are carried in
+  `campaign.parameters` or resolved explicitly
 - the runtime does not need to re-derive the eligible population from raw source systems
 - the handoff shape is replayable and auditable
 

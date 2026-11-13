@@ -38,6 +38,29 @@ The runtime should assume hard suppressions were already applied upstream by `xa
 
 When a launch or `Campaign Assignment v1` uses `last_day_to_prevent_placement`, keep the field optional in the external launch contract but persist it as a campaign-scoped fact before rendering or send execution depends on it.
 
+Launch contract rules:
+
+- required parameter keys come from the selected template query
+  `has('parameter_key', ...)` plus the template's variables listing
+- place the value inside the `campaign` object as:
+  ```json
+  "parameters": {
+    "last_day_to_prevent_placement": {
+      "type": "DATE",
+      "value": "YYYY-MM-DD"
+    }
+  }
+  ```
+- reject flat `campaign.last_day_to_prevent_placement` and top-level
+  `last_day_to_prevent_placement` forms
+- use the same `campaign.parameters` container for SMS and email launches
+- validate the container and pass the whole `campaign` object to
+  `Campaign Assignment v1`
+- keep the launch-by-S3 plus inline `campaign` contract; do not replace it
+  with a campaign-only by-ID launch
+- the only business rule for this parameter is that the DATE value is strictly
+  after the `America/New_York` run day
+
 Persist shape:
 
 - vertex label: `campaign_parameter`
