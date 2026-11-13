@@ -253,8 +253,8 @@ for where they are installed. Paths below are relative to
 
 ## Enact agent payloads
 
-Product `enact`, kind `agent`: Deploy's adapter is on prismteam-ai/deploy branch
-`enact-agent-adapter` and Build's kind on prismteam-ai/build branch `enact-agent-kind`. See
+Product `enact`, kind `agent`: Deploy's adapter is in prismteam-ai/deploy#85 (branch
+`enact-agent-adapter`) and Build's kind on prismteam-ai/build branch `enact-agent-kind`. See
 [the Enact status table](../../guide-product-work/reference/iterations/enact.md#status) for where
 they are merged and installed. The contract is `docs/agent-contract.md` in prismteam-ai/enact.
 Paths below are relative to `https://<shared domain>/enact`, with the shared `x-api-key`.
