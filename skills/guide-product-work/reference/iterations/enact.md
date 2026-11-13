@@ -66,7 +66,7 @@ before relying on it.
 | Every capability above | **Planned.** Nothing is built, published or installed. |
 | Access sign-in from MCP clients | Not verified against a deployed Access. Until it exists, people cannot sign in from a coding agent; use the environment key for tests. |
 | Trace record types | The agent-memory types exist in the Persist graph the session hooks write to. Token and cost fields, and a client value for Enact, are open Model decisions. |
-| Build kind and Deploy adapter for agents | In progress (2026-11-13): product `enact`, kind `agent`, see [Enact agent payloads](../../../build-product-deployer/reference/configuration-bundles.md#enact-agent-payloads). Deploy adapter in prismteam-ai/deploy#85 and Build kind on prismteam-ai/build branch `enact-agent-kind`, neither merged, released or installed; no bundle install has been exercised. |
+| Build kind and Deploy adapter for agents | In progress (2026-11-13): product `enact`, kind `agent`, see [Enact agent payloads](../../../build-product-deployer/reference/configuration-bundles.md#enact-agent-payloads). Deploy adapter in prismteam-ai/deploy#85 and Build kind in prismteam-ai/build#57, neither merged, released or installed; no bundle install has been exercised. |
 | Existing agents (Eevee, Kirlia) | Not migrated. They keep running where they run today. |
 
 Exercise each piece through the HTTP API, including submission (`202`), status and results

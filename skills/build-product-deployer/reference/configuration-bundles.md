@@ -254,7 +254,7 @@ for where they are installed. Paths below are relative to
 ## Enact agent payloads
 
 Product `enact`, kind `agent`: Deploy's adapter is in prismteam-ai/deploy#85 (branch
-`enact-agent-adapter`) and Build's kind on prismteam-ai/build branch `enact-agent-kind`. See
+`enact-agent-adapter`) and Build's kind in prismteam-ai/build#57 (branch `enact-agent-kind`). See
 [the Enact status table](../../guide-product-work/reference/iterations/enact.md#status) for where
 they are merged and installed. The contract is `docs/agent-contract.md` in prismteam-ai/enact.
 Paths below are relative to `https://<shared domain>/enact`, with the shared `x-api-key`.
@@ -264,8 +264,8 @@ Paths below are relative to `https://<shared domain>/enact`, with the shared `x-
   `manifest.name` is the logical identity and `manifest.version` (semver) the immutable version.
   Build validates the document against Enact's `schemas/agent-definition.schema.json` and the
   contract's other rules without calling Enact, rejects a repeated name and any
-  `{{parameter:…}}` or `{{secret:…}}` placeholder (a version has one digest in every
-  environment), and records `name`, `version` and `digest`: `sha256:` and the SHA-256 of the
+  `{{parameter:…}}` or `{{secret:…}}` placeholder, including one written with JSON escapes
+  (a version has one digest in every environment), and records `name`, `version` and `digest`: `sha256:` and the SHA-256 of the
   document's canonical JSON, keys sorted at every level. Whether the agent's repositories are
   allowed in an environment is Enact's check on save.
 - **Preflight:** Deploy fails the install before any write unless the document's
