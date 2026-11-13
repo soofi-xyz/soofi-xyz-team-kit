@@ -2,8 +2,11 @@
 name: operate-sms-campaigns
 description: Prepares, certifies, and starts SOCAPITAL SMS campaigns through the mandatory standard or payfail Filter contract, live Interprose SMS cleanup (including SLDBCK, worklist 1151, and SMS opt-out/STOP history), PRIMARY ZIP validation, operator opt-out suppression lists with Quiq opt-outs after the list cut-off, same-day provider dedupe, final-build DNT recount, template checks, reservation, and SMS orchestration. Use for bulk SMS, trigger SMS, credit-reporting sets, portfolio SMS, payfail SMS, suppression-list scrubs, workflow payloads, or SMS send readiness.
 ---
+
 # Operate SMS campaigns
+
 Prepare every SMS campaign as:
+
 ```text
 source membership
   -> mandatory SMS Filter contract
@@ -17,22 +20,31 @@ source membership
   -> encrypted final audience + reservation + payload
   -> SMS workflow only with explicit approval
 ```
+
 Use the AWS profile selected by the operator. Set it explicitly on every
 command, use `us-east-2`, and stop unless STS returns account
 `014948052063`. Never hardcode a developer profile name.
+
 ## Choose exactly one Filter contract
+
 Classify the campaign before starting Filter:
+
 - **Payfail SMS:** its audience is selected because a payment or payment-plan
   installment failed/returned. Use the payfail contract.
 - **Every other SMS campaign:** use the standard contract.
+
 Do not call a non-payfail campaign `payfail-*` merely to obtain dispatch
 priority. If classification is ambiguous, ask before running Filter.
+
 Never combine the standard and payfail contracts. Never remove a rule because
 the source audience appears to satisfy it already.
+
 ## Hand off local workbooks and files
+
 A path such as `/Users/<name>/Downloads/...` works only for an agent on that
 machine. Do not use a developer-specific local path as a shared campaign
 contract.
+
 For another operator, remote agent, or later run:
 
 1. Upload the untouched source workbook/file to an isolated campaign S3
@@ -50,10 +62,7 @@ Never assume a team member can access the original local path.
 ## Standard SMS contract
 
 Every non-payfail SMS campaign MUST pass the exact ordered contract proven by
-the following execution, minus the three rules Lexicon removed in
-[PR #914](https://github.com/Spring-Oaks-Capital-LLC/lexicon/pull/914), plus
-the two Quiq failure-code phone rules Lexicon added in
-[PR #921](https://github.com/Spring-Oaks-Capital-LLC/lexicon/pull/921):
+the following execution, minus the rules removed in [PR #914](https://github.com/Spring-Oaks-Capital-LLC/lexicon/pull/914), plus the Quiq rules from [PR #921](https://github.com/Spring-Oaks-Capital-LLC/lexicon/pull/921):
 
 `arn:aws:states:us-east-2:014948052063:execution:FilterStateMachine2E447DC0-TPcQCbFc1gAN:credit-reporting-set-08-sms-deployed-bal25-rerun-20260923T081620Z`
 
@@ -123,12 +132,7 @@ The standard contract intentionally:
   [PR #914](https://github.com/Spring-Oaks-Capital-LLC/lexicon/pull/914) with
   business sign-off, so their rule prefixes no longer exist and Filter fails a
   run that names any of them.
-- includes `phone_has_no_quiq_invalid_destination` and
-  `phone_has_no_quiq_delivery_error`, which drop a phone by its Quiq failure
-  code (24002 until the number is newly confirmed; 24008 for 30 days, then
-  permanently after a second 24008). Filter fails a run that names them before
-  [PR #921](https://github.com/Spring-Oaks-Capital-LLC/lexicon/pull/921) is
-  deployed.
+- includes the two Quiq failure-code phone rules from [PR #921](https://github.com/Spring-Oaks-Capital-LLC/lexicon/pull/921).
 
 Resolve each rule ID to its current canonical deployed URI, then compare the
 ordered IDs against this list. Fail closed on any missing, additional,
@@ -137,10 +141,7 @@ duplicate, reordered, stale, or inactive rule.
 ## Payfail SMS contract
 
 Use the exact 51-rule contract proven by the following corrected execution,
-minus the three rules Lexicon removed in
-[PR #914](https://github.com/Spring-Oaks-Capital-LLC/lexicon/pull/914), plus
-the two Quiq failure-code phone rules Lexicon added in
-[PR #921](https://github.com/Spring-Oaks-Capital-LLC/lexicon/pull/921):
+minus the rules removed in [PR #914](https://github.com/Spring-Oaks-Capital-LLC/lexicon/pull/914), plus the Quiq rules from [PR #921](https://github.com/Spring-Oaks-Capital-LLC/lexicon/pull/921):
 
 `arn:aws:states:us-east-2:014948052063:execution:FilterStateMachine2E447DC0-TPcQCbFc1gAN:payfail-sms-recovery-20260923-20260923T161906Z`
 
