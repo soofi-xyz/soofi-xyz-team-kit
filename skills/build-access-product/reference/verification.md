@@ -291,7 +291,7 @@ piece for a product when:
 
 | ID | Level | Do | Pass when |
 | --- | --- | --- | --- |
-| PI-1 | F | Install the shared verifier and decision helper from their published versions in a clean project | Both install and pass `TC-3` and `PM-8` there |
+| PI-1 | D | In a clean project, run [the product integration reference](product-integration.md)'s code and its checks with a temporary declaration and service identity | Every check passes; the declaration and identity are removed afterwards |
 | PI-2 | D\* | Run that product's checks: Persist `UA-*`, Connect `UC-*`, Console `CS-*` | All pass |
 | PI-3 | D\* | Use one token, obtained through one application, against Persist, Connect and Console | Accepted by all three as the same user, with no second sign-in |
 | PI-4 | D\* | Call the product with only the environment key | Works as before; recorded as the environment, not a person |

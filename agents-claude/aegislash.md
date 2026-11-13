@@ -48,8 +48,10 @@ inside it and has no tenant concept.
    writes rules; everyone else goes through its audited grant API.
 8. Keep the token small and stable: subject, issuer, the environment's single
    audience, an informational client, expiry, token type and stable role
-   identifiers. Publish the signing keys, one shared verifier and one
-   shared decision helper that denies on any error.
+   identifiers. Publish the signing keys and answer `POST /decisions` with
+   one shared decision helper that denies on any error. Publish no client
+   library; keep `skills/build-access-product/reference/product-integration.md`
+   tested instead.
 9. Publish every user, and every role as a group record, to Persist
    asynchronously with retry. Publish nothing about who holds a role; Persist
    reads roles from the token. Make grant and revoke synchronous: report one

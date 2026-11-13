@@ -125,12 +125,15 @@ document the exact names in the target repository's API description:
 | Token type | Distinguishes access tokens from identity tokens |
 | Roles | Stable identifiers of the roles assigned to the subject at issue time. A role's name is a label that may change; its identifier never changes and is never reused |
 
-Publish the signing keys. Ship one shared verifier that checks signature, issuer,
-the environment's audience, expiry and token type and returns the caller
-(`subject`, `roles`, `kind: user | service`). Every product, Console included,
-verifies the same way: it never switches the audience check off and never
-expects an application-specific audience. A token from another environment is
-rejected by issuer and audience. Verifying a token makes no request to Access.
+Publish the signing keys. Every product, Console included, verifies a token the
+same way, with a standard JWT library following
+[the product integration reference](reference/product-integration.md): it checks
+signature, issuer, the environment's audience, expiry and token type and returns
+the caller (`subject`, `roles`, `kind: user | service`). It never switches the
+audience check off and never expects an application-specific audience. A token
+from another environment is rejected by issuer and audience. Verifying a token
+makes no request to Access. Access publishes no client library: keep that
+reference's examples tested against the deployed API instead.
 
 State the revocation trade-off plainly: a disabled user or changed role takes
 effect when the current access token expires. Keep access tokens to at most 15
@@ -159,9 +162,10 @@ environment, owned by Access.
 - Only Access writes rules. Products and people create, list and revoke grants
   through the Access API, which audits every change. Nobody writes policy text
   by hand.
-- Ship one shared decision helper. A product passes the verified caller, the
+- Answer decisions with one shared decision helper behind `POST /decisions`. A
+  product, with its own service identity's token, passes the caller's token, the
   action, and the resource with its owner; the helper asks the store and returns
-  allow or deny. Deny on any error.
+  allow or deny. Deny on any error, and the product denies when the call fails.
 - The store keeps rules, not data. The product supplies the resource's owner and
   attributes with each question.
 - A product may declare a resource type **private to its owner**. For that
