@@ -59,13 +59,16 @@ This table is the kit's only record of what exists; the agents and skills link h
 Update it when a piece lands, and check it against the target revision and environment
 before relying on it.
 
-| Piece | State (2026-11-11) |
+| Piece | State (2026-11-13) |
 | --- | --- |
 | Design | Agreed with the product owner on 2026-11-11; the decisions are in [the build skill](../../../build-enact-product/SKILL.md#decisions). |
-| Repository | None recorded. Ask where to create it before the first piece; other products live at `prismteam-ai/<product>`. |
-| Every capability above | **Planned.** Nothing is built, published or installed. |
+| Repository | [prismteam-ai/enact](https://github.com/prismteam-ai/enact). Its README's Pieces table records each piece's state in more detail. |
+| Built capabilities | `agents`, `runs`, `sessions`, `trace`, `usage`, `mcp`, `repositories` and `asana-channel` are merged to `main` (`78d9264`, 2026-11-13). Each pull request installs into dev (us-east-2) through the dev Build and Deploy, and their e2e checks pass there, including a real pull request through the dev GitHub App. Manual checks pending. |
+| Planned capabilities | `sign-in` and `claude-plan` are not built. `egress` is deferred by the product owner (2026-11-13); sandboxes reach the internet. |
+| Marketplace | Not published: `main`'s publish stops at `expected one Marketplace product named Enact, found 0` until `registeel` registers the product. No environment installs Enact by subscription yet. |
+| Channel and repository setup | On dev, the Asana bot token is set (its e2e check passes), and the GitHub App key is set with the App installed on `prismteam-ai/enact-e2e-fixture-a`. Every other environment needs the steps in [configure-enact-product](../../../configure-enact-product/SKILL.md#after-install). |
 | Access sign-in from MCP clients | Not verified against a deployed Access. Until it exists, people cannot sign in from a coding agent; use the environment key for tests. |
-| Trace record types | The agent-memory types exist in the Persist graph the session hooks write to. Token and cost fields, and a client value for Enact, are open Model decisions. |
+| Trace record types | The agent-memory types exist in the Persist graph the session hooks write to. The `ENACT` client value is in Model (prismteam-ai/model#80) and installed in dev's Persist lexicon. Token and cost fields are open Model decisions. |
 | Build kind and Deploy adapter for agents | Merged (2026-11-13): product `enact`, kind `agent`, see [Enact agent payloads](../../../build-product-deployer/reference/configuration-bundles.md#enact-agent-payloads). Deploy adapter prismteam-ai/deploy#85, published to Marketplace from `main` `7a19829`; Build kind prismteam-ai/build#57 (`main` `333d328`). Not verified as installed on dev; no bundle install has been exercised. |
 | Existing agents (Eevee, Kirlia) | Not migrated. They keep running where they run today. |
 

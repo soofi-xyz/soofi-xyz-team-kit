@@ -20,9 +20,10 @@ API document; they win over this skill.
 ## Status
 
 Read [the Enact status table](../guide-product-work/reference/iterations/enact.md#status)
-before each step. As of 2026-11-11 nothing is installed: say so, show the person what the
-agent directory will look like, and stop before any API call. Do not stand in for the
-service by running an agent some other way and calling it Enact.
+before each step, and confirm it against the environment with the read-only call under
+Prerequisites. Where Enact is not installed, say so, show the person what the agent
+directory will look like, and stop before any API call. Do not stand in for the service by
+running an agent some other way and calling it Enact.
 
 ## Prerequisites
 
@@ -47,16 +48,69 @@ service by running an agent some other way and calling it Enact.
    environment: hand the subscription to `skarmory` and stop.
 3. Use no AWS credentials. Every checkpoint is a product-API read-back.
 
+## After install
+
+An installed Enact runs agents through the API and MCP at once. The Asana channel and
+repository work each need a one-time setup per environment, described in Enact's
+`docs/asana-channel.md` (Setting it up) and `docs/repositories.md` (The App and its key);
+they win over this section. Check each one before relying on it, and before writing an
+agent that lists `asana` in `channels` or names `repositories`.
+
+Two of the steps write a secret into the stack `Enact`. You use no AWS credentials: give the
+person the commands to run in their own terminal, with `AWS_PROFILE=<selected-profile>` and
+the environment's account and region checked first, and never ask for the secret's value in
+chat. Read the secret's ARN from the named stack output, and have them write the value from
+a file so it never lands in shell history:
+
+```bash
+ARN=$(aws cloudformation describe-stacks --stack-name Enact \
+  --query "Stacks[0].Outputs[?OutputKey=='<output key>'].OutputValue" --output text)
+aws secretsmanager put-secret-value --secret-id "$ARN" --secret-string file://<value>.json
+rm <value>.json
+```
+
+### Repositories
+
+1. **The App.** Each environment has one Enact GitHub App with **Contents** and **Pull
+   requests** read and write. The person who administers the GitHub organization creates
+   it and installs it only on the repositories agents may use; a missing installation is
+   a request to them, not something to work around.
+2. **Its key.** The person writes `{"app_id": "<id>", "private_key": "<PEM>"}` into the
+   `GitHubAppKeySecretArn` output's secret. The worker reads it within five minutes; no
+   deploy is needed.
+3. **The allowed list.** Read it with `GET /enact/repositories` and set it with
+   `PUT /enact/repositories`. An agent can name only repositories on it, and every turn
+   checks it again.
+4. **Check.** Run an agent that names one allowed repository. A run that fails with
+   `REPOSITORY_ERROR` means the key or the installation is missing.
+
+### Asana
+
+1. **The bot.** Keep one Asana bot user per environment and add it to each workspace whose
+   people should reach agents. The person who administers Asana creates it.
+2. **Its token.** The person writes `{"token": "<personal access token>"}` into the
+   `AsanaBotTokenSecretArn` output's secret. The channel reads it within five minutes, and
+   the next reconcile, at most 15 minutes later, registers one webhook per workspace.
+   Until then the channel answers nothing.
+3. **Agents.** Only agents whose current version lists `asana` in `channels` are offered.
+   Asana runs use Bedrock, never a person's Claude plan.
+4. **Check.** Assign a test task to the bot. It comments with the agents it can offer;
+   answer with one agent's name, and confirm it comments the run id and then the result.
+   Read that run with `GET /enact/runs/{run_id}`.
+
 ## Write an agent
 
 ```text
 <agent>/
-├── agent.ts          # model, turn and cost limits, channels, repositories
+├── agent.json        # the manifest: model, turn and cost limits, channels, repositories
 ├── instructions.md   # the prompt
-├── tools/            # one file per tool
-├── skills/
-└── subagents/
+├── tools/            # one file per tool: tools/<name>.ts
+├── skills/           # skills/<name>/SKILL.md
+└── subagents/        # subagents/<name>.md
 ```
+
+Enact's `docs/agent-contract.md` defines every manifest field and allowed path, and
+`examples/agents/` holds a complete agent; they win over this outline.
 
 1. **Name and purpose.** One agent does one job a person can state in a sentence. Give it
    a lowercase name and a semantic version.
