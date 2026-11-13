@@ -414,16 +414,8 @@ template's `has('parameter_key', ...)` query plus its variables listing.
 
 When the selected template declares `last_day_to_prevent_placement`:
 
-- place the optional field inside `campaign.parameters` in the workflow payload
-  as:
-  ```json
-  "parameters": {
-    "last_day_to_prevent_placement": {
-      "type": "DATE",
-      "value": "YYYY-MM-DD"
-    }
-  }
-  ```
+- place the optional field inside `campaign.parameters` as
+  `"last_day_to_prevent_placement": {"type": "DATE", "value": "YYYY-MM-DD"}`
 - reject flat `campaign.last_day_to_prevent_placement` and any top-level
   `last_day_to_prevent_placement` form
 - use the same `campaign.parameters` container for SMS and email launches;
@@ -437,8 +429,7 @@ When the selected template declares `last_day_to_prevent_placement`:
   a different date fails closed
 
 If the template does not declare the variable, omit the key from
-`campaign.parameters` or omit `parameters` entirely when no template parameter
-is required.
+`campaign.parameters` or omit `parameters` entirely.
 
 Publish:
 
@@ -449,7 +440,7 @@ Publish:
 - final certification;
 - SMS orchestration payload.
 
-Keep the launch-by-S3 plus inline `campaign` contract. The campaign-only by-ID
+Keep the launch-by-S3 plus inline `campaign` contract; the campaign-only by-ID
 rework is dropped.
 
 Use:

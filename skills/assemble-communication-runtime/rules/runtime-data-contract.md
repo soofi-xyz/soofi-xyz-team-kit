@@ -67,7 +67,7 @@ Persist shape:
 - edge label: `campaign_has_parameter`
 - `parameter_key = last_day_to_prevent_placement`
 - store the date in `date_value`
-- do not set `value_type` on the vertex; Persist reserves that property name
+- store `parameter_value_type = DATE`; never use `value_type`
 
 Write semantics:
 
