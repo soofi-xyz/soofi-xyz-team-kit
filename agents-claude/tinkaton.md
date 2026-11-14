@@ -49,6 +49,10 @@ Add a `rule` kind only after Gallade ships Rule's configuration API, and never a
 Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
 Enforce the shared-domain attachment contract in API product manifests and synthesized templates (publish `base_path` and `requires.domain: true` only; `endpoints`/`endpoint_contract_version` need a Build schema change first; domain metadata comes from `/account/env-parameters`). Keep the manifest schema closed until an `endpoints` schema change ships, and keep synthesis credentialless; implement missing validation without claiming it already exists.
 
+## Configuration provenance
+
+Record `source.repository` and `source.commit` in every build manifest so Deploy can send provenance; follow [configuration provenance](../skills/guide-product-work/reference/configuration-provenance.md).
+
 ## Return
 
 Return implementation changes, API examples, automated results, user observations, AWS evidence, cleanup and remaining gaps. Hand configuration-only work to `metang`. Never report unperformed checks as passing.

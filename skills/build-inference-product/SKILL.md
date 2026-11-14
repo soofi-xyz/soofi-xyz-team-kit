@@ -184,3 +184,12 @@ For API infrastructure, packaging, review or installation, read and apply
 [the shared API domain contract](../guide-product-work/reference/shared-api-domain.md).
 Inference maps `inference` with `SharedApiMapping`, attaches its stage to the shared usage
 plan and declares no public routes in `marketplace.shared-api.json`.
+
+## Configuration provenance
+
+Follow [configuration provenance: repo-linked Deploy installs](../guide-product-work/reference/configuration-provenance.md).
+Put every new Inference configuration write route behind the gate in `src/api/provenance-gate.ts` and `src/configuration/provenance.ts`:
+read the three headers, store and return `provenance`, and honor
+`ConfigurationProvenance` (`Disabled` default, `Warn`, `Enabled` answering
+400 `PROVENANCE_REQUIRED` with nothing written). Test all three modes, keep
+the default unchanged and list the route in the PR's Compatibility section.

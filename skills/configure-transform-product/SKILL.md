@@ -97,3 +97,11 @@ measured cost where available, human observations and outstanding defects.
 
 Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
 Author pinned mapping payloads under existing validation gates; installer success does not establish mapping readiness.
+
+## Configuration provenance
+
+Follow [configuration provenance: repo-linked Deploy installs](../guide-product-work/reference/configuration-provenance.md).
+Do not write configuration directly to the Transform API in an environment; ship it
+through its configuration repository, Build, Marketplace and Deploy. Expect
+400 `PROVENANCE_REQUIRED` where the install sets `ConfigurationProvenance` to
+`Enabled`. To test in dev, install through Deploy or set the dev stack to `Warn`.

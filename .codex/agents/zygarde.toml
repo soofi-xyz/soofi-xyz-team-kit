@@ -126,6 +126,10 @@ in Deploy; do not require a System business flow to install System's own configu
 Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
 Require this product’s API CDK stacks to consume the shared domain through deploy-time parameters and own their base-path mappings. Reuse the attachment helper and preserve existing stack/path identity; do not create a second shared domain.
 
+## Configuration provenance
+
+Put every new configuration write route behind the repo-linked write gate (`ConfigurationProvenance`, `PROVENANCE_REQUIRED`); follow [configuration provenance](../skills/guide-product-work/reference/configuration-provenance.md). Configuration reaches an environment only through PR, Build, Marketplace and Deploy.
+
 ## Return
 
 Return the framework changes, template/compiler checks, scenario results, current learning stage, human observations and evidence levels. Separate mock acceptance from real leaf-product readiness.

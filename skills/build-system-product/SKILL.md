@@ -253,3 +253,12 @@ observed mock acceptance, real-integration evidence and remaining gaps.
 
 Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
 Own configuration lifecycle APIs and pinned leaf-reference validation; installing definitions must not invoke business flows.
+
+## Configuration provenance
+
+Follow [configuration provenance: repo-linked Deploy installs](../guide-product-work/reference/configuration-provenance.md).
+Put every new System configuration write route behind the gate in `src/configuration/provenance.ts` (headers, modes, checks), `src/configuration/store.ts` (stored `provenance`) and `src/handlers/api.ts`:
+read the three headers, store and return `provenance`, and honor
+`ConfigurationProvenance` (`Disabled` default, `Warn`, `Enabled` answering
+400 `PROVENANCE_REQUIRED` with nothing written). Test all three modes, keep
+the default unchanged and list the route in the PR's Compatibility section. Keep the IAM-only `DELETE /flows|templates|definitions/{name}` deletion claims and `RequireFlowRepository` as the reference describes.

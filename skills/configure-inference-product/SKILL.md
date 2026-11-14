@@ -146,3 +146,11 @@ fault, or an assertion written in the wrong shape goes to `beheeyem` with a reda
 reproducer (configuration, run id, error). Missing Connect flows go to `wingull`, Persist
 query problems to `uxie`, extension changes to `jirachi`. Never edit Inference code to make
 one configuration pass.
+
+## Configuration provenance
+
+Follow [configuration provenance: repo-linked Deploy installs](../guide-product-work/reference/configuration-provenance.md).
+Do not write configuration directly to the Inference API in an environment; ship it
+through its configuration repository, Build, Marketplace and Deploy. Expect
+400 `PROVENANCE_REQUIRED` where the install sets `ConfigurationProvenance` to
+`Enabled`. To test in dev, install through Deploy or set the dev stack to `Warn`.

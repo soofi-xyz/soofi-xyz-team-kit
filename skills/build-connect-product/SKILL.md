@@ -148,3 +148,12 @@ live-run evidence reported separately.
 
 Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
 Own flow, partner-configuration and activation lifecycle APIs; keep shared installer execution in Deploy and registration separate from partner jobs.
+
+## Configuration provenance
+
+Follow [configuration provenance: repo-linked Deploy installs](../guide-product-work/reference/configuration-provenance.md).
+Put every new Connect configuration write route behind the gate in `src/control-plane/provenance-gate.ts` and `src/contracts/provenance.ts`:
+read the three headers, store and return `provenance`, and honor
+`ConfigurationProvenance` (`Disabled` default, `Warn`, `Enabled` answering
+400 `PROVENANCE_REQUIRED` with nothing written). Test all three modes, keep
+the default unchanged and list the route in the PR's Compatibility section.

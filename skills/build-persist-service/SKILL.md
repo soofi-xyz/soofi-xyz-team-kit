@@ -125,3 +125,12 @@ Derive the scoped feature plan from the shared workflow and product capability
 map. Require a user-run configuration and AWS inspection after every piece. Return the
 implementation changes, verification results, human observations, current stage
 and any remaining runtime or integration gaps.
+
+## Configuration provenance
+
+Follow [configuration provenance: repo-linked Deploy installs](../guide-product-work/reference/configuration-provenance.md).
+Put every new Persist configuration write route behind the gate in `lambda/http/provenance-gate.ts`, `lambda/config/provenance.ts` and `lib/configuration-provenance.ts` (the stack parameter); add each new kind to `ConfigurationKind`:
+read the three headers, store and return `provenance`, and honor
+`ConfigurationProvenance` (`Disabled` default, `Warn`, `Enabled` answering
+400 `PROVENANCE_REQUIRED` with nothing written). Test all three modes, keep
+the default unchanged and list the route in the PR's Compatibility section.

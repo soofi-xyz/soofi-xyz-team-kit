@@ -480,6 +480,8 @@ handoffs.
 Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
 Verify configuration assets, `CONFIGURATION` type consistency and shared-provider references; hand source changes to owners and Deploy gaps to Corviknight.
 
+Check a configuration build's manifest records `source.repository` and `source.commit`; Deploy needs them for [repo-linked installs](../guide-product-work/reference/configuration-provenance.md).
+
 ## Shared API domain
 
 For API infrastructure, packaging, review or installation, read and apply
