@@ -31,6 +31,10 @@ Load [the project and component lifecycle contract](../skills/build-console-prod
 Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
 Require this product’s API CDK stacks to consume the shared domain through deploy-time parameters and own their base-path mappings. Reuse the attachment helper and preserve existing stack/path identity; do not create a second shared domain.
 
+## Configuration provenance
+
+Put every new configuration write route behind the repo-linked write gate (`ConfigurationProvenance`, `PROVENANCE_REQUIRED`); follow [configuration provenance](../skills/guide-product-work/reference/configuration-provenance.md). Configuration reaches an environment only through PR, Build, Marketplace and Deploy.
+
 ## Return
 
 Return implementation changes, configuration/API examples, automated results, user observations, AWS evidence, cleanup and remaining gaps. Hand application-specific configuration work to `vivillon`. Never report unperformed checks as passing.

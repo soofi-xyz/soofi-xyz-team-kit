@@ -106,3 +106,11 @@ steps for Glue concurrency.
 
 Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
 Compose pinned System and leaf documents; preserve scenario validation and hand bundle installation to Skarmory.
+
+## Configuration provenance
+
+Follow [configuration provenance: repo-linked Deploy installs](../guide-product-work/reference/configuration-provenance.md).
+Do not write configuration directly to the System API in an environment; ship it
+through its configuration repository, Build, Marketplace and Deploy. Expect
+400 `PROVENANCE_REQUIRED` where the install sets `ConfigurationProvenance` to
+`Enabled`. To test in dev, install through Deploy or set the dev stack to `Warn`.

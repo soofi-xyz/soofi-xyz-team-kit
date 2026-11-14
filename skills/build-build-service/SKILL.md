@@ -63,6 +63,16 @@ target repository; this kit contains guidance and synthetic inputs.
 Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
 Package configuration assets and shared-provider declarations; verify digests without calling target APIs or adding per-bundle Lambdas.
 
+## Configuration provenance
+
+Follow [configuration provenance: repo-linked Deploy installs](../guide-product-work/reference/configuration-provenance.md).
+Accept `source_repository` and `source_commit` on `POST /builds` (both or neither,
+`src/domain/source-origin.ts`) and record them as `source.repository` and `source.commit`
+in `build/build.manifest.json` (`src/provenance/build-manifest.ts`); drop malformed stored
+values rather than ship them. Keep the publish action
+(`actions/publish/publish_via_build.py`) sending `GITHUB_REPOSITORY` and the archived
+commit (`GITHUB_SHA`). Deploy sends these to products as provenance headers.
+
 ## Shared API domain
 
 For API infrastructure, packaging, review or installation, read and apply

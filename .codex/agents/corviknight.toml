@@ -77,6 +77,10 @@ Bind `SharedApiDomainName` only from Environment's `/account/env-parameters` (`e
 Read [the Marketplace image access contract](../skills/guide-product-work/reference/marketplace-image-access.md) for installs of bundles that run prebuilt images.
 The product stack grants its account pull access through Marketplace's image access API. Do not add registry grants, ECR policy edits or image access calls to Deploy or Puller. A refused grant fails the install at the product's image access resource; keep that resource's CloudFormation status reason (Marketplace's reason) in run results, and do not treat it as a Deploy defect.
 
+## Configuration provenance
+
+Send Deploy provenance (`X-Source-Repository`, `X-Source-Commit`, `X-Deploy-Install-Id`) on every configuration write an installer makes and fail refusals as `ProvenanceRequired`; follow [configuration provenance](../skills/guide-product-work/reference/configuration-provenance.md).
+
 ## Return
 
 Return implementation changes, API examples, automated results, user observations, AWS evidence, cleanup and remaining gaps. Hand configuration-only work to `skarmory`. Never report unperformed checks as passing.

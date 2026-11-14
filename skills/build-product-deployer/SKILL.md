@@ -87,6 +87,19 @@ validate bodies unchanged. If the target Transform predates `activate` (`400`, u
 key `activate`), register as before and report `activation: UNSUPPORTED`; never fall back
 to choosing the newest version.
 
+## Configuration provenance
+
+Follow [configuration provenance: repo-linked Deploy installs](../guide-product-work/reference/configuration-provenance.md).
+Keep `lambda/services/configuration/provenance.ts` the one place that builds the headers:
+read the build manifest's `source.repository` and `source.commit` (else `bundle.source`),
+send `X-Source-Repository`, `X-Source-Commit` and `X-Deploy-Install-Id` on every
+configuration-bundle `PUT`/`POST` (never on `GET`), and send them on Persist lexicon writes
+(`lambda/services/persist-lexicon/`) from the Model release's `productAsset.provenance`.
+A bundle without a well-formed source sends only the install id, logs
+`Configuration provenance warning` and lists the warning in the install result. Fail a
+`400 PROVENANCE_REQUIRED` answer as `ProvenanceRequired`, in either problem shape. Give
+every new adapter, including the missing Model and Console installers, the same wrapper.
+
 ## Shared API domain
 
 For API infrastructure, packaging, review or installation, read and apply

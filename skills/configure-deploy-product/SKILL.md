@@ -94,6 +94,14 @@ through a Puller subscription (step 3 of
 Retire a subscription with `DELETE /deploy/puller/subscriptions/{product_id}/{component_id}`;
 that stops updates but leaves installed configurations in place.
 
+## Configuration provenance
+
+Follow [configuration provenance: repo-linked Deploy installs](../guide-product-work/reference/configuration-provenance.md).
+Install configuration only from bundles Build built with `source`; a run or reconcile that
+lists `provenance not sent: ...` in its warnings needs the bundle rebuilt and republished.
+A run that fails as `ProvenanceRequired` was refused by an `Enabled` product: diagnose it
+by the reference, then republish or hand a Deploy defect to `corviknight`.
+
 ## Shared API domain
 
 For API infrastructure, packaging, review or installation, read and apply

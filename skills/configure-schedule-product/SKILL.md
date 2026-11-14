@@ -154,3 +154,11 @@ A missing feature, a wrong validation, a failing step that is not the configurat
 fault, or an output that breaks `docs/outputs.md` goes to `klinklang` with a redacted
 reproducer (configuration, run id, error). Never edit Schedule code to make one schedule
 pass.
+
+## Configuration provenance
+
+Follow [configuration provenance: repo-linked Deploy installs](../guide-product-work/reference/configuration-provenance.md).
+Do not write configuration directly to the Schedule API in an environment; ship it
+through its configuration repository, Build, Marketplace and Deploy. Expect
+400 `PROVENANCE_REQUIRED` where the install sets `ConfigurationProvenance` to
+`Enabled`. To test in dev, install through Deploy or set the dev stack to `Warn`.

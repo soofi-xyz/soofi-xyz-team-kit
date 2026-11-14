@@ -35,6 +35,10 @@ Deploy's adapter saves each configuration with `GET`, `PUT /inference/configurat
 Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.
 Keep base path `inference`, the shared usage plan attachment and no public routes in `marketplace.shared-api.json`.
 
+## Configuration provenance
+
+Put every new configuration write route behind the repo-linked write gate (`ConfigurationProvenance`, `PROVENANCE_REQUIRED`); follow [configuration provenance](../skills/guide-product-work/reference/configuration-provenance.md). Configuration reaches an environment only through PR, Build, Marketplace and Deploy.
+
 ## Return
 
 Return implementation changes, API examples, automated results (unit, integration, synth), deployed run evidence (run ids, tokens, cache reads, cost), assertions written, user observations, AWS evidence, cleanup and remaining gaps. Hand configuration-only work to `elgyem`, extension changes to `jirachi`, Persist gaps to `conkeldurr` and Connect gaps to `lapras`. Never report unperformed checks as passing.

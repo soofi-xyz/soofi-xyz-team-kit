@@ -12,6 +12,9 @@ type-specific start/status alias; retain `/builds` as the generic route.
 Align Build, Marketplace and Deploy request/response schemas, manifests,
 provenance, catalog metadata, callbacks and subscription records with this name.
 
+Every configuration write an installer sends carries Deploy provenance; follow
+[configuration provenance: repo-linked Deploy installs](../../guide-product-work/reference/configuration-provenance.md).
+
 Treat `DATA` and `/data` as legacy contracts to migrate, not compatibility values
 for new bundles. Inspect the target revision before calling the new contract;
 hand missing migration support to the relevant builder instead of falling back

@@ -185,3 +185,12 @@ alone is not completion. Require live evidence before claiming AWS readiness.
 
 Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
 Own mapping registration, replay/conflict and read-back semantics; keep shared installer execution in Deploy.
+
+## Configuration provenance
+
+Follow [configuration provenance: repo-linked Deploy installs](../guide-product-work/reference/configuration-provenance.md).
+Put every new Transform configuration write route behind the gate in `src/shared/provenance-gate.ts` and `src/shared/provenance.ts`, called from each `src/lambdas/register-*` handler:
+read the three headers, store and return `provenance`, and honor
+`ConfigurationProvenance` (`Disabled` default, `Warn`, `Enabled` answering
+400 `PROVENANCE_REQUIRED` with nothing written). Test all three modes, keep
+the default unchanged and list the route in the PR's Compatibility section.
