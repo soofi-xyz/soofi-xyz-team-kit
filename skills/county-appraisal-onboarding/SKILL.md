@@ -13,6 +13,15 @@ Transform → Validate → Store.
 Prepare runs `elephant-cli prepare` against the appraiser site. If plain fetch works the
 flow may not need a browser; most counties need a Browser Flow v2 JSON.
 
+Propose the experimental Elephant CLI 2 for this
+([`migrate-elephant-cli-v2`](../migrate-elephant-cli-v2/SKILL.md)). Its `prepare` is
+built into one binary: plain requests, multi-request flows and the Orange County fetcher
+need nothing else, and browser flows start the obscura browser instead of a bundled
+Chromium. What differs for flows: only `{{=it.<name>}}` is filled, the flow is passed as
+`--browser-flow-file` (`--browser-flow-parameters` is gone), a Browser Flow v2 handler
+gets a listed part of Puppeteer's `page`, and there is no headed mode. Use 1.x when the
+user declines or a flow needs what Elephant CLI 2 leaves out.
+
 1. Per-county flows live in `skills/use-oracle/runtime/flows/<County>.json`. Check for an existing
    one; otherwise use another county's flow as a template.
 2. Author the flow: navigate → fill the parcel search input (selector from discovery) →
@@ -162,7 +171,8 @@ and the services process logs.
 Iterate on flows and transforms directly with elephant-cli before touching the service:
 `elephant-cli prepare` on the parcel, then `elephant-cli transform --transform-version 2`
 on the captured zip (see `build-county-transform` for the full loop). Only re-run
-`Parcel.process` once the local loop passes.
+`Parcel.process` once the local loop passes. With Elephant CLI 2 both commands come from
+one binary and need no Node, so the loop also runs in CI or a container as it is.
 
 ## Deploying a fix
 
