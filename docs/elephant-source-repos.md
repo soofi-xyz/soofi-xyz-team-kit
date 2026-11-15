@@ -41,6 +41,11 @@ Do not add a parallel catalog or county pointer.
 
 Oracle invokes these commands; the team kit does not duplicate them.
 
+The `v2` branch holds Elephant CLI 2, an experimental rewrite as one native binary with
+`prepare` and `transform` built in. `main` and the npm package stay 1.x. Agents propose
+Elephant CLI 2 before they run the CLI; `skills/migrate-elephant-cli-v2/SKILL.md` has the
+install, the differences and the check to run before a cut-over.
+
 ## Elephant MCP
 
 `elephant-xyz/elephant-mcp` 2.0 owns:

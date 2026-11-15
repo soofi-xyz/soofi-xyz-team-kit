@@ -10,9 +10,18 @@ A county transform turns captured source pages into the per-property lexicon out
 `elephant-cli validate`, `hash`, and the county archive consume. This skill owns the whole
 loop: sample, transform, validate, prove coverage, replay, and open the pull request.
 
-The transform may be an Elephant CLI v2 handler, an Elephant CLI scripts-mode bundle, or
-custom code in any language. What is fixed is the **output contract** in
-[`reference/output-contract.md`](./reference/output-contract.md), not the tool.
+The transform may be a Transform v2 handler package or a scripts-mode bundle, both run
+by the Elephant CLI, or custom code in any language. What is fixed is the **output
+contract** in [`reference/output-contract.md`](./reference/output-contract.md), not the
+tool.
+
+Propose the experimental Elephant CLI 2 for the loop
+([`migrate-elephant-cli-v2`](../migrate-elephant-cli-v2/SKILL.md)). Its `transform` runs
+handler packages and the five scripts on an engine inside the binary, with `cheerio`
+built in and no Node or `node_modules`, and its `prepare` captures the samples. Prefer
+these built-in commands to custom capture or transform code when the site allows it. On
+the two counties bundled with this kit it produced the same CIDs as 1.x. Use 1.x when the
+user declines, or when a script needs a Node module Elephant CLI 2 does not offer.
 
 ## Always read
 
@@ -135,7 +144,8 @@ merged result; the runtime reads that copy and there is no automatic sync.
 Per-parcel child processes cost more in startup than in work. For a full county, run the
 transform in a warm worker pool: one persistent worker per core, inputs read in memory,
 results returned over IPC. This is a throughput concern, not a correctness one; the
-output contract is identical.
+output contract is identical. Elephant CLI 2 lowers the startup cost: its `transform`
+took 0.4 s for one parcel of the bundled counties where 1.x took 2.0 to 2.7 s.
 
 ## Rules
 

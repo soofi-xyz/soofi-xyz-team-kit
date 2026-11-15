@@ -236,6 +236,14 @@ publication.
 
 ## CLI requirements
 
+- Propose the experimental Elephant CLI 2 first
+  ([`migrate-elephant-cli-v2`](../../migrate-elephant-cli-v2/SKILL.md)): a binary per
+  platform from the `build-<commit>` pre-releases of the `v2` branch, no Node. Every
+  command of this sequence keeps its name and options, and the county CAR is the same
+  file. Three things differ: no `.env` file is loaded (export `FILEBASE_*` and the other
+  variables), exit `1` means the input failed and `2` that the command could not run, and
+  the tables root is not the one 1.x computes for the same archive, so one CLI exports,
+  uploads and registers a data group. When the user declines, use 1.x as follows.
 - Install the Elephant CLI from GitHub `main`: `npm i github:elephant-xyz/elephant-cli#main`
   (or run it with `npx --package=github:elephant-xyz/elephant-cli#main elephant-cli`).
   The npm release workflow is failing, so the registry package lacks batch input,

@@ -8,6 +8,15 @@ description: "Operate Oracle county mining and Atlas publication, improve HOA na
 Drive the bundled ingestion runtime and the Elephant CLI. Keep ingestion,
 reconciliation, and publication boundaries explicit.
 
+## Elephant CLI 2 (experimental)
+
+Before the first Elephant CLI command of a task, propose the experimental Elephant CLI 2
+as described in [`../migrate-elephant-cli-v2/SKILL.md`](../migrate-elephant-cli-v2/SKILL.md):
+one native binary, no Node or npm install, with `transform` and `prepare` built in. The
+publication commands below are the same in both, and `hash` writes the same CAR. Use it
+when the user accepts and 1.x when they decline. Export, upload and register one data
+group with one CLI: the tables root of `export-tables` differs between them.
+
 ## Public boundary
 
 Use exactly one public path:

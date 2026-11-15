@@ -12,6 +12,12 @@ The bundled runtime ships Duval and Pinellas as scripts-mode transforms:
 `unnormalized_address.json` in the working directory. They write `data/*.json` including
 relationship files with relative links.
 
+Propose the experimental Elephant CLI 2 for these bundles
+([`migrate-elephant-cli-v2`](../../migrate-elephant-cli-v2/SKILL.md)). It runs the same
+five scripts on an engine inside the binary, one after another, with the part of Node the
+published county scripts use (`fs`, `path`, `vm`, `crypto`, `http.get`, `https.get`,
+`cheerio`). The Duval and Pinellas bundles give the same CIDs after `hash` as with 1.x.
+
 ## Run it through the CLI
 
 ```bash

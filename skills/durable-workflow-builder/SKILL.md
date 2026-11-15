@@ -277,6 +277,9 @@ transform(req: { county: string; src: string; dest: string }): Promise<void>
   // writes transformed.meta.json (capture hash + package hash/version); skips iff BOTH match.
   // REMOVES ready.json before regenerating — a replacement is never loadable until revalidated
 validate(path: string): Promise<{ valid: boolean; errors?: unknown }>  // elephant-cli validate
+// Propose the experimental Elephant CLI 2 for capture, transform and validate (skill
+// migrate-elephant-cli-v2): one binary with prepare and transform built in, run with
+// --json; exit 0 passed, 1 the input failed, 2 the command could not run.
 upsertParcelRow(p, dir: string): Promise<void>       // single-row ON CONFLICT DO UPDATE
 writeEligibility(dest: string, transformedPath: string, p): Promise<{ eligible: boolean }>
   // reads usage type FROM THE TRANSFORMED OUTPUT (policy needs transformed data, not the
