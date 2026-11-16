@@ -175,6 +175,46 @@ Keep non-secret auth settings (`header`, `prefix`, `token_url`, `token_path`,
 `scopes`, `subject`, `audience`, `role_arn`, `external_id`) and SFTP
 `username` on the connection; keep only secret values in the credential.
 
+### Callers and credential owners (Access)
+
+Access publishes no client library. Connect implements the per-user checks
+itself, following [Access's product integration](../../build-access-product/reference/product-integration.md)
+and its operator setup in [configure-access-product](../../configure-access-product/SKILL.md):
+
+- **Verify every bearer token with `jose`** (`createRemoteJWKSet` on
+  `https://<shared domain>/access/keys`, `jwtVerify`): issuer
+  `https://<shared domain>/access` and audience `https://<shared domain>`, both
+  configured, never read from the token; `RS256` only; `sub`, `exp` and `iat`
+  required; 60 s clock tolerance; `token_use` is `access`; `roles` is a string
+  array; `principal_kind` is `user` (default) or `service`. Cache keys at most
+  5 minutes with an unknown-key cooldown of at most 30 s. Any failure is `401`
+  and nothing starts. Identify a person by `sub` (the Access `user_id`), never
+  by email.
+- **Ask `POST /access/decisions`** with Connect's own service identity
+  (`connect`, granted `access:decision:read`, `access:resource:manage` and
+  `access:resource:remove`; its secret in Connect's secret store; token from
+  `POST /access/service-token`) and the caller's own token in `caller.token`.
+  Ask one question per resource. Treat any error, timeout or non-`200` as a
+  deny; never fall back to allow.
+- **Declare** product `connect` once: type `credential`, `private`, actions
+  `use` (shareable), `manage`, `remove` and `create` (type-level); and type
+  `flow` with `start`. The `member`-style role grants
+  `connect:credential:create` and `connect:flow:start`.
+- **Decide the environment key in Connect.** A request with only the key is
+  the environment: it may do everything except use, share or change a person's
+  credential. Record it as `environment`.
+- **Own every credential.** Creating one with a token makes its `sub` the owner;
+  with the key, `environment`. Register the owner with
+  `PUT /access/resources/connect/credential/{partner}.{credential}` before
+  answering the create, and remove it with the credential. The resource id is
+  `{partner}.{credential}`: Access ids allow no `/`, and Connect identifiers
+  have no `.`. Sharing goes through
+  Access with the owner's own token; Connect stores no grants.
+- **Pre-flight a job** before any partner or storage call: `start` on the flow
+  (resource owner `environment`) and `use` on every credential the job's
+  connections name, each owner from Connect's own records. The `403` names the
+  flow or credential, never a value.
+
 ## 8. Lineage and what changes
 
 The design keeps the Staircase Connector model that the

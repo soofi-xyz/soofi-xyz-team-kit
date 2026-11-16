@@ -125,8 +125,10 @@ payloads or secrets into evidence.
 automated test whose name starts with its ID and passes against a mock partner
 on one revision. Use the people from [the Access test data](../../build-access-product/reference/test-data.md)
 and a credential whose value contains a fresh `LEAKCHECK-<random>-connect`
-marker. Record one evidence row per check: ID, level (local or deployed),
-result, job or request identifier and the Connect revision.
+marker. Connect verifies tokens with `jose` and asks `POST /access/decisions`
+as its own service identity ([architecture](architecture.md#callers-and-credential-owners-access)).
+Record one evidence row per check: ID, level (local or deployed), result, job
+or request identifier and the Connect revision.
 
 Setup: the `member` role allows `create` on credentials and `start` on the test
 flows, so `alice` and `bob` have both. `alice` creates her credential before
@@ -158,7 +160,7 @@ describe the shipped behavior and must all pass together.
 | UC-14 | `alice` shares her credential with `erin`, who then starts `flow-a` | `403` naming the flow: `use` on the credential does not grant `start` |
 | UC-15 | `alice` creates and enables a schedule activation; then `admin` does, for `flow-env` | `403` for `alice`; allowed for `admin`, with the activation recording who enabled it; its job runs as the environment |
 | UC-16 | `admin` creates an activation for `flow-a`, which names a personal credential | Refused at create and at enable; no job starts |
-| UC-17 | Make Access's decision helper fail | Every user-started job is refused |
+| UC-17 | Make `POST /access/decisions` fail, then time out | Every user-started job is refused |
 | UC-18 | Call each Connect route with an expired token, an edited one and one from another environment | `401` each; nothing started |
 | UC-19 | Run the existing environment-key suites against credentials that existed before this piece | Unchanged results; each such credential is owned by `environment` |
 | UC-20 | `erin` creates a credential, lists flows and submits a job | `403` each; nothing created or started |
