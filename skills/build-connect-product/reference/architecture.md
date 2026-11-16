@@ -191,29 +191,60 @@ and its operator setup in [configure-access-product](../../configure-access-prod
   and nothing starts. Identify a person by `sub` (the Access `user_id`), never
   by email.
 - **Ask `POST /access/decisions`** with Connect's own service identity
-  (`connect`, granted `access:decision:read`, `access:resource:manage` and
-  `access:resource:remove`; its secret in Connect's secret store; token from
-  `POST /access/service-token`) and the caller's own token in `caller.token`.
+  (granted `access:decision:read`, `access:resource:manage` and
+  `access:resource:remove`; token from `POST /access/service-token`) and the
+  caller's own token in `caller.token`. The operator hands the identity to
+  Connect with the environment key, as the credential
+  `PUT /connect/partners/access/credentials/service-identity` with profile
+  `oauth2_client_credentials` (`client_id` the identity's name, `client_secret`
+  its secret). Credentials of partner `access` are the environment's alone: no
+  token caller reads, sets, removes or uses them, whatever its roles, and they
+  are not registered in Access. Until it is set, every token caller is refused
+  and the environment key works as before.
   Ask one question per resource. Treat any error, timeout or non-`200` as a
   deny; never fall back to allow.
-- **Declare** product `connect` once: type `credential`, `private`, actions
-  `use` (shareable), `manage`, `remove` and `create` (type-level); and type
-  `flow` with `start`. The `member`-style role grants
-  `connect:credential:create` and `connect:flow:start`.
+- **Declare** product `connect` once, exactly as Connect's
+  `src/access/declaration.ts` has it: type `credential`, `private`, with
+  `read`, `use` (shareable), `manage`, `remove`, and the type-level `create`
+  and `list`; type `flow` with `start`; type `configuration` with the
+  type-level `read` and `manage`; type `job` with the type-level `read`; and
+  type `upload` with the type-level `create`. `read` is declared because
+  Access lets administrators and the environment reach only `read` and
+  `remove` on a person's resource of a private type. The `member`-style role
+  grants `connect:credential:create` and `connect:flow:start`.
 - **Decide the environment key in Connect.** A request with only the key is
   the environment: it may do everything except use, share or change a person's
   credential. Record it as `environment`.
 - **Own every credential.** Creating one with a token makes its `sub` the owner;
   with the key, `environment`. Register the owner with
-  `PUT /access/resources/connect/credential/{partner}.{credential}` before
-  answering the create, and remove it with the credential. The resource id is
-  `{partner}.{credential}`: Access ids allow no `/`, and Connect identifiers
-  have no `.`. Sharing goes through
-  Access with the owner's own token; Connect stores no grants.
+  `PUT /access/resources/connect/credential/{partner}.{credential}` on every
+  `PUT` and `PATCH` (so a credential from before owners existed becomes
+  shareable once it is written), and remove it with the credential. The
+  resource id is `{partner}.{credential}`: Access ids allow no `/`, and Connect
+  identifiers have no `.`. Sharing goes through Access with the owner's own
+  token; Connect stores no grants.
+- **Let Connect's store decide who created a name.** Create with a create-only
+  write, so the second of two concurrent creators gets `409` and changes
+  nothing. Then remove whatever Access still holds under the name and register
+  the owner, so a new credential never inherits old shares; when Access cannot
+  record the owner, remove the credential again and fail the write. Replace or
+  merge an existing credential only while it still has the owner the caller
+  was authorized against. On removal, remove the Access record first.
 - **Pre-flight a job** before any partner or storage call: `start` on the flow
   (resource owner `environment`) and `use` on every credential the job's
-  connections name, each owner from Connect's own records. The `403` names the
-  flow or credential, never a value.
+  connections and DECRYPT keys name, each owner read from Connect's own records
+  at that moment, never from a cache. The `403` names the flow or credential,
+  never a value. A `transaction_id` belongs to the caller who used it first: a
+  repeat by another caller is `409`, never the first caller's job or result.
+- **Keep the environment's names.** Only the environment key sets a credential
+  that a configuration already names (`409` for a person). Refuse an activation
+  whose flow, subscriber or webhook names a person's credential, and a partner
+  configuration whose webhook does. The webhook ingress and every job Connect
+  starts or starts again on its own act as the environment and never read a
+  person's credential.
+- **One reading of who is calling.** The authorizer refuses a credential header
+  sent twice with different values and passes on which credential it accepted;
+  the API function refuses a request it would read differently.
 
 ## 8. Lineage and what changes
 
