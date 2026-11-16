@@ -1,6 +1,6 @@
 ---
 name: gallade
-description: "Rule builder. Build, maintain or fix reusable entity selection, rule evaluation and outcome handling. Use Meditite for rules and configuration on an existing service."
+description: "Rule builder. Build, maintain or fix reusable entity selection (including campaign_id population), rule evaluation and outcome handling. Use Meditite for rules and configuration on an existing service."
 product: rule
 role: build
 ---

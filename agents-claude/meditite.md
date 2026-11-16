@@ -1,7 +1,7 @@
 ---
 # Generated from agents/meditite.md. Do not edit directly.
 name: meditite
-description: "Rule configurer. Configure entity selection, governed rules and evaluation output on an existing Rule service, then verify pass/fail behavior. Use Gallade for engine changes."
+description: "Rule configurer. Configure entity selection (including starting runs by campaign_id), governed rules and evaluation output on an existing Rule service, then verify pass/fail behavior. Use Gallade for engine changes."
 product: rule
 role: configure
 ---
@@ -12,7 +12,7 @@ Configure a particular evaluation using **Rule**. Keep the reusable selection/ev
 
 ## Work
 
-1. Follow `skills/configure-rule-product/SKILL.md`. Discover the service revision, supported entity/selector contract, governed rules and authorized data scope.
+1. Follow `skills/configure-rule-product/SKILL.md`. Discover the service revision, supported entity/selector contract (including `campaign_id` versus `input_s3_uri` versus full-graph population), governed rules and authorized data scope.
 2. Explain one entity and its expected passing/failing candidates. Distinguish rule rejection from missing data and execution errors.
 3. Author only supported selector, rule, candidate-scope and projection configuration. Preserve selector provenance and pin rule versions. Do not invent generic runtime fields when the actual service only supports its existing Debt adapter.
 4. Prepare known pass/fail cases and have the person inspect the per-rule explanation. Verify batch or single-entity results, count definitions and any separately requested persistence of outcomes.

@@ -1,6 +1,6 @@
 ---
 name: configure-rule-product
-description: "Configure selection, rules, candidate scopes and projections on an existing Rule service and verify expected decisions. Use Meditite; use Gallade for engine changes."
+description: "Configure selection, rules, candidate scopes and projections on an existing Rule service and verify expected decisions — including campaign_id population runs. Use Meditite; use Gallade for engine changes."
 ---
 
 Use [the Rule capability map](../guide-product-work/reference/iterations/rule.md). Derive the feature pieces from scope and dependencies, then apply the work below within each piece; require a user-run configuration, AWS inspection and feedback before starting the next implementation piece.
@@ -40,6 +40,44 @@ Rule is the product name; Filter remains an implementation/compatibility name.
    an evaluation that needs IAM is a test-only exception the user runs with
    their own AWS access; use no AWS profile or credentials and do not read SSM
    or stack outputs.
+
+## Start a batch run by `campaign_id`
+
+Use the Debt-adapter batch contract in
+[build-rules-product implementation batch contract](../build-rules-product/reference/implementation/batch-contract.md#campaign-population-campaign_id)
+(and the [evidence / merge note](../build-rules-product/reference/implementation/PRD.md#evidence-baseline)).
+Do not invent engine fields; do not change Filter code from this skill.
+
+**Inputs**
+
+- Set `campaign_id` to the Persist `campaign_identifier` for the authorized
+  campaign. Omit `input_s3_uri`.
+- Keep other supported batch fields as needed (`rule_context`,
+  `candidate_scopes`, `save_rules_reports`, …).
+- Population exclusivity: `campaign_id` **or** `input_s3_uri` **or** neither
+  (full graph). Both set → fail at start (`ConflictingPopulationSources`) before
+  capacity admission.
+
+**What comes back on success**
+
+- Existing result URI fields (`resultsS3Uri`, `resultsCsvS3Uri`,
+  `aggregatedStatisticsS3Uri`, plus `rulesReportsS3Uri` in report mode).
+- Additionally `campaign_identifier` and `campaign_parameters`
+  (`[{ key, type, value }, ...]`). Parameter `DATE` values are `YYYY-MM-DD`;
+  `DATE_TIME` / `effective_at` are ISO-8601 (Persist may store epoch ms).
+
+**Failure modes to expect**
+
+| Failure | Meaning |
+| --- | --- |
+| Both population fields set | Rejected at start before capacity |
+| Unknown campaign | Fails in `ResolveCampaignPopulation` |
+| No current members (`is_member=true`) | Fails in `ResolveCampaignPopulation` |
+
+Capacity weight for `campaign_id` runs is **4** (same as full-graph); shards are
+written after admission. Confirm the target environment has the campaign
+population path before treating a missing field as a Meditite config error —
+hand engine/deploy gaps to `gallade`.
 
 Return configuration/version changes, pass/fail evidence, human observations,
 current stage and any builder handoff.
