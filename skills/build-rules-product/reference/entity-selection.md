@@ -75,12 +75,15 @@ entities outside the selected population when the data contract supports that.
 ## Existing implementation boundary
 
 The inspected Filter service has a hardcoded all-Debt discovery query and accepts
-CSV/Parquet `debt_id` populations through `input_s3_uri`. It does not expose the
-generic selection fields above, validate generic selector provenance for those
-legacy inputs, or support arbitrary entity roots. Its discovery query also does
-not contain the illustrative `dedup()` above. Preserve the legacy input contract
-while implementing selector configuration, identity normalization, deduplication,
+CSV/Parquet `debt_id` populations through `input_s3_uri`, or a Debt-adapter
+`campaign_id` that materializes current campaign members into the same CSV shard
+shape before `ListFiles`. It does not expose the generic selection fields above,
+validate generic selector provenance for those legacy inputs, or support
+arbitrary entity roots. Its discovery query also does not contain the
+illustrative `dedup()` above. Preserve the legacy input contract while
+implementing selector configuration, identity normalization, deduplication,
 membership/provenance checks and adapters as a compatible extension.
 
-See the [current batch contract](implementation/batch-contract.md) and
-[generalization gaps](implementation/known-gaps.md#generic-product-extension).
+See the [current batch contract](implementation/batch-contract.md) (including
+[campaign population](implementation/batch-contract.md#campaign-population-campaign_id))
+and [generalization gaps](implementation/known-gaps.md#generic-product-extension).

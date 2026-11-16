@@ -7,7 +7,8 @@ and [capacity onboarding](capacity-operations.md) together for new callers.
 
 | Field | Current behavior |
 | --- | --- |
-| `input_s3_uri` | Optional CSV/Parquet object or prefix. Both formats require `debt_id`; omit for the full graph population. |
+| `input_s3_uri` | Optional CSV/Parquet object or prefix. Both formats require `debt_id`. Mutually exclusive with `campaign_id` (see below). Omit both for the full-graph population. |
+| `campaign_id` | Optional Persist campaign identifier. Resolves current members and writes run-prefix `debt_id` CSV shards before `ListFiles`. Mutually exclusive with `input_s3_uri`. See [Campaign population](#campaign-population-campaign_id). |
 | `rule_s3_uris` | Optional non-empty list of rule prefixes; overrides catalog selection. Each prefix contains exactly one JSON definition and one Gremlin query. |
 | `rule_context` | Optional `{consumer, channel, calling_lane, campaign}`. `channel` accepts a string or string array. Selects matching catalog rulesets; consumer also informs capacity admission. |
 | `candidate_scopes` | Optional non-empty array of `phone` and/or `email`; omission preserves phone candidates. Duplicate scopes normalize; reject unsupported scopes. |
@@ -16,11 +17,64 @@ and [capacity onboarding](capacity-operations.md) together for new callers.
 | `skip_phone_projection` | Default false. Requires report mode and no explicit `candidate_scopes`; evaluates debt rules without candidate fan-out. |
 | `run_eligibility_ingest` | Default false. Opt in only for the intended daily phone eligibility run; use [writeback rules](eligibility-writeback.md). |
 
-Do not expose worker fields such as `queryMode`, `candidateScopesProvided` or
-`hasRuleSubset` as public workflow inputs. Select report mode through
-`save_rules_reports`. `graphCycleId`, `graphReadyAt`, `business_date` and `runType`
-are ignored for ordinary full-graph snapshot consumption; the service resolves
-the current graph head itself.
+Population sources are mutually exclusive: `campaign_id` **or** `input_s3_uri`
+**or** neither (full graph). Setting both fails at start as
+`ConflictingPopulationSources` before capacity admission or output-prefix
+cleanup. Do not expose worker fields such as `queryMode`,
+`candidateScopesProvided` or `hasRuleSubset` as public workflow inputs. Select
+report mode through `save_rules_reports`. `graphCycleId`, `graphReadyAt`,
+`business_date` and `runType` are ignored for ordinary full-graph snapshot
+consumption; the service resolves the current graph head itself. Caller-provided
+`input_s3_uri` or `campaign_id` bypasses debt-universe snapshot preparation.
+
+## Campaign population (`campaign_id`)
+
+Debt-adapter contract (keep out of the generic product PRD). Evidence and merge
+status: [baseline note](PRD.md#evidence-baseline).
+
+When `campaign_id` is set (and `input_s3_uri` is not):
+
+1. Look up the campaign in Persist by `campaign_identifier`.
+2. Resolve **current members** from `debt_campaign_membership_changed` edges
+   (ADR 0013): order `effective_at` desc, `created_at` desc, edge id desc; keep
+   the latest edge per debt; retain only `is_member = true`. Page membership
+   reads; do not run an unbounded sync query.
+3. Write `debt_id` CSV shards under the run prefix `input/` (Glue-compatible
+   `batch_NNNN.csv`, same shape as full-graph prepare). Clear stale shards under
+   that prefix before rewrite so redrive does not mix generations.
+4. Continue at `ListFiles`. Everything after `ListFiles` is unchanged
+   (Map/ProcessFile, statistics, optional reports).
+
+**Start failures (clear):**
+
+| Condition | Where it fails |
+| --- | --- |
+| Both `campaign_id` and `input_s3_uri` set | `ConflictingPopulationSources` at start, before capacity |
+| Unknown / missing campaign | `ResolveCampaignPopulation` |
+| Campaign with no current members (`is_member=true`) | `ResolveCampaignPopulation` |
+
+**Capacity:** charge weight **4**, same as full-graph/unknown work. Campaign CSV
+shards exist only after admission (`ResolveCampaignPopulation`), so the gate
+cannot list them yet. Redrive behaviour is unchanged. See
+[capacity operations](capacity-operations.md).
+
+**Campaign parameters (output):** Persist may return `DATE` / `DATE_TIME` /
+`effective_at` as epoch milliseconds. Normalize the same way as sms-workflow
+`resolve-workflow-context`: `DATE` → `YYYY-MM-DD`; `DATE_TIME` and
+`effective_at` → ISO-8601. Surface parameters on the execution result (below).
+
+Campaign example (other fields unchanged):
+
+```json
+{
+  "campaign_id": "example-campaign-identifier",
+  "rule_context": { "consumer": "example-sms-consumer", "channel": "SMS" },
+  "candidate_scopes": ["phone"]
+}
+```
+
+Do not invent customer-specific campaign policies in this product documentation;
+pin real identifiers from the authorized environment when configuring a run.
 
 ## Rule selection versus candidates
 
@@ -72,6 +126,11 @@ A successful run returns:
 }
 ```
 
+Successful `campaign_id` runs **also** return `campaign_identifier` and
+`campaign_parameters` (`[{ "key", "type", "value" }, ...]`, values already
+normalized as above) beside those URI fields. Do not drop existing result
+fields when adding campaign output.
+
 Report mode additionally returns `rulesReportsS3Uri` pointing at
 `parts/rules-reports/`. Use returned URIs instead of constructing keys. Per-file
 artifacts use `<input-basename>_results.json`, `_results.csv`, `_statistics.json`
@@ -122,7 +181,9 @@ success. Preserve successful artifacts for native redrive.
 
 ## Source and acceptance anchors
 
-Read Filter `src/types.ts`, `src/handler.ts`, `src/classifier.ts`, `src/statistics.ts`
-and `lib/filter-stack.ts`. Cover `handler-process-file`, `handler-list-files`,
-`handler-aggregate-statistics`, `classifier`, `statistics`, and `filter-stack` tests.
-See [verification](verification.md) for caller scenarios.
+Read Filter `src/types.ts`, `src/handler.ts`, `src/classifier.ts`, `src/statistics.ts`,
+`src/campaign/` (`resolve`, `membership`, `parameters`, `handlers`) and
+`lib/filter-stack.ts`. Cover `handler-process-file`, `handler-list-files`,
+`handler-aggregate-statistics`, `classifier`, `statistics`, `campaign-*`,
+capacity classifier weight for `campaign_id`, and `filter-stack` population-routing
+tests. See [verification](verification.md) for caller scenarios.

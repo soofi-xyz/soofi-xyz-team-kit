@@ -6,9 +6,12 @@ Rules still reads current graph facts during evaluation.
 
 ## Input routing
 
-Caller-provided `input_s3_uri` bypasses snapshot preparation. When omitted, the
-service resolves the singleton current graph head itself; callers do not supply
-graph cycle, graph-ready time or run type to choose a snapshot.
+Caller-provided `input_s3_uri` or `campaign_id` bypasses snapshot preparation.
+When both population fields are omitted, the service resolves the singleton
+current graph head itself; callers do not supply graph cycle, graph-ready time
+or run type to choose a snapshot. Setting both `campaign_id` and `input_s3_uri`
+is rejected before capacity; see
+[campaign population](batch-contract.md#campaign-population-campaign_id).
 
 With snapshot consumption disabled, preserve the legacy path:
 Persist async all-debt query → poll → Glue Python Shell CSV sharding → ListFiles.

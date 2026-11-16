@@ -11,7 +11,10 @@ synchronous evaluator outside the batch queue.
 
 - One weight unit represents one ProcessFile worker, currently up to 20 concurrent
   Gremlin requests. Weight S3 work by `min(max(fileCount, 1), 4)` when measurable;
-  charge full-graph/unknown work weight 4.
+  charge full-graph, `campaign_id`, and unknown work weight **4**. Campaign CSV
+  shards are written only after admission (`ResolveCampaignPopulation`), so the
+  gate cannot list them yet; weight 4 matches the Distributed Map concurrency
+  ceiling and keeps redrive behaviour unchanged.
 - Reserve P0 capacity for daily operational workloads. P0 may use reserved and
   general pools; P1–P3 cannot use the reserve. Aging never promotes into P0.
 - Require a stable `rule_context.consumer` for new integrations and register its
