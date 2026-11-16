@@ -15,6 +15,17 @@ absolute path is required. Pin a fresh revision when implementing changes.
 Local verification passed `pnpm check` and 374 tests across 33 files. No deployed
 AWS configuration, live Lexicon content, or production latency was certified.
 
+**Campaign population (`campaign_id`)** is taught here as the intended/current
+implementation contract for the Debt adapter so builders and configurers share
+one surface. Evidence source: open Filter PR
+[#102](https://github.com/Spring-Oaks-Capital-LLC/filter/pull/102) on
+`feat/campaign-id-population` (feature commit `2f0e286`, harden `c7b8821`,
+epoch-ms parameter fix `d2ea1e4`), hand-deployed and proven on DEV. As of
+2026-11-16 that PR is **not merged** to `filter` `main`; do not claim production
+or `main`-branch availability until merge and environment evidence say so.
+See [batch contract](batch-contract.md#campaign-population-campaign_id) and
+[capacity operations](capacity-operations.md).
+
 ## Read by task
 
 | Reference | Contents |

@@ -9,7 +9,9 @@ tags: [transform, elephant-cli, handler]
 
 ## When To Use
 
-Use this reference when the transform is an Elephant CLI v2 handler package for a Browser Flow v2 prepared ZIP.
+Use this reference when the transform is a Transform v2 handler package for a Browser Flow v2 prepared ZIP. "v2" names the package format, not the CLI version.
+
+Both CLIs run the same package. Propose the experimental Elephant CLI 2 ([`migrate-elephant-cli-v2`](../../migrate-elephant-cli-v2/SKILL.md)): it runs the handler on an engine inside the binary, lets the handler import `cheerio`, and accepts `--transform-zip` without `--transform-version 2`.
 
 Do not treat this as a CLI development workflow. Do not inspect or modify Elephant CLI source code unless the user explicitly asks to change the CLI itself. Focus on the user's transform package, prepared ZIP, command invocation, output ZIP, validation errors, and repair loop.
 

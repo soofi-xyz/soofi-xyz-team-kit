@@ -31,7 +31,10 @@ not present at the baseline. Discover the legacy pointer for existing integratio
 
 ## Implemented capabilities
 
-- Evaluate debts from caller CSV/Parquet or full Persist debt discovery.
+- Evaluate debts from caller CSV/Parquet, full Persist debt discovery, or
+  `campaign_id` current-member population (Debt adapter; see
+  [batch contract](batch-contract.md#campaign-population-campaign_id) and the
+  [baseline merge note](PRD.md#evidence-baseline)).
 - Reuse full-population debt-ID snapshots when enabled and fresh.
 - Compile Lexicon JSON/Gremlin rules selected by context or explicit S3 prefixes.
 - Select phone and/or email candidates; require every selected scope to pass.

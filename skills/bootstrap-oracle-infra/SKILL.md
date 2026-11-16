@@ -102,7 +102,10 @@ Deps: `npm i @restatedev/restate-sdk postgres csv-parse p-limit dotenv tsx types
 `npm i github:elephant-xyz/elephant-cli#main` (the release workflow is failing, so `main` is the source of the latest CLI; check the repo
 for the latest tested tag and record the chosen ref in the project README; the npm
 registry `@elephant-xyz/cli@<version>` is the fallback when publishing works), and
-`npm i -D vitest`. Add `"dev": "tsx watch services/app.ts"`,
+`npm i -D vitest`. Propose the experimental Elephant CLI 2 before pinning 1.x
+([`migrate-elephant-cli-v2`](../migrate-elephant-cli-v2/SKILL.md)): it is one binary with
+`prepare` and `transform` built in, it has no npm package and no library, and a service
+runs it with `--json` and reads the exit code. Keep the npm pin when the user declines. Add `"dev": "tsx watch services/app.ts"`,
 `"typecheck": "tsc --noEmit"`, and `"test": "vitest run"` to scripts.
 (Playwright/Puppeteer are installed when authoring browser-based modules — permit
 vendors, BBB — not part of the core scaffold.)
