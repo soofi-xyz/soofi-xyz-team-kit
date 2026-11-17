@@ -27,6 +27,11 @@
       "maxLength": 140,
       "pattern": "^[a-z0-9][a-z0-9-]{0,38}/([a-z0-9_-][a-z0-9._-]{0,99}|\\.[a-z0-9_-][a-z0-9._-]{0,98}|\\.\\.[a-z0-9._-]{1,98})$"
     },
+    "secret_name": {
+      "description": "An environment variable name for a secret. Names starting AWS_, ANTHROPIC_, CLAUDE_, ENACT_, GIT_, LD_ or NODE_, and PATH, HOME, SHELL, USER, TMPDIR, IS_SANDBOX, DISABLE_AUTOUPDATER, BASH_ENV and ENV, are the sandbox's own and refused.",
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+    },
     "permissions": {
       "description": "What a repository's token allows.",
       "type": "object",
@@ -35,6 +40,16 @@
       "properties": {
         "contents": { "enum": ["read", "write"] },
         "pull_requests": { "enum": ["none", "read", "write"] }
+      }
+    },
+    "library_skill": {
+      "description": "A skill library version the agent uses: PUT /skills/{name} saved it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "$ref": "#/$defs/name" },
+        "version": { "$ref": "#/$defs/version" }
       }
     },
     "manifest": {
@@ -104,6 +119,14 @@
           "uniqueItems": true,
           "items": { "enum": ["browser"] }
         },
+        "browser": {
+          "description": "How the browser tool behaves; needs browser in tools. sandbox_localhost: true makes http(s)://localhost:<port>/ and 127.0.0.1 in the browser the sandbox's own loopback, so the agent can open an app it runs in its sandbox.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "sandbox_localhost": { "type": "boolean" }
+          }
+        },
         "asana": {
           "description": "Gives the agent the asana tools, which call Asana as Enact's bot user. They reach only these projects, their tasks and those tasks' subtasks.",
           "type": "object",
@@ -119,6 +142,26 @@
               "items": { "type": "string", "pattern": "^[0-9]{1,32}$" }
             }
           }
+        },
+        "secrets": {
+          "description": "Secrets the agent needs, by environment variable name. An operator sets each value per agent (PUT /agents/{name}/secrets/{secret}); every turn gets the values as environment variables, and a run whose secret is not set fails before its turn (SECRET_ERROR). Values are never part of the definition.",
+          "type": "array",
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/secret_name" }
+        },
+        "library_skills": {
+          "description": "Skills from the environment's skill library, each by name and pinned version. The sandbox lays each out at skills/<name>/ beside the agent's own skills; the agent may not also hold files under skills/<name>/. Each must be in the library when the agent is saved.",
+          "type": "array",
+          "maxItems": 100,
+          "items": { "$ref": "#/$defs/library_skill" }
+        },
+        "mcp_servers": {
+          "description": "Remote MCP servers the agent uses, by name, each on the environment's allowed list (GET /mcp-servers). Every turn registers them as Streamable HTTP MCP servers; their hosts are added to hosts for egress.",
+          "type": "array",
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/name" }
         },
         "hosts": {
           "description": "Hosts a run may connect to, beyond what every run needs.",

@@ -4,6 +4,52 @@
   ],
   "description": "Report configurer. Write, validate, bundle and test report configurations on an existing Report deployment: Persist or Athena sources, Athena SQL datasets, refresh schedule and cost limit; save, refresh and check the JSON outputs, directly or through the Report MCP tools. Use Bronzong for implementation or service defects.",
   "hosts": [],
+  "library_skills": [
+    {
+      "name": "apply-engineering-guidelines",
+      "version": "1.0.0-sha256-d3011aab3ed7aa8d"
+    },
+    {
+      "name": "build-marketplace-puller",
+      "version": "1.0.0-sha256-0fb8850b217a9657"
+    },
+    {
+      "name": "build-persist-service",
+      "version": "1.0.0-sha256-4c9e1d58d3143c1a"
+    },
+    {
+      "name": "build-product-deployer",
+      "version": "1.0.0-sha256-5048d818aeeed673"
+    },
+    {
+      "name": "build-report-product",
+      "version": "1.0.0-sha256-4b5e5ed0c9ca8fef"
+    },
+    {
+      "name": "build-saas-marketplace",
+      "version": "1.0.0-sha256-bac2ebb34666a767"
+    },
+    {
+      "name": "configure-deploy-product",
+      "version": "1.0.0-sha256-bfbf72898135c6e9"
+    },
+    {
+      "name": "configure-persist-product",
+      "version": "1.0.0-sha256-e9fe1a396bc81a1a"
+    },
+    {
+      "name": "configure-report-product",
+      "version": "1.0.0-sha256-b72de264d2d5bee5"
+    },
+    {
+      "name": "guide-product-work",
+      "version": "1.0.0-sha256-b6e95aa5a642255d"
+    },
+    {
+      "name": "operate-marketplace",
+      "version": "1.0.0-sha256-15bf4f21ef17429a"
+    }
+  ],
   "limits": {
     "max_cost_usd": 10,
     "max_turns": 100
@@ -18,5 +64,8 @@
       "pull_requests": "write"
     }
   },
-  "version": "1.158.1"
+  "secrets": [
+    "PRISM_API_KEY"
+  ],
+  "version": "1.159.0"
 }

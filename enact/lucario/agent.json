@@ -4,6 +4,20 @@
   ],
   "description": "M2D operations agent builder. Use proactively when designing an Asana-triggered agent that resolves target environments, runs and monitors document processing, handles replay and approvals, and prepares reviewed configuration changes.",
   "hosts": [],
+  "library_skills": [
+    {
+      "name": "apply-engineering-guidelines",
+      "version": "1.0.0-sha256-d3011aab3ed7aa8d"
+    },
+    {
+      "name": "build-ai-agents",
+      "version": "1.0.0-sha256-52c743a354ac9fa3"
+    },
+    {
+      "name": "integrate-ci-cd",
+      "version": "1.0.0-sha256-0a3158a343d06221"
+    }
+  ],
   "limits": {
     "max_cost_usd": 10,
     "max_turns": 100
@@ -18,5 +32,5 @@
       "pull_requests": "write"
     }
   },
-  "version": "1.158.1"
+  "version": "1.159.0"
 }

@@ -4,6 +4,28 @@
   ],
   "description": "RAG agent builder. Use proactively when designing, implementing, or reviewing production retrieval systems — knowledge libraries, retrieval quality, confidence thresholds, and review loops.",
   "hosts": [],
+  "library_skills": [
+    {
+      "name": "apply-engineering-guidelines",
+      "version": "1.0.0-sha256-d3011aab3ed7aa8d"
+    },
+    {
+      "name": "build-ai-agents",
+      "version": "1.0.0-sha256-52c743a354ac9fa3"
+    },
+    {
+      "name": "build-batch-workflows",
+      "version": "1.0.0-sha256-aec04eab08f73ca6"
+    },
+    {
+      "name": "build-local-rag-pocs",
+      "version": "1.0.0-sha256-ec7d6c79e17d1f78"
+    },
+    {
+      "name": "build-rag-systems",
+      "version": "1.0.0-sha256-59dd04ff60db75f2"
+    }
+  ],
   "limits": {
     "max_cost_usd": 10,
     "max_turns": 100
@@ -18,5 +40,5 @@
       "pull_requests": "write"
     }
   },
-  "version": "1.158.1"
+  "version": "1.159.0"
 }

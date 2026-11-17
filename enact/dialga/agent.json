@@ -4,6 +4,44 @@
   ],
   "description": "Model builder. Build, maintain or fix vocabulary lookup, candidate validation, governed changes, ruleset definitions, mapping registrations, metric definitions and versioned releases. Use Jirachi for existing-service configuration.",
   "hosts": [],
+  "library_skills": [
+    {
+      "name": "apply-engineering-guidelines",
+      "version": "1.0.0-sha256-d3011aab3ed7aa8d"
+    },
+    {
+      "name": "build-lexicon-product",
+      "version": "1.0.0-sha256-2ab6b55a1d491527"
+    },
+    {
+      "name": "build-marketplace-puller",
+      "version": "1.0.0-sha256-0fb8850b217a9657"
+    },
+    {
+      "name": "build-product-deployer",
+      "version": "1.0.0-sha256-5048d818aeeed673"
+    },
+    {
+      "name": "build-saas-marketplace",
+      "version": "1.0.0-sha256-bac2ebb34666a767"
+    },
+    {
+      "name": "configure-deploy-product",
+      "version": "1.0.0-sha256-bfbf72898135c6e9"
+    },
+    {
+      "name": "configure-model-product",
+      "version": "1.0.0-sha256-3f3bbfa96b724495"
+    },
+    {
+      "name": "guide-product-work",
+      "version": "1.0.0-sha256-b6e95aa5a642255d"
+    },
+    {
+      "name": "operate-marketplace",
+      "version": "1.0.0-sha256-15bf4f21ef17429a"
+    }
+  ],
   "limits": {
     "max_cost_usd": 10,
     "max_turns": 100
@@ -18,5 +56,5 @@
       "pull_requests": "write"
     }
   },
-  "version": "1.158.1"
+  "version": "1.159.0"
 }

@@ -4,6 +4,16 @@
   ],
   "description": "Batch workflow specialist. Use proactively when designing or reviewing batch workflows and data pipelines with cost, throttling, idempotency, and staged testing requirements; reports an architecture and implementation plan and does not write code.",
   "hosts": [],
+  "library_skills": [
+    {
+      "name": "apply-engineering-guidelines",
+      "version": "1.0.0-sha256-d3011aab3ed7aa8d"
+    },
+    {
+      "name": "build-batch-workflows",
+      "version": "1.0.0-sha256-aec04eab08f73ca6"
+    }
+  ],
   "limits": {
     "max_cost_usd": 10,
     "max_turns": 100
@@ -18,5 +28,5 @@
       "pull_requests": "read"
     }
   },
-  "version": "1.158.1"
+  "version": "1.159.0"
 }

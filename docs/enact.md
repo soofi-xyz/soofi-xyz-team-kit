@@ -60,16 +60,15 @@ only) turns each agent into an Enact agent directory, following Enact's
 
 ```text
 enact/
-├── config.json             # input: contract, stays-local set, waves, model map, defaults, MCP lists
+├── config.json             # input: stays-local set, waves, model map, defaults, MCP lists
 ├── overrides/<agent>.json  # input: manifest fields, requires_mcp (+ reason), needs_secrets, browser, appendix lines
-├── schema/                 # input: Enact's agent definition schema (scripts/sync-enact-schema.sh)
-│   └── next/               # input: the "next" contract's schemas + SOURCE_REVISIONS (… next)
+├── schema/                 # input: Enact's agent and skill schemas + SOURCE_REVISION (scripts/sync-enact-schema.sh)
 ├── inventory.json          # generated: wave, size, skills, flags, requires_mcp, blocked_by per agent
 ├── dist/                   # gitignored: packed PUT bodies for Build's enact agent/skill kinds
 │   ├── agents/<agent>.json # {manifest, files} as canonical JSON
-│   └── skills/<skill>.json # library skills ("next" only)
-├── library/                # generated in the "next" contract only
-│   ├── index.json          # library skills: version, digest, sizes, users; skills it cannot hold
+│   └── skills/<skill>.json # library skills
+├── library/                # generated: the skill library
+│   ├── index.json          # committed: library skills: version, digest, sizes, users; skills it cannot hold
 │   └── <skill>/            # gitignored: skill.json + the skill's files
 └── <agent>/                # generated, one per agent not in stays_local
     ├── agent.json          # manifest: frontmatter + config defaults + override
@@ -82,48 +81,32 @@ node scripts/sync-enact-agents.mjs sync     # after changing agents/, skills/ or
 node scripts/sync-enact-agents.mjs check    # CI: committed agent.json/instructions.md/inventory are current
 python3 scripts/test-enact-packaging.py     # T1 (after sync); --strict for every agent, --self-test
 scripts/sync-enact-schema.sh [sync|check]   # refresh enact/schema from prismteam-ai/enact origin/main
-scripts/sync-enact-schema.sh next           # refresh enact/schema/next from main + the open pieces' branches
-
-# Try the next contract locally, then go back (the committed packages are "current"):
-node scripts/sync-enact-agents.mjs sync --contract next && python3 scripts/test-enact-packaging.py --strict
-node scripts/sync-enact-agents.mjs sync
 ```
 
 ### Enact pieces this depends on
 
 | Piece | Enact PR | Status | What it unblocks here |
 | --- | --- | --- | --- |
-| Sandbox CLI tools (`curl`, `jq`, `python3`, `gh`, AWS CLI) | [#22](https://github.com/prismteam-ai/enact/pull/22) | open | The appendix still says there is no `gh`, `python3`, `curl` or `aws`; the inventory's flags show who uses them |
-| Browser sandbox preview (`browser.sandbox_localhost`) | [#23](https://github.com/prismteam-ai/enact/pull/23) | open | `blocked_by: browser-preview`: no packaged agent today (the localhost UI agents audino, smeargle and sylveon stay local) |
-| `ask_<agent>` MCP tools and run-ended webhook | [#24](https://github.com/prismteam-ai/enact/pull/24) | open | Handing work to another agent from a run; the appendix tells agents to name it instead |
-| Remote MCP servers (`mcp_servers`, `GET/PUT /mcp-servers`) | [#25](https://github.com/prismteam-ai/enact/pull/25) | open | `blocked_by: remote-mcp` (chandelure, donphan, hoopa, watchog, wigglytuff) |
-| Agent secrets (`secrets`) | [#26](https://github.com/prismteam-ai/enact/pull/26) | open | `blocked_by: agent-secrets` (configurers' `PRISM_API_KEY`) |
-| Skill library (`library_skills`, `PUT/GET /skills/{name}`) | [#27](https://github.com/prismteam-ai/enact/pull/27) | open | `blocked_by: shared-skill-library` (kecleon, mew, silvally) |
-| Sign-in (access tokens, per-agent grants) | [#28](https://github.com/prismteam-ai/enact/pull/28) | pending | Replacing the shared `x-api-key` in the editor setup above |
+| Sandbox CLI tools (`curl`, `jq`, `unzip`, `python3`, `gh`, AWS CLI) | [#22](https://github.com/prismteam-ai/enact/pull/22), in [#30](https://github.com/prismteam-ai/enact/pull/30) | merged | The appendix names them (check with `command -v`, prefer Node.js `fetch`) |
+| Browser sandbox preview (`browser.sandbox_localhost`) | #23, in #30 | merged | `browser` in the manifest when an override sets it; no packaged agent today (the localhost UI agents audino, smeargle and sylveon stay local) |
+| `ask_<agent>` MCP tools and run-ended webhook | #24, in #30 | merged | The appendix lets agents ask other agents when a run has the `enact` server |
+| Remote MCP servers (`mcp_servers`, `GET/PUT /mcp-servers`) | #25, in #30 | merged | `mcp_servers` (chandelure, donphan, hoopa, watchog, wigglytuff); each waits on the environment's allow-list (`blocked_by: mcp-allow-list`) |
+| Agent secrets (`secrets`) | #26, in #30 | merged | `secrets` (configurers' `PRISM_API_KEY`) |
+| Skill library (`library_skills`, `PUT/GET /skills/{name}`) | #27, in #30 | merged | `library_skills`; kecleon, mew and silvally fit within 1 MiB |
+| Sign-in (access tokens, per-agent grants) | [#28](https://github.com/prismteam-ai/enact/pull/28) | open | Replacing the shared `x-api-key` in the editor setup above |
 
-### Contract: `current` and `next`
+All but sign-in are on prismteam-ai/enact main (`721fd15`, enact#30); `enact/schema/` is copied
+from there. Manifests carry, where they apply:
 
-`config.json` `contract` picks which Enact contract the packages target; `--contract` on the
-command line overrides it.
+- `library_skills`: the agent's skills that live in the skill library (below), pinned by version;
+- `mcp_servers`: `requires_mcp` minus `mcp_builtin` (`enact`, `browser`);
+- `secrets`: `needs_secrets` (the override, else `needs_secrets_by_role`);
+- `browser: { sandbox_localhost: true }` (and `tools: ["browser"]`) when the override sets
+  `"browser": { "sandbox_localhost": true }`.
 
-- **`current`** (the default, and what is committed and checked in CI): prismteam-ai/enact
-  main, validated against `enact/schema/`. Manifests carry none of the open pieces' fields;
-  what they would solve is listed in `blocked_by`.
-- **`next`**: main plus enact#23, #25, #26 and #27, validated against
-  `enact/schema/next/agent-definition.schema.json`. `scripts/sync-enact-schema.sh next` builds
-  that schema by merging each branch's additions onto main's (a conflicting change stops it) and
-  records the commits in `enact/schema/next/SOURCE_REVISIONS`. Manifests also get:
-  - `library_skills`: the agent's skills that live in the skill library (below), pinned by version;
-  - `mcp_servers`: `requires_mcp` minus `mcp_builtin` (`enact`, `browser`);
-  - `secrets`: `needs_secrets` (the override, else `needs_secrets_by_role`);
-  - `browser: { sandbox_localhost: true }` (and `tools: ["browser"]`) when the override sets
-    `"browser": { "sandbox_localhost": true }`.
+The appendix names the remote MCP servers, the secrets and the sandbox's own localhost.
 
-  The appendix then names the remote MCP servers, the secrets and the sandbox's own localhost.
-  CI runs this mode report-only after the current checks. Once the pieces merge, refresh
-  `enact/schema/` and switch the default.
-
-### The skill library (`next`)
+### The skill library
 
 A skill goes to the library, instead of being copied into each package, when two or more packaged
 agents use it, or when keeping it among an agent's own files would break that agent's limits
@@ -139,7 +122,7 @@ the versions need no order. `index.json` also records each skill's `digest` (`sh
 stored document's canonical JSON, as Enact computes it), bytes, files, stored bytes, why it is in
 the library and which agents pin it.
 
-Skills the library cannot hold (over 3 MiB of text, over 500 files, non-UTF-8 files, paths it
+Skills the library cannot hold (over 3 MiB of text, over 5 MiB encoded or a 4 MiB body, over 500 files, non-UTF-8 files, paths it
 refuses such as dotfiles, or no description) stay in their agents' packages and are listed under
 `excluded` with their users. Today those are `prism-asset-pipeline` (images; used only by
 ampharos) and `use-oracle` (`runtime/.dockerignore`, `.gitignore`; used only by oracle), both
@@ -174,24 +157,23 @@ stays-local.
 
   | `blocked_by` | When |
   | --- | --- |
-  | `shared-skill-library` | Files over 1 MiB, over 200 files, or one file over 256 KiB (`next`: own files still over, or pins over 100 or 8 MiB) |
-  | `remote-mcp` | `current`: `requires_mcp` names a server outside `mcp_builtin` (`enact`, `browser`) |
-  | `mcp-allow-list` | `next`: `requires_mcp` names a server outside `mcp_builtin` + `mcp_allow_list` (default `[]`) |
-  | `agent-secrets` | `current`: `needs_secrets` is not empty (override, else `needs_secrets_by_role`) |
-  | `browser-preview` | `current`: the override sets `browser.sandbox_localhost`: the agent must open an app it runs inside the sandbox (a localhost dev server). The `browser` tool alone reaches hosted URLs and needs nothing new, so slowking, which exercises candidates' hosted runtimes, is not blocked |
+  | `shared-skill-library` | Own files still over 1 MiB, 200 files or 256 KiB in one file, or pins over 100 or 8 MiB |
+  | `mcp-allow-list` | `requires_mcp` names a server outside `mcp_builtin` + `mcp_allow_list` (default `[]`) |
+
+  Only an agent that opens an app it runs inside its sandbox needs `browser.sandbox_localhost`;
+  the `browser` tool alone reaches hosted URLs, so slowking (candidates' hosted runtimes) does not.
 
 ### Packed files for Build
 
 Build's `enact` configuration kinds (`agent`, and `skill` from prismteam-ai/build#66) take one
 JSON file per agent or library skill: the exact `PUT /enact/agents/{name}` or
 `PUT /enact/skills/{name}` body `{ manifest, files }`. `sync` writes them to
-`enact/dist/agents/<agent>.json` and, in `next`, `enact/dist/skills/<skill>.json` (gitignored).
+`enact/dist/agents/<agent>.json` and `enact/dist/skills/<skill>.json` (gitignored).
 Each is the document's canonical JSON (keys sorted at every level, no whitespace), so the file's
 SHA-256 is Enact's version digest (`sha256:…`) that Build records. T1 checks every packed file
 parses back to its directory's manifest and files, is byte-for-byte canonical, and fits the PUT
-body limit (2 MiB for agents, 4 MiB for skills). Build's agent schema currently carries only
-enact#27's `library_skills`, so in `next` it refuses agents with `secrets` or `mcp_servers` until
-it copies the merged schema.
+body limit (2 MiB for agents, 4 MiB for skills). Build#66 copied its agent schema from enact#27
+alone, so it refuses agents with `secrets` or `mcp_servers` until it copies main's.
 
 ### Declaring MCP needs
 
@@ -207,11 +189,12 @@ limit, a `SKILL.md` in every skill, no path that is also a folder, and `requires
 allow-list. CI fails on agents in `must_pass_waves` (wave 1a) and reports the rest. `--self-test`
 proves the checks catch each case, including that `donphan` fails on its `elephant` MCP server.
 
-For the `next` contract (it reads the contract from `inventory.json`), T1 validates against
-`enact/schema/next/` and also checks the library: each library skill against
-`skill-definition.schema.json`, at most 3 MiB in 500 files, 4 MiB stored, and a version that
-still names its content; each agent's pins exist in `index.json` at that version, are at most
-100 and 8 MiB together, and none is also an own `skills/<name>/`; `mcp_servers` are on the
+T1 also checks the library as Enact main does: each library skill against
+`skill-definition.schema.json`, at most 3 MiB of text in 500 files, at most 5 MiB as its
+canonical JSON encoded once more as a JSON string (how API Gateway carries it, so quotes,
+backslashes and newlines count twice), a PUT body of at most 4 MiB, and a version that still
+names its content; each agent's pins exist in `index.json` at that version, are at most
+100 and 8 MiB (stored canonical JSON) together, and none is also an own `skills/<name>/`; `mcp_servers` are on the
 allow-list. `--allow-list-from https://<shared domain>` adds the servers a live environment
 allows (`GET /enact/mcp-servers` with `x-api-key: $ENACT_API_KEY`); without `ENACT_API_KEY` it
 says so and uses `config.json` `mcp_allow_list`.

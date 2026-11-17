@@ -3,15 +3,13 @@
 // enact/inventory.json. Enact's contract: prismteam-ai/enact docs/agent-contract.md; its schema is
 // copied to enact/schema/ by scripts/sync-enact-schema.sh.
 //
-//   node scripts/sync-enact-agents.mjs [sync|check] [--contract current|next]
+//   node scripts/sync-enact-agents.mjs [sync|check]
 //
-// --contract (default: enact/config.json contract, else "current") picks the Enact contract:
-// "current" is prismteam-ai/enact main (enact/schema/); "next" adds the open pieces' manifest
-// fields (library_skills, mcp_servers, secrets, browser) and writes the skill library to
-// enact/library/ (enact/schema/next/, scripts/sync-enact-schema.sh next). Both write bundle-ready
-// packed files (gitignored): enact/dist/agents/<agent>.json and enact/dist/skills/<skill>.json,
-// each the exact PUT body {manifest, files} as canonical JSON, the source file of Build's
-// enact/agent and enact/skill configuration kinds.
+// Targets prismteam-ai/enact main (enact/schema/): manifests carry library_skills, mcp_servers,
+// secrets and browser.sandbox_localhost where they apply, and the skill library is written to
+// enact/library/. It also writes bundle-ready packed files (gitignored):
+// enact/dist/agents/<agent>.json and enact/dist/skills/<skill>.json, each the exact PUT body
+// {manifest, files} as canonical JSON, the source file of Build's enact agent and skill kinds.
 //
 // sync (default) rewrites the generated files; check exits 1 when they differ from what is
 // committed. Inputs: enact/config.json (stays-local set, waves, model map, defaults, limits) and
@@ -189,7 +187,7 @@ function appendix(manifest, skills, info, override) {
       "the `browser` MCP server (a Chromium through Playwright's MCP tools: `mcp__browser__browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`, `browser_take_screenshot` and the rest; load them with ToolSearch before the first call)",
     );
   }
-  if (info.next && info.mcpServers.length) {
+  if (info.mcpServers.length) {
     tools.push(
       `the remote MCP ${info.mcpServers.length === 1 ? "server" : "servers"} ${info.mcpServers.map((s) => `\`${s}\` (\`mcp__${s}__…\`)`).join(", ")}, which Enact registers in every turn (load their tools with ToolSearch before the first call)`,
     );
@@ -202,12 +200,12 @@ function appendix(manifest, skills, info, override) {
       `- **Required MCP.** This agent's work depends on ${info.requiresMcp.map((s) => `\`${s}\``).join(", ")}. When such a server is not connected, say so in your result and stop rather than reaching the data another way.`,
     );
   }
-  if (info.next && info.sandboxLocalhost) {
+  if (info.sandboxLocalhost) {
     lines.push(
       "- **Your own app in the browser.** `http://localhost:<port>/` and `127.0.0.1` in the `browser` tool are this sandbox's own loopback: start the app's dev server in the sandbox, then open it there.",
     );
   }
-  if (info.next && info.needsSecrets.length) {
+  if (info.needsSecrets.length) {
     lines.push(
       `- **Secrets.** ${info.needsSecrets.map((s) => `\`${s}\``).join(", ")} ${info.needsSecrets.length === 1 ? "is an environment variable" : "are environment variables"} in every turn, set by an operator for this agent. Use ${info.needsSecrets.length === 1 ? "it" : "them"} only for the requests this prompt describes; never print, log or return a value.`,
     );
@@ -248,13 +246,16 @@ function librarySkillVersion(name, description, files) {
 
 const canonicalJson = (value) => JSON.stringify(sortKeys(value));
 const MIB = 1024 * 1024;
-const LIBRARY_LIMITS = { skill_bytes: 3 * MIB, skill_files: 500, stored_bytes: 4 * MIB, pinned_bytes: 8 * MIB, pins: 100 };
+// Enact main src/skills/definition.ts and src/agents/definition.ts: a skill's files hold at most
+// 3 MiB; its canonical JSON, encoded once more as a JSON string (as API Gateway carries it), at
+// most 5 MiB; its PUT body at most 4 MiB; the skills one agent pins, as stored, 8 MiB together.
+const LIBRARY_LIMITS = { skill_bytes: 3 * MIB, skill_files: 500, encoded_bytes: 5 * MIB, body_bytes: 4 * MIB, pinned_bytes: 8 * MIB, pins: 100 };
+const encodedBytes = (text) => Buffer.byteLength(JSON.stringify(text));
 const LIBRARY_FILE_PATH = /^([A-Za-z0-9_][A-Za-z0-9._-]{0,99}\/){0,8}[A-Za-z0-9_][A-Za-z0-9._-]{0,99}$/;
 
-function build(contract) {
+function build() {
   const config = readJson(path.join(enactDir, "config.json"));
   const plugin = readJson(path.join(root, "plugin.json"));
-  const next = contract === "next";
   const patterns = Object.entries(config.flag_patterns).map(([k, v]) => [k, new RegExp(v)]);
   const secretRe = new RegExp(config.secret_pattern);
   const knownSkills = new Set(
@@ -264,8 +265,8 @@ function build(contract) {
   const waveOf = new Map();
   for (const [wave, names] of Object.entries(config.waves)) for (const n of names) waveOf.set(n, wave);
   const builtinMcp = config.mcp_builtin;
-  // current: only Enact's own servers exist. next: plus the environment's allowed remote servers.
-  const allowedMcp = next ? [...builtinMcp, ...(config.mcp_allow_list ?? [])] : [...builtinMcp];
+  // Enact's own servers plus the remote servers on the target environment's list.
+  const allowedMcp = [...builtinMcp, ...(config.mcp_allow_list ?? [])];
 
   const outputs = new Map(); // enact-relative path -> content
   const skillCache = new Map();
@@ -322,13 +323,18 @@ function build(contract) {
     const bad = Object.keys(entry.files).filter((p) => !LIBRARY_FILE_PATH.test(p.slice(prefix.length)));
     if (bad.length) problems.push(`paths the library refuses: ${bad.join(", ")}`);
     if (!entry.description || entry.description.length > 1024) problems.push("SKILL.md description missing or over 1024 characters");
+    if (!problems.length) {
+      const files = Object.fromEntries(Object.entries(entry.files).map(([rel, t]) => [rel.slice(prefix.length), t]));
+      const body = canonicalJson({ manifest: { name: entry.name, version: "1.0.0-sha256-0000000000000000", description: entry.description }, files });
+      if (encodedBytes(body) > LIBRARY_LIMITS.encoded_bytes) problems.push(`${encodedBytes(body)} bytes as JSON encoded in a request, over 5 MiB`);
+      if (Buffer.byteLength(body) > LIBRARY_LIMITS.body_bytes) problems.push(`${Buffer.byteLength(body)}-byte PUT body, over 4 MiB`);
+    }
     return problems.length ? problems.join("; ") : null;
   }
 
   const inventory = {
     kit_version: plugin.version,
     enact_version: enactVersion(plugin.version),
-    contract,
     mcp_allow_list: allowedMcp,
     agents: {},
     skills: {},
@@ -339,7 +345,7 @@ function build(contract) {
 
   // Pass 1: read every agent and resolve its skills.
   const agents = [];
-  const staysLocalSkills = new Map(); // skill -> stays-local agents that use it (next: library report)
+  const staysLocalSkills = new Map(); // skill -> stays-local agents that use it (library report)
   const closure = (body) => {
     const queue = [...referencedSkills(body, false, knownSkills)].sort();
     const included = new Set();
@@ -360,7 +366,7 @@ function build(contract) {
 
     if (stays.has(name)) {
       inventory.agents[name] = { wave: "stays-local", wave_reason: "enact/config.json stays_local" };
-      if (next) for (const s of closure(body)) staysLocalSkills.set(s, [...(staysLocalSkills.get(s) ?? []), name]);
+      for (const s of closure(body)) staysLocalSkills.set(s, [...(staysLocalSkills.get(s) ?? []), name]);
       continue;
     }
 
@@ -396,11 +402,11 @@ function build(contract) {
     });
   }
 
-  // Pass 2 (next): choose library skills. A skill goes to the library when two or more packaged
+  // Pass 2: choose library skills. A skill goes to the library when two or more packaged
   // agents use it, or when keeping it in an agent's own files breaks that agent's limits.
   const library = new Map(); // skill -> reason
   const libraryExcluded = {};
-  if (next) {
+  {
     const users = new Map();
     for (const a of agents) for (const s of a.skills) users.set(s, [...(users.get(s) ?? []), a.name]);
     for (const [s, names] of [...users].sort()) {
@@ -466,6 +472,7 @@ function build(contract) {
       bytes: entry.bytes,
       files: Object.keys(files).length,
       stored_bytes: Buffer.byteLength(canonical),
+      encoded_bytes: encodedBytes(canonical),
       reason: library.get(s),
       used_by: [],
     };
@@ -483,7 +490,7 @@ function build(contract) {
     const pinned = skills.filter((s) => library.has(s));
     const own = skills.filter((s) => !library.has(s));
     const mcpServers = requiresMcp.filter((s) => !builtinMcp.includes(s));
-    if (next) {
+    {
       if (pinned.length) manifest.library_skills = pinned.map((s) => ({ name: s, version: librarySkills[s].version }));
       if (mcpServers.length) manifest.mcp_servers = mcpServers;
       if (needsSecrets.length) manifest.secrets = needsSecrets;
@@ -495,7 +502,7 @@ function build(contract) {
     }
     for (const s of skills) usedSkills.add(s);
 
-    const info = { requiresMcp, readonly, next, mcpServers, needsSecrets, sandboxLocalhost: a.sandboxLocalhost };
+    const info = { requiresMcp, readonly, mcpServers, needsSecrets, sandboxLocalhost: a.sandboxLocalhost };
     const instructions = body.replace(/^\n+/, "").replace(/\n*$/, "\n") + appendix(manifest, skills, info, override);
     const files = { "instructions.md": instructions };
     const flags = scanFlags(body.replace(/^\n+/, ""), "instructions.md", patterns);
@@ -519,14 +526,10 @@ function build(contract) {
     if (bytes > config.limits.max_total_bytes || fileCount > config.limits.max_files || largest > config.limits.max_file_bytes) {
       blockedBy.add("shared-skill-library");
     }
-    if (next && (pinnedBytes > LIBRARY_LIMITS.pinned_bytes || pinned.length > LIBRARY_LIMITS.pins)) blockedBy.add("shared-skill-library");
+    if ((pinnedBytes > LIBRARY_LIMITS.pinned_bytes || pinned.length > LIBRARY_LIMITS.pins)) blockedBy.add("shared-skill-library");
     const outside = requiresMcp.some((s) => !allowedMcp.includes(s));
-    // current: the remote-mcp piece is missing. next: the server is not on the environment's list.
-    if (outside) blockedBy.add(next ? "mcp-allow-list" : "remote-mcp");
-    if (!next && needsSecrets.length) blockedBy.add("agent-secrets");
-    // Only an agent that opens an app it runs inside its sandbox (a localhost dev server) needs the
-    // browser-preview piece; the browser tool itself already reaches hosted URLs.
-    if (!next && a.sandboxLocalhost) blockedBy.add("browser-preview");
+    // The server is not on the environment's list (enact/config.json mcp_allow_list).
+    if (outside) blockedBy.add("mcp-allow-list");
 
     let wave = override.wave ?? waveOf.get(name);
     let waveReason = override.wave ? "override" : wave ? "enact/config.json waves" : undefined;
@@ -558,7 +561,10 @@ function build(contract) {
       bytes,
       files: fileCount,
       skills,
-      ...(next ? { own_skills: own, library_skills: pinned, library_pinned_bytes: pinnedBytes, mcp_servers: mcpServers } : {}),
+      own_skills: own,
+      library_skills: pinned,
+      library_pinned_bytes: pinnedBytes,
+      mcp_servers: mcpServers,
       requires_mcp: requiresMcp,
       requires_mcp_reason: override.requires_mcp_reason ?? "No mcp__ tool reference and no instruction that calls an MCP server.",
       needs_secrets: needsSecrets,
@@ -585,7 +591,7 @@ function build(contract) {
     };
   }
   outputs.set("inventory.json", stableJson(inventory));
-  if (next) {
+  {
     outputs.set(
       "library/index.json",
       stableJson({
@@ -631,25 +637,12 @@ function existingGenerated() {
 }
 
 function main() {
-  const args = process.argv.slice(2);
-  const usage = "usage: node scripts/sync-enact-agents.mjs [sync|check] [--contract current|next]";
-  let command = "sync";
-  let contract;
-  for (let i = 0; i < args.length; i++) {
-    if (args[i] === "--contract") contract = args[++i];
-    else if (args[i].startsWith("--contract=")) contract = args[i].slice("--contract=".length);
-    else if (["sync", "check"].includes(args[i])) command = args[i];
-    else {
-      console.error(usage);
-      process.exit(2);
-    }
-  }
-  contract ??= readJson(path.join(enactDir, "config.json")).contract ?? "current";
-  if (!["current", "next"].includes(contract)) {
-    console.error(usage);
+  const command = process.argv[2] ?? "sync";
+  if (process.argv.length > 3 || !["sync", "check"].includes(command)) {
+    console.error("usage: node scripts/sync-enact-agents.mjs [sync|check]");
     process.exit(2);
   }
-  const outputs = build(contract);
+  const outputs = build();
   const existing = existingGenerated();
   const stale = [...existing.keys()].filter((p) => !outputs.has(p)).sort();
   const changed = [...outputs.keys()].filter((p) => existing.get(p) !== outputs.get(p)).sort();
@@ -669,7 +662,7 @@ function main() {
       console.error("enact/ is out of sync; run node scripts/sync-enact-agents.mjs sync");
       process.exit(1);
     }
-    console.log(`enact/ is synced (${agents.size} agent packages, contract ${contract})`);
+    console.log(`enact/ is synced (${agents.size} agent packages)`);
     return;
   }
   for (const p of stale) rmSync(path.join(enactDir, p));
@@ -690,7 +683,7 @@ function main() {
   prune("");
   const libraryCount = new Set([...outputs.keys()].filter((p) => /^library\/[^/]+\//.test(p)).map((p) => p.split("/")[1])).size;
   console.log(
-    `synced ${agents.size} Enact agent packages${contract === "next" ? ` and ${libraryCount} library skills` : ""} (contract ${contract}; ${changed.length} files written, ${stale.length} removed)`,
+    `synced ${agents.size} Enact agent packages and ${libraryCount} library skills (${changed.length} files written, ${stale.length} removed)`,
   );
 }
 

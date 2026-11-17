@@ -4,6 +4,76 @@
   ],
   "description": "Audit anomaly-analysis agent builder. Use proactively when building an audit agent that reads pipeline outputs, applies versioned audit profiles, and emits evidence-backed anomaly records.",
   "hosts": [],
+  "library_skills": [
+    {
+      "name": "apply-engineering-guidelines",
+      "version": "1.0.0-sha256-d3011aab3ed7aa8d"
+    },
+    {
+      "name": "atomic-data",
+      "version": "1.0.0-sha256-1c10240d042d78cd"
+    },
+    {
+      "name": "build-ai-agents",
+      "version": "1.0.0-sha256-52c743a354ac9fa3"
+    },
+    {
+      "name": "build-batch-workflows",
+      "version": "1.0.0-sha256-aec04eab08f73ca6"
+    },
+    {
+      "name": "build-console-product",
+      "version": "1.0.0-sha256-05d7cfec9450bbfa"
+    },
+    {
+      "name": "build-marketplace-puller",
+      "version": "1.0.0-sha256-0fb8850b217a9657"
+    },
+    {
+      "name": "build-product-deployer",
+      "version": "1.0.0-sha256-5048d818aeeed673"
+    },
+    {
+      "name": "build-saas-marketplace",
+      "version": "1.0.0-sha256-bac2ebb34666a767"
+    },
+    {
+      "name": "configure-console-product",
+      "version": "1.0.0-sha256-63cc9fe4497ddecf"
+    },
+    {
+      "name": "configure-deploy-product",
+      "version": "1.0.0-sha256-bfbf72898135c6e9"
+    },
+    {
+      "name": "figma-to-email-template",
+      "version": "1.0.0-sha256-d85dd07195b145fc"
+    },
+    {
+      "name": "guide-product-work",
+      "version": "1.0.0-sha256-b6e95aa5a642255d"
+    },
+    {
+      "name": "integrate-ci-cd",
+      "version": "1.0.0-sha256-0a3158a343d06221"
+    },
+    {
+      "name": "manage-channel-templates",
+      "version": "1.0.0-sha256-a9f6dca83ddc1e8d"
+    },
+    {
+      "name": "manage-communication-activity",
+      "version": "1.0.0-sha256-a5752e9687c4c345"
+    },
+    {
+      "name": "operate-marketplace",
+      "version": "1.0.0-sha256-15bf4f21ef17429a"
+    },
+    {
+      "name": "unify-metrics",
+      "version": "1.0.0-sha256-87ab458ae63bbb54"
+    }
+  ],
   "limits": {
     "max_cost_usd": 10,
     "max_turns": 100
@@ -18,5 +88,5 @@
       "pull_requests": "write"
     }
   },
-  "version": "1.158.1"
+  "version": "1.159.0"
 }

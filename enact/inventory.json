@@ -5,18 +5,25 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 101035,
-      "files": 22,
+      "bytes": 4210,
+      "files": 1,
       "flag_counts": {
         "python3": 1
       },
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.4-high",
+      "library_pinned_bytes": 101164,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-solver-services"
+      ],
+      "mcp_servers": [],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": true,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -36,8 +43,8 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 548583,
-      "files": 67,
+      "bytes": 11029,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 1,
         "curl": 6,
@@ -47,10 +54,24 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 554198,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-access-product",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "configure-access-product",
+        "configure-deploy-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -79,18 +100,28 @@
         "curl"
       ],
       "blocked_by": [],
-      "bytes": 238469,
-      "files": 48,
+      "bytes": 6234,
+      "files": 1,
       "flag_counts": {
         "curl": 1
       },
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.5-high",
+      "library_pinned_bytes": 241405,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-ai-agents",
+        "build-batch-workflows",
+        "build-local-rag-pocs",
+        "build-rag-systems"
+      ],
+      "mcp_servers": [],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -120,8 +151,8 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 464988,
-      "files": 60,
+      "bytes": 10513,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 1,
         "curl": 3,
@@ -131,10 +162,22 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.5-medium",
+      "library_pinned_bytes": 468693,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "configure-deploy-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": true,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -158,18 +201,25 @@
         "curl"
       ],
       "blocked_by": [],
-      "bytes": 151807,
-      "files": 27,
+      "bytes": 6972,
+      "files": 1,
       "flag_counts": {
         "curl": 1
       },
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.4-high",
+      "library_pinned_bytes": 150027,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-ai-agents"
+      ],
+      "mcp_servers": [],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -196,8 +246,8 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 483788,
-      "files": 62,
+      "bytes": 20012,
+      "files": 2,
       "flag_counts": {
         "aws-profile": 1,
         "curl": 5,
@@ -207,10 +257,25 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 478680,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "configure-deploy-product",
+        "configure-inference-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [
+        "build-inference-product"
+      ],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -239,11 +304,9 @@
         "gh",
         "python3"
       ],
-      "blocked_by": [
-        "agent-secrets"
-      ],
-      "bytes": 505917,
-      "files": 64,
+      "blocked_by": [],
+      "bytes": 12480,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 1,
         "curl": 3,
@@ -253,12 +316,26 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 509521,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "build-tenant-account-manager",
+        "configure-account-product",
+        "configure-deploy-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [
         "PRISM_API_KEY"
       ],
       "needs_secrets_source": "role: configure",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -291,8 +368,8 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 819587,
-      "files": 85,
+      "bytes": 8325,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 4,
         "curl": 23,
@@ -302,10 +379,26 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 834592,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-marketplace-puller",
+        "build-persist-service",
+        "build-product-deployer",
+        "build-report-product",
+        "build-saas-marketplace",
+        "configure-deploy-product",
+        "configure-persist-product",
+        "configure-report-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -337,11 +430,9 @@
         "gh",
         "python3"
       ],
-      "blocked_by": [
-        "agent-secrets"
-      ],
-      "bytes": 819554,
-      "files": 85,
+      "blocked_by": [],
+      "bytes": 8488,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 4,
         "curl": 23,
@@ -351,12 +442,28 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 834592,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-marketplace-puller",
+        "build-persist-service",
+        "build-product-deployer",
+        "build-report-product",
+        "build-saas-marketplace",
+        "configure-deploy-product",
+        "configure-persist-product",
+        "configure-report-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [
         "PRISM_API_KEY"
       ],
       "needs_secrets_source": "role: configure",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "agents/bronzor.md:35-37 describes connecting an MCP client to Report as an option; the agent itself works through the Report HTTP API.",
@@ -392,11 +499,9 @@
         "gh",
         "python3"
       ],
-      "blocked_by": [
-        "agent-secrets"
-      ],
-      "bytes": 610871,
-      "files": 95,
+      "blocked_by": [],
+      "bytes": 10962,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 1,
         "curl": 3,
@@ -406,12 +511,26 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 622270,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "build-system-product",
+        "configure-deploy-product",
+        "configure-system-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [
         "PRISM_API_KEY"
       ],
       "needs_secrets_source": "role: configure",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -440,10 +559,10 @@
         "python3"
       ],
       "blocked_by": [
-        "remote-mcp"
+        "mcp-allow-list"
       ],
-      "bytes": 553819,
-      "files": 67,
+      "bytes": 11654,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 1,
         "curl": 3,
@@ -453,10 +572,26 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 559064,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-console-product",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "configure-console-product",
+        "configure-deploy-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [
+        "figma"
+      ],
       "model": "sonnet",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [
         "figma"
@@ -482,16 +617,23 @@
     "chatot": {
       "assumptions": [],
       "blocked_by": [],
-      "bytes": 64633,
-      "files": 16,
+      "bytes": 4662,
+      "files": 1,
       "flag_counts": {},
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.4-high",
+      "library_pinned_bytes": 62611,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "manage-communication-activity"
+      ],
+      "mcp_servers": [],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -511,8 +653,8 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 727278,
-      "files": 69,
+      "bytes": 18035,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 2,
         "curl": 5,
@@ -522,10 +664,23 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 728161,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-marketplace-puller",
+        "build-persist-service",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "configure-deploy-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -554,8 +709,8 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 466724,
-      "files": 60,
+      "bytes": 12249,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 1,
         "curl": 3,
@@ -565,10 +720,22 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 468693,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "configure-deploy-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -596,10 +763,14 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.4-high",
+      "library_pinned_bytes": 0,
+      "library_skills": [],
+      "mcp_servers": [],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -616,8 +787,8 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 614443,
-      "files": 70,
+      "bytes": 12353,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 1,
         "curl": 3,
@@ -627,10 +798,24 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 621369,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-lexicon-product",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "configure-deploy-product",
+        "configure-model-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -658,8 +843,8 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 150465,
-      "files": 28,
+      "bytes": 25320,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 1,
         "python3": 1
@@ -667,10 +852,19 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.4-high",
+      "library_pinned_bytes": 130857,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-batch-workflows",
+        "build-inbound-sftp-workflows",
+        "integrate-ci-cd"
+      ],
+      "mcp_servers": [],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -687,18 +881,26 @@
     "donphan": {
       "assumptions": [],
       "blocked_by": [
-        "remote-mcp"
+        "mcp-allow-list"
       ],
-      "bytes": 23986,
-      "files": 5,
+      "bytes": 6523,
+      "files": 1,
       "flag_counts": {},
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.5-high",
+      "library_pinned_bytes": 18563,
+      "library_skills": [
+        "use-elephant-mcp"
+      ],
+      "mcp_servers": [
+        "elephant"
+      ],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [
         "elephant"
@@ -718,11 +920,9 @@
         "gh",
         "python3"
       ],
-      "blocked_by": [
-        "agent-secrets"
-      ],
-      "bytes": 544407,
-      "files": 67,
+      "blocked_by": [],
+      "bytes": 7049,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 1,
         "curl": 6,
@@ -732,12 +932,26 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 554198,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-access-product",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "configure-access-product",
+        "configure-deploy-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [
         "PRISM_API_KEY"
       ],
       "needs_secrets_source": "role: configure",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -770,10 +984,16 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.5-high",
+      "library_pinned_bytes": 0,
+      "library_skills": [],
+      "mcp_servers": [],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [
+        "use-eevee"
+      ],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -791,11 +1011,9 @@
         "gh",
         "python3"
       ],
-      "blocked_by": [
-        "agent-secrets"
-      ],
-      "bytes": 472210,
-      "files": 61,
+      "blocked_by": [],
+      "bytes": 8630,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 1,
         "curl": 5,
@@ -805,12 +1023,25 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 478680,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "configure-deploy-product",
+        "configure-inference-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [
         "PRISM_API_KEY"
       ],
       "needs_secrets_source": "role: configure",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -839,8 +1070,8 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 642882,
-      "files": 94,
+      "bytes": 6944,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 1,
         "curl": 4,
@@ -850,10 +1081,26 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.5-high",
+      "library_pinned_bytes": 657298,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-ai-agents",
+        "build-batch-workflows",
+        "build-local-rag-pocs",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-rag-systems",
+        "build-saas-marketplace",
+        "configure-deploy-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -886,8 +1133,8 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 585184,
-      "files": 85,
+      "bytes": 12200,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 5,
         "curl": 3,
@@ -897,10 +1144,23 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 590862,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-rules-product",
+        "build-saas-marketplace",
+        "configure-deploy-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -926,10 +1186,10 @@
         "gh"
       ],
       "blocked_by": [
-        "remote-mcp"
+        "mcp-allow-list"
       ],
-      "bytes": 230928,
-      "files": 17,
+      "bytes": 139137,
+      "files": 13,
       "flag_counts": {
         "aws-profile": 2,
         "gh": 6
@@ -937,10 +1197,22 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.4-high",
+      "library_pinned_bytes": 94858,
+      "library_skills": [
+        "figma-to-code",
+        "responsive-design-tests"
+      ],
+      "mcp_servers": [
+        "figma"
+      ],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [
+        "build-portals",
+        "unified-portal-smoke-testing"
+      ],
       "readonly": false,
       "requires_mcp": [
         "figma"
@@ -963,18 +1235,28 @@
         "curl"
       ],
       "blocked_by": [],
-      "bytes": 185516,
-      "files": 34,
+      "bytes": 23017,
+      "files": 7,
       "flag_counts": {
         "curl": 1
       },
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.5-high",
+      "library_pinned_bytes": 168264,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-ai-agents",
+        "manage-story-quality"
+      ],
+      "mcp_servers": [],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [
+        "asana-initiatives"
+      ],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -1002,11 +1284,9 @@
         "gh",
         "python3"
       ],
-      "blocked_by": [
-        "agent-secrets"
-      ],
-      "bytes": 618444,
-      "files": 70,
+      "blocked_by": [],
+      "bytes": 16550,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 1,
         "curl": 3,
@@ -1016,12 +1296,26 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 621369,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-lexicon-product",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "configure-deploy-product",
+        "configure-model-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [
         "PRISM_API_KEY"
       ],
       "needs_secrets_source": "role: configure",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -1051,8 +1345,8 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 502211,
-      "files": 64,
+      "bytes": 8578,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 1,
         "curl": 3,
@@ -1062,10 +1356,24 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 509521,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "build-tenant-account-manager",
+        "configure-account-product",
+        "configure-deploy-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -1093,11 +1401,9 @@
         "gh",
         "python3"
       ],
-      "blocked_by": [
-        "shared-skill-library"
-      ],
-      "bytes": 1100177,
-      "files": 104,
+      "blocked_by": [],
+      "bytes": 26006,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 4,
         "curl": 5,
@@ -1107,10 +1413,26 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 1108643,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-lexicon-product",
+        "build-marketplace-puller",
+        "build-persist-service",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "build-transform-product",
+        "configure-deploy-product",
+        "configure-model-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -1143,8 +1465,8 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 486592,
-      "files": 62,
+      "bytes": 14453,
+      "files": 2,
       "flag_counts": {
         "aws-profile": 1,
         "curl": 3,
@@ -1154,10 +1476,25 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.5-high",
+      "library_pinned_bytes": 486930,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "configure-deploy-product",
+        "guide-product-work",
+        "manage-story-quality",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [
+        "groom-stories"
+      ],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "skills/groom-stories uses the Kirlia MCP server only when it is connected and grooms by hand otherwise; not required.",
@@ -1187,8 +1524,8 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 201253,
-      "files": 25,
+      "bytes": 20207,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 1,
         "python3": 1
@@ -1196,10 +1533,20 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.4-high",
+      "library_pinned_bytes": 188274,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-frontend-backends",
+        "figma-to-code",
+        "integrate-ci-cd",
+        "responsive-design-tests"
+      ],
+      "mcp_servers": [],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -1221,11 +1568,9 @@
         "gh",
         "python3"
       ],
-      "blocked_by": [
-        "agent-secrets"
-      ],
-      "bytes": 536709,
-      "files": 72,
+      "blocked_by": [],
+      "bytes": 8303,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 1,
         "curl": 8,
@@ -1235,12 +1580,27 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 546806,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "build-schedule-product",
+        "build-solver-services",
+        "configure-deploy-product",
+        "configure-schedule-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [
         "PRISM_API_KEY"
       ],
       "needs_secrets_source": "role: configure",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -1271,8 +1631,8 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 537259,
-      "files": 72,
+      "bytes": 8657,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 1,
         "curl": 8,
@@ -1282,10 +1642,25 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 546806,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "build-schedule-product",
+        "build-solver-services",
+        "configure-deploy-product",
+        "configure-schedule-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -1316,8 +1691,8 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 858130,
-      "files": 139,
+      "bytes": 19023,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 2,
         "curl": 3,
@@ -1327,10 +1702,26 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 881163,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-batch-workflows",
+        "build-connect-product",
+        "build-connect-service",
+        "build-inbound-sftp-workflows",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "configure-deploy-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -1366,10 +1757,16 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.4-high",
+      "library_pinned_bytes": 0,
+      "library_skills": [],
+      "mcp_servers": [],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [
+        "manage-short-urls"
+      ],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -1387,8 +1784,8 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 185691,
-      "files": 30,
+      "bytes": 34051,
+      "files": 3,
       "flag_counts": {
         "aws-profile": 1,
         "curl": 1,
@@ -1401,10 +1798,21 @@
       },
       "invalid_paths": [],
       "kit_model": "gpt-5.4-high",
+      "library_pinned_bytes": 157354,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-ai-agents",
+        "integrate-ci-cd"
+      ],
+      "mcp_servers": [],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [
+        "lucario-m2d-doc-replay",
+        "lucario-m2d-staging-config"
+      ],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -1425,16 +1833,23 @@
     "machamp": {
       "assumptions": [],
       "blocked_by": [],
-      "bytes": 98210,
-      "files": 24,
+      "bytes": 4995,
+      "files": 1,
       "flag_counts": {},
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.4-high",
+      "library_pinned_bytes": 96978,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-batch-workflows"
+      ],
+      "mcp_servers": [],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": true,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -1449,16 +1864,24 @@
     "magnezone": {
       "assumptions": [],
       "blocked_by": [],
-      "bytes": 59590,
-      "files": 15,
+      "bytes": 8818,
+      "files": 2,
       "flag_counts": {},
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.5-high",
+      "library_pinned_bytes": 52800,
+      "library_skills": [
+        "apply-engineering-guidelines"
+      ],
+      "mcp_servers": [],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [
+        "use-magnezone"
+      ],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -1477,11 +1900,9 @@
         "gh",
         "python3"
       ],
-      "blocked_by": [
-        "agent-secrets"
-      ],
-      "bytes": 584564,
-      "files": 86,
+      "blocked_by": [],
+      "bytes": 11776,
+      "files": 2,
       "flag_counts": {
         "aws-profile": 5,
         "curl": 3,
@@ -1491,12 +1912,27 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 590862,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-rules-product",
+        "build-saas-marketplace",
+        "configure-deploy-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [
         "PRISM_API_KEY"
       ],
       "needs_secrets_source": "role: configure",
       "omitted_files": [],
+      "own_skills": [
+        "configure-rule-product"
+      ],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -1524,8 +1960,8 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 224895,
-      "files": 38,
+      "bytes": 30812,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 1,
         "curl": 1,
@@ -1534,10 +1970,19 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.4-high",
+      "library_pinned_bytes": 201532,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-ai-agents",
+        "build-batch-workflows",
+        "integrate-ci-cd"
+      ],
+      "mcp_servers": [],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -1557,16 +2002,23 @@
     "metagross": {
       "assumptions": [],
       "blocked_by": [],
-      "bytes": 86474,
-      "files": 20,
+      "bytes": 4172,
+      "files": 1,
       "flag_counts": {},
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.4-high",
+      "library_pinned_bytes": 86089,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-frontend-backends"
+      ],
+      "mcp_servers": [],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": true,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -1585,11 +2037,9 @@
         "gh",
         "python3"
       ],
-      "blocked_by": [
-        "agent-secrets"
-      ],
-      "bytes": 578518,
-      "files": 65,
+      "blocked_by": [],
+      "bytes": 13105,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 3,
         "curl": 13,
@@ -1603,12 +2053,26 @@
       },
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 583014,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-build-service",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "configure-build-product",
+        "configure-deploy-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [
         "PRISM_API_KEY"
       ],
       "needs_secrets_source": "role: configure",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -1634,19 +2098,23 @@
     },
     "mew": {
       "assumptions": [],
-      "blocked_by": [
-        "shared-skill-library"
-      ],
-      "bytes": 1338688,
-      "files": 8,
+      "blocked_by": [],
+      "bytes": 22288,
+      "files": 1,
       "flag_counts": {},
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.5-high",
+      "library_pinned_bytes": 1465287,
+      "library_skills": [
+        "use-neutral-lexicon"
+      ],
+      "mcp_servers": [],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": true,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -1665,8 +2133,8 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 806677,
-      "files": 113,
+      "bytes": 11818,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 3,
         "curl": 4,
@@ -1676,10 +2144,32 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.4-high",
+      "library_pinned_bytes": 821749,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "atomic-data",
+        "build-ai-agents",
+        "build-batch-workflows",
+        "build-console-product",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "configure-console-product",
+        "configure-deploy-product",
+        "figma-to-email-template",
+        "guide-product-work",
+        "integrate-ci-cd",
+        "manage-channel-templates",
+        "manage-communication-activity",
+        "operate-marketplace",
+        "unify-metrics"
+      ],
+      "mcp_servers": [],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -1719,18 +2209,27 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 170612,
-      "files": 40,
+      "bytes": 4272,
+      "files": 1,
       "flag_counts": {
         "python3": 1
       },
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.4-high",
+      "library_pinned_bytes": 173930,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "assemble-communication-runtime",
+        "build-batch-workflows",
+        "build-solver-services"
+      ],
+      "mcp_servers": [],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": true,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -1750,8 +2249,8 @@
         "curl"
       ],
       "blocked_by": [],
-      "bytes": 159634,
-      "files": 27,
+      "bytes": 14799,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 1,
         "curl": 1
@@ -1763,10 +2262,17 @@
       },
       "invalid_paths": [],
       "kit_model": "gpt-5.5-high",
+      "library_pinned_bytes": 150027,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-ai-agents"
+      ],
+      "mcp_servers": [],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -1789,8 +2295,8 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 243549,
-      "files": 52,
+      "bytes": 4324,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 1,
         "curl": 1,
@@ -1800,10 +2306,21 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.4-high",
+      "library_pinned_bytes": 248596,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "atomic-data",
+        "build-ai-agents",
+        "build-batch-workflows",
+        "integrate-ci-cd",
+        "unify-metrics"
+      ],
+      "mcp_servers": [],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -1830,8 +2347,8 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 463444,
-      "files": 60,
+      "bytes": 8969,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 1,
         "curl": 3,
@@ -1841,10 +2358,22 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 468693,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "configure-deploy-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -1870,11 +2399,9 @@
         "gh",
         "python3"
       ],
-      "blocked_by": [
-        "agent-secrets"
-      ],
-      "bytes": 473693,
-      "files": 60,
+      "blocked_by": [],
+      "bytes": 19414,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 1,
         "curl": 3,
@@ -1888,12 +2415,24 @@
       },
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 468693,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "configure-deploy-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [
         "PRISM_API_KEY"
       ],
       "needs_secrets_source": "role: configure",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -1916,16 +2455,24 @@
     "rotom": {
       "assumptions": [],
       "blocked_by": [],
-      "bytes": 59643,
-      "files": 15,
+      "bytes": 8871,
+      "files": 2,
       "flag_counts": {},
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.5-high",
+      "library_pinned_bytes": 52800,
+      "library_skills": [
+        "apply-engineering-guidelines"
+      ],
+      "mcp_servers": [],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [
+        "use-rotom"
+      ],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -1944,11 +2491,9 @@
         "gh",
         "python3"
       ],
-      "blocked_by": [
-        "agent-secrets"
-      ],
-      "bytes": 483549,
-      "files": 64,
+      "blocked_by": [],
+      "bytes": 7351,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 2,
         "curl": 3,
@@ -1958,12 +2503,26 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 491768,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-bootstrap-cli",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "configure-deploy-product",
+        "configure-environment-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [
         "PRISM_API_KEY"
       ],
       "needs_secrets_source": "role: configure",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -1991,12 +2550,9 @@
         "gh",
         "python3"
       ],
-      "blocked_by": [
-        "agent-secrets",
-        "shared-skill-library"
-      ],
-      "bytes": 2137123,
-      "files": 160,
+      "blocked_by": [],
+      "bytes": 85692,
+      "files": 8,
       "flag_counts": {
         "aws-profile": 69,
         "curl": 8,
@@ -2006,12 +2562,31 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 2141933,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-lexicon-product",
+        "build-marketplace-puller",
+        "build-persist-service",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "build-transform-product",
+        "configure-deploy-product",
+        "configure-model-product",
+        "guide-product-work",
+        "operate-marketplace",
+        "validate-transform-configuration"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [
         "PRISM_API_KEY"
       ],
       "needs_secrets_source": "role: configure",
       "omitted_files": [],
+      "own_skills": [
+        "configure-transform-product"
+      ],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "Kit description is 553 characters; Enact allows 500, so the description is shortened here. No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -2046,11 +2621,9 @@
         "gh",
         "python3"
       ],
-      "blocked_by": [
-        "agent-secrets"
-      ],
-      "bytes": 465472,
-      "files": 60,
+      "blocked_by": [],
+      "bytes": 11193,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 1,
         "curl": 3,
@@ -2060,12 +2633,24 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 468693,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "configure-deploy-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [
         "PRISM_API_KEY"
       ],
       "needs_secrets_source": "role: configure",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -2092,8 +2677,8 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 860602,
-      "files": 118,
+      "bytes": 99600,
+      "files": 9,
       "flag_counts": {
         "aws-profile": 8,
         "curl": 3,
@@ -2103,10 +2688,32 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.5-high",
+      "library_pinned_bytes": 786375,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "assemble-communication-runtime",
+        "build-console-product",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-rules-product",
+        "build-saas-marketplace",
+        "configure-console-product",
+        "configure-deploy-product",
+        "figma-to-email-template",
+        "guide-product-work",
+        "manage-channel-templates",
+        "manage-communication-activity",
+        "operate-marketplace",
+        "select-communication-audience"
+      ],
+      "mcp_servers": [],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [
+        "certify-email-workflow"
+      ],
       "readonly": true,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -2137,16 +2744,26 @@
     "slowking": {
       "assumptions": [],
       "blocked_by": [],
-      "bytes": 105206,
-      "files": 18,
+      "bytes": 54434,
+      "files": 5,
       "flag_counts": {},
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.5-high",
+      "library_pinned_bytes": 52800,
+      "library_skills": [
+        "apply-engineering-guidelines"
+      ],
+      "mcp_servers": [],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [
+        "evaluate-candidate-implementation",
+        "evaluate-candidate-intent",
+        "evaluate-candidate-product"
+      ],
       "readonly": false,
       "requires_mcp": [
         "browser"
@@ -2178,8 +2795,8 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 574858,
-      "files": 65,
+      "bytes": 9249,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 3,
         "curl": 12,
@@ -2189,10 +2806,24 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 583014,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-build-service",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "configure-build-product",
+        "configure-deploy-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -2223,11 +2854,9 @@
         "gh",
         "python3"
       ],
-      "blocked_by": [
-        "agent-secrets"
-      ],
-      "bytes": 525499,
-      "files": 71,
+      "blocked_by": [],
+      "bytes": 9507,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 1,
         "curl": 3,
@@ -2237,12 +2866,27 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 533442,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-documentation-product",
+        "build-frontend-backends",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "configure-deploy-product",
+        "configure-documentation-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [
         "PRISM_API_KEY"
       ],
       "needs_secrets_source": "role: configure",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -2273,8 +2917,8 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 482969,
-      "files": 64,
+      "bytes": 6575,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 2,
         "curl": 3,
@@ -2284,10 +2928,24 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 491768,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-bootstrap-cli",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "configure-deploy-product",
+        "configure-environment-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -2316,8 +2974,8 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 525773,
-      "files": 71,
+      "bytes": 9585,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 1,
         "curl": 3,
@@ -2327,10 +2985,25 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 533442,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-documentation-product",
+        "build-frontend-backends",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "configure-deploy-product",
+        "configure-documentation-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -2360,11 +3033,9 @@
         "gh",
         "python3"
       ],
-      "blocked_by": [
-        "agent-secrets"
-      ],
-      "bytes": 801596,
-      "files": 80,
+      "blocked_by": [],
+      "bytes": 14895,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 4,
         "curl": 19,
@@ -2378,12 +3049,26 @@
       },
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 808772,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-marketplace-puller",
+        "build-persist-service",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "configure-deploy-product",
+        "configure-persist-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [
         "PRISM_API_KEY"
       ],
       "needs_secrets_source": "role: configure",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "agents/uxie.md:21 covers setting up MCP clients for people; Uxie calls the Persist HTTP API itself.",
@@ -2412,11 +3097,9 @@
         "gh",
         "python3"
       ],
-      "blocked_by": [
-        "agent-secrets"
-      ],
-      "bytes": 551287,
-      "files": 67,
+      "blocked_by": [],
+      "bytes": 9170,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 1,
         "curl": 3,
@@ -2426,12 +3109,26 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 559064,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-console-product",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "configure-console-product",
+        "configure-deploy-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [
         "PRISM_API_KEY"
       ],
       "needs_secrets_source": "role: configure",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -2459,10 +3156,10 @@
         "python3"
       ],
       "blocked_by": [
-        "remote-mcp"
+        "mcp-allow-list"
       ],
-      "bytes": 262429,
-      "files": 50,
+      "bytes": 50883,
+      "files": 9,
       "flag_counts": {
         "aws-profile": 1,
         "curl": 1,
@@ -2471,10 +3168,25 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.4-high",
+      "library_pinned_bytes": 220095,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-ai-agents",
+        "build-batch-workflows",
+        "integrate-ci-cd",
+        "use-elephant-mcp"
+      ],
+      "mcp_servers": [
+        "elephant"
+      ],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [
+        "build-elephant-hero-facts",
+        "deploy-open-data-mcp"
+      ],
       "readonly": false,
       "requires_mcp": [
         "elephant"
@@ -2505,10 +3217,10 @@
         "python3"
       ],
       "blocked_by": [
-        "remote-mcp"
+        "mcp-allow-list"
       ],
-      "bytes": 603249,
-      "files": 73,
+      "bytes": 6230,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 2,
         "curl": 3,
@@ -2518,10 +3230,29 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.4-high",
+      "library_pinned_bytes": 616142,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-console-product",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "configure-console-product",
+        "configure-deploy-product",
+        "figma-to-email-template",
+        "guide-product-work",
+        "manage-channel-templates",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [
+        "figma",
+        "jigglypuff"
+      ],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [
         "figma",
@@ -2554,11 +3285,9 @@
         "gh",
         "python3"
       ],
-      "blocked_by": [
-        "agent-secrets"
-      ],
-      "bytes": 898396,
-      "files": 143,
+      "blocked_by": [],
+      "bytes": 59485,
+      "files": 5,
       "flag_counts": {
         "aws-profile": 2,
         "curl": 8,
@@ -2572,12 +3301,30 @@
       },
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 881163,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-batch-workflows",
+        "build-connect-product",
+        "build-connect-service",
+        "build-inbound-sftp-workflows",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "configure-deploy-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [
         "PRISM_API_KEY"
       ],
       "needs_secrets_source": "role: configure",
       "omitted_files": [],
+      "own_skills": [
+        "operate-connect-configurations"
+      ],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -2613,8 +3360,8 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 586260,
-      "files": 87,
+      "bytes": 4261,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 5,
         "curl": 3,
@@ -2624,10 +3371,24 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.4-high",
+      "library_pinned_bytes": 600527,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-rules-product",
+        "build-saas-marketplace",
+        "configure-deploy-product",
+        "guide-product-work",
+        "operate-marketplace",
+        "select-communication-audience"
+      ],
+      "mcp_servers": [],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -2656,8 +3417,8 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 582495,
-      "files": 75,
+      "bytes": 24505,
+      "files": 2,
       "flag_counts": {
         "aws-profile": 2,
         "curl": 5,
@@ -2667,10 +3428,26 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 575995,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-ai-agents",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "configure-deploy-product",
+        "configure-enact-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [
+        "build-enact-product"
+      ],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -2702,11 +3479,9 @@
         "gh",
         "python3"
       ],
-      "blocked_by": [
-        "agent-secrets"
-      ],
-      "bytes": 471598,
-      "files": 61,
+      "blocked_by": [],
+      "bytes": 7867,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 2,
         "curl": 4,
@@ -2716,12 +3491,25 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 478768,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "configure-deploy-product",
+        "configure-enact-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [
         "PRISM_API_KEY"
       ],
       "needs_secrets_source": "role: configure",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -2750,8 +3538,8 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 622529,
-      "files": 95,
+      "bytes": 22424,
+      "files": 1,
       "flag_counts": {
         "aws-profile": 1,
         "curl": 3,
@@ -2761,10 +3549,24 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
+      "library_pinned_bytes": 622270,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "build-marketplace-puller",
+        "build-product-deployer",
+        "build-saas-marketplace",
+        "build-system-product",
+        "configure-deploy-product",
+        "configure-system-product",
+        "guide-product-work",
+        "operate-marketplace"
+      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
+      "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
       "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
@@ -2786,9 +3588,8 @@
       "wave_reason": "role: build"
     }
   },
-  "contract": "current",
-  "enact_version": "1.158.1",
-  "kit_version": "0.158.1",
+  "enact_version": "1.159.0",
+  "kit_version": "0.159.0",
   "mcp_allow_list": [
     "enact",
     "browser"

@@ -14,16 +14,16 @@ Each package must:
     enact/dist/skills/<skill>.json) be exactly the canonical JSON of {manifest, files}, the PUT
     body Build's enact agent/skill kinds take, within the 2 MiB / 4 MiB body limits;
   - declare (enact/overrides/<agent>.json requires_mcp) only MCP servers on the allow-list
-    (enact/inventory.json mcp_allow_list: Enact's own and the built-in browser; in the "next"
-    contract also enact/config.json mcp_allow_list, and with --allow-list-from the servers a live
-    environment allows).
+    (enact/inventory.json mcp_allow_list: Enact's own and the built-in browser plus
+    enact/config.json mcp_allow_list, and with --allow-list-from the servers a live environment
+    allows); manifest mcp_servers likewise.
 
-The contract is the one enact/inventory.json was generated for (enact/config.json contract, or
-sync-enact-agents.mjs --contract). In "next", packages validate against enact/schema/next/ and
-T1 also checks the skill library (enact/library/): each library skill validates against
-skill-definition.schema.json, holds at most 3 MiB of text in at most 500 files, its stored JSON
+T1 also checks the skill library (enact/library/), as prismteam-ai/enact main enforces it: each
+library skill validates against skill-definition.schema.json, holds at most 3 MiB of text in at
+most 500 files, at most 5 MiB as canonical JSON encoded once more as a JSON string, a PUT body of
 at most 4 MiB, and its version still names its content; each agent pins only versions in
-enact/library/index.json, at most 100 and 8 MiB together, none also among its own skills/.
+enact/library/index.json, at most 100 and 8 MiB (stored canonical JSON) together, none also
+among its own skills/.
 
 Agents in enact/config.json must_pass_waves fail the run; every other agent is report-only
 unless --strict is given.
@@ -33,7 +33,7 @@ unless --strict is given.
   python3 scripts/test-enact-packaging.py --self-test
 
 --allow-list-from reads GET <url>/enact/mcp-servers with x-api-key $ENACT_API_KEY and adds those
-server names to the allow-list ("next" only); without ENACT_API_KEY it says so and goes on with
+server names to the allow-list; without ENACT_API_KEY it says so and goes on with
 enact/config.json mcp_allow_list.
 """
 
@@ -52,7 +52,13 @@ ROOT = Path(__file__).resolve().parent.parent
 ENACT = ROOT / "enact"
 MIB = 1024 * 1024
 MAX_BYTES = MIB
-LIBRARY = {"skill_bytes": 3 * MIB, "skill_files": 500, "stored_bytes": 4 * MIB, "pinned_bytes": 8 * MIB, "pins": 100}
+# prismteam-ai/enact main src/skills/definition.ts and src/agents/definition.ts.
+LIBRARY = {"skill_bytes": 3 * MIB, "skill_files": 500, "encoded_bytes": 5 * MIB, "pinned_bytes": 8 * MIB, "pins": 100}
+
+
+def encoded_bytes(text: str) -> int:
+    """Bytes of text once encoded as a JSON string (Enact's proxyEncodedBytes: JSON.stringify)."""
+    return len(json.dumps(text, ensure_ascii=False).encode("utf-8"))
 
 
 def canonical_json(value) -> str:
@@ -90,7 +96,7 @@ def check_package(
     expected_skills: list[str] | None = None,
     library: dict | None = None,
 ) -> list[str]:
-    """library (contract "next"): enact/library/index.json "skills", to check library_skills."""
+    """library: enact/library/index.json "skills", to check library_skills."""
     problems: list[str] = []
     for error in sorted(validator.iter_errors({"manifest": manifest, "files": files}), key=lambda e: list(e.absolute_path)):
         where = "/".join(str(p) for p in error.absolute_path) or "(document)"
@@ -162,9 +168,8 @@ def check_library_skill(name: str, manifest: dict, files: dict[str, str], entry:
         problems.append(f"files hold {total} bytes, over 3 MiB")
     if len(files) > LIBRARY["skill_files"]:
         problems.append(f"{len(files)} files, over {LIBRARY['skill_files']}")
-    stored = len(canonical_json(document).encode("utf-8"))
-    if stored > LIBRARY["stored_bytes"]:
-        problems.append(f"stored skill holds {stored} bytes, over 4 MiB")
+    elif (encoded := encoded_bytes(canonical_json(document))) > LIBRARY["encoded_bytes"]:
+        problems.append(f"the skill is {encoded} bytes as JSON encoded in a request, over 5 MiB")
     paths = set(files)
     for path in sorted(paths):
         parts = path.split("/")
@@ -231,13 +236,12 @@ def fetch_allow_list(url: str) -> list[str] | None:
     return sorted(server["name"] for server in body.get("servers", []))
 
 
-def make_validator(contract: str = "current", kind: str = "agent"):
+def make_validator(kind: str = "agent"):
     try:
         from jsonschema import Draft202012Validator
     except ImportError:  # pragma: no cover - CI installs jsonschema
         sys.exit("jsonschema is required: pip install -r skills/validate-transform-configuration/scripts/requirements-silvally.txt")
-    folder = ENACT / "schema" / ("next" if contract == "next" else "")
-    schema = load_json(folder / f"{kind}-definition.schema.json")
+    schema = load_json(ENACT / "schema" / f"{kind}-definition.schema.json")
     Draft202012Validator.check_schema(schema)
     return Draft202012Validator(schema)
 
@@ -248,36 +252,30 @@ def run(args) -> int:
     if not inventory_path.is_file():
         sys.exit("enact/inventory.json is missing; run node scripts/sync-enact-agents.mjs sync")
     inventory = load_json(inventory_path)
-    contract = inventory.get("contract", "current")
-    validator = make_validator(contract)
+    validator = make_validator()
     allow = list(inventory["mcp_allow_list"])
     if args.allow_list_from:
-        if contract != "next":
-            print("--allow-list-from applies to the next contract only; ignored", file=sys.stderr)
-        else:
-            live = fetch_allow_list(args.allow_list_from)
-            if live is not None:
-                print(f"allow-list from {args.allow_list_from}: {live}")
-                allow = sorted(set(allow) | set(live))
+        live = fetch_allow_list(args.allow_list_from)
+        if live is not None:
+            print(f"allow-list from {args.allow_list_from}: {live}")
+            allow = sorted(set(allow) | set(live))
     must = set(config.get("must_pass_waves", []))
 
-    library = None
     library_rows = []
-    if contract == "next":
-        index_path = ENACT / "library" / "index.json"
-        if not index_path.is_file():
-            sys.exit("enact/library/index.json is missing; run node scripts/sync-enact-agents.mjs sync --contract next")
-        library = load_json(index_path)["skills"]
-        skill_validator = make_validator("next", "skill")
-        for name, entry in sorted(library.items()):
-            skill_dir = ENACT / "library" / name
-            if not (skill_dir / "skill.json").is_file():
-                problems = ["library skill missing; run node scripts/sync-enact-agents.mjs sync --contract next"]
-            else:
-                manifest, files = read_library_skill(skill_dir)
-                problems = check_library_skill(name, manifest, files, entry, skill_validator)
-                problems += check_packed(ENACT / "dist" / "skills" / f"{name}.json", {"manifest": manifest, "files": files}, MAX_SKILL_BODY)
-            library_rows.append({"skill": name, "bytes": entry["bytes"], "pass": not problems, "problems": problems})
+    index_path = ENACT / "library" / "index.json"
+    if not index_path.is_file():
+        sys.exit("enact/library/index.json is missing; run node scripts/sync-enact-agents.mjs sync")
+    library = load_json(index_path)["skills"]
+    skill_validator = make_validator("skill")
+    for name, entry in sorted(library.items()):
+        skill_dir = ENACT / "library" / name
+        if not (skill_dir / "skill.json").is_file():
+            problems = ["library skill missing; run node scripts/sync-enact-agents.mjs sync"]
+        else:
+            manifest, files = read_library_skill(skill_dir)
+            problems = check_library_skill(name, manifest, files, entry, skill_validator)
+            problems += check_packed(ENACT / "dist" / "skills" / f"{name}.json", {"manifest": manifest, "files": files}, MAX_SKILL_BODY)
+        library_rows.append({"skill": name, "bytes": entry["bytes"], "pass": not problems, "problems": problems})
 
     rows = []
     for name, info in sorted(inventory["agents"].items()):
@@ -291,7 +289,7 @@ def run(args) -> int:
             total = 0
         else:
             manifest, files = read_package(pkg)
-            expected = info.get("own_skills", info.get("skills", [])) if contract == "next" else info.get("skills", [])
+            expected = info.get("own_skills", info.get("skills", []))
             problems = check_package(name, manifest, files, validator, info.get("requires_mcp", []), allow, expected, library)
             problems += check_packed(ENACT / "dist" / "agents" / f"{name}.json", {"manifest": manifest, "files": files}, MAX_AGENT_BODY)
             total = sum(len(t.encode("utf-8")) for t in files.values())
@@ -299,9 +297,9 @@ def run(args) -> int:
         rows.append({"agent": name, "wave": info["wave"], "bytes": total, "pass": not problems, "gating": gating, "problems": problems})
 
     if args.json:
-        print(json.dumps({"contract": contract, "agents": rows, "library": library_rows}, indent=2))
+        print(json.dumps({"agents": rows, "library": library_rows}, indent=2))
     else:
-        print(f"contract: {contract}; MCP allow-list {sorted(allow)}")
+        print(f"MCP allow-list {sorted(allow)}")
         if library_rows:
             bad = [r for r in library_rows if not r["pass"]]
             print(f"library: {len(library_rows) - len(bad)}/{len(library_rows)} skills pass")
@@ -362,27 +360,28 @@ def self_test() -> int:
     expect("long description", check_package("sample", {**base_manifest, "description": "x" * 501}, base_files, validator, [], allow), "schema: manifest/description")
     expect("name mismatch", check_package("other", base_manifest, base_files, validator, [], allow), "does not match directory")
 
-    # The next contract: library pins, clashes, the 8 MiB total, remote MCP servers, library skills.
-    next_validator = make_validator("next")
-    skill_validator = make_validator("next", "skill")
+    # Library pins, clashes, the 8 MiB total, remote MCP servers, library skills.
+    skill_validator = make_validator("skill")
     lib = {"a": {"version": "1.0.0-sha256-0000000000000000", "stored_bytes": 1000}, "big": {"version": "1.0.0-sha256-1111111111111111", "stored_bytes": 5 * MIB}}
     pin_a = {"name": "a", "version": lib["a"]["version"]}
     own_b = {"instructions.md": "Do one thing.\n", "skills/b/SKILL.md": "---\nname: b\ndescription: b\n---\n"}
-    next_manifest = {**base_manifest, "library_skills": [pin_a], "secrets": ["PRISM_API_KEY"], "tools": ["browser"], "browser": {"sandbox_localhost": True}}
-    expect("next valid", check_package("sample", next_manifest, own_b, next_validator, [], allow, ["b"], lib), None)
-    expect("next field on current", check_package("sample", next_manifest, own_b, validator, [], allow), "schema: manifest")
-    expect("library clash", check_package("sample", next_manifest, base_files, next_validator, [], allow, None, lib), "name clash: skills/a/")
-    expect("library unknown", check_package("sample", {**base_manifest, "library_skills": [{"name": "zz", "version": "1.0.0"}]}, own_b, next_validator, [], allow, None, lib), "not in enact/library/index.json")
-    expect("library version", check_package("sample", {**base_manifest, "library_skills": [{"name": "a", "version": "1.0.1"}]}, own_b, next_validator, [], allow, None, lib), "pinned at 1.0.1")
-    expect("library 8 MiB", check_package("sample", {**base_manifest, "library_skills": [pin_a, {"name": "big", "version": lib["big"]["version"]}, {"name": "big", "version": lib["big"]["version"]}]}, own_b, next_validator, [], allow, None, lib), "over 8 MiB")
-    expect("mcp server not allowed", check_package("sample", {**base_manifest, "mcp_servers": ["elephant"]}, own_b, next_validator, ["elephant"], allow, None, lib), "remote-mcp")
-    expect("mcp server allowed", check_package("sample", {**base_manifest, "mcp_servers": ["elephant"]}, own_b, next_validator, ["elephant"], allow + ["elephant"], None, lib), None)
+    full_manifest = {**base_manifest, "library_skills": [pin_a], "secrets": ["PRISM_API_KEY"], "tools": ["browser"], "browser": {"sandbox_localhost": True}}
+    expect("full manifest valid", check_package("sample", full_manifest, own_b, validator, [], allow, ["b"], lib), None)
+    expect("unknown field", check_package("sample", {**base_manifest, "skills": []}, own_b, validator, [], allow, None, lib), "schema: manifest")
+    expect("library clash", check_package("sample", full_manifest, base_files, validator, [], allow, None, lib), "name clash: skills/a/")
+    expect("library unknown", check_package("sample", {**base_manifest, "library_skills": [{"name": "zz", "version": "1.0.0"}]}, own_b, validator, [], allow, None, lib), "not in enact/library/index.json")
+    expect("library version", check_package("sample", {**base_manifest, "library_skills": [{"name": "a", "version": "1.0.1"}]}, own_b, validator, [], allow, None, lib), "pinned at 1.0.1")
+    expect("library 8 MiB", check_package("sample", {**base_manifest, "library_skills": [pin_a, {"name": "big", "version": lib["big"]["version"]}, {"name": "big", "version": lib["big"]["version"]}]}, own_b, validator, [], allow, None, lib), "over 8 MiB")
+    expect("mcp server not allowed", check_package("sample", {**base_manifest, "mcp_servers": ["elephant"]}, own_b, validator, ["elephant"], allow, None, lib), "remote-mcp")
+    expect("mcp server allowed", check_package("sample", {**base_manifest, "mcp_servers": ["elephant"]}, own_b, validator, ["elephant"], allow + ["elephant"], None, lib), None)
     skill_files = {"SKILL.md": "---\nname: a\ndescription: a\n---\n"}
     good_version = "1.0.0-sha256-" + hashlib.sha256(stable_json({"description": "a", "files": skill_files, "name": "a"}).encode()).hexdigest()[:16]
     skill_manifest = {"name": "a", "version": good_version, "description": "a"}
     entry = {"version": good_version, "digest": "sha256:" + hashlib.sha256(canonical_json({"manifest": skill_manifest, "files": skill_files}).encode()).hexdigest()}
     expect("library skill valid", check_library_skill("a", skill_manifest, skill_files, entry, skill_validator), None)
     expect("library skill changed", check_library_skill("a", skill_manifest, {**skill_files, "x.md": "new"}, entry, skill_validator), "does not name this content")
+    escaped = {**skill_files, **{f"r/{i}.md": "\"" * 700_000 for i in range(4)}}
+    expect("library skill over 5 MiB encoded", check_library_skill("a", skill_manifest, escaped, entry, skill_validator), "over 5 MiB")
     expect("library skill over 3 MiB", check_library_skill("a", skill_manifest, {**skill_files, **{f"r/{i}.md": "x" * MIB for i in range(4)}}, entry, skill_validator), "over 3 MiB")
 
     # Packed files: exact canonical JSON round-trips; anything else is caught.
@@ -407,11 +406,9 @@ def self_test() -> int:
         failures.append("donphan: package missing; run node scripts/sync-enact-agents.mjs sync")
     else:
         manifest, files = read_package(ENACT / "donphan")
-        real_validator = next_validator if inventory.get("contract") == "next" else validator
-        expect("donphan", check_package("donphan", manifest, files, real_validator, donphan["requires_mcp"], allow, donphan.get("own_skills", donphan["skills"]), load_json(ENACT / "library" / "index.json")["skills"] if inventory.get("contract") == "next" else None), "requires_mcp ['elephant']")
-        expected_block = "mcp-allow-list" if inventory.get("contract") == "next" else "remote-mcp"
-        if expected_block not in donphan.get("blocked_by", []):
-            failures.append(f"donphan: inventory blocked_by must include {expected_block}")
+        expect("donphan", check_package("donphan", manifest, files, validator, donphan["requires_mcp"], allow, donphan.get("own_skills", donphan["skills"]), load_json(ENACT / "library" / "index.json")["skills"]), "requires_mcp ['elephant']")
+        if "mcp-allow-list" not in donphan.get("blocked_by", []):
+            failures.append("donphan: inventory blocked_by must include mcp-allow-list")
 
     if failures:
         for f in failures:
@@ -427,7 +424,7 @@ def main() -> int:
     parser.add_argument("--agent", action="append", help="check only this agent (repeatable)")
     parser.add_argument("--json", action="store_true", help="print results as JSON")
     parser.add_argument("--self-test", action="store_true", help="run the regression tests")
-    parser.add_argument("--allow-list-from", metavar="URL", help="add the MCP servers GET <URL>/enact/mcp-servers allows (next contract; needs ENACT_API_KEY)")
+    parser.add_argument("--allow-list-from", metavar="URL", help="add the MCP servers GET <URL>/enact/mcp-servers allows (needs ENACT_API_KEY)")
     args = parser.parse_args()
     if args.self_test:
         return self_test()

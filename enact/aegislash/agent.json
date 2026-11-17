@@ -4,6 +4,44 @@
   ],
   "description": "Access builder. Build, maintain or fix Google sign-in for any verified Google account, registered applications, users, roles, service identities, permission rules and the grants products enforce to tell users apart. Use Doublade for existing-service configuration.",
   "hosts": [],
+  "library_skills": [
+    {
+      "name": "apply-engineering-guidelines",
+      "version": "1.0.0-sha256-d3011aab3ed7aa8d"
+    },
+    {
+      "name": "build-access-product",
+      "version": "1.0.0-sha256-c3632e03506cd7cd"
+    },
+    {
+      "name": "build-marketplace-puller",
+      "version": "1.0.0-sha256-0fb8850b217a9657"
+    },
+    {
+      "name": "build-product-deployer",
+      "version": "1.0.0-sha256-5048d818aeeed673"
+    },
+    {
+      "name": "build-saas-marketplace",
+      "version": "1.0.0-sha256-bac2ebb34666a767"
+    },
+    {
+      "name": "configure-access-product",
+      "version": "1.0.0-sha256-6044026c5a16f48e"
+    },
+    {
+      "name": "configure-deploy-product",
+      "version": "1.0.0-sha256-bfbf72898135c6e9"
+    },
+    {
+      "name": "guide-product-work",
+      "version": "1.0.0-sha256-b6e95aa5a642255d"
+    },
+    {
+      "name": "operate-marketplace",
+      "version": "1.0.0-sha256-15bf4f21ef17429a"
+    }
+  ],
   "limits": {
     "max_cost_usd": 10,
     "max_turns": 100
@@ -18,5 +56,5 @@
       "pull_requests": "write"
     }
   },
-  "version": "1.158.1"
+  "version": "1.159.0"
 }
