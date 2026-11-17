@@ -2136,9 +2136,7 @@
     },
     "slowking": {
       "assumptions": [],
-      "blocked_by": [
-        "browser-preview"
-      ],
+      "blocked_by": [],
       "bytes": 104674,
       "files": 18,
       "flag_counts": {},
@@ -2788,6 +2786,8 @@
       "wave_reason": "role: build"
     }
   },
+  "contract": "current",
+  "enact_version": "1.158.0",
   "kit_version": "0.158.0",
   "mcp_allow_list": [
     "enact",

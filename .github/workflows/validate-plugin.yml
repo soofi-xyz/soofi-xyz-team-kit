@@ -101,6 +101,13 @@ jobs:
         continue-on-error: true
         run: python3 scripts/test-enact-packaging.py --strict
 
+      - name: Report Enact packaging for the next contract (T1, report-only)
+        continue-on-error: true
+        run: |
+          node scripts/sync-enact-agents.mjs sync --contract next
+          python3 scripts/test-enact-packaging.py --strict
+          node scripts/sync-enact-agents.mjs sync
+
       - name: Check build-portals contract
         run: python3 scripts/test-build-portals-contract.py
 

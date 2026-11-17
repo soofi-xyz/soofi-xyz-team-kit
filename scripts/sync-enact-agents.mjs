@@ -3,7 +3,12 @@
 // enact/inventory.json. Enact's contract: prismteam-ai/enact docs/agent-contract.md; its schema is
 // copied to enact/schema/ by scripts/sync-enact-schema.sh.
 //
-//   node scripts/sync-enact-agents.mjs [sync|check]
+//   node scripts/sync-enact-agents.mjs [sync|check] [--contract current|next]
+//
+// --contract (default: enact/config.json contract, else "current") picks the Enact contract:
+// "current" is prismteam-ai/enact main (enact/schema/); "next" adds the open pieces' manifest
+// fields (library_skills, mcp_servers, secrets, browser) and writes the skill library to
+// enact/library/ (enact/schema/next/, scripts/sync-enact-schema.sh next).
 //
 // sync (default) rewrites the generated files; check exits 1 when they differ from what is
 // committed. Inputs: enact/config.json (stays-local set, waves, model map, defaults, limits) and
@@ -12,13 +17,14 @@
 //
 // Node standard library only.
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const enactDir = path.join(root, "enact");
-const RESERVED = new Set(["config.json", "inventory.json", "overrides", "schema", "README.md"]);
+const RESERVED = new Set(["config.json", "inventory.json", "library", "overrides", "schema", "README.md"]);
 const SKILL_REF = /(?:^|[^A-Za-z0-9_-])skills\/([a-z0-9][a-z0-9-]*)\//g;
 const SIBLING_REF = /(?:^|[(\s`"'])\.\.\/([a-z0-9][a-z0-9-]*)\//g;
 const FILE_PATH =
@@ -178,12 +184,27 @@ function appendix(manifest, skills, info, override) {
       "the `browser` MCP server (a Chromium through Playwright's MCP tools: `mcp__browser__browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`, `browser_take_screenshot` and the rest; load them with ToolSearch before the first call)",
     );
   }
+  if (info.next && info.mcpServers.length) {
+    tools.push(
+      `the remote MCP ${info.mcpServers.length === 1 ? "server" : "servers"} ${info.mcpServers.map((s) => `\`${s}\` (\`mcp__${s}__…\`)`).join(", ")}, which Enact registers in every turn (load their tools with ToolSearch before the first call)`,
+    );
+  }
   lines.push(
     `- **Tools.** You have ${tools.join(" and ")}. No other MCP server is connected. Other kit agents are not installed: where the text above hands work to another agent, do that part yourself only when it is inside this request, and otherwise name the agent in your result for the person to run.`,
   );
   if (info.requiresMcp.length) {
     lines.push(
       `- **Required MCP.** This agent's work depends on ${info.requiresMcp.map((s) => `\`${s}\``).join(", ")}. When such a server is not connected, say so in your result and stop rather than reaching the data another way.`,
+    );
+  }
+  if (info.next && info.sandboxLocalhost) {
+    lines.push(
+      "- **Your own app in the browser.** `http://localhost:<port>/` and `127.0.0.1` in the `browser` tool are this sandbox's own loopback: start the app's dev server in the sandbox, then open it there.",
+    );
+  }
+  if (info.next && info.needsSecrets.length) {
+    lines.push(
+      `- **Secrets.** ${info.needsSecrets.map((s) => `\`${s}\``).join(", ")} ${info.needsSecrets.length === 1 ? "is an environment variable" : "are environment variables"} in every turn, set by an operator for this agent. Use ${info.needsSecrets.length === 1 ? "it" : "them"} only for the requests this prompt describes; never print, log or return a value.`,
     );
   }
   lines.push(...describeRepositories(manifest));
@@ -205,9 +226,30 @@ function appendix(manifest, skills, info, override) {
   return lines.join("\n") + "\n";
 }
 
-function build() {
+// Enact package version for a kit version: 1.<kit minor>.<kit patch>, so every generated version
+// sorts above the hand-made slowking 1.0.0 deployed before the generator existed.
+function enactVersion(kitVersion) {
+  const m = /^(\d+)\.(\d+)\.(\d+)(-[0-9A-Za-z.-]+)?$/.exec(kitVersion);
+  if (!m) throw new Error(`plugin.json version ${kitVersion} is not a semantic version`);
+  return `1.${m[2]}.${m[3]}${m[4] ?? ""}`;
+}
+
+// A library skill's version is derived from its content, so a version always names the same
+// files: 1.0.0-sha256-<first 16 hex digits of the SHA-256 of {name, description, files}>.
+function librarySkillVersion(name, description, files) {
+  const digest = createHash("sha256").update(stableJson({ description, files, name })).digest("hex");
+  return `1.0.0-sha256-${digest.slice(0, 16)}`;
+}
+
+const canonicalJson = (value) => JSON.stringify(sortKeys(value));
+const MIB = 1024 * 1024;
+const LIBRARY_LIMITS = { skill_bytes: 3 * MIB, skill_files: 500, stored_bytes: 4 * MIB, pinned_bytes: 8 * MIB, pins: 100 };
+const LIBRARY_FILE_PATH = /^([A-Za-z0-9_][A-Za-z0-9._-]{0,99}\/){0,8}[A-Za-z0-9_][A-Za-z0-9._-]{0,99}$/;
+
+function build(contract) {
   const config = readJson(path.join(enactDir, "config.json"));
   const plugin = readJson(path.join(root, "plugin.json"));
+  const next = contract === "next";
   const patterns = Object.entries(config.flag_patterns).map(([k, v]) => [k, new RegExp(v)]);
   const secretRe = new RegExp(config.secret_pattern);
   const knownSkills = new Set(
@@ -216,10 +258,12 @@ function build() {
   const stays = new Set(config.stays_local);
   const waveOf = new Map();
   for (const [wave, names] of Object.entries(config.waves)) for (const n of names) waveOf.set(n, wave);
+  const builtinMcp = config.mcp_builtin;
+  // current: only Enact's own servers exist. next: plus the environment's allowed remote servers.
+  const allowedMcp = next ? [...builtinMcp, ...(config.mcp_allow_list ?? [])] : [...builtinMcp];
 
   const outputs = new Map(); // enact-relative path -> content
   const skillCache = new Map();
-  const skillInfo = {};
 
   function loadSkill(name) {
     if (skillCache.has(name)) return skillCache.get(name);
@@ -228,6 +272,7 @@ function build() {
     const flags = {};
     const secrets = new Set();
     let refs = new Set();
+    let description = "";
     for (const rel of listSkillFiles(name)) {
       const buf = readFileSync(path.join(root, rel));
       let text;
@@ -241,6 +286,11 @@ function build() {
       if (rel === `skills/${name}/SKILL.md`) {
         text = stripDisableModelInvocation(text);
         refs = referencedSkills(text, true, knownSkills);
+        try {
+          description = parseFrontmatter(text, rel).fields.description ?? "";
+        } catch {
+          description = "";
+        }
       }
       files[rel] = text;
       mergeFlags(flags, scanFlags(text, rel, patterns));
@@ -248,23 +298,54 @@ function build() {
     }
     refs.delete(name);
     const bytes = Object.values(files).reduce((n, t) => n + Buffer.byteLength(t), 0);
-    const entry = { files, omitted, flags, secrets, refs: [...refs].sort(), bytes };
+    const entry = { name, files, omitted, flags, secrets, refs: [...refs].sort(), bytes, description };
     skillCache.set(name, entry);
-    skillInfo[name] = {
-      bytes,
-      files: Object.keys(files).length,
-      flags: sortFlags(flags),
-      omitted,
-      references: entry.refs,
-    };
     return entry;
   }
 
-  const inventory = { kit_version: plugin.version, mcp_allow_list: config.mcp_allow_list, agents: {}, skills: {} };
+  // Why a skill cannot be a library skill, or null.
+  function libraryProblem(entry) {
+    const problems = [];
+    if (entry.omitted.length) {
+      const shown = entry.omitted.slice(0, 3).map((o) => o.path);
+      problems.push(`${entry.omitted.length} non-UTF-8 files (${shown.join(", ")}${entry.omitted.length > 3 ? ", …" : ""})`);
+    }
+    if (entry.bytes > LIBRARY_LIMITS.skill_bytes) problems.push(`${entry.bytes} bytes of text, over 3 MiB`);
+    const count = Object.keys(entry.files).length;
+    if (count > LIBRARY_LIMITS.skill_files) problems.push(`${count} files, over ${LIBRARY_LIMITS.skill_files}`);
+    const prefix = `skills/${entry.name}/`;
+    const bad = Object.keys(entry.files).filter((p) => !LIBRARY_FILE_PATH.test(p.slice(prefix.length)));
+    if (bad.length) problems.push(`paths the library refuses: ${bad.join(", ")}`);
+    if (!entry.description || entry.description.length > 1024) problems.push("SKILL.md description missing or over 1024 characters");
+    return problems.length ? problems.join("; ") : null;
+  }
+
+  const inventory = {
+    kit_version: plugin.version,
+    enact_version: enactVersion(plugin.version),
+    contract,
+    mcp_allow_list: allowedMcp,
+    agents: {},
+    skills: {},
+  };
   const agentFiles = readdirSync(path.join(root, "agents"))
     .filter((f) => f.endsWith(".md"))
     .sort();
 
+  // Pass 1: read every agent and resolve its skills.
+  const agents = [];
+  const staysLocalSkills = new Map(); // skill -> stays-local agents that use it (next: library report)
+  const closure = (body) => {
+    const queue = [...referencedSkills(body, false, knownSkills)].sort();
+    const included = new Set();
+    while (queue.length) {
+      const s = queue.shift();
+      if (included.has(s)) continue;
+      included.add(s);
+      for (const r of loadSkill(s).refs) if (!included.has(r)) queue.push(r);
+    }
+    return [...included].sort();
+  };
   for (const file of agentFiles) {
     const source = `agents/${file}`;
     const { fields, body } = parseFrontmatter(normalize(readFileSync(path.join(root, source), "utf8")), source);
@@ -274,65 +355,169 @@ function build() {
 
     if (stays.has(name)) {
       inventory.agents[name] = { wave: "stays-local", wave_reason: "enact/config.json stays_local" };
+      if (next) for (const s of closure(body)) staysLocalSkills.set(s, [...(staysLocalSkills.get(s) ?? []), name]);
       continue;
     }
 
     const overridePath = path.join(enactDir, "overrides", `${name}.json`);
     const override = existsSync(overridePath) ? readJson(overridePath) : {};
     const requiresMcp = [...(override.requires_mcp ?? [])].sort();
-
     const manifest = {
       ...structuredClone(config.default_manifest),
       name,
-      version: plugin.version,
+      version: enactVersion(plugin.version),
       description: fields.description,
       model: mapModel(fields.model, config),
       ...(override.manifest ?? {}),
     };
+    const declared = override.needs_secrets ?? config.needs_secrets_by_role?.[fields.role] ?? [];
+    agents.push({
+      name,
+      fields,
+      body,
+      override,
+      manifest,
+      requiresMcp,
+      needsSecrets: [...declared].sort(),
+      sandboxLocalhost: override.browser?.sandbox_localhost === true,
+      skills: closure(body),
+      readonly: String(fields.readonly ?? "").toLowerCase() === "true",
+    });
+  }
 
-    // Transitive closure of referenced skills.
-    const queue = [...referencedSkills(body, false, knownSkills)].sort();
-    const included = new Set();
-    while (queue.length) {
-      const s = queue.shift();
-      if (included.has(s)) continue;
-      included.add(s);
-      for (const r of loadSkill(s).refs) if (!included.has(r)) queue.push(r);
+  // Pass 2 (next): choose library skills. A skill goes to the library when two or more packaged
+  // agents use it, or when keeping it in an agent's own files breaks that agent's limits.
+  const library = new Map(); // skill -> reason
+  const libraryExcluded = {};
+  if (next) {
+    const users = new Map();
+    for (const a of agents) for (const s of a.skills) users.set(s, [...(users.get(s) ?? []), a.name]);
+    for (const [s, names] of [...users].sort()) {
+      if (names.length < 2) continue;
+      const problem = libraryProblem(loadSkill(s));
+      if (problem) libraryExcluded[s] = { reason: problem, used_by: names };
+      else library.set(s, `used by ${names.length} packaged agents`);
     }
-    const skills = [...included].sort();
-    const readonly = String(fields.readonly ?? "").toLowerCase() === "true";
+    for (const a of agents) {
+      for (;;) {
+        const own = a.skills.filter((s) => !library.has(s));
+        const sizes = ownSizes(a, own);
+        if (!overLimits(sizes, config.limits)) break;
+        const candidates = own.filter((s) => !libraryExcluded[s] && !libraryProblem(loadSkill(s)));
+        // The skill holding an over-limit file first, else the largest.
+        const pick =
+          (sizes.largest > config.limits.max_file_bytes &&
+            candidates.find((s) => Object.values(loadSkill(s).files).some((t) => Buffer.byteLength(t) > config.limits.max_file_bytes))) ||
+          candidates.sort((x, y) => loadSkill(y).bytes - loadSkill(x).bytes || (x < y ? -1 : 1))[0];
+        if (!pick) {
+          for (const s of own) {
+            const problem = libraryProblem(loadSkill(s));
+            if (problem) libraryExcluded[s] = { reason: problem, used_by: [a.name] };
+          }
+          break;
+        }
+        library.set(pick, `keeps ${a.name} within the package limits`);
+      }
+    }
+    // Report every other skill the library could not hold, and who uses it.
+    for (const s of [...knownSkills].sort()) {
+      if (library.has(s) || libraryExcluded[s]) continue;
+      const problem = libraryProblem(loadSkill(s));
+      if (!problem) continue;
+      libraryExcluded[s] = { reason: problem, used_by: users.get(s) ?? [], used_by_stays_local: staysLocalSkills.get(s) ?? [] };
+    }
+    for (const s of Object.keys(libraryExcluded)) {
+      libraryExcluded[s].used_by_stays_local ??= staysLocalSkills.get(s) ?? [];
+    }
+  }
 
-    const instructions = body.replace(/^\n+/, "").replace(/\n*$/, "\n") + appendix(manifest, skills, { requiresMcp, readonly }, override);
+  function ownSizes(a, own) {
+    // instructions.md is a few KiB; count the body plus a generous appendix allowance.
+    const sizes = [Buffer.byteLength(a.body) + 8192];
+    for (const s of own) for (const t of Object.values(loadSkill(s).files)) sizes.push(Buffer.byteLength(t));
+    return { bytes: sizes.reduce((n, b) => n + b, 0), files: sizes.length, largest: Math.max(...sizes) };
+  }
+  function overLimits(sizes, limits) {
+    return sizes.bytes > limits.max_total_bytes || sizes.files > limits.max_files || sizes.largest > limits.max_file_bytes;
+  }
+
+  const librarySkills = {};
+  for (const s of [...library.keys()].sort()) {
+    const entry = loadSkill(s);
+    const prefix = `skills/${s}/`;
+    const files = Object.fromEntries(Object.entries(entry.files).map(([rel, t]) => [rel.slice(prefix.length), t]));
+    const skillManifest = { name: s, version: librarySkillVersion(s, entry.description, files), description: entry.description };
+    const doc = { manifest: skillManifest, files };
+    const canonical = canonicalJson(doc);
+    librarySkills[s] = {
+      version: skillManifest.version,
+      digest: `sha256:${createHash("sha256").update(canonical).digest("hex")}`,
+      bytes: entry.bytes,
+      files: Object.keys(files).length,
+      stored_bytes: Buffer.byteLength(canonical),
+      reason: library.get(s),
+      used_by: [],
+    };
+    outputs.set(`library/${s}/skill.json`, stableJson(skillManifest));
+    for (const [rel, t] of Object.entries(files)) outputs.set(`library/${s}/${rel}`, t);
+  }
+
+  // Pass 3: write each package.
+  const usedSkills = new Set();
+  for (const a of agents) {
+    const { name, fields, body, override, requiresMcp, needsSecrets, readonly, skills } = a;
+    const manifest = a.manifest;
+    const pinned = skills.filter((s) => library.has(s));
+    const own = skills.filter((s) => !library.has(s));
+    const mcpServers = requiresMcp.filter((s) => !builtinMcp.includes(s));
+    if (next) {
+      if (pinned.length) manifest.library_skills = pinned.map((s) => ({ name: s, version: librarySkills[s].version }));
+      if (mcpServers.length) manifest.mcp_servers = mcpServers;
+      if (needsSecrets.length) manifest.secrets = needsSecrets;
+      if (a.sandboxLocalhost) {
+        manifest.tools = [...new Set([...(manifest.tools ?? []), "browser"])].sort();
+        manifest.browser = { sandbox_localhost: true };
+      }
+      for (const s of pinned) librarySkills[s].used_by.push(name);
+    }
+    for (const s of skills) usedSkills.add(s);
+
+    const info = { requiresMcp, readonly, next, mcpServers, needsSecrets, sandboxLocalhost: a.sandboxLocalhost };
+    const instructions = body.replace(/^\n+/, "").replace(/\n*$/, "\n") + appendix(manifest, skills, info, override);
     const files = { "instructions.md": instructions };
     const flags = scanFlags(body.replace(/^\n+/, ""), "instructions.md", patterns);
     const secrets = scanSecrets(body, secretRe);
     const omitted = [];
     for (const s of skills) {
       const entry = loadSkill(s);
-      for (const [rel, text] of Object.entries(entry.files)) files[rel] = text;
+      if (!library.has(s)) for (const [rel, text] of Object.entries(entry.files)) files[rel] = text;
       mergeFlags(flags, entry.flags);
       for (const x of entry.secrets) secrets.add(x);
-      omitted.push(...entry.omitted);
+      if (!library.has(s)) omitted.push(...entry.omitted);
     }
 
     const bytes = Object.values(files).reduce((n, t) => n + Buffer.byteLength(t), 0);
     const fileCount = Object.keys(files).length;
     const largest = Math.max(...Object.values(files).map((t) => Buffer.byteLength(t)));
     const badPaths = Object.keys(files).filter((p) => !FILE_PATH.test(p));
+    const pinnedBytes = pinned.reduce((n, s) => n + librarySkills[s].stored_bytes, 0);
 
-    const declared = override.needs_secrets ?? config.needs_secrets_by_role?.[fields.role] ?? [];
-    const needsSecrets = [...declared].sort();
     const blockedBy = new Set();
     if (bytes > config.limits.max_total_bytes || fileCount > config.limits.max_files || largest > config.limits.max_file_bytes) {
       blockedBy.add("shared-skill-library");
     }
-    if (requiresMcp.some((s) => !config.mcp_allow_list.includes(s))) blockedBy.add("remote-mcp");
-    if (needsSecrets.length) blockedBy.add("agent-secrets");
-    if ((manifest.tools ?? []).includes("browser")) blockedBy.add("browser-preview");
+    if (next && (pinnedBytes > LIBRARY_LIMITS.pinned_bytes || pinned.length > LIBRARY_LIMITS.pins)) blockedBy.add("shared-skill-library");
+    const outside = requiresMcp.some((s) => !allowedMcp.includes(s));
+    // current: the remote-mcp piece is missing. next: the server is not on the environment's list.
+    if (outside) blockedBy.add(next ? "mcp-allow-list" : "remote-mcp");
+    if (!next && needsSecrets.length) blockedBy.add("agent-secrets");
+    // Only an agent that opens an app it runs inside its sandbox (a localhost dev server) needs the
+    // browser-preview piece; the browser tool itself already reaches hosted URLs.
+    if (!next && a.sandboxLocalhost) blockedBy.add("browser-preview");
 
     let wave = override.wave ?? waveOf.get(name);
     let waveReason = override.wave ? "override" : wave ? "enact/config.json waves" : undefined;
-    if (!wave && requiresMcp.some((s) => !config.mcp_allow_list.includes(s))) {
+    if (!wave && requiresMcp.some((s) => !builtinMcp.includes(s))) {
       wave = config.wave_rules.requires_remote_mcp;
       waveReason = "requires a remote MCP server";
     }
@@ -345,9 +530,8 @@ function build() {
       waveReason = "retained specialist (default)";
     }
 
-    const pkg = `${name}`;
-    outputs.set(`${pkg}/agent.json`, stableJson(manifest));
-    for (const [rel, text] of Object.entries(files)) outputs.set(`${pkg}/${rel}`, text);
+    outputs.set(`${name}/agent.json`, stableJson(manifest));
+    for (const [rel, text] of Object.entries(files)) outputs.set(`${name}/${rel}`, text);
 
     const sortedFlags = sortFlags(flags);
     inventory.agents[name] = {
@@ -359,11 +543,13 @@ function build() {
       bytes,
       files: fileCount,
       skills,
+      ...(next ? { own_skills: own, library_skills: pinned, library_pinned_bytes: pinnedBytes, mcp_servers: mcpServers } : {}),
       requires_mcp: requiresMcp,
       requires_mcp_reason: override.requires_mcp_reason ?? "No mcp__ tool reference and no instruction that calls an MCP server.",
       needs_secrets: needsSecrets,
       needs_secrets_source:
         override.needs_secrets !== undefined ? "override" : config.needs_secrets_by_role?.[fields.role] ? `role: ${fields.role}` : "none declared",
+      ...(a.sandboxLocalhost ? { browser_sandbox_localhost: true } : {}),
       secret_env_mentions: [...secrets].filter((s) => !config.secret_ignore.includes(s)).sort(),
       flag_counts: Object.fromEntries(Object.entries(sortedFlags).map(([k, v]) => [k, v.length])),
       instruction_flags: sortFlags(scanFlags(body.replace(/^\n+/, ""), "instructions.md", patterns)),
@@ -373,8 +559,29 @@ function build() {
       blocked_by: [...blockedBy].sort(),
     };
   }
-  for (const name of Object.keys(skillInfo).sort()) inventory.skills[name] = skillInfo[name];
+  for (const name of [...usedSkills].sort()) {
+    const entry = loadSkill(name);
+    inventory.skills[name] = {
+      bytes: entry.bytes,
+      files: Object.keys(entry.files).length,
+      flags: sortFlags(entry.flags),
+      omitted: entry.omitted,
+      references: entry.refs,
+    };
+  }
   outputs.set("inventory.json", stableJson(inventory));
+  if (next) {
+    outputs.set(
+      "library/index.json",
+      stableJson({
+        kit_version: plugin.version,
+        version_rule: "1.0.0-sha256-<first 16 hex digits of SHA-256 over {name, description, files}>: a version always names the same content",
+        limits: LIBRARY_LIMITS,
+        skills: librarySkills,
+        excluded: libraryExcluded,
+      }),
+    );
+  }
   return outputs;
 }
 
@@ -399,7 +606,7 @@ function existingGenerated() {
   const walk = (dir) => {
     for (const entry of readdirSync(path.join(enactDir, dir))) {
       const rel = dir ? `${dir}/${entry}` : entry;
-      if (!dir && RESERVED.has(entry) && entry !== "inventory.json") continue;
+      if (!dir && RESERVED.has(entry) && entry !== "inventory.json" && entry !== "library") continue;
       if (statSync(path.join(enactDir, rel)).isDirectory()) walk(rel);
       else found.set(rel, readFileSync(path.join(enactDir, rel), "utf8"));
     }
@@ -409,19 +616,34 @@ function existingGenerated() {
 }
 
 function main() {
-  const command = process.argv[2] ?? "sync";
-  if (!["sync", "check"].includes(command)) {
-    console.error("usage: node scripts/sync-enact-agents.mjs [sync|check]");
+  const args = process.argv.slice(2);
+  const usage = "usage: node scripts/sync-enact-agents.mjs [sync|check] [--contract current|next]";
+  let command = "sync";
+  let contract;
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--contract") contract = args[++i];
+    else if (args[i].startsWith("--contract=")) contract = args[i].slice("--contract=".length);
+    else if (["sync", "check"].includes(args[i])) command = args[i];
+    else {
+      console.error(usage);
+      process.exit(2);
+    }
+  }
+  contract ??= readJson(path.join(enactDir, "config.json")).contract ?? "current";
+  if (!["current", "next"].includes(contract)) {
+    console.error(usage);
     process.exit(2);
   }
-  const outputs = build();
+  const outputs = build(contract);
   const existing = existingGenerated();
   const stale = [...existing.keys()].filter((p) => !outputs.has(p)).sort();
   const changed = [...outputs.keys()].filter((p) => existing.get(p) !== outputs.get(p)).sort();
   // Skill copies are gitignored (enact/*/skills/): a fresh checkout has none, so check compares
   // only the committed parts (agent.json, instructions.md, inventory.json).
-  const committed = (p) => !/^[^/]+\/skills\//.test(p);
-  const agents = new Set([...outputs.keys()].filter((p) => p.includes("/")).map((p) => p.split("/")[0]));
+  const committed = (p) => !/^[^/]+\/skills\//.test(p) && !/^library\/[^/]+\//.test(p);
+  const agents = new Set(
+    [...outputs.keys()].filter((p) => p.includes("/") && !p.startsWith("library/")).map((p) => p.split("/")[0]),
+  );
 
   if (command === "check") {
     const staleC = stale.filter(committed);
@@ -432,7 +654,7 @@ function main() {
       console.error("enact/ is out of sync; run node scripts/sync-enact-agents.mjs sync");
       process.exit(1);
     }
-    console.log(`enact/ is synced (${agents.size} agent packages)`);
+    console.log(`enact/ is synced (${agents.size} agent packages, contract ${contract})`);
     return;
   }
   for (const p of stale) rmSync(path.join(enactDir, p));
@@ -441,7 +663,7 @@ function main() {
     const abs = path.join(enactDir, dir);
     for (const entry of readdirSync(abs)) {
       const rel = dir ? `${dir}/${entry}` : entry;
-      if (!dir && RESERVED.has(entry)) continue;
+      if (!dir && RESERVED.has(entry) && entry !== "library") continue;
       if (statSync(path.join(enactDir, rel)).isDirectory()) prune(rel);
     }
     if (dir && readdirSync(abs).length === 0) rmSync(abs, { recursive: true });
@@ -451,7 +673,10 @@ function main() {
     writeFileSync(path.join(enactDir, p), outputs.get(p));
   }
   prune("");
-  console.log(`synced ${agents.size} Enact agent packages (${changed.length} files written, ${stale.length} removed)`);
+  const libraryCount = new Set([...outputs.keys()].filter((p) => /^library\/[^/]+\//.test(p)).map((p) => p.split("/")[1])).size;
+  console.log(
+    `synced ${agents.size} Enact agent packages${contract === "next" ? ` and ${libraryCount} library skills` : ""} (contract ${contract}; ${changed.length} files written, ${stale.length} removed)`,
+  );
 }
 
 main();

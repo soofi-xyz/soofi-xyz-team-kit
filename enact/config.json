@@ -1,5 +1,7 @@
 {
   "$comment": "Inputs to scripts/sync-enact-agents.mjs. Everything under enact/ except config.json, overrides/ and schema/ is generated; do not edit it by hand.",
+  "contract": "current",
+  "$contract": "current: prismteam-ai/enact main (enact/schema/). next: also the open pieces' manifest fields and the skill library (enact/schema/next/). CI runs current; --contract overrides it.",
   "stays_local": [
     "ampharos",
     "audino",
@@ -66,10 +68,12 @@
     "repositories": [],
     "hosts": []
   },
-  "mcp_allow_list": [
+  "mcp_builtin": [
     "enact",
     "browser"
   ],
+  "$mcp_allow_list": "Remote MCP servers on the target environment's list (GET /enact/mcp-servers), used in next mode on top of mcp_builtin. T1 --allow-list-from reads a live list.",
+  "mcp_allow_list": [],
   "limits": {
     "max_total_bytes": 1048576,
     "max_files": 200,
