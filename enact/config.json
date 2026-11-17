@@ -98,5 +98,22 @@
     "WAIT_FOR_TASK_TOKEN",
     "GET_TOKEN",
     "SET_TOKEN"
-  ]
+  ],
+  "$run_repositories": "Repositories each run may name (owner/repo on the environment's allowed list), unless an override sets run_repositories or repositories. Read-only agents read; every other agent may push a branch and open a pull request (never the default branch: Enact's pre-push hook refuses it, and there is no merge tool).",
+  "run_repositories": {
+    "readonly": {
+      "max": 5,
+      "permissions": {
+        "contents": "read",
+        "pull_requests": "read"
+      }
+    },
+    "default": {
+      "max": 5,
+      "permissions": {
+        "contents": "write",
+        "pull_requests": "write"
+      }
+    }
+  }
 }

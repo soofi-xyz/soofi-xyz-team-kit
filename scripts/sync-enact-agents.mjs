@@ -375,6 +375,12 @@ function build(contract) {
       model: mapModel(fields.model, config),
       ...(override.manifest ?? {}),
     };
+    const readonlyAgent = String(fields.readonly ?? "").toLowerCase() === "true";
+    if (!manifest.run_repositories && !(manifest.repositories ?? []).length && config.run_repositories) {
+      manifest.run_repositories = structuredClone(
+        config.run_repositories[readonlyAgent ? "readonly" : "default"],
+      );
+    }
     const declared = override.needs_secrets ?? config.needs_secrets_by_role?.[fields.role] ?? [];
     agents.push({
       name,

@@ -11,5 +11,12 @@
   "model": "opus",
   "name": "metagross",
   "repositories": [],
-  "version": "1.158.0"
+  "run_repositories": {
+    "max": 5,
+    "permissions": {
+      "contents": "read",
+      "pull_requests": "read"
+    }
+  },
+  "version": "1.158.1"
 }
