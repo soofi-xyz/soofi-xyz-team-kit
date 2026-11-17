@@ -100,7 +100,7 @@ user merges. Never push or merge yourself.
 
 ## Save, refresh and check
 
-The bundle is how a report reaches an environment. Use a direct save for testing only, and
+The bundle is how a report reaches an environment. Use a direct save only to test on your own dev/test stack ([Configurer delivery](../guide-product-work/SKILL.md#configurer-delivery)), and
 delete test-only reports that are not in the bundle with `DELETE /reports/<id>` once the
 subscription has installed it.
 

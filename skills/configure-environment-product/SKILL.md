@@ -12,6 +12,7 @@ Marketplace/Deploy installation; verify support before running an update.
 
 Use `shaymin`. Load [guide-product-work](../guide-product-work/SKILL.md) and
 [the Environment capability map](../guide-product-work/reference/iterations/environment.md).
+Follow guide-product-work's [Configurer delivery](../guide-product-work/SKILL.md#configurer-delivery) for every configuration write.
 Read the relevant [product contract](../build-bootstrap-cli/reference/PRD.md) and
 [synthetic test data](../build-bootstrap-cli/reference/test-data.md).
 

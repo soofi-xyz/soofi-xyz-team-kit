@@ -97,9 +97,12 @@ On a Puller subscription:
 
 ## 3. Register the index
 
-Registrations live in `indexes` of the MCP configuration. `PUT` replaces the
-whole document, so read it first and keep its tools, limits and saved queries.
-Ask before the `PUT`; work DEV first.
+Registrations live in `indexes` of the MCP configuration. In a shared
+environment, add them to the repository that owns that configuration
+(`prismteam-ai/prism-memory-configuration` for soofi-safavi) and let Deploy
+install it ([Configurer delivery](../../guide-product-work/SKILL.md#configurer-delivery)). The direct `PUT` below is only for
+your own dev/test stack. `PUT` replaces the whole document, so read it first and
+keep its tools, limits and saved queries. Ask before the `PUT`.
 
 ```bash
 curl -sS -H "x-api-key: $PRISM_API_KEY" "https://$PRISM_DOMAIN/persist/mcp/configuration" > mcp-config.json

@@ -312,8 +312,9 @@ Follow [dev runtime](reference/dev-runtime.md) for the shared-domain API, its
 
 1. Confirm the shared domain and key reach Connect: a `GET` of a known
    activation by name answers `200` or `404`, not `403`.
-2. **Test only:** register the flow (`POST /connect/flows`) if it is new, then
-   put the partner configuration and activation directly. These direct writes
+2. **Test only, on your own dev/test stack:** register the flow (`POST /connect/flows`)
+   if it is new, then put the partner configuration and activation directly, with
+   the source headers ([Configurer delivery](../guide-product-work/SKILL.md#configurer-delivery)). These direct writes
    prove the configuration; they are not its delivery (step 8).
 3. Trigger exactly as production will: enable and fire the schedule, drop the
    object in the drop zone, post the partner webhook, or start the job or
@@ -388,7 +389,7 @@ production steps.
 ## Configuration bundles
 
 Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
-Author pinned configuration documents that name credentials and never carry their values; preserve partner validation and keep registration separate from activation and traffic. Deliver them through the bundle PR in step 8; direct API registration is for testing only.
+Author pinned configuration documents that name credentials and never carry their values; preserve partner validation and keep registration separate from activation and traffic. Deliver them through the bundle PR in step 8; direct API registration is for testing on your own dev/test stack only.
 
 ## Configuration provenance
 

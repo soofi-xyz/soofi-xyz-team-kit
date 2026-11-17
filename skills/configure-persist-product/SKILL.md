@@ -132,13 +132,12 @@ report the catalog as Model/Lexicon-published and hand the gap to Conkeldurr.
 1. Install only an approved Model catalog release; send definition authoring to
    Jirachi. Read `GET /persist/metrics/catalog` and stop at `source: legacy-ssm`
    until the Model owners retire that boundary.
-2. `PUT` `{ catalog, base }` with `If-Match` on the version read. Treat a 400 as
-   the compile report and fix the catalog through Model, never by editing it here.
-   Deliver the catalog through the configuration bundle repository (see
+2. Deliver `{ catalog, base }` as a `metrics-catalog` document in the
+   environment's configuration bundle repository; Deploy installs it (see
    [Configurer delivery](../guide-product-work/SKILL.md#configurer-delivery)).
-   No Deploy adapter or Build bundle kind accepts a metrics catalog yet, so
-   this `PUT` is a test-only exception; record the gap for Corviknight (Deploy
-   adapter) and Tinkaton (bundle kind) and tell the person.
+   `PUT` it directly, with `If-Match` on the version read, only on your own
+   dev/test stack. Treat a 400 as the compile report and fix the catalog through
+   Model, never by editing it here.
 3. After the five-minute catalog cache, confirm activation `STATUS` is in sync.
 4. Backfill quarter-sized `RANGE` windows newest first, planning each before its
    confirmed run, one confirmed run at a time.
@@ -177,8 +176,11 @@ revision; otherwise hand the gap to Conkeldurr.
 1. Connect clients with [the client setup](reference/mcp-client-setup.md). The key
    stays in the person's environment and the client header; never in chat,
    arguments or results.
-2. Read the configuration and its version. `PUT` enabled tools, limits (rows,
-   timeout, search results, reader target) and saved queries with `If-Match`.
+2. Read the configuration and its version. Change enabled tools, limits (rows,
+   timeout, search results, reader target) and saved queries in the repository
+   that owns the MCP configuration (`prismteam-ai/prism-memory-configuration` for
+   soofi-safavi; bundle kind `mcp-configuration`, which Deploy installs whole).
+   `PUT` with `If-Match` directly only on your own dev/test stack.
    Saved queries are read-only parameterised Gremlin; a `400` names the refused step.
 3. After the cache window, confirm `tools/list` reflects the change and a saved
    query appears as `query_<name>`, without a redeploy.
@@ -202,9 +204,10 @@ never bare "index".
    A Puller `PATCH` replaces the whole map, so resend every existing key.
    Resuming a `PAUSED` subscription installs every release since the pause;
    ask who paused it first.
-3. Register with `PUT /persist/mcp/configuration`, keeping the rest of the
-   document, then `GET` it again to confirm (the `PUT` answer does not echo
-   it). Expect `501` while the feature is off and `400` for more than 10, a
+3. Register by adding `indexes` to the MCP configuration in its owning
+   repository, keeping the rest of the document (a direct
+   `PUT /persist/mcp/configuration` only on your own dev/test stack), then `GET`
+   it again to confirm. Expect `501` while the feature is off and `400` for more than 10, a
    repeated name or a file outside the bucket.
 4. Verify `persist-registered-ipfs-indexes/<name>/active.json` and
    `versions/<cid>.json`, and the sync log `outcome` (`Activated`,
@@ -221,9 +224,10 @@ never bare "index".
    can assume, allowed `s3:PutObject` on the one object, and the
    `ATLAS_INDEX_S3_URI`, `ATLAS_INDEX_S3_ROLE_ARN` and `ATLAS_INDEX_S3_REGION`
    variables on the Atlas repository.
-7. To turn it off, empty the parameter; the next `PUT` must omit `indexes`.
+7. To turn it off, empty the parameter and remove `indexes` from the MCP
+   configuration's repository.
 
-Ask before every `PUT` and deploy change; work DEV first.
+Ask before every configuration pull request and deploy change; work DEV first.
 
 ## Make a field searchable
 

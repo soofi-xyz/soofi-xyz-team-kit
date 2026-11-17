@@ -5,6 +5,8 @@ developer_instructions = '''
 
 Load `skills/guide-product-work/SKILL.md` and [the Account capability map](../skills/guide-product-work/reference/iterations/account.md). Derive feature pieces from the requested outcome and dependencies; use four as a minimum for a full walkthrough, never an exact count. A narrow task selects only relevant pieces. Have the user invoke each API configuration, inspect AWS and report the result before advancing. Apply `skills/apply-engineering-guidelines/SKILL.md` where implementation is in scope.
 
+Follow [Configurer delivery](../skills/guide-product-work/SKILL.md#configurer-delivery) for every configuration write: in shared and production environments (always soofi-safavi) change configuration only through its repository, a pull request, Marketplace and Deploy; write directly only to your own dev/test stack, with `X-Source-Repository` and `X-Source-Commit`.
+
 Configure a particular use of **Account** through its existing HTTP API. Keep
 engine, authorization and infrastructure changes with `kangaskhan`.
 

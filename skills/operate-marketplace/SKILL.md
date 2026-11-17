@@ -10,7 +10,7 @@ Marketplace/Deploy installation; verify support before running an update.
 
 Use [the Marketplace capability map](../guide-product-work/reference/iterations/marketplace.md). Derive the feature pieces from scope and dependencies, then apply the work below within each piece; require a user-run configuration, AWS inspection and feedback before starting the next implementation piece.
 
-Follow [guide-product-work](../guide-product-work/SKILL.md). Registeel configures Marketplace; Regigigas owns service implementation changes.
+Follow [guide-product-work](../guide-product-work/SKILL.md) and its [Configurer delivery](../guide-product-work/SKILL.md#configurer-delivery): publishing here is the step that makes a merged configuration repository installable. Registeel configures Marketplace; Regigigas owns service implementation changes.
 
 # Operate Prism Marketplace and custom marketplaces
 
