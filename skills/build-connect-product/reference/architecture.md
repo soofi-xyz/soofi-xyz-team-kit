@@ -225,11 +225,23 @@ and its operator setup in [configure-access-product](../../configure-access-prod
   token; Connect stores no grants.
 - **Let Connect's store decide who created a name.** Create with a create-only
   write, so the second of two concurrent creators gets `409` and changes
-  nothing. Then remove whatever Access still holds under the name and register
-  the owner, so a new credential never inherits old shares; when Access cannot
-  record the owner, remove the credential again and fail the write. Replace or
-  merge an existing credential only while it still has the owner the caller
-  was authorized against. On removal, remove the Access record first.
+  nothing. Store the new credential `unconfirmed`: while it is, no token caller
+  may `use` it, its owner included, because Access may still hold the owner
+  and shares of an earlier credential of that name. Then confirm it: remove
+  whatever Access holds under the name, register the owner, and clear the mark
+  on exactly the stored state that was written. When Access cannot do that,
+  answer `503` and leave the credential stored and unconfirmed; never remove
+  it again, since a retry may already have replaced it. The next `PUT` or
+  `PATCH` by whoever manages it confirms it. The environment key keeps using
+  the environment's own unconfirmed credentials.
+- **Say what was read when writing.** Replace or merge an existing credential
+  only in the exact stored state the caller was authorized on, checked by the
+  store together with the write (`409` when it was changed, removed or
+  recreated meanwhile). In Secrets Manager, write the new value as a staged
+  version and move `AWSCURRENT` to it with `UpdateSecretVersionStage` and
+  `RemoveFromVersionId` set to the version that was read. An in-memory store
+  checks and writes with no `await` in between. On removal, remove the Access
+  record first.
 - **Pre-flight a job** before any partner or storage call: `start` on the flow
   (resource owner `environment`) and `use` on every credential the job's
   connections and DECRYPT keys name, each owner read from Connect's own records
