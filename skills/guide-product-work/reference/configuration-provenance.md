@@ -45,7 +45,7 @@ copy. So Deploy also signs every configuration write it sends, and a product in
 
 | Part | Value |
 |---|---|
-| Key | KMS HMAC_256 key, alias `alias/deploy-configuration-writer`, in Deploy's `deploy-workflow` stack (account and region Deploy runs in). Only Deploy's ApplyConfiguration and InstallPersistLexicon worker roles may `kms:GenerateMac`; the account gets `VerifyMac`/`DescribeKey` only |
+| Key | KMS HMAC_256 key, alias `alias/deploy-configuration-writer`, in Deploy's `deploy-workflow` stack (account and region Deploy runs in). Only Deploy's ApplyConfiguration and InstallPersistLexicon worker roles, plus the exact role ARNs in `AdditionalConfigurationWriterRoleArns` (default empty; no wildcards), may `kms:GenerateMac`; the account gets `VerifyMac`/`DescribeKey` only. `ConfigurationWriterKeyMode=Existing` installs Deploy without creating the key (second install in the same account and region) |
 | Headers | `X-Deploy-Signed-At` (ISO 8601 UTC with `Z`, fresh per attempt) and `X-Deploy-Signature` (padded base64 of `GenerateMac`, `HMAC_SHA_256`) |
 | Signed message | 8 UTF-8 lines joined by `\n`, no trailing newline: `deploy-configuration-write-v1`, METHOD, shared-domain path with base path and without query (for example `/system/flows/x`), sha256 hex of the exact body bytes (of the empty string when none), repository, commit, install id, signed-at. Missing repository or commit are empty lines |
 | Product check | Signed-at within 300 s; one `kms:VerifyMac` per write on the alias, never cached; KMS errors fail closed. A verified write records `provenance.signed: true` |
@@ -81,13 +81,13 @@ Where the gate lives:
 | Connect | `prismteam-ai/connect` (#54; #55) | `src/control-plane/provenance-gate.ts`, `src/contracts/provenance.ts` |
 | Transform | `prismteam-ai/transform` (#84; #85) | `src/shared/provenance-gate.ts`, `src/shared/provenance.ts`, `src/lambdas/register-*` |
 | Report | `prismteam-ai/report` (#5; #6) | `src/api/provenance-gate.ts`, `src/api/provenance.ts` |
-| Schedule | `prismteam-ai/schedule` (#8; #9) | `src/api/provenance-gate.ts`, `src/lib/provenance.ts` |
+| Schedule | `prismteam-ai/schedule` (#8; #9; deletes #10) | `src/api/provenance-gate.ts`, `src/lib/provenance.ts` |
 | Inference | `prismteam-ai/inference` (#29; #30) | `src/api/provenance-gate.ts`, `src/configuration/provenance.ts` |
-| Persist | `prismteam-ai/persist` (#481; #483) | `lambda/http/provenance-gate.ts`, `lambda/config/provenance.ts`, `lib/configuration-provenance.ts` |
+| Persist | `prismteam-ai/persist` (#481; #483; deletes #488) | `lambda/http/provenance-gate.ts`, `lambda/config/provenance.ts`, `lib/configuration-provenance.ts` |
 | Model | `prismteam-ai/model` (#83; #84) | `src/http/provenance-gate.ts`, `src/domain/provenance.ts` |
 | Console | `prismteam-ai/console` (#15; #16) | `src/handlers/provenance-gate.ts`, `src/domain/provenance.ts` |
-| Build | `prismteam-ai/build` (#58) | `src/domain/source-origin.ts`, `src/provenance/build-manifest.ts`, `actions/publish/publish_via_build.py` |
-| Deploy | `prismteam-ai/deploy` (#86; #87) | `lambda/services/configuration/provenance.ts`, `lambda/services/persist-lexicon/` |
+| Build | `prismteam-ai/build` (#58; Model and Persist kinds #63) | `src/domain/source-origin.ts`, `src/provenance/build-manifest.ts`, `actions/publish/publish_via_build.py` |
+| Deploy | `prismteam-ai/deploy` (#86; #87; Model, Console, Persist installers and key options #89) | `lambda/services/configuration/provenance.ts`, `lambda/services/persist-lexicon/` |
 
 System also has IAM-only `DELETE /flows|templates|definitions/{name}` for orphan
 configurations (shared key: 403 `IAM_REQUIRED`; 409 `FLOW_CHANGED`,
@@ -107,9 +107,25 @@ configurations (shared key: 403 `IAM_REQUIRED`; 409 `FLOW_CHANGED`,
   `X-Deploy-Install-Id`, logs `Configuration provenance warning` and lists
   `provenance not sent: ...` in the install's `warnings`. A
   `PROVENANCE_REQUIRED` answer fails the run as `ProvenanceRequired`.
-- **Deploy signs** each of those writes (see Deploy signature). Every run first
+- **Deploy signs** each of those writes (see Deploy signature) with
+  `alias/deploy-configuration-writer` in the run's target region. Every run first
   probes `GenerateMac`; if KMS refuses, the run fails as
-  `DeploySignatureUnavailable` with nothing applied.
+  `DeploySignatureUnavailable` with nothing applied, and the message names the
+  region and cause (no key there, key owned by another install, key disabled).
+- **Configuration kinds Deploy installs:** Transform `mapping`; Connect `flow`,
+  `partner-configuration`, `activation`; System `definition`, `template`, `flow`;
+  Report `report`; Schedule `schedule`; Inference `configuration`; Console
+  `application`; Model `vocabulary`, `change-set` (a directory: `change-set.json`
+  plus its artifact files, uploaded to Model's presigned URLs); Persist
+  `process-trigger`, `metrics-catalog`, `mcp-configuration`,
+  `registered-index-metrics` (the bundle entry `name` is the registered index);
+  plus the Persist lexicon and extensions from Model releases. Model installs
+  need the shared key to hold Model's Configurer operations.
+- **A second Deploy** in an account and region that already has the key: install
+  it with `ConfigurationWriterKeyMode=Existing`, then add its
+  `ConfigurationWriterRoleArns` output to the key owner's
+  `AdditionalConfigurationWriterRoleArns`. Same for a Deploy in another region
+  that targets this one.
 
 ## Rollout
 
@@ -162,15 +178,11 @@ the parameter back to `Warn` or `Disabled` first (dev only). Do not set
 
 ## Known gaps
 
-- Deploy has no installer for Model or Console yet; neither can go to `Enabled`.
-- Deploy installs only the Persist lexicon and extensions. Persist's other gated
-  writes (process triggers, metrics catalog, MCP configuration, registered-index
-  metrics) have no Deploy installer yet, so `Enabled` blocks them.
 - Shared-key and admin callers are refused in `Enabled` only through the Deploy
   signature; in `Warn` they still save (with warnings). The account root can
   rewrite the key policy; that is CloudTrail-audited and the accepted residual risk.
-- One `alias/deploy-configuration-writer` per account and region: a second Deploy
-  install there fails on the alias, and a run targeting another region is signed
-  with a key that region cannot verify.
-- Schedule and Persist do not gate deletes, so their deletes need no signature.
+- Deploy does not delete configurations. In `Enabled`, removing a schedule,
+  Persist extension or process trigger (and System's IAM-only deletes aside) means
+  setting the product to `Warn` first.
+- Model change-set artifacts must be UTF-8 text (Build's bundle reader is text-only).
 - Existing live configurations carry no `provenance` until story 2 links them.
