@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Asana initiative portfolio and personal productivity agent. Use proactively when extending the chat initiative bot or working assigned tasks, story drafting, and store consolidation. Not Kirlia's mention-triggered rewriter.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "hypno",
+  "repositories": [],
+  "version": "0.158.0"
+}

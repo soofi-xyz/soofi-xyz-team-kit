@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Workspace relationship-intelligence agent for the magnezone-agent runtime. Use proactively when building or extending the Google Chat and web query scaffold that indexes Google Workspace events and user-scoped retrieval.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "magnezone",
+  "repositories": [],
+  "version": "0.158.0"
+}

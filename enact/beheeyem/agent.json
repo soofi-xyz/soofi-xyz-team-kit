@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Inference builder. Build, maintain or fix the Inference product: the inference-1 configuration API, generic Persist and Connect readers, Bedrock calls with extended thinking and prompt caching through its tagged application inference profile, assertion writes per the Model inference extension, the run ledger, outcomes and packaging. Use Elgyem for configuring inferences on an existing deployment.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "beheeyem",
+  "repositories": [],
+  "version": "0.158.0"
+}

@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Model builder. Build, maintain or fix vocabulary lookup, candidate validation, governed changes, ruleset definitions, mapping registrations, metric definitions and versioned releases. Use Jirachi for existing-service configuration.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "dialga",
+  "repositories": [],
+  "version": "0.158.0"
+}

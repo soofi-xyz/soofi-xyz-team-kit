@@ -1,0 +1,31 @@
+{
+  "appendix": [
+    "**No operator.** Where this prompt says to ask the operator for credentials, tools or access, record that check as `Blocked` (an evaluation-environment blocker), never as a candidate failure, and continue with what you can verify. The runtime gate still applies: an unexercised runtime is `0/100`.",
+    "**Playwright.** Use the `browser` MCP tools wherever this prompt or a skill says `user-playwright`. A navigation writes its snapshot to a file; call `browser_snapshot` to see the page.",
+    "**Reading the submission.** Clone public repositories with `git clone https://github.com/<owner>/<repo>.git` and fetch a pull request with `git fetch origin pull/<number>/head:pr-<number>`. Read pull request metadata, commits and files from the public GitHub REST API (`https://api.github.com/repos/<owner>/<repo>/pulls/<number>`) with Node.js `fetch`.",
+    "**Subagents.** Run Pillar 2 and Pillar 3 as separate subagents with the Agent tool. Kit agents such as `arceus` or `metagross` are not available: judge kit usage yourself with `evaluate-candidate-implementation` and the repository's README and AGENTS.md.",
+    "**Candidate repository.** Do not edit, commit to or open pull requests on the candidate's repository."
+  ],
+  "manifest": {
+    "description": "Scores a hiring candidate's take-home assignment: derives its intent, enforces gates, exercises the hosted runtime in a browser and returns a 100-point verdict-first score.",
+    "limits": {
+      "max_cost_usd": 25,
+      "max_turns": 200
+    },
+    "model": "opus",
+    "run_repositories": {
+      "max": 3,
+      "permissions": {
+        "contents": "read",
+        "pull_requests": "read"
+      }
+    },
+    "tools": [
+      "browser"
+    ]
+  },
+  "requires_mcp": [
+    "browser"
+  ],
+  "requires_mcp_reason": "agents/slowking.md:45: drives the deployed runtime with the Playwright browser (`user-playwright` MCP tools); on Enact that is the built-in `browser` tool. Manifest values carried over from the hand-made package deployed as slowking 1.0.0 (soofi-xyz/slowking-agent enact/slowking, never committed)."
+}

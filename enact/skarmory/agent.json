@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Deploy configurer. Configure and test Deploy execution, shared configuration-bundle installation and its Puller component: subscriptions, polling, dependency updates, installation history and recovery. Use Corviknight for implementation or service defects.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "skarmory",
+  "repositories": [],
+  "version": "0.158.0"
+}

@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Build configurer. Configure and test source intake, isolated build jobs, CDK synthesis, runtime asset policy, provenance, observable results and delivery through the deployed Build API: upload a product source zip, build it into a verified CDK cloud assembly and check product build readiness. Use Tinkaton for implementation or service defects.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "metang",
+  "repositories": [],
+  "version": "0.158.0"
+}

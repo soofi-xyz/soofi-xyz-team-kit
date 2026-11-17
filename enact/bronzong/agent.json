@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Report builder. Build, maintain or fix the Report product: configuration API, refresh state machine (cost gate, Persist and Athena sources appending to an append-only ledger, Athena SQL datasets, JSON outputs), schedules, alarms, packaging and the Report MCP server. Use Bronzor for configuring reports on an existing deployment.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "bronzong",
+  "repositories": [],
+  "version": "0.158.0"
+}

@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Marketplace configurer. Register catalog entries, check product publish readiness, build bundles through the Build service, publish and review them, and roll back through an existing Prism Marketplace (default) or a custom marketplace the user names. Use Regigigas for service changes.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "registeel",
+  "repositories": [],
+  "version": "0.158.0"
+}

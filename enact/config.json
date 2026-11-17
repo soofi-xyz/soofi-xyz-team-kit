@@ -1,0 +1,98 @@
+{
+  "$comment": "Inputs to scripts/sync-enact-agents.mjs. Everything under enact/ except config.json, overrides/ and schema/ is generated; do not edit it by hand.",
+  "stays_local": [
+    "ampharos",
+    "audino",
+    "braviary",
+    "castform",
+    "oracle",
+    "smeargle",
+    "sylveon"
+  ],
+  "waves": {
+    "1a": [
+      "abra",
+      "machamp",
+      "metagross",
+      "oranguru",
+      "porygon",
+      "slowking",
+      "xatu"
+    ],
+    "1b": [
+      "arceus",
+      "mew",
+      "slowbro"
+    ],
+    "4": [
+      "ash",
+      "donphan",
+      "eevee",
+      "hypno",
+      "kirlia",
+      "lucario",
+      "magnezone",
+      "pelipper",
+      "rotom",
+      "watchog"
+    ]
+  },
+  "wave_rules": {
+    "configure": "2",
+    "build": "3",
+    "requires_remote_mcp": "4",
+    "default": "3"
+  },
+  "must_pass_waves": [
+    "1a"
+  ],
+  "model_map": {
+    "gpt-5.5-high": "opus",
+    "gpt-5.4-high": "opus",
+    "*-medium": "sonnet",
+    "*-low": "haiku",
+    "*-mini": "haiku",
+    "*-mini-*": "haiku"
+  },
+  "default_model": "sonnet",
+  "default_manifest": {
+    "limits": {
+      "max_turns": 100,
+      "max_cost_usd": 10
+    },
+    "channels": [
+      "direct"
+    ],
+    "repositories": [],
+    "hosts": []
+  },
+  "mcp_allow_list": [
+    "enact",
+    "browser"
+  ],
+  "limits": {
+    "max_total_bytes": 1048576,
+    "max_files": 200,
+    "max_file_bytes": 262144
+  },
+  "flag_patterns": {
+    "curl": "\\bcurl\\b",
+    "python3": "\\bpython3\\b|\\bpython\\s+(-[mc]\\b|\\S+\\.py\\b)",
+    "gh": "\\bgh\\s+(api|auth|issue|pr|release|repo|run|search|secret|workflow)\\b",
+    "aws-profile": "\\bAWS_PROFILE\\b|--profile\\b"
+  },
+  "secret_pattern": "\\b[A-Z][A-Z0-9_]*_(API_KEY|TOKEN|SECRET|PASSWORD)\\b",
+  "needs_secrets_by_role": {
+    "configure": [
+      "PRISM_API_KEY"
+    ]
+  },
+  "secret_ignore": [
+    "INVALID_API_KEY",
+    "SECRET_PLACEHOLDER_API_TOKEN",
+    "TASK_TOKEN",
+    "WAIT_FOR_TASK_TOKEN",
+    "GET_TOKEN",
+    "SET_TOKEN"
+  ]
+}

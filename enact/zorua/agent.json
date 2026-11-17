@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Enact configurer. Add, change, move and test an agent on an existing Enact service: its instructions, tools, skills, limits, repositories and who may run it; run it, read its trace and usage, and deliver it as a configuration bundle. Use Zoroark for runtime changes or service defects.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "zorua",
+  "repositories": [],
+  "version": "0.158.0"
+}

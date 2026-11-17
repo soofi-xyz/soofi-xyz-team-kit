@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Account configurer. Guide plain-language onboarding, then configure and test Account identities, keys, AWS account create-or-adopt provisioning and bootstrap manifests through an existing API. Use Kangaskhan for missing service behavior.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "blissey",
+  "repositories": [],
+  "version": "0.158.0"
+}

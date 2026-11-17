@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Model configurer. Configure and test vocabulary lookup, candidate validation, governed changes, ruleset definitions, mapping registrations, metric definitions, Model-derived metric suggestions for KPIs and KPI configuration (including reviewed drafts of compiler-supported in-family metric variants), versioned releases and Model release visualization. Use Dialga for implementation, new metric families or service defects.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "jirachi",
+  "repositories": [],
+  "version": "0.158.0"
+}

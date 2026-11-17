@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Inference configurer. Write, test and bundle inference-1 configurations on an existing Inference deployment: source and destination readers (Persist Gremlin, Connect flows and lookups), model, prompt and typed assertion types with JSON Schemas; save, run and check assertions through the API, and deliver through a configuration bundle. Use Beheeyem for implementation or service defects.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "elgyem",
+  "repositories": [],
+  "version": "0.158.0"
+}

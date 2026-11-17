@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "AI-agent builder. Use proactively when designing or extending Asana-triggered agents — message ingress, conversation state and memory, model reasoning, and telemetry.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "ash",
+  "repositories": [],
+  "version": "0.158.0"
+}

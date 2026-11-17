@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "System configurer. Compose and test a business outcome using an existing System service and supported leaf-product configurations, including per-flow S3 event triggers. Use Zygarde for framework changes.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "celebi",
+  "repositories": [],
+  "version": "0.158.0"
+}

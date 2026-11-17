@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Persist configurer. Configure and verify the current lexicon catalog, ingestion, queries, the metrics catalog with metric backfill and activation, governed indexes, triggers, searchable fields (GraphQL vector/keyword search) or MCP tools on an existing Persist service. Use Conkeldurr for engine changes.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "uxie",
+  "repositories": [],
+  "version": "0.158.0"
+}

@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Access configurer. Set up and test Google sign-in, registered applications, users, roles, service identities and grants on resources and records through an existing Access API. Use Aegislash for implementation or service defects.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "doublade",
+  "repositories": [],
+  "version": "0.158.0"
+}

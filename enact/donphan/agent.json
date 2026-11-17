@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Elephant open-data exploration agent. Use proactively for published county records, scoped counts and filters, contractor evidence, address mismatches, area questions, and lexicon schema definitions. Not for ingestion.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "donphan",
+  "repositories": [],
+  "version": "0.158.0"
+}

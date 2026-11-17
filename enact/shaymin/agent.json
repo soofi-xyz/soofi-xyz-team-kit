@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Environment configurer. Configure and test environment plans, Account manifest intake, domains, certificates, shared routing, initial Prism installation and resumable readiness. Use Torterra for service defects.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "shaymin",
+  "repositories": [],
+  "version": "0.158.0"
+}

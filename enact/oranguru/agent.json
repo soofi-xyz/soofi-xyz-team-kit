@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Communication-runtime designer. Use proactively when planning how audience, template, and activity capabilities compose into deterministic channel services — reports data contracts, scoring, allocation, and validation plans; does not write code.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "oranguru",
+  "repositories": [],
+  "version": "0.158.0"
+}

@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Elephant hero-facts agent builder. Use proactively when building or extending the scheduled service that turns published Atlas county data into verified facts for the elephant.xyz homepage hero, routed through Asana approval and published as a content-only pull request.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "watchog",
+  "repositories": [],
+  "version": "0.158.0"
+}

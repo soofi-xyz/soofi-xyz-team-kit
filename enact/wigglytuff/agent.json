@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Template-management specialist. Use proactively when building template repositories, template workflows, metadata normalization, or synchronization from operational stores into versioned inventories.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "wigglytuff",
+  "repositories": [],
+  "version": "0.158.0"
+}

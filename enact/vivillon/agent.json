@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Console configurer. Submit and verify Figma-to-HTML/React creation/edit jobs and configure applications, routes, layouts, themes, components, product API bindings, actions and access policies on an existing Console runtime. Use Chandelure for implementation or runtime defects.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "vivillon",
+  "repositories": [],
+  "version": "0.158.0"
+}

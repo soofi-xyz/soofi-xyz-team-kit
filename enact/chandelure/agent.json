@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Console builder. Build Console to create and modify HTML or React components from Figma via MCP, with Bedrock AgentCore and the pi harness, responsive tests and a governed web runtime. Use Vivillon for existing-service configuration.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "chandelure",
+  "repositories": [],
+  "version": "0.158.0"
+}

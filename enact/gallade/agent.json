@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Rule builder. Build, maintain or fix reusable entity selection (including campaign_id population), rule evaluation and outcome handling. Use Meditite for rules and configuration on an existing service.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "gallade",
+  "repositories": [],
+  "version": "0.158.0"
+}

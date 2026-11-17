@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Communication-activity specialist. Use proactively when building provider adapters, send workflows, routing, delivery feedback, response ingestion, or activity lifecycle closure for SMS or email.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "chatot",
+  "repositories": [],
+  "version": "0.158.0"
+}

@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Metrics unification specialist. Use proactively when comparing or reconciling metrics across vendors or data sources with differing definitions, freshness, windows, or mappings.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "porygon",
+  "repositories": [],
+  "version": "0.158.0"
+}

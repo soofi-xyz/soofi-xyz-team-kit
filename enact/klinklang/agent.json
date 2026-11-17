@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Schedule builder. Build, maintain or fix the Schedule product: configured daily contact selection from cohort queries, precedence, rotation and cooldowns over contact history, optional hour and capacity planning, runs, results and recovery. Use Klink for configuring schedules on an existing deployment.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "klinklang",
+  "repositories": [],
+  "version": "0.158.0"
+}

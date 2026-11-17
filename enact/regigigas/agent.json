@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Marketplace builder. Build, maintain or fix Prism Marketplace catalog registration, publication, review and rollback. Use Registeel for operating the existing catalog.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "regigigas",
+  "repositories": [],
+  "version": "0.158.0"
+}

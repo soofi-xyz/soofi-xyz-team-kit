@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "File-share sync workflow builder. Use proactively when building scheduled workflows that copy cloud-stored files into an external file-sharing destination, with credential management and environment pipelines.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "ditto",
+  "repositories": [],
+  "version": "0.158.0"
+}

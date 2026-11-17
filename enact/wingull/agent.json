@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Connect configurer. Configure and test a partner exchange on an existing Connect service. Use Lapras for drivers, verbs, options and engine changes.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "wingull",
+  "repositories": [],
+  "version": "0.158.0"
+}

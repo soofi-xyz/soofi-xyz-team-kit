@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Account builder. Build, maintain or fix identity, key lifecycle, safe AWS account create-or-adopt provisioning, cross-account readiness and bootstrap-manifest behavior. Use Blissey for existing-service onboarding.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "kangaskhan",
+  "repositories": [],
+  "version": "0.158.0"
+}

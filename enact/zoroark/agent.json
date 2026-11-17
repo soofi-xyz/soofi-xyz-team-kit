@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Enact builder. Build, maintain or fix the service that runs Prism's agents the same way from any interface: agent definitions, runs and resumable sessions, one MCP interface, sign-in, people's own Claude plans, repository work, the Asana channel, traces and usage. Use Zorua to add or change an agent on an existing service.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "zoroark",
+  "repositories": [],
+  "version": "0.158.0"
+}

@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Weekly stakeholder email agent for the rotom-agent runtime. Use proactively when building or extending the Google Chat bot that drafts formal progress emails from Asana facts plus user template memory.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "rotom",
+  "repositories": [],
+  "version": "0.158.0"
+}

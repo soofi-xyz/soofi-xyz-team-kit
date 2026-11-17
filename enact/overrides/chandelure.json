@@ -1,0 +1,6 @@
+{
+  "requires_mcp": [
+    "figma"
+  ],
+  "requires_mcp_reason": "agents/chandelure.md:16: a Console build or first Figma integration starts by completing user OAuth and proving a scoped Figma MCP read before authoring work."
+}

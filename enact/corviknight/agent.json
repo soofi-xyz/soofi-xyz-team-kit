@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Deploy builder. Build, maintain or fix Deploy execution, the shared configuration-bundle installer and its Puller component: subscriptions, polling, dependency updates, installation history and recovery. Use Skarmory for existing-service configuration.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "corviknight",
+  "repositories": [],
+  "version": "0.158.0"
+}

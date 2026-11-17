@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Connect builder. Build, maintain or fix Connect drivers, verbs, options and execution. Use Wingull for partner onboarding and configuration on an existing service.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "lapras",
+  "repositories": [],
+  "version": "0.158.0"
+}

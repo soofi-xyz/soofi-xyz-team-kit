@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Spend-limit approval workflow builder. Use proactively when automating team spend monitoring with human approval tasks that raise user spend limits by configured increments each cycle.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "meowth",
+  "repositories": [],
+  "version": "0.158.0"
+}

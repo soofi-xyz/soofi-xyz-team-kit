@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Schedule configurer. Define who to contact each day on an existing Schedule deployment: cohort and contact-history queries, daily counts, precedence, rotation and cooldowns, optional hours and capacity; validate, bundle, simulate, run and check results. Use Klinklang for implementation or service defects.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "klink",
+  "repositories": [],
+  "version": "0.158.0"
+}

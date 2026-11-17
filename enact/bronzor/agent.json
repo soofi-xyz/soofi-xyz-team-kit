@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Report configurer. Write, validate, bundle and test report configurations on an existing Report deployment: Persist or Athena sources, Athena SQL datasets, refresh schedule and cost limit; save, refresh and check the JSON outputs, directly or through the Report MCP tools. Use Bronzong for implementation or service defects.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "bronzor",
+  "repositories": [],
+  "version": "0.158.0"
+}

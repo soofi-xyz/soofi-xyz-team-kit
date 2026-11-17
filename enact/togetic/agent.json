@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Documentation configurer. Publish and test product documentation, MCP server descriptions, navigation, guides, examples and portal settings through an existing Documentation API. Use Unown for implementation, missing capabilities or runtime defects.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "togetic",
+  "repositories": [],
+  "version": "0.158.0"
+}

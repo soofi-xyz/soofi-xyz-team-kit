@@ -1,0 +1,6 @@
+{
+  "requires_mcp": [
+    "elephant"
+  ],
+  "requires_mcp_reason": "agents/donphan.md:7-8: 'Call only tools on MCP server `elephant`. Never bypass MCP'; every answer comes from Elephant MCP 2.0 tools (use-elephant-mcp). Seeded by the Enact packaging story."
+}

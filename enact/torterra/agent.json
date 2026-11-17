@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Environment builder. Build, maintain or fix environment plans, Account manifest intake, domains, certificates, shared routing, initial Prism installation and resumable readiness. Use Shaymin for existing-service configuration.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "torterra",
+  "repositories": [],
+  "version": "0.158.0"
+}

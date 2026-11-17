@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "WOW Story Quality operator. Use proactively when grooming a story in the chat without Asana (draft, refine, task it), or when operating or extending the Kirlia story rewriter — project enablement, missed-rewrite diagnosis, prompt changes, trigger cutover. Not Hypno's personal workflows.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "kirlia",
+  "repositories": [],
+  "version": "0.158.0"
+}

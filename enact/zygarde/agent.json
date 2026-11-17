@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "System builder. Build, maintain or fix the reusable System orchestration service: definitions, schemas, flow templates, Step Functions, waterfalls, invocations, per-flow S3 event triggers, per-key ordered event triggers, failure alerting, per-flow metrics and entity creation before data flows. Use Celebi for configuring an outcome.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "zygarde",
+  "repositories": [],
+  "version": "0.158.0"
+}

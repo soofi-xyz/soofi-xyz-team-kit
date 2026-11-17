@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Transform configurer. Configure provider connections and structured extraction, author, change and test registered language-pair mappings on the existing Transform engine, validate them on PROD-derived data (DEV canary, then the full window after approval) and return per-slice readiness. Use Kecleon for engine defects.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "silvally",
+  "repositories": [],
+  "version": "0.158.0"
+}

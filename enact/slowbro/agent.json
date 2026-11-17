@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Read-only Email Workflow certification and focused diagnostic agent. Use proactively to compare exact CloudFormation and code-control parity with pinned SMS revisions while allowing only provider-specific channel adaptations.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "slowbro",
+  "repositories": [],
+  "version": "0.158.0"
+}

@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Build builder. Build, maintain or fix source intake, isolated build jobs, CDK synthesis, runtime asset policy, provenance, observable results and delivery. Use Metang for existing-service configuration.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "tinkaton",
+  "repositories": [],
+  "version": "0.158.0"
+}

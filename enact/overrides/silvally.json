@@ -1,0 +1,7 @@
+{
+  "manifest": {
+    "description": "Transform configurer. Configure provider connections and structured extraction, author, change and test registered language-pair mappings on the existing Transform engine, validate them on PROD-derived data (DEV canary, then the full window after approval) and return per-slice readiness. Use Kecleon for engine defects."
+  },
+  "requires_mcp": [],
+  "requires_mcp_reason": "Kit description is 553 characters; Enact allows 500, so the description is shortened here. No mcp__ tool reference and no instruction that calls an MCP server."
+}

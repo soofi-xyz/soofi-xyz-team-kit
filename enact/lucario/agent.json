@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "M2D operations agent builder. Use proactively when designing an Asana-triggered agent that resolves target environments, runs and monitors document processing, handles replay and approvals, and prepares reviewed configuration changes.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "lucario",
+  "repositories": [],
+  "version": "0.158.0"
+}

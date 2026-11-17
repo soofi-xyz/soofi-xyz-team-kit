@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "RAG agent builder. Use proactively when designing, implementing, or reviewing production retrieval systems — knowledge libraries, retrieval quality, confidence thresholds, and review loops.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "alakazam",
+  "repositories": [],
+  "version": "0.158.0"
+}

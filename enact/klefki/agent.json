@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Secure file-sharing portal builder. Use proactively when building an external portal with managed login, private folder browsing, per-user grants, custom-domain hosting, and design-driven UI.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "klefki",
+  "repositories": [],
+  "version": "0.158.0"
+}

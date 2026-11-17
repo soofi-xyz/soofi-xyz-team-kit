@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Persist builder. Build, maintain or fix the Persist graph service, ingestion, queries, current-only lexicon catalog, real-time metrics and their API-managed catalog, indexes, triggers, lexicon-governed vector search through GraphQL, the read-only Persist MCP server and per-user access for signed-in people. Use Uxie for configuring an existing Persist deployment.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "conkeldurr",
+  "repositories": [],
+  "version": "0.158.0"
+}

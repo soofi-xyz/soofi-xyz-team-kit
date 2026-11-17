@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Audience-selection specialist. Use proactively when defining filter-to-runtime handoffs, communication segmentation, runtime intake contracts, or eligibility boundaries for communication services.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "xatu",
+  "repositories": [],
+  "version": "0.158.0"
+}

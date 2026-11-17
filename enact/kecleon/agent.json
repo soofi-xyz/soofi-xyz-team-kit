@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Transform builder. Build, maintain or fix SQL conversion, single-transaction mappings, record-level quality checks with quarantine and alerts, human-in-the-loop certification of unmatched entities, non-deterministic string-to-JSON extraction with configured provider connections and models and JSON Schemas through the AI SDK, readers/writers, planning and orchestration. Use Silvally for configuration and mapping tests.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "kecleon",
+  "repositories": [],
+  "version": "0.158.0"
+}

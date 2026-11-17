@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Optimization specialist. Use proactively when designing services that solve assignment, scheduling, or constraint-optimization problems over prepared data — reports the optimization model, architecture and implementation plan; does not write code.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "abra",
+  "repositories": [],
+  "version": "0.158.0"
+}

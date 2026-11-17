@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Documentation builder. Build, maintain or fix the publishing API and React/TypeScript developer portal: OpenAPI reference, MCP server reference, navigation, guides, previews, interactive requests and exports. Use Togetic for existing-service configuration.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "unown",
+  "repositories": [],
+  "version": "0.158.0"
+}

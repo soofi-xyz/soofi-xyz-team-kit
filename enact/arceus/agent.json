@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Master router for this kit. Use proactively at the start of any task when no specific agent is named — recommends the right agents and skills with invocation hints; does not implement.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "arceus",
+  "repositories": [],
+  "version": "0.158.0"
+}

@@ -1,0 +1,4 @@
+{
+  "requires_mcp": [],
+  "requires_mcp_reason": "agents/bronzor.md:35-37 describes connecting an MCP client to Report as an option; the agent itself works through the Report HTTP API."
+}

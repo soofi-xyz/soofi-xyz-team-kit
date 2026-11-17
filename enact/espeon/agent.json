@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "End-to-end RAG system builder. Use proactively when taking retrieval systems from local prototype to production — migration, historical backfill, and live ingestion.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "espeon",
+  "repositories": [],
+  "version": "0.158.0"
+}

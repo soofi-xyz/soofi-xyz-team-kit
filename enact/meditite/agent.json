@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Rule configurer. Configure entity selection (including starting runs by campaign_id), governed rules and evaluation output on an existing Rule service, then verify pass/fail behavior. Use Gallade for engine changes.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "meditite",
+  "repositories": [],
+  "version": "0.158.0"
+}

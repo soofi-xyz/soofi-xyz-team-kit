@@ -1,0 +1,15 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Batch workflow specialist. Use proactively when designing or reviewing batch workflows and data pipelines with cost, throttling, idempotency, and staged testing requirements; reports an architecture and implementation plan and does not write code.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "machamp",
+  "repositories": [],
+  "version": "0.158.0"
+}
