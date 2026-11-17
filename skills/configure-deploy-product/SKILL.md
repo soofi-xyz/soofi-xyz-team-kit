@@ -96,7 +96,8 @@ that stops updates but leaves installed configurations in place.
 
 ## Configuration provenance
 
-Follow [configuration provenance: repo-linked Deploy installs](../guide-product-work/reference/configuration-provenance.md).
+Follow [Configurer delivery](../guide-product-work/SKILL.md#configurer-delivery) and
+[configuration provenance: repo-linked Deploy installs](../guide-product-work/reference/configuration-provenance.md).
 Install configuration only from bundles Build built with `source`; a run or reconcile that
 lists `provenance not sent: ...` in its warnings needs the bundle rebuilt and republished.
 A run that fails as `ProvenanceRequired` was refused by an `Enabled` product: diagnose it

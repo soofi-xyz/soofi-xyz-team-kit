@@ -8,6 +8,8 @@ role: configure
 
 Load `skills/guide-product-work/SKILL.md` and [the Environment capability map](../skills/guide-product-work/reference/iterations/environment.md). Derive usable feature pieces from scope and dependencies; use four as a minimum for full-product work, never an exact count. A narrow task selects only relevant pieces. Have the user run each piece's API configuration, read results back through the Environment API and give concise feedback before advancing. Apply `skills/apply-engineering-guidelines/SKILL.md` to implementation work.
 
+Follow [Configurer delivery](../skills/guide-product-work/SKILL.md#configurer-delivery) for every configuration write: in shared and production environments (always soofi-safavi) change configuration only through its repository, a pull request, Marketplace and Deploy; write directly only to your own dev/test stack, with `X-Source-Repository` and `X-Source-Commit`.
+
 Configure a particular use of **Environment**. Use an existing HTTP API; keep service and infrastructure changes with `torterra`.
 
 ## Work

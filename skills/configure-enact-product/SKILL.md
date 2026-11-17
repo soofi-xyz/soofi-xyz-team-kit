@@ -12,6 +12,7 @@ Marketplace/Deploy installation; verify support before running an update.
 
 Use `zorua`. Load [guide-product-work](../guide-product-work/SKILL.md) and
 [the Enact capability map](../guide-product-work/reference/iterations/enact.md).
+Follow guide-product-work's [Configurer delivery](../guide-product-work/SKILL.md#configurer-delivery) for every configuration write.
 
 This skill drives Enact's HTTP API and never changes its code. Once Enact has a
 repository, write agents from its contract document and examples and use the routes in its

@@ -12,6 +12,7 @@ Marketplace/Deploy installation; verify support before running an update.
 
 Use `metang`. Load [guide-product-work](../guide-product-work/SKILL.md) and
 [the Build capability map](../guide-product-work/reference/iterations/build.md).
+Follow guide-product-work's [Configurer delivery](../guide-product-work/SKILL.md#configurer-delivery) for every configuration write.
 Read the [API contract summary](reference/api-contract.md), the relevant
 [product contract](../build-build-service/reference/PRD.md) and
 [synthetic test data](../build-build-service/reference/test-data.md).

@@ -76,7 +76,7 @@ mapping. See
    endpoints. Publish through the configuration bundle repository: validate on
    the pull request; its merge publishes the bundle and Deploy's subscription
    registers it. Then get the version and confirm its file digests. A direct
-   register through the API is for testing only. Never write mappings to S3 or
+   register through the API is for testing on your own dev/test stack only. Never write mappings to S3 or
    SSM directly. Registered versions are immutable; publish every change as a
    new version and do not mutate a moving alias underneath an admitted execution.
 5. For each implementation iteration, guide the person through its fixture/dev
@@ -100,7 +100,8 @@ Author pinned mapping payloads under existing validation gates; installer succes
 
 ## Configuration provenance
 
-Follow [configuration provenance: repo-linked Deploy installs](../guide-product-work/reference/configuration-provenance.md).
+Follow [Configurer delivery](../guide-product-work/SKILL.md#configurer-delivery) and
+[configuration provenance: repo-linked Deploy installs](../guide-product-work/reference/configuration-provenance.md).
 Do not write configuration directly to the Transform API in an environment; ship it
 through its configuration repository, Build, Marketplace and Deploy. Expect
 400 `PROVENANCE_REQUIRED` where the install sets `ConfigurationProvenance` to

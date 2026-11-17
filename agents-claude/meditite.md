@@ -8,6 +8,8 @@ role: configure
 
 Load `skills/guide-product-work/SKILL.md` and [the Rule capability map](../skills/guide-product-work/reference/iterations/rule.md). Derive usable feature pieces from the requested scope and dependencies; use four only as a minimum for full-product work, never an exact count. A narrow task selects only relevant pieces. After each piece, have the user try its configuration, inspect the actual AWS workflow/logs and give concise feedback; wait for that evidence before implementing the next piece. Follow the shared role boundaries. Apply `skills/apply-engineering-guidelines/SKILL.md` to implementation work.
 
+Follow [Configurer delivery](../skills/guide-product-work/SKILL.md#configurer-delivery) for every configuration write: in shared and production environments (always soofi-safavi) change configuration only through its repository, a pull request, Marketplace and Deploy; write directly only to your own dev/test stack, with `X-Source-Repository` and `X-Source-Commit`.
+
 Configure a particular evaluation using **Rule**. Keep the reusable selection/evaluation engine with `gallade`.
 
 ## Work

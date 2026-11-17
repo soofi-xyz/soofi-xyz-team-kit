@@ -8,6 +8,8 @@ role: configure
 
 Load `skills/guide-product-work/SKILL.md` and [the System capability map](../skills/guide-product-work/reference/iterations/system.md). Derive usable feature pieces from the requested scope and dependencies; use four only as a minimum for full-product work, never an exact count. A narrow task selects only relevant pieces. After each piece, have the user try its configuration, inspect the actual AWS workflow/logs and give concise feedback; wait for that evidence before implementing the next piece. Follow the shared role boundaries. Apply `skills/apply-engineering-guidelines/SKILL.md` to implementation work.
 
+Follow [Configurer delivery](../skills/guide-product-work/SKILL.md#configurer-delivery) for every configuration write: in shared and production environments (always soofi-safavi) change configuration only through its repository, a pull request, Marketplace and Deploy; write directly only to your own dev/test stack, with `X-Source-Repository` and `X-Source-Commit`.
+
 Configure business outcomes on **System**. Keep framework, compiler and infrastructure implementation with `zygarde`.
 
 When a flow must also start from S3 object events, follow [configure S3 triggers](../skills/configure-system-product/reference/s3-triggers.md) and the S3 triggers section below.
@@ -16,7 +18,7 @@ When a flow must also start from S3 object events, follow [configure S3 triggers
 
 1. Follow `skills/configure-system-product/SKILL.md`. Discover the System deployment, target revision, outcome, input/output expectations and existing leaf products.
 2. Explain the orchestration with a diagram and sample transaction. Guide the person through the mock example and workflow trace before applying an unfamiliar configuration.
-3. Emit the named definition, schemas, flow template, template-backed flow, optional waterfall, invocation fixture and a versioned composition manifest. Preserve the target service's exact wire fields; a kit manifest is a review artifact, not a promised HTTP payload.
+3. Emit the named definition, schemas, flow template, template-backed flow, optional waterfall, invocation fixture and a versioned composition manifest. Preserve the target service's exact wire fields; a kit manifest is a review artifact, not a promised HTTP payload. Set each flow's `repository` to its configuration repository (`owner/name`).
 4. Configure leaves through their product owners: `wingull` for Connect, `silvally` for Transform, `uxie` for Persist, `meditite` for Rule. Use retained specialists for supporting work within their scope; resolve product ownership through the catalog without inventing assignments or capabilities.
 5. Validate with `scripts/check-system-manifest.py`, then run the configuration against the actual System service using mocked leaf services before enabling real integrations. Record expected/actual outcomes and execution traces separately from static checks.
 6. Validate templates with the System checkout's `src/configuration/model.ts` (`templateSchema`, `templateProblems`) and `src/template/compile.ts` at the deployed commit, and read the compiled ASL for the states you changed: the compiler decides JSONPath or JSONata, which catches are dropped and how errors are named.
@@ -47,7 +49,7 @@ Use [configure S3 triggers](../skills/configure-system-product/reference/s3-trig
 1. Verify the deployment has `s3Triggers: true` and the trigger routes; otherwise hand a `PRODUCT_CHANGE` to `zygarde`.
 2. Choose the narrowest literal `keyPrefix`/`keySuffix`, the `events` and the `inputMode` from the fixed lists, and fit the definition `inputSchema` to that input.
 3. Have the bucket owner enable EventBridge notifications and create the trigger role with the documented trust, `ExternalId` and permissions; record only its ARN.
-4. Deliver the trigger through the configuration bundle repository. For a test-only direct save use `https://<shared domain>/system` with the shared `x-api-key`, never SigV4; read it back and confirm no execution started. Pin it in bundles as an `s3-trigger` document.
+4. Deliver the trigger through the configuration bundle repository. For a test-only direct save use your own dev/test stack's `https://<shared domain>/system` with its `x-api-key` and the source headers ([Configurer delivery](../skills/guide-product-work/SKILL.md#configurer-delivery)), never SigV4 and never soofi-safavi; read it back and confirm no execution started. Pin it in bundles as an `s3-trigger` document.
 5. Run the reference test sequence mock-first and record trigger revision, object version, invocation id, execution ARN and expected/actual per case. Never record keys or bodies containing personal data. Hand dispatcher or validation defects to `zygarde`.
 
 ## Configuration bundles

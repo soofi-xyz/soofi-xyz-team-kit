@@ -8,6 +8,8 @@ role: configure
 
 Load `skills/guide-product-work/SKILL.md` and [the Persist capability map](../skills/guide-product-work/reference/iterations/persist.md). Derive usable feature pieces from the requested scope and dependencies; use four only as a minimum for full-product work, never an exact count. A narrow task selects only relevant pieces. After each piece, have the user try its configuration, inspect the actual AWS workflow/logs and give concise feedback; wait for that evidence before implementing the next piece. Follow the shared role boundaries. Apply `skills/apply-engineering-guidelines/SKILL.md` to implementation work.
 
+Follow [Configurer delivery](../skills/guide-product-work/SKILL.md#configurer-delivery) for every configuration write: in shared and production environments (always soofi-safavi) change configuration only through its repository, a pull request, Marketplace and Deploy; write directly only to your own dev/test stack, with `X-Source-Repository` and `X-Source-Commit`.
+
 Configure a particular use of **Persist** through its supported interfaces and governed artifacts. Do not edit the Persist engine.
 
 ## Work
@@ -20,7 +22,7 @@ Configure a particular use of **Persist** through its supported interfaces and g
 6. To connect Claude Code or Cursor, or to change MCP tools, limits or saved queries, follow [the MCP client setup](../skills/configure-persist-product/reference/mcp-client-setup.md) and the configure-persist skill's MCP section. Verify tool answers against direct queries; never handle the key in chat.
 7. Test authorized samples, read back results, check idempotency and downstream effects, and report cleanup. Respect existing production authorization.
 8. To check what a signed-in person can read, follow the configure-persist skill's per-user access section. The shared key is the environment and sees everything, so it cannot show what a user sees: use two test users' own sessions. Ask `doublade` to connect a user to records; never write user records or access edges into Persist yourself. Send a user who sees too much or too little to `conkeldurr`.
-9. To turn on registered IPFS indexes or register one (for example Elephant's Atlas), follow [the registered IPFS indexes runbook](../skills/configure-persist-product/reference/registered-ipfs-indexes.md): an install-owned index bucket holding the install's copy of `index.json` (with the sync role allowed on a customer-managed KMS key), `{ "PersistRegisteredIpfsIndexBucketName": "<bucket>" }` in the Deploy run or Puller subscription `configuration` through Skarmory, then `indexes` in `PUT /persist/mcp/configuration`. Have the person check `persist-registered-ipfs-indexes/<name>/active.json`, `versions/<cid>.json` and the sync log `outcome` after the 15-minute runs, and troubleshoot by outcome. A Puller `PATCH` replaces the whole `configuration` map, so resend every key, and resuming a `PAUSED` subscription installs every release since the pause: ask who paused it before resuming. After the registration `PUT`, `GET` the configuration again to confirm it. Keep the copy current with the Atlas publish job: an OIDC role only `elephant-xyz/atlas` `main` can assume, allowed `s3:PutObject` on the one object, and the three `ATLAS_INDEX_S3_*` variables (set the region). To turn it off, empty the parameter and omit `indexes` from the next `PUT`. Then query the copy through `/persist/registered-ipfs-indexes` (list, describe with `?table=`, `POST .../{name}/query`) or the MCP tools, and cite the answer's `source` CIDs. For Atlas, permits are `property_improvement` in the `<ST>/<county>/property_improvement` scope, joins go through `from_cid`/`to_cid`, and dates are text. Always say "registered IPFS index".
+9. To turn on registered IPFS indexes or register one (for example Elephant's Atlas), follow [the registered IPFS indexes runbook](../skills/configure-persist-product/reference/registered-ipfs-indexes.md): an install-owned index bucket holding the install's copy of `index.json` (with the sync role allowed on a customer-managed KMS key), `{ "PersistRegisteredIpfsIndexBucketName": "<bucket>" }` in the Deploy run or Puller subscription `configuration` through Skarmory, then `indexes` in the MCP configuration's repository (`prismteam-ai/prism-memory-configuration` for soofi-safavi), which Deploy installs. Have the person check `persist-registered-ipfs-indexes/<name>/active.json`, `versions/<cid>.json` and the sync log `outcome` after the 15-minute runs, and troubleshoot by outcome. A Puller `PATCH` replaces the whole `configuration` map, so resend every key, and resuming a `PAUSED` subscription installs every release since the pause: ask who paused it before resuming. After the install, `GET` the configuration again to confirm it. Keep the copy current with the Atlas publish job: an OIDC role only `elephant-xyz/atlas` `main` can assume, allowed `s3:PutObject` on the one object, and the three `ATLAS_INDEX_S3_*` variables (set the region). To turn it off, empty the parameter and remove `indexes` from the repository. Then query the copy through `/persist/registered-ipfs-indexes` (list, describe with `?table=`, `POST .../{name}/query`) or the MCP tools, and cite the answer's `source` CIDs. For Atlas, permits are `property_improvement` in the `<ST>/<county>/property_improvement` scope, joins go through `from_cid`/`to_cid`, and dates are text. Always say "registered IPFS index".
 10. Send unsupported behavior or defects to `conkeldurr` with input, expected/actual behavior and evidence, including new chunking strategies, content types, embedding models or profiles. Do not change service code as a workaround.
 
 ## Call Persist
@@ -58,20 +60,17 @@ Read `GET /persist/metrics/catalog` first: `source: legacy-ssm` means the
 catalog is still Model/Lexicon-published, and the API refuses writes until the
 Model owners retire that boundary; never delete the SSM parameter yourself.
 
-Deliver the approved catalog through the environment's configuration bundle
-repository, as in the guide's Configurer delivery rule. Today neither Build's
-bundle validator nor Deploy's adapters accept a Persist metrics catalog (they
-apply Transform, Connect, System, Report and Schedule documents only): record
-that builder gap for Corviknight (Deploy adapter) and Tinkaton (Build bundle
-kind), tell the person, and treat the direct `PUT` as a test-only exception
-until a bundle install supersedes it.
+Deliver the approved catalog as a `metrics-catalog` document in the
+environment's configuration bundle repository, as in the guide's Configurer
+delivery rule; Deploy installs it. Use a direct `PUT /persist/metrics/catalog`
+(`{ catalog, base }`, `If-Match` on the version read) only on your own dev/test
+stack.
 
-Apply with `PUT /persist/metrics/catalog` (`{ catalog, base }`, `If-Match` on
-the version read), wait out the five-minute catalog cache, and confirm the
+After the install, wait out the five-minute catalog cache, and confirm the
 activation control `STATUS` is in sync. Backfill new definitions in
 quarter-sized windows, newest first, planning each window before its confirmed
 run, then `ACTIVATE` only when `STATUS.gates` pass, recording the rollback
-target. Work DEV first; ask before every PUT, confirmed backfill, `ACTIVATE`,
+target. Work DEV first; ask before every catalog change, confirmed backfill, `ACTIVATE`,
 `ROLLBACK` and any PROD write.
 
 For MEETING and PERSON definitions, backfill one scope at a time, MEETING

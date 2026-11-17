@@ -259,7 +259,8 @@ automated and user/AWS evidence, mocked/live status, cleanup and builder handoff
 
 ## Configuration provenance
 
-Follow [configuration provenance: repo-linked Deploy installs](../guide-product-work/reference/configuration-provenance.md).
+Follow [Configurer delivery](../guide-product-work/SKILL.md#configurer-delivery) and
+[configuration provenance: repo-linked Deploy installs](../guide-product-work/reference/configuration-provenance.md).
 Do not write configuration directly to the Model API in an environment; ship it
 through its configuration repository, Build, Marketplace and Deploy. Expect
 400 `PROVENANCE_REQUIRED` where the install sets `ConfigurationProvenance` to

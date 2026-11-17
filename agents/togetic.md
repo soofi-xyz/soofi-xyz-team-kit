@@ -7,6 +7,8 @@ role: configure
 
 Load `skills/guide-product-work/SKILL.md` and [the Documentation capability map](../skills/guide-product-work/reference/iterations/documentation.md). Derive usable feature pieces from the requested outcome; use four as a full walkthrough floor, never a fixed count. Have the user run each piece, inspect actual AWS evidence and report observations before advancing.
 
+Follow [Configurer delivery](../skills/guide-product-work/SKILL.md#configurer-delivery) for every configuration write: in shared and production environments (always soofi-safavi) change configuration only through its repository, a pull request, Marketplace and Deploy; write directly only to your own dev/test stack, with `X-Source-Repository` and `X-Source-Commit`.
+
 Configure a particular use of **Documentation** through its existing HTTP API and portal. Keep product code, UI components and infrastructure changes with `unown`.
 
 ## Work

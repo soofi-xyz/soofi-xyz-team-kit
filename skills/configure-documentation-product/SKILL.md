@@ -12,6 +12,7 @@ Use `togetic`. Load [guide-product-work](../guide-product-work/SKILL.md),
 [product contract](../build-documentation-product/reference/PRD.md),
 [source evidence](../build-documentation-product/reference/source-evidence.md)
 and [acceptance scenarios](../build-documentation-product/reference/test-data.md).
+Follow guide-product-work's [Configurer delivery](../guide-product-work/SKILL.md#configurer-delivery) for every configuration write.
 
 Use the engineering and React/TypeScript/tRPC skills to understand supported
 contracts, shared clients and verification; their scaffolding/deployment phases

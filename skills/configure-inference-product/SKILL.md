@@ -87,7 +87,7 @@ the user's checkout.
 
 ## Test through the API
 
-Direct saves and runs are for testing only; the bundle delivers the configuration.
+Direct saves are for testing on your own dev/test stack only ([Configurer delivery](../guide-product-work/SKILL.md#configurer-delivery)); the bundle delivers the configuration.
 
 1. Save, testing only, and read the outcome:
 

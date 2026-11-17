@@ -88,6 +88,18 @@ class CatalogTests(unittest.TestCase):
         self.product("persist")["iterationGuide"] = "../../external.md"
         self.assertTrue(any("persist: iterationGuide" in e for e in catalog.validate(self.data)))
 
+    def test_configurer_must_follow_configurer_delivery(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            shutil.copytree(catalog.ROOT / "agents", root / "agents")
+            shutil.copytree(catalog.ROOT / "skills", root / "skills")
+            self.assertEqual(catalog.validate(self.data, root), [])
+            for path in (root / "agents/bronzor.md", root / "skills/configure-report-product/SKILL.md"):
+                path.write_text(path.read_text().replace("SKILL.md#configurer-delivery", "SKILL.md"))
+            errors = catalog.validate(self.data, root)
+            self.assertIn("bronzor: missing Configurer delivery reference", errors)
+            self.assertIn("report: configure skill does not follow Configurer delivery", errors)
+
     def test_unavailable_handoff_in_dependency_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

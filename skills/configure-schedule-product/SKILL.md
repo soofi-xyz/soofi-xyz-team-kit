@@ -108,7 +108,7 @@ merges. Never push or merge yourself.
 
 ## Save, simulate, run and check
 
-The bundle is how a schedule reaches an environment. Use a direct save for testing only, and
+The bundle is how a schedule reaches an environment. Use a direct save only to test on your own dev/test stack ([Configurer delivery](../guide-product-work/SKILL.md#configurer-delivery)), and
 delete test-only schedules that are not in the bundle with `DELETE /schedules/<id>` once the
 subscription has installed it.
 

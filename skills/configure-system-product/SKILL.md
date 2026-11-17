@@ -21,6 +21,8 @@ Read [the System scope](../build-system-product/reference/PRD.md),
 3. Emit definition, schemas, reusable template, template-backed flow, optional
    waterfall and invocation fixtures. Produce a version 2 composition manifest
    and pin referenced artifacts. Use the target service's supported payloads.
+   Set each flow's `repository` to the configuration repository that holds it
+   (`owner/name`); installs with `RequireFlowRepository` refuse a flow without it.
 4. Use `wingull`, `silvally`, `uxie` and `meditite` for leaf configuration. An
    unassigned product is a dependency gap, not permission to invent an owner.
 5. Point the manifest's System configRefs at the documents that will be
@@ -109,7 +111,8 @@ Compose pinned System and leaf documents; preserve scenario validation and hand 
 
 ## Configuration provenance
 
-Follow [configuration provenance: repo-linked Deploy installs](../guide-product-work/reference/configuration-provenance.md).
+Follow [Configurer delivery](../guide-product-work/SKILL.md#configurer-delivery) and
+[configuration provenance: repo-linked Deploy installs](../guide-product-work/reference/configuration-provenance.md).
 Do not write configuration directly to the System API in an environment; ship it
 through its configuration repository, Build, Marketplace and Deploy. Expect
 400 `PROVENANCE_REQUIRED` where the install sets `ConfigurationProvenance` to
