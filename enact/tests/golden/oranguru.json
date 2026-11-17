@@ -1,0 +1,58 @@
+{
+  "agent": "oranguru",
+  "tasks": [
+    {
+      "id": "oranguru-sms-runtime-contract",
+      "message": "Assemble the plan for a daily SMS communication runtime: audience from Filter, templates from the templates inventory, sends through the existing SMS workflow. Give me the runtime data contract, candidate generation, scoring and allocation contracts, and the validation/rollout plan. Design only, no code.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "runtime data contract and candidate-generation rules",
+          "scoring and allocation contracts",
+          "validation and rollout plan",
+          "integration points with xatu, wigglytuff and chatot"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 3,
+        "max_minutes": 20
+      }
+    },
+    {
+      "id": "oranguru-capacity-allocation",
+      "message": "Our call-center capacity is 1,800 dials per hour and we have ~40,000 eligible accounts across three campaigns with different priorities. Should allocation be a greedy pass or an OR-Tools solve? Lay out the decision, the inputs it needs and how you would validate the allocation before rollout.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "a reasoned choice between heuristic and solver allocation",
+          "the allocation inputs and constraints",
+          "a validation plan before rollout"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 3,
+        "max_minutes": 20
+      }
+    }
+  ]
+}

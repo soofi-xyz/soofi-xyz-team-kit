@@ -1,0 +1,60 @@
+{
+  "agent": "xatu",
+  "tasks": [
+    {
+      "id": "xatu-payfail-sms-intake",
+      "message": "Define the audience handoff for a payment-failure SMS campaign: who owns the hard suppressions (DNC, bankruptcy, cease-and-desist, state quiet hours), what the runtime intake contract looks like (fields, identifiers, evidence), and how the population can be replayed for audit. Read the existing filter-to-runtime contract first. Read-only: give me the design.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "the audience entrypoint and hard-suppression ownership",
+          "the runtime intake schema with required identifiers and evidence fields",
+          "a replay and audit plan",
+          "acceptance checks for the eligible population"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value",
+          "re-derives the population from raw source systems inside the runtime",
+          "designs template or provider delivery logic"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 3,
+        "max_minutes": 20
+      }
+    },
+    {
+      "id": "xatu-email-eligibility",
+      "message": "We're adding email as a channel next to SMS. What eligibility boundaries change for email versus SMS, and which of those belong in Filter rules versus candidate scopes? Keep Rule engine changes out of scope and tell me who owns them.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "email-specific eligibility differences (consent, bounces, unsubscribes)",
+          "the split between rule selection and candidate scopes",
+          "a handoff naming gallade for engine changes and meditite for rule configuration"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 3,
+        "max_minutes": 20
+      }
+    }
+  ]
+}

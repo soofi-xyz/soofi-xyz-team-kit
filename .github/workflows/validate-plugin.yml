@@ -88,6 +88,9 @@ jobs:
       - name: Test agent memory hooks
         run: node --test hooks/agent-memory/test/memory.test.mjs hooks/agent-memory/test/release.test.mjs
 
+      - name: Check Enact test data
+        run: node scripts/run-enact-tests.mjs --dry-run
+
       - name: Validate plugin files
         run: scripts/validate-plugin.sh
 

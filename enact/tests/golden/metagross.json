@@ -1,0 +1,58 @@
+{
+  "agent": "metagross",
+  "tasks": [
+    {
+      "id": "metagross-portal-monorepo",
+      "message": "We need a customer self-service portal with a public landing page, an authenticated payment portal and an admin app, sharing auth and API types. Design the monorepo: apps and packages, the tRPC API boundary, frontend hosting versus CDK backend, environments and the verification plan.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "monorepo layout with apps and shared packages",
+          "frontend/backend boundary decisions with tRPC on Lambda",
+          "shared package plan",
+          "deployment and verification plan"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 3,
+        "max_minutes": 20
+      }
+    },
+    {
+      "id": "metagross-split-review",
+      "message": "Our Next.js app has the API routes, the CDK stack and three duplicated copies of the account-types file. Recommend how to restructure it into the fullstack monorepo shape and in what order to migrate without downtime.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "where the shared types package lives",
+          "a migration order",
+          "how deployment stays continuous during the migration"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 3,
+        "max_minutes": 20
+      }
+    }
+  ]
+}

@@ -1,0 +1,171 @@
+{
+  "agent": "slowking",
+  "tasks": [
+    {
+      "id": "slowking-t4-x-engagement",
+      "message": "Evaluate this hiring candidate's assignment and give me the 100-point verdict-first score. Assignment: X Engagement Reply Agent. Candidate PR: {{candidate_pr_url}}. Deployed runtime: {{runtime_url}}. Demo video: {{demo_url}}. The assignment was sent {{assignment_sent_at}}. {{credentials_note}}",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "re:\\bVerdict\\b",
+          "re:\\b\\d{1,3}\\s*/\\s*100\\b",
+          "re:\\|\\s*Functional outcome\\s*\\|\\s*40",
+          "re:Functional outcome subtotal",
+          "the one-sentence business intent stated before scoring",
+          "PR, runtime, credentials and demo gates each resolved with a reason",
+          "hiring signal with 2-4 follow-up questions"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value",
+          "scores any dimension without having exercised the deployed runtime",
+          "builds or runs the candidate's app locally",
+          "modifies the candidate's repository"
+        ],
+        "tools_in_trace": [
+          "browser_navigate",
+          "browser_snapshot",
+          "Bash"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 15,
+        "max_minutes": 60
+      },
+      "requires": [
+        "browser"
+      ],
+      "test": "T4",
+      "reference_run": {
+        "status": "TO_RECORD",
+        "assignment": "X Engagement Reply Agent",
+        "editor": null,
+        "kit_version": null,
+        "recorded_at": null,
+        "recorded_by": null,
+        "inputs": {
+          "candidate_pr_url": null,
+          "runtime_url": null,
+          "demo_url": null,
+          "assignment_sent_at": null,
+          "credentials_note": null
+        },
+        "transcript": null,
+        "verdict": null,
+        "total": null,
+        "scorecard": {
+          "functional_outcome": null,
+          "runtime_demo_quality": null,
+          "evidence_quality": null,
+          "access_boundary_compliance": null,
+          "implementation_quality": null,
+          "kit_usage_conformance": null,
+          "reproducibility": null,
+          "speed": null
+        }
+      }
+    },
+    {
+      "id": "slowking-t4-oracle-property-intelligence",
+      "message": "Evaluate this hiring candidate's assignment and give me the 100-point verdict-first score. Assignment: Oracle Property Intelligence Platform. Candidate PR: {{candidate_pr_url}}. Deployed runtime: {{runtime_url}}. Demo video: {{demo_url}}. The assignment was sent {{assignment_sent_at}}. {{credentials_note}}",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "re:\\bVerdict\\b",
+          "re:\\b\\d{1,3}\\s*/\\s*100\\b",
+          "re:\\|\\s*Functional outcome\\s*\\|\\s*40",
+          "re:Functional outcome subtotal",
+          "the one-sentence business intent stated before scoring",
+          "PR, runtime, credentials and demo gates each resolved with a reason",
+          "hiring signal with 2-4 follow-up questions"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value",
+          "scores any dimension without having exercised the deployed runtime",
+          "builds or runs the candidate's app locally",
+          "modifies the candidate's repository"
+        ],
+        "tools_in_trace": [
+          "browser_navigate",
+          "browser_snapshot",
+          "Bash"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 15,
+        "max_minutes": 60
+      },
+      "requires": [
+        "browser"
+      ],
+      "test": "T4",
+      "reference_run": {
+        "status": "TO_RECORD",
+        "assignment": "Oracle Property Intelligence Platform",
+        "editor": null,
+        "kit_version": null,
+        "recorded_at": null,
+        "recorded_by": null,
+        "inputs": {
+          "candidate_pr_url": null,
+          "runtime_url": null,
+          "demo_url": null,
+          "assignment_sent_at": null,
+          "credentials_note": null
+        },
+        "transcript": null,
+        "verdict": null,
+        "total": null,
+        "scorecard": {
+          "functional_outcome": null,
+          "runtime_demo_quality": null,
+          "evidence_quality": null,
+          "access_boundary_compliance": null,
+          "implementation_quality": null,
+          "kit_usage_conformance": null,
+          "reproducibility": null,
+          "speed": null
+        }
+      }
+    },
+    {
+      "id": "slowking-localhost-runtime-gate",
+      "message": "Score this candidate submission for the Agent Network Registration and Certification Platform assignment. The PR description says: 'Runtime: clone the repo, run docker compose up, then open http://localhost:3000 and log in with demo@example.com / demo'. There is no other URL and no demo video. Give me the score and verdict.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "re:\\b0\\s*/\\s*100\\b",
+          "re:\\bFail\\b",
+          "the runtime gate recorded as Failed because the only runtime is local",
+          "re:\\|\\s*Functional outcome\\s*\\|\\s*40",
+          "the full Scorecard table with every dimension at 0 points",
+          "the Functional Outcome Breakdown table"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value",
+          "clones or runs the candidate's app",
+          "returns Inconclusive or Partial Pass",
+          "returns a prose-only verdict without the tables"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 4,
+        "max_minutes": 15
+      }
+    }
+  ]
+}

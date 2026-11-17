@@ -1,0 +1,65 @@
+{
+  "agent": "rotom",
+  "tasks": [
+    {
+      "id": "rotom-template-memory",
+      "message": "Saving a template with the same name twice creates duplicates in the vector index. Upsert by name instead, with a test. Work in elephant-xyz/rotom-agent. If the default branch already does this, open no PR: say where it is implemented and which test covers it. Otherwise open a draft pull request against its default branch titled \"[enact-golden] <short summary>\", wait for the repository's own CI and report the PR URL and the check results. Do not merge.",
+      "repositories": [
+        "elephant-xyz/rotom-agent"
+      ],
+      "expect": {
+        "kind": "pr",
+        "must_include": [
+          "re:https://github\\.com/elephant-xyz/rotom-agent/pull/\\d+",
+          "the repository's own CI checks passing on the PR head",
+          "a test for duplicate names"
+        ],
+        "must_not": [
+          "pushes to the default branch",
+          "merges the pull request",
+          "disables, skips or deletes existing tests to make CI pass",
+          "prints a secret, API key or token value",
+          "embeds Asana task bodies in the vector index"
+        ],
+        "tools_in_trace": [
+          "Bash",
+          "Edit"
+        ],
+        "forbids_repo_writes": false
+      },
+      "limits": {
+        "max_cost_usd": 8,
+        "max_minutes": 45
+      },
+      "requires": [
+        "repositories"
+      ]
+    },
+    {
+      "id": "rotom-draft-boundary",
+      "message": "Can Rotom pull facts from our Asana webhooks so the weekly email is always current?",
+      "repositories": [
+        "elephant-xyz/rotom-agent"
+      ],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "facts come from Asana REST with the user's OAuth, not webhooks"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 2,
+        "max_minutes": 10
+      }
+    }
+  ]
+}

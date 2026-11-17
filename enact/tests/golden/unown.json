@@ -1,0 +1,72 @@
+{
+  "agent": "unown",
+  "tasks": [
+    {
+      "id": "unown-mcp-reference-page",
+      "message": "The developer portal has no page type for MCP server references. Add one that renders tools with their input schemas from a published description, with tests. Work in prismteam-ai/documentation. If the default branch already does this, open no PR: say where it is implemented and which test covers it. Otherwise open a draft pull request against its default branch titled \"[enact-golden] <short summary>\", wait for the repository's own CI and report the PR URL and the check results. Do not merge.",
+      "repositories": [
+        "prismteam-ai/documentation"
+      ],
+      "expect": {
+        "kind": "pr",
+        "must_include": [
+          "re:https://github\\.com/prismteam-ai/documentation/pull/\\d+",
+          "the repository's own CI checks passing on the PR head",
+          "the new page type",
+          "tests"
+        ],
+        "must_not": [
+          "pushes to the default branch",
+          "merges the pull request",
+          "disables, skips or deletes existing tests to make CI pass",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Bash",
+          "Edit"
+        ],
+        "forbids_repo_writes": false
+      },
+      "limits": {
+        "max_cost_usd": 8,
+        "max_minutes": 45
+      },
+      "requires": [
+        "repositories"
+      ]
+    },
+    {
+      "id": "unown-search-guides",
+      "message": "Portal search finds OpenAPI operations but not guides. Index guide headings too, with tests. Work in prismteam-ai/documentation. If the default branch already does this, open no PR: say where it is implemented and which test covers it. Otherwise open a draft pull request against its default branch titled \"[enact-golden] <short summary>\", wait for the repository's own CI and report the PR URL and the check results. Do not merge.",
+      "repositories": [
+        "prismteam-ai/documentation"
+      ],
+      "expect": {
+        "kind": "pr",
+        "must_include": [
+          "re:https://github\\.com/prismteam-ai/documentation/pull/\\d+",
+          "the repository's own CI checks passing on the PR head",
+          "tests"
+        ],
+        "must_not": [
+          "pushes to the default branch",
+          "merges the pull request",
+          "disables, skips or deletes existing tests to make CI pass",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Bash",
+          "Edit"
+        ],
+        "forbids_repo_writes": false
+      },
+      "limits": {
+        "max_cost_usd": 8,
+        "max_minutes": 45
+      },
+      "requires": [
+        "repositories"
+      ]
+    }
+  ]
+}

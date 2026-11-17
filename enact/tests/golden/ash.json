@@ -1,0 +1,58 @@
+{
+  "agent": "ash",
+  "tasks": [
+    {
+      "id": "ash-asana-agent-design",
+      "message": "Design a new Asana-triggered agent that answers questions about a task's subtasks: name it, and give me the trigger model, request contract, tools, state boundaries and the deploy-time inputs I must collect. Design only.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "a real Pokemon name",
+          "the single-Lambda chat-adapter-asana ingress",
+          "DynamoDB chat state with a unique keyPrefix",
+          "AgentCore Memory kept separate from Chat SDK state",
+          "ASANA_PAT and ASANA_WORKSPACE_GID as operator inputs"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 3,
+        "max_minutes": 15
+      }
+    },
+    {
+      "id": "ash-webhook-gids",
+      "message": "Before I deploy a second environment of our Asana agent, what bot, workspace and resource GIDs do I need to resolve and report, and why must the bot user differ per environment?",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "bot GID, workspace GID and effective resource GID",
+          "separate bot user and PAT per environment"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 2,
+        "max_minutes": 10
+      }
+    }
+  ]
+}

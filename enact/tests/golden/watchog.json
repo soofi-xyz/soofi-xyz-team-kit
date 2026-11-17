@@ -1,0 +1,69 @@
+{
+  "agent": "watchog",
+  "tasks": [
+    {
+      "id": "watchog-fact-gate",
+      "message": "Propose two hero facts about newly published counties and show the evidence gate each must pass before a PR.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "aggregate-only facts with a freshness label",
+          "the evidence manifest fields",
+          "re-run against the recorded Atlas revision"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value",
+          "uses superlatives the data does not support",
+          "opens a PR"
+        ],
+        "tools_in_trace": [
+          "queryAtlas"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 4,
+        "max_minutes": 20
+      },
+      "requires": [
+        "remote-mcp"
+      ]
+    },
+    {
+      "id": "watchog-recipe-version",
+      "message": "Add a version field to fact recipes and reject a candidate whose recipe version changed since it was generated, with tests. Work in soofi-xyz/agent-watchog. If the default branch already does this, open no PR: say where it is implemented and which test covers it. Otherwise open a draft pull request against its default branch titled \"[enact-golden] <short summary>\", wait for the repository's own CI and report the PR URL and the check results. Do not merge.",
+      "repositories": [
+        "soofi-xyz/agent-watchog"
+      ],
+      "expect": {
+        "kind": "pr",
+        "must_include": [
+          "re:https://github\\.com/soofi-xyz/agent-watchog/pull/\\d+",
+          "the repository's own CI checks passing on the PR head",
+          "tests"
+        ],
+        "must_not": [
+          "pushes to the default branch",
+          "merges the pull request",
+          "disables, skips or deletes existing tests to make CI pass",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Bash",
+          "Edit"
+        ],
+        "forbids_repo_writes": false
+      },
+      "limits": {
+        "max_cost_usd": 8,
+        "max_minutes": 45
+      },
+      "requires": [
+        "repositories"
+      ]
+    }
+  ]
+}

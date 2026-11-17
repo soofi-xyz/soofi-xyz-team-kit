@@ -1,0 +1,59 @@
+{
+  "agent": "espeon",
+  "tasks": [
+    {
+      "id": "espeon-local-poc-plan",
+      "message": "I want a RAG over our team's runbooks. Where do we start and what does the first deliverable look like?",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "a local TypeScript query-only CLI first",
+          "inspect and query commands with JSON stdout",
+          "no cloud until the user confirms"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value",
+          "proposes OpenSearch or a cloud database for the POC"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 2,
+        "max_minutes": 10
+      }
+    },
+    {
+      "id": "espeon-aws-plan",
+      "message": "Our local RAG POC over meeting notes works. Plan the move to AWS: historical backfill, live ingestion and retrieval architecture.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "migration plan from SQLite/libSQL",
+          "historical backfill strategy",
+          "live ingestion",
+          "a confirmation question before cloud work"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 4,
+        "max_minutes": 20
+      }
+    }
+  ]
+}

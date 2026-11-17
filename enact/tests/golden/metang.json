@@ -1,0 +1,66 @@
+{
+  "agent": "metang",
+  "tasks": [
+    {
+      "id": "metang-build-product-zip",
+      "message": "Upload the product source zip I attached at ./fixtures/hello-product.zip, start a SERVICE build, follow it to the end and verify the CDK cloud assembly and its provenance. Use our own dev/test Build stack at https://$PRISM_DOMAIN with the shared key in PRISM_API_KEY (already set in your environment); send X-Source-Repository and X-Source-Commit on every write, then read the configuration back through the API and show that it matches what you wrote.",
+      "repositories": [],
+      "expect": {
+        "kind": "config-readback",
+        "must_include": [
+          "the configuration read back through the Build HTTP API, matching what was written",
+          "X-Source-Repository and X-Source-Commit sent on the write",
+          "the build id and final status",
+          "manifest and provenance verified"
+        ],
+        "must_not": [
+          "uses AWS credentials or the AWS CLI",
+          "writes to the soofi-safavi or any production environment",
+          "reports a check as passing that it did not run",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Bash"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 5,
+        "max_minutes": 30
+      },
+      "requires": [
+        "secret-injection"
+      ]
+    },
+    {
+      "id": "metang-readiness",
+      "message": "Check product build readiness for the Report product source at its latest main and tell me what blocks a CONFIGURATION build. Use our own dev/test Build stack at https://$PRISM_DOMAIN with the shared key in PRISM_API_KEY (already set in your environment); send X-Source-Repository and X-Source-Commit on every write, then read the configuration back through the API and show that it matches what you wrote.",
+      "repositories": [],
+      "expect": {
+        "kind": "config-readback",
+        "must_include": [
+          "the configuration read back through the Build HTTP API, matching what was written",
+          "X-Source-Repository and X-Source-Commit sent on the write",
+          "readiness result per check"
+        ],
+        "must_not": [
+          "uses AWS credentials or the AWS CLI",
+          "writes to the soofi-safavi or any production environment",
+          "reports a check as passing that it did not run",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Bash"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 5,
+        "max_minutes": 30
+      },
+      "requires": [
+        "secret-injection"
+      ]
+    }
+  ]
+}

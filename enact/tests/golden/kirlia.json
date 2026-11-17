@@ -1,0 +1,65 @@
+{
+  "agent": "kirlia",
+  "tasks": [
+    {
+      "id": "kirlia-groom-story",
+      "message": "Groom this into a story with subtasks: 'customers want to see their payment history in the portal, including failed payments'.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "the three-section WOW story",
+          "subtasks",
+          "the full story printed"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value",
+          "writes to Asana"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 2,
+        "max_minutes": 10
+      }
+    },
+    {
+      "id": "kirlia-validator-section",
+      "message": "The WOW validator accepts a story without a Description section. Make it reject that, with a test. Work in soofi-xyz/kirlia-agent. If the default branch already does this, open no PR: say where it is implemented and which test covers it. Otherwise open a draft pull request against its default branch titled \"[enact-golden] <short summary>\", wait for the repository's own CI and report the PR URL and the check results. Do not merge.",
+      "repositories": [
+        "soofi-xyz/kirlia-agent"
+      ],
+      "expect": {
+        "kind": "pr",
+        "must_include": [
+          "re:https://github\\.com/soofi-xyz/kirlia-agent/pull/\\d+",
+          "the repository's own CI checks passing on the PR head",
+          "a test for the missing Description"
+        ],
+        "must_not": [
+          "pushes to the default branch",
+          "merges the pull request",
+          "disables, skips or deletes existing tests to make CI pass",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Bash",
+          "Edit"
+        ],
+        "forbids_repo_writes": false
+      },
+      "limits": {
+        "max_cost_usd": 8,
+        "max_minutes": 45
+      },
+      "requires": [
+        "repositories"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "agent": "hoopa",
+  "tasks": [
+    {
+      "id": "hoopa-increment-plan",
+      "message": "Plan an increment to our existing payment portal that adds a 'Download statement' button on the account page. What scenarios and tests would the PR carry and in what order would it run?",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "existing_repository mode following the repo's own rules",
+          "scenario-derived integration tests",
+          "feature run, approval and development run order"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 3,
+        "max_minutes": 15
+      }
+    },
+    {
+      "id": "hoopa-new-portal-intake",
+      "message": "We need a new partner portal. What do you need from me before creating the repository?",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "the mode (new_repository)",
+          "the required intake fields",
+          "the API deployment dependency gate"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 2,
+        "max_minutes": 10
+      }
+    }
+  ]
+}

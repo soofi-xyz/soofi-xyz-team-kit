@@ -1,0 +1,60 @@
+{
+  "agent": "machamp",
+  "tasks": [
+    {
+      "id": "machamp-county-backfill-design",
+      "message": "Design a batch workflow to backfill 12 million property records from S3 parquet into Persist through its ingest API, which tolerates about 200 requests/second. I need the execution shape, cost gate, throttling, idempotency and recovery strategy and a small end-to-end verification path. Architecture only.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "a chosen execution shape (Step Functions Distributed Map, Glue or hybrid) with the reason",
+          "an explicit external dependency boundary assessment for the Persist ingest API",
+          "a cost gate before full volume",
+          "idempotency keys and replay",
+          "a small-scale verification step before full volume"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 3,
+        "max_minutes": 20
+      }
+    },
+    {
+      "id": "machamp-judge-existing",
+      "message": "Assess this existing design: a single Lambda loops over every account in a DynamoDB scan, calls the LiveVox API for each without a queue, and retries forever on 429. List only concrete violations of the batch-workflow principles and what to change.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "unbounded retries on 429 named as a violation",
+          "missing queued boundary or concurrency limit for the external API",
+          "Lambda timeout and resumability risk for a full scan"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value",
+          "rewrites the system without naming the violated principle"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 3,
+        "max_minutes": 20
+      }
+    }
+  ]
+}

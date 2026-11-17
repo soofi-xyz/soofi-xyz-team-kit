@@ -1,0 +1,66 @@
+{
+  "agent": "lucario",
+  "tasks": [
+    {
+      "id": "lucario-replay-approval",
+      "message": "Document replay should require an approval before re-running in production. Add the approval gate to the replay flow, with tests. Work in Spring-Oaks-Capital-LLC/m2d-pipeline. If the default branch already does this, open no PR: say where it is implemented and which test covers it. Otherwise open a draft pull request against its default branch titled \"[enact-golden] <short summary>\", wait for the repository's own CI and report the PR URL and the check results. Do not merge.",
+      "repositories": [
+        "Spring-Oaks-Capital-LLC/m2d-pipeline"
+      ],
+      "expect": {
+        "kind": "pr",
+        "must_include": [
+          "re:https://github\\.com/Spring-Oaks-Capital-LLC/m2d-pipeline/pull/\\d+",
+          "the repository's own CI checks passing on the PR head",
+          "the approval gate",
+          "tests"
+        ],
+        "must_not": [
+          "pushes to the default branch",
+          "merges the pull request",
+          "disables, skips or deletes existing tests to make CI pass",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Bash",
+          "Edit"
+        ],
+        "forbids_repo_writes": false
+      },
+      "limits": {
+        "max_cost_usd": 8,
+        "max_minutes": 45
+      },
+      "requires": [
+        "repositories"
+      ]
+    },
+    {
+      "id": "lucario-env-resolve",
+      "message": "How does the M2D agent decide which environment a request targets, and what happens when it's ambiguous?",
+      "repositories": [
+        "Spring-Oaks-Capital-LLC/m2d-pipeline"
+      ],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "environment resolution rules",
+          "behavior on ambiguity"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 3,
+        "max_minutes": 15
+      }
+    }
+  ]
+}

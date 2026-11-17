@@ -1,0 +1,63 @@
+{
+  "agent": "porygon",
+  "tasks": [
+    {
+      "id": "porygon-contact-rate-reconcile",
+      "message": "Our LiveVox dashboard says right-party contact rate for last week was 4.1% but the Persist metrics catalog says 6.3% for the same campaigns. Explain why these two numbers can differ: compare definitions, windows, denominators, freshness and attribution, and tell me which one should be canonical and what mapping is missing. Do not change anything.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "each metric's numerator and denominator stated separately",
+          "time window and timezone alignment",
+          "freshness or late-arriving data",
+          "a recommendation for the canonical definition",
+          "the open questions that need sample data"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value",
+          "asserts the two metrics are equivalent without evidence",
+          "edits the lexicon or the metrics catalog"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 3,
+        "max_minutes": 20
+      }
+    },
+    {
+      "id": "porygon-sms-delivery-vendors",
+      "message": "We send SMS through two providers. Provider A reports 'delivered' at carrier handset ACK, provider B at carrier accept. Write me a unification plan for a single delivered_rate metric across both, with the lexicon definitions you would reuse versus add, unit/window normalization, and how to flag low-confidence comparisons.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "temporal class of each metric",
+          "reuse of existing lexicon definitions before proposing new ones",
+          "normalization of status semantics across the two providers",
+          "a confidence or ambiguity escalation rule"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value",
+          "edits the lexicon or the metrics catalog"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 3,
+        "max_minutes": 20
+      }
+    }
+  ]
+}

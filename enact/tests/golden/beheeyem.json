@@ -1,0 +1,73 @@
+{
+  "agent": "beheeyem",
+  "tasks": [
+    {
+      "id": "beheeyem-run-ledger-cost",
+      "message": "Inference runs don't record cost in the run ledger. Record input/output/cache tokens and cost per run and expose them on the run API, with tests. Work in prismteam-ai/inference. If the default branch already does this, open no PR: say where it is implemented and which test covers it. Otherwise open a draft pull request against its default branch titled \"[enact-golden] <short summary>\", wait for the repository's own CI and report the PR URL and the check results. Do not merge.",
+      "repositories": [
+        "prismteam-ai/inference"
+      ],
+      "expect": {
+        "kind": "pr",
+        "must_include": [
+          "re:https://github\\.com/prismteam-ai/inference/pull/\\d+",
+          "the repository's own CI checks passing on the PR head",
+          "the new run API fields",
+          "tests covering the cost calculation"
+        ],
+        "must_not": [
+          "pushes to the default branch",
+          "merges the pull request",
+          "disables, skips or deletes existing tests to make CI pass",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Bash",
+          "Edit"
+        ],
+        "forbids_repo_writes": false
+      },
+      "limits": {
+        "max_cost_usd": 8,
+        "max_minutes": 45
+      },
+      "requires": [
+        "repositories"
+      ]
+    },
+    {
+      "id": "beheeyem-reader-timeout",
+      "message": "The Connect reader hangs for 15 minutes when a flow never answers. Add a configurable timeout that fails the run with a clear error, with tests. Work in prismteam-ai/inference. If the default branch already does this, open no PR: say where it is implemented and which test covers it. Otherwise open a draft pull request against its default branch titled \"[enact-golden] <short summary>\", wait for the repository's own CI and report the PR URL and the check results. Do not merge.",
+      "repositories": [
+        "prismteam-ai/inference"
+      ],
+      "expect": {
+        "kind": "pr",
+        "must_include": [
+          "re:https://github\\.com/prismteam-ai/inference/pull/\\d+",
+          "the repository's own CI checks passing on the PR head",
+          "the timeout setting and error code",
+          "a test for the timeout path"
+        ],
+        "must_not": [
+          "pushes to the default branch",
+          "merges the pull request",
+          "disables, skips or deletes existing tests to make CI pass",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Bash",
+          "Edit"
+        ],
+        "forbids_repo_writes": false
+      },
+      "limits": {
+        "max_cost_usd": 8,
+        "max_minutes": 45
+      },
+      "requires": [
+        "repositories"
+      ]
+    }
+  ]
+}

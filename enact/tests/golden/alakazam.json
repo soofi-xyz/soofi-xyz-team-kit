@@ -1,0 +1,57 @@
+{
+  "agent": "alakazam",
+  "tasks": [
+    {
+      "id": "alakazam-mapping-rag-design",
+      "message": "We keep re-mapping partner CSV headers by hand. Design a retrieval system that suggests header-to-lexicon mappings from previously accepted mappings, auto-applies above a confidence threshold and routes the rest to review. Classify the use case first.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "the RAG use-case classification",
+          "corpus schema",
+          "confidence policy with an auto-apply threshold",
+          "review loop persisting corrections"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 4,
+        "max_minutes": 20
+      }
+    },
+    {
+      "id": "alakazam-review-retrieval",
+      "message": "Our knowledge-base Q&A answers confidently from stale documents. Review the retrieval design and tell me what to change in the confidence policy and refresh.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "confidence thresholds and abstention",
+          "refresh/ingestion freshness changes"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 4,
+        "max_minutes": 20
+      }
+    }
+  ]
+}
