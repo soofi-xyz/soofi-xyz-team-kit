@@ -235,10 +235,11 @@ and its operator setup in [configure-access-product](../../configure-access-prod
   identifiers have no `.`.
 - **Let Connect's store decide who created a name.** Create with a create-only
   write, so the second of two concurrent creators gets `409` and changes
-  nothing. Then register the owner. When Access cannot do that, answer `503`
-  and leave the credential stored; never remove it again, since a retry may
-  already have replaced it. Its owner uses it, nobody can be given a share of
-  it yet, and the next `PUT` or `PATCH` by whoever manages it registers it.
+  nothing. Then register the owner. When Access does not confirm that, answer
+  `503` and leave the credential stored; never remove it again, since a retry
+  may already have replaced it. Its owner uses it. Do not promise that it
+  cannot be shared: Access may hold the owner already, with only its answer
+  lost. The next `PUT` or `PATCH` by whoever manages it registers it otherwise.
 - **Say what was read when writing.** Replace or merge an existing credential
   only in the exact stored state the caller was authorized on, checked by the
   store together with the write (`409` when it was changed, removed or
