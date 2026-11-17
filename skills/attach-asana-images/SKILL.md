@@ -5,9 +5,10 @@ description: "Attach an image or screenshot to an Asana task and optionally show
 
 # Attach Images To Asana Tasks
 
-Attaching a file is an Asana API call, `POST /attachments`, so the steps are the same in Amp,
-Cursor, Claude Code, Codex and Copilot. The client only changes how you get the file onto disk and
-which Asana credential you have.
+Attaching a file is an Asana API call, `POST /attachments`, made through Executor's Asana app with
+the person's connected Asana account. The steps are the same in Amp, Cursor, Claude Code, Codex and
+Copilot; the client only changes how you get the file onto disk. No personal access token is
+needed.
 
 Ask before uploading. Asana notifies the task's assignee and followers.
 
@@ -27,38 +28,25 @@ The upload sends the file's bytes. A URL is not enough when it needs a login: Am
 Use the gid you already have, such as the `taskGid` a story-creation tool returned. Otherwise take
 the number after `/task/` in the task's URL.
 
-## 3. Upload it
+## 3. Upload it through Executor
 
-Use the first path that is available.
-
-**A. curl with the person's Asana personal access token.** This is the simplest path, and the
-file never passes through the chat. The person sets `ASANA_PAT` in their own environment. Never ask
-for the token in the chat or print it.
-
-```bash
-curl -sS https://app.asana.com/api/1.0/attachments \
-  -H "Authorization: Bearer $ASANA_PAT" \
-  -F "parent=$TASK_GID" \
-  -F "file=@image.png;type=image/png"
-```
-
-The response's `data.gid` is the attachment gid.
-
-**B. Executor's Asana app, with no token.** Call `tools.asana.attachments.createAttachmentForObject`.
-Executor programs cannot read files or fetch URLs, so the file goes into the call as base64, and
-every byte passes through the chat:
+Call `tools.asana.attachments.createAttachmentForObject`. Executor programs cannot read files or
+fetch URLs, so the file goes into the call as base64, and every byte passes through the chat:
 
 1. Shrink the image first. A screenshot usually stays readable at
    `magick in.png -resize 900x -colors 32 PNG8:out.png`, about 15–20 KB. View the result before
    uploading.
-2. Call it with `{ contentType: "multipart/form-data", body: { parent: TASK_GID, name: "image.png", file: "<base64>" } }`.
-3. Executor asks the person to approve the upload. Show them the request; never approve for them.
+2. Encode it: `base64 -w0 out.png` on Linux, `base64 -i out.png` on macOS.
+3. Call it with `{ contentType: "multipart/form-data", body: { parent: TASK_GID, file: "<base64>" } }`.
+   The response's `data.gid` is the attachment gid.
+4. Executor asks the person to approve the upload. Show them the request; never approve for them.
 
-**C. Ask the person.** Give them the file and the task link, and ask them to drag the image into
-the task.
+Asana stores the exact bytes, but names the attachment `file`: Executor cannot pass a file name,
+and Asana ignores `name` for uploaded files.
 
-Asana's own MCP server (`mcp.asana.com`) lists and reads attachments, but has no upload tool. Check
-its `tools/list` in case that has changed; otherwise use A, B or C.
+When Executor's Asana app is not connected, give the person the file and the task link, and ask
+them to drag the image into the task. Asana's own MCP server (`mcp.asana.com`) lists and reads
+attachments, but has no upload tool; check its `tools/list` in case that has changed.
 
 ## 4. Show it in the description (optional)
 
