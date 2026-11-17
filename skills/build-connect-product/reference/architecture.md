@@ -217,23 +217,28 @@ and its operator setup in [configure-access-product](../../configure-access-prod
   credential. Record it as `environment`.
 - **Own every credential.** Creating one with a token makes its `sub` the owner;
   with the key, `environment`. Register the owner with
-  `PUT /access/resources/connect/credential/{partner}.{credential}` on every
-  `PUT` and `PATCH` (so a credential from before owners existed becomes
-  shareable once it is written), and remove it with the credential. The
-  resource id is `{partner}.{credential}`: Access ids allow no `/`, and Connect
-  identifiers have no `.`. Sharing goes through Access with the owner's own
-  token; Connect stores no grants.
+  `PUT /access/resources/connect/credential/{resource_id}` on every `PUT` and
+  `PATCH` (so a credential that is not registered yet becomes shareable once
+  it is written), and remove it with the credential. Sharing goes through
+  Access with the owner's own token, on the `resource_id` the credential's
+  summary shows; Connect stores no grants.
+- **Give every credential its own resource id.** The store gives a credential
+  a `resource_id` (a UUID) when it is created and keeps it for the
+  credential's life; Access knows the credential only by it. A credential
+  created later under the same name has another, so what Access still holds
+  for a removed credential (its owner record and shares, when the removal
+  never reached Access) names nothing and never applies to the new one, and a
+  delayed or repeated request for one credential never changes Access for
+  another. Never key an Access resource by a name that can be reused. A
+  credential stored before resource ids existed keeps `{partner}.{credential}`,
+  which no later credential can have: Access ids allow no `/`, and Connect
+  identifiers have no `.`.
 - **Let Connect's store decide who created a name.** Create with a create-only
   write, so the second of two concurrent creators gets `409` and changes
-  nothing. Store the new credential `unconfirmed`: while it is, no token caller
-  may `use` it, its owner included, because Access may still hold the owner
-  and shares of an earlier credential of that name. Then confirm it: remove
-  whatever Access holds under the name, register the owner, and clear the mark
-  on exactly the stored state that was written. When Access cannot do that,
-  answer `503` and leave the credential stored and unconfirmed; never remove
-  it again, since a retry may already have replaced it. The next `PUT` or
-  `PATCH` by whoever manages it confirms it. The environment key keeps using
-  the environment's own unconfirmed credentials.
+  nothing. Then register the owner. When Access cannot do that, answer `503`
+  and leave the credential stored; never remove it again, since a retry may
+  already have replaced it. Its owner uses it, nobody can be given a share of
+  it yet, and the next `PUT` or `PATCH` by whoever manages it registers it.
 - **Say what was read when writing.** Replace or merge an existing credential
   only in the exact stored state the caller was authorized on, checked by the
   store together with the write (`409` when it was changed, removed or

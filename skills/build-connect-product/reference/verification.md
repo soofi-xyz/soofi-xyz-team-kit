@@ -144,13 +144,13 @@ describe the shipped behavior and must all pass together.
 
 | ID | Do | Pass when |
 | --- | --- | --- |
-| UC-1 | Set a credential, then read it as its owner, as `admin` and with the environment key | Each read returns state, key names, set/unset flags, owner and `used_by` only; the marker is in none |
+| UC-1 | Set a credential, then read it as its owner, as `admin` and with the environment key | Each read returns state, key names, set/unset flags, owner, its Access `resource_id` and `used_by` only; the marker is in none |
 | UC-2 | Run a job that uses the credential, one that fails partner auth and one that fails validation; then search every response, job result, manifest, error and log line of the run | The marker appears nowhere |
 | UC-3 | `alice` creates a credential; `admin`, signed in, creates one; one is created with the environment key | Owners are `alice`'s user identifier, `admin`'s user identifier and `environment` |
 | UC-4 | `alice` starts `flow-a` | The job runs; the mock partner receives the call |
 | UC-5 | `bob` starts `flow-a` | `403` naming the credential, never its value; the mock partner receives zero calls |
 | UC-6 | `admin`, signed in, starts `flow-a`; then it is started with the environment key | `403` for both; zero partner calls |
-| UC-7 | `alice` shares her credential with `bob` through Access; he starts `flow-a`; she revokes; he starts it again | Runs, then `403` with zero partner calls |
+| UC-7 | `alice` shares her credential with `bob` through Access, on the `resource_id` its summary shows; he starts `flow-a`; she revokes; he starts it again | Runs, then `403` with zero partner calls |
 | UC-8 | `admin` and the environment key each try to share `alice`'s credential and to replace its value | `403` for all four; no grant and no change |
 | UC-9 | `admin` reads the metadata of `alice`'s credential and removes it while `flow-a`'s configuration names it; the configuration is then changed to name nothing and he removes it again | Metadata without a value; `409` (`CredentialInUse`) the first time, with the credential intact; removed and audited the second time |
 | UC-10 | The environment key and `admin` each start `flow-env` | Both run |
