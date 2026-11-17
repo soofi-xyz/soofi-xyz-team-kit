@@ -65,6 +65,9 @@ enact/
 ├── schema/                 # input: Enact's agent definition schema (scripts/sync-enact-schema.sh)
 │   └── next/               # input: the "next" contract's schemas + SOURCE_REVISIONS (… next)
 ├── inventory.json          # generated: wave, size, skills, flags, requires_mcp, blocked_by per agent
+├── dist/                   # gitignored: packed PUT bodies for Build's enact agent/skill kinds
+│   ├── agents/<agent>.json # {manifest, files} as canonical JSON
+│   └── skills/<skill>.json # library skills ("next" only)
 ├── library/                # generated in the "next" contract only
 │   ├── index.json          # library skills: version, digest, sizes, users; skills it cannot hold
 │   └── <skill>/            # gitignored: skill.json + the skill's files
@@ -153,9 +156,12 @@ stays-local.
   `*-low`/`*-mini` → `haiku`; no model → `default_model`). `default_manifest` sets limits,
   channels, repositories and hosts; `overrides/<agent>.json` `manifest` replaces any field.
 - **Instructions.** The agent body, then a "Running on Enact" appendix: the sandbox (Node.js and
-  git; no `gh`, `python3`, `curl`, `aws` or AWS profile), nobody answering mid-run, the installed
-  skills, the tools, the repositories, the network, read-only rules for `readonly: true` agents,
-  and how to return the result. `overrides/<agent>.json` `appendix` adds agent-specific lines.
+  git; `curl`, `jq`, `unzip`, `python3`, `gh` and `aws` only on images with enact#22, so check
+  with `command -v`, prefer Node.js `fetch` and fall back to `curl`; no AWS profile, and `gh`/`aws`
+  are not signed in), nobody answering mid-run, the installed skills, the tools (including other
+  agents through the `enact` server's `ask_<agent>` tools, enact#24, when a run has that server),
+  the repositories, the network, read-only rules for `readonly: true` agents, and how to return
+  the result. The wording holds before and after those pieces merge. `overrides/<agent>.json` `appendix` adds agent-specific lines.
 - **Skills.** The transitive closure of skills the body references as `skills/<name>/`, plus the
   skills each included `SKILL.md` references (as `skills/<name>/` or `../<name>/`). Files come
   from `git ls-files`; non-UTF-8 files are omitted and listed in the inventory.
@@ -173,6 +179,19 @@ stays-local.
   | `mcp-allow-list` | `next`: `requires_mcp` names a server outside `mcp_builtin` + `mcp_allow_list` (default `[]`) |
   | `agent-secrets` | `current`: `needs_secrets` is not empty (override, else `needs_secrets_by_role`) |
   | `browser-preview` | `current`: the override sets `browser.sandbox_localhost`: the agent must open an app it runs inside the sandbox (a localhost dev server). The `browser` tool alone reaches hosted URLs and needs nothing new, so slowking, which exercises candidates' hosted runtimes, is not blocked |
+
+### Packed files for Build
+
+Build's `enact` configuration kinds (`agent`, and `skill` from prismteam-ai/build#66) take one
+JSON file per agent or library skill: the exact `PUT /enact/agents/{name}` or
+`PUT /enact/skills/{name}` body `{ manifest, files }`. `sync` writes them to
+`enact/dist/agents/<agent>.json` and, in `next`, `enact/dist/skills/<skill>.json` (gitignored).
+Each is the document's canonical JSON (keys sorted at every level, no whitespace), so the file's
+SHA-256 is Enact's version digest (`sha256:…`) that Build records. T1 checks every packed file
+parses back to its directory's manifest and files, is byte-for-byte canonical, and fits the PUT
+body limit (2 MiB for agents, 4 MiB for skills). Build's agent schema currently carries only
+enact#27's `library_skills`, so in `next` it refuses agents with `secrets` or `mcp_servers` until
+it copies the merged schema.
 
 ### Declaring MCP needs
 

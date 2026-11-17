@@ -24,3 +24,5 @@ __pycache__/
 /enact/*/skills/
 # Skill library copies (contract "next"); enact/library/index.json is not ignored.
 /enact/library/*/
+# Packed bundle-ready files (PUT bodies) for Build's enact/agent and enact/skill kinds.
+/enact/dist/

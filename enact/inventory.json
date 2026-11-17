@@ -5,7 +5,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 100299,
+      "bytes": 100785,
       "files": 22,
       "flag_counts": {
         "python3": 1
@@ -36,7 +36,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 547845,
+      "bytes": 548331,
       "files": 67,
       "flag_counts": {
         "aws-profile": 1,
@@ -79,7 +79,7 @@
         "curl"
       ],
       "blocked_by": [],
-      "bytes": 237731,
+      "bytes": 238217,
       "files": 48,
       "flag_counts": {
         "curl": 1
@@ -120,7 +120,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 464252,
+      "bytes": 464738,
       "files": 60,
       "flag_counts": {
         "aws-profile": 1,
@@ -158,7 +158,7 @@
         "curl"
       ],
       "blocked_by": [],
-      "bytes": 151069,
+      "bytes": 151555,
       "files": 27,
       "flag_counts": {
         "curl": 1
@@ -196,7 +196,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 483050,
+      "bytes": 483536,
       "files": 62,
       "flag_counts": {
         "aws-profile": 1,
@@ -242,7 +242,7 @@
       "blocked_by": [
         "agent-secrets"
       ],
-      "bytes": 505179,
+      "bytes": 505665,
       "files": 64,
       "flag_counts": {
         "aws-profile": 1,
@@ -291,7 +291,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 818849,
+      "bytes": 819335,
       "files": 85,
       "flag_counts": {
         "aws-profile": 4,
@@ -340,7 +340,7 @@
       "blocked_by": [
         "agent-secrets"
       ],
-      "bytes": 818816,
+      "bytes": 819302,
       "files": 85,
       "flag_counts": {
         "aws-profile": 4,
@@ -395,7 +395,7 @@
       "blocked_by": [
         "agent-secrets"
       ],
-      "bytes": 610133,
+      "bytes": 610619,
       "files": 95,
       "flag_counts": {
         "aws-profile": 1,
@@ -442,7 +442,7 @@
       "blocked_by": [
         "remote-mcp"
       ],
-      "bytes": 553081,
+      "bytes": 553567,
       "files": 67,
       "flag_counts": {
         "aws-profile": 1,
@@ -482,7 +482,7 @@
     "chatot": {
       "assumptions": [],
       "blocked_by": [],
-      "bytes": 63895,
+      "bytes": 64381,
       "files": 16,
       "flag_counts": {},
       "instruction_flags": {},
@@ -511,7 +511,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 726540,
+      "bytes": 727026,
       "files": 69,
       "flag_counts": {
         "aws-profile": 2,
@@ -554,7 +554,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 465986,
+      "bytes": 466472,
       "files": 60,
       "flag_counts": {
         "aws-profile": 1,
@@ -590,7 +590,7 @@
     "delibird": {
       "assumptions": [],
       "blocked_by": [],
-      "bytes": 9547,
+      "bytes": 10033,
       "files": 1,
       "flag_counts": {},
       "instruction_flags": {},
@@ -616,7 +616,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 613705,
+      "bytes": 614191,
       "files": 70,
       "flag_counts": {
         "aws-profile": 1,
@@ -658,7 +658,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 149727,
+      "bytes": 150213,
       "files": 28,
       "flag_counts": {
         "aws-profile": 1,
@@ -689,7 +689,7 @@
       "blocked_by": [
         "remote-mcp"
       ],
-      "bytes": 23248,
+      "bytes": 23734,
       "files": 5,
       "flag_counts": {},
       "instruction_flags": {},
@@ -721,7 +721,7 @@
       "blocked_by": [
         "agent-secrets"
       ],
-      "bytes": 543669,
+      "bytes": 544155,
       "files": 67,
       "flag_counts": {
         "aws-profile": 1,
@@ -764,7 +764,7 @@
     "eevee": {
       "assumptions": [],
       "blocked_by": [],
-      "bytes": 9544,
+      "bytes": 10030,
       "files": 2,
       "flag_counts": {},
       "instruction_flags": {},
@@ -794,7 +794,7 @@
       "blocked_by": [
         "agent-secrets"
       ],
-      "bytes": 471472,
+      "bytes": 471958,
       "files": 61,
       "flag_counts": {
         "aws-profile": 1,
@@ -839,7 +839,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 642144,
+      "bytes": 642630,
       "files": 94,
       "flag_counts": {
         "aws-profile": 1,
@@ -886,7 +886,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 584446,
+      "bytes": 584932,
       "files": 85,
       "flag_counts": {
         "aws-profile": 5,
@@ -928,7 +928,7 @@
       "blocked_by": [
         "remote-mcp"
       ],
-      "bytes": 230190,
+      "bytes": 230676,
       "files": 17,
       "flag_counts": {
         "aws-profile": 2,
@@ -963,7 +963,7 @@
         "curl"
       ],
       "blocked_by": [],
-      "bytes": 184778,
+      "bytes": 185264,
       "files": 34,
       "flag_counts": {
         "curl": 1
@@ -1005,7 +1005,7 @@
       "blocked_by": [
         "agent-secrets"
       ],
-      "bytes": 617706,
+      "bytes": 618192,
       "files": 70,
       "flag_counts": {
         "aws-profile": 1,
@@ -1051,7 +1051,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 501473,
+      "bytes": 501959,
       "files": 64,
       "flag_counts": {
         "aws-profile": 1,
@@ -1096,7 +1096,7 @@
       "blocked_by": [
         "shared-skill-library"
       ],
-      "bytes": 1099439,
+      "bytes": 1099925,
       "files": 104,
       "flag_counts": {
         "aws-profile": 4,
@@ -1143,7 +1143,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 485854,
+      "bytes": 486340,
       "files": 62,
       "flag_counts": {
         "aws-profile": 1,
@@ -1187,7 +1187,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 200515,
+      "bytes": 201001,
       "files": 25,
       "flag_counts": {
         "aws-profile": 1,
@@ -1224,7 +1224,7 @@
       "blocked_by": [
         "agent-secrets"
       ],
-      "bytes": 535971,
+      "bytes": 536457,
       "files": 72,
       "flag_counts": {
         "aws-profile": 1,
@@ -1271,7 +1271,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 536521,
+      "bytes": 537007,
       "files": 72,
       "flag_counts": {
         "aws-profile": 1,
@@ -1316,7 +1316,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 857392,
+      "bytes": 857878,
       "files": 139,
       "flag_counts": {
         "aws-profile": 2,
@@ -1358,7 +1358,7 @@
         "aws-profile"
       ],
       "blocked_by": [],
-      "bytes": 36198,
+      "bytes": 36684,
       "files": 5,
       "flag_counts": {
         "aws-profile": 1
@@ -1387,7 +1387,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 184953,
+      "bytes": 185439,
       "files": 30,
       "flag_counts": {
         "aws-profile": 1,
@@ -1425,7 +1425,7 @@
     "machamp": {
       "assumptions": [],
       "blocked_by": [],
-      "bytes": 97474,
+      "bytes": 97960,
       "files": 24,
       "flag_counts": {},
       "instruction_flags": {},
@@ -1449,7 +1449,7 @@
     "magnezone": {
       "assumptions": [],
       "blocked_by": [],
-      "bytes": 58852,
+      "bytes": 59338,
       "files": 15,
       "flag_counts": {},
       "instruction_flags": {},
@@ -1480,7 +1480,7 @@
       "blocked_by": [
         "agent-secrets"
       ],
-      "bytes": 583826,
+      "bytes": 584312,
       "files": 86,
       "flag_counts": {
         "aws-profile": 5,
@@ -1524,7 +1524,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 224157,
+      "bytes": 224643,
       "files": 38,
       "flag_counts": {
         "aws-profile": 1,
@@ -1557,7 +1557,7 @@
     "metagross": {
       "assumptions": [],
       "blocked_by": [],
-      "bytes": 85738,
+      "bytes": 86224,
       "files": 20,
       "flag_counts": {},
       "instruction_flags": {},
@@ -1588,7 +1588,7 @@
       "blocked_by": [
         "agent-secrets"
       ],
-      "bytes": 577780,
+      "bytes": 578266,
       "files": 65,
       "flag_counts": {
         "aws-profile": 3,
@@ -1637,7 +1637,7 @@
       "blocked_by": [
         "shared-skill-library"
       ],
-      "bytes": 1337952,
+      "bytes": 1338438,
       "files": 8,
       "flag_counts": {},
       "instruction_flags": {},
@@ -1665,7 +1665,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 805939,
+      "bytes": 806425,
       "files": 113,
       "flag_counts": {
         "aws-profile": 3,
@@ -1719,7 +1719,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 169876,
+      "bytes": 170362,
       "files": 40,
       "flag_counts": {
         "python3": 1
@@ -1750,7 +1750,7 @@
         "curl"
       ],
       "blocked_by": [],
-      "bytes": 158896,
+      "bytes": 159382,
       "files": 27,
       "flag_counts": {
         "aws-profile": 1,
@@ -1789,7 +1789,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 242811,
+      "bytes": 243297,
       "files": 52,
       "flag_counts": {
         "aws-profile": 1,
@@ -1830,7 +1830,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 462706,
+      "bytes": 463192,
       "files": 60,
       "flag_counts": {
         "aws-profile": 1,
@@ -1873,7 +1873,7 @@
       "blocked_by": [
         "agent-secrets"
       ],
-      "bytes": 472955,
+      "bytes": 473441,
       "files": 60,
       "flag_counts": {
         "aws-profile": 1,
@@ -1916,7 +1916,7 @@
     "rotom": {
       "assumptions": [],
       "blocked_by": [],
-      "bytes": 58905,
+      "bytes": 59391,
       "files": 15,
       "flag_counts": {},
       "instruction_flags": {},
@@ -1947,7 +1947,7 @@
       "blocked_by": [
         "agent-secrets"
       ],
-      "bytes": 482811,
+      "bytes": 483297,
       "files": 64,
       "flag_counts": {
         "aws-profile": 2,
@@ -1995,7 +1995,7 @@
         "agent-secrets",
         "shared-skill-library"
       ],
-      "bytes": 2136385,
+      "bytes": 2136871,
       "files": 160,
       "flag_counts": {
         "aws-profile": 69,
@@ -2049,7 +2049,7 @@
       "blocked_by": [
         "agent-secrets"
       ],
-      "bytes": 464734,
+      "bytes": 465220,
       "files": 60,
       "flag_counts": {
         "aws-profile": 1,
@@ -2092,7 +2092,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 859866,
+      "bytes": 860352,
       "files": 118,
       "flag_counts": {
         "aws-profile": 8,
@@ -2137,7 +2137,7 @@
     "slowking": {
       "assumptions": [],
       "blocked_by": [],
-      "bytes": 104674,
+      "bytes": 105206,
       "files": 18,
       "flag_counts": {},
       "instruction_flags": {},
@@ -2178,7 +2178,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 574120,
+      "bytes": 574606,
       "files": 65,
       "flag_counts": {
         "aws-profile": 3,
@@ -2226,7 +2226,7 @@
       "blocked_by": [
         "agent-secrets"
       ],
-      "bytes": 524761,
+      "bytes": 525247,
       "files": 71,
       "flag_counts": {
         "aws-profile": 1,
@@ -2273,7 +2273,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 482231,
+      "bytes": 482717,
       "files": 64,
       "flag_counts": {
         "aws-profile": 2,
@@ -2316,7 +2316,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 525035,
+      "bytes": 525521,
       "files": 71,
       "flag_counts": {
         "aws-profile": 1,
@@ -2363,7 +2363,7 @@
       "blocked_by": [
         "agent-secrets"
       ],
-      "bytes": 800858,
+      "bytes": 801344,
       "files": 80,
       "flag_counts": {
         "aws-profile": 4,
@@ -2415,7 +2415,7 @@
       "blocked_by": [
         "agent-secrets"
       ],
-      "bytes": 550549,
+      "bytes": 551035,
       "files": 67,
       "flag_counts": {
         "aws-profile": 1,
@@ -2461,7 +2461,7 @@
       "blocked_by": [
         "remote-mcp"
       ],
-      "bytes": 261691,
+      "bytes": 262177,
       "files": 50,
       "flag_counts": {
         "aws-profile": 1,
@@ -2507,7 +2507,7 @@
       "blocked_by": [
         "remote-mcp"
       ],
-      "bytes": 602511,
+      "bytes": 602997,
       "files": 73,
       "flag_counts": {
         "aws-profile": 2,
@@ -2557,7 +2557,7 @@
       "blocked_by": [
         "agent-secrets"
       ],
-      "bytes": 897658,
+      "bytes": 898144,
       "files": 143,
       "flag_counts": {
         "aws-profile": 2,
@@ -2613,7 +2613,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 585522,
+      "bytes": 586008,
       "files": 87,
       "flag_counts": {
         "aws-profile": 5,
@@ -2656,7 +2656,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 581757,
+      "bytes": 582243,
       "files": 75,
       "flag_counts": {
         "aws-profile": 2,
@@ -2705,7 +2705,7 @@
       "blocked_by": [
         "agent-secrets"
       ],
-      "bytes": 470860,
+      "bytes": 471346,
       "files": 61,
       "flag_counts": {
         "aws-profile": 2,
@@ -2750,7 +2750,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 621791,
+      "bytes": 622277,
       "files": 95,
       "flag_counts": {
         "aws-profile": 1,

@@ -8,7 +8,10 @@
 // --contract (default: enact/config.json contract, else "current") picks the Enact contract:
 // "current" is prismteam-ai/enact main (enact/schema/); "next" adds the open pieces' manifest
 // fields (library_skills, mcp_servers, secrets, browser) and writes the skill library to
-// enact/library/ (enact/schema/next/, scripts/sync-enact-schema.sh next).
+// enact/library/ (enact/schema/next/, scripts/sync-enact-schema.sh next). Both write bundle-ready
+// packed files (gitignored): enact/dist/agents/<agent>.json and enact/dist/skills/<skill>.json,
+// each the exact PUT body {manifest, files} as canonical JSON, the source file of Build's
+// enact/agent and enact/skill configuration kinds.
 //
 // sync (default) rewrites the generated files; check exits 1 when they differ from what is
 // committed. Inputs: enact/config.json (stays-local set, waves, model map, defaults, limits) and
@@ -24,7 +27,9 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const enactDir = path.join(root, "enact");
-const RESERVED = new Set(["config.json", "inventory.json", "library", "overrides", "schema", "README.md"]);
+const RESERVED = new Set(["config.json", "dist", "inventory.json", "library", "overrides", "schema", "README.md"]);
+// Reserved top-level directories the generator itself writes.
+const GENERATED_DIRS = new Set(["dist", "library"]);
 const SKILL_REF = /(?:^|[^A-Za-z0-9_-])skills\/([a-z0-9][a-z0-9-]*)\//g;
 const SIBLING_REF = /(?:^|[(\s`"'])\.\.\/([a-z0-9][a-z0-9-]*)\//g;
 const FILE_PATH =
@@ -142,12 +147,12 @@ function describeRepositories(manifest) {
   const repos = manifest.repositories ?? [];
   if (repos.length === 0 && !manifest.run_repositories) {
     lines.push(
-      "- **Repositories.** This agent is given no repositories. Git can clone public repositories read-only over HTTPS; you cannot push, and there is no `gh` CLI. Put changes you would make in your result as a patch or a proposal.",
+      "- **Repositories.** This agent is given no repositories. Git can clone public repositories read-only over HTTPS; you cannot push, and `gh` is not signed in. Put changes you would make in your result as a patch or a proposal.",
     );
     return lines;
   }
   lines.push(
-    "- **Repositories.** Git over HTTPS is signed in to exactly the repositories of this run (`git clone https://github.com/<owner>/<repo>.git`). A pre-push hook refuses the default branch: push a branch and open the pull request with the `open_pull_request` tool when the repository allows it. Nothing lets you merge; there is no `gh` CLI.",
+    "- **Repositories.** Git over HTTPS is signed in to exactly the repositories of this run (`git clone https://github.com/<owner>/<repo>.git`). A pre-push hook refuses the default branch: push a branch and open the pull request with the `open_pull_request` tool when the repository allows it. Nothing lets you merge, and `gh` is not signed in: use git and the `open_pull_request` tool.",
   );
   for (const r of repos) {
     lines.push(`  - \`${r.name}\`: contents ${r.permissions.contents}, pull requests ${r.permissions.pull_requests}.`);
@@ -168,7 +173,7 @@ function appendix(manifest, skills, info, override) {
     "",
     "You run as an Enact agent in an isolated sandbox, not in a person's editor. These rules win over anything above that assumes a local machine.",
     "",
-    "- **Sandbox.** Each run works in a fresh Linux sandbox with Node.js 22 and git. There is no local machine, no person's home directory or checkout, no Cursor or IDE, no `gh`, `python3`, `curl` or `aws` CLI, no AWS profile and no credentials beyond what this section names. Nothing outside this session's transcript survives the session. Where the text above says to run one of those commands, do the equivalent with Node.js (`fetch`) or git, or report the step as blocked.",
+    "- **Sandbox.** Each run works in a fresh Linux sandbox with Node.js 22 and git. Newer sandbox images also have `curl`, `jq`, `unzip`, `python3`, `gh` and the `aws` CLI; check with `command -v` before relying on one. Prefer Node.js (`fetch`) for HTTP and fall back to `curl` when it is there. There is no local machine, no person's home directory or checkout, no Cursor or IDE, no AWS profile and no credentials beyond what this section names, so `gh` and `aws` are not signed in. Nothing outside this session's transcript survives the session. Where the text above runs a command or tool the sandbox lacks, or needs a sign-in it does not have, do the equivalent with Node.js or git, or report the step as blocked.",
     "- **Nobody answers during a run.** Where the text above says to ask the person, wait for approval or hand a command to the user, do not act on the step: finish what you can, then end the run with the question, the proposed change or the command, and why it is needed. Never treat silence as approval.",
   ];
   if (skills.length) {
@@ -190,7 +195,7 @@ function appendix(manifest, skills, info, override) {
     );
   }
   lines.push(
-    `- **Tools.** You have ${tools.join(" and ")}. No other MCP server is connected. Other kit agents are not installed: where the text above hands work to another agent, do that part yourself only when it is inside this request, and otherwise name the agent in your result for the person to run.`,
+    `- **Tools.** You have ${tools.join(" and ")}. No other MCP server is connected unless this run also has Enact's own \`enact\` server. Other kit agents are not installed in the sandbox: where the text above hands work to another agent, and this run has the \`enact\` server with that agent's \`ask_<agent>\` tool (\`mcp__enact__ask_<agent>\`, with \`-\` in the name as \`_\`), you may ask it and use its result; otherwise do that part yourself only when it is inside this request, and otherwise name the agent in your result for the person to run.`,
   );
   if (info.requiresMcp.length) {
     lines.push(
@@ -459,6 +464,8 @@ function build(contract) {
       used_by: [],
     };
     outputs.set(`library/${s}/skill.json`, stableJson(skillManifest));
+    // Bundle-ready: the exact PUT /skills/{name} body, as canonical JSON (its SHA-256 is the digest).
+    outputs.set(`dist/skills/${s}.json`, canonical);
     for (const [rel, t] of Object.entries(files)) outputs.set(`library/${s}/${rel}`, t);
   }
 
@@ -531,6 +538,8 @@ function build(contract) {
     }
 
     outputs.set(`${name}/agent.json`, stableJson(manifest));
+    // Bundle-ready: the exact PUT /agents/{name} body, as canonical JSON (its SHA-256 is the digest).
+    outputs.set(`dist/agents/${name}.json`, canonicalJson({ manifest, files }));
     for (const [rel, text] of Object.entries(files)) outputs.set(`${name}/${rel}`, text);
 
     const sortedFlags = sortFlags(flags);
@@ -606,7 +615,7 @@ function existingGenerated() {
   const walk = (dir) => {
     for (const entry of readdirSync(path.join(enactDir, dir))) {
       const rel = dir ? `${dir}/${entry}` : entry;
-      if (!dir && RESERVED.has(entry) && entry !== "inventory.json" && entry !== "library") continue;
+      if (!dir && RESERVED.has(entry) && !GENERATED_DIRS.has(entry) && entry !== "inventory.json") continue;
       if (statSync(path.join(enactDir, rel)).isDirectory()) walk(rel);
       else found.set(rel, readFileSync(path.join(enactDir, rel), "utf8"));
     }
@@ -640,9 +649,9 @@ function main() {
   const changed = [...outputs.keys()].filter((p) => existing.get(p) !== outputs.get(p)).sort();
   // Skill copies are gitignored (enact/*/skills/): a fresh checkout has none, so check compares
   // only the committed parts (agent.json, instructions.md, inventory.json).
-  const committed = (p) => !/^[^/]+\/skills\//.test(p) && !/^library\/[^/]+\//.test(p);
+  const committed = (p) => !/^[^/]+\/skills\//.test(p) && !/^library\/[^/]+\//.test(p) && !p.startsWith("dist/");
   const agents = new Set(
-    [...outputs.keys()].filter((p) => p.includes("/") && !p.startsWith("library/")).map((p) => p.split("/")[0]),
+    [...outputs.keys()].filter((p) => p.includes("/") && !GENERATED_DIRS.has(p.split("/")[0])).map((p) => p.split("/")[0]),
   );
 
   if (command === "check") {
@@ -663,7 +672,7 @@ function main() {
     const abs = path.join(enactDir, dir);
     for (const entry of readdirSync(abs)) {
       const rel = dir ? `${dir}/${entry}` : entry;
-      if (!dir && RESERVED.has(entry) && entry !== "library") continue;
+      if (!dir && RESERVED.has(entry) && !GENERATED_DIRS.has(entry)) continue;
       if (statSync(path.join(enactDir, rel)).isDirectory()) prune(rel);
     }
     if (dir && readdirSync(abs).length === 0) rmSync(abs, { recursive: true });

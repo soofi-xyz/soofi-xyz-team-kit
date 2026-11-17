@@ -10,6 +10,9 @@ Each package must:
   - hold at most 1 MiB of files with a non-blank instructions.md;
   - have a SKILL.md in every skills/<name>/ directory;
   - have no path that is also a folder of another path;
+  - have its packed file enact/dist/agents/<agent>.json (and each library skill its
+    enact/dist/skills/<skill>.json) be exactly the canonical JSON of {manifest, files}, the PUT
+    body Build's enact agent/skill kinds take, within the 2 MiB / 4 MiB body limits;
   - declare (enact/overrides/<agent>.json requires_mcp) only MCP servers on the allow-list
     (enact/inventory.json mcp_allow_list: Enact's own and the built-in browser; in the "next"
     contract also enact/config.json mcp_allow_list, and with --allow-list-from the servers a live
@@ -41,6 +44,7 @@ import hashlib
 import json
 import os
 import sys
+import tempfile
 import urllib.request
 from pathlib import Path
 
@@ -190,6 +194,31 @@ def read_library_skill(path: Path) -> tuple[dict, dict[str, str]]:
     return manifest, files
 
 
+MAX_AGENT_BODY = 2 * MIB
+MAX_SKILL_BODY = 4 * MIB
+
+
+def check_packed(path: Path, document: dict, max_body: int) -> list[str]:
+    """A packed enact/dist file must be exactly the canonical JSON of its directory's document:
+    it parses back to the same {manifest, files}, its bytes are the canonical JSON (so its SHA-256
+    is Enact's digest) and it fits the PUT body limit."""
+    if not path.is_file():
+        return [f"packed file {path.relative_to(ROOT)} missing; run node scripts/sync-enact-agents.mjs sync"]
+    raw = path.read_bytes()
+    problems = []
+    try:
+        parsed = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        return [f"packed file {path.relative_to(ROOT)} is not JSON: {error}"]
+    if parsed != document:
+        problems.append(f"packed file {path.relative_to(ROOT)} does not round-trip to the directory's manifest and files")
+    elif raw != canonical_json(document).encode("utf-8"):
+        problems.append(f"packed file {path.relative_to(ROOT)} is not the document's canonical JSON")
+    if len(raw) > max_body:
+        problems.append(f"packed file {path.relative_to(ROOT)} is {len(raw)} bytes, over the {max_body}-byte PUT body limit")
+    return problems
+
+
 def fetch_allow_list(url: str) -> list[str] | None:
     """Server names on a live environment's list (GET <url>/enact/mcp-servers), or None if no key."""
     key = os.environ.get("ENACT_API_KEY")
@@ -247,6 +276,7 @@ def run(args) -> int:
             else:
                 manifest, files = read_library_skill(skill_dir)
                 problems = check_library_skill(name, manifest, files, entry, skill_validator)
+                problems += check_packed(ENACT / "dist" / "skills" / f"{name}.json", {"manifest": manifest, "files": files}, MAX_SKILL_BODY)
             library_rows.append({"skill": name, "bytes": entry["bytes"], "pass": not problems, "problems": problems})
 
     rows = []
@@ -263,6 +293,7 @@ def run(args) -> int:
             manifest, files = read_package(pkg)
             expected = info.get("own_skills", info.get("skills", [])) if contract == "next" else info.get("skills", [])
             problems = check_package(name, manifest, files, validator, info.get("requires_mcp", []), allow, expected, library)
+            problems += check_packed(ENACT / "dist" / "agents" / f"{name}.json", {"manifest": manifest, "files": files}, MAX_AGENT_BODY)
             total = sum(len(t.encode("utf-8")) for t in files.values())
         gating = args.strict or info["wave"] in must
         rows.append({"agent": name, "wave": info["wave"], "bytes": total, "pass": not problems, "gating": gating, "problems": problems})
@@ -353,6 +384,19 @@ def self_test() -> int:
     expect("library skill valid", check_library_skill("a", skill_manifest, skill_files, entry, skill_validator), None)
     expect("library skill changed", check_library_skill("a", skill_manifest, {**skill_files, "x.md": "new"}, entry, skill_validator), "does not name this content")
     expect("library skill over 3 MiB", check_library_skill("a", skill_manifest, {**skill_files, **{f"r/{i}.md": "x" * MIB for i in range(4)}}, entry, skill_validator), "over 3 MiB")
+
+    # Packed files: exact canonical JSON round-trips; anything else is caught.
+    with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
+        doc = {"manifest": base_manifest, "files": base_files}
+        good = Path(tmp) / "good.json"
+        good.write_text(canonical_json(doc), encoding="utf-8")
+        expect("packed round-trip", check_packed(good, doc, MAX_AGENT_BODY), None)
+        pretty = Path(tmp) / "pretty.json"
+        pretty.write_text(json.dumps(doc, indent=2), encoding="utf-8")
+        expect("packed not canonical", check_packed(pretty, doc, MAX_AGENT_BODY), "not the document's canonical JSON")
+        expect("packed differs", check_packed(good, {**doc, "files": {**base_files, "x.md": "y"}}, MAX_AGENT_BODY), "does not round-trip")
+        expect("packed too big", check_packed(good, doc, 10), "PUT body limit")
+        expect("packed missing", check_packed(Path(tmp) / "none.json", doc, MAX_AGENT_BODY), "missing")
 
     # The real donphan package must fail: it declares the elephant MCP server.
     inventory = load_json(ENACT / "inventory.json")
