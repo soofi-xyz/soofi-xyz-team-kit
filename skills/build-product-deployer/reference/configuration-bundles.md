@@ -184,6 +184,9 @@ Paths below are relative to `/console`.
   `applicationId` is the logical identity; Build rejects a manifest whose
   `applicationId` repeats in the bundle, and validates it against the manifest
   schema in `prismteam-ai/console` `requirements/swagger.yml` without calling Console.
+  Build's top-level field list is closed: it allows exactly the schema's
+  `properties`, required and optional, including action `forms` (an array of at
+  most 20), and refuses any other field with `the manifest has no field <name>`.
 - **Account:** read `accountId` from `GET /session`; never take it from the
   bundle or a parameter.
 - **Apply:** `GET /accounts/{accountId}/applications/{applicationId}`; on `404`,
