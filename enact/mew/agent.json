@@ -1,0 +1,28 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Universal lexicon architect and exact schema lookup agent. Use proactively to retrieve bundled entity properties, enums, indexes, and relationships or to model any business domain with reusable core concepts and domain extensions.",
+  "hosts": [],
+  "library_skills": [
+    {
+      "name": "use-neutral-lexicon",
+      "version": "1.0.0-sha256-2c1a2ad5b1474b0d"
+    }
+  ],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "mew",
+  "repositories": [],
+  "run_repositories": {
+    "max": 5,
+    "permissions": {
+      "contents": "read",
+      "pull_requests": "read"
+    }
+  },
+  "version": "1.159.0"
+}

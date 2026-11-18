@@ -1,0 +1,4 @@
+{
+  "requires_mcp": [],
+  "requires_mcp_reason": "skills/groom-stories uses the Kirlia MCP server only when it is connected and grooms by hand otherwise; not required."
+}

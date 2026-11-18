@@ -1,0 +1,22 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Report catalog app builder. Use proactively when designing, deploying, or updating the single hosted catalog page that lists report URLs, plus its report-registration tooling.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "delibird",
+  "repositories": [],
+  "run_repositories": {
+    "max": 5,
+    "permissions": {
+      "contents": "write",
+      "pull_requests": "write"
+    }
+  },
+  "version": "1.159.0"
+}

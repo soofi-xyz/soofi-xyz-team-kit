@@ -1,0 +1,32 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Optimization specialist. Use proactively when designing services that solve assignment, scheduling, or constraint-optimization problems over prepared data — reports the optimization model, architecture and implementation plan; does not write code.",
+  "hosts": [],
+  "library_skills": [
+    {
+      "name": "apply-engineering-guidelines",
+      "version": "1.0.0-sha256-d3011aab3ed7aa8d"
+    },
+    {
+      "name": "build-solver-services",
+      "version": "1.0.0-sha256-bced6285a81c77d2"
+    }
+  ],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "abra",
+  "repositories": [],
+  "run_repositories": {
+    "max": 5,
+    "permissions": {
+      "contents": "read",
+      "pull_requests": "read"
+    }
+  },
+  "version": "1.159.0"
+}

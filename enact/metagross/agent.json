@@ -1,0 +1,32 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Fullstack monorepo architect. Use proactively when designing fullstack web applications — reports the monorepo layout, frontend hosting, backend API boundaries, and deployment plan; does not write code.",
+  "hosts": [],
+  "library_skills": [
+    {
+      "name": "apply-engineering-guidelines",
+      "version": "1.0.0-sha256-d3011aab3ed7aa8d"
+    },
+    {
+      "name": "build-frontend-backends",
+      "version": "1.0.0-sha256-00e2bdb98350cbfe"
+    }
+  ],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "metagross",
+  "repositories": [],
+  "run_repositories": {
+    "max": 5,
+    "permissions": {
+      "contents": "read",
+      "pull_requests": "read"
+    }
+  },
+  "version": "1.159.0"
+}

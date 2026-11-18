@@ -1,0 +1,7 @@
+{
+  "requires_mcp": [
+    "figma",
+    "jigglypuff"
+  ],
+  "requires_mcp_reason": "agents/wigglytuff.md:18 and skills/figma-to-email-template: reads the frame through the Figma MCP, then calls Jigglypuff's hosted MCP server for images, validation, previews and the template PR."
+}

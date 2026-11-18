@@ -1,0 +1,40 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Communication-runtime designer. Use proactively when planning how audience, template, and activity capabilities compose into deterministic channel services — reports data contracts, scoring, allocation, and validation plans; does not write code.",
+  "hosts": [],
+  "library_skills": [
+    {
+      "name": "apply-engineering-guidelines",
+      "version": "1.0.0-sha256-d3011aab3ed7aa8d"
+    },
+    {
+      "name": "assemble-communication-runtime",
+      "version": "1.0.0-sha256-1c7026552bda916a"
+    },
+    {
+      "name": "build-batch-workflows",
+      "version": "1.0.0-sha256-aec04eab08f73ca6"
+    },
+    {
+      "name": "build-solver-services",
+      "version": "1.0.0-sha256-bced6285a81c77d2"
+    }
+  ],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "oranguru",
+  "repositories": [],
+  "run_repositories": {
+    "max": 5,
+    "permissions": {
+      "contents": "read",
+      "pull_requests": "read"
+    }
+  },
+  "version": "1.159.0"
+}

@@ -1,0 +1,31 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Elephant open-data exploration agent. Use proactively for published county records, scoped counts and filters, contractor evidence, address mismatches, area questions, and lexicon schema definitions. Not for ingestion.",
+  "hosts": [],
+  "library_skills": [
+    {
+      "name": "use-elephant-mcp",
+      "version": "1.0.0-sha256-1f0f2b2a9ff12ec2"
+    }
+  ],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "mcp_servers": [
+    "elephant"
+  ],
+  "model": "opus",
+  "name": "donphan",
+  "repositories": [],
+  "run_repositories": {
+    "max": 5,
+    "permissions": {
+      "contents": "write",
+      "pull_requests": "write"
+    }
+  },
+  "version": "1.159.0"
+}
