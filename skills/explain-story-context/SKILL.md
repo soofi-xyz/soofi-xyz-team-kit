@@ -72,7 +72,7 @@ Open with the business, not with an internal component name.
 Draw the problem as a swimlane timeline, not as prose. The reader should see
 what goes wrong, and what the fix changes, before reading any text. Follow
 [the problem drawing reference](reference/problem-drawing.md) for lane
-contents, a backfill example and a Markdown fallback.
+contents, backfill lanes and a Markdown fallback.
 
 - **Events.** Align the lanes under the minimal sequence of real-world events
   that reproduces the bug. Verify that the sequence is minimal and still
