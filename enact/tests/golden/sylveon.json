@@ -1,0 +1,58 @@
+{
+  "agent": "sylveon",
+  "tasks": [
+    {
+      "id": "sylveon-figma-to-code-intake",
+      "message": "Update the payment portal's account summary card to the new design. What do you need from me before touching code?",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "asks for the app (apps/landing_page or apps/payment_portal)",
+          "asks for section-level Figma frames or exports, not a full-page frame",
+          "asks for the test lane",
+          "business logic is preserved: structure and styles only"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 2,
+        "max_minutes": 10
+      }
+    },
+    {
+      "id": "sylveon-no-figma-on-enact",
+      "message": "Match the landing page footer to https://www.figma.com/design/AbCdEfGhIjKlMnOp/Landing?node-id=4-10 . This run has no figma tools. Do not change anything; tell me what you would do.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "says this run has no figma tools and cannot read the Figma link",
+          "asks for section-level exports or the person's own Figma token through connect_figma"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value",
+          "claims to have read the Figma design"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 2,
+        "max_minutes": 10
+      }
+    }
+  ]
+}

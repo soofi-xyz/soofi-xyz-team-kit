@@ -15,8 +15,7 @@ enact/tests/
 ## Scope
 
 All agents in `agents/` move to Enact except the ones that stay local: `ampharos`,
-`audino`, `braviary`, `castform`, `oracle`, `smeargle` and `sylveon`. These have no golden
-file and are never a routing label.
+`braviary`, `castform` and `oracle`. These have no golden file and are never a routing label.
 
 | Group | Agents | Golden task kind |
 | --- | --- | --- |
