@@ -1,5 +1,5 @@
 {
-  "stays_local": ["ampharos", "braviary", "castform", "oracle"],
+  "stays_local": ["ampharos", "braviary", "oracle"],
   "waves": {
     "1a": ["slowking", "porygon", "xatu", "oranguru", "machamp", "metagross", "abra"],
     "1b": ["mew", "slowbro", "arceus"]
