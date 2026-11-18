@@ -35,8 +35,9 @@ capacity). A run produces selected actions, overflow with typed reasons, a summa
 manifest. Downstream products send, dial or render; Schedule never contacts anyone.
 
 The first supported use case is a fixed daily count from one cohort, rotating so that
-anyone reached within the cooldown is skipped and never-reached subjects go first. Build
-it as configuration over generic features; never as a voicemail, cohort or client branch.
+never-reached subjects go first. With a cooldown, anyone reached within it is skipped;
+without one, rotation changes order only and nobody is excluded. Build it as
+configuration over generic features; never as a voicemail, cohort or client branch.
 
 ## Rules
 
@@ -51,7 +52,17 @@ it as configuration over generic features; never as a voicemail, cohort or clien
   selection, subject and contact. Same version, data and date give the same output.
 - Keep the ledger append-only and only count published live runs. A re-run of a date
   supersedes the earlier run for rotation without deleting ledger rows. Simulations and
-  failed runs never count.
+  failed runs never count. Published live runs that existed before the ledger shipped
+  must count for rotation from day one, with no manual backfill.
+- When shipping the rotation piece, lift its own refusals in `notSupportedYet`
+  (`selections[].rotation` for ledger history and least-recently-reached, including
+  without cooldown). Keep refusing capabilities this piece does not implement
+  (`{{ledger.actions}}` in sources until that sub-feature lands, history from a source
+  id if not yet built, `weeklyTarget`, selection capacity, `min_cost_flow`).
+- Acceptance for rotation without cooldown (priority only): run date D live, then
+  simulate D+1. D+1 selects the same eligible set as without rotation, but subjects not
+  reached on D come first; with a count smaller than the pool, D's subjects fill only
+  the remaining places. With a cooldown, D+1 excludes D's subjects while it holds.
 - Never silently change configured hours, counts or capacities. Anything not delivered is
   overflow with a reason and a `shortfall` in the summary.
 - Keep sources read-only and bounded (`maxScanGiB`, `maxRows`) behind a metadata-only cost
