@@ -1,6 +1,6 @@
 ---
 name: build-console-product
-description: "Build Console Figma-to-HTML/React creation and editing with MCP, Bedrock AgentCore and the pi harness, plus its runtime and API: versioned UI schemas, safe reusable components, typed product bindings, access enforcement, independent configuration delivery and observable deployments. Use Chandelure; use Vivillon for existing-service configuration."
+description: "Build Console Figma-to-HTML/React creation and editing with MCP, Bedrock AgentCore and the pi harness, plus its shared design system (tokens, base components, gallery), runtime and API: versioned UI schemas, safe reusable components, typed product bindings, access enforcement, independent configuration delivery and observable deployments. Use Chandelure; use Vivillon for existing-service configuration."
 disable-model-invocation: true
 ---
 
@@ -19,6 +19,11 @@ Read [project configuration and component lifecycle](reference/product-lifecycle
 for persisted projects, the review workspace, asset/version management, export/PR
 application, renderer promotion and production operations. Implement its HTTP
 contracts and cumulative acceptance alongside the capability map.
+Read [the design-system contract](reference/design-system.md) before any change to
+base UI components, tokens, themes or the gallery. Own tokens, base components and
+the gallery in `prismteam-ai/console`; require checks `DS-1` to `DS-4` and the
+cumulative scenario. Prefer design-system exports over ad-hoc UI; fail closed on
+unknown variants so they do not compile.
 Read [the sign-in contract](reference/google-sign-in.md) before any change to
 pages, components, routes, the renderer shell or the web runtime. Sign users in
 through Access; Console's own `google-oidc` policy is existing behavior to
@@ -45,10 +50,12 @@ Deliver Figma-driven creation and modification of HTML or React components throu
 an authenticated HTTP job API, backed by Bedrock AgentCore Runtime and the pi
 harness. Return reviewable source, patches, previews and test evidence. Also
 deliver a reusable web runtime and authenticated configuration API. Own the
-application schema, renderer shell, safe component registry, typed data/action
-bindings, access enforcement, compatibility rules, independent runtime/configuration
-selection, refresh/rollback behavior and telemetry. Reject arbitrary executable
-configuration and fail unsupported schemas, components and bindings explicitly.
+shared design system (tokens, base components, gallery), application schema,
+renderer shell, safe component registry, typed data/action bindings, access
+enforcement, compatibility rules, independent runtime/configuration selection,
+refresh/rollback behavior and telemetry. Prefer design-system exports for base
+UI; fail closed on unknown variants. Reject arbitrary executable configuration
+and fail unsupported schemas, components and bindings explicitly.
 
 Keep Access sign-in, roles and permissions, Account identity and keys, Model definitions/composition, Persist
 facts/queries, Report queries/datasets and System workflows with their owning
