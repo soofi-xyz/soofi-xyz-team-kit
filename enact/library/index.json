@@ -233,12 +233,12 @@
       "version": "1.0.0-sha256-ee91d9fd03681778"
     },
     "build-console-product": {
-      "bytes": 82527,
-      "digest": "sha256:22c14f0e51ecc40d8cdc199799052f2c713218f09c8868cf88638956e27f8033",
-      "encoded_bytes": 86123,
-      "files": 6,
+      "bytes": 87538,
+      "digest": "sha256:06a47fcd0b14f7d9aa080199d1f1d48fd713bfbc6a2c2023bdb53ba15ccb0264",
+      "encoded_bytes": 91368,
+      "files": 7,
       "reason": "used by 5 packaged agents",
-      "stored_bytes": 84627,
+      "stored_bytes": 89769,
       "used_by": [
         "chandelure",
         "noctowl",
@@ -246,7 +246,7 @@
         "vivillon",
         "wigglytuff"
       ],
-      "version": "1.0.0-sha256-839dbf3e234d73de"
+      "version": "1.0.0-sha256-5bac63f5b478b3dd"
     },
     "build-documentation-product": {
       "bytes": 24372,

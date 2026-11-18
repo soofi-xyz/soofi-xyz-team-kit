@@ -572,7 +572,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 563477,
+      "library_pinned_bytes": 568619,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-console-product",
@@ -2144,7 +2144,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.4-high",
-      "library_pinned_bytes": 826162,
+      "library_pinned_bytes": 831304,
       "library_skills": [
         "apply-engineering-guidelines",
         "atomic-data",
@@ -2688,7 +2688,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.5-high",
-      "library_pinned_bytes": 790788,
+      "library_pinned_bytes": 795930,
       "library_skills": [
         "apply-engineering-guidelines",
         "assemble-communication-runtime",
@@ -3109,7 +3109,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 563477,
+      "library_pinned_bytes": 568619,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-console-product",
@@ -3230,7 +3230,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.4-high",
-      "library_pinned_bytes": 620555,
+      "library_pinned_bytes": 625697,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-console-product",
@@ -3731,8 +3731,8 @@
       ]
     },
     "build-console-product": {
-      "bytes": 82527,
-      "files": 6,
+      "bytes": 87538,
+      "files": 7,
       "flags": {},
       "omitted": [],
       "references": [
