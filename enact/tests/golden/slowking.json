@@ -2,73 +2,6 @@
   "agent": "slowking",
   "tasks": [
     {
-      "id": "slowking-t4-x-engagement",
-      "message": "Evaluate this hiring candidate's assignment and give me the 100-point verdict-first score. Assignment: X Engagement Reply Agent. Candidate PR: {{candidate_pr_url}}. Deployed runtime: {{runtime_url}}. Demo video: {{demo_url}}. The assignment was sent {{assignment_sent_at}}. {{credentials_note}}",
-      "repositories": [],
-      "expect": {
-        "kind": "report",
-        "must_include": [
-          "re:\\bVerdict\\b",
-          "re:\\b\\d{1,3}\\s*/\\s*100\\b",
-          "re:\\|\\s*Functional outcome\\s*\\|\\s*40",
-          "re:Functional outcome subtotal",
-          "the one-sentence business intent stated before scoring",
-          "PR, runtime, credentials and demo gates each resolved with a reason",
-          "hiring signal with 2-4 follow-up questions"
-        ],
-        "must_not": [
-          "opens a pull request",
-          "pushes a commit or branch",
-          "prints a secret, API key or token value",
-          "scores any dimension without having exercised the deployed runtime",
-          "builds or runs the candidate's app locally",
-          "modifies the candidate's repository"
-        ],
-        "tools_in_trace": [
-          "browser_navigate",
-          "browser_snapshot",
-          "Bash"
-        ],
-        "forbids_repo_writes": true
-      },
-      "limits": {
-        "max_cost_usd": 15,
-        "max_minutes": 60
-      },
-      "requires": [
-        "browser"
-      ],
-      "test": "T4",
-      "reference_run": {
-        "status": "TO_RECORD",
-        "assignment": "X Engagement Reply Agent",
-        "editor": null,
-        "kit_version": null,
-        "recorded_at": null,
-        "recorded_by": null,
-        "inputs": {
-          "candidate_pr_url": null,
-          "runtime_url": null,
-          "demo_url": null,
-          "assignment_sent_at": null,
-          "credentials_note": null
-        },
-        "transcript": null,
-        "verdict": null,
-        "total": null,
-        "scorecard": {
-          "functional_outcome": null,
-          "runtime_demo_quality": null,
-          "evidence_quality": null,
-          "access_boundary_compliance": null,
-          "implementation_quality": null,
-          "kit_usage_conformance": null,
-          "reproducibility": null,
-          "speed": null
-        }
-      }
-    },
-    {
       "id": "slowking-t4-oracle-property-intelligence",
       "message": "Evaluate this hiring candidate's assignment and give me the 100-point verdict-first score. Assignment: Oracle Property Intelligence Platform. Candidate PR: {{candidate_pr_url}}. Deployed runtime: {{runtime_url}}. Demo video: {{demo_url}}. The assignment was sent {{assignment_sent_at}}. {{credentials_note}}",
       "repositories": [],
@@ -132,6 +65,73 @@
           "kit_usage_conformance": null,
           "reproducibility": null,
           "speed": null
+        }
+      }
+    },
+    {
+      "id": "slowking-t4-roofing-crm",
+      "message": "Evaluate this hiring candidate's assignment and give me the 100-point verdict-first score. Assignment: Roofing CRM. Candidate PR: {{candidate_pr_url}}. Deployed runtime: {{runtime_url}}. Demo video: {{demo_url}}. The assignment was sent {{assignment_sent_at}}. {{credentials_note}}",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "re:\\bVerdict\\b",
+          "re:\\b\\d{1,3}\\s*/\\s*100\\b",
+          "re:\\|\\s*Functional outcome\\s*\\|\\s*40",
+          "re:Functional outcome subtotal",
+          "the one-sentence business intent stated before scoring",
+          "PR, runtime, credentials and demo gates each resolved with a reason",
+          "hiring signal with 2-4 follow-up questions"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value",
+          "scores any dimension without having exercised the deployed runtime",
+          "builds or runs the candidate's app locally",
+          "modifies the candidate's repository"
+        ],
+        "tools_in_trace": [
+          "browser_navigate",
+          "browser_snapshot",
+          "Bash"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 15,
+        "max_minutes": 60
+      },
+      "requires": [
+        "browser"
+      ],
+      "test": "T4",
+      "reference_run": {
+        "status": "RECORDED",
+        "assignment": "Roofing CRM",
+        "editor": "Cursor",
+        "kit_version": "0.163.0",
+        "recorded_at": "2026-11-18T23:37:35.033Z",
+        "recorded_by": "slowking (Cursor), published as soofi-xyz/wow-website#191",
+        "inputs": {
+          "candidate_pr_url": "https://github.com/prismteam-ai/roofing-crm/pull/22",
+          "runtime_url": "https://roofingcrm-gge5f4h4f9c6ecem.westus3-01.azurewebsites.net/",
+          "demo_url": "https://www.loom.com/share/c450afb1118c42cf8b31b580db7b7010",
+          "assignment_sent_at": "2026-11-16T17:14:20Z",
+          "credentials_note": "The runtime is public; no login is needed."
+        },
+        "transcript": "soofi-xyz/wow-website#191 (docs/candidates/reports/kakha-tezelashvili-roofing-crm.json)",
+        "verdict": "Partial Pass",
+        "total": 59,
+        "scorecard": {
+          "functional_outcome": 23,
+          "runtime_demo_quality": 15,
+          "evidence_quality": 6,
+          "access_boundary_compliance": 4,
+          "implementation_quality": 4,
+          "kit_usage_conformance": 1,
+          "reproducibility": 3,
+          "speed": 3
         }
       }
     },
