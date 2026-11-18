@@ -15,7 +15,7 @@
     "max_turns": 100
   },
   "mcp_servers": [
-    "elephant"
+    "persist"
   ],
   "model": "opus",
   "name": "donphan",

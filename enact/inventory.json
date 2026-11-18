@@ -880,10 +880,8 @@
     },
     "donphan": {
       "assumptions": [],
-      "blocked_by": [
-        "mcp-allow-list"
-      ],
-      "bytes": 6523,
+      "blocked_by": [],
+      "bytes": 7423,
       "files": 1,
       "flag_counts": {},
       "instruction_flags": {},
@@ -894,7 +892,7 @@
         "use-elephant-mcp"
       ],
       "mcp_servers": [
-        "elephant"
+        "persist"
       ],
       "model": "opus",
       "needs_secrets": [],
@@ -903,9 +901,9 @@
       "own_skills": [],
       "readonly": false,
       "requires_mcp": [
-        "elephant"
+        "persist"
       ],
-      "requires_mcp_reason": "agents/donphan.md:7-8: 'Call only tools on MCP server `elephant`. Never bypass MCP'; every answer comes from Elephant MCP 2.0 tools (use-elephant-mcp). Seeded by the Enact packaging story.",
+      "requires_mcp_reason": "agents/donphan.md:7-8 answers only from Elephant MCP tools; on Enact the hosted `persist` MCP serves the same Atlas index (registered IPFS index elephant_atlas), since no hosted Elephant MCP exists.",
       "secret_env_mentions": [],
       "skills": [
         "use-elephant-mcp"
@@ -3155,10 +3153,8 @@
         "curl",
         "python3"
       ],
-      "blocked_by": [
-        "mcp-allow-list"
-      ],
-      "bytes": 50883,
+      "blocked_by": [],
+      "bytes": 51783,
       "files": 9,
       "flag_counts": {
         "aws-profile": 1,
@@ -3177,7 +3173,7 @@
         "use-elephant-mcp"
       ],
       "mcp_servers": [
-        "elephant"
+        "persist"
       ],
       "model": "opus",
       "needs_secrets": [],
@@ -3189,9 +3185,9 @@
       ],
       "readonly": false,
       "requires_mcp": [
-        "elephant"
+        "persist"
       ],
-      "requires_mcp_reason": "agents/watchog.md:18-19: builds against 'the same Elephant MCP 2.0 package' Donphan uses and verifies through the Watchog-owned HTTP MCP deployment (listAtlasCounties). Seeded by the Enact packaging story.",
+      "requires_mcp_reason": "agents/watchog.md:18-19 reads published Atlas data to design and check facts; on Enact the hosted `persist` MCP serves the same Atlas index (elephant_atlas). The Watchog-owned HTTP MCP deployment it builds is unaffected.",
       "secret_env_mentions": [
         "GITHUB_TOKEN",
         "LANGSMITH_API_KEY",
@@ -3592,7 +3588,8 @@
   "kit_version": "0.163.0",
   "mcp_allow_list": [
     "enact",
-    "browser"
+    "browser",
+    "persist"
   ],
   "skills": {
     "apply-engineering-guidelines": {

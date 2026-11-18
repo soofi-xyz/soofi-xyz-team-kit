@@ -71,7 +71,9 @@
     "browser"
   ],
   "$mcp_allow_list": "Remote MCP servers on the target environment's list (GET /enact/mcp-servers), on top of mcp_builtin. T1 --allow-list-from reads a live list.",
-  "mcp_allow_list": [],
+  "mcp_allow_list": [
+    "persist"
+  ],
   "limits": {
     "max_total_bytes": 1048576,
     "max_files": 200,
