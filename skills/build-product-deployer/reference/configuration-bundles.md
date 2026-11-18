@@ -34,7 +34,7 @@ Build → Marketplace → Deploy path before claiming the migration is complete.
 | Transform / Kecleon, Silvally | Own mapping API semantics and author/validate mapping configurations |
 | Connect / Lapras, Wingull | Own flow, partner-configuration and activation API semantics and author/validate their configurations |
 | System / Zygarde, Celebi | Own definition, template, flow and waterfall API semantics and compose their configurations |
-| Console / Chandelure, Vivillon | Own application, revision and publication API semantics and author application manifests (bundle kind pending; see [Console application payloads](#console-application-payloads)) |
+| Console / Chandelure, Vivillon | Own application, revision and publication API semantics and author application manifests (kind `application`; see [Console application payloads](#console-application-payloads)); own the API semantics for apps, component packs and design-system configuration and author them (target kinds; see [Console app, component-pack and design-system payloads](#console-app-component-pack-and-design-system-payloads)) |
 | Access / Aegislash, Doublade | Own application API semantics and author application documents (bundle kind pending; see [Access application payloads](#access-application-payloads)) |
 | Inference / Beheeyem, Elgyem | Own configuration API and version semantics and author `inference-1` configurations (see [Inference configuration payloads](#inference-configuration-payloads)) |
 | Enact / Zoroark, Zorua | Own agent API and version semantics and author agent directories (see [Enact agent payloads](#enact-agent-payloads)) |
@@ -173,8 +173,11 @@ files it pins. Select the payload by the rule's `engine` (absent means
 
 ## Console application payloads
 
-Target contract: Build's `CONFIGURATION_KINDS` and Deploy's adapters do not yet
-include `console`. Console's API already has every primitive the adapter needs, on
+As of 2026-11-18 Build's `CONFIGURATION_KINDS` has `console: ["application"]` and
+Deploy has the Console adapter, both on their repositories' default branch. Verify
+the target environment has them installed before relying on the path: no installed
+environment and no real bundle carrying an application has been verified. Console's
+API has every primitive the adapter needs, on
 `https://<shared domain>/console` with the shared `x-api-key` (scopes
 `console:configure` and `console:publish`); do not ask Chandelure for new ones.
 Paths below are relative to `/console`.
@@ -200,6 +203,69 @@ Paths below are relative to `/console`.
 - **Retire or restore:** use `POST …/rollback` only for an explicit restore intent.
   Console has no application delete; report retirement as unsupported rather than
   claiming removal.
+- **Known gap:** Build checks a manifest's top-level fields against a closed list
+  that omits `forms`, so a manifest with action forms fails Build (`the manifest
+  has no field forms`) although Console accepts it. Tinkaton adds the field; until
+  then report the gap instead of dropping the forms or installing by hand.
+
+## Console app, component-pack and design-system payloads
+
+Target contract. As of 2026-11-18 none of it is built: Build has no such kind,
+Deploy no such adapter and Console no API for it. Tinkaton and Corviknight settle
+the kinds, the bundle type and the wire contract with Chandelure, and follow
+Console's `requirements/swagger.yml` once it has the routes. The kind names are
+targets until Build and Deploy merge them. Console's side is in
+[the design system contract](../../build-console-product/reference/design-system.md)
+and [the app kit contract](../../build-console-product/reference/app-kit.md#delivery).
+
+| Kind (product `console`) | `source` carries | Build | Deploy |
+| --- | --- | --- | --- |
+| `design-system` | One design-system configuration JSON document: tokens, switched-on components, per-component allowed variants and defaults, active pack versions and the theme choices apps may make | Validates and hashes it without calling Console; runs no code | Submits it as an immutable revision, publishes it and reads it back |
+| `app` | An app's source, written against the app kit | Installs, runs the app kit's check, builds and verifies the output | Uploads the built files, publishes the version and reads it back |
+| `component-pack` | A component pack's source | Installs, runs the pack's check, builds and verifies the output | Uploads the built files, activates the pack version and reads it back |
+
+- **Build step and gate (new):** configuration bundles run no code today. `app`
+  and `component-pack` need Build to install dependencies and run a build in the
+  isolated runner, with the app kit's check as a publish gate: a source that
+  fails the check produces no artifact. Tinkaton settles whether they are
+  `CONFIGURATION` kinds or another bundle type. Keep the runner's rules:
+  Build-owned commands only, no lifecycle scripts, no product `.npmrc` and no
+  network beyond Build's package registry.
+- **Output verification:** read the bundler's input list and fail unless every
+  input is the app's own source: no file from an installed package, no bundled
+  design system or React, and no CSS file. Fail a pack whose replacement of a
+  base component has incompatible props.
+- **Recorded facts:** record for an app the components it uses, the packs it
+  needs and the minimum design-system version; for a pack, the components it
+  adds or replaces. Console checks them at publish; Build does not call Console.
+- **Packages:** publish the app kit and each pack's types package into Build's
+  package registry, the only one the isolated runner can install from, at the
+  version of the design-system or pack build they describe. Publishing a private
+  package there is new Build scope. Keep the registry address out of the source.
+- **Apply:** install only through Console's API on the shared domain with the
+  shared `x-api-key`; never write Console's storage or its pointer. Upload is
+  idempotent by content digest, Console verifies every file against its digest
+  and saves nothing on a mismatch, and publish or activation uses optimistic
+  concurrency: a stale marker is a conflict to surface, not to retry blindly.
+  Order a pack before the design-system configuration that activates it and the
+  apps that use it, through `dependsOn`.
+- **Refusals:** Console refuses an app that needs a newer design system, a
+  switched-off component or a pack the environment lacks. Fail the install with
+  Console's reason; never work around it.
+- **Read back:** require Console to show the installed version and digest as
+  active; report both in the run result, and `UNCHANGED` when it already was.
+- **Retire or restore:** rollback is an explicit restore intent that re-points
+  to an earlier published version; a failed install does not trigger one. Report
+  retirement as unsupported unless Console's API provides removal.
+- **Provenance and review:** every write carries Deploy provenance and its
+  signature like any other configuration write. `app` and `component-pack` carry
+  code that runs in the browser on the shared domain, so the recorded check
+  result and the Marketplace review are the review before publish; the review
+  environment needs a Console with a compatible design system.
+- **Acceptance:** `AD-1` to `AD-7` in
+  [the app kit tests](../../build-console-product/reference/app-kit.md#tests) and
+  the `CP` checks in
+  [the design system tests](../../build-console-product/reference/design-system.md#tests).
 
 ## Access application payloads
 

@@ -36,6 +36,17 @@ installer capabilities to Corviknight; never substitute per-bundle code or direc
 For Access applications, confirm the Access adapter is deployed, then read each installed
 application back through the Access API; a dropped address or a removed application stops
 working for sign-in at once, so name that effect before submitting.
+For Console dashboards (kind `application`), confirm the target Deploy has the Console
+adapter, then compare the run's `revisionId` and `manifestDigest` with Console's active
+read-back. The `console` kinds `design-system`, `app` and `component-pack` are targets,
+not supported as of 2026-11-18: verify the adapter in the target Deploy before
+subscribing and say plainly when it is absent; never upload files to Console or change
+its pointer by hand. Once supported, follow
+[the contract's Console app, component-pack and design-system payloads](../skills/build-product-deployer/reference/configuration-bundles.md#console-app-component-pack-and-design-system-payloads):
+subscribe a component pack before the design-system configuration and apps that need it,
+read the install back and compare the active version and digest through the Console API.
+Report a refusal (an older design system, a switched-off component, a missing pack) with
+Console's reason and hand it to the bundle's author.
 
 When Registeel hands off a published `VALID` configuration bundle, subscribe it as
 `skills/configure-deploy-product/SKILL.md` "Subscribe a handed-off bundle" describes:

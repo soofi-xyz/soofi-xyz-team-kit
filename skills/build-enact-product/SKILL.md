@@ -199,6 +199,25 @@ specified signs in registered applications with exact redirect addresses. Verify
 against the deployed Access; where it does not fit, hand `aegislash` a reproducible example
 and keep testing with the environment key.
 
+## Remote MCP servers that need a person's sign-in
+
+Requested 2026-11-18; this does not establish support. Kit agents that work from Figma
+designs run on Enact (`chandelure` for design-system components and component packs,
+`wigglytuff` for email template bodies), and Figma serves only an
+approved, registered client with each person's own sign-in. Enact's contract at `main`
+`721fd15` authenticates a remote MCP server with one stored header per environment, which
+cannot carry that.
+
+- Let an allowed remote MCP server declare that it needs the caller's own sign-in. Register
+  Enact as that server's client once per environment; the person signs in on the server's
+  own page, and the sign-in is kept private to its owner like a linked Claude plan.
+- A run by a person who has not signed in gets a sign-in prompt, never another person's or
+  the environment's credential. Service and Asana runs use such a server only when the
+  product owner agrees which identity they act as; ask first.
+- Keep the sign-in out of the agent definition, the sandbox's files, logs and the trace.
+- Add the decision to the table above before building, and write the fields into the
+  repository's contract document, which then wins over this section.
+
 ## Repositories
 
 - Use one GitHub App installed only on repositories agents may use. Keep its private key in

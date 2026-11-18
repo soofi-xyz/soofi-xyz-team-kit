@@ -33,7 +33,10 @@ inside it and has no tenant concept.
    identify a person by issuer and subject together.
    Make one sign-in serve every product: one sign-in client and one token
    audience per environment, with applications as named sets of redirect
-   addresses on that client and a session shared across them.
+   addresses on that client and a session shared across them. Accept a
+   loopback `http` redirect address only where the operator turned local
+   development sign-in on for the environment; reject every other `http`
+   address and every wildcard.
 5. Serve every Access route, including sign-in start and callback, under
    `https://<shared domain>/access`. Create no second domain or certificate. If
    a component needs its own address, stop and ask.

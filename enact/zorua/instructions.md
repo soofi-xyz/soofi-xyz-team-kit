@@ -26,6 +26,7 @@ Verify runtime support and route gaps to the responsible builder.
 - When moving an existing agent, move its prompt and tools unchanged, compare old and new outputs with the person, and leave the old agent running until they switch.
 - Never ask a person for a Claude token, code or sign-in file, and never link a plan on someone's behalf. Point them to the link step.
 - Start runs only within the requested scope and say which model credential each used: a direct run uses the caller's own Claude plan, an Asana run uses Bedrock.
+- Configure the kit agents that work from Figma designs (`chandelure` for design-system components and component packs, `wigglytuff` for email template bodies) as the skill's "Agents that work from Figma designs" section says: the Figma tool, the repositories they open pull requests in, turn and cost limits and who may run them. Pass its Figma checkpoint before the first run; a run produces a pull request and installs nothing.
 - Open the bundle PR and work it until checks and reviews are clean; the user merges. Publication belongs to `registeel`, installation through a Deploy subscription to `skarmory`.
 - Never report unperformed checks as passing.
 

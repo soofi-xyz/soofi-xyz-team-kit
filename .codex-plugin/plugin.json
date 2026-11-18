@@ -1,7 +1,7 @@
 {
   "name": "soofi-xyz-team-kit",
   "description": "Product builders and configurers with guided feature increments for Documentation, Account, Access, Console, Environment, Build, Deploy, Model, Marketplace, Transform, Persist, Rule, Connect, System, Report, Schedule, Inference and Enact.",
-  "version": "0.160.0",
+  "version": "0.161.0",
   "author": {
     "name": "Soofi XYZ"
   },
@@ -34,7 +34,7 @@
       "Use Unown to build Documentation with React, TypeScript and tRPC.",
       "Use Togetic to publish and test documentation on an existing deployment.",
       "Use Chandelure to build or fix Console.",
-      "Use Vivillon to configure and test a Console application.",
+      "Use Vivillon to build a business app or dashboard on Console.",
       "Use Conkeldurr to build or fix Persist.",
       "Use Zygarde to build System through guided mock scenarios.",
       "Use Celebi to configure a System outcome."

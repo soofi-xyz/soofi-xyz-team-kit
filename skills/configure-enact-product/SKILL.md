@@ -128,6 +128,39 @@ Enact's `docs/agent-contract.md` defines every manifest field and allowed path, 
 6. **Who may run it.** Decide the roles or people. Grants are set through Access; hand
    them to `doublade`.
 
+## Agents that work from Figma designs
+
+Console has no authoring runtime. Work that starts from a Figma design is done by kit
+agents run on Enact or in an editor, and what they need is Enact agent configuration:
+
+| Agent | Makes | Opens pull requests in |
+| --- | --- | --- |
+| `chandelure` | Design-system components and component packs | The Console repository and component pack repositories |
+| `wigglytuff` | Email template bodies | None: Jigglypuff's MCP server opens the template pull request |
+
+1. **The Figma tool.** In this kit, declare `figma` in the agent's
+   `enact/overrides/<agent>.json` `requires_mcp` with the file and line that needs it
+   ("Declaring MCP needs" in this kit's `docs/enact.md`); the generator writes it
+   to the manifest's `mcp_servers`. The server must be on the environment's allowed list:
+   read it with `GET /enact/mcp-servers`. Until it is, the package stays
+   `blocked_by: mcp-allow-list`.
+2. **The Figma checkpoint.** Figma serves only an approved, registered client with each
+   person's own sign-in. Before the first run in an environment, confirm that Enact is
+   registered and approved as a Figma client there, that the person the run acts for has
+   signed in to Figma through it, and that one read of a named frame succeeds; record
+   redacted evidence and reuse it for later work. As of 2026-11-18 Enact authenticates a
+   remote MCP server with one stored header per environment, so this checkpoint cannot
+   pass: it is the `mcp-sign-in` gap for `zoroark`. Until it passes, the agent reads Figma
+   in an editor. Never reuse an editor's Figma credentials or a shared token on Enact.
+3. **Repositories.** List only the repositories in the table, each on the environment's
+   allowed list. The run opens a pull request and never merges.
+4. **Limits and who may run it.** Set a turn limit and a cost ceiling, start low, and
+   hand grants to `doublade`.
+5. **Output.** A pull request with the evidence that agent's own instructions require
+   (gallery screenshots for a component, the app check's result for an app). A run
+   installs nothing: components and apps reach an environment only after the merge,
+   through Build, Marketplace and Deploy.
+
 ## Moving an existing agent
 
 Eevee and Kirlia run elsewhere today. When asked to move one:

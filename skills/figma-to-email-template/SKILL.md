@@ -21,10 +21,15 @@ The flow has three parts:
    the PR, so it needs no adoption step.
 
 Do not call Figma from anything except the Figma MCP in Cursor. Figma only
-serves approved MCP clients; Cursor is approved, while Jigglypuff, Console and
-local scripts are not. Do not build a local server or script to replace a
+serves approved MCP clients; Cursor is approved, while Jigglypuff and local
+scripts are not. Do not build a local server or script to replace a
 Jigglypuff tool; the gates live in Jigglypuff so every path enforces them the
 same way.
+
+When Wigglytuff runs on Enact instead of Cursor, the Figma and Jigglypuff MCP
+servers are that agent's Enact configuration. `zorua` sets them up and verifies
+that Figma serves the environment's client; until that read is verified, use
+Cursor.
 
 ## One-time setup
 
@@ -110,9 +115,8 @@ Check these before reading the design. Read
 ### 2. Write the email HTML
 
 Write the Nunjucks HTML in Cursor from the design context and screenshot.
-Follow the Console
-[Email HTML target](../build-console-product/reference/component-authoring.md#email-html-target)
-rules; do not restate or loosen them here. Apply the Spring Oaks conventions in
+Follow the [email HTML rules](reference/email-conventions.md#email-html-rules);
+do not loosen them here. Apply the Spring Oaks conventions in
 [reference/email-conventions.md](reference/email-conventions.md):
 
 - Reuse variables that existing templates already use; do not invent new data.
@@ -203,7 +207,7 @@ running one Jigglypuff branch at a time.
 
 - Figma account, seat and file access confirmed with `whoami`.
 - The child email frame was read once, with a screenshot.
-- HTML follows the Email HTML target and Spring Oaks conventions; legal text
+- HTML follows the email HTML rules and Spring Oaks conventions; legal text
   unchanged; alt text on every image.
 - Every image is hosted through Jigglypuff; no placeholders, SVG or Figma URLs.
 - `validate_email_html` passes and previews match the design.

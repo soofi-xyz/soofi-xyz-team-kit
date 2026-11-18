@@ -4,7 +4,91 @@ Use synthetic identities and mocked product APIs until the relevant live
 integration is explicitly authorized. These fixtures define expected behavior;
 they do not prove that Console or an upstream API is deployed.
 
-## Application fixtures
+Fixture names below are the ones the tests in [the design system](design-system.md),
+[the app kit](app-kit.md) and [the sign-in contract](google-sign-in.md) use.
+Keep every name, number and record synthetic.
+
+## Design-system fixtures
+
+| Fixture | What it is | Used by |
+| --- | --- | --- |
+| `tokens-a` | The default token set, in the debt-collection demo's look | DS-3, DC-1, DC-4 |
+| `tokens-b` | A materially different token set: other ground, text, primary and radii, all still valid | DS-3, DC-1, DC-4, DC-5, RS-2, AD-4 |
+| `tokens-invalid` | Two revisions: one with a color token set to `12px`, one with an unknown key | DC-2 |
+| `button-variant-unknown` | A source file giving `Button` a variant that does not exist | DS-4 |
+| second design-system build | The same components with a visibly different `Button`, and one lazily loaded component | SH-3, SH-4, SH-5, AD-5 |
+| `v3` build | A next major version that removes a prop `sample-app` uses | SH-6 |
+
+## App fixtures
+
+| Fixture | What it is | Used by |
+| --- | --- | --- |
+| `sample-app` | Two pages built only from the kit: stats, a card, a switch, a button, a `Badge`, a table bound to a Report dataset, a list bound to a Persist read and one action; a hook and a context from a design-system component | AK-2, SH, AH, DC, DH, AD-1, AD-2, CS |
+| `sample-app-two` | A materially different app: other pages, a chart and a form, no shared page with `sample-app` | AH-2, CS-16, CS-17 |
+| `pack-app` | `sample-app` plus one page that uses `Sparkline` from `sample-pack` | CP-1, CP-2 |
+| `compact-app` | `sample-app` with a compact density chosen in its settings | DC-6 |
+| reference app | The debt-collection demo's Rules step, rebuilt from the kit | RA-1 to RA-4 |
+
+Each app carries one sample-data file per binding, so it runs locally with no
+network (AK-1).
+
+### Violation apps
+
+One app per rule, each identical to `sample-app` except for a single violation.
+Each must fail the check with exactly its rule.
+
+| Fixture | The one violation | Rule | Used by |
+| --- | --- | --- | --- |
+| `violation-raw-element` | renders a `<div>` | `raw-element` | AK-3, AD-3 |
+| `violation-class-name` | passes `className` to `Button` | `class-name` | AK-4 |
+| `violation-off-scale` | sets `gap="13px"` on `Stack` | `off-scale-value` | AK-5 |
+| `violation-css-file` | imports a style file | `css-file` | AK-6 |
+| `violation-dependency` | imports another interface library | `foreign-dependency` | AK-7 |
+| `violation-fetch` | calls `fetch("https://example.invalid")` | `network-call` | AK-8 |
+| `violation-dom` | calls `document.createElement("div")` | `dom-access` | AK-9 |
+
+Two hand-built bundles bypass the check on purpose, to prove the browser-side
+refusals: one calls the JSX wrapper with the string tag `div` (AK-10); the
+others import `createElement` from React and import `react-dom` (AK-11).
+
+## Component pack fixtures
+
+| Fixture | What it is | Used by |
+| --- | --- | --- |
+| `sample-pack` 1.0.0 | Adds `Sparkline`; replaces the base `Badge` with a visibly different one whose props match | CP-1, CP-3, CP-5, AD-7 |
+| `sample-pack` 1.1.0 | The same pack with a visibly different `Sparkline` | CP-6 |
+| `bad-pack` | A `Badge` replacement that requires a prop the base `Badge` does not have | CP-4, AD-7 |
+
+## Environments and people
+
+- **Environment A:** `tokens-a`, `sample-pack` installed and its `Badge`
+  replacement active.
+- **Environment B:** `tokens-b`, no pack.
+
+In the repository A and B are two installed stand-ins; deployed, they are two
+dev environments or two installs the user names.
+
+Use the people from [the Access test data](../../build-access-product/reference/test-data.md).
+`alice` is connected to `scope-a` (`item-a1`, `item-a2`) and holds the role for
+`sample-app` only; `bob` has the same role and is connected to nothing; `dave`
+is disabled during the run. DH-2 and CS-12 read the same Persist items.
+
+## Data fixtures for apps
+
+- **Report dataset:** `sample-report` / `accounts`, two refreshes with different
+  row counts, in Report's `report-output-1` shape (DH-1).
+- **Persist read:** a registered read that lists the items the caller is
+  connected to, faked upstream in the repository (DH-2, DH-3).
+- **Undeclared binding:** `other-binding`, registered in Console and declared by
+  `sample-app-two` only (DH-3).
+- **Action:** `mark-reviewed`, whose fake upstream records the caller (DH-5).
+- **Slow upstream:** the Persist fake delayed beyond the operation's timeout
+  (DH-6).
+- **Reference app rows:** 200 synthetic accounts, each with the list of rules
+  that hold it back on text and on email. At least 12 are held back by exactly
+  one rule, so RA-2 has a known expected count.
+
+## Dashboard fixtures
 
 ### Model Governance Console
 
@@ -35,6 +119,11 @@ reader receives a server-side denial for review operations.
 Expected: the application uses a different manifest and page composition without
 a renderer fork. Fact traversal is bounded and the System action requires its
 own scope.
+
+### Report dashboards
+
+Use the Console repository's `portal-performance` and `inventory-controls`
+fixtures for the reskin (RS-1 to RS-3). Their manifests do not change.
 
 ## Configuration variants
 
@@ -102,54 +191,10 @@ For each selected capability record:
 - configuration revision and digest;
 - account/application identity and redacted request ID;
 - validation/compatibility result;
+- design-system version and digest, and the active pack versions;
+- app version and digest, with the check result from its build record;
 - browser route/component observed;
 - correlated upstream adapter call or expected denial;
 - AWS resource/log inspected;
 - refresh or rollback result;
 - whether evidence is local, mocked deployment or authorized live integration.
-
-## Component authoring fixtures
-
-Use synthetic design snapshots and MCP fakes for local tests; label them mocked.
-For live acceptance, use authorized Figma nodes and record actual IDs/digests.
-Do not fabricate a working Figma URL or commit private source/design assets.
-
-| Case | Baseline / variant | Expected evidence |
-| --- | --- | --- |
-| Create HTML | Responsive card / navigation with mobile menu | Semantic HTML/CSS, no React dependency, preview and breakpoint results |
-| Create React | Card with typed props / existing design-system form | Reused components, type/build checks, final-route visual results |
-| Edit HTML | Spacing change / icon and button variant change | Scoped patch, unchanged behavior, failing-before/passing-after design assertion |
-| Edit React | Responsive layout / follow-up typography edit | Preserved handlers/state/API/analytics and props, session continuity, regression results |
-| Figma failure | Denied node / stale or disconnected MCP | Typed issue; no invented design or verified-success claim |
-| Recovery | Duplicate submit / interrupted turn | One logical job, restored context and no repeated side effect |
-| Isolation | Cross-tenant result / path escape / stale base | Denial or conflict with no unauthorized read/write |
-| Cancellation | Cancel during a tool call / cancel queued job | Terminal cancellation, no subsequent application/publication |
-
-Record operation/output, source revision, design provenance, pi/model/runtime
-versions, job/session IDs, artifact digests, commands/results, preview screenshots,
-LangSmith/AWS correlation and user observations. Keep live MCP, deployed runtime
-and mocked fixture evidence distinct.
-
-## Project and delivery acceptance fixtures
-
-Use the [lifecycle acceptance cases](product-lifecycle.md#cumulative-acceptance)
-with synthetic tenant/project/connection IDs and deterministic provider fakes.
-
-| Fixture | Expected result |
-| --- | --- |
-| HTML project versus React/CSS-module project | Different pinned profiles; same request contract; no implicit framework conversion |
-| Job changes project or tenant command/network policy | Forbidden override rejected; no execution or privilege widening |
-| Project edited during a job | Existing job uses original resolved revision; stale updates conflict |
-| Candidate accepted, then changed or rebased | Old acceptance cannot apply/promote new digest; checks and review repeat |
-| Export contains expiring Figma/localhost assets | Package assets by digest or report packaging failure |
-| PR provider succeeds then times out | Retry reconciles existing PR; no duplicate commit/PR |
-| Target branch advances before application/revert | Conflict or newly reviewed candidate; no forced overwrite |
-| React registry release / supported HTML adapter release | Build provenance, catalog and installation verified before component selection |
-| Unsupported HTML scripts or unknown component version | Export-only or validation rejection; no configuration execution |
-| New component versus existing component theme update | New runtime for component addition; configuration-only revision for supported theme change |
-| Busy tenant plus small tenant; exhausted budget | Bounded fair scheduling, enforced quotas and attributable usage |
-| Preview expiry, disconnect, retention and restore | Access revoked, cleanup verified and durable history restored without duplicate writes |
-
-Record local/provider-fake evidence separately from live repository PRs and
-Build/Marketplace/Deploy results. Do not publish fixtures to a real repository or
-service merely to satisfy a mocked test.

@@ -1,10 +1,12 @@
-# Console Google sign-in access policy
+# Console sign-in contract
 
-Use this contract for the `google-oidc` access policy: Google Workspace sign-in
-(OpenID Connect) for every application on a Console deployment. Read it before
-any change to Console pages, components, routes, the renderer shell, the API
-dispatcher or the web runtime. A change that weakens a guarantee below is a
-defect, even when the change was about something else.
+Use this contract for who may open what on a Console deployment: every app and
+every dashboard. The target is sign-in through Access. The `google-oidc` access
+policy (Google Workspace sign-in run by Console itself) is the existing
+behavior to migrate away from. Read this before any change to Console pages,
+components, routes, the shell, app hosting, the API dispatcher or the web
+runtime. A change that weakens a guarantee below is a defect, even when the
+change was about something else.
 
 ## Target: sign-in through Access
 
@@ -39,6 +41,12 @@ deployment; add no capability to it.
   would be the environment and would show every person the same records.
   Refresh first when the token has expired, and fail the binding closed when
   the refresh fails.
+- Hold apps to the same rules as dashboards. The shell owns the session and
+  loads an app's code only after sign-in. An app never receives, stores or
+  sends a token: its data hooks call Console's API, and Console forwards the
+  person's Access token to the owning product. Give each app its own required
+  roles in Access, so a role for one app opens no other. The route inventory
+  lists every published app and every dashboard route.
 - Carry these invariants from the rest of this contract over unchanged: deny by
   default with a fixed, tested public list (1), server-side enforcement (2),
   pages are configuration (4) and no credentials outside the secret store (6).
@@ -69,12 +77,14 @@ deployment; add no capability to it.
 
 The piece is done only when every check below exists as an automated browser or
 API test whose name starts with its ID and passes against a test deployment with
-Access installed. `CS-4b` alone runs in the repository against a fake Access
-token endpoint, because a real Access never returns a bad token. Use the people from [the Access test data](../../build-access-product/reference/test-data.md),
+Access installed. Run `CS-1` to `CS-15` twice: against a dashboard page and
+against a published app from [the test data](test-data.md). `CS-4b` alone runs
+in the repository against a fake Access token endpoint, because a real Access
+never returns a bad token. Use the people from [the Access test data](../../build-access-product/reference/test-data.md),
 with Console registered as an Access application. Record one evidence row per
 check: ID, result, request identifier and the Console revision.
 
-| ID | Do | Pass when |
+| ID | Do | Expect |
 | --- | --- | --- |
 | CS-1 | Open a Console page with no session | Redirected to Access sign-in start for the Console application; no page content served |
 | CS-2 | Sign in as `alice` | The page renders; the session's subject is her Access user identifier |
@@ -92,6 +102,8 @@ check: ID, result, request identifier and the Console revision.
 | CS-13 | Inspect the outbound calls Console made for `CS-12` and for an action a role allows | Each carries that person's Access token and no shared key |
 | CS-14 | A user holding the role for an action runs it | It runs, and the product it calls records that person as the caller |
 | CS-15 | Open the sign-in page after migration | It offers sign-in through Access only; there is no field or link for an API key |
+| CS-16 | Run the route inventory with `sample-app` and `sample-app-two` published, publish a third app, run it again, and request each app's files and bindings with no session | Every published app is listed in both runs, and each is refused without a session: no app code or data is served |
+| CS-17 | `alice`, who holds the role for `sample-app` only, opens `sample-app`, then opens `sample-app-two` and calls one of its bindings directly | `sample-app` renders; `sample-app-two` and its binding answer `403` from the server |
 
 ## Ownership
 
@@ -189,15 +201,16 @@ Hold all of these on every change:
    access control. Every data, report and configuration read checks the session
    in the API.
 3. **Renderer gate.** The shell checks the session before rendering any
-   application route, including deep links. Without one it shows a sign-in page
-   and loads no configuration or data. When Google sign-in is on, that page opens
+   dashboard route or loading any app, including deep links. Without one it
+   shows a sign-in page and loads no configuration, app code or data. When Google sign-in is on, that page opens
    on "Sign in with Google", which links to `/console/viewer/auth/google/start`
    with a return path limited to `/console/app/`. The API key stays available
    behind a secondary link for operators. Page and
    component code fetches only through the shared authenticated API client.
-4. **Pages are configuration.** Adding or changing a page or component changes
-   the manifest or registry, not the guard. If a change seems to need its own
-   auth handling, stop and treat it as a policy change.
+4. **Pages are configuration or app code.** Adding or changing a dashboard page
+   changes the manifest or registry; adding or changing an app changes its
+   delivered version. Neither touches the guard. If a change seems to need its
+   own auth handling, stop and treat it as a policy change.
 5. **Expiry and sign-out are server-side.** Reject a session past
    `sessionSeconds` or after sign-out even if the browser still holds it.
 6. **No credentials outside the secret store.** The client secret, codes, ID
@@ -226,7 +239,7 @@ to its one-time code, because parallel browser sign-ins otherwise swap tokens.
 | Reused or mismatched `state`, wrong `aud`, bad signature, wrong `nonce` | Denied |
 | `passwordSignIn: disabled` | `POST /viewer/session` returns `NOT_FOUND`; older viewer tokens are rejected; the renderer opens on Google sign-in |
 | API route inventory | Every OpenAPI operation outside the public list rejects a request without credentials, directly and under `/viewer` |
-| Renderer route inventory | For each manifest route, every binding it reads rejects a request without a session and succeeds with an allowed one; renderer routes are hash routes the server never sees, so they are covered through their bindings |
+| Renderer route inventory | For each manifest route and each published app, every binding it reads rejects a request without a session and succeeds with an allowed one; renderer routes are hash routes the server never sees, so they are covered through their bindings |
 | Secret scan | No client secret, token or private key in tracked files or built assets |
 
 The route-inventory tests are what make later page work safe: they fail when a
@@ -234,10 +247,10 @@ new route or page bypasses the guard, without anyone remembering to add a test.
 
 ## Change checklist
 
-For any change to Console pages, components, routes or the runtime:
+For any change to Console pages, components, routes, app hosting or the runtime:
 
-1. Keep pages and components in configuration or the registry; do not touch the
-   guard unless the task is a policy change.
+1. Keep pages and components in configuration, the registry or a delivered app
+   version; do not touch the guard unless the task is a policy change.
 2. Run the sign-in suite and the route-inventory test; both must pass.
 3. For a new route, show in a browser that opening its deep link without a
    session shows Google sign-in and no data, and that it renders with an allowed

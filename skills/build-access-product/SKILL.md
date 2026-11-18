@@ -104,6 +104,12 @@ security defects listed there.
   same user. Sign-out ends the session for every application.
 - Match redirect and sign-out addresses exactly against the registered
   applications. Reject before issuing a code.
+- Requested 2026-11-18, for local development of Console apps against a dev
+  environment; this does not establish support. Accept a loopback `http`
+  redirect address (`http://localhost:<port>/…` or `http://127.0.0.1:<port>/…`)
+  only where the operator turned local development sign-in on for that
+  environment at install, off by default. With it off, reject every `http`
+  address as before. Never accept another `http` host or a wildcard.
 - Identify a person by a stable, opaque user identifier. Never use an email
   address as a key, a foreign key or a grant principal.
 - A first sign-in creates the user with no role, so they can do nothing until

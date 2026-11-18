@@ -117,6 +117,7 @@ Uses the environment key; nobody can sign in yet.
 | AP-5 | D | Remove `app-two`, then read it | `204`, then `404` |
 | AP-6 | D | Create, read and remove with no credential | `401` each; nothing changed |
 | AP-7 | F | Resolve `app-one` with 200 applications registered | One keyed read and no list call |
+| AP-8 | D | With local development sign-in on for the environment, create an application with `http://localhost:5173/callback`, then one with `http://app-one.access-test.example/callback`; turn it off and create the first again | `201`, then `400`; with it off `400`; a sign-in start from the stored loopback address is refused once it is off |
 
 ### `sign-in`
 
