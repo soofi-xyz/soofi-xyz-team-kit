@@ -238,7 +238,7 @@
       "assumptions": [],
       "blocked_by": [],
       "browser_sandbox_localhost": true,
-      "bytes": 9094,
+      "bytes": 9384,
       "files": 1,
       "flag_counts": {},
       "instruction_flags": {},
@@ -2799,7 +2799,7 @@
       "assumptions": [],
       "blocked_by": [],
       "browser_sandbox_localhost": true,
-      "bytes": 12443,
+      "bytes": 12733,
       "files": 1,
       "flag_counts": {},
       "instruction_flags": {},
@@ -2833,7 +2833,7 @@
       "assumptions": [],
       "blocked_by": [],
       "browser_sandbox_localhost": true,
-      "bytes": 9530,
+      "bytes": 9820,
       "files": 1,
       "flag_counts": {},
       "instruction_flags": {},
@@ -3654,8 +3654,8 @@
       "wave_reason": "role: build"
     }
   },
-  "enact_version": "1.165.0",
-  "kit_version": "0.165.0",
+  "enact_version": "1.165.1",
+  "kit_version": "0.165.1",
   "mcp_allow_list": [
     "enact",
     "browser",
