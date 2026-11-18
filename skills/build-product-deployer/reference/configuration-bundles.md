@@ -301,6 +301,18 @@ Paths below are relative to `https://<shared domain>/enact`, with the shared `x-
   extends that same path to overviews, media, guides and navigation, with Tinkaton
   packing and Regigigas forwarding the new files. Do not add a `documentation` kind.
 
+## Parameter placeholders
+
+A `{{parameter:<name>}}` placeholder may stand for a non-string JSON value when
+written unquoted, for example `"enabled": {{parameter:activationsEnabled}}`.
+Deploy fills placeholders textually (JSON-escaped value for `.json` files).
+Build fills each placeholder with its `default` the same way, then parses and
+validates the filled document; the `sha256` stays over the original source.
+The default must make the document valid, and for activations it must be the
+safe value (`"false"`), because the Marketplace review installs defaults.
+Unquoted boolean (and other non-string) placeholders require a Build that
+includes [prismteam-ai/build#68](https://github.com/prismteam-ai/build/pull/68).
+
 ## Target API and authoring handoffs
 
 Have Kecleon, Lapras and Zygarde verify validation, stable registration identity,
@@ -340,7 +352,9 @@ Before merging, check what the install will replace:
 - A Transform mapping whose content changed needs a new version; reusing a
   registered version returns `409` and fails the install.
 - A committed activation with `"enabled": false` disables the live activation
-  of the same name.
+  of the same name. An activation that must run live in one environment and
+  stay off in others uses `"enabled": {{parameter:activationsEnabled}}` (see
+  [Parameter placeholders](#parameter-placeholders)), never a committed literal.
 - An Inference configuration becomes the current version for runs, including over
   one a configurer saved directly.
 - An Enact agent version becomes current for runs, including over one saved directly; a

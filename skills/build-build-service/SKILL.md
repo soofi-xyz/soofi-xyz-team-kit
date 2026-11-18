@@ -62,6 +62,10 @@ target repository; this kit contains guidance and synthetic inputs.
 
 Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
 Package configuration assets and shared-provider declarations; verify digests without calling target APIs or adding per-bundle Lambdas.
+The configuration bundle check must apply parameter defaults with the same fill
+as Deploy before `JSON.parse`, then run the structural and type checks on the
+filled document (the `sha256` stays over the original source). A Build/Deploy
+mismatch here is a defect — see [prismteam-ai/build#68](https://github.com/prismteam-ai/build/pull/68).
 
 ## Configuration provenance
 

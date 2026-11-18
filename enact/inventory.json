@@ -54,7 +54,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 554906,
+      "library_pinned_bytes": 556324,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-access-product",
@@ -162,7 +162,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.5-medium",
-      "library_pinned_bytes": 469401,
+      "library_pinned_bytes": 470819,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -257,7 +257,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 479388,
+      "library_pinned_bytes": 480806,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -316,7 +316,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 510229,
+      "library_pinned_bytes": 511647,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -379,7 +379,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 835300,
+      "library_pinned_bytes": 836718,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -442,7 +442,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 835300,
+      "library_pinned_bytes": 836718,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -511,7 +511,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 622978,
+      "library_pinned_bytes": 624396,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -572,7 +572,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 559772,
+      "library_pinned_bytes": 561190,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-console-product",
@@ -664,7 +664,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 728869,
+      "library_pinned_bytes": 730287,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -720,7 +720,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 469401,
+      "library_pinned_bytes": 470819,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -798,7 +798,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 622077,
+      "library_pinned_bytes": 623495,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-lexicon-product",
@@ -932,7 +932,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 554906,
+      "library_pinned_bytes": 556324,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-access-product",
@@ -1023,7 +1023,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 479388,
+      "library_pinned_bytes": 480806,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -1081,7 +1081,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.5-high",
-      "library_pinned_bytes": 658006,
+      "library_pinned_bytes": 659424,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-ai-agents",
@@ -1144,7 +1144,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 591570,
+      "library_pinned_bytes": 592988,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -1296,7 +1296,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 622077,
+      "library_pinned_bytes": 623495,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-lexicon-product",
@@ -1356,7 +1356,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 510229,
+      "library_pinned_bytes": 511647,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -1413,7 +1413,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 1109351,
+      "library_pinned_bytes": 1110769,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-lexicon-product",
@@ -1476,7 +1476,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.5-high",
-      "library_pinned_bytes": 487638,
+      "library_pinned_bytes": 489056,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -1580,7 +1580,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 548962,
+      "library_pinned_bytes": 550380,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -1642,7 +1642,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 548962,
+      "library_pinned_bytes": 550380,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -1702,7 +1702,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 881871,
+      "library_pinned_bytes": 883289,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-batch-workflows",
@@ -1912,7 +1912,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 591570,
+      "library_pinned_bytes": 592988,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -2053,7 +2053,7 @@
       },
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 583722,
+      "library_pinned_bytes": 586048,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-build-service",
@@ -2144,7 +2144,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.4-high",
-      "library_pinned_bytes": 822457,
+      "library_pinned_bytes": 823875,
       "library_skills": [
         "apply-engineering-guidelines",
         "atomic-data",
@@ -2358,7 +2358,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 469401,
+      "library_pinned_bytes": 470819,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -2415,7 +2415,7 @@
       },
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 469401,
+      "library_pinned_bytes": 470819,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -2503,7 +2503,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 492476,
+      "library_pinned_bytes": 493894,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-bootstrap-cli",
@@ -2562,7 +2562,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 2142641,
+      "library_pinned_bytes": 2144059,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-lexicon-product",
@@ -2633,7 +2633,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 469401,
+      "library_pinned_bytes": 470819,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -2688,7 +2688,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.5-high",
-      "library_pinned_bytes": 787083,
+      "library_pinned_bytes": 788501,
       "library_skills": [
         "apply-engineering-guidelines",
         "assemble-communication-runtime",
@@ -2806,7 +2806,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 583722,
+      "library_pinned_bytes": 586048,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-build-service",
@@ -2866,7 +2866,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 534150,
+      "library_pinned_bytes": 535568,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-documentation-product",
@@ -2928,7 +2928,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 492476,
+      "library_pinned_bytes": 493894,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-bootstrap-cli",
@@ -2985,7 +2985,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 534150,
+      "library_pinned_bytes": 535568,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-documentation-product",
@@ -3049,7 +3049,7 @@
       },
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 809480,
+      "library_pinned_bytes": 810898,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -3109,7 +3109,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 559772,
+      "library_pinned_bytes": 561190,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-console-product",
@@ -3230,7 +3230,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.4-high",
-      "library_pinned_bytes": 616850,
+      "library_pinned_bytes": 618268,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-console-product",
@@ -3286,7 +3286,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 59485,
+      "bytes": 59759,
       "files": 5,
       "flag_counts": {
         "aws-profile": 2,
@@ -3301,7 +3301,7 @@
       },
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 881871,
+      "library_pinned_bytes": 883289,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-batch-workflows",
@@ -3371,7 +3371,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.4-high",
-      "library_pinned_bytes": 601235,
+      "library_pinned_bytes": 602653,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -3428,7 +3428,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 576703,
+      "library_pinned_bytes": 578121,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-ai-agents",
@@ -3491,7 +3491,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 479476,
+      "library_pinned_bytes": 480894,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -3549,7 +3549,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 622978,
+      "library_pinned_bytes": 624396,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -3588,8 +3588,8 @@
       "wave_reason": "role: build"
     }
   },
-  "enact_version": "1.161.0",
-  "kit_version": "0.161.0",
+  "enact_version": "1.162.0",
+  "kit_version": "0.162.0",
   "mcp_allow_list": [
     "enact",
     "browser"
@@ -3683,7 +3683,7 @@
       ]
     },
     "build-build-service": {
-      "bytes": 73827,
+      "bytes": 74722,
       "files": 3,
       "flags": {},
       "omitted": [],
@@ -3874,7 +3874,7 @@
       ]
     },
     "build-product-deployer": {
-      "bytes": 49952,
+      "bytes": 50887,
       "files": 5,
       "flags": {
         "aws-profile": [
@@ -4106,7 +4106,7 @@
       ]
     },
     "configure-deploy-product": {
-      "bytes": 8302,
+      "bytes": 8757,
       "files": 1,
       "flags": {},
       "omitted": [],
@@ -4447,7 +4447,7 @@
       "references": []
     },
     "operate-connect-configurations": {
-      "bytes": 42060,
+      "bytes": 42334,
       "files": 4,
       "flags": {
         "curl": [

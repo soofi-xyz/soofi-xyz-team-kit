@@ -78,13 +78,19 @@ through a Puller subscription (step 3 of
    (Build requires one), so a placeholder such as a Connect `subscriberUrl` of
    `https://partner.example.invalid` would install as-is. Put the real value of
    every placeholder parameter in the subscription's `configuration`; Deploy fills
-   `{{parameter:<name>}}` from it, else from the default.
+   `{{parameter:<name>}}` from it, else from the default. Changing a
+   subscription's `configuration` replaces the whole object: read the current
+   subscription configuration first, add or change only the needed key (for
+   example `activationsEnabled: "true"`), and keep every existing key (for
+   example `connectConfigurationId`, `systemApiUrl`). Do this before the bundle
+   revision that introduces the placeholder is installed in that environment.
 3. `GET /deploy/puller/subscriptions/{product_id}/{component_id}`. On `404`,
    `POST /deploy/puller/subscriptions` with `product_id` (the Marketplace product
    UUID), `component_id`, `marketplace.base_url`, `update_policy: AUTO` (the
    default is `PAUSED`, which installs nothing), `target.region` and
    `configuration`. Omit `marketplace.api_key_secret_arn`: Deploy defaults it to
-   the shared key secret. Otherwise `PATCH` the same path with the changed fields.
+   the shared key secret. Otherwise `PATCH` the same path with the changed fields
+   (full `configuration` object when that field changes).
 4. `POST /deploy/puller/reconciles` with `{product_id, component_id}` and poll
    `GET /deploy/puller/reconciles/{reconcile_id}` to `SUCCEEDED` or `FAILED`.
 5. Read the install back with `GET /deploy/puller/installs/{product_id}/{component_id}`,

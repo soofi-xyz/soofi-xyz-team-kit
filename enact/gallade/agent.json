@@ -15,7 +15,7 @@
     },
     {
       "name": "build-product-deployer",
-      "version": "1.0.0-sha256-5048d818aeeed673"
+      "version": "1.0.0-sha256-052dd992a7c0914d"
     },
     {
       "name": "build-rules-product",
@@ -27,7 +27,7 @@
     },
     {
       "name": "configure-deploy-product",
-      "version": "1.0.0-sha256-bfbf72898135c6e9"
+      "version": "1.0.0-sha256-bc96327ab015fdaa"
     },
     {
       "name": "guide-product-work",
@@ -52,5 +52,5 @@
       "pull_requests": "write"
     }
   },
-  "version": "1.161.0"
+  "version": "1.162.0"
 }
