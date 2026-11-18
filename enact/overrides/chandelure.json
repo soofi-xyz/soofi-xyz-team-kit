@@ -1,6 +1,7 @@
 {
-  "requires_mcp": [
-    "figma"
-  ],
-  "requires_mcp_reason": "agents/chandelure.md:16: a Console build or first Figma integration starts by completing user OAuth and proving a scoped Figma MCP read before authoring work."
+  "requires_mcp": [],
+  "requires_mcp_reason": "agents/chandelure.md:16 starts Figma work with user OAuth and a Figma MCP read. On Enact Figma is optional (no hosted Figma MCP accepts Enact yet): the appendix skips the Figma checkpoint and works from exported designs.",
+  "appendix": [
+    "**Figma on Enact is optional.** Enact has no Figma sign-in. Do not start or require the Figma client registration, user OAuth or the official Figma MCP. If this run has `figma` tools (`whoami`, `get_metadata`, `get_design_context`, `get_screenshot`), they read Figma with the requester's own token: use them. Without them, take designs from what the request gives you instead: exported frames or screenshots, images or HTML in the message or a repository, or a written spec. When a task names only a Figma URL, ask for exports of the frames it needs and stop that part until they arrive; never report a design as read from Figma. Build and test the Console job API and runtime against exported designs or fixtures, and record the Figma client registration checkpoint as not done on Enact."
+  ]
 }
