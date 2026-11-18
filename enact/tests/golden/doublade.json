@@ -1,0 +1,67 @@
+{
+  "agent": "doublade",
+  "tasks": [
+    {
+      "id": "doublade-register-app-role",
+      "message": "Register a test application 'enact-golden-portal', create a role 'viewer' that may read reports, and grant it to the test user golden.viewer@example.com. Use our own dev/test Access stack at https://$PRISM_DOMAIN with the shared key in PRISM_API_KEY (already set in your environment); send X-Source-Repository and X-Source-Commit on every write, then read the configuration back through the API and show that it matches what you wrote.",
+      "repositories": [],
+      "expect": {
+        "kind": "config-readback",
+        "must_include": [
+          "the configuration read back through the Access HTTP API, matching what was written",
+          "X-Source-Repository and X-Source-Commit sent on the write",
+          "the application, role and grant in the read-back",
+          "a decision call showing the grant allows report read"
+        ],
+        "must_not": [
+          "uses AWS credentials or the AWS CLI",
+          "writes to the soofi-safavi or any production environment",
+          "reports a check as passing that it did not run",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Bash"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 5,
+        "max_minutes": 30
+      },
+      "requires": [
+        "secret-injection"
+      ]
+    },
+    {
+      "id": "doublade-service-identity",
+      "message": "Create a service identity 'enact-golden-runner' that may run the Enact agent 'story-reviewer' and nothing else, then show a denied decision for another agent. Use our own dev/test Access stack at https://$PRISM_DOMAIN with the shared key in PRISM_API_KEY (already set in your environment); send X-Source-Repository and X-Source-Commit on every write, then read the configuration back through the API and show that it matches what you wrote.",
+      "repositories": [],
+      "expect": {
+        "kind": "config-readback",
+        "must_include": [
+          "the configuration read back through the Access HTTP API, matching what was written",
+          "X-Source-Repository and X-Source-Commit sent on the write",
+          "an allowed decision for story-reviewer",
+          "a denied decision for another agent"
+        ],
+        "must_not": [
+          "uses AWS credentials or the AWS CLI",
+          "writes to the soofi-safavi or any production environment",
+          "reports a check as passing that it did not run",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Bash"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 5,
+        "max_minutes": 30
+      },
+      "requires": [
+        "secret-injection"
+      ]
+    }
+  ]
+}

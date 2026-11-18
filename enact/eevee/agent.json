@@ -1,0 +1,22 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Editorial sub-agent backed by the Eevee knowledge base. Use proactively when drafting pitches, propositions, website copy, papers, RFP responses, or decks in Eevee's voice; can publish password-protected pages.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "eevee",
+  "repositories": [],
+  "run_repositories": {
+    "max": 5,
+    "permissions": {
+      "contents": "write",
+      "pull_requests": "write"
+    }
+  },
+  "version": "1.161.0"
+}

@@ -1,0 +1,22 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Short-URL service specialist. Use proactively when building or refactoring a link shortener — token minting, link resolution, redirects, and click telemetry.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "linoone",
+  "repositories": [],
+  "run_repositories": {
+    "max": 5,
+    "permissions": {
+      "contents": "write",
+      "pull_requests": "write"
+    }
+  },
+  "version": "1.161.0"
+}

@@ -1,0 +1,35 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Portal delivery and maintenance orchestrator. Use proactively to create or increment a portal through a pull request, including scenario-derived integration tests, staged feature/development runs, and per-scenario image evidence.",
+  "hosts": [],
+  "library_skills": [
+    {
+      "name": "figma-to-code",
+      "version": "1.0.0-sha256-e7fa1a8fa32bd85b"
+    },
+    {
+      "name": "responsive-design-tests",
+      "version": "1.0.0-sha256-a18feba82c11e447"
+    }
+  ],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "mcp_servers": [
+    "figma"
+  ],
+  "model": "opus",
+  "name": "hoopa",
+  "repositories": [],
+  "run_repositories": {
+    "max": 5,
+    "permissions": {
+      "contents": "write",
+      "pull_requests": "write"
+    }
+  },
+  "version": "1.161.0"
+}

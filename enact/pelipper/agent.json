@@ -1,0 +1,32 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Dataset export agent. Use proactively when operating or extending Pelipper, which turns approved board-scoped or trusted direct requests into company-scoped data extracts with scope validation and secure download links.",
+  "hosts": [],
+  "library_skills": [
+    {
+      "name": "apply-engineering-guidelines",
+      "version": "1.0.0-sha256-d3011aab3ed7aa8d"
+    },
+    {
+      "name": "build-ai-agents",
+      "version": "1.0.0-sha256-52c743a354ac9fa3"
+    }
+  ],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "pelipper",
+  "repositories": [],
+  "run_repositories": {
+    "max": 5,
+    "permissions": {
+      "contents": "write",
+      "pull_requests": "write"
+    }
+  },
+  "version": "1.161.0"
+}

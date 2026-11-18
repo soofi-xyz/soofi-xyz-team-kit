@@ -1,20 +1,24 @@
 #!/usr/bin/env node
-// Releases the agent-memory Model extension and installs it into soofi-safavi's
-// Persist, through the Model and Persist HTTP APIs with the environment's shared
-// x-api-key. No AWS. Run each step yourself, in order; every write prints what it
-// does first, and each step only continues from verified read-back.
+// Checks the agent-memory Model extension against soofi-safavi's Persist and accepts saved threads,
+// through the Model and Persist HTTP APIs with the environment's shared x-api-key. No AWS.
+//
+// Shared environments (soofi-safavi and every other non-dev stack) get configuration only through
+// a configuration repository, Marketplace and Deploy: the extension through prismteam-ai/model, the
+// Persist MCP saved queries (agent_*) through prismteam-ai/prism-memory-configuration. The write
+// steps (submit, approve, publish, install) run only against your own dev/test stack: set
+// PRISM_DOMAIN (or PRISM_BASE_URL) to it, PRISM_API_KEY to its key, and SOURCE_REPOSITORY and
+// SOURCE_COMMIT to the repository commit under test, sent as X-Source-Repository/X-Source-Commit.
 //
 //   node scripts/agent-memory-release.mjs check   --composition <model>/configurations/agent-memory/composition.json
 //   node scripts/agent-memory-release.mjs submit  --composition <...>/composition.json
 //   node scripts/agent-memory-release.mjs approve --change-set <id> --reference <approved PR URL>
 //   node scripts/agent-memory-release.mjs publish --change-set <id>
 //   node scripts/agent-memory-release.mjs install [--release <id>]   (default: current)
-//   node scripts/agent-memory-release.mjs queries   (educator saved queries for the Persist MCP server)
 //   node scripts/agent-memory-release.mjs accept  --email <you> [--since <time>] [--list] [--secret <planted fake>] | --thread <id>
 //
-// Environment: PRISM_API_KEY (or ~/.config/prism/soofi-safavi.key), MODEL_ACCOUNT_ID
+// Environment: PRISM_API_KEY (or ~/.config/prism/soofi-safavi.key for reads), MODEL_ACCOUNT_ID
 // (optional; default: the key's Account id from GET /console/session), PRISM_DOMAIN (default
-// soofi-safavi.account.prismteam.ai). The key is never printed.
+// soofi-safavi.account.prismteam.ai for reads). The key is never printed.
 
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -51,10 +55,35 @@ async function account() {
   return sessionAccountId;
 }
 
+// Configuration writes go only to a developer's own dev/test stack and carry the source headers.
+const SHARED_HOSTS = /(^|\.)soofi-safavi\./i;
+let sourceHeaders;
+function devStackWrites() {
+  const host = new URL(BASE).hostname;
+  if (!(process.env.PRISM_DOMAIN || process.env.PRISM_BASE_URL) || SHARED_HOSTS.test(host)) {
+    throw new Error(
+      `Refusing to write configuration to ${host}: shared environments get it only through a configuration repository, ` +
+        "Marketplace and Deploy (the extension through prismteam-ai/model). Set PRISM_DOMAIN to your own dev/test stack to test.",
+    );
+  }
+  if (!process.env.PRISM_API_KEY) throw new Error("Set PRISM_API_KEY to your dev/test stack's key");
+  const repository = process.env.SOURCE_REPOSITORY ?? "";
+  const commit = process.env.SOURCE_COMMIT ?? "";
+  if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository) || !/^([0-9a-f]{40}|[0-9a-f]{64})$/.test(commit)) {
+    throw new Error("Set SOURCE_REPOSITORY (owner/name) and SOURCE_COMMIT (full lowercase commit SHA) of the configuration under test");
+  }
+  sourceHeaders = { "X-Source-Repository": repository, "X-Source-Commit": commit };
+}
+
 async function call(method, url, { body, headers = {}, ok = [200, 201, 202] } = {}) {
   const response = await fetch(url, {
     method,
-    headers: { "x-api-key": key(), ...(body === undefined ? {} : { "content-type": "application/json" }), ...headers },
+    headers: {
+      "x-api-key": key(),
+      ...(body === undefined ? {} : { "content-type": "application/json" }),
+      ...(method === "GET" ? {} : sourceHeaders),
+      ...headers,
+    },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const text = await response.text();
@@ -221,22 +250,10 @@ async function install({ release = "current" }) {
   console.log(`Read back ${got.size} labels (${[...got].sort().join(", ")}). Readers pick it up within Persist's 300-second cache.`);
 }
 
-// Adds the educator saved queries to Persist's MCP configuration (replacing ours by name, keeping
-// every other saved query and setting), so each shows up as a query_<name> tool.
-async function queries() {
-  const ours = JSON.parse(readFileSync(new URL("../hooks/agent-memory/educator-queries.json", import.meta.url), "utf8")).saved_queries;
-  const names = new Set(ours.map((query) => query.name));
-  const active = (await call("GET", `${PERSIST}/mcp/configuration`)).json.data;
-  const kept = (active.configuration.saved_queries ?? []).filter((query) => !names.has(query.name));
-  console.log(`Persist MCP configuration: source ${active.source}${active.version ? `, version ${active.version}` : ""}; keeping ${kept.length} other saved quer${kept.length === 1 ? "y" : "ies"}, adding ${[...names].join(", ")}`);
-  const result = (await call("PUT", `${PERSIST}/mcp/configuration`, {
-    headers: active.version ? { "If-Match": `"${active.version}"` } : {},
-    body: { ...active.configuration, saved_queries: [...kept, ...ours] },
-  })).json.data;
-  const readBack = (await call("GET", `${PERSIST}/mcp/configuration`)).json.data;
-  const missing = [...names].filter((name) => !readBack.configuration.saved_queries?.some((query) => query.name === name));
-  if (missing.length > 0) throw new Error(`Read-back is missing: ${missing.join(", ")}`);
-  console.log(`Applied version ${result.version} (changed ${result.changed}). The Persist MCP server lists ${[...names].map((name) => `query_${name}`).join(", ")} within 30 seconds.`);
+// The agent_* saved queries live in prismteam-ai/prism-memory-configuration, which owns the whole Persist
+// MCP configuration; Deploy installs it from there.
+function queries() {
+  throw new Error("The agent_* saved queries live in prismteam-ai/prism-memory-configuration: change them there through a pull request");
 }
 
 const lit = (value) => `'${String(value).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
@@ -308,12 +325,17 @@ async function accept({ email, thread, since, secret, list }) {
 }
 
 const commands = { check, submit, approve, publish, install, queries, accept };
+const writes = new Set(["submit", "approve", "publish", "install"]);
 const command = commands[process.argv[2]];
 if (!command) {
-  console.log(readFileSync(new URL(import.meta.url), "utf8").split("\n").slice(1, 19).join("\n"));
+  const header = readFileSync(new URL(import.meta.url), "utf8").split("\n");
+  console.log(header.slice(1, header.findIndex((line) => line.startsWith("import "))).join("\n"));
 } else {
-  command(args()).catch((error) => {
-    console.error(error.message);
-    process.exitCode = 1;
-  });
+  Promise.resolve()
+    .then(() => (writes.has(process.argv[2]) ? devStackWrites() : undefined))
+    .then(() => command(args()))
+    .catch((error) => {
+      console.error(error.message);
+      process.exitCode = 1;
+    });
 }

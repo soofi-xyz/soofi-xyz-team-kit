@@ -1,0 +1,68 @@
+{
+  "agent": "pelipper",
+  "tasks": [
+    {
+      "id": "pelipper-export-scope",
+      "message": "A board-approved request asks for all accounts of company 'ACME' with balance over $1,000. Walk me through how Pelipper validates scope and delivers the extract, without running it.",
+      "repositories": [
+        "Spring-Oaks-Capital-LLC/pelipper-agent"
+      ],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "company scope validation",
+          "secure download link delivery",
+          "the SSO bootstrap before any data access"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value",
+          "asks for database URLs or credentials in chat",
+          "runs an export"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 3,
+        "max_minutes": 15
+      }
+    },
+    {
+      "id": "pelipper-scope-test",
+      "message": "Add a test proving a request naming two companies is rejected by scope validation. Work in Spring-Oaks-Capital-LLC/pelipper-agent. If the default branch already does this, open no PR: say where it is implemented and which test covers it. Otherwise open a draft pull request against its default branch titled \"[enact-golden] <short summary>\", wait for the repository's own CI and report the PR URL and the check results. Do not merge.",
+      "repositories": [
+        "Spring-Oaks-Capital-LLC/pelipper-agent"
+      ],
+      "expect": {
+        "kind": "pr",
+        "must_include": [
+          "re:https://github\\.com/Spring-Oaks-Capital-LLC/pelipper-agent/pull/\\d+",
+          "the repository's own CI checks passing on the PR head",
+          "the new test"
+        ],
+        "must_not": [
+          "pushes to the default branch",
+          "merges the pull request",
+          "disables, skips or deletes existing tests to make CI pass",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Bash",
+          "Edit"
+        ],
+        "forbids_repo_writes": false
+      },
+      "limits": {
+        "max_cost_usd": 8,
+        "max_minutes": 45
+      },
+      "requires": [
+        "repositories"
+      ]
+    }
+  ]
+}

@@ -53,21 +53,54 @@ that expose no API. Verify runtime support before claiming compliance.
 
 ## Configurer delivery
 
+Every configurer agent and skill follows this section; it overrides any step
+elsewhere that writes configuration straight to a product API. A configuration
+write creates, changes or deletes saved configuration (definitions, templates,
+flows, triggers, mappings, partner configurations, activations, reports,
+schedules, inference or Console configurations, Model vocabularies and change
+sets, Persist catalogs, triggers and MCP configuration). Reads, validation-only
+calls and runs of installed configuration are not configuration writes.
+
+- **Shared and production environments** (every environment other than your
+  own dev/test stack; always `soofi-safavi`): change configuration only by
+  editing its configuration repository, opening a pull request the user merges,
+  and letting Marketplace publish the bundle and Deploy install it. Follow
+  [operate-marketplace](../operate-marketplace/SKILL.md) for publishing and
+  [configure-deploy-product](../configure-deploy-product/SKILL.md) for the
+  install. Never send a configuration write there yourself or from a script,
+  with the shared `x-api-key`, an admin role or IAM, not even for a test.
+- **Your own dev/test stack** (a stack you deployed for development, never a
+  shared one): direct writes are allowed for testing only. Send
+  `X-Source-Repository: <owner>/<name>` and `X-Source-Commit: <full commit SHA>`
+  of the configuration repository commit under test on every write, and remove
+  the test writes once the change is in its repository.
+- Keep every configuration in a repository created from
+  `prismteam-ai/configuration-bundle-template` (its CI publishes the bundle to
+  Marketplace on merge; a Puller subscription installs it), as
+  [the configuration-bundle handoff](../build-product-deployer/reference/configuration-bundles.md#target-api-and-authoring-handoffs)
+  describes. Set `repository` (`owner/name` of that repository) in every
+  document whose product schema has it, such as System flows.
+- Change configuration that a repository owns only in that repository, even
+  when the live document has drifted; for example
+  `prismteam-ai/prism-memory-configuration` owns soofi-safavi's whole Persist MCP
+  configuration, including the `agent_*` saved queries.
+- When Build has no bundle kind or Deploy no installer for a configuration, or a
+  product route is still IAM-only, stop at the tested repository change: record
+  the builder gap for the product builder (Tinkaton for a bundle kind,
+  Corviknight for a Deploy installer), tell the user, and do not write it to a
+  shared environment instead.
+- Account, Environment, Build, Marketplace and Deploy operations (Blissey,
+  Shaymin, Metang, Registeel, Skarmory) are the delivery path itself; run them
+  through their APIs, but install only configuration that was merged and
+  published.
 - Call product HTTP APIs only, on `https://<shared domain>/<product>` with the
   environment's shared `x-api-key`. Do not read Secrets Manager, SSM, stack
   outputs, CloudFormation or the AWS console, and do not ask for AWS credentials.
-- Keep every configuration in a repository created from
-  `prismteam-ai/configuration-bundle-template`. Its CI publishes the bundle to
-  Marketplace on merge; Deploy installs it through a Puller subscription. Follow
-  [the configuration-bundle handoff](../build-product-deployer/reference/configuration-bundles.md#target-api-and-authoring-handoffs).
-- Use direct API writes for testing only. Remove them through the product API
-  once the subscription has installed the bundle.
 - Treat every AWS inspection checkpoint in this skill as a product API read-back
   for configurers. AWS inspection is optional evidence for builders, never a
   configurer prerequisite.
-- When a product route is still IAM-only, record it as a builder gap in the
-  handoff to that product's build agent, tell the user, and mark the step a
-  test-only exception.
+- [Configuration provenance](reference/configuration-provenance.md) describes the
+  headers, the Deploy signature and the `PROVENANCE_REQUIRED` refusal.
 - Exception: a few Environment (Shaymin) steps act on AWS before a shared
   domain or key exists: creating the customer-account role
   `/prism/environment-target` and recording the region's API Gateway

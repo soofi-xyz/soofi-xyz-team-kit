@@ -1,0 +1,64 @@
+{
+  "agent": "magnezone",
+  "tasks": [
+    {
+      "id": "magnezone-gchat-empty-query",
+      "message": "The Google Chat handler crashes on an empty message. Answer with a short usage hint instead, with a test. Work in elephant-xyz/magnezone-agent. If the default branch already does this, open no PR: say where it is implemented and which test covers it. Otherwise open a draft pull request against its default branch titled \"[enact-golden] <short summary>\", wait for the repository's own CI and report the PR URL and the check results. Do not merge.",
+      "repositories": [
+        "elephant-xyz/magnezone-agent"
+      ],
+      "expect": {
+        "kind": "pr",
+        "must_include": [
+          "re:https://github\\.com/elephant-xyz/magnezone-agent/pull/\\d+",
+          "the repository's own CI checks passing on the PR head",
+          "a test for the empty message"
+        ],
+        "must_not": [
+          "pushes to the default branch",
+          "merges the pull request",
+          "disables, skips or deletes existing tests to make CI pass",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Bash",
+          "Edit"
+        ],
+        "forbids_repo_writes": false
+      },
+      "limits": {
+        "max_cost_usd": 8,
+        "max_minutes": 45
+      },
+      "requires": [
+        "repositories"
+      ]
+    },
+    {
+      "id": "magnezone-status",
+      "message": "What parts of the workspace ingest are actually implemented today versus planned?",
+      "repositories": [
+        "elephant-xyz/magnezone-agent"
+      ],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "implemented versus planned, honestly"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 3,
+        "max_minutes": 15
+      }
+    }
+  ]
+}

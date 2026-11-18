@@ -7,6 +7,7 @@ description: "Set up and test Google sign-in, registered applications, users, ro
 
 Use `doublade`. Load [guide-product-work](../guide-product-work/SKILL.md) and
 [the Access capability map](../guide-product-work/reference/iterations/access.md).
+Follow guide-product-work's [Configurer delivery](../guide-product-work/SKILL.md#configurer-delivery) for every configuration write.
 Read the relevant sections of [the Access build contract](../build-access-product/SKILL.md)
 for the token, permission and record-access rules.
 

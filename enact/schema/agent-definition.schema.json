@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://prismteam.ai/schemas/enact/agent-definition.schema.json",
+  "title": "Enact agent definition",
+  "description": "One version of an agent, packaged from its directory: the manifest from agent.json and the text of every other file. docs/agent-contract.md describes each field.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["manifest", "files"],
+  "properties": {
+    "manifest": { "$ref": "#/$defs/manifest" },
+    "files": { "$ref": "#/$defs/files" }
+  },
+  "$defs": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,62}$"
+    },
+    "version": {
+      "description": "Semantic version without build metadata. Immutable once saved.",
+      "type": "string",
+      "maxLength": 64,
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "repository": {
+      "description": "A GitHub repository as owner/name, in lowercase. The name cannot be . or .., which GitHub forbids.",
+      "type": "string",
+      "maxLength": 140,
+      "pattern": "^[a-z0-9][a-z0-9-]{0,38}/([a-z0-9_-][a-z0-9._-]{0,99}|\\.[a-z0-9_-][a-z0-9._-]{0,98}|\\.\\.[a-z0-9._-]{1,98})$"
+    },
+    "secret_name": {
+      "description": "An environment variable name for a secret. Names starting AWS_, ANTHROPIC_, CLAUDE_, ENACT_, GIT_, LD_ or NODE_, and PATH, HOME, SHELL, USER, TMPDIR, IS_SANDBOX, DISABLE_AUTOUPDATER, BASH_ENV and ENV, are the sandbox's own and refused.",
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+    },
+    "permissions": {
+      "description": "What a repository's token allows.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contents", "pull_requests"],
+      "properties": {
+        "contents": { "enum": ["read", "write"] },
+        "pull_requests": { "enum": ["none", "read", "write"] }
+      }
+    },
+    "library_skill": {
+      "description": "A skill library version the agent uses: PUT /skills/{name} saved it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "$ref": "#/$defs/name" },
+        "version": { "$ref": "#/$defs/version" }
+      }
+    },
+    "manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "description",
+        "model",
+        "limits",
+        "channels",
+        "repositories",
+        "hosts"
+      ],
+      "properties": {
+        "name": { "$ref": "#/$defs/name" },
+        "version": { "$ref": "#/$defs/version" },
+        "description": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "model": {
+          "description": "The model family; the run chooses the credential and the concrete model.",
+          "enum": ["opus", "sonnet", "haiku"]
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["max_turns", "max_cost_usd"],
+          "properties": {
+            "max_turns": { "type": "integer", "minimum": 1, "maximum": 500 },
+            "max_cost_usd": { "type": "number", "exclusiveMinimum": 0, "maximum": 1000 }
+          }
+        },
+        "channels": {
+          "description": "Entrances that may start a run: direct (the API and the MCP endpoint) and asana.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["direct", "asana"] }
+        },
+        "repositories": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "permissions"],
+            "properties": {
+              "name": { "$ref": "#/$defs/repository" },
+              "permissions": { "$ref": "#/$defs/permissions" }
+            }
+          }
+        },
+        "run_repositories": {
+          "description": "Lets each run name up to max more repositories, each on the environment's allowed list, all with these permissions. Without it a run names none.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["max", "permissions"],
+          "properties": {
+            "max": { "type": "integer", "minimum": 1, "maximum": 20 },
+            "permissions": { "$ref": "#/$defs/permissions" }
+          }
+        },
+        "tools": {
+          "description": "Built-in tools the sandbox gives the agent beyond Claude Code's own: browser (a Chromium in Amazon Bedrock AgentCore Browser through Playwright's MCP tools).",
+          "type": "array",
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": { "enum": ["browser"] }
+        },
+        "browser": {
+          "description": "How the browser tool behaves; needs browser in tools. sandbox_localhost: true makes http(s)://localhost:<port>/ and 127.0.0.1 in the browser the sandbox's own loopback, so the agent can open an app it runs in its sandbox.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "sandbox_localhost": { "type": "boolean" }
+          }
+        },
+        "asana": {
+          "description": "Gives the agent the asana tools, which call Asana as Enact's bot user. They reach only these projects, their tasks and those tasks' subtasks.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["projects"],
+          "properties": {
+            "projects": {
+              "description": "Asana project gids.",
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 50,
+              "uniqueItems": true,
+              "items": { "type": "string", "pattern": "^[0-9]{1,32}$" }
+            }
+          }
+        },
+        "secrets": {
+          "description": "Secrets the agent needs, by environment variable name. An operator sets each value per agent (PUT /agents/{name}/secrets/{secret}); every turn gets the values as environment variables, and a run whose secret is not set fails before its turn (SECRET_ERROR). Values are never part of the definition.",
+          "type": "array",
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/secret_name" }
+        },
+        "library_skills": {
+          "description": "Skills from the environment's skill library, each by name and pinned version. The sandbox lays each out at skills/<name>/ beside the agent's own skills; the agent may not also hold files under skills/<name>/. Each must be in the library when the agent is saved.",
+          "type": "array",
+          "maxItems": 100,
+          "items": { "$ref": "#/$defs/library_skill" }
+        },
+        "mcp_servers": {
+          "description": "Remote MCP servers the agent uses, by name, each on the environment's allowed list (GET /mcp-servers). Every turn registers them as Streamable HTTP MCP servers; their hosts are added to hosts for egress.",
+          "type": "array",
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/name" }
+        },
+        "hosts": {
+          "description": "Hosts a run may connect to, beyond what every run needs.",
+          "type": "array",
+          "maxItems": 50,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "maxLength": 253,
+            "pattern": "^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$"
+          }
+        }
+      }
+    },
+    "files": {
+      "description": "Every file of the agent directory except agent.json, by path, as UTF-8 text.",
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 200,
+      "propertyNames": {
+        "pattern": "^(instructions\\.md|tools/[a-z][a-z0-9-]{0,62}\\.ts|subagents/[a-z][a-z0-9-]{0,62}\\.md|skills/[a-z][a-z0-9-]{0,62}/([A-Za-z0-9_][A-Za-z0-9._-]{0,99}/){0,8}[A-Za-z0-9_][A-Za-z0-9._-]{0,99})$"
+      },
+      "additionalProperties": { "type": "string", "maxLength": 262144 }
+    }
+  }
+}

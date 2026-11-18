@@ -1,0 +1,4 @@
+{
+  "requires_mcp": [],
+  "requires_mcp_reason": "agents/uxie.md:21 covers setting up MCP clients for people; Uxie calls the Persist HTTP API itself."
+}

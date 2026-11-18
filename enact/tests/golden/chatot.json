@@ -1,0 +1,65 @@
+{
+  "agent": "chatot",
+  "tasks": [
+    {
+      "id": "chatot-email-provider-lifecycle",
+      "message": "Design the email send lifecycle on a new provider: credential source, routing, send idempotency, delivery webhooks, bounce/complaint ingestion and activity closure.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "provider and routing configuration",
+          "send payload schema with idempotency key",
+          "provider-correlation mapping",
+          "status persistence before downstream export"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 4,
+        "max_minutes": 20
+      }
+    },
+    {
+      "id": "chatot-sms-delivery-correlation",
+      "message": "Delivery receipts that arrive before the send record is written are dropped. Buffer and correlate them by provider message id, with tests. Work in Spring-Oaks-Capital-LLC/sms-workflow. If the default branch already does this, open no PR: say where it is implemented and which test covers it. Otherwise open a draft pull request against its default branch titled \"[enact-golden] <short summary>\", wait for the repository's own CI and report the PR URL and the check results. Do not merge.",
+      "repositories": [
+        "Spring-Oaks-Capital-LLC/sms-workflow"
+      ],
+      "expect": {
+        "kind": "pr",
+        "must_include": [
+          "re:https://github\\.com/Spring-Oaks-Capital-LLC/sms-workflow/pull/\\d+",
+          "the repository's own CI checks passing on the PR head",
+          "a test for an early receipt"
+        ],
+        "must_not": [
+          "pushes to the default branch",
+          "merges the pull request",
+          "disables, skips or deletes existing tests to make CI pass",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Bash",
+          "Edit"
+        ],
+        "forbids_repo_writes": false
+      },
+      "limits": {
+        "max_cost_usd": 8,
+        "max_minutes": 45
+      },
+      "requires": [
+        "repositories"
+      ]
+    }
+  ]
+}

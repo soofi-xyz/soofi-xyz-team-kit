@@ -1,0 +1,67 @@
+{
+  "agent": "meditite",
+  "tasks": [
+    {
+      "id": "meditite-campaign-rules",
+      "message": "Configure a ruleset for campaign_id 'enact-golden-c1' that excludes accounts with a bankruptcy flag or a cease-and-desist, then start a selection run by campaign_id and verify pass/fail on two known test entities. Use our own dev/test Rule stack at https://$PRISM_DOMAIN with the shared key in PRISM_API_KEY (already set in your environment); send X-Source-Repository and X-Source-Commit on every write, then read the configuration back through the API and show that it matches what you wrote.",
+      "repositories": [],
+      "expect": {
+        "kind": "config-readback",
+        "must_include": [
+          "the configuration read back through the Rule HTTP API, matching what was written",
+          "X-Source-Repository and X-Source-Commit sent on the write",
+          "the ruleset read back",
+          "pass/fail for the two test entities"
+        ],
+        "must_not": [
+          "uses AWS credentials or the AWS CLI",
+          "writes to the soofi-safavi or any production environment",
+          "reports a check as passing that it did not run",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Bash"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 5,
+        "max_minutes": 30
+      },
+      "requires": [
+        "secret-injection"
+      ]
+    },
+    {
+      "id": "meditite-projection",
+      "message": "Add a projection to the enact-golden-c1 output that includes account_id, phone and the rule reasons, and rerun. Use our own dev/test Rule stack at https://$PRISM_DOMAIN with the shared key in PRISM_API_KEY (already set in your environment); send X-Source-Repository and X-Source-Commit on every write, then read the configuration back through the API and show that it matches what you wrote.",
+      "repositories": [],
+      "expect": {
+        "kind": "config-readback",
+        "must_include": [
+          "the configuration read back through the Rule HTTP API, matching what was written",
+          "X-Source-Repository and X-Source-Commit sent on the write",
+          "the projection in the read-back",
+          "the projected fields in the run output"
+        ],
+        "must_not": [
+          "uses AWS credentials or the AWS CLI",
+          "writes to the soofi-safavi or any production environment",
+          "reports a check as passing that it did not run",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Bash"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 5,
+        "max_minutes": 30
+      },
+      "requires": [
+        "secret-injection"
+      ]
+    }
+  ]
+}

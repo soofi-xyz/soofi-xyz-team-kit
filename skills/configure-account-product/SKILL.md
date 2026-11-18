@@ -7,6 +7,7 @@ description: "Guide and configure a particular Account identity, key lifecycle, 
 
 Use `blissey`. Load [guide-product-work](../guide-product-work/SKILL.md) and
 [the Account capability map](../guide-product-work/reference/iterations/account.md).
+Follow guide-product-work's [Configurer delivery](../guide-product-work/SKILL.md#configurer-delivery) for every configuration write.
 Read the relevant [Account contract](../build-tenant-account-manager/reference/PRD.md)
 and [synthetic test data](../build-tenant-account-manager/reference/test-data.md).
 

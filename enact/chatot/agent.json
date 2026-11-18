@@ -1,0 +1,32 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Communication-activity specialist. Use proactively when building provider adapters, send workflows, routing, delivery feedback, response ingestion, or activity lifecycle closure for SMS or email.",
+  "hosts": [],
+  "library_skills": [
+    {
+      "name": "apply-engineering-guidelines",
+      "version": "1.0.0-sha256-d3011aab3ed7aa8d"
+    },
+    {
+      "name": "manage-communication-activity",
+      "version": "1.0.0-sha256-a5752e9687c4c345"
+    }
+  ],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "chatot",
+  "repositories": [],
+  "run_repositories": {
+    "max": 5,
+    "permissions": {
+      "contents": "write",
+      "pull_requests": "write"
+    }
+  },
+  "version": "1.161.0"
+}

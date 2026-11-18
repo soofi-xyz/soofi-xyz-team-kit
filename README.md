@@ -73,6 +73,13 @@ scope, not deployed support. Use `CONFIGURATION` consistently in bundle/componen
 contracts and migrate legacy naming; configuration bundles do not carry their own
 installer Lambda.
 
+## Enact
+
+Kit agents are also packaged as [Enact](./docs/enact.md) agent directories under `enact/`,
+generated from `agents/` by `scripts/sync-enact-agents.mjs`. The kit's `mcp.json` does not
+connect your editor to Enact; [add the `enact` MCP server yourself](./docs/enact.md#connect-your-editor-to-enact-opt-in)
+if you want to start Enact runs from Claude Code or Cursor.
+
 ## Installation and updates
 
 <details>

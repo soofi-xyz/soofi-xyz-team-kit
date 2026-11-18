@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://prismteam.ai/schemas/enact/skill-definition.schema.json",
+  "title": "Enact library skill",
+  "description": "One version of a skill in the environment's skill library, packaged from its directory: the manifest from skill.json and the text of every other file, by its path inside the skill directory. docs/agent-contract.md, \"The skill library\", describes each field.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["manifest", "files"],
+  "properties": {
+    "manifest": { "$ref": "#/$defs/manifest" },
+    "files": { "$ref": "#/$defs/files" }
+  },
+  "$defs": {
+    "manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "description"],
+      "properties": {
+        "name": {
+          "description": "The skill's directory name; agents lay it out at skills/<name>/.",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,62}$"
+        },
+        "version": {
+          "description": "Semantic version without build metadata. Immutable once saved.",
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$"
+        },
+        "description": { "type": "string", "minLength": 1, "maxLength": 1024 }
+      }
+    },
+    "files": {
+      "description": "Every file of the skill directory except skill.json, by its path inside the directory, as UTF-8 text. SKILL.md is required.",
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 500,
+      "propertyNames": {
+        "pattern": "^([A-Za-z0-9_][A-Za-z0-9._-]{0,99}/){0,8}[A-Za-z0-9_][A-Za-z0-9._-]{0,99}$"
+      },
+      "additionalProperties": { "type": "string", "maxLength": 3145728 }
+    }
+  }
+}

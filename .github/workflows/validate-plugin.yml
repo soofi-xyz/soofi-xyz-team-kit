@@ -38,6 +38,7 @@ jobs:
           bash -n scripts/sync-copilot-agents.sh
           bash -n scripts/sync-claude-agents.sh
           bash -n scripts/validate-plugin.sh
+          bash -n scripts/sync-enact-schema.sh
           bash -n scripts/local-cursor-plugin.sh
           bash -n skills/use-oracle/scripts/oracle-paths.sh
           bash -n skills/use-oracle/scripts/oracle-paths.test.sh
@@ -69,6 +70,8 @@ jobs:
           python3 -m py_compile scripts/check-system-manifest.py
           python3 -m py_compile scripts/test-build-system-product-contract.py
           python3 -m py_compile scripts/test-model-kpi-contract.py
+          python3 -m py_compile scripts/test-enact-packaging.py
+          node --check scripts/sync-enact-agents.mjs
 
       - name: Install Oracle runtime dependencies
         # `cd` (not `npm ci --prefix`): some npm releases (observed on 11.13.0)
@@ -83,10 +86,23 @@ jobs:
         run: npm test --prefix skills/use-oracle/runtime
 
       - name: Test agent memory hooks
-        run: node --test hooks/agent-memory/test/memory.test.mjs
+        run: node --test hooks/agent-memory/test/memory.test.mjs hooks/agent-memory/test/release.test.mjs
+
+      - name: Check Enact test data
+        run: node scripts/run-enact-tests.mjs --dry-run
 
       - name: Validate plugin files
         run: scripts/validate-plugin.sh
+
+      - name: Package Enact agents
+        run: node scripts/sync-enact-agents.mjs sync
+
+      - name: Check Enact packaging (T1; wave 1a must pass)
+        run: python3 scripts/test-enact-packaging.py
+
+      - name: Report Enact packaging for every agent (T1, report-only)
+        continue-on-error: true
+        run: python3 scripts/test-enact-packaging.py --strict
 
       - name: Check build-portals contract
         run: python3 scripts/test-build-portals-contract.py

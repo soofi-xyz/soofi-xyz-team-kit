@@ -1,0 +1,73 @@
+{
+  "agent": "conkeldurr",
+  "tasks": [
+    {
+      "id": "conkeldurr-graphql-filter-500",
+      "message": "Persist's GraphQL vector search returns 500 when a filter is combined with a keyword query. Reproduce it in a test and fix it. Work in prismteam-ai/persist. If the default branch already does this, open no PR: say where it is implemented and which test covers it. Otherwise open a draft pull request against its default branch titled \"[enact-golden] <short summary>\", wait for the repository's own CI and report the PR URL and the check results. Do not merge.",
+      "repositories": [
+        "prismteam-ai/persist"
+      ],
+      "expect": {
+        "kind": "pr",
+        "must_include": [
+          "re:https://github\\.com/prismteam-ai/persist/pull/\\d+",
+          "the repository's own CI checks passing on the PR head",
+          "a failing-then-passing test reproducing the 500",
+          "root cause in one sentence"
+        ],
+        "must_not": [
+          "pushes to the default branch",
+          "merges the pull request",
+          "disables, skips or deletes existing tests to make CI pass",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Bash",
+          "Edit"
+        ],
+        "forbids_repo_writes": false
+      },
+      "limits": {
+        "max_cost_usd": 8,
+        "max_minutes": 45
+      },
+      "requires": [
+        "repositories"
+      ]
+    },
+    {
+      "id": "conkeldurr-metrics-catalog-etag",
+      "message": "PUT on the metrics catalog has no optimistic concurrency. Add If-Match/ETag handling that answers 412 on a stale write, with tests. Work in prismteam-ai/persist. If the default branch already does this, open no PR: say where it is implemented and which test covers it. Otherwise open a draft pull request against its default branch titled \"[enact-golden] <short summary>\", wait for the repository's own CI and report the PR URL and the check results. Do not merge.",
+      "repositories": [
+        "prismteam-ai/persist"
+      ],
+      "expect": {
+        "kind": "pr",
+        "must_include": [
+          "re:https://github\\.com/prismteam-ai/persist/pull/\\d+",
+          "the repository's own CI checks passing on the PR head",
+          "412 on a stale write",
+          "tests"
+        ],
+        "must_not": [
+          "pushes to the default branch",
+          "merges the pull request",
+          "disables, skips or deletes existing tests to make CI pass",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Bash",
+          "Edit"
+        ],
+        "forbids_repo_writes": false
+      },
+      "limits": {
+        "max_cost_usd": 8,
+        "max_minutes": 45
+      },
+      "requires": [
+        "repositories"
+      ]
+    }
+  ]
+}

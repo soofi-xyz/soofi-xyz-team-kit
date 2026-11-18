@@ -1,0 +1,57 @@
+{
+  "agent": "delibird",
+  "tasks": [
+    {
+      "id": "delibird-register-report",
+      "message": "How do I add the County Coverage report to the catalog page, and what may and may not be stored about it?",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "the registration steps",
+          "only title, description and URL stored",
+          "no report data, credentials or queries in the catalog"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 2,
+        "max_minutes": 10
+      }
+    },
+    {
+      "id": "delibird-catalog-hosting",
+      "message": "We want a single page listing all our report URLs. What do you need from me and how would you host it?",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "the required inputs",
+          "the hosting choice",
+          "that the catalog does not authenticate or store report data"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 2,
+        "max_minutes": 10
+      }
+    }
+  ]
+}

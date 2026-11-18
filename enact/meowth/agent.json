@@ -1,0 +1,40 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Spend-limit approval workflow builder. Use proactively when automating team spend monitoring with human approval tasks that raise user spend limits by configured increments each cycle.",
+  "hosts": [],
+  "library_skills": [
+    {
+      "name": "apply-engineering-guidelines",
+      "version": "1.0.0-sha256-d3011aab3ed7aa8d"
+    },
+    {
+      "name": "build-ai-agents",
+      "version": "1.0.0-sha256-52c743a354ac9fa3"
+    },
+    {
+      "name": "build-batch-workflows",
+      "version": "1.0.0-sha256-aec04eab08f73ca6"
+    },
+    {
+      "name": "integrate-ci-cd",
+      "version": "1.0.0-sha256-0a3158a343d06221"
+    }
+  ],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "meowth",
+  "repositories": [],
+  "run_repositories": {
+    "max": 5,
+    "permissions": {
+      "contents": "write",
+      "pull_requests": "write"
+    }
+  },
+  "version": "1.161.0"
+}

@@ -1,0 +1,6 @@
+{
+  "requires_mcp": [
+    "figma"
+  ],
+  "requires_mcp_reason": "agents/hoopa.md:97,149,266: Figma file or frame inputs are read through the Figma MCP and the agent stops when Figma MCP cannot read a required source."
+}

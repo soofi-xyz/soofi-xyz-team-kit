@@ -1,0 +1,6 @@
+{
+  "requires_mcp": [
+    "elephant"
+  ],
+  "requires_mcp_reason": "agents/watchog.md:18-19: builds against 'the same Elephant MCP 2.0 package' Donphan uses and verifies through the Watchog-owned HTTP MCP deployment (listAtlasCounties). Seeded by the Enact packaging story."
+}

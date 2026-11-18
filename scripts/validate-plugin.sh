@@ -106,6 +106,11 @@ main() {
   "${root}/scripts/sync-copilot-agents.sh" check
   "${root}/scripts/sync-codex-agents.sh" check
   "${root}/scripts/sync-claude-agents.sh" check
+  if ! command -v node >/dev/null 2>&1; then
+    echo "node is required to check the Enact agent packages (scripts/sync-enact-agents.mjs)" >&2
+    return 1
+  fi
+  node "${root}/scripts/sync-enact-agents.mjs" check
 
   local python_bin="${PYTHON:-}"
   if [[ -z "${python_bin}" ]]; then
@@ -127,6 +132,7 @@ main() {
   "${python_bin}" "${root}/scripts/test-silvally-tools.py"
   "${python_bin}" "${root}/scripts/test-transform-api.py"
   "${python_bin}" "${root}/scripts/product_catalog.py" check
+  "${python_bin}" "${root}/scripts/test-enact-packaging.py" --self-test
   validate_neutral_references "${root}"
 
   "${python_bin}" - "$root" <<'PY'

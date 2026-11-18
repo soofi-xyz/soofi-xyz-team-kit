@@ -1,0 +1,31 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Scores a hiring candidate's take-home assignment: derives its intent, enforces gates, exercises the hosted runtime in a browser and returns a 100-point verdict-first score.",
+  "hosts": [],
+  "library_skills": [
+    {
+      "name": "apply-engineering-guidelines",
+      "version": "1.0.0-sha256-d3011aab3ed7aa8d"
+    }
+  ],
+  "limits": {
+    "max_cost_usd": 25,
+    "max_turns": 200
+  },
+  "model": "opus",
+  "name": "slowking",
+  "repositories": [],
+  "run_repositories": {
+    "max": 3,
+    "permissions": {
+      "contents": "read",
+      "pull_requests": "read"
+    }
+  },
+  "tools": [
+    "browser"
+  ],
+  "version": "1.161.0"
+}

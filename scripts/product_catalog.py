@@ -40,6 +40,11 @@ def validate(catalog: dict, root: Path = ROOT) -> list[str]:
         errors.append("unsupported catalogVersion")
     if not NAME.fullmatch(workflow) or not (root / "skills" / workflow / "SKILL.md").is_file():
         errors.append("workflowSkill must name an existing skill")
+    # Configurers deliver configuration through a repository, Marketplace and Deploy; one shared section says how.
+    delivery = f"{workflow}/SKILL.md#configurer-delivery"
+    workflow_path = root / "skills" / workflow / "SKILL.md"
+    if workflow_path.is_file() and "\n## Configurer delivery\n" not in workflow_path.read_text():
+        errors.append("workflowSkill must have a Configurer delivery section")
     for product in catalog.get("products", []):
         pid = product.get("id", "")
         if not NAME.fullmatch(pid) or pid in seen_products:
@@ -83,10 +88,14 @@ def validate(catalog: dict, root: Path = ROOT) -> list[str]:
                     errors.append(f"{agent}: missing shared workflow reference")
                 if guide not in path.read_text():
                     errors.append(f"{agent}: missing product iteration plan reference")
+                if role == "configure" and delivery not in path.read_text():
+                    errors.append(f"{agent}: missing Configurer delivery reference")
             if not isinstance(skill, str) or not NAME.fullmatch(skill) or not (root / "skills" / skill / "SKILL.md").is_file():
                 errors.append(f"{pid}: missing {role} skill {skill!r}")
             elif f"../{workflow}/reference/iterations/{pid}.md" not in (root / "skills" / skill / "SKILL.md").read_text():
                 errors.append(f"{pid}: {role} skill does not load product iteration plan")
+            elif role == "configure" and delivery not in (root / "skills" / skill / "SKILL.md").read_text():
+                errors.append(f"{pid}: configure skill does not follow Configurer delivery")
     installed = {p.stem for p in (root / "agents").glob("*.md")}
     retained_names = catalog.get("retainedAgents", [])
     retained = set(retained_names)

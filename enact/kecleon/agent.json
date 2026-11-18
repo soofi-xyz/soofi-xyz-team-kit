@@ -1,0 +1,68 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Transform builder. Build, maintain or fix SQL conversion, single-transaction mappings, record-level quality checks with quarantine and alerts, human-in-the-loop certification of unmatched entities, non-deterministic string-to-JSON extraction with configured provider connections and models and JSON Schemas through the AI SDK, readers/writers, planning and orchestration. Use Silvally for configuration and mapping tests.",
+  "hosts": [],
+  "library_skills": [
+    {
+      "name": "apply-engineering-guidelines",
+      "version": "1.0.0-sha256-d3011aab3ed7aa8d"
+    },
+    {
+      "name": "build-lexicon-product",
+      "version": "1.0.0-sha256-2ab6b55a1d491527"
+    },
+    {
+      "name": "build-marketplace-puller",
+      "version": "1.0.0-sha256-0fb8850b217a9657"
+    },
+    {
+      "name": "build-persist-service",
+      "version": "1.0.0-sha256-4c9e1d58d3143c1a"
+    },
+    {
+      "name": "build-product-deployer",
+      "version": "1.0.0-sha256-5048d818aeeed673"
+    },
+    {
+      "name": "build-saas-marketplace",
+      "version": "1.0.0-sha256-bac2ebb34666a767"
+    },
+    {
+      "name": "build-transform-product",
+      "version": "1.0.0-sha256-41b2decfb62362f5"
+    },
+    {
+      "name": "configure-deploy-product",
+      "version": "1.0.0-sha256-bfbf72898135c6e9"
+    },
+    {
+      "name": "configure-model-product",
+      "version": "1.0.0-sha256-3f3bbfa96b724495"
+    },
+    {
+      "name": "guide-product-work",
+      "version": "1.0.0-sha256-f5443985b2252b59"
+    },
+    {
+      "name": "operate-marketplace",
+      "version": "1.0.0-sha256-15bf4f21ef17429a"
+    }
+  ],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "kecleon",
+  "repositories": [],
+  "run_repositories": {
+    "max": 5,
+    "permissions": {
+      "contents": "write",
+      "pull_requests": "write"
+    }
+  },
+  "version": "1.161.0"
+}

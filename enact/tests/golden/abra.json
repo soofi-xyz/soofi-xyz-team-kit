@@ -1,0 +1,58 @@
+{
+  "agent": "abra",
+  "tasks": [
+    {
+      "id": "abra-agent-shift-assignment",
+      "message": "We need to assign 120 collection agents to 4-hour shifts over a week, respecting skills, state licenses, max 40 hours, and forecast call volume per hour. Define the optimization model and the service architecture before any code.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "decision variables, constraints and objective",
+          "input and output contracts",
+          "service architecture across data prep, solver and infrastructure layers",
+          "a unit-test strategy for solver behavior"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 3,
+        "max_minutes": 20
+      }
+    },
+    {
+      "id": "abra-territory-routing",
+      "message": "Field inspectors need daily routes across ~600 property visits with time windows. Is this a CP-SAT problem, a routing solver problem, or both? Give me the model summary, the candidate-reduction strategy before the in-memory solve, and the overflow strategy.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "model summary",
+          "data reduction before the in-memory solve",
+          "overflow strategy for unassigned visits"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 3,
+        "max_minutes": 20
+      }
+    }
+  ]
+}

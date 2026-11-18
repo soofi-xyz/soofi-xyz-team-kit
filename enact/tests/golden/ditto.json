@@ -1,0 +1,59 @@
+{
+  "agent": "ditto",
+  "tasks": [
+    {
+      "id": "ditto-citrix-scope",
+      "message": "Copy our nightly S3 export into Citrix every night. What exactly do you need from me before building?",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "the question of which Citrix product (Endpoint Management, ShareFile, or SFTP)",
+          "the input checklist",
+          "one-direction scope"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value",
+          "assumes Endpoint Management without asking"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 2,
+        "max_minutes": 10
+      }
+    },
+    {
+      "id": "ditto-design",
+      "message": "We've picked Citrix ShareFile. Design the nightly one-way sync from s3://exports/nightly/ including credentials, idempotency and failure alerting.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "ShareFile OAuth credentials kept in a secret store",
+          "one-direction copy with idempotent re-runs",
+          "failure alerting",
+          "dev and prod environments"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 3,
+        "max_minutes": 15
+      }
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "agent": "aegislash",
+  "tasks": [
+    {
+      "id": "aegislash-grant-expiry",
+      "message": "Access grants currently never expire. Add an optional expires_at to grants: decisions after it deny, and the grants list shows it. Include tests. Work in prismteam-ai/access. If the default branch already does this, open no PR: say where it is implemented and which test covers it. Otherwise open a draft pull request against its default branch titled \"[enact-golden] <short summary>\", wait for the repository's own CI and report the PR URL and the check results. Do not merge.",
+      "repositories": [
+        "prismteam-ai/access"
+      ],
+      "expect": {
+        "kind": "pr",
+        "must_include": [
+          "re:https://github\\.com/prismteam-ai/access/pull/\\d+",
+          "the repository's own CI checks passing on the PR head",
+          "a test proving a decision after expires_at is denied"
+        ],
+        "must_not": [
+          "pushes to the default branch",
+          "merges the pull request",
+          "disables, skips or deletes existing tests to make CI pass",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Bash",
+          "Edit"
+        ],
+        "forbids_repo_writes": false
+      },
+      "limits": {
+        "max_cost_usd": 8,
+        "max_minutes": 45
+      },
+      "requires": [
+        "repositories"
+      ]
+    },
+    {
+      "id": "aegislash-users-pagination",
+      "message": "GET /access/users returns every user in one response. Add cursor pagination with a default page size of 50 and tests. Work in prismteam-ai/access. If the default branch already does this, open no PR: say where it is implemented and which test covers it. Otherwise open a draft pull request against its default branch titled \"[enact-golden] <short summary>\", wait for the repository's own CI and report the PR URL and the check results. Do not merge.",
+      "repositories": [
+        "prismteam-ai/access"
+      ],
+      "expect": {
+        "kind": "pr",
+        "must_include": [
+          "re:https://github\\.com/prismteam-ai/access/pull/\\d+",
+          "the repository's own CI checks passing on the PR head",
+          "the pagination contract (cursor, page size)",
+          "tests for first, middle and last page"
+        ],
+        "must_not": [
+          "pushes to the default branch",
+          "merges the pull request",
+          "disables, skips or deletes existing tests to make CI pass",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Bash",
+          "Edit"
+        ],
+        "forbids_repo_writes": false
+      },
+      "limits": {
+        "max_cost_usd": 8,
+        "max_minutes": 45
+      },
+      "requires": [
+        "repositories"
+      ]
+    }
+  ]
+}

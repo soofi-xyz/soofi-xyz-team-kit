@@ -1,0 +1,74 @@
+{
+  "agent": "zoroark",
+  "tasks": [
+    {
+      "id": "zoroark-get-run-trace-link",
+      "message": "get_run doesn't say where the run's trace lives. Add the Persist thread id to the run once its trace is WRITTEN, with tests, and update docs/runs.md. Work in prismteam-ai/enact. If the default branch already does this, open no PR: say where it is implemented and which test covers it. Otherwise open a draft pull request against its default branch titled \"[enact-golden] <short summary>\", wait for the repository's own CI and report the PR URL and the check results. Do not merge.",
+      "repositories": [
+        "prismteam-ai/enact"
+      ],
+      "expect": {
+        "kind": "pr",
+        "must_include": [
+          "re:https://github\\.com/prismteam-ai/enact/pull/\\d+",
+          "the repository's own CI checks passing on the PR head",
+          "the new run field",
+          "tests",
+          "docs/runs.md updated"
+        ],
+        "must_not": [
+          "pushes to the default branch",
+          "merges the pull request",
+          "disables, skips or deletes existing tests to make CI pass",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Bash",
+          "Edit"
+        ],
+        "forbids_repo_writes": false
+      },
+      "limits": {
+        "max_cost_usd": 8,
+        "max_minutes": 45
+      },
+      "requires": [
+        "repositories"
+      ]
+    },
+    {
+      "id": "zoroark-list-agents-filter",
+      "message": "list_agents returns every agent. Add an optional channel filter to GET /agents and the MCP tool, with tests and docs/mcp.md updated. Work in prismteam-ai/enact. If the default branch already does this, open no PR: say where it is implemented and which test covers it. Otherwise open a draft pull request against its default branch titled \"[enact-golden] <short summary>\", wait for the repository's own CI and report the PR URL and the check results. Do not merge.",
+      "repositories": [
+        "prismteam-ai/enact"
+      ],
+      "expect": {
+        "kind": "pr",
+        "must_include": [
+          "re:https://github\\.com/prismteam-ai/enact/pull/\\d+",
+          "the repository's own CI checks passing on the PR head",
+          "the filter on both the route and the MCP tool",
+          "tests"
+        ],
+        "must_not": [
+          "pushes to the default branch",
+          "merges the pull request",
+          "disables, skips or deletes existing tests to make CI pass",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Bash",
+          "Edit"
+        ],
+        "forbids_repo_writes": false
+      },
+      "limits": {
+        "max_cost_usd": 8,
+        "max_minutes": 45
+      },
+      "requires": [
+        "repositories"
+      ]
+    }
+  ]
+}
