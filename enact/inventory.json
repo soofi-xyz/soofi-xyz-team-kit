@@ -559,7 +559,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 12128,
+      "bytes": 12498,
       "files": 1,
       "flag_counts": {
         "aws-profile": 1,
@@ -1178,7 +1178,7 @@
         "gh"
       ],
       "blocked_by": [],
-      "bytes": 139452,
+      "bytes": 139822,
       "files": 13,
       "flag_counts": {
         "aws-profile": 2,
@@ -3201,7 +3201,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 6842,
+      "bytes": 7212,
       "files": 1,
       "flag_counts": {
         "aws-profile": 2,
@@ -3564,8 +3564,8 @@
       "wave_reason": "role: build"
     }
   },
-  "enact_version": "1.164.1",
-  "kit_version": "0.164.1",
+  "enact_version": "1.164.2",
+  "kit_version": "0.164.2",
   "mcp_allow_list": [
     "enact",
     "browser",

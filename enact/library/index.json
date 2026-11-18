@@ -15,7 +15,7 @@
       ]
     }
   },
-  "kit_version": "0.164.1",
+  "kit_version": "0.164.2",
   "limits": {
     "body_bytes": 4194304,
     "encoded_bytes": 5242880,
