@@ -190,6 +190,14 @@ Build context from current sources, in this order:
 4. For products in this kit, `skills/guide-product-work/reference/product-catalog.json`
    for product ownership and boundaries.
 
+## Working the story
+
+While the work is in flight, follow
+[working the story](reference/working-the-story.md): close decisions before
+expensive validations, choose the option that fails safely, check instead of
+asking, quantify downstream impact before a rollout, and keep the story text in
+step with the code.
+
 ## Example core
 
 For a story that raises a call scheduler's capacity for two peak hours:
