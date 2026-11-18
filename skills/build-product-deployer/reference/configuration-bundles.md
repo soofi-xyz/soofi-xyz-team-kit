@@ -218,7 +218,7 @@ the adapter, following the deployed API where it differs. Paths are relative to
   the Access repository's `requirements/swagger.yml` without calling Access.
 - **Document:** the application's name, title, exact redirect addresses and
   exact sign-out addresses. An application is a set of addresses on the
-  environment's one sign-in client, not a separate client or audience. Every address is `https` with no wildcard. The
+  environment's one sign-in client, not a separate client or audience. Every address is `https`, or `http` on `localhost`, `127.0.0.1` or `[::1]`, with no wildcard; a bundle for a shared or production environment carries no loopback address. The
   document carries no client secret, token, user, role or grant; Build rejects
   one that does.
 - **Apply:** `GET /applications/{name}`, then `PUT /applications/{name}` with
