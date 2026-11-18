@@ -67,6 +67,14 @@ as Deploy before `JSON.parse`, then run the structural and type checks on the
 filled document (the `sha256` stays over the original source). A Build/Deploy
 mismatch here is a defect — see [prismteam-ai/build#68](https://github.com/prismteam-ai/build/pull/68).
 
+Keep each closed product document's top-level field list (`FieldRules` in
+`src/configuration/bundle-check.ts`) equal to the target product's schema
+`properties`, optional fields included; the Console list includes `forms` (an
+array of at most 20). When a product adds a top-level field, add it with its
+shape rather than opening the list, and keep refusing unknown fields. Test a
+manifest using the new field and one with an unknown field. A field the target
+product accepts but Build refuses is a defect.
+
 ## Configuration provenance
 
 Follow [configuration provenance: repo-linked Deploy installs](../guide-product-work/reference/configuration-provenance.md).

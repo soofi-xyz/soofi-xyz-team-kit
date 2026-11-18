@@ -32,7 +32,9 @@ legacy type/route and provenance contracts. Exercise a changed
 configuration with unchanged service code and an assembly with no bundle-specific Lambda.
 Do not call target configuration APIs during build or add arbitrary lifecycle hooks.
 Accept the `console` `application` kind together with Corviknight's Console adapter,
-validating each manifest as the contract's Console application payloads require.
+validating each manifest as the contract's Console application payloads require:
+allow every top-level field Console's schema declares, including action `forms`,
+and refuse any other.
 Accept the `access` `application` kind together with Corviknight's Access adapter,
 once Aegislash ships Access's application API: validate each document as the
 contract's Access application payloads require and reject one that carries a
