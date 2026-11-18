@@ -175,6 +175,95 @@ Keep non-secret auth settings (`header`, `prefix`, `token_url`, `token_path`,
 `scopes`, `subject`, `audience`, `role_arn`, `external_id`) and SFTP
 `username` on the connection; keep only secret values in the credential.
 
+### Callers and credential owners (Access)
+
+Access publishes no client library. Connect implements the per-user checks
+itself, following [Access's product integration](../../build-access-product/reference/product-integration.md)
+and its operator setup in [configure-access-product](../../configure-access-product/SKILL.md):
+
+- **Verify every bearer token with `jose`** (`createRemoteJWKSet` on
+  `https://<shared domain>/access/keys`, `jwtVerify`): issuer
+  `https://<shared domain>/access` and audience `https://<shared domain>`, both
+  configured, never read from the token; `RS256` only; `sub`, `exp` and `iat`
+  required; 60 s clock tolerance; `token_use` is `access`; `roles` is a string
+  array; `principal_kind` is `user` (default) or `service`. Cache keys at most
+  5 minutes with an unknown-key cooldown of at most 30 s. Any failure is `401`
+  and nothing starts. Identify a person by `sub` (the Access `user_id`), never
+  by email.
+- **Ask `POST /access/decisions`** with Connect's own service identity
+  (granted `access:decision:read`, `access:resource:manage` and
+  `access:resource:remove`; token from `POST /access/service-token`) and the
+  caller's own token in `caller.token`. The operator hands the identity to
+  Connect with the environment key, as the credential
+  `PUT /connect/partners/access/credentials/service-identity` with profile
+  `oauth2_client_credentials` (`client_id` the identity's name, `client_secret`
+  its secret). Credentials of partner `access` are the environment's alone: no
+  token caller reads, sets, removes or uses them, whatever its roles, and they
+  are not registered in Access. Until it is set, every token caller is refused
+  and the environment key works as before.
+  Ask one question per resource. Treat any error, timeout or non-`200` as a
+  deny; never fall back to allow.
+- **Declare** product `connect` once, exactly as Connect's
+  `src/access/declaration.ts` has it: type `credential`, `private`, with
+  `read`, `use` (shareable), `manage`, `remove`, and the type-level `create`
+  and `list`; type `flow` with `start`; type `configuration` with the
+  type-level `read` and `manage`; type `job` with the type-level `read`; and
+  type `upload` with the type-level `create`. `read` is declared because
+  Access lets administrators and the environment reach only `read` and
+  `remove` on a person's resource of a private type. The `member`-style role
+  grants `connect:credential:create` and `connect:flow:start`.
+- **Decide the environment key in Connect.** A request with only the key is
+  the environment: it may do everything except use, share or change a person's
+  credential. Record it as `environment`.
+- **Own every credential.** Creating one with a token makes its `sub` the owner;
+  with the key, `environment`. Register the owner with
+  `PUT /access/resources/connect/credential/{resource_id}` on every `PUT` and
+  `PATCH` (so a credential that is not registered yet becomes shareable once
+  it is written), and remove it with the credential. Sharing goes through
+  Access with the owner's own token, on the `resource_id` the credential's
+  summary shows; Connect stores no grants.
+- **Give every credential its own resource id.** The store gives a credential
+  a `resource_id` (a UUID) when it is created and keeps it for the
+  credential's life; Access knows the credential only by it. A credential
+  created later under the same name has another, so what Access still holds
+  for a removed credential (its owner record and shares, when the removal
+  never reached Access) names nothing and never applies to the new one, and a
+  delayed or repeated request for one credential never changes Access for
+  another. Never key an Access resource by a name that can be reused. A
+  credential stored before resource ids existed keeps `{partner}.{credential}`,
+  which no later credential can have: Access ids allow no `/`, and Connect
+  identifiers have no `.`.
+- **Let Connect's store decide who created a name.** Create with a create-only
+  write, so the second of two concurrent creators gets `409` and changes
+  nothing. Then register the owner. When Access does not confirm that, answer
+  `503` and leave the credential stored; never remove it again, since a retry
+  may already have replaced it. Its owner uses it. Do not promise that it
+  cannot be shared: Access may hold the owner already, with only its answer
+  lost. The next `PUT` or `PATCH` by whoever manages it registers it otherwise.
+- **Say what was read when writing.** Replace or merge an existing credential
+  only in the exact stored state the caller was authorized on, checked by the
+  store together with the write (`409` when it was changed, removed or
+  recreated meanwhile). In Secrets Manager, write the new value as a staged
+  version and move `AWSCURRENT` to it with `UpdateSecretVersionStage` and
+  `RemoveFromVersionId` set to the version that was read. An in-memory store
+  checks and writes with no `await` in between. On removal, remove the Access
+  record first.
+- **Pre-flight a job** before any partner or storage call: `start` on the flow
+  (resource owner `environment`) and `use` on every credential the job's
+  connections and DECRYPT keys name, each owner read from Connect's own records
+  at that moment, never from a cache. The `403` names the flow or credential,
+  never a value. A `transaction_id` belongs to the caller who used it first: a
+  repeat by another caller is `409`, never the first caller's job or result.
+- **Keep the environment's names.** Only the environment key sets a credential
+  that a configuration already names (`409` for a person). Refuse an activation
+  whose flow, subscriber or webhook names a person's credential, and a partner
+  configuration whose webhook does. The webhook ingress and every job Connect
+  starts or starts again on its own act as the environment and never read a
+  person's credential.
+- **One reading of who is calling.** The authorizer refuses a credential header
+  sent twice with different values and passes on which credential it accepted;
+  the API function refuses a request it would read differently.
+
 ## 8. Lineage and what changes
 
 The design keeps the Staircase Connector model that the

@@ -51,7 +51,7 @@
     },
     {
       "name": "guide-product-work",
-      "version": "1.0.0-sha256-b6e95aa5a642255d"
+      "version": "1.0.0-sha256-f5443985b2252b59"
     },
     {
       "name": "integrate-ci-cd",
@@ -88,5 +88,5 @@
       "pull_requests": "write"
     }
   },
-  "version": "1.160.0"
+  "version": "1.161.0"
 }

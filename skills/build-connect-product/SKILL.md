@@ -95,6 +95,10 @@ Classify every request before designing anything:
   job's connections name. A flow that names no credential still needs `start`.
   Activations run as the environment, use environment credentials only, and are
   created only by an administrator or the environment key.
+- Verify Access tokens yourself with `jose` against `/access/keys` and ask
+  `POST /access/decisions` with Connect's own service identity; any failure is
+  a deny ([architecture](reference/architecture.md#callers-and-credential-owners-access)).
+  Access publishes no client library.
 - Expose no SigV4 API. Serve every route on the shared domain with the shared
   key or an Access token, and webhook ingress as a declared keyless method with
   the webhook's own auth. Migrate the existing IAM API's callers, webhooks and
