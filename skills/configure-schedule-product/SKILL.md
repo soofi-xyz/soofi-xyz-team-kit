@@ -59,12 +59,17 @@ column the configuration points at:
 | "Select 25,000" | `count: 25000` on the selection |
 | "Don't reach yesterday's people today; reach others" | `rotation: {history, cooldown: "P1D", order: "least_recently_reached"}` |
 | "Prefer subjects not reached recently, without skipping anyone" | `rotation: {history: "ledger", order: "least_recently_reached"}` with no cooldown (changes order only; nobody is excluded) |
+| "Score subjects by X, Y, Z with weights …" | Compute a score column in the `athena-sql` source from data. Recency comes from `{{ledger.actions}}` (days since the subject's last published selection; never-selected subjects get the top recency). Put that column in the selection's `rank` (`order: "desc"`). Weights and signals come from the business owner; never invent them. Rotation, if configured, still orders before `rank`. |
 | "Reached means …" | A history source returning `subject_id, reached_at`, or `"ledger"` for this schedule's own published selections |
 | "Payfail first, then …" | One selection per group, in precedence order; earlier selections take subjects first |
 | "Call these N times a week" | `weeklyTarget` with a history source |
 | "Never contact these" | A source listed in the selection's `exclude` |
 | "Use today's output of product X" (Filter, Transform, …) | An `s3-files` source over its run-dated prefix (`…/run_date={{run.date}}/…/`) with `format` and declared `columns`; join it in an `athena-sql` source as `{{sources.<id>}}` |
 | "Only in legal hours, at most X per hour" | A `delivery` block; offsets and allowed hours as column roles |
+
+Rotation sorts by a single key (how long since the subject was last reached). Scoring is a
+formula over several weighted signals into one column that becomes a `rank` key; rotation,
+if present, still runs before that rank.
 
 1. Start from the repository example closest to the request. Give the schedule a lower-case
    `id` (`^[a-z][a-z0-9-]{1,62}$`).

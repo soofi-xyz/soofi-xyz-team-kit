@@ -53,16 +53,19 @@ configuration over generic features; never as a voicemail, cohort or client bran
 - Keep the ledger append-only and only count published live runs. A re-run of a date
   supersedes the earlier run for rotation without deleting ledger rows. Simulations and
   failed runs never count. Published live runs that existed before the ledger shipped
-  must count for rotation from day one, with no manual backfill.
+  must count for rotation and `{{ledger.actions}}` from day one, with no manual backfill.
 - When shipping the rotation piece, lift its own refusals in `notSupportedYet`
   (`selections[].rotation` for ledger history and least-recently-reached, including
-  without cooldown). Keep refusing capabilities this piece does not implement
-  (`{{ledger.actions}}` in sources until that sub-feature lands, history from a source
-  id if not yet built, `weeklyTarget`, selection capacity, `min_cost_flow`).
+  without cooldown, and `{{ledger.actions}}` in athena-sql sources). Keep refusing
+  capabilities this piece does not implement (history from a source id, `weeklyTarget`,
+  selection capacity, `min_cost_flow`).
 - Acceptance for rotation without cooldown (priority only): run date D live, then
-  simulate D+1. D+1 selects the same eligible set as without rotation, but subjects not
-  reached on D come first; with a count smaller than the pool, D's subjects fill only
-  the remaining places. With a cooldown, D+1 excludes D's subjects while it holds.
+  simulate D+1. D+1 selects the same eligible set as without rotation; never-reached
+  subjects come first and D's subjects fill only the remaining places. With a cooldown,
+  D+1 excludes D's subjects while it holds. Acceptance also covers a score (or other
+  rank key) computed in athena-sql from `{{ledger.actions}}`: on D+1 the order changes
+  as expected. Published live runs that existed before the ledger shipped count for
+  both rotation and `{{ledger.actions}}`, with no manual backfill.
 - Never silently change configured hours, counts or capacities. Anything not delivered is
   overflow with a reason and a `shortfall` in the summary.
 - Keep sources read-only and bounded (`maxScanGiB`, `maxRows`) behind a metadata-only cost
