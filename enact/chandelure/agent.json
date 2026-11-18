@@ -46,9 +46,6 @@
     "max_cost_usd": 10,
     "max_turns": 100
   },
-  "mcp_servers": [
-    "figma"
-  ],
   "model": "sonnet",
   "name": "chandelure",
   "repositories": [],
@@ -59,5 +56,5 @@
       "pull_requests": "write"
     }
   },
-  "version": "1.164.0"
+  "version": "1.164.1"
 }

@@ -558,10 +558,8 @@
         "gh",
         "python3"
       ],
-      "blocked_by": [
-        "mcp-allow-list"
-      ],
-      "bytes": 11654,
+      "blocked_by": [],
+      "bytes": 12128,
       "files": 1,
       "flag_counts": {
         "aws-profile": 1,
@@ -584,19 +582,15 @@
         "guide-product-work",
         "operate-marketplace"
       ],
-      "mcp_servers": [
-        "figma"
-      ],
+      "mcp_servers": [],
       "model": "sonnet",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
       "own_skills": [],
       "readonly": false,
-      "requires_mcp": [
-        "figma"
-      ],
-      "requires_mcp_reason": "agents/chandelure.md:16: a Console build or first Figma integration starts by completing user OAuth and proving a scoped Figma MCP read before authoring work.",
+      "requires_mcp": [],
+      "requires_mcp_reason": "agents/chandelure.md:16 starts Figma work with user OAuth and a Figma MCP read. On Enact Figma is optional (no hosted Figma MCP accepts Enact yet): the appendix skips the Figma checkpoint and works from exported designs.",
       "secret_env_mentions": [
         "MARKETPLACE_API_KEY"
       ],
@@ -611,8 +605,8 @@
         "guide-product-work",
         "operate-marketplace"
       ],
-      "wave": "4",
-      "wave_reason": "requires a remote MCP server"
+      "wave": "3",
+      "wave_reason": "role: build"
     },
     "chatot": {
       "assumptions": [],
@@ -1183,10 +1177,8 @@
         "aws-profile",
         "gh"
       ],
-      "blocked_by": [
-        "mcp-allow-list"
-      ],
-      "bytes": 139137,
+      "blocked_by": [],
+      "bytes": 139452,
       "files": 13,
       "flag_counts": {
         "aws-profile": 2,
@@ -1200,9 +1192,7 @@
         "figma-to-code",
         "responsive-design-tests"
       ],
-      "mcp_servers": [
-        "figma"
-      ],
+      "mcp_servers": [],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
@@ -1212,10 +1202,8 @@
         "unified-portal-smoke-testing"
       ],
       "readonly": false,
-      "requires_mcp": [
-        "figma"
-      ],
-      "requires_mcp_reason": "agents/hoopa.md:97,149,266: Figma file or frame inputs are read through the Figma MCP and the agent stops when Figma MCP cannot read a required source.",
+      "requires_mcp": [],
+      "requires_mcp_reason": "agents/hoopa.md:97,149,266 read Figma frames through the Figma MCP. On Enact Figma is optional (no hosted Figma MCP accepts Enact yet): the appendix uses exported frames, as hoopa's own stop rule already allows.",
       "secret_env_mentions": [
         "PORTAL_JWT_SECRET"
       ],
@@ -1225,8 +1213,8 @@
         "responsive-design-tests",
         "unified-portal-smoke-testing"
       ],
-      "wave": "4",
-      "wave_reason": "requires a remote MCP server"
+      "wave": "3",
+      "wave_reason": "retained specialist (default)"
     },
     "hypno": {
       "assumptions": [
@@ -3212,10 +3200,8 @@
         "gh",
         "python3"
       ],
-      "blocked_by": [
-        "mcp-allow-list"
-      ],
-      "bytes": 6230,
+      "blocked_by": [],
+      "bytes": 6842,
       "files": 1,
       "flag_counts": {
         "aws-profile": 2,
@@ -3240,21 +3226,15 @@
         "manage-channel-templates",
         "operate-marketplace"
       ],
-      "mcp_servers": [
-        "figma",
-        "jigglypuff"
-      ],
+      "mcp_servers": [],
       "model": "opus",
       "needs_secrets": [],
       "needs_secrets_source": "none declared",
       "omitted_files": [],
       "own_skills": [],
       "readonly": false,
-      "requires_mcp": [
-        "figma",
-        "jigglypuff"
-      ],
-      "requires_mcp_reason": "agents/wigglytuff.md:18 and skills/figma-to-email-template: reads the frame through the Figma MCP, then calls Jigglypuff's hosted MCP server for images, validation, previews and the template PR.",
+      "requires_mcp": [],
+      "requires_mcp_reason": "agents/wigglytuff.md:18 and skills/figma-to-email-template need the Figma MCP and Jigglypuff's hosted MCP. On Enact neither is connected yet: the appendix keeps every other template-management task and refuses the Figma-to-email flow.",
       "secret_env_mentions": [
         "MARKETPLACE_API_KEY"
       ],
@@ -3271,8 +3251,8 @@
         "manage-channel-templates",
         "operate-marketplace"
       ],
-      "wave": "4",
-      "wave_reason": "requires a remote MCP server"
+      "wave": "3",
+      "wave_reason": "retained specialist (default)"
     },
     "wingull": {
       "assumptions": [
@@ -3584,8 +3564,8 @@
       "wave_reason": "role: build"
     }
   },
-  "enact_version": "1.164.0",
-  "kit_version": "0.164.0",
+  "enact_version": "1.164.1",
+  "kit_version": "0.164.1",
   "mcp_allow_list": [
     "enact",
     "browser",

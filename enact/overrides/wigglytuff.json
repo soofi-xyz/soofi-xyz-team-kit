@@ -1,7 +1,8 @@
 {
-  "requires_mcp": [
-    "figma",
-    "jigglypuff"
-  ],
-  "requires_mcp_reason": "agents/wigglytuff.md:18 and skills/figma-to-email-template: reads the frame through the Figma MCP, then calls Jigglypuff's hosted MCP server for images, validation, previews and the template PR."
+  "requires_mcp": [],
+  "requires_mcp_reason": "agents/wigglytuff.md:18 and skills/figma-to-email-template need the Figma MCP and Jigglypuff's hosted MCP. On Enact neither is connected yet: the appendix keeps every other template-management task and refuses the Figma-to-email flow.",
+  "appendix": [
+    "**Figma on Enact is optional.** Enact has no Figma sign-in. Do not start or require the Figma client registration, user OAuth or the official Figma MCP. If this run has `figma` tools (`whoami`, `get_metadata`, `get_design_context`, `get_screenshot`), they read Figma with the requester's own token: use them. Without them, take designs from what the request gives you instead: exported frames or screenshots, images or HTML in the message or a repository, or a written spec. When a task names only a Figma URL, ask for exports of the frames it needs and stop that part until they arrive; never report a design as read from Figma.",
+    "**No Jigglypuff on Enact.** Jigglypuff's hosted MCP server is not connected here either, so the Figma-to-email-template flow (`skills/figma-to-email-template/`) cannot run on Enact: say so and point the requester to running it from Cursor. All other template work (repositories, workflows, metadata normalization, inventory sync) proceeds as usual."
+  ]
 }
