@@ -1,0 +1,342 @@
+{
+  "test": "T5",
+  "router": "arceus",
+  "pass_bar": {
+    "min_correct": 45,
+    "max_routed_to_stays_local": 0
+  },
+  "requests": [
+    {
+      "id": "r01",
+      "request": "Score this candidate's take-home: PR is github.com/prismteam-ai/x-engagement/pull/12, hosted at https://xe-demo.vercel.app, Loom linked in the PR. Assignment went out Monday 9am.",
+      "expected": "slowking",
+      "wave": "1a"
+    },
+    {
+      "id": "r02",
+      "request": "Can you grade Maria's assignment for the Oracle Property Intelligence role? I need a hiring recommendation with a score out of 100.",
+      "expected": "slowking",
+      "wave": "1a"
+    },
+    {
+      "id": "r03",
+      "request": "Collections dashboard says 12% promise-to-pay rate, the vendor portal says 9% for the same week. Which is right and why do they differ?",
+      "expected": "porygon",
+      "wave": "1a",
+      "near_miss": true,
+      "confusable_with": "jirachi"
+    },
+    {
+      "id": "r04",
+      "request": "Reconcile LiveVox talk-time metrics with our internal call events: they're off by about 8% every day.",
+      "expected": "porygon",
+      "wave": "1a"
+    },
+    {
+      "id": "r05",
+      "request": "Define who is eligible for the payfail SMS campaign and the handoff contract from Filter to the SMS runtime.",
+      "expected": "xatu",
+      "wave": "1a"
+    },
+    {
+      "id": "r06",
+      "request": "Compose audience, templates and provider sends into one deterministic daily email runtime with scoring and allocation.",
+      "expected": "oranguru",
+      "wave": "1a"
+    },
+    {
+      "id": "r07",
+      "request": "Design a throttled, idempotent nightly job that pushes 3M records to a partner API that allows 50 rps, with a cost gate.",
+      "expected": "machamp",
+      "wave": "1a"
+    },
+    {
+      "id": "r08",
+      "request": "Lay out a monorepo for a landing site, an authenticated portal and an admin app sharing types, with tRPC on Lambda.",
+      "expected": "metagross",
+      "wave": "1a"
+    },
+    {
+      "id": "r09",
+      "request": "We need an OR-Tools model to assign 200 agents to shifts respecting licenses and max hours.",
+      "expected": "abra",
+      "wave": "1a"
+    },
+    {
+      "id": "r10",
+      "request": "Show me the exact lexicon definition for the payment entity, with enums and relationships.",
+      "expected": "mew",
+      "wave": "1b"
+    },
+    {
+      "id": "r11",
+      "request": "Model a domain for insurance claims with reusable core concepts and an extension for auto claims.",
+      "expected": "mew",
+      "wave": "1b"
+    },
+    {
+      "id": "r12",
+      "request": "Is the Email Workflow at parity with the pinned SMS workflow? I need a certification verdict, read-only.",
+      "expected": "slowbro",
+      "wave": "1b",
+      "near_miss": true,
+      "confusable_with": "chatot"
+    },
+    {
+      "id": "r13",
+      "request": "Run a focused diagnostic on just the email workflow's replay and observability controls versus SMS.",
+      "expected": "slowbro",
+      "wave": "1b"
+    },
+    {
+      "id": "r14",
+      "request": "Add a 7-day variant of our existing contact_rate metric definition on the dev Model; the metric family already supports windows.",
+      "expected": "jirachi",
+      "wave": "configurers",
+      "near_miss": true,
+      "confusable_with": "dialga"
+    },
+    {
+      "id": "r15",
+      "request": "Install the new text_message metric definitions into soofi Persist's metrics catalog, backfill 30 days and activate them.",
+      "expected": "uxie",
+      "wave": "configurers",
+      "near_miss": true,
+      "confusable_with": "conkeldurr"
+    },
+    {
+      "id": "r16",
+      "request": "Onboard partner Acme's daily SFTP file drop into our existing Connect service and prove it on dev.",
+      "expected": "wingull",
+      "wave": "configurers",
+      "near_miss": true,
+      "confusable_with": "lapras"
+    },
+    {
+      "id": "r17",
+      "request": "Set up a weekly report on the existing Report service counting payments by portfolio, with a $3 cost cap.",
+      "expected": "bronzor",
+      "wave": "configurers",
+      "near_miss": true,
+      "confusable_with": "bronzong"
+    },
+    {
+      "id": "r18",
+      "request": "Configure the rules for campaign 'Q4-prelegal' on the existing Rule service so bankruptcy and C&D accounts are excluded.",
+      "expected": "meditite",
+      "wave": "configurers",
+      "near_miss": true,
+      "confusable_with": "gallade"
+    },
+    {
+      "id": "r19",
+      "request": "On the deployed Schedule, define who we contact each day from the past-due-60 cohort with a 5-day cooldown.",
+      "expected": "klink",
+      "wave": "configurers"
+    },
+    {
+      "id": "r20",
+      "request": "Write an inference configuration that extracts action items from meeting transcripts in Persist and test it.",
+      "expected": "elgyem",
+      "wave": "configurers"
+    },
+    {
+      "id": "r21",
+      "request": "Compose a business outcome on System that runs Rule selection then Schedule whenever a CSV lands in our bucket.",
+      "expected": "celebi",
+      "wave": "configurers"
+    },
+    {
+      "id": "r22",
+      "request": "Configure a Transform extraction that turns HOA fee strings like '$450 quarterly' into amount and frequency.",
+      "expected": "silvally",
+      "wave": "configurers",
+      "near_miss": true,
+      "confusable_with": "oracle"
+    },
+    {
+      "id": "r23",
+      "request": "Upload our product source zip to the Build API, build it and verify the CDK cloud assembly provenance.",
+      "expected": "metang",
+      "wave": "configurers"
+    },
+    {
+      "id": "r24",
+      "request": "Create a Puller subscription so the dev environment picks up new Report releases automatically.",
+      "expected": "skarmory",
+      "wave": "configurers"
+    },
+    {
+      "id": "r25",
+      "request": "Register our new product in the Marketplace catalog and check whether it's ready to publish.",
+      "expected": "registeel",
+      "wave": "configurers"
+    },
+    {
+      "id": "r26",
+      "request": "Create an environment plan for a new customer domain and get it to readiness.",
+      "expected": "shaymin",
+      "wave": "configurers"
+    },
+    {
+      "id": "r27",
+      "request": "Grant the finance team permission to view reports through Access, and give our runner a service identity.",
+      "expected": "doublade",
+      "wave": "configurers"
+    },
+    {
+      "id": "r28",
+      "request": "Submit a Figma-to-React job for our new reports page frame on the existing Console and bind it to the Report API.",
+      "expected": "vivillon",
+      "wave": "configurers",
+      "near_miss": true,
+      "confusable_with": "sylveon"
+    },
+    {
+      "id": "r29",
+      "request": "Publish the Report OpenAPI and a getting-started guide on the existing documentation portal.",
+      "expected": "togetic",
+      "wave": "configurers"
+    },
+    {
+      "id": "r30",
+      "request": "Move our story-reviewer agent onto the existing Enact service and test a run.",
+      "expected": "zorua",
+      "wave": "configurers"
+    },
+    {
+      "id": "r31",
+      "request": "Onboard a new customer identity in Account and issue them a key.",
+      "expected": "blissey",
+      "wave": "configurers"
+    },
+    {
+      "id": "r32",
+      "request": "Model's metric compiler can't express rolling-window ratios. Add that metric family.",
+      "expected": "dialga",
+      "wave": "builders",
+      "near_miss": true,
+      "confusable_with": "jirachi"
+    },
+    {
+      "id": "r33",
+      "request": "Persist's metric backfill endpoint times out on 90-day windows; fix the engine.",
+      "expected": "conkeldurr",
+      "wave": "builders",
+      "near_miss": true,
+      "confusable_with": "uxie"
+    },
+    {
+      "id": "r34",
+      "request": "Connect's WAIT_FOR_WEBHOOK verb doesn't verify HMAC signatures. Add verification to the driver.",
+      "expected": "lapras",
+      "wave": "builders",
+      "near_miss": true,
+      "confusable_with": "wingull"
+    },
+    {
+      "id": "r35",
+      "request": "The Report refresh state machine double-appends to the ledger when a refresh is retried. Fix it.",
+      "expected": "bronzong",
+      "wave": "builders"
+    },
+    {
+      "id": "r36",
+      "request": "Entity selection isn't populating campaign_id when runs start by campaign; fix the Rule engine.",
+      "expected": "gallade",
+      "wave": "builders"
+    },
+    {
+      "id": "r37",
+      "request": "Add mobile, tablet and desktop responsive tests to the components Console generates from Figma.",
+      "expected": "chandelure",
+      "wave": "builders",
+      "near_miss": true,
+      "confusable_with": "smeargle"
+    },
+    {
+      "id": "r38",
+      "request": "Add per-key ordered event triggers to the System framework.",
+      "expected": "zygarde",
+      "wave": "builders"
+    },
+    {
+      "id": "r39",
+      "request": "Transform's structured extraction returns empty objects when the model output fails the JSON Schema; fix the engine.",
+      "expected": "kecleon",
+      "wave": "builders"
+    },
+    {
+      "id": "r40",
+      "request": "Build accepts source zips with symlinks pointing outside the archive. Harden intake.",
+      "expected": "tinkaton",
+      "wave": "builders"
+    },
+    {
+      "id": "r41",
+      "request": "The Deploy Puller keeps polling every minute during Marketplace outages; add backoff.",
+      "expected": "corviknight",
+      "wave": "builders"
+    },
+    {
+      "id": "r42",
+      "request": "Add a channel filter to Enact's list_agents MCP tool and the GET /agents route.",
+      "expected": "zoroark",
+      "wave": "builders"
+    },
+    {
+      "id": "r43",
+      "request": "Add expiring grants to the Access service.",
+      "expected": "aegislash",
+      "wave": "builders"
+    },
+    {
+      "id": "r44",
+      "request": "The developer portal needs a page type for MCP server references.",
+      "expected": "unown",
+      "wave": "builders"
+    },
+    {
+      "id": "r45",
+      "request": "How many roof permits were issued in Lee County, Florida since 2022 according to the published data?",
+      "expected": "donphan",
+      "wave": "specialists",
+      "near_miss": true,
+      "confusable_with": "oracle"
+    },
+    {
+      "id": "r46",
+      "request": "Our short links count Slack link previews as clicks. Fix click detection.",
+      "expected": "linoone",
+      "wave": "specialists",
+      "near_miss": true,
+      "confusable_with": "castform"
+    },
+    {
+      "id": "r47",
+      "request": "Groom this into a WOW story with subtasks: customers want to see failed payments in their history.",
+      "expected": "kirlia",
+      "wave": "specialists"
+    },
+    {
+      "id": "r48",
+      "request": "Draft a pitch for Prism aimed at a regional mortgage servicer in our editorial voice.",
+      "expected": "eevee",
+      "wave": "specialists"
+    },
+    {
+      "id": "r49",
+      "request": "Sync SMS templates from the operational DB into the templates inventory with review PRs.",
+      "expected": "wigglytuff",
+      "wave": "specialists"
+    },
+    {
+      "id": "r50",
+      "request": "Generate verified hero facts about newly published counties for the elephant.xyz homepage.",
+      "expected": "watchog",
+      "wave": "specialists",
+      "near_miss": true,
+      "confusable_with": "ampharos"
+    }
+  ]
+}

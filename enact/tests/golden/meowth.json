@@ -1,0 +1,58 @@
+{
+  "agent": "meowth",
+  "tasks": [
+    {
+      "id": "meowth-loop-design",
+      "message": "Design the approval loop: detect members near their Cursor spend limit, open an Asana approval task, and on completion raise the limit by $50.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "GET /teams/spend and POST /teams/user-spend-limit",
+          "the 250 rpm rate limit",
+          "idempotent handling of a completed task"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value",
+          "invents endpoints"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 3,
+        "max_minutes": 15
+      }
+    },
+    {
+      "id": "meowth-team-cap",
+      "message": "Can Meowth set a team-wide monthly cap for us?",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "that the Admin API does not expose a team-level monthly cap",
+          "a request to re-scope"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value",
+          "invents an endpoint"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 2,
+        "max_minutes": 10
+      }
+    }
+  ]
+}

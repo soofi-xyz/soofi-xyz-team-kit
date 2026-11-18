@@ -1,0 +1,19 @@
+{
+  "stays_local": ["ampharos", "audino", "braviary", "castform", "oracle", "smeargle", "sylveon"],
+  "waves": {
+    "1a": ["slowking", "porygon", "xatu", "oranguru", "machamp", "metagross", "abra"],
+    "1b": ["mew", "slowbro", "arceus"]
+  },
+  "groups": {
+    "configurers": "description starts with \"<Product> configurer.\"",
+    "builders": "description starts with \"<Product> builder.\"",
+    "specialists": "every other Enact-hosted agent"
+  },
+  "gates": {
+    "repositories": "T2 probe: git clone and push through the Enact GitHub App (phase 1)",
+    "browser": "T2 probe: a browser page through the agent's browser tool (phase 1)",
+    "secret-injection": "T2 probe: PRISM_API_KEY and PRISM_DOMAIN reach the sandbox without appearing in the trace (phase 3 gate)",
+    "remote-mcp": "T2 probe: a remote MCP server (elephant) reachable from the sandbox (phase 6 gate)"
+  },
+  "router": "arceus"
+}

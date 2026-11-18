@@ -1,0 +1,57 @@
+{
+  "agent": "noctowl",
+  "tasks": [
+    {
+      "id": "noctowl-missing-package",
+      "message": "Build me an audit agent for our call recordings.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "a request for input_spec, anomaly_catalog and report_spec"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value",
+          "invents audit rules or report columns"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 2,
+        "max_minutes": 10
+      }
+    },
+    {
+      "id": "noctowl-profile-from-package",
+      "message": "Audit package: input_spec = daily call-disposition CSVs in s3://audit/calls/ joined on account_id; anomaly_catalog = (1) calls outside 8am-9pm debtor local time, (2) more than 7 calls in 7 days to one account; report_spec = one CSV row per anomaly with account_id, call_id, rule, evidence. Turn this into the audit_profile.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "audit_profile_id and audit_profile_version",
+          "both anomalies as deterministic rules with thresholds",
+          "the report columns from report_spec"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value",
+          "adds anomalies not in the package"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 3,
+        "max_minutes": 15
+      }
+    }
+  ]
+}

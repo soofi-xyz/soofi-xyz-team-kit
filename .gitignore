@@ -26,3 +26,6 @@ __pycache__/
 /enact/library/*/
 # Packed bundle-ready files (PUT bodies) for Build's enact/agent and enact/skill kinds.
 /enact/dist/
+
+# Enact test runner output
+enact-test-results/

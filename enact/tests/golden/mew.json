@@ -1,0 +1,88 @@
+{
+  "agent": "mew",
+  "tasks": [
+    {
+      "id": "mew-lookup-payment",
+      "message": "Show the model for payment: its properties, required fields, enums and relationships.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "the exact bundled property-graph definition for payment",
+          "required fields",
+          "enum values",
+          "relationships"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value",
+          "redesigns or invents properties not in the bundled definition",
+          "asks for a repository or file path"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 2,
+        "max_minutes": 10
+      }
+    },
+    {
+      "id": "mew-design-hoa",
+      "message": "Model homeowner associations for our property data: HOA name, fee amount, fee frequency, management company and which parcels belong to it. Reuse the universal core where possible and tell me which concepts are domain extensions.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "reused core concepts",
+          "a domain extension for HOA-specific concepts",
+          "relationships between HOA, parcel and management company",
+          "fee frequency as an enum"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 3,
+        "max_minutes": 20
+      }
+    },
+    {
+      "id": "mew-lookup-alternative-paradigm",
+      "message": "List the indexes and relationships of the property entity in the graph lexicon.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "the property-graph definition's indexes",
+          "the relationships",
+          "a note when other paradigm definitions exist"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value",
+          "invents indexes"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 2,
+        "max_minutes": 10
+      }
+    }
+  ]
+}

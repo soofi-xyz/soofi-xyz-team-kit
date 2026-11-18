@@ -1,0 +1,67 @@
+{
+  "agent": "shaymin",
+  "tasks": [
+    {
+      "id": "shaymin-plan-domain",
+      "message": "Create an environment plan 'enact-golden-env' from the test Account manifest with domain golden.dev.example.com and check its readiness. Use our own dev/test Environment stack at https://$PRISM_DOMAIN with the shared key in PRISM_API_KEY (already set in your environment); send X-Source-Repository and X-Source-Commit on every write, then read the configuration back through the API and show that it matches what you wrote.",
+      "repositories": [],
+      "expect": {
+        "kind": "config-readback",
+        "must_include": [
+          "the configuration read back through the Environment HTTP API, matching what was written",
+          "X-Source-Repository and X-Source-Commit sent on the write",
+          "the plan read back",
+          "resumable readiness status per step"
+        ],
+        "must_not": [
+          "uses AWS credentials or the AWS CLI",
+          "writes to the soofi-safavi or any production environment",
+          "reports a check as passing that it did not run",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Bash"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 5,
+        "max_minutes": 30
+      },
+      "requires": [
+        "secret-injection"
+      ]
+    },
+    {
+      "id": "shaymin-resume",
+      "message": "Resume readiness for enact-golden-env and tell me which step it stops at and why. Use our own dev/test Environment stack at https://$PRISM_DOMAIN with the shared key in PRISM_API_KEY (already set in your environment); send X-Source-Repository and X-Source-Commit on every write, then read the configuration back through the API and show that it matches what you wrote.",
+      "repositories": [],
+      "expect": {
+        "kind": "config-readback",
+        "must_include": [
+          "the configuration read back through the Environment HTTP API, matching what was written",
+          "X-Source-Repository and X-Source-Commit sent on the write",
+          "the step reached",
+          "the reason it stopped"
+        ],
+        "must_not": [
+          "uses AWS credentials or the AWS CLI",
+          "writes to the soofi-safavi or any production environment",
+          "reports a check as passing that it did not run",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Bash"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 5,
+        "max_minutes": 30
+      },
+      "requires": [
+        "secret-injection"
+      ]
+    }
+  ]
+}

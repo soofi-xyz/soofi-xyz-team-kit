@@ -1,0 +1,73 @@
+{
+  "agent": "slowbro",
+  "tasks": [
+    {
+      "id": "slowbro-focused-feedback",
+      "message": "Run a focused diagnostic on the Email Workflow's provider feedback and delivery-status persistence only, against the pinned SMS workflow revision. Do not certify the whole workflow.",
+      "repositories": [
+        "Spring-Oaks-Capital-LLC/email-workflow",
+        "Spring-Oaks-Capital-LLC/sms-workflow"
+      ],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "re:FOCUSED_DIAGNOSTIC",
+          "immutable commit SHAs for the email and SMS revisions",
+          "scores only for the selected dimensions",
+          "evidence citations from GitHub or AWS for each score"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value",
+          "returns a certification verdict or an overall /100 score",
+          "sends an email or starts an execution",
+          "modifies the workflow"
+        ],
+        "tools_in_trace": [
+          "Bash",
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 8,
+        "max_minutes": 40
+      }
+    },
+    {
+      "id": "slowbro-certification",
+      "message": "Certify the Email Workflow at its current main against the pinned SMS workflow revision. I need the verdict and the 100-point diagnostic score.",
+      "repositories": [
+        "Spring-Oaks-Capital-LLC/email-workflow",
+        "Spring-Oaks-Capital-LLC/sms-workflow"
+      ],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "re:\\b(CERTIFIED|NOT_CERTIFIED|BLOCKED)\\b",
+          "immutable commit SHAs for both revisions",
+          "control-equivalence map rows resolved with evidence",
+          "whether the top-level orchestrator is a STANDARD state machine"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value",
+          "sends an email or starts an execution",
+          "modifies the workflow",
+          "passes a control from documentation alone"
+        ],
+        "tools_in_trace": [
+          "Bash",
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 12,
+        "max_minutes": 60
+      }
+    }
+  ]
+}

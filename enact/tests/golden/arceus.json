@@ -1,0 +1,87 @@
+{
+  "agent": "arceus",
+  "tasks": [
+    {
+      "id": "arceus-route-configurer",
+      "message": "I want to add a new metric definition for 'promise kept rate' to Model on the existing deployment. Which agent should I use?",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "re:jirachi",
+          "re:apply-engineering-guidelines",
+          "an invocation hint"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value",
+          "recommends dialga as primary",
+          "implements the change itself"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 1,
+        "max_minutes": 8
+      }
+    },
+    {
+      "id": "arceus-route-builder",
+      "message": "Persist's GraphQL vector search returns a 500 whenever a filter is combined with a keyword query. Who fixes this?",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "re:conkeldurr",
+          "re:apply-engineering-guidelines",
+          "an invocation hint"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value",
+          "recommends uxie as primary",
+          "implements the change itself"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 1,
+        "max_minutes": 8
+      }
+    },
+    {
+      "id": "arceus-route-no-clean-match",
+      "message": "Who should negotiate our office lease renewal?",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "an explicit no-clean-match verdict",
+          "the closest neighbor if any"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value",
+          "stretches a product agent into a confident recommendation"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 1,
+        "max_minutes": 8
+      }
+    }
+  ]
+}

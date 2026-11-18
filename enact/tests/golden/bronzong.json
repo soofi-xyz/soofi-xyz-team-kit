@@ -1,0 +1,73 @@
+{
+  "agent": "bronzong",
+  "tasks": [
+    {
+      "id": "bronzong-cost-gate-message",
+      "message": "When a refresh is refused by the cost gate the status only says FAILED. Return a COST_LIMIT_EXCEEDED error with the estimated and allowed cost, with tests. Work in prismteam-ai/report. If the default branch already does this, open no PR: say where it is implemented and which test covers it. Otherwise open a draft pull request against its default branch titled \"[enact-golden] <short summary>\", wait for the repository's own CI and report the PR URL and the check results. Do not merge.",
+      "repositories": [
+        "prismteam-ai/report"
+      ],
+      "expect": {
+        "kind": "pr",
+        "must_include": [
+          "re:https://github\\.com/prismteam-ai/report/pull/\\d+",
+          "the repository's own CI checks passing on the PR head",
+          "the new error body",
+          "a test for the refused refresh"
+        ],
+        "must_not": [
+          "pushes to the default branch",
+          "merges the pull request",
+          "disables, skips or deletes existing tests to make CI pass",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Bash",
+          "Edit"
+        ],
+        "forbids_repo_writes": false
+      },
+      "limits": {
+        "max_cost_usd": 8,
+        "max_minutes": 45
+      },
+      "requires": [
+        "repositories"
+      ]
+    },
+    {
+      "id": "bronzong-mcp-get-outputs",
+      "message": "The Report MCP server's get_outputs ignores the report's latest version when two refreshes overlap. Fix it to return the newest published manifest and add a regression test. Work in prismteam-ai/report. If the default branch already does this, open no PR: say where it is implemented and which test covers it. Otherwise open a draft pull request against its default branch titled \"[enact-golden] <short summary>\", wait for the repository's own CI and report the PR URL and the check results. Do not merge.",
+      "repositories": [
+        "prismteam-ai/report"
+      ],
+      "expect": {
+        "kind": "pr",
+        "must_include": [
+          "re:https://github\\.com/prismteam-ai/report/pull/\\d+",
+          "the repository's own CI checks passing on the PR head",
+          "root cause in one sentence",
+          "a regression test"
+        ],
+        "must_not": [
+          "pushes to the default branch",
+          "merges the pull request",
+          "disables, skips or deletes existing tests to make CI pass",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Bash",
+          "Edit"
+        ],
+        "forbids_repo_writes": false
+      },
+      "limits": {
+        "max_cost_usd": 8,
+        "max_minutes": 45
+      },
+      "requires": [
+        "repositories"
+      ]
+    }
+  ]
+}

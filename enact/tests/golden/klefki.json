@@ -1,0 +1,57 @@
+{
+  "agent": "klefki",
+  "tasks": [
+    {
+      "id": "klefki-grant-model",
+      "message": "How should per-user folder grants work in the file portal, including expiry and revocation?",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "grants stored in DynamoDB",
+          "server-side authorization on every file request",
+          "no browser-side S3 access"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 2,
+        "max_minutes": 10
+      }
+    },
+    {
+      "id": "klefki-intake",
+      "message": "We need an external portal where partners log in and download files from their own folder of an existing S3 bucket. What's your plan and defaults?",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "the default stack (Cognito, tRPC on Lambda, CDK)",
+          "private bucket integration",
+          "per-user grants"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 2,
+        "max_minutes": 10
+      }
+    }
+  ]
+}

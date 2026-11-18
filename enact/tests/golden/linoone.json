@@ -1,0 +1,57 @@
+{
+  "agent": "linoone",
+  "tasks": [
+    {
+      "id": "linoone-click-detection",
+      "message": "Link previews in Slack and iMessage are inflating our click counts. How should the resolver tell real clicks from previews?",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "the click-detection rule applied",
+          "preview user agents and prefetch handling",
+          "the click event schema"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 2,
+        "max_minutes": 10
+      }
+    },
+    {
+      "id": "linoone-design",
+      "message": "Design the short-URL service from scratch: shorten and resolve endpoints, token minting and where state lives.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "POST /shorten private and IAM-signed",
+          "10-character base62 token",
+          "Persist as the source of truth"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 2,
+        "max_minutes": 10
+      }
+    }
+  ]
+}
