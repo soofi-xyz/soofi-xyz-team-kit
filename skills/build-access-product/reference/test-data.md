@@ -63,14 +63,17 @@ identify them by its own stable user identifier, never by email.
 | `app-one` | `https://app-one.access-test.example/callback` | `https://app-one.access-test.example/signed-out` |
 | `app-two` | `https://app-two.access-test.example/callback`, `https://app-two.access-test.example/alt-callback` | `https://app-two.access-test.example/signed-out` |
 | `app-direct` | `https://app-direct.access-test.example/callback` | `https://app-direct.access-test.example/signed-out` |
+| `app-local` | `http://localhost:4173/` | `http://localhost:4173/` |
 
-All three are address sets on the environment's one sign-in client. Signing in
+All four are address sets on the environment's one sign-in client. `app-local`
+stands for an application running on a developer's machine. Signing in
 through any of them yields a token with the same audience.
 `app-direct` is registered by a direct API call and is never part of a bundle.
 Addresses that must be refused for `app-one`: the registered address with
 `/extra` appended, with a trailing slash, with an added query string, with
 `http` in place of `https`, and with the host in another letter case plus a
-different path.
+different path. Addresses that must be refused for `app-local`: its address on
+another port, on `127.0.0.1`, over `https` and with a trailing slash.
 
 ## Roles and a fixture product
 
