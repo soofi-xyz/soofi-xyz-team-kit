@@ -23,7 +23,7 @@
     },
     {
       "name": "build-schedule-product",
-      "version": "1.0.0-sha256-7b42342a2adba96b"
+      "version": "1.0.0-sha256-0a10ff4e74b6b7e9"
     },
     {
       "name": "build-solver-services",
@@ -35,11 +35,11 @@
     },
     {
       "name": "configure-schedule-product",
-      "version": "1.0.0-sha256-0fa1a7151f1b7dda"
+      "version": "1.0.0-sha256-10d15ec2222c6991"
     },
     {
       "name": "guide-product-work",
-      "version": "1.0.0-sha256-03d795409d33b51b"
+      "version": "1.0.0-sha256-654cde2485c46a7d"
     },
     {
       "name": "operate-marketplace",
@@ -60,5 +60,5 @@
       "pull_requests": "write"
     }
   },
-  "version": "1.162.0"
+  "version": "1.163.0"
 }
