@@ -187,6 +187,11 @@ function appendix(manifest, skills, info, override) {
       "the `browser` MCP server (a Chromium through Playwright's MCP tools: `mcp__browser__browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`, `browser_take_screenshot` and the rest; load them with ToolSearch before the first call)",
     );
   }
+  if ((manifest.tools ?? []).includes("figma")) {
+    tools.push(
+      "Enact's read-only `figma` MCP tools when the person who started this run saved their own Figma token (`mcp__figma__whoami`, `get_metadata`, `get_design_context`, `get_screenshot`, `get_comments`; each takes a Figma URL; load them with ToolSearch before the first call). Without that token the run has no `figma` tools",
+    );
+  }
   if (info.mcpServers.length) {
     tools.push(
       `the remote MCP ${info.mcpServers.length === 1 ? "server" : "servers"} ${info.mcpServers.map((s) => `\`${s}\` (\`mcp__${s}__…\`)`).join(", ")}, which Enact registers in every turn (load their tools with ToolSearch before the first call)`,

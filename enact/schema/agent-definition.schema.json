@@ -113,11 +113,11 @@
           }
         },
         "tools": {
-          "description": "Built-in tools the sandbox gives the agent beyond Claude Code's own: browser (a Chromium in Amazon Bedrock AgentCore Browser through Playwright's MCP tools).",
+          "description": "Built-in tools the sandbox gives the agent beyond Claude Code's own: browser (a Chromium in Amazon Bedrock AgentCore Browser through Playwright's MCP tools) and figma (read-only Figma tools as the person who started the run, when they saved their own Figma token with PUT /connections/figma; without one the run goes on without them).",
           "type": "array",
           "maxItems": 10,
           "uniqueItems": true,
-          "items": { "enum": ["browser"] }
+          "items": { "enum": ["browser", "figma"] }
         },
         "browser": {
           "description": "How the browser tool behaves; needs browser in tools. sandbox_localhost: true makes http(s)://localhost:<port>/ and 127.0.0.1 in the browser the sandbox's own loopback, so the agent can open an app it runs in its sandbox.",

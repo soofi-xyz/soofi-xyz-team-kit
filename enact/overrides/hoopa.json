@@ -1,7 +1,12 @@
 {
+  "manifest": {
+    "tools": [
+      "figma"
+    ]
+  },
   "requires_mcp": [],
   "requires_mcp_reason": "agents/hoopa.md:97,149,266 read Figma frames through the Figma MCP. On Enact Figma is optional (no hosted Figma MCP accepts Enact yet): the appendix uses exported frames, as hoopa's own stop rule already allows.",
   "appendix": [
-    "**Figma on Enact is optional.** Enact has no Figma sign-in. Do not start or require the Figma client registration, user OAuth or the official Figma MCP. If this run has `figma` tools (`whoami`, `get_metadata`, `get_design_context`, `get_screenshot`), they read Figma with the requester's own token: use them. Without them, take designs from what the request gives you instead: exported frames or screenshots, images or HTML in the message or a repository, or a written spec. When a task names only a Figma URL, ask for exports of the frames it needs and stop that part until they arrive; never report a design as read from Figma."
+    "**Figma on Enact is optional.** Enact has no Figma sign-in. Do not start or require the Figma client registration, user OAuth or the official Figma MCP. If this run has `figma` tools, they read Figma with the requester's own token (saved once with Enact's `connect_figma`): use them, and stop to ask for access when they say the account cannot open a file. Without them, take designs from what the request gives you instead: exported frames or screenshots, images or HTML in the message or a repository, or a written spec. When a task names only a Figma URL, ask for exports of the frames it needs and stop that part until they arrive; never report a design as read from Figma."
   ]
 }
