@@ -63,7 +63,7 @@ passes; implement each test as an automated test named by its ID.
 
 | # | Piece | Read | Tests |
 | --- | --- | --- | --- |
-| 1 | `design-system`: a gallery of every component in the agreed look | [Design system](reference/design-system.md#design-system) | DS-1 to DS-4 |
+| 1 | `design-system`: a gallery of every component, started from shadcn and restyled to the agreed look | [Design system](reference/design-system.md#design-system) | DS-1 to DS-5 |
 | 2 | `app-kit`: create an app, run it locally on sample data, check it | [App kit](reference/app-kit.md#app-kit), [Guardrails](reference/app-kit.md#guardrails), [Local development](reference/app-kit.md#local-development) | AK-1 to AK-11 |
 | 3 | `runtime-sharing`: an app loads components from Console and does not bundle them | [Runtime sharing](reference/design-system.md#runtime-sharing) | SH-1 to SH-7 |
 | 4 | `app-hosting`: submit, publish, open and roll back an app version | [App hosting](reference/app-kit.md#app-hosting) | AH-1 to AH-7 |

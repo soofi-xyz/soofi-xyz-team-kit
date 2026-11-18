@@ -16,8 +16,20 @@ The [Tests](#tests) section defines done for the `design-system`,
 Own one copy of the components, in the Console repository. Apps never receive
 the source.
 
-- **Structure.** Follow shadcn's structure: accessible behavior from headless
-  primitives (Radix UI), Console's own styled layer on top, variants as typed
+- **Starting point.** Start from shadcn/ui itself, not from a blank page or a
+  look-alike. Add each base component that shadcn provides to the Console
+  repository with shadcn's own tooling, then change that copy: restyle it to the
+  look below, close its public props and add the token-only style props. Do
+  not hand-write a component shadcn provides, and do not start from another
+  component library. Console's own components and component packs are built
+  from the same primitives and conventions.
+- **Origin record.** Keep, beside the components, a record naming for every
+  base component the shadcn component and revision it started from, or
+  "Console's own" when shadcn has none. Use it to pull upstream fixes into
+  Console's copy; an upstream change never reaches an app except through a
+  Console design-system release.
+- **Structure.** Keep shadcn's structure: accessible behavior from its headless
+  primitives (Radix UI), Console's styled layer on top, variants as typed
   props and tokens as CSS variables. shadcn's "you own and edit the code"
   applies once, to Console's copy, and never to an app.
 - **Look.** Use the debt-collection demo's look (the prismteam.ai style): paper
@@ -239,6 +251,7 @@ Level: repository.
 | DS-2 | Tab through every interactive component in the gallery, operate it by keyboard and run the accessibility scan on the page | Each can be reached, operated and left by keyboard with visible focus; the scan reports no violation |
 | DS-3 | Load the gallery with token set `tokens-a`, then switch the token stylesheet to `tokens-b` without rebuilding the components | Every component's computed colors and radii follow `tokens-b`; the design-system build digest is unchanged |
 | DS-4 | Type-check a fixture that gives `Button` a variant that does not exist | The type-check fails on that line |
+| DS-5 | Compare the exported base components with the origin record and with shadcn's component list at the recorded revision | Every exported component has one entry; each one shadcn provides names the shadcn component and revision it started from, and only components shadcn lacks are marked "Console's own" |
 
 ### `runtime-sharing`
 
