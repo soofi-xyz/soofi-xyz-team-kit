@@ -23,7 +23,7 @@
     },
     {
       "name": "build-schedule-product",
-      "version": "1.0.0-sha256-0ebeb0709fb8f24c"
+      "version": "1.0.0-sha256-7b42342a2adba96b"
     },
     {
       "name": "build-solver-services",
@@ -35,11 +35,11 @@
     },
     {
       "name": "configure-schedule-product",
-      "version": "1.0.0-sha256-f5f154d3f88e4f0f"
+      "version": "1.0.0-sha256-0fa1a7151f1b7dda"
     },
     {
       "name": "guide-product-work",
-      "version": "1.0.0-sha256-b6e95aa5a642255d"
+      "version": "1.0.0-sha256-03d795409d33b51b"
     },
     {
       "name": "operate-marketplace",
@@ -63,5 +63,5 @@
   "secrets": [
     "PRISM_API_KEY"
   ],
-  "version": "1.160.0"
+  "version": "1.161.0"
 }
