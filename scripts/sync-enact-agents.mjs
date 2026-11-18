@@ -25,7 +25,7 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const enactDir = path.join(root, "enact");
-const RESERVED = new Set(["config.json", "dist", "inventory.json", "library", "overrides", "schema", "README.md"]);
+const RESERVED = new Set(["config.json", "dist", "inventory.json", "library", "overrides", "schema", "tests", "README.md"]);
 // Reserved top-level directories the generator itself writes.
 const GENERATED_DIRS = new Set(["dist", "library"]);
 const SKILL_REF = /(?:^|[^A-Za-z0-9_-])skills\/([a-z0-9][a-z0-9-]*)\//g;
