@@ -118,10 +118,12 @@ When `columns` is present:
    columns. Spark renames a duplicate header to `<name><index>` and a blank one
    to `_c<index>` instead of failing, so never match selections against Spark's
    column names: read the first file's original header record (same parser
-   options, `header=false`, one record), resolve each selected name to its
+   options, `header=false`, type inference off so numeric headers keep their
+   text, one record), resolve each selected name to its
    position there, and project by position. A selection such as `Name1` or
    `_c3` that exists only as a Spark rename is missing. Keep Spark's per-file
-   header check so a later file with different headers fails.
+   header check so a later file with different headers fails. Treat the
+   `header` flag as Spark does (`true` or a case-insensitive `"true"`).
 6. An omitted optional input keeps its options without a format and is never
    read; accept `columns` there instead of rejecting the plan.
 

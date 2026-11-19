@@ -584,17 +584,17 @@
       "version": "1.0.0-sha256-03328ff6d4195200"
     },
     "build-transform-product": {
-      "bytes": 221830,
-      "digest": "sha256:411bdb9f94236ec15e1586d49b4ea1be2a6a48e0fd31fe8c77b920c28855794e",
-      "encoded_bytes": 245730,
+      "bytes": 221970,
+      "digest": "sha256:0c5c52b844f6ae12bde701a4c70052eebe159fa8120b876c93c65b2ba878e980",
+      "encoded_bytes": 245880,
       "files": 25,
       "reason": "used by 2 packaged agents",
-      "stored_bytes": 232423,
+      "stored_bytes": 232567,
       "used_by": [
         "kecleon",
         "silvally"
       ],
-      "version": "1.0.0-sha256-0398c1c385fde19e"
+      "version": "1.0.0-sha256-68d2107517b73c57"
     },
     "configure-access-product": {
       "bytes": 13316,
