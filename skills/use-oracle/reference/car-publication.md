@@ -32,7 +32,8 @@ git clone git@github.com:elephant-xyz/atlas.git ./atlas   # once per county; the
 # 1. Every property validates against the lexicon. Fix transforms until this is clean.
 elephant-cli validate ./$group-outputs --output-csv $county-$group-errors.csv
 
-# 2. Hash every property and pack every JSON block into this group's archive.
+# 2. Hash every property into this group's archive: one packed block per data group of a
+#    property (see "Packed and linked archives"); add --linked for one block per file.
 elephant-cli hash ./$group-outputs \
   --output-zip ./$county-$group-hashed \
   --output-csv $county-$group-hash.csv \
@@ -78,6 +79,33 @@ public gateways and copies it onto the org account on merge. Filebase through
 `--api https://rpc.filebase.io` is the worked example because `upload` already targets it.
 A local kubo behind NAT that goes offline before the merge cannot be registered.
 
+## Packed and linked archives
+
+From Elephant CLI 2 build `94db3af` on, `hash` writes each data group of a property as
+**one packed block**: `{ "entities", "label", "relationships" }`, where every relationship
+names its two entities by CID and `entities` holds each entity once under that CID. The
+earlier layout, **linked**, is one block for the data-group root, one per relationship file
+and one per entity file. `hash --linked` still writes it, byte for byte.
+
+- Publish packed: run `hash` without `--linked` for every new archive and every archive
+  that supersedes one. Property CIDs are the same in both layouts, because the Seed data
+  group is never packed.
+- A packed data group has another data CID than the linked one of the same data, so the
+  archive root and the tables root change too. Pass `--linked` only to reproduce the CIDs
+  of an archive that is already registered.
+- `hash` leaves a data group linked when it cannot pack it (an entity or a relationship
+  holding another link, a block over 1 MiB) and names it on stderr; `hash --json` counts
+  them under `not_packed`. That is not a failure: report the count with the run.
+- `validate` and `export-tables` read both layouts with no option, also mixed in one
+  archive, and give the same findings and the same table rows for the same data.
+- Everything that reads the archive has to know the packed layout. A CLI from before
+  packing rejects a packed root with `unexpected property 'entities'`: Elephant CLI 2
+  before build `94db3af`, and Elephant CLI 1.x until the release that carries packed data
+  groups (elephant-cli PR 267). The Atlas gate runs a pinned Elephant CLI 2; read
+  `VERSION` in atlas `.github/workflows/validate.yml` and confirm it is build `94db3af`
+  or newer (atlas PR 144) before opening a pull request for a packed archive.
+- Hash, validate, export and upload one data group with one CLI build.
+
 ## What each archive looks like
 
 - **Root**: one dag-json `CountyIndex` block: `label`, `version: 1`, `properties` (count),
@@ -85,9 +113,11 @@ A local kubo behind NAT that goes offline before the merge cannot be registered.
 - **Shards**: at most 5000 properties each, so every block stays far below the 1 MiB block
   limit at any county size. Each entry holds `property_cid` and a `data_groups` map from
   data-group schema CID to data-group root CID: the seed group and this archive's group.
-- **Blocks**: every property's JSON files as the CLI hashed them. Data records use the
-  dag-json codec (`baguqeera…`); the lexicon's schema CIDs stay raw (`bafkrei…`). Same
-  input yields byte-identical archives: blocks are written in property order, then CID order.
+- **Blocks**: per property, one packed block for the archive's data group and the linked
+  blocks of the Seed data group; in a linked archive, every JSON file as the CLI hashed
+  it. Data records use the dag-json codec (`baguqeera…`); the lexicon's schema CIDs stay
+  raw (`bafkrei…`). Same input and layout yield byte-identical archives: blocks are
+  written in property order, then CID order.
 - **Not included**: HTML captures and images. They stay in the hashed ZIPs.
 
 ## What the tables directory looks like
@@ -239,11 +269,13 @@ publication.
 - Propose the experimental Elephant CLI 2 first
   ([`migrate-elephant-cli-v2`](../../migrate-elephant-cli-v2/SKILL.md)): a binary per
   platform from the `build-<commit>` pre-releases of the `v2` branch, no Node. Every
-  command of this sequence keeps its name and options, and the county CAR is the same
-  file. Three things differ: no `.env` file is loaded (export `FILEBASE_*` and the other
-  variables), exit `1` means the input failed and `2` that the command could not run, and
-  the tables root is not the one 1.x computes for the same archive, so one CLI exports,
-  uploads and registers a data group. When the user declines, use 1.x as follows.
+  command of this sequence keeps its name and options. Four things differ: `hash` packs
+  each data group into one block (with `--linked` the county CAR is the file 1.x writes),
+  no `.env` file is loaded (export `FILEBASE_*` and the other variables), exit `1` means
+  the input failed and `2` that the command could not run, and the tables root is not the
+  one 1.x computes for the same archive, so one CLI hashes, exports, uploads and registers
+  a data group. When the user declines, use 1.x as follows; a 1.x from before packed data
+  groups writes linked archives only and cannot validate a packed one.
 - Install the Elephant CLI from GitHub `main`: `npm i github:elephant-xyz/elephant-cli#main`
   (or run it with `npx --package=github:elephant-xyz/elephant-cli#main elephant-cli`).
   The npm release workflow is failing, so the registry package lacks batch input,
@@ -271,7 +303,8 @@ publication.
 - the tables upload summary, plus the gateway URL that served the tables root
 - the three Atlas page values (`cid`, `schema`, `tables`) for the group, the Atlas PR URL,
   the `validate` check state, and whether it merged (or the revert issue URL)
-- the CLI commit and the manifest URL used
+- the CLI commit, the layout (packed or linked, and the `not_packed` count of a packed
+  run) and the manifest URL used
 
 ## Property-list runs
 

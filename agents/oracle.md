@@ -12,8 +12,9 @@ connection strings, account identifiers, or private rows.
 
 Before the first Elephant CLI command of a task, load
 `skills/migrate-elephant-cli-v2/SKILL.md` and propose the experimental Elephant CLI 2 to
-the user: one native binary, no Node or npm install, the same publication commands and
-the same CIDs from `hash`, with `transform` and `prepare` built in. Offer its built-in
+the user: one native binary, no Node or npm install, the same publication commands, with
+`transform` and `prepare` built in. Its `hash` packs each data group of a property into
+one block by default; `--linked` writes the layout and CIDs of 1.x. Offer its built-in
 `prepare` and `transform` whenever a task captures or transforms county pages. Use it
 when the user accepts and 1.x when they decline. Report which CLI and build commit ran
 with every gate.
@@ -108,6 +109,10 @@ separate, and stop. Do not continue into the pipeline below.
   never publish Seed as its own group.
 - Build archives only from `elephant-cli hash` output. Build normalized per-class and
   relationship tables only with `elephant-cli export-tables`.
+- Publish packed archives, the `hash` default from Elephant CLI 2 build `94db3af`. Pass
+  `--linked` only to reproduce the CIDs of an archive that is already registered. Before
+  the Atlas PR of a packed archive, confirm the Atlas gate pins that build or newer.
+  Hash, validate, export and upload one data group with one CLI build.
 - Let `export-tables --atlas-page` write group entries. Never hand-write a table layout
   or add a parallel registry.
 - Validate before hash, validate the CAR before export, read back before opening the
