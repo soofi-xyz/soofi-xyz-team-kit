@@ -65,6 +65,17 @@ from an invocation: tell API Gateway's `Internal server error` (System's API
 Lambda threw) from System's own 502 for a failed run, join the access log to
 the ApiFn log by `requestId`, and diagnose a child flow's answer in a parent step.
 
+## Reading another run's status
+
+A step that reads another run's status calls `GET /invocations/{id}/status`,
+which answers `200` for `FAILED`, `TIMED_OUT`, `ABORTED` and `OUTPUT_INVALID`.
+Never use `GET /invocations/{id}` there: it answers `502` for a `FAILED` run,
+and other callers depend on that (prismteam-ai/system#114). End the run
+deliberately on a failed upstream run with a named error, for example
+`NOTES_STORE_RUN_FAILED` (prismteam-ai/google-meet-transcript-pipeline#18);
+never let the step raise `Product.Unavailable`, or one upstream failure causes
+several alerts. Install System first, then any template that uses `/status`.
+
 ## Step secrets and readable buckets
 
 Read [step secrets and readable buckets](reference/secrets-and-buckets.md) when a

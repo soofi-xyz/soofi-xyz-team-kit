@@ -500,7 +500,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 10962,
+      "bytes": 11613,
       "files": 1,
       "flag_counts": {
         "aws-profile": 1,
@@ -511,7 +511,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 639361,
+      "library_pinned_bytes": 640429,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -1388,7 +1388,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 26006,
+      "bytes": 26786,
       "files": 1,
       "flag_counts": {
         "aws-profile": 4,
@@ -1399,7 +1399,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 1130495,
+      "library_pinned_bytes": 1131321,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-lexicon-product",
@@ -1677,7 +1677,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 19023,
+      "bytes": 19381,
       "files": 1,
       "flag_counts": {
         "aws-profile": 2,
@@ -1688,7 +1688,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 898254,
+      "library_pinned_bytes": 898625,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-batch-workflows",
@@ -2520,7 +2520,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 85692,
+      "bytes": 86745,
       "files": 8,
       "flag_counts": {
         "aws-profile": 69,
@@ -2531,7 +2531,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 2163785,
+      "library_pinned_bytes": 2164611,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-lexicon-product",
@@ -3219,7 +3219,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 59759,
+      "bytes": 60989,
       "files": 5,
       "flag_counts": {
         "aws-profile": 2,
@@ -3229,12 +3229,12 @@
       },
       "instruction_flags": {
         "curl": [
-          "instructions.md:51"
+          "instructions.md:52"
         ]
       },
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 898254,
+      "library_pinned_bytes": 898625,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-batch-workflows",
@@ -3471,7 +3471,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 22424,
+      "bytes": 22815,
       "files": 1,
       "flag_counts": {
         "aws-profile": 1,
@@ -3482,7 +3482,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 639361,
+      "library_pinned_bytes": 640429,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -3521,8 +3521,8 @@
       "wave_reason": "role: build"
     }
   },
-  "enact_version": "1.168.0",
-  "kit_version": "0.168.0",
+  "enact_version": "1.169.0",
+  "kit_version": "0.169.0",
   "mcp_allow_list": [
     "enact",
     "browser",
@@ -3629,7 +3629,7 @@
       ]
     },
     "build-connect-product": {
-      "bytes": 311633,
+      "bytes": 311999,
       "files": 64,
       "flags": {
         "aws-profile": [
@@ -3899,11 +3899,11 @@
       "references": []
     },
     "build-system-product": {
-      "bytes": 99696,
+      "bytes": 100102,
       "files": 26,
       "flags": {
         "python3": [
-          "skills/build-system-product/SKILL.md:244",
+          "skills/build-system-product/SKILL.md:253",
           "skills/build-system-product/reference/contracts.md:112",
           "skills/build-system-product/reference/contracts.md:113",
           "skills/build-system-product/reference/mock-scenarios.md:52",
@@ -3930,7 +3930,7 @@
       ]
     },
     "build-transform-product": {
-      "bytes": 221970,
+      "bytes": 222780,
       "files": 25,
       "flags": {
         "aws-profile": [
@@ -4198,7 +4198,7 @@
       ]
     },
     "configure-system-product": {
-      "bytes": 45934,
+      "bytes": 46576,
       "files": 9,
       "flags": {
         "python3": [
@@ -4213,7 +4213,7 @@
       ]
     },
     "configure-transform-product": {
-      "bytes": 48283,
+      "bytes": 48803,
       "files": 7,
       "flags": {
         "curl": [
@@ -4379,7 +4379,7 @@
       "references": []
     },
     "operate-connect-configurations": {
-      "bytes": 42334,
+      "bytes": 42970,
       "files": 4,
       "flags": {
         "curl": [

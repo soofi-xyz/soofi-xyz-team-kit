@@ -102,6 +102,11 @@ Classify every request before designing anything:
   per-user work.
 - Land payloads in the Connect bucket and return file pointers with checksums.
   Keep inline responses within `MaxInlineBytes`.
+- Treat `Connect.AuthFailed` `invalid_grant` on an `oauth2_jwt_bearer`
+  token, while other users in the same domain succeed on the same run, as one
+  subject account deleted, suspended or renamed; delegation and scopes are
+  fine (prismteam-ai/connect-google#11). Connect does not log Google's
+  `error_description`; logging it would make this diagnosis immediate.
 - Require `limits` on every flow (`timeout_seconds` at most 5 on a `lookup`)
   and `Concurrency` on every `Map`. Read an optional `$.request` field only
   behind a `Choice` on `IsPresent`; a missing path fails the job before any

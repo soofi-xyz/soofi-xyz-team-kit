@@ -32,6 +32,10 @@ Own these framework guarantees; see [invocation errors](../skills/configure-syst
 3. Readable buckets: document `ReadableBuckets` as an install prerequisite covering every bucket a flow reads, and warn, without refusing, at template and flow save when an `ItemsFile` or `ReadObject` reads outside it.
 4. Compatibility: keep every change opt-in, with no changed defaults, no new required parameters and no stricter validation (warn instead). Give each pull request a Compatibility section listing what existing users see, backed by a test of the unchanged behavior.
 
+## Reading another run's status
+
+Keep `GET /invocations/{id}` answering `502` for a `FAILED` run; other callers depend on it, so never change it. Flow steps that read another run's status use `GET /invocations/{id}/status`, which answers `200` for `FAILED`, `TIMED_OUT`, `ABORTED` and `OUTPUT_INVALID` (prismteam-ai/system#114). Install System first, then any template that uses `/status`.
+
 ## Result callbacks
 
 Own the callback framework on the sale-availability client facade; see [result callbacks](../skills/configure-system-product/reference/result-callbacks.md). Keep these rules: accept only URLs under a client's allowlisted prefixes, HTTPS on port 443, no redirects, hosts resolving only to public addresses; read the environment API key from Secrets Manager on every delivery and never log it; deliver at least once with a stable `X-System-Delivery-Id`; bound retries and send exhausted deliveries to a DLQ with alarms. Keep the callback body equal to the GET result and document it as an OpenAPI `callbacks` entry. Celebi owns per-client configuration and delivery tests.

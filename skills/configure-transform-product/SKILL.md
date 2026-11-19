@@ -93,6 +93,16 @@ mapping. See
 Return pair/mapping versions, diff, field-level results, output pointers,
 measured cost where available, human observations and outstanding defects.
 
+## Production failures
+
+- Treat runs failing with `Glue.ConcurrentRunsExceededException` as the Glue
+  concurrency limit (`maxConcurrentRuns` 25 on `Transform-transform-pipeline`),
+  not a mapping defect. Every `GlueStartJobRun` task retries it (30 s, backoff 2,
+  max delay 180 s, 8 attempts, `FULL` jitter; prismteam-ai/transform#89). If
+  runs still fail with it, hand the run ids to `kecleon`.
+- A failed Deploy install of a broken bundle rolls back cleanly. Wait for the
+  fix to publish, then re-run the install.
+
 ## Configuration bundles
 
 Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.

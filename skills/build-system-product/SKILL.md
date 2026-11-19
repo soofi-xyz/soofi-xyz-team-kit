@@ -73,6 +73,15 @@ and [step secrets and readable buckets](../configure-system-product/reference/se
   existing installs, configurations and callers see in the pull request, with a
   test that proves the unchanged behavior.
 
+## Reading another run's status
+
+- Keep `GET /invocations/{id}` answering `502` for a `FAILED` run; other
+  callers depend on it, so never change it.
+- Serve `GET /invocations/{id}/status` for flow steps that read another run's
+  status. It answers `200` for `FAILED`, `TIMED_OUT`, `ABORTED` and
+  `OUTPUT_INVALID` (prismteam-ai/system#114).
+- Install System first, then any template that uses `/status`.
+
 ## Product-call settings under load
 
 Keep these rules; see [product-call settings](reference/product-call-settings.md):

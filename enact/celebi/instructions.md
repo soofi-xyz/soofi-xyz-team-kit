@@ -25,6 +25,13 @@ Use [failures and redrive](../skills/configure-system-product/reference/failures
 2. Run the template check, then the failures test sequence mock-first: fail a step, redrive it, fail a batch midway and confirm only failed or unstarted items run again.
 3. Record `failedStep`, the reported and executed errors, `redriveCount` and, for batches, each child's redrive count before and after. Hand compiler or redrive defects to `zygarde`.
 
+## Reading another run's status
+
+A step that reads another run's status calls `GET /invocations/{id}/status`, which answers `200` for `FAILED`, `TIMED_OUT`, `ABORTED` and `OUTPUT_INVALID`. Never use `GET /invocations/{id}` there: it answers `502` for a `FAILED` run, and other callers depend on that (prismteam-ai/system#114).
+
+1. End the run deliberately on a failed upstream run with a named error, for example `NOTES_STORE_RUN_FAILED` (prismteam-ai/google-meet-transcript-pipeline#18). Never let the step raise `Product.Unavailable`; one upstream failure then causes several alerts.
+2. Install System first, then any template that uses `/status`.
+
 ## Result callbacks
 
 Use [result callbacks](../skills/configure-system-product/reference/result-callbacks.md) when a client wants System to POST finished sale-availability results instead of polling.
