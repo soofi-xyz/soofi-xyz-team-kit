@@ -12,7 +12,7 @@ applications without application-specific forks.
 
 Console Configuration is not a second product. It is an immutable application
 artifact operated through Console by Vivillon. Chandelure owns the reusable
-runtime and configuration service.
+runtime, shared design system and configuration service.
 
 Begin a full build with the [Figma client registration checkpoint](component-authoring.md#first-step-register-and-verify-the-console-figma-client).
 Require approved Console client access and a verified OAuth/MCP read before
@@ -32,6 +32,9 @@ Console owns:
 - component history, packaged assets, export and reviewed repository application;
 - registry promotion coordination, tenant quotas, retention and operations;
 
+- the shared design system in `prismteam-ai/console`: tokens, base components
+  and gallery, as defined in [the design-system contract](design-system.md),
+  including checks `DS-1` to `DS-4` and the cumulative scenario;
 - the `ConsoleApplicationManifest` schema and compatibility policy;
 - the renderer shell and accessible component registry;
 - route, layout, navigation, theme and presentation behavior;

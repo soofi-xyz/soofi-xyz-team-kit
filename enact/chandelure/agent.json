@@ -2,7 +2,7 @@
   "channels": [
     "direct"
   ],
-  "description": "Console builder. Build Console to create and modify HTML or React components from Figma via MCP, with Bedrock AgentCore and the pi harness, responsive tests and a governed web runtime. Use Vivillon for existing-service configuration.",
+  "description": "Console builder. Build Console to create and modify HTML or React components from Figma via MCP, with Bedrock AgentCore and the pi harness, responsive tests, a shared design system (tokens, base components, gallery) and a governed web runtime. Use Vivillon for existing-service configuration.",
   "hosts": [],
   "library_skills": [
     {
@@ -11,7 +11,7 @@
     },
     {
       "name": "build-console-product",
-      "version": "1.0.0-sha256-05d7cfec9450bbfa"
+      "version": "1.0.0-sha256-5bac63f5b478b3dd"
     },
     {
       "name": "build-marketplace-puller",
@@ -27,7 +27,7 @@
     },
     {
       "name": "configure-console-product",
-      "version": "1.0.0-sha256-63cc9fe4497ddecf"
+      "version": "1.0.0-sha256-27ead29097345238"
     },
     {
       "name": "configure-deploy-product",
@@ -35,7 +35,7 @@
     },
     {
       "name": "guide-product-work",
-      "version": "1.0.0-sha256-5712d66a333bdb1a"
+      "version": "1.0.0-sha256-6e02231188bb5404"
     },
     {
       "name": "operate-marketplace",
@@ -59,5 +59,5 @@
   "tools": [
     "figma"
   ],
-  "version": "1.165.0"
+  "version": "1.166.0"
 }
