@@ -57,6 +57,11 @@ For certifications, javascript `module` bodies and `activate`, which `transform_
 
 Never write mappings to S3 or SSM directly. Each DEV write (`register`, `start`, `approve`) still requires its existing approval card. PROD stays read-only.
 
+### Production failures
+
+- Runs failing with `Glue.ConcurrentRunsExceededException` hit the Glue concurrency limit (`maxConcurrentRuns` 25 on `Transform-transform-pipeline`), not a mapping defect. Every `GlueStartJobRun` task retries it (30 s, backoff 2, max delay 180 s, 8 attempts, `FULL` jitter; prismteam-ai/transform#89). If runs still fail with it, hand the run ids to `kecleon`; do not change the mapping.
+- A failed Deploy install of a broken bundle rolls back cleanly. Wait for the fix to publish, then re-run the install.
+
 ## Configuration bundles
 
 Read [the shared configuration-bundle contract](../skills/build-product-deployer/reference/configuration-bundles.md) for this work.

@@ -100,6 +100,14 @@ Discover any existing caller contract before migration. Serve a legacy request s
 
 Inspect partial artifacts and failed phases before retrying; use fresh paths for full replay. Respect the effective cost ceiling and existing spend authorization. Verify output manifests separately from consumer delivery. Use Persist only when graph ingestion is requested.
 
+## Glue concurrency and Step Functions tasks
+
+Production hits the Glue concurrency limit: over 30 days, 178 runs failed with `Glue.ConcurrentRunsExceededException` against `maxConcurrentRuns` 25 on `Transform-transform-pipeline` (prismteam-ai/transform#89).
+
+- Give every `GlueStartJobRun` task a `Retry` on `Glue.ConcurrentRunsExceededException` only: `IntervalSeconds` 30, `BackoffRate` 2, `MaxDelaySeconds` 180, `MaxAttempts` 8, `JitterStrategy` `FULL`. Assert this retry in tests.
+- Never put the ECS RunTask `StartedBy` field in Step Functions task `Parameters`; it is not supported there. Tag tasks with `Group` instead (prismteam-ai/transform#90, #92).
+- A failed Deploy install of a broken bundle rolls back cleanly. Wait for the fix to publish, then re-run the install.
+
 ## Coordinate and return
 
 Keep Transform execution here. Use Lapras for Connect, which lands external partner data as files for the calling product. Use `conkeldurr` for Persist engine dependencies, `uxie` for Persist configuration, `gallade` for Rule engine changes and `registeel` for Marketplace publication. Use `build-batch-workflows` and `unify-metrics` directly as supporting skills. Resolve Model ownership from the catalog; do not assign it to Persist. Use another execution product only when its actual API/runtime contract is requested.

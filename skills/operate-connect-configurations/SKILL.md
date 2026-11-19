@@ -382,6 +382,19 @@ smallest reproducing sample.
   `activationsEnabled: "true"` in that environment's subscription before the
   placeholder revision installs.
 
+## Retire a subject user
+
+`Connect.AuthFailed` `invalid_grant` on an `oauth2_jwt_bearer` token, while
+other users in the same domain succeed on the same run, means that one subject
+account was deleted, suspended or renamed. Delegation and scopes are fine
+(prismteam-ai/connect-google#11). Retire the user:
+
+1. Disable their activations live with `POST /connect/activations/{id}/disable`
+   on the IAM Connect API. The route is IAM-only, so an operator with Connect
+   IAM access runs it.
+2. Set `enabled: false` for the user in `configurations/meet-users.json` in the
+   connect-google repo, so a reinstall does not turn them back on.
+
 ## Return
 
 Return the run report: classification, data profile, credential sources and

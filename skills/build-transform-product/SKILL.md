@@ -140,6 +140,22 @@ registering with `"activate": true`. Keep every default identical to the
 previous behaviour, and make new checks opt-in or warnings. Never make the
 newest version win implicitly, and prove the unchanged default with a test.
 
+## Glue concurrency and Step Functions tasks
+
+Production hits the Glue concurrency limit: over 30 days, 178 runs failed
+with `Glue.ConcurrentRunsExceededException` against `maxConcurrentRuns` 25 on
+`Transform-transform-pipeline` (prismteam-ai/transform#89). Keep these rules:
+
+- Give every `GlueStartJobRun` task a `Retry` on
+  `Glue.ConcurrentRunsExceededException` only: `IntervalSeconds` 30,
+  `BackoffRate` 2, `MaxDelaySeconds` 180, `MaxAttempts` 8, `JitterStrategy`
+  `FULL`. Assert this retry in tests.
+- Never put the ECS RunTask `StartedBy` field in Step Functions task
+  `Parameters`; it is not supported there. Tag tasks with `Group` instead
+  (prismteam-ai/transform#90, #92).
+- A failed Deploy install of a broken bundle rolls back cleanly. Wait for the
+  fix to publish, then re-run the install.
+
 ## Record quality checks
 
 Implement the capability map's `record-quality-checks` increment using
