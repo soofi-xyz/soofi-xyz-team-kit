@@ -14,16 +14,12 @@
       "version": "1.0.0-sha256-1c7026552bda916a"
     },
     {
-      "name": "build-console-product",
-      "version": "1.0.0-sha256-05d7cfec9450bbfa"
-    },
-    {
       "name": "build-marketplace-puller",
       "version": "1.0.0-sha256-0fb8850b217a9657"
     },
     {
       "name": "build-product-deployer",
-      "version": "1.0.0-sha256-b5a69ddbd8847377"
+      "version": "1.0.0-sha256-ccf06867e8092266"
     },
     {
       "name": "build-rules-product",
@@ -34,24 +30,20 @@
       "version": "1.0.0-sha256-bac2ebb34666a767"
     },
     {
-      "name": "configure-console-product",
-      "version": "1.0.0-sha256-63cc9fe4497ddecf"
-    },
-    {
       "name": "configure-deploy-product",
       "version": "1.0.0-sha256-bc96327ab015fdaa"
     },
     {
       "name": "figma-to-email-template",
-      "version": "1.0.0-sha256-d85dd07195b145fc"
+      "version": "1.0.0-sha256-4ed6d63922ad3c87"
     },
     {
       "name": "guide-product-work",
-      "version": "1.0.0-sha256-5712d66a333bdb1a"
+      "version": "1.0.0-sha256-b1943ad74845e867"
     },
     {
       "name": "manage-channel-templates",
-      "version": "1.0.0-sha256-a9f6dca83ddc1e8d"
+      "version": "1.0.0-sha256-3a0c1634465655a7"
     },
     {
       "name": "manage-communication-activity",
@@ -80,5 +72,5 @@
       "pull_requests": "read"
     }
   },
-  "version": "1.166.0"
+  "version": "1.169.0"
 }

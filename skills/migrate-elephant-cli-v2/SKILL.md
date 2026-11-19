@@ -20,6 +20,7 @@ Before the first Elephant CLI command of a task, tell the user in a few lines:
 - Elephant CLI 2 is one binary. It needs no Node, no `npm install` and no Chromium
   download.
 - `validate`, `hash`, `export-tables` and `upload` keep their names and options. `hash`
+  packs each data group of a property into one block by default; with `--linked` it
   writes the same bytes and CIDs as 1.x.
 - `transform` and `prepare` are built in: county scripts and handlers run on an engine
   inside the binary, and `prepare` fetches and drives the browser itself.
@@ -106,7 +107,8 @@ elephant-cli --json validate transformed.zip --output-csv errors.csv
   `hash <input> --output-zip --output-csv --output-car`, `validate <county>.car`,
   `export-tables` with its Atlas options, and `upload` with `--api`, `--token`,
   `--gateway`, `--timeout` and `--output-json`.
-- The bytes and CIDs `hash` writes, and the county CAR built from them.
+- With `hash --linked`: the bytes and CIDs `hash` writes, and the county CAR built from
+  them.
 - The lexicon manifest and `ELEPHANT_SCHEMA_MANIFEST_URL`.
 - The CSV columns of `validate` and `hash`.
 - The inputs of `transform`: seed mode, scripts mode and handler packages.
@@ -124,6 +126,7 @@ elephant-cli --json validate transformed.zip --output-csv errors.csv
 | Gateways | `--ipfs-gateway <url>` | `ELEPHANT_IPFS_GATEWAYS`, a comma-separated list |
 | `validate` on properties | Writes `submit_warnings.csv` | No warnings file; a property that cannot be checked is named on stderr, exit `2` |
 | `hash` | A data group that cannot be hashed goes to `submit_errors.csv`, exit `0` | Named on stderr and in `--json`, exit `1`; `--property-cid` and `--max-concurrent-tasks` are gone |
+| `hash` layout | One block per file (linked), until the 1.x release with packed data groups | From build `94db3af`: one packed block per data group by default, other data CIDs; `--linked` writes the 1.x layout. `validate` and `export-tables` read both |
 | `export-tables` | hyparquet writer | Apache Parquet writer: same tables, columns and rows; part CIDs and the tables root differ |
 | `upload` | Also sends a hashed ZIP to Pinata | County CARs and tables directories only |
 | `transform` scripts | Node child processes with the CLI's `node_modules` | The engine inside the binary, with the modules listed above |
@@ -156,11 +159,13 @@ Run these in order. Stop and keep 1.x when a step fails.
    elephant-cli transform --input-zip prepared.zip --scripts-zip scripts.zip --output-zip t1.zip
    $v2          transform --input-zip prepared.zip --scripts-zip scripts.zip --output-zip t2.zip
    elephant-cli hash t1.zip --output-zip h1.zip --output-csv h1.csv
-   $v2          hash t2.zip --output-zip h2.zip --output-csv h2.csv
+   $v2          hash t2.zip --linked --output-zip h2.zip --output-csv h2.csv
    diff <(cut -d, -f1-3 h1.csv | sort) <(cut -d, -f1-3 h2.csv | sort)
    ```
 
-   No difference means both produced the same records. A script that fails only on
+   `--linked` makes Elephant CLI 2 write the layout 1.x writes; without it the data CIDs
+   differ by design. Give a 1.x that already packs `--linked` too. No difference means
+   both produced the same records. A script that fails only on
    Elephant CLI 2 names what it reached for: replace that call in the script, or keep
    1.x for this county and report it.
 4. **Validate with Elephant CLI 2**: `$v2 validate t2.zip --output-csv errors.csv`, then
@@ -169,9 +174,11 @@ Run these in order. Stop and keep 1.x when a step fails.
    types with the county's flow. Captured HTML is not reformatted, so its bytes differ
    from a 1.x capture: compare by transforming both captures and repeating step 3.
 6. **Hash and export a sample archive** as in step 7 of `build-county-transform`. The
-   county CAR is the same file from either CLI. The tables root is not: an Atlas page
-   entry written by Elephant CLI 2 carries a different `tables` CID than 1.x wrote for
-   the same archive. Export, upload and register one data group with one CLI.
+   county CAR is the same file from either CLI when both write the same layout
+   (`--linked`); publish packed, which is what `hash` writes without the option. The
+   tables root is not the same: an Atlas page entry written by Elephant CLI 2 carries a
+   different `tables` CID than 1.x wrote for the same archive. Hash, export, upload and
+   register one data group with one CLI.
 7. **Cut over.** Put the binary on the `PATH` in place of 1.x, export the variables a
    `.env` file used to supply, and replace the npm install line in the county's notes
    with the install above and the build commit.

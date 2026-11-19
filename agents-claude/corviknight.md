@@ -30,8 +30,14 @@ Read [the shared configuration-bundle contract](../skills/build-product-deployer
 Use `CONFIGURATION` in bundle validation and subscription metadata; migrate legacy
 type handling with Build and Marketplace. Build the shared configuration-bundle
 installer as a Deploy component with typed Transform, Connect, System, Report and Schedule API adapters.
-Add the Console adapter by the contract's Console application payloads: Console's
-existing API is the target, so build no Console-side primitive. Add the Access
+Keep the Console adapter (merged as of 2026-11-18) compatible with the contract's
+Console application payloads. Add adapters for the target `console` kinds
+`design-system`, `app` and `component-pack` by
+[the contract's Console app, component-pack and design-system payloads](../skills/build-product-deployer/reference/configuration-bundles.md#console-app-component-pack-and-design-system-payloads),
+once Chandelure ships Console's API for them and Tinkaton the kinds: install only
+through that API with idempotent upload, digest verification, publish with optimistic
+concurrency and read-back. Build no Console-side primitive and never write Console's
+storage or its pointer. Add the Access
 adapter by the contract's Access application payloads once Aegislash ships the
 application API: create-or-replace by name, read back the exact addresses, and
 remove only an application this component owns. Install no user, role, grant or

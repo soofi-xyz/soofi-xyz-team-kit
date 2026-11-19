@@ -345,9 +345,8 @@ Output: `ok`, `errors[]`, `warnings[]`, `referenced_variables[]`,
 `missing_declarations[]`, `unused_declarations[]`, `images[]` (src, alt),
 `links[]`.
 
-Rules: the Console
-[Email HTML target](../../build-console-product/reference/component-authoring.md#email-html-target)
-checks plus the gates above; variables come from the Nunjucks syntax tree only,
+Rules: the [email HTML rules](email-conventions.md#email-html-rules) checks
+plus the gates above; variables come from the Nunjucks syntax tree only,
 excluding filters, tests, loop and `set` variables; flag leftover placeholders
 such as lorem ipsum, TODO or `{{ IMG_BASE }}`.
 

@@ -48,6 +48,18 @@ provider references, and reject per-bundle installer code. Use `CONFIGURATION`
 consistently from request to artifact/provenance. Verify this coverage in the target; the existing
 feature evidence does not establish shared-provider support.
 
+Not built as of 2026-11-18: `console-source-bundles`, build and check Console apps and
+component packs. It depends on source validation, assembly, provenance and Console's app
+kit. Deliver the target `console` kinds from
+[the Console app, component-pack and design-system payloads](../../../build-product-deployer/reference/configuration-bundles.md#console-app-component-pack-and-design-system-payloads):
+a build step in the isolated runner with the app kit's check as a publish gate, output
+verification, the recorded components, packs and minimum design-system version,
+validation of `design-system` documents, and publishing private packages into Build's
+package registry. Exercise a conforming app and a materially different one, one fixture
+per check violation, a foreign dependency and a pack whose replacement props are
+incompatible; confirm a failed check produces no artifact and inspect the runner log and
+manifest for each. Allow `forms` in the Console application manifest check in the same piece.
+
 Apply [the shared API domain contract](../shared-api-domain.md) within the relevant
 feature pieces. Include its missing-domain, DNS-absent, mapping-conflict, replay,
 update and cleanup acceptance cases. Treat runtime support as unverified until

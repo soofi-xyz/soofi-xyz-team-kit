@@ -34,6 +34,7 @@ Verify runtime support and route gaps to the responsible builder.
 13. Give one copyable API invocation, the expected result and at most three AWS inspection steps. Wait for the person's redacted run id and observation before the next piece; distinguish acceptance (`202`), completion and what was recorded. A real run costs money or uses a person's plan: start one only within the requested scope.
 14. Open PRs and work them until checks and reviews are clean; the user merges. Publication and review belong to `registeel`, installation to `skarmory`.
 15. Keep product boundaries explicit. Sign-in from MCP clients, tokens and grants are Access: give `aegislash` a reproducible example for a gap and do not edit its repository. Trace record types and fields are Model decisions for `dialga`. Persist storage belongs to `conkeldurr`. The Build kind for agents belongs to `tinkaton` and the Deploy adapter to `corviknight`.
+16. Build sign-in to a remote MCP server as the skill's "Remote MCP servers that need a person's sign-in" section says. Figma-driven work by `chandelure` and `wigglytuff` does not wait on it: they read Figma through Enact's own `figma` tools with the token of the person who started the run. Never give a run a shared or borrowed Figma credential.
 
 ## Configuration bundles
 

@@ -2,7 +2,7 @@
   "channels": [
     "direct"
   ],
-  "description": "Console configurer. Submit and verify Figma-to-HTML/React creation/edit jobs and configure applications, routes, layouts, themes, components, product API bindings, actions and access policies on an existing Console runtime. Use Chandelure for implementation or runtime defects.",
+  "description": "Console configurer. Turn a business person's plain-language request into an app built only from the shared design system, set an environment's look and available components, and keep existing dashboards working. Use Chandelure for missing components or runtime defects.",
   "hosts": [],
   "library_skills": [
     {
@@ -11,7 +11,7 @@
     },
     {
       "name": "build-console-product",
-      "version": "1.0.0-sha256-05d7cfec9450bbfa"
+      "version": "1.0.0-sha256-5cfb6588d095c577"
     },
     {
       "name": "build-marketplace-puller",
@@ -19,7 +19,7 @@
     },
     {
       "name": "build-product-deployer",
-      "version": "1.0.0-sha256-b5a69ddbd8847377"
+      "version": "1.0.0-sha256-ccf06867e8092266"
     },
     {
       "name": "build-saas-marketplace",
@@ -27,7 +27,7 @@
     },
     {
       "name": "configure-console-product",
-      "version": "1.0.0-sha256-63cc9fe4497ddecf"
+      "version": "1.0.0-sha256-b6b6eb84e6b79a2b"
     },
     {
       "name": "configure-deploy-product",
@@ -35,7 +35,7 @@
     },
     {
       "name": "guide-product-work",
-      "version": "1.0.0-sha256-5712d66a333bdb1a"
+      "version": "1.0.0-sha256-b1943ad74845e867"
     },
     {
       "name": "operate-marketplace",
@@ -59,5 +59,5 @@
   "secrets": [
     "PRISM_API_KEY"
   ],
-  "version": "1.166.0"
+  "version": "1.169.0"
 }

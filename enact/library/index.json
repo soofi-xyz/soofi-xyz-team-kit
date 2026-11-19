@@ -15,7 +15,7 @@
       ]
     }
   },
-  "kit_version": "0.166.0",
+  "kit_version": "0.169.0",
   "limits": {
     "body_bytes": 4194304,
     "encoded_bytes": 5242880,
@@ -235,20 +235,17 @@
       "version": "1.0.0-sha256-ee91d9fd03681778"
     },
     "build-console-product": {
-      "bytes": 81729,
-      "digest": "sha256:52e1e442c90bc64ae1f2b0ef07f9678c27e4d230f0e04c403538ee45d843a8ec",
-      "encoded_bytes": 85248,
+      "bytes": 104672,
+      "digest": "sha256:ef68b9e2be70059b1d17aa2d789f4223f0fc9fec9f42cbb463ed852094bda11a",
+      "encoded_bytes": 109008,
       "files": 6,
-      "reason": "used by 5 packaged agents",
-      "stored_bytes": 83762,
+      "reason": "used by 2 packaged agents",
+      "stored_bytes": 107045,
       "used_by": [
         "chandelure",
-        "noctowl",
-        "slowbro",
-        "vivillon",
-        "wigglytuff"
+        "vivillon"
       ],
-      "version": "1.0.0-sha256-05d7cfec9450bbfa"
+      "version": "1.0.0-sha256-5cfb6588d095c577"
     },
     "build-documentation-product": {
       "bytes": 24372,
@@ -325,7 +322,7 @@
       "digest": "sha256:663f328931276bb3109a329058677cc7c3440fecfbc43aae757de4a8f9e0ec93",
       "encoded_bytes": 33286,
       "files": 8,
-      "reason": "used by 43 packaged agents",
+      "reason": "used by 41 packaged agents",
       "stored_bytes": 32459,
       "used_by": [
         "aegislash",
@@ -352,7 +349,6 @@
         "lapras",
         "meditite",
         "metang",
-        "noctowl",
         "regigigas",
         "registeel",
         "shaymin",
@@ -365,7 +361,6 @@
         "unown",
         "uxie",
         "vivillon",
-        "wigglytuff",
         "wingull",
         "xatu",
         "zoroark",
@@ -392,12 +387,12 @@
       "version": "1.0.0-sha256-4c9e1d58d3143c1a"
     },
     "build-product-deployer": {
-      "bytes": 51249,
-      "digest": "sha256:3d7e851f75ce32c5f06f58bd3d0b451cce14b6c866a123bf90627404eadd2b42",
-      "encoded_bytes": 53534,
+      "bytes": 56141,
+      "digest": "sha256:86e2bceea5e78980476f09fd3b50b35f6f30ad124c99aafadc1e7301365dc5dc",
+      "encoded_bytes": 58556,
       "files": 5,
-      "reason": "used by 43 packaged agents",
-      "stored_bytes": 52541,
+      "reason": "used by 41 packaged agents",
+      "stored_bytes": 57497,
       "used_by": [
         "aegislash",
         "arceus",
@@ -423,7 +418,6 @@
         "lapras",
         "meditite",
         "metang",
-        "noctowl",
         "regigigas",
         "registeel",
         "shaymin",
@@ -436,14 +430,13 @@
         "unown",
         "uxie",
         "vivillon",
-        "wigglytuff",
         "wingull",
         "xatu",
         "zoroark",
         "zorua",
         "zygarde"
       ],
-      "version": "1.0.0-sha256-b5a69ddbd8847377"
+      "version": "1.0.0-sha256-ccf06867e8092266"
     },
     "build-rag-systems": {
       "bytes": 34725,
@@ -491,7 +484,7 @@
       "digest": "sha256:3284c80e71c9a68462197c3657090a826f9a96e575dbaad9580874c8eee749e7",
       "encoded_bytes": 6510,
       "files": 2,
-      "reason": "used by 43 packaged agents",
+      "reason": "used by 41 packaged agents",
       "stored_bytes": 6381,
       "used_by": [
         "aegislash",
@@ -518,7 +511,6 @@
         "lapras",
         "meditite",
         "metang",
-        "noctowl",
         "regigigas",
         "registeel",
         "shaymin",
@@ -531,7 +523,6 @@
         "unown",
         "uxie",
         "vivillon",
-        "wigglytuff",
         "wingull",
         "xatu",
         "zoroark",
@@ -595,17 +586,17 @@
       "version": "1.0.0-sha256-03328ff6d4195200"
     },
     "build-transform-product": {
-      "bytes": 217313,
-      "digest": "sha256:b53f4277ecdb512e5813ec643ad0a3a99bc840b442fe7b4eaff9616c97429e2e",
-      "encoded_bytes": 240983,
+      "bytes": 221970,
+      "digest": "sha256:0c5c52b844f6ae12bde701a4c70052eebe159fa8120b876c93c65b2ba878e980",
+      "encoded_bytes": 245880,
       "files": 25,
       "reason": "used by 2 packaged agents",
-      "stored_bytes": 227806,
+      "stored_bytes": 232567,
       "used_by": [
         "kecleon",
         "silvally"
       ],
-      "version": "1.0.0-sha256-41b2decfb62362f5"
+      "version": "1.0.0-sha256-68d2107517b73c57"
     },
     "configure-access-product": {
       "bytes": 13316,
@@ -647,27 +638,24 @@
       "version": "1.0.0-sha256-9b419ff3c4c0d09d"
     },
     "configure-console-product": {
-      "bytes": 6109,
-      "digest": "sha256:6b676aefff986cfd419ea71adb01b2c7f8f883122200d1a5f5abd6d2acc74d42",
-      "encoded_bytes": 6721,
+      "bytes": 9990,
+      "digest": "sha256:b2e6e5babfe169bac83d096b9d21b1b240b355611e517f671df7afe2dcb0e3aa",
+      "encoded_bytes": 10741,
       "files": 1,
-      "reason": "used by 5 packaged agents",
-      "stored_bytes": 6609,
+      "reason": "used by 2 packaged agents",
+      "stored_bytes": 10548,
       "used_by": [
         "chandelure",
-        "noctowl",
-        "slowbro",
-        "vivillon",
-        "wigglytuff"
+        "vivillon"
       ],
-      "version": "1.0.0-sha256-63cc9fe4497ddecf"
+      "version": "1.0.0-sha256-b6b6eb84e6b79a2b"
     },
     "configure-deploy-product": {
       "bytes": 8757,
       "digest": "sha256:09b505df763ac5483d2d45285eecae177f683e2b80e46120097445260cdf2dbe",
       "encoded_bytes": 9358,
       "files": 1,
-      "reason": "used by 43 packaged agents",
+      "reason": "used by 41 packaged agents",
       "stored_bytes": 9204,
       "used_by": [
         "aegislash",
@@ -694,7 +682,6 @@
         "lapras",
         "meditite",
         "metang",
-        "noctowl",
         "regigigas",
         "registeel",
         "shaymin",
@@ -707,7 +694,6 @@
         "unown",
         "uxie",
         "vivillon",
-        "wigglytuff",
         "wingull",
         "xatu",
         "zoroark",
@@ -730,17 +716,17 @@
       "version": "1.0.0-sha256-6920d4384cc643db"
     },
     "configure-enact-product": {
-      "bytes": 9452,
-      "digest": "sha256:7622d9ad43f0c9b831166e36573941f02adbe14db250cfae1fa85b3a6b26860c",
-      "encoded_bytes": 10337,
+      "bytes": 11545,
+      "digest": "sha256:90279b774d064facac9e03e425668c122870fb8e63d8e50240ff7f297a25826b",
+      "encoded_bytes": 12492,
       "files": 1,
       "reason": "used by 2 packaged agents",
-      "stored_bytes": 10075,
+      "stored_bytes": 12199,
       "used_by": [
         "zoroark",
         "zorua"
       ],
-      "version": "1.0.0-sha256-7957ba18fe107dab"
+      "version": "1.0.0-sha256-8581dd5747849054"
     },
     "configure-environment-product": {
       "bytes": 6045,
@@ -852,18 +838,18 @@
       "version": "1.0.0-sha256-e7fa1a8fa32bd85b"
     },
     "figma-to-email-template": {
-      "bytes": 46020,
-      "digest": "sha256:e0aaf722705209fc8ea0dde472b9b68b6b8770762f48ac9724b49b4588d95810",
-      "encoded_bytes": 48933,
+      "bytes": 47370,
+      "digest": "sha256:18880e932c574c5e82048c9984a847c9e1705f292f778117803626e05d2977d4",
+      "encoded_bytes": 50331,
       "files": 5,
       "reason": "used by 3 packaged agents",
-      "stored_bytes": 47730,
+      "stored_bytes": 49104,
       "used_by": [
         "noctowl",
         "slowbro",
         "wigglytuff"
       ],
-      "version": "1.0.0-sha256-d85dd07195b145fc"
+      "version": "1.0.0-sha256-4ed6d63922ad3c87"
     },
     "frontend-bug-fix": {
       "bytes": 3261,
@@ -879,12 +865,12 @@
       "version": "1.0.0-sha256-2bf41e6b17c43a95"
     },
     "guide-product-work": {
-      "bytes": 265656,
-      "digest": "sha256:b9722a512e8aeb716f5ebf2ec4164683b503eaf47c13a0690dd85e404e35c6ce",
-      "encoded_bytes": 281349,
+      "bytes": 274925,
+      "digest": "sha256:8ad9f36a25c0adf50138e7c62fdbab12055580d42d5f5b74203ea66dfe14ac8b",
+      "encoded_bytes": 290694,
       "files": 25,
-      "reason": "used by 43 packaged agents",
-      "stored_bytes": 272731,
+      "reason": "used by 41 packaged agents",
+      "stored_bytes": 282041,
       "used_by": [
         "aegislash",
         "arceus",
@@ -910,7 +896,6 @@
         "lapras",
         "meditite",
         "metang",
-        "noctowl",
         "regigigas",
         "registeel",
         "shaymin",
@@ -923,14 +908,13 @@
         "unown",
         "uxie",
         "vivillon",
-        "wigglytuff",
         "wingull",
         "xatu",
         "zoroark",
         "zorua",
         "zygarde"
       ],
-      "version": "1.0.0-sha256-5712d66a333bdb1a"
+      "version": "1.0.0-sha256-b1943ad74845e867"
     },
     "integrate-ci-cd": {
       "bytes": 6805,
@@ -951,18 +935,18 @@
       "version": "1.0.0-sha256-0a3158a343d06221"
     },
     "manage-channel-templates": {
-      "bytes": 8874,
-      "digest": "sha256:96240d18cbc77c3f02468d90250870320adab662b06e8453897ab7dad3717486",
-      "encoded_bytes": 9589,
+      "bytes": 8716,
+      "digest": "sha256:2e7fa2b9cdac3f684b6dc3b18b38acdab69221bd2b340801f2888621cdf3692d",
+      "encoded_bytes": 9429,
       "files": 1,
       "reason": "used by 3 packaged agents",
-      "stored_bytes": 9348,
+      "stored_bytes": 9189,
       "used_by": [
         "noctowl",
         "slowbro",
         "wigglytuff"
       ],
-      "version": "1.0.0-sha256-a9f6dca83ddc1e8d"
+      "version": "1.0.0-sha256-3a0c1634465655a7"
     },
     "manage-communication-activity": {
       "bytes": 9199,
@@ -996,7 +980,7 @@
       "digest": "sha256:df57ccf9cb5bfda82a11b45c014070b66da4b8a015ad6bf51356a4d77fb5d083",
       "encoded_bytes": 46571,
       "files": 5,
-      "reason": "used by 43 packaged agents",
+      "reason": "used by 41 packaged agents",
       "stored_bytes": 45402,
       "used_by": [
         "aegislash",
@@ -1023,7 +1007,6 @@
         "lapras",
         "meditite",
         "metang",
-        "noctowl",
         "regigigas",
         "registeel",
         "shaymin",
@@ -1036,7 +1019,6 @@
         "unown",
         "uxie",
         "vivillon",
-        "wigglytuff",
         "wingull",
         "xatu",
         "zoroark",

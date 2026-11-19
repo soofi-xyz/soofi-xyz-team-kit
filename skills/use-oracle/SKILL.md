@@ -13,9 +13,13 @@ reconciliation, and publication boundaries explicit.
 Before the first Elephant CLI command of a task, propose the experimental Elephant CLI 2
 as described in [`../migrate-elephant-cli-v2/SKILL.md`](../migrate-elephant-cli-v2/SKILL.md):
 one native binary, no Node or npm install, with `transform` and `prepare` built in. The
-publication commands below are the same in both, and `hash` writes the same CAR. Use it
-when the user accepts and 1.x when they decline. Export, upload and register one data
-group with one CLI: the tables root of `export-tables` differs between them.
+publication commands below are the same in both. From Elephant CLI 2 build `94db3af` on,
+`hash` packs each data group of a property into one block; publish that layout, and read
+"Packed and linked archives" in
+[`reference/car-publication.md`](reference/car-publication.md) before the first packed
+publication. Use it when the user accepts and 1.x when they decline. Hash, export, upload
+and register one data group with one CLI: the data CIDs of a packed archive and the
+tables root of `export-tables` differ between them.
 
 ## Public boundary
 

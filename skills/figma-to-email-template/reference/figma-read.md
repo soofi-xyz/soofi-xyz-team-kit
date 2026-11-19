@@ -1,8 +1,8 @@
 # Reading An Email Frame Through The Figma MCP
 
 All Figma reads go through the Figma MCP connected in the user's Cursor. Figma
-only serves approved MCP clients, and Cursor is one of them. Jigglypuff, Console
-and local scripts must not call Figma's MCP or REST API for design reads.
+only serves approved MCP clients, and Cursor is one of them. Jigglypuff and
+local scripts must not call Figma's MCP or REST API for design reads.
 
 ## Check access first
 

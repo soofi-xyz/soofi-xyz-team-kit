@@ -5,8 +5,8 @@
     ]
   },
   "requires_mcp": [],
-  "requires_mcp_reason": "agents/chandelure.md:16 starts Figma work with user OAuth and a Figma MCP read. On Enact Figma is optional (no hosted Figma MCP accepts Enact yet): the appendix skips the Figma checkpoint and works from exported designs.",
+  "requires_mcp_reason": "agents/chandelure.md:24 reads the exact Figma nodes through the Figma MCP server when creating or changing a design-system component. On Enact Figma is optional (no hosted Figma MCP accepts Enact yet): the appendix uses Enact's figma tools or exported designs.",
   "appendix": [
-    "**Figma on Enact is optional.** Enact has no Figma sign-in. Do not start or require the Figma client registration, user OAuth or the official Figma MCP. If this run has `figma` tools, they read Figma with the requester's own token (saved once with Enact's `connect_figma`): use them, and stop to ask for access when they say the account cannot open a file. Without them, take designs from what the request gives you instead: exported frames or screenshots, images or HTML in the message or a repository, or a written spec. When a task names only a Figma URL, ask for exports of the frames it needs and stop that part until they arrive; never report a design as read from Figma. Build and test the Console job API and runtime against exported designs or fixtures, and record the Figma client registration checkpoint as not done on Enact."
+    "**Figma on Enact is optional.** Enact has no Figma sign-in. Do not start or require the Figma client registration, user OAuth or the official Figma MCP. If this run has `figma` tools, they read Figma with the requester's own token (saved once with Enact's `connect_figma`): use them, and stop to ask for access when they say the account cannot open a file. Without them, take designs from what the request gives you instead: exported frames or screenshots, images or HTML in the message or a repository, or a written spec. When a task names only a Figma URL, ask for exports of the frames it needs and stop that part until they arrive; never report a design as read from Figma."
   ]
 }

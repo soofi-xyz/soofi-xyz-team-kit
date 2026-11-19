@@ -216,13 +216,13 @@ at mapping publication:
 
 | Mode | Allowed mapping options and defaults |
 | --- | --- |
-| CSV read | `header=true`, `delimiter=,`, `quote="`, `escape="`, `nullValue=\N`, `emptyValue=""`, `multiLine=true`, `encoding=UTF-8`, `dateFormat=yyyy-MM-dd`, `timestampFormat=yyyy-MM-dd'T'HH:mm:ss.SSSXXX` |
+| CSV read | `header=true`, `delimiter=,`, `quote="`, `escape="`, `nullValue=\N`, `emptyValue=""`, `multiLine=true`, `encoding=UTF-8`, `dateFormat=yyyy-MM-dd`, `timestampFormat=yyyy-MM-dd'T'HH:mm:ss.SSSXXX`; optional schema-free `columns` selects only the listed headers, each exactly once ([selected columns](formats-and-execution.md#selected-input-columns)) |
 | CSV write | Same applicable quoting/header/null/date options; omit `multiLine`; optional `compression=gzip`; default uncompressed |
 | JSONL read | UTF-8 only; fixed `multiLine=false`; no CSV options and no null-field writer option |
 | JSONL write | `ignoreNullFields=false`; optional `compression=gzip`; default uncompressed |
 | Parquet read | No format options; validate embedded schema |
 | Parquet write | `compression=snappy` by default; permit `gzip` or `zstd` |
-| Excel read | No options; `sheet` on the mapping input (default: table name); header row required; blank-header all-empty columns ignored, blank-header columns with data rejected by position, duplicate headers rejected ([rules](formats-and-execution.md#excel-header-and-cell-rules)); integral floats stringify without `.0`; definition types applied on the driver |
+| Excel read | No options; `sheet` on the mapping input (default: table name); header row required; blank-header all-empty columns ignored, blank-header columns with data rejected by position, duplicate headers rejected ([rules](formats-and-execution.md#excel-header-and-cell-rules)); optional `columns` reads and validates only the listed headers, each exactly once, and ignores every other column ([selected columns](formats-and-execution.md#selected-input-columns)); integral floats stringify without `.0`; definition types applied on the driver |
 | Excel write | No options; one `<dataset>.xlsx` per dataset with one sheet; rejects rows above the configured ceiling |
 | Neptune profile | Fixed profile header/quote/null behavior; optional `compression=gzip`; reject caller overrides of generic CSV options |
 
