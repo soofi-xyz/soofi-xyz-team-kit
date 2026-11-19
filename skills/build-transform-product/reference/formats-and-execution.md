@@ -116,8 +116,14 @@ When `columns` is present:
    columns only. A row whose selected cells are all empty is an empty row.
 5. For CSV, parse with the existing options and then select only the listed
    columns. Spark renames a duplicate header to `<name><index>` and a blank one
-   to `_c<index>` instead of failing; detect a duplicated selected name from
-   those renamed positions and report it, rather than reading a renamed column.
+   to `_c<index>` instead of failing, so never match selections against Spark's
+   column names: read the first file's original header record (same parser
+   options, `header=false`, one record), resolve each selected name to its
+   position there, and project by position. A selection such as `Name1` or
+   `_c3` that exists only as a Spark rename is missing. Keep Spark's per-file
+   header check so a later file with different headers fails.
+6. An omitted optional input keeps its options without a format and is never
+   read; accept `columns` there instead of rejecting the plan.
 
 Without `columns`, every rule in [the Excel header rules](#excel-header-and-cell-rules)
 applies to the whole header row exactly as before. Do not infer `columns` from
@@ -128,7 +134,9 @@ Test, with synthetic workbooks and files only: duplicate unselected headers,
 blank-header unselected columns with data (and uncached formulas) all succeed
 and the dataset holds only the selected columns; a missing selected column and
 a duplicated selected column each fail by name and position without values;
-column order follows `columns`; registration rejects `columns` on JSONL or
+column order follows `columns`; a Spark-renamed name (`Name1`, `_c3`) is not
+selectable while a genuine `Name1` header is; registration and the resolved plan
+both reject `columns` on JSONL or
 Parquet inputs, on schema-bound inputs, and with blank, padded or repeated
 names; and a large workbook (tens of thousands of rows, dozens of columns)
 reads only the selected values within the configured ceilings.
