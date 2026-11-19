@@ -15,7 +15,7 @@
       ]
     }
   },
-  "kit_version": "0.166.0",
+  "kit_version": "0.166.1",
   "limits": {
     "body_bytes": 4194304,
     "encoded_bytes": 5242880,
@@ -233,12 +233,12 @@
       "version": "1.0.0-sha256-ee91d9fd03681778"
     },
     "build-console-product": {
-      "bytes": 87538,
-      "digest": "sha256:06a47fcd0b14f7d9aa080199d1f1d48fd713bfbc6a2c2023bdb53ba15ccb0264",
-      "encoded_bytes": 91368,
+      "bytes": 91049,
+      "digest": "sha256:0b93a836043f2bb1a690da24dc1fed5eaf241f366999b98ca854f8bcd1a1b707",
+      "encoded_bytes": 94993,
       "files": 7,
       "reason": "used by 5 packaged agents",
-      "stored_bytes": 89769,
+      "stored_bytes": 93336,
       "used_by": [
         "chandelure",
         "noctowl",
@@ -246,7 +246,7 @@
         "vivillon",
         "wigglytuff"
       ],
-      "version": "1.0.0-sha256-5bac63f5b478b3dd"
+      "version": "1.0.0-sha256-26c3d58a01b43ddd"
     },
     "build-documentation-product": {
       "bytes": 24372,
@@ -645,12 +645,12 @@
       "version": "1.0.0-sha256-9b419ff3c4c0d09d"
     },
     "configure-console-product": {
-      "bytes": 6384,
-      "digest": "sha256:4ef12e2f0d5a7f96fcc9556af250ef796cb175be742fb5475de57ab512d91f88",
-      "encoded_bytes": 7002,
+      "bytes": 6589,
+      "digest": "sha256:c5d1630a87c3b0972e6ce5255bf846768040e2f08a15fd7d365045f9dcf8f3ef",
+      "encoded_bytes": 7213,
       "files": 1,
       "reason": "used by 5 packaged agents",
-      "stored_bytes": 6887,
+      "stored_bytes": 7095,
       "used_by": [
         "chandelure",
         "noctowl",
@@ -658,7 +658,7 @@
         "vivillon",
         "wigglytuff"
       ],
-      "version": "1.0.0-sha256-27ead29097345238"
+      "version": "1.0.0-sha256-15d33338567f44bd"
     },
     "configure-deploy-product": {
       "bytes": 8757,
