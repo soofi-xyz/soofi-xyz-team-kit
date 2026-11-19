@@ -387,8 +387,37 @@
       "wave_reason": "role: configure"
     },
     "braviary": {
-      "wave": "stays-local",
-      "wave_reason": "enact/config.json stays_local"
+      "assumptions": [
+        "curl"
+      ],
+      "blocked_by": [],
+      "bytes": 10205,
+      "files": 1,
+      "flag_counts": {
+        "curl": 1
+      },
+      "instruction_flags": {
+        "curl": [
+          "instructions.md:23"
+        ]
+      },
+      "invalid_paths": [],
+      "kit_model": "gpt-5.4-high",
+      "library_pinned_bytes": 0,
+      "library_skills": [],
+      "mcp_servers": [],
+      "model": "opus",
+      "needs_secrets": [],
+      "needs_secrets_source": "none declared",
+      "omitted_files": [],
+      "own_skills": [],
+      "readonly": false,
+      "requires_mcp": [],
+      "requires_mcp_reason": "agents/braviary.md: guides an engineer through Tag Manager, GA4, Search Console and Google Ads console steps that the engineer performs in their own browser; it needs no MCP server or Google credential, and delegates the code change to castform.",
+      "secret_env_mentions": [],
+      "skills": [],
+      "wave": "3",
+      "wave_reason": "retained specialist (default)"
     },
     "bronzong": {
       "assumptions": [
@@ -3676,8 +3705,8 @@
       "wave_reason": "role: build"
     }
   },
-  "enact_version": "1.165.2",
-  "kit_version": "0.165.2",
+  "enact_version": "1.165.3",
+  "kit_version": "0.165.3",
   "mcp_allow_list": [
     "enact",
     "browser",
