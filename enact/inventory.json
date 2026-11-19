@@ -570,7 +570,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 569218,
+      "library_pinned_bytes": 572993,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-console-product",
@@ -2130,7 +2130,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.4-high",
-      "library_pinned_bytes": 831903,
+      "library_pinned_bytes": 835678,
       "library_skills": [
         "apply-engineering-guidelines",
         "atomic-data",
@@ -2674,7 +2674,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.5-high",
-      "library_pinned_bytes": 796529,
+      "library_pinned_bytes": 800304,
       "library_skills": [
         "apply-engineering-guidelines",
         "assemble-communication-runtime",
@@ -3095,7 +3095,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 569218,
+      "library_pinned_bytes": 572993,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-console-product",
@@ -3212,7 +3212,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.4-high",
-      "library_pinned_bytes": 626296,
+      "library_pinned_bytes": 630071,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-console-product",
@@ -3564,8 +3564,8 @@
       "wave_reason": "role: build"
     }
   },
-  "enact_version": "1.166.0",
-  "kit_version": "0.166.0",
+  "enact_version": "1.166.1",
+  "kit_version": "0.166.1",
   "mcp_allow_list": [
     "enact",
     "browser",
@@ -3708,7 +3708,7 @@
       ]
     },
     "build-console-product": {
-      "bytes": 87538,
+      "bytes": 91049,
       "files": 7,
       "flags": {},
       "omitted": [],
@@ -4072,7 +4072,7 @@
       ]
     },
     "configure-console-product": {
-      "bytes": 6384,
+      "bytes": 6589,
       "files": 1,
       "flags": {},
       "omitted": [],

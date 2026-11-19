@@ -89,6 +89,60 @@ for the design-system piece as a whole.
 | 4 | Attempt to type-check the unknown-variant fixture against the same revision | `DS-4` still fails compilation |
 | 5 | Switch back to `tokens-a` and re-open the gallery | Prior look restored without a rebuild |
 
+## Implementation rules
+
+Runtime 1.14.0 of `prismteam-ai/console` implements this contract. Keep these
+rules when changing it; each one is checked by a test or a type check.
+
+- **Layout.** Components, `catalog.ts`, `tokens.ts` and `design-system.css` live
+  in `ui/src/design-system/`; import them through `index.ts`. The gallery is
+  `ui/src/design-system-gallery.tsx`, opened at `?gallery`.
+- **Catalog.** `catalog.ts` imports nothing and holds `componentNames`, every
+  variant union and `tokenSets`. Add a component to `componentNames`, the
+  gallery's `examples` map and `requiredVariants` in
+  `e2e/support/design-system.ts`; the UI type check fails while `componentNames`
+  and the capitalized function exports of `components.tsx` disagree.
+- **Variants.** Declare each variant list `as const` in `catalog.ts` and derive
+  the prop type from it. Never type a variant prop as `string`. Add each new
+  variant prop to the DS-4 fixture lines in
+  `e2e/support/design-system-type-check.ts`.
+- **No local styling.** Components omit `className` and `style` from their
+  props and mark their root with `data-ds-component="<Name>"`. Do not add an
+  escape hatch; add a variant instead.
+- **Tokens.** Name tokens `--ds-*` so they cannot collide with the renderer's
+  existing `--background`/`--surface`/`--accent` theme variables. Every token set
+  in `ui/src/design-system/tokens/` defines the same tokens. `design-system.css`
+  uses no literal colors, positive literal radii, other `font-family` values or
+  multi-layer or drop shadows; a unit test fails on any of them.
+- **Delivery.** A Vite plugin emits each token set unbundled at
+  `design-system/tokens-<name>.css`, which the runtime digest lists as an asset.
+  `applyTokenSet` loads the new sheet beside the old one and removes the old one
+  only after it loads; `?tokens=<name>` selects one at load, and an unknown name
+  falls back to `tokens-a`.
+- **Typeface.** The renderer's CSP allows only `'self'`. Self-host TASA Orbiter
+  (OFL) as woff2 beside the components; never link Google Fonts or another CDN.
+- **Host isolation.** The renderer's `styles.css` styles bare elements (`th` is
+  10px uppercase, `h1`–`h3` use Avenir Next). Components reset font, letter
+  spacing and text transform on their own descendants, so they look the same
+  inside an application page as in the gallery.
+- **Session.** Mount the gallery after `App`'s session check, never as a separate
+  public HTML entry, so `CS-1` holds even though it reads no data.
+- **Tests.** DS checks live in `e2e/design-system.spec.ts` (fixtures project) and
+  `test/design-system.test.ts`, named by ID. Drive keyboard checks with keys
+  that behave the same on macOS and Linux: ArrowRight (not End) to collapse a
+  text selection, type-ahead (not ArrowDown) on a native select.
+- **Baselines.** Screenshots are per platform in
+  `e2e/design-system.spec.ts-snapshots/`. After an intended visual change,
+  refresh `*-darwin.png` locally with `--update-snapshots` and `*-linux.png` from
+  the **Design-system baselines** workflow artifact, and commit both. Never
+  loosen a comparison threshold to make a baseline pass.
+
+Applications cannot choose a token set from their manifest yet; the existing
+`theme.tokens` still drives the renderer's own components. Treat manifest-level
+token-set selection and moving renderer components onto the design system as
+later Chandelure work with their own schema, compatibility and capability
+changes; do not have Vivillon configure them until they ship.
+
 ## Kit maintenance
 
 When this contract changes, update `agents/chandelure.md`,

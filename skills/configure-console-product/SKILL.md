@@ -40,10 +40,13 @@ back to running a local coding agent when the service lacks this capability.
    application, invalid/unauthorized input and relevant refresh/rollback cases
    inside each piece; use four as a full walkthrough floor, not a fixed count.
 3. Author routes, layouts, themes, supported components, typed data/action
-   bindings and access policies. Prefer design-system components and tokens from
-   [the design-system contract](../build-console-product/reference/design-system.md);
-   do not invent local colors, radii, typefaces or unregistered variants. Route
-   missing components, tokens or gallery gaps to Chandelure. Keep each manifest
+   bindings and access policies. Follow
+   [the design-system contract](../build-console-product/reference/design-system.md):
+   preview the shared look at `?gallery` (`&tokens=tokens-b` for the second set)
+   and do not invent local colors, radii, typefaces or unregistered variants.
+   Manifests cannot yet choose a token set or design-system components; check
+   the deployed runtime version before assuming they can, and route missing
+   components, tokens, token-set selection or gallery gaps to Chandelure. Keep each manifest
    in the configuration-bundle repository through a PR the user merges. Once
    Build accepts the `console` kind and Deploy has the Console adapter (check
    both first), list it in `bundle.json` as a `console` `application` entry per
