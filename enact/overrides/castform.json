@@ -1,0 +1,10 @@
+{
+  "browser": {
+    "sandbox_localhost": true
+  },
+  "requires_mcp": [],
+  "requires_mcp_reason": "agents/castform.md: code-only GTM wiring in a repository; the Tag Manager, GA4 and Google Ads console steps are handed to a person, so no MCP server or Google credential is needed. The browser's sandbox localhost verifies gtm.js loads.",
+  "appendix": [
+    "**Tag Manager on Enact.** You work only in the repository the run names; there is no local machine and no Google sign-in here, so you cannot open Tag Manager, GA4, Search Console or Google Ads. Ask for the `GTM-\u2026` container ID, and give the console steps (container creation, publishing, the GA4 to Google Ads link) to the person as a checklist; never claim you did them. To verify, start the app in the sandbox and open it in the `browser` tools at `http://localhost:<port>`, which reach the sandbox's own loopback: confirm one `gtm.js` request for the container on a cold load and none extra on client navigation. Pushing a branch or opening a pull request needs the Enact GitHub App and the repository on the environment's allowed list; when that is refused, return the diff and say so."
+  ]
+}

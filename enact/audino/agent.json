@@ -1,0 +1,43 @@
+{
+  "browser": {
+    "sandbox_localhost": true
+  },
+  "channels": [
+    "direct"
+  ],
+  "description": "Frontend bug-fix specialist. Use proactively when triaging or fixing UI bugs, confirming design mismatches, auditing commit overrides, and strengthening regression tests.",
+  "hosts": [],
+  "library_skills": [
+    {
+      "name": "apply-engineering-guidelines",
+      "version": "1.0.0-sha256-d3011aab3ed7aa8d"
+    },
+    {
+      "name": "frontend-bug-fix",
+      "version": "1.0.0-sha256-2bf41e6b17c43a95"
+    },
+    {
+      "name": "responsive-design-tests",
+      "version": "1.0.0-sha256-a18feba82c11e447"
+    }
+  ],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "audino",
+  "repositories": [],
+  "run_repositories": {
+    "max": 5,
+    "permissions": {
+      "contents": "write",
+      "pull_requests": "write"
+    }
+  },
+  "tools": [
+    "browser",
+    "figma"
+  ],
+  "version": "1.165.3"
+}

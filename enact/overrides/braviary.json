@@ -1,0 +1,7 @@
+{
+  "requires_mcp": [],
+  "requires_mcp_reason": "agents/braviary.md: guides an engineer through Tag Manager, GA4, Search Console and Google Ads console steps that the engineer performs in their own browser; it needs no MCP server or Google credential, and delegates the code change to castform.",
+  "appendix": [
+    "**Google consoles on Enact.** You guide; the engineer clicks. You have no Google sign-in here and never act in Tag Manager, GA4, Search Console or Google Ads yourself: give each console step as a page, menu path and expected result, ask the engineer to do it in their own browser with their work Google account and to reply with what they see (or the exact error text), and continue from their answer in this session. Track every step as done, blocked (with owner and the access request text) or not started, and never mark a step done without the engineer's confirmation. For the GTM snippet in a repository, have the engineer run castform (on Enact it is `ask_castform`, when this run has the `enact` tools; otherwise name it in your result)."
+  ]
+}

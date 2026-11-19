@@ -1,0 +1,43 @@
+{
+  "browser": {
+    "sandbox_localhost": true
+  },
+  "channels": [
+    "direct"
+  ],
+  "description": "Figma-to-code specialist. Use proactively when translating Figma designs into existing frontend code in apps/landing_page or apps/payment_portal, preserving business logic and breakpoints.",
+  "hosts": [],
+  "library_skills": [
+    {
+      "name": "apply-engineering-guidelines",
+      "version": "1.0.0-sha256-d3011aab3ed7aa8d"
+    },
+    {
+      "name": "figma-to-code",
+      "version": "1.0.0-sha256-e7fa1a8fa32bd85b"
+    },
+    {
+      "name": "responsive-design-tests",
+      "version": "1.0.0-sha256-a18feba82c11e447"
+    }
+  ],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "sylveon",
+  "repositories": [],
+  "run_repositories": {
+    "max": 5,
+    "permissions": {
+      "contents": "write",
+      "pull_requests": "write"
+    }
+  },
+  "tools": [
+    "browser",
+    "figma"
+  ],
+  "version": "1.165.3"
+}

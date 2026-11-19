@@ -1,0 +1,28 @@
+{
+  "browser": {
+    "sandbox_localhost": true
+  },
+  "channels": [
+    "direct"
+  ],
+  "description": "Adds Google Tag Manager to any frontend. Use when a container needs the official snippets wired into an app and candidate user-action tracking events discovered.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "castform",
+  "repositories": [],
+  "run_repositories": {
+    "max": 5,
+    "permissions": {
+      "contents": "write",
+      "pull_requests": "write"
+    }
+  },
+  "tools": [
+    "browser"
+  ],
+  "version": "1.165.3"
+}

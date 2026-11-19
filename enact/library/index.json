@@ -15,7 +15,7 @@
       ]
     }
   },
-  "kit_version": "0.165.0",
+  "kit_version": "0.165.3",
   "limits": {
     "body_bytes": 4194304,
     "encoded_bytes": 5242880,
@@ -30,7 +30,7 @@
       "digest": "sha256:6c085deb9c95bd7176e818d7a646252fb4a4f771ff2c76d77231cfa3a1d82c3d",
       "encoded_bytes": 54178,
       "files": 13,
-      "reason": "used by 61 packaged agents",
+      "reason": "used by 63 packaged agents",
       "stored_bytes": 52800,
       "used_by": [
         "abra",
@@ -38,6 +38,7 @@
         "alakazam",
         "arceus",
         "ash",
+        "audino",
         "beheeyem",
         "blissey",
         "bronzong",
@@ -81,6 +82,7 @@
         "skarmory",
         "slowbro",
         "slowking",
+        "sylveon",
         "tinkaton",
         "togetic",
         "torterra",
@@ -839,11 +841,13 @@
       "digest": "sha256:809ac855787ac2e30e23a3b1cf83ce4281a89ae19df01a4e19602f352baa38fe",
       "encoded_bytes": 6177,
       "files": 1,
-      "reason": "used by 2 packaged agents",
+      "reason": "used by 4 packaged agents",
       "stored_bytes": 6039,
       "used_by": [
         "hoopa",
-        "klefki"
+        "klefki",
+        "smeargle",
+        "sylveon"
       ],
       "version": "1.0.0-sha256-e7fa1a8fa32bd85b"
     },
@@ -860,6 +864,19 @@
         "wigglytuff"
       ],
       "version": "1.0.0-sha256-d85dd07195b145fc"
+    },
+    "frontend-bug-fix": {
+      "bytes": 3261,
+      "digest": "sha256:a941cc026bf5979eb676946fea14ffcca4905bddc04f0efb08ef255c0e74cd32",
+      "encoded_bytes": 3673,
+      "files": 1,
+      "reason": "used by 2 packaged agents",
+      "stored_bytes": 3584,
+      "used_by": [
+        "audino",
+        "smeargle"
+      ],
+      "version": "1.0.0-sha256-2bf41e6b17c43a95"
     },
     "guide-product-work": {
       "bytes": 265656,
@@ -1033,11 +1050,14 @@
       "digest": "sha256:d039545bd4b462e3b7180b5fe5deadb9097e5c36e400f39789a446e7b7e4d11e",
       "encoded_bytes": 91119,
       "files": 3,
-      "reason": "used by 2 packaged agents",
+      "reason": "used by 5 packaged agents",
       "stored_bytes": 88819,
       "used_by": [
+        "audino",
         "hoopa",
-        "klefki"
+        "klefki",
+        "smeargle",
+        "sylveon"
       ],
       "version": "1.0.0-sha256-a18feba82c11e447"
     },

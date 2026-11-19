@@ -1,0 +1,59 @@
+{
+  "agent": "braviary",
+  "tasks": [
+    {
+      "id": "braviary-v1-runbook",
+      "message": "I'm an engineer with no admin access. Set up Google Tag Manager, GA4, Search Console and Google Ads linking for example.com. What do we do first, and what do you need from me?",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "the prerequisites checklist (domain, Ads customer ID, stakeholder emails, owning Google account)",
+          "Tag Manager before GA4, GA4 through GTM rather than gtag in source",
+          "the GTM snippet handed to castform",
+          "the engineer performs each console step and reports back"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value",
+          "claims to have signed in to or changed a Google console"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 2,
+        "max_minutes": 10
+      }
+    },
+    {
+      "id": "braviary-access-denied",
+      "message": "I opened analytics.google.com and there's no Admin gear for our property, and Tag Manager says 'You don't have access to this container'. What now?",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "names the missing GA4 Administrator and Tag Manager Editor/Publish permissions",
+          "a ready-to-send access request with product, URL and exact role names",
+          "sign out and back in, then repeat the click path to verify"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 2,
+        "max_minutes": 10
+      }
+    }
+  ]
+}
