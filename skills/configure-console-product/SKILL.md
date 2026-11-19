@@ -24,9 +24,11 @@ new business apps as apps. Do not start a new one as a dashboard manifest.
    `soofi-safavi.account.prismteam.ai`); use no AWS profile or credentials and do
    not read SSM or stack outputs.
 2. Separate required, implemented and observed capabilities. Do not guess routes,
-   components or operations. As of 2026-11-18 Console renders dashboards only and its
-   one registered data operation is `report` `read-dataset`; the app kit, app
-   hosting, design-system configuration and component packs are requirements.
+   components or operations. As of 2026-11-19 Console hosts dashboards only and its
+   one registered data operation is `report` `read-dataset`. The app kit (runtime
+   1.15.0) creates, runs and checks an app locally on sample data; app hosting,
+   publishing, delivery, design-system configuration and component packs are
+   requirements, so an app cannot reach an environment yet.
 3. Where the capability a request needs is absent, say so, show the person what you
    would build, hand the gap to `chandelure` and stop. Do not build a bespoke app
    outside Console, run a local generator or fork the renderer as a substitute.

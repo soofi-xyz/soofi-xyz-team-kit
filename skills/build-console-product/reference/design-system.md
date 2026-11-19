@@ -6,15 +6,14 @@ and the dashboard reskin. It is the target design. Read it before any change to
 base components, tokens, themes or the gallery; a change that weakens a
 guarantee below is a defect, even when the change was about something else.
 
-As of 2026-11-19 none of it is on the Console repository's `main` (runtime
-1.13.0). Pull request 31 there (runtime 1.14.0, open) adds the tokens, two token
-sets, ten base components, the gallery and tests named `DS-1` to `DS-4`, by
-[the implementation rules](#implementation-rules). Its components are
-hand-written under the demo's names (`Pill`, `Panel`, `Toggle`, `Segmented`),
-so the starting point, the names and `DS-5` below are not met yet: restart
-those components from shadcn and keep the tokens, gallery and tests. Discover
-the target revision before relying on any part, and settle names marked as
-placeholders in the Console repository.
+As of 2026-11-19 the `design-system` piece is on the Console repository's
+`main` (pull requests 31 and 32, runtime 1.14.0): tokens, two token sets, base
+components started from shadcn with an origin record, the gallery and `DS-1` to
+`DS-5`, by [the implementation rules](#implementation-rules). Pull request 33
+(runtime 1.15.0) adds `Page`, `Stack` and `Text` with token-only style props for
+the app kit. Runtime sharing, design-system configuration, component packs and
+the renderer reskin are not built. Discover the target revision before relying
+on any part, and settle names marked as placeholders in the Console repository.
 
 Read it with [the product contract](PRD.md) and [the app kit](app-kit.md).
 The [Tests](#tests) section defines done for the `design-system`,
@@ -350,7 +349,8 @@ run on Enact.
 ## Implementation rules
 
 These rules describe the tokens, gallery and tests in runtime 1.14.0 (pull
-request 31 in `prismteam-ai/console`, open as of 2026-11-19). Keep them when
+requests 31 and 32 in `prismteam-ai/console`) and the layout and text
+components in 1.15.0 (pull request 33). Keep them when
 changing that code or restarting its components from shadcn; each one is
 checked by a test or a type check.
 
@@ -358,10 +358,21 @@ checked by a test or a type check.
   in `ui/src/design-system/`; import them through `index.ts`. The gallery is
   `ui/src/design-system-gallery.tsx`, opened at `?gallery`.
 - **Catalog.** `catalog.ts` imports nothing and holds `componentNames`, every
-  variant union and `tokenSets`. Add a component to `componentNames`, the
-  gallery's `examples` map and `requiredVariants` in
-  `e2e/support/design-system.ts`; the UI type check fails while `componentNames`
-  and the capitalized function exports of `components.tsx` disagree.
+  variant union, `componentReleases`, `styleProps` and `tokenSets`. Add a
+  component to `componentNames`, `componentReleases` (the release that first
+  ships it), the gallery's `examples` map, `requiredVariants` in
+  `e2e/support/design-system.ts`, `origin.json` and the app kit's
+  `app-kit/catalog/examples.tsx`; the UI type check fails while `componentNames`
+  and the capitalized function exports of `components.tsx` disagree, and the
+  catalog build fails without an example.
+- **Token-only style props.** A layout or text component's look props take a
+  closed list of token names (`spaceTokens`, `textTones`), mapped to literal
+  Tailwind classes in the component so Tailwind generates them. List each such
+  prop in `styleProps`, which the app kit's `off-scale-value` rule reads, and
+  add an unknown-value line per prop to the DS-4 fixture.
+- **Gallery names.** Keep every example's titles and labels unique on the page:
+  a card titled like a section heading breaks the section lookup, and two
+  regions with one name fail axe's `landmark-unique` in `DS-2`.
 - **Variants.** Declare each variant list `as const` in `catalog.ts` and derive
   the prop type from it. Never type a variant prop as `string`. Add each new
   variant prop to the DS-4 fixture lines in

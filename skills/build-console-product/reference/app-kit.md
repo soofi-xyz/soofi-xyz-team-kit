@@ -3,8 +3,13 @@
 Use this contract for the package an app is built with, the guardrails that
 keep an app inside the design system, app hosting, the data hooks, local
 development, delivery and the reference app. It is the target design. As of
-2026-11-18 none of it is built; discover the target revision before relying on
-any part, and settle names marked as placeholders in the Console repository.
+2026-11-19 the `app-kit` piece is built in the Console repository (pull request
+33, runtime 1.15.0) by [the implementation rules](#implementation-rules):
+the package, the guardrails, local development on sample data and `AK-1` to
+`AK-11`. App hosting, runtime sharing, the data hooks through Console's API,
+delivery and the reference app are not built. Discover the target revision
+before relying on any part, and settle names still marked as placeholders in
+the Console repository.
 
 Read it with [the product contract](PRD.md) and
 [the design system](design-system.md). The [Tests](#tests) section defines done
@@ -13,8 +18,8 @@ for the `app-kit`, `app-hosting`, `data-hooks`, `app-delivery` and
 
 ## App kit
 
-The app kit is one package (`@prism/ui` is a placeholder; settle the name in
-the Console repository). An app depends on it and on nothing else for its
+The app kit is one package, `@prism/console-app-kit`, in the Console
+repository's `app-kit/` directory. An app depends on it and on nothing else for its
 interface.
 
 - **Contents.** The component types; a local copy of the components for
@@ -319,3 +324,80 @@ human review.
 | RA-2 | Open the reference app and switch one rule off | The cleared count rises by the number of accounts only that rule held back, and the rule's bar empties |
 | RA-3 | Deliver the reference app to a dev environment through the `app-delivery` path and open it signed out, then signed in | Signed out it redirects to sign-in and loads no data; signed in it renders |
 | RA-4 | Give the designer screenshots at phone, tablet and desktop widths beside the demo's Rules page | The designer records acceptance, or a list of design-system changes to make before acceptance |
+
+## Implementation rules
+
+These rules describe the app kit in runtime 1.15.0 (pull request 33 in
+`prismteam-ai/console`). Keep them when changing it; each one is checked by a
+test or a type check.
+
+- **Layout.** The kit's package is `app-kit/` (`package.json`, the `console-app`
+  command in `bin/`, Node sources in `src/`, the scaffold in `template/`, the
+  catalog examples in `catalog/examples.tsx`, `sample-app` in
+  `fixtures/`). What apps run is in the UI tree, `ui/src/app-runtime/`:
+  `index.ts` (what an app imports), `react.ts` (the reduced React),
+  `jsx-runtime.ts` and `jsx-dev-runtime.ts` (the wrapper) and `mount.tsx` (the
+  host side, never imported by an app). `pnpm app-kit:build` builds
+  `app-kit/dist/`; `pnpm test` and `pnpm test:e2e` run it first.
+- **One list per surface.** `ui/src/app-runtime/surface.ts` imports nothing
+  and holds `reducedReactExports`, the runtime's module names, its address and
+  the wrapper's error text. The reduced React, the build plugin, the check and
+  the tests read it; a unit test keeps `react.ts`'s exports equal to the list.
+  Add an export only if it creates no element and reaches no DOM.
+- **Version.** `app-kit/package.json` has Console's `package.json` version (the
+  design-system version); `pnpm app-kit:build` refuses to build when they differ.
+  Bump both together.
+- **Two copies of one runtime.** Console's UI build emits the runtime at fixed
+  names under `app-runtime/` (served at `/console/app/app-runtime/`), sharing
+  the renderer's React chunk. The kit's `dist/runtime/` is the same sources
+  built for development with React and react-dom bundled in, so `console-app
+  dev` needs no network and no dependency pre-bundling. An app's production
+  build marks the kit, its JSX runtime and `react` external at
+  `/console/app/app-runtime/` (`appRuntimeBase`). `runtime-sharing` replaces
+  that address with the versioned pointer; change it in `surface.ts` only.
+- **Build settings.** The kit sets `configFile: false`, `envFile: false`,
+  `publicDir: false`, `jsxImportSource: "@prism/console-app-kit"` and
+  `jsxDev` itself, and sets `NODE_ENV` for each command: Vite takes
+  development JSX from `NODE_ENV`, which a test runner sets to `test`. A kit
+  subpath with no Console address fails the production build.
+- **Check order.** `console-app check` reads the settings and samples, runs the
+  named rules and the type-check, and builds only when both pass. A type error
+  on a line a named rule already explains is not reported, so each violation
+  fixture fails with exactly its rule. `console-app build` builds without the
+  rules and writes no record; only `check` writes `dist/build-record.json`, and
+  a failing check leaves no `dist/`.
+- **Rules use the compiler.** Network and DOM globals are found by resolving
+  each identifier and testing whether TypeScript's DOM library declares it, so
+  a local `const document` is not flagged. Timers, `console`, `URL` and the
+  other globals in `harmlessDomGlobals` are allowed. An app's `tsconfig.json`
+  must equal `APP_TSCONFIG`; a bundler, compiler or registry file in the app
+  fails `build-settings`.
+- **Rules beyond the seven.** `react-surface` (an import from React outside the
+  reduced list, a default or namespace import of `react`, `react/*` or
+  `react-dom`), `build-settings`, `settings` (the settings file, its
+  `designSystem` range against the components used, or a sample file),
+  `type-check`, `build-input`, `build-output` and `build`. Add a rule to
+  `ruleNames` in `app-kit/src/violations.ts` and give it a fixture.
+- **Components the check knows.** `catalog.ts` gives every component its first
+  release in `componentReleases` (the build record's minimum version is the
+  highest one used) and every token-only style prop its token names in
+  `styleProps` (what `off-scale-value` reads). Adding a component also needs an
+  example in `app-kit/catalog/examples.tsx`: the catalog quotes it and a test
+  type-checks the file as app code.
+- **Layout and text components.** `Page`, `Stack` and `Text` (Console's own,
+  1.15.0) are what an app arranges and writes with. `Grid`, `Box` and `Bench`
+  are still targets; add them to the design system when an app needs them.
+- **Data hooks.** `useBinding` and `useAction` read a `DataSourceContext` the
+  host supplies (`mountApp`'s `source`). Locally it is `sampleDataSource` over
+  `samples/<binding>.json`; with no source every read is `failed`, never blank.
+  The `data-hooks` piece adds Console's API as the installed source.
+- **Fixtures.** `sample-app` is a directory; every violation fixture and the
+  two `react-surface` fixtures are derived from it by exact edits in
+  `test/support/app-kit.ts`, so they stay identical to it but for one
+  violation. A test links the kit into a copy as a package manager would.
+- **Tests.** `AK-2` to `AK-9` and the build half of `AK-11` run the command in
+  `test/app-kit.test.ts`; `AK-1` scaffolds into a new directory and opens the dev
+  server in `e2e/app-kit.spec.ts` (fixtures project); `AK-10` and the load half
+  of `AK-11` import hand-built bundles from the installed stand-in's origin in
+  `e2e/app-kit.installed.spec.ts`, which Playwright answers so the stand-in
+  serves nothing it would not in production.
