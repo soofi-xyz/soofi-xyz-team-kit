@@ -92,6 +92,7 @@ decoded values/schema and graph identities, not only generated object paths.
 | Mixed-format joins | CSV, JSONL/Parquet and Excel-sheet tables can feed one registered SQL mapping |
 | Excel sheets | Each sheet binds to one dataset; a missing sheet or an over-ceiling dataset fails before success |
 | Excel blank headers | Blank-header all-empty columns are ignored and named columns keep their values; a blank-header column with data fails naming its position and row, never its value; duplicate headers keep their error; integral floats read without `.0` |
+| Selected columns | With `columns`, duplicate or blank headers and data in unselected columns are ignored and never loaded; a missing or repeated selected column fails by name and position; output columns follow `columns`; a large workbook reads only selected values |
 | Special-character keys | Inputs whose keys contain a space, `+`, `%`, `#`, `?` or non-ASCII characters resolve, snapshot and read the exact object; none is reported empty or missing; plain ASCII keys resolve unchanged |
 | Multiple outputs | Preserve separate target datasets and types; combine only declared same-table fragments |
 | Tabular output | No invented graph fields, IDs, labels or graph-store dependency |
