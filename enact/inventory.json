@@ -1399,7 +1399,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 1125734,
+      "library_pinned_bytes": 1129798,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-lexicon-product",
@@ -2531,7 +2531,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 2159024,
+      "library_pinned_bytes": 2163088,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-lexicon-product",
@@ -3521,8 +3521,8 @@
       "wave_reason": "role: build"
     }
   },
-  "enact_version": "1.167.0",
-  "kit_version": "0.167.0",
+  "enact_version": "1.168.0",
+  "kit_version": "0.168.0",
   "mcp_allow_list": [
     "enact",
     "browser",
@@ -3930,7 +3930,7 @@
       ]
     },
     "build-transform-product": {
-      "bytes": 217313,
+      "bytes": 221285,
       "files": 25,
       "flags": {
         "aws-profile": [

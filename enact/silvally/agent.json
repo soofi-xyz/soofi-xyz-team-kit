@@ -31,7 +31,7 @@
     },
     {
       "name": "build-transform-product",
-      "version": "1.0.0-sha256-41b2decfb62362f5"
+      "version": "1.0.0-sha256-567f72f832463ee3"
     },
     {
       "name": "configure-deploy-product",
@@ -71,5 +71,5 @@
   "secrets": [
     "PRISM_API_KEY"
   ],
-  "version": "1.167.0"
+  "version": "1.168.0"
 }

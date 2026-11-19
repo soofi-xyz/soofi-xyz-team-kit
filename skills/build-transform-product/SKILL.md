@@ -81,6 +81,10 @@ defaults for routine choices.
   reject a blank-header column with data by position and row, never by value;
   keep the duplicate-header error; stringify integral floats without `.0`.
   Follow [the Excel header rules](reference/formats-and-execution.md#excel-header-and-cell-rules).
+- Support the schema-free CSV/Excel input option `columns`: read and validate
+  only the listed headers (each exactly once), never load or check any other
+  column, and keep worksheet and header-row handling unchanged. Follow
+  [selected input columns](reference/formats-and-execution.md#selected-input-columns).
 - Treat `s3://<bucket>/<key>` as a literal key. Never parse it with `new URL()`
   or `urlparse`; decode only where an encoded key enters (S3 events,
   `EncodingType=url`) and encode only for `CopySource`. Follow

@@ -88,6 +88,51 @@ not its value; duplicate
 headers keep the error; a whitespace-only header counts as blank; integral
 floats lose `.0` while `1.5`, ints, booleans and dates are unchanged.
 
+### Selected input columns
+
+Source workbooks and exports often carry many columns a mapping never uses,
+with duplicate or blank headers among them and personal data in them. A
+schema-free CSV or Excel input may therefore declare the exact headers it
+reads as the input option `columns`: a nonempty list of unique, trimmed,
+non-blank strings (at most 1,024). Validate it at mapping registration and
+again when the worker parses the plan; it is the only array-valued input
+option, and only `csv` and `xlsx` inputs accept it. A schema-bound input
+already declares its columns through the definition and rejects `columns`.
+
+When `columns` is present:
+
+1. Keep the existing worksheet selection, `headerRow` handling and header
+   trimming unchanged.
+2. Each selected name must match exactly one header cell. A missing name fails
+   with `<FORMAT> column '<name>' is missing from the header row`; a repeated
+   one fails with `<FORMAT> column '<name>' appears <n> times in the header row`,
+   naming the 1-based positions (and Excel letters). Header names come from
+   configuration; never include a cell value.
+3. Ignore every unselected column: do not check its header for duplicates or
+   blanks, do not scan its cells for data under a blank header, and never load
+   it into Spark. The dataset has exactly the selected columns, in `columns`
+   order, so unselected personal data never enters the run.
+4. Apply `emptyRowPolicy`, `maxRows` and cell stringification to the selected
+   columns only. A row whose selected cells are all empty is an empty row.
+5. For CSV, parse with the existing options and then select only the listed
+   columns. Spark renames a duplicate header to `<name><index>` and a blank one
+   to `_c<index>` instead of failing; detect a duplicated selected name from
+   those renamed positions and report it, rather than reading a renamed column.
+
+Without `columns`, every rule in [the Excel header rules](#excel-header-and-cell-rules)
+applies to the whole header row exactly as before. Do not infer `columns` from
+SQL: an explicit list keeps the read reviewable, pinned in the mapping digest
+and independent of query parsing.
+
+Test, with synthetic workbooks and files only: duplicate unselected headers,
+blank-header unselected columns with data (and uncached formulas) all succeed
+and the dataset holds only the selected columns; a missing selected column and
+a duplicated selected column each fail by name and position without values;
+column order follows `columns`; registration rejects `columns` on JSONL or
+Parquet inputs, on schema-bound inputs, and with blank, padded or repeated
+names; and a large workbook (tens of thousands of rows, dozens of columns)
+reads only the selected values within the configured ceilings.
+
 ### S3 object keys
 
 An `s3://<bucket>/<key>` location is literal: everything after the first `/`
