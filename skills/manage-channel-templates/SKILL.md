@@ -132,7 +132,7 @@ When a requester provides a Figma design for an email body, use the Cursor
 workflow in [figma-to-email-template](../figma-to-email-template/SKILL.md):
 
 1. Read the email frame through the Figma MCP in the user's Cursor. Figma only
-   serves approved MCP clients, so no Jigglypuff, Console or local process reads
+   serves approved MCP clients, so no Jigglypuff or local process reads
    Figma directly.
 2. Call Jigglypuff's hosted MCP server, signed in with company single sign-on,
    for image export and hosting, validation, previews, the template pull
@@ -146,13 +146,12 @@ Until the Jigglypuff MCP server is deployed, open the PR from Cursor and ask
 Jigglypuff in the Asana story to take it over, as the skill's interim path
 describes.
 
-Console's authoring job API with `output: email-html` remains the future fully
-automated path once Figma approves Console's MCP client. When it exists, send
-the Figma node, declared variables, template language and, for an edit, the
-current HTML with its `content_sha256`; reject a result that drops or adds a
-variable; then continue through the same pull request, certification and
-approval flow. Console does not commit, approve or send. Both paths follow the
-[Console email HTML target](../build-console-product/reference/component-authoring.md#email-html-target).
+The automated path is the same skill run by Wigglytuff on Enact, with the Figma
+and Jigglypuff MCP servers as that agent's Enact configuration (`zorua` sets
+them up and verifies the Figma read). It continues through the same pull
+request, certification and approval flow. Console has no email target. Both
+paths follow the
+[email HTML rules](../figma-to-email-template/reference/email-conventions.md#email-html-rules).
 
 ## Boundaries
 

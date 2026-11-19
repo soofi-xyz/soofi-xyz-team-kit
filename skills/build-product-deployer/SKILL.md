@@ -98,7 +98,7 @@ configuration-bundle `PUT`/`POST` (never on `GET`), and send them on Persist lex
 A bundle without a well-formed source sends only the install id, logs
 `Configuration provenance warning` and lists the warning in the install result. Fail a
 `400 PROVENANCE_REQUIRED` answer as `ProvenanceRequired`, in either problem shape. Give
-every new adapter, including the missing Model and Console installers, the same wrapper.
+every adapter, the Model and Console ones and any added later, the same wrapper.
 
 ## Shared API domain
 

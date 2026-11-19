@@ -48,6 +48,17 @@ unchanged service code. Hand source changes to their owners and Build gaps to Ti
 a verified artifact does not establish applied configuration. For an `access`
 `application` bundle, check Build accepts the kind before relying on it, and that
 each document has exact `https` addresses and no secret, token, user, role or grant.
+For a `console` `application` bundle, expect a manifest with action `forms` to fail the
+check until Tinkaton allows the field; report it, do not drop the forms.
+The `console` kinds `design-system`, `app` and `component-pack` are targets, not
+supported as of 2026-11-18. Check the Build repository's kinds at its default branch and
+the deployed revision before relying on one, and say plainly when it is absent; never
+build the source another way and present it as a Build result. Once Build supports them,
+follow [the contract's Console app, component-pack and design-system payloads](../skills/build-product-deployer/reference/configuration-bundles.md#console-app-component-pack-and-design-system-payloads):
+validate the bundle, start the build, then verify the check result, that the built output
+holds only the app's own source, and the recorded components, packs and minimum
+design-system version. Hand a failing check to the source's author (`vivillon` for an
+app, `chandelure` for a pack) and Build gaps to Tinkaton.
 
 ## Shared API domain
 

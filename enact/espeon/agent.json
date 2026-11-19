@@ -27,7 +27,7 @@
     },
     {
       "name": "build-product-deployer",
-      "version": "1.0.0-sha256-b5a69ddbd8847377"
+      "version": "1.0.0-sha256-ccf06867e8092266"
     },
     {
       "name": "build-rag-systems",
@@ -43,7 +43,7 @@
     },
     {
       "name": "guide-product-work",
-      "version": "1.0.0-sha256-6e02231188bb5404"
+      "version": "1.0.0-sha256-b1943ad74845e867"
     },
     {
       "name": "operate-marketplace",
@@ -64,5 +64,5 @@
       "pull_requests": "write"
     }
   },
-  "version": "1.166.1"
+  "version": "1.167.0"
 }

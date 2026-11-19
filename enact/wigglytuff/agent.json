@@ -10,44 +10,12 @@
       "version": "1.0.0-sha256-d3011aab3ed7aa8d"
     },
     {
-      "name": "build-console-product",
-      "version": "1.0.0-sha256-26c3d58a01b43ddd"
-    },
-    {
-      "name": "build-marketplace-puller",
-      "version": "1.0.0-sha256-0fb8850b217a9657"
-    },
-    {
-      "name": "build-product-deployer",
-      "version": "1.0.0-sha256-b5a69ddbd8847377"
-    },
-    {
-      "name": "build-saas-marketplace",
-      "version": "1.0.0-sha256-bac2ebb34666a767"
-    },
-    {
-      "name": "configure-console-product",
-      "version": "1.0.0-sha256-15d33338567f44bd"
-    },
-    {
-      "name": "configure-deploy-product",
-      "version": "1.0.0-sha256-bc96327ab015fdaa"
-    },
-    {
       "name": "figma-to-email-template",
-      "version": "1.0.0-sha256-d85dd07195b145fc"
-    },
-    {
-      "name": "guide-product-work",
-      "version": "1.0.0-sha256-6e02231188bb5404"
+      "version": "1.0.0-sha256-4ed6d63922ad3c87"
     },
     {
       "name": "manage-channel-templates",
-      "version": "1.0.0-sha256-a9f6dca83ddc1e8d"
-    },
-    {
-      "name": "operate-marketplace",
-      "version": "1.0.0-sha256-15bf4f21ef17429a"
+      "version": "1.0.0-sha256-3a0c1634465655a7"
     }
   ],
   "limits": {
@@ -67,5 +35,5 @@
   "tools": [
     "figma"
   ],
-  "version": "1.166.1"
+  "version": "1.167.0"
 }

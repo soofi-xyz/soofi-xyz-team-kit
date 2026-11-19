@@ -1,9 +1,30 @@
 # Spring Oaks Email Template Conventions
 
-Apply the Console
-[Email HTML target](../../build-console-product/reference/component-authoring.md#email-html-target)
-rules for structure, executable-content rejection, images and placeholders.
-This page adds the Spring Oaks inventory conventions on top of them.
+Apply the email HTML rules below for structure, executable-content rejection,
+images and placeholders, then the Spring Oaks inventory conventions that follow.
+
+## Email HTML rules
+
+Email clients are not browsers. Every email body follows these rules:
+
+- Produce one self-contained HTML document: table-based layout, inline styles
+  (optionally mirrored in a single head `<style>` for clients that honour it),
+  a fixed content width taken from the design (default 600px), and a hidden
+  preheader when the design or request supplies one.
+- Never emit scripts, event handlers, forms, iframes, embedded fonts that must
+  load at runtime, external stylesheets or CSS that common clients drop
+  (positioning, flex/grid as the only layout, custom properties). Provide
+  bulletproof buttons and web-safe font fallbacks.
+- Reference images by absolute HTTPS URL; never point at transient Figma URLs.
+  Require alt text for every image.
+- Preserve template placeholders exactly. Use the declared variable list and
+  template language (Nunjucks), map design text to those variables when the
+  request names them, and never invent, rename or drop a variable. Keep required
+  compliance blocks, for example the unsubscribe link `{{ unsubscribe_url }}`.
+- Check before the pull request: HTML validity, executable-content rejection,
+  inline-style coverage, links and images, and no undeclared variable. Editing
+  an existing email keeps unrelated bytes, links, variables and conditional
+  blocks intact.
 
 ## Variables
 
