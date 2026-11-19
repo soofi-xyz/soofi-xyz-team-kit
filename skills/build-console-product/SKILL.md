@@ -31,9 +31,11 @@ to build an app or configure an existing Console deployment.
 Discover the target repository and revision, its supported schema and API, the
 deployment and the selected AWS profile; verify the account and region. Record
 differences between these contracts and the observed implementation without
-inventing deployed routes. As of 2026-11-18 only the dashboard renderer, its
-configuration API and the `report` / `read-dataset` operation exist; everything
-else here is a requirement.
+inventing deployed routes. As of 2026-11-19 the dashboard renderer, its
+configuration API, the `report` / `read-dataset` operation, the design system
+(runtime 1.14.0) and the app kit (runtime 1.15.0, pull request 33) exist in
+the repository; everything else here is a requirement. The app kit runs and
+checks apps locally only: no app can be hosted, published or delivered yet.
 
 ## Scope
 

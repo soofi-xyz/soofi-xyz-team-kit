@@ -42,7 +42,7 @@ This table is the kit's only record of what exists for Console; the agents and s
 link here. Update it when a piece lands, and check it against the target revision and
 environment before relying on it.
 
-| Piece | State (2026-11-18) |
+| Piece | State (2026-11-19) |
 | --- | --- |
 | Repository | prismteam-ai/console, `main` at `35cfe7f`, runtime 1.13.0. |
 | Dashboard runtime | In the repository: the manifest schema, immutable revisions, publish and rollback, the renderer and the report components. Not verified as installed in any environment. |
@@ -53,8 +53,9 @@ environment before relying on it.
 | `application` bundle kind | In Build's and Deploy's `main` (Build accepts `console` `application`; Deploy has the Console adapter). Not verified as installed in any environment, and no real bundle carrying one was found. |
 | Action forms in a bundle | Allowed by Build's `main` since `8046e8c` (2026-11-18). Check the deployed Build before relying on it. |
 | Build's package source | Build's runner installs packages only from its CodeArtifact domain `build-<stage>` and rejects a product `.npmrc`; the app kit and each pack's types package must be published there. Nothing is published there yet. |
-| `design-system` | Not on `main`. Pull request 31 (runtime 1.14.0, open as of 2026-11-19) adds tokens, two token sets, ten base components, the gallery and tests named `DS-1` to `DS-4`. Its components are hand-written under the demo's names, not started from shadcn, so `DS-5` is not met. |
-| `app-kit`, `runtime-sharing`, `app-hosting`, `design-system-configuration`, `renderer-reskin`, `data-hooks`, `app-delivery`, `component-packs`, `reference-app` | Not started. |
+| `design-system` | On `main` (pull requests 31 and 32, runtime 1.14.0): tokens, two token sets, base components started from shadcn with an origin record, the gallery and `DS-1` to `DS-5`. Pull request 33 adds `Page`, `Stack` and `Text`. |
+| `app-kit` | Pull request 33 (runtime 1.15.0): `@prism/console-app-kit` in `app-kit/`, the `console-app` command (`create`, `dev`, `check`, `build`), the JSX wrapper, the reduced React, the build record and `AK-1` to `AK-11`. Not published to Build's package registry. |
+| `runtime-sharing`, `app-hosting`, `design-system-configuration`, `renderer-reskin`, `data-hooks`, `app-delivery`, `component-packs`, `reference-app` | Not started. The UI build serves the app runtime at `/console/app/app-runtime/`, unversioned, for the app kit's tests; `runtime-sharing` replaces it with the versioned pointer. |
 | `access-sign-in` | Not started, for dashboards and apps alike. |
 | `design-system`, `app` and `component-pack` bundle kinds | Targets. Neither Build nor Deploy has them. |
 
