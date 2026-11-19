@@ -1,7 +1,6 @@
 {
   "$comment": "Inputs to scripts/sync-enact-agents.mjs. Everything under enact/ except config.json, overrides/ and schema/ is generated; do not edit it by hand.",
   "stays_local": [
-    "ampharos",
     "oracle"
   ],
   "waves": {

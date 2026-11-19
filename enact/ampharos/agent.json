@@ -1,0 +1,27 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Prism graphics agent. Turns prismteam.ai page or section copy into on-brand Prism graphics — plans which graphics a page needs, diverges into blind-scored ideas, lays out type first, renders exact SVG geometry over GPT-rendered rays, verifies with a blind read-back, and exports after approval. Use when asked to generate, create, or redo graphics, visuals, or assets for a prismteam.ai page or section. Not for the Prism Priority 4 System composition work (use zygarde).",
+  "hosts": [
+    "api.openai.com"
+  ],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "sonnet",
+  "name": "ampharos",
+  "repositories": [],
+  "run_repositories": {
+    "max": 5,
+    "permissions": {
+      "contents": "write",
+      "pull_requests": "write"
+    }
+  },
+  "secrets": [
+    "OPENAI_API_KEY"
+  ],
+  "version": "1.166.0"
+}

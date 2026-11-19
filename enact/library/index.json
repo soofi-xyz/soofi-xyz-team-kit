@@ -1,11 +1,11 @@
 {
   "excluded": {
     "prism-asset-pipeline": {
-      "reason": "30 non-UTF-8 files (skills/prism-asset-pipeline/art-direction/references/color-concept-04.png, skills/prism-asset-pipeline/art-direction/references/rays/0008_100064422968712033.jpg, skills/prism-asset-pipeline/art-direction/references/rays/0012_100064422968480086.jpg, …); paths the library refuses: skills/prism-asset-pipeline/art-direction/backgrounds/.gitkeep, skills/prism-asset-pipeline/art-direction/references/approved/.gitkeep",
-      "used_by": [],
-      "used_by_stays_local": [
+      "reason": "30 binary files (skills/prism-asset-pipeline/art-direction/references/color-concept-04.png, skills/prism-asset-pipeline/art-direction/references/rays/0008_100064422968712033.jpg, skills/prism-asset-pipeline/art-direction/references/rays/0012_100064422968480086.jpg, …), which library skills cannot hold",
+      "used_by": [
         "ampharos"
-      ]
+      ],
+      "used_by_stays_local": []
     },
     "use-oracle": {
       "reason": "paths the library refuses: skills/use-oracle/runtime/.dockerignore, skills/use-oracle/runtime/.gitignore",
@@ -15,7 +15,7 @@
       ]
     }
   },
-  "kit_version": "0.165.3",
+  "kit_version": "0.166.0",
   "limits": {
     "body_bytes": 4194304,
     "encoded_bytes": 5242880,

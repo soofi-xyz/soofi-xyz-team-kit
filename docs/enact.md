@@ -65,7 +65,8 @@ enact/
 ├── schema/                 # input: Enact's agent and skill schemas + SOURCE_REVISION (scripts/sync-enact-schema.sh)
 ├── inventory.json          # generated: wave, size, skills, flags, requires_mcp, blocked_by per agent
 ├── dist/                   # gitignored: packed PUT bodies for Build's enact agent/skill kinds
-│   ├── agents/<agent>.json # {manifest, files} as canonical JSON
+│   ├── agents/<agent>.json # {manifest, files, assets?} as canonical JSON
+│   ├── assets/<sha256>     # each asset's bytes, uploaded before the agent's save
 │   └── skills/<skill>.json # library skills
 ├── library/                # generated: the skill library
 │   ├── index.json          # committed: library skills: version, digest, sizes, users; skills it cannot hold
@@ -88,11 +89,12 @@ scripts/sync-enact-schema.sh [sync|check]   # refresh enact/schema from prismtea
 | Piece | Enact PR | Status | What it unblocks here |
 | --- | --- | --- | --- |
 | Sandbox CLI tools (`curl`, `jq`, `unzip`, `python3`, `gh`, AWS CLI) | [#22](https://github.com/prismteam-ai/enact/pull/22), in [#30](https://github.com/prismteam-ai/enact/pull/30) | merged | The appendix names them (check with `command -v`, prefer Node.js `fetch`) |
-| Browser sandbox preview (`browser.sandbox_localhost`) | #23, in #30 | merged | `browser` in the manifest when an override sets it; no packaged agent today (the localhost UI agents audino, smeargle and sylveon stay local) |
+| Browser sandbox preview (`browser.sandbox_localhost`) | #23, in #30 | merged | `browser` in the manifest when an override sets it (audino, smeargle, sylveon, castform) |
 | `ask_<agent>` MCP tools and run-ended webhook | #24, in #30 | merged | The appendix lets agents ask other agents when a run has the `enact` server |
 | Remote MCP servers (`mcp_servers`, `GET/PUT /mcp-servers`) | #25, in #30 | merged | `mcp_servers` (chandelure, donphan, hoopa, watchog, wigglytuff); each waits on the environment's allow-list (`blocked_by: mcp-allow-list`) |
 | Agent secrets (`secrets`) | #26, in #30 | merged | `secrets` (configurers' `PRISM_API_KEY`) |
 | Skill library (`library_skills`, `PUT/GET /skills/{name}`) | #27, in #30 | merged | `library_skills`; kecleon, mew and silvally fit within 1 MiB |
+| Agent assets (`assets`, `POST /agents/{name}/assets`) | [#33](https://github.com/prismteam-ai/enact/pull/33) | open | ampharos's reference images; it leaves `stays_local` |
 | Sign-in (access tokens, per-agent grants) | [#28](https://github.com/prismteam-ai/enact/pull/28) | open | Replacing the shared `x-api-key` in the editor setup above |
 
 All but sign-in are on prismteam-ai/enact main (`721fd15`, enact#30); `enact/schema/` is copied
@@ -122,11 +124,20 @@ the versions need no order. `index.json` also records each skill's `digest` (`sh
 stored document's canonical JSON, as Enact computes it), bytes, files, stored bytes, why it is in
 the library and which agents pin it.
 
-Skills the library cannot hold (over 3 MiB of text, over 5 MiB encoded or a 4 MiB body, over 500 files, non-UTF-8 files, paths it
+Skills the library cannot hold (over 3 MiB of text, over 5 MiB encoded or a 4 MiB body, over 500 files, binary files, paths it
 refuses such as dotfiles, or no description) stay in their agents' packages and are listed under
 `excluded` with their users. Today those are `prism-asset-pipeline` (images; used only by
-ampharos) and `use-oracle` (`runtime/.dockerignore`, `.gitignore`; used only by oracle), both
-stays-local.
+ampharos) and `use-oracle` (`runtime/.dockerignore`, `.gitignore`; used only by oracle, which
+stays local).
+
+**Assets.** An agent's own skill may hold binary files (Enact's `assets`, enact#33): every file
+that is not UTF-8 text, and in such a skill also every text file over the 256 KiB file limit,
+goes into the package's `assets` by SHA-256 and size instead of `files` (at most 32 MiB each,
+128 MiB and 500 together; `blocked_by: agent-assets` past that). `sync` writes their bytes to
+`enact/dist/assets/<sha256>` and into the agent directory. Saving uploads each one first:
+`POST /enact/agents/{name}/assets {sha256, bytes}`, then, unless it answers `stored: true`, a `PUT`
+of the bytes to its `upload.url` with its `upload.headers`. Today only ampharos has assets: 32
+reference images and indexes, 21.7 MB. `.gitkeep` files are not packaged.
 
 ### What the generator does
 

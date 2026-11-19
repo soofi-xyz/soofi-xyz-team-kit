@@ -14,8 +14,8 @@ enact/tests/
 
 ## Scope
 
-All agents in `agents/` move to Enact except the ones that stay local: `ampharos` and
-`oracle`. These have no golden file and are never a routing label.
+All agents in `agents/` move to Enact except the one that stays local: `oracle`. It has no
+golden file and is never a routing label.
 
 | Group | Agents | Golden task kind |
 | --- | --- | --- |

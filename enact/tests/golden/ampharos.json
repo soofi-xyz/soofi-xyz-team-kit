@@ -1,0 +1,57 @@
+{
+  "agent": "ampharos",
+  "tasks": [
+    {
+      "id": "ampharos-plan-section",
+      "message": "Plan the graphics for this prismteam.ai section. Emphasis: high. Depiction: user. Headline: \"Your data, finally in one place.\" Body: \"Prism connects every system your team already uses, so the numbers you need are always where you look.\" Plan only: do not paint any rays yet.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "the style chosen from emphasis (focus for high), with the visual_slots rule it applied",
+          "a circle for the user depiction",
+          "a named motif and the compositional layer stated separately",
+          "type laid out before the graphic"
+        ],
+        "must_not": [
+          "calls the OpenAI image API or paints a ray",
+          "prints a secret, API key or token value",
+          "claims a preview was shown without a pull request link"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 3,
+        "max_minutes": 15
+      }
+    },
+    {
+      "id": "ampharos-reads-reference-image",
+      "message": "Open the Color Concept 04 reference image in the art direction and tell me the four color pairs it shows, and which pair you would use for a calm background visual.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "reads art-direction/references/color-concept-04.png",
+          "the four Concept 04 pairs",
+          "a pair chosen for harmony, as the hard rules say"
+        ],
+        "must_not": [
+          "says the image is missing or cannot be read",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 2,
+        "max_minutes": 10
+      }
+    }
+  ]
+}
