@@ -11,7 +11,7 @@
     },
     {
       "name": "build-access-product",
-      "version": "1.0.0-sha256-75582d32fb31ca29"
+      "version": "1.0.0-sha256-4de679ad704a79f7"
     },
     {
       "name": "build-marketplace-puller",
@@ -19,7 +19,7 @@
     },
     {
       "name": "build-product-deployer",
-      "version": "1.0.0-sha256-8dcfc1c22a30df06"
+      "version": "1.0.0-sha256-ccf06867e8092266"
     },
     {
       "name": "build-saas-marketplace",
@@ -27,15 +27,15 @@
     },
     {
       "name": "configure-access-product",
-      "version": "1.0.0-sha256-8b2f4219deb06cf3"
+      "version": "1.0.0-sha256-f928ffec55182338"
     },
     {
       "name": "configure-deploy-product",
-      "version": "1.0.0-sha256-bfbf72898135c6e9"
+      "version": "1.0.0-sha256-bc96327ab015fdaa"
     },
     {
       "name": "guide-product-work",
-      "version": "1.0.0-sha256-764a8635ec15be57"
+      "version": "1.0.0-sha256-b1943ad74845e867"
     },
     {
       "name": "operate-marketplace",
@@ -59,5 +59,5 @@
   "secrets": [
     "PRISM_API_KEY"
   ],
-  "version": "1.161.0"
+  "version": "1.167.0"
 }

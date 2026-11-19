@@ -58,12 +58,18 @@ column the configuration points at:
 | "Cohort A is …" | A source whose `SELECT` returns Cohort A's rows, one per subject (or subject and contact) |
 | "Select 25,000" | `count: 25000` on the selection |
 | "Don't reach yesterday's people today; reach others" | `rotation: {history, cooldown: "P1D", order: "least_recently_reached"}` |
+| "Prefer subjects not reached recently, without skipping anyone" | `rotation: {history: "ledger", order: "least_recently_reached"}` with no cooldown (changes order only; nobody is excluded) |
+| "Score subjects by X, Y, Z with weights …" | Compute a score column in the `athena-sql` source from data. Recency comes from `{{ledger.actions}}` (days since the subject's last published selection; never-selected subjects get the top recency). Put that column in the selection's `rank` (`order: "desc"`). Weights and signals come from the business owner; never invent them. Rotation, if configured, still orders before `rank`. |
 | "Reached means …" | A history source returning `subject_id, reached_at`, or `"ledger"` for this schedule's own published selections |
 | "Payfail first, then …" | One selection per group, in precedence order; earlier selections take subjects first |
 | "Call these N times a week" | `weeklyTarget` with a history source |
 | "Never contact these" | A source listed in the selection's `exclude` |
 | "Use today's output of product X" (Filter, Transform, …) | An `s3-files` source over its run-dated prefix (`…/run_date={{run.date}}/…/`) with `format` and declared `columns`; join it in an `athena-sql` source as `{{sources.<id>}}` |
 | "Only in legal hours, at most X per hour" | A `delivery` block; offsets and allowed hours as column roles |
+
+Rotation sorts by a single key (how long since the subject was last reached). Scoring is a
+formula over several weighted signals into one column that becomes a `rank` key; rotation,
+if present, still runs before that rank.
 
 1. Start from the repository example closest to the request. Give the schedule a lower-case
    `id` (`^[a-z][a-z0-9-]{1,62}$`).
@@ -80,15 +86,19 @@ column the configuration points at:
    that parameter; record it as a builder gap for `klinklang` rather than reading it from
    AWS. A run whose prefix has no data fails
    `SOURCE_NO_DATA`; that is the expected answer when the producer has not run, never a
-   reason to point the source at another date. If validation says `s3-files` is
-   unknown or not supported, the deployed Schedule predates it; route to `klinklang`.
+   reason to point the source at another date. Any `"… is not supported yet"` (or
+   unknown/not supported) problem from validation means the deployed Schedule
+   predates that feature; route to `klinklang` and do not ship the config.
 4. Map column roles (`subject`, `contact`, `allowedHours`, `utcOffset`) and `rank` keys to
    real columns. Keep passthrough columns to what the downstream consumer needs.
 5. Set `run` (`schedule`, `timezone`, `costLimitUsd`, `timeoutMinutes`). Use the hours,
    counts and capacities the user asked for; never drop an hour or lower a count on your
    own. If timing makes one look infeasible, ask first.
 6. Put no credentials, tokens or personal data in a configuration.
-7. Validate without saving and fix every problem it lists:
+7. Validate against the deployment the config will be installed on (that environment's
+   `POST /schedules/validate`), not only locally. Repo CI and Build do not check engine
+   support. A config PR is not ready until that call returns `valid: true`. Fix every
+   problem it lists:
 
    ```bash
    curl -sS -X POST -H "x-api-key: $SCHEDULE_API_KEY" -H 'content-type: application/json' \

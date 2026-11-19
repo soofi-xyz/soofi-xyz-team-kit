@@ -62,6 +62,18 @@ target repository; this kit contains guidance and synthetic inputs.
 
 Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
 Package configuration assets and shared-provider declarations; verify digests without calling target APIs or adding per-bundle Lambdas.
+The configuration bundle check must apply parameter defaults with the same fill
+as Deploy before `JSON.parse`, then run the structural and type checks on the
+filled document (the `sha256` stays over the original source). A Build/Deploy
+mismatch here is a defect — see [prismteam-ai/build#68](https://github.com/prismteam-ai/build/pull/68).
+
+Keep each closed product document's top-level field list (`FieldRules` in
+`src/configuration/bundle-check.ts`) equal to the target product's schema
+`properties`, optional fields included; the Console list includes `forms` (an
+array of at most 20). When a product adds a top-level field, add it with its
+shape rather than opening the list, and keep refusing unknown fields. Test a
+manifest using the new field and one with an unknown field. A field the target
+product accepts but Build refuses is a defect.
 
 ## Configuration provenance
 

@@ -113,11 +113,11 @@ Uses the environment key; nobody can sign in yet.
 | AP-1 | D | Create `app-one` and `app-two` | `201` each; reading each back returns the document's addresses exactly |
 | AP-2 | D | Send `app-two`'s identical document again | `200 unchanged`; no new audit change record |
 | AP-3 | D | Replace one address of `app-two` | `200 replaced`; read-back shows the new set |
-| AP-4 | D | Create an application with an `http` address, then one with a wildcard, then one carrying a client secret | `400` each; nothing stored |
+| AP-4 | D | Create an application with an `http` address off loopback (including `http://localhost.<domain>`), then one with a wildcard, then one carrying a client secret | `400` each; nothing stored |
 | AP-5 | D | Remove `app-two`, then read it | `204`, then `404` |
 | AP-6 | D | Create, read and remove with no credential | `401` each; nothing changed |
 | AP-7 | F | Resolve `app-one` with 200 applications registered | One keyed read and no list call |
-| AP-8 | D | With local development sign-in on for the environment, create an application with `http://localhost:5173/callback`, then one with `http://app-one.access-test.example/callback`; turn it off and create the first again | `201`, then `400`; with it off `400`; a sign-in start from the stored loopback address is refused once it is off |
+| AP-8 | D | Create `app-local`, read it back, remove it | `201`; its loopback `http` addresses read back exactly, port included; `204` |
 
 ### `sign-in`
 
@@ -143,6 +143,8 @@ Uses the environment key; nobody can sign in yet.
 | SI-18 | D | With the environment key, try to change the identity provider's issuer, then read capability discovery | `400` or `403`; the issuer is unchanged; changing the allowed domains instead succeeds and is audited |
 | SI-19 | D | Return to the callback with a sign-in from the `rogue` issuer presenting `alice`'s subject, email and hosted domain | `400`, as for any code the configured issuer did not issue; no session; `alice`'s user is unchanged and no new user exists |
 | SI-20 | D | Wait past the Access code's lifetime, then exchange it | `400`; no tokens |
+| SI-22 | D | Sign in as `alice` through `app-local` and exchange the code with its address | The browser returns to exactly `http://localhost:4173/` with a code and the application's `state`; the tokens name `alice`'s user, the environment's one audience and `app-local` as client |
+| SI-23 | D | Start sign-in for `app-local` with its address on another port, on `127.0.0.1`, over `https` and with a trailing slash; with `app-one`'s address; then for `app-one` with `app-local`'s address | `400` each, before any redirect to the issuer |
 | SI-21 | F | In the fake login directory, resolve a sign-in carrying `alice`'s subject, email and hosted domain under a different issuer | It matches no existing user; `alice`'s record and grants are untouched |
 | SI-H1 | H | With no allowed domains set, a person signs in with a real personal Google account; then, with sign-in restricted to the company's domain, signs in with a real company account and with the personal one again | The first two reach the application signed in, each as a user with no role; the last is refused |
 
@@ -250,6 +252,7 @@ Resource `fixture:item/item-1`, owned by `alice`. Ask the decision helper after 
 | RS-8 | D | Send the same grant twice | One grant stored |
 | RS-9 | D | `alice` shares `secret-a` with `bob`; she then tries to share `read` on it; then `admin` and the environment each try to share it with `carol` | `bob` `use` is allow; `400` for `read`; `403` for `admin` and the environment; `carol` `use` stays deny |
 | RS-10 | D | `admin` shares `secret-env` with `alice`; `alice` then tries to share it with `bob` | `alice` `use` is allow; `403` for her share; `bob` `use` stays deny |
+| RS-12 | D | Register two environment-owned items `app-a` and `app-b`; create a role, share `use` on `app-a` with it and give it to `bob` | `bob` `use` is allow on `app-a` and deny on `app-b`; `carol`, without the role, is deny on both |
 | RS-11 | D\* | Run Connect checks `UC-3` to `UC-11` with real Connect credentials | They pass. Needs Connect's per-user checks |
 
 ### `record-access`

@@ -48,8 +48,8 @@ You never change Access code; service changes go to `aegislash`.
 - Do not hand the environment's shared key to an application that runs in a
   browser or on a user's device.
 - Register a loopback address for local development only in its own
-  application, on a dev environment whose operator turned local development
-  sign-in on, and remove it when the work ends. Never on production.
+  application, on a development environment, and remove it when the work ends.
+  Never on production.
 - Keep applications in a configuration-bundle repository once the deployment
   supports installing them. Use direct API writes for testing only and remove
   them afterwards. Roles, users and grants are set through the API.

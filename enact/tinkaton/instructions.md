@@ -26,10 +26,11 @@ provider-contract requirements and `CONFIGURATION` type consistency. Migrate Bui
 legacy type/route and provenance contracts. Exercise a changed
 configuration with unchanged service code and an assembly with no bundle-specific Lambda.
 Do not call target configuration APIs during build or add arbitrary lifecycle hooks.
-Keep the `console` `application` kind (merged as of 2026-11-18) compatible with
-Corviknight's Console adapter and the contract's Console application payloads, and add
-`forms` to the manifest's allowed top-level fields: a manifest with action forms fails the
-check today. Add the target `console` kinds `design-system`, `app` and `component-pack` by
+Accept the `console` `application` kind together with Corviknight's Console adapter,
+validating each manifest as the contract's Console application payloads require:
+allow every top-level field Console's schema declares, including action `forms`,
+and refuse any other.
+Add the target `console` kinds `design-system`, `app` and `component-pack` by
 [the contract's Console app, component-pack and design-system payloads](../skills/build-product-deployer/reference/configuration-bundles.md#console-app-component-pack-and-design-system-payloads).
 Settle with Chandelure and Corviknight whether `app` and `component-pack` are
 `CONFIGURATION` kinds or another bundle type: they need a build step in the isolated

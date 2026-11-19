@@ -138,20 +138,18 @@ agents run on Enact or in an editor, and what they need is Enact agent configura
 | `chandelure` | Design-system components and component packs | The Console repository and component pack repositories |
 | `wigglytuff` | Email template bodies | None: Jigglypuff's MCP server opens the template pull request |
 
-1. **The Figma tool.** In this kit, declare `figma` in the agent's
-   `enact/overrides/<agent>.json` `requires_mcp` with the file and line that needs it
-   ("Declaring MCP needs" in this kit's `docs/enact.md`); the generator writes it
-   to the manifest's `mcp_servers`. The server must be on the environment's allowed list:
-   read it with `GET /enact/mcp-servers`. Until it is, the package stays
-   `blocked_by: mcp-allow-list`.
-2. **The Figma checkpoint.** Figma serves only an approved, registered client with each
-   person's own sign-in. Before the first run in an environment, confirm that Enact is
-   registered and approved as a Figma client there, that the person the run acts for has
-   signed in to Figma through it, and that one read of a named frame succeeds; record
-   redacted evidence and reuse it for later work. As of 2026-11-18 Enact authenticates a
-   remote MCP server with one stored header per environment, so this checkpoint cannot
-   pass: it is the `mcp-sign-in` gap for `zoroark`. Until it passes, the agent reads Figma
-   in an editor. Never reuse an editor's Figma credentials or a shared token on Enact.
+1. **The Figma tool.** In this kit, list `figma` under `manifest.tools` in the agent's
+   `enact/overrides/<agent>.json`, as `chandelure`, `hoopa` and `wigglytuff` do; the
+   generator adds Enact's read-only `figma` tools to the package. Do not declare the
+   official Figma MCP server in `requires_mcp`: no hosted Figma MCP accepts Enact yet, and
+   declaring it leaves the package `blocked_by: mcp-allow-list`.
+2. **The Figma checkpoint.** Enact's `figma` tools read Figma with the token of the person
+   who started the run, saved once with Enact's `connect_figma`. Before the first run,
+   confirm that person saved their token and that one read of a named frame succeeds;
+   record redacted evidence and reuse it for later work. Without a saved token the run has
+   no `figma` tools and works from exported frames. Signing each person in to the official
+   Figma MCP server is the `mcp-sign-in` gap for `zoroark` and is not needed for these
+   reads. Never reuse an editor's Figma credentials or a shared token on Enact.
 3. **Repositories.** List only the repositories in the table, each on the environment's
    allowed list. The run opens a pull request and never merges.
 4. **Limits and who may run it.** Set a turn limit and a cost ceiling, start low, and

@@ -31,12 +31,11 @@ inside it and has no tenant concept.
    Add no other provider and no email-and-password sign-in unless the user asks.
    Fix the provider's issuer at install so no API call can change it, and
    identify a person by issuer and subject together.
+   Accept `https` addresses and `http` only on loopback hosts, matched exactly
+   with the port, so developers sign in against a local application.
    Make one sign-in serve every product: one sign-in client and one token
    audience per environment, with applications as named sets of redirect
-   addresses on that client and a session shared across them. Accept a
-   loopback `http` redirect address only where the operator turned local
-   development sign-in on for the environment; reject every other `http`
-   address and every wildcard.
+   addresses on that client and a session shared across them.
 5. Serve every Access route, including sign-in start and callback, under
    `https://<shared domain>/access`. Create no second domain or certificate. If
    a component needs its own address, stop and ask.
@@ -47,7 +46,9 @@ inside it and has no tenant concept.
 7. Use Amazon Verified Permissions as the permission store: one store per
    environment, every rule made of who, which action and which resource. Keep
    each product's resource types and actions as the store's schema. Only Access
-   writes rules; everyone else goes through its audited grant API.
+   writes rules; everyone else goes through its audited grant API. Give each
+   of a product's applications its own role by sharing an action on that
+   application, registered as an environment-owned resource, with the role.
 8. Keep the token small and stable: subject, issuer, the environment's single
    audience, an informational client, expiry, token type and stable role
    identifiers. Publish the signing keys and answer `POST /decisions` with

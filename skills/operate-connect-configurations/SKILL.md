@@ -351,16 +351,18 @@ smallest reproducing sample.
   its CI publishes the bundle on merge, Registeel confirms the publish and
   Skarmory subscribes it. Before opening the PR:
   - Deploy `PUT`s each committed activation as-is (only a `flow_version` of a
-    flow in the same bundle is replaced), so commit `"enabled": true` only for
-    an activation that should run live; a committed `false` disables the live
-    activation of that name.
+    flow in the same bundle is replaced). Every activation that runs live uses
+    `"enabled": {{parameter:activationsEnabled}}` with default `"false"`;
+    Skarmory sets `"true"` in the environments where it must run. A committed
+    literal `"enabled": false` disables the live activation of that name.
   - Build requires a `default` on every bundle parameter, and the Marketplace
     review installs the defaults. Give environment-specific values such as a
     `subscriberUrl` a harmless default (for example
     `https://partner.example.invalid`) and list them for Skarmory, who sets the
     real values in the subscription's `configuration`.
 - After the install, read each document back by name (Connect has no list
-  routes) and compare it with the bundle. Disable test-only activations the
+  routes) and compare it with the bundle. Read each activation back and confirm
+  `"enabled"` matches the environment. Disable test-only activations the
   bundle does not own; Connect has no delete API.
 - Give the product the job contract it calls: route, `configuration_id`,
   request payload, callback or subscriber, the reply shape and file pointers,
@@ -376,8 +378,9 @@ smallest reproducing sample.
   (`test/dev/`, `docs/runbooks/dev-verification.md`) so CI keeps proving it.
 - List the production steps: production credentials set or imported, partner
   allowlisting of production egress IPs, the production partner configuration
-  and activation with the real cron in the bundle, and the user approval needed
-  to commit it enabled.
+  and activation with the real cron in the bundle, and Skarmory setting
+  `activationsEnabled: "true"` in that environment's subscription before the
+  placeholder revision installs.
 
 ## Return
 

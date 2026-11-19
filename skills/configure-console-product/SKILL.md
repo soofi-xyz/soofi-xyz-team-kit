@@ -90,7 +90,8 @@ describes. Never ask the person for Figma access or a token.
    versions; pack code is `chandelure`'s work.
 2. On your own dev/test stack, verify a baseline and a materially different
    configuration: read back the active revision and digest, and compare screenshots
-   of the component gallery and one app before and after.
+   of the component gallery and one app before and after. On a runtime that has
+   the gallery, open it at `?gallery` (`&tokens=tokens-b` for the second token set).
 3. Verify an invalid value is refused and nothing is saved, an app using a
    switched-off component is refused at publish while other apps still work, and a
    rollback restores the previous look with no app change.

@@ -951,5 +951,12 @@ A re-implementation is complete when:
 
 Follow [the shared configuration-bundle contract](../../build-product-deployer/reference/configuration-bundles.md).
 Keep the supported CDK assembly and use the `CONFIGURATION` type consistently in requests, manifests, status, callbacks and provenance. Validate configuration assets and shared-provider references; changing only configuration must change the affected payload identity. Build never applies the configurations.
+The configuration bundle check must apply each parameter's `default` with the
+same textual fill Deploy uses (JSON-escaped for `.json` files) before
+`JSON.parse`, then run structural and type checks on the filled document. Keep
+the `sha256` over the original source. Unquoted placeholders such as
+`"enabled": {{parameter:activationsEnabled}}` are valid when the filled document
+parses; a Build that parses the raw file first and rejects them while Deploy
+accepts them is a defect ([prismteam-ai/build#68](https://github.com/prismteam-ai/build/pull/68)).
 Treat these additions as required scope to verify in the target revision, not as
 proof that provider support or the target API lifecycle is already deployed.

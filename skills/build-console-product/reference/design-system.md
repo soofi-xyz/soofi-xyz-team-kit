@@ -2,9 +2,19 @@
 
 Use this contract for the components and tokens Console serves, how apps load
 them without bundling them, how an environment configures them, component packs
-and the dashboard reskin. It is the target design. As of 2026-11-18 none of it
-is built; discover the target revision before relying on any part, and settle
-names marked as placeholders in the Console repository.
+and the dashboard reskin. It is the target design. Read it before any change to
+base components, tokens, themes or the gallery; a change that weakens a
+guarantee below is a defect, even when the change was about something else.
+
+As of 2026-11-19 none of it is on the Console repository's `main` (runtime
+1.13.0). Pull request 31 there (runtime 1.14.0, open) adds the tokens, two token
+sets, ten base components, the gallery and tests named `DS-1` to `DS-4`, by
+[the implementation rules](#implementation-rules). Its components are
+hand-written under the demo's names (`Pill`, `Panel`, `Toggle`, `Segmented`),
+so the starting point, the names and `DS-5` below are not met yet: restart
+those components from shadcn and keep the tokens, gallery and tests. Discover
+the target revision before relying on any part, and settle names marked as
+placeholders in the Console repository.
 
 Read it with [the product contract](PRD.md) and [the app kit](app-kit.md).
 The [Tests](#tests) section defines done for the `design-system`,
@@ -34,20 +44,33 @@ the source.
   applies once, to Console's copy, and never to an app.
 - **Look.** Use the debt-collection demo's look (the prismteam.ai style): paper
   ground, ink text, one typeface, rounded squares, no shadows, color only where
-  it carries meaning. Start from the map below and settle it in the Console
-  repository.
+  it carries meaning. Use rounded squares, not circles, the TASA Orbiter
+  typeface and flat surfaces with hairlines instead of multi-layer shadows.
+  Name tokens `--ds-*` after the demo's own words and settle exact values in
+  the Console repository:
 
-  | Token | Meaning | Demo source |
+  | Token | Meaning | shadcn theme name it serves |
   | --- | --- | --- |
-  | `background`, `card` | page ground, raised surface | paper, surface |
-  | `foreground`, `muted-foreground` | text, secondary text | ink, ink-2 |
-  | `border` | hairlines | line |
-  | `primary`, `accent` | selected, changeable, primary button; its soft wash | iris, iris-soft |
-  | `destructive` | legal stop, failure, opt-out | stop |
-  | `warning` | waiting on a person | wait |
-  | `success` | cleared, delivered, paid (ink, not green) | go |
-  | `channel-text`, `channel-email` | channel washes | text channel, email channel |
-  | `radius-control`, `radius-panel` | corner radii | 8px, 12px |
+  | `paper`, `surface` | page ground, raised surface | `background`, `card` |
+  | `ink`, `ink-2`, `ink-3` | text, secondary text | `foreground`, `muted-foreground` |
+  | `line` | hairlines | `border` |
+  | `iris`, `iris-soft` | selected, changeable, primary button; its soft wash | `primary`, `accent` |
+  | `stop` | legal stop, failure, opt-out, destructive | `destructive` |
+  | `wait` | waiting on a person | none |
+  | `go` | cleared, delivered, paid (ink, not green) | none |
+  | `radius-control`, `radius-panel` | corner radii (8px, 12px) | `radius` |
+
+  Point shadcn's theme names at these tokens inside the design-system build.
+  Never define shadcn's unprefixed variables: they collide with the renderer's
+  existing `--background`, `--surface` and `--accent`. Add the demo's channel
+  washes as tokens when a component needs them. Do not invent a second palette
+  in a component or an app.
+- **Token sets.** Ship at least two complete token sets (`tokens-a` and
+  `tokens-b`) that define the same tokens. Switch the active set at runtime by
+  changing which token stylesheet the shell loads; never rebuild components or
+  apps to change the look. Once
+  [design-system configuration](#design-system-configuration) ships, the
+  environment's generated token stylesheet takes that place.
 
 - **Names.** Keep shadcn's component names and props wherever a component
   exists there (`Button`, `Card`, `Badge`, `Switch`, `ToggleGroup`, `Slider`,
@@ -63,7 +86,9 @@ the source.
   - drawing parts for custom visuals: bars, segments, grid cells and axes, so
     most new visuals need no new component and no raw SVG.
 - **Public props.** Give no component a `className`, a `style` or a DOM
-  reference. Offer variants as a closed, typed list. On layout and text
+  reference. Offer variants as a closed, typed list: an unknown variant
+  fails compilation, with no free-string names and no silent fall-through to a
+  default at runtime. On layout and text
   components accept style props whose values are token names only
   (`gap="3"`, `tone="muted"`, `background="surface"`, `radius="panel"`), so an
   off-scale value does not compile. Type the composition rules that can be
@@ -253,6 +278,22 @@ Level: repository.
 | DS-4 | Type-check a fixture that gives `Button` a variant that does not exist | The type-check fails on that line |
 | DS-5 | Compare the exported base components with the origin record and with shadcn's component list at the recorded revision | Every exported component has one entry; each one shadcn provides names the shadcn component and revision it started from, and only components shadcn lacks are marked "Console's own" |
 
+Record one evidence row per check: ID, result, request or run identifier and the
+Console revision.
+
+#### Cumulative scenario
+
+Run this after `DS-1` through `DS-5` all pass individually. It is acceptance
+for the design-system piece as a whole.
+
+| Step | Do | Expect |
+| --- | --- | --- |
+| 1 | Open the gallery under `tokens-a` at phone, tablet and desktop | `DS-1` baselines match under `tokens-a` |
+| 2 | Run the keyboard path and accessibility scan on that gallery | `DS-2` passes |
+| 3 | Switch to `tokens-b` without rebuilding components, reload the gallery and re-screenshot | Look follows `tokens-b`; component build digest unchanged (`DS-3`); screenshots differ from the `tokens-a` baselines where tokens differ |
+| 4 | Attempt to type-check the unknown-variant fixture against the same revision | `DS-4` still fails compilation |
+| 5 | Switch back to `tokens-a` and re-open the gallery | Prior look restored without a rebuild |
+
 ### `runtime-sharing`
 
 Level: repository.
@@ -305,3 +346,69 @@ run on Enact.
 | CP-5 | Run DS-1 and DS-2 against the gallery entries of every `sample-pack` component | Every pack component passes the screenshot, keyboard and accessibility checks |
 | CP-6 | Install `sample-pack` 1.1.0 in A, open `pack-app`, then roll the pack back to 1.0.0 and reload | The 1.0.0 `Sparkline` returns; no app file changed and the app's active version is the same |
 | CP-7 | Ask the component-authoring agent, run on Enact, to create a component from an authorized Figma node for the pack | A pull request arrives in the pack repository with the component, its gallery entry and screenshots at three widths; the environment's installed pack is unchanged until the pull request is merged and delivered |
+
+## Implementation rules
+
+These rules describe the tokens, gallery and tests in runtime 1.14.0 (pull
+request 31 in `prismteam-ai/console`, open as of 2026-11-19). Keep them when
+changing that code or restarting its components from shadcn; each one is
+checked by a test or a type check.
+
+- **Layout.** Components, `catalog.ts`, `tokens.ts` and `design-system.css` live
+  in `ui/src/design-system/`; import them through `index.ts`. The gallery is
+  `ui/src/design-system-gallery.tsx`, opened at `?gallery`.
+- **Catalog.** `catalog.ts` imports nothing and holds `componentNames`, every
+  variant union and `tokenSets`. Add a component to `componentNames`, the
+  gallery's `examples` map and `requiredVariants` in
+  `e2e/support/design-system.ts`; the UI type check fails while `componentNames`
+  and the capitalized function exports of `components.tsx` disagree.
+- **Variants.** Declare each variant list `as const` in `catalog.ts` and derive
+  the prop type from it. Never type a variant prop as `string`. Add each new
+  variant prop to the DS-4 fixture lines in
+  `e2e/support/design-system-type-check.ts`.
+- **No local styling.** Components omit `className` and `style` from their
+  props and mark their root with `data-ds-component="<Name>"`. Do not add an
+  escape hatch; add a variant, or a token-only style prop on a layout or text
+  component, instead.
+- **Tokens.** Name tokens `--ds-*` so they cannot collide with the renderer's
+  existing `--background`/`--surface`/`--accent` theme variables. Every token set
+  in `ui/src/design-system/tokens/` defines the same tokens. `design-system.css`
+  uses no literal colors, positive literal radii, other `font-family` values or
+  multi-layer or drop shadows; a unit test fails on any of them.
+- **Delivery.** A Vite plugin emits each token set unbundled at
+  `design-system/tokens-<name>.css`, which the runtime digest lists as an asset.
+  `applyTokenSet` loads the new sheet beside the old one and removes the old one
+  only after it loads; `?tokens=<name>` selects one at load, and an unknown name
+  falls back to `tokens-a`.
+- **Typeface.** The renderer's CSP allows only `'self'`. Self-host TASA Orbiter
+  (OFL) as woff2 beside the components; never link Google Fonts or another CDN.
+- **Host isolation.** The renderer's `styles.css` styles bare elements (`th` is
+  10px uppercase, `h1`–`h3` use Avenir Next). Components reset font, letter
+  spacing and text transform on their own descendants, so they look the same
+  inside an application page as in the gallery.
+- **Session.** Mount the gallery after `App`'s session check, never as a separate
+  public HTML entry, so `CS-1` holds even though it reads no data.
+- **Tests.** DS checks live in `e2e/design-system.spec.ts` (fixtures project) and
+  `test/design-system.test.ts`, named by ID. Drive keyboard checks with keys
+  that behave the same on macOS and Linux: ArrowRight (not End) to collapse a
+  text selection, type-ahead (not ArrowDown) on a native select.
+- **Baselines.** Screenshots are per platform in
+  `e2e/design-system.spec.ts-snapshots/`. After an intended visual change,
+  refresh `*-darwin.png` locally with `--update-snapshots` and `*-linux.png` from
+  the **Design-system baselines** workflow artifact, and commit both. Never
+  loosen a comparison threshold to make a baseline pass.
+
+Applications cannot choose a token set from their manifest yet; the existing
+`theme.tokens` still drives the renderer's own components. Choosing an
+environment's tokens is the `design-system-configuration` piece and moving the
+renderer's components onto the design system is `renderer-reskin`; do not have
+Vivillon configure either until it ships.
+
+## Kit maintenance
+
+When this contract changes, update `agents/chandelure.md`,
+`skills/build-console-product/SKILL.md`, the Console capability map in
+`skills/guide-product-work/reference/iterations/console.md`, the Console notes
+in `skills/guide-product-work/reference/product-catalog.json`, bump the plugin
+version in every manifest and marketplace entry, and regenerate Copilot, Codex,
+Claude Code and Enact agent copies per `AGENTS.md`.

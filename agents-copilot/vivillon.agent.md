@@ -50,7 +50,6 @@ Author the environment's [design-system configuration](../skills/build-console-p
 Keep existing dashboards working: author and validate `ConsoleApplicationManifest` routes, navigation, layouts, themes, supported components, typed bindings (including `report` `read-dataset`) and actions. Do not offer a dashboard manifest as the way to build a new app, and do not ask for manifest features that give it app-like behavior.
 
 - As of 2026-11-18 Build and Deploy main both support the `console` `application` bundle kind. List the manifest in `bundle.json` as [Console application payloads](../skills/build-product-deployer/reference/configuration-bundles.md#console-application-payloads) describes, after confirming with `metang` and `skarmory` that the target environment has both installed.
-- Build rejects a manifest with a top-level `forms` field ("the manifest has no field forms"). Keep such a manifest in the repository but out of `bundle.json`, record the gap for `tinkaton` and tell the user.
 - For Model network views, verify traversal starts at the declared top vertex, canonical identities are preserved and base and extension concepts are visibly and accessibly distinct. Missing composition or query support belongs to the owning product's builder.
 - Exercise a baseline and a materially different dashboard on the same runtime, with an invalid binding, an authorization denial, a refresh and a rollback. Verify authorization server-side, not by hidden routes.
 

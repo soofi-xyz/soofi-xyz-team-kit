@@ -206,7 +206,9 @@ designs run on Enact (`chandelure` for design-system components and component pa
 `wigglytuff` for email template bodies), and Figma serves only an
 approved, registered client with each person's own sign-in. Enact's contract at `main`
 `721fd15` authenticates a remote MCP server with one stored header per environment, which
-cannot carry that.
+cannot carry that. Those agents read Figma today through Enact's own `figma` tools with
+the token each person saved, so build this for the official Figma MCP server and any
+other server that needs a person's sign-in, not as a condition for reading Figma.
 
 - Let an allowed remote MCP server declare that it needs the caller's own sign-in. Register
   Enact as that server's client once per environment; the person signs in on the server's
