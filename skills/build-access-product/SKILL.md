@@ -104,6 +104,13 @@ security defects listed there.
   same user. Sign-out ends the session for every application.
 - Match redirect and sign-out addresses exactly against the registered
   applications. Reject before issuing a code.
+- Accept `https` addresses, and `http` only on a loopback host (`localhost`,
+  `127.0.0.1`, `[::1]`) so a developer runs an application locally against real
+  sign-in. Match a loopback address exactly too, port included; never widen it
+  to any port, unlike a self-registered MCP client. Refuse every other `http`
+  address, a wildcard and a non-canonical spelling. Keep local addresses in
+  their own application (for example `console-local`) on a development
+  environment, never in a production application's address set.
 - Identify a person by a stable, opaque user identifier. Never use an email
   address as a key, a foreign key or a grant principal.
 - A first sign-in creates the user with no role, so they can do nothing until
@@ -195,6 +202,13 @@ environment, owned by Access.
   administrative routes; a signed-in person without a permission is refused.
   The environment key assigns the first administrator. This makes every piece
   usable in order, before roles exist.
+- Give a product with several applications a role per application through
+  sharing, not a new concept: the product declares an application resource
+  type with a shareable action (such as `use`), registers each application as
+  an environment-owned resource, and an administrator shares that action on one
+  application with the role for it. A role's type-level grant would reach
+  every application, so never use one for per-application access. The product
+  asks `POST /decisions` for the application it serves (`RS-12`).
 - Do not use the store to filter lists. It answers one question about one
   resource. Record access in Persist is decided by graph edges, below.
 

@@ -184,6 +184,9 @@ Paths below are relative to `/console`.
   `applicationId` is the logical identity; Build rejects a manifest whose
   `applicationId` repeats in the bundle, and validates it against the manifest
   schema in `prismteam-ai/console` `requirements/swagger.yml` without calling Console.
+  Build's top-level field list is closed: it allows exactly the schema's
+  `properties`, required and optional, including action `forms` (an array of at
+  most 20), and refuses any other field with `the manifest has no field <name>`.
 - **Account:** read `accountId` from `GET /session`; never take it from the
   bundle or a parameter.
 - **Apply:** `GET /accounts/{accountId}/applications/{applicationId}`; on `404`,
@@ -215,7 +218,7 @@ the adapter, following the deployed API where it differs. Paths are relative to
   the Access repository's `requirements/swagger.yml` without calling Access.
 - **Document:** the application's name, title, exact redirect addresses and
   exact sign-out addresses. An application is a set of addresses on the
-  environment's one sign-in client, not a separate client or audience. Every address is `https` with no wildcard. The
+  environment's one sign-in client, not a separate client or audience. Every address is `https`, or `http` on `localhost`, `127.0.0.1` or `[::1]`, with no wildcard; a bundle for a shared or production environment carries no loopback address. The
   document carries no client secret, token, user, role or grant; Build rejects
   one that does.
 - **Apply:** `GET /applications/{name}`, then `PUT /applications/{name}` with

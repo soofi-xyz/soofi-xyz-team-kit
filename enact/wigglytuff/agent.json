@@ -19,7 +19,7 @@
     },
     {
       "name": "build-product-deployer",
-      "version": "1.0.0-sha256-052dd992a7c0914d"
+      "version": "1.0.0-sha256-b5a69ddbd8847377"
     },
     {
       "name": "build-saas-marketplace",
@@ -39,7 +39,7 @@
     },
     {
       "name": "guide-product-work",
-      "version": "1.0.0-sha256-151be34275af8d7d"
+      "version": "1.0.0-sha256-6e02231188bb5404"
     },
     {
       "name": "manage-channel-templates",
@@ -54,10 +54,6 @@
     "max_cost_usd": 10,
     "max_turns": 100
   },
-  "mcp_servers": [
-    "figma",
-    "jigglypuff"
-  ],
   "model": "opus",
   "name": "wigglytuff",
   "repositories": [],
@@ -68,5 +64,8 @@
       "pull_requests": "write"
     }
   },
-  "version": "1.164.0"
+  "tools": [
+    "figma"
+  ],
+  "version": "1.166.0"
 }

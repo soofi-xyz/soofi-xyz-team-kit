@@ -11,7 +11,7 @@
     },
     {
       "name": "build-build-service",
-      "version": "1.0.0-sha256-9991154ab584ac3d"
+      "version": "1.0.0-sha256-f002c61da19b7176"
     },
     {
       "name": "build-marketplace-puller",
@@ -19,7 +19,7 @@
     },
     {
       "name": "build-product-deployer",
-      "version": "1.0.0-sha256-052dd992a7c0914d"
+      "version": "1.0.0-sha256-b5a69ddbd8847377"
     },
     {
       "name": "build-saas-marketplace",
@@ -35,7 +35,7 @@
     },
     {
       "name": "guide-product-work",
-      "version": "1.0.0-sha256-151be34275af8d7d"
+      "version": "1.0.0-sha256-6e02231188bb5404"
     },
     {
       "name": "operate-marketplace",
@@ -56,5 +56,5 @@
       "pull_requests": "write"
     }
   },
-  "version": "1.164.0"
+  "version": "1.166.0"
 }
