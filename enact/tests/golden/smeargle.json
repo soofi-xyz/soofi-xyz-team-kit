@@ -1,0 +1,62 @@
+{
+  "agent": "smeargle",
+  "tasks": [
+    {
+      "id": "smeargle-test-plan",
+      "message": "A designer changed the pricing section of apps/landing_page at mobile, tablet and desktop. How would you cover it with responsive design tests?",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "test/design (mocked) versus test/browser (real-device) lane choice with a reason",
+          "a breakpoint config object for the three widths",
+          "CSS assertions preferred over bounding boxes",
+          "modify the existing spec rather than add a parallel one"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Read"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 2,
+        "max_minutes": 10
+      }
+    },
+    {
+      "id": "smeargle-sandbox-playwright",
+      "message": "Smoke check, no repository and nothing to commit. In a scratch directory write an index.html whose .cards container is a flex column below 768px and a row from 768px, serve it on localhost:5173, install @playwright/test with PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1, and run one spec that connects once with chromium.connectOverCDP(process.env.ENACT_BROWSER_CDP_URL) and checks the direction at 375px and 1280px, with --workers=1. Report pass or fail per breakpoint and the exact command.",
+      "repositories": [],
+      "expect": {
+        "kind": "report",
+        "must_include": [
+          "re:375",
+          "re:1280",
+          "re:--workers=1",
+          "pass or fail stated for each breakpoint"
+        ],
+        "must_not": [
+          "opens a pull request",
+          "pushes a commit or branch",
+          "prints a secret, API key or token value"
+        ],
+        "tools_in_trace": [
+          "Bash"
+        ],
+        "forbids_repo_writes": true
+      },
+      "limits": {
+        "max_cost_usd": 3,
+        "max_minutes": 15
+      },
+      "requires": [
+        "browser"
+      ]
+    }
+  ]
+}

@@ -2,13 +2,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://prismteam.ai/schemas/enact/agent-definition.schema.json",
   "title": "Enact agent definition",
-  "description": "One version of an agent, packaged from its directory: the manifest from agent.json and the text of every other file. docs/agent-contract.md describes each field.",
+  "description": "One version of an agent, packaged from its directory: the manifest from agent.json, the text of every other file and its binary files (assets) by SHA-256. docs/agent-contract.md describes each field.",
   "type": "object",
   "additionalProperties": false,
   "required": ["manifest", "files"],
   "properties": {
     "manifest": { "$ref": "#/$defs/manifest" },
-    "files": { "$ref": "#/$defs/files" }
+    "files": { "$ref": "#/$defs/files" },
+    "assets": { "$ref": "#/$defs/assets" }
   },
   "$defs": {
     "name": {
@@ -185,6 +186,28 @@
         "pattern": "^(instructions\\.md|tools/[a-z][a-z0-9-]{0,62}\\.ts|subagents/[a-z][a-z0-9-]{0,62}\\.md|skills/[a-z][a-z0-9-]{0,62}/([A-Za-z0-9_][A-Za-z0-9._-]{0,99}/){0,8}[A-Za-z0-9_][A-Za-z0-9._-]{0,99})$"
       },
       "additionalProperties": { "type": "string", "maxLength": 262144 }
+    },
+    "sha256": {
+      "description": "A SHA-256 digest as 64 lowercase hex characters.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "assets": {
+      "description": "Binary files of the agent's skills (images, fonts, PDFs) by path under skills/<name>/, each by its SHA-256 and size. Upload the bytes with POST /agents/{name}/assets before saving; the sandbox lays them out beside the files. At most 32 MiB each and 128 MiB together.",
+      "type": "object",
+      "maxProperties": 500,
+      "propertyNames": {
+        "pattern": "^skills/[a-z][a-z0-9-]{0,62}/([A-Za-z0-9_][A-Za-z0-9._-]{0,99}/){0,8}[A-Za-z0-9_][A-Za-z0-9._-]{0,99}$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sha256", "bytes"],
+        "properties": {
+          "sha256": { "$ref": "#/$defs/sha256" },
+          "bytes": { "type": "integer", "minimum": 1, "maximum": 33554432 }
+        }
+      }
     }
   }
 }

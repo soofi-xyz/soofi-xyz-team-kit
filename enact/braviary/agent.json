@@ -1,0 +1,22 @@
+{
+  "channels": [
+    "direct"
+  ],
+  "description": "Google marketing stack orchestrator. Use when coordinating GTM, GA4, Search Console, and Google Ads linking across consoles and code; delegates frontend GTM wiring to castform.",
+  "hosts": [],
+  "limits": {
+    "max_cost_usd": 10,
+    "max_turns": 100
+  },
+  "model": "opus",
+  "name": "braviary",
+  "repositories": [],
+  "run_repositories": {
+    "max": 5,
+    "permissions": {
+      "contents": "write",
+      "pull_requests": "write"
+    }
+  },
+  "version": "1.169.0"
+}

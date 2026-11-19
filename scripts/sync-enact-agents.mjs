@@ -97,7 +97,8 @@ function listSkillFiles(name) {
       });
     files = walk(rel).filter((p) => !p.split("/").includes("node_modules") && !p.endsWith(".DS_Store"));
   }
-  return files.filter((p) => existsSync(path.join(root, p))).sort();
+  // .gitkeep only keeps an empty folder in git; Enact refuses dot-file paths.
+  return files.filter((p) => existsSync(path.join(root, p)) && path.basename(p) !== ".gitkeep").sort();
 }
 
 function referencedSkills(text, allowSibling, known) {
@@ -254,6 +255,8 @@ const MIB = 1024 * 1024;
 // Enact main src/skills/definition.ts and src/agents/definition.ts: a skill's files hold at most
 // 3 MiB; its canonical JSON, encoded once more as a JSON string (as API Gateway carries it), at
 // most 5 MiB; its PUT body at most 4 MiB; the skills one agent pins, as stored, 8 MiB together.
+// Enact main src/agents/definition.ts: assets at most 32 MiB each, 128 MiB and 500 together.
+const ASSET_LIMITS = { asset_bytes: 32 * MIB, total_bytes: 128 * MIB, assets: 500 };
 const LIBRARY_LIMITS = { skill_bytes: 3 * MIB, skill_files: 500, encoded_bytes: 5 * MIB, body_bytes: 4 * MIB, pinned_bytes: 8 * MIB, pins: 100 };
 const encodedBytes = (text) => Buffer.byteLength(JSON.stringify(text));
 const LIBRARY_FILE_PATH = /^([A-Za-z0-9_][A-Za-z0-9._-]{0,99}\/){0,8}[A-Za-z0-9_][A-Za-z0-9._-]{0,99}$/;
@@ -274,11 +277,22 @@ function build() {
   const allowedMcp = [...builtinMcp, ...(config.mcp_allow_list ?? [])];
 
   const outputs = new Map(); // enact-relative path -> content
+  const assetBytes = new Map(); // sha256 -> bytes, written to dist/assets/<sha256>
+  outputs.assetBytes = assetBytes;
+  // A skill with binary files ships them as Enact assets (enact docs/agent-contract.md, "Assets"),
+  // and with them any text file over the per-file limit; any other skill is text only.
+  const oversized = (entry, text) => Object.keys(entry.binaries).length > 0 && Buffer.byteLength(text) > config.limits.max_file_bytes;
+  const textFiles = (entry) => Object.fromEntries(Object.entries(entry.files).filter(([, t]) => !oversized(entry, t)));
+  const assetFiles = (entry) => ({
+    ...entry.binaries,
+    ...Object.fromEntries(Object.entries(entry.files).filter(([, t]) => oversized(entry, t)).map(([rel, t]) => [rel, Buffer.from(t)])),
+  });
   const skillCache = new Map();
 
   function loadSkill(name) {
     if (skillCache.has(name)) return skillCache.get(name);
     const files = {};
+    const binaries = {}; // rel -> Buffer: shipped as Enact assets when the skill is the agent's own
     const omitted = [];
     const flags = {};
     const secrets = new Set();
@@ -290,7 +304,8 @@ function build() {
       try {
         text = new TextDecoder("utf-8", { fatal: true }).decode(buf);
       } catch {
-        omitted.push({ path: rel, reason: "not UTF-8 text" });
+        if (buf.length > ASSET_LIMITS.asset_bytes) omitted.push({ path: rel, reason: "binary, over 32 MiB" });
+        else binaries[rel] = buf;
         continue;
       }
       text = normalize(text);
@@ -309,7 +324,7 @@ function build() {
     }
     refs.delete(name);
     const bytes = Object.values(files).reduce((n, t) => n + Buffer.byteLength(t), 0);
-    const entry = { name, files, omitted, flags, secrets, refs: [...refs].sort(), bytes, description };
+    const entry = { name, files, binaries, omitted, flags, secrets, refs: [...refs].sort(), bytes, description };
     skillCache.set(name, entry);
     return entry;
   }
@@ -320,6 +335,11 @@ function build() {
     if (entry.omitted.length) {
       const shown = entry.omitted.slice(0, 3).map((o) => o.path);
       problems.push(`${entry.omitted.length} non-UTF-8 files (${shown.join(", ")}${entry.omitted.length > 3 ? ", …" : ""})`);
+    }
+    const binaryPaths = Object.keys(entry.binaries);
+    if (binaryPaths.length) {
+      const shown = binaryPaths.slice(0, 3);
+      problems.push(`${binaryPaths.length} binary files (${shown.join(", ")}${binaryPaths.length > 3 ? ", …" : ""}), which library skills cannot hold`);
     }
     if (entry.bytes > LIBRARY_LIMITS.skill_bytes) problems.push(`${entry.bytes} bytes of text, over 3 MiB`);
     const count = Object.keys(entry.files).length;
@@ -456,7 +476,7 @@ function build() {
   function ownSizes(a, own) {
     // instructions.md is a few KiB; count the body plus a generous appendix allowance.
     const sizes = [Buffer.byteLength(a.body) + 8192];
-    for (const s of own) for (const t of Object.values(loadSkill(s).files)) sizes.push(Buffer.byteLength(t));
+    for (const s of own) for (const t of Object.values(textFiles(loadSkill(s)))) sizes.push(Buffer.byteLength(t));
     return { bytes: sizes.reduce((n, b) => n + b, 0), files: sizes.length, largest: Math.max(...sizes) };
   }
   function overLimits(sizes, limits) {
@@ -513,9 +533,17 @@ function build() {
     const flags = scanFlags(body.replace(/^\n+/, ""), "instructions.md", patterns);
     const secrets = scanSecrets(body, secretRe);
     const omitted = [];
+    const assets = {};
     for (const s of skills) {
       const entry = loadSkill(s);
-      if (!library.has(s)) for (const [rel, text] of Object.entries(entry.files)) files[rel] = text;
+      if (!library.has(s)) {
+        for (const [rel, text] of Object.entries(textFiles(entry))) files[rel] = text;
+        for (const [rel, buf] of Object.entries(assetFiles(entry))) {
+          const sha256 = createHash("sha256").update(buf).digest("hex");
+          assets[rel] = { sha256, bytes: buf.length };
+          assetBytes.set(sha256, buf);
+        }
+      }
       mergeFlags(flags, entry.flags);
       for (const x of entry.secrets) secrets.add(x);
       if (!library.has(s)) omitted.push(...entry.omitted);
@@ -526,12 +554,14 @@ function build() {
     const largest = Math.max(...Object.values(files).map((t) => Buffer.byteLength(t)));
     const badPaths = Object.keys(files).filter((p) => !FILE_PATH.test(p));
     const pinnedBytes = pinned.reduce((n, s) => n + librarySkills[s].stored_bytes, 0);
+    const assetTotal = Object.values(assets).reduce((n, a) => n + a.bytes, 0);
 
     const blockedBy = new Set();
     if (bytes > config.limits.max_total_bytes || fileCount > config.limits.max_files || largest > config.limits.max_file_bytes) {
       blockedBy.add("shared-skill-library");
     }
     if ((pinnedBytes > LIBRARY_LIMITS.pinned_bytes || pinned.length > LIBRARY_LIMITS.pins)) blockedBy.add("shared-skill-library");
+    if (Object.keys(assets).length > ASSET_LIMITS.assets || assetTotal > ASSET_LIMITS.total_bytes) blockedBy.add("agent-assets");
     const outside = requiresMcp.some((s) => !allowedMcp.includes(s));
     // The server is not on the environment's list (enact/config.json mcp_allow_list).
     if (outside) blockedBy.add("mcp-allow-list");
@@ -553,8 +583,12 @@ function build() {
 
     outputs.set(`${name}/agent.json`, stableJson(manifest));
     // Bundle-ready: the exact PUT /agents/{name} body, as canonical JSON (its SHA-256 is the digest).
-    outputs.set(`dist/agents/${name}.json`, canonicalJson({ manifest, files }));
+    // Assets' bytes are written to dist/assets/<sha256>; the save uploads them before the PUT.
+    const hasAssets = Object.keys(assets).length > 0;
+    outputs.set(`dist/agents/${name}.json`, canonicalJson({ manifest, files, ...(hasAssets ? { assets } : {}) }));
     for (const [rel, text] of Object.entries(files)) outputs.set(`${name}/${rel}`, text);
+    // The agent directory holds its assets too, so it packs to the same document.
+    for (const [rel, { sha256 }] of Object.entries(assets)) outputs.set(`${name}/${rel}`, assetBytes.get(sha256));
 
     const sortedFlags = sortFlags(flags);
     inventory.agents[name] = {
@@ -580,6 +614,7 @@ function build() {
       flag_counts: Object.fromEntries(Object.entries(sortedFlags).map(([k, v]) => [k, v.length])),
       instruction_flags: sortFlags(scanFlags(body.replace(/^\n+/, ""), "instructions.md", patterns)),
       assumptions: Object.keys(sortedFlags),
+      ...(hasAssets ? { assets: Object.keys(assets).length, asset_bytes: assetTotal } : {}),
       omitted_files: omitted.map((o) => o.path).sort(),
       invalid_paths: badPaths.sort(),
       blocked_by: [...blockedBy].sort(),
@@ -633,6 +668,7 @@ function existingGenerated() {
     for (const entry of readdirSync(path.join(enactDir, dir))) {
       const rel = dir ? `${dir}/${entry}` : entry;
       if (!dir && RESERVED.has(entry) && !GENERATED_DIRS.has(entry) && entry !== "inventory.json") continue;
+      if (rel === "dist/assets") continue;
       if (statSync(path.join(enactDir, rel)).isDirectory()) walk(rel);
       else found.set(rel, readFileSync(path.join(enactDir, rel), "utf8"));
     }
@@ -686,6 +722,13 @@ function main() {
     writeFileSync(path.join(enactDir, p), outputs.get(p));
   }
   prune("");
+  // Content-addressed: a file already there holds these bytes.
+  for (const [sha256, buf] of outputs.assetBytes) {
+    const file = path.join(enactDir, "dist", "assets", sha256);
+    if (existsSync(file)) continue;
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, buf);
+  }
   const libraryCount = new Set([...outputs.keys()].filter((p) => /^library\/[^/]+\//.test(p)).map((p) => p.split("/")[1])).size;
   console.log(
     `synced ${agents.size} Enact agent packages and ${libraryCount} library skills (${changed.length} files written, ${stale.length} removed)`,

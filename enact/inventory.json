@@ -140,8 +140,46 @@
       "wave_reason": "retained specialist (default)"
     },
     "ampharos": {
-      "wave": "stays-local",
-      "wave_reason": "enact/config.json stays_local"
+      "asset_bytes": 21736445,
+      "assets": 32,
+      "assumptions": [
+        "curl"
+      ],
+      "blocked_by": [],
+      "bytes": 468882,
+      "files": 25,
+      "flag_counts": {
+        "curl": 2
+      },
+      "instruction_flags": {},
+      "invalid_paths": [],
+      "kit_model": null,
+      "library_pinned_bytes": 0,
+      "library_skills": [],
+      "mcp_servers": [],
+      "model": "sonnet",
+      "needs_secrets": [
+        "OPENAI_API_KEY"
+      ],
+      "needs_secrets_source": "override",
+      "omitted_files": [],
+      "own_skills": [
+        "prism-asset-pipeline"
+      ],
+      "readonly": false,
+      "requires_mcp": [],
+      "requires_mcp_reason": "agents/ampharos.md: the pipeline is local scripts plus OpenAI's image and responses APIs (OPENAI_API_KEY); no MCP server. Its reference images and oversized JSON indexes ship as Enact assets.",
+      "secret_env_mentions": [
+        "ANTHROPIC_API_KEY",
+        "GEMINI_API_KEY",
+        "OPENAI_API_KEY",
+        "RECRAFT_API_KEY"
+      ],
+      "skills": [
+        "prism-asset-pipeline"
+      ],
+      "wave": "3",
+      "wave_reason": "retained specialist (default)"
     },
     "arceus": {
       "assumptions": [
@@ -235,8 +273,38 @@
       "wave_reason": "enact/config.json waves"
     },
     "audino": {
-      "wave": "stays-local",
-      "wave_reason": "enact/config.json stays_local"
+      "assumptions": [],
+      "blocked_by": [],
+      "browser_sandbox_localhost": true,
+      "bytes": 9384,
+      "files": 1,
+      "flag_counts": {},
+      "instruction_flags": {},
+      "invalid_paths": [],
+      "kit_model": "gpt-5.4-high",
+      "library_pinned_bytes": 145203,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "frontend-bug-fix",
+        "responsive-design-tests"
+      ],
+      "mcp_servers": [],
+      "model": "opus",
+      "needs_secrets": [],
+      "needs_secrets_source": "none declared",
+      "omitted_files": [],
+      "own_skills": [],
+      "readonly": false,
+      "requires_mcp": [],
+      "requires_mcp_reason": "agents/audino.md:15,17,27 ask for a Figma link as the design source; on Enact Figma is optional (Enact's figma tool with the requester's own token, or exported designs). It runs the app in the sandbox and checks it through the browser tool's sandbox localhost.",
+      "secret_env_mentions": [],
+      "skills": [
+        "apply-engineering-guidelines",
+        "frontend-bug-fix",
+        "responsive-design-tests"
+      ],
+      "wave": "3",
+      "wave_reason": "retained specialist (default)"
     },
     "beheeyem": {
       "assumptions": [
@@ -357,8 +425,37 @@
       "wave_reason": "role: configure"
     },
     "braviary": {
-      "wave": "stays-local",
-      "wave_reason": "enact/config.json stays_local"
+      "assumptions": [
+        "curl"
+      ],
+      "blocked_by": [],
+      "bytes": 10205,
+      "files": 1,
+      "flag_counts": {
+        "curl": 1
+      },
+      "instruction_flags": {
+        "curl": [
+          "instructions.md:23"
+        ]
+      },
+      "invalid_paths": [],
+      "kit_model": "gpt-5.4-high",
+      "library_pinned_bytes": 0,
+      "library_skills": [],
+      "mcp_servers": [],
+      "model": "opus",
+      "needs_secrets": [],
+      "needs_secrets_source": "none declared",
+      "omitted_files": [],
+      "own_skills": [],
+      "readonly": false,
+      "requires_mcp": [],
+      "requires_mcp_reason": "agents/braviary.md: guides an engineer through Tag Manager, GA4, Search Console and Google Ads console steps that the engineer performs in their own browser; it needs no MCP server or Google credential, and delegates the code change to castform.",
+      "secret_env_mentions": [],
+      "skills": [],
+      "wave": "3",
+      "wave_reason": "retained specialist (default)"
     },
     "bronzong": {
       "assumptions": [
@@ -489,8 +586,30 @@
       "wave_reason": "role: configure"
     },
     "castform": {
-      "wave": "stays-local",
-      "wave_reason": "enact/config.json stays_local"
+      "assumptions": [],
+      "blocked_by": [],
+      "browser_sandbox_localhost": true,
+      "bytes": 14762,
+      "files": 1,
+      "flag_counts": {},
+      "instruction_flags": {},
+      "invalid_paths": [],
+      "kit_model": "gpt-5.4-high",
+      "library_pinned_bytes": 0,
+      "library_skills": [],
+      "mcp_servers": [],
+      "model": "opus",
+      "needs_secrets": [],
+      "needs_secrets_source": "none declared",
+      "omitted_files": [],
+      "own_skills": [],
+      "readonly": false,
+      "requires_mcp": [],
+      "requires_mcp_reason": "agents/castform.md: code-only GTM wiring in a repository; the Tag Manager, GA4 and Google Ads console steps are handed to a person, so no MCP server or Google credential is needed. The browser's sandbox localhost verifies gtm.js loads.",
+      "secret_env_mentions": [],
+      "skills": [],
+      "wave": "3",
+      "wave_reason": "retained specialist (default)"
     },
     "celebi": {
       "assumptions": [
@@ -2745,12 +2864,72 @@
       "wave_reason": "enact/config.json waves"
     },
     "smeargle": {
-      "wave": "stays-local",
-      "wave_reason": "enact/config.json stays_local"
+      "assumptions": [],
+      "blocked_by": [],
+      "browser_sandbox_localhost": true,
+      "bytes": 12733,
+      "files": 1,
+      "flag_counts": {},
+      "instruction_flags": {},
+      "invalid_paths": [],
+      "kit_model": "gpt-5.4-high",
+      "library_pinned_bytes": 98442,
+      "library_skills": [
+        "figma-to-code",
+        "frontend-bug-fix",
+        "responsive-design-tests"
+      ],
+      "mcp_servers": [],
+      "model": "opus",
+      "needs_secrets": [],
+      "needs_secrets_source": "none declared",
+      "omitted_files": [],
+      "own_skills": [],
+      "readonly": false,
+      "requires_mcp": [],
+      "requires_mcp_reason": "agents/smeargle.md:15,19 take a Figma URL, screenshot or design reference; on Enact Figma is optional (Enact's figma tool with the requester's own token, or screenshots). Playwright design specs run against the turn's browser over ENACT_BROWSER_CDP_URL with sandbox localhost.",
+      "secret_env_mentions": [],
+      "skills": [
+        "figma-to-code",
+        "frontend-bug-fix",
+        "responsive-design-tests"
+      ],
+      "wave": "3",
+      "wave_reason": "retained specialist (default)"
     },
     "sylveon": {
-      "wave": "stays-local",
-      "wave_reason": "enact/config.json stays_local"
+      "assumptions": [],
+      "blocked_by": [],
+      "browser_sandbox_localhost": true,
+      "bytes": 9820,
+      "files": 1,
+      "flag_counts": {},
+      "instruction_flags": {},
+      "invalid_paths": [],
+      "kit_model": "gpt-5.4-high",
+      "library_pinned_bytes": 147658,
+      "library_skills": [
+        "apply-engineering-guidelines",
+        "figma-to-code",
+        "responsive-design-tests"
+      ],
+      "mcp_servers": [],
+      "model": "opus",
+      "needs_secrets": [],
+      "needs_secrets_source": "none declared",
+      "omitted_files": [],
+      "own_skills": [],
+      "readonly": false,
+      "requires_mcp": [],
+      "requires_mcp_reason": "agents/sylveon.md:15,17 read section-level Figma frames; on Enact Figma is optional (Enact's figma tool with the requester's own token, or section exports). It runs the app in the sandbox and verifies through the browser tool's sandbox localhost.",
+      "secret_env_mentions": [],
+      "skills": [
+        "apply-engineering-guidelines",
+        "figma-to-code",
+        "responsive-design-tests"
+      ],
+      "wave": "3",
+      "wave_reason": "retained specialist (default)"
     },
     "tinkaton": {
       "assumptions": [
@@ -4296,6 +4475,15 @@
         "manage-channel-templates"
       ]
     },
+    "frontend-bug-fix": {
+      "bytes": 3261,
+      "files": 1,
+      "flags": {},
+      "omitted": [],
+      "references": [
+        "responsive-design-tests"
+      ]
+    },
     "groom-stories": {
       "bytes": 6935,
       "files": 1,
@@ -4430,6 +4618,18 @@
         "build-product-deployer",
         "guide-product-work"
       ]
+    },
+    "prism-asset-pipeline": {
+      "bytes": 1126119,
+      "files": 26,
+      "flags": {
+        "curl": [
+          "skills/prism-asset-pipeline/art-direction/sources/imageschemanet-index.json:9962",
+          "skills/prism-asset-pipeline/art-direction/sources/imageschemanet-index.json:9967"
+        ]
+      },
+      "omitted": [],
+      "references": []
     },
     "responsive-design-tests": {
       "bytes": 86264,

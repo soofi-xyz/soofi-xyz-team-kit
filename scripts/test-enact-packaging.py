@@ -75,15 +75,65 @@ def load_json(path: Path):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def read_package(pkg: Path) -> tuple[dict, dict[str, str]]:
+MAX_FILE_BYTES = 262144
+MAX_ASSET_BYTES = 32 * MIB
+MAX_ASSETS_BYTES = 128 * MIB
+
+
+def skill_of(rel: str) -> str | None:
+    parts = rel.split("/")
+    return parts[1] if len(parts) > 2 and parts[0] == "skills" else None
+
+
+def read_package(pkg: Path) -> tuple[dict, dict[str, str], dict[str, bytes]]:
+    """The agent directory as Enact's document: text files, and assets (enact docs/agent-contract.md,
+    "Assets"). A file that is not UTF-8 is an asset; in a skill that has one, so is any text file
+    over the 256 KiB file limit (the rule scripts/sync-enact-agents.mjs packs by)."""
     manifest = load_json(pkg / "agent.json")
-    files: dict[str, str] = {}
+    raw: dict[str, bytes] = {}
     for path in sorted(p for p in pkg.rglob("*") if p.is_file()):
         rel = path.relative_to(pkg).as_posix()
-        if rel == "agent.json":
-            continue
-        files[rel] = path.read_text(encoding="utf-8")
-    return manifest, files
+        if rel != "agent.json":
+            raw[rel] = path.read_bytes()
+    files: dict[str, str] = {}
+    assets: dict[str, bytes] = {}
+    for rel, data in raw.items():
+        try:
+            files[rel] = data.decode("utf-8")
+        except UnicodeDecodeError:
+            assets[rel] = data
+    with_assets = {skill_of(rel) for rel in assets}
+    for rel in [r for r, t in files.items() if skill_of(r) in with_assets and len(t.encode("utf-8")) > MAX_FILE_BYTES]:
+        assets[rel] = files.pop(rel).encode("utf-8")
+    return manifest, files, assets
+
+
+def asset_refs(assets: dict[str, bytes]) -> dict[str, dict]:
+    return {rel: {"sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data)} for rel, data in sorted(assets.items())}
+
+
+def agent_document(manifest: dict, files: dict[str, str], assets: dict[str, bytes]) -> dict:
+    return {"manifest": manifest, "files": files, **({"assets": asset_refs(assets)} if assets else {})}
+
+
+def check_assets(assets: dict[str, bytes], store: Path | None) -> list[str]:
+    """Asset limits, and each asset's bytes in enact/dist/assets/<sha256> for the save to upload."""
+    problems = []
+    total = sum(len(d) for d in assets.values())
+    if total > MAX_ASSETS_BYTES:
+        problems.append(f"assets hold {total} bytes, over 128 MiB")
+    if len(assets) > 500:
+        problems.append(f"{len(assets)} assets, over 500")
+    for rel, ref in asset_refs(assets).items():
+        if not rel.startswith("skills/"):
+            problems.append(f"asset {rel} is outside skills/<name>/")
+        if ref["bytes"] > MAX_ASSET_BYTES:
+            problems.append(f"asset {rel} is {ref['bytes']} bytes, over 32 MiB")
+        if store is not None:
+            stored = store / ref["sha256"]
+            if not stored.is_file() or stored.read_bytes() != assets[rel]:
+                problems.append(f"asset {rel} is not in {stored.relative_to(ROOT)}; run node scripts/sync-enact-agents.mjs sync")
+    return problems
 
 
 def check_package(
@@ -95,10 +145,12 @@ def check_package(
     allow_list: list[str],
     expected_skills: list[str] | None = None,
     library: dict | None = None,
+    assets: dict[str, bytes] | None = None,
 ) -> list[str]:
     """library: enact/library/index.json "skills", to check library_skills."""
     problems: list[str] = []
-    for error in sorted(validator.iter_errors({"manifest": manifest, "files": files}), key=lambda e: list(e.absolute_path)):
+    assets = assets or {}
+    for error in sorted(validator.iter_errors(agent_document(manifest, files, assets)), key=lambda e: list(e.absolute_path)):
         where = "/".join(str(p) for p in error.absolute_path) or "(document)"
         problems.append(f"schema: {where}: {error.message[:200]}")
     if manifest.get("name") != name:
@@ -115,7 +167,7 @@ def check_package(
     for skill in expected_skills or []:
         if skill not in skill_dirs:
             problems.append(f"skills/{skill}/ missing; run node scripts/sync-enact-agents.mjs sync")
-    paths = set(files)
+    paths = set(files) | set(assets)
     for path in sorted(paths):
         parts = path.split("/")
         for i in range(1, len(parts)):
@@ -288,10 +340,11 @@ def run(args) -> int:
             problems = ["package missing; run node scripts/sync-enact-agents.mjs sync"]
             total = 0
         else:
-            manifest, files = read_package(pkg)
+            manifest, files, assets = read_package(pkg)
             expected = info.get("own_skills", info.get("skills", []))
-            problems = check_package(name, manifest, files, validator, info.get("requires_mcp", []), allow, expected, library)
-            problems += check_packed(ENACT / "dist" / "agents" / f"{name}.json", {"manifest": manifest, "files": files}, MAX_AGENT_BODY)
+            problems = check_package(name, manifest, files, validator, info.get("requires_mcp", []), allow, expected, library, assets)
+            problems += check_assets(assets, ENACT / "dist" / "assets")
+            problems += check_packed(ENACT / "dist" / "agents" / f"{name}.json", agent_document(manifest, files, assets), MAX_AGENT_BODY)
             total = sum(len(t.encode("utf-8")) for t in files.values())
         gating = args.strict or info["wave"] in must
         rows.append({"agent": name, "wave": info["wave"], "bytes": total, "pass": not problems, "gating": gating, "problems": problems})
@@ -384,6 +437,24 @@ def self_test() -> int:
     expect("library skill over 5 MiB encoded", check_library_skill("a", skill_manifest, escaped, entry, skill_validator), "over 5 MiB")
     expect("library skill over 3 MiB", check_library_skill("a", skill_manifest, {**skill_files, **{f"r/{i}.md": "x" * MIB for i in range(4)}}, entry, skill_validator), "over 3 MiB")
 
+    # Assets: binary files under skills/<name>/, within the limits, beside the text files.
+    png = {"skills/b/ref.png": b"\x89PNG\r\n\x1a\n\xff"}
+    expect("asset valid", check_package("sample", base_manifest, own_b, validator, [], allow, ["b"], lib, png) + check_assets(png, None), None)
+    expect("asset outside skills", check_assets({"ref.png": b"\xff"}, None), "outside skills/<name>/")
+    expect("asset path clash", check_package("sample", base_manifest, own_b, validator, [], allow, ["b"], lib, {"skills/b/SKILL.md/x.png": b"\xff"}), "path clash")
+    expect("assets over 128 MiB", check_assets({f"skills/b/{i}.bin": b"" for i in range(501)}, None), "over 500")
+    with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
+        expect("asset bytes missing", check_assets(png, Path(tmp)), "is not in")
+        pkg = Path(tmp) / "pkg"
+        (pkg / "skills" / "b").mkdir(parents=True)
+        (pkg / "agent.json").write_text("{}", encoding="utf-8")
+        (pkg / "skills" / "b" / "ref.png").write_bytes(png["skills/b/ref.png"])
+        (pkg / "skills" / "b" / "big.json").write_text("x" * (MAX_FILE_BYTES + 1), encoding="utf-8")
+        (pkg / "skills" / "c").mkdir()
+        (pkg / "skills" / "c" / "big.json").write_text("x" * (MAX_FILE_BYTES + 1), encoding="utf-8")
+        _, read_files, read_assets = read_package(pkg)
+        expect("oversized text beside a binary is an asset", None if sorted(read_assets) == ["skills/b/big.json", "skills/b/ref.png"] and "skills/c/big.json" in read_files else "wrong split", None)
+
     # Packed files: exact canonical JSON round-trips; anything else is caught.
     with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
         doc = {"manifest": base_manifest, "files": base_files}
@@ -410,7 +481,7 @@ def self_test() -> int:
     elif not (ENACT / "donphan" / "agent.json").is_file():
         failures.append("donphan: package missing; run node scripts/sync-enact-agents.mjs sync")
     else:
-        manifest, files = read_package(ENACT / "donphan")
+        manifest, files, _ = read_package(ENACT / "donphan")
         expect("donphan", check_package("donphan", manifest, files, validator, donphan["requires_mcp"], live_allow, donphan.get("own_skills", donphan["skills"]), load_json(ENACT / "library" / "index.json")["skills"]), None)
         if donphan.get("blocked_by"):
             failures.append(f"donphan: inventory blocked_by must be empty, got {donphan['blocked_by']}")
