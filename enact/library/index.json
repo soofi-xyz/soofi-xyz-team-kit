@@ -290,19 +290,19 @@
       "version": "1.0.0-sha256-f63435603a7a8a25"
     },
     "build-lexicon-product": {
-      "bytes": 64149,
-      "digest": "sha256:9778bd2544c1a3b5a196dea4541f58de01b8e673377e96f0235b8f9d56541a88",
-      "encoded_bytes": 68091,
-      "files": 5,
+      "bytes": 69497,
+      "digest": "sha256:33b61413e3401d1355da7e6b4872407e8d1935e62147f8d052861390dbfc7773",
+      "encoded_bytes": 73642,
+      "files": 6,
       "reason": "used by 4 packaged agents",
-      "stored_bytes": 66187,
+      "stored_bytes": 71652,
       "used_by": [
         "dialga",
         "jirachi",
         "kecleon",
         "silvally"
       ],
-      "version": "1.0.0-sha256-812e37598a1d4bb6"
+      "version": "1.0.0-sha256-0baa7f9b2541016a"
     },
     "build-local-rag-pocs": {
       "bytes": 10232,
