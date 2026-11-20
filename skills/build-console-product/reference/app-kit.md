@@ -3,13 +3,15 @@
 Use this contract for the package an app is built with, the guardrails that
 keep an app inside the design system, app hosting, the data hooks, local
 development, delivery and the reference app. It is the target design. As of
-2026-11-19 the `app-kit` piece is built in the Console repository (pull request
+2026-11-20 the `app-kit` piece is built in the Console repository (pull request
 33, runtime 1.15.0) by [the implementation rules](#implementation-rules):
 the package, the guardrails, local development on sample data and `AK-1` to
-`AK-11`. App hosting, runtime sharing, the data hooks through Console's API,
-delivery and the reference app are not built. Discover the target revision
-before relying on any part, and settle names still marked as placeholders in
-the Console repository.
+`AK-11`. Pull request 34 (runtime 1.16.0, on `main`) builds apps against the
+design-system pointer of the kit's own major
+([runtime sharing](design-system.md#runtime-sharing)). App hosting, the data
+hooks through Console's API, delivery and the reference app are not built.
+Discover the target revision before relying on any part, and settle names
+still marked as placeholders in the Console repository.
 
 Read it with [the product contract](PRD.md) and
 [the design system](design-system.md). The [Tests](#tests) section defines done
@@ -328,8 +330,9 @@ human review.
 ## Implementation rules
 
 These rules describe the app kit in runtime 1.15.0 (pull request 33 in
-`prismteam-ai/console`). Keep them when changing it; each one is checked by a
-test or a type check.
+`prismteam-ai/console`) and its build against the pointer in 1.16.0 (pull
+request 34, on `main`). Keep them when changing it; each one is checked by a test or
+a type check.
 
 - **Layout.** The kit's package is `app-kit/` (`package.json`, the `console-app`
   command in `bin/`, Node sources in `src/`, the scaffold in `template/`, the
@@ -337,7 +340,9 @@ test or a type check.
   `fixtures/`). What apps run is in the UI tree, `ui/src/app-runtime/`:
   `index.ts` (what an app imports), `react.ts` (the reduced React),
   `jsx-runtime.ts` and `jsx-dev-runtime.ts` (the wrapper) and `mount.tsx` (the
-  host side, never imported by an app). `pnpm app-kit:build` builds
+  host side, never imported by an app: `mountApp(App, target, source?,
+  { tokenStylesheet? })` links the build's stylesheet and the token stylesheet
+  and renders once both have loaded). `pnpm app-kit:build` builds
   `app-kit/dist/`; `pnpm test` and `pnpm test:e2e` run it first.
 - **One list per surface.** `ui/src/app-runtime/surface.ts` imports nothing
   and holds `reducedReactExports`, the runtime's module names, its address and
@@ -348,13 +353,17 @@ test or a type check.
   design-system version); `pnpm app-kit:build` refuses to build when they differ.
   Bump both together.
 - **Two copies of one runtime.** Console's UI build emits the runtime at fixed
-  names under `app-runtime/` (served at `/console/app/app-runtime/`), sharing
-  the renderer's React chunk. The kit's `dist/runtime/` is the same sources
-  built for development with React and react-dom bundled in, so `console-app
-  dev` needs no network and no dependency pre-bundling. An app's production
-  build marks the kit, its JSX runtime and `react` external at
-  `/console/app/app-runtime/` (`appRuntimeBase`). `runtime-sharing` replaces
-  that address with the versioned pointer; change it in `surface.ts` only.
+  names under `app-runtime/`, with `design-system.css` beside them, sharing the
+  renderer's React chunk; every install serves that folder at the build's
+  immutable path and through the pointer of its major
+  ([runtime sharing rules](design-system.md#runtime-sharing-implementation-rules)).
+  The kit's `dist/runtime/` is the same sources built for development with
+  React and react-dom bundled in, so `console-app dev` needs no network and no
+  dependency pre-bundling. An app's production build marks the kit, its JSX
+  runtime and `react` external at the pointer of the kit's own major,
+  `/console/app/ui/v<major>/` (`kitPointerBase` in `app-kit/src/vite.ts`), and
+  the build record names it as `designSystem.pointer`. Change addresses in
+  `surface.ts` only.
 - **Build settings.** The kit sets `configFile: false`, `envFile: false`,
   `publicDir: false`, `jsxImportSource: "@prism/console-app-kit"` and
   `jsxDev` itself, and sets `NODE_ENV` for each command: Vite takes
@@ -375,7 +384,8 @@ test or a type check.
 - **Rules beyond the seven.** `react-surface` (an import from React outside the
   reduced list, a default or namespace import of `react`, `react/*` or
   `react-dom`), `build-settings`, `settings` (the settings file, its
-  `designSystem` range against the components used, or a sample file),
+  `designSystem` range against the components used or leaving the kit's major,
+  or a sample file; `console-app create` writes `>=<kit version> <<next major>.0.0`),
   `type-check`, `build-input`, `build-output` and `build`. Add a rule to
   `ruleNames` in `app-kit/src/violations.ts` and give it a fixture.
 - **Components the check knows.** `catalog.ts` gives every component its first

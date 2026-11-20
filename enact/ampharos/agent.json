@@ -23,5 +23,5 @@
   "secrets": [
     "OPENAI_API_KEY"
   ],
-  "version": "1.170.0"
+  "version": "1.171.0"
 }
