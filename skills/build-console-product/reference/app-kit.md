@@ -142,8 +142,13 @@ Console stores and serves apps; nothing else hosts them.
 - **Shell.** After sign-in the shell loads the active version of the app named
   in the address. Without a session it loads no app code and no data. Two
   materially different apps run on one runtime with no change to the runtime.
-- **Retirement.** As of 2026-11-18 Console has no application delete. Decide
-  retirement in the Console repository before promising it.
+- **Retirement.** As of 2026-11-20 Console has no app delete and no route to
+  retire a version. Decide retirement in the Console repository before
+  promising it.
+
+Built in runtime 1.17.0 (the API, pull request 35) and 1.18.0 (the shell, pull
+request 36), both on `main`; see
+[App hosting implementation rules](#app-hosting-implementation-rules).
 
 ## Data hooks
 
@@ -411,3 +416,84 @@ a type check.
   of `AK-11` import hand-built bundles from the installed stand-in's origin in
   `e2e/app-kit.installed.spec.ts`, which Playwright answers so the stand-in
   serves nothing it would not in production.
+
+## App hosting implementation rules
+
+These rules describe app hosting in runtime 1.17.0 and 1.18.0 (pull requests 35
+and 36 in `prismteam-ai/console`). The routes, bodies and answers are
+authoritative only in `requirements/swagger.yml` and the README's "App hosting"
+section; keep both in step with the handlers, and `scripts/verify-openapi.ts`
+lists every app path. Keep these rules when changing it.
+
+- **A resource of its own.** Apps live under `/accounts/{accountId}/apps`,
+  apart from the dashboard `applications`. Do not extend the manifest schema,
+  Deploy's Console installer or Build's manifest schema to hold an app; Deploy
+  has no app installer yet, so agree the upload format and error codes with its
+  owner (`corviknight`) before building one.
+- **One upload, verified before any write.** `POST .../versions` takes one JSON
+  body: the build record `console-app check` wrote and each file as
+  `contentBase64`. Console refuses the whole upload with `400` `BAD_REQUEST`,
+  one `error.details.issues` entry per file and reason, and saves nothing,
+  unless: the record parses with `check.passed: true` and the path's `appId`;
+  the uploaded paths are exactly the record's, each a flat `.js` name; the
+  record lists `app.js`, the entry a published app opens with; each file's
+  sha256 and length match; each file is UTF-8 without a byte order mark
+  (`not_utf8`), because the file route serves text and must serve the digest's
+  exact bytes; and the files fit 50 files and 4 MiB. `versionDigest` is
+  Console's digest of the validated record and `versionId` derives from it, so
+  the same build is the same version; callers read both back.
+- **Status codes mean one thing each.** `412` is the selection's state only (a
+  stale or wrong `If-Match`, a lost race), checked first and changing nothing;
+  `428` is a missing `If-Match`; `422` `INCOMPATIBLE_VERSION` is a version that
+  cannot run here (`foreign_import`, `design_system_version`,
+  `unknown_component`, `missing_pack`); `503` with `Retry-After` is a create
+  that kept conflicting after Console's retries. `422` and `503` raise no alarm.
+  The publish marker is the `etag` field of `active`'s body or the `ETag` of the
+  last publish or rollback, never `active`'s `ETag` header, which is for
+  `If-None-Match` only.
+- **Publish checks live in one place.** The design-system checks a publish and a
+  rollback run are in `src/domain/design-system-installation.ts`. The
+  `design-system-configuration` piece adds "component switched off" there.
+- **Scopes and provenance.** Create and submit need `console:configure`;
+  publish and rollback `console:publish`; reads `console:read`. Create, submit
+  and publish pass the provenance gate (Deploy's signature covers the exact
+  upload bytes); rollback is ungated. A browser session never writes: under
+  `/viewer` only `active` and the file route answer, everything else `403`.
+- **What a browser reads.** `GET /viewer/.../apps/{appId}/active` answers
+  `ActiveAppView`: what loads the app and nothing the record declares (no
+  binding, action, role, scope or parameter). The file route serves one file of
+  a published version as `text/javascript; charset=utf-8` with `nosniff`,
+  `private, max-age=31536000, immutable`, `Vary: Authorization, Cookie,
+  x-api-key` and the digest as `ETag`, checks the name against the file-name
+  rule before any read, and re-verifies the digest on every read (`409`
+  `ARTIFACT_DIGEST_MISMATCH`, which alarms). A published version stays readable
+  after a newer publish, so an open tab still loads its chunks.
+- **The page.** `/console/app/?appId=<id>` opens an app; `?appId=` wins over
+  `?app=`. `ui/src/entry.ts` imports no React; `ui/src/app-page.ts` checks the
+  session, reads the view, refuses a `pointer` other than the page's own
+  major's, imports `mount.js` through that pointer and then the entry by
+  address, so the page holds one React. Never bundle the mount module into the
+  page. Only a Google cookie session opens an app, because `import()` cannot
+  send a header. Only a `401` means signed out; any other failed or malformed
+  session answer shows "Your session could not be checked". A failed import of
+  the page's own code shows a reload instruction, never a blank page. An app's
+  default export may be a function or a `memo()` result.
+- **Data until `data-hooks`.** `hostedDataSource` in `ui/src/app-page.ts`
+  answers every read and action with "Data is not available in hosted apps
+  yet". The build record already holds each binding's and action's full
+  definition; `data-hooks` replaces that source.
+- **Known limits.** The record's `roles` are not enforced, so any signed-in
+  viewer of the environment opens any published app: dev environments only
+  until `access-sign-in`. No delete route. Bindings and actions are not checked
+  against registered operations at submit. The page ignores the view's
+  `theme`. A denied Google sign-in returns to Console's home, not to the app.
+  Whether the gateway passes an app file through as JavaScript and the session
+  cookie on the shared domain are only visible on a deployed environment.
+- **Tests.** `AH-3`, `AH-5`, `AH-6`, `AH-7` and the API half of `AH-4` run in
+  `test/app-hosting.test.ts` against the real handler over in-memory stores;
+  the page's loader in `test/app-page.test.ts` with fakes. `AH-1`, `AH-2` and
+  the reload half of `AH-4` run in `e2e/app-hosting.google.spec.ts` (the
+  `installed-google` project, signed in through the fake Google issuer):
+  `sample-app` and `app-kit/fixtures/sample-app-two` are built with
+  `console-app check`, published with the environment key and opened by
+  address. Build fixtures with the kit; never hand-write a build record.

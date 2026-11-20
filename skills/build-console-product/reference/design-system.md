@@ -504,12 +504,10 @@ code. The kit's side is in
   path and digest from `pointer.json` or `builds.json`, and chunk file names
   from the build's `.vite/manifest.json`. Never write a version, digest or
   chunk file name into a test.
-- **Not built.** The version check at publish (the build record already carries
-  `designSystem.minimumVersion`, `components` and `packs` for it), a pointer API,
-  and loading an app in the Console shell on one React. The Console page loads
-  React from its own build's address, not the pointer's, so an app loaded in
-  the shell would load a second React. `SH-7` is proven on a test host page;
-  the shell belongs to [app hosting](app-kit.md#app-hosting).
+- **Built by app hosting.** The version check at publish and loading an app in
+  the Console page on one React came with [app hosting](app-kit.md#app-hosting-implementation-rules)
+  (runtime 1.17.0 and 1.18.0): the page's entry imports no React and loads the
+  mount module through the pointer. A pointer API is still not built.
 
 ## Kit maintenance
 

@@ -362,9 +362,11 @@ A piece is done only when every test in its table passes.
 
 ## 12. Current state
 
-As of 2026-11-20, `prismteam-ai/console` at `c206182` (runtime 1.16.0) has the
+As of 2026-11-20, `prismteam-ai/console` at `d858269` (runtime 1.18.0) has the
 dashboard renderer, immutable revisions with publish and rollback, the report
-components, the design system, the app kit and runtime sharing. The only
+components, the design system, the app kit, runtime sharing and app hosting
+(apps uploaded, published, opened at `/console/app/?appId=<id>` behind Google
+sign-in and rolled back; no data and no per-app roles yet). The only
 registered product operation is `report` /
 `read-dataset`. Sign-in is Console's own `google-oidc` policy, a viewer password
 or the shared key, not Access. The browser policy is already
