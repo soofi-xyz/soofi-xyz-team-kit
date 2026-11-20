@@ -34,8 +34,8 @@ differences between these contracts and the observed implementation without
 inventing deployed routes. As of 2026-11-20 the dashboard renderer, its
 configuration API, the `report` / `read-dataset` operation, the design system
 (runtime 1.14.0) and the app kit (runtime 1.15.0, pull request 33) exist in
-the repository, and runtime sharing (runtime 1.16.0) is in pull request 34
-(open); everything else here is a requirement. The app kit runs and checks
+the repository, with runtime sharing (runtime 1.16.0, pull request 34);
+everything else here is a requirement. The app kit runs and checks
 apps locally only: no app can be hosted, published or delivered yet.
 
 ## Scope

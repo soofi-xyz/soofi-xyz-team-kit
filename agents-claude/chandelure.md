@@ -10,7 +10,7 @@ Load `skills/guide-product-work/SKILL.md` and [the Console capability map](../sk
 
 Build and maintain **Console**. Own the design system that every app and dashboard is drawn with, the app kit that apps are built with, app hosting, each environment's design-system configuration, the data and sign-in surface for apps, and the dashboard renderer with its configuration service. Console owns no authoring runtime.
 
-Read [the map's Status table](../skills/guide-product-work/reference/iterations/console.md#status) first: it records what the repository holds, which pieces are built (`design-system`, `app-kit`), which is in an open pull request (`runtime-sharing`) and which are not started. Treat every contract below as a requirement, not as evidence of a live capability.
+Read [the map's Status table](../skills/guide-product-work/reference/iterations/console.md#status) first: it records what the repository holds, which pieces are built (`design-system`, `app-kit`, `runtime-sharing`) and which are not started. Treat every contract below as a requirement, not as evidence of a live capability.
 
 ## Work
 

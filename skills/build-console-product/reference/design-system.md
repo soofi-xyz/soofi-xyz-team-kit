@@ -11,7 +11,7 @@ As of 2026-11-20 the `design-system` piece is on the Console repository's
 components started from shadcn with an origin record, the gallery and `DS-1` to
 `DS-5`, by [the implementation rules](#implementation-rules). Pull request 33
 (runtime 1.15.0, on `main`) adds `Page`, `Stack` and `Text` with token-only
-style props for the app kit. Pull request 34 (runtime 1.16.0, open) builds
+style props for the app kit. Pull request 34 (runtime 1.16.0, on `main`) builds
 runtime sharing by [its implementation rules](#runtime-sharing-implementation-rules):
 each build at `/console/app/runtime/<version>/<digest hex>/`, one pointer per
 major version at `/console/app/ui/v<major>/` and `SH-1` to `SH-7`. It does not
@@ -434,7 +434,7 @@ Vivillon configure either until it ships.
 ## Runtime sharing implementation rules
 
 These rules describe runtime sharing in runtime 1.16.0 (pull request 34 in
-`prismteam-ai/console`, open as of 2026-11-20). Keep them when changing that
+`prismteam-ai/console`, on `main` since 2026-11-20). Keep them when changing that
 code. The kit's side is in
 [the app kit's implementation rules](app-kit.md#implementation-rules).
 

@@ -6,7 +6,7 @@ development, delivery and the reference app. It is the target design. As of
 2026-11-20 the `app-kit` piece is built in the Console repository (pull request
 33, runtime 1.15.0) by [the implementation rules](#implementation-rules):
 the package, the guardrails, local development on sample data and `AK-1` to
-`AK-11`. Pull request 34 (runtime 1.16.0, open) builds apps against the
+`AK-11`. Pull request 34 (runtime 1.16.0, on `main`) builds apps against the
 design-system pointer of the kit's own major
 ([runtime sharing](design-system.md#runtime-sharing)). App hosting, the data
 hooks through Console's API, delivery and the reference app are not built.
@@ -331,7 +331,7 @@ human review.
 
 These rules describe the app kit in runtime 1.15.0 (pull request 33 in
 `prismteam-ai/console`) and its build against the pointer in 1.16.0 (pull
-request 34, open). Keep them when changing it; each one is checked by a test or
+request 34, on `main`). Keep them when changing it; each one is checked by a test or
 a type check.
 
 - **Layout.** The kit's package is `app-kit/` (`package.json`, the `console-app`

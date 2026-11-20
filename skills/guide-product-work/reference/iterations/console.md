@@ -44,7 +44,7 @@ environment before relying on it.
 
 | Piece | State (2026-11-20) |
 | --- | --- |
-| Repository | prismteam-ai/console, `main` at `ad113b1`, runtime 1.15.0. Pull request 34 (runtime 1.16.0, runtime sharing) is open as of 2026-11-20 at `09d9078`. |
+| Repository | prismteam-ai/console, `main` at `c206182`, runtime 1.16.0. |
 | Dashboard runtime | In the repository: the manifest schema, immutable revisions, publish and rollback, the renderer and the report components. Not verified as installed in any environment. |
 | Registered product operations | `report` / `read-dataset` only. The manifest schema accepts Model, Persist and System bindings and actions, but none is registered, so a revision that uses one is refused. Action forms and job status have no registered operation behind them. |
 | Sign-in | Console's own `google-oidc` policy, a viewer password and the shared key. Sign-in through Access is not built. |
@@ -55,7 +55,7 @@ environment before relying on it.
 | Build's package source | Build's runner installs packages only from its CodeArtifact domain `build-<stage>` and rejects a product `.npmrc`; the app kit and each pack's types package must be published there. Nothing is published there yet. |
 | `design-system` | On `main` (pull requests 31 and 32, runtime 1.14.0): tokens, two token sets, base components started from shadcn with an origin record, the gallery and `DS-1` to `DS-5`. Pull request 33 adds `Page`, `Stack` and `Text`. |
 | `app-kit` | Pull request 33 (runtime 1.15.0): `@prism/console-app-kit` in `app-kit/`, the `console-app` command (`create`, `dev`, `check`, `build`), the JSX wrapper, the reduced React, the build record and `AK-1` to `AK-11`. Not published to Build's package registry. |
-| `runtime-sharing` | Pull request 34 (runtime 1.16.0), open as of 2026-11-20: each build at `/console/app/runtime/<version>/<digest hex>/` (only `app-runtime/` and `assets/`), one pointer per major at `/console/app/ui/v<major>/` written by the stack on install and never pruned, the kit building apps against its own major's pointer, and `SH-1` to `SH-7` as repository tests. Not verified as installed in any environment. Not built: the version check at publish, a pointer API and loading an app in the Console shell on one React. |
+| `runtime-sharing` | On `main` (pull request 34, runtime 1.16.0): each build at `/console/app/runtime/<version>/<digest hex>/` (only `app-runtime/` and `assets/`), one pointer per major at `/console/app/ui/v<major>/` written by the stack on install and never pruned, the kit building apps against its own major's pointer, and `SH-1` to `SH-7` as repository tests. Not verified as installed in any environment. Not built: the version check at publish, a pointer API and loading an app in the Console shell on one React. |
 | `app-hosting`, `design-system-configuration`, `renderer-reskin`, `data-hooks`, `app-delivery`, `component-packs`, `reference-app` | Not started. |
 | `access-sign-in` | Not started, for dashboards and apps alike. |
 | `design-system`, `app` and `component-pack` bundle kinds | Targets. Neither Build nor Deploy has them. |
