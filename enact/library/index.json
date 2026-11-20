@@ -15,7 +15,7 @@
       ]
     }
   },
-  "kit_version": "0.174.0",
+  "kit_version": "0.175.0",
   "limits": {
     "body_bytes": 4194304,
     "encoded_bytes": 5242880,
@@ -290,19 +290,19 @@
       "version": "1.0.0-sha256-f63435603a7a8a25"
     },
     "build-lexicon-product": {
-      "bytes": 63881,
-      "digest": "sha256:7c6f4211c5709e5daa5653ca9c2dc6d63606dd84e846ac2adefce3cf550f489d",
-      "encoded_bytes": 67813,
+      "bytes": 64149,
+      "digest": "sha256:9778bd2544c1a3b5a196dea4541f58de01b8e673377e96f0235b8f9d56541a88",
+      "encoded_bytes": 68091,
       "files": 5,
       "reason": "used by 4 packaged agents",
-      "stored_bytes": 65914,
+      "stored_bytes": 66187,
       "used_by": [
         "dialga",
         "jirachi",
         "kecleon",
         "silvally"
       ],
-      "version": "1.0.0-sha256-2ab6b55a1d491527"
+      "version": "1.0.0-sha256-812e37598a1d4bb6"
     },
     "build-local-rag-pocs": {
       "bytes": 10232,

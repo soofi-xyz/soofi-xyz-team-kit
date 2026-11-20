@@ -51,6 +51,11 @@ activation compatibility. Do not move these architecture
 decisions into Jirachi prompts or confuse business definitions with platform
 telemetry.
 
+For SOC's legal collections data (Trak claims, costs, judgments and remits), read
+[the legal data model](reference/legal-data-model.md): where its vocabulary,
+families and metrics live today, the date-only business time, and the metric
+gaps that come back to Dialga.
+
 Jirachi receives KPI intent, suggests metrics derived from the governed Model
 vocabulary, reads the contracts Dialga defines, classifies reuse versus supported
 configuration versus a product gap, and applies only existing
