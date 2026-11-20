@@ -163,9 +163,10 @@ the only path.
   refuses, server-side, a read of anything the active version did not declare.
 - **Registered operations.** Each binding names a registered product operation
   with typed input and output and a bounded timeout. An unregistered operation
-  is refused when the version is submitted. As of 2026-11-18 the only
-  registered operation is `report` / `read-dataset`; register Persist reads and
-  the others an app needs with their owning builders.
+  is refused when the version is submitted. As of 2026-11-20 the registered
+  operations are `report` / `read-dataset` and `persist` / `list-related`
+  (runtime 1.19.0); register the others an app needs with their owning
+  builders.
 - **As the person.** Check route, binding and action scopes on every request.
   Call the owning product with the signed-in person's Access token, never the
   shared key, so two people see their own records on the same page.
@@ -176,6 +177,10 @@ the only path.
 - **Computation stays with products.** An app may compute over the rows it
   loaded. A "what if" run of rules, inference or scheduling belongs to the
   owning product; report its absence as a gap and do not imitate it in Console.
+
+Built in runtime 1.19.0 (pull request 37) against the contract of the products
+it calls, which do not answer as the person yet; see
+[Data hooks implementation rules](#data-hooks-implementation-rules).
 
 ## Local development
 
@@ -457,8 +462,9 @@ lists every app path. Keep these rules when changing it.
 - **Scopes and provenance.** Create and submit need `console:configure`;
   publish and rollback `console:publish`; reads `console:read`. Create, submit
   and publish pass the provenance gate (Deploy's signature covers the exact
-  upload bytes); rollback is ungated. A browser session never writes: under
-  `/viewer` only `active` and the file route answer, everything else `403`.
+  upload bytes); rollback is ungated. A browser session never configures:
+  under `/viewer` only `active`, the file route and, since 1.19.0, the binding
+  and action routes answer, everything else `403`.
 - **What a browser reads.** `GET /viewer/.../apps/{appId}/active` answers
   `ActiveAppView`: what loads the app and nothing the record declares (no
   binding, action, role, scope or parameter). The file route serves one file of
@@ -478,14 +484,11 @@ lists every app path. Keep these rules when changing it.
   session answer shows "Your session could not be checked". A failed import of
   the page's own code shows a reload instruction, never a blank page. An app's
   default export may be a function or a `memo()` result.
-- **Data until `data-hooks`.** `hostedDataSource` in `ui/src/app-page.ts`
-  answers every read and action with "Data is not available in hosted apps
-  yet". The build record already holds each binding's and action's full
-  definition; `data-hooks` replaces that source.
+- **Data.** Since runtime 1.19.0 the page's data source reads and acts through
+  Console's API; see [Data hooks implementation rules](#data-hooks-implementation-rules).
 - **Known limits.** The record's `roles` are not enforced, so any signed-in
   viewer of the environment opens any published app: dev environments only
-  until `access-sign-in`. No delete route. Bindings and actions are not checked
-  against registered operations at submit. The page ignores the view's
+  until `access-sign-in`. No delete route. The page ignores the view's
   `theme`. A denied Google sign-in returns to Console's home, not to the app.
   Whether the gateway passes an app file through as JavaScript and the session
   cookie on the shared domain are only visible on a deployed environment.
@@ -497,3 +500,79 @@ lists every app path. Keep these rules when changing it.
   `sample-app` and `app-kit/fixtures/sample-app-two` are built with
   `console-app check`, published with the environment key and opened by
   address. Build fixtures with the kit; never hand-write a build record.
+
+## Data hooks implementation rules
+
+These rules describe data hooks in runtime 1.19.0 (pull request 37 in
+`prismteam-ai/console`). The routes and answers are authoritative only in
+`requirements/swagger.yml` and the README's "Data hooks" section; keep both in
+step with the handlers. Keep these rules when changing it.
+
+- **Two routes per app.** `GET .../apps/{appId}/bindings/{binding}` and
+  `POST .../apps/{appId}/actions/{action}` with `{ "input" }`, under `/viewer`
+  for a signed-in session and without it for the key. Both go through
+  `AppService.readBinding` and `invokeAction`, which read the active version's
+  build record (cached by artifact and digest) and look the name up with
+  `Object.hasOwn`, so `constructor` is undeclared. An undeclared name answers
+  `404` before any upstream call; missing scopes `403` naming them.
+- **Refuse at submit, not only at read.** `submitVersion` runs every binding
+  and action through `assertBindingSupported` and `assertActionSupported`
+  before any write: `400` with one `unregistered_operation` issue per entry,
+  and refuses a binding that declares `pageParameters`
+  (`page_parameters_unsupported`), since the hooks read by name alone. Never
+  answer `412` for it; `412` stays the selection's state. The registry also
+  checks the operation's own `requiredScopes` against the caller on every
+  call, so a version stored before the submit check cannot read with fewer.
+- **Operations run as the caller.** `ProductOperationContract.execute` takes
+  the input, the `Principal` and an `AbortSignal` that fires at Console's
+  timeout, after the timeout has settled (so an abort listener cannot turn a
+  timeout into another answer); pass the signal to every upstream call. `Principal.accessToken` is
+  the person's Access token: forward it as `Authorization: Bearer`, never log,
+  store or return it, and never send the environment key instead. An
+  operation that must answer as the person refuses a principal without a token
+  with `403` before any call. The registry parses the input before `execute`;
+  do not parse it again (a transforming schema breaks on a second parse).
+- **`persist` / `list-related`.** `src/adapters/persist.ts`: one record's
+  related records over one relationship, through Persist GraphQL at
+  `CONSOLE_PERSIST_GRAPHQL_URL` (`https://<shared domain>/persist/graphql`, set
+  by the stack). Every label, relationship and field is a checked GraphQL
+  identifier and the id and page size are variables, so a parameter cannot
+  widen the query. A `null` record is no rows. `401` and `403` from Persist are
+  `403`; GraphQL errors and other statuses `503`; a shape that does not match
+  `502`.
+- **A session's one write.** Under `/viewer` only the action route accepts a
+  POST, and only as `Content-Type: application/json` with `Sec-Fetch-Site`
+  absent or `same-origin` (`403` otherwise), so a cross-site form cannot run an
+  action with the cookie. The gateway's `POST /viewer/{proxy+}` is in
+  `marketplace.shared-api.json` and the nag suppressions. Console logs each
+  action with the caller's subject and the request id.
+- **What the browser learns.** `ActiveAppView.refresh` names the bindings that
+  set `refreshSeconds` and their intervals, nothing else of a binding. A
+  binding answer's `ETag` is the body's SHA-256 with `Cache-Control: private,
+  no-cache` and the app file route's `Vary`.
+- **The page's source.** `hostedDataSource` in `ui/src/app-page.ts` reads and
+  acts with same-origin requests only, keeps each binding's last `ETag` and
+  rows, and answers a `304` with the same rows so the hooks do not redraw.
+  `403` is `denied` with Console's own message, `504` `timed-out`, `401` and
+  everything else `failed`, each with the `x-request-id` as `correlationId`;
+  a product's answer never reaches the page. `useBinding` reads again a full
+  interval after each answer, never overlapping, and only while mounted.
+- **Kit settings.** Report's operation takes `datasetId`, not `dataset`; the
+  template and fixtures use it.
+- **Known limits.** No session carries an Access token until
+  `access-sign-in`: Google and viewer-password sessions hold `console:read` and
+  `report:read`, so Report bindings work and every Persist binding is denied.
+  Persist's user-scoped access is not built and its GraphQL still requires the
+  environment key ([the Persist contract](../../build-persist-service/reference/user-scoped-access.md));
+  send that gap to `conkeldurr`. No production action is registered: Persist
+  makes a person's token read-only and Report records no caller, so a version
+  that declares an action is refused at submit until its owning product
+  registers one.
+- **Tests.** `DH-1` to `DH-6` run in `test/data-hooks.test.ts` against the real
+  handler, with a fake Report bucket, a fake Persist that answers by the token
+  it is sent and a fake owning product for the action; a test principal
+  carries a token through the `x-test-access-token` header, read only by the
+  `fake` auth adapter. `DH-1`, `DH-4` and `DH-6` also run in
+  `e2e/data-hooks.google.spec.ts`; the stand-in's `sample-report` has a dataset
+  per test that changes it (`refreshing`, `slow`), so parallel tests do not
+  see each other's refreshes.
