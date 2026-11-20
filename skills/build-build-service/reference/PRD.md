@@ -955,7 +955,7 @@ The configuration bundle check must apply each parameter's `default` with the
 same textual fill Deploy uses (JSON-escaped for `.json` files) before
 `JSON.parse`, then run structural and type checks on the filled document. Keep
 the `sha256` over the original source. Unquoted placeholders such as
-`"enabled": {{parameter:activationsEnabled}}` are valid when the filled document
+`"enabled": {{parameter:<name>}}` are valid when the filled document
 parses; a Build that parses the raw file first and rejects them while Deploy
 accepts them is a defect ([prismteam-ai/build#68](https://github.com/prismteam-ai/build/pull/68)).
 Treat these additions as required scope to verify in the target revision, not as

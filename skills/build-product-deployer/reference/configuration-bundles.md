@@ -369,7 +369,8 @@ Paths below are relative to `https://<shared domain>/enact`, with the shared `x-
 ## Parameter placeholders
 
 A `{{parameter:<name>}}` placeholder may stand for a non-string JSON value when
-written unquoted, for example `"enabled": {{parameter:activationsEnabled}}`.
+written unquoted, for example `"enabled": {{parameter:<name>}}` with a parameter
+named `activationsEnabled`.
 Deploy fills placeholders textually (JSON-escaped value for `.json` files).
 Build fills each placeholder with its `default` the same way, then parses and
 validates the filled document; the `sha256` stays over the original source.
@@ -418,7 +419,8 @@ Before merging, check what the install will replace:
   registered version returns `409` and fails the install.
 - A committed activation with `"enabled": false` disables the live activation
   of the same name. An activation that must run live in one environment and
-  stay off in others uses `"enabled": {{parameter:activationsEnabled}}` (see
+  stay off in others uses `"enabled": {{parameter:<name>}}` with a parameter such
+  as `activationsEnabled` (see
   [Parameter placeholders](#parameter-placeholders)), never a committed literal.
 - An Inference configuration becomes the current version for runs, including over
   one a configurer saved directly.

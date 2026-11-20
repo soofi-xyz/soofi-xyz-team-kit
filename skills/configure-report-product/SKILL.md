@@ -86,7 +86,7 @@ A report ships as a CONFIGURATION bundle repository made from
 [`prismteam-ai/portal-performance-report`](https://github.com/prismteam-ai/portal-performance-report):
 
 - `report/<id>.json`: the configuration, with per-install values as parameters such as
-  `"schedule": "{{parameter:refreshSchedule}}"`.
+  `"schedule": "{{parameter:<name>}}"` with a parameter named `refreshSchedule`.
 - `bundle.json`: `configurations` with `product: report`, `kind: report`, the `id` and its
   `source`; `parameters` with safe defaults (`manual`, so review installs do not refresh);
   `secrets: {}`.

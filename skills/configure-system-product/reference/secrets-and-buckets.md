@@ -31,7 +31,7 @@ path:
   "Parameters": { "contractVersion": 2, "run_id.$": "$.input.runId" },
   "Secrets": {
     "parameters.postbackAuth": {
-      "SecretArn": "arn:aws:secretsmanager:us-east-2:111122223333:secret:voapps-postback-basic-AbCdEf",
+      "SecretArn": "<ARN of the Secrets Manager secret voapps-postback-basic>",
       "JsonKey": "basic"
     }
   },

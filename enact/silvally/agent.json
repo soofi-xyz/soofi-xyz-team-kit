@@ -23,7 +23,7 @@
     },
     {
       "name": "build-product-deployer",
-      "version": "1.0.0-sha256-ccf06867e8092266"
+      "version": "1.0.0-sha256-c957cafcbdc1eea3"
     },
     {
       "name": "build-saas-marketplace",
@@ -43,7 +43,7 @@
     },
     {
       "name": "guide-product-work",
-      "version": "1.0.0-sha256-c0a956a94eef6a95"
+      "version": "1.0.0-sha256-afd7d9b2ee7db035"
     },
     {
       "name": "operate-marketplace",
@@ -71,5 +71,5 @@
   "secrets": [
     "PRISM_API_KEY"
   ],
-  "version": "1.172.0"
+  "version": "1.174.0"
 }
