@@ -15,7 +15,7 @@
       ]
     }
   },
-  "kit_version": "0.172.0",
+  "kit_version": "0.173.0",
   "limits": {
     "body_bytes": 4194304,
     "encoded_bytes": 5242880,
@@ -865,12 +865,12 @@
       "version": "1.0.0-sha256-2bf41e6b17c43a95"
     },
     "guide-product-work": {
-      "bytes": 276561,
-      "digest": "sha256:24f8f129460b035837c1f806152743a474eafbfebfb4c783c39fb35cba57e2bd",
-      "encoded_bytes": 292344,
+      "bytes": 276767,
+      "digest": "sha256:23b2a52800cf4ad97657d9113b303d27561ab9902b649c1a61445c54356130c1",
+      "encoded_bytes": 292550,
       "files": 25,
       "reason": "used by 41 packaged agents",
-      "stored_bytes": 283683,
+      "stored_bytes": 283889,
       "used_by": [
         "aegislash",
         "arceus",
@@ -914,7 +914,7 @@
         "zorua",
         "zygarde"
       ],
-      "version": "1.0.0-sha256-3751635b210d411f"
+      "version": "1.0.0-sha256-b8eeed1e62d0093e"
     },
     "integrate-ci-cd": {
       "bytes": 6805,

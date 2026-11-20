@@ -190,11 +190,16 @@ body limit (2 MiB for agents, 4 MiB for skills).
 
 The bundle is not in this repository. [prismteam-ai/agent-network](https://github.com/prismteam-ai/agent-network)
 holds it and is generated from this repository's `main`: every 15 minutes a workflow there checks
-for a new commit, runs `node scripts/sync-enact-agents.mjs sync` in a checkout of it and copies
-`enact/dist/agents/*.json` and `enact/dist/skills/*.json` into a configuration bundle, which its
-own pipeline installs into the dev environment and publishes to Marketplace. Which agents stay
-out of the bundle, and why, is that repository's `kit.json`. Nothing here is committed for it; it
-depends on that command and on the layout of `enact/dist/`.
+for a new commit, runs `node scripts/sync-enact-agents.mjs sync` in a checkout of it and builds a
+configuration bundle, which its own pipeline installs into the dev environment and publishes to
+Marketplace.
+
+The bundle holds only the agents the [README's Product agents table](../README.md#product-agents)
+lists (each assigned product's builder and configurer) and the library skills they pin. Retained
+specialists stay packaged under `enact/` here and are not installed. Which listed agents stay out
+for now, and why, is that repository's `kit.json`. Nothing here is committed for the bundle; it
+depends on that command, on the layout of `enact/dist/` and on the README's `product-catalog`
+block, which `scripts/product_catalog.py sync` writes.
 
 **What an agent or skill may not hold.** Deploy fills `{{parameter:name}}` and `{{secret:name}}`
 in every file of a bundle, and an Enact document must be saved unchanged, so Build refuses an
