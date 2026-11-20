@@ -94,11 +94,12 @@ scripts/sync-enact-schema.sh [sync|check]   # refresh enact/schema from prismtea
 | Remote MCP servers (`mcp_servers`, `GET/PUT /mcp-servers`) | #25, in #30 | merged | `mcp_servers` (chandelure, donphan, hoopa, watchog, wigglytuff); each waits on the environment's allow-list (`blocked_by: mcp-allow-list`) |
 | Agent secrets (`secrets`) | #26, in #30 | merged | `secrets` (configurers' `PRISM_API_KEY`) |
 | Skill library (`library_skills`, `PUT/GET /skills/{name}`) | #27, in #30 | merged | `library_skills`; kecleon, mew and silvally fit within 1 MiB |
-| Agent assets (`assets`, `POST /agents/{name}/assets`) | [#33](https://github.com/prismteam-ai/enact/pull/33) | open | ampharos's reference images; it leaves `stays_local` |
-| Sign-in (access tokens, per-agent grants) | [#28](https://github.com/prismteam-ai/enact/pull/28) | open | Replacing the shared `x-api-key` in the editor setup above |
+| Agent assets (`assets`, `POST /agents/{name}/assets`) | [#33](https://github.com/prismteam-ai/enact/pull/33) | merged | ampharos's reference images; it leaves `stays_local` |
+| Sign-in (access tokens, per-agent grants) | [#28](https://github.com/prismteam-ai/enact/pull/28) | merged | Replacing the shared `x-api-key` in the editor setup above |
 
-All but sign-in are on prismteam-ai/enact main (`721fd15`, enact#30); `enact/schema/` is copied
-from there. Manifests carry, where they apply:
+All are on prismteam-ai/enact main; `enact/schema/` is copied from there
+(`enact/schema/SOURCE_REVISION`).
+Manifests carry, where they apply:
 
 - `library_skills`: the agent's skills that live in the skill library (below), pinned by version;
 - `mcp_servers`: `requires_mcp` minus `mcp_builtin` (`enact`, `browser`);
@@ -183,8 +184,23 @@ JSON file per agent or library skill: the exact `PUT /enact/agents/{name}` or
 Each is the document's canonical JSON (keys sorted at every level, no whitespace), so the file's
 SHA-256 is Enact's version digest (`sha256:…`) that Build records. T1 checks every packed file
 parses back to its directory's manifest and files, is byte-for-byte canonical, and fits the PUT
-body limit (2 MiB for agents, 4 MiB for skills). Build#66 copied its agent schema from enact#27
-alone, so it refuses agents with `secrets` or `mcp_servers` until it copies main's.
+body limit (2 MiB for agents, 4 MiB for skills).
+
+### The configuration bundle
+
+The bundle is not in this repository. [prismteam-ai/agent-network](https://github.com/prismteam-ai/agent-network)
+holds it and is generated from this repository's `main`: every 15 minutes a workflow there checks
+for a new commit, runs `node scripts/sync-enact-agents.mjs sync` in a checkout of it and copies
+`enact/dist/agents/*.json` and `enact/dist/skills/*.json` into a configuration bundle, which its
+own pipeline installs into the dev environment and publishes to Marketplace. Which agents stay
+out of the bundle, and why, is that repository's `kit.json`. Nothing here is committed for it; it
+depends on that command and on the layout of `enact/dist/`.
+
+**What an agent or skill may not hold.** Deploy fills `{{parameter:name}}` and `{{secret:name}}`
+in every file of a bundle, and an Enact document must be saved unchanged, so Build refuses an
+agent or library skill whose text holds one, and any literal credential (a Secrets Manager ARN,
+an AWS access key id, a private key). Write placeholder examples as `{{parameter:<name>}}` and
+describe a credential instead of showing one. T1 fails on them and names the file.
 
 ### Declaring MCP needs
 

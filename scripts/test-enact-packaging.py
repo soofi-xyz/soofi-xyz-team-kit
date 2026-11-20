@@ -25,6 +25,11 @@ at most 4 MiB, and its version still names its content; each agent pins only ver
 enact/library/index.json, at most 100 and 8 MiB (stored canonical JSON) together, none also
 among its own skills/.
 
+T1 also checks every packed file for text prismteam-ai/build refuses in an Enact document of a
+configuration bundle: a {{parameter:name}} or {{secret:name}} placeholder (Deploy fills them in
+every bundle file, and an Enact document must be saved unchanged) or a literal credential. The
+bundle is generated from this repository's main, so such text fails the run for every agent.
+
 Agents in enact/config.json must_pass_waves fail the run; every other agent is report-only
 unless --strict is given.
 
@@ -43,6 +48,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sys
 import tempfile
 import urllib.request
@@ -276,6 +282,34 @@ def check_packed(path: Path, document: dict, max_body: int) -> list[str]:
     return problems
 
 
+# prismteam-ai/build src/configuration/bundle-check.ts.
+PLACEHOLDER = re.compile(r"\{\{(?:parameter|secret):[A-Za-z][A-Za-z0-9]*\}\}")
+CREDENTIALS = [
+    (re.compile(r'arn:aws[a-z-]*:secretsmanager:[^"\s]+'), "a Secrets Manager ARN"),
+    (re.compile(r"\bAKIA[0-9A-Z]{16}\b"), "an AWS access key id"),
+    (re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"), "a private key"),
+]
+
+
+def refused_text(text: str) -> list[str]:
+    """What Build refuses in the text of an Enact document in a configuration bundle."""
+    found = [f"the placeholder {match}" for match in sorted(set(PLACEHOLDER.findall(text)))]
+    return found + [what for pattern, what in CREDENTIALS if pattern.search(text)]
+
+
+def check_refused_text(path: Path) -> list[str]:
+    """A packed file's text Build refuses, by the file inside it that holds it."""
+    raw = path.read_text(encoding="utf-8")
+    try:
+        files = json.loads(raw).get("files", {})
+    except json.JSONDecodeError:
+        return []  # check_packed reports it
+    label = path.relative_to(ROOT) if path.is_relative_to(ROOT) else path
+    by_file = [f"{label} {name}: holds {what}" for name, text in sorted(files.items()) for what in refused_text(text)]
+    # The manifest, when no file explains it.
+    return by_file or [f"{label}: holds {what}" for what in refused_text(raw)]
+
+
 def fetch_allow_list(url: str) -> list[str] | None:
     """Server names on a live environment's list (GET <url>/enact/mcp-servers), or None if no key."""
     key = os.environ.get("ENACT_API_KEY")
@@ -349,8 +383,10 @@ def run(args) -> int:
         gating = args.strict or info["wave"] in must
         rows.append({"agent": name, "wave": info["wave"], "bytes": total, "pass": not problems, "gating": gating, "problems": problems})
 
+    text_problems = [p for kind in ("agents", "skills") for path in sorted((ENACT / "dist" / kind).glob("*.json")) for p in check_refused_text(path)]
+
     if args.json:
-        print(json.dumps({"agents": rows, "library": library_rows}, indent=2))
+        print(json.dumps({"agents": rows, "library": library_rows, "bundle_text": {"pass": not text_problems, "problems": text_problems}}, indent=2))
     else:
         print(f"MCP allow-list {sorted(allow)}")
         if library_rows:
@@ -371,8 +407,14 @@ def run(args) -> int:
         passed = sum(r["pass"] for r in rows)
         print(f"\nT1: {passed}/{len(rows)} packages pass; must-pass waves {sorted(must)}"
               + ("; strict" if args.strict else ""))
+        print(f"bundle text: {'PASS' if not text_problems else 'FAIL'}")
+        for p in text_problems[:20]:
+            print(f"    - {p}")
+        if text_problems:
+            print("    write placeholder examples as {{parameter:<name>}} and describe a credential instead of showing one")
     failing = [r["agent"] for r in rows if r["gating"] and not r["pass"]]
     failing += [f"library/{r['skill']}" for r in library_rows if not r["pass"]]
+    failing += ["bundle text"] if text_problems else []
     if failing:
         print(f"T1 FAILED for gating agents: {', '.join(failing)}", file=sys.stderr)
         return 1
@@ -467,6 +509,20 @@ def self_test() -> int:
         expect("packed differs", check_packed(good, {**doc, "files": {**base_files, "x.md": "y"}}, MAX_AGENT_BODY), "does not round-trip")
         expect("packed too big", check_packed(good, doc, 10), "PUT body limit")
         expect("packed missing", check_packed(Path(tmp) / "none.json", doc, MAX_AGENT_BODY), "missing")
+
+    # Text Build refuses in an Enact document of a configuration bundle, named by the file inside.
+    expect("placeholder syntax passes", refused_text('Write {{parameter:<name>}} or "{{secret:<name>}}".'), None)
+    expect("placeholder refused", refused_text('"enabled": {{parameter:activationsEnabled}}'), "{{parameter:activationsEnabled}}")
+    expect("secret placeholder refused", refused_text("{{secret:partnerAuth}}"), "{{secret:partnerAuth}}")
+    expect("secret ARN refused", refused_text('"arn:aws:secretsmanager:us-east-2:111122223333:secret:x-AbCdEf"'), "Secrets Manager ARN")
+    expect("access key refused", refused_text("AKIA" + "A" * 16), "access key id")
+    expect("private key refused", refused_text("-----BEGIN RSA PRIVATE" + " KEY-----"), "private key")
+    with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
+        packed = Path(tmp) / "sample.json"
+        packed.write_text(canonical_json({"manifest": base_manifest, "files": base_files}), encoding="utf-8")
+        expect("packed file without refused text", check_refused_text(packed), None)
+        packed.write_text(canonical_json({"manifest": base_manifest, "files": {**base_files, "skills/a/x.md": "Use {{parameter:projectGid}}."}}), encoding="utf-8")
+        expect("packed file names the file inside", check_refused_text(packed), "sample.json skills/a/x.md: holds the placeholder {{parameter:projectGid}}")
 
     # The real donphan package reads Atlas through the allow-listed persist MCP
     # (enact/overrides/donphan.json) and must pass; the "remote MCP" case above

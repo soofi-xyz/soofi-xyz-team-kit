@@ -255,7 +255,8 @@ Rules for the sample:
 - Arrays in `Body` and `Query` are sent literally: `["$.partner.x"]` sends the
   string `$.partner.x`. To send an array, point a whole field at a path that
   resolves to one (`"projects": "$.partner.projects"`) and put the array in the
-  partner configuration (`"projects": ["{{parameter:projectGid}}"]`; Deploy
+  partner configuration (`"projects": ["{{parameter:<name>}}"]` with a parameter
+  such as `projectGid`; Deploy
   substitutes placeholders in the text, so array elements work). Never split
   one create into create + attach to work around arrays: a failed second call
   leaves an orphan.
@@ -352,7 +353,8 @@ smallest reproducing sample.
   Skarmory subscribes it. Before opening the PR:
   - Deploy `PUT`s each committed activation as-is (only a `flow_version` of a
     flow in the same bundle is replaced). Every activation that runs live uses
-    `"enabled": {{parameter:activationsEnabled}}` with default `"false"`;
+    `"enabled": {{parameter:<name>}}` (a parameter such as `activationsEnabled`)
+    with default `"false"`;
     Skarmory sets `"true"` in the environments where it must run. A committed
     literal `"enabled": false` disables the live activation of that name.
   - Build requires a `default` on every bundle parameter, and the Marketplace

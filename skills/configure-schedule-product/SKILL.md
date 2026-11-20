@@ -110,7 +110,8 @@ if present, still runs before that rank.
 Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md).
 Ship a schedule as a CONFIGURATION bundle repository made from
 `prismteam-ai/configuration-bundle-template`: `schedule/<id>.json` with per-install values
-as parameters (`"schedule": "{{parameter:runSchedule}}"`, safe default `manual`),
+as parameters (`"schedule": "{{parameter:<name>}}"` with a parameter such as
+`runSchedule`, safe default `manual`),
 `bundle.json` with `product: schedule`, `kind: schedule`, the `id` and `source`, and
 `marketplace.product.json` with `bundle_type: CONFIGURATION` and a dependency on the
 Schedule product. Open the PR and work it until checks and reviews are clean; the user

@@ -125,7 +125,7 @@ non-secret settings in an SSM parameter and the OAuth client in a secret store:
 ```json
 {
   "kind": "google-oidc",
-  "clientSecretRef": "arn:aws:secretsmanager:<region>:<account>:secret:console/<name>",
+  "clientSecretRef": "<ARN of the Secrets Manager secret console/<name>>",
   "redirectUri": "https://<shared domain>/console/viewer/auth/google/callback",
   "allowedDomains": ["example.com"],
   "allowedUsers": [],
