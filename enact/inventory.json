@@ -900,7 +900,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 12353,
+      "bytes": 12780,
       "files": 1,
       "flag_counts": {
         "aws-profile": 1,
@@ -911,7 +911,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 640926,
+      "library_pinned_bytes": 646664,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-lexicon-product",
@@ -1401,7 +1401,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 640926,
+      "library_pinned_bytes": 646664,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-lexicon-product",
@@ -1518,7 +1518,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 1133787,
+      "library_pinned_bytes": 1139525,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-lexicon-product",
@@ -2650,7 +2650,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 2167077,
+      "library_pinned_bytes": 2172815,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-lexicon-product",
@@ -3700,8 +3700,8 @@
       "wave_reason": "role: build"
     }
   },
-  "enact_version": "1.174.0",
-  "kit_version": "0.174.0",
+  "enact_version": "1.175.0",
+  "kit_version": "0.175.0",
   "mcp_allow_list": [
     "enact",
     "browser",
@@ -3913,8 +3913,8 @@
       ]
     },
     "build-lexicon-product": {
-      "bytes": 63881,
-      "files": 5,
+      "bytes": 69497,
+      "files": 6,
       "flags": {},
       "omitted": [],
       "references": [
