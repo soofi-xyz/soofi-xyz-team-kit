@@ -31,11 +31,12 @@ to build an app or configure an existing Console deployment.
 Discover the target repository and revision, its supported schema and API, the
 deployment and the selected AWS profile; verify the account and region. Record
 differences between these contracts and the observed implementation without
-inventing deployed routes. As of 2026-11-19 the dashboard renderer, its
+inventing deployed routes. As of 2026-11-20 the dashboard renderer, its
 configuration API, the `report` / `read-dataset` operation, the design system
 (runtime 1.14.0) and the app kit (runtime 1.15.0, pull request 33) exist in
-the repository; everything else here is a requirement. The app kit runs and
-checks apps locally only: no app can be hosted, published or delivered yet.
+the repository, with runtime sharing (runtime 1.16.0, pull request 34);
+everything else here is a requirement. The app kit runs and checks
+apps locally only: no app can be hosted, published or delivered yet.
 
 ## Scope
 
@@ -114,6 +115,18 @@ For any piece, keep these:
   app on that major version at once.
 - State the limits the contracts state: the check is static for direct browser
   calls, and a sandboxed frame per app is not planned.
+- Load everything on an app page from one build's address. The same React file
+  served from two addresses loads twice and hooks break across them, so the
+  shell must not load the renderer's React on an app page.
+- Treat an address loaded by `<link>` or `import`, such as a pointer or a
+  stylesheet, as public: it cannot send a key. Put no app code or data on one.
+- Make the stand-in answer as production does, status and cache headers
+  included; otherwise tests pass on a difference.
+- Never hardcode a version, digest or chunk file name in a test; read it from
+  the build.
+- Say in a release's docs that going back to a release from before a mechanism
+  existed removes that mechanism, and what stops working. Never write only
+  "reinstall the previous release".
 
 Return changes, supported examples, automated results by test ID, user
 evidence, AWS observations, cleanup and remaining gaps. Keep reusable product

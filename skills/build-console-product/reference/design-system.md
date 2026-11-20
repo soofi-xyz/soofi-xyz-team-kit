@@ -6,12 +6,17 @@ and the dashboard reskin. It is the target design. Read it before any change to
 base components, tokens, themes or the gallery; a change that weakens a
 guarantee below is a defect, even when the change was about something else.
 
-As of 2026-11-19 the `design-system` piece is on the Console repository's
+As of 2026-11-20 the `design-system` piece is on the Console repository's
 `main` (pull requests 31 and 32, runtime 1.14.0): tokens, two token sets, base
 components started from shadcn with an origin record, the gallery and `DS-1` to
 `DS-5`, by [the implementation rules](#implementation-rules). Pull request 33
-(runtime 1.15.0) adds `Page`, `Stack` and `Text` with token-only style props for
-the app kit. Runtime sharing, design-system configuration, component packs and
+(runtime 1.15.0, on `main`) adds `Page`, `Stack` and `Text` with token-only
+style props for the app kit. Pull request 34 (runtime 1.16.0, on `main`) builds
+runtime sharing by [its implementation rules](#runtime-sharing-implementation-rules):
+each build at `/console/app/runtime/<version>/<digest hex>/`, one pointer per
+major version at `/console/app/ui/v<major>/` and `SH-1` to `SH-7`. It does not
+build the version check at publish, a pointer API or loading an app in the
+Console shell on one React. Design-system configuration, component packs and
 the renderer reskin are not built. Discover the target revision before relying
 on any part, and settle names marked as placeholders in the Console repository.
 
@@ -117,38 +122,48 @@ contain the design system.
   must be inline, and Console's browser policy (`script-src 'self'`) blocks
   inline scripts.
 - **Immutable builds.** Store each design-system build at a path that never
-  changes once written, such as `/console/ui/<version>/<digest>/`, as the
-  runtime is stored today. Addresses here are illustrative.
-- **Pointer.** Keep one small module per major version at a fixed address, such
-  as `/console/ui/v2/index.js`, holding one line:
+  changes once written: `/console/app/runtime/<version>/<digest hex>/` on the
+  shared domain. Serve only its `app-runtime/` and `assets/` folders there and
+  refuse every other path.
+- **Pointer.** Keep one small module per major version at a fixed address,
+  `/console/app/ui/v<major>/index.js`, holding one line that names the build by
+  a relative address:
 
   ```js
-  export * from "/console/ui/2.4.1/abc123/index.js";
+  export * from "../../runtime/1.16.0/<digest hex>/app-runtime/index.js";
   ```
 
-  Console rewrites it on install or rollback. Provide the same pointer for the
-  JSX wrapper and for React.
+  Provide the same pointer for React (`react.js`), the JSX wrapper
+  (`jsx-runtime.js`) and the host's mount module (`mount.js`), and a
+  `pointer.json` naming the build's major, version, digest and path. The Console
+  stack writes the pointer on install, after the build it names, and never
+  prunes it, earlier builds or another major's pointer. There is no pointer API.
 - **App builds.** The app kit's build settings mark the design system and React
-  as external and write the pointer address into the app's built file. The app
-  author never sets this.
+  as external and write the address of the pointer of the kit's own major into
+  the app's built file. The app author never sets this.
 - **One React.** The app loads React from the design-system build, so the page
   has one copy and hooks and context work across the boundary. Use client-side
   React only; Server Components do not work with this sharing.
-- **Stylesheets.** The shell links the active build's stylesheet and the
-  environment's token stylesheet, both from Console's own origin.
+- **Stylesheets.** The host's mount module links the stylesheet of the build it
+  came from and the environment's token stylesheet the host names, both from
+  Console's own origin, and renders the app only once both have loaded.
 - **Caching.** Serve the pointer so the browser revalidates it on every page
   load, and everything it points to as immutable and cached for a long time.
 - **One version per session.** Every address after the pointer includes the
   exact build, so an open tab keeps one consistent version until it reloads.
-- **Major versions side by side.** A breaking change gets a new pointer (`v3`).
-  Apps built for `v2` keep loading `v2` until each is updated. Never remove a
-  build that a pointer or a published app still needs.
+- **Major versions side by side.** A breaking change gets a new major and a new
+  pointer beside the old one (`ui/v2/` beside `ui/v1/`). Apps built for `v1`
+  keep loading `v1` until each is rebuilt with a kit of the new major. Never
+  remove a build that a pointer or a published app still needs.
 - **Version check.** Build records the minimum design-system version an app
   needs and the components it uses. Console refuses to publish the app where
   the installed version is older or a component is missing or switched off.
 - **Release safety.** Every app on a major version receives a change at once.
-  Run the gallery screenshot tests, install on a dev environment first and roll
-  back by pointing the line back.
+  Run the gallery screenshot tests and install on a dev environment first. Roll
+  back by installing an earlier Console release from 1.16.0 on: its stack points
+  the major back at its own build. Going back to 1.15.0 or earlier removes the
+  `ui/` and `runtime/` paths, so every app built with kit 1.16 or later stops
+  loading. Installing the same release again changes nothing.
 - **Cost accepted.** An app cannot strip out components it does not use; the
   shared build is downloaded once and reused by every app. Load heavy parts,
   such as the county map's geometry, only when used.
@@ -199,11 +214,12 @@ delivered set of components installed per environment.
   its own pointer per major version. Publish the types package into Build's
   registry so apps can build against it.
 - **Replaced components.** Let the environment's base pointer re-export the
-  base build and then name the replacement, so the named export wins:
+  base build and then name the replacement, so the named export wins (the pack
+  path is a placeholder):
 
   ```js
-  export * from "/console/ui/2.4.1/abc123/index.js";
-  export { Badge } from "/console/ui/packs/acme/1.0.0/def456/index.js";
+  export * from "../../runtime/1.16.0/<digest hex>/app-runtime/index.js";
+  export { Badge } from "../../packs/acme/1.0.0/<digest hex>/index.js";
   ```
 
   Apps keep importing the base name and are not rebuilt. Fail the pack's build
@@ -304,7 +320,7 @@ Level: repository.
 | SH-3 | Install a second design-system build in which `Button` differs visibly, then reload the app | The app shows the new `Button`; every app file's digest is unchanged |
 | SH-4 | Point the pointer back to the first build and reload | The app shows the first `Button` again |
 | SH-5 | Open the app, install the second build without reloading, then trigger a component that loads lazily | The open tab loads it from the first build and stays consistent; a reload moves the whole page to the second build |
-| SH-6 | Add a `v3` pointer whose build removes a prop that `sample-app` uses, then open the app built for `v2` | The app still renders from the `v2` build |
+| SH-6 | Add a pointer for the next major whose build removes a prop that `sample-app` uses, then open the app built for the current major | The app still renders from its own major's build |
 | SH-7 | Open a page of `sample-app` that uses a hook and a context provided by a design-system component | Both work, and the page has loaded exactly one copy of React |
 
 ### `design-system-configuration`
@@ -414,6 +430,86 @@ Applications cannot choose a token set from their manifest yet; the existing
 environment's tokens is the `design-system-configuration` piece and moving the
 renderer's components onto the design system is `renderer-reskin`; do not have
 Vivillon configure either until it ships.
+
+## Runtime sharing implementation rules
+
+These rules describe runtime sharing in runtime 1.16.0 (pull request 34 in
+`prismteam-ai/console`, on `main` since 2026-11-20). Keep them when changing that
+code. The kit's side is in
+[the app kit's implementation rules](app-kit.md#implementation-rules).
+
+- **Layout.** Every install serves the UI build three ways under
+  `/console/app/`, which API Gateway passes to CloudFront: the build unchanged
+  at `runtime/<version>/<digest hex>/` (the `runtime/*` behaviour), the pointer
+  of its major at `ui/v<major>/` (`ui/*`), and the page with its token
+  stylesheets at the root (the default behaviour). `test/console-stack.test.ts`
+  reads each behaviour from the synthesized template.
+- **One source for addresses.** `ui/src/app-runtime/surface.ts` holds
+  `consoleAppBase`, `appRuntimeFolder`, `appRuntimeModules`,
+  `appRuntimeStylesheet`, `designSystemMajor`, `appRuntimePointerPath`,
+  `appRuntimePointerBase` and `runtimeBuildPath`. The stack, the pointer
+  generator, the kit, the stand-in and the tests read them; change an address
+  there only. `buildVersionSource` and `isBuildVersion` there are the one
+  definition of a build version (no build metadata), shared by the path
+  helpers, the manifest schema and the `RuntimeBuildPath` function.
+- **The generator.** `designSystemPointer` in `lib/design-system-pointer.ts`
+  gives each module in `appRuntimeModules` a one-line re-export by a relative
+  address, so it resolves wherever the Console app is served, and writes
+  `pointer.json`. The stack installs it with `DeployDesignSystemPointer`, which
+  depends on `DeployRuntime` and invalidates `/ui/v<major>/*`. Keep
+  `prune: false` and `retainOnDelete: true` on both deployments, so earlier
+  builds and other majors' pointers stay.
+- **Cache headers and refusals.** `runtime/*` sends `RUNTIME_BUILD_CACHE_CONTROL`
+  (`public, max-age=31536000, immutable`); `ui/*` and the default behaviour send
+  `REVALIDATED_CACHE_CONTROL` (`no-cache`) with the bucket's ETag, so an
+  unchanged pointer, page or token stylesheet answers `304`. Both policies keep
+  the security headers and the browser policy. The `RuntimeBuildPath`
+  viewer-request function sends any `runtime/` path outside a build's
+  `app-runtime/` or `assets/` to a key no deployment writes, which the bucket
+  answers with `403`, so a build's page, `runtime-manifest.json` and token
+  stylesheets are never served at its immutable path.
+- **App stylesheet and mount.** The UI build writes the design system's rules
+  for apps, unhashed, at `app-runtime/design-system.css`, and Vite's manifest
+  at `.vite/manifest.json`. `mountApp(App, target, source?, { tokenStylesheet? })`
+  links the stylesheet beside its own module and the token stylesheet, each
+  once per page, renders the app only after both load and shows the stop line
+  (`data-app-error`) when one fails. The host names the token stylesheet; an
+  app never links a stylesheet.
+- **Stand-in.** `e2e/support/runtime-distribution.ts` serves the installed
+  stand-in's build as the stack does: the same paths, cache headers and ETags,
+  `304` on a matching `If-None-Match`, and `403` for a missing key or a refused
+  build path, never the page. Change it with the stack's behaviours;
+  `test/runtime-distribution.test.ts` checks it.
+- **Fixture builds.** `e2e/support/design-system-fixtures/builds.ts` defines
+  three builds of the real UI sources with some exports replaced: `a`
+  (Console's version, `Button` in a chunk loaded on first use), `b` (`a` with an
+  outline-look `Button` taking the same props) and `n` (the next major, whose
+  `Stat` drops the `tone` that `sample-app` passes).
+  `e2e/support/design-system-builds.ts` builds and packages them and records
+  each one's version, digest, path and lazy chunks in `builds.json`; the same
+  sources give the same digests.
+- **The `sharing` project.** Playwright runs `*.sharing.spec.ts` in the
+  `sharing` project with one worker, because every test moves the same pointer.
+  Its stand-in serves the fixture builds (`DESIGN_SYSTEM_BUILDS`) and moves a
+  major's pointer on `POST /__harness/design-system/pointer` with
+  `{ "version", "digest" }`, as an install does, refusing a build it does not
+  serve. Run it with
+  `pnpm app-kit:build && pnpm exec playwright test --project sharing`.
+- **Tests.** `SH-1` is in `test/app-kit.test.ts`. `SH-2` and `SH-7` are in
+  `e2e/runtime-sharing.installed.spec.ts`, which opens `sample-app` on a test
+  host page on the stand-in's origin under the stack's browser policy
+  (`e2e/support/sample-app-host.ts`). `SH-3` to `SH-6` are in
+  `e2e/runtime-sharing.sharing.spec.ts`.
+- **Nothing hardcoded in a test.** Read versions from `package.json`, a build's
+  path and digest from `pointer.json` or `builds.json`, and chunk file names
+  from the build's `.vite/manifest.json`. Never write a version, digest or
+  chunk file name into a test.
+- **Not built.** The version check at publish (the build record already carries
+  `designSystem.minimumVersion`, `components` and `packs` for it), a pointer API,
+  and loading an app in the Console shell on one React. The Console page loads
+  React from its own build's address, not the pointer's, so an app loaded in
+  the shell would load a second React. `SH-7` is proven on a test host page;
+  the shell belongs to [app hosting](app-kit.md#app-hosting).
 
 ## Kit maintenance
 

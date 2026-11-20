@@ -362,9 +362,10 @@ A piece is done only when every test in its table passes.
 
 ## 12. Current state
 
-As of 2026-11-18, `prismteam-ai/console` at `35cfe7f` (runtime 1.13.0) has the
-dashboard renderer, immutable revisions with publish and rollback, and the
-report components. The only registered product operation is `report` /
+As of 2026-11-20, `prismteam-ai/console` at `c206182` (runtime 1.16.0) has the
+dashboard renderer, immutable revisions with publish and rollback, the report
+components, the design system, the app kit and runtime sharing. The only
+registered product operation is `report` /
 `read-dataset`. Sign-in is Console's own `google-oidc` policy, a viewer password
 or the shared key, not Access. The browser policy is already
 `connect-src 'self'; script-src 'self'; style-src 'self'`. Build and Deploy both
@@ -372,7 +373,9 @@ carry the `console` `application` bundle kind on their main branches; whether
 any environment has it installed is not verified. Build's check for that kind
 refuses a manifest with `forms`.
 
-Nothing else in this contract is built. Discover the target revision before
+Nothing else in this contract is built;
+[the Status table](../../guide-product-work/reference/iterations/console.md#status)
+has each piece. Discover the target revision before
 relying on any of it, and state requirements as requirements.
 
 ## 13. Dependencies and non-goals
