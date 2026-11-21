@@ -46,7 +46,7 @@ class CatalogTests(unittest.TestCase):
         self.assertTrue(any("missing agent not-installed" in e for e in catalog.validate(self.data)))
 
     def test_retained_specialists_remain_available_outside_the_readme_roster(self):
-        self.assertTrue({"arceus", "oracle", "hoopa", "mew"} <= set(self.data["retainedAgents"]))
+        self.assertTrue({"arceus", "hoopa", "mew"} <= set(self.data["retainedAgents"]))
         rendered = catalog.render(self.data)
         for name in self.data["retainedAgents"]:
             with self.subTest(agent=name):
@@ -65,8 +65,8 @@ class CatalogTests(unittest.TestCase):
         self.assertTrue(any("missing installed retained agent: not-installed" in e for e in catalog.validate(self.data)))
 
     def test_installed_agent_cannot_disappear_from_inventory(self):
-        self.data["retainedAgents"].remove("oracle")
-        self.assertTrue(any("installed agents differ" in e and "oracle" in e for e in catalog.validate(self.data)))
+        self.data["retainedAgents"].remove("mew")
+        self.assertTrue(any("installed agents differ" in e and "mew" in e for e in catalog.validate(self.data)))
 
     def test_alias_cannot_create_a_second_model_product(self):
         duplicate = copy.deepcopy(self.product("model"))

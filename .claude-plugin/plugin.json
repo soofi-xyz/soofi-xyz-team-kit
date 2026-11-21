@@ -1,7 +1,7 @@
 {
   "name": "soofi-xyz-team-kit",
   "description": "Product builders and configurers with guided feature increments for Documentation, Account, Access, Console, Environment, Build, Deploy, Model, Marketplace, Transform, Persist, Rule, Connect, System, Report, Schedule, Inference and Enact.",
-  "version": "0.182.1",
+  "version": "0.183.0",
   "author": {
     "name": "Soofi XYZ"
   },
@@ -16,7 +16,6 @@
     "frontend",
     "reporting",
     "socapital",
-    "elephant",
     "mcp"
   ],
   "agents": [
@@ -41,7 +40,6 @@
     "./agents-claude/delibird.md",
     "./agents-claude/dialga.md",
     "./agents-claude/ditto.md",
-    "./agents-claude/donphan.md",
     "./agents-claude/doublade.md",
     "./agents-claude/eevee.md",
     "./agents-claude/elgyem.md",
@@ -67,7 +65,6 @@
     "./agents-claude/metang.md",
     "./agents-claude/mew.md",
     "./agents-claude/noctowl.md",
-    "./agents-claude/oracle.md",
     "./agents-claude/oranguru.md",
     "./agents-claude/pelipper.md",
     "./agents-claude/porygon.md",
@@ -87,7 +84,6 @@
     "./agents-claude/unown.md",
     "./agents-claude/uxie.md",
     "./agents-claude/vivillon.md",
-    "./agents-claude/watchog.md",
     "./agents-claude/wigglytuff.md",
     "./agents-claude/wingull.md",
     "./agents-claude/xatu.md",

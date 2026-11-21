@@ -1,3 +1,0 @@
-{
-  "app": "npx tsx infra/app.ts"
-}

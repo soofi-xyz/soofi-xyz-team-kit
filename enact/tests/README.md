@@ -14,8 +14,8 @@ enact/tests/
 
 ## Scope
 
-All agents in `agents/` move to Enact except the one that stays local: `oracle`. It has no
-golden file and is never a routing label.
+All agents in `agents/` move to Enact. Oracle, the one that stayed local, moved to
+[elephant-xyz/elephant-team-kit](https://github.com/elephant-xyz/elephant-team-kit) with donphan and watchog.
 
 | Group | Agents | Golden task kind |
 | --- | --- | --- |

@@ -1,9 +1,0 @@
-{
-  "requires_mcp": [
-    "persist"
-  ],
-  "requires_mcp_reason": "agents/donphan.md:7-8 answers only from Elephant MCP tools; on Enact the hosted `persist` MCP serves the same Atlas index (registered IPFS index elephant_atlas), since no hosted Elephant MCP exists.",
-  "appendix": [
-    "**Atlas data on Enact.** The `elephant` MCP server is not available here. Read published Atlas county data through the `persist` MCP server's registered IPFS index `elephant_atlas`, a checked copy of the same global Atlas index: `mcp__persist__list_indexes` (index CID and activation time) for `listAtlasCounties`/freshness, `mcp__persist__describe_index` with `name: \"elephant_atlas\"` (scopes `STATE/county/data_group` with tables, rows and bytes; with `table`, its columns) for `getAtlasDatasetInfo` and `getAtlasSchema`, and `mcp__persist__query_index` (one read-only SELECT over a scope) for `queryAtlas`. There is no `getAtlasProperty`: assemble a property with joins over its scope's tables. For lexicon definitions use `mcp__persist__describe_schema`. Cite the index CID that `list_indexes` reports as the source, and say when a question needs an Elephant MCP tool that has no equivalent here."
-  ]
-}

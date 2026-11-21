@@ -54,7 +54,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 584121,
+      "library_pinned_bytes": 584068,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-access-product",
@@ -189,7 +189,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 10827,
+      "bytes": 11001,
       "files": 1,
       "flag_counts": {
         "aws-profile": 1,
@@ -200,7 +200,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.5-medium",
-      "library_pinned_bytes": 495762,
+      "library_pinned_bytes": 495709,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -325,7 +325,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 505749,
+      "library_pinned_bytes": 505696,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -384,7 +384,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 536590,
+      "library_pinned_bytes": 536537,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -476,7 +476,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 861693,
+      "library_pinned_bytes": 861640,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -539,7 +539,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 861693,
+      "library_pinned_bytes": 861640,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -630,7 +630,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 650383,
+      "library_pinned_bytes": 650330,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -689,7 +689,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 659462,
+      "library_pinned_bytes": 659409,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-console-product",
@@ -777,7 +777,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 755230,
+      "library_pinned_bytes": 755177,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -833,7 +833,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 495762,
+      "library_pinned_bytes": 495709,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -911,7 +911,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 654176,
+      "library_pinned_bytes": 654123,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-lexicon-product",
@@ -991,39 +991,6 @@
       "wave": "3",
       "wave_reason": "retained specialist (default)"
     },
-    "donphan": {
-      "assumptions": [],
-      "blocked_by": [],
-      "bytes": 7423,
-      "files": 1,
-      "flag_counts": {},
-      "instruction_flags": {},
-      "invalid_paths": [],
-      "kit_model": "gpt-5.5-high",
-      "library_pinned_bytes": 18563,
-      "library_skills": [
-        "use-elephant-mcp"
-      ],
-      "mcp_servers": [
-        "persist"
-      ],
-      "model": "opus",
-      "needs_secrets": [],
-      "needs_secrets_source": "none declared",
-      "omitted_files": [],
-      "own_skills": [],
-      "readonly": false,
-      "requires_mcp": [
-        "persist"
-      ],
-      "requires_mcp_reason": "agents/donphan.md:7-8 answers only from Elephant MCP tools; on Enact the hosted `persist` MCP serves the same Atlas index (registered IPFS index elephant_atlas), since no hosted Elephant MCP exists.",
-      "secret_env_mentions": [],
-      "skills": [
-        "use-elephant-mcp"
-      ],
-      "wave": "4",
-      "wave_reason": "enact/config.json waves"
-    },
     "doublade": {
       "assumptions": [
         "aws-profile",
@@ -1043,7 +1010,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 584121,
+      "library_pinned_bytes": 584068,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-access-product",
@@ -1134,7 +1101,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 505749,
+      "library_pinned_bytes": 505696,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -1192,7 +1159,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.5-high",
-      "library_pinned_bytes": 684367,
+      "library_pinned_bytes": 684314,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-ai-agents",
@@ -1255,7 +1222,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 617931,
+      "library_pinned_bytes": 617878,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -1401,7 +1368,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 654176,
+      "library_pinned_bytes": 654123,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-lexicon-product",
@@ -1461,7 +1428,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 536590,
+      "library_pinned_bytes": 536537,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -1518,7 +1485,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 1147037,
+      "library_pinned_bytes": 1146984,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-lexicon-product",
@@ -1581,7 +1548,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.5-high",
-      "library_pinned_bytes": 513999,
+      "library_pinned_bytes": 513946,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -1685,7 +1652,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 576260,
+      "library_pinned_bytes": 576207,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -1747,7 +1714,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 576260,
+      "library_pinned_bytes": 576207,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -1807,7 +1774,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 908603,
+      "library_pinned_bytes": 908550,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-batch-workflows",
@@ -2017,7 +1984,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 617931,
+      "library_pinned_bytes": 617878,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -2158,7 +2125,7 @@
       },
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 614445,
+      "library_pinned_bytes": 614392,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-build-service",
@@ -2287,10 +2254,6 @@
       ],
       "wave": "3",
       "wave_reason": "retained specialist (default)"
-    },
-    "oracle": {
-      "wave": "stays-local",
-      "wave_reason": "enact/config.json stays_local"
     },
     "oranguru": {
       "assumptions": [
@@ -2446,7 +2409,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 495762,
+      "library_pinned_bytes": 495709,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -2503,7 +2466,7 @@
       },
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 495762,
+      "library_pinned_bytes": 495709,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -2591,7 +2554,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 518837,
+      "library_pinned_bytes": 518784,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-bootstrap-cli",
@@ -2650,7 +2613,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 2180327,
+      "library_pinned_bytes": 2180274,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-lexicon-product",
@@ -2721,7 +2684,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 495762,
+      "library_pinned_bytes": 495709,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -2776,7 +2739,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.5-high",
-      "library_pinned_bytes": 724288,
+      "library_pinned_bytes": 724235,
       "library_skills": [
         "apply-engineering-guidelines",
         "assemble-communication-runtime",
@@ -2950,7 +2913,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 614445,
+      "library_pinned_bytes": 614392,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-build-service",
@@ -3010,7 +2973,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 560511,
+      "library_pinned_bytes": 560458,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-documentation-product",
@@ -3072,7 +3035,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 518837,
+      "library_pinned_bytes": 518784,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-bootstrap-cli",
@@ -3129,7 +3092,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 560511,
+      "library_pinned_bytes": 560458,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-documentation-product",
@@ -3193,7 +3156,7 @@
       },
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 835841,
+      "library_pinned_bytes": 835788,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -3253,7 +3216,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 659462,
+      "library_pinned_bytes": 659409,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-console-product",
@@ -3292,64 +3255,6 @@
       ],
       "wave": "2",
       "wave_reason": "role: configure"
-    },
-    "watchog": {
-      "assumptions": [
-        "aws-profile",
-        "curl",
-        "python3"
-      ],
-      "blocked_by": [],
-      "bytes": 51783,
-      "files": 9,
-      "flag_counts": {
-        "aws-profile": 1,
-        "curl": 1,
-        "python3": 1
-      },
-      "instruction_flags": {},
-      "invalid_paths": [],
-      "kit_model": "gpt-5.4-high",
-      "library_pinned_bytes": 220095,
-      "library_skills": [
-        "apply-engineering-guidelines",
-        "build-ai-agents",
-        "build-batch-workflows",
-        "integrate-ci-cd",
-        "use-elephant-mcp"
-      ],
-      "mcp_servers": [
-        "persist"
-      ],
-      "model": "opus",
-      "needs_secrets": [],
-      "needs_secrets_source": "none declared",
-      "omitted_files": [],
-      "own_skills": [
-        "build-elephant-hero-facts",
-        "deploy-open-data-mcp"
-      ],
-      "readonly": false,
-      "requires_mcp": [
-        "persist"
-      ],
-      "requires_mcp_reason": "agents/watchog.md:18-19 reads published Atlas data to design and check facts; on Enact the hosted `persist` MCP serves the same Atlas index (elephant_atlas). The Watchog-owned HTTP MCP deployment it builds is unaffected.",
-      "secret_env_mentions": [
-        "GITHUB_TOKEN",
-        "LANGSMITH_API_KEY",
-        "MCP_HTTP_AUTH_TOKEN"
-      ],
-      "skills": [
-        "apply-engineering-guidelines",
-        "build-ai-agents",
-        "build-batch-workflows",
-        "build-elephant-hero-facts",
-        "deploy-open-data-mcp",
-        "integrate-ci-cd",
-        "use-elephant-mcp"
-      ],
-      "wave": "4",
-      "wave_reason": "enact/config.json waves"
     },
     "wigglytuff": {
       "assumptions": [
@@ -3413,7 +3318,7 @@
       },
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 908603,
+      "library_pinned_bytes": 908550,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-batch-workflows",
@@ -3483,7 +3388,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.4-high",
-      "library_pinned_bytes": 627596,
+      "library_pinned_bytes": 627543,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -3540,7 +3445,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 605188,
+      "library_pinned_bytes": 605135,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-ai-agents",
@@ -3603,7 +3508,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 507961,
+      "library_pinned_bytes": 507908,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -3661,7 +3566,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 650383,
+      "library_pinned_bytes": 650330,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -3700,8 +3605,8 @@
       "wave_reason": "role: build"
     }
   },
-  "enact_version": "1.182.1",
-  "kit_version": "0.182.1",
+  "enact_version": "1.183.0",
+  "kit_version": "0.183.0",
   "mcp_allow_list": [
     "enact",
     "browser",
@@ -3865,13 +3770,6 @@
         "configure-documentation-product",
         "guide-product-work"
       ]
-    },
-    "build-elephant-hero-facts": {
-      "bytes": 30023,
-      "files": 7,
-      "flags": {},
-      "omitted": [],
-      "references": []
     },
     "build-enact-product": {
       "bytes": 17275,
@@ -4419,13 +4317,6 @@
         "guide-product-work"
       ]
     },
-    "deploy-open-data-mcp": {
-      "bytes": 4979,
-      "files": 1,
-      "flags": {},
-      "omitted": [],
-      "references": []
-    },
     "evaluate-candidate-implementation": {
       "bytes": 5588,
       "files": 1,
@@ -4494,7 +4385,7 @@
       ]
     },
     "guide-product-work": {
-      "bytes": 282261,
+      "bytes": 282217,
       "files": 25,
       "flags": {},
       "omitted": [],
@@ -4674,13 +4565,6 @@
     "use-eevee": {
       "bytes": 4771,
       "files": 1,
-      "flags": {},
-      "omitted": [],
-      "references": []
-    },
-    "use-elephant-mcp": {
-      "bytes": 17617,
-      "files": 4,
       "flags": {},
       "omitted": [],
       "references": []

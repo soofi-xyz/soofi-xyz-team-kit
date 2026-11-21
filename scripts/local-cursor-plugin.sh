@@ -96,8 +96,7 @@ ignore = shutil.ignore_patterns(
     "node_modules",
     ".venv",
     "venv",
-    # skills/use-oracle/runtime/ generated/ignored content (Global Constraint:
-    # never copy secrets or generated captures into the local plugin test copy).
+    # Never copy secrets or generated captures into the local plugin test copy.
     "downloads",
     ".env",
     ".env.*",
@@ -142,9 +141,6 @@ PY
   echo "  2. Open Settings > Plugins and confirm '${LOCAL_PLUGIN_NAME}' is installed."
   echo "  3. Disable or remove other soofi-xyz-team-kit plugin installs while testing if duplicate agent/skill names appear."
   echo "  4. Run a small smoke prompt, for example: /conkeldurr Reply with exactly: ok"
-  echo "  5. If you touched skills/use-oracle/runtime/, also run (Node 22.18+):"
-  echo "       (cd skills/use-oracle/runtime && npm ci) && npm test --prefix skills/use-oracle/runtime"
-  echo "       python3 scripts/check-plugin-clean-room.py"
 }
 
 remove_plugin() {

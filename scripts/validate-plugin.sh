@@ -121,12 +121,6 @@ main() {
     fi
   fi
 
-  "${python_bin}" "${root}/skills/use-oracle/scripts/validate-county-readiness.py" --self-test
-
-  bash -n "${root}/skills/use-oracle/scripts/oracle-paths.sh"
-  "${root}/skills/use-oracle/scripts/oracle-paths.test.sh"
-
-  "${python_bin}" "${root}/scripts/check-plugin-clean-room.py" --self-test
   "${python_bin}" "${root}/scripts/test-model-kpi-contract.py"
   "${python_bin}" "${root}/scripts/test-validate-transform-configuration.py"
   "${python_bin}" "${root}/scripts/test-silvally-tools.py"
@@ -138,7 +132,6 @@ main() {
   "${python_bin}" - "$root" <<'PY'
 import json
 import re
-import subprocess
 import sys
 from pathlib import Path
 
@@ -342,37 +335,6 @@ def validate_agents():
                 fail(f"{target.relative_to(root)}: must not carry a model (Claude Code sends it to the API verbatim)")
 
 
-def validate_oracle_runtime():
-    runtime_dir = root / "skills" / "use-oracle" / "runtime"
-    required = [runtime_dir / "package.json"]
-    for path in required:
-        if not path.is_file():
-            fail(f"{path.relative_to(root)}: required Oracle runtime file is missing")
-
-    tracked_raw = subprocess.run(
-        ["git", "-C", str(root), "ls-files", "-z", "skills/use-oracle/runtime"],
-        capture_output=True,
-        check=True,
-    ).stdout.decode("utf-8", "surrogateescape")
-    tracked = [entry for entry in tracked_raw.split("\0") if entry]
-
-    env_pattern = re.compile(r"^\.env(\..+)?$")
-    parcel_artifact_suffixes = (".parquet", ".zip")
-    for rel in tracked:
-        parts = Path(rel).parts
-        if "node_modules" in parts[:-1]:
-            fail(f"{rel}: tracked node_modules/ is not allowed in the Oracle runtime")
-            continue
-        if "downloads" in parts[:-1]:
-            fail(f"{rel}: tracked downloads/ directory is not allowed in the Oracle runtime")
-            continue
-        basename = parts[-1]
-        if env_pattern.match(basename) and basename != ".env.example":
-            fail(f"{rel}: tracked .env* file is not allowed in the Oracle runtime")
-        if basename.lower().endswith(parcel_artifact_suffixes):
-            fail(f"{rel}: tracked generated parcel artifact ({basename}) is not allowed in the Oracle runtime")
-
-
 def validate_skills():
     skills_dir = root / "skills"
     skill_files = sorted(skills_dir.glob("*/SKILL.md"))
@@ -432,7 +394,6 @@ def validate_agent_memory():
 validate_manifests()
 validate_agents()
 validate_skills()
-validate_oracle_runtime()
 validate_agent_memory()
 
 if errors:
@@ -441,7 +402,7 @@ if errors:
         print(f"- {error}", file=sys.stderr)
     raise SystemExit(1)
 
-print("plugin manifests, agents, skills, and the Oracle runtime bundle are valid")
+print("plugin manifests, agents and skills are valid")
 PY
 }
 
