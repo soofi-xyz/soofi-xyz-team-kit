@@ -127,10 +127,13 @@ The first step of `access-sign-in` is on
   cookie. `POST /viewer/signout` also ends the Access session, for every
   application. `GET /viewer/sign-in-options` answers `access` beside `google`
   and `password`.
-- **Server-side exchange, in the browser that started.** The start sets a
-  ten-minute `console_access_login` cookie (`HttpOnly`, `Secure`,
-  `SameSite=Lax`, path `/console/viewer/auth/access`) and the pending login
-  keeps only its digest. The callback refuses a missing or different cookie.
+- **Server-side exchange, in the browser that started.** Each start sets its
+  own ten-minute cookie, `console_access_login_<digest of the state>`
+  (`HttpOnly`, `Secure`, `SameSite=Lax`, path `/console/viewer/auth/access`),
+  so sign-ins in two tabs stay independent; the pending login keeps only its
+  digest. The callback refuses a missing or different cookie. Once the login
+  is matched, a later failure returns to its page with
+  `signin=denied&reason=<code>`.
   Exchange the code at Access's `/token` with the login's PKCE verifier,
   `client_id` the application name and no client secret, as Access defines
   it.
@@ -146,11 +149,14 @@ The first step of `access-sign-in` is on
   line, an answer or the table in the clear.
 - **Validity and refresh.** The session is valid until the held token's `exp`.
   A request within 60 seconds of it refreshes through Access first. A refresh
-  Access refuses deletes the session and answers `401`. Access or its keys
+  Access refuses (`/token` error code `INVALID_GRANT` or `UNAUTHENTICATED`)
+  deletes the session and answers `401`; any other `400` or `401` is an
+  upstream failure. Access or its keys
   unreachable answers `503`, and a `200` without a token answers `502`; both
   keep the session. Only `jose` errors about the token itself count as a bad
   token. Write a refreshed session only while it still exists, so a sign-out
-  during a refresh stays signed out. Never use a token past its raw `exp`.
+  during a refresh stays signed out. Never use a token past its raw `exp`, or
+  one whose `iat` is more than 60 seconds ahead.
   Access does not rotate refresh tokens.
 - **Identity.** The session's subject is the Access user identifier, never an
   email. `Principal.accessToken` is the current token, forwarded to products
