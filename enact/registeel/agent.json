@@ -27,7 +27,7 @@
     },
     {
       "name": "guide-product-work",
-      "version": "1.0.0-sha256-b40f7deb715455d1"
+      "version": "1.0.0-sha256-269c804780570136"
     },
     {
       "name": "operate-marketplace",
@@ -51,5 +51,5 @@
   "secrets": [
     "PRISM_API_KEY"
   ],
-  "version": "1.178.0"
+  "version": "1.179.0"
 }

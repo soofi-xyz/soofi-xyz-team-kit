@@ -39,11 +39,14 @@ app hosting (runtime 1.17.0 for the API, pull request 35; 1.18.0 for the
 shell, pull request 36), data hooks (runtime 1.19.0, pull request 37) and
 design-system configuration (runtime 1.20.0, pull request 38); as of
 2026-11-21 the renderer reskin's first step (runtime 1.21.0) is on pull request
-39, not yet merged, with the open gaps its
-[implementation rules](reference/design-system.md#renderer-reskin-implementation-rules)
+39 and the first step of Access sign-in (runtime 1.22.0) is on pull request 40,
+neither merged yet, with the open gaps their implementation rules
+([renderer](reference/design-system.md#renderer-reskin-implementation-rules),
+[sign-in](reference/google-sign-in.md#access-sign-in-implementation-rules))
 list; everything else here is a requirement. An app can be uploaded, published,
 opened by address and rolled back with the environment key, and reads Report
-data through Console's API, but no session carries an Access token yet, so its
+data through Console's API; on `main` no session carries an Access token yet,
+and an Access session has no `persist:read` until roles decide, so its
 Persist reads are denied; its roles are not enforced and nothing delivers it
 through Build, Marketplace or Deploy yet.
 

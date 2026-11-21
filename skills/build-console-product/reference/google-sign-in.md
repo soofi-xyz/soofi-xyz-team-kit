@@ -105,6 +105,68 @@ check: ID, result, request identifier and the Console revision.
 | CS-16 | Run the route inventory with `sample-app` and `sample-app-two` published, publish a third app, run it again, and request each app's files and bindings with no session | Every published app is listed in both runs, and each is refused without a session: no app code or data is served |
 | CS-17 | `alice`, who holds the role for `sample-app` only, opens `sample-app`, then opens `sample-app-two` and calls one of its bindings directly | `sample-app` renders; `sample-app-two` and its binding answer `403` from the server |
 
+### Access sign-in implementation rules
+
+The first step of `access-sign-in` is on
+[Console pull request 40](https://github.com/prismteam-ai/console/pull/40)
+(runtime 1.22.0), not yet merged. Keep these rules when changing it.
+
+- **One switch per deployment.** The String parameter `/console/sign-in`
+  (`{"kind": "access", "application": "console", "accessUrl":
+  "https://<shared domain>/access", "redirectUri":
+  "https://<shared domain>/console/viewer/auth/access/callback"}`, closed
+  schema, `https` only) turns a deployment to Access. Without it the
+  deployment signs in through Google and the viewer password, unchanged. With
+  it Access is the only way in: the viewer password and Google start answer
+  `404`, and a viewer token or Google session cookie answers `401`. A malformed
+  or unreadable parameter fails closed.
+- **Routes.** `GET /viewer/auth/access/start` and
+  `GET /viewer/auth/access/callback` are public and answer `404` while the
+  switch is off. The callback takes only the one-time code and the state; any
+  failure redirects to `/console/app/?signin=denied&reason=<code>` with no
+  cookie. `POST /viewer/signout` also ends the Access session, for every
+  application. `GET /viewer/sign-in-options` answers `access` beside `google`
+  and `password`.
+- **Server-side exchange.** Exchange the code at Access's `/token` with the
+  login's PKCE verifier, `client_id` the application name and no client
+  secret, as Access defines it.
+- **Verifier.** Verify with `jose` exactly as
+  [product integration §2](../../build-access-product/reference/product-integration.md#2-verify-a-callers-token)
+  shows, and also require `token_use: access`, string `roles` and a person's
+  token (`principal_kind` user). Access ships no client library; do not copy
+  its in-repository verifier.
+- **Sealed session.** Keep the access and refresh tokens server-side, sealed
+  together with KMS Encrypt on Console's own session key, granted to the API
+  function only and only under the encryption context
+  `purpose=console-access-session`. Never put a token in the cookie, a log
+  line, an answer or the table in the clear.
+- **Validity and refresh.** The session is valid until the held token's `exp`.
+  A request within 60 seconds of it refreshes through Access first; a refresh
+  Access refuses deletes the session and answers `401`; Access unreachable
+  answers `503` and keeps the session. Access does not rotate refresh tokens.
+- **Identity.** The session's subject is the Access user identifier, never an
+  email. `Principal.accessToken` is the current token, forwarded to products
+  for a person's reads.
+- **Scopes until roles decide.** An Access session carries the fixed read
+  scopes a Google session has (`console:read`, `report:read`). Route, action
+  and per-app authorization from Access roles is not built (`CS-3`, `CS-10`,
+  `CS-17`); until it is, a session's Persist reads are refused for missing
+  `persist:read`.
+- **Sign-in page.** On an Access deployment the page goes straight to Access;
+  after a denial or an ended session it offers sign-in through Access only.
+- **Code layout.** Session resolution and the sign-in routes live in
+  `src/handlers/viewer-session.ts`, the adapter in
+  `src/adapters/access-sign-in.ts`, and a fake Access that keeps the real
+  one's code, refresh and sign-out rules in `test/support/fake-access.ts`
+  (the `installed-access` Playwright project serves it on the stand-in's
+  origin).
+- **Open.** Console must be registered in Access as `console` with the exact
+  callback address (an Access operator step; dev registers only
+  `/console/app/`). `CS-12` waits on Persist user-scoped reads and `CS-14` on
+  a product action that records the person. Removing `google-oidc` (`CS-8`)
+  waits on Access sign-in verified on a deployment. Nothing here has run
+  against a deployed Access.
+
 ## Ownership
 
 This section and those after it describe a deployment that has not yet migrated
