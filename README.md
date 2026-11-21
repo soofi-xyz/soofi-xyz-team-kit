@@ -7,6 +7,11 @@ Product builders and configurers for Cursor, GitHub Copilot CLI, OpenAI Codex an
 sign-in, the team kit, one check command, test prompts, and moving the agents you run
 today. In Cursor, `/move-to-claude-code` walks you through it step by step.
 
+**Elephant agents moved.** Oracle (county mining and Atlas publication), Donphan (published
+county records), Watchog (elephant.xyz hero facts) and the `elephant` MCP server are now in the
+`elephant-xyz/elephant-team-kit` plugin on GitHub. Install that plugin to keep using them; this kit
+no longer ships them.
+
 ## Quick start
 
 Choose a builder to implement or fix a product, or a configurer to use an existing service.
@@ -100,9 +105,7 @@ To update:
 git -C ~/.cursor/plugins/local/soofi-xyz-team-kit pull
 ```
 
-Reload Cursor after updating. The bundled Elephant MCP requires Node **22.18+**;
-see [MCP setup](./skills/use-elephant-mcp/reference/mcp-setup.md) and the
-[self-contained ingestion guide](./skills/use-oracle/reference/self-contained-ingestion.md).
+Reload Cursor after updating.
 
 </details>
 
@@ -177,7 +180,7 @@ claude plugin install soofi-xyz-team-kit@soofi-xyz --scope project
 ```
 
 Agents load as `soofi-xyz-team-kit:<agent>` subagents, skills as `/soofi-xyz-team-kit:<skill>`,
-and the bundled MCP servers connect from `mcp.json`: `elephant`, plus `persist` (Prism memory:
+and the bundled MCP servers connect from `mcp.json`: `persist` (Prism memory:
 meetings, Eevee's knowledge and the saved queries from
 [prism-memory-configuration](https://github.com/prismteam-ai/prism-memory-configuration)) and
 `report` on soofi-safavi, and `repair-jobs` (read-only county repair job database from the

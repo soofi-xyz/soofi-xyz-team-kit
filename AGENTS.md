@@ -90,27 +90,9 @@ Follow these conventions whenever you touch files in this repo.
 - Codex custom agents are project-scoped TOML files in `.codex/agents/` generated from `agents/`.
 - Claude Code reads `.claude-plugin/plugin.json`; keep `"skills": "./skills/"`, `"mcpServers": "./mcp.json"`, and let `scripts/sync-claude-agents.sh` own the `agents` array.
 
-## Self-contained Elephant ingestion (`skills/use-oracle/runtime/`)
+## Elephant agents
 
-- The bundled Oracle ingestion runtime at `skills/use-oracle/runtime/` is self-contained.
-  Never instruct an operator to clone `oracle-node`, `Counties-trasform-scripts`, or
-  `elephant-query-db` as a prerequisite, and never run `npx skills add elephant-xyz/skills`
-  — stage skills and the runtime already ship in this repo.
-- Any shell script under `skills/use-oracle/scripts/` that needs this plugin's root or the
-  bundled runtime path MUST derive it from the script's own on-disk location (see
-  [`skills/use-oracle/scripts/oracle-paths.sh`](./skills/use-oracle/scripts/oracle-paths.sh)),
-  never from the caller's `cwd`.
-- Never commit `.env*` (other than `.env.example`), `node_modules/`, `downloads/`, or any
-  generated capture/Parquet/ZIP artifact. A real captured HTML page, ZIP, or Parquet shard
-  belongs on Filebase/IPFS, referenced by public URL — not in Git.
-- Run `python3 scripts/check-plugin-clean-room.py` before creating a PR that touches
-  `skills/use-oracle/runtime/` or any operator-facing install instructions. It scans tracked
-  content for secrets, prohibited source-repo installs, oversized generated artifacts, and
-  broken symlinks — see the script's module docstring for the exact gates.
-- See
-  [`skills/use-oracle/reference/self-contained-ingestion.md`](./skills/use-oracle/reference/self-contained-ingestion.md)
-  for the full install → replay → pilot → Atlas handoff sequence and the team-facing test
-  evidence template.
+- Oracle, Donphan, Watchog, their county-ingestion and Elephant MCP skills, the bundled Oracle runtime and the `elephant` MCP server live in [elephant-xyz/elephant-team-kit](https://github.com/elephant-xyz/elephant-team-kit). Change them there, not here.
 
 ## AWS access guidance
 
@@ -152,7 +134,7 @@ soofi-xyz-plugin-kit/
 
 ## Local validation
 
-Run the plugin validation script before preparing a PR. It checks that Copilot, Codex, and Claude Code agent copies are synced, manifests are consistent, agent and skill frontmatter is valid, source names match paths, generated agents are real files, skills stay under 500 lines, `oracle-paths.sh` resolves independent of cwd, and the bundled Oracle runtime package/catalog are present.
+Run the plugin validation script before preparing a PR. It checks that Copilot, Codex, and Claude Code agent copies are synced, manifests are consistent, agent and skill frontmatter is valid, source names match paths, generated agents are real files, skills stay under 500 lines.
 
 The Python checks import `jsonschema` and `pyarrow`. CI installs them from
 `skills/validate-transform-configuration/scripts/requirements-silvally.txt`; locally, install that file into a
@@ -167,24 +149,8 @@ python3 scripts/test-system-acceptance.py
 node scripts/sync-enact-agents.mjs sync && python3 scripts/test-enact-packaging.py
 ```
 
-If you touched `skills/use-oracle/runtime/`, also install and test it (Node **22.18+**), and
-run the dedicated clean-room scan:
-
-```bash
-(cd skills/use-oracle/runtime && npm ci)
-npm test --prefix skills/use-oracle/runtime
-python3 scripts/check-plugin-clean-room.py
-```
-
-Use `cd` (not `npm ci --prefix`) for the install step: some npm releases (observed on 11.13.0)
-mis-derive the expected lockfile package identity from the `--prefix` directory's basename
-instead of its `package.json`, and fail every `ci` with a spurious `Missing: <basename>@<version>
-from lock file` error. `npm test --prefix` is unaffected (no lockfile sync check).
-
 CI (`.github/workflows/validate-plugin.yml`) runs all of the above plus `git diff --check` on
-every PR — see
-[`skills/use-oracle/reference/self-contained-ingestion.md`](./skills/use-oracle/reference/self-contained-ingestion.md)
-for the full clean-room-clone gate and the broader test evidence template.
+every PR.
 
 Validate Cursor by copying this repo into Cursor's local plugin directory and reloading the window. Copying is preferred for local testing because Cursor's supported local path is `~/.cursor/plugins/local/<plugin-name>/`, the plugin manifest must exist at the copied plugin root, and symlinked local plugins may fail to load in some Cursor versions.
 
@@ -256,9 +222,8 @@ Skills with `disable-model-invocation: true` are hidden from the model's skill l
 - [ ] User has been prompted to reload/restart Cursor, confirm `soofi-xyz-team-kit-local` under Settings > Plugins, and smoke-test the changed agent or skill.
 - [ ] Plugin installs locally via `copilot plugin install ./` and lists expected agents / skills.
 - [ ] Plugin installs locally via the Codex repo marketplace and lists expected skills.
-- [ ] `claude plugin validate . --strict` passes and `claude --plugin-dir .` loads the expected agents, skills, and the `elephant` MCP server.
+- [ ] `claude plugin validate . --strict` passes and `claude --plugin-dir .` loads the expected agents, skills, and MCP servers.
 - [ ] Before creating a PR, `scripts/local-cursor-plugin.sh remove` has deleted the local Cursor test copy.
-- [ ] If `skills/use-oracle/runtime/` changed: `npm ci` and `npm test` pass under Node 22.18+, and `python3 scripts/check-plugin-clean-room.py` passes.
 
 ## References
 

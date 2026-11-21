@@ -6,16 +6,9 @@
         "ampharos"
       ],
       "used_by_stays_local": []
-    },
-    "use-oracle": {
-      "reason": "paths the library refuses: skills/use-oracle/runtime/.dockerignore, skills/use-oracle/runtime/.gitignore",
-      "used_by": [],
-      "used_by_stays_local": [
-        "oracle"
-      ]
     }
   },
-  "kit_version": "0.182.1",
+  "kit_version": "0.183.0",
   "limits": {
     "body_bytes": 4194304,
     "encoded_bytes": 5242880,
@@ -30,7 +23,7 @@
       "digest": "sha256:6c085deb9c95bd7176e818d7a646252fb4a4f771ff2c76d77231cfa3a1d82c3d",
       "encoded_bytes": 54178,
       "files": 13,
-      "reason": "used by 63 packaged agents",
+      "reason": "used by 62 packaged agents",
       "stored_bytes": 52800,
       "used_by": [
         "abra",
@@ -89,7 +82,6 @@
         "unown",
         "uxie",
         "vivillon",
-        "watchog",
         "wigglytuff",
         "wingull",
         "xatu",
@@ -143,7 +135,7 @@
       "digest": "sha256:9ab64674218adbffa7736b8932190fb8295c110066fac4303d82ca13b842ab48",
       "encoded_bytes": 99705,
       "files": 13,
-      "reason": "used by 11 packaged agents",
+      "reason": "used by 10 packaged agents",
       "stored_bytes": 97227,
       "used_by": [
         "alakazam",
@@ -155,7 +147,6 @@
         "noctowl",
         "pelipper",
         "porygon",
-        "watchog",
         "zoroark"
       ],
       "version": "1.0.0-sha256-52c743a354ac9fa3"
@@ -165,7 +156,7 @@
       "digest": "sha256:b2a3573e6f99bcffd9e9f7e8f34808df2d750b120a84eda42b72d80ba115192c",
       "encoded_bytes": 45395,
       "files": 10,
-      "reason": "used by 11 packaged agents",
+      "reason": "used by 10 packaged agents",
       "stored_bytes": 44178,
       "used_by": [
         "alakazam",
@@ -177,7 +168,6 @@
         "noctowl",
         "oranguru",
         "porygon",
-        "watchog",
         "wingull"
       ],
       "version": "1.0.0-sha256-aec04eab08f73ca6"
@@ -865,12 +855,12 @@
       "version": "1.0.0-sha256-2bf41e6b17c43a95"
     },
     "guide-product-work": {
-      "bytes": 282261,
-      "digest": "sha256:c6b626fb7686e121d88f7074f663dfec1d099fe326cb7e402acddaa6319c4442",
-      "encoded_bytes": 298070,
+      "bytes": 282217,
+      "digest": "sha256:a37c74dee55837199807acf2ef610b6126c2df200d24e68095ac8587448f57c7",
+      "encoded_bytes": 298002,
       "files": 25,
       "reason": "used by 41 packaged agents",
-      "stored_bytes": 289395,
+      "stored_bytes": 289342,
       "used_by": [
         "aegislash",
         "arceus",
@@ -914,14 +904,14 @@
         "zorua",
         "zygarde"
       ],
-      "version": "1.0.0-sha256-f48e95bf19fcc286"
+      "version": "1.0.0-sha256-41833e13fb1129a2"
     },
     "integrate-ci-cd": {
       "bytes": 6805,
       "digest": "sha256:af7423bff6e82cd392eb459acab1ad1305eca5ab4335d644b80c2893965efba9",
       "encoded_bytes": 7657,
       "files": 1,
-      "reason": "used by 7 packaged agents",
+      "reason": "used by 6 packaged agents",
       "stored_bytes": 7327,
       "used_by": [
         "ditto",
@@ -929,8 +919,7 @@
         "lucario",
         "meowth",
         "noctowl",
-        "porygon",
-        "watchog"
+        "porygon"
       ],
       "version": "1.0.0-sha256-0a3158a343d06221"
     },
@@ -1068,19 +1057,6 @@
         "porygon"
       ],
       "version": "1.0.0-sha256-87ab458ae63bbb54"
-    },
-    "use-elephant-mcp": {
-      "bytes": 17617,
-      "digest": "sha256:70c3ac50ba445f55a605230eb5c46701dc5c26c1d84754b2a69e70d015cd667c",
-      "encoded_bytes": 19108,
-      "files": 4,
-      "reason": "used by 2 packaged agents",
-      "stored_bytes": 18563,
-      "used_by": [
-        "donphan",
-        "watchog"
-      ],
-      "version": "1.0.0-sha256-1f0f2b2a9ff12ec2"
     },
     "use-neutral-lexicon": {
       "bytes": 1316400,

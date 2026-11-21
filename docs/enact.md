@@ -91,7 +91,7 @@ scripts/sync-enact-schema.sh [sync|check]   # refresh enact/schema from prismtea
 | Sandbox CLI tools (`curl`, `jq`, `unzip`, `python3`, `gh`, AWS CLI) | [#22](https://github.com/prismteam-ai/enact/pull/22), in [#30](https://github.com/prismteam-ai/enact/pull/30) | merged | The appendix names them (check with `command -v`, prefer Node.js `fetch`) |
 | Browser sandbox preview (`browser.sandbox_localhost`) | #23, in #30 | merged | `browser` in the manifest when an override sets it (audino, smeargle, sylveon, castform) |
 | `ask_<agent>` MCP tools and run-ended webhook | #24, in #30 | merged | The appendix lets agents ask other agents when a run has the `enact` server |
-| Remote MCP servers (`mcp_servers`, `GET/PUT /mcp-servers`) | #25, in #30 | merged | `mcp_servers` (chandelure, donphan, hoopa, watchog, wigglytuff); each waits on the environment's allow-list (`blocked_by: mcp-allow-list`) |
+| Remote MCP servers (`mcp_servers`, `GET/PUT /mcp-servers`) | #25, in #30 | merged | `mcp_servers` (chandelure, hoopa, wigglytuff); each waits on the environment's allow-list (`blocked_by: mcp-allow-list`) |
 | Agent secrets (`secrets`) | #26, in #30 | merged | `secrets` (configurers' `PRISM_API_KEY`) |
 | Skill library (`library_skills`, `PUT/GET /skills/{name}`) | #27, in #30 | merged | `library_skills`; kecleon, mew and silvally fit within 1 MiB |
 | Agent assets (`assets`, `POST /agents/{name}/assets`) | [#33](https://github.com/prismteam-ai/enact/pull/33) | merged | ampharos's reference images; it leaves `stays_local` |
@@ -127,9 +127,8 @@ the library and which agents pin it.
 
 Skills the library cannot hold (over 3 MiB of text, over 5 MiB encoded or a 4 MiB body, over 500 files, binary files, paths it
 refuses such as dotfiles, or no description) stay in their agents' packages and are listed under
-`excluded` with their users. Today those are `prism-asset-pipeline` (images; used only by
-ampharos) and `use-oracle` (`runtime/.dockerignore`, `.gitignore`; used only by oracle, which
-stays local).
+`excluded` with their users. Today that is `prism-asset-pipeline` (images; used only by
+ampharos).
 
 **Assets.** An agent's own skill may hold binary files (Enact's `assets`, enact#33): every file
 that is not UTF-8 text, and in such a skill also every text file over the 256 KiB file limit,
@@ -226,7 +225,8 @@ its work, and write why in `requires_mcp_reason` with the file and line.
 `scripts/test-enact-packaging.py` validates each package against `enact/schema/`, the 1 MiB
 limit, a `SKILL.md` in every skill, no path that is also a folder, and `requires_mcp` against the
 allow-list. CI fails on agents in `must_pass_waves` (wave 1a) and reports the rest. `--self-test`
-proves the checks catch each case, including that `donphan` fails on its `elephant` MCP server.
+proves the checks catch each case, including that an agent fails on an `elephant` MCP server
+outside the allow-list and passes on the allow-listed `persist` server.
 
 T1 also checks the library as Enact main does: each library skill against
 `skill-definition.schema.json`, at most 3 MiB of text in 500 files, at most 5 MiB as its

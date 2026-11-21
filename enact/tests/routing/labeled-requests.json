@@ -152,7 +152,7 @@
       "expected": "silvally",
       "wave": "configurers",
       "near_miss": true,
-      "confusable_with": "oracle"
+      "confusable_with": "kecleon"
     },
     {
       "id": "r23",
@@ -298,11 +298,11 @@
     },
     {
       "id": "r45",
-      "request": "How many roof permits were issued in Lee County, Florida since 2022 according to the published data?",
-      "expected": "donphan",
-      "wave": "specialists",
+      "request": "Our LiveVox call counts and the Persist call metrics disagree by about 5% a day. Reconcile the definitions.",
+      "expected": "porygon",
+      "wave": "1a",
       "near_miss": true,
-      "confusable_with": "oracle"
+      "confusable_with": "uxie"
     },
     {
       "id": "r46",
@@ -332,11 +332,11 @@
     },
     {
       "id": "r50",
-      "request": "Generate verified hero facts about newly published counties for the elephant.xyz homepage.",
-      "expected": "watchog",
+      "request": "Create on-brand graphics for the new pricing section of prismteam.ai.",
+      "expected": "ampharos",
       "wave": "specialists",
       "near_miss": true,
-      "confusable_with": "ampharos"
+      "confusable_with": "zygarde"
     }
   ]
 }
