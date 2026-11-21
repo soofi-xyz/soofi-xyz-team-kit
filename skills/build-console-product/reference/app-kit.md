@@ -214,8 +214,17 @@ Deploy. Console receives only delivered, reviewed output.
   system is released, with the same version. Build's runner installs only from
   that registry and rejects an `.npmrc` in a product's source, so the registry
   address comes from the kit's setup or the user's own settings, never from a
-  file in the app's repository. Publishing a private package there is new work
-  for `tinkaton`; whoever builds apps needs read access to that registry.
+  file in the app's repository. Whoever builds apps needs read access to that
+  registry. Console's CI publishes the kit from `main` after `verify`
+  (`publish-app-kit` job, `scripts/publish-app-kit.ts`,
+  [prismteam-ai/console#44](https://github.com/prismteam-ai/console/pull/44),
+  not merged): it assumes Build's publisher role through GitHub's OIDC, skips
+  until the repository variable `BUILD_KIT_PUBLISHER_ROLE_ARN` is set, accepts
+  only a CodeArtifact endpoint, never overwrites a published version and moves
+  `latest` only forward (an older version goes under `earlier`). The
+  role is Build's (`tinkaton`,
+  [prismteam-ai/build#71](https://github.com/prismteam-ai/build/pull/71), not
+  merged). Publishing each pack's types package is story 9.
 - **Bundle kinds, product `console`.**
 
   | Kind | Carries | State as of 2026-11-21 |
@@ -223,7 +232,7 @@ Deploy. Console receives only delivered, reviewed output.
   | `application` | dashboard manifest | on Build's and Deploy's main; installation in an environment not verified |
   | `design-system` | design-system configuration | Build: [prismteam-ai/build#70](https://github.com/prismteam-ai/build/pull/70), Deploy: [prismteam-ai/deploy#94](https://github.com/prismteam-ai/deploy/pull/94); neither merged |
   | `app` | app source that Build builds and checks | Build: [prismteam-ai/build#70](https://github.com/prismteam-ai/build/pull/70), Deploy: [prismteam-ai/deploy#94](https://github.com/prismteam-ai/deploy/pull/94); neither merged |
-  | `component-pack` | pack source that Build builds and checks | target |
+  | `component-pack` | pack source that Build builds and checks | target; the pack check and build it runs are on [prismteam-ai/console#42](https://github.com/prismteam-ai/console/pull/42) |
 
   All are `CONFIGURATION` kinds. Build runs a bundle holding an `app` in its
   isolated runner with the kit's check as the gate and packs only the checked
