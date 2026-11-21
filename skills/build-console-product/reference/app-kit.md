@@ -457,8 +457,10 @@ lists every app path. Keep these rules when changing it.
   last publish or rollback, never `active`'s `ETag` header, which is for
   `If-None-Match` only.
 - **Publish checks live in one place.** The design-system checks a publish and a
-  rollback run are in `src/domain/design-system-installation.ts`. The
-  `design-system-configuration` piece adds "component switched off" there.
+  rollback run are in `src/domain/design-system-installation.ts`. Since runtime 1.20.0 (pull
+  request 38, not yet merged) that includes "component switched off": `422`
+  `INCOMPATIBLE_VERSION` with a `component_switched_off` issue naming the
+  component; see [Design-system configuration implementation rules](design-system.md#design-system-configuration-implementation-rules).
 - **Scopes and provenance.** Create and submit need `console:configure`;
   publish and rollback `console:publish`; reads `console:read`. Create, submit
   and publish pass the provenance gate (Deploy's signature covers the exact
@@ -488,8 +490,11 @@ lists every app path. Keep these rules when changing it.
   Console's API; see [Data hooks implementation rules](#data-hooks-implementation-rules).
 - **Known limits.** The record's `roles` are not enforced, so any signed-in
   viewer of the environment opens any published app: dev environments only
-  until `access-sign-in`. No delete route. The page ignores the view's
-  `theme`. A denied Google sign-in returns to Console's home, not to the app.
+  until `access-sign-in`. No delete route. Before runtime 1.20.0 the page
+  ignores the view's `theme`; since 1.20.0 the view carries only the theme
+  choices the environment allows and the page sets them on the root. An app
+  publish racing a design-system configuration publish in the same account can
+  both commit (no shared guard yet). A denied Google sign-in returns to Console's home, not to the app.
   Whether the gateway passes an app file through as JavaScript and the session
   cookie on the shared domain are only visible on a deployed environment.
 - **Tests.** `AH-3`, `AH-5`, `AH-6`, `AH-7` and the API half of `AH-4` run in

@@ -36,8 +36,11 @@ configuration API, the `report` / `read-dataset` operation, the design system
 (runtime 1.14.0) and the app kit (runtime 1.15.0, pull request 33) exist in
 the repository, with runtime sharing (runtime 1.16.0, pull request 34) and
 app hosting (runtime 1.17.0 for the API, pull request 35; 1.18.0 for the
-shell, pull request 36) and data hooks (runtime 1.19.0, pull request 37);
-everything else here is a requirement. An app can be uploaded, published,
+shell, pull request 36) and data hooks (runtime 1.19.0, pull request 37); as of 2026-11-21
+design-system configuration (runtime 1.20.0) is on pull request 38, not yet
+merged, with the open gaps its
+[implementation rules](reference/design-system.md#design-system-configuration-implementation-rules)
+list; everything else here is a requirement. An app can be uploaded, published,
 opened by address and rolled back with the environment key, and reads Report
 data through Console's API, but no session carries an Access token yet, so its
 Persist reads are denied; its roles are not enforced and nothing delivers it

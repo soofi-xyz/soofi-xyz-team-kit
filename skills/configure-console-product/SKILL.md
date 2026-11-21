@@ -24,11 +24,14 @@ new business apps as apps. Do not start a new one as a dashboard manifest.
    `soofi-safavi.account.prismteam.ai`); use no AWS profile or credentials and do
    not read SSM or stack outputs.
 2. Separate required, implemented and observed capabilities. Do not guess routes,
-   components or operations. As of 2026-11-19 Console hosts dashboards only and its
-   one registered data operation is `report` `read-dataset`. The app kit (runtime
-   1.15.0) creates, runs and checks an app locally on sample data; app hosting,
-   publishing, delivery, design-system configuration and component packs are
-   requirements, so an app cannot reach an environment yet.
+   components or operations. As of 2026-11-21 the Console repository's `main` (runtime
+   1.19.0) hosts apps (upload, publish, roll back, open by address) and its one
+   registered data operation is `report` `read-dataset`. Design-system
+   configuration (runtime 1.20.0) is on
+   [Console pull request 38](https://github.com/prismteam-ai/console/pull/38),
+   not yet merged. Delivery through Build, Marketplace and Deploy and component
+   packs are requirements, so an app or a configuration reaches only your own
+   dev/test stack yet.
 3. Where the capability a request needs is absent, say so, show the person what you
    would build, hand the gap to `chandelure` and stop. Do not build a bespoke app
    outside Console, run a local generator or fork the renderer as a substitute.
@@ -89,14 +92,22 @@ describes. Never ask the person for Figma access or a token.
    tokens, switched-on components, each component's allowed variants and defaults,
    active [component pack](../build-console-product/reference/design-system.md#component-packs)
    versions and the theme choices apps may make. Select only installed pack
-   versions; pack code is `chandelure`'s work.
+   versions; pack code is `chandelure`'s work. On runtime 1.20.0 and later the
+   document and routes are in
+   [its implementation rules](../build-console-product/reference/design-system.md#design-system-configuration-implementation-rules);
+   per-component allowed variants and defaults are not configurable yet, so
+   report that gap to `chandelure` instead of improvising.
 2. On your own dev/test stack, verify a baseline and a materially different
-   configuration: read back the active revision and digest, and compare screenshots
-   of the component gallery and one app before and after. On a runtime that has
-   the gallery, open it at `?gallery` (`&tokens=tokens-b` for the second token set).
-3. Verify an invalid value is refused and nothing is saved, an app using a
-   switched-off component is refused at publish while other apps still work, and a
-   rollback restores the previous look with no app change.
+   configuration: submit with an `Idempotency-Key`, publish with `If-Match`, read
+   back `GET active` and its digest, fetch `/console/design-system/tokens.css`,
+   and compare screenshots of one app before and after. The gallery and
+   dashboards do not load the configuration yet; the gallery shows the built-in
+   token sets at `?gallery` (`&tokens=tokens-b` for the second).
+3. Verify an invalid value is refused (`400`) and nothing is saved, an app using a
+   switched-off component is refused at publish (`422` `component_switched_off`)
+   while other apps still work, a revision switching off a component a published
+   app uses is refused (`409` `CONFIGURATION_IN_USE`), and a rollback restores
+   the previous look with no app change.
 
 ## 5. Keep existing dashboards working
 
