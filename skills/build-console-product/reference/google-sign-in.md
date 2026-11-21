@@ -127,9 +127,13 @@ The first step of `access-sign-in` is on
   cookie. `POST /viewer/signout` also ends the Access session, for every
   application. `GET /viewer/sign-in-options` answers `access` beside `google`
   and `password`.
-- **Server-side exchange.** Exchange the code at Access's `/token` with the
-  login's PKCE verifier, `client_id` the application name and no client
-  secret, as Access defines it.
+- **Server-side exchange, in the browser that started.** The start sets a
+  ten-minute `console_access_login` cookie (`HttpOnly`, `Secure`,
+  `SameSite=Lax`, path `/console/viewer/auth/access`) and the pending login
+  keeps only its digest. The callback refuses a missing or different cookie.
+  Exchange the code at Access's `/token` with the login's PKCE verifier,
+  `client_id` the application name and no client secret, as Access defines
+  it.
 - **Verifier.** Verify with `jose` exactly as
   [product integration §2](../../build-access-product/reference/product-integration.md#2-verify-a-callers-token)
   shows, and also require `token_use: access`, string `roles` and a person's
@@ -141,9 +145,13 @@ The first step of `access-sign-in` is on
   `purpose=console-access-session`. Never put a token in the cookie, a log
   line, an answer or the table in the clear.
 - **Validity and refresh.** The session is valid until the held token's `exp`.
-  A request within 60 seconds of it refreshes through Access first; a refresh
-  Access refuses deletes the session and answers `401`; Access unreachable
-  answers `503` and keeps the session. Access does not rotate refresh tokens.
+  A request within 60 seconds of it refreshes through Access first. A refresh
+  Access refuses deletes the session and answers `401`. Access or its keys
+  unreachable answers `503`, and a `200` without a token answers `502`; both
+  keep the session. Only `jose` errors about the token itself count as a bad
+  token. Write a refreshed session only while it still exists, so a sign-out
+  during a refresh stays signed out. Never use a token past its raw `exp`.
+  Access does not rotate refresh tokens.
 - **Identity.** The session's subject is the Access user identifier, never an
   email. `Principal.accessToken` is the current token, forwarded to products
   for a person's reads.
@@ -164,8 +172,10 @@ The first step of `access-sign-in` is on
   callback address (an Access operator step; dev registers only
   `/console/app/`). `CS-12` waits on Persist user-scoped reads and `CS-14` on
   a product action that records the person. Removing `google-oidc` (`CS-8`)
-  waits on Access sign-in verified on a deployment. Nothing here has run
-  against a deployed Access.
+  waits on Access sign-in verified on a deployment. Access sign-out is not
+  retried once Console's session is deleted (a failure is counted as
+  `AccessSignOutFailed`), and CloudFront standard logs record the callback
+  query, as they do Google's. Nothing here has run against a deployed Access.
 
 ## Ownership
 
