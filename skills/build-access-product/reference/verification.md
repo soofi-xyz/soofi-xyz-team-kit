@@ -64,8 +64,8 @@ Pieces are verified in this order. A piece's checks use only what that piece
 and the ones before it deliver:
 
 `applications` → `sign-in` → `token-contract` → `users` → `permissions` →
-`service-identities` → `user-records` → `resource-sharing` → `record-access` →
-`application-bundles` → `product-integration`
+`service-identities` → `user-records` → `resource-sharing` → `domain-role-rules` →
+`record-access` → `application-bundles` → `product-integration`
 
 Until `permissions` is done the fixture people hold no permission:
 administrative calls use the environment key, and every fixture person is
@@ -255,6 +255,35 @@ Resource `fixture:item/item-1`, owned by `alice`. Ask the decision helper after 
 | RS-12 | D | Register two environment-owned items `app-a` and `app-b`; create a role, share `use` on `app-a` with it and give it to `bob` | `bob` `use` is allow on `app-a` and deny on `app-b`; `carol`, without the role, is deny on both |
 | RS-11 | D\* | Run Connect checks `UC-3` to `UC-11` with real Connect credentials | They pass. Needs Connect's per-user checks |
 
+### `domain-role-rules`
+
+Uses the roles `demo` and `demo-two` (no grants) and the demo-company people
+from [the test data](test-data.md#domain-role-rules). Administrative calls use
+the environment key unless the check names a person. "Refresh" exchanges the
+person's refresh token for a new access token; "holds" is read from that token's
+roles.
+
+| ID | Level | Do | Pass when |
+| --- | --- | --- | --- |
+| DR-1 | D | Create the rule `demo-company.example` → `demo`, send it again, list the rules and read it | `201`, then `200 unchanged`; listed once; reads back the domain and the role identifier exactly; one `domain-role-rule.create` audit record, actor `environment` |
+| DR-2 | D | Create a rule with an upper-case domain, a wildcard, an email address, a domain with a trailing dot, an unknown role, an extra field, and the administrator role | `400` each; the list of rules is unchanged |
+| DR-3 | D | `dana` signs in for the first time | Her first token carries `demo`; a `role.assign` audit record on her user names the rule |
+| DR-4 | D | `demo-spoof` (email on the domain, no hosted-domain claim) and `outsider` sign in | Neither token carries `demo` |
+| DR-5 | D | `drew` signs in; then create the rule `demo-company.example` → `demo-two`; `drew` refreshes, then signs in again through the shared session | His first token carries `demo` only; the refreshed one too; the token from the second sign-in carries `demo` and `demo-two` |
+| DR-6 | D | Assign `demo` to `drew` by hand; remove the rule `demo-company.example` → `demo`; `dana` and `drew` refresh; `dana` signs in again | `204`; the rule then reads `404`; `dana`'s refreshed token lacks `demo` while the token she held still carries it until its expiry; `drew` still holds `demo`; `dana`'s new sign-in gives her no `demo`; a `role.unassign` audit record on her user names the rule |
+| DR-7 | D | Create the rule `demo-company.example` → `demo` again; `dana` and `drew` sign in; take `demo` from `dana` by hand, then from `drew`; then remove the rule | `dana`: `409`, nothing changed. `drew`: `204` and he still holds `demo` through the rule. After the rule's removal neither holds `demo` |
+| DR-8 | D | With the rule `demo-company.example` → `demo-two` in place and `dana` holding `demo-two`, delete the `demo-two` role | `204`; the rule reads `404`; `dana`'s refreshed token lacks `demo-two`; her next sign-in gives nothing |
+| DR-9 | D | As `bob` (no permission), create, list, read and remove a rule; then call each with no credential | `403` each, then `401` each; nothing written |
+| DR-10 | F | On fresh state where `admin` is the only administrator, with a rule giving his domain `member`: `admin` signs in; the rule is removed; `admin` then takes the administrator role from himself by hand | He holds `member` and then not; he stays an administrator throughout; the hand removal is `409` |
+| DR-11 | F | `dana` signs in through a rule, the rule is removed, and the publications to the Persist fake are drained | Her user record is published with only the declared fields; nothing published says who holds `demo`, on assignment or on removal |
+| DR-12 | F | Remove a rule while ten matching people sign in at the same time | Afterwards nobody holds the role through that rule, and nothing of the rule or its grants remains in Access's store |
+| DR-13 | D | `dana` signs in with the rule `demo-company.example` → `demo` in place; the provider then returns another hosted domain for her and she signs in again | The first token carries `demo`; the second does not |
+
+Removing a rule, deleting its role or taking a hand assignment away is gone from
+the person's next refresh or sign-in. The token they already hold keeps the role
+until it expires, at most the configured access-token lifetime: `DR-6` reads
+that lifetime and asserts the old token's expiry is within it.
+
 ### `record-access`
 
 Uses the graph fixture. Prerequisite outside Access for D\*: Persist's
@@ -311,12 +340,12 @@ impossible. A piece that touches the area re-runs its row.
 | Test bypass in production | `NB-1`, `SI-15`, `SI-18`, `SI-19` |
 | Unverified tokens | `TC-3` |
 | Fail-open check | `TC-7`, `PM-8` |
-| Unprotected administration | `RI-1`, `AP-6`, `US-4`, `US-8`, `PM-9`, `RA-4`, `SV-8` |
+| Unprotected administration | `RI-1`, `AP-6`, `US-4`, `US-8`, `PM-9`, `RA-4`, `SV-8`, `DR-9` |
 | Credentials in logs | `LS-1` |
 | Tokens in URLs | `SI-1`, `SI-17` |
 | Long-lived, weakly bound sessions | `TC-1`, `SI-7`, `SI-8`, `SI-9` |
 | Lookup by scan | `AP-7` |
-| Email as identity | `SI-3`, `SI-21` |
+| Email as identity | `SI-3`, `SI-21`, `DR-4` |
 | Sign-up coupled to another service | `UR-2` |
 
 ## Leak scan
