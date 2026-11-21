@@ -209,11 +209,13 @@ Paths below are relative to `/console`.
 
 ## Console app, component-pack and design-system payloads
 
-Target contract. As of 2026-11-18 none of it is built: Build has no such kind,
-Deploy no such adapter and Console no API for it. Tinkaton and Corviknight settle
-the kinds, the bundle type and the wire contract with Chandelure, and follow
-Console's `requirements/swagger.yml` once it has the routes. The kind names are
-targets until Build and Deploy merge them. Console's side is in
+As of 2026-11-21 Build's `design-system` and `app` kinds are on [prismteam-ai/build#70](https://github.com/prismteam-ai/build/pull/70) (not
+merged); Deploy's `app` and `design-system` adapters are on
+[prismteam-ai/deploy#94](https://github.com/prismteam-ai/deploy/pull/94) (not merged);
+`component-pack` and publishing the app kit into Build's registry are not built. Console has the app routes (runtime 1.17.0) and the
+design-system configuration routes (1.20.0). All three are `CONFIGURATION` kinds, not
+another bundle type: the artifact stays a `CONFIGURATION_BUNDLE`. Follow Console's
+`requirements/swagger.yml` for the routes. Console's side is in
 [the design system contract](../../build-console-product/reference/design-system.md)
 and [the app kit contract](../../build-console-product/reference/app-kit.md#delivery).
 
@@ -223,13 +225,21 @@ and [the app kit contract](../../build-console-product/reference/app-kit.md#deli
 | `app` | An app's source, written against the app kit | Installs, runs the app kit's check, builds and verifies the output | Uploads the built files, publishes the version and reads it back |
 | `component-pack` | A component pack's source | Installs, runs the pack's check, builds and verifies the output | Uploads the built files, activates the pack version and reads it back |
 
-- **Build step and gate (new):** configuration bundles run no code today. `app`
-  and `component-pack` need Build to install dependencies and run a build in the
-  isolated runner, with the app kit's check as a publish gate: a source that
-  fails the check produces no artifact. Tinkaton settles whether they are
-  `CONFIGURATION` kinds or another bundle type. Keep the runner's rules:
-  Build-owned commands only, no lifecycle scripts, no product `.npmrc` and no
-  network beyond Build's package registry.
+- **Build step and gate:** a bundle holding an `app` (or `component-pack`) goes
+  to the isolated runner, which installs it and runs the pinned app kit's check as
+  the gate: a source that fails the check produces no artifact. Before install,
+  Build refuses any source of the kit other than Build's registry at an exact
+  version (`pnpm-lock.yaml` required; it names no registry). Keep the runner's
+  rules: Build-owned commands only, no lifecycle scripts, no product `.npmrc` and
+  no network beyond Build's package registry.
+- **Artifact shape (Build → Deploy):** `design-system` ships its JSON file, named
+  `design-system`, once per bundle. `app` ships only its checked build,
+  `bundle/<source>/dist/build-record.json` and the files it lists, named by its
+  `appId`; the configuration records `app.kit_version` and `app.build`. Deploy
+  sends `{ buildRecord, files: [{ path, contentBase64 }] }` from those files to
+  `POST …/apps/{appId}/versions` and reads `versionId` and `versionDigest` back;
+  it submits the design-system file unchanged to
+  `POST …/design-system/revisions`.
 - **Output verification:** read the bundler's input list and fail unless every
   input is the app's own source: no file from an installed package, no bundled
   design system or React, and no CSS file. Fail a pack whose replacement of a
@@ -261,6 +271,22 @@ and [the app kit contract](../../build-console-product/reference/app-kit.md#deli
   code that runs in the browser on the shared domain, so the recorded check
   result and the Marketplace review are the review before publish; the review
   environment needs a Console with a compatible design system.
+- **Marketplace:** no change and no kind registration: register a `CONFIGURATION`
+  component and publish. Marketplace checks only the `CONFIGURATION_BUNDLE` claims and
+  manifest files and stores the zip unchanged
+  ([prismteam-ai/marketplace#33](https://github.com/prismteam-ai/marketplace/pull/33) takes
+  Build's artifact for each kind through publish, review and rollback). A review fails
+  with Deploy's `unknown Console kind` until a Deploy with
+  [prismteam-ai/deploy#94](https://github.com/prismteam-ai/deploy/pull/94) is in the review
+  account.
+- **Deploy result:** `version` is the active `versionId` or `revisionId`; `digest` is the
+  `versionDigest` or `revisionDigest` Console answered and read back (Console digests the
+  validated record, which can differ from the record sent). A replay reports `UNCHANGED`
+  and publishes nothing; Console's refusals (`400`, `422 INCOMPATIBLE_VERSION`, `409
+  CONFIGURATION_IN_USE`) fail the run with its reason and leave the active selection
+  unchanged; an app, version or revision created before a refused publish stays and is reused. Neither kind is
+  releasable: Console has no delete for them. The `503` with `Retry-After` on app create
+  fails the run like any `5xx`; Deploy does not retry it.
 - **Acceptance:** `AD-1` to `AD-7` in
   [the app kit tests](../../build-console-product/reference/app-kit.md#tests) and
   the `CP` checks in

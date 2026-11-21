@@ -16,8 +16,15 @@ runtime sharing by [its implementation rules](#runtime-sharing-implementation-ru
 each build at `/console/app/runtime/<version>/<digest hex>/`, one pointer per
 major version at `/console/app/ui/v<major>/` and `SH-1` to `SH-7`. It does not
 build the version check at publish, a pointer API or loading an app in the
-Console shell on one React. Design-system configuration, component packs and
-the renderer reskin are not built. Discover the target revision before relying
+Console shell on one React. Design-system configuration is on `main` (pull request
+38, runtime 1.20.0) by
+[its implementation rules](#design-system-configuration-implementation-rules),
+with open gaps listed there. The renderer reskin's first step is on pull
+request 39 (runtime 1.21.0, not yet merged) by
+[its implementation rules](#renderer-reskin-implementation-rules): dashboards
+take the environment's tokens and the parts with a design-system match; moving
+every other dashboard part onto design-system components is a follow-up
+(`RS-4`). Component packs are not built. Discover the target revision before relying
 on any part, and settle names marked as placeholders in the Console repository.
 
 Read it with [the product contract](PRD.md) and [the app kit](app-kit.md).
@@ -189,7 +196,8 @@ An environment configures its design system with one declarative document.
   rebuild of an app or of the components.
 - **Switched-off components.** Refuse to publish an app that uses a switched-off
   component. Refuse a configuration revision that switches off a component a
-  published app uses, and name those apps in the refusal.
+  published app or dashboard uses, and name those apps and dashboards in the
+  refusal.
 - **App theme choices.** An app declares its choices in its settings, never in
   code. Honor a choice only where the environment's configuration allows it and
   fall back to the environment's default otherwise.
@@ -248,6 +256,8 @@ Keep the manifest renderer working for existing dashboards.
   not let it override the environment's tokens.
 - Keep the manifest schema, the applications API and the `application` bundle
   kind compatible. Existing dashboards must render without a manifest change.
+- Refuse a design-system configuration revision that switches off a component a
+  published dashboard draws, and name those dashboards, as for apps.
 - Do not extend the manifest schema for app-like behavior unless the user asks.
   Build new business apps as apps.
 
@@ -338,13 +348,17 @@ Level: repository; DC-4 uses two stand-ins.
 
 ### `renderer-reskin`
 
-Level: repository.
+Level: repository. `RS-1` to `RS-3` define done for the first step (dashboards
+in the environment's tokens, matching parts swapped); `RS-4` belongs to the
+follow-up story "Finish moving dashboards onto design-system components", which
+waits on the shadcn library and charts stories.
 
 | ID | Do | Expect |
 | --- | --- | --- |
 | RS-1 | Run the existing dashboard Playwright suite against the reskinned renderer | Every existing test passes with no manifest change |
 | RS-2 | Open a dashboard and `sample-app` side by side, then publish `tokens-b` | The same tokens change in both, to the same computed values |
 | RS-3 | Screenshot the `portal-performance` and `inventory-controls` fixtures at phone, tablet and desktop widths | Each matches its new stored baseline |
+| RS-4 | List every part each fixture dashboard draws and every configuration revision that switches off a component one of them draws | Every part is a design-system component (`data-ds-component`), none is renderer markup; the revision is refused with `409` `CONFIGURATION_IN_USE` naming the dashboards |
 
 ### `component-packs`
 
@@ -425,11 +439,14 @@ checked by a test or a type check.
   the **Design-system baselines** workflow artifact, and commit both. Never
   loosen a comparison threshold to make a baseline pass.
 
-Applications cannot choose a token set from their manifest yet; the existing
-`theme.tokens` still drives the renderer's own components. Choosing an
-environment's tokens is the `design-system-configuration` piece and moving the
-renderer's components onto the design system is `renderer-reskin`; do not have
-Vivillon configure either until it ships.
+Applications cannot choose a token set from their manifest. An environment's
+tokens are chosen by its [design-system configuration](#design-system-configuration-implementation-rules)
+(runtime 1.20.0, on `main`), which app pages load and, since runtime 1.21.0
+(pull request 39, not yet merged), dashboards load too; the manifest's
+`theme.tokens` stays valid but sets nothing. Only the gallery and the
+development fixtures keep `?tokens=`. Have Vivillon configure an environment's
+look only on a Console that has the configuration routes, and expect dashboards
+to follow it only from 1.21.0.
 
 ## Runtime sharing implementation rules
 
@@ -508,6 +525,134 @@ code. The kit's side is in
   the Console page on one React came with [app hosting](app-kit.md#app-hosting-implementation-rules)
   (runtime 1.17.0 and 1.18.0): the page's entry imports no React and loads the
   mount module through the pointer. A pointer API is still not built.
+
+## Design-system configuration implementation rules
+
+These rules describe design-system configuration in runtime 1.20.0
+([Console pull request 38](https://github.com/prismteam-ai/console/pull/38), on
+`main`). The routes, bodies and answers are authoritative only in
+`requirements/swagger.yml` and the README's "Design-system configuration"
+section. Keep these rules when changing it.
+
+- **Layout.** The schema, the default configuration, the stylesheet generator
+  and theme resolution are in `src/domain/design-system-configuration.ts`; the
+  lifecycle in `src/application/design-system-service.ts`, composed with app
+  hosting in `ConsoleService` so each publish checks the other. The environment
+  is the account: revisions and the selection live in Metadata's
+  `ACCOUNT#<id>#DESIGN_SYSTEM` partition and the document at
+  `accounts/<id>/design-system/revisions/<revisionId>/configuration.json`.
+- **Closed schema.** Every object is strict. A color is `#rrggbb`, `#rrggbbaa`
+  or `rgba(r, g, b, a)`; radii and the spacing unit are px on fixed scales; the
+  font is one Console serves (`tasa-orbiter`); a scheme or accent apps may
+  choose must be defined. So code, credentials and addresses fit nowhere. Any
+  invalid value answers `400` `BAD_REQUEST` with one issue per path and nothing
+  is written. `revisionId` derives from the validated document's digest.
+- **Routes.** Under `/accounts/{accountId}/design-system`: `POST revisions`
+  (`console:configure`, `Idempotency-Key`), `GET revisions/{revisionId}`,
+  `POST revisions/{revisionId}/publish` (`console:publish`, `If-Match`),
+  `POST rollback` and `GET active` (`304` on `If-None-Match`; its `ETag` is the
+  publish marker). Submit and publish pass the provenance gate
+  (`designSystemRevision`, `designSystemPublication`); rollback is ungated. A
+  browser session gets `403` on all of them.
+- **One stylesheet, one address.** `GET /console/design-system/tokens.css`
+  (`designSystemStylesheetPath` in `surface.ts`) generates the stylesheet from
+  the active revision, Console's default (equal to `tokens-a`) before the first
+  publish. It is public, as every address a `<link>` loads, holds custom
+  properties only, and answers `Cache-Control: no-cache` with its digest as
+  `ETag`. It is a gateway-mode route (`public_routes`, nag suppressions) beside
+  the `/viewer` routes; move it with them when account-mode browser sign-in
+  lands. App pages link it and nothing else for tokens; `?tokens=` applies to
+  Console's own pages only.
+- **Density is a token.** Every gap and padding is a multiple of `--ds-space`
+  (Tailwind's `--spacing` points at it), which every token set defines. Add no
+  component variant for density.
+- **Status codes.** An app version that uses a component the active
+  configuration switches off answers `422` `INCOMPATIBLE_VERSION` with a
+  `component_switched_off` issue, on publish and on rollback; the check is in
+  `design-system-installation.ts`. A revision that switches off a component an
+  app's active version uses answers `409` `CONFIGURATION_IN_USE` naming each app
+  and component. Neither raises an alarm; never answer either refusal with
+  `412` or `ARTIFACT_DIGEST_MISMATCH`.
+- **Theme choices.** An app declares `colorScheme`, `density` and `accent` in
+  `console-app.json`. `ActiveAppView.theme` holds only the choices the
+  configuration lets apps make, and the view's `ETag` changes with them. The page
+  sets each as `data-ds-<choice>` on the root (`themeChoiceAttributes` in
+  `surface.ts`) and the stylesheet answers each allowed value; anything else
+  takes the environment's default.
+- **Packs.** Packs are modelled only as `packs.<name>.{version, switchedOff}`;
+  nothing builds or loads one until `component-packs`.
+- **Tests.** `DC-1` to `DC-6` at API level in
+  `test/design-system-configuration.test.ts`; the browser halves of DC-1, DC-3,
+  DC-4, DC-5 and DC-6 in `e2e/design-system-configuration.configuration.spec.ts`,
+  in the serial `configuration` Playwright project on two stand-ins of its own
+  (`e2e/support/stand-ins.ts`). Fixtures `tokens-a`, `tokens-b` and
+  `tokens-invalid` are in `fixtures/design-system/`; `compact-app` is derived
+  from `sample-app` in `test/support/app-kit.ts`. DC-3's pack half edits a
+  kit-built record, because no pack exists to build one.
+- **Open gaps.** Record these before relying on the piece:
+  - Per-component allowed variants and defaults, which the contract names, are
+    not modelled; variants are closed types today.
+  - An app publish and a configuration publish racing in one account can both
+    commit: each checks the other's committed state, but no shared condition
+    guards the two transactions. Closing it needs a guard in both repository
+    publish transactions (the design-system selection's etag in the app
+    publish, or a per-account fence both bump).
+  - Build's `console` `design-system` kind is on prismteam-ai/build#70 (not
+    merged) and Deploy has no adapter for it (`corviknight`), so do not set `ConfigurationProvenance` `Enabled` where a
+    configuration is installed, and do not install one by hand in a shared
+    environment.
+
+## Renderer reskin implementation rules
+
+These rules describe the first step of `renderer-reskin` in runtime 1.21.0
+([Console pull request 39](https://github.com/prismteam-ai/console/pull/39), not
+yet merged). Keep them when changing the renderer.
+
+- **One source of tokens.** Console's own pages (dashboards, sign-in) load the
+  environment's stylesheet at `designSystemStylesheetPath` through
+  `applyEnvironmentTokens` in `ui/src/design-system/tokens.ts`, falling back to
+  the default set only when the environment serves none. The gallery and the
+  development fixtures, which show no environment, keep `?tokens=`. The Vite
+  development server serves Console's default generated stylesheet at the same
+  address, so development pages match a fresh install.
+- **The manifest theme sets nothing.** Keep `theme` in the schema so manifests
+  stay valid; never write its colors to the page. The page title comes from the
+  manifest.
+- **Renderer styles in tokens.** `ui/src/styles.css` takes every color, radius
+  and typeface from a `--ds-*` token and draws no drop shadow;
+  `test/renderer-reskin.test.ts` fails on a literal color, a literal radius,
+  another typeface or the renderer's old `--background`, `--surface`,
+  `--foreground`, `--muted` and `--accent`.
+- **Swap only onto existing components.** Review statuses are `Badge`, the plain
+  `table` component is `Table` with an `Input` filter, report-table search is an
+  `Input`, Download CSV and pagination are `Button`s and a page filter's on/off
+  toggle is a `Switch`. Everything else (the report data table, KPI tiles and
+  panels, charts, funnel, heatmap, county map, tabs, date filter, segmented and
+  multi-select filters, dialogs, job status, the shell and the Model views) stays
+  renderer markup in tokens until its design-system component exists; do not
+  build those components inside the renderer.
+- **Tests.** `RS-1` is the existing dashboard suite; where a part was swapped,
+  move its selector to the part's role or `data-ds-component`, and change no
+  other expectation except one the contract changed (a manifest theme no longer
+  recolors; a tone color is now a token; a swapped part is sized by the design
+  system, such as a `Switch` row's 44px touch target below 960px). Keep the
+  renderer's element rules off swapped parts (`:not([data-ds-component] *)`):
+  `styles.css` is in the lowest layer, but a property a component never sets,
+  such as `min-height`, still reaches it. `RS-2` runs in
+  `e2e/renderer-reskin.configuration.spec.ts` in the `configuration` project;
+  `RS-3` compares full-page screenshots in `e2e/renderer-reskin.spec.ts`, whose
+  Linux baselines the Design-system baselines workflow regenerates with
+  `DS-1`'s.
+- **Open gaps.** Record these before relying on the piece:
+  - Most dashboard parts are not design-system components yet (`RS-4`, the
+    follow-up story).
+  - The configuration publish does not check dashboards: a revision may switch
+    off `Badge`, `Table`, `Input`, `Button` or `Switch` while a dashboard draws
+    it, and the renderer still draws it. Add the check with `RS-4`: it needs a
+    repository listing of an account's dashboards and one map from manifest
+    component types to the design-system components they draw.
+  - macOS `RS-3` baselines are not committed; create them with
+    `--update-snapshots` on the first local run on a Mac.
 
 ## Kit maintenance
 

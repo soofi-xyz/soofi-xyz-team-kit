@@ -218,16 +218,17 @@ Deploy. Console receives only delivered, reviewed output.
   for `tinkaton`; whoever builds apps needs read access to that registry.
 - **Bundle kinds, product `console`.**
 
-  | Kind | Carries | State as of 2026-11-18 |
+  | Kind | Carries | State as of 2026-11-21 |
   | --- | --- | --- |
   | `application` | dashboard manifest | on Build's and Deploy's main; installation in an environment not verified |
-  | `design-system` | design-system configuration | target |
-  | `app` | app source that Build builds and checks | target |
+  | `design-system` | design-system configuration | Build: [prismteam-ai/build#70](https://github.com/prismteam-ai/build/pull/70), Deploy: [prismteam-ai/deploy#94](https://github.com/prismteam-ai/deploy/pull/94); neither merged |
+  | `app` | app source that Build builds and checks | Build: [prismteam-ai/build#70](https://github.com/prismteam-ai/build/pull/70), Deploy: [prismteam-ai/deploy#94](https://github.com/prismteam-ai/deploy/pull/94); neither merged |
   | `component-pack` | pack source that Build builds and checks | target |
 
-  `app` and `component-pack` need a build step and a check gate, which
-  configuration bundles do not run today. `tinkaton` settles their bundle type
-  and `corviknight` their adapters; the names are targets until both merge them.
+  All are `CONFIGURATION` kinds. Build runs a bundle holding an `app` in its
+  isolated runner with the kit's check as the gate and packs only the checked
+  `dist/`. An app needs `pnpm-lock.yaml` and an exact kit version in
+  `dependencies`. `corviknight` builds the adapters.
 - **An app's path.** A merged pull request; Build installs, checks and builds;
   Marketplace reviews and publishes; Deploy creates the app if missing, submits
   the version, publishes it and reads back the active digest, all through
@@ -457,8 +458,10 @@ lists every app path. Keep these rules when changing it.
   last publish or rollback, never `active`'s `ETag` header, which is for
   `If-None-Match` only.
 - **Publish checks live in one place.** The design-system checks a publish and a
-  rollback run are in `src/domain/design-system-installation.ts`. The
-  `design-system-configuration` piece adds "component switched off" there.
+  rollback run are in `src/domain/design-system-installation.ts`. Since runtime 1.20.0 (pull
+  request 38) that includes "component switched off": `422`
+  `INCOMPATIBLE_VERSION` with a `component_switched_off` issue naming the
+  component; see [Design-system configuration implementation rules](design-system.md#design-system-configuration-implementation-rules).
 - **Scopes and provenance.** Create and submit need `console:configure`;
   publish and rollback `console:publish`; reads `console:read`. Create, submit
   and publish pass the provenance gate (Deploy's signature covers the exact
@@ -488,8 +491,11 @@ lists every app path. Keep these rules when changing it.
   Console's API; see [Data hooks implementation rules](#data-hooks-implementation-rules).
 - **Known limits.** The record's `roles` are not enforced, so any signed-in
   viewer of the environment opens any published app: dev environments only
-  until `access-sign-in`. No delete route. The page ignores the view's
-  `theme`. A denied Google sign-in returns to Console's home, not to the app.
+  until `access-sign-in`. No delete route. Before runtime 1.20.0 the page
+  ignores the view's `theme`; since 1.20.0 the view carries only the theme
+  choices the environment allows and the page sets them on the root. An app
+  publish racing a design-system configuration publish in the same account can
+  both commit (no shared guard yet). A denied Google sign-in returns to Console's home, not to the app.
   Whether the gateway passes an app file through as JavaScript and the session
   cookie on the shared domain are only visible on a deployed environment.
 - **Tests.** `AH-3`, `AH-5`, `AH-6`, `AH-7` and the API half of `AH-4` run in

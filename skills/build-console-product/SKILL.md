@@ -36,10 +36,17 @@ configuration API, the `report` / `read-dataset` operation, the design system
 (runtime 1.14.0) and the app kit (runtime 1.15.0, pull request 33) exist in
 the repository, with runtime sharing (runtime 1.16.0, pull request 34) and
 app hosting (runtime 1.17.0 for the API, pull request 35; 1.18.0 for the
-shell, pull request 36) and data hooks (runtime 1.19.0, pull request 37);
-everything else here is a requirement. An app can be uploaded, published,
+shell, pull request 36), data hooks (runtime 1.19.0, pull request 37) and
+design-system configuration (runtime 1.20.0, pull request 38); as of
+2026-11-21 the renderer reskin's first step (runtime 1.21.0) is on pull request
+39 and the first step of Access sign-in (runtime 1.22.0) is on pull request 40,
+neither merged yet, with the open gaps their implementation rules
+([renderer](reference/design-system.md#renderer-reskin-implementation-rules),
+[sign-in](reference/google-sign-in.md#access-sign-in-implementation-rules))
+list; everything else here is a requirement. An app can be uploaded, published,
 opened by address and rolled back with the environment key, and reads Report
-data through Console's API, but no session carries an Access token yet, so its
+data through Console's API; on `main` no session carries an Access token yet,
+and an Access session has no `persist:read` until roles decide, so its
 Persist reads are denied; its roles are not enforced and nothing delivers it
 through Build, Marketplace or Deploy yet.
 
@@ -76,7 +83,7 @@ passes; implement each test as an automated test named by its ID.
 | 3 | `runtime-sharing`: an app loads components from Console and does not bundle them | [Runtime sharing](reference/design-system.md#runtime-sharing) | SH-1 to SH-7 |
 | 4 | `app-hosting`: submit, publish, open and roll back an app version | [App hosting](reference/app-kit.md#app-hosting) | AH-1 to AH-7 |
 | 5 | `design-system-configuration`: an environment sets its tokens and switched-on components | [Design-system configuration](reference/design-system.md#design-system-configuration) | DC-1 to DC-6 |
-| 6 | `renderer-reskin`: dashboards use the same components and tokens | [Dashboard renderer](reference/design-system.md#dashboard-renderer) | RS-1 to RS-3 |
+| 6 | `renderer-reskin`: dashboards use the same components and tokens | [Dashboard renderer](reference/design-system.md#dashboard-renderer) | RS-1 to RS-4 |
 | 7 | `data-hooks`: an app reads data and runs an action in one line | [Data hooks](reference/app-kit.md#data-hooks) | DH-1 to DH-6 |
 | 8 | `access-sign-in`: every app and dashboard requires Access sign-in | [Sign-in through Access](reference/google-sign-in.md#target-sign-in-through-access) | CS-1 to CS-17 |
 | 9 | `app-delivery`: an app and a design-system release arrive through Build, Marketplace and Deploy | [Delivery](reference/app-kit.md#delivery) | AD-1 to AD-7 |
