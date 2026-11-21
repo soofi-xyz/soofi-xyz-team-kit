@@ -689,7 +689,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 659462,
+      "library_pinned_bytes": 668294,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-console-product",
@@ -3253,7 +3253,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 659462,
+      "library_pinned_bytes": 668294,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-console-product",
@@ -3700,8 +3700,8 @@
       "wave_reason": "role: build"
     }
   },
-  "enact_version": "1.182.1",
-  "kit_version": "0.182.1",
+  "enact_version": "1.185.0",
+  "kit_version": "0.185.0",
   "mcp_allow_list": [
     "enact",
     "browser",
@@ -3844,7 +3844,7 @@
       ]
     },
     "build-console-product": {
-      "bytes": 148983,
+      "bytes": 157296,
       "files": 6,
       "flags": {},
       "omitted": [],
@@ -4208,7 +4208,7 @@
       ]
     },
     "configure-console-product": {
-      "bytes": 11089,
+      "bytes": 11471,
       "files": 1,
       "flags": {},
       "omitted": [],

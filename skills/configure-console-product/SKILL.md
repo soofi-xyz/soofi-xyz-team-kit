@@ -54,7 +54,12 @@ The person understands the business, not software. Use plain words.
    Leave its build settings as generated.
 2. Assemble each page only from design-system components and their typed style
    props. Use an app-level theme choice only where the environment's design-system
-   configuration permits it.
+   configuration permits it. To show the Prism logo and the signed-in person's
+   company logo above a demo app, declare `brand.company` in its settings as
+   [the company logo](../build-console-product/reference/app-kit.md#company-logo)
+   describes, list the logo host in `logoOrigins`, and confirm the company's
+   record in Persist is reachable from the company's demo role (a grant edge
+   Access writes).
 3. Declare each data binding and action with its registered product operation and
    required scopes, and keep a sample-data file beside each binding. Read and
    change data only through [the data hooks](../build-console-product/reference/app-kit.md#data-hooks);

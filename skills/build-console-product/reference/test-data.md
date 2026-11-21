@@ -73,6 +73,15 @@ Use the people from [the Access test data](../../build-access-product/reference/
 `sample-app` only; `bob` has the same role and is connected to nothing; `dave`
 is disabled during the run. DH-2 and CS-12 read the same Persist items.
 
+For the company logo (`CB-1` to `CB-10`) add three people who open `brand-app`
+only: `pia@prismteam.ai` (Prism), `cora@companyb.example` (Company B, also
+holding `companyb-demo`) and `omar@other.example` (no company record).
+Persist holds one `company` record, `company-b` (`domain: companyb.example`,
+`name: Company B`, `logo_url:
+https://logos.companyb.example/companyb.png`), reachable only from the
+`companyb-demo` role's group. The logo host serves a 1x1 PNG there and SVG
+bytes at `/logo.svg`.
+
 ## Data fixtures for apps
 
 - **Report dataset:** `sample-report` / `accounts`, two refreshes with different
