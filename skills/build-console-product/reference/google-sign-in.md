@@ -102,6 +102,7 @@ check: ID, result, request identifier and the Console revision.
 | CS-13 | Inspect the outbound calls Console made for `CS-12` and for an action a role allows | Each carries that person's Access token and no shared key |
 | CS-14 | A user holding the role for an action runs it | It runs, and the product it calls records that person as the caller |
 | CS-15 | Open the sign-in page after migration | It offers sign-in through Access only; there is no field or link for an API key |
+| CS-15b | Sign in as `dave`, who holds no role, then sign out | One sign-in round trip, then the no-access page with the request ID and no further redirect; Sign out shows the signed-out page without starting a sign-in |
 | CS-16 | Run the route inventory with `sample-app` and `sample-app-two` published, publish a third app, run it again, and request each app's files and bindings with no session | Every published app is listed in both runs, and each is refused without a session: no app code or data is served |
 | CS-17 | `alice`, who holds the role for `sample-app` only, opens `sample-app`, then opens `sample-app-two` and calls one of its bindings directly | `sample-app` renders; `sample-app-two` and its binding answer `403` from the server |
 
@@ -169,6 +170,21 @@ The first step of `access-sign-in` is on
   `persist:read`.
 - **Sign-in page.** On an Access deployment the page goes straight to Access;
   after a denial or an ended session it offers sign-in through Access only.
+  Only a `401` from `GET /viewer/session` means signed out. A `403` is a person
+  Access signed in who holds no role giving `console:read`: show a no-access
+  page ("You're signed in, but you don't have access to Console. Ask an
+  administrator for a role.") with the request ID and a Sign out button
+  (`POST /viewer/signout`, then the signed-out page). Never redirect from it:
+  Access's own session signs the person straight back in, and the page loops
+  about once a second. Any other failed check shows a retry page, not sign-in.
+  As a safety net, redirect to Access by itself at most once per short window
+  in a tab (Console uses 30 seconds in `sessionStorage`, cleared when a session
+  loads); a sign-in back without a session inside that window shows the Sign in
+  link. Apply the same rules on an app page (`?appId=`).
+- **No target.** `/console/app/` with neither `?app=` nor `?appId=` opens no
+  default dashboard. Console has no route listing what a session may open, so
+  the page says "Choose an app" and explains `?appId=` instead of answering a
+  `404` for a dashboard the environment never published.
 - **Code layout.** Session resolution and the sign-in routes live in
   `src/handlers/viewer-session.ts`, the adapter in
   `src/adapters/access-sign-in.ts`, and a fake Access that keeps the real

@@ -51,5 +51,5 @@
   "secrets": [
     "PRISM_API_KEY"
   ],
-  "version": "1.182.0"
+  "version": "1.182.1"
 }
