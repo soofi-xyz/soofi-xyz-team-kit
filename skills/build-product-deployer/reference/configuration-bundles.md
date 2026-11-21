@@ -210,8 +210,9 @@ Paths below are relative to `/console`.
 ## Console app, component-pack and design-system payloads
 
 As of 2026-11-21 Build's `design-system` and `app` kinds are on [prismteam-ai/build#70](https://github.com/prismteam-ai/build/pull/70) (not
-merged); `component-pack`, Deploy's adapters and publishing the app kit into Build's
-registry are not built. Console has the app routes (runtime 1.17.0) and the
+merged); Deploy's `app` and `design-system` adapters are on
+[prismteam-ai/deploy#94](https://github.com/prismteam-ai/deploy/pull/94) (not merged);
+`component-pack` and publishing the app kit into Build's registry are not built. Console has the app routes (runtime 1.17.0) and the
 design-system configuration routes (1.20.0). All three are `CONFIGURATION` kinds, not
 another bundle type: the artifact stays a `CONFIGURATION_BUNDLE`. Follow Console's
 `requirements/swagger.yml` for the routes. Console's side is in
@@ -275,7 +276,16 @@ and [the app kit contract](../../build-console-product/reference/app-kit.md#deli
   manifest files and stores the zip unchanged
   ([prismteam-ai/marketplace#33](https://github.com/prismteam-ai/marketplace/pull/33) takes
   Build's artifact for each kind through publish, review and rollback). A review fails
-  with Deploy's `unknown Console kind` until Deploy's adapter is in the review account.
+  with Deploy's `unknown Console kind` until a Deploy with
+  [prismteam-ai/deploy#94](https://github.com/prismteam-ai/deploy/pull/94) is in the review
+  account.
+- **Deploy result:** `version` is the active `versionId` or `revisionId`; `digest` is the
+  `versionDigest` or `revisionDigest` Console answered and read back (Console digests the
+  validated record, which can differ from the record sent). A replay reports `UNCHANGED`
+  and publishes nothing; Console's refusals (`400`, `422 INCOMPATIBLE_VERSION`, `409
+  CONFIGURATION_IN_USE`) fail the run with its reason and change nothing. Neither kind is
+  releasable: Console has no delete for them. The `503` with `Retry-After` on app create
+  fails the run like any `5xx`; Deploy does not retry it.
 - **Acceptance:** `AD-1` to `AD-7` in
   [the app kit tests](../../build-console-product/reference/app-kit.md#tests) and
   the `CP` checks in

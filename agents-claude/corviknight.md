@@ -37,7 +37,19 @@ Console application payloads. Add adapters for the target `console` kinds
 once Chandelure ships Console's API for them and Tinkaton the kinds: install only
 through that API with idempotent upload, digest verification, publish with optimistic
 concurrency and read-back. Build no Console-side primitive and never write Console's
-storage or its pointer. Add the Access
+storage or its pointer. The `app` and `design-system` adapters
+(`lambda/services/configuration/console-adapter.ts`, prismteam-ai/deploy#94) consume
+Console's contract exactly: check an app's build (`dist/build-record.json` and exactly
+the files it lists, by digest and size) before any write; send `Idempotency-Key`s derived
+from the canonical record or document; publish with `If-Match` set to the active
+selection body's `etag` (`*` first), skipping it when the active digest already matches;
+report the `versionDigest` or `revisionDigest` Console answers and reads back, never one
+Deploy computes; and fail with Console's reason and issues on `400`, `422
+INCOMPATIBLE_VERSION` and `409 CONFIGURATION_IN_USE`, with `412` a conflict never
+retried. Test new Console kinds with Build's own artifact through
+`installConfigurationBundle`, the real product API and signer and a Console fake that
+follows Console's services. Record a missing Console capability as a gap; do not work
+round it. Add the Access
 adapter by the contract's Access application payloads once Aegislash ships the
 application API: create-or-replace by name, read back the exact addresses, and
 remove only an application this component owns. Install no user, role, grant or

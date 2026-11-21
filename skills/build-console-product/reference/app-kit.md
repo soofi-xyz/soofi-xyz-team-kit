@@ -221,8 +221,8 @@ Deploy. Console receives only delivered, reviewed output.
   | Kind | Carries | State as of 2026-11-21 |
   | --- | --- | --- |
   | `application` | dashboard manifest | on Build's and Deploy's main; installation in an environment not verified |
-  | `design-system` | design-system configuration | Build: [prismteam-ai/build#70](https://github.com/prismteam-ai/build/pull/70), not merged; no Deploy adapter |
-  | `app` | app source that Build builds and checks | Build: [prismteam-ai/build#70](https://github.com/prismteam-ai/build/pull/70), not merged; no Deploy adapter |
+  | `design-system` | design-system configuration | Build: [prismteam-ai/build#70](https://github.com/prismteam-ai/build/pull/70), Deploy: [prismteam-ai/deploy#94](https://github.com/prismteam-ai/deploy/pull/94); neither merged |
+  | `app` | app source that Build builds and checks | Build: [prismteam-ai/build#70](https://github.com/prismteam-ai/build/pull/70), Deploy: [prismteam-ai/deploy#94](https://github.com/prismteam-ai/deploy/pull/94); neither merged |
   | `component-pack` | pack source that Build builds and checks | target |
 
   All are `CONFIGURATION` kinds. Build runs a bundle holding an `app` in its
