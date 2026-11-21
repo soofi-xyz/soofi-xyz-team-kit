@@ -24,7 +24,13 @@ request 39 (runtime 1.21.0, not yet merged) by
 [its implementation rules](#renderer-reskin-implementation-rules): dashboards
 take the environment's tokens and the parts with a design-system match; moving
 every other dashboard part onto design-system components is a follow-up
-(`RS-4`). Component packs are not built. Discover the target revision before relying
+(`RS-4`). Component packs are split into three pull requests: building and
+checking a pack, and apps built against packs, are on
+[Console pull request 42](https://github.com/prismteam-ai/console/pull/42)
+(runtime 1.23.0, not yet merged) by
+[their implementation rules](#component-packs-implementation-rules); pack
+storage, routes, pointers and activation (1.24.0) and the pack gallery (1.25.0)
+are not built. Discover the target revision before relying
 on any part, and settle names marked as placeholders in the Console repository.
 
 Read it with [the product contract](PRD.md) and [the app kit](app-kit.md).
@@ -144,7 +150,11 @@ contain the design system.
   (`jsx-runtime.js`) and the host's mount module (`mount.js`), and a
   `pointer.json` naming the build's major, version, digest and path. The Console
   stack writes the pointer on install, after the build it names, and never
-  prunes it, earlier builds or another major's pointer. There is no pointer API.
+  prunes it, earlier builds or another major's pointer. There is no pointer API
+  for the base build. Component packs change this for packs only: Console
+  generates each pack's pointer, and the environment's base pointer where a pack
+  replaces a base component, per request from the active design-system
+  configuration, so a pack is activated and rolled back without the stack.
 - **App builds.** The app kit's build settings mark the design system and React
   as external and write the address of the pointer of the kit's own major into
   the app's built file. The app author never sets this.
@@ -212,15 +222,21 @@ delivered set of components installed per environment.
 
 - **What a pack may do.** Add components, and replace a base component when its
   props are compatible with the base component's.
-- **Source and delivery.** A pack lives in its own repository. Build builds and
-  checks it, Marketplace reviews and publishes it and Deploy installs it
-  through Console's API, as a `console` `component-pack` bundle (a target
-  kind). Console stores the build at an immutable path and activates it by
-  pointer. Pack code is reviewed JavaScript on the shared domain, like an app.
-- **Added components.** Give each pack its own package for types (a
-  placeholder such as `@prism/ui-<pack>`, settle in the Console repository) and
-  its own pointer per major version. Publish the types package into Build's
-  registry so apps can build against it.
+- **Source and delivery.** A pack lives in its own repository with a
+  `console-pack.json` and is built and checked by the app kit's
+  `console-app pack check|build`. Build builds and checks it, Marketplace
+  reviews and publishes it and Deploy installs it through Console's API, as a
+  `console` `component-pack` bundle (a target kind). Console stores the build
+  at an immutable path and activates it by pointer. Pack code is reviewed
+  JavaScript on the shared domain, like an app.
+- **Activation.** The design-system configuration's `packs.<name>.version`
+  names the active version of each installed pack; publishing or rolling back
+  a configuration revision activates or rolls back a pack. There is no separate
+  activation pointer to write.
+- **Added components.** Give each pack its own types package,
+  `@prism/console-pack-<pack>`, and its own pointer per major version,
+  `/console/app/packs/<pack>/v<major>/index.js`. Publish the types package into
+  Build's registry so apps can build against it.
 - **Replaced components.** Let the environment's base pointer re-export the
   base build and then name the replacement, so the named export wins (the pack
   path is a placeholder):
@@ -235,7 +251,11 @@ delivered set of components installed per environment.
 - **Pack rules.** A pack is design-system code, so it may use raw elements
   inside. Hold it to the same rules as base components: tokens only, no
   hard-coded colors or sizes, no `className` or `style` on public props, a
-  gallery entry for every component and the same accessibility bar.
+  gallery entry for every component and the same accessibility bar. A pack
+  ships no CSS: it styles only through token variables, and its check fails a
+  CSS file or a `className`.
+- **Gallery baselines.** Pack components' gallery screenshots are compared on
+  Linux only; commit no macOS baselines for them.
 - **Component manifest.** Each pack build lists its components, their props,
   which base components it replaces and the minimum base version it needs.
 - **Lifecycle.** Install, activate, read back and roll back a pack through
@@ -372,7 +392,7 @@ run on Enact.
 | CP-2 | Publish the same `pack-app` files in environment B, which lacks the pack | The publish is refused naming the missing pack and component; nothing becomes active |
 | CP-3 | Activate `sample-pack`'s replacement of `Badge` in A, then open the unchanged `sample-app` in A and in B | A shows the replacement, B shows the base `Badge`; the app's file digests are the same in both |
 | CP-4 | Build `bad-pack`, whose `Badge` replacement requires a prop the base `Badge` does not have | The pack's build fails naming the incompatible prop; no build is produced |
-| CP-5 | Run DS-1 and DS-2 against the gallery entries of every `sample-pack` component | Every pack component passes the screenshot, keyboard and accessibility checks |
+| CP-5 | Run DS-1 and DS-2 against the gallery entries of every `sample-pack` component, on Linux | Every pack component passes the screenshot, keyboard and accessibility checks |
 | CP-6 | Install `sample-pack` 1.1.0 in A, open `pack-app`, then roll the pack back to 1.0.0 and reload | The 1.0.0 `Sparkline` returns; no app file changed and the app's active version is the same |
 | CP-7 | Ask the component-authoring agent, run on Enact, to create a component from an authorized Figma node for the pack | A pull request arrives in the pack repository with the component, its gallery entry and screenshots at three widths; the environment's installed pack is unchanged until the pull request is merged and delivered |
 
@@ -579,8 +599,10 @@ section. Keep these rules when changing it.
   sets each as `data-ds-<choice>` on the root (`themeChoiceAttributes` in
   `surface.ts`) and the stylesheet answers each allowed value; anything else
   takes the environment's default.
-- **Packs.** Packs are modelled only as `packs.<name>.{version, switchedOff}`;
-  nothing builds or loads one until `component-packs`.
+- **Packs.** Packs are modelled as `packs.<name>.{version, switchedOff}`;
+  `version` is how a pack is activated. Building packs and apps against them is
+  in [the component packs rules](#component-packs-implementation-rules);
+  nothing installs or loads one yet.
 - **Tests.** `DC-1` to `DC-6` at API level in
   `test/design-system-configuration.test.ts`; the browser halves of DC-1, DC-3,
   DC-4, DC-5 and DC-6 in `e2e/design-system-configuration.configuration.spec.ts`,
@@ -597,10 +619,10 @@ section. Keep these rules when changing it.
     guards the two transactions. Closing it needs a guard in both repository
     publish transactions (the design-system selection's etag in the app
     publish, or a per-account fence both bump).
-  - Build's `console` `design-system` kind is on prismteam-ai/build#70 (not
-    merged) and Deploy has no adapter for it (`corviknight`), so do not set `ConfigurationProvenance` `Enabled` where a
-    configuration is installed, and do not install one by hand in a shared
-    environment.
+  - Build's `console` `design-system` kind is on prismteam-ai/build#70 and
+    Deploy's adapter on prismteam-ai/deploy#94 (neither merged), so do not set
+    `ConfigurationProvenance` `Enabled` where a configuration is installed, and
+    do not install one by hand in a shared environment.
 
 ## Renderer reskin implementation rules
 
@@ -653,6 +675,58 @@ yet merged). Keep them when changing the renderer.
     component types to the design-system components they draw.
   - macOS `RS-3` baselines are not committed; create them with
     `--update-snapshots` on the first local run on a Mac.
+
+## Component packs implementation rules
+
+These rules describe the build half of `component-packs` in runtime 1.23.0
+([Console pull request 42](https://github.com/prismteam-ai/console/pull/42), not
+yet merged). Keep them when changing how packs are built or how apps use them.
+
+- **Three pull requests.** 1.23.0 builds and checks packs and builds apps
+  against them. 1.24.0 adds pack storage, the install, read-back and rollback
+  routes behind the provenance gate, the per-request pointers and activation
+  through `packs.<name>.version` (`CP-1`, `CP-2`, `CP-3`, `CP-6`). 1.25.0 adds the
+  pack gallery and `CP-5`. Do not ship a pointer or route in 1.23.0.
+- **The pack tool is the app kit's.** `console-app pack check [--json]` and
+  `pack build` (`app-kit/src/pack.ts`, `pack-rules.ts`) read `console-pack.json`
+  (`pack`, `version`, `designSystem` range, `adds`, `replaces`), type-check
+  `src/` against the kit's `tsconfig.pack.json`, apply the pack rules and the
+  replacement check, then write `dist/index.js`, `dist/pack-record.json`
+  (components, props, what each replaces, the least design system and pointer,
+  imports and file digests) and the types package `@prism/console-pack-<pack>`
+  in `package/`. A failing pack leaves no build. Build's `component-pack` kind
+  (story 9) runs this check as its gate and packs `dist/`.
+- **Pack rules.** `css-file` and `class-name` (no CSS), `off-scale-value` (a
+  hex or color function, a length with a unit or a bare number in `style`; use
+  `var(--ds-*)`), `foreign-dependency` (only `@prism/console-app-kit` and
+  React's hooks), `react-surface`, `network-call`, `public-prop` (`className`,
+  `style` or `ref` on public props, or an export the settings do not list) and
+  `build-settings`. Add a failing fixture for each new rule.
+- **`replacement-props` (`CP-4`).** Fail a replacement, naming the prop, when it
+  requires a prop the base does not take or has as optional, drops a base prop,
+  or does not accept a base prop's type.
+- **Imports.** A pack imports the base build as `app-runtime/base.js` (the
+  build's own components, never a replacement, so a replacement can wrap the
+  base component), React's hooks as `react.js` and raw-element JSX as
+  `pack-jsx-runtime.js`; the pointer re-exports both new modules. Refuse an app
+  version that imports either (`foreign_import`).
+- **Apps.** An app lists its packs in `console-app.json` and installs each
+  `@prism/console-pack-<pack>` beside the kit; its build imports them from the
+  pack's pointer and lists them under `packComponents` in the build record.
+  Leave `packComponents` out for an app without packs so its record and version
+  digest stay unchanged. Accept a pack pointer only under the pack's own name.
+  A missing pack is `missing_pack`, naming the components (`sample-pack
+  (Sparkline)`). Name a pack component `<pack>/<Component>` in switch-offs and
+  refusals, so two packs' components of the same name stay apart.
+- **Fixtures.** `app-kit/fixtures/sample-pack` (adds `Sparkline`, replaces
+  `Badge`) and `app-kit/fixtures/pack-app`; derive the 1.1.0 variant and
+  `bad-pack` in `test/support/app-kit.ts`. Tests are in
+  `test/component-packs.test.ts`; DC-3 uses the kit-built `pack-app`.
+- **Gallery.** Pack gallery screenshots run on Linux only; the baselines
+  workflow regenerates them, and no macOS baselines are committed for them.
+- **Open gaps.** Until 1.24.0 every app that declares a pack is refused with
+  `missing_pack`; `console-app dev` does not render pack components; delivery
+  as a `component-pack` bundle is story 9 (`tinkaton`, `corviknight`).
 
 ## Kit maintenance
 

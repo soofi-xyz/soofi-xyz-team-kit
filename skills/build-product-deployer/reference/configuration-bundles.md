@@ -212,7 +212,10 @@ Paths below are relative to `/console`.
 As of 2026-11-21 Build's `design-system` and `app` kinds are on [prismteam-ai/build#70](https://github.com/prismteam-ai/build/pull/70) (not
 merged); Deploy's `app` and `design-system` adapters are on
 [prismteam-ai/deploy#94](https://github.com/prismteam-ai/deploy/pull/94) (not merged);
-`component-pack` and publishing the app kit into Build's registry are not built. Console has the app routes (runtime 1.17.0) and the
+the role that publishes the app kit into Build's registry is on
+[prismteam-ai/build#71](https://github.com/prismteam-ai/build/pull/71) and Console's
+publish job on [prismteam-ai/console#44](https://github.com/prismteam-ai/console/pull/44)
+(neither merged); `component-pack` is not built. Console has the app routes (runtime 1.17.0) and the
 design-system configuration routes (1.20.0). All three are `CONFIGURATION` kinds, not
 another bundle type: the artifact stays a `CONFIGURATION_BUNDLE`. Follow Console's
 `requirements/swagger.yml` for the routes. Console's side is in
@@ -249,8 +252,10 @@ and [the app kit contract](../../build-console-product/reference/app-kit.md#deli
   adds or replaces. Console checks them at publish; Build does not call Console.
 - **Packages:** publish the app kit and each pack's types package into Build's
   package registry, the only one the isolated runner can install from, at the
-  version of the design-system or pack build they describe. Publishing a private
-  package there is new Build scope. Keep the registry address out of the source.
+  version of the design-system or pack build they describe. Only the publishers
+  Build's stack names may publish `@prism/*` there (today Console's CI from `main`,
+  through Build's OIDC-trusted role); a version is never overwritten. Keep the
+  registry address out of the source.
 - **Apply:** install only through Console's API on the shared domain with the
   shared `x-api-key`; never write Console's storage or its pointer. Upload is
   idempotent by content digest, Console verifies every file against its digest
