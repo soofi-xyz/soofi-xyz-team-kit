@@ -189,10 +189,17 @@ body limit (2 MiB for agents, 4 MiB for skills).
 ### The configuration bundle
 
 The bundle is not in this repository. [prismteam-ai/agent-network](https://github.com/prismteam-ai/agent-network)
-holds it and is generated from this repository's `main`: every 15 minutes a workflow there checks
-for a new commit, runs `node scripts/sync-enact-agents.mjs sync` in a checkout of it and builds a
-configuration bundle, which its own pipeline installs into the dev environment and publishes to
-Marketplace.
+holds it, and this repository writes it. On every push to `main`,
+[`.github/workflows/publish-enact.yml`](../.github/workflows/publish-enact.yml) runs
+`node scripts/sync-enact-agents.mjs sync` in a job with no secrets, then signs in as the
+`agent-network-sync` GitHub App, runs agent-network's `scripts/generate.mjs` on the packed files
+and pushes the result to its `main`. agent-network's pipeline installs that commit into the dev
+environment and, when that succeeded, publishes it to Marketplace.
+
+Only that App may change agent-network's generated files (a push ruleset there), and only this
+workflow holds its key: the `agent-network` environment here, limited to `main`, has the variable
+`AGENT_NETWORK_APP_ID` and the secret `AGENT_NETWORK_APP_KEY`. After agent-network's `kit.json`
+or generator changes, run **Publish Enact agents** by hand (Actions, Run workflow) to regenerate.
 
 The bundle holds only the agents the [README's Product agents table](../README.md#product-agents)
 lists (each assigned product's builder and configurer) and the library skills they pin. Retained

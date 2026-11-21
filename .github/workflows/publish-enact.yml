@@ -1,0 +1,121 @@
+name: Publish Enact agents
+
+# On every push to main: pack the agents for Enact, regenerate the configuration bundle in
+# prismteam-ai/agent-network and push it there. agent-network's pipeline then installs the bundle
+# into the dev environment and publishes it to Prism Marketplace.
+#
+# This is the only writer of agent-network's generated files (enact/, bundle.json, kit.lock.json,
+# marketplace.product.json): a ruleset there lets only the agent-network-sync GitHub App change
+# them, and only this workflow holds the App's key. Run it by hand (Actions, Run workflow) after
+# agent-network's kit.json or generator changes, to regenerate with them.
+#
+# Setup, by a soofi-xyz admin: an environment named agent-network whose deployment branches are
+# limited to main, holding the variable AGENT_NETWORK_APP_ID and the secret AGENT_NETWORK_APP_KEY
+# (the App's private key).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One at a time, never cancelled mid-push; a newer commit waiting replaces an older one waiting.
+concurrency:
+  group: publish-enact
+  cancel-in-progress: false
+
+jobs:
+  # Runs the kit's own packaging script with no secrets; only its README and the packed files
+  # leave this job.
+  pack:
+    name: Pack the agents
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.18"
+
+      - name: Pack the agents and library skills
+        run: node scripts/sync-enact-agents.mjs sync
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packed
+          # The artifact's root is these paths' common folder: a kit checkout in small.
+          path: |
+            README.md
+            enact/dist/agents/*.json
+            enact/dist/skills/*.json
+          if-no-files-found: error
+          retention-days: 7
+
+  push:
+    name: Regenerate agent-network
+    needs: pack
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: agent-network
+    steps:
+      # A token for prismteam-ai/agent-network only.
+      - uses: actions/create-github-app-token@v2
+        id: app
+        with:
+          app-id: ${{ vars.AGENT_NETWORK_APP_ID }}
+          private-key: ${{ secrets.AGENT_NETWORK_APP_KEY }}
+          owner: prismteam-ai
+          repositories: agent-network
+
+      - uses: actions/checkout@v4
+        with:
+          repository: prismteam-ai/agent-network
+          ref: main
+          token: ${{ steps.app.outputs.token }}
+          path: agent-network
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.18"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: packed
+          path: ${{ runner.temp }}/kit
+
+      # Regenerates from agent-network's own generator and kit.json at its main. A push refused
+      # because main moved is retried on the new main.
+      - name: Regenerate and push
+        working-directory: agent-network
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          APP_SLUG: ${{ steps.app.outputs.app-slug }}
+          KIT_COMMIT: ${{ github.sha }}
+        run: |
+          user_id=$(gh api "/users/${APP_SLUG}[bot]" --jq .id)
+          git config user.name "${APP_SLUG}[bot]"
+          git config user.email "${user_id}+${APP_SLUG}[bot]@users.noreply.github.com"
+          for attempt in 1 2 3; do
+            git fetch -q origin main
+            git reset -q --hard origin/main
+            node scripts/generate.mjs --from "$RUNNER_TEMP/kit" --commit "$KIT_COMMIT"
+            git add -A
+            if git diff --cached --quiet; then
+              echo "agent-network already matches ${KIT_COMMIT:0:7}"
+              exit 0
+            fi
+            git commit -q -m "Regenerate from ${GITHUB_REPOSITORY}@${KIT_COMMIT:0:7}"
+            if git push -q origin HEAD:main; then
+              changed=$(git diff --name-only HEAD~1 HEAD -- enact bundle.json marketplace.product.json | wc -l)
+              echo "Pushed $(git rev-parse --short HEAD); ${changed} bundle file(s) changed" | tee -a "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "::warning::push refused (attempt $attempt); retrying on the new main"
+          done
+          echo "::error::could not push to agent-network main"
+          exit 1
