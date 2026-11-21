@@ -458,7 +458,7 @@ lists every app path. Keep these rules when changing it.
   `If-None-Match` only.
 - **Publish checks live in one place.** The design-system checks a publish and a
   rollback run are in `src/domain/design-system-installation.ts`. Since runtime 1.20.0 (pull
-  request 38, not yet merged) that includes "component switched off": `422`
+  request 38) that includes "component switched off": `422`
   `INCOMPATIBLE_VERSION` with a `component_switched_off` issue naming the
   component; see [Design-system configuration implementation rules](design-system.md#design-system-configuration-implementation-rules).
 - **Scopes and provenance.** Create and submit need `console:configure`;

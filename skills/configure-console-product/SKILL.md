@@ -25,11 +25,11 @@ new business apps as apps. Do not start a new one as a dashboard manifest.
    not read SSM or stack outputs.
 2. Separate required, implemented and observed capabilities. Do not guess routes,
    components or operations. As of 2026-11-21 the Console repository's `main` (runtime
-   1.19.0) hosts apps (upload, publish, roll back, open by address) and its one
-   registered data operation is `report` `read-dataset`. Design-system
-   configuration (runtime 1.20.0) is on
-   [Console pull request 38](https://github.com/prismteam-ai/console/pull/38),
-   not yet merged. Delivery through Build, Marketplace and Deploy and component
+   1.20.0) hosts apps (upload, publish, roll back, open by address), has
+   design-system configuration, and its one registered data operation is
+   `report` `read-dataset`. Dashboards follow the configuration from runtime
+   1.21.0 ([Console pull request 39](https://github.com/prismteam-ai/console/pull/39),
+   not yet merged). Delivery through Build, Marketplace and Deploy and component
    packs are requirements, so an app or a configuration reaches only your own
    dev/test stack yet.
 3. Where the capability a request needs is absent, say so, show the person what you
@@ -100,9 +100,11 @@ describes. Never ask the person for Figma access or a token.
 2. On your own dev/test stack, verify a baseline and a materially different
    configuration: submit with an `Idempotency-Key`, publish with `If-Match`, read
    back `GET active` and its digest, fetch `/console/design-system/tokens.css`,
-   and compare screenshots of one app before and after. The gallery and
-   dashboards do not load the configuration yet; the gallery shows the built-in
-   token sets at `?gallery` (`&tokens=tokens-b` for the second).
+   and compare screenshots of one app and, on runtime 1.21.0 or later, one
+   dashboard before and after. The gallery does not load the configuration; it
+   shows the built-in token sets at `?gallery` (`&tokens=tokens-b` for the
+   second). Dashboards are not yet checked for switched-off components, so
+   confirm no dashboard draws a component before switching it off.
 3. Verify an invalid value is refused (`400`) and nothing is saved, an app using a
    switched-off component is refused at publish (`422` `component_switched_off`)
    while other apps still work, a revision switching off a component a published
