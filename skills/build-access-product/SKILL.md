@@ -281,6 +281,16 @@ this: they decide who may sign in at all.
   user records, group records and grant edges. The
   structural edges beneath an anchor are ordinary data loaded by whoever
   ingests the records. Persist enforces; Access keeps no copy of the data.
+- Deliver that grant, list and revoke through `resource-sharing`, not a second
+  API: Persist declares a resource type per anchor record type with one
+  shareable action on one resource (`persist:company` with `read`), the anchor
+  record is an environment-owned resource named by its Persist vertex id, and a
+  share of that action is the connection. Write its grant edge when the share
+  is made, remove it when the share is revoked or its resource, role or user is
+  removed, and also queue each share change through the record queue so
+  Persist converges on Access's shares. Follow
+  [record access through resource sharing](reference/record-access.md) for the
+  anchor map, the exact payloads, the order of writes and the gaps to report.
 - The user record type, the access-carrying edge types and the anchor record
   types are Model decisions. Until Model publishes them, build against a fixture
   lexicon and report the gap.

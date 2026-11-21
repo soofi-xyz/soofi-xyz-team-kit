@@ -289,6 +289,13 @@ that lifetime and asserts the old token's expiry is within it.
 Uses the graph fixture. Prerequisite outside Access for D\*: Persist's
 user-scoped access.
 
+Access delivers this piece through `resource-sharing`, as
+[record access through resource sharing](record-access.md) describes: to
+connect is to share `read` on the environment-owned resource
+`persist:fixture-scope/<scope vertex id>`, to list is to list its grants (or a
+user's or role's), and to revoke is to revoke the grant. `scope-a` and
+`scope-b` below name those resources.
+
 | ID | Level | Do | Pass when |
 | --- | --- | --- | --- |
 | RA-1 | F | As `admin`, connect `alice` to `scope-a` | Exactly one grant edge is written to the Persist fake, by Access's own service identity; audit record written |
@@ -300,8 +307,15 @@ user-scoped access.
 | RA-4 | F | Connect as `bob`, then with no credential | `403`, then `401`; no edge written |
 | RA-5 | F | Send the same connection twice | One edge |
 | RA-6 | F | Scan Access's own stores after the run | They hold connection and audit records only; no item content |
+| RA-12 | F | Connect `alice` to `scope-a` and the `viewer` role to `scope-b`, then compare the bodies sent | Each is one `tinker:graph` with no vertex, two vertex references (the grantee's keyed record, whose id matches the value Persist's own code computes, and the scope) and one edge without properties, to the Persist ingest route with the shared key and Access's own token |
+| RA-13 | F | Share another action on `scope-a`, and `read` on a type outside the anchor map | Nothing is sent to Persist |
+| RA-14 | F | The Persist fake answers `MissingVertexRef` to a new connection, then another refusal, then is unavailable | `409 RECORD_NOT_IN_PERSIST`, `502 PERSIST_REFUSED`, `503 PERSIST_UNAVAILABLE`; afterwards no grant is listed, no rule allows `read`, and each taken-back grant has its `share.revoke` audit record |
+| RA-15 | F | Connect `alice` to `scope-a`, then remove `alice`; repeat with the Persist fake failing | Her edge is removed before the removal answers `204`. With Persist failing, the removal errors and `alice`, her grant and its edge remain |
+| RA-16 | F | Connect `viewer` to `scope-b`, then remove the `scope-b` registration | The edge is removed before `204`; the registration and its grants are gone |
+| RA-17 | F | Queue the connection `alice` → `scope-a` while connected, again after the revoke, and twice in a row; run the record backfill | The publisher writes the edge, then removes it, and a replay changes nothing in the Persist fake; the backfill queues every anchor share |
+| RA-18 | F | Write an edge the Persist fake takes but whose answer is lost, so the connection is taken back | After the queue drains, the fake holds no edge for it |
 | RA-7 | D\* | Connect `alice` to `scope-a`, then run Persist checks `UA-1` to `UA-5` | They pass |
-| RA-8 | D\* | Revoke, then run Persist check `UA-12` | It passes |
+| RA-8 | D\* | Revoke, then run Persist check `UA-12` | It passes. Needs Persist's edge removal (`UA-23`) |
 
 ### `application-bundles`
 
