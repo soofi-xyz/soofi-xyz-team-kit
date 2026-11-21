@@ -205,7 +205,9 @@ ask for it, and nothing extra in apps that do not.
   role or that grant removes the logo. An
   unreachable record answers like a missing one.
 - **Which logo.** Accept only an `https` address with no credentials on one of
-  the app's `logoOrigins`. Console fetches it itself (no redirect, a short
+  the app's `logoOrigins`. Console fetches it itself, connecting only to
+  public addresses (check the address the connection uses, not only the host
+  name, so an allowed origin cannot reach an internal service; no redirect, a short
   timeout, a size bound), keeps only raster bytes it recognises by their
   signature (PNG, JPEG, GIF, WebP; never SVG) and gives the page an inline
   `data:` image, so the browser policy stays `img-src 'self' data:` and the page
@@ -654,7 +656,9 @@ These rules describe the company logo in runtime 1.28.0 (pull request 48 in
 - **Settings.** `appBrandSchema` in `src/domain/app-definitions.ts` is shared by
   the kit's `console-app.json`, the build record and the API: closed objects,
   lexicon names (`^[a-z][a-z0-9_]*$`), one to ten `https` origins with no path.
-  A Console before 1.28.0 refuses a build record that has `brand`.
+  A Console before 1.28.0 refuses a build record that has `brand`, so it
+  cannot open an app whose active version declares one: roll such an app back
+  to a version without `brand` before installing an earlier Console.
 - **What the browser learns.** `ActiveAppView.brand` is `{ company: boolean }`
   for an app that declares `brand`, nothing for one that does not. The lookup
   (label, fields, origins) stays on the server.
@@ -674,7 +678,11 @@ These rules describe the company logo in runtime 1.28.0 (pull request 48 in
   $value) { id <fields> }` with the value as a variable, Persist's lookup by an
   indexed property; at most one row, `null` is none. It shares the GraphQL
   call, token forwarding and error mapping with `list-related`.
-- **Logo.** `src/adapters/company-logo.ts` fetches with `redirect: "error"`,
+- **Logo.** `src/adapters/company-logo.ts` fetches through `publicHttpsFetch`
+  (`node:https` with `publicLookup` as the connection's lookup, which refuses
+  private, loopback, link-local, shared, multicast and reserved IPv4 and IPv6
+  ranges, IPv4-mapped included; never follows a redirect), cancels refused
+  bodies, and passes `redirect: "error"`,
   `credentials: "omit"`, three seconds and 256 KiB read incrementally; `404`
   and `410` are a refused logo, other failures unavailable. `logoDataAddress`
   accepts PNG, JPEG, GIF and WebP by signature only. Successful logos are kept
