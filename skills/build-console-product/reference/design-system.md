@@ -634,7 +634,11 @@ yet merged). Keep them when changing the renderer.
 - **Tests.** `RS-1` is the existing dashboard suite; where a part was swapped,
   move its selector to the part's role or `data-ds-component`, and change no
   other expectation except one the contract changed (a manifest theme no longer
-  recolors; a tone color is now a token). `RS-2` runs in
+  recolors; a tone color is now a token; a swapped part is sized by the design
+  system, such as a `Switch` row's 44px touch target below 960px). Keep the
+  renderer's element rules off swapped parts (`:not([data-ds-component] *)`):
+  `styles.css` is in the lowest layer, but a property a component never sets,
+  such as `min-height`, still reaches it. `RS-2` runs in
   `e2e/renderer-reskin.configuration.spec.ts` in the `configuration` project;
   `RS-3` compares full-page screenshots in `e2e/renderer-reskin.spec.ts`, whose
   Linux baselines the Design-system baselines workflow regenerates with
