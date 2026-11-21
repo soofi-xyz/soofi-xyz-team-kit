@@ -182,6 +182,50 @@ Built in runtime 1.19.0 (pull request 37) against the contract of the products
 it calls, which do not answer as the person yet; see
 [Data hooks implementation rules](#data-hooks-implementation-rules).
 
+## Company logo
+
+Show the signed-in person's company logo beside the Prism logo in apps that
+ask for it, and nothing extra in apps that do not.
+
+- **Declared per app.** An app opts in through its settings, never in code:
+  `brand` shows Console's frame with the Prism logo above the app, and
+  `brand.company` names how to find the company record (`label`, its indexed
+  `domainField`, `nameField`, `logoField`) and the `https` `logoOrigins` its
+  logos may come from. An app without `brand` is shown as before. The shell,
+  not the app, draws the frame and reads the logo; the app learns nothing.
+- **Whose company.** Take the person's domain from Access: the sign-in's
+  verified hosted domain when Access returns it, otherwise the domain of the
+  email Access returns. Never invent a claim. A person from Prism's own domain
+  (`prismteam.ai`) sees the Prism logo alone and Persist is not asked.
+- **Which record.** Read the company record whose domain property is that
+  domain from Persist, as the person (their Access token, never the shared
+  key), through a registered read operation. Persist's user-scoped access
+  decides who may see a company: the record is reachable from the company's
+  demo role's group through a grant edge that Access writes, so removing that
+  role or that grant removes the logo. An
+  unreachable record answers like a missing one.
+- **Which logo.** Accept only an `https` address with no credentials on one of
+  the app's `logoOrigins`. Console fetches it itself, connecting only to
+  public addresses (check the address the connection uses, not only the host
+  name, so an allowed origin cannot reach an internal service; no redirect, a short
+  timeout, a size bound), keeps only raster bytes it recognises by their
+  signature (PNG, JPEG, GIF, WebP; never SVG) and gives the page an inline
+  `data:` image, so the browser policy stays `img-src 'self' data:` and the page
+  reaches no other origin. Show the company name only as text (alternative
+  text); never render HTML from a record.
+- **Never in the way.** Render the frame outside the app's error boundary and
+  read the logo after the app mounts. Any failure after authorization (Access,
+  Persist, the logo host) shows the Prism logo alone and the app, never an
+  error page. Refuse the read as the app's other reads are refused: no session,
+  a person whose roles do not open the app, an app that declares no company.
+- **Reactive.** Read the logo on every page load and again when the page is
+  shown again after a short interval. A sign-out, another person, a removed
+  role (after the token refreshes) or a revoked grant shows on the next read
+  with no republish. Live updates across viewers are out of scope.
+
+Built in runtime 1.28.0 (`prismteam-ai/console` pull request 48), not yet
+merged; see [Company logo implementation rules](#company-logo-implementation-rules).
+
 ## Local development
 
 An app runs locally against the copy of the design system inside the kit. No
@@ -311,6 +355,26 @@ Level: repository.
 | DH-4 | As a user without the binding's scope, open the page | The server answers `403` and the page shows the denied state, not an empty table |
 | DH-5 | As a user with the action's role, run an action from the page | It runs, and the owning product records that person as the caller |
 | DH-6 | Make the upstream operation exceed its timeout | The page shows the timed-out state with a correlation ID; no blank page and no upstream payload is shown |
+
+### `company-logo`
+
+Level: repository, then deployed with Access and Persist's user-scoped reads.
+Use `pia` (Prism), `cora` (Company B, holding `companyb-demo`) and `omar` (a
+domain with no company record) from [the test data](test-data.md#environments-and-people),
+and `brand-app`, `sample-app` with `brand.company` set.
+
+| ID | Do | Expect |
+| --- | --- | --- |
+| CB-1 | `cora` opens `brand-app` | From the first page load the frame shows the Prism logo and Company B's logo, as an inline image; Persist was called with her token and her domain; the page reached no other origin |
+| CB-2 | `pia` opens `brand-app` | The Prism logo alone; Persist was not asked |
+| CB-3 | `omar` opens `brand-app` | The Prism logo alone |
+| CB-4 | Revoke Company B's grant in Persist; `cora` reloads | The Prism logo alone, with no republish |
+| CB-5 | Take `companyb-demo` from `cora` in Access and let her token refresh | The next read shows the Prism logo alone; she still opens the app |
+| CB-6 | Make the Persist read fail; `cora` opens `brand-app` | The Prism logo alone and the app; no error page |
+| CB-7 | Point Company B's logo at an `http` address, another origin, and SVG bytes | None is shown; only the allowed address was fetched |
+| CB-8 | Open `sample-app`, which declares no `brand` | No frame and no logo read |
+| CB-9 | `alice`, whose roles do not open `brand-app`, reads its logo; then without a session | `403`, then `401`; Persist not asked |
+| CB-10 | Submit a version whose `logoOrigins` names an `http` origin | Refused at submission |
 
 ### `app-delivery`
 
@@ -582,3 +646,62 @@ step with the handlers. Keep these rules when changing it.
   `e2e/data-hooks.google.spec.ts`; the stand-in's `sample-report` has a dataset
   per test that changes it (`refreshing`, `slow`), so parallel tests do not
   see each other's refreshes.
+
+## Company logo implementation rules
+
+These rules describe the company logo in runtime 1.28.0 (pull request 48 in
+`prismteam-ai/console`). The route and answers are authoritative only in
+`requirements/swagger.yml` and the README's "Company logo" section.
+
+- **Settings.** `appBrandSchema` in `src/domain/app-definitions.ts` is shared by
+  the kit's `console-app.json`, the build record and the API: closed objects,
+  lexicon names (`^[a-z][a-z0-9_]*$`), one to ten `https` origins with no path.
+  A Console before 1.28.0 refuses a build record that has `brand`, so it
+  cannot open an app whose active version declares one: roll such an app back
+  to a version without `brand` before installing an earlier Console.
+- **What the browser learns.** `ActiveAppView.brand` is `{ company: boolean }`
+  for an app that declares `brand`, nothing for one that does not. The lookup
+  (label, fields, origins) stays on the server.
+- **One route.** `GET /viewer/accounts/{accountId}/apps/{appId}/brand`, through
+  `AppService.readBrand`, authorized as the app's other reads (`401`, `403`
+  `app_not_allowed`), `404` `brand_not_declared` without `brand.company`.
+  It answers `200 { company: { name, logo } }` or `200 { company: null,
+  reason }` with `reason` one of `prism_person`, `no_domain`, `no_company`,
+  `logo_refused`, `unavailable`, and `Cache-Control: private, no-store`. It is
+  logged as `App brand read` with the caller, whether a company was shown and
+  the reason.
+- **Domain.** `Principal.profile` calls Access `GET /me` with the person's
+  token (`AccessClient.profile`, three seconds). `personDomain` prefers
+  `hosted_domain` and falls back to the email's domain; `isPrismDomain`
+  covers `prismteam.ai` and its subdomains.
+- **`persist` / `find-by`.** `src/adapters/persist.ts`: `<label>_by(<field>:
+  $value) { id <fields> }` with the value as a variable, Persist's lookup by an
+  indexed property; at most one row, `null` is none. It shares the GraphQL
+  call, token forwarding and error mapping with `list-related`.
+- **Logo.** `src/adapters/company-logo.ts` fetches through `publicHttpsFetch`
+  (`node:https` with `publicLookup` as the connection's lookup, which refuses
+  private, loopback, link-local, shared, multicast and reserved IPv4 and IPv6
+  ranges, IPv4-mapped included; never follows a redirect), cancels refused
+  bodies, and passes `redirect: "error"`,
+  `credentials: "omit"`, three seconds and 256 KiB read incrementally; `404`
+  and `410` are a refused logo, other failures unavailable. `logoDataAddress`
+  accepts PNG, JPEG, GIF and WebP by signature only. Successful logos are kept
+  in memory for ten minutes, keyed by address: they are not personal, and the
+  Persist read decided who may see one.
+- **The page.** `hostedCompanyLogo` in `ui/src/app-page.ts` accepts only a
+  `data:image/(png|jpeg|gif|webp);base64,` logo and a name of at most 120
+  characters; anything else, and any failure, is no logo. `ConsoleBrand` in
+  `ui/src/design-system/console-brand.tsx` (Console's own, not in the catalog)
+  is rendered by the mount module above the app's boundary, as a `banner`
+  named "Brand", reading on mount and on `visibilitychange` after 60 seconds.
+- **Tests.** `test/company-brand.test.ts` (`CB-1` to `CB-10` through the real
+  handler with the fake Access's `/me` and a fake user-scoped Persist in
+  `e2e/support/hosted-data.ts`), `test/app-page.test.ts` (`CB-11`, `CB-12`)
+  and `e2e/company-brand.access.spec.ts` (`installed-access`; the stand-in's
+  `POST /__harness/persist/company` sets the record to `granted`, `revoked` or
+  `failing`, and its logo address).
+- **Open.** Persist's user-scoped reads and a `company` record with an indexed
+  domain property (Model has no `domain` or `logo_url` on `company` today);
+  until then every read answers `unavailable`. Access `GET /me` returns no
+  `hosted_domain`, so the email's domain is used. Each demo app needs a new
+  version declaring `brand`, which is configuration for `vivillon`.
