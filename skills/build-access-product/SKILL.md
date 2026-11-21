@@ -114,8 +114,8 @@ security defects listed there.
 - Identify a person by a stable, opaque user identifier. Never use an email
   address as a key, a foreign key or a grant principal.
 - A first sign-in creates the user with no role, so they can do nothing until
-  an administrator assigns one. An invitation only
-  pre-assigns a role.
+  an administrator assigns one or a [domain role rule](#domain-role-rules)
+  gives one. An invitation only pre-assigns a role.
 
 ### Token
 
@@ -145,6 +145,11 @@ reference's examples tested against the deployed API instead.
 State the revocation trade-off plainly: a disabled user or changed role takes
 effect when the current access token expires. Keep access tokens to at most 15
 minutes unless the user sets another value, and revoke refresh tokens immediately.
+Issue every access token, at sign-in and at each refresh, from the roles the
+person holds at that moment, read from the record, never copied from the
+refresh token or the previous access token. A removed assignment, rule or role
+is then gone from the next token, and the longest it stays usable is one
+access-token lifetime after the removal.
 
 ### Permissions
 
@@ -211,6 +216,46 @@ environment, owned by Access.
   asks `POST /decisions` for the application it serves (`RS-12`).
 - Do not use the store to filter lists. It answers one question about one
   resource. Record access in Persist is decided by graph edges, below.
+
+### Domain role rules
+
+Give everyone from one Google domain a role without restricting who may sign
+in. For example, everyone signing in with a `prismteam.ai` account gets the role
+for internal applications, and everyone from a demo company's domain gets that
+company's demo role, while sign-in stays open to both. Allowed domains cannot do
+this: they decide who may sign in at all.
+
+- A rule maps one hosted domain to one role, by the role's identifier. Match the
+  provider's hosted-domain claim exactly (lower case), never the email suffix,
+  as allowed domains do. An account without the claim matches no rule. A domain
+  may have a rule per role, and a role a rule per domain.
+- Administrators create, list, read and remove rules through protected routes
+  with their own `access:domain-role-rule:*` permissions. The same domain and
+  role again is `200 unchanged`.
+- Refuse a rule naming the administrator role, an unknown role or a role being
+  deleted, with no write. No rule ever gives or takes the administrator role,
+  so the last-administrator protections are unchanged.
+- Apply the rules at every sign-in, the first and each later one, including a
+  sign-in that reuses the shared session (with the hosted domain that session
+  signed in with): the person then holds a role from each rule matching their
+  hosted domain, and none from a rule that no longer matches it. A rule created
+  later reaches a person at their next sign-in, not at a refresh.
+- Record why a person holds a role. An assignment has sources: by hand (an
+  administrator, the environment key or an invitation) and each rule that gives
+  it. The person holds the role while any source remains. Removing a rule takes
+  away only its own source, so a role also assigned by hand survives it; taking
+  a hand assignment away leaves a rule's. Refuse (`409`) taking away by hand a
+  role held only through rules: remove the rule instead. Treat every assignment
+  made before rules existed as by hand.
+- Removing a rule takes its source from everyone it gave the role to before the
+  removal reports done, and a sign-in meanwhile cannot give the role from it
+  again. Deleting a role removes the rules that name it.
+- Write an audit record, in the same transaction as the change, for every rule
+  change and for every source a rule adds or takes (`role.assign` and
+  `role.unassign`, naming the rule).
+- A role a rule gives is an assignment like any other: the person's next token
+  carries it, and, as for every assignment, nothing published to Persist says
+  who holds it.
 
 ### Users and record access in Persist
 

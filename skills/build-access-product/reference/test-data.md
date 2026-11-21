@@ -97,6 +97,21 @@ The fixture product also declares `fixture:secret`, **private to its owner**,
 with actions `use`, `manage` and `remove`. Its only shareable action is `use`. Resources: `fixture:secret/secret-a`
 owned by `alice`; `fixture:secret/secret-env` owned by the environment.
 
+## Domain role rules
+
+The `domain-role-rules` checks add a second company's domain, `demo-company.example`,
+and these people. Sign-in stays open, so they sign in like `personal`.
+
+| Key | Email | Hosted-domain claim | Used as |
+| --- | --- | --- | --- |
+| `dana` | `dana@demo-company.example` | `demo-company.example` | Gets `demo` from the rule only |
+| `drew` | `drew@demo-company.example` | `demo-company.example` | Gets `demo` from the rule and by hand |
+| `demo-spoof` | `spoof@demo-company.example` | absent | Right email suffix, no hosted-domain claim; matches no rule |
+
+Roles: `demo` and `demo-two`, neither granting any action. A deployed run
+suffixes the domain like every other name (`demo-company-<suffix>.example`) and
+removes every rule it created. `DR-10` reuses `admin` and `member` on fresh state.
+
 ## Service identity
 
 `fixture-service`, allowed `read` on `fixture:item` and nothing else.
