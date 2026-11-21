@@ -92,13 +92,14 @@ Marketplace and Deploy's Puller need no new bundle type. Keep these rules:
   unbuilt app, so nothing packs an app the runner did not check.
 - **Kit gate before install** (`src/configuration/console-app.ts`). Require an exact
   `@prism/console-app-kit` pin in `dependencies` and `pnpm-lock.yaml` pinning the same
-  version with only `{ integrity: sha512-… }` resolutions. Refuse `file:`, `link:`, git,
+  version with only `{ integrity: sha512-… }` resolutions and registry versions on every
+  `snapshots` dependency edge. Refuse `file:`, `link:`, git,
   tarball and `npm:` alias sources, ranges, lockfile `overrides`/`patchedDependencies`,
   `pnpm`/`overrides`/`resolutions` in `package.json`, `pnpm-workspace.yaml`,
   `.pnpmfile.cjs`, any other lockfile and a committed `dist/`. Require pnpm: an npm
   lockfile writes the registry host into every `resolved` URL.
-- **Run.** Install with Build's fixed pnpm command as the product user, with the
-  registry login removed afterwards; require `node_modules/@prism/console-app-kit` to be
+- **Run.** Install every app with Build's fixed pnpm command as the product user, then
+  remove the registry login before any check; require `node_modules/@prism/console-app-kit` to be
   pnpm's store copy of the pinned name and version; run that kit's
   `console-app check --json` as the product user into a runner-owned file. A non-zero
   exit or `passed` not `true` fails at `BUILDING` with `ConfigurationBundleInvalid`,
@@ -106,7 +107,9 @@ Marketplace and Deploy's Puller need no new bundle type. Keep these rules:
 - **Output.** Verify `dist/build-record.json` (passed check, the app's `appId`, the
   pinned kit) and that `dist/` holds exactly the files it lists, UTF-8 and matching
   their digests. Pack only `dist/` (Console's `{ buildRecord, files }` upload body) and
-  record `app.kit_version` and `app.build` in the build manifest.
+  record `app.kit_version`, `app.kit_integrity` and `app.build` in the build manifest.
+  Comparing `kit_integrity` with the published release is open until the registry
+  publishing decision.
 - **Registry.** The CodeArtifact package group `/npm/prism/*` blocks the public npm
   upstream for `@prism` packages. Who may publish the kit into `build-<stage>` is
   undecided; until it is published there an app build fails at install.

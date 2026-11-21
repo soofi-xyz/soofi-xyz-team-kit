@@ -196,17 +196,17 @@
       "version": "1.0.0-sha256-aec88690d62c7286"
     },
     "build-build-service": {
-      "bytes": 77925,
-      "digest": "sha256:88c21e13df8d757ce2192abe4aa453fe90181961235367f237b4422628c80b7f",
-      "encoded_bytes": 81276,
+      "bytes": 78127,
+      "digest": "sha256:e075a3d6d6d04464531dad861ac47a5614ebce3dc5f37713b4bf8580a13e12d3",
+      "encoded_bytes": 81484,
       "files": 3,
       "reason": "used by 2 packaged agents",
-      "stored_bytes": 79672,
+      "stored_bytes": 79877,
       "used_by": [
         "metang",
         "tinkaton"
       ],
-      "version": "1.0.0-sha256-0224ef0df1a86d98"
+      "version": "1.0.0-sha256-b2022e62fc360159"
     },
     "build-connect-product": {
       "bytes": 311999,

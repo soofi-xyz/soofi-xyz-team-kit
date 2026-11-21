@@ -2158,7 +2158,7 @@
       },
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 611963,
+      "library_pinned_bytes": 612168,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-build-service",
@@ -2950,7 +2950,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 611963,
+      "library_pinned_bytes": 612168,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-build-service",
@@ -3796,7 +3796,7 @@
       ]
     },
     "build-build-service": {
-      "bytes": 77925,
+      "bytes": 78127,
       "files": 3,
       "flags": {},
       "omitted": [],
