@@ -32,6 +32,13 @@ Cover immutable publication and provider/API dependencies in review. Ensure the 
 shared Deploy provider and controlled target APIs; surface missing prerequisites rather
 than skipping review. Verify configuration application results without starting business
 jobs. Keep catalog rollback distinct from reversing configuration effects.
+Marketplace reads no configuration kind: it checks only Build's `CONFIGURATION_BUNDLE`
+claims and `marketplace.product.json`, `build/build.manifest.json` and `bundle/bundle.json`,
+and stores and restores the zip byte for byte. A new kind (such as Console's `app` and
+`design-system`) is a Build and Deploy change, not a Marketplace one; its review passes only
+once the review account's Deploy has the kind's adapter. Prove that with a test that takes
+Build's own artifact for the kind through publish, review and rollback
+(`test/console-bundle-kinds.test.ts` in `prismteam-ai/marketplace`) rather than adding a kind list.
 
 ## Shared API domain
 

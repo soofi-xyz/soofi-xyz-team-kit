@@ -35,7 +35,10 @@ inside component registration, publication, review and prior-release selection.
 Exercise `CONFIGURATION` type consistency and legacy metadata migration, missing/incompatible provider or target
 API prerequisites, terminal configuration read-back and failed application.
 Keep catalog rollback separate from configuration reversal; report review gaps
-rather than bypassing them.
+rather than bypassing them. A new configuration kind needs no Marketplace change; its
+publication, review and rollback piece is a test on Build's artifact for it plus a dev
+run, and its review stays FAILED with Deploy's reason until Deploy's adapter for the kind
+is in the review account.
 
 Apply [the shared API domain contract](../shared-api-domain.md) within the relevant
 feature pieces. Include its missing-domain, DNS-absent, mapping-conflict, replay,

@@ -270,6 +270,12 @@ and [the app kit contract](../../build-console-product/reference/app-kit.md#deli
   code that runs in the browser on the shared domain, so the recorded check
   result and the Marketplace review are the review before publish; the review
   environment needs a Console with a compatible design system.
+- **Marketplace:** no change and no kind registration: register a `CONFIGURATION`
+  component and publish. Marketplace checks only the `CONFIGURATION_BUNDLE` claims and
+  manifest files and stores the zip unchanged
+  ([prismteam-ai/marketplace#33](https://github.com/prismteam-ai/marketplace/pull/33) takes
+  Build's artifact for each kind through publish, review and rollback). A review fails
+  with Deploy's `unknown Console kind` until Deploy's adapter is in the review account.
 - **Acceptance:** `AD-1` to `AD-7` in
   [the app kit tests](../../build-console-product/reference/app-kit.md#tests) and
   the `CP` checks in

@@ -52,6 +52,11 @@ the `CONFIGURATION` type and immutable identity. Verify migration support before
 publication and hand gaps to Regigigas. Check shared-provider and target API
 review prerequisites and terminal review results. Do not treat prior-release
 selection as reversal of applied configurations or bypass missing review prerequisites.
+Registering a new configuration kind means registering a `CONFIGURATION` component:
+Marketplace keeps no list of kinds. A review fails with Deploy's reason when the review
+account's Deploy has no adapter for a kind (Console `app` and `design-system`:
+`unknown Console kind` until Corviknight's adapter ships); report it and route it to
+Corviknight, never retry it or use `skip_review` to get round it.
 
 A configuration bundle normally publishes itself from its repository's CI when the
 configurer's bundle PR merges (step 2 of

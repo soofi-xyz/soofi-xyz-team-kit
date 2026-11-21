@@ -40,6 +40,11 @@ and any remaining runtime or integration gaps.
 
 Read [the shared configuration-bundle contract](../build-product-deployer/reference/configuration-bundles.md) when this work involves configuration bundles.
 Verify configuration-bundle publication and review with compatible provider/API prerequisites; keep catalog rollback distinct from API compensation.
+Do not add a list of configuration kinds to Marketplace: it reads only the `CONFIGURATION_BUNDLE`
+claims and three manifest files and copies the zip unchanged, so a new kind needs Build to pack it
+and the review account's Deploy to apply it. Cover a new kind with Build's own artifact taken
+through publish, review and rollback, as `test/console-bundle-kinds.test.ts` does for Console
+`app` and `design-system`.
 
 ## API description
 
