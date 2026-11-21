@@ -220,7 +220,8 @@ Deploy. Console receives only delivered, reviewed output.
   [prismteam-ai/console#44](https://github.com/prismteam-ai/console/pull/44),
   not merged): it assumes Build's publisher role through GitHub's OIDC, skips
   until the repository variable `BUILD_KIT_PUBLISHER_ROLE_ARN` is set, accepts
-  only a CodeArtifact endpoint and never overwrites a published version. The
+  only a CodeArtifact endpoint, never overwrites a published version and moves
+  `latest` only forward (an older version goes under `earlier`). The
   role is Build's (`tinkaton`,
   [prismteam-ai/build#71](https://github.com/prismteam-ai/build/pull/71), not
   merged). Publishing each pack's types package is story 9.

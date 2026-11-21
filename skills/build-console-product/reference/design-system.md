@@ -698,10 +698,11 @@ yet merged). Keep them when changing how packs are built or how apps use them.
   (story 9) runs this check as its gate and packs `dist/`.
 - **Pack rules.** `css-file` and `class-name` (no CSS), `off-scale-value` (a
   hex or color function, a length with a unit or a bare number in `style`; use
-  `var(--ds-*)`), `foreign-dependency` (only `@prism/console-app-kit` and
+  `var(--ds-*)`; a pack's own constant named in a style is checked for the
+  value it holds), `foreign-dependency` (only `@prism/console-app-kit` and
   React's hooks), `react-surface`, `network-call`, `public-prop` (`className`,
-  `style` or `ref` on public props, or an export the settings do not list) and
-  `build-settings`. Add a failing fixture for each new rule.
+  `style` or `ref` on public props, an export the settings do not list, or a
+  listed component exported only as a type) and `build-settings`. Add a failing fixture for each new rule.
 - **`replacement-props` (`CP-4`).** Fail a replacement, naming the prop, when it
   requires a prop the base does not take or has as optional, drops a base prop,
   or does not accept a base prop's type.
