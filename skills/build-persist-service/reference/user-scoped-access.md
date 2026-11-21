@@ -168,6 +168,33 @@ Ingest is limited to the environment key, IAM roles, administrators and
 service identities, which can already read and write all data. A signed-in
 person cannot write a structural edge.
 
+### Removing an access-plane edge
+
+Access revokes a grant by removing its grant edge, and must hear that the edge
+is gone before it reports the revoke done. Serve a synchronous removal on the
+shared API:
+
+`POST /persist/edges/remove`
+
+```json
+{ "edges": [ { "label": "access_group_can_access", "outV": "<64 hex vertex id>", "outVLabel": "access_group", "inV": "<64 hex vertex id>", "inVLabel": "company" } ] }
+```
+
+- Remove every edge of that label from `outV` to `inV`. A grant edge has no
+  properties, so that is at most one edge.
+- Answer `200` with `{"ok": true, "data": {"removed": <count>}}`, `0` when the
+  edge or either vertex is not there: a removal sent again answers the same.
+- Apply the write guard as ingest does: refuse with `403`
+  `LabelWriteForbiddenError`, removing nothing, unless the caller holds every
+  label's write action. Only Access's own service identity holds
+  `persist:access-plane:write`. Refuse an undeclared label, ends whose labels
+  differ from its rule's, a malformed id, more than 100 edges or an unknown
+  field with `400` and remove nothing.
+- Remove all of a request's edges in one writer transaction, and log the
+  writer and each removed edge id.
+- Keep reads consistent with the removal: once it answers `200`, no read
+  reaches through that edge.
+
 ## Definition of done
 
 `user-scoped-access` is done only when every check below exists as an automated
@@ -209,3 +236,4 @@ connected to nothing.
 | UA-20 | F, D | With the environment key, ingest a `fixture_contains` edge from `alice`'s user record to `item-b1`, then one pointing from an item up to a scope | `403` for the edge that touches a user record and `400` from lexicon validation for the wrong direction; nothing written; `alice` still cannot read `item-b1` |
 | UA-21 | F, D | With `group-g` connected to `scope-b`, unassign `viewer` from `carol` and let her token expire; nothing else is republished | With her new token she lists nothing under `scope-b`, and her search returns no hit there |
 | UA-22 | F, D | With the `viewer` role's group connected to `scope-b`, delete the role in Access; `carol` calls with her still-valid token | She lists nothing under `scope-b` and searches nothing there; the group record no longer exists |
+| UA-23 | F, D | Access's own identity removes `alice`'s `fixture_can_access` edge to `scope-a`, then sends the same removal again; the environment key and another service identity each send it | `200` with `removed` `1`, then `0`; `403` for the other two with nothing removed; `alice` then lists nothing |

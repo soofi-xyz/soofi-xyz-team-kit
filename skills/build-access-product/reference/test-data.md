@@ -145,6 +145,11 @@ Records and edges:
   `quarterly fixture report`, so one search matches both sides. Only `item-a2`
   contains `annual fixture summary`.
 - At the start of a run no user is connected to any scope.
+- In Access, a scope is the environment-owned resource
+  `persist:fixture-scope/<scope vertex id>`, and the anchor map sends a share
+  of `read` on it to Persist as a `fixture_can_access` edge. The fixture
+  declaration for `persist` adds `fixture-scope` with `read` shareable on one
+  resource; remove it with the run.
 
 ## Leak markers
 
