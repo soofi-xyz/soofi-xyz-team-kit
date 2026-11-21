@@ -283,7 +283,8 @@ and [the app kit contract](../../build-console-product/reference/app-kit.md#deli
   `versionDigest` or `revisionDigest` Console answered and read back (Console digests the
   validated record, which can differ from the record sent). A replay reports `UNCHANGED`
   and publishes nothing; Console's refusals (`400`, `422 INCOMPATIBLE_VERSION`, `409
-  CONFIGURATION_IN_USE`) fail the run with its reason and change nothing. Neither kind is
+  CONFIGURATION_IN_USE`) fail the run with its reason and leave the active selection
+  unchanged; an app, version or revision created before a refused publish stays and is reused. Neither kind is
   releasable: Console has no delete for them. The `503` with `Retry-After` on app create
   fails the run like any `5xx`; Deploy does not retry it.
 - **Acceptance:** `AD-1` to `AD-7` in

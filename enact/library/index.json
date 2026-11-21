@@ -387,12 +387,12 @@
       "version": "1.0.0-sha256-4c9e1d58d3143c1a"
     },
     "build-product-deployer": {
-      "bytes": 58214,
-      "digest": "sha256:fac1bb23a21c495e82bffc159c80b272ccd7f0ddbb1be6a09bd8a3f69e0ccef7",
-      "encoded_bytes": 60683,
+      "bytes": 58320,
+      "digest": "sha256:0767c4f9d97b827e326bdbab1f02b7adfb5feaeb584ca4a4e399a310658cc693",
+      "encoded_bytes": 60791,
       "files": 5,
       "reason": "used by 41 packaged agents",
-      "stored_bytes": 59597,
+      "stored_bytes": 59704,
       "used_by": [
         "aegislash",
         "arceus",
@@ -436,7 +436,7 @@
         "zorua",
         "zygarde"
       ],
-      "version": "1.0.0-sha256-a561b378f1280b00"
+      "version": "1.0.0-sha256-e2a8672698810407"
     },
     "build-rag-systems": {
       "bytes": 34725,
