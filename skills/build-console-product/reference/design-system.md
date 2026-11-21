@@ -27,9 +27,9 @@ every other dashboard part onto design-system components is a follow-up
 (`RS-4`). Component packs are split into three pull requests: building and
 checking a pack, and apps built against packs, are on
 [Console pull request 42](https://github.com/prismteam-ai/console/pull/42)
-(runtime 1.23.0, not yet merged) by
+(runtime 1.27.0, not yet merged) by
 [their implementation rules](#component-packs-implementation-rules); pack
-storage, routes, pointers and activation (1.24.0) and the pack gallery (1.25.0)
+storage, routes, pointers and activation (1.28.0) and the pack gallery (1.29.0)
 are not built. Discover the target revision before relying
 on any part, and settle names marked as placeholders in the Console repository.
 
@@ -678,15 +678,15 @@ yet merged). Keep them when changing the renderer.
 
 ## Component packs implementation rules
 
-These rules describe the build half of `component-packs` in runtime 1.23.0
+These rules describe the build half of `component-packs` in runtime 1.27.0
 ([Console pull request 42](https://github.com/prismteam-ai/console/pull/42), not
 yet merged). Keep them when changing how packs are built or how apps use them.
 
-- **Three pull requests.** 1.23.0 builds and checks packs and builds apps
-  against them. 1.24.0 adds pack storage, the install, read-back and rollback
+- **Three pull requests.** 1.27.0 builds and checks packs and builds apps
+  against them. 1.28.0 adds pack storage, the install, read-back and rollback
   routes behind the provenance gate, the per-request pointers and activation
-  through `packs.<name>.version` (`CP-1`, `CP-2`, `CP-3`, `CP-6`). 1.25.0 adds the
-  pack gallery and `CP-5`. Do not ship a pointer or route in 1.23.0.
+  through `packs.<name>.version` (`CP-1`, `CP-2`, `CP-3`, `CP-6`). 1.29.0 adds the
+  pack gallery and `CP-5`. Do not ship a pointer or route in 1.27.0.
 - **The pack tool is the app kit's.** `console-app pack check [--json]` and
   `pack build` (`app-kit/src/pack.ts`, `pack-rules.ts`) read `console-pack.json`
   (`pack`, `version`, `designSystem` range, `adds`, `replaces`), type-check
@@ -725,7 +725,7 @@ yet merged). Keep them when changing how packs are built or how apps use them.
   `test/component-packs.test.ts`; DC-3 uses the kit-built `pack-app`.
 - **Gallery.** Pack gallery screenshots run on Linux only; the baselines
   workflow regenerates them, and no macOS baselines are committed for them.
-- **Open gaps.** Until 1.24.0 every app that declares a pack is refused with
+- **Open gaps.** Until 1.28.0 every app that declares a pack is refused with
   `missing_pack`; `console-app dev` does not render pack components; delivery
   as a `component-pack` bundle is story 9 (`tinkaton`, `corviknight`).
 

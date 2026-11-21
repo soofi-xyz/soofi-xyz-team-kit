@@ -236,7 +236,7 @@
     },
     "build-console-product": {
       "bytes": 153494,
-      "digest": "sha256:15be3918fea4c83873490ac63a64cd34cb828fac6928c3c1319b6d046733fec1",
+      "digest": "sha256:7faf386f7307160f21644185256c9b9e4e9903921f8b1e100afecc61ee4fa8d2",
       "encoded_bytes": 159360,
       "files": 6,
       "reason": "used by 2 packaged agents",
@@ -245,7 +245,7 @@
         "chandelure",
         "vivillon"
       ],
-      "version": "1.0.0-sha256-4eb61a3c99446708"
+      "version": "1.0.0-sha256-98a4d03a61f43364"
     },
     "build-documentation-product": {
       "bytes": 24372,
@@ -866,7 +866,7 @@
     },
     "guide-product-work": {
       "bytes": 284053,
-      "digest": "sha256:25b30f201c899812346991daa93b0262d6d71b5c90d24987fe51676c5df584be",
+      "digest": "sha256:aaba1794c399248a30948b2d3a948acd54f6c412b9761241ac27b64cc0fa089d",
       "encoded_bytes": 299870,
       "files": 25,
       "reason": "used by 41 packaged agents",
@@ -914,7 +914,7 @@
         "zorua",
         "zygarde"
       ],
-      "version": "1.0.0-sha256-89a96904782dd04f"
+      "version": "1.0.0-sha256-79fc8da8c874e935"
     },
     "integrate-ci-cd": {
       "bytes": 6805,
