@@ -139,7 +139,8 @@ The first step of `access-sign-in` is on
   it.
 - **Verifier.** Verify with `jose` exactly as
   [product integration §2](../../build-access-product/reference/product-integration.md#2-verify-a-callers-token)
-  shows, and also require `token_use: access`, string `roles` and a person's
+  shows, and also require `aud` to be exactly the environment's origin (a string,
+  never a list), `token_use: access`, string `roles` and a person's
   token (`principal_kind` user). Access ships no client library; do not copy
   its in-repository verifier.
 - **Sealed session.** Keep the access and refresh tokens server-side, sealed
