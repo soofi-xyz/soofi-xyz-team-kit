@@ -126,17 +126,17 @@
       "version": "1.0.0-sha256-1c10240d042d78cd"
     },
     "build-access-product": {
-      "bytes": 83423,
-      "digest": "sha256:229408cb3ea1a34e8403fe1c837b1f90ad7201172d7a39703c0be3709b94051f",
-      "encoded_bytes": 86910,
-      "files": 5,
+      "bytes": 92639,
+      "digest": "sha256:a00a1c632574978e3965d98ed19a22b63a3956fac3d063bb02cf9204629d8e42",
+      "encoded_bytes": 97030,
+      "files": 6,
       "reason": "used by 2 packaged agents",
-      "stored_bytes": 85377,
+      "stored_bytes": 94972,
       "used_by": [
         "aegislash",
         "doublade"
       ],
-      "version": "1.0.0-sha256-9313d56a5e50c8e4"
+      "version": "1.0.0-sha256-abe3bfa1be7ab60c"
     },
     "build-ai-agents": {
       "bytes": 94063,

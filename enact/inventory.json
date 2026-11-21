@@ -54,7 +54,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 596753,
+      "library_pinned_bytes": 606348,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-access-product",
@@ -1043,7 +1043,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 596753,
+      "library_pinned_bytes": 606348,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-access-product",
@@ -3744,8 +3744,8 @@
       ]
     },
     "build-access-product": {
-      "bytes": 83423,
-      "files": 5,
+      "bytes": 92639,
+      "files": 6,
       "flags": {
         "curl": [
           "skills/build-access-product/reference/product-integration.md:41",
