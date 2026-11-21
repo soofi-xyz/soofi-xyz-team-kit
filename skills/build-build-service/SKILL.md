@@ -75,6 +75,44 @@ shape rather than opening the list, and keep refusing unknown fields. Test a
 manifest using the new field and one with an unknown field. A field the target
 product accepts but Build refuses is a defect.
 
+## Console apps and design-system configuration
+
+`console` `design-system` and `app` are `CONFIGURATION` kinds (prismteam-ai/build#70,
+`configuration-bundle-check.v5`, `assembly-runner.v10`); keep them that way so
+Marketplace and Deploy's Puller need no new bundle type. Keep these rules:
+
+- **`design-system`.** One JSON file checked against Console's closed
+  `DesignSystemConfiguration` (`src/configuration/console-design-system.ts`) after
+  parameter defaults are filled; named `design-system`, once per bundle; no
+  `{{secret:…}}`. When Console's schema changes, change this copy with it and test
+  the new value and a refused one. Runs no code.
+- **Routing.** `FetchSource` sends a bundle holding an `app` to the CodeBuild runner
+  (`PACKAGE_AS=CONFIGURATION_BUILD`, `src/runner/run-configuration.ts`);
+  `PackageConfiguration` refuses one and `packageConfigurationBundle` throws on an
+  unbuilt app, so nothing packs an app the runner did not check.
+- **Kit gate before install** (`src/configuration/console-app.ts`). Require an exact
+  `@prism/console-app-kit` pin in `dependencies` and `pnpm-lock.yaml` pinning the same
+  version with only `{ integrity: sha512-… }` resolutions. Refuse `file:`, `link:`, git,
+  tarball and `npm:` alias sources, ranges, lockfile `overrides`/`patchedDependencies`,
+  `pnpm`/`overrides`/`resolutions` in `package.json`, `pnpm-workspace.yaml`,
+  `.pnpmfile.cjs`, any other lockfile and a committed `dist/`. Require pnpm: an npm
+  lockfile writes the registry host into every `resolved` URL.
+- **Run.** Install with Build's fixed pnpm command as the product user, with the
+  registry login removed afterwards; require `node_modules/@prism/console-app-kit` to be
+  pnpm's store copy of the pinned name and version; run that kit's
+  `console-app check --json` as the product user into a runner-owned file. A non-zero
+  exit or `passed` not `true` fails at `BUILDING` with `ConfigurationBundleInvalid`,
+  naming each `rule file:line`; stage nothing.
+- **Output.** Verify `dist/build-record.json` (passed check, the app's `appId`, the
+  pinned kit) and that `dist/` holds exactly the files it lists, UTF-8 and matching
+  their digests. Pack only `dist/` (Console's `{ buildRecord, files }` upload body) and
+  record `app.kit_version` and `app.build` in the build manifest.
+- **Registry.** The CodeArtifact package group `/npm/prism/*` blocks the public npm
+  upstream for `@prism` packages. Who may publish the kit into `build-<stage>` is
+  undecided; until it is published there an app build fails at install.
+- **Tests.** Add a fake-kit case for each new way a source could resolve the kit, and
+  run the real path against a stand-in registry (Verdaccio), never AWS.
+
 ## Configuration provenance
 
 Follow [configuration provenance: repo-linked Deploy installs](../guide-product-work/reference/configuration-provenance.md).

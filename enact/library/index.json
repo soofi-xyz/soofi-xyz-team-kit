@@ -15,7 +15,7 @@
       ]
     }
   },
-  "kit_version": "0.179.0",
+  "kit_version": "0.180.0",
   "limits": {
     "body_bytes": 4194304,
     "encoded_bytes": 5242880,
@@ -196,17 +196,17 @@
       "version": "1.0.0-sha256-aec88690d62c7286"
     },
     "build-build-service": {
-      "bytes": 75217,
-      "digest": "sha256:4db797212906e17870f40319cfd9dfe9093924be3f0f9d1b148240de240ea9c3",
-      "encoded_bytes": 78492,
+      "bytes": 77925,
+      "digest": "sha256:88c21e13df8d757ce2192abe4aa453fe90181961235367f237b4422628c80b7f",
+      "encoded_bytes": 81276,
       "files": 3,
       "reason": "used by 2 packaged agents",
-      "stored_bytes": 76926,
+      "stored_bytes": 79672,
       "used_by": [
         "metang",
         "tinkaton"
       ],
-      "version": "1.0.0-sha256-b8524191c77c880e"
+      "version": "1.0.0-sha256-0224ef0df1a86d98"
     },
     "build-connect-product": {
       "bytes": 311999,
@@ -235,17 +235,17 @@
       "version": "1.0.0-sha256-ee91d9fd03681778"
     },
     "build-console-product": {
-      "bytes": 147208,
-      "digest": "sha256:61e4ca374d5681a4304c270bef62fdb89f2f5d55017b2b2f1f4d6f8c51487490",
-      "encoded_bytes": 152904,
+      "bytes": 147507,
+      "digest": "sha256:5025074a7b4764a716051c6fe20a65c3374d88fd3e8474b603555a457f8216a3",
+      "encoded_bytes": 153205,
       "files": 6,
       "reason": "used by 2 packaged agents",
-      "stored_bytes": 150242,
+      "stored_bytes": 150542,
       "used_by": [
         "chandelure",
         "vivillon"
       ],
-      "version": "1.0.0-sha256-807a38bfd54d172b"
+      "version": "1.0.0-sha256-4b87d128ab3629b4"
     },
     "build-documentation-product": {
       "bytes": 24372,
@@ -387,12 +387,12 @@
       "version": "1.0.0-sha256-4c9e1d58d3143c1a"
     },
     "build-product-deployer": {
-      "bytes": 56209,
-      "digest": "sha256:9baa53f5b971001cc22788039b380dc6666236ee14eb1b80c9c54cb4bbbaa026",
-      "encoded_bytes": 58628,
+      "bytes": 56948,
+      "digest": "sha256:b02144c0080e2afaffd491795a2fb6db39d8ac9685684c257d8f281a4eb495da",
+      "encoded_bytes": 59385,
       "files": 5,
       "reason": "used by 41 packaged agents",
-      "stored_bytes": 57567,
+      "stored_bytes": 58315,
       "used_by": [
         "aegislash",
         "arceus",
@@ -436,7 +436,7 @@
         "zorua",
         "zygarde"
       ],
-      "version": "1.0.0-sha256-c957cafcbdc1eea3"
+      "version": "1.0.0-sha256-b289e88dd02226a1"
     },
     "build-rag-systems": {
       "bytes": 34725,
@@ -865,12 +865,12 @@
       "version": "1.0.0-sha256-2bf41e6b17c43a95"
     },
     "guide-product-work": {
-      "bytes": 281041,
-      "digest": "sha256:b93bfc623658d6e76bdef35e2b30259d7df1dc34e4bff8b403d0b92de879a3b1",
-      "encoded_bytes": 296838,
+      "bytes": 281793,
+      "digest": "sha256:0cf3cc456c014ddb2e3c9a31b7b53aa3f1c8c1203d2d4b3887bc96d18fb0c6ef",
+      "encoded_bytes": 297596,
       "files": 25,
       "reason": "used by 41 packaged agents",
-      "stored_bytes": 288169,
+      "stored_bytes": 288924,
       "used_by": [
         "aegislash",
         "arceus",
@@ -914,7 +914,7 @@
         "zorua",
         "zygarde"
       ],
-      "version": "1.0.0-sha256-269c804780570136"
+      "version": "1.0.0-sha256-f0693fca50e856a6"
     },
     "integrate-ci-cd": {
       "bytes": 6805,

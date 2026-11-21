@@ -48,9 +48,11 @@ provider references, and reject per-bundle installer code. Use `CONFIGURATION`
 consistently from request to artifact/provenance. Verify this coverage in the target; the existing
 feature evidence does not establish shared-provider support.
 
-Not built as of 2026-11-18: `console-source-bundles`, build and check Console apps and
-component packs. It depends on source validation, assembly, provenance and Console's app
-kit. Deliver the target `console` kinds from
+`console-source-bundles`, build and check Console apps and component packs: the
+`design-system` and `app` kinds are on [prismteam-ai/build#70](https://github.com/prismteam-ai/build/pull/70) (not merged, not deployed, 2026-11-21) as
+`CONFIGURATION` kinds; `component-pack` and publishing the app kit into Build's registry
+are not built. It depends on source validation, assembly, provenance and Console's app
+kit. Deliver the `console` kinds from
 [the Console app, component-pack and design-system payloads](../../../build-product-deployer/reference/configuration-bundles.md#console-app-component-pack-and-design-system-payloads):
 a build step in the isolated runner with the app kit's check as a publish gate, output
 verification, the recorded components, packs and minimum design-system version,

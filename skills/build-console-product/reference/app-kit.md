@@ -218,16 +218,17 @@ Deploy. Console receives only delivered, reviewed output.
   for `tinkaton`; whoever builds apps needs read access to that registry.
 - **Bundle kinds, product `console`.**
 
-  | Kind | Carries | State as of 2026-11-18 |
+  | Kind | Carries | State as of 2026-11-21 |
   | --- | --- | --- |
   | `application` | dashboard manifest | on Build's and Deploy's main; installation in an environment not verified |
-  | `design-system` | design-system configuration | target |
-  | `app` | app source that Build builds and checks | target |
+  | `design-system` | design-system configuration | Build: [prismteam-ai/build#70](https://github.com/prismteam-ai/build/pull/70), not merged; no Deploy adapter |
+  | `app` | app source that Build builds and checks | Build: [prismteam-ai/build#70](https://github.com/prismteam-ai/build/pull/70), not merged; no Deploy adapter |
   | `component-pack` | pack source that Build builds and checks | target |
 
-  `app` and `component-pack` need a build step and a check gate, which
-  configuration bundles do not run today. `tinkaton` settles their bundle type
-  and `corviknight` their adapters; the names are targets until both merge them.
+  All are `CONFIGURATION` kinds. Build runs a bundle holding an `app` in its
+  isolated runner with the kit's check as the gate and packs only the checked
+  `dist/`. An app needs `pnpm-lock.yaml` and an exact kit version in
+  `dependencies`. `corviknight` builds the adapters.
 - **An app's path.** A merged pull request; Build installs, checks and builds;
   Marketplace reviews and publishes; Deploy creates the app if missing, submits
   the version, publishes it and reads back the active digest, all through

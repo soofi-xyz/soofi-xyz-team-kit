@@ -35,14 +35,15 @@ Accept the `console` `application` kind together with Corviknight's Console adap
 validating each manifest as the contract's Console application payloads require:
 allow every top-level field Console's schema declares, including action `forms`,
 and refuse any other.
-Add the target `console` kinds `design-system`, `app` and `component-pack` by
-[the contract's Console app, component-pack and design-system payloads](../skills/build-product-deployer/reference/configuration-bundles.md#console-app-component-pack-and-design-system-payloads).
-Settle with Chandelure and Corviknight whether `app` and `component-pack` are
-`CONFIGURATION` kinds or another bundle type: they need a build step in the isolated
-runner, the app kit's check as a publish gate and output verification, which configuration
-bundles do not have today. Provide a way to publish private packages (the app kit and each
-pack's types package) into Build's package registry so the runner can install them; keep
-rejecting a product `.npmrc`.
+Keep the `console` kinds `design-system` and `app` (and add `component-pack` the same
+way) by [the contract's Console app, component-pack and design-system payloads](../skills/build-product-deployer/reference/configuration-bundles.md#console-app-component-pack-and-design-system-payloads)
+and [Build's Console kind rules](../skills/build-build-service/SKILL.md#console-apps-and-design-system-configuration).
+They are `CONFIGURATION` kinds, not another bundle type: a bundle holding an app is
+built in the isolated runner, gated by the pinned app kit's own check, and packs only
+the checked build. Never let a source bring its own kit: refuse every non-registry
+source of `@prism/console-app-kit` before install and verify the installed copy after.
+Publishing the app kit and each pack's types package into Build's registry is still
+undecided (who may publish, into which environments); keep rejecting a product `.npmrc`.
 Accept the `access` `application` kind together with Corviknight's Access adapter,
 once Aegislash ships Access's application API: validate each document as the
 contract's Access application payloads require and reject one that carries a

@@ -597,8 +597,8 @@ section. Keep these rules when changing it.
     guards the two transactions. Closing it needs a guard in both repository
     publish transactions (the design-system selection's etag in the app
     publish, or a per-account fence both bump).
-  - Deploy has no `console` `design-system` bundle kind (`tinkaton`,
-    `corviknight`), so do not set `ConfigurationProvenance` `Enabled` where a
+  - Build's `console` `design-system` kind is on prismteam-ai/build#70 (not
+    merged) and Deploy has no adapter for it (`corviknight`), so do not set `ConfigurationProvenance` `Enabled` where a
     configuration is installed, and do not install one by hand in a shared
     environment.
 
