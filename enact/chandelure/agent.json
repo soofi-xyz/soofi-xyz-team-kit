@@ -11,7 +11,7 @@
     },
     {
       "name": "build-console-product",
-      "version": "1.0.0-sha256-8e278557997f151c"
+      "version": "1.0.0-sha256-151c1011a994d4a0"
     },
     {
       "name": "build-marketplace-puller",
@@ -35,7 +35,7 @@
     },
     {
       "name": "guide-product-work",
-      "version": "1.0.0-sha256-f48e95bf19fcc286"
+      "version": "1.0.0-sha256-e08a27021d6efaad"
     },
     {
       "name": "operate-marketplace",
